@@ -158,3 +158,11 @@ Agents operate under:
 ## Final Definition
 
 An AIOS Agent is an autonomous intelligence entity that reasons, remembers, coordinates capabilities and evolves while operating inside the AIOS trust and security framework.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

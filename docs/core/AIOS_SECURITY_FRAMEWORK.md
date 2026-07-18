@@ -158,3 +158,11 @@ Restore Operation
 ## Final Definition
 
 AIOS Security Framework provides the protection layer that allows autonomous intelligence to operate safely through identity, trust, permissions, isolation and continuous verification.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

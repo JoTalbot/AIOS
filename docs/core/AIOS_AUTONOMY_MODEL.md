@@ -126,3 +126,11 @@ Adoption
 ## Final Definition
 
 AIOS autonomy is the ability of agents to independently pursue goals while remaining observable, constrained, trusted and aligned with system objectives.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

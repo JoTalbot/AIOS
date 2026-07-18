@@ -146,3 +146,11 @@ Important conditions create alerts:
 ## Final Definition
 
 AIOS Observability Architecture provides the awareness layer that allows the system to monitor itself, diagnose problems and safely improve over time.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

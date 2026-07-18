@@ -155,3 +155,11 @@ External systems receive controlled access through:
 MCP is the universal interface of AIOS.
 
 Any compatible application can become a client, while AIOS remains the central intelligence and orchestration layer.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

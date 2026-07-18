@@ -174,3 +174,11 @@ Better Allocation
 ## Final Definition
 
 AIOS Resource Manager provides intelligent control of computational resources, enabling efficient scaling, scheduling and autonomous operation across distributed environments.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

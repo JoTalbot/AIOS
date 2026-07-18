@@ -175,3 +175,11 @@ The Knowledge Graph is the living memory of AIOS.
 Execution creates experience.
 Experience changes knowledge.
 Knowledge improves future execution.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

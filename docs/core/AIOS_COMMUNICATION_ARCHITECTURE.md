@@ -172,3 +172,11 @@ Updated Strategy
 ## Summary
 
 AIOS communication architecture provides a distributed nervous system connecting nodes, agents, workers and services into a coordinated intelligence network.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

@@ -163,3 +163,11 @@ Octopus provides ideas for:
 ## Final Definition
 
 An AIOS Node is a modular intelligence unit. Multiple nodes combine into a distributed AIOS organism capable of scaling, learning and operating without dependence on a single machine.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

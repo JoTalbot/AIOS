@@ -153,3 +153,11 @@ API operations are protected by:
 ## Final Definition
 
 AIOS API Architecture provides the controlled communication boundary that allows internal intelligence systems and external applications to interact securely, consistently and efficiently.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

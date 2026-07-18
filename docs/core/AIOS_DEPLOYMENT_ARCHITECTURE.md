@@ -155,3 +155,11 @@ Deployment monitoring tracks:
 ## Final Definition
 
 AIOS Deployment Architecture allows a distributed intelligence system to exist across any combination of hardware and infrastructure while maintaining unified operation, security and evolution.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

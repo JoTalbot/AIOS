@@ -139,3 +139,11 @@ Every change requires:
 ## Final Definition
 
 The Evolution Engine is the mechanism that allows AIOS to become more efficient over time by converting experience into verified improvements.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

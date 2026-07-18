@@ -157,3 +157,11 @@ Behavior Improvement
 ## Final Definition
 
 AIOS Knowledge Evolution Model enables the system to continuously transform experience and information into higher quality, validated and adaptive intelligence.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

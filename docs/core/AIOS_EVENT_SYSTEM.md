@@ -154,3 +154,11 @@ A worker does not need complete system knowledge. It only needs relevant events 
 The Knowledge Graph stores what AIOS knows.
 
 The Event System stores how AIOS learned it.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

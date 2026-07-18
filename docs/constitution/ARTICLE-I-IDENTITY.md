@@ -2,7 +2,9 @@
 
 Version: 1.0
 
-Status: Constitutional Law
+Status: Immutable Core Law
+Level: Constitutional
+Scope: All AIOS entities, agents, nodes, memory, capabilities, resources, events, messages, plugins, organizations
 
 Category:
 
@@ -234,3 +236,6 @@ An AIOS implementation is Identity compliant only if:
 Identity is the first law of AIOS.
 
 Everything else exists because Identity allows it to exist.
+---
+
+**END OF ARTICLE I**

@@ -141,3 +141,11 @@ Workers operate with minimum required permissions and isolated environments.
 ## Final Definition
 
 Workers are the distributed muscles of AIOS. They transform plans and capabilities into real-world execution while continuously generating experience for system improvement.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

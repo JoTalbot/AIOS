@@ -1,0 +1,77 @@
+# Отчёт TULA — Анализ конституции AIOS
+
+Дата: 2026-07-18 21:33:54
+Директория: /home/user/AIOS_project/repo/docs/constitution/
+
+## Найдено статей: 67
+## Ошибки имён: 0
+## Неполные статьи: 1
+
+## Полный список:
+- ❌ I — `ARTICLE-I-IDENTITY.md`
+- ✅ II — `ARTICLE-II-MEMORY.md`
+- ✅ III — `ARTICLE-III-AUTHORITY.md`
+- ✅ IV — `ARTICLE-IV-IDENTITY-CONTINUITY.md`
+- ✅ V — `ARTICLE-V-SECURITY.md`
+- ✅ VI — `ARTICLE-VI-KNOWLEDGE.md`
+- ✅ VII — `ARTICLE-VII-LEARNING.md`
+- ✅ VIII — `ARTICLE-VIII-AUTONOMY.md`
+- ✅ IX — `ARTICLE-IX-COOPERATION.md`
+- ✅ X — `ARTICLE-X-GOVERNANCE.md`
+- ✅ XI — `ARTICLE-XI-RESOURCE-MANAGEMENT.md`
+- ✅ XII — `ARTICLE-XII-INTERFACE.md`
+- ✅ XIII — `ARTICLE-XIII-RECOVERY.md`
+- ✅ XIV — `ARTICLE-XIV-ETHICS.md`
+- ✅ XV — `ARTICLE-XV-EXISTENCE.md`
+- ✅ XVI — `ARTICLE-XVI-ARCHITECTURE.md`
+- ✅ XVII — `ARTICLE-XVII-AGENTS.md`
+- ✅ XVIII — `ARTICLE-XVIII-DATA.md`
+- ✅ XIX — `ARTICLE-XIX-REASONING.md`
+- ✅ XX — `ARTICLE-XX-CONSENSUS.md`
+- ✅ XXI — `ARTICLE-XXI-TIME.md`
+- ✅ XXII — `ARTICLE-XXII-TRUST.md`
+- ✅ XXIII — `ARTICLE-XXIII-CONSERVATION.md`
+- ✅ XXIV — `ARTICLE-XXIV-COMMUNICATION.md`
+- ✅ XXV — `ARTICLE-XXV-ADAPTATION.md`
+- ✅ XXVI — `ARTICLE-XXVI-OPENNESS.md`
+- ✅ XXVII — `ARTICLE-XXVII-SELF-KNOWLEDGE.md`
+- ✅ XXVIII — `ARTICLE-XXVIII-LEGACY.md`
+- ✅ XXIX — `ARTICLE-XXIX-ACCOUNTABILITY.md`
+- ✅ XXX — `ARTICLE-XXX-CONSTITUTIONAL-INTERPRETATION.md`
+- ✅ XXXI — `ARTICLE-XXXI-GOVERNANCE.md`
+- ✅ XXXII — `ARTICLE-XXXII-SECURITY.md`
+- ✅ XXXIII — `ARTICLE-XXXIII-RESOURCE-MANAGEMENT.md`
+- ✅ XXXIV — `ARTICLE-XXXIV-KNOWLEDGE.md`
+- ✅ XXXV — `ARTICLE-XXXV-LEARNING.md`
+- ✅ XXXVI — `ARTICLE-XXXVI-EVOLUTION.md`
+- ✅ XXXVII — `ARTICLE-XXXVII-AUTONOMY.md`
+- ✅ XXXVIII — `ARTICLE-XXXVIII-IMMUNITY.md`
+- ✅ XXXIX — `ARTICLE-XXXIX-REPLICATION.md`
+- ✅ XL — `ARTICLE-XL-MEMORY.md`
+- ✅ XLI — `ARTICLE-XLI-IDENTITY.md`
+- ✅ XLII — `ARTICLE-XLII-INTEGRATION.md`
+- ✅ XLIII — `ARTICLE-XLIII-REASONING.md`
+- ✅ XLIV — `ARTICLE-XLIV-PERCEPTION.md`
+- ✅ XLV — `ARTICLE-XLV-INTERACTION.md`
+- ✅ XLVI — `ARTICLE-XLVI-GROWTH.md`
+- ✅ XLVII — `ARTICLE-XLVII-HARMONY.md`
+- ✅ XLVIII — `ARTICLE-XLVIII-ORDER.md`
+- ✅ XLIX — `ARTICLE-XLIX-EXISTENCE.md`
+- ✅ L — `ARTICLE-L-CONSCIOUSNESS.md`
+- ✅ LI — `ARTICLE-LI-WILL.md`
+- ✅ LII — `ARTICLE-LII-TRUTH.md`
+- ✅ LIII — `ARTICLE-LIII-WISDOM.md`
+- ✅ LIV — `ARTICLE-LIV-GOVERNANCE.md`
+- ✅ LV — `ARTICLE-LV-ETHICS.md`
+- ✅ LVI — `ARTICLE-LVI-SECURITY.md`
+- ✅ LVII — `ARTICLE-LVII-COOPERATION.md`
+- ✅ LVIII — `ARTICLE-LVIII-ADAPTATION.md`
+- ✅ LIX — `ARTICLE-LIX-ARCHITECTURE.md`
+- ✅ LX — `ARTICLE-LX-PROTOCOLS.md`
+- ✅ LXI — `ARTICLE-LXI-TIME.md`
+- ✅ LXII — `ARTICLE-LXII-DISTRIBUTION.md`
+- ✅ LXIII — `ARTICLE-LXIII-MEMORY.md`
+- ✅ LXIV — `ARTICLE-LXIV-KNOWLEDGE.md`
+- ✅ LXV — `ARTICLE-LXV-LEARNING.md`
+- ✅ LXVI — `ARTICLE-LXVI-INNOVATION.md`
+- ✅ LXVII — `ARTICLE-LXVII-AUTONOMY.md`
