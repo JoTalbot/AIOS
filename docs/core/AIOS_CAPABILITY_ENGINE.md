@@ -160,3 +160,11 @@ Capabilities are the executable knowledge of AIOS.
 Knowledge describes what exists.
 Capabilities describe what can be achieved.
 Experience continuously improves both.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

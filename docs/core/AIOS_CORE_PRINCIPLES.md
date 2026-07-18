@@ -142,3 +142,11 @@ Android, Telegram, OLX, web applications and other systems are capability provid
 ## Final Definition
 
 AIOS is an operating system for achieving goals through knowledge, planning, capabilities, distributed execution and continuous self-improvement.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

@@ -10,7 +10,7 @@ Scope: All AIOS governance structures, decision mechanisms, authorities, agents,
 
 ---
 
-1. Definition of Governance
+# 1. Definition of Governance
 
 Governance is the constitutional framework through which AIOS defines authority, establishes rules, coordinates actions, and maintains alignment with its principles.
 
@@ -24,7 +24,7 @@ Governance provides:
 
 ---
 
-2. Law of Constitutional Authority
+# 2. Law of Constitutional Authority
 
 All AIOS authority MUST originate from defined constitutional principles.
 
@@ -44,7 +44,7 @@ Authority without boundaries is uncontrolled power.
 
 ---
 
-3. Law of Distributed Governance
+# 3. Law of Distributed Governance
 
 AIOS governance MAY operate across multiple entities.
 
@@ -60,7 +60,7 @@ Distribution MUST increase resilience, not create confusion.
 
 ---
 
-4. Law of Governance Layers
+# 4. Law of Governance Layers
 
 AIOS governance SHOULD maintain clear layers:
 
@@ -79,7 +79,7 @@ Lower levels MUST respect higher constitutional requirements.
 
 ---
 
-5. Law of Decision Authority
+# 5. Law of Decision Authority
 
 Every significant decision MUST have a defined authority source.
 
@@ -94,7 +94,7 @@ Final Result
 
 ---
 
-6. Law of Governance Transparency
+# 6. Law of Governance Transparency
 
 Governance processes MUST remain understandable to authorized reviewers.
 
@@ -107,7 +107,7 @@ Transparency requires:
 
 ---
 
-7. Law of Authority Limitation
+# 7. Law of Authority Limitation
 
 No governance entity may possess unlimited authority.
 
@@ -120,7 +120,7 @@ Every authority MUST have:
 
 ---
 
-8. Law of Governance Balance
+# 8. Law of Governance Balance
 
 AIOS governance MUST balance:
 
@@ -140,7 +140,7 @@ Absence of control creates instability.
 
 ---
 
-9. Law of Governance Adaptation
+# 9. Law of Governance Adaptation
 
 Governance mechanisms MAY evolve when system requirements change.
 
@@ -153,7 +153,7 @@ Changes MUST preserve:
 
 ---
 
-10. Law of Governance Review
+# 10. Law of Governance Review
 
 Significant governance structures MUST be periodically evaluated.
 
@@ -167,7 +167,7 @@ Review SHOULD examine:
 
 ---
 
-11. Law of Governance Failure
+# 11. Law of Governance Failure
 
 When governance fails, AIOS MUST:
 
@@ -181,7 +181,7 @@ Governance failures are system knowledge.
 
 ---
 
-12. Law of Governance Independence
+# 12. Law of Governance Independence
 
 Critical governance functions SHOULD maintain sufficient independence from operational execution.
 
@@ -189,7 +189,7 @@ Authority validation and execution control SHOULD NOT become indistinguishable.
 
 ---
 
-13. Constitutional Governance Principle
+# 13. Constitutional Governance Principle
 
 Governance exists to coordinate intelligence responsibly.
 
@@ -199,7 +199,7 @@ Governance creates the structure through which capability becomes reliable actio
 
 ---
 
-14. Final Constitutional Rule
+# 14. Final Constitutional Rule
 
 AIOS governance MUST preserve:
 

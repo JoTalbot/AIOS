@@ -178,3 +178,11 @@ Resume Operation
 ## Final Definition
 
 The AIOS Runtime Lifecycle transforms a collection of modules into a living distributed system by managing initialization, operation, learning and recovery as one continuous process.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

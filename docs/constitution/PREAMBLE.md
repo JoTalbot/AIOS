@@ -135,3 +135,11 @@ AIOS exists where both become one.
 The Constitution is the highest authority of AIOS.
 
 Everything else is an implementation.
+---
+
+# Дополнение 2026-07-18 (Версия 1.1)
+
+Конституция формально завершена. Все статьи (I–LXVII) присутствуют.
+Создан инструмент автономной проверки (`tula`).
+Исправлены ошибки имён файлов (`ARTICLE-XLIX`, `ARTICLE-LX`).
+Без привязки к Octopus (`~/agents/`).

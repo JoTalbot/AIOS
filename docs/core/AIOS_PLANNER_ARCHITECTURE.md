@@ -155,3 +155,11 @@ AIOS selects plans according to goal priority:
 ## Final Definition
 
 The AIOS Planner is a dynamic reasoning engine that transforms intentions into optimized execution graphs using knowledge, capabilities, experience and real-time system state.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

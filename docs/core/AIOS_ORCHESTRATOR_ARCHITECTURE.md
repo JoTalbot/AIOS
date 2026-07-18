@@ -142,3 +142,11 @@ Improvement Deployment
 The Orchestrator is the nervous system of AIOS.
 
 It connects knowledge, planning, capabilities and execution into one adaptive distributed intelligence platform.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

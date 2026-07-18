@@ -139,3 +139,11 @@ Analysis
 AIOS must be powerful enough to evolve, but controlled enough to remain predictable.
 
 Security is not a limitation of intelligence. It is the mechanism that allows intelligence to safely operate at scale.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

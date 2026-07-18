@@ -154,3 +154,11 @@ Sync history improves:
 ## Final Definition
 
 AIOS Sync Architecture enables distributed nodes to operate as a coordinated intelligence system while preserving consistency, trust and knowledge continuity.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

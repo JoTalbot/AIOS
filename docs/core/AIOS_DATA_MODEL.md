@@ -211,3 +211,11 @@ Nodes
 ## Final Definition
 
 The AIOS Data Model provides a universal representation layer that allows the system to understand, connect and evolve all internal entities as a unified intelligence graph.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

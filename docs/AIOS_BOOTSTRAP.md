@@ -45,3 +45,10 @@ The agent must:
 ## Objective
 
 Restore working context quickly while maintaining AIOS as a self-documenting system.
+
+## Дополнение 2026-07-19 — Проверка конституции
+
+Перед выполнением действий агент обязан:
+1. Проверить наличие `docs/constitution/ARTICLE-I-IDENTITY.md` — `ARTICLE-LXVII-AUTONOMY.md`.
+2. При обнаружении пропущенных или повреждённых файлов — запустить `tula`.
+3. Зафиксировать результат проверки в логе или `CONSTITUTION_REPORT.md`.

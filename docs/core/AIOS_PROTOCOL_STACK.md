@@ -161,3 +161,11 @@ Result
 ## Final Definition
 
 The AIOS Protocol Stack provides the universal communication foundation that allows distributed intelligence components to cooperate as one adaptive system.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

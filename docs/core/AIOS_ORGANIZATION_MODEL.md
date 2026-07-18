@@ -176,3 +176,11 @@ Organizational Evolution
 ## Final Definition
 
 The AIOS Organization Model enables multiple autonomous agents to cooperate as a structured intelligence system capable of delegation, specialization and continuous improvement.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

@@ -156,3 +156,11 @@ Better Execution
 ## Final Definition
 
 AIOS Task Execution Model provides the operational lifecycle that connects goals, agents, resources and workers into a measurable, adaptive execution system.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

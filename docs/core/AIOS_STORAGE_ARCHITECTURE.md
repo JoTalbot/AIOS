@@ -172,3 +172,11 @@ Improved Storage Strategy
 ## Final Definition
 
 AIOS Storage Architecture provides persistent, secure and distributed data foundations that allow intelligence, memory and knowledge to survive across nodes and over time.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().

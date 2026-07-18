@@ -183,3 +183,11 @@ Memory access requires:
 ## Final Definition
 
 AIOS Memory is the persistent intelligence layer that allows the system to remember, learn, share experience and improve across different conversations, applications and environments.
+
+---
+
+# Связь с конституцией AIOS
+
+Этот модуль реализует статьи конституции AIOS ().
+Подробнее: ,  ().
+Без привязки к Octopus ().
