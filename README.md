@@ -1,13 +1,41 @@
 # AIOS
 Self-evolving distributed operating system for application intelligence, automated testing, API generation, skill evolution and collective learning. Powered by Octopus Runtime.
 
-## Repository layout
+## Unified repository
 
-- `aios_core/` — Executable layer (Python). 12 core modules (`constitution_engine`, `approval_manager`, `memory_manager`, etc.) plus the full set of AIOS v2.1.1 engine/manager modules merged from `AIOS-Constitution (2).zip`, including `tests/` and config schemas (`rules.json`, `audit_log_schema.json`).
-- `constitution/` — Constitutional texts. `ARTICLE_I_SUPREME_PRINCIPLE.md`, `core_principles.md`, and `books/` (BOOK-*/ARTICLE-* of the AIOS Constitution v2.1.1, books II–XXXV plus continuation articles LXXI–CIV).
-- `docs/` — Architecture, agent, memory, testing and application docs. `docs/constitution/` holds articles I–LXVII; `docs/executable_layer/` holds the AIOS v2.1.1 layer manifests; `docs/aios_v6/` holds the AIOS v6 / v6.1 "Global Federation" spec (from `AIOS.zip`); `docs/aios_archive_2026/` holds the comprehensive 2026 architecture archive — 127 layer docs across Autonomy, Communication, Compute, Constitution, Deployment, Execution, Federation, Governance, Identity/Trust, Intelligence, Knowledge, Memory, Monitoring, Observability, QA, Roadmaps, Security, Storage and Testing (from `AIOS_Archive_2026.zip`).
-- `policies/` — YAML policy definitions (evolution, federation, security and the full set of layer policies from the archive).
-- `tests/`, `tools/` — test suite and helper scripts.
+Все четыре среза проекта AIOS объединены в единый согласованный набор («best-of-each»):
+для каждой темы выбран **один канонический** документ (самый полный), альтернативные
+версии сохранены в `variants/` рядом с ним.
 
-## Merged from `AIOS-Constitution (2).zip`
-The archive (AIOS Constitution v2.1.1) was integrated: its `Executable-Layer/*.py` modules and `*.yaml` policies were added into `aios_core/` and `policies/` respectively (the repository's original, richer `aios_core` modules were kept), its constitution `BOOK-*`/`ARTICLE-*` files were placed under `constitution/books/`, and its layer documentation manifests were placed under `docs/executable_layer/`.
+### Структура
+
+- `aios_core/` — исполняемый слой (Python, 98 модулей). 12 исходных модулей репозитория
+  (`constitution_engine`, `approval_manager`, `memory_manager`, …) сохранены как более полные;
+  добавлены модули слоя v2.1.1 из `AIOS-Constitution (2).zip` (`tests/`, `rules.json`,
+  `audit_log_schema.json`).
+- `docs/aios/` — **единое дерево документации по слоям** (37 слоёв: constitution, core, autonomy,
+  intelligence, memory, knowledge, communication, compute, federation, governance, security,
+  execution, deployment, monitoring, observability, storage, testing, qa, …). См. `docs/aios/INDEX.md`
+  и `docs/aios/README.md`.
+- `policies/` — YAML-политики (56): evolution/federation/security исходные + полный набор
+  политик слоя v2.1.1.
+- `tests/`, `tools/` — тесты и вспомогательные скрипты (в т.ч. `tools/merge_aios_docs.py`).
+
+### Источники (срезы), вошедшие в объединение
+
+| Срез | Что | Версия |
+|---|---|---|
+| `slice1_native` | каркас репозитория (`docs/core`, `docs/memory`, `docs/constitution`, `constitution/`) | v2.1.1 |
+| `slice2_exec_v2_1_1` | манифесты исполняемого слоя (`AIOS-Constitution (2).zip`) | v2.1.1 |
+| `slice3_v6` | спецификация Global Federation (`AIOS.zip`) | v6 / v6.1 |
+| `slice4_archive_2026` | архитектурный архив 2026 (`AIOS_Archive_2026.zip`) | 2026 (v1–v9) |
+
+> **Срез 4 (`slice4_archive_2026`) — активно развивающийся источник.** Он дополняется дальше
+> и считается «живым»: при конфликтах версий одинакового объёма ему отдаётся приоритет, а новые
+> материалы слоя 4 интегрируются в `docs/aios/` поверх объединённого набора.
+
+### Как пересобрать объединение
+
+```bash
+python3 tools/merge_aios_docs.py   # перечитывает 4 среза и пишет docs/aios/
+```
