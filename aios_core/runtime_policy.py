@@ -145,13 +145,13 @@ class RuntimePolicy:
         self.executions.append(execution_result)
         return execution_result
 
-    def approve(self, approval_id: str) -> Optional[dict]:
-        """Approve a pending REVIEW action by UUID. Returns the updated approval."""
-        return self.approvals.approve(approval_id)
+    def approve(self, approval_id: str, resolved_by: str = "human") -> Optional[dict]:
+        """Approve a pending REVIEW action and retain the reviewer identity."""
+        return self.approvals.approve(approval_id, resolved_by=resolved_by)
 
-    def deny(self, approval_id: str) -> Optional[dict]:
-        """Deny a pending REVIEW action by UUID. Returns the updated approval."""
-        return self.approvals.deny(approval_id)
+    def deny(self, approval_id: str, resolved_by: str = "human") -> Optional[dict]:
+        """Deny a pending REVIEW action and retain the reviewer identity."""
+        return self.approvals.deny(approval_id, resolved_by=resolved_by)
 
     def get_pending_approvals(self) -> list[dict]:
         """Get all pending approvals."""

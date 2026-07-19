@@ -57,6 +57,22 @@ async def test_personal_memory_is_isolated_by_authenticated_subject():
 
 
 @pytest.mark.asyncio
+async def test_tasks_are_scoped_to_the_creating_subject():
+    keys = {
+        "alice-key": {"subject": "alice", "roles": ["writer"]},
+        "bob-key": {"subject": "bob", "roles": ["writer"]},
+    }
+    app = create_app(api_keys=keys)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        alice = {"Authorization": "Bearer alice-key"}
+        bob = {"Authorization": "Bearer bob-key"}
+        created = await client.post("/api/v1/tasks", json={"name": "alice-task"}, headers=alice)
+        task_id = created.json()["task_id"]
+        assert (await client.get(f"/api/v1/tasks/{task_id}", headers=bob)).status_code == 404
+        assert (await client.get("/api/v1/tasks", headers=bob)).json()["count"] == 0
+
+
+@pytest.mark.asyncio
 async def test_approver_role_is_required_for_approval_actions():
     keys = {
         "writer-key": {"subject": "writer", "roles": ["writer"]},

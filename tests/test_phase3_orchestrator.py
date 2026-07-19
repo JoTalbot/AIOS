@@ -494,8 +494,10 @@ class TestEvolutionManager(unittest.TestCase):
     def test_advance_all_stages(self):
         p = self.mgr.propose({"change": "v1"}, "test", "reason")
         current = p
-        for i in range(6):  # 7 stages, advance 6 times
+        for _ in range(5):  # reach the approval gate
             current = self.mgr.advance(current["id"])
+        self.mgr.approve(current["id"])
+        current = self.mgr.advance(current["id"])
         self.assertEqual(current["stage_index"], 6)
         self.assertEqual(current["stage"], "deployment")
 

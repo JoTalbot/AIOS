@@ -38,6 +38,16 @@ a replacement for OIDC/mTLS, rotation, auditing or tenant-aware authorization.
 | `admin` | All API operations |
 
 `POST /api/v1/approvals/{id}/approve` and `/deny` require `approver` or `admin`.
+Audit endpoints require `admin`.
+
+## Data isolation
+
+REST-created personal memory is bound to the authenticated API-key `subject`.
+A non-admin subject cannot search, read, update or delete another subject's
+personal records; direct MCP access to personal memory is deliberately disabled.
+Tasks are likewise scoped to their creating subject. Existing owner-less
+personal records from databases created before schema version 2 should be
+reviewed and assigned an owner before production use.
 
 ## Important limitations
 

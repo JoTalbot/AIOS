@@ -51,6 +51,8 @@ def load_api_keys(raw: str | None = None) -> dict[str, Principal]:
 
 def required_roles(path: str, method: str) -> set[str]:
     """Return any role that may access an API route."""
+    if "/audit" in path:
+        return {"admin"}
     if "/approvals/" in path and method == "POST":
         return {"approver", "admin"}
     if "/evolution/" in path and method == "POST":

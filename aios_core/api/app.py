@@ -76,6 +76,7 @@ from starlette.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .security import APIKeyAuthMiddleware, Principal, load_api_keys
+from .errors import RequestSafetyMiddleware
 
 # Ensure project root is importable
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -195,6 +196,7 @@ class AIOSAPI:
         app = Starlette(
             routes=routes,
             middleware=[
+                Middleware(RequestSafetyMiddleware),
                 Middleware(APIKeyAuthMiddleware, enabled=self.auth_required, api_keys=self.api_keys),
                 # Same-origin by default. Configure a deliberate allow-list at the reverse proxy.
                 Middleware(CORSMiddleware, allow_origins=[], allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"]),
@@ -207,13 +209,17 @@ class AIOSAPI:
         principal: Principal = request.state.principal
         return principal.subject, "admin" in principal.roles
 
+    def _can_access_task(self, request: Request, task) -> bool:
+        principal: Principal = request.state.principal
+        return "admin" in principal.roles or task.agent_id == principal.subject
+
     @staticmethod
-    def _bounded_int(value, *, default: int, maximum: int) -> int:
+    def _bounded_int(value, *, default: int, maximum: int, minimum: int = 1) -> int:
         try:
             parsed = int(value) if value is not None else default
         except (TypeError, ValueError):
             return default
-        return min(max(parsed, 1), maximum)
+        return min(max(parsed, minimum), maximum)
 
     # ---- Health & Stats ----
 
@@ -241,6 +247,9 @@ class AIOSAPI:
     async def _tasks_list(self, request: Request) -> JSONResponse:
         status = request.query_params.get("status")
         tasks = self.orchestrator.list_tasks(status=status)
+        principal: Principal = request.state.principal
+        if "admin" not in principal.roles:
+            tasks = [task for task in tasks if task.get("agent_id") == principal.subject]
         return JSONResponse({"tasks": tasks, "count": len(tasks)})
 
     async def _tasks_create(self, request: Request) -> JSONResponse:
@@ -248,8 +257,8 @@ class AIOSAPI:
         task = self.orchestrator.create_task(
             name=body.get("name", "unnamed"),
             description=body.get("description", ""),
-            agent_id=body.get("agent_id", "api-user"),
-            authority=body.get("authority", "user"),
+            agent_id=request.state.principal.subject,
+            authority="user",
             risk_level=body.get("risk_level", "medium"),
             metadata=body.get("metadata"),
         )
@@ -272,14 +281,14 @@ class AIOSAPI:
     async def _tasks_get(self, request: Request) -> JSONResponse:
         task_id = request.path_params["task_id"]
         task = self.orchestrator.get_task(task_id)
-        if task is None:
+        if task is None or not self._can_access_task(request, task):
             return JSONResponse({"error": "Task not found"}, status_code=404)
         return JSONResponse(self.orchestrator._task_summary(task))
 
     async def _tasks_execute(self, request: Request) -> JSONResponse:
         task_id = request.path_params["task_id"]
         task = self.orchestrator.get_task(task_id)
-        if task is None:
+        if task is None or not self._can_access_task(request, task):
             return JSONResponse({"error": "Task not found"}, status_code=404)
         result = self.orchestrator.execute_task(task)
         return JSONResponse(result)
@@ -359,7 +368,7 @@ class AIOSAPI:
         nodes = self.knowledge.find_nodes(
             label=request.query_params.get("label"),
             node_type=request.query_params.get("node_type"),
-            limit=int(request.query_params.get("limit", "100")),
+            limit=self._bounded_int(request.query_params.get("limit"), default=100, maximum=100),
         )
         return JSONResponse({"nodes": nodes, "count": len(nodes)})
 
@@ -386,7 +395,7 @@ class AIOSAPI:
         neighbors = self.knowledge.neighbors(
             node_id=node_id,
             relation=request.query_params.get("relation"),
-            depth=int(request.query_params.get("depth", "1")),
+            depth=self._bounded_int(request.query_params.get("depth"), default=1, maximum=5),
         )
         return JSONResponse({"neighbors": neighbors, "count": len(neighbors)})
 
@@ -409,14 +418,18 @@ class AIOSAPI:
 
     async def _approvals_approve(self, request: Request) -> JSONResponse:
         approval_id = request.path_params["approval_id"]
-        result = self.approvals.approve(approval_id)
+        result = self.approvals.approve(
+            approval_id, resolved_by=request.state.principal.subject
+        )
         if result is None:
             return JSONResponse({"error": "Approval not found"}, status_code=404)
         return JSONResponse(result)
 
     async def _approvals_deny(self, request: Request) -> JSONResponse:
         approval_id = request.path_params["approval_id"]
-        result = self.approvals.deny(approval_id)
+        result = self.approvals.deny(
+            approval_id, resolved_by=request.state.principal.subject
+        )
         if result is None:
             return JSONResponse({"error": "Approval not found"}, status_code=404)
         return JSONResponse(result)
@@ -520,8 +533,8 @@ class AIOSAPI:
             event_type=request.query_params.get("event_type"),
             agent_id=request.query_params.get("agent_id"),
             decision=request.query_params.get("decision"),
-            limit=int(request.query_params.get("limit", "100")),
-            offset=int(request.query_params.get("offset", "0")),
+            limit=self._bounded_int(request.query_params.get("limit"), default=100, maximum=100),
+            offset=self._bounded_int(request.query_params.get("offset"), default=0, maximum=10_000, minimum=0),
         )
         return JSONResponse({"events": events, "count": len(events)})
 
