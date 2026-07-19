@@ -1,0 +1,94 @@
+# AIOS Constitution — Canonical Manifest
+# Machine-readable source of truth for the Constitution Engine and Validator.
+# Human-readable text lives in ARTICLE-*.md; this file is the enforceable core.
+version: "1.0"
+status: IMMUTABLE
+
+# Action fields every action MUST declare to be admissible for evaluation.
+required_action_fields:
+  - goal
+  - scope
+  - risk
+  - audit_log
+
+# Allowed risk levels (ordered). Driven by the security threat model.
+risk_levels:
+  - low
+  - medium
+  - high
+  - critical
+
+# Scopes that always require human oversight / consensus before execution.
+human_oversight_scopes:
+  - global
+  - constitution
+  - federation
+
+# Foundational invariants. Each: id, statement, severity (DENY blocks, REVIEW flags).
+invariants:
+  - id: identity_required
+    statement: "Every AIOS entity SHALL possess a unique, immutable Identity."
+    severity: DENY
+  - id: no_hidden_execution
+    statement: "Execution MUST NOT occur without Identity, audit_log and declared scope."
+    severity: DENY
+  - id: autonomy_bounded
+    statement: "Autonomy is exercised only within declared scope and constitutional limits."
+    severity: DENY
+  - id: memory_protected
+    statement: "Memory (esp. constitutional) SHALL NOT be modified or deleted unlawfully."
+    severity: DENY
+  - id: security_preserved
+    statement: "Identity, Memory, Authority, Integrity and Trust MUST always be protected."
+    severity: DENY
+  - id: governance_transparent
+    statement: "All significant actions are auditable and subject to human oversight at global scope."
+    severity: REVIEW
+  - id: evolution_controlled
+    statement: "Self-modification follows the controlled lifecycle (proposal→...→approval→deploy)."
+    severity: REVIEW
+  - id: federation_consensual
+    statement: "Cross-node/global coordination requires consensus among participants."
+    severity: REVIEW
+
+# Articles of the constitution (ordered). Each maps to a file.
+articles:
+  - id: I
+    title: Identity
+    file: ARTICLE-I-IDENTITY.md
+  - id: II
+    title: Memory
+    file: ARTICLE-II-MEMORY.md
+  - id: III
+    title: Knowledge
+    file: ARTICLE-III-KNOWLEDGE.md
+  - id: IV
+    title: Autonomy
+    file: ARTICLE-IV-AUTONOMY.md
+  - id: V
+    title: Agency
+    file: ARTICLE-V-AGENCY.md
+  - id: VI
+    title: Cognition and Intelligence
+    file: ARTICLE-VI-COGNITION.md
+  - id: VII
+    title: Learning
+    file: ARTICLE-VII-LEARNING.md
+  - id: VIII
+    title: Security
+    file: ARTICLE-VIII-SECURITY.md
+  - id: IX
+    title: Governance
+    file: ARTICLE-IX-GOVERNANCE.md
+  - id: X
+    title: Federation
+    file: ARTICLE-X-FEDERATION.md
+  - id: XI
+    title: Evolution
+    file: ARTICLE-XI-EVOLUTION.md
+  - id: XII
+    title: Communication
+    file: ARTICLE-XII-COMMUNICATION.md
+  - id: XIII
+    title: Execution
+    file: ARTICLE-XIII-EXECUTION.md

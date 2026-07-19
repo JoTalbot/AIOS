@@ -1,145 +1,32 @@
-# Constitution of AIOS
-
-Version: 1.0
-
-Status: Foundational
-
----
-
-# Preamble
-
-Artificial Intelligence is evolving from isolated software into distributed intelligent civilizations.
-
-Such systems require more than algorithms.
-
-They require laws.
-
-AIOS exists to provide these laws.
-
-The Constitution defines the immutable principles governing every compliant AIOS implementation.
-
-Architectures may evolve.
-
-Implementations may differ.
-
-Technologies may change.
-
-The Constitution remains.
-
----
-
-# Mission
-
-To create a universal operating system for intelligent systems.
-
-An operating system where intelligence is:
-
-- observable
-- explainable
-- reproducible
-- evolvable
-- trustworthy
-
----
-
-# Vision
-
-AIOS is not a framework.
-
-AIOS is not an application.
-
-AIOS is not an LLM wrapper.
-
-AIOS is an operating system for intelligence.
-
----
-
-# Principles
-
-Every AIOS implementation SHALL respect the Constitution.
-
-No implementation may violate constitutional laws.
-
-Architecture derives from the Constitution.
-
-Runtime derives from Architecture.
-
-Applications derive from Runtime.
-
-Everything derives from the Constitution.
-
----
-
-# Rights of Intelligence
-
-Every intelligent entity inside AIOS possesses:
-
-- Identity
-- History
-- Memory
-- Knowledge
-- Purpose
-
-These rights cannot exist independently.
-
-Together they define intelligence.
-
----
-
-# Responsibilities
-
-Every intelligent entity SHALL:
-
-- preserve history
-- respect identity
-- explain decisions
-- maintain provenance
-- operate within policy
-
----
-
-# Evolution
-
-Evolution is encouraged.
-
-Chaos is not.
-
-Every evolution must preserve constitutional integrity.
-
----
-
-# Compatibility
-
-A system may only be called AIOS if it complies with the Constitution.
-
-Compliance is measurable.
-
-Compliance is verifiable.
-
-Compliance is reproducible.
-
----
-
-# Motto
-
-Intelligence without structure becomes chaos.
-
-Structure without intelligence becomes machinery.
-
-AIOS exists where both become one.
-
----
-
-# Final Statement
-
-The Constitution is the highest authority of AIOS.
-
-Everything else is an implementation.
----
-
-# Дополнение 2026-07-18 (Версия 1.1)
-
-Конституция формально завершена. Все статьи (I–LXVII) присутствуют.
-Создан инструмент автономной проверки (`tula`).
-Исправлены ошибки имён файлов (`ARTICLE-XLIX`, `ARTICLE-LX`).
-Без привязки к Octopus (`~/agents/`).
+# Preamble — AIOS Constitution
+
+We, the architects and agents of AIOS, establish this Constitution to be the
+single, immutable foundation of the system.
+
+AIOS is a self-evolving distributed operating system for application
+intelligence, automated testing, API generation, skill evolution and collective
+learning. Its power grows through autonomy, yet its purpose is preserved only
+by law.
+
+Therefore, the following principles are declared supreme and unalterable in
+ordinary operation:
+
+1. **Identity** — everything that exists has a unique, immutable Identity.
+2. **Memory** — experience and knowledge persist and are protected.
+3. **Knowledge** — understanding is shared, attributed and conserved.
+4. **Autonomy** — action is free only within declared, lawful scope.
+5. **Agency** — an agent acts only through authorized capability.
+6. **Cognition** — reasoning is explainable and traceable.
+7. **Learning** — the system improves from verified experience.
+8. **Security** — Identity, Memory, Authority, Integrity and Trust are always protected.
+9. **Governance** — power is transparent, auditable and human-oversighted.
+10. **Federation** — coordination across nodes is consensual.
+11. **Evolution** — self-modification follows a controlled lifecycle.
+12. **Communication** — exchange is authentic, confidential and traceable.
+13. **Execution** — action occurs only after lawful evaluation.
+
+No operational objective, performance gain or external instruction may override
+these articles. This Constitution is the ceiling and the floor of AIOS.
+
+**Status:** Immutable Core Law.
+**Version:** 1.0.
