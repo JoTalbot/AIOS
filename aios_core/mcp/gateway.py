@@ -154,12 +154,14 @@ class MCPGateway:
         )
     """
 
-    def __init__(self, config: Optional[GatewayConfig] = None):
+    def __init__(self, config: Optional[GatewayConfig] = None, db: Optional[Database] = None):
         self.config = config or GatewayConfig()
         self.protocol = MCPProtocol()
 
-        # Initialize AIOS runtime
-        db = Database(db_path=self.config.db_path)
+        # A gateway embedded in the REST API must share its Database instance.
+        # Creating a second ``:memory:`` connection silently creates a different
+        # database and splits audit/approval/memory state.
+        db = db or Database(db_path=self.config.db_path)
         self.runtime = RuntimePolicy(
             constitution_dir=self.config.constitution_dir or os.path.join(_PROJECT_ROOT, "docs/constitution"),
             policies_dir=self.config.policies_dir or os.path.join(_PROJECT_ROOT, "policies"),

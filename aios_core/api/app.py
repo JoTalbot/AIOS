@@ -73,6 +73,9 @@ from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from .security import APIKeyAuthMiddleware, Principal, load_api_keys
 
 # Ensure project root is importable
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -87,13 +90,15 @@ class AIOSAPI:
     the Starlette application.
     """
 
-    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None):
+    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None):
         from aios_core.storage import Database
         from aios_core.orchestrator import Orchestrator
         from aios_core.test_engine import TestEngine
         from aios_core.mcp.gateway import MCPGateway, GatewayConfig
 
         self.db = Database(db_path=db_path)
+        self.auth_required = auth_required
+        self.api_keys = load_api_keys(api_keys) if isinstance(api_keys, str) else api_keys
 
         _const_dir = constitution_dir or os.path.join(_PROJECT_ROOT, "docs/constitution")
         _pol_dir = policies_dir or os.path.join(_PROJECT_ROOT, "policies")
@@ -117,7 +122,8 @@ class AIOSAPI:
                 constitution_dir=_const_dir,
                 policies_dir=_pol_dir,
                 db_path=db_path,
-            )
+            ),
+            db=self.db,
         )
 
     def create_starlette_app(self) -> Starlette:
@@ -189,7 +195,9 @@ class AIOSAPI:
         app = Starlette(
             routes=routes,
             middleware=[
-                Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]),
+                Middleware(APIKeyAuthMiddleware, enabled=self.auth_required, api_keys=self.api_keys),
+                # Same-origin by default. Configure a deliberate allow-list at the reverse proxy.
+                Middleware(CORSMiddleware, allow_origins=[], allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"]),
             ],
         )
         return app
@@ -517,7 +525,7 @@ class AIOSAPI:
         self.db.close()
 
 
-def create_app(db_path=":memory:", constitution_dir=None, policies_dir=None):
+def create_app(db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None):
     """Factory function to create the AIOS Starlette application.
 
     Usage:
@@ -528,5 +536,11 @@ def create_app(db_path=":memory:", constitution_dir=None, policies_dir=None):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get("/health")
     """
-    api = AIOSAPI(db_path=db_path, constitution_dir=constitution_dir, policies_dir=policies_dir)
+    api = AIOSAPI(
+        db_path=db_path,
+        constitution_dir=constitution_dir,
+        policies_dir=policies_dir,
+        auth_required=auth_required,
+        api_keys=api_keys,
+    )
     return api.create_starlette_app()

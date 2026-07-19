@@ -501,6 +501,8 @@ class TestEvolutionManager(unittest.TestCase):
 
     def test_approve_proposal(self):
         p = self.mgr.propose({"change": "v1"}, "test", "reason")
+        for _ in range(5):
+            self.mgr.advance(p["id"])
         result = self.mgr.approve(p["id"])
         self.assertEqual(result["status"], "approved")
         self.assertIsNotNone(result["completed_at"])
@@ -531,6 +533,8 @@ class TestEvolutionManager(unittest.TestCase):
     def test_list_proposals_by_status(self):
         self.mgr.propose({"c": "1"}, "a", "r1")
         p2 = self.mgr.propose({"c": "2"}, "b", "r2")
+        for _ in range(5):
+            self.mgr.advance(p2["id"])
         self.mgr.approve(p2["id"])
         proposed = self.mgr.list_proposals(status="proposed")
         approved = self.mgr.list_proposals(status="approved")
