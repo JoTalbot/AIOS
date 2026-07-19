@@ -382,25 +382,9 @@ class MCPGateway:
             provider=lambda: str(self.runtime.engine.policies.stats()),
         ))
 
-        # Resource: audit log (last 50)
-        self.resources.register(ResourceDefinition(
-            uri="aios://audit/recent",
-            name="Recent Audit Events",
-            description="Last 50 audit events from the AIOS audit log",
-            mime_type="application/json",
-            provider=lambda: self.runtime.db.to_json(
-                self.runtime.db.query("SELECT * FROM audit_events ORDER BY timestamp DESC LIMIT 50")
-            ),
-        ))
-
-        # Resource: pending approvals
-        self.resources.register(ResourceDefinition(
-            uri="aios://approvals/pending",
-            name="Pending Approvals",
-            description="List of currently pending approval requests",
-            mime_type="application/json",
-            provider=lambda: self.runtime.db.to_json(self.runtime.get_pending_approvals()),
-        ))
+        # Audit and approval records deliberately are not exposed as generic MCP
+        # resources. They contain operational metadata and require the REST API
+        # role checks (admin/approver) instead.
 
     # ------------------------------------------------------------------
     # Built-in prompt registration
