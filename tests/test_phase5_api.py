@@ -8,8 +8,10 @@ knowledge graph, approvals, evolution, tests, audit, and JSON-RPC bridge.
 import pytest
 from httpx import AsyncClient, ASGITransport
 
-CONSTITUTION_DIR = "/home/z/my-project/AIOS/docs/constitution"
-POLICIES_DIR = "/home/z/my-project/AIOS/policies"
+import os
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONSTITUTION_DIR = os.path.join(_PROJECT_ROOT, "docs/constitution")
+POLICIES_DIR = os.path.join(_PROJECT_ROOT, "policies")
 
 
 @pytest.fixture
