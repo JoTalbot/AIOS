@@ -17,7 +17,9 @@ class TestConstitutionEngine(unittest.TestCase):
             "goal": "system_health_check",
             "scope": "local_node",
             "risk": "low",
-            "audit_log": True
+            "audit_log": True,
+            "agent_id": "health-check-agent",
+            "authority": "reader",
         }
         result = self.engine.evaluate(action)
         self.assertEqual(result["decision"], "ALLOW")

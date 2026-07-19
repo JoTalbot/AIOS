@@ -1,0 +1,6 @@
+aios.db
+__pycache__/
+*.pyc
+.pytest_cache/
+aios_config.yaml
+*.zip

@@ -1,15 +1,20 @@
-"""Tests for Approval Manager."""
+"""Tests for Approval Manager (legacy compatibility)."""
 
 import unittest
 from aios_core.approval_manager import ApprovalManager
+from aios_core.storage import Database
 
 
 class TestApprovalManager(unittest.TestCase):
     """Test cases for ApprovalManager."""
 
     def setUp(self):
-        """Set up test fixtures."""
-        self.manager = ApprovalManager()
+        """Set up test fixtures with in-memory DB."""
+        self.db = Database(":memory:")
+        self.manager = ApprovalManager(db=self.db)
+
+    def tearDown(self):
+        self.db.close()
 
     def test_request_approval(self):
         """Test requesting approval."""
@@ -21,15 +26,15 @@ class TestApprovalManager(unittest.TestCase):
     def test_approve_action(self):
         """Test approving an action."""
         action = {"name": "test_action"}
-        self.manager.request(action)
-        result = self.manager.approve(0)
+        approval = self.manager.request(action)
+        result = self.manager.approve(approval["id"])
         self.assertEqual(result["status"], "approved")
 
     def test_deny_action(self):
         """Test denying an action."""
         action = {"name": "test_action"}
-        self.manager.request(action)
-        result = self.manager.deny(0)
+        approval = self.manager.request(action)
+        result = self.manager.deny(approval["id"])
         self.assertEqual(result["status"], "denied")
 
 
