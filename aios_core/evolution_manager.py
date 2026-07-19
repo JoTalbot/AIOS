@@ -156,6 +156,9 @@ class EvolutionManager:
         if proposal is None:
             raise ValueError(f"Proposal not found: {proposal_id}")
 
+        if proposal.get("stage") != "approval" or proposal.get("status") != "pending_approval":
+            raise ValueError("Only proposals pending at the approval stage can be approved")
+
         if self.db:
             self.db.execute(
                 """UPDATE evolution_records
