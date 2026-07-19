@@ -351,6 +351,7 @@ class Orchestrator:
                 "task_id": t.id,
                 "name": t.name,
                 "status": t.status.value,
+                "agent_id": t.agent_id,
                 "steps": len(t.steps),
                 "created_at": t.created_at,
             }

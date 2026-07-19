@@ -696,8 +696,8 @@ class TestGateway:
         uris = {r["uri"] for r in resources}
         assert "aios://constitution/overview" in uris
         assert "aios://policies/summary" in uris
-        assert "aios://audit/recent" in uris
-        assert "aios://approvals/pending" in uris
+        assert "aios://audit/recent" not in uris
+        assert "aios://approvals/pending" not in uris
         gw.close()
 
     def test_resources_read_existing(self):
@@ -936,31 +936,12 @@ class TestGateway:
         assert data["error"]["code"] == JSONRPCError.METHOD_NOT_FOUND
         gw.close()
 
-    def test_resources_read_audit_recent(self):
+    def test_sensitive_resources_are_not_exposed(self):
         gw = _gw()
-        raw = _jsonrpc("resources/read", id_val=25, params={
-            "uri": "aios://audit/recent",
-        })
-        resp = gw.handle_request(raw)
-        data = _parse_response(resp)
-        contents = data["result"]["contents"]
-        assert len(contents) == 1
-        # Should be valid JSON
-        parsed = json.loads(contents[0]["text"])
-        assert isinstance(parsed, list)
-        gw.close()
-
-    def test_resources_read_pending_approvals(self):
-        gw = _gw()
-        raw = _jsonrpc("resources/read", id_val=26, params={
-            "uri": "aios://approvals/pending",
-        })
-        resp = gw.handle_request(raw)
-        data = _parse_response(resp)
-        contents = data["result"]["contents"]
-        assert len(contents) == 1
-        parsed = json.loads(contents[0]["text"])
-        assert isinstance(parsed, list)
+        for uri in ("aios://audit/recent", "aios://approvals/pending"):
+            raw = _jsonrpc("resources/read", id_val=25, params={"uri": uri})
+            data = _parse_response(gw.handle_request(raw))
+            assert data["error"]["code"] == JSONRPCError.RESOURCE_NOT_FOUND
         gw.close()
 
     def test_tools_call_aios_evaluate_medium_risk(self):

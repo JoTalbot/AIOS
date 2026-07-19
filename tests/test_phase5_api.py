@@ -21,6 +21,7 @@ def app():
         db_path=":memory:",
         constitution_dir=CONSTITUTION_DIR,
         policies_dir=POLICIES_DIR,
+        auth_required=False,
     )
 
 
@@ -585,6 +586,10 @@ class TestEvolution:
             "change": {}, "component": "c", "reason": "r",
         })
         proposal_id = create_resp.json()["id"]
+        # Approval is only legal after the proposal reaches the approval gate.
+        for _ in range(5):
+            advanced = await client.post(f"/api/v1/evolution/proposals/{proposal_id}/advance")
+            assert advanced.status_code == 200
         resp = await client.post(f"/api/v1/evolution/proposals/{proposal_id}/approve")
         assert resp.status_code == 200
         data = resp.json()
