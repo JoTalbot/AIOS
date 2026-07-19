@@ -5,9 +5,11 @@ data models, test runner, built-in suites, reporter, and main engine facade.
 """
 
 import pytest
+import os
 
-CONSTITUTION_DIR = "/home/z/my-project/AIOS/docs/constitution"
-POLICIES_DIR = "/home/z/my-project/AIOS/policies"
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONSTITUTION_DIR = os.path.join(_PROJECT_ROOT, "docs/constitution")
+POLICIES_DIR = os.path.join(_PROJECT_ROOT, "policies")
 
 
 # ============================================================

@@ -120,7 +120,9 @@ class TestConfig(unittest.TestCase):
     def test_resolve_path(self):
         config = load_config()
         resolved = config.resolve_path("docs/constitution")
-        self.assertIn("AIOS", resolved)
+        # Path should resolve to an existing directory with constitution files
+        self.assertTrue(os.path.isdir(resolved))
+        self.assertTrue(os.path.exists(os.path.join(resolved, "ARTICLE-I-IDENTITY.md")))
 
     def test_deep_merge(self):
         base = {"a": 1, "b": {"c": 2, "d": 3}}
