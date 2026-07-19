@@ -154,12 +154,14 @@ class MCPGateway:
         )
     """
 
-    def __init__(self, config: Optional[GatewayConfig] = None):
+    def __init__(self, config: Optional[GatewayConfig] = None, db: Optional[Database] = None):
         self.config = config or GatewayConfig()
         self.protocol = MCPProtocol()
 
-        # Initialize AIOS runtime
-        db = Database(db_path=self.config.db_path)
+        # A gateway embedded in the REST API must share its Database instance.
+        # Creating a second ``:memory:`` connection silently creates a different
+        # database and splits audit/approval/memory state.
+        db = db or Database(db_path=self.config.db_path)
         self.runtime = RuntimePolicy(
             constitution_dir=self.config.constitution_dir or os.path.join(_PROJECT_ROOT, "docs/constitution"),
             policies_dir=self.config.policies_dir or os.path.join(_PROJECT_ROOT, "policies"),
@@ -314,6 +316,9 @@ class MCPGateway:
         """Handler for memory store tool."""
         from aios_core.memory_manager import MemoryManager
 
+        if params.get("category") == "personal":
+            raise PermissionError("Personal memory is available only through the authenticated REST API")
+
         mm = MemoryManager(db=self.runtime.db)
         tags = params.get("tags", "")
         tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
@@ -328,6 +333,9 @@ class MCPGateway:
     def _handle_memory_search(self, params: dict) -> dict:
         """Handler for memory search tool."""
         from aios_core.memory_manager import MemoryManager
+
+        if params.get("category") == "personal":
+            raise PermissionError("Personal memory is available only through the authenticated REST API")
 
         mm = MemoryManager(db=self.runtime.db)
         results = mm.search(
@@ -374,25 +382,9 @@ class MCPGateway:
             provider=lambda: str(self.runtime.engine.policies.stats()),
         ))
 
-        # Resource: audit log (last 50)
-        self.resources.register(ResourceDefinition(
-            uri="aios://audit/recent",
-            name="Recent Audit Events",
-            description="Last 50 audit events from the AIOS audit log",
-            mime_type="application/json",
-            provider=lambda: self.runtime.db.to_json(
-                self.runtime.db.query("SELECT * FROM audit_events ORDER BY timestamp DESC LIMIT 50")
-            ),
-        ))
-
-        # Resource: pending approvals
-        self.resources.register(ResourceDefinition(
-            uri="aios://approvals/pending",
-            name="Pending Approvals",
-            description="List of currently pending approval requests",
-            mime_type="application/json",
-            provider=lambda: self.runtime.db.to_json(self.runtime.get_pending_approvals()),
-        ))
+        # Audit and approval records deliberately are not exposed as generic MCP
+        # resources. They contain operational metadata and require the REST API
+        # role checks (admin/approver) instead.
 
     # ------------------------------------------------------------------
     # Built-in prompt registration

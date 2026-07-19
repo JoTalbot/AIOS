@@ -22,6 +22,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
+from aios_core.api.security import APIKeyAuthMiddleware
 import uvicorn
 
 
@@ -55,7 +56,8 @@ def create_starlette_app(gateway: MCPGateway) -> Starlette:
     return Starlette(
         routes=routes,
         middleware=[
-            Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]),
+            Middleware(APIKeyAuthMiddleware, enabled=True),
+            Middleware(CORSMiddleware, allow_origins=[], allow_methods=["POST"], allow_headers=["Authorization", "Content-Type"]),
         ],
     )
 

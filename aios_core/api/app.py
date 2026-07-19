@@ -73,6 +73,10 @@ from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from .security import APIKeyAuthMiddleware, Principal, load_api_keys
+from .errors import RequestSafetyMiddleware
 
 # Ensure project root is importable
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -87,13 +91,15 @@ class AIOSAPI:
     the Starlette application.
     """
 
-    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None):
+    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None):
         from aios_core.storage import Database
         from aios_core.orchestrator import Orchestrator
         from aios_core.test_engine import TestEngine
         from aios_core.mcp.gateway import MCPGateway, GatewayConfig
 
         self.db = Database(db_path=db_path)
+        self.auth_required = auth_required
+        self.api_keys = load_api_keys(api_keys) if isinstance(api_keys, str) else api_keys
 
         _const_dir = constitution_dir or os.path.join(_PROJECT_ROOT, "docs/constitution")
         _pol_dir = policies_dir or os.path.join(_PROJECT_ROOT, "policies")
@@ -117,7 +123,8 @@ class AIOSAPI:
                 constitution_dir=_const_dir,
                 policies_dir=_pol_dir,
                 db_path=db_path,
-            )
+            ),
+            db=self.db,
         )
 
     def create_starlette_app(self) -> Starlette:
@@ -189,10 +196,30 @@ class AIOSAPI:
         app = Starlette(
             routes=routes,
             middleware=[
-                Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]),
+                Middleware(RequestSafetyMiddleware),
+                Middleware(APIKeyAuthMiddleware, enabled=self.auth_required, api_keys=self.api_keys),
+                # Same-origin by default. Configure a deliberate allow-list at the reverse proxy.
+                Middleware(CORSMiddleware, allow_origins=[], allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"]),
             ],
         )
         return app
+
+    def _memory_actor(self, request: Request) -> tuple[str, bool]:
+        """Return authenticated subject and administrative scope for memory ACLs."""
+        principal: Principal = request.state.principal
+        return principal.subject, "admin" in principal.roles
+
+    def _can_access_task(self, request: Request, task) -> bool:
+        principal: Principal = request.state.principal
+        return "admin" in principal.roles or task.agent_id == principal.subject
+
+    @staticmethod
+    def _bounded_int(value, *, default: int, maximum: int, minimum: int = 1) -> int:
+        try:
+            parsed = int(value) if value is not None else default
+        except (TypeError, ValueError):
+            return default
+        return min(max(parsed, minimum), maximum)
 
     # ---- Health & Stats ----
 
@@ -220,6 +247,9 @@ class AIOSAPI:
     async def _tasks_list(self, request: Request) -> JSONResponse:
         status = request.query_params.get("status")
         tasks = self.orchestrator.list_tasks(status=status)
+        principal: Principal = request.state.principal
+        if "admin" not in principal.roles:
+            tasks = [task for task in tasks if task.get("agent_id") == principal.subject]
         return JSONResponse({"tasks": tasks, "count": len(tasks)})
 
     async def _tasks_create(self, request: Request) -> JSONResponse:
@@ -227,8 +257,8 @@ class AIOSAPI:
         task = self.orchestrator.create_task(
             name=body.get("name", "unnamed"),
             description=body.get("description", ""),
-            agent_id=body.get("agent_id", "api-user"),
-            authority=body.get("authority", "user"),
+            agent_id=request.state.principal.subject,
+            authority="user",
             risk_level=body.get("risk_level", "medium"),
             metadata=body.get("metadata"),
         )
@@ -251,14 +281,14 @@ class AIOSAPI:
     async def _tasks_get(self, request: Request) -> JSONResponse:
         task_id = request.path_params["task_id"]
         task = self.orchestrator.get_task(task_id)
-        if task is None:
+        if task is None or not self._can_access_task(request, task):
             return JSONResponse({"error": "Task not found"}, status_code=404)
         return JSONResponse(self.orchestrator._task_summary(task))
 
     async def _tasks_execute(self, request: Request) -> JSONResponse:
         task_id = request.path_params["task_id"]
         task = self.orchestrator.get_task(task_id)
-        if task is None:
+        if task is None or not self._can_access_task(request, task):
             return JSONResponse({"error": "Task not found"}, status_code=404)
         result = self.orchestrator.execute_task(task)
         return JSONResponse(result)
@@ -266,28 +296,34 @@ class AIOSAPI:
     # ---- Memory ----
 
     async def _memory_search(self, request: Request) -> JSONResponse:
+        subject, is_admin = self._memory_actor(request)
         results = self.memory.search(
             query=request.query_params.get("query", ""),
             category=request.query_params.get("category"),
             tag=request.query_params.get("tag"),
-            limit=int(request.query_params.get("limit", "100")),
+            limit=self._bounded_int(request.query_params.get("limit"), default=100, maximum=100),
+            requester_id=subject,
+            is_admin=is_admin,
         )
         return JSONResponse({"items": results, "count": len(results)})
 
     async def _memory_store(self, request: Request) -> JSONResponse:
         body = await request.json()
+        subject, _ = self._memory_actor(request)
         result = self.memory.store(
             content=body.get("content", {}),
             category=body.get("category", "operational"),
             tags=body.get("tags"),
             source=body.get("source"),
             confidence=body.get("confidence", 1.0),
+            owner_id=subject,
         )
         return JSONResponse(result, status_code=201)
 
     async def _memory_get(self, request: Request) -> JSONResponse:
         item_id = request.path_params["item_id"]
-        item = self.memory.retrieve(item_id)
+        subject, is_admin = self._memory_actor(request)
+        item = self.memory.retrieve(item_id, requester_id=subject, is_admin=is_admin)
         if item is None:
             return JSONResponse({"error": "Memory item not found"}, status_code=404)
         return JSONResponse(item)
@@ -295,11 +331,14 @@ class AIOSAPI:
     async def _memory_update(self, request: Request) -> JSONResponse:
         item_id = request.path_params["item_id"]
         body = await request.json()
+        subject, is_admin = self._memory_actor(request)
         result = self.memory.update(
             item_id,
             content=body.get("content"),
             tags=body.get("tags"),
             confidence=body.get("confidence"),
+            requester_id=subject,
+            is_admin=is_admin,
         )
         if result is None:
             return JSONResponse({"error": "Memory item not found or immutable"}, status_code=404)
@@ -307,7 +346,8 @@ class AIOSAPI:
 
     async def _memory_delete(self, request: Request) -> JSONResponse:
         item_id = request.path_params["item_id"]
-        deleted = self.memory.delete(item_id)
+        subject, is_admin = self._memory_actor(request)
+        deleted = self.memory.delete(item_id, requester_id=subject, is_admin=is_admin)
         return JSONResponse({"deleted": deleted})
 
     async def _memory_stats(self, request: Request) -> JSONResponse:
@@ -328,7 +368,7 @@ class AIOSAPI:
         nodes = self.knowledge.find_nodes(
             label=request.query_params.get("label"),
             node_type=request.query_params.get("node_type"),
-            limit=int(request.query_params.get("limit", "100")),
+            limit=self._bounded_int(request.query_params.get("limit"), default=100, maximum=100),
         )
         return JSONResponse({"nodes": nodes, "count": len(nodes)})
 
@@ -355,7 +395,7 @@ class AIOSAPI:
         neighbors = self.knowledge.neighbors(
             node_id=node_id,
             relation=request.query_params.get("relation"),
-            depth=int(request.query_params.get("depth", "1")),
+            depth=self._bounded_int(request.query_params.get("depth"), default=1, maximum=5),
         )
         return JSONResponse({"neighbors": neighbors, "count": len(neighbors)})
 
@@ -378,14 +418,18 @@ class AIOSAPI:
 
     async def _approvals_approve(self, request: Request) -> JSONResponse:
         approval_id = request.path_params["approval_id"]
-        result = self.approvals.approve(approval_id)
+        result = self.approvals.approve(
+            approval_id, resolved_by=request.state.principal.subject
+        )
         if result is None:
             return JSONResponse({"error": "Approval not found"}, status_code=404)
         return JSONResponse(result)
 
     async def _approvals_deny(self, request: Request) -> JSONResponse:
         approval_id = request.path_params["approval_id"]
-        result = self.approvals.deny(approval_id)
+        result = self.approvals.deny(
+            approval_id, resolved_by=request.state.principal.subject
+        )
         if result is None:
             return JSONResponse({"error": "Approval not found"}, status_code=404)
         return JSONResponse(result)
@@ -489,8 +533,8 @@ class AIOSAPI:
             event_type=request.query_params.get("event_type"),
             agent_id=request.query_params.get("agent_id"),
             decision=request.query_params.get("decision"),
-            limit=int(request.query_params.get("limit", "100")),
-            offset=int(request.query_params.get("offset", "0")),
+            limit=self._bounded_int(request.query_params.get("limit"), default=100, maximum=100),
+            offset=self._bounded_int(request.query_params.get("offset"), default=0, maximum=10_000, minimum=0),
         )
         return JSONResponse({"events": events, "count": len(events)})
 
@@ -517,7 +561,7 @@ class AIOSAPI:
         self.db.close()
 
 
-def create_app(db_path=":memory:", constitution_dir=None, policies_dir=None):
+def create_app(db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None):
     """Factory function to create the AIOS Starlette application.
 
     Usage:
@@ -528,5 +572,11 @@ def create_app(db_path=":memory:", constitution_dir=None, policies_dir=None):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get("/health")
     """
-    api = AIOSAPI(db_path=db_path, constitution_dir=constitution_dir, policies_dir=policies_dir)
+    api = AIOSAPI(
+        db_path=db_path,
+        constitution_dir=constitution_dir,
+        policies_dir=policies_dir,
+        auth_required=auth_required,
+        api_keys=api_keys,
+    )
     return api.create_starlette_app()
