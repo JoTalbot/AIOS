@@ -14,3 +14,6 @@ Self-evolving distributed operating system for application intelligence, automat
 
 ## Конституция
 Действующие статьи и архивные книги конституции — в `docs/aios/constitution/`.
+
+## Версия
+`aios_core` (исполняемый слой) — версия **2.1.1**. Целевая платформа и актуальная архитектура описаны редакцией **2026 Archive** (v1–v9) в `docs/aios/`; см. `docs/aios/meta/VERSION_MAP.md`. Единый источник истины по версии — файл `VERSION`.

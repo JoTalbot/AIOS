@@ -22,8 +22,12 @@ class ApprovalManager:
         """
         scope = action.get("scope")
         risk = action.get("risk", "low")
-        human_scopes = self.policies.approval_required_scopes
-        needs_human = (scope in human_scopes) or risk in ("high", "critical")
+        # Constitutional / federated scopes always require human oversight,
+        # independent of policy availability. Policy may add more scopes.
+        constitutional_scopes = {"global", "constitution", "federation"}
+        policy_scopes = set(self.policies.approval_required_scopes)
+        required_scopes = constitutional_scopes | policy_scopes
+        needs_human = (scope in required_scopes) or risk in ("high", "critical")
         status = "pending" if needs_human else "auto_approved"
         approval = {"action": action, "status": status}
         self.approvals.append(approval)

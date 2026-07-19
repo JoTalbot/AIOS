@@ -1,15 +1,11 @@
 """AIOS Bootstrap Layer v2.1.1
 
 Entry point that wires the core layers together and runs an action through the
-full lifecycle: constitutional evaluation -> approval -> execution.
+full lifecycle, now driven by the Orchestrator.
 """
 
-import sys
-
-from .constitution_engine import ConstitutionEngine
-from .approval_manager import ApprovalManager
-from .execution_manager import ExecutionManager
 from .policy_loader import PolicyLoader
+from .orchestrator import Orchestrator
 
 
 class AIOSBootstrap:
@@ -17,38 +13,22 @@ class AIOSBootstrap:
 
     def __init__(self, policy_loader=None):
         self.policies = policy_loader if policy_loader is not None else PolicyLoader()
-        self.constitution = ConstitutionEngine(self.policies)
-        self.approval = ApprovalManager(self.policies)
-        self.execution = ExecutionManager()
+        self.orchestrator = Orchestrator(self.policies)
 
     def boot(self) -> dict:
         return {
             "status": "ready",
-            "version": self.constitution.version,
+            "version": self.orchestrator.constitution.version,
             "policies_loaded": len(self.policies.policies),
         }
 
     def process(self, action: dict) -> dict:
-        """Run an action through the full lifecycle.
+        """Run an action through the full cognitive lifecycle."""
+        return self.orchestrator.run(action)
 
-        Returns a trace with the constitutional decision, approval status and
-        (when allowed) execution result.
-        """
-        decision = self.constitution.evaluate(action)
-        approval = self.approval.request(action)
-        trace = {
-            "action": action,
-            "constitutional_decision": decision["decision"],
-            "approval_status": approval["status"],
-        }
-        if decision["decision"] == "ALLOW" and approval["status"] in (
-            "auto_approved",
-            "approved",
-        ):
-            trace["execution"] = self.execution.execute(action)
-        else:
-            trace["execution"] = {"status": "blocked", "reason": decision.get("reason")}
-        return trace
+    def report(self) -> dict:
+        """Return orchestrator summary."""
+        return self.orchestrator.report()
 
 
 def _demo():
@@ -65,6 +45,8 @@ def _demo():
         print("---")
         print("action:", action)
         print("trace :", boot.process(action))
+    print("---")
+    print("report:", boot.report())
 
 
 if __name__ == "__main__":
