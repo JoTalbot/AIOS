@@ -1,0 +1,12 @@
+version: "2.1.1"
+
+operations_policy:
+  requirements:
+    safe_updates: true
+    system_monitoring: true
+    emergency_procedures: true
+
+  rules:
+    changes_logged: true
+    rollback_supported: true
+    critical_services_protected: true

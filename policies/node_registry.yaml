@@ -1,0 +1,10 @@
+version: "2.1.1"
+
+node_registry:
+  nodes: []
+
+rules:
+  require_identity: true
+  require_constitution_sync: true
+  allow_local_decision: true
+  audit_required: true

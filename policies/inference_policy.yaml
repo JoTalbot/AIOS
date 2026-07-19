@@ -1,0 +1,17 @@
+version: "2.1.1"
+
+inference_policy:
+  priorities:
+    - constitutional_rules
+    - security_constraints
+    - verified_knowledge
+    - operational_experience
+
+  requirements:
+    explain_reasoning: true
+    detect_conflicts: true
+    require_audit: true
+
+  conflict_resolution:
+    strategy: "constitutional_priority"
+    fallback: "human_review"

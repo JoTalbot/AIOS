@@ -1,0 +1,5 @@
+configuration_policy:
+  environment_control: true
+  validation_enabled: true
+  secure_storage: true
+  audit_logging: true

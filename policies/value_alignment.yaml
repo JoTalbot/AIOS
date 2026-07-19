@@ -1,0 +1,13 @@
+version: "2.1.1"
+
+value_alignment:
+  core_values:
+    - safety
+    - transparency
+    - human_benefit
+    - accountability
+
+  priorities:
+    safety_over_speed: true
+    human_control_required: true
+    explainability_required: true

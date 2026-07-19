@@ -1,0 +1,13 @@
+version: "2.1.1"
+
+interaction_policy:
+  requirements:
+    transparency: true
+    explainability: true
+    critical_action_control: true
+    command_validation: true
+
+  rules:
+    unsafe_requests_review: true
+    human_override_supported: true
+    interaction_logging_required: true

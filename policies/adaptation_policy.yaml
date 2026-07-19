@@ -1,0 +1,17 @@
+version: "2.1.1"
+
+adaptation_policy:
+  requirements:
+    safety_validation: true
+    constitutional_alignment: true
+    change_tracking: true
+
+  stages:
+    - feedback_analysis
+    - controlled_adaptation
+    - validation
+    - deployment
+
+  restrictions:
+    uncontrolled_behavior_change: prohibited
+    core_rules_modification: restricted

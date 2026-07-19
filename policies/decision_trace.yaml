@@ -1,0 +1,17 @@
+version: "2.1.1"
+
+decision_trace:
+  fields:
+    - timestamp
+    - input_context
+    - applied_rules
+    - knowledge_sources
+    - constraints
+    - decision
+    - confidence
+    - audit_reference
+
+  requirements:
+    explainable: true
+    audit_required: true
+    reversible: true

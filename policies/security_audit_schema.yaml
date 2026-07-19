@@ -1,0 +1,20 @@
+version: "2.1.1"
+
+security_audit_schema:
+  event_types:
+    - integrity_check
+    - access_attempt
+    - policy_violation
+    - constitutional_change_request
+
+  fields:
+    - timestamp
+    - source
+    - event_type
+    - result
+    - severity
+    - audit_reference
+
+  requirements:
+    traceability: true
+    retention_required: true

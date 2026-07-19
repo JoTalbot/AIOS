@@ -1,0 +1,15 @@
+version: "2.1.1"
+
+decision_audit:
+  fields:
+    - timestamp
+    - decision_id
+    - context
+    - input_sources
+    - confidence
+    - outcome
+
+  requirements:
+    logging_required: true
+    traceability: true
+    review_available: true

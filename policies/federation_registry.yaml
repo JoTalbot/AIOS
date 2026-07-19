@@ -1,0 +1,14 @@
+version: "2.1.1"
+
+federation_registry:
+  entities:
+    - node
+    - agent
+    - service
+
+  fields:
+    - identity_id
+    - role
+    - status
+    - trust_level
+    - last_sync

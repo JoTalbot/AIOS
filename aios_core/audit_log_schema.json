@@ -1,0 +1,14 @@
+{
+  "version": "2.1.1",
+  "audit_event": {
+    "timestamp": "ISO-8601",
+    "agent_id": "string",
+    "action_id": "string",
+    "goal": "string",
+    "scope": "string",
+    "risk_level": "low|medium|high",
+    "constitutional_decision": "ALLOW|REVIEW|DENY",
+    "rules_checked": [],
+    "result": "string"
+  }
+}

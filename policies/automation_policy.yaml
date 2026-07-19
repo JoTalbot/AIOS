@@ -1,0 +1,12 @@
+version: "2.1.1"
+
+automation_policy:
+  requirements:
+    action_validation: true
+    autonomy_control: true
+    safety_checks: true
+
+  rules:
+    restricted_actions_require_approval: true
+    automated_changes_logged: true
+    policy_compliance_required: true

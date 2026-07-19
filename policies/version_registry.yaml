@@ -1,0 +1,18 @@
+version: "2.1.1"
+
+registry:
+  active_version: "2.1.1"
+
+  releases:
+    - version: "2.1.1"
+      status: "active"
+      components:
+        - constitution_engine
+        - validator
+        - runtime_policy
+        - evolution_manager
+
+  history:
+    - version: "2.1"
+      status: "previous"
+      description: "Initial executable constitution architecture"

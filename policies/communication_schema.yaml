@@ -1,0 +1,17 @@
+version: "2.1.1"
+
+communication_schema:
+  message_types:
+    - request
+    - response
+    - synchronization
+    - audit_event
+    - constitutional_update
+
+  fields:
+    - source_node
+    - target_node
+    - timestamp
+    - payload
+    - signature
+    - audit_reference

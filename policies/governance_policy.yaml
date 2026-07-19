@@ -1,0 +1,6 @@
+version: 2.1.1
+governance:
+  transparency: true
+  audit_required: true
+  human_oversight: true
+  compliance_tracking: true

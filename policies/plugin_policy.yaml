@@ -1,0 +1,5 @@
+plugin_policy:
+  runtime_isolation: true
+  permission_control: true
+  extension_validation: true
+  audit_logging: true

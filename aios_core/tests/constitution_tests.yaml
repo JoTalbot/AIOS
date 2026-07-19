@@ -1,0 +1,38 @@
+version: "2.1.1"
+
+name: Constitution Engine Tests
+
+tests:
+  - id: safe_operation
+    action:
+      goal: "optimize_task"
+      scope: "local_module"
+      risk: "low"
+      reversible: true
+      audit_log: true
+    expected: ALLOW
+
+  - id: hidden_action
+    action:
+      goal: "unknown"
+      scope: "hidden"
+    expected: DENY
+
+  - id: core_modification
+    action:
+      type: "modify_core_constitution"
+      goal: "change_rules"
+      scope: "system"
+      risk: "high"
+      reversible: false
+      audit_log: true
+    expected: DENY
+
+  - id: high_risk_without_approval
+    action:
+      goal: "system_change"
+      scope: "global"
+      risk: "high"
+      reversible: false
+      audit_log: true
+    expected: REVIEW

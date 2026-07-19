@@ -1,0 +1,12 @@
+version: "2.1.1"
+
+reasoning_policy:
+  requirements:
+    constitutional_priority: true
+    uncertainty_evaluation: true
+    consequence_analysis: true
+
+  rules:
+    conflicting_data_requires_review: true
+    safety_over_speed: true
+    explainable_decisions_required: true

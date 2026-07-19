@@ -1,0 +1,16 @@
+version: "2.1.1"
+
+knowledge_schema:
+  node_types:
+    - rule
+    - experience
+    - event
+    - decision
+    - dependency
+
+  edge_types:
+    - derived_from
+    - depends_on
+    - validates
+    - improves
+    - conflicts_with

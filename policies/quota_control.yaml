@@ -1,0 +1,13 @@
+version: "2.1.1"
+
+quota_control:
+  limits:
+    memory: managed
+    compute: managed
+    background_tasks: limited
+    experimental_tasks: isolated
+
+  rules:
+    quota_monitoring: true
+    overflow_protection: true
+    critical_reserve_required: true

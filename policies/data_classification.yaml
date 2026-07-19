@@ -1,0 +1,19 @@
+version: "2.1.1"
+
+data_classification:
+  levels:
+    PERSONAL:
+      sync: false
+      retention: user_controlled
+
+    OPERATIONAL:
+      sync: true
+      retention: long_term
+
+    CONSTITUTIONAL:
+      sync: true
+      retention: immutable
+
+    PUBLIC:
+      sync: true
+      retention: configurable

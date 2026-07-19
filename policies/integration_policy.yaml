@@ -1,0 +1,12 @@
+version: "2.1.1"
+
+integration_policy:
+  requirements:
+    external_validation: true
+    secure_exchange: true
+    access_control: true
+
+  rules:
+    unknown_integrations_restricted: true
+    data_exchange_audited: true
+    connector_permissions_required: true

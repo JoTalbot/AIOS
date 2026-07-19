@@ -1,0 +1,12 @@
+version: "2.1.1"
+
+message_security_policy:
+  requirements:
+    authentication: true
+    integrity_check: true
+    audit_logging: true
+
+  rules:
+    unknown_nodes_blocked: true
+    sensitive_data_protected: true
+    constitutional_messages_priority: true

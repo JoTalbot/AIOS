@@ -1,0 +1,12 @@
+version: "2.1.1"
+
+telemetry_policy:
+  requirements:
+    privacy_protection: true
+    audit_logging: true
+    collection_control: true
+
+  rules:
+    minimal_data_collection: true
+    telemetry_review_required: true
+    sensitive_data_prohibited: true

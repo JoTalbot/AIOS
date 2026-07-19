@@ -1,0 +1,21 @@
+version: "2.1.1"
+
+memory_retention_policy:
+  personal_memory:
+    storage: user_controlled
+    deletion: user_requested
+    federation: prohibited
+
+  operational_memory:
+    storage: long_term
+    federation: allowed
+    audit: required
+
+  constitutional_memory:
+    storage: immutable
+    federation: allowed
+    modification: approval_required
+
+  cleanup:
+    temporary_data: delete_after_session
+    audit_logs: retain_according_to_policy

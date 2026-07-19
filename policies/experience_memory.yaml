@@ -1,0 +1,19 @@
+version: "2.1.1"
+
+experience_memory:
+  categories:
+    - successful_actions
+    - failed_actions
+    - corrections
+    - learned_patterns
+
+  fields:
+    - timestamp
+    - source
+    - context
+    - outcome
+    - confidence
+
+  rules:
+    preserve_lessons: true
+    validate_experience: true

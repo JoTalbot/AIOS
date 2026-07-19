@@ -1,0 +1,16 @@
+version: "2.1.1"
+
+recovery_policy:
+  recovery_modes:
+    - safe_mode
+    - rollback
+    - component_restart
+
+  requirements:
+    audit_after_recovery: true
+    preserve_state: true
+    approval_required_for_rollback: true
+
+  priority:
+    protect_constitution: true
+    minimize_data_loss: true

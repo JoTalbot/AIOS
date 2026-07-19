@@ -1,0 +1,44 @@
+version: "2.1.1"
+system:
+  name: "AIOS"
+  type: "Autonomous Intelligence Operating System"
+
+rules:
+  autonomy:
+    require_goal: true
+    require_scope: true
+    require_risk_assessment: true
+    require_audit_log: true
+    prohibited:
+      - hidden_execution
+      - uncontrolled_self_modification
+
+  memory:
+    personal:
+      user_controlled: true
+    operational:
+      enabled: true
+    constitutional:
+      immutable: true
+
+  federation:
+    local_decision: true
+    offline_operation: true
+    require_logging: true
+
+  evolution:
+    direct_change: false
+    pipeline:
+      - proposal
+      - sandbox
+      - simulation
+      - audit
+      - approval
+      - deployment
+
+  uncertainty:
+    conflict_threshold: 0.5
+    fallback:
+      reversible_action: true
+      minimize_damage: true
+      record_decision: true

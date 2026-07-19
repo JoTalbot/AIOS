@@ -1,0 +1,19 @@
+version: "2.1.1"
+
+knowledge_policy:
+  rules:
+    operational:
+      sync: allowed
+      audit: required
+
+    constitutional:
+      sync: allowed
+      modification: approval_required
+
+    personal:
+      sync: prohibited
+      access: protected
+
+    experimental:
+      sync: sandbox_only
+      deployment: approval_required

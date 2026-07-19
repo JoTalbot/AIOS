@@ -1,0 +1,6 @@
+version: 2.1.1
+diagnostics:
+  error_thresholds: true
+  alerts_enabled: true
+  recovery_triggering: true
+  audit_logging: true

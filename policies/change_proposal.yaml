@@ -1,0 +1,18 @@
+version: "2.1.1"
+
+change_proposal:
+  id: "proposal_template"
+  author: "agent_id"
+
+  modification:
+    target: "system_component"
+    description: ""
+
+  validation:
+    sandbox_required: true
+    simulation_required: true
+    audit_required: true
+
+  approval:
+    required: true
+    status: PENDING

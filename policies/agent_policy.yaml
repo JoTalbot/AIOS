@@ -1,0 +1,5 @@
+agent_policy:
+  role_management: true
+  permission_control: true
+  collaboration_rules: true
+  audit_enabled: true

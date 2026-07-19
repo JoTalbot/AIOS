@@ -1,0 +1,12 @@
+version: "2.1.1"
+
+system_state:
+  constitution: "ACTIVE"
+  engine: "ONLINE"
+  validator: "ONLINE"
+  runtime_policy: "ONLINE"
+  evolution_framework: "READY"
+
+health:
+  last_check: "runtime"
+  issues: []

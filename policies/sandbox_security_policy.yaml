@@ -1,0 +1,12 @@
+version: "2.1.1"
+
+sandbox_security_policy:
+  restrictions:
+    protected_layers_access: prohibited
+    unsafe_changes: blocked
+    isolation_required: true
+
+  requirements:
+    action_logging: true
+    error_containment: true
+    validation_before_merge: true

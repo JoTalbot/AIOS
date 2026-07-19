@@ -1,0 +1,12 @@
+version: "2.1.1"
+
+consensus_policy:
+  requirements:
+    conflict_detection: true
+    trusted_sources_only: true
+    validation_required: true
+
+  rules:
+    majority_not_always_authoritative: true
+    constitutional_rules_priority: true
+    disputed_knowledge_requires_review: true

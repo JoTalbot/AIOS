@@ -1,0 +1,6 @@
+version: 2.1.1
+storage:
+  integrity_check: true
+  access_control: true
+  encrypted_storage: true
+  retention_policy: true

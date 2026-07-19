@@ -1,0 +1,16 @@
+version: "2.1.1"
+
+agent_reputation:
+  metrics:
+    - successful_actions
+    - constitutional_compliance
+    - audit_history
+    - incident_count
+
+  scoring:
+    positive_actions: increase
+    violations: decrease
+
+  usage:
+    low_trust: restricted
+    verified: expanded_capabilities

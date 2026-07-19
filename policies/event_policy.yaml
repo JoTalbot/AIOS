@@ -1,0 +1,5 @@
+event_policy:
+  event_validation: true
+  routing_enabled: true
+  queue_management: true
+  audit_logging: true

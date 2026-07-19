@@ -1,0 +1,13 @@
+version: "2.1.1"
+
+resource_policy:
+  priorities:
+    - constitutional_processes
+    - security_operations
+    - core_services
+    - experimental_tasks
+
+  rules:
+    fair_allocation: true
+    critical_modules_protected: true
+    resource_audit_required: true

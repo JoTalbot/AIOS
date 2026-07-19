@@ -1,0 +1,18 @@
+version: "2.1.1"
+
+event_stream:
+  event_types:
+    - system_start
+    - system_stop
+    - agent_action
+    - security_event
+    - policy_change
+    - node_sync
+
+  fields:
+    - timestamp
+    - source
+    - event_type
+    - payload
+    - severity
+    - audit_reference

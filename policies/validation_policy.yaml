@@ -1,0 +1,12 @@
+version: "2.1.1"
+
+validation_policy:
+  requirements:
+    mandatory_testing: true
+    result_verification: true
+    change_validation: true
+
+  rules:
+    unverified_changes_blocked: true
+    failed_tests_require_review: true
+    validation_logged: true

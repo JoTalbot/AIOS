@@ -1,0 +1,22 @@
+{
+  "version": "2.1.1",
+  "rules": [
+    {
+      "id": "autonomy_limited",
+      "require": ["goal", "scope", "risk", "audit_log"]
+    },
+    {
+      "id": "minimal_force",
+      "priority": ["safety", "reversibility", "efficiency"]
+    },
+    {
+      "id": "controlled_evolution",
+      "pipeline": ["proposal", "sandbox", "simulation", "audit", "approval", "deployment"]
+    },
+    {
+      "id": "uncertainty_fallback",
+      "threshold": 0.5,
+      "actions": ["reversible_action", "minimize_damage", "record_decision"]
+    }
+  ]
+}

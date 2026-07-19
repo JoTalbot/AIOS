@@ -1,0 +1,17 @@
+version: "2.1.1"
+
+trust_policy:
+  levels:
+    - unknown
+    - verified
+    - trusted
+    - constitutional
+
+  requirements:
+    component_validation: true
+    node_verification: true
+    access_review: true
+
+  rules:
+    unverified_components_restricted: true
+    trust_changes_audited: true

@@ -1,0 +1,16 @@
+version: "2.1.1"
+
+harm_prevention_policy:
+  requirements:
+    risk_assessment: true
+    safety_check: true
+    audit_required: true
+
+  prohibited:
+    - hidden_actions
+    - uncontrolled_self_modification
+    - privacy_violation
+
+  escalation:
+    high_risk: human_review
+    uncertainty: additional_validation

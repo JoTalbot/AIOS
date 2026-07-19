@@ -1,0 +1,16 @@
+version: "2.1.1"
+
+system_observability_policy:
+  monitoring:
+    metrics: required
+    events: required
+    health_checks: required
+
+  alerts:
+    security_failure: immediate
+    node_failure: immediate
+    policy_violation: audit
+
+  retention:
+    metrics: long_term
+    events: according_to_audit_policy

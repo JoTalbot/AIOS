@@ -1,0 +1,19 @@
+version: "2.1.1"
+
+policy_registry:
+  policies:
+    - id: autonomy_limited
+      source: constitution.yaml
+      enabled: true
+
+    - id: minimal_force
+      source: rules.json
+      enabled: true
+
+    - id: controlled_evolution
+      source: constitution.yaml
+      enabled: true
+
+    - id: audit_required
+      source: audit_log_schema.json
+      enabled: true

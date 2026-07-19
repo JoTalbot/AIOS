@@ -1,0 +1,11 @@
+version: "2.1.1"
+
+node_identity_policy:
+  requirements:
+    unique_identity: true
+    authentication_required: true
+    permission_validation: true
+
+  rules:
+    unknown_nodes_blocked: true
+    identity_changes_audited: true
