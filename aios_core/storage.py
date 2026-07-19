@@ -16,7 +16,7 @@ from typing import Any, Generator, Optional
 
 from .config import AIOSConfig, load_config
 
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 
 _CREATE_TABLES = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -65,10 +65,12 @@ CREATE TABLE IF NOT EXISTS memory_items (
     updated_at TEXT,
     expires_at TEXT,
     access_count INTEGER DEFAULT 0,
-    metadata TEXT
+    metadata TEXT,
+    owner_id TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_memory_category ON memory_items(category);
+CREATE INDEX IF NOT EXISTS idx_memory_owner ON memory_items(owner_id);
 CREATE INDEX IF NOT EXISTS idx_memory_tags ON memory_items(tags);
 CREATE INDEX IF NOT EXISTS idx_memory_created ON memory_items(created_at);
 
@@ -175,11 +177,14 @@ class Database:
             conn.commit()
 
     def _migrate(self, conn: sqlite3.Connection, from_ver: int, to_ver: int):
-        """Apply migrations. Extend this method for future schema changes."""
-        # Future migrations go here:
-        # if from_ver < 2:
-        #     conn.execute("ALTER TABLE ...")
-        pass
+        """Apply forward-only schema migrations."""
+        if from_ver < 2:
+            # SQLite does not support ``ADD COLUMN IF NOT EXISTS`` on all
+            # supported versions, so inspect the table before altering it.
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(memory_items)")}
+            if "owner_id" not in columns:
+                conn.execute("ALTER TABLE memory_items ADD COLUMN owner_id TEXT")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_memory_owner ON memory_items(owner_id)")
 
     @contextmanager
     def transaction(self) -> Generator[sqlite3.Connection, None, None]:

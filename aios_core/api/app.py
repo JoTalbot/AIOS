@@ -202,6 +202,19 @@ class AIOSAPI:
         )
         return app
 
+    def _memory_actor(self, request: Request) -> tuple[str, bool]:
+        """Return authenticated subject and administrative scope for memory ACLs."""
+        principal: Principal = request.state.principal
+        return principal.subject, "admin" in principal.roles
+
+    @staticmethod
+    def _bounded_int(value, *, default: int, maximum: int) -> int:
+        try:
+            parsed = int(value) if value is not None else default
+        except (TypeError, ValueError):
+            return default
+        return min(max(parsed, 1), maximum)
+
     # ---- Health & Stats ----
 
     async def _health(self, request: Request) -> JSONResponse:
@@ -274,28 +287,34 @@ class AIOSAPI:
     # ---- Memory ----
 
     async def _memory_search(self, request: Request) -> JSONResponse:
+        subject, is_admin = self._memory_actor(request)
         results = self.memory.search(
             query=request.query_params.get("query", ""),
             category=request.query_params.get("category"),
             tag=request.query_params.get("tag"),
-            limit=int(request.query_params.get("limit", "100")),
+            limit=self._bounded_int(request.query_params.get("limit"), default=100, maximum=100),
+            requester_id=subject,
+            is_admin=is_admin,
         )
         return JSONResponse({"items": results, "count": len(results)})
 
     async def _memory_store(self, request: Request) -> JSONResponse:
         body = await request.json()
+        subject, _ = self._memory_actor(request)
         result = self.memory.store(
             content=body.get("content", {}),
             category=body.get("category", "operational"),
             tags=body.get("tags"),
             source=body.get("source"),
             confidence=body.get("confidence", 1.0),
+            owner_id=subject,
         )
         return JSONResponse(result, status_code=201)
 
     async def _memory_get(self, request: Request) -> JSONResponse:
         item_id = request.path_params["item_id"]
-        item = self.memory.retrieve(item_id)
+        subject, is_admin = self._memory_actor(request)
+        item = self.memory.retrieve(item_id, requester_id=subject, is_admin=is_admin)
         if item is None:
             return JSONResponse({"error": "Memory item not found"}, status_code=404)
         return JSONResponse(item)
@@ -303,11 +322,14 @@ class AIOSAPI:
     async def _memory_update(self, request: Request) -> JSONResponse:
         item_id = request.path_params["item_id"]
         body = await request.json()
+        subject, is_admin = self._memory_actor(request)
         result = self.memory.update(
             item_id,
             content=body.get("content"),
             tags=body.get("tags"),
             confidence=body.get("confidence"),
+            requester_id=subject,
+            is_admin=is_admin,
         )
         if result is None:
             return JSONResponse({"error": "Memory item not found or immutable"}, status_code=404)
@@ -315,7 +337,8 @@ class AIOSAPI:
 
     async def _memory_delete(self, request: Request) -> JSONResponse:
         item_id = request.path_params["item_id"]
-        deleted = self.memory.delete(item_id)
+        subject, is_admin = self._memory_actor(request)
+        deleted = self.memory.delete(item_id, requester_id=subject, is_admin=is_admin)
         return JSONResponse({"deleted": deleted})
 
     async def _memory_stats(self, request: Request) -> JSONResponse:

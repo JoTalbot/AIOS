@@ -36,6 +36,27 @@ async def test_role_guard_and_rest_mcp_share_database():
 
 
 @pytest.mark.asyncio
+async def test_personal_memory_is_isolated_by_authenticated_subject():
+    keys = {
+        "alice-key": {"subject": "alice", "roles": ["writer"]},
+        "bob-key": {"subject": "bob", "roles": ["writer"]},
+    }
+    app = create_app(api_keys=keys)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        alice = {"Authorization": "Bearer alice-key"}
+        bob = {"Authorization": "Bearer bob-key"}
+        saved = await client.post("/api/v1/memory", json={
+            "content": {"private": "alice only"}, "category": "personal"
+        }, headers=alice)
+        assert saved.status_code == 201
+        item_id = saved.json()["id"]
+        assert (await client.get(f"/api/v1/memory/{item_id}", headers=bob)).status_code == 404
+        result = await client.get("/api/v1/memory?category=personal", headers=bob)
+        assert result.json()["count"] == 0
+        assert (await client.get(f"/api/v1/memory/{item_id}", headers=alice)).status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_approver_role_is_required_for_approval_actions():
     keys = {
         "writer-key": {"subject": "writer", "roles": ["writer"]},
