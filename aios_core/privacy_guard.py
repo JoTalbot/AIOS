@@ -22,8 +22,9 @@ class PrivacyGuard:
     and comprehensive privacy checks.
     """
 
-    def __init__(self):
+    def __init__(self, db=None):
         self.version = "3.0.0"
+        self.db = db
         self._access_log: list[dict] = []
 
         # Default classification rules
@@ -52,6 +53,25 @@ class PrivacyGuard:
             },
         ]
 
+        # Load custom rules from DB if available
+        if self.db:
+            self._load_rules_from_db()
+
+    def _load_rules_from_db(self) -> None:
+        """Load custom rules from the privacy_rules database table."""
+        self.db.execute(
+            "CREATE TABLE IF NOT EXISTS privacy_rules ("
+            "id TEXT PRIMARY KEY, "
+            "classification TEXT NOT NULL, "
+            "rule_data TEXT NOT NULL, "
+            "created_at TEXT NOT NULL"
+            ")"
+        )
+        rows = self.db.execute("SELECT rule_data FROM privacy_rules").fetchall()
+        for row in rows:
+            rule = self.db.from_json(row[0])
+            self._rules.append(rule)
+
     def can_access(
         self,
         agent_id: str,
@@ -69,13 +89,19 @@ class PrivacyGuard:
             Dict with 'allowed', 'reason', and classification info.
         """
         result = self._check_rules(memory_category, action, agent_id)
-        self._access_log.append({
+        log_entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "agent_id": agent_id,
             "memory_category": memory_category,
             "action": action,
             **result,
-        })
+        }
+        self._access_log.append(log_entry)
+        if self.db:
+            self.db.execute(
+                "INSERT INTO audit_events (id, event_type, data, timestamp, agent_id, tags) VALUES (?,?,?,?,?,?)",
+                (self.db.new_id(), "privacy_check", self.db.to_json(result), self.db.now_iso(), agent_id, "privacy")
+            )
         return result
 
     def can_share(self, data_classification: str, target: str) -> dict:
@@ -195,13 +221,58 @@ class PrivacyGuard:
         """
         return list(self._access_log)
 
-    def add_rule(self, rule: dict) -> None:
+    def add_rule(self, rule: dict) -> dict:
         """Add a custom privacy rule.
 
         Args:
             rule: Dict with classification, actions_allowed, share_allowed, etc.
+
+        Returns:
+            The rule dict with an 'id' field.
         """
+        rule["id"] = self.db.new_id() if self.db else str(len(self._rules))
         self._rules.append(rule)
+        if self.db:
+            self.db.execute(
+                "INSERT INTO privacy_rules (id, classification, rule_data, created_at) VALUES (?,?,?,?)",
+                (rule["id"], rule.get("classification", "custom"), self.db.to_json(rule), self.db.now_iso())
+            )
+        return rule
+
+    def classify(self, data: dict) -> dict:
+        """Classify data using simple heuristic rules.
+
+        Args:
+            data: Dict whose keys are inspected for classification signals.
+
+        Returns:
+            Dict with 'classification', 'indicators', and 'confidence'.
+        """
+        personal_keys = ["user_id", "email", "phone", "address", "ssn", "passport"]
+        constitutional_keys = ["article", "constitution", "principle", "rule"]
+
+        data_keys = set(data.keys()) if isinstance(data, dict) else set()
+        personal_indicators = sorted(data_keys & set(personal_keys))
+        constitutional_indicators = sorted(data_keys & set(constitutional_keys))
+
+        if personal_indicators:
+            classification = "personal"
+            indicators = personal_indicators
+            confidence = min(len(indicators) / len(personal_keys) * 1.5, 1.0)
+        elif constitutional_indicators:
+            classification = "constitutional"
+            indicators = constitutional_indicators
+            confidence = min(len(indicators) / len(constitutional_keys) * 1.5, 1.0)
+        else:
+            classification = "operational"
+            indicators = []
+            confidence = 0.5
+
+        return {
+            "classification": classification,
+            "indicators": indicators,
+            "confidence": round(confidence, 2),
+        }
 
     def _find_rule(self, classification: str) -> Optional[dict]:
         """Find the rule for a classification level."""
@@ -246,11 +317,15 @@ class PrivacyGuard:
         allowed_count = sum(1 for log in self._access_log if log.get("allowed", False))
         denied_count = total_checks - allowed_count
 
-        return {
+        result = {
             "version": self.version,
             "total_access_checks": total_checks,
             "allowed": allowed_count,
             "denied": denied_count,
             "rules_count": len(self._rules),
-            "storage": "memory",
+            "storage": "sqlite" if self.db else "memory",
         }
+        if self.db:
+            count_row = self.db.execute("SELECT COUNT(*) FROM privacy_rules").fetchone()
+            result["persisted_rules"] = count_row[0] if count_row else 0
+        return result

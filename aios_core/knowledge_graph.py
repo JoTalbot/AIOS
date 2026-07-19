@@ -183,47 +183,28 @@ class KnowledgeGraph:
         if self.db is None:
             return []
 
-        conditions = []
+        where_parts: list[str] = []
         params: list[Any] = []
 
-        if direction in ("outgoing", "both"):
-            conditions.append("source_id = ?")
+        if direction == "outgoing":
+            where_parts.append("source_id = ?")
             params.append(node_id)
-        if direction in ("incoming", "both"):
-            if direction == "both":
-                conditions.append("target_id = ?")
-            else:
-                conditions.append("target_id = ?")
+        elif direction == "incoming":
+            where_parts.append("target_id = ?")
             params.append(node_id)
-
-        if direction == "both":
-            # Rewrite as OR
-            pass  # handled below
+        else:  # both
+            where_parts.append("(source_id = ? OR target_id = ?)")
+            params.extend([node_id, node_id])
 
         if relation:
-            conditions.append("relation = ?")
+            where_parts.append("relation = ?")
             params.append(relation)
 
-        # Build proper SQL
-        if direction == "both":
-            where_parts = ["(source_id = ? OR target_id = ?)"]
-            where_params: list[Any] = [node_id, node_id]
-            if relation:
-                where_parts.append("relation = ?")
-                where_params.append(relation)
-            where = "WHERE " + " AND ".join(where_parts)
-            sql = f"SELECT * FROM kg_edges {where} LIMIT ?"
-            where_params.append(limit)
-            rows = self.db.query(sql, tuple(where_params))
-        else:
-            cond_str = conditions[0] if conditions else "1=1"
-            where = f"WHERE {cond_str}"
-            if relation:
-                where += " AND relation = ?"
-            sql = f"SELECT * FROM kg_edges {where} LIMIT ?"
-            params.append(limit)
-            rows = self.db.query(sql, tuple(params))
+        where = "WHERE " + " AND ".join(where_parts)
+        sql = f"SELECT * FROM kg_edges {where} LIMIT ?"
+        params.append(limit)
 
+        rows = self.db.query(sql, tuple(params))
         return [self._edge_row_to_dict(r) for r in rows]
 
     def neighbors(

@@ -27,6 +27,10 @@ from .reasoning_engine import ReasoningEngine, ReasoningStep
 from .learning_engine import LearningEngine
 from .evolution_manager import EvolutionManager
 from .privacy_guard import PrivacyGuard
+from .event_bus import EventBus, Event, EventType
+from .planner import Planner, Plan, PlanStep as PlannerStep, PlanStatus, EdgeCondition
+from .capability_engine import CapabilityEngine, CapabilityStatus, Capability
+from .autonomy_manager import AutonomyManager, AutonomyLevel, AgentAutonomyProfile
 from .orchestrator import Orchestrator, Task, TaskStep, TaskStatus, StepStatus
 
 # Test Engine
@@ -119,6 +123,24 @@ __all__ = [
     "security_policy_suite",
     "evolution_safety_suite",
     "integration_suite",
+    # Event Bus
+    "EventBus",
+    "Event",
+    "EventType",
+    # Planner
+    "Planner",
+    "Plan",
+    "PlannerStep",
+    "PlanStatus",
+    "EdgeCondition",
+    # Capability Engine
+    "CapabilityEngine",
+    "CapabilityStatus",
+    "Capability",
+    # Autonomy
+    "AutonomyManager",
+    "AutonomyLevel",
+    "AgentAutonomyProfile",
     # REST API
     "create_app",
     "AIOSAPI",

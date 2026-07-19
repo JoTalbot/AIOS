@@ -224,7 +224,7 @@ class AIOSAPI:
     # ---- Health & Stats ----
 
     async def _health(self, request: Request) -> JSONResponse:
-        return JSONResponse({"status": "ok", "version": "4.0.0"})
+        return JSONResponse({"status": "ok", "version": "3.1.0"})
 
     async def _stats(self, request: Request) -> JSONResponse:
         return JSONResponse(self.orchestrator.stats())
