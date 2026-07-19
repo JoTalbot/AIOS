@@ -37,6 +37,7 @@ class MemoryManager:
         confidence: float = 1.0,
         ttl_seconds: Optional[int] = None,
         metadata: Optional[dict] = None,
+        owner_id: Optional[str] = None,
     ) -> dict:
         """Store a memory item.
 
@@ -68,8 +69,8 @@ class MemoryManager:
             self.db.execute(
                 """INSERT INTO memory_items
                    (id, category, content, tags, source, confidence,
-                    created_at, expires_at, metadata)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    created_at, expires_at, metadata, owner_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     item_id,
                     category,
@@ -80,6 +81,7 @@ class MemoryManager:
                     now,
                     expires_at,
                     Database.to_json(metadata) if metadata else None,
+                    owner_id,
                 ),
             )
 
@@ -92,10 +94,13 @@ class MemoryManager:
             "confidence": confidence,
             "created_at": now,
             "expires_at": expires_at,
+            "owner_id": owner_id,
         }
 
-    def retrieve(self, item_id: str) -> Optional[dict]:
-        """Retrieve a single memory item by ID."""
+    def retrieve(
+        self, item_id: str, requester_id: Optional[str] = None, is_admin: bool = False
+    ) -> Optional[dict]:
+        """Retrieve an item, enforcing ownership when a requester is supplied."""
         if self.db is None:
             return None
         row = self.db.query_one(
@@ -103,7 +108,15 @@ class MemoryManager:
         )
         if row is None:
             return None
-        return self._row_to_dict(row)
+        item = self._row_to_dict(row)
+        if (
+            requester_id is not None
+            and item["category"] == "personal"
+            and not is_admin
+            and item.get("owner_id") != requester_id
+        ):
+            return None
+        return item
 
     def search(
         self,
@@ -112,6 +125,8 @@ class MemoryManager:
         tag: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
+        requester_id: Optional[str] = None,
+        is_admin: bool = False,
     ) -> list[dict]:
         """Search memory items by text query, category, and/or tag.
 
@@ -132,6 +147,12 @@ class MemoryManager:
             if category in _VALID_CATEGORIES:
                 conditions.append("category = ?")
                 params.append(category)
+
+        # Personal records are private whenever a caller identity is supplied.
+        # Legacy owner-less personal records are visible only to administrators.
+        if requester_id is not None and not is_admin:
+            conditions.append("(category != 'personal' OR owner_id = ?)")
+            params.append(requester_id)
 
         if tag:
             conditions.append("(tags IS NOT NULL AND tags LIKE ?)")
@@ -158,12 +179,14 @@ class MemoryManager:
         content: Optional[dict] = None,
         tags: Optional[list[str]] = None,
         confidence: Optional[float] = None,
+        requester_id: Optional[str] = None,
+        is_admin: bool = False,
     ) -> Optional[dict]:
         """Update an existing memory item."""
         if self.db is None:
             return None
 
-        item = self.retrieve(item_id)
+        item = self.retrieve(item_id, requester_id=requester_id, is_admin=is_admin)
         if item is None:
             return None
 
@@ -192,12 +215,14 @@ class MemoryManager:
         )
         return self.retrieve(item_id)
 
-    def delete(self, item_id: str) -> bool:
-        """Delete a memory item. Returns True if deleted."""
+    def delete(
+        self, item_id: str, requester_id: Optional[str] = None, is_admin: bool = False
+    ) -> bool:
+        """Delete a memory item, enforcing owner access when supplied."""
         if self.db is None:
             return False
 
-        item = self.retrieve(item_id)
+        item = self.retrieve(item_id, requester_id=requester_id, is_admin=is_admin)
         if item is None:
             return False
 
@@ -258,6 +283,7 @@ class MemoryManager:
             "updated_at": row["updated_at"],
             "expires_at": row["expires_at"],
             "access_count": row["access_count"],
+            "owner_id": row.get("owner_id"),
         }
 
     def stats(self) -> dict:

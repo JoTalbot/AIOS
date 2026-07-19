@@ -316,6 +316,9 @@ class MCPGateway:
         """Handler for memory store tool."""
         from aios_core.memory_manager import MemoryManager
 
+        if params.get("category") == "personal":
+            raise PermissionError("Personal memory is available only through the authenticated REST API")
+
         mm = MemoryManager(db=self.runtime.db)
         tags = params.get("tags", "")
         tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
@@ -330,6 +333,9 @@ class MCPGateway:
     def _handle_memory_search(self, params: dict) -> dict:
         """Handler for memory search tool."""
         from aios_core.memory_manager import MemoryManager
+
+        if params.get("category") == "personal":
+            raise PermissionError("Personal memory is available only through the authenticated REST API")
 
         mm = MemoryManager(db=self.runtime.db)
         results = mm.search(
