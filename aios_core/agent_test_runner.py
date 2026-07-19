@@ -4,7 +4,7 @@ AIOS Agent Test Runner v2.1.1
 Runs agent actions through simulation and constitutional validation.
 """
 
-from simulation_engine import SimulationEngine
+from .simulation_engine import SimulationEngine
 
 
 class AgentTestRunner:

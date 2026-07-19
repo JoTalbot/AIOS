@@ -4,7 +4,7 @@ AIOS Constitution API v2.1.1
 Interface layer for querying constitutional decisions.
 """
 
-from constitution_engine import ConstitutionEngine
+from .constitution_engine import ConstitutionEngine
 
 
 class ConstitutionAPI:

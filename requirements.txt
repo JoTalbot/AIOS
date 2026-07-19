@@ -1,16 +1,3 @@
-# AIOS Core Dependencies
+# AIOS Core Runtime Dependencies
 python-dateutil>=2.8.0
 PyYAML>=5.4.0
-
-# Testing
-pytest>=7.0.0
-pytest-cov>=3.0.0
-
-# Code Quality
-black>=22.0.0
-flake8>=4.0.0
-pylint>=2.10.0
-
-# Documentation
-sphinx>=4.0.0
-sphinx-rtd-theme>=1.0.0

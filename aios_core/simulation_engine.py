@@ -4,7 +4,7 @@ AIOS Simulation Engine v2.1.1
 Sandbox for testing proposed actions before execution.
 """
 
-from constitution_engine import ConstitutionEngine
+from .constitution_engine import ConstitutionEngine
 
 
 class SimulationEngine:

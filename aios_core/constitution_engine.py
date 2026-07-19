@@ -3,13 +3,17 @@
 Core constitutional decision-making engine.
 """
 
+from .policy_loader import PolicyLoader
 
 class ConstitutionEngine:
     """Evaluates actions against AIOS constitutional principles."""
 
-    def __init__(self):
+    def __init__(self, policy_loader=None):
         self.decisions = []
         self.version = "2.1.1"
+        self.policies = policy_loader if policy_loader is not None else PolicyLoader()
+        # Required fields may be extended by policy in the future; defaults below.
+        self.required_fields = ['goal', 'scope', 'risk', 'audit_log']
 
     def evaluate(self, action: dict) -> dict:
         """Evaluate an action against constitutional rules.
@@ -21,7 +25,7 @@ class ConstitutionEngine:
             Decision with ALLOW/REVIEW/DENY status
         """
         # Validate required fields
-        required_fields = ['goal', 'scope', 'risk', 'audit_log']
+        required_fields = self.required_fields
         if not all(field in action for field in required_fields):
             return {
                 "decision": "DENY",
@@ -73,7 +77,9 @@ class ConstitutionEngine:
     def _check_safety(self, action: dict) -> bool:
         """Check safety constraints."""
         risk_level = action.get('risk', 'high')
-        return risk_level in ['low', 'medium', 'high']
+        # Risk levels are driven by the security policy threat model.
+        allowed_risks = self.policies.safety_threat_levels.keys() or ['low', 'medium', 'high']
+        return risk_level in allowed_risks
 
     def history(self) -> list:
         """Return decision history."""
