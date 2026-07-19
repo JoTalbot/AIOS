@@ -1,0 +1,27 @@
+version: "2.1.1"
+
+evolution_policy:
+  requirements:
+    testing_before_deployment: true
+    compatibility_check: true
+    constitutional_validation: true
+    rollback_capability: required
+
+  stages:
+    - sandbox_testing
+    - module_validation
+    - simulation
+    - audit_review
+    - approval
+    - deployment
+
+  restrictions:
+    direct_core_modification: prohibited
+    unsafe_evolution: blocked
+    constitution_changes: approval_required
+    breaking_changes: human_review_required
+
+  rollback:
+    enabled: true
+    time_limit: 24_hours
+    automatic_on_critical_error: true
