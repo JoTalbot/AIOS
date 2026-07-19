@@ -31,6 +31,10 @@ from .reasoning_engine import ReasoningEngine, ReasoningStep
 from .learning_engine import LearningEngine
 from .evolution_manager import EvolutionManager
 from .privacy_guard import PrivacyGuard
+from .event_bus import EventBus, Event, EventType
+from .planner import Planner, Plan, PlanStep as PlannerStep, PlanStatus
+from .capability_engine import CapabilityEngine, CapabilityStatus
+from .autonomy_manager import AutonomyManager, AutonomyLevel
 
 
 class TaskStatus(str, Enum):
@@ -109,7 +113,7 @@ class Orchestrator:
         constitution_dir: Optional[str] = None,
         policies_dir: Optional[str] = None,
     ):
-        self.version = "3.0.0"
+        self.version = "3.1.0"
         self.config = config or load_config()
 
         # Resolve directories
@@ -134,6 +138,12 @@ class Orchestrator:
         self.learning = LearningEngine(db=self.db, memory=self.memory)
         self.evolution = EvolutionManager(db=self.db)
         self.privacy = PrivacyGuard()
+
+        # v3.0 subsystems
+        self.events = EventBus(db=self.db)
+        self.planner = Planner(db=self.db)
+        self.capabilities = CapabilityEngine(db=self.db)
+        self.autonomy = AutonomyManager(db=self.db)
 
         # Task tracking
         self._tasks: dict[str, Task] = {}
@@ -160,6 +170,7 @@ class Orchestrator:
             metadata=metadata or {},
         )
         self._tasks[task.id] = task
+        self.events.emit("task_created", "orchestrator", {"task_id": task.id, "name": task.name, "agent_id": task.agent_id})
         return task
 
     def add_step(
@@ -202,6 +213,7 @@ class Orchestrator:
             return self._task_summary(task)
 
         task.status = TaskStatus.RUNNING
+        self.events.emit("task_started", "orchestrator", {"task_id": task.id, "name": task.name})
         task.started_at = datetime.now(timezone.utc).isoformat()
 
         for i, step in enumerate(task.steps):
@@ -225,17 +237,32 @@ class Orchestrator:
                     step.error = "Requires approval — task paused"
                     task.status = TaskStatus.WAITING_APPROVAL
                     task.error = f"Step '{step.name}' requires human approval"
+                    self.events.emit("approval_requested", "orchestrator", {"task_id": task.id, "step_id": step.id, "step_name": step.name})
                     break
+
+                # Autonomy check (skip for system-level agents)
+                if task.agent_id not in ("orchestrator", "system"):
+                    autonomy_result = self.autonomy.check_autonomy(task.agent_id, action_risk=step.params.get("risk", task.risk_level))
+                    if autonomy_result["requires_approval"] and step.constitutional_check.get("decision") != "REVIEW":
+                        step.status = StepStatus.FAILED
+                        step.error = f"Requires approval (autonomy level {autonomy_result['level']})"
+                        task.status = TaskStatus.WAITING_APPROVAL
+                        task.error = f"Step '{step.name}' requires approval due to autonomy level {autonomy_result['level']}"
+                        self.events.emit("approval_requested", "orchestrator", {"task_id": task.id, "step_id": step.id, "reason": "autonomy_level"})
+                        break
 
                 # Execute the step
                 step.result = self._execute_step(task, step)
+                self.autonomy.record_action(task.agent_id, success=True)
                 step.status = StepStatus.COMPLETED
 
             except Exception as e:
                 step.status = StepStatus.FAILED
                 step.error = str(e)
+                self.autonomy.record_action(task.agent_id, success=False, triggered_review=True)
                 task.status = TaskStatus.FAILED
                 task.error = f"Step '{step.name}' failed: {e}"
+                self.events.emit("task_failed", "orchestrator", {"task_id": task.id, "name": task.name, "error": task.error})
                 break
 
             finally:
@@ -245,6 +272,7 @@ class Orchestrator:
         if task.status == TaskStatus.RUNNING:
             task.status = TaskStatus.COMPLETED
             task.completed_at = datetime.now(timezone.utc).isoformat()
+            self.events.emit("task_completed", "orchestrator", {"task_id": task.id, "name": task.name, "steps_completed": len(task.steps)})
 
             # Record successful task as learning
             self.learning.record_task_completion(task)
@@ -378,6 +406,10 @@ class Orchestrator:
                 "learning": self.learning.stats(),
                 "evolution": self.evolution.stats(),
                 "privacy": self.privacy.stats(),
+                "events": self.events.stats(),
+                "planner": self.planner.stats(),
+                "capabilities": self.capabilities.stats(),
+                "autonomy": self.autonomy.stats(),
             },
             "database": self.db.stats(),
         }
@@ -484,6 +516,22 @@ def _step_evolve(orch: Orchestrator, params: dict) -> dict:
     )
 
 
+def _step_plan(orch: Orchestrator, params: dict) -> dict:
+    """Handler for 'plan' step type — create and validate a plan."""
+    plan = orch.planner.create_plan(
+        name=params.get("name", "inline_plan"),
+        description=params.get("description", ""),
+        goal=params.get("goal", ""),
+    )
+    for step_def in params.get("steps", []):
+        orch.planner.add_step(plan, step_def.get("type", "tool"), step_def.get("params", {}), name=step_def.get("name", ""))
+    # Add dependencies if specified
+    for dep in params.get("dependencies", []):
+        orch.planner.add_dependency(plan, dep["from"], dep["to"], dep.get("condition", "success"))
+    validation = orch.planner.validate_plan(plan)
+    return {"plan_id": plan.id, "validation": validation, "layers": len(validation.get("execution_layers", []))}
+
+
 def _step_tool(orch: Orchestrator, params: dict) -> dict:
     """Handler for 'tool' step type — generic passthrough."""
     return {"tool_result": params, "executed": True}
@@ -503,4 +551,5 @@ _STEP_HANDLERS: dict[str, Callable] = {
     "evolve": _step_evolve,
     "tool": _step_tool,
     "approve": _step_approve,
+    "plan": _step_plan,
 }

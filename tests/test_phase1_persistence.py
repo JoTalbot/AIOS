@@ -45,7 +45,7 @@ class TestDatabase(unittest.TestCase):
     def test_stats(self):
         db = _make_db()
         stats = db.stats()
-        self.assertEqual(stats["schema_version"], 2)
+        self.assertEqual(stats["schema_version"], 3)
         self.assertEqual(stats["tables"]["audit_events"], 0)
         self.assertEqual(stats["tables"]["kg_nodes"], 0)
         db.close()

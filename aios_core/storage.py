@@ -1,4 +1,4 @@
-"""AIOS Storage Layer v1.0.0
+"""AIOS Storage Layer v3.0.0
 
 SQLite-based persistence for all AIOS data: audit events, approvals,
 memory items, knowledge graph nodes/edges, evolution history.
@@ -16,7 +16,7 @@ from typing import Any, Generator, Optional
 
 from .config import AIOSConfig, load_config
 
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 
 _CREATE_TABLES = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -117,6 +117,79 @@ CREATE TABLE IF NOT EXISTS evolution_records (
 
 CREATE INDEX IF NOT EXISTS idx_evo_status ON evolution_records(status);
 CREATE INDEX IF NOT EXISTS idx_evo_type ON evolution_records(evolution_type);
+
+CREATE TABLE IF NOT EXISTS events (
+    id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    source TEXT NOT NULL,
+    data TEXT NOT NULL,
+    metadata TEXT,
+    timestamp TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
+CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
+
+CREATE TABLE IF NOT EXISTS plans (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    goal TEXT,
+    steps_data TEXT,
+    edges_data TEXT,
+    status TEXT NOT NULL DEFAULT 'draft',
+    created_at TEXT NOT NULL,
+    updated_at TEXT,
+    metadata TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_plans_status ON plans(status);
+CREATE INDEX IF NOT EXISTS idx_plans_created ON plans(created_at);
+
+CREATE TABLE IF NOT EXISTS capabilities (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    capability_type TEXT NOT NULL,
+    status TEXT NOT NULL,
+    version TEXT DEFAULT '1.0.0',
+    input_schema TEXT,
+    output_schema TEXT,
+    risk_level TEXT DEFAULT 'low',
+    required_authority TEXT DEFAULT 'user',
+    tags TEXT,
+    dependencies TEXT,
+    metrics TEXT,
+    properties TEXT,
+    registered_at TEXT NOT NULL,
+    updated_at TEXT,
+    validated_at TEXT,
+    deprecated_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_caps_name ON capabilities(name);
+CREATE INDEX IF NOT EXISTS idx_caps_status ON capabilities(status);
+CREATE INDEX IF NOT EXISTS idx_caps_type ON capabilities(capability_type);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    agent_id TEXT,
+    authority TEXT,
+    risk_level TEXT DEFAULT 'medium',
+    steps_data TEXT,
+    current_step_index INTEGER DEFAULT -1,
+    created_at TEXT NOT NULL,
+    started_at TEXT,
+    completed_at TEXT,
+    error TEXT,
+    metadata TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_agent ON tasks(agent_id);
 """
 
 
@@ -185,6 +258,9 @@ class Database:
             if "owner_id" not in columns:
                 conn.execute("ALTER TABLE memory_items ADD COLUMN owner_id TEXT")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_memory_owner ON memory_items(owner_id)")
+        if from_ver < 3:
+            # Tables are created by _CREATE_TABLES, so nothing extra needed
+            pass
 
     @contextmanager
     def transaction(self) -> Generator[sqlite3.Connection, None, None]:
@@ -268,5 +344,9 @@ class Database:
                 "kg_nodes": self.row_count("kg_nodes"),
                 "kg_edges": self.row_count("kg_edges"),
                 "evolution_records": self.row_count("evolution_records"),
+                "events": self.row_count("events"),
+                "plans": self.row_count("plans"),
+                "capabilities": self.row_count("capabilities"),
+                "tasks": self.row_count("tasks"),
             },
         }

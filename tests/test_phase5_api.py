@@ -16,13 +16,16 @@ POLICIES_DIR = os.path.join(_PROJECT_ROOT, "policies")
 
 @pytest.fixture
 def app():
-    from aios_core.api.app import create_app
-    return create_app(
+    from aios_core.api.app import AIOSAPI
+    api = AIOSAPI(
         db_path=":memory:",
         constitution_dir=CONSTITUTION_DIR,
         policies_dir=POLICIES_DIR,
         auth_required=False,
     )
+    # Grant autonomy to the default development agent so tasks can execute
+    api.orchestrator.autonomy.grant_autonomy("development", 4)
+    return api.create_starlette_app()
 
 
 @pytest.fixture
@@ -47,7 +50,7 @@ class TestHealth:
         resp = await client.get("/health")
         data = resp.json()
         assert "version" in data
-        assert data["version"] == "4.0.0"
+        assert data["version"] == "3.1.0"
 
 
 # ============================================================

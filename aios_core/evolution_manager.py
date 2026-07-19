@@ -272,6 +272,140 @@ class EvolutionManager:
         status = proposal.get("status", "")
         return status in ("approved", "pending_approval")
 
+    def generate_proposals_from_patterns(self, patterns: list[dict]) -> list[dict]:
+        """Generate evolution proposals from learning patterns.
+
+        For each pattern with a low success rate (< 0.7), creates an
+        evolution proposal to address the underperforming area.
+        Also creates proposals from direct suggestions (e.g. output
+        of LearningEngine.generate_evolution_suggestions).
+
+        Args:
+            patterns: List of pattern/suggestion dicts.  Each may contain
+                a ``success_rate`` (float) or a ``suggestion`` key.
+
+        Returns:
+            List of created proposal dicts.
+        """
+        created: list[dict] = []
+
+        for pattern in patterns:
+            # Patterns with low success rate → auto-proposal
+            success_rate = pattern.get("success_rate")
+            if isinstance(success_rate, (int, float)) and success_rate < 0.7:
+                proposal = self.propose(
+                    change={
+                        "type": "pattern_improvement",
+                        "pattern": pattern,
+                        "target_success_rate": 0.8,
+                    },
+                    component=pattern.get("component", "unknown"),
+                    reason=(
+                        f"Pattern success rate {success_rate:.2%} is below 70% "
+                        f"threshold; proposing improvement"
+                    ),
+                )
+                created.append(proposal)
+
+            # Direct suggestions → proposal
+            suggestion = pattern.get("suggestion")
+            if isinstance(suggestion, str) and suggestion:
+                proposal = self.propose(
+                    change={
+                        "type": "suggestion",
+                        "suggestion": suggestion,
+                        "source": pattern.get("source", "learning_engine"),
+                    },
+                    component=pattern.get("component", "unknown"),
+                    reason=f"Evolution suggestion from learning engine: {suggestion}",
+                )
+                created.append(proposal)
+
+        return created
+
+    def auto_advance_ready(self) -> list[dict]:
+        """Auto-advance proposals in automated stages.
+
+        Proposals in ``in_testing``, ``in_sandbox``, or ``in_simulation``
+        status are in stages that can proceed without human intervention.
+        This method advances each such proposal to the next stage.
+
+        Returns:
+            List of advanced proposal dicts.
+        """
+        if self.db is None:
+            return []
+
+        automated_statuses = ("in_testing", "in_sandbox", "in_simulation")
+        placeholders = ",".join(["?"] * len(automated_statuses))
+        rows = self.db.query(
+            f"SELECT * FROM evolution_records WHERE status IN ({placeholders})",
+            automated_statuses,
+        )
+
+        advanced: list[dict] = []
+        for row in rows:
+            proposal = self._row_to_dict(row)
+            try:
+                result = self.advance(proposal["id"])
+                advanced.append(result)
+            except ValueError:
+                # Already at boundary or terminal state; skip silently
+                continue
+
+        return advanced
+
+    def get_stuck_proposals(self, hours: int = 24) -> list[dict]:
+        """Find proposals that have not advanced in a given number of hours.
+
+        These proposals may need human attention or may be blocked.
+
+        Args:
+            hours: How many hours of inactivity to consider "stuck".
+
+        Returns:
+            List of proposal dicts with additional ``stuck_hours`` key.
+        """
+        if self.db is None:
+            return []
+
+        from datetime import datetime, timezone, timedelta
+
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        cutoff_iso = cutoff.isoformat()
+
+        # We need the ``updated_at`` column, but evolution_records only
+        # stores ``proposed_at`` and ``completed_at``.  Use proposed_at
+        # as a proxy — if a proposal was proposed before the cutoff and
+        # is still not in a terminal state, it is considered stuck.
+        rows = self.db.query(
+            """SELECT * FROM evolution_records
+               WHERE proposed_at < ?
+                 AND status NOT IN ('rejected', 'approved', 'deploying')
+               ORDER BY proposed_at ASC""",
+            (cutoff_iso,),
+        )
+
+        now = datetime.now(timezone.utc)
+        result: list[dict] = []
+        for row in rows:
+            proposal = self._row_to_dict(row)
+            proposed_str = proposal.get("proposed_at")
+            if proposed_str:
+                try:
+                    proposed_dt = datetime.fromisoformat(proposed_str)
+                    if proposed_dt.tzinfo is None:
+                        proposed_dt = proposed_dt.replace(tzinfo=timezone.utc)
+                    age = (now - proposed_dt).total_seconds() / 3600
+                    proposal["stuck_hours"] = round(age, 2)
+                except (ValueError, TypeError):
+                    proposal["stuck_hours"] = None
+            else:
+                proposal["stuck_hours"] = None
+            result.append(proposal)
+
+        return result
+
     def _row_to_dict(self, row: dict) -> dict:
         """Convert a DB row to a proposal dict."""
         metadata = {}
