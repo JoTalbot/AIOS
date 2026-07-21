@@ -41,6 +41,9 @@ from .quantum_native import QuantumCircuitSimulator, QuantumNativeEngine
 from .neuromorphic_matrix import LIFNeuron, NeuromorphicMatrixEngine
 from .biological_evolution import AgentGenome, BiologicalEvolutionEngine
 from .planetary_federation import PlanetaryMeshNode, PlanetaryMeshOrchestrator
+from .sovereign_reflection import SovereignReflectionEngine
+from .universal_invariant_prover import UniversalInvariantProver, SafetyInvariant
+from .multidimensional_world_model import MultiDimensionalWorldModel
 from .orchestrator import Orchestrator, Task, TaskStep, TaskStatus, StepStatus
 
 # Test Engine
@@ -169,6 +172,11 @@ __all__ = [
     "BiologicalEvolutionEngine",
     "PlanetaryMeshNode",
     "PlanetaryMeshOrchestrator",
+    # Horizon 7.0 Sovereign Reflection, Universal Prover & World Model
+    "SovereignReflectionEngine",
+    "UniversalInvariantProver",
+    "SafetyInvariant",
+    "MultiDimensionalWorldModel",
     # REST API
     "create_app",
     "AIOSAPI",
