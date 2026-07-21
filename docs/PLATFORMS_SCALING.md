@@ -474,16 +474,52 @@ fingerprint), `HintVideoParser` по video-маркерам калибровки
 счётчик duration-меток (`0:32`) — Reels/Stories-форматы без цены не
 теряются при калибровке платформ с непродуктовой лентой.
 
+## ReelsCollector: scroll-цикл видео-ленты в storage
+
+`platforms/reelscout.py` — generic коллектор Reels/клипов любой
+платформы каталога. Цикл «дамп → `HintVideoParser` → свайп» собирает
+уникальные видео-карточки до лимита (`max_cards`/`max_swipes`) или пока
+`stop_after_empty` дампов подряд не дадут новых (честный конец ленты).
+Парсер резолвится из `content_categories.video_markers` дескриптора
+(дефолт reel/video/clips), опциональный `driver(adb)` открывает
+видео-вкладку — его отказ честный `RuntimeError`.
+
+Ключевое: видео-карточки **не** попадают в таблицу объявлений — для
+дедупликации между циклами в схему storage добавлены generic receipts
+`olx_seen` (`check_and_record(fingerprint, kind="video")`,
+`seen_count`): второй цикл по той же ленте даёт 0 нового, статистика
+объявлений не загрязняется. CLI: `aios instagram reels [--db --max
+--serial --directory]`.
+
+## Instagram autopilot: полный цикл одной командой
+
+`aios instagram autopilot` собирает весь интервальный цикл профиля в
+один JSON-отчёт (`steps`): сбор карточек → Reels → Direct outbox-flush
+→ опциональная guarded-публикация (`--post-image/--post-text`,
+DRY-RUN без `--confirm`; login-wall pre-drive по `--login`). Guarded-
+философия сохранена полностью: Direct уходит только из одобренной
+очереди, публикация — только с явным подтверждением.
+
+`aios cron-plan` для instagram-профилей генерирует строку
+`instagram autopilot --login --db data/instagram-<profile>.sqlite`
+(прочие платформы — generic `platforms autowatch`, OLX — родной
+`olx autowatch`, как раньше).
+
+## Multi-account: e2e через waitlist
+
+Сквозной тест `test_multi_account_instagram_waitlist_e2e`
+(`tests/test_reels_autopilot.py`) фиксирует контракт масштабирования
+аккаунтов на одну ноду: два instagram-профиля в очереди
+FleetScheduler'а за одним устройством — при занятости честный
+`skipped-busy` обоим, после release оба отрабатывают последовательно
+на одном serial, `fleet:last_run:<platform>:<profile>` пишется
+раздельно, повторный запуск — строго по истечении `every_s`.
+
 ## Дальше (дорожная карта к 10000+)
 
-Архитектурный цикл подключения платформы собран полностью: APK →
-scaffold → калибровка (карточки/детали/мессенджер/категории) →
-codegen → verify → autowatch. Возможные шаги дальше:
-
-1. **Own-posts для Instagram**: публикация/редактирование постов
-   (guarded, DRY-RUN) по образцу olx own_ads/promotion.
-2. **Video-first парсеры карточек**: Reels-карточки (без цены) —
-   отдельный extractor по content_categories (views/likes вместо цены).
-3. **FleetScheduler**: балансировка autowatch-циклов платформ по пулу
-   устройств (LeaseWindow), алёртинг drift в webhook наряду с
-   autowatch-уведомлениями.
+1. **Reels driver вкладки**: для Instagram — тап по Reels-табу перед
+   скролл-циклом (калибруемый, как login driver).
+2. **Видео-алёрты**: WebhookNotifier на новые видео-карточки цикла
+   (по аналогии с алёртами объявлений autowatch).
+3. **Multi-host autopilot**: cron-plan/ShardGateway маршрутизация
+   autopilot-строк по шардам профилей.

@@ -735,6 +735,92 @@ def _run_instagram(args) -> bool:
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return True
 
+        if cmd == "reels":
+            from aios_core.modules.instagram import InstagramStorage
+            from aios_core.modules.olx.adb import ADBController
+            from aios_core.platforms import get_platform
+            from aios_core.platforms.reelscout import ReelsCollector
+
+            adb = ADBController(package="com.instagram.android",
+                                serial=args.serial)
+            collector = ReelsCollector(
+                get_platform("instagram"),
+                adb=adb, directory=args.directory,
+            )
+            storage = InstagramStorage(args.db)
+            try:
+                written, cards = collector.collect_to_storage(
+                    storage, max_cards=args.max_cards,
+                )
+            finally:
+                storage.close()
+            print(json.dumps(
+                {"new": written, "seen": len(cards),
+                 "cards": [c.to_dict() for c in cards]},
+                ensure_ascii=False, indent=2,
+            ))
+            return True
+
+        if cmd == "autopilot":
+            from aios_core.modules.instagram import (
+                InstagramCollector,
+                InstagramLoginDriver,
+                InstagramMessenger,
+                InstagramStorage,
+                PostComposer,
+            )
+            from aios_core.modules.olx.adb import ADBController
+            from aios_core.platforms import get_platform
+            from aios_core.platforms.pointdrive import PointDrive
+            from aios_core.platforms.reelscout import ReelsCollector
+
+            adb = ADBController(package="com.instagram.android",
+                                serial=args.serial)
+            driver = None
+            if args.login:
+                login = InstagramLoginDriver(adb=adb, search_drive=PointDrive(adb))
+                driver = login.drive
+            storage = InstagramStorage(args.db)
+            steps: dict = {}
+            try:
+                cards_collector = InstagramCollector(
+                    adb=adb, driver=driver, directory=args.directory,
+                )
+                steps["collect"] = cards_collector.collect_to_storage(
+                    storage, query=args.query, max_cards=args.max_cards,
+                )
+                reels = ReelsCollector(
+                    get_platform("instagram"),
+                    adb=adb, directory=args.directory,
+                )
+                written_reels, reels_cards = reels.collect_to_storage(
+                    storage, max_cards=args.reels_max,
+                )
+                steps["reels"] = {
+                    "new": written_reels, "seen": len(reels_cards),
+                    "cards": [c.to_dict() for c in reels_cards],
+                }
+                messenger = InstagramMessenger(
+                    adb=adb, storage=storage, directory=args.directory,
+                )
+                steps["dm_flush"] = [
+                    {"id": r["id"], "status": r["status"]}
+                    for r in messenger.flush_outbox()
+                ]
+            finally:
+                storage.close()
+            if args.post_image:
+                steps["post"] = PostComposer(adb=adb).publish(
+                    args.post_image, args.post_text, confirm=args.confirm,
+                )
+            report = {
+                "query": args.query,
+                "login_drive": args.login,
+                "steps": steps,
+            }
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return True
+
         if cmd == "collect":
             from aios_core.modules.instagram import (
                 InstagramCollector,
@@ -1152,6 +1238,15 @@ def _run_cron_plan(args) -> bool:
                 f"python3 aios_cli.py olx autowatch --profile {profile.name}{webhook} "
                 f">> {root}/data/autowatch-{profile.key.replace(':', '_')}.log 2>&1"
             )
+        elif profile.platform == "instagram":
+            # Полный цикл под профилем: collect + Reels + Direct-flush
+            # (login-drive pre-drive, публикация — отдельной guarded-задачей):
+            lines.append(
+                f"*/{interval} * * * * cd {root} && "
+                f"python3 aios_cli.py instagram autopilot --login "
+                f"--db {root}/data/instagram-{profile.name}.sqlite "
+                f">> {root}/data/autopilot-{profile.key.replace(':', '_')}.log 2>&1"
+            )
         else:
             # Generic AutoWatch engine (descriptor+profile driven):
             lines.append(
@@ -1380,6 +1475,31 @@ def main(argv=None):
     ig_post.add_argument("--text", required=True, help="Caption")
     ig_post.add_argument("--serial", default=None)
     ig_post.add_argument("--confirm", action="store_true",
+                         help="Actually execute the publish flow")
+
+    ig_reels = ig_sub.add_parser(
+        "reels", help="Reels scroll-cycle collector into InstagramStorage")
+    ig_reels.add_argument("--db", default="data/instagram.sqlite")
+    ig_reels.add_argument("--max", type=int, default=100, dest="max_cards")
+    ig_reels.add_argument("--serial", default=None, help="ADB serial")
+    ig_reels.add_argument("--directory", default="platforms")
+
+    ig_auto = ig_sub.add_parser(
+        "autopilot",
+        help="Full cycle under one profile: collect → reels → Direct-flush "
+             "→ guarded post")
+    ig_auto.add_argument("--db", default="data/instagram.sqlite")
+    ig_auto.add_argument("--query", default=None)
+    ig_auto.add_argument("--max", type=int, default=100, dest="max_cards")
+    ig_auto.add_argument("--reels-max", type=int, default=50, dest="reels_max")
+    ig_auto.add_argument("--serial", default=None, help="ADB serial")
+    ig_auto.add_argument("--login", action="store_true",
+                         help="Pre-drive with the login wall driver")
+    ig_auto.add_argument("--directory", default="platforms")
+    ig_auto.add_argument("--post-image", default=None,
+                         help="Optional image for the guarded post step")
+    ig_auto.add_argument("--post-text", default="", help="Caption")
+    ig_auto.add_argument("--confirm", action="store_true",
                          help="Actually execute the publish flow")
 
     # Platform profiles (accounts)

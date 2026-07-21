@@ -1,0 +1,164 @@
+"""Scroll-цикл видео-ленты (Reels / короткие видео) любой платформы.
+
+``ReelsCollector`` открывает видео-ленту (опциональный driver), затем в
+цикле «дамп → парсинг видео-карточек → свайп» собирает уникальные карточки
+до достижения лимита или пока свайпы перестают давать новые карточки.
+``collect_to_storage`` пишет квитанции в storage (category="video") —
+дедупликация между циклами без загрязнения таблицы объявлений.
+"""
+
+from __future__ import annotations
+
+import tempfile
+from pathlib import Path
+from typing import Callable, List, Optional, Tuple
+
+from aios_core.modules.olx.adb import ADBController
+from aios_core.platforms.descriptor import PlatformDescriptor
+from aios_core.platforms.runtime_hints import load_hints_section
+from aios_core.platforms.videocards import HintVideoParser, VideoCard
+
+
+class ReelsCollector:
+    """Generic коллектор видео-ленты (reels-коллектор).
+
+    Args:
+        platform: дескриптор платформы.
+        adb: контроллер устройства (по умолчанию новый).
+        store: необязательный реестр профилей (для будущих квот); квитанции
+            пишутся только в переданный ``storage``.
+        directory: каталог YAML-дескрипторов (по умолчанию "platforms").
+        parser: явный парсер видео-карточек; иначе из video_markers hints.
+        driver: callable(adb)->bool для открытия видео-вкладки (необяз.).
+        screen_width/screen_height: геометрия экрана для свайпов.
+    """
+
+    def __init__(
+        self,
+        platform: PlatformDescriptor,
+        adb: Optional[ADBController] = None,
+        store: Optional[ProfileStore] = None,
+        directory: str = "platforms",
+        parser: Optional[HintVideoParser] = None,
+        driver: Optional[Callable[[ADBController], bool]] = None,
+        screen_width: int = 1080,
+        screen_height: int = 2400,
+    ) -> None:
+        self.platform = platform
+        self.adb = adb or ADBController()
+        self.store = store  # опционально; квитанции пишутся в storage
+        self.directory = directory
+        self._parser = parser
+        self.driver = driver
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+
+    def resolve_parser(self) -> HintVideoParser:
+        """Парсер видео из ``content_categories.video_markers`` дескриптора.
+
+        Если секция ещё не откалибрована — дефолтные маркеры
+        reel/video/clips (HintVideoParser). Если дескриптора нет вовсе —
+        ValueError с рецептом калибровки.
+        """
+        if self._parser is not None:
+            return self._parser
+        try:
+            categories = load_hints_section(
+                self.platform.name, "content_categories", self.directory,
+            )
+        except ValueError:
+            raise ValueError(
+                f"дескриптор «{self.platform.name}» не найден в «{self.directory}» — "
+                f"выполните `aios platforms bootup/calibrate --write` "
+                f"или передайте parser=..."
+            )
+        self._parser = HintVideoParser(categories.get("video_markers") or None)
+        return self._parser
+
+    def collect(
+        self,
+        max_cards: int = 200,
+        max_swipes: Optional[int] = None,
+        stop_after_empty: int = 1,
+        query: Optional[str] = None,
+    ) -> List[VideoCard]:
+        """Скролл-цикл по видео-ленте: дамп → новые карточки → свайп.
+
+        Args:
+            max_cards: максимум уникальных карточек за цикл.
+            max_swipes: максимум свайпов (по умолчанию = max_cards).
+            stop_after_empty: стоп после N подряд дампов без новых карточек.
+            query: необязательная метка запроса для карточек.
+
+        Returns:
+            Список уникальных видео-карточек в порядке появления.
+        """
+        parser = self.resolve_parser()
+        if self.driver is not None and not self.driver(self.adb):
+            raise RuntimeError(
+                f"driver не смог открыть видео-ленту «{self.platform.name}»"
+            )
+        swipe_limit = max_swipes if max_swipes is not None else max_cards
+        cards: List[VideoCard] = []
+        seen = set()
+        swipes = 0
+        empties = 0
+        with tempfile.TemporaryDirectory(prefix="aios_reels_") as tmp_dir:
+            dump_path = Path(tmp_dir) / "screen.xml"
+            while len(cards) < max_cards:
+                result = self.adb.dump_ui(str(dump_path))
+                if isinstance(result, dict) and result.get("code") not in (None, 0):
+                    break
+                if not dump_path.exists():
+                    break
+                fresh: List[VideoCard] = []
+                for card in parser.parse(dump_path, query=query):
+                    if card.fingerprint and card.fingerprint not in seen:
+                        seen.add(card.fingerprint)
+                        fresh.append(card)
+                        cards.append(card)
+                        if len(cards) >= max_cards:
+                            break
+                dump_path.unlink(missing_ok=True)
+                empties = 0 if fresh else empties + 1
+                if (
+                    empties >= stop_after_empty
+                    or len(cards) >= max_cards
+                    or swipes >= swipe_limit
+                ):
+                    break
+                self._swipe_feed()
+                swipes += 1
+        return cards
+
+    def _swipe_feed(self) -> None:
+        """Свайп вверх по центру ленты, чтобы подгрузить новые карточки."""
+        x = self.screen_width // 2
+        y_from = int(self.screen_height * 0.8)
+        y_to = int(self.screen_height * 0.2)
+        self.adb.swipe(x, y_from, x, y_to, duration=400)
+
+    def collect_to_storage(
+        self,
+        storage,
+        max_cards: int = 200,
+        max_swipes: Optional[int] = None,
+        stop_after_empty: int = 1,
+        query: Optional[str] = None,
+        category: str = "video",
+    ) -> Tuple[int, List[VideoCard]]:
+        """Цикл + квитанции в storage (дедуп между циклами).
+
+        Returns:
+            (число новых карточек, все карточки цикла).
+        """
+        cards = self.collect(
+            max_cards=max_cards, max_swipes=max_swipes,
+            stop_after_empty=stop_after_empty, query=query,
+        )
+        written = sum(
+            1
+            for card in cards
+            if storage.check_and_record(card.fingerprint, kind=category, ref=query)
+        )
+        return written, cards

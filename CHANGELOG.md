@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.0.0-alpha.16] - 2026-07-21
+
+### Added
+- **ReelsCollector (`platforms/reelscout.py`)**: generic scroll-цикл
+  видео-ленты (Reels/клипы) любой платформы — дамп → `HintVideoParser`
+  → свайп до лимита или честного конца ленты (`stop_after_empty`);
+  парсер из `content_categories.video_markers` дескриптора,
+  опциональный driver вкладки; CLI `aios instagram reels`.
+- **Generic receipts в storage**: таблица `olx_seen`,
+  `check_and_record(fingerprint, kind)` / `seen_count(kind)` — дедуп
+  видео-карточек и событий между циклами без загрязнения таблицы
+  объявлений (миграция бесшовная, CREATE IF NOT EXISTS).
+- **`aios instagram autopilot`**: полный цикл профиля одной командой —
+  collect → Reels → Direct outbox-flush → опциональный guarded-пост
+  (`--post-image/--post-text`, DRY-RUN без `--confirm`; `--login`
+  для pre-drive через login-стену). Cron-plan генерирует для
+  instagram-профилей строки `instagram autopilot --login`.
+- **Multi-account e2e**: сквозной тест двух Instagram-профилей через
+  waitlist на одном устройстве (skipped-busy → последовательный
+  запуск → раздельный last_run на профиль).
+
 ## [9.0.0-alpha.15] - 2026-07-21
 
 ### Added

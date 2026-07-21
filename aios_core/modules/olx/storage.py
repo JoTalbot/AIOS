@@ -127,6 +127,17 @@ CREATE TABLE IF NOT EXISTS olx_profile_kv (
     value TEXT,
     updated_at TEXT NOT NULL
 );
+
+-- Generic receipts: квитанции «видели fingerprint» для сущностей, которые
+-- не являются объявлениями (video-карточки Reels, события автопилота) —
+-- дедуп между циклами без загрязнения таблицы объявлений.
+CREATE TABLE IF NOT EXISTS olx_seen (
+    fingerprint TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'ad',
+    ref TEXT,
+    first_seen_at TEXT NOT NULL,
+    PRIMARY KEY (fingerprint, kind)
+);
 """
 
 _V1_MIGRATION_COLUMNS = {
@@ -388,6 +399,40 @@ class OLXStorage:
         return [row[0] for row in rows]
 
     # ---- Outbox (guarded messenger replies) ----
+
+    def check_and_record(
+        self,
+        fingerprint: str,
+        kind: str = "ad",
+        ref: Optional[str] = None,
+        seen_at: Optional[str] = None,
+    ) -> bool:
+        """Generic receipt: записать «видели fingerprint», вернуть True если новый.
+
+        Дедуп для сущностей вне таблицы объявлений (video-карточки,
+        события). Повторный вызов с тем же (fingerprint, kind) → False.
+        """
+        if not fingerprint:
+            return False
+        now = seen_at or datetime.now(timezone.utc).isoformat()
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                "INSERT OR IGNORE INTO olx_seen (fingerprint, kind, ref, first_seen_at) "
+                "VALUES (?, ?, ?, ?)",
+                (fingerprint, kind or "ad", ref, now),
+            )
+            return cursor.rowcount > 0
+
+    def seen_count(self, kind: Optional[str] = None) -> int:
+        """Число записанных квитанций (опционально по kind)."""
+        sql = "SELECT COUNT(*) FROM olx_seen"
+        params: list = []
+        if kind is not None:
+            sql += " WHERE kind = ?"
+            params.append(kind)
+        with self._lock:
+            row = self._conn.execute(sql, params).fetchone()
+        return int(row[0])
 
     def enqueue_outbox(
         self, chat_key: str, text: str, interlocutor: Optional[str] = None
