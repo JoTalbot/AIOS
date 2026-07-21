@@ -1,0 +1,36 @@
+"""Embodied AI and Robotics Interface for AIOS"""
+
+from typing import Dict, List
+
+
+class RobotInterface:
+    """Interface to physical or simulated robots."""
+
+    def __init__(self, robot_id: str):
+        self.robot_id = robot_id
+        self.sensors: Dict = {}
+        self.actuators: Dict = {}
+
+    def read_sensor(self, sensor: str) -> Dict:
+        return {"type": sensor, "value": 0.0}
+
+    def actuate(self, actuator: str, value: float):
+        pass
+
+    def stats(self) -> dict:
+        return {"robot": self.robot_id}
+
+
+class EmbodiedAI:
+    """Embodied intelligence system."""
+
+    def __init__(self):
+        self.robots: Dict[str, RobotInterface] = {}
+
+    def register_robot(self, robot_id: str) -> RobotInterface:
+        robot = RobotInterface(robot_id)
+        self.robots[robot_id] = robot
+        return robot
+
+    def stats(self) -> dict:
+        return {"robots": len(self.robots)}
