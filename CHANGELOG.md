@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [9.0.0-alpha.13] - 2026-07-21
 
 ### Added
 - **Runtime-парсеры из hints (`platforms/runtime_hints.py`)**: detail и
