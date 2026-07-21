@@ -3,7 +3,7 @@ replicaCount: 2
 image:
   repository: aios
   pullPolicy: IfNotPresent
-  tag: "4.1.0-alpha"
+  tag: "4.2.0-alpha"
 
 service:
   type: ClusterIP
@@ -27,3 +27,4 @@ autoscaling:
   minReplicas: 2
   maxReplicas: 10
   targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
