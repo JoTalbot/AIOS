@@ -312,6 +312,7 @@ tests/test_mcp_gateway.py
 tests/test_ml_planner_scorer.py
 tests/test_ml_registry.py
 tests/test_mobile_apk_tester.py
+tests/test_module_generic.py
 tests/test_molecular_dna_runtime.py
 tests/test_monitoring.py
 tests/test_multi_agent.py
