@@ -40,6 +40,7 @@ from .ml_planner_scorer import MLPlannerScorer
 from .multi_agent_orchestrator import MultiAgentOrchestrator
 from .constitution_evolver import ConstitutionEvolver
 from .marketplace import CapabilityMarketplace
+from .websocket import ws_manager
 
 
 class TaskStatus(str, Enum):
@@ -183,6 +184,9 @@ class Orchestrator:
         )
         self._tasks[task.id] = task
         self.events.emit("task_created", "orchestrator", {"task_id": task.id, "name": task.name, "agent_id": task.agent_id})
+        # Real-time WebSocket notification
+        import asyncio
+        asyncio.create_task(ws_manager.send_event("task_created", {"task_id": task.id, "name": task.name}))
         return task
 
     def add_step(

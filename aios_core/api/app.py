@@ -192,6 +192,9 @@ class AIOSAPI:
 
             # JSON-RPC bridge
             Route("/rpc", self._rpc, methods=["POST"]),
+
+            # WebSocket (real-time)
+            Route("/ws", self._websocket_endpoint),
         ]
 
         app = Starlette(
@@ -577,6 +580,20 @@ class AIOSAPI:
 
     async def _audit_stats(self, request: Request) -> JSONResponse:
         return JSONResponse(self.audit.stats())
+
+    # ---- WebSocket ----
+
+    async def _websocket_endpoint(self, request: Request):
+        from starlette.websockets import WebSocket
+        from aios_core.websocket import ws_manager
+
+        websocket = WebSocket(scope=request.scope, receive=request.receive, send=request.send)
+        await ws_manager.connect(websocket)
+        try:
+            while True:
+                await websocket.receive_text()
+        except Exception:
+            ws_manager.disconnect(websocket)
 
     # ---- JSON-RPC Bridge ----
 
