@@ -44,7 +44,13 @@ from .autowatch import AutoWatch
 from .bootstrap import OLXBootstrap
 from .card_parser import CardParser
 from .collector import OLXCollector
-from .competitive import CompetitiveWatch, derive_query, link_score, title_similarity
+from .competitive import (
+    CompetitiveWatch,
+    derive_query,
+    link_score,
+    parse_seller_ads,
+    title_similarity,
+)
 from .detail import AdDetail, AdDetailParser
 from .messenger import (
     ChatListParser,
@@ -130,5 +136,6 @@ __all__ = [
     "link_score",
     "notify_price_drops",
     "notify_stagnant",
+    "parse_seller_ads",
     "title_similarity",
 ]

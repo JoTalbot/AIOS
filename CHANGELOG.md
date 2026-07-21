@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Competitor portfolio crawl (`competitive.py`)**: `parse_seller_ads()`
+  parses the "other ads by this seller" block from a detail-page dump
+  (guarded by section-marker detection + viewed-ad exclusion by URL/ad-id);
+  `CompetitiveWatch.observe_seller_ads()` stores the whole portfolio as
+  market observations and links only ads similar to a chosen own listing
+  (idempotent — re-scans create no duplicates).
+- **REST**: `POST /olx/competitive/seller-scan` (`fingerprint`, `xml`,
+  optional `viewed_url`/`viewed_ad_id`).
+- **CLI**: `aios olx competitive-seller <dump.xml> --fingerprint <fp>
+  [--viewed-url ...] [--viewed-ad-id ...]`.
+- 6 new tests (parser guards, storage linking, idempotency, REST, CLI).
 - **OLX profile & settings management (`profile.py`)**: profile/settings
   screen parsers (name/phone/email/city/about, toggle states), kv mirror in
   storage (`olx_profile_kv`), guarded `ProfileEditor` — edits staged as

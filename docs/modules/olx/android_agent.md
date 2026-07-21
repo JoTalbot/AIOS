@@ -269,3 +269,21 @@ platform-tools → ADBKeyBoard → SDK → образ Android 34 → headless AV
 `aios-olx` → налаштування пристрою); `--execute` — виконує. Обгортка:
 `tools/olx_bootstrap.sh`. Перевірка готовності: `aios olx doctor` або
 `GET /olx/doctor` — чекліст із підказками виправлення.
+
+## Обхід портфеля конкурента (2026-07-21)
+
+На сторінці оголошення OLX показує блок «Інші оголошення користувача» —
+усього портфеля продавця. `parse_seller_ads()` розбирає цей блок з
+UI-дампа (захисти: наявність заголовка блока + виключення переглянутого
+оголошення за URL/ad-id), а `CompetitiveWatch.observe_seller_ads()`:
+
+1. зберігає всі картки конкурента як ринкові спостереження (історія цін
+   працює і для них);
+2. зв'язує з моїм оголошенням лише достатньо схожі (поріг link_score) —
+   «сусідній» товар того ж продавця не змішується з прямими конкурентами;
+3. повторне сканування тієї самої сторінки не створює дублікатів.
+
+- REST: `POST /api/v1/modules/olx/competitive/seller-scan`
+  `{fingerprint, xml, viewed_url?, viewed_ad_id?}`.
+- CLI: `aios olx competitive-seller dump.xml --fingerprint <fp>
+  [--viewed-ad-id z7kLq]`.

@@ -6,6 +6,7 @@ AIOS Command Line Interface v4.1
 import argparse
 import asyncio
 import json
+from pathlib import Path
 from aios_core import Orchestrator, Database
 from aios_core.dashboard import create_dashboard
 import uvicorn
@@ -127,6 +128,15 @@ def _add_olx_parsers(subparsers) -> None:
     competitive = olx_sub.add_parser("competitive", help="Competitor surveillance by own ads")
     competitive.add_argument("--fingerprint", default=None, help="Report for one own ad")
     with_db(competitive)
+    seller = olx_sub.add_parser(
+        "competitive-seller",
+        help="Crawl a competitor portfolio from a detail-page UI dump (XML file)",
+    )
+    seller.add_argument("xml", help="Path to the dumped detail-page XML")
+    seller.add_argument("--fingerprint", required=True, help="Own ad fingerprint to link against")
+    seller.add_argument("--viewed-url", default=None, help="URL of the viewed competitor ad (excluded)")
+    seller.add_argument("--viewed-ad-id", default=None, help="Ad-id of the viewed competitor ad (excluded)")
+    with_db(seller)
 
     advisor = olx_sub.add_parser("advisor", help="Portfolio advice + new listings")
     advisor.add_argument("--new", action="store_true", help="Include new-listing suggestions")
@@ -393,6 +403,27 @@ def _run_olx(args) -> bool:
                 storage, args.field, args.value, confirm=args.confirm
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
+        return True
+
+    if args.olx_command == "competitive-seller":
+        from aios_core.modules.olx import CompetitiveWatch, OwnAd
+        xml_text = Path(args.xml).read_text(encoding="utf-8")
+        with OLXStorage(args.db) as storage:
+            rows = [r for r in storage.own_ads() if r["fingerprint"] == args.fingerprint]
+            if not rows:
+                print(json.dumps({"error": f"own ad '{args.fingerprint}' not found"}))
+                return True
+            row = rows[0]
+            own = OwnAd(
+                title=row["title"], price=row["price"], currency=row["currency"],
+                views=row["last_views"] or 0, url=row["url"],
+                ad_id=row["ad_id"], status=row["status"],
+            )
+            result = CompetitiveWatch(storage).observe_seller_ads(
+                xml_text, own,
+                viewed_url=args.viewed_url, viewed_ad_id=args.viewed_ad_id,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
         return True
 
     if args.olx_command == "competitive":
