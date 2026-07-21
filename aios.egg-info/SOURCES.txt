@@ -243,6 +243,7 @@ aios_core/modules/olx/analytics.py
 aios_core/modules/olx/card_parser.py
 aios_core/modules/olx/collector.py
 aios_core/modules/olx/models.py
+aios_core/modules/olx/scheduler.py
 aios_core/modules/olx/storage.py
 aios_core/modules/olx/text_utils.py
 aios_core/modules/olx/ui_parser.py
@@ -296,6 +297,7 @@ tests/test_multi_agent.py
 tests/test_multidimensional_world_model.py
 tests/test_neuromorphic_matrix.py
 tests/test_olx_agent.py
+tests/test_olx_api.py
 tests/test_phase1_persistence.py
 tests/test_phase3_orchestrator.py
 tests/test_phase4_test_engine.py
