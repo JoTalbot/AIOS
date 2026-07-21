@@ -605,6 +605,34 @@ class TestOLXCompetitiveAndAdvisor:
         missing = await client.get("/api/v1/modules/olx/competitive")
         assert missing.status_code == 400
 
+    async def test_competitive_seller_scan(self, client, deps):
+        from tests.test_olx_strategy import SELLER_XML
+
+        _app, storage, _adb = deps
+        await client.post("/api/v1/modules/olx/own/snapshot", json={"ads": OWN_SNAPSHOT})
+        fp = storage.own_ads()[0]["fingerprint"]
+
+        bad = await client.post(
+            "/api/v1/modules/olx/competitive/seller-scan", json={"fingerprint": fp}
+        )
+        assert bad.status_code == 400
+
+        unknown = await client.post(
+            "/api/v1/modules/olx/competitive/seller-scan",
+            json={"fingerprint": "nope", "xml": SELLER_XML},
+        )
+        assert unknown.status_code == 404
+
+        ok = await client.post(
+            "/api/v1/modules/olx/competitive/seller-scan",
+            json={"fingerprint": fp, "xml": SELLER_XML, "viewed_ad_id": "z7kLq"},
+        )
+        assert ok.status_code == 200
+        data = ok.json()
+        assert data["seller_ads_found"] == 2
+        assert data["new_market_ads"] == 2
+        assert data["linked_competitors"] >= 1
+
     async def test_advisor_actions_and_new_listings(self, client, deps):
         actions = await client.get("/api/v1/modules/olx/advisor")
         assert actions.status_code == 200

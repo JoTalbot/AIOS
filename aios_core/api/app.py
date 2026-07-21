@@ -209,6 +209,7 @@ class AIOSAPI:
             Route("/api/v1/modules/olx/profile/edit", self._olx_profile_edit, methods=["POST"]),
             Route("/api/v1/modules/olx/competitive", self._olx_competitive, methods=["GET"]),
             Route("/api/v1/modules/olx/competitive/refresh", self._olx_competitive_refresh, methods=["POST"]),
+            Route("/api/v1/modules/olx/competitive/seller-scan", self._olx_competitive_seller_scan, methods=["POST"]),
             Route("/api/v1/modules/olx/advisor", self._olx_advisor, methods=["GET"]),
 
             # Constitutional evaluation
@@ -846,6 +847,44 @@ class AIOSAPI:
                 for row in self.olx_storage.own_ads(status="active")
             ]
             result = watch.refresh(own_list)
+            return JSONResponse(result)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_competitive_seller_scan(self, request: Request) -> JSONResponse:
+        """Crawl a competitor's portfolio from a detail-page UI dump.
+
+        Body: ``{"fingerprint": <own ad fp>, "xml": "<hierarchy ...>"}``.
+        """
+        try:
+            from aios_core.modules.olx import CompetitiveWatch, OwnAd
+            body = await request.json()
+            fingerprint = body.get("fingerprint")
+            xml = body.get("xml")
+            if not fingerprint or not xml:
+                return JSONResponse(
+                    {"error": "body must contain 'fingerprint' and 'xml'"},
+                    status_code=400,
+                )
+            rows = [
+                row for row in self.olx_storage.own_ads()
+                if row["fingerprint"] == fingerprint
+            ]
+            if not rows:
+                return JSONResponse(
+                    {"error": f"own ad '{fingerprint}' not found"}, status_code=404
+                )
+            row = rows[0]
+            own = OwnAd(
+                title=row["title"], price=row["price"], currency=row["currency"],
+                views=row["last_views"] or 0, url=row["url"],
+                ad_id=row["ad_id"], status=row["status"],
+            )
+            result = CompetitiveWatch(self.olx_storage).observe_seller_ads(
+                xml, own,
+                viewed_url=body.get("viewed_url"),
+                viewed_ad_id=body.get("viewed_ad_id"),
+            )
             return JSONResponse(result)
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)

@@ -255,3 +255,147 @@ def test_doctor_ready_in_emulator_and_hints_when_bare():
     adb_check = next(c for c in bare["checks"] if c["name"] == "adb_installed")
     assert adb_check["ok"] is False
     assert "platform-tools" in adb_check["hint"]
+
+
+# ---------------------------------------------------------------------------
+# Seller portfolio crawl (detail page "other ads by this seller")
+# ---------------------------------------------------------------------------
+
+from aios_core.modules.olx import parse_seller_ads  # noqa: E402
+
+SELLER_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node text="Лобове скло BMW X3 G01" resource-id="" bounds="[0,0][1080,120]"/>
+  <node text="7 000 грн" resource-id="" bounds="[0,120][400,180]"/>
+  <node text="Інші оголошення користувача" resource-id="" bounds="[0,900][800,960]"/>
+  <node text="" resource-id="ua.slando:id/adListing_adGridCard" bounds="[0,980][540,1780]">
+    <node text="" resource-id="ua.slando:id/ad_grid_card_image"
+          content-desc="https://www.olx.ua/d/uk/obyavlenie/bmw-x3-IDz7kLq.html"
+          bounds="[0,980][540,1440]"/>
+    <node text="Лобове скло BMW X3 G01" resource-id="" bounds="[16,1450][520,1520]"/>
+    <node text="7 000 грн" resource-id="" bounds="[16,1530][300,1580]"/>
+    <node text="Львів" resource-id="" bounds="[16,1590][300,1640]"/>
+  </node>
+  <node text="" resource-id="ua.slando:id/adListing_adGridCard" bounds="[540,980][1080,1780]">
+    <node text="" resource-id="ua.slando:id/ad_grid_card_image"
+          content-desc="https://www.olx.ua/d/uk/obyavlenie/bmw-x5-g05-lobove-sklo-IDp4rTs.html"
+          bounds="[540,980][1080,1440]"/>
+    <node text="Лобове скло BMW X5 G05 нове" resource-id="" bounds="[560,1450][1060,1520]"/>
+    <node text="6 500 грн" resource-id="" bounds="[560,1530][760,1580]"/>
+    <node text="Львів" resource-id="" bounds="[560,1590][760,1640]"/>
+  </node>
+  <node text="" resource-id="ua.slando:id/adListing_adGridCard" bounds="[0,1800][540,2600]">
+    <node text="" resource-id="ua.slando:id/ad_grid_card_image"
+          content-desc="https://www.olx.ua/d/uk/obyavlenie/dzerkalo-bmw-x3-IDq8wYu.html"
+          bounds="[0,1800][540,2260]"/>
+    <node text="Дзеркало BMW X3 G01 ліве" resource-id="" bounds="[16,2270][520,2340]"/>
+    <node text="Договірна" resource-id="" bounds="[16,2350][300,2400]"/>
+    <node text="Львів" resource-id="" bounds="[16,2410][300,2460]"/>
+  </node>
+</hierarchy>
+"""
+
+NO_SELLER_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation="0">
+  <node text="Лобове скло BMW X3 G01" resource-id="" bounds="[0,0][1080,120]"/>
+  <node text="" resource-id="ua.slando:id/adListing_adGridCard" bounds="[0,980][540,1780]">
+    <node text="Рекламна карточка без блока продавця" resource-id="" bounds="[16,1450][520,1520]"/>
+    <node text="99 грн" resource-id="" bounds="[16,1530][300,1580]"/>
+  </node>
+</hierarchy>
+"""
+
+
+def test_parse_seller_ads_requires_section_and_excludes_viewed_ad():
+    cards = parse_seller_ads(
+        SELLER_XML,
+        query="лобове скло bmw",
+        exclude_ad_ids=("z7kLq",),
+    )
+    assert len(cards) == 2
+    urls = {c.url for c in cards}
+    assert "https://www.olx.ua/d/uk/obyavlenie/bmw-x5-g05-lobove-sklo-IDp4rTs.html" in urls
+    assert {c.query for c in cards} == {"лобове скло bmw"}
+    # The viewed ad itself was excluded by ad-id.
+    assert all("IDz7kLq" not in (c.url or "") for c in cards)
+    # Without the seller-section heading nothing is parsed.
+    assert parse_seller_ads(NO_SELLER_XML) == []
+
+
+def test_parse_seller_ads_exclude_by_url():
+    cards = parse_seller_ads(
+        SELLER_XML,
+        exclude_urls=("https://www.olx.ua/d/uk/obyavlenie/bmw-x3-IDz7kLq.html",),
+    )
+    assert len(cards) == 2
+
+
+def test_observe_seller_ads_stores_portfolio_and_links_similar():
+    with OLXStorage(":memory:") as storage:
+        my = OwnAd(
+            title="Лобове скло BMW X3 G01",
+            price=7000.0, currency="UAH",
+            url="https://www.olx.ua/d/uk/obyavlenie/moe-obyavlenie-IDmyOwn1.html",
+            ad_id="myOwn1",
+        )
+        watch = CompetitiveWatch(storage)
+        result = watch.observe_seller_ads(
+            SELLER_XML, my, seen_at=NOW.isoformat(), viewed_ad_id="z7kLq"
+        )
+        assert result["seller_ads_found"] == 2
+        assert result["seller_ads_stored"] == 2
+        assert result["new_market_ads"] == 2
+        # Only the windshield ad is similar to my listing; the mirror is not.
+        assert result["linked_competitors"] == 1
+        assert result["new_links"] == 1
+        assert result["query_hint"] == derive_query(my.title)
+        assert len(storage.competitor_links(my.fingerprint)) == 1
+        assert len(storage.get_ads(limit=10)) == 2
+
+        # Re-scanning the same page creates no duplicates.
+        again = watch.observe_seller_ads(
+            SELLER_XML, my, seen_at=NOW.isoformat(), viewed_ad_id="z7kLq"
+        )
+        assert again["new_market_ads"] == 0
+        assert again["new_links"] == 0
+        assert len(storage.competitor_links(my.fingerprint)) == 1
+
+
+def test_observe_seller_ads_without_section_is_noop():
+    with OLXStorage(":memory:") as storage:
+        my = OwnAd(title="Лобове скло BMW X3 G01", price=7000.0, ad_id="myOwn2")
+        result = CompetitiveWatch(storage).observe_seller_ads(NO_SELLER_XML, my)
+        assert result["seller_ads_found"] == 0
+        assert result["linked_competitors"] == 0
+        assert storage.get_ads(limit=10) == []
+
+
+def test_cli_competitive_seller_scan(tmp_path, capsys):
+    from aios_cli import main
+
+    db = tmp_path / "cli.sqlite"
+    dump = tmp_path / "detail.xml"
+    dump.write_text(SELLER_XML, encoding="utf-8")
+    my = OwnAd(
+        title="Лобове скло BMW X3 G01", price=7000.0, currency="UAH",
+        ad_id="cliOwn1",
+        url="https://www.olx.ua/d/uk/obyavlenie/moe-IDcliOwn1.html",
+    )
+    storage = OLXStorage(db)
+    storage.upsert_own_ad(my)
+    storage.close()
+
+    main([
+        "olx", "competitive-seller", str(dump), "--db", str(db),
+        "--fingerprint", my.fingerprint, "--viewed-ad-id", "z7kLq",
+    ])
+    out = json.loads(capsys.readouterr().out)
+    assert out["seller_ads_found"] == 2
+    assert out["linked_competitors"] == 1
+
+    main([
+        "olx", "competitive-seller", str(dump), "--db", str(db),
+        "--fingerprint", "unknown", "--viewed-ad-id", "z7kLq",
+    ])
+    err = json.loads(capsys.readouterr().out)
+    assert "error" in err
