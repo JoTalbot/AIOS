@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **ParserGen (`platforms/parsergen.py`)**: компиляция CardParser из
+  `extras.parser_hints` калибровки — `extract_markers` (resource-id →
+  substring-маркеры), `build_parser` (runtime-парсер без файлов),
+  `write_parser` (codegen `card_parser.py` платформы с идемпотентным
+  импортом в `__init__.py`), `parser_for` (парсер прямо из YAML
+  дескриптора); CLI `aios platforms codegen [--dry-run] [--force]`.
+- **Bootup E2E (`platforms/bootup.py`)**: пайплайн «из APK до
+  коллектора» одной командой `aios platforms bootup` — scaffold (APK
+  или name/package, resume повторов) → register → calibrate (dump /
+  injected driver / generic ADB-драйв) → hints в дескриптор → codegen →
+  verify; `dry_run` без записей; статусы `ready` / `calibration-empty` /
+  `scaffolded`.
+- **REST `POST /api/v1/platforms/{platform}/hints`**: калибровка
+  parser_hints по dump или прямой приём объекта; `parser_preview`
+  (карточки + заголовки) свежесобранным парсером; сохранение в
+  runtime-дескриптор.
+
+### Changed
+- **OLX CardParser**: маркеры карточек — атрибут класса
+  `CARD_RESOURCE_MARKERS` (обратная совместимость с модульной
+  константой); платформенные парсеры переопределяют маркеры подклассом.
+- **CLI calibrate**: запись подсказок вынесена в общий
+  `write_hints_to_descriptor()` (используется и bootup).
+- **Scaffold YAML**: описание дескриптора — двойные кавычки с
+  экранированием (двоеточия/спецсимволы не ломают парсер).
+
 ## [9.0.0-alpha.10] - 2026-07-21
 
 ### Added
