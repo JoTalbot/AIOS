@@ -38,6 +38,7 @@ from .autonomy_manager import AutonomyManager, AutonomyLevel
 from .federation_manager import FederationManager
 from .ml_planner_scorer import MLPlannerScorer
 from .multi_agent_orchestrator import MultiAgentOrchestrator
+from .constitution_evolver import ConstitutionEvolver
 
 
 class TaskStatus(str, Enum):
@@ -152,6 +153,7 @@ class Orchestrator:
         self.federation = FederationManager(db=self.db, local_node_id=f"aios_{uuid.uuid4().hex[:8]}")
         self.ml_scorer = MLPlannerScorer(db=self.db)
         self.multi_agent = MultiAgentOrchestrator(db=self.db, base_orchestrator=self)
+        self.constitution_evolver = ConstitutionEvolver(db=self.db)
 
         # Task tracking
         self._tasks: dict[str, Task] = {}
@@ -433,6 +435,7 @@ class Orchestrator:
                 "federation": self.federation.stats(),
                 "ml_scorer": self.ml_scorer.stats(),
                 "multi_agent": self.multi_agent.stats(),
+                "constitution_evolver": self.constitution_evolver.stats(),
             },
             "database": self.db.stats(),
         }
