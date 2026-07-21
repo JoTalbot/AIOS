@@ -766,6 +766,7 @@ def _run_platforms(args) -> bool:
             args.platform, descriptor.android_package,
             serial=getattr(args, "serial", None),
             directory=args.directory,
+            report_recipe=bool(getattr(args, "calibrate_recipe", False)),
         )
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return True
@@ -1178,7 +1179,8 @@ def _run_msg_platform(args, platform: str) -> bool:
     """Generic guarded-messenger CLI для платформ HintsMessenger."""
     cmd = getattr(args, "messenger_command", None) or "doctor"
     camel = {"whatsapp": "WhatsApp", "viber": "Viber",
-             "tiktok": "TikTok"}.get(platform, platform.capitalize())
+             "tiktok": "TikTok", "facebook": "Facebook"}.get(
+        platform, platform.capitalize())
     try:
         module = __import__(
             f"aios_core.modules.{platform}", fromlist=[
@@ -1726,6 +1728,9 @@ def main(argv=None):
     p_doc2.add_argument("--platform", required=True)
     p_doc2.add_argument("--serial", default=None)
     p_doc2.add_argument("--directory", default="platforms")
+    p_doc2.add_argument("--calibrate-recipe", action="store_true",
+                        help="Append on-device dump/calibrate recipe "
+                             "for missing hints sections")
 
     p_cal.add_argument("--platform", required=True, help="Platform name")
     p_cal.add_argument("--dump", required=True, help="Path to uiautomator XML dump")
@@ -1823,8 +1828,8 @@ def main(argv=None):
     p_onb.add_argument("--serial", default=None, help="ADB serial for drive")
     p_onb.add_argument("--dry-run", action="store_true")
 
-    # Generic messengers: whatsapp / viber (HintsMessenger-платформы)
-    for app_name in ("whatsapp", "viber"):
+    # Generic messengers: whatsapp / viber / facebook (HintsMessenger)
+    for app_name in ("whatsapp", "viber", "facebook"):
         app_parser = subparsers.add_parser(
             app_name, help=f"{app_name} guarded messenger agent")
         app_sub = app_parser.add_subparsers(dest="messenger_command")
@@ -2173,6 +2178,10 @@ def main(argv=None):
     elif args.command == "viber":
         if not _run_msg_platform(args, "viber"):
             parser.parse_args(["viber", "--help"])
+
+    elif args.command == "facebook":
+        if not _run_msg_platform(args, "facebook"):
+            parser.parse_args(["facebook", "--help"])
 
     elif args.command == "instagram":
         if not _run_instagram(args):

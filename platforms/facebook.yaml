@@ -1,0 +1,16 @@
+# Onboarding-пакет: Facebook Marketplace (OLX-like платформа полного стека)
+name: facebook
+android_package: com.facebook.katana
+agent_module: aios_core.modules.facebook
+storage_class: aios_core.modules.facebook.storage.FacebookStorage
+adb_class: aios_core.modules.olx.adb.ADBController
+default_locale: uk-UA
+description: "Facebook Marketplace (Meta) — маркетплейс-платформа: collector/inbox/outbox по calibrated hints"
+legacy_default_db: facebook_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: false
+    messenger: approval-only
+    collector: true
+    note: "ToS Meta запрещает автопостинг; сбор публичной ленты read-only, ответы только через approval-outbox"
+  parser_hints: {}

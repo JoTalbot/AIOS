@@ -82,7 +82,7 @@ from starlette.routing import Route, WebSocketRoute
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .security import APIKeyAuthMiddleware, Principal, load_api_keys
@@ -269,6 +269,7 @@ class AIOSAPI:
             Route("/api/v1/shards/jobs", self._shard_jobs_list, methods=["GET"]),
             Route("/api/v1/shards/jobs", self._shard_jobs_enqueue, methods=["POST"]),
             Route("/api/v1/shards/stats", self._shard_jobs_stats, methods=["GET"]),
+            Route("/dashboard", self._dashboard_page, methods=["GET"]),
 
             # Generic platform module surfaces (descriptor-driven). Статичные
             # роуты olx зарегистрированы выше и матчатся первыми.
@@ -929,6 +930,17 @@ class AIOSAPI:
         with self._shard_jobs() as jobs:
             return JSONResponse(jobs.stats(stale_after_s=ttl))
 
+    async def _dashboard_page(self, request: Request) -> HTMLResponse:
+        """Самодостаточная (inline CSS/JS) ops-панель поверх REST-plane.
+
+        Read-only наблюдатель: страница только опрашивает эндпоинты
+        очереди/устройств/профилей/шардов. Действий из UI нет —
+        guarded-философия сохраняется.
+        """
+        from aios_core.platforms.dashboard import dashboard_html
+        refresh = int(request.query_params.get("refresh", 5))
+        return HTMLResponse(dashboard_html(refresh_s=max(1, refresh)))
+
     async def _shards_route(self, request: Request) -> JSONResponse:
         """Sticky route for a profile {profile: "olx:work"}.
 
@@ -998,10 +1010,15 @@ class AIOSAPI:
     # ---- Health & Stats ----
 
     async def _metrics(self, request: Request) -> JSONResponse:
-        """Prometheus-compatible metrics endpoint"""
+        """Prometheus-compatible metrics endpoint.
+
+        Секции независимы: если ядро недоступно из рабочего потока
+        (sqlite thread-safety), ops-метрики флота всё равно отдаются.
+        """
+        lines: list = []
         try:
             stats = self.orchestrator.stats()
-            lines = [
+            lines += [
                 "# HELP aios_constitution_articles Total constitution articles",
                 "# TYPE aios_constitution_articles gauge",
                 f'aios_constitution_articles {stats.get("constitution_articles", 0)}',
@@ -1018,23 +1035,28 @@ class AIOSAPI:
                 "# TYPE aios_evolution_proposals gauge",
                 f'aios_evolution_proposals {stats.get("evolution_proposals", 0)}',
             ]
-            return JSONResponse("\n".join(lines), media_type="text/plain")
         except Exception:
-            return JSONResponse("# AIOS metrics unavailable", media_type="text/plain")
+            lines.append("# AIOS core metrics unavailable from worker thread")
+        try:
+            from aios_core.platforms.telemetry import prometheus_metrics
+            lines.append(prometheus_metrics())
+        except Exception:
+            lines.append("# AIOS fleet metrics unavailable")
+        return PlainTextResponse("\n".join(lines))
 
     async def _health(self, request: Request) -> JSONResponse:
         try:
             stats = self.orchestrator.stats()
             return JSONResponse({
                 "status": "ok",
-                "version": "9.0.0-alpha.20",
+                "version": "9.0.0-alpha.21",
                 "constitution_articles": stats.get("constitution_articles", 0),
                 "memory_items": stats.get("memory_items", 0),
                 "active_tasks": stats.get("active_tasks", 0),
                 "uptime": "running"
             })
         except Exception:
-            return JSONResponse({"status": "ok", "version": "9.0.0-alpha.20"})
+            return JSONResponse({"status": "ok", "version": "9.0.0-alpha.21"})
 
     async def _stats(self, request: Request) -> JSONResponse:
         return JSONResponse(self.orchestrator.stats())

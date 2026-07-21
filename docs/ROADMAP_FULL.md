@@ -1,6 +1,6 @@
 # AIOS — Полный роадмап (линейка 9.0.0-alpha → 9.0 GA)
 
-> Статус на **v9.0.0-alpha.19** (2026-07-21, 879 тестов зелёные).
+> Статус на **v9.0.0-alpha.21** (2026-07-21, 925 тестов зелёные).
 > Принципы, которые действуют на всём роадмапе: **guarded-действия**
 > (ничего не трогает внешний мир молча: outbox/DRY-RUN/confirm),
 > **платформенность** (любая механика сразу generic, платформенный код
@@ -20,7 +20,7 @@
   (per-profile env), каталог YAML, sharding (HRW sticky) + gateway,
   marker-regression, runtime-hints, pointdrive, videocards,
   generic autowatch + FleetScheduler, ReelsCollector + receipts,
-  ShardExec (pull-джобы).
+  ShardExec (pull-джобы), onboarding-пакеты (WA/Viber/TikTok/FB).
 - **Instagram как вторая платформа полного стека**: login-wall driver,
   коллектор, детали, guarded Direct, doctor, own-posts/composer,
   Reels (коллектор + tab-driver + алёрты), autopilot-цикл, cron-plan,
@@ -28,50 +28,61 @@
 
 ## Горизонт H1 — операционная закалка мультиаккаунтности (alpha.19–22)
 
-> alpha.19 закрыл пп.1–4 (все кодовые пункты H1, кроме on-device H1.5).
+> alpha.19–21 закрыли все кодовые пункты H1, кроме on-device H1.5.
 
 **Тема: автопилот и очереди должны переживать реальную эксплуатацию.**
 
-1. ~~**Job-lease TTL**~~ ✅ alpha.19: heartbeat, `requeue_stale`,
+1. ✅ **Job-lease TTL** — alpha.19: heartbeat, `requeue_stale`,
    `stats()` (queue depth/stale), CLI `shards jobs --stats`,
    `shards requeue-stale`.
-2. ~~**Встроенные виды джоб**~~ ✅ alpha.19: `reels`, `dm-flush`,
-   `marker-check` в `default_handlers`. TODO: cron-plan →
-   enqueue-строки (перенос в H2.8).
-3. ~~**Own-promote → autopilot**~~ ✅ alpha.19: `promotion_plan`
+2. ✅ **Встроенные виды джоб** — alpha.19: `reels`, `dm-flush`,
+   `marker-check` в `default_handlers`; alpha.20 — cron-plan
+   `--via-shards` (enqueue-строки).
+3. ✅ **Own-promote → autopilot** — alpha.19: `promotion_plan`
    (DRY-RUN, бюджет равномерно), шаг `--promote` в autopilot,
    webhook `promote-suggestion`.
-4. ~~**Human-like pacing**~~ ✅ alpha.19: `Pacer` (jitter,
+4. ✅ **Human-like pacing** — alpha.19: `Pacer` (jitter,
    actions/hour, session limit) в OLXCollector/ReelsCollector/
    InstagramCollector + `pacer_from_limits` из pool kv; CLI
    `--pace-actions/--pace-jitter`.
-5. **On-device Instagram bootstrapping**: прогон `ONBOARDING.md` на
-   реальной машине с Android SDK — fetch APK, login (env-секреты),
+5. **On-device hints-калибровка флота**: прогон calibrate-рецептов
+   на реальной машине с Android SDK — fetch APK, login (env-секреты),
    калибровка feed/detail/Direct/navigation, `marker-check` baseline,
-   занесение откалиброванных hints в `platforms/instagram.yaml`.
-   *(ops-эпик, кода почти нет — тур через doctor)*
+   занесение hints в `platforms/<name>.yaml`. ✅ alpha.21 — сами
+   рецепты кодифицированы: `platforms doctor --calibrate-recipe`
+   печатает точные adb-команды под каждую платформу (мессенджер-first
+   для WA/Viber, полный стек для OLX-like, лента+таббар для
+   TikTok); остаётся их прогон на живом устройстве (ops-шаг).
 
-## Горизонт H2 — масштабирование до флота платформ (alpha.23–30)
+## Горизонт H2 — масштабирование до флота платформ (alpha.20–30)
 
-**Тема: «ещё N приложений» = конфигурация, а не код.**
+**Тема: «ещё N приложений» = конфигурация, а не код; наблюдаемость —
+первоклассный citizen.**
 
 6. ~~**Onboarding wizard**~~ ✅ alpha.20: `aios onboard` (fetch→
    bootup→паспорт+next_commands). TODO: login-driver/autowatch
    в happy path (после H1.5).
-7. **Новые платформы**: ✅ alpha.20 — WhatsApp, Viber, TikTok
-   (onboarding-пакеты: storage/messenger/bootstrap + compliance).
-   Остаётся: Facebook Marketplace + региональные (on-device hints).
-8. **Pull-first автоматизация**: ✅ alpha.20 — cron-plan
-   `--via-shards` + jobs REST (`/api/v1/shards/jobs|stats`).
-   Остаётся: web-pane очереди/пула в dashboard UI.
-9. **Метрики/наблюдаемость**: Prometheus-экспортер (jobs done/failed,
-   cards/cycle, drift events, pool utilization, per-profile health);
-   alert-правила (drift, failed> N, queue depth). *(alpha.27)*
-10. **Compliance-контур**: per-platform robots/ToS-флаги в дескрипторе
-    (`extras.compliance`), принудительные rate-limits и запреты
-    (например, no-autopost для платформы) на уровне resolver —
-    guarded не только технически, но и правово. Audit-log действий
-    в storage. *(alpha.28)*
+7. ~~**Новые платформы**~~ ✅ alpha.20 — WhatsApp, Viber, TikTok;
+   ✅ alpha.21 — **Facebook Marketplace** (полный OLX-like пакет:
+   storage/messenger/bootstrap + compliance + guarded CLI);
+   on-device hints — общий контур H1.5. Остаётся: региональные
+   площадки по мере спроса (Prom/Bigl/Shafa — по тому же шаблону).
+8. ~~**Pull-first автоматизация**~~ ✅ alpha.20 — cron-plan
+   `--via-shards` + jobs REST (`/api/v1/shards/jobs|stats`);
+   ✅ alpha.21 — **web-pane очереди/пула**: `GET /dashboard`
+   (самодостаточная read-only HTML-панель: очередь джобов, пул
+   устройств, профили, shard-host; действий из UI нет — guarded).
+9. ✅ **Метрики/наблюдаемость** — alpha.21: Prometheus text
+   exposition на `/metrics` (`aios_shard_jobs{status}`,
+   `aios_shard_job_queue_depth`, `aios_shard_jobs_stale_claimed`,
+   `aios_shard_hosts`, `aios_devices{state}`, `aios_profiles*`,
+   `aios_catalog_platforms`); `deploy/monitoring/` —
+   prometheus.yml + Grafana-дашборд JSON + README. Остаётся:
+   cards/cycle, drift-events counters, alert-правила (alpha.27).
+10. **Compliance-контур**: ✅ флаги `extras.compliance` в дескрипторах
+    (alpha.20) — остаётся принуждение на уровне resolver:
+    rate-limits и запреты (no-autopost) из флагов + audit-log
+    действий в storage. *(alpha.28)*
 
 ## Горизонт H3 — продуктовое ядро и GA (alpha.31+ → 9.0)
 
@@ -87,10 +98,11 @@
 14. **Marketplace плагинов платформ**: публикация onboarding-пакетов
     (descriptor + hints + drivers) в marketplace-модуль ядра.
     *(alpha.35)*
-15. **9.0 GA-критерии**: ≥1000 тестов зелёные; 3+ production-профиля
-    Instagram под autopilot ≥2 недели без банов (pacing-метрики);
-    онбординг новой платформы ≤ 30 минут по чек-листу; документация
-    — PDF/сайт; API стабилизировано (deprecation-политика).
+15. **9.0 GA-критерии**: ≥1000 тестов зелёные (сейчас 925); 3+
+    production-профиля Instagram под autopilot ≥2 недели без банов
+    (pacing-метрики); онбординг новой платформы ≤ 30 минут по
+    чек-листу; документация — PDF/сайт; API стабилизировано
+    (deprecation-политика).
 
 ## Открытые риски / вопросы владельцу
 

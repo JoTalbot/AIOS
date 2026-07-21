@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.0.0-alpha.21] - 2026-07-21
+
+### Added
+- **Calibrate-рецепт (on-device hints, H1.5)**: `platforms/recipe.py`
+  (`calibration_recipe` — пошаговый сценарий ADB-дампов и
+  `calibrate --write` под профиль платформы: messenger-first /
+  collector / marketplace полного стека; учитывает уже закрытые секции
+  и serial устройства); `platform_doctor(..., report_recipe=True)` и
+  CLI `platforms doctor --platform X --calibrate-recipe`.
+- **Ops-dashboard (web-pane, H2.8)**: `platforms/dashboard.py`
+  (`dashboard_html` — самодостаточная read-only HTML-панель с inline
+  CSS/JS: очередь джобов, статистика, пул устройств, профили,
+  shard-host; данных из UI нет — guarded); REST `GET /dashboard`.
+- **Facebook Marketplace onboarding-пакет (H2.7)**:
+  `platforms/facebook.yaml` (com.facebook.katana, OLX-like,
+  compliance collector:true/approval-only/no-autopost) +
+  `aios_core/modules/facebook/` (FacebookStorage/Messenger/Bootstrap);
+  CLI-группа `facebook` (doctor/chats/dm-send/dm-flush/dm-outbox);
+  per-platform ONBOARDING-доки WA/Viber/TikTok/Facebook.
+- **Prometheus-телеметрия (H2.9)**: `platforms/telemetry.py`
+  (`fleet_snapshot` + `prometheus_metrics`: aios_shard_jobs{status},
+  queue_depth, stale_claimed, shard_hosts, devices{state}, profiles,
+  catalog_platforms); `/metrics` отдаёт честный plain-text;
+  `deploy/monitoring/` — prometheus.yml, Grafana-dashboard JSON, README.
+
+### Fixed
+- REST `/metrics` больше не JSON-строка: секционная отказоустойчивость
+  (ядро/флот независимы) + `text/plain` (Prometheus-сумісный формат).
+- Brand-name маппинг CLI приведён к нужным CamelCase (Facebook).
+
 ## [9.0.0-alpha.20] - 2026-07-21
 
 ### Added
