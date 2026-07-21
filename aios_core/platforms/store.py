@@ -57,10 +57,10 @@ class ProfileStore:
 
     @classmethod
     def default(cls) -> "ProfileStore":
-        """Process-wide реестр из ``AIOS_PROFILES_DB`` (fallback :memory:)."""
+        """Process-wide реестр из ``AIOS_PROFILES_DB`` (fallback ``data/profiles.sqlite``)."""
         global _DEFAULT_STORE
         if _DEFAULT_STORE is None:
-            _DEFAULT_STORE = cls(os.environ.get("AIOS_PROFILES_DB", ":memory:"))
+            _DEFAULT_STORE = cls(os.environ.get("AIOS_PROFILES_DB", "data/profiles.sqlite"))
         return _DEFAULT_STORE
 
     @classmethod

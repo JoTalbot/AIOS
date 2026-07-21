@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **DevicePool (`platforms/devices.py`)** — пул устройств/эмуляторов с
+  арендой под профили: one-device-one-profile, идемпотентная аренда с
+  выбором least-recently-used idle, heartbeats, `reap_stale` → offline с
+  освобождением аренд, синхронизация `device_serial` в реестр профилей.
+  CLI `aios devices register|list|lease|release|heartbeat|reap`; REST
+  `/api/v1/devices*`; персистентность `data/devices.sqlite`/`AIOS_DEVICES_DB`.
+- **YAML-каталог платформ (`platforms/catalog.py`)**: `load_catalog()` /
+  `load_catalog_file()` регистрируют платформы из YAML (реестр как
+  данные); эталон `platforms/olx.yaml`; фабрики из dotted-путей классов.
+- **MCP `profile`-параметр**: `olx_market_stats`,
+  `olx_listing_recommend`, `olx_price_drops` принимают `profile` и
+  резолвят хранилище из реестра профилей с кэшированием.
+- **ProfileStore.default()** теперь постоянный (`data/profiles.sqlite`)
+  без env — профили переживают CLI-вызовы.
+- 26 новых тестов (`tests/test_platforms_profiles.py`).
+
 ## [9.0.0-alpha.5] - 2026-07-21
 
 ### Added

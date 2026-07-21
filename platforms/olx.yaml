@@ -1,0 +1,13 @@
+# Эталонный дескриптор платформы (см. docs/PLATFORMS_SCALING.md).
+# Базовая регистрация olx встроена в aios_core.platforms.descriptor;
+# загрузка этого файла переопределяет её идентичной конфигурацией.
+name: olx
+android_package: ua.slando
+agent_module: aios_core.modules.olx
+storage_class: aios_core.modules.olx.storage.OLXStorage
+adb_class: aios_core.modules.olx.adb.ADBController
+default_locale: uk-UA
+description: >-
+  OLX Ukraine Android agent: коллекция рынка, история цен, мессенджер,
+  свои объявления, конкуренты, советник стратегии.
+legacy_default_db: olx_ads.sqlite
