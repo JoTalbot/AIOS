@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.abspath('../../'))
 project = 'AIOS - Autonomous Intelligence Operating System'
 copyright = '2026, JoTalbot & AIOS Core Team'
 author = 'JoTalbot'
-release = '9.0.0-alpha.11'
+release = '9.0.0-alpha.12'
 
 extensions = [
     'sphinx.ext.autodoc',
