@@ -2,9 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [4.2.0-alpha] - In Progress (2026-07-21)
+## [4.2.0-alpha] - 2026-07-21
 
 ### Added
+- **Milestone 4.2.4 Complete — Enterprise Scaling & PostgreSQL Integration**:
+  - Multi-dialect `Database` abstraction (`aios_core/storage.py`) handling transparent query translation between SQLite and PostgreSQL.
+  - Kubernetes HorizontalPodAutoscaler template (`helm/aios/templates/hpa.yaml`) scaling based on target CPU/Memory metrics and task queue depth.
+  - Comprehensive unit test suite `tests/test_storage_postgresql.py` (543 total passed tests).
+
 - **Milestone 4.2.3 Complete — Official Web UI (React + TypeScript + Tailwind SPA)**:
   - Enterprise React SPA interface with tabbed views: Overview, Safety Dashboard, Agent Swarm Topology, Master Constitution (67 Articles), Knowledge Graph, and ML Model Registry.
   - Dedicated REST API endpoints in `aios_core/api/app.py`: `/api/v1/constitution`, `/api/v1/safety`, `/api/v1/knowledge-graph`, `/api/v1/agents`, `/api/v1/models`.

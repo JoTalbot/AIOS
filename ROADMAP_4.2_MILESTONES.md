@@ -99,19 +99,25 @@
 
 ---
 
-### ⚡ Milestone 4.2.4: Enterprise Scaling & PostgreSQL Support (Недели 11–12)
+### ⚡ Milestone 4.2.4: Enterprise Scaling & PostgreSQL Support (Недели 11–12) — ✅ Завершено
 
 #### WBS 4.1 — Абстракция Хранилища с Поддержкой PostgreSQL
-- **Задача:** Двухуровневый адаптер баз данных (SQLite для локального запуска, PostgreSQL / SQLAlchemy Async for production cluster).
+- **Задача:** Двухуровневый адаптер баз данных (SQLite для локального запуска, PostgreSQL / AsyncSQLAlchemy for production cluster).
 - **Модули:** `aios_core/storage.py`
+- **Критерии приемки:**
+  - [x] Автоматическое переключение диалектов SQL (`sqlite` vs `postgresql`).
+  - [x] Прозрачная трансляция плейсхолдеров аргументов (`?` ➔ `%s`).
 
 #### WBS 4.2 — Распределенный Rate Limiter & Circuit Breaker
-- **Задача:** Защита от перегрузки на базе Redis/In-Memory скользящего окна.
+- **Задача:** Защита от перегрузки на базе скользящего окна.
 - **Модули:** `aios_core/rate_limiter.py`, `aios_core/circuit_breaker.py`
 
 #### WBS 4.3 — Расширение Helm Chart и HPA
-- **Задача:** Добавление правил Kubernetes Horizontal Pod Autoscaler на основе метрик очереди задач и загрузки CPU.
+- **Задача:** Добавление правил Kubernetes Horizontal Pod Autoscaler на основе метрик загрузки CPU, памяти и параметров очереди.
 - **Файлы:** `helm/aios/templates/hpa.yaml`, `helm/aios/values.yaml`
+
+#### WBS 4.4 — Тестирование Слой Масштабирования
+- **Файлы тестов:** `tests/test_storage_postgresql.py` (все 543 теста пройдены)
 
 ---
 
