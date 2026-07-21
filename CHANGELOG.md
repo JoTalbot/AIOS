@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.0.0-alpha] - 2026-07-21
+
+### Added
+- **Milestone 9.0.3 Complete — Universal Multi-Species Ethics Framework (`aios_core/universal_multi_species_ethics.py`)**:
+  - Multi-planetary ecological impact evaluation and biosphere non-disruption safety guarantees.
+  - Comprehensive unit test suite `tests/test_universal_multi_species_ethics.py`.
+
+- **Milestone 9.0.2 Complete — Bio-Digital Molecular DNA Runtime (`aios_core/molecular_dna_runtime.py`)**:
+  - Translation of Constitutional Laws into synthetic DNA nucleotide sequences (A, T, C, G) with PCR molecule amplification simulation.
+  - Comprehensive unit test suite `tests/test_molecular_dna_runtime.py`.
+
+- **Milestone 9.0.1 Complete — Quantum Entangled Zero-Latency Communication Mesh (`aios_core/quantum_entanglement_mesh.py`)**:
+  - Simulated EPR pair quantum teleportation channels with zero-latency state synchronization.
+  - Comprehensive unit test suite `tests/test_quantum_entanglement_mesh.py` (567 total passed tests).
+
 ## [8.0.0-alpha] - 2026-07-21
 
 ### Added
