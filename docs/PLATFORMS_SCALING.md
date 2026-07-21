@@ -410,17 +410,49 @@ messenger без генерации файлов — подсказки чита
 `aios cron-plan --with-marker-check` (закомментированные строки
 `platforms marker-check` по каждой платформе каталога).
 
+## Generic AutoWatch для любой платформы
+
+`aios_core/platforms/autowatch.py` — цикл заботы OLX AutoWatch на
+descriptor+profile проводке: хранилище/ADB из резолвера профиля,
+парсер карточек по цепочке codegen-модуль → runtime hints
+(`resolve_card_parser`), опциональный драйв навигации
+(`--drive point|login`) перед сбором каждого запроса.
+
+```bash
+aios platforms autowatch --platform instagram --profile main \
+    [--query "кросівки"] [--webhook URL] [--no-collect]
+```
+
+cron-plan генерирует generic-строки autowatch для профилей всех
+не-olx платформ; для olx остаётся родная команда (совместимость).
+
+## Guarded messenger REST plane (любая платформа)
+
+`/api/v1/modules/{platform}/chats` (GET), `/outbox` (GET),
+`/outbox/send` и `/outbox/flush` (POST): резолвится мессенджер из
+`<agent_module>.messenger` (класс `*Messenger(OLXMessenger)` —
+Instagram Direct подхватился автоматически); профильная изоляция по
+`?profile=`, очередь по умолчанию (`auto_send` только явным флагом) —
+ни один мессенджер платформы не пишет во внешний мир молча.
+Платформа без messenger-модуля → честный 404 с рецептом.
+
+## Категории контента в калибровке
+
+`CalibrationAdvisor.analyze` дополнительно возвращает
+`content_categories`: video/reels-маркеры, story/highlight-маркеры и
+счётчик duration-меток (`0:32`) — Reels/Stories-форматы без цены не
+теряются при калибровке платформ с непродуктовой лентой.
+
 ## Дальше (дорожная карта к 10000+)
 
 Архитектурный цикл подключения платформы собран полностью: APK →
-scaffold → калибровка → parser_hints → codegen → verify; detail/
-messenger/поисковый драйв — runtime из hints. Возможные шаги дальше:
+scaffold → калибровка (карточки/детали/мессенджер/категории) →
+codegen → verify → autowatch. Возможные шаги дальше:
 
-1. **AutoWatch для произвольной платформы**: olx autowatch обобщить до
-   `aios <platform> autowatch` (collector + notifier уже hints-driven;
-   cron-plan генерирует строки по каталогу).
-2. **REST-поверхности Instagram**: chat/inbox/send маршруты по образцу
-   olx-модуля на hints-парсерах (сейчас — CLI/Python API).
-3. **Reels/Stories-форматы Instagram**: отдельные маркеры карточек
-   (видео-посты без цены — расширить CalibrationAdvisor категориями
-   контента).
+1. **Own-posts для Instagram**: публикация/редактирование постов
+   (guarded, DRY-RUN) по образцу olx own_ads/promotion.
+2. **Video-first парсеры карточек**: Reels-карточки (без цены) —
+   отдельный extractor по content_categories (views/likes вместо цены).
+3. **FleetScheduler**: балансировка autowatch-циклов платформ по пулу
+   устройств (LeaseWindow), алёртинг drift в webhook наряду с
+   autowatch-уведомлениями.
