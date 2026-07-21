@@ -88,18 +88,21 @@ class InstagramLoginDriver:
         profile: Optional[str] = None,
         open_wait_s: float = 8.0,
         login_wait_s: float = 15.0,
+        search_drive=None,
     ):
         self.adb = adb or ADBController(package=package, serial=serial)
         self.profile = profile
         self.platform = "instagram"
         self.open_wait_s = open_wait_s
         self.login_wait_s = login_wait_s
+        self.search_drive = search_drive  # PointDrive для поиска за логином
 
     def drive(self, package: str, query: Optional[str] = None) -> str:
         """Сигнатура калибровочного драйва bootup: ``(package, query)->xml``.
 
-        Открывает приложение, проходит логин при необходимости и
-        возвращает XML-дамп текущего экрана (лента/поиск).
+        Открывает приложение, проходит логин при необходимости,
+        опционально выполняет поиск (search_drive) и возвращает
+        XML-дамп результирующего экрана.
         """
         opened = self.adb.open_app()
         if opened.get("code") != 0:
@@ -118,6 +121,8 @@ class InstagramLoginDriver:
                     "check credentials, account verification screens or "
                     "provide a point-drive for this app build"
                 )
+        if query and self.search_drive is not None:
+            xml = self.search_drive.search_in_open_app(query, xml)
         return xml
 
     def _login_flow(self) -> None:
