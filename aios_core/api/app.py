@@ -130,8 +130,9 @@ class AIOSAPI:
     def create_starlette_app(self) -> Starlette:
         """Build the Starlette application with all routes."""
         routes = [
-            # Health
+            # Health & Metrics
             Route("/health", self._health),
+            Route("/metrics", self._metrics),
 
             # Stats
             Route("/api/v1/stats", self._stats),
@@ -223,8 +224,44 @@ class AIOSAPI:
 
     # ---- Health & Stats ----
 
+    async def _metrics(self, request: Request) -> JSONResponse:
+        """Prometheus-compatible metrics endpoint"""
+        try:
+            stats = self.orchestrator.stats()
+            lines = [
+                "# HELP aios_constitution_articles Total constitution articles",
+                "# TYPE aios_constitution_articles gauge",
+                f'aios_constitution_articles {stats.get("constitution_articles", 0)}',
+                "",
+                "# HELP aios_memory_items Total memory items",
+                "# TYPE aios_memory_items gauge",
+                f'aios_memory_items {stats.get("memory_items", 0)}',
+                "",
+                "# HELP aios_active_tasks Active tasks count",
+                "# TYPE aios_active_tasks gauge",
+                f'aios_active_tasks {stats.get("active_tasks", 0)}',
+                "",
+                "# HELP aios_evolution_proposals Evolution proposals",
+                "# TYPE aios_evolution_proposals gauge",
+                f'aios_evolution_proposals {stats.get("evolution_proposals", 0)}',
+            ]
+            return JSONResponse("\n".join(lines), media_type="text/plain")
+        except Exception:
+            return JSONResponse("# AIOS metrics unavailable", media_type="text/plain")
+
     async def _health(self, request: Request) -> JSONResponse:
-        return JSONResponse({"status": "ok", "version": "3.1.0"})
+        try:
+            stats = self.orchestrator.stats()
+            return JSONResponse({
+                "status": "ok",
+                "version": "3.1.0",
+                "constitution_articles": stats.get("constitution_articles", 0),
+                "memory_items": stats.get("memory_items", 0),
+                "active_tasks": stats.get("active_tasks", 0),
+                "uptime": "running"
+            })
+        except Exception:
+            return JSONResponse({"status": "ok", "version": "3.1.0"})
 
     async def _stats(self, request: Request) -> JSONResponse:
         return JSONResponse(self.orchestrator.stats())

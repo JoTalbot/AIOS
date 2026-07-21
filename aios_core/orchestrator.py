@@ -393,18 +393,30 @@ class Orchestrator:
             s = t.status.value
             status_counts[s] = status_counts.get(s, 0) + 1
 
+        # Collect quick counts
+        try:
+            mem_stats = self.memory.stats()
+            evo_stats = self.evolution.stats()
+        except Exception:
+            mem_stats = {}
+            evo_stats = {}
+
         return {
             "version": self.version,
             "total_tasks": len(self._tasks),
             "tasks_by_status": status_counts,
             "total_steps_executed": len(self._execution_log),
+            "active_tasks": status_counts.get("running", 0) + status_counts.get("pending", 0),
+            "constitution_articles": 67,
+            "memory_items": mem_stats.get("total_items", 0),
+            "evolution_proposals": evo_stats.get("total_proposals", 0),
             "subsystems": {
                 "policy": self.policy.stats(),
-                "memory": self.memory.stats(),
+                "memory": mem_stats,
                 "knowledge": self.knowledge.stats(),
                 "reasoning": self.reasoning.stats(),
                 "learning": self.learning.stats(),
-                "evolution": self.evolution.stats(),
+                "evolution": evo_stats,
                 "privacy": self.privacy.stats(),
                 "events": self.events.stats(),
                 "planner": self.planner.stats(),

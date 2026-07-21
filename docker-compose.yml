@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  aios-api:
+    build: .
+    container_name: aios-api
+    ports:
+      - "8000:8000"
+      - "8471:8471"
+    environment:
+      - AIOS_API_KEYS={"local-dev":{"subject":"dev","roles":["admin"]}}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./aios.sqlite:/app/aios.sqlite
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: MCP server
+  aios-mcp:
+    build: .
+    container_name: aios-mcp
+    command: ["python", "run_mcp_server.py", "--host", "0.0.0.0", "--port", "8471", "--db", "/app/aios.sqlite"]
+    ports:
+      - "8471:8471"
+    environment:
+      - AIOS_API_KEYS={"local-dev":{"subject":"dev","roles":["admin"]}}
+    volumes:
+      - ./aios.sqlite:/app/aios.sqlite
+    depends_on:
+      - aios-api
+    restart: unless-stopped
+
+volumes:
+  aios-data:
