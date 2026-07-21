@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [9.0.0-alpha.7] - 2026-07-21
 
 ### Added
 - **Platform scaffold (`platforms/scaffold.py`)**: `aios platforms
