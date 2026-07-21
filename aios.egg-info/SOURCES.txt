@@ -239,15 +239,19 @@ aios_core/mcp/tools.py
 aios_core/modules/__init__.py
 aios_core/modules/olx/__init__.py
 aios_core/modules/olx/adb.py
+aios_core/modules/olx/advisor.py
 aios_core/modules/olx/analytics.py
 aios_core/modules/olx/autowatch.py
+aios_core/modules/olx/bootstrap.py
 aios_core/modules/olx/card_parser.py
 aios_core/modules/olx/collector.py
+aios_core/modules/olx/competitive.py
 aios_core/modules/olx/detail.py
 aios_core/modules/olx/messenger.py
 aios_core/modules/olx/models.py
 aios_core/modules/olx/notifier.py
 aios_core/modules/olx/own_ads.py
+aios_core/modules/olx/profile.py
 aios_core/modules/olx/promotion.py
 aios_core/modules/olx/scheduler.py
 aios_core/modules/olx/storage.py
@@ -306,6 +310,7 @@ tests/test_neuromorphic_matrix.py
 tests/test_olx_actions.py
 tests/test_olx_agent.py
 tests/test_olx_api.py
+tests/test_olx_strategy.py
 tests/test_olx_watch.py
 tests/test_phase1_persistence.py
 tests/test_phase3_orchestrator.py

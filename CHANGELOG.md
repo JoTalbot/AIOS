@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [9.0.0-alpha.4] - 2026-07-21
 
 ### Added
 - **Competitor portfolio crawl (`competitive.py`)**: `parse_seller_ads()`
