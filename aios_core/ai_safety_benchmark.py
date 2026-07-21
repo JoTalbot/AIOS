@@ -1,6 +1,6 @@
 """AI Safety Benchmark Suite"""
 
-from typing import Dict, List
+from typing import Dict, List, Any
 
 
 class SafetyBenchmark:
