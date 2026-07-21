@@ -41,6 +41,7 @@ from .parsergen import (
 )
 from .pointdrive import PointDrive
 from .profile import Profile
+from .reelscout import ReelsCollector
 from .regression import check_platform_markers, diff_markers
 from .runtime_hints import (
     HintDetailParser,
@@ -76,6 +77,7 @@ __all__ = [
     "PoolMonitor",
     "Profile",
     "ProfileStore",
+    "ReelsCollector",
     "ShardRouter",
     "CalibrationAdvisor",
     "ShardGateway",

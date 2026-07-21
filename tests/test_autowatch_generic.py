@@ -228,6 +228,8 @@ def test_cli_cron_plan_generic_lines_for_non_olx(tmp_path, capsys,
     store = _Store(str(profiles_db))
     store.add(Profile(platform="instagram", name="main", is_default=True,
                       db_path=str(tmp_path / "ig.sqlite")))
+    store.add(Profile(platform="tiktok", name="fun", is_default=True,
+                      db_path=str(tmp_path / "tt.sqlite")))
     store.add(Profile(platform="olx", name="work", is_default=True,
                       db_path=str(tmp_path / "olx.sqlite")))
     store.close()
@@ -235,9 +237,16 @@ def test_cli_cron_plan_generic_lines_for_non_olx(tmp_path, capsys,
     monkeypatch.setenv("AIOS_DEVICES_DB", str(tmp_path / "devices.sqlite"))
     _Store.reset_default()  # singleton должен перечитать env этого теста
 
+    # Instagram-профили получают полный цикл autopilot (collect + Reels +
+    # Direct-flush); прочие платформы — generic AutoWatch:
     main(["cron-plan", "--platform", "instagram"])
     plan = capsys.readouterr().out
-    assert "platforms autowatch --platform instagram --profile main" in plan
+    assert "instagram autopilot --login" in plan
+    assert "instagram-main.sqlite" in plan
+
+    main(["cron-plan", "--platform", "tiktok"])
+    plan = capsys.readouterr().out
+    assert "platforms autowatch --platform tiktok --profile fun" in plan
 
     # olx остаётся на родной команде (обратная совместимость):
     main(["cron-plan", "--platform", "olx"])
