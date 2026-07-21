@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [9.0.0-alpha.22] - 2026-07-21
+## [9.0.0] - 2026-07-21
 
 ### Added
 - **Compliance-контур (H2.10)**: `platforms/compliance.py`
