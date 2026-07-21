@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Runtime-парсеры из hints (`platforms/runtime_hints.py`)**: detail и
+  messenger без codegen-файлов — `HintDetailParser` (цена/продавец/CTA +
+  shape-эвристика), `HintSender` (тап инпута → ADBKeyBoard → тап
+  send-маркера/ENTER, отчёт по шагам), `detail_parser_for` /
+  `chat_list_parser_for` / `load_hints_section` из YAML-дескриптора.
+- **PointDrive (`platforms/pointdrive.py`)**: точечный поисковый драйв —
+  находит EditText/search-инпут по bounds (без координатных констант),
+  вводит запрос и жмёт ENTER; самостоятельный bootup-драйв и
+  post-login шаг Instagram.
+- **Instagram — полный функционал**: `InstagramCollector` (движок
+  OLXCollector + драйв + parser_for → InstagramStorage),
+  `InstagramDetailParser`, `InstagramMessenger` (guarded Direct на общей
+  outbox-механике OLX: очередь по умолчанию, `flush` после одобрения,
+  Direct-inbox deep link, hints-executor), `InstagramBootstrap.doctor()`
+  (готовность; значения секретов не отчитываются); `InstagramLoginDriver`
+  принимает search_drive (поиск за стеной входа).
+- **CLI `aios instagram`**: `doctor`, `collect [--login]`,
+  `login-drive`, `dm-send` (в outbox; `--auto-send` немедленно),
+  `dm-flush`, `dm-outbox`.
+- **cron-plan `--with-marker-check`**: закомментированные marker-drift
+  строки по каждой платформе каталога.
+
+### Changed
+- **OLX ChatListParser**: маркеры строк чата — параметр конструктора
+  (обратная совместимость с OLX-маркерами по умолчанию), переиспользуется
+  Instagram и другими платформами из калибровки.
+
 ## [9.0.0-alpha.12] - 2026-07-21
 
 ### Added
