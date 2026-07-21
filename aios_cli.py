@@ -84,6 +84,35 @@ def _add_olx_parsers(subparsers) -> None:
     repost.add_argument("--confirm", action="store_true", help="Execute on device (default: dry-run)")
     with_db(repost)
 
+    subscribe = olx_sub.add_parser("subscribe", help="Add a search subscription")
+    subscribe.add_argument("--query", required=True)
+    subscribe.add_argument("--name", default=None)
+    subscribe.add_argument("--min-price", type=float, default=None)
+    subscribe.add_argument("--max-price", type=float, default=None)
+    subscribe.add_argument("--city", default=None)
+    with_db(subscribe)
+
+    subs = olx_sub.add_parser("subscriptions", help="List search subscriptions")
+    with_db(subs)
+
+    favorite = olx_sub.add_parser("favorite", help="Add/remove a favorite ad")
+    favorite.add_argument("--fingerprint", required=True)
+    favorite.add_argument("--remove", action="store_true")
+    with_db(favorite)
+
+    favorites = olx_sub.add_parser("favorites", help="List favorites and their drops")
+    favorites.add_argument("--alerts", action="store_true")
+    with_db(favorites)
+
+    autowatch = olx_sub.add_parser("autowatch", help="Run one full AutoWatch cycle")
+    autowatch.add_argument("--query", action="append", default=[],
+                           help="Search query to collect (repeatable)")
+    autowatch.add_argument("--no-collect", action="store_true")
+    autowatch.add_argument("--max-cards", type=int, default=50)
+    autowatch.add_argument("--webhook", default=None)
+    autowatch.add_argument("--chat-id", default=None)
+    with_db(autowatch)
+
 
 def _run_olx(args) -> bool:
     from aios_core.modules.olx import (
@@ -251,6 +280,62 @@ def _run_olx(args) -> bool:
             if result.get("status") == "executed":
                 storage.own_ad_set_status(args.fingerprint, "inactive")
             print(json.dumps(result, ensure_ascii=False, indent=2))
+        return True
+
+    if args.olx_command == "subscribe":
+        from aios_core.modules.olx import SubscriptionManager
+        with OLXStorage(args.db) as storage:
+            sub_id = SubscriptionManager(storage).add(
+                name=args.name or args.query,
+                query=args.query,
+                min_price=args.min_price,
+                max_price=args.max_price,
+                city=args.city,
+            )
+            print(json.dumps({"id": sub_id}, ensure_ascii=False))
+        return True
+
+    if args.olx_command == "subscriptions":
+        from aios_core.modules.olx import SubscriptionManager
+        with OLXStorage(args.db) as storage:
+            print(json.dumps(
+                SubscriptionManager(storage).list(), ensure_ascii=False, indent=2
+            ))
+        return True
+
+    if args.olx_command == "favorite":
+        from aios_core.modules.olx import FavoritesWatch
+        with OLXStorage(args.db) as storage:
+            watch = FavoritesWatch(storage)
+            if args.remove:
+                print(json.dumps({"removed": watch.remove(args.fingerprint)}))
+            else:
+                print(json.dumps({"added": watch.add(args.fingerprint)}))
+        return True
+
+    if args.olx_command == "favorites":
+        from aios_core.modules.olx import FavoritesWatch
+        with OLXStorage(args.db) as storage:
+            watch = FavoritesWatch(storage)
+            if args.alerts:
+                print(json.dumps(watch.price_alerts(), ensure_ascii=False, indent=2))
+            else:
+                print(json.dumps(watch.list(), ensure_ascii=False, indent=2))
+        return True
+
+    if args.olx_command == "autowatch":
+        from aios_core.modules.olx import AutoWatch, WebhookNotifier
+        with OLXStorage(args.db) as storage:
+            watch = AutoWatch(
+                storage=storage,
+                collector=OLXCollector(),
+                notifier=WebhookNotifier(url=args.webhook, chat_id=args.chat_id),
+                max_cards=args.max_cards,
+            )
+            report = watch.run_cycle(
+                queries=args.query or None, collect=not args.no_collect
+            )
+            print(json.dumps(report, ensure_ascii=False, indent=2, default=str))
         return True
 
     return False

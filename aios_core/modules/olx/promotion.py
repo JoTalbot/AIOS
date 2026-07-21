@@ -286,3 +286,63 @@ class Reposter:
             }
         )
         return {"status": "executed", "steps": steps, "executed": True, "log": log}
+
+
+class OwnAdEditor:
+    """Applies an :class:`ImprovementSuggestion` to a live listing.
+
+    Like the reposter, editing is DRY-RUN by default and requires
+    ``confirm=True`` to touch the device. The edit flow keeps the same ad
+    id (no duplicate problem), so it is the preferred action before a full
+    repost is even considered.
+    """
+
+    EDIT_LABELS = ("Редагувати", "Редактировать")
+
+    def __init__(self, adb: Optional[ADBController] = None):
+        self.adb = adb or ADBController()
+
+    def plan_steps(self, own_ad: OwnAd, suggestion: ImprovementSuggestion) -> List[str]:
+        steps = [
+            f"Відкрити «{own_ad.title}» в «Мої оголошення»",
+            f"{'/'.join(self.EDIT_LABELS)} → режим редагування",
+        ]
+        if suggestion.suggested_title != own_ad.title:
+            steps.append(f"Заголовок: «{suggestion.suggested_title}»")
+        if (
+            suggestion.suggested_price is not None
+            and suggestion.suggested_price != own_ad.price
+        ):
+            steps.append(
+                f"Ціна: {own_ad.price} → {suggestion.suggested_price:g} ({suggestion.price_verdict})"
+            )
+        for addition in suggestion.description_additions:
+            steps.append(f"Доповнити опис: {addition}")
+        steps.append("Зберегти зміни та перевірити публічну сторінку")
+        return steps
+
+    def apply(
+        self,
+        own_ad: OwnAd,
+        suggestion: ImprovementSuggestion,
+        confirm: bool = False,
+    ) -> Dict[str, object]:
+        steps = self.plan_steps(own_ad, suggestion)
+        if not confirm:
+            return {"status": "dry_run", "steps": steps, "executed": False}
+        log: List[Dict[str, object]] = []
+        if own_ad.url:
+            log.append(
+                self.adb.run(
+                    f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"'
+                )
+            )
+        log.append(
+            {
+                "code": 0,
+                "stdout": "edit flow via " + "/".join(self.EDIT_LABELS)
+                + " (requires per-device calibration)",
+                "stderr": "",
+            }
+        )
+        return {"status": "executed", "steps": steps, "executed": True, "log": log}

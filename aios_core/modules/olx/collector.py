@@ -39,14 +39,42 @@ class OLXCollector:
         self.screen_height = screen_height
 
     @staticmethod
-    def search_deep_link(query: str) -> str:
-        """OLX search URL that deep-links into the Android app."""
-        slug = quote("-".join(query.lower().split()))
-        return f"https://www.olx.ua/d/uk/list/q-{slug}/"
+    def search_deep_link(
+        query: str,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None,
+        sort: Optional[str] = None,
+    ) -> str:
+        """OLX search URL with optional filters, deep-linking into the app.
 
-    def launch_search(self, query: str) -> Dict[str, object]:
-        """Open the OLX app directly on the results screen for ``query``."""
-        link = self.search_deep_link(query)
+        Args:
+            query: Search text.
+            min_price/max_price: Price range filter (UAH).
+            sort: ``created_at:desc`` (newest first), ``filter_float_price:asc``
+                or ``filter_float_price:desc``.
+        """
+        slug = quote("-".join(query.lower().split()))
+        url = f"https://www.olx.ua/d/uk/list/q-{slug}/"
+        params = []
+        if min_price is not None:
+            params.append(f"search%5Bfilter_float_price%3Afrom%5D={min_price:g}")
+        if max_price is not None:
+            params.append(f"search%5Bfilter_float_price%3Ato%5D={max_price:g}")
+        if sort:
+            params.append(f"search%5Border%5D={quote(sort)}")
+        if params:
+            url += "?" + "&".join(params)
+        return url
+
+    def launch_search(
+        self,
+        query: str,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None,
+        sort: Optional[str] = None,
+    ) -> Dict[str, object]:
+        """Open the OLX app on the (optionally filtered) results screen."""
+        link = self.search_deep_link(query, min_price, max_price, sort)
         return self.adb.run(
             f'adb shell am start -a android.intent.action.VIEW -d "{link}"'
         )

@@ -192,7 +192,17 @@ class AIOSAPI:
             Route("/api/v1/modules/olx/own/stagnant", self._olx_own_stagnant, methods=["GET"]),
             Route("/api/v1/modules/olx/own/improve", self._olx_own_improve, methods=["POST"]),
             Route("/api/v1/modules/olx/own/repost", self._olx_own_repost, methods=["POST"]),
+            Route("/api/v1/modules/olx/own/edit", self._olx_own_edit, methods=["POST"]),
             Route("/api/v1/modules/olx/notify", self._olx_notify, methods=["POST"]),
+            Route("/api/v1/modules/olx/subscriptions", self._olx_subscriptions, methods=["GET"]),
+            Route("/api/v1/modules/olx/subscriptions", self._olx_subscription_add, methods=["POST"]),
+            Route("/api/v1/modules/olx/subscriptions/check", self._olx_subscription_check, methods=["POST"]),
+            Route("/api/v1/modules/olx/subscriptions/{subscription_id:int}", self._olx_subscription_remove, methods=["DELETE"]),
+            Route("/api/v1/modules/olx/favorites", self._olx_favorites, methods=["GET"]),
+            Route("/api/v1/modules/olx/favorites", self._olx_favorite_add, methods=["POST"]),
+            Route("/api/v1/modules/olx/favorites/alerts", self._olx_favorite_alerts, methods=["GET"]),
+            Route("/api/v1/modules/olx/favorites/{fingerprint}", self._olx_favorite_remove, methods=["DELETE"]),
+            Route("/api/v1/modules/olx/autowatch", self._olx_autowatch, methods=["POST"]),
 
             # Constitutional evaluation
             Route("/api/v1/evaluate", self._evaluate, methods=["POST"]),
@@ -642,6 +652,125 @@ class AIOSAPI:
             stagnant_items = OwnAdsTracker(self.olx_storage).stagnant()
             stagnant_summary = notify_stagnant(stagnant_items, notifier)
             return JSONResponse({"drops": drops_summary, "stagnant": stagnant_summary})
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_own_edit(self, request: Request) -> JSONResponse:
+        """Apply an improvement as an edit (dry-run default, `confirm` to run)."""
+        try:
+            from aios_core.modules.olx import AdImprover, OwnAd, OwnAdEditor
+            body = await request.json()
+            fingerprint = body.get("fingerprint")
+            rows = [row for row in self.olx_storage.own_ads() if row["fingerprint"] == fingerprint]
+            if not rows:
+                return JSONResponse({"error": "own ad not found"}, status_code=404)
+            row = rows[0]
+            own_ad = OwnAd(
+                title=row["title"], price=row["price"], currency=row["currency"],
+                views=row["last_views"] or 0, url=row["url"], ad_id=row["ad_id"],
+                status=row["status"],
+            )
+            competitors = self.olx_storage.get_ads(query=body.get("query"))
+            suggestion = AdImprover().improve(own_ad, competitors)
+            editor = OwnAdEditor(adb=self.olx_messenger.adb)
+            result = editor.apply(own_ad, suggestion, confirm=bool(body.get("confirm", False)))
+            return JSONResponse(result)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_subscriptions(self, request: Request) -> JSONResponse:
+        from aios_core.modules.olx import SubscriptionManager
+        items = SubscriptionManager(self.olx_storage).list()
+        return JSONResponse({"count": len(items), "items": items})
+
+    async def _olx_subscription_add(self, request: Request) -> JSONResponse:
+        try:
+            from aios_core.modules.olx import SubscriptionManager
+            body = await request.json()
+            query = body.get("query")
+            if not query:
+                return JSONResponse({"error": "field 'query' is required"}, status_code=400)
+            sub_id = SubscriptionManager(self.olx_storage).add(
+                name=body.get("name") or query,
+                query=query,
+                min_price=body.get("min_price"),
+                max_price=body.get("max_price"),
+                city=body.get("city"),
+            )
+            return JSONResponse({"id": sub_id})
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_subscription_remove(self, request: Request) -> JSONResponse:
+        from aios_core.modules.olx import SubscriptionManager
+        sub_id = int(request.path_params["subscription_id"])
+        removed = SubscriptionManager(self.olx_storage).remove(sub_id)
+        return JSONResponse({"id": sub_id, "removed": removed})
+
+    async def _olx_subscription_check(self, request: Request) -> JSONResponse:
+        """Match stored ads (optionally only recent) against all subscriptions."""
+        try:
+            from aios_core.modules.olx import SubscriptionManager
+            body = await request.json() if request.method == "POST" else {}
+            manager = SubscriptionManager(self.olx_storage)
+            query_filter = body.get("query")
+            cards = self.olx_storage.get_ads(query=query_filter)
+            alerts = manager.check_new(cards)
+            return JSONResponse({"alerts_count": len(alerts), "alerts": alerts})
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_favorites(self, request: Request) -> JSONResponse:
+        from aios_core.modules.olx import FavoritesWatch
+        items = FavoritesWatch(self.olx_storage).list()
+        return JSONResponse({"count": len(items), "items": items})
+
+    async def _olx_favorite_add(self, request: Request) -> JSONResponse:
+        try:
+            from aios_core.modules.olx import FavoritesWatch
+            body = await request.json()
+            fingerprint = body.get("fingerprint")
+            if not fingerprint:
+                return JSONResponse(
+                    {"error": "field 'fingerprint' is required"}, status_code=400
+                )
+            added = FavoritesWatch(self.olx_storage).add(fingerprint)
+            return JSONResponse({"fingerprint": fingerprint, "added": added})
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_favorite_remove(self, request: Request) -> JSONResponse:
+        from aios_core.modules.olx import FavoritesWatch
+        fingerprint = request.path_params["fingerprint"]
+        removed = FavoritesWatch(self.olx_storage).remove(fingerprint)
+        return JSONResponse({"fingerprint": fingerprint, "removed": removed})
+
+    async def _olx_favorite_alerts(self, request: Request) -> JSONResponse:
+        from aios_core.modules.olx import FavoritesWatch
+        alerts = FavoritesWatch(self.olx_storage).price_alerts()
+        return JSONResponse({"count": len(alerts), "alerts": alerts})
+
+    async def _olx_autowatch(self, request: Request) -> JSONResponse:
+        """Run one full AutoWatch cycle (collect → own → plan → notify)."""
+        try:
+            from aios_core.modules.olx import AutoWatch, WebhookNotifier
+            body = await request.json()
+            queries = body.get("queries")
+            watch = AutoWatch(
+                storage=self.olx_storage,
+                collector=self.olx_collector,
+                notifier=WebhookNotifier(
+                    url=body.get("webhook_url"), chat_id=body.get("chat_id")
+                ),
+                max_cards=self._bounded_int(body.get("max_cards"), default=50, maximum=500),
+            )
+            report = watch.run_cycle(
+                queries=queries if isinstance(queries, list) else None,
+                collect=bool(body.get("collect", True)),
+                min_age_days=float(body.get("min_age_days", 3.0)),
+                min_views_per_day=float(body.get("min_views_per_day", 1.0)),
+            )
+            return JSONResponse(report)
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
 

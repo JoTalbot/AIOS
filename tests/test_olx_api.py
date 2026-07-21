@@ -425,3 +425,120 @@ class TestOLXNotify:
         except Exception:
             return  # environment without network stack tolerances
         assert resp.status_code in (200, 400, 500)
+
+
+# ============================================================
+# Subscriptions, favorites, edit, autowatch
+# ============================================================
+
+
+class TestOLXSubscriptions:
+    async def test_add_list_check_remove(self, client, deps):
+        add = await client.post(
+            "/api/v1/modules/olx/subscriptions",
+            json={"query": QUERY, "max_price": 8000.0},
+        )
+        assert add.status_code == 200
+        sub_id = add.json()["id"]
+
+        listing = await client.get("/api/v1/modules/olx/subscriptions")
+        assert listing.json()["count"] == 1
+        assert listing.json()["items"][0]["query"] == QUERY
+
+        # Stored SAMPLE cards: BMW 7000 passes ≤8000, Audi (no price) doesn't.
+        check = await client.post("/api/v1/modules/olx/subscriptions/check", json={})
+        assert check.status_code == 200
+        alerts = check.json()["alerts"]
+        assert len(alerts) == 1
+        assert alerts[0]["new_count"] == 1
+
+        removed = await client.request(
+            "DELETE", f"/api/v1/modules/olx/subscriptions/{sub_id}"
+        )
+        assert removed.json()["removed"] is True
+
+        missing = await client.post("/api/v1/modules/olx/subscriptions", json={})
+        assert missing.status_code == 400
+
+
+class TestOLXFavorites:
+    async def test_add_list_alerts_remove(self, client, deps):
+        from aios_core.modules.olx import AdCard
+
+        _app, storage, _adb = deps
+        ads = storage.get_ads()
+        bmw = next(ad for ad in ads if ad.url)
+
+        add = await client.post(
+            "/api/v1/modules/olx/favorites", json={"fingerprint": bmw.fingerprint}
+        )
+        assert add.json()["added"] is True
+
+        listing = await client.get("/api/v1/modules/olx/favorites")
+        assert listing.json()["count"] == 1
+
+        # Emulate a price drop through the storage layer.
+        cheaper = AdCard.from_dict(bmw.to_dict())
+        cheaper.price = 6000.0
+        storage.save_ads([cheaper], seen_at="2026-07-21T23:59:00+00:00")
+        alerts = await client.get("/api/v1/modules/olx/favorites/alerts")
+        assert alerts.json()["count"] == 1
+        assert alerts.json()["alerts"][0]["last_price"] == 6000.0
+
+        removed = await client.request(
+            "DELETE", f"/api/v1/modules/olx/favorites/{bmw.fingerprint}"
+        )
+        assert removed.json()["removed"] is True
+
+        missing = await client.post("/api/v1/modules/olx/favorites", json={})
+        assert missing.status_code == 400
+
+
+class TestOLXEditAndAutowatch:
+    async def test_edit_dry_run_and_confirm(self, client, deps):
+        _app, storage, _adb = deps
+        await client.post("/api/v1/modules/olx/own/snapshot", json={"ads": OWN_SNAPSHOT})
+        fp = storage.own_ads()[0]["fingerprint"]
+
+        dry = await client.post(
+            "/api/v1/modules/olx/own/edit", json={"fingerprint": fp, "query": QUERY}
+        )
+        assert dry.status_code == 200
+        assert dry.json()["status"] == "dry_run"
+        assert dry.json()["steps"]
+
+        done = await client.post(
+            "/api/v1/modules/olx/own/edit",
+            json={"fingerprint": fp, "confirm": True},
+        )
+        assert done.json()["status"] == "executed"
+
+    async def test_autowatch_endpoint(self, client, deps):
+        resp = await client.post(
+            "/api/v1/modules/olx/autowatch",
+            json={"collect": False},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["subscription_alerts"] == []
+        assert data["notifications_sent"] == 0
+
+        collected = await client.post(
+            "/api/v1/modules/olx/autowatch",
+            json={"queries": ["новий запит"], "collect": True},
+        )
+        assert collected.status_code == 200
+        assert "collection" in collected.json()
+
+        subscribe = await client.post(
+            "/api/v1/modules/olx/subscriptions",
+            json={"query": "інший запит"},
+        )
+        assert subscribe.status_code == 200
+
+        cycle = await client.post(
+            "/api/v1/modules/olx/autowatch",
+            json={"queries": ["інший запит"], "collect": True},
+        )
+        alerts = cycle.json()["subscription_alerts"]
+        assert alerts and alerts[0]["subscription"] == "інший запит"
