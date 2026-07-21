@@ -41,6 +41,7 @@ from .multi_agent_orchestrator import MultiAgentOrchestrator
 from .constitution_evolver import ConstitutionEvolver
 from .marketplace import CapabilityMarketplace
 from .websocket import ws_manager
+from .plugin_manager import plugin_manager
 
 
 class TaskStatus(str, Enum):
@@ -157,6 +158,7 @@ class Orchestrator:
         self.multi_agent = MultiAgentOrchestrator(db=self.db, base_orchestrator=self)
         self.constitution_evolver = ConstitutionEvolver(db=self.db)
         self.marketplace = CapabilityMarketplace(db=self.db)
+        self.plugins = plugin_manager
 
         # Task tracking
         self._tasks: dict[str, Task] = {}
@@ -450,6 +452,7 @@ class Orchestrator:
                 "multi_agent": self.multi_agent.stats(),
                 "constitution_evolver": self.constitution_evolver.stats(),
                 "marketplace": self.marketplace.stats(),
+                "plugins": self.plugins.stats(),
             },
             "database": self.db.stats(),
         }
