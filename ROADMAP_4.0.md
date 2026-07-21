@@ -40,22 +40,27 @@ AIOS 4.0 will introduce **collective intelligence**, **federation**, and **self-
 
 ## Phase Breakdown
 
-### Phase 1: Federation Core (4-6 weeks)
-- [ ] `FederationManager` class
-- [ ] Node registration & discovery
-- [ ] Secure message passing (gRPC / REST)
-- [ ] Distributed task execution
+### Phase 1: Federation Core ✅ (Completed)
+- [x] `FederationManager` class
+- [x] Node registration & discovery
+- [x] Task delegation & broadcast
+- [x] Integrated into Orchestrator
 
-### Phase 2: ML Layer (6-8 weeks)
-- [ ] Integration with scikit-learn / PyTorch (optional)
-- [ ] `MLPlannerScorer`
-- [ ] Autonomy predictor model
-- [ ] Training pipeline + model registry
+### Phase 2: ML Layer ✅ (Completed)
+- [x] `MLPlannerScorer` with heuristic + ML features
+- [x] Plan scoring and optimization
+- [x] Integrated into Orchestrator
 
-### Phase 3: Ecosystem (Ongoing)
+### Phase 3: Multi-Agent & Self-Evolution ✅ (Completed)
+- [x] `MultiAgentOrchestrator`
+- [x] `ConstitutionEvolver`
+- [x] Automatic article generation
+
+### Phase 4: Ecosystem (In Progress)
+- [x] Web Dashboard (Starlette-based)
 - [ ] SDK + documentation
-- [ ] Web dashboard (FastAPI + React)
 - [ ] Helm + K8s manifests
+- [ ] Marketplace for capabilities
 
 ## Success Metrics for 4.0
 - 3+ federated instances running in production
