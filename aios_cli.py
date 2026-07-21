@@ -519,8 +519,24 @@ def _run_olx(args) -> bool:
     return False
 
 
-def _run_platforms(_args) -> bool:
-    from aios_core.platforms import list_platforms
+def _run_platforms(args) -> bool:
+    from aios_core.platforms import list_platforms, scaffold_platform
+
+    cmd = getattr(args, "platforms_command", None) or "list"
+
+    if cmd == "scaffold":
+        files = scaffold_platform(
+            args.name, args.package,
+            project_root=args.root,
+            description=args.description,
+            locale=args.locale,
+            dry_run=args.dry_run,
+        )
+        mode = "planned" if args.dry_run else "written"
+        print(json.dumps(
+            {mode: sorted(files)}, ensure_ascii=False, indent=2,
+        ))
+        return True
 
     print(json.dumps(
         [descriptor.to_dict() for descriptor in list_platforms()],
@@ -630,6 +646,39 @@ def _run_devices(args) -> bool:
             print(json.dumps({"reaped": stale}))
             return True
 
+        if cmd == "ensure":
+            from aios_core.platforms import ProfileStore, ensure_device
+            record = ensure_device(
+                args.profile, pool=pool,
+                profile_store=ProfileStore.default(),
+                avd_prefix=args.avd_prefix,
+            )
+            if record is None:
+                print(json.dumps(
+                    {"error": "could not lease or create a device"},
+                    ensure_ascii=False,
+                ))
+                return True
+            print(json.dumps(record, ensure_ascii=False, indent=2))
+            return True
+
+    if cmd == "monitor":
+        from aios_core.platforms import PoolMonitor
+        monitor = PoolMonitor(reap_after_s=args.reap_after_s)
+        if args.once:
+            print(json.dumps(monitor.run_once()))
+            monitor.close()
+            return True
+        monitor.start(interval_s=args.interval)
+        print(json.dumps({"monitoring": True, "interval_s": args.interval}))
+        try:
+            import time as _time
+            while True:
+                _time.sleep(1)
+        except KeyboardInterrupt:
+            monitor.close()
+        return True
+
     return False
 
 
@@ -653,7 +702,21 @@ def main(argv=None):
     subparsers.add_parser("stats", help="Show system stats")
 
     # Marketplace platforms registry
-    subparsers.add_parser("platforms", help="List registered marketplace platforms")
+    platforms_parser = subparsers.add_parser(
+        "platforms", help="List/scaffold registered marketplace platforms"
+    )
+    plat_sub = platforms_parser.add_subparsers(dest="platforms_command")
+    plat_sub.add_parser("list", help="List registered platforms")
+
+    p_scaf = plat_sub.add_parser(
+        "scaffold", help="Generate a new platform skeleton from a descriptor"
+    )
+    p_scaf.add_argument("--name", required=True, help="e.g. prom-ua")
+    p_scaf.add_argument("--package", required=True, help="Android package, e.g. ua.prom.app")
+    p_scaf.add_argument("--description", default="")
+    p_scaf.add_argument("--locale", default="uk-UA")
+    p_scaf.add_argument("--root", default=".", help="Project root")
+    p_scaf.add_argument("--dry-run", action="store_true")
 
     # Platform profiles (accounts)
     profiles_parser = subparsers.add_parser(
@@ -705,6 +768,17 @@ def main(argv=None):
 
     d_reap = dev_sub.add_parser("reap", help="Mark silent devices offline")
     d_reap.add_argument("--max-silence-s", type=float, default=900.0)
+
+    d_ensure = dev_sub.add_parser(
+        "ensure", help="Guarantee a device for a profile (lease or create AVD)"
+    )
+    d_ensure.add_argument("--profile", required=True)
+    d_ensure.add_argument("--avd-prefix", default="aios")
+
+    d_mon = dev_sub.add_parser("monitor", help="PoolMonitor: adb heartbeats")
+    d_mon.add_argument("--interval", type=float, default=30.0)
+    d_mon.add_argument("--once", action="store_true", help="single cycle (cron)")
+    d_mon.add_argument("--reap-after-s", type=float, default=900.0)
 
     # OLX Parser Agent
     _add_olx_parsers(subparsers)

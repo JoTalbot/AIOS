@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Platform scaffold (`platforms/scaffold.py`)**: `aios platforms
+  scaffold --name X --package ua.x.app [--dry-run]` генерирует скелет
+  новой платформы — YAML-дескриптор, модуль `aios_core/modules/<name>/`
+  с хранилищем-наследником OLXStorage и smoke-тест; валидация
+  имени/пакета, защита от перезаписи.
+- **Fleet `ensure_device` (`platforms/fleet.py`)**: профилю гарантируется
+  устройство — аренда из пула или создание AVD + запуск headless-эмулятора
+  + регистрация в пуле; побочные эффекты инъецируемы. Команда
+  `aios devices ensure --profile olx:work`.
+- **PoolMonitor**: демон heartbeats (`adb devices` → heartbeat,
+  `reap_stale` → offline); CLI `aios devices monitor [--interval N]
+  [--once]` (формат `--once` для cron).
+- 12 новых тестов (`tests/test_fleet_scaffold.py`).
+
 ## [9.0.0-alpha.6] - 2026-07-21
 
 ### Added
