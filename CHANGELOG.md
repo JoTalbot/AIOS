@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Lease waitlist (`pool_waitlist`)**: идемпотентная очередь ожидания
+  устройства с приоритетами (priority DESC → FIFO); автоматическое
+  обслуживание при `release()`/`reap_stale()` с соблюдением
+  платформенных квот. CLI `devices lease --enqueue|enqueue|waitlist|
+  cancel-wait`; REST lease с `enqueue` → 202, `/devices/waitlist[/cancel]`.
+- **ShardRouter (`platforms/shards.py`)**: липкий роутинг профилей по
+  хостам (rendezvous hashing), персистентность в `AIOS_SHARDS_DB`,
+  автомиграция при болезни/удалении хоста. CLI `aios shards
+  add|list|remove|route|unroute`; REST `/api/v1/shards*`.
+- **APK auto-scaffold**: `inspect_apk()` (`aapt dump badging`) +
+  `scaffold_from_apk()` — черновой дескриптор и скелет платформы из APK;
+  CLI `aios platforms from-apk [--name X] [--dry-run]`.
+- 13 новых тестов (`tests/test_fleet_scale.py`).
+
 ## [9.0.0-alpha.8] - 2026-07-21
 
 ### Added

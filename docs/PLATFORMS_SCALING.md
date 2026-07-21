@@ -198,10 +198,36 @@ REST: `GET|POST /api/v1/devices/limits`, превышение на register → 
 и per-profile логами. Профили читаются из реестра, поэтому план всегда
 актуален текущему составу аккаунтов.
 
+## Waitlist аренды (очередь с приоритетами)
+
+`DevicePool.enqueue(profile_key, priority)` — идемпотентная очередь
+ожидания устройства (priority DESC → FIFO). Обслуживание автоматическое:
+`release()` и `reap_stale()` вызывают `serve_waitlist()`; платформенные
+квоты (`max_busy:<platform>`) удерживают очередь. CLI:
+`aios devices lease --enqueue --priority N | enqueue | waitlist |
+cancel-wait`. REST: lease с `{"enqueue": true}` → 202 Accepted,
+`GET /api/v1/devices/waitlist`, `POST .../waitlist/cancel`.
+
+## Шардинг (ShardRouter)
+
+`aios_core/platforms/shards.py`: профили адресуются
+`host/platform/name`, маршрут назначается rendezvous-хэшированием
+(HRW: max sha256(host|profile_key)) и липкий — хранится в SQLite
+(`AIOS_SHARDS_DB`), перевыбор только при болезни/удалении хоста
+(`set_healthy`/`remove_host` → автоматическая миграция). CLI:
+`aios shards add|list|remove|route|unroute`. REST: `/api/v1/shards*`.
+
+## Авто-scaffold из APK
+
+`inspect_apk(path)` разбирает `aapt dump badging` → пакет, метка,
+launchable-activity, target SDK; `scaffold_from_apk()` строит черновой
+дескриптор и скелет платформы (candidate_name = последний сегмент
+пакета). CLI: `aios platforms from-apk app.apk [--name X] [--dry-run]`.
+Дальше: кандидаты resource-id для парсеров из UI-дампов калибровки.
+
 ## Дальше (дорожная карта к 10000+)
 
-1. **Очереди ожидания аренды пула** (waitlist с приоритетами).
-2. **Шардинг**: агрегатор реестров (несколько хостов), профили
-   адресуются `host/platform/name`; REST-шлюз проксирует на хост профиля.
-3. **Авто-scaffold из APK**: анализ манифеста приложения → черновой
-   дескриптор и кандидаты resource-id для парсеров.
+1. **REST-шлюз шардинга**: проксирование `/modules/<platform>/*` на
+   хост из ShardRouter.route_for; health-probe хостов демоном.
+2. **Калибровочный агент**: из UI-дампа новой платформы находит
+   маркеры карточек/цен и дописывает дескриптор автоматически.
