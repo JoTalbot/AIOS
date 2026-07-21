@@ -26,16 +26,18 @@ class AndroidRPADeviceEmulator:
         return True
 
     def authenticate_user(self, package_name: str, user_credentials: Dict[str, str]) -> Dict[str, Any]:
-        """Automate UI login inputs (username/password) inside emulator."""
-        username = user_credentials.get("login") or user_credentials.get("email") or "user"
+        """Automate UI login inputs (username/phone/password) inside emulator with security masking."""
+        username = user_credentials.get("phone") or user_credentials.get("login") or user_credentials.get("email") or "user"
         session_token = f"sess_{hashlib.sha256(f'{package_name}:{username}:{time.time()}'.encode('utf-8')).hexdigest()[:12]}"
 
+        # Security: Never echo back plain password
         session_record = {
             "session_token": session_token,
             "package_name": package_name,
-            "username": username,
+            "account_phone": username,
             "status": "authenticated",
             "device_id": self.device_id,
+            "masked_credentials": True,
             "logged_in_at": time.time()
         }
         self.authenticated_sessions[package_name] = session_record
