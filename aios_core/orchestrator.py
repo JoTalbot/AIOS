@@ -184,9 +184,16 @@ class Orchestrator:
         )
         self._tasks[task.id] = task
         self.events.emit("task_created", "orchestrator", {"task_id": task.id, "name": task.name, "agent_id": task.agent_id})
-        # Real-time WebSocket notification
-        import asyncio
-        asyncio.create_task(ws_manager.send_event("task_created", {"task_id": task.id, "name": task.name}))
+        # Real-time WebSocket notification (safe)
+        try:
+            import asyncio
+            try:
+                loop = asyncio.get_running_loop()
+                asyncio.create_task(ws_manager.send_event("task_created", {"task_id": task.id, "name": task.name}))
+            except RuntimeError:
+                pass  # No running loop (sync context)
+        except Exception:
+            pass
         return task
 
     def add_step(
