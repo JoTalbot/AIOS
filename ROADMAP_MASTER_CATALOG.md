@@ -1,6 +1,6 @@
-# AIOS Master Roadmap Architecture — Complete Horizon Index (v9.0.0-alpha.4)
+# AIOS Master Roadmap Architecture — Complete Horizon Index (v9.0.0-alpha.5)
 
-**System Version:** `v9.0.0-alpha.4`  
+**System Version:** `v9.0.0-alpha.5`  
 **Constitutional Compliance:** 100% (67 Articles I–LXVII verified via `tula`)  
 **Test Suite Coverage:** 564 / 564 Tests Passing (100% Green)  
 **GitHub Repository:** `JoTalbot/AIOS` (Branch `main`, clean state)

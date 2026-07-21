@@ -1,10 +1,10 @@
-"""AIOS Core Executable Layer v9.0.0-alpha.4
+"""AIOS Core Executable Layer v9.0.0-alpha.5
 
 Autonomous Intelligence Operating System - Executive Layer Components.
 Constitution-Runtime Bridge with full SQLite persistence.
 """
 
-__version__ = "9.0.0-alpha.4"
+__version__ = "9.0.0-alpha.5"
 __author__ = "AIOS Development"
 
 # Persistence

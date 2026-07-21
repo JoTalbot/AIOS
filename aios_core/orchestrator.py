@@ -120,7 +120,7 @@ class Orchestrator:
         constitution_dir: Optional[str] = None,
         policies_dir: Optional[str] = None,
     ):
-        self.version = "9.0.0-alpha.4"
+        self.version = "9.0.0-alpha.5"
         self.config = config or load_config()
 
         # Resolve directories

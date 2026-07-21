@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [9.0.0-alpha.5] - 2026-07-21
 
 ### Added
 - **Platforms & profiles architecture (`aios_core/platforms/`)** —

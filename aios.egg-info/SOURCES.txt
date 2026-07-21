@@ -258,6 +258,11 @@ aios_core/modules/olx/storage.py
 aios_core/modules/olx/text_utils.py
 aios_core/modules/olx/ui_parser.py
 aios_core/modules/olx/watch.py
+aios_core/platforms/__init__.py
+aios_core/platforms/descriptor.py
+aios_core/platforms/profile.py
+aios_core/platforms/resolver.py
+aios_core/platforms/store.py
 aios_core/test_engine/__init__.py
 aios_core/test_engine/engine.py
 aios_core/test_engine/models.py
@@ -318,6 +323,7 @@ tests/test_phase4_test_engine.py
 tests/test_phase5_api.py
 tests/test_planetary_federation.py
 tests/test_planner_v3.py
+tests/test_platforms_profiles.py
 tests/test_plugin_manager.py
 tests/test_quantum_entanglement_mesh.py
 tests/test_quantum_native.py
