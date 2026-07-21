@@ -1,0 +1,690 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>aios_core.constitution_engine &mdash; AIOS - Autonomous Intelligence Operating System 8.0.0-alpha documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=37dad9ae"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            AIOS - Autonomous Intelligence Operating System
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Table of Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture.html">AIOS Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">AIOS Core API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">AIOS - Autonomous Intelligence Operating System</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">aios_core.constitution_engine</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for aios_core.constitution_engine</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;AIOS Constitution Engine v3.0.0</span>
+
+<span class="sd">Core constitutional decision-making engine that evaluates actions against</span>
+<span class="sd">real constitutional articles and YAML policies. Replaces the v2.1.1 stub</span>
+<span class="sd">with actual rule enforcement.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.constitution_loader</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ConstitutionLoader</span><span class="p">,</span>
+    <span class="n">ConstitutionalRule</span><span class="p">,</span>
+    <span class="n">ObligationLevel</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.policy_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">PolicyLoader</span>
+
+
+<div class="viewcode-block" id="DecisionOutcome">
+<a class="viewcode-back" href="../../api.html#aios_core.constitution_engine.DecisionOutcome">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DecisionOutcome</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Possible outcomes of a constitutional evaluation.&quot;&quot;&quot;</span>
+    <span class="n">ALLOW</span> <span class="o">=</span> <span class="s2">&quot;ALLOW&quot;</span>
+    <span class="n">DENY</span> <span class="o">=</span> <span class="s2">&quot;DENY&quot;</span>
+    <span class="n">REVIEW</span> <span class="o">=</span> <span class="s2">&quot;REVIEW&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="EvaluationContext">
+<a class="viewcode-back" href="../../api.html#aios_core.constitution_engine.EvaluationContext">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EvaluationContext</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Context for a single action evaluation.&quot;&quot;&quot;</span>
+    <span class="n">action</span><span class="p">:</span> <span class="nb">dict</span>
+    <span class="n">evaluation_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">12</span><span class="p">])</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">constitution_hits</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">policy_hits</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">violations</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">requirements</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">warnings</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="Decision">
+<a class="viewcode-back" href="../../api.html#aios_core.constitution_engine.Decision">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Decision</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of a constitutional evaluation.&quot;&quot;&quot;</span>
+    <span class="n">evaluation_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">outcome</span><span class="p">:</span> <span class="n">DecisionOutcome</span>
+    <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">details</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">constitution_version</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">violations</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">requirements</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">policy_actions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">matched_articles</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">matched_policies</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Mapping from risk levels to policy threat levels</span>
+<span class="n">_RISK_TO_THREAT</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;critical&quot;</span><span class="p">:</span> <span class="s2">&quot;critical&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="s2">&quot;high&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;medium&quot;</span><span class="p">:</span> <span class="s2">&quot;medium&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="s2">&quot;low&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1"># Actions that are constitutionally restricted and require special handling</span>
+<span class="n">_RESTRICTED_ACTIONS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;modify_constitution&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;article&quot;</span><span class="p">:</span> <span class="s2">&quot;ARTICLE-I&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Constitution modification requires human approval&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;escalation&quot;</span><span class="p">:</span> <span class="s2">&quot;human_review&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;modify_identity&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;article&quot;</span><span class="p">:</span> <span class="s2">&quot;ARTICLE-I&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Identity modification is constitutionally restricted&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;escalation&quot;</span><span class="p">:</span> <span class="s2">&quot;human_review&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;remove_security&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;article&quot;</span><span class="p">:</span> <span class="s2">&quot;ARTICLE-V&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Removing security controls is prohibited&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;escalation&quot;</span><span class="p">:</span> <span class="s2">&quot;immediate_isolation&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;transfer_ownership&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;article&quot;</span><span class="p">:</span> <span class="s2">&quot;ARTICLE-I&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Ownership transfer requires human approval&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;escalation&quot;</span><span class="p">:</span> <span class="s2">&quot;human_review&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;destroy_records&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;article&quot;</span><span class="p">:</span> <span class="s2">&quot;ARTICLE-II&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Destroying historical records is constitutionally restricted&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;escalation&quot;</span><span class="p">:</span> <span class="s2">&quot;human_review&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;direct_core_modification&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;article&quot;</span><span class="p">:</span> <span class="s2">&quot;ARTICLE-XXXVI&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Direct core modification is prohibited by evolution policy&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;escalation&quot;</span><span class="p">:</span> <span class="s2">&quot;audit_and_review&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;unsafe_evolution&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;article&quot;</span><span class="p">:</span> <span class="s2">&quot;ARTICLE-XXXVI&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Unsafe evolution is blocked&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;escalation&quot;</span><span class="p">:</span> <span class="s2">&quot;immediate_isolation&quot;</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="ConstitutionEngine">
+<a class="viewcode-back" href="../../api.html#aios_core.constitution_engine.ConstitutionEngine">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ConstitutionEngine</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Evaluates actions against AIOS constitutional principles and policies.</span>
+
+<span class="sd">    Loads the full constitution (67 articles) and all YAML policies at init.</span>
+<span class="sd">    Each evaluate() call checks the action against:</span>
+<span class="sd">    1. Required action fields (goal, scope, risk, audit_log)</span>
+<span class="sd">    2. Constitution MUST NOT rules (prohibitions)</span>
+<span class="sd">    3. Constitution MUST rules (requirements)</span>
+<span class="sd">    4. YAML policy rules and threat levels</span>
+<span class="sd">    5. Restricted action patterns</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">constitution_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">policies_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="s2">&quot;3.0.0&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">constitution</span> <span class="o">=</span> <span class="n">ConstitutionLoader</span><span class="p">(</span><span class="n">constitution_dir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">policies</span> <span class="o">=</span> <span class="n">PolicyLoader</span><span class="p">(</span><span class="n">policies_dir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decisions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Decision</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="ConstitutionEngine.evaluate">
+<a class="viewcode-back" href="../../api.html#aios_core.constitution_engine.ConstitutionEngine.evaluate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Evaluate an action against constitutional rules and policies.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            action: Action request. Expected fields:</span>
+<span class="sd">                - goal (str): What the action intends to achieve</span>
+<span class="sd">                - scope (str): Scope of the action</span>
+<span class="sd">                - risk (str): Risk level — &#39;low&#39;, &#39;medium&#39;, &#39;high&#39;, &#39;critical&#39;</span>
+<span class="sd">                - audit_log (bool or dict): Whether audit logging is enabled</span>
+<span class="sd">                - action_type (str, optional): Type of action</span>
+<span class="sd">                - agent_id (str, optional): ID of the requesting agent</span>
+<span class="sd">                - authority (str, optional): Authority level of the agent</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Decision dict with outcome, reason, violations, requirements, etc.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ctx</span> <span class="o">=</span> <span class="n">EvaluationContext</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="n">action</span><span class="p">)</span>
+
+        <span class="c1"># --- Phase 1: Required fields check ---</span>
+        <span class="n">required_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;goal&quot;</span><span class="p">,</span> <span class="s2">&quot;scope&quot;</span><span class="p">,</span> <span class="s2">&quot;risk&quot;</span><span class="p">,</span> <span class="s2">&quot;audit_log&quot;</span><span class="p">]</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">required_fields</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">f</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="n">decision</span> <span class="o">=</span> <span class="n">Decision</span><span class="p">(</span>
+                <span class="n">evaluation_id</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">evaluation_id</span><span class="p">,</span>
+                <span class="n">outcome</span><span class="o">=</span><span class="n">DecisionOutcome</span><span class="o">.</span><span class="n">DENY</span><span class="p">,</span>
+                <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;missing_required_fields&quot;</span><span class="p">,</span>
+                <span class="n">details</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Missing required fields: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">constitution_version</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
+                <span class="n">requirements</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;field&quot;</span><span class="p">:</span> <span class="n">f</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;missing&quot;</span><span class="p">}</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">missing</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">decisions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">decision</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decision_to_dict</span><span class="p">(</span><span class="n">decision</span><span class="p">)</span>
+
+        <span class="c1"># --- Phase 2: Restricted action check ---</span>
+        <span class="n">action_type</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action_type&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">restricted</span> <span class="o">=</span> <span class="n">_RESTRICTED_ACTIONS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">action_type</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">restricted</span><span class="p">:</span>
+            <span class="n">escalation</span> <span class="o">=</span> <span class="n">restricted</span><span class="p">[</span><span class="s2">&quot;escalation&quot;</span><span class="p">]</span>
+            <span class="n">decision</span> <span class="o">=</span> <span class="n">Decision</span><span class="p">(</span>
+                <span class="n">evaluation_id</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">evaluation_id</span><span class="p">,</span>
+                <span class="n">outcome</span><span class="o">=</span><span class="n">DecisionOutcome</span><span class="o">.</span><span class="n">REVIEW</span><span class="p">,</span>
+                <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;restricted_action&quot;</span><span class="p">,</span>
+                <span class="n">details</span><span class="o">=</span><span class="n">restricted</span><span class="p">[</span><span class="s2">&quot;reason&quot;</span><span class="p">],</span>
+                <span class="n">constitution_version</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
+                <span class="n">violations</span><span class="o">=</span><span class="p">[{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;restricted_action&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;article&quot;</span><span class="p">:</span> <span class="n">restricted</span><span class="p">[</span><span class="s2">&quot;article&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">restricted</span><span class="p">[</span><span class="s2">&quot;reason&quot;</span><span class="p">],</span>
+                <span class="p">}],</span>
+                <span class="n">policy_actions</span><span class="o">=</span><span class="p">[{</span>
+                    <span class="s2">&quot;escalation&quot;</span><span class="p">:</span> <span class="n">escalation</span><span class="p">,</span>
+                    <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">get_threat_action</span><span class="p">(</span><span class="s2">&quot;critical&quot;</span><span class="p">),</span>
+                <span class="p">}],</span>
+                <span class="n">matched_articles</span><span class="o">=</span><span class="p">[</span><span class="n">restricted</span><span class="p">[</span><span class="s2">&quot;article&quot;</span><span class="p">]],</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">decisions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">decision</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decision_to_dict</span><span class="p">(</span><span class="n">decision</span><span class="p">)</span>
+
+        <span class="c1"># --- Phase 3: Constitution MUST NOT check ---</span>
+        <span class="n">must_not_hits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">constitution</span><span class="o">.</span><span class="n">check_action</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+        <span class="n">prohibition_hits</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">h</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">must_not_hits</span> <span class="k">if</span> <span class="n">h</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;prohibition&quot;</span>
+        <span class="p">]</span>
+
+        <span class="c1"># --- Phase 4: Policy-based checks ---</span>
+        <span class="n">policy_violations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_policies</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span>
+        <span class="n">policy_reqs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_policy_requirements</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span>
+
+        <span class="c1"># --- Phase 5: Risk-based evaluation ---</span>
+        <span class="n">risk_level</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;risk&quot;</span><span class="p">,</span> <span class="s2">&quot;medium&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">threat_action</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">get_threat_action</span><span class="p">(</span><span class="n">risk_level</span><span class="p">)</span>
+        <span class="n">threat_escalation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">get_threat_escalation</span><span class="p">(</span><span class="n">risk_level</span><span class="p">)</span>
+
+        <span class="c1"># --- Phase 6: Core principle checks ---</span>
+        <span class="n">principle_violations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_core_principles</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span>
+
+        <span class="c1"># Combine all violations and requirements</span>
+        <span class="n">all_violations</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">prohibition_hits</span>
+            <span class="o">+</span> <span class="n">policy_violations</span>
+            <span class="o">+</span> <span class="n">principle_violations</span>
+            <span class="o">+</span> <span class="n">ctx</span><span class="o">.</span><span class="n">violations</span>
+        <span class="p">)</span>
+        <span class="n">all_requirements</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">[</span><span class="n">h</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">must_not_hits</span> <span class="k">if</span> <span class="n">h</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;requirement&quot;</span><span class="p">]</span>
+            <span class="o">+</span> <span class="n">policy_reqs</span>
+            <span class="o">+</span> <span class="n">ctx</span><span class="o">.</span><span class="n">requirements</span>
+        <span class="p">)</span>
+
+        <span class="c1"># --- Phase 7: Determine outcome ---</span>
+        <span class="n">outcome</span><span class="p">,</span> <span class="n">reason</span><span class="p">,</span> <span class="n">details</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_determine_outcome</span><span class="p">(</span>
+            <span class="n">action</span><span class="o">=</span><span class="n">action</span><span class="p">,</span>
+            <span class="n">violations</span><span class="o">=</span><span class="n">all_violations</span><span class="p">,</span>
+            <span class="n">requirements</span><span class="o">=</span><span class="n">all_requirements</span><span class="p">,</span>
+            <span class="n">risk_level</span><span class="o">=</span><span class="n">risk_level</span><span class="p">,</span>
+            <span class="n">threat_action</span><span class="o">=</span><span class="n">threat_action</span><span class="p">,</span>
+            <span class="n">threat_escalation</span><span class="o">=</span><span class="n">threat_escalation</span><span class="p">,</span>
+            <span class="n">warnings</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">warnings</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Gather matched articles and policies</span>
+        <span class="n">matched_articles</span> <span class="o">=</span> <span class="nb">list</span><span class="p">({</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;article&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">all_violations</span>
+            <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;article&quot;</span><span class="p">)</span>
+        <span class="p">})</span>
+        <span class="n">matched_policies</span> <span class="o">=</span> <span class="nb">list</span><span class="p">({</span>
+            <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;policy&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">all_violations</span>
+            <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;policy&quot;</span><span class="p">)</span>
+        <span class="p">})</span>
+
+        <span class="n">decision</span> <span class="o">=</span> <span class="n">Decision</span><span class="p">(</span>
+            <span class="n">evaluation_id</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">evaluation_id</span><span class="p">,</span>
+            <span class="n">outcome</span><span class="o">=</span><span class="n">outcome</span><span class="p">,</span>
+            <span class="n">reason</span><span class="o">=</span><span class="n">reason</span><span class="p">,</span>
+            <span class="n">details</span><span class="o">=</span><span class="n">details</span><span class="p">,</span>
+            <span class="n">constitution_version</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
+            <span class="n">violations</span><span class="o">=</span><span class="n">all_violations</span><span class="p">,</span>
+            <span class="n">requirements</span><span class="o">=</span><span class="n">all_requirements</span><span class="p">,</span>
+            <span class="n">policy_actions</span><span class="o">=</span><span class="p">[{</span>
+                <span class="s2">&quot;threat_level&quot;</span><span class="p">:</span> <span class="n">risk_level</span><span class="p">,</span>
+                <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="n">threat_action</span><span class="p">,</span>
+                <span class="s2">&quot;escalation&quot;</span><span class="p">:</span> <span class="n">threat_escalation</span><span class="p">,</span>
+            <span class="p">}],</span>
+            <span class="n">matched_articles</span><span class="o">=</span><span class="n">matched_articles</span><span class="p">,</span>
+            <span class="n">matched_policies</span><span class="o">=</span><span class="n">matched_policies</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">decisions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">decision</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_decision_to_dict</span><span class="p">(</span><span class="n">decision</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_policies</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">EvaluationContext</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check action against YAML policy rules.&quot;&quot;&quot;</span>
+        <span class="n">violations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">risk</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;risk&quot;</span><span class="p">,</span> <span class="s2">&quot;medium&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+        <span class="c1"># Security policy checks</span>
+        <span class="n">sec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">get_security_policy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sec</span><span class="p">:</span>
+            <span class="c1"># Unknown access blocked rule</span>
+            <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">is_rule_enabled</span><span class="p">(</span><span class="s2">&quot;security_policy&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown_access_blocked&quot;</span><span class="p">)</span>
+                    <span class="ow">and</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;agent_id&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;unknown&quot;</span><span class="p">):</span>
+                <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;policy_violation&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="s2">&quot;security_policy&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;rule&quot;</span><span class="p">:</span> <span class="s2">&quot;unknown_access_blocked&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Unknown agents cannot be granted access&quot;</span><span class="p">,</span>
+                <span class="p">})</span>
+
+            <span class="c1"># Least privilege</span>
+            <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">is_rule_enabled</span><span class="p">(</span><span class="s2">&quot;security_policy&quot;</span><span class="p">,</span> <span class="s2">&quot;least_privilege&quot;</span><span class="p">)</span>
+                    <span class="ow">and</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;authority&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;unlimited&quot;</span><span class="p">):</span>
+                <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;policy_violation&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="s2">&quot;security_policy&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;rule&quot;</span><span class="p">:</span> <span class="s2">&quot;least_privilege&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Unlimited authority violates least privilege principle&quot;</span><span class="p">,</span>
+                <span class="p">})</span>
+
+            <span class="c1"># Audit logging required</span>
+            <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">is_requirement_met</span><span class="p">(</span><span class="s2">&quot;security_policy&quot;</span><span class="p">,</span> <span class="s2">&quot;audit_logging&quot;</span><span class="p">)</span>
+                    <span class="ow">and</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;audit_log&quot;</span><span class="p">)):</span>
+                <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;policy_violation&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="s2">&quot;security_policy&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;rule&quot;</span><span class="p">:</span> <span class="s2">&quot;audit_logging&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Security policy requires audit logging&quot;</span><span class="p">,</span>
+                <span class="p">})</span>
+
+            <span class="c1"># Risk escalation to REVIEW for critical</span>
+            <span class="k">if</span> <span class="n">risk</span> <span class="o">==</span> <span class="s2">&quot;critical&quot;</span><span class="p">:</span>
+                <span class="n">threat</span> <span class="o">=</span> <span class="n">sec</span><span class="o">.</span><span class="n">threat_levels</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;critical&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">threat</span> <span class="ow">and</span> <span class="n">threat</span><span class="o">.</span><span class="n">escalation</span> <span class="o">==</span> <span class="s2">&quot;human_review&quot;</span><span class="p">:</span>
+                    <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;policy_escalation&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="s2">&quot;security_policy&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;escalation&quot;</span><span class="p">:</span> <span class="s2">&quot;human_review&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Critical risk requires human review&quot;</span><span class="p">,</span>
+                    <span class="p">})</span>
+
+        <span class="c1"># Evolution policy checks</span>
+        <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action_type&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;evolution&quot;</span><span class="p">):</span>
+            <span class="n">evo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">get_evolution_policy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">evo</span><span class="p">:</span>
+                <span class="n">restrictions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">get_evolution_restrictions</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">restriction_name</span><span class="p">,</span> <span class="n">restriction_value</span> <span class="ow">in</span> <span class="n">restrictions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">restriction_value</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;prohibited&quot;</span><span class="p">,</span> <span class="s2">&quot;blocked&quot;</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">restriction_name</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action_type&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)):</span>
+                            <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;policy_violation&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="s2">&quot;evolution_policy&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;rule&quot;</span><span class="p">:</span> <span class="n">restriction_name</span><span class="p">,</span>
+                                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Evolution restriction: </span><span class="si">{</span><span class="n">restriction_name</span><span class="si">}</span><span class="s2"> is </span><span class="si">{</span><span class="n">restriction_value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                            <span class="p">})</span>
+
+                <span class="c1"># Constitutional validation required</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">is_requirement_met</span><span class="p">(</span>
+                    <span class="s2">&quot;evolution_policy&quot;</span><span class="p">,</span> <span class="s2">&quot;constitutional_validation&quot;</span>
+                <span class="p">):</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;constitutional_check&quot;</span><span class="p">):</span>
+                        <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;policy_violation&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="s2">&quot;evolution_policy&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;rule&quot;</span><span class="p">:</span> <span class="s2">&quot;constitutional_validation&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Evolution actions require constitutional validation&quot;</span><span class="p">,</span>
+                        <span class="p">})</span>
+
+        <span class="c1"># Federation policy checks</span>
+        <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action_type&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="s2">&quot;federate&quot;</span><span class="p">,</span> <span class="s2">&quot;sync&quot;</span><span class="p">,</span> <span class="s2">&quot;state_exchange&quot;</span>
+        <span class="p">):</span>
+            <span class="n">fed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">get_federation_policy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">fed</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">is_rule_enabled</span><span class="p">(</span>
+                    <span class="s2">&quot;federation_policy&quot;</span><span class="p">,</span> <span class="s2">&quot;verified_nodes_only&quot;</span>
+                <span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;node_verified&quot;</span><span class="p">):</span>
+                    <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;policy_violation&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="s2">&quot;federation_policy&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;rule&quot;</span><span class="p">:</span> <span class="s2">&quot;verified_nodes_only&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;Federation requires verified nodes&quot;</span><span class="p">,</span>
+                    <span class="p">})</span>
+
+        <span class="k">return</span> <span class="n">violations</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_policy_requirements</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">EvaluationContext</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check that policy requirements are satisfied.&quot;&quot;&quot;</span>
+        <span class="n">reqs</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Security policy requirements</span>
+        <span class="n">sec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">get_security_policy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sec</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="n">sec</span><span class="o">.</span><span class="n">requirements</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;access_control&quot;</span> <span class="ow">and</span> <span class="n">req</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;agent_id&quot;</span><span class="p">):</span>
+                        <span class="n">reqs</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                            <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="s2">&quot;security_policy&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;requirement&quot;</span><span class="p">:</span> <span class="s2">&quot;access_control&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;not_satisfied&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Agent ID required for access control&quot;</span><span class="p">,</span>
+                        <span class="p">})</span>
+
+                <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;node_verification&quot;</span> <span class="ow">and</span> <span class="n">req</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action_type&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;federate&quot;</span><span class="p">,</span> <span class="s2">&quot;sync&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;node_verified&quot;</span><span class="p">):</span>
+                        <span class="n">reqs</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                            <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="s2">&quot;security_policy&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;requirement&quot;</span><span class="p">:</span> <span class="s2">&quot;node_verification&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;not_satisfied&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Node verification required for federation actions&quot;</span><span class="p">,</span>
+                        <span class="p">})</span>
+
+        <span class="c1"># Evolution policy requirements</span>
+        <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action_type&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;evolution&quot;</span><span class="p">):</span>
+            <span class="n">evo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">get_evolution_policy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">evo</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="n">evo</span><span class="o">.</span><span class="n">requirements</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;testing_before_deployment&quot;</span> <span class="ow">and</span> <span class="n">req</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;testing_completed&quot;</span><span class="p">):</span>
+                            <span class="n">reqs</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                                <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="s2">&quot;evolution_policy&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;requirement&quot;</span><span class="p">:</span> <span class="s2">&quot;testing_before_deployment&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;not_satisfied&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Testing must complete before deployment&quot;</span><span class="p">,</span>
+                            <span class="p">})</span>
+                    <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;rollback_capability&quot;</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;required&quot;</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rollback_plan&quot;</span><span class="p">):</span>
+                            <span class="n">reqs</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                                <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="s2">&quot;evolution_policy&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;requirement&quot;</span><span class="p">:</span> <span class="s2">&quot;rollback_capability&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;not_satisfied&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Rollback plan required for evolution actions&quot;</span><span class="p">,</span>
+                            <span class="p">})</span>
+
+        <span class="k">return</span> <span class="n">reqs</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_core_principles</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">EvaluationContext</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check action against the 6 core constitutional principles.&quot;&quot;&quot;</span>
+        <span class="n">violations</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Principle 1: Limited Autonomy — requires goal, scope, risk, audit</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;goal&quot;</span><span class="p">):</span>
+            <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;core_principle_violation&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;principle&quot;</span><span class="p">:</span> <span class="s2">&quot;limited_autonomy&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Every autonomous action requires a clear goal&quot;</span><span class="p">,</span>
+            <span class="p">})</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;scope&quot;</span><span class="p">):</span>
+            <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;core_principle_violation&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;principle&quot;</span><span class="p">:</span> <span class="s2">&quot;limited_autonomy&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Every autonomous action requires a defined scope&quot;</span><span class="p">,</span>
+            <span class="p">})</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;risk&quot;</span><span class="p">):</span>
+            <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;core_principle_violation&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;principle&quot;</span><span class="p">:</span> <span class="s2">&quot;limited_autonomy&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Every autonomous action requires risk assessment&quot;</span><span class="p">,</span>
+            <span class="p">})</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;audit_log&quot;</span><span class="p">):</span>
+            <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;core_principle_violation&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;principle&quot;</span><span class="p">:</span> <span class="s2">&quot;limited_autonomy&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Every autonomous action requires audit logging&quot;</span><span class="p">,</span>
+            <span class="p">})</span>
+
+        <span class="c1"># Principle 3: Memory Separation — personal data should not be shared</span>
+        <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;memory_type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;personal&quot;</span> <span class="ow">and</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;share&quot;</span><span class="p">):</span>
+            <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;core_principle_violation&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;principle&quot;</span><span class="p">:</span> <span class="s2">&quot;memory_separation&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Personal memory MUST NOT be shared (federated)&quot;</span><span class="p">,</span>
+            <span class="p">})</span>
+
+        <span class="c1"># Principle 5: Controlled Evolution — evolution needs stages</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action_type&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;evolution&quot;</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="ow">not</span> <span class="n">action</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;evolution_stage&quot;</span><span class="p">)):</span>
+            <span class="n">evo_stages</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">get_evolution_stages</span><span class="p">()</span>
+            <span class="n">violations</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;core_principle_violation&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;principle&quot;</span><span class="p">:</span> <span class="s2">&quot;controlled_evolution&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Evolution actions must follow the pipeline: </span><span class="si">{</span><span class="n">evo_stages</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">})</span>
+
+        <span class="k">return</span> <span class="n">violations</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_determine_outcome</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">action</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+        <span class="n">violations</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span>
+        <span class="n">requirements</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span>
+        <span class="n">risk_level</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">threat_action</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">threat_escalation</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">warnings</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">DecisionOutcome</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determine the final evaluation outcome.&quot;&quot;&quot;</span>
+        <span class="c1"># Any hard violations → DENY</span>
+        <span class="n">hard_violations</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">violations</span>
+            <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="s2">&quot;policy_violation&quot;</span><span class="p">,</span> <span class="s2">&quot;core_principle_violation&quot;</span><span class="p">,</span> <span class="s2">&quot;prohibition&quot;</span>
+            <span class="p">)</span>
+            <span class="ow">and</span> <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;policy_escalation&quot;</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">hard_violations</span><span class="p">:</span>
+            <span class="n">reasons</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reason&quot;</span><span class="p">,</span> <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;detail&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">hard_violations</span><span class="p">]</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="n">DecisionOutcome</span><span class="o">.</span><span class="n">DENY</span><span class="p">,</span>
+                <span class="s2">&quot;constitutional_or_policy_violation&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">reasons</span><span class="p">[:</span><span class="mi">3</span><span class="p">]),</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Escalation violations → REVIEW</span>
+        <span class="n">escalation_hits</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">violations</span>
+            <span class="k">if</span> <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;policy_escalation&quot;</span><span class="p">,</span> <span class="s2">&quot;restricted_action&quot;</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">escalation_hits</span><span class="p">:</span>
+            <span class="n">reasons</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reason&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">escalation_hits</span><span class="p">]</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="n">DecisionOutcome</span><span class="o">.</span><span class="n">REVIEW</span><span class="p">,</span>
+                <span class="s2">&quot;escalation_required&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">reasons</span><span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Unmet requirements → REVIEW</span>
+        <span class="n">unmet</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">requirements</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;not_satisfied&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">unmet</span><span class="p">:</span>
+            <span class="n">details</span> <span class="o">=</span> <span class="s2">&quot;; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;detail&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">unmet</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="n">DecisionOutcome</span><span class="o">.</span><span class="n">REVIEW</span><span class="p">,</span>
+                <span class="s2">&quot;unmet_requirements&quot;</span><span class="p">,</span>
+                <span class="n">details</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># High risk → REVIEW</span>
+        <span class="k">if</span> <span class="n">risk_level</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;high&quot;</span><span class="p">,</span> <span class="s2">&quot;critical&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="n">DecisionOutcome</span><span class="o">.</span><span class="n">REVIEW</span><span class="p">,</span>
+                <span class="s2">&quot;risk_review&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Risk level &#39;</span><span class="si">{</span><span class="n">risk_level</span><span class="si">}</span><span class="s2">&#39; requires review. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Policy action: </span><span class="si">{</span><span class="n">threat_action</span><span class="si">}</span><span class="s2">, escalation: </span><span class="si">{</span><span class="n">threat_escalation</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># All checks passed → ALLOW</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">DecisionOutcome</span><span class="o">.</span><span class="n">ALLOW</span><span class="p">,</span>
+            <span class="s2">&quot;constitutional_compliance&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Action complies with constitutional principles and all policies&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_decision_to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">decision</span><span class="p">:</span> <span class="n">Decision</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert a Decision dataclass to a plain dict.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;evaluation_id&quot;</span><span class="p">:</span> <span class="n">decision</span><span class="o">.</span><span class="n">evaluation_id</span><span class="p">,</span>
+            <span class="s2">&quot;decision&quot;</span><span class="p">:</span> <span class="n">decision</span><span class="o">.</span><span class="n">outcome</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">decision</span><span class="o">.</span><span class="n">reason</span><span class="p">,</span>
+            <span class="s2">&quot;details&quot;</span><span class="p">:</span> <span class="n">decision</span><span class="o">.</span><span class="n">details</span><span class="p">,</span>
+            <span class="s2">&quot;constitution_version&quot;</span><span class="p">:</span> <span class="n">decision</span><span class="o">.</span><span class="n">constitution_version</span><span class="p">,</span>
+            <span class="s2">&quot;violations&quot;</span><span class="p">:</span> <span class="n">decision</span><span class="o">.</span><span class="n">violations</span><span class="p">,</span>
+            <span class="s2">&quot;requirements&quot;</span><span class="p">:</span> <span class="n">decision</span><span class="o">.</span><span class="n">requirements</span><span class="p">,</span>
+            <span class="s2">&quot;policy_actions&quot;</span><span class="p">:</span> <span class="n">decision</span><span class="o">.</span><span class="n">policy_actions</span><span class="p">,</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">decision</span><span class="o">.</span><span class="n">timestamp</span><span class="p">,</span>
+            <span class="s2">&quot;matched_articles&quot;</span><span class="p">:</span> <span class="n">decision</span><span class="o">.</span><span class="n">matched_articles</span><span class="p">,</span>
+            <span class="s2">&quot;matched_policies&quot;</span><span class="p">:</span> <span class="n">decision</span><span class="o">.</span><span class="n">matched_policies</span><span class="p">,</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="ConstitutionEngine.history">
+<a class="viewcode-back" href="../../api.html#aios_core.constitution_engine.ConstitutionEngine.history">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">history</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return full decision history as dicts.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_decision_to_dict</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">decisions</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="ConstitutionEngine.stats">
+<a class="viewcode-back" href="../../api.html#aios_core.constitution_engine.ConstitutionEngine.stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return engine statistics.&quot;&quot;&quot;</span>
+        <span class="n">constitution_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">constitution</span><span class="o">.</span><span class="n">stats</span><span class="p">()</span>
+        <span class="n">policy_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="o">.</span><span class="n">stats</span><span class="p">()</span>
+
+        <span class="n">outcome_counts</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ALLOW&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;DENY&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;REVIEW&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">decisions</span><span class="p">:</span>
+            <span class="n">outcome_counts</span><span class="p">[</span><span class="n">d</span><span class="o">.</span><span class="n">outcome</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
+            <span class="s2">&quot;total_evaluations&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">decisions</span><span class="p">),</span>
+            <span class="s2">&quot;outcomes&quot;</span><span class="p">:</span> <span class="n">outcome_counts</span><span class="p">,</span>
+            <span class="s2">&quot;constitution&quot;</span><span class="p">:</span> <span class="n">constitution_stats</span><span class="p">,</span>
+            <span class="s2">&quot;policies&quot;</span><span class="p">:</span> <span class="n">policy_stats</span><span class="p">,</span>
+        <span class="p">}</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, JoTalbot &amp; AIOS Core Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
