@@ -243,6 +243,7 @@ aios_core/modules/instagram/cards.py
 aios_core/modules/instagram/detail.py
 aios_core/modules/instagram/login.py
 aios_core/modules/instagram/messenger.py
+aios_core/modules/instagram/own_posts.py
 aios_core/modules/instagram/storage.py
 aios_core/modules/olx/__init__.py
 aios_core/modules/olx/adb.py
@@ -274,6 +275,7 @@ aios_core/platforms/catalog.py
 aios_core/platforms/descriptor.py
 aios_core/platforms/devices.py
 aios_core/platforms/fleet.py
+aios_core/platforms/fleetsched.py
 aios_core/platforms/gateway.py
 aios_core/platforms/parsergen.py
 aios_core/platforms/pointdrive.py
@@ -285,6 +287,7 @@ aios_core/platforms/scaffold.py
 aios_core/platforms/secrets.py
 aios_core/platforms/shards.py
 aios_core/platforms/store.py
+aios_core/platforms/videocards.py
 aios_core/test_engine/__init__.py
 aios_core/test_engine/engine.py
 aios_core/test_engine/models.py
@@ -331,6 +334,7 @@ tests/test_global_swarm.py
 tests/test_infinite_constitution.py
 tests/test_instagram_agent.py
 tests/test_instagram_full.py
+tests/test_instagram_posts_fleet.py
 tests/test_marketplace.py
 tests/test_mcp_gateway.py
 tests/test_ml_planner_scorer.py
