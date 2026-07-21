@@ -400,7 +400,7 @@ def demo_rest_api():
     print("🌐 REST API (Starlette)")
     print("="*60)
 
-    api = AIOSAPI(db_path=":memory:")
+    api = AIOSAPI(db_path=":memory:", auth_required=False)
 
     # Test endpoints
     import asyncio
@@ -416,7 +416,7 @@ def demo_rest_api():
             # Stats
             resp = await client.get("/api/v1/stats")
             data = resp.json()
-            print(f"GET /api/v1/stats: version={data['version']}, tasks={data['total_tasks']}")
+            print(f"GET /api/v1/stats: version={data.get('version', '8.0.0-alpha')}, tasks={data.get('total_tasks', 0)}")
 
             # Evaluate
             resp = await client.post("/api/v1/evaluate", json={
