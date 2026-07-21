@@ -61,6 +61,7 @@ from .secrets import (
     required_secret,
     secret,
 )
+from .shardexec import ShardJobs, ShardJobWorker, default_handlers
 from .shards import ShardRouter
 from .store import ProfileStore
 
@@ -81,6 +82,9 @@ __all__ = [
     "ReelsTabDriver",
     "reels_driver_for",
     "ShardRouter",
+    "ShardJobs",
+    "ShardJobWorker",
+    "default_handlers",
     "CalibrationAdvisor",
     "ShardGateway",
     "ShardHealthMonitor",

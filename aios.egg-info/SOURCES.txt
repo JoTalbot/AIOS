@@ -286,6 +286,7 @@ aios_core/platforms/resolver.py
 aios_core/platforms/runtime_hints.py
 aios_core/platforms/scaffold.py
 aios_core/platforms/secrets.py
+aios_core/platforms/shardexec.py
 aios_core/platforms/shards.py
 aios_core/platforms/store.py
 aios_core/platforms/videocards.py
@@ -346,6 +347,7 @@ tests/test_molecular_dna_runtime.py
 tests/test_monitoring.py
 tests/test_multi_agent.py
 tests/test_multidimensional_world_model.py
+tests/test_nav_own_shardexec.py
 tests/test_neuromorphic_matrix.py
 tests/test_olx_actions.py
 tests/test_olx_agent.py

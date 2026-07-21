@@ -548,13 +548,44 @@ N ===`; немаршрутизированные/без живых хостов 
 «запускать на каждом хосте». Один crontab-файл раздаётся по нодам —
 sticky-маршруты гарантируют, что профиль не дублируется на двух хостах.
 
+## Автокалибровка navigation (reels_tab)
+
+`DetailCalibrationAdvisor.analyze_navigation` из дампа домашнего экрана
+сам находит tab-bar (rid `tab_bar`/`bottom_nav`/`navigation_bar`),
+перечисляет вкладки и распознаёт видео-вкладку (reel/clips/video в rid
+или подписи) → секция `navigation.reels_tab` для ReelsTabDriver без
+ручной разметки. Честные диагнозы: «tab-bar есть, видео-вкладка не
+распознана» / «tab-bar не найден» (→ дефолтные маркеры драйва). CLI:
+`aios platforms calibrate --navigation home.xml [--write]`
+(merge_hints принимает navigation=..., обратная совместимость).
+
+## Own-posts в autopilot
+
+Флаг `--own` у `instagram autopilot` добавляет шаг снапшота
+собственных постов (OwnPostsParser → OwnAdsTracker в общую схему
+own_ads): `--own-dump grid.xml` для явного дампа либо честная ошибка
+без живого экрана (`--own-dump` в подсказке). Алёрт `own-posts` в
+webhook при новых постах и негативных дельтах счётчиков (views/
+favorites упали — теневой бан/удаление), `notified` в отчёте.
+
+## ShardExec: pull-модель джобов (`platforms/shardexec.py`)
+
+Альтернатива crontab для multi-host: `ShardJobs` — очередь
+`shard_jobs` в той же AIOS_SHARDS_DB (enqueue/list/pending_for/
+claim_next/complete); `claim_next(host)` отдает джобу только ноде,
+на которую указывает sticky HRW-маршрут профиля — двойной запуск
+на двух хостах исключён (чужая нода получает честный `None`/idle).
+`ShardJobWorker.work_once()` изолирует ошибки handler'а (failed с
+текстом, соседи не страдают); встроенный вид `autopilot` — guarded
+shell-out в `aios instagram autopilot --login`. CLI:
+`aios shards enqueue --profile ig:main --kind autopilot`,
+`aios shards jobs [--status]`, `aios shards work --host X [--once]`.
+
 ## Дальше (дорожная карта к 10000+)
 
-1. **Автокалибровка navigation-секции**: DetailCalibrationAdvisor
-   учится находить вкладки (tab_bar/pager маркеры) в дампе домашнего
-   экрана и писать `navigation.reels_tab` сам.
-2. **Own-posts → autopilot**: включать снапшот собственных постов
-   (OwnAdsTracker) шагом autopilot-цикла с drift-алёртом по счётчикам.
-3. **Shard-execute**: ShardGateway умеет не только проксировать REST,
-   но и триггерить autopilot на удалённой ноде (или pull-модель
-   джобов вместо crontab).
+1. **Job-lease TTL**: повторная выдача claimed-джоб, зависших на
+   умершей ноде (heartbeat + requeue), метрики глубины очереди.
+2. **Встроенные виды джоб**: `reels`, `dm-flush`, `marker-check`
+   по образцу autopilot из `default_handlers`.
+3. **Own-promote → autopilot**: guarded-решение продвижения поста
+   по stagnant-анализу (DRY-RUN план бюджета, confirm вручную).

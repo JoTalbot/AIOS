@@ -320,20 +320,110 @@ class DetailCalibrationAdvisor:
             ),
         }
 
+    _TAB_BAR_MARKERS = ("tab_bar", "bottom_nav", "navigation_bar", "tabbar")
+    _TAB_NODE_MARKERS = ("_tab", "tab_")
+    _REELS_MARKERS = ("reel", "clips", "video")
+
+    def analyze_navigation(
+        self, xml_source,
+    ) -> Dict[str, object]:
+        """Извлекает navigation-подсказки из дампа домашнего экрана.
+
+        Ищет нижний tab-bar (resource-id ``tab_bar``/``bottom_nav``/...),
+        перечисляет вкладки (rid хвосты с ``_tab``/``tab_``, подписи
+        text/content-desc) и распознаёт видео-вкладку (reel/clips/video
+        в rid или подписи) — результат готов для секции
+        ``navigation.reels_tab`` дескриптора (см. ReelsTabDriver).
+
+        Args:
+            xml_source: uiautomator-дамп домашнего экрана.
+
+        Returns:
+            {reels_tab: {rid_markers, text_markers, bounds?},
+             tab_bar_markers, tabs: [{resource_id, label}],
+             hint}: reels_tab пуст, если видео-вкладка не найдена
+             (честный сигнал оператору — дефолты ReelsTabDriver).
+        """
+        root = CalibrationAdvisor._root(xml_source)
+        tab_bar_markers: List[Dict[str, object]] = []
+        tabs: List[Dict[str, object]] = []
+        reels_rid: List[Dict[str, object]] = []
+        reels_texts: List[str] = []
+        reels_bounds: Optional[str] = None
+
+        for node in root.iter("node"):
+            resource_id = node.attrib.get("resource-id") or ""
+            rid_tail = resource_id.rsplit("/", 1)[-1].lower()
+            text = (node.attrib.get("text") or "").strip()
+            desc = (node.attrib.get("content-desc") or "").strip()
+            bounds = node.attrib.get("bounds")
+            if any(m in rid_tail for m in self._TAB_BAR_MARKERS):
+                if not any(
+                    m["resource_id"] == resource_id for m in tab_bar_markers
+                ):
+                    tab_bar_markers.append({"resource_id": resource_id})
+            is_tab = (
+                bool(rid_tail) and any(m in rid_tail for m in self._TAB_NODE_MARKERS)
+            ) or (desc.lower() in ("home", "search", "reels", "clips", "video"))
+            if not is_tab or bounds is None:
+                continue
+            label = desc or text
+            tabs.append({
+                "resource_id": resource_id, "label": label, "bounds": bounds,
+            })
+            combined = f"{rid_tail} {text.lower()} {desc.lower()}"
+            if any(m in combined for m in self._REELS_MARKERS):
+                if resource_id and not any(
+                    m["resource_id"] == resource_id for m in reels_rid
+                ):
+                    reels_rid.append({"resource_id": resource_id})
+                if label and label.lower() not in (
+                    t.lower() for t in reels_texts
+                ):
+                    reels_texts.append(label)
+                if reels_bounds is None:
+                    reels_bounds = bounds
+
+        reels_tab: Dict[str, object] = {}
+        if reels_rid:
+            reels_tab["rid_markers"] = reels_rid
+        if reels_texts:
+            reels_tab["text_markers"] = reels_texts
+        if reels_bounds:
+            reels_tab["bounds"] = reels_bounds
+        return {
+            "reels_tab": reels_tab,
+            "tab_bar_markers": tab_bar_markers,
+            "tabs": tabs,
+            "hint": (
+                "видео-вкладка найдена" if reels_tab
+                else ("tab-bar есть, видео-вкладка не распознана"
+                      if tab_bar_markers
+                      else "tab-bar не найден: нужен дамп домашнего экрана")
+            ),
+        }
+
 
 def merge_hints(
     card_hints: Dict[str, object],
     detail: Optional[Dict[str, object]] = None,
     messenger: Optional[Dict[str, object]] = None,
+    navigation: Optional[Dict[str, object]] = None,
+    content_categories: Optional[Dict[str, object]] = None,
 ) -> Dict[str, object]:
     """Объединяет подсказки калибровки всех экранов в один документ.
 
-    Итог (ключи ``detail``/``messenger`` добавляются только при наличии)
-    кладётся в ``extras.parser_hints`` дескриптора платформы.
+    Итог (ключи ``detail``/``messenger``/``navigation`` добавляются
+    только при наличии) кладётся в ``extras.parser_hints`` дескриптора
+    платформы.
     """
     merged = dict(card_hints or {})
     if detail:
         merged["detail"] = detail
     if messenger:
         merged["messenger"] = messenger
+    if navigation:
+        merged["navigation"] = navigation
+    if content_categories:
+        merged["content_categories"] = content_categories
     return merged

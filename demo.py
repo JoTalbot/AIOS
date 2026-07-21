@@ -416,7 +416,7 @@ def demo_rest_api():
             # Stats
             resp = await client.get("/api/v1/stats")
             data = resp.json()
-            print(f"GET /api/v1/stats: version={data.get('version', '9.0.0-alpha.17')}, tasks={data.get('total_tasks', 0)}")
+            print(f"GET /api/v1/stats: version={data.get('version', '9.0.0-alpha.18')}, tasks={data.get('total_tasks', 0)}")
 
             # Evaluate
             resp = await client.post("/api/v1/evaluate", json={

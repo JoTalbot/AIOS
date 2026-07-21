@@ -105,6 +105,7 @@ aios instagram reels --db data/instagram.sqlite [--max 100] [--serial X] \
 # collect → Reels → Direct-flush → guarded-пост (DRY-RUN по умолчанию)
 aios instagram autopilot --db data/instagram.sqlite --login \
     [--max 100 --reels-max 50] [--open-tab] [--webhook URL] \
+    [--own [--own-dump grid.xml]]   # снапшот своих постов + алёрты \
     [--post-image photo.jpg --post-text "..." [--confirm]]
 
 # Автоматизация: циклы заботы всех профилей на арендованных устройствах
