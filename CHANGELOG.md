@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [9.0.0-alpha.11] - 2026-07-21
 
 ### Added
 - **ParserGen (`platforms/parsergen.py`)**: компиляция CardParser из

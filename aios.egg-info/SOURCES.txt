@@ -259,12 +259,14 @@ aios_core/modules/olx/text_utils.py
 aios_core/modules/olx/ui_parser.py
 aios_core/modules/olx/watch.py
 aios_core/platforms/__init__.py
+aios_core/platforms/bootup.py
 aios_core/platforms/calibrate.py
 aios_core/platforms/catalog.py
 aios_core/platforms/descriptor.py
 aios_core/platforms/devices.py
 aios_core/platforms/fleet.py
 aios_core/platforms/gateway.py
+aios_core/platforms/parsergen.py
 aios_core/platforms/profile.py
 aios_core/platforms/resolver.py
 aios_core/platforms/scaffold.py
@@ -328,6 +330,7 @@ tests/test_olx_agent.py
 tests/test_olx_api.py
 tests/test_olx_strategy.py
 tests/test_olx_watch.py
+tests/test_parsergen_bootup.py
 tests/test_phase1_persistence.py
 tests/test_phase3_orchestrator.py
 tests/test_phase4_test_engine.py
