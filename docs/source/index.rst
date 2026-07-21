@@ -1,0 +1,15 @@
+AIOS — Autonomous Intelligence Operating System
+=================================================
+
+Welcome to the official documentation for AIOS (Version 8.0.0-alpha).
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Table of Contents:
+
+   architecture
+   api
+
+Constitutional Alignment & Governance
+---------------------------------------
+AIOS is governed by 67 fundamental Constitutional Articles (I - LXVII), enforced in real-time by the Executive Layer and validated by the ``tula`` verification tool.
