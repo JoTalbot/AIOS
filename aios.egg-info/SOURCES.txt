@@ -237,6 +237,9 @@ aios_core/mcp/protocol.py
 aios_core/mcp/resources.py
 aios_core/mcp/tools.py
 aios_core/modules/__init__.py
+aios_core/modules/instagram/__init__.py
+aios_core/modules/instagram/login.py
+aios_core/modules/instagram/storage.py
 aios_core/modules/olx/__init__.py
 aios_core/modules/olx/adb.py
 aios_core/modules/olx/advisor.py
@@ -259,6 +262,7 @@ aios_core/modules/olx/text_utils.py
 aios_core/modules/olx/ui_parser.py
 aios_core/modules/olx/watch.py
 aios_core/platforms/__init__.py
+aios_core/platforms/apkfetch.py
 aios_core/platforms/bootup.py
 aios_core/platforms/calibrate.py
 aios_core/platforms/catalog.py
@@ -268,8 +272,10 @@ aios_core/platforms/fleet.py
 aios_core/platforms/gateway.py
 aios_core/platforms/parsergen.py
 aios_core/platforms/profile.py
+aios_core/platforms/regression.py
 aios_core/platforms/resolver.py
 aios_core/platforms/scaffold.py
+aios_core/platforms/secrets.py
 aios_core/platforms/shards.py
 aios_core/platforms/store.py
 aios_core/test_engine/__init__.py
@@ -295,6 +301,7 @@ tests/test_android_rpa_bridge.py
 tests/test_api_request_safety.py
 tests/test_api_security.py
 tests/test_apk_converter.py
+tests/test_apkfetch_instagram.py
 tests/test_approval_manager.py
 tests/test_autonomy_v3.py
 tests/test_backup_manager.py
@@ -314,6 +321,7 @@ tests/test_formal_code_verifier.py
 tests/test_gateway_calibrate.py
 tests/test_global_swarm.py
 tests/test_infinite_constitution.py
+tests/test_instagram_agent.py
 tests/test_marketplace.py
 tests/test_mcp_gateway.py
 tests/test_ml_planner_scorer.py

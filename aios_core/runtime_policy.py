@@ -37,7 +37,7 @@ class RuntimePolicy:
         db: Optional[Database] = None,
         config: Optional[AIOSConfig] = None,
     ):
-        self.version = "9.0.0-alpha.11"
+        self.version = "9.0.0-alpha.12"
         self.config = config or load_config()
 
         # Resolve directories
