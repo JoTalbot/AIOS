@@ -144,6 +144,8 @@ class AIOSAPI:
             Route("/api/v1/models", self._ui_models),
             Route("/api/v1/apk/convert", self._apk_convert, methods=["POST"]),
             Route("/api/v1/apk/profiles", self._apk_profiles, methods=["GET"]),
+            Route("/api/v1/apps/transform", self._app_transform, methods=["POST"]),
+            Route("/api/v1/apps/{package_name}/execute", self._app_execute, methods=["POST"]),
 
             # Constitutional evaluation
             Route("/api/v1/evaluate", self._evaluate, methods=["POST"]),
@@ -366,6 +368,34 @@ class AIOSAPI:
         converter = APKFunctionConverter()
         profiles = converter.get_user_profiles(user_id)
         return JSONResponse(profiles)
+
+    async def _app_transform(self, request: Request) -> JSONResponse:
+        try:
+            from aios_core.android_rpa_bridge import AndroidRPAManager
+            body = await request.json()
+            play_url = body.get("play_store_url", "https://play.google.com/store/apps/details?id=ua.olx.android")
+            credentials = body.get("credentials", {"login": "user@example.com", "password": "secure_password"})
+            user_id = body.get("user_id", "default_user")
+
+            rpa_mgr = AndroidRPAManager()
+            api_profile = rpa_mgr.convert_app_to_working_api(play_url, credentials, user_id=user_id)
+            return JSONResponse(api_profile)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _app_execute(self, request: Request) -> JSONResponse:
+        try:
+            from aios_core.android_rpa_bridge import AndroidRPADeviceEmulator
+            package_name = request.path_params.get("package_name", "ua.olx.android")
+            body = await request.json()
+            action = body.get("action", "search")
+            params = body.get("params", {})
+
+            emulator = AndroidRPADeviceEmulator()
+            res = emulator.execute_ui_action(package_name, action, params)
+            return JSONResponse(res)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
 
     # ---- Evaluate ----
 
