@@ -35,6 +35,7 @@ from .model_registry import ModelRegistry
 from .model_serving import ModelServer
 from .anomaly_detection import AnomalyDetector
 from .predictive_autonomy import PredictiveAutonomyRegulator
+from .formal_code_verifier import FormalCodeVerifier
 from .orchestrator import Orchestrator, Task, TaskStep, TaskStatus, StepStatus
 
 # Test Engine
@@ -150,6 +151,7 @@ __all__ = [
     "ModelServer",
     "AnomalyDetector",
     "PredictiveAutonomyRegulator",
+    "FormalCodeVerifier",
     # REST API
     "create_app",
     "AIOSAPI",

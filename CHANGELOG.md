@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [5.0.0-alpha] - Horizon In Progress (2026-07-21)
+
+### Added
+- **Real-Time Formal Code Verification Engine (`aios_core/formal_code_verifier.py`)**:
+  - Abstract Syntax Tree (AST) AST-level static invariant proofs, infinite loop detection, reflection and dunder exploit blocking (`__subclasses__`, `__globals__`).
+  - Pre/post-condition mathematical contract checking and import whitelist enforcement.
+  - Comprehensive unit test suite `tests/test_formal_code_verifier.py` (549 total passed tests).
+
 ## [4.2.0-alpha] - 2026-07-21
 
 ### Added
