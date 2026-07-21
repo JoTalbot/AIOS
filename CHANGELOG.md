@@ -2,10 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
-## [5.0.0-alpha] - Horizon In Progress (2026-07-21)
+## [5.0.0-alpha] - 2026-07-21
 
 ### Added
-- **Real-Time Formal Code Verification Engine (`aios_core/formal_code_verifier.py`)**:
+- **Milestone 5.0.3 Complete — Quantum Native Computing & QAOA Engine (`aios_core/quantum_native.py`)**:
+  - State vector Qubit simulator implementing Hadamard, CNOT, and measurement probabilities.
+  - Quantum Approximate Optimization Algorithm (QAOA) solving NP-hard multi-agent task mapping graphs.
+  - Comprehensive unit test suite `tests/test_quantum_native.py`.
+
+- **Milestone 5.0.2 Complete — Global Swarm Governance & ZK Safety Proofs (`aios_core/global_swarm.py`)**:
+  - W3C DID Node Identity protocol (`did:aios:<node_id>`) for inter-cluster federation.
+  - Zero-Knowledge Safety Proofs (`ZeroKnowledgeSafetyProof`) ensuring zero-trust cross-cluster task verification without exposing secret task variables.
+  - Byzantine Fault Tolerant (BFT) and Bayesian consensus voting engine for constitutional amendment proposals.
+  - Comprehensive unit test suite `tests/test_global_swarm.py`.
+
+- **Milestone 5.0.1 Complete — Real-Time Formal Code Verification Engine (`aios_core/formal_code_verifier.py`)**:
   - Abstract Syntax Tree (AST) AST-level static invariant proofs, infinite loop detection, reflection and dunder exploit blocking (`__subclasses__`, `__globals__`).
   - Pre/post-condition mathematical contract checking and import whitelist enforcement.
   - Comprehensive unit test suite `tests/test_formal_code_verifier.py` (549 total passed tests).
