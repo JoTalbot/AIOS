@@ -80,6 +80,16 @@ aios instagram dm-send --chat chat:anna --text "..." --db D   # в outbox
 aios instagram dm-send ... --auto-send      # немедленная отправка
 aios instagram dm-outbox --db D             # очередь ответов
 aios instagram dm-flush --db D              # отправить одобренные
+
+# AutoWatch: цикл заботы (подписки → алерты → свои → застой → план)
+aios platforms autowatch --platform instagram --profile main \
+    --query "кросівки" [--webhook URL] [--drive login]
+
+# REST (aios run): те же guarded-механики
+# GET  /api/v1/modules/instagram/chats?profile=main
+# GET  /api/v1/modules/instagram/outbox?profile=main
+# POST /api/v1/modules/instagram/outbox/send   {"chat_key","text"}
+# POST /api/v1/modules/instagram/outbox/flush
 ```
 
 Модули:

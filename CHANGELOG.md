@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Generic AutoWatch (`platforms/autowatch.py`)**: цикл заботы OLX
+  AutoWatch для любой платформы каталога — profile-scoped storage/adb,
+  цепочка резолва парсера (codegen-модуль → runtime hints,
+  `resolve_card_parser`), драйв навигации `point|login`; CLI
+  `aios platforms autowatch --platform X [--profile --query --webhook
+  --drive --no-collect]`; cron-plan генерирует generic-строки для всех
+  не-olx профилей.
+- **Guarded messenger REST plane**: `GET /api/v1/modules/{platform}/
+  chats`, `GET /outbox`, `POST /outbox/send`, `POST /outbox/flush` —
+  для любой платформы с messenger-модулем (Instagram Direct сразу);
+  profile-scoped, очередь по умолчанию, `auto_send` явным флагом, 404
+  с рецептом для платформ без модуля.
+- **CalibrationAdvisor content_categories**: video/reels-маркеры,
+  story/highlight-маркеры, счётчик duration-меток (Reels/Stories без
+  цены не теряются при калибровке).
+
 ## [9.0.0-alpha.13] - 2026-07-21
 
 ### Added
