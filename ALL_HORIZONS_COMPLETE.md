@@ -1,9 +1,9 @@
-# AIOS All Horizons Architectural Completion Index (v9.0.0-alpha.19)
+# AIOS All Horizons Architectural Completion Index (v9.0.0-alpha.20)
 
-**System Release Tag:** `v9.0.0-alpha.19`  
+**System Release Tag:** `v9.0.0-alpha.20`  
 **Constitutional Compliance:** 100% (67 Articles Validated via `tula`)  
 **Test Suite Status:** 589 / 589 Tests Passing (100% Green)  
-**Deployment Packages:** Docker, Kubernetes Helm Chart, PyPI Wheel (`aios-9.0.0a19-py3-none-any.whl`), Sphinx Docs  
+**Deployment Packages:** Docker, Kubernetes Helm Chart, PyPI Wheel (`aios-9.0.0a20-py3-none-any.whl`), Sphinx Docs  
 **GitHub Repository:** `JoTalbot/AIOS` (Main Branch, Clean State)
 
 ---

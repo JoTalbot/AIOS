@@ -1,0 +1,16 @@
+# Сгенерировано aios platforms scaffold (tiktok)
+name: tiktok
+android_package: com.zhiliaoapp.musically
+agent_module: aios_core.modules.tiktok
+storage_class: aios_core.modules.tiktok.storage.TikTokStorage
+adb_class: aios_core.modules.olx.adb.ADBController
+default_locale: uk-UA
+description: "TikTok — video-first платформа: ReelsCollector/videocards + guarded inbox"
+legacy_default_db: tiktok_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: false
+    messenger: approval-only
+    collector: true
+    note: "Сбор публичного видео-контента; комментарии/посты — только guarded"
+  parser_hints: {}

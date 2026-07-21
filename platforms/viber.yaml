@@ -1,0 +1,16 @@
+# Сгенерировано aios platforms scaffold (viber)
+name: viber
+android_package: com.viber.voip
+agent_module: aios_core.modules.viber
+storage_class: aios_core.modules.viber.storage.ViberStorage
+adb_class: aios_core.modules.olx.adb.ADBController
+default_locale: uk-UA
+description: "Viber (Rakuten) — messenger платформа: guarded inbox/outbox по calibrated hints"
+legacy_default_db: viber_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: false
+    messenger: approval-only
+    collector: false
+    note: "Approval-only ответы; бот-спам запрещён ToS"
+  parser_hints: {}

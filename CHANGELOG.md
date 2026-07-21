@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.0.0-alpha.20] - 2026-07-21
+
+### Added
+- **Onboarding wizard**: `platforms/onboard.py` (`onboard_package` —
+  fetch→bootup→паспорт готовности+next_commands); CLI `aios onboard`.
+- **Generic messenger-платформы**: `platforms/hintmsg.py`
+  (HintsMessenger — guarded outbox/flush по calibrated hints,
+  deep-link/monkey inbox, chat_markers) + `platforms/doctor.py`
+  (platform_doctor чек-лист); onboarding-пакеты **WhatsApp, Viber,
+  TikTok** (storage/messenger/bootstrap, yaml + extras.compliance
+  approval-only); CLI-группы `whatsapp`/`viber`, generic
+  `platforms doctor`/`platforms reels --platform X`.
+- **Pull-first автоматизация**: `cron-plan --via-shards` (enqueue-
+  строки вместо shell-cron) + REST-плоскость очереди:
+  `GET/POST /api/v1/shards/jobs`, `GET /api/v1/shards/stats`.
+
 ## [9.0.0-alpha.19] - 2026-07-21
 
 ### Added

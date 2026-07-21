@@ -1,0 +1,16 @@
+# Сгенерировано aios platforms scaffold (whatsapp)
+name: whatsapp
+android_package: com.whatsapp
+agent_module: aios_core.modules.whatsapp
+storage_class: aios_core.modules.whatsapp.storage.WhatsAppStorage
+adb_class: aios_core.modules.olx.adb.ADBController
+default_locale: uk-UA
+description: "WhatsApp (Meta) — messenger платформа: guarded inbox/outbox по calibrated hints"
+legacy_default_db: whatsapp_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: false
+    messenger: approval-only
+    collector: false
+    note: "ToS запрещает автоматизацию массовых рассылок; только approval-ответы"
+  parser_hints: {}
