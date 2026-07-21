@@ -353,6 +353,32 @@ class AutonomyManager:
 
         self._persist_profile(profile)
 
+        # Автоматическая корректировка уровня после записи
+        self._auto_adjust_level(agent_id)
+
+    def _auto_adjust_level(self, agent_id: str) -> None:
+        """Automatically promote or demote agent based on track record."""
+        profile = self._profiles.get(agent_id)
+        if profile is None:
+            return
+
+        promote_result = self.should_promote(agent_id)
+        demote_result = self.should_demote(agent_id)
+
+        current_level = int(profile.level)
+
+        if promote_result.get("should_promote") and current_level < 5:
+            new_level = promote_result["suggested_level"]
+            profile.level = AutonomyLevel(new_level)
+            profile.metadata["auto_promoted_at"] = self.db.now_iso() if self.db else ""
+            self._persist_profile(profile)
+
+        elif demote_result.get("should_demote") and current_level > 0:
+            new_level = demote_result["suggested_level"]
+            profile.level = AutonomyLevel(new_level)
+            profile.metadata["auto_demoted_at"] = self.db.now_iso() if self.db else ""
+            self._persist_profile(profile)
+
     def should_promote(self, agent_id: str) -> dict:
         """Evaluate whether an agent's track record warrants promotion.
 
@@ -508,9 +534,15 @@ class AutonomyManager:
             lvl = str(int(p.level))
             by_level[lvl] = by_level.get(lvl, 0) + 1
 
+        auto_adjusted = sum(
+            1 for p in self._profiles.values()
+            if "auto_promoted_at" in p.metadata or "auto_demoted_at" in p.metadata
+        )
+
         return {
             "version": "3.0.0",
             "total_profiles": len(self._profiles),
             "by_level": by_level,
+            "auto_adjusted_count": auto_adjusted,
             "storage": "sqlite" if self.db else "none",
         }
