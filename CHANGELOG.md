@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.2.0-alpha] - In Progress (2026-07-21)
+
+### Added
+- **Milestone 4.2.1 Complete — Advanced ML Intelligence Layer**:
+  - `ModelRegistry` (`aios_core/model_registry.py`) with artifact SHA256 hashing, stage promotion (`staging`, `production`), weight versioning, and evaluation metric logging.
+  - `ModelServer` (`aios_core/model_serving.py`) with A/B traffic splitting, thread-safe inference, batch predictions, and latency tracking.
+  - `AnomalyDetector` (`aios_core/anomaly_detection.py`) with Z-score and IQR statistical outlier detection for runtime metrics.
+  - `PredictiveAutonomyRegulator` (`aios_core/predictive_autonomy.py`) dynamically risk-scoring agent plans and downgrading autonomy levels upon critical risk.
+  - Comprehensive unit test suite `tests/test_ml_registry.py` (530 total passed tests).
+
 ## [4.1.0-alpha] - 2026-07-21
 
 ### Added
