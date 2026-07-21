@@ -35,6 +35,23 @@ curl http://localhost:8000/metrics
 python monitor.py --url http://localhost:8000 --interval 30
 ```
 
+## Web Dashboard (v4.0)
+
+```bash
+python run_dashboard.py
+# Open http://127.0.0.1:8080
+```
+
+## v4.0 Features (Alpha)
+
+- **Federation** — multi-node coordination
+- **ML Planner Scorer** — intelligent plan optimization
+- **Multi-Agent Orchestration** — dynamic teams
+- **Constitution Evolver** — self-evolving rules
+- **Web Dashboard** — real-time monitoring
+
+**Current version:** 4.0.0-alpha (501 tests passing)
+
 Run a local REST service (requires authentication by default):
 
 ```bash
