@@ -65,11 +65,39 @@ print(report["status"], report["steps"]["verify"])
 `platforms/instagram.yaml` + скомпилированный
 `aios_core/modules/instagram/card_parser.py` (маркеры Instagram-ленты).
 
-## 5. Эксплуатация
+## 5. Эксплуатация (полный функционал)
+
+CLI-группа `aios instagram`:
+
+```bash
+aios instagram doctor [--serial emulator-5554]      # готовность: adb/
+                                                    # секреты/маркеры
+aios instagram collect --query "кросівки" --db data/instagram.sqlite \
+    [--serial E] [--login]          # сбор карточек ленты/выдачи
+aios instagram login-drive --query "кросівки" --serial E   # за стену
+                                                           # входа → дамп
+aios instagram dm-send --chat chat:anna --text "..." --db D   # в outbox
+aios instagram dm-send ... --auto-send      # немедленная отправка
+aios instagram dm-outbox --db D             # очередь ответов
+aios instagram dm-flush --db D              # отправить одобренные
+```
+
+Модули:
+
+- `InstagramCollector` — движок OLXCollector (дамп→парсер→свайп→дедуп),
+  навигация через login/point-драйв, парсер из дескриптора;
+- `InstagramDetailParser` — открытый пост: цена/продавец/CTA/описание
+  из hints-detail;
+- `InstagramMessenger` — **guarded Direct**: ответы по умолчанию только
+  в outbox-очередь (`InstagramStorage`), на устройство — после
+  `dm-flush`/`--auto-send`; ввод/отправка по send/ввод-маркерам;
+- `InstagramBootstrap.doctor()` — отчёт готовности (значения секретов
+  не отчитываются, только наличие переменных).
 
 - Дрейф верстки после обновлений приложения:
   `aios platforms marker-check --platform instagram --dump feed.xml`
-  → `drift` ⇒ `calibrate --write` + `codegen --force`.
+  → `drift` ⇒ `calibrate --write` + `codegen --force`
+  (шаблонные cron-строки: `aios cron-plan --with-marker-check`).
 - Детальный экран и диалоги:
   `aios platforms calibrate --platform instagram --dump feed.xml
   --detail post.xml --messages dm.xml --write`.

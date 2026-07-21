@@ -373,24 +373,54 @@ removed/added/kept. CLI: `aios platforms marker-check --platform X
 CLI: `--fetch`, `--apks-dir`, `--serial`, `--lease` (пул из
 `AIOS_DEVICES_DB`).
 
-## Instagram: первый онбординг второй платформы
+## Instagram: полный функционал второй платформы
 
 `platforms/instagram.yaml` + `aios_core/modules/instagram/` —
-боевой прогон всей цепочки не на OLX. Особенность: стена логина →
-`InstagramLoginDriver` (login-wall детекция, ввод env-секретов
-без координат, честная ошибка при непрохождении). Пошагово:
-`docs/modules/instagram/ONBOARDING.md`.
+боевой прогон всей цепочки не на OLX:
+
+- `InstagramCollector` — карточки ленты/выдачи (движок OLXCollector,
+  парсер из дескриптора, драйв навигации);
+- `InstagramDetailParser` — детальный экран из hints-detail;
+- `InstagramMessenger` — guarded Direct на общей outbox-механике OLX;
+- `InstagramLoginDriver` — стена входа (env-секреты) + PointDrive
+  поиска; `InstagramBootstrap.doctor()` — готовность.
+- CLI `aios instagram doctor|collect|login-drive|dm-send|dm-flush|
+  dm-outbox`. Пошагово: `docs/modules/instagram/ONBOARDING.md`.
+
+## Runtime-парсеры из hints (без codegen)
+
+`aios_core/platforms/runtime_hints.py` закрывает экраны detail и
+messenger без генерации файлов — подсказки читаются из дескриптора:
+
+- `HintDetailParser` — price/seller/CTA маркеры + shape-эвристика
+  заголовка/описания; `detail_parser_for(platform)` из YAML;
+- `HintSender` — драйв отправки: тап по инпуту → ADBKeyBoard → тап по
+  send-маркеру (ENTER fallback), шаги в отчёте;
+- `chat_list_parser_for(platform)` — OLX ChatListParser с
+  инъецированными маркерами строк диалогов (теперь параметр конструктора);
+- `load_hints_section()` — чтение `extras.parser_hints.<section>`.
+
+## PointDrive: точечный поисковый драйв
+
+`aios_core/platforms/pointdrive.py`: находит в дампе поисковый инпут
+(EditText или resource-id с «search»), тапает по центру bounds (без
+координатных констант), вводит запрос и ENTER → дамп выдачи.
+Применим как `driver=PointDrive(adb).drive` в bootup и как post-login
+шаг Instagram. В cron-plan добавлен шаблон marker-drift караула:
+`aios cron-plan --with-marker-check` (закомментированные строки
+`platforms marker-check` по каждой платформе каталога).
 
 ## Дальше (дорожная карта к 10000+)
 
 Архитектурный цикл подключения платформы собран полностью: APK →
-scaffold → калибровка → parser_hints → codegen → verify. Возможные
-шаги дальше:
+scaffold → калибровка → parser_hints → codegen → verify; detail/
+messenger/поисковый драйв — runtime из hints. Возможные шаги дальше:
 
-1. **Codegen detail/messenger-модулей из секций hints**: как CardParser,
-   но для `detail.py`/`messenger.py` платформы (шаблоны = OLX-модули).
-2. **Point-драйвы поиска по hints**: калибровщик не только анализирует
-   стартовую ленту, но и сам находит строку поиска/вводит query.
-3. **Расписание marker-check в cron-plan**: авто-re-calibrate +
-   алёрт drift по всем платформам из каталога (`devices monitor`
-   туда же).
+1. **AutoWatch для произвольной платформы**: olx autowatch обобщить до
+   `aios <platform> autowatch` (collector + notifier уже hints-driven;
+   cron-plan генерирует строки по каталогу).
+2. **REST-поверхности Instagram**: chat/inbox/send маршруты по образцу
+   olx-модуля на hints-парсерах (сейчас — CLI/Python API).
+3. **Reels/Stories-форматы Instagram**: отдельные маркеры карточек
+   (видео-посты без цены — расширить CalibrationAdvisor категориями
+   контента).
