@@ -4,3 +4,15 @@ __pycache__/
 .pytest_cache/
 aios_config.yaml
 *.zip
+
+# OLX Android debug files
+*.xml
+*.png
+*.apk
+
+# local databases
+*.sqlite
+*.db
+
+# virtual environment
+venv/
