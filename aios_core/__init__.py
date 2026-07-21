@@ -50,6 +50,7 @@ from .cosmic_swarm_matrix import CosmicSwarmMatrix
 from .quantum_entanglement_mesh import QuantumEntanglementMesh, QuantumEntangledChannel
 from .molecular_dna_runtime import MolecularDNARuntime
 from .universal_multi_species_ethics import UniversalMultiSpeciesEthics
+from .apk_converter import APKFunctionConverter
 from .orchestrator import Orchestrator, Task, TaskStep, TaskStatus, StepStatus
 
 # Test Engine
@@ -193,6 +194,7 @@ __all__ = [
     "QuantumEntangledChannel",
     "MolecularDNARuntime",
     "UniversalMultiSpeciesEthics",
+    "APKFunctionConverter",
     # REST API
     "create_app",
     "AIOSAPI",

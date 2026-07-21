@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [9.0.0-alpha] - 2026-07-21
 
 ### Added
+- **APK Function Converter & User API Profile Mapper (`aios_core/apk_converter.py`)**:
+  - Converts Android APK exported components (Activities, Services, Receivers) into AIOS Capability instances, RBAC User API profiles, and API routes (`/api/v1/apk/convert`, `/api/v1/apk/profiles`).
+  - Comprehensive unit test suite `tests/test_apk_converter.py` (570 total passed tests).
+
 - **Milestone 9.0.3 Complete — Universal Multi-Species Ethics Framework (`aios_core/universal_multi_species_ethics.py`)**:
   - Multi-planetary ecological impact evaluation and biosphere non-disruption safety guarantees.
   - Comprehensive unit test suite `tests/test_universal_multi_species_ethics.py`.
