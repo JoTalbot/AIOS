@@ -37,8 +37,16 @@ from .parsergen import (
     parser_for,
     write_parser,
 )
+from .pointdrive import PointDrive
 from .profile import Profile
 from .regression import check_platform_markers, diff_markers
+from .runtime_hints import (
+    HintDetailParser,
+    HintSender,
+    chat_list_parser_for,
+    detail_parser_for,
+    load_hints_section,
+)
 from .resolver import (
     adb_for,
     resolve_profile,
@@ -56,7 +64,10 @@ from .store import ProfileStore
 __all__ = [
     "DevicePool",
     "DetailCalibrationAdvisor",
+    "HintDetailParser",
+    "HintSender",
     "PlatformDescriptor",
+    "PointDrive",
     "PoolMonitor",
     "Profile",
     "ProfileStore",
@@ -67,7 +78,9 @@ __all__ = [
     "adb_for",
     "bootup_platform",
     "build_parser",
+    "chat_list_parser_for",
     "check_platform_markers",
+    "detail_parser_for",
     "diff_markers",
     "ensure_device",
     "extract_markers",
@@ -79,6 +92,7 @@ __all__ = [
     "list_platforms",
     "load_catalog",
     "load_catalog_file",
+    "load_hints_section",
     "load_secrets_file",
     "merge_hints",
     "parser_for",

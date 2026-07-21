@@ -674,6 +674,117 @@ def _run_platforms(args) -> bool:
     return True
 
 
+def _run_instagram(args) -> bool:
+    """Instagram agent: doctor / collect / Direct / login-drive."""
+    cmd = getattr(args, "instagram_command", None) or "doctor"
+    try:
+        if cmd == "doctor":
+            from aios_core.modules.instagram import InstagramBootstrap
+            report = InstagramBootstrap(serial=args.serial).doctor()
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return True
+
+        if cmd == "collect":
+            from aios_core.modules.instagram import (
+                InstagramCollector,
+                InstagramLoginDriver,
+                InstagramStorage,
+            )
+            from aios_core.modules.olx.adb import ADBController
+            from aios_core.platforms.pointdrive import PointDrive
+
+            adb = ADBController(package="com.instagram.android",
+                                serial=args.serial)
+            driver = None
+            if args.login:
+                login = InstagramLoginDriver(adb=adb, search_drive=PointDrive(adb))
+                driver = login.drive
+            collector = InstagramCollector(
+                adb=adb, driver=driver, directory=args.directory,
+            )
+            storage = InstagramStorage(args.db)
+            try:
+                summary = collector.collect_to_storage(
+                    storage, query=args.query, max_cards=args.max_cards,
+                )
+            finally:
+                storage.close()
+            print(json.dumps(summary, ensure_ascii=False, indent=2))
+            return True
+
+        if cmd in ("dm-send", "dm-flush", "dm-outbox"):
+            from aios_core.modules.instagram import (
+                InstagramMessenger,
+                InstagramStorage,
+            )
+            from aios_core.modules.olx.adb import ADBController
+
+            adb = ADBController(package="com.instagram.android",
+                                serial=getattr(args, "serial", None))
+            storage = InstagramStorage(args.db)
+            try:
+                messenger = InstagramMessenger(
+                    adb=adb, storage=storage,
+                    directory=getattr(args, "directory", "platforms"),
+                )
+                if cmd == "dm-send":
+                    result = messenger.send_reply(
+                        args.chat, args.text,
+                        interlocutor=args.interlocutor,
+                        auto_send=args.auto_send,
+                    )
+                elif cmd == "dm-flush":
+                    result = {"flushed": messenger.flush_outbox()}
+                else:
+                    result = [
+                        {k: item[k] for k in (
+                            "id", "chat_key", "interlocutor", "text",
+                            "status")}
+                        for item in storage.outbox_list(args.status)
+                    ]
+            finally:
+                storage.close()
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return True
+
+        if cmd == "login-drive":
+            from aios_core.modules.instagram import (
+                InstagramLoginDriver,
+                login_screen_detected,
+            )
+            from aios_core.modules.olx.adb import ADBController
+            from aios_core.platforms import parser_for
+            from aios_core.platforms.pointdrive import PointDrive
+
+            adb = ADBController(package="com.instagram.android",
+                                serial=args.serial)
+            driver = InstagramLoginDriver(adb=adb, search_drive=PointDrive(adb))
+            xml = driver.drive("com.instagram.android", args.query)
+            output: dict = {
+                "status": "ok",
+                "dump_bytes": len(xml.encode("utf-8")),
+                "login_wall": login_screen_detected(xml),
+            }
+            try:
+                cards = parser_for(
+                    "instagram", directory=args.directory,
+                ).parse(xml, query=args.query)
+                output["cards"] = [
+                    {"title": c.title, "price": c.price,
+                     "currency": c.currency} for c in cards
+                ]
+            except ValueError:
+                output["cards"] = "parser hints not calibrated"
+            print(json.dumps(output, ensure_ascii=False, indent=2))
+            return True
+
+    except ValueError as exc:
+        print(json.dumps({"error": str(exc)}))
+        return True
+
+    return False
+
+
 def _run_profiles(args) -> bool:
     from aios_core.platforms import Profile, ProfileStore
 
@@ -919,6 +1030,22 @@ def _run_cron_plan(args) -> bool:
         f"python3 aios_cli.py devices monitor --once "
         f">> {root}/data/pool-monitor.log 2>&1"
     )
+    if args.with_marker_check:
+        from aios_core.platforms import load_catalog
+        platforms = [d.name for d in load_catalog()] or ["olx"]
+        lines.append("")
+        lines.append(
+            "# Marker drift guard: раскомментируйте и укажите продюсера "
+            "свежего дампа выдачи (data/marker-<platform>.xml)"
+        )
+        for platform in platforms:
+            lines.append(
+                f"# 0 */6 * * * cd {root} && "
+                f"python3 aios_cli.py platforms marker-check "
+                f"--platform {platform} "
+                f"--dump {root}/data/marker-{platform}.xml "
+                f">> {root}/data/marker-{platform}.log 2>&1"
+            )
     plan = "\n".join(lines)
     if args.write:
         Path(args.write).parent.mkdir(parents=True, exist_ok=True)
@@ -1038,6 +1165,54 @@ def main(argv=None):
     p_boot.add_argument("--root", default=".", help="Project root")
     p_boot.add_argument("--dry-run", action="store_true")
 
+    # Instagram platform agent (полный функционал)
+    ig_parser = subparsers.add_parser(
+        "instagram", help="Instagram agent: doctor/collect/Direct/login-drive"
+    )
+    ig_sub = ig_parser.add_subparsers(dest="instagram_command")
+
+    ig_sub.add_parser("doctor", help="Readiness checks (adb/secrets/hints/device)"
+                      ).add_argument(
+        "--serial", default=None, help="ADB serial to verify online")
+
+    ig_col = ig_sub.add_parser(
+        "collect", help="Collect feed/search cards into InstagramStorage")
+    ig_col.add_argument("--db", default="data/instagram.sqlite")
+    ig_col.add_argument("--query", default=None)
+    ig_col.add_argument("--max", type=int, default=100, dest="max_cards")
+    ig_col.add_argument("--serial", default=None, help="ADB serial")
+    ig_col.add_argument("--login", action="store_true",
+                        help="Pre-drive with the login wall driver")
+    ig_col.add_argument("--directory", default="platforms")
+
+    ig_dm = ig_sub.add_parser(
+        "dm-send", help="Guarded Direct reply (outbox by default)")
+    ig_dm.add_argument("--chat", required=True, help="Chat key")
+    ig_dm.add_argument("--text", required=True)
+    ig_dm.add_argument("--interlocutor", default=None)
+    ig_dm.add_argument("--db", default="data/instagram.sqlite")
+    ig_dm.add_argument("--serial", default=None)
+    ig_dm.add_argument("--directory", default="platforms")
+    ig_dm.add_argument("--auto-send", action="store_true",
+                       help="Send immediately instead of queueing")
+
+    ig_out = ig_sub.add_parser(
+        "dm-flush", help="Send every approved outbox entry")
+    ig_out.add_argument("--db", default="data/instagram.sqlite")
+    ig_out.add_argument("--serial", default=None)
+    ig_out.add_argument("--directory", default="platforms")
+
+    ig_outbox = ig_sub.add_parser("dm-outbox", help="List Direct outbox entries")
+    ig_outbox.add_argument("--db", default="data/instagram.sqlite")
+    ig_outbox.add_argument("--status", default=None)
+
+    ig_drv = ig_sub.add_parser(
+        "login-drive", help="Open Instagram past the login wall, dump screen")
+    ig_drv.add_argument("--query", default=None,
+                        help="Search query via PointDrive after login")
+    ig_drv.add_argument("--serial", default=None)
+    ig_drv.add_argument("--directory", default="platforms")
+
     # Platform profiles (accounts)
     profiles_parser = subparsers.add_parser(
         "profiles", help="Manage platform profiles (accounts)"
@@ -1093,6 +1268,8 @@ def main(argv=None):
                              help="minutes between runs")
     cron_parser.add_argument("--webhook", default=None, help="webhook URL for alerts")
     cron_parser.add_argument("--write", default=None, help="write to file instead of stdout")
+    cron_parser.add_argument("--with-marker-check", action="store_true",
+                             help="add commented marker-check lines per catalog platform")
 
     # Device pool (emulators/physical devices leased to profiles)
     devices_parser = subparsers.add_parser(
@@ -1172,6 +1349,9 @@ def main(argv=None):
     elif args.command == "platforms":
         if not _run_platforms(args):
             parser.parse_args(["platforms", "--help"])
+    elif args.command == "instagram":
+        if not _run_instagram(args):
+            parser.parse_args(["instagram", "--help"])
     elif args.command == "profiles":
         if not _run_profiles(args):
             parser.parse_args(["profiles", "--help"])

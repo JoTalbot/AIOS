@@ -102,7 +102,16 @@ class Message:
 
 
 class ChatListParser:
-    """Parses the chat list screen into :class:`ChatThread` rows."""
+    """Parses the chat list screen into :class:`ChatThread` rows.
+
+    ``markers`` — substring-маркеры resource-id контейнера чата;
+    по умолчанию OLX-маркеры. Платформы (Instagram и далее) передают
+    свои — из ``parser_hints.messenger`` калибровки (bubble/thread
+    resource-id), форма текстов классифицируется общей логикой.
+    """
+
+    def __init__(self, markers: Tuple[str, ...] = _CHAT_MARKERS):
+        self.markers = tuple(m.lower() for m in markers) or _CHAT_MARKERS
 
     def parse(self, xml_source: Union[str, Path, ET.Element]) -> List[ChatThread]:
         if isinstance(xml_source, ET.Element):
@@ -118,7 +127,7 @@ class ChatListParser:
         threads: List[ChatThread] = []
         for node in root.iter("node"):
             resource_id = (node.attrib.get("resource-id") or "").lower()
-            if not any(marker in resource_id for marker in _CHAT_MARKERS):
+            if not any(marker in resource_id for marker in self.markers):
                 continue
             texts: List[str] = []
             for child in node.iter():
