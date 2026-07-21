@@ -35,6 +35,7 @@ from .event_bus import EventBus, Event, EventType
 from .planner import Planner, Plan, PlanStep as PlannerStep, PlanStatus
 from .capability_engine import CapabilityEngine, CapabilityStatus
 from .autonomy_manager import AutonomyManager, AutonomyLevel
+from .federation_manager import FederationManager
 
 
 class TaskStatus(str, Enum):
@@ -144,6 +145,9 @@ class Orchestrator:
         self.planner = Planner(db=self.db)
         self.capabilities = CapabilityEngine(db=self.db)
         self.autonomy = AutonomyManager(db=self.db)
+
+        # v4.0-alpha
+        self.federation = FederationManager(db=self.db, local_node_id=f"aios_{uuid.uuid4().hex[:8]}")
 
         # Task tracking
         self._tasks: dict[str, Task] = {}
@@ -422,6 +426,7 @@ class Orchestrator:
                 "planner": self.planner.stats(),
                 "capabilities": self.capabilities.stats(),
                 "autonomy": self.autonomy.stats(),
+                "federation": self.federation.stats(),
             },
             "database": self.db.stats(),
         }
