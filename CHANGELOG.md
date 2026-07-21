@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.0.0-alpha.19] - 2026-07-21
+
+### Added
+- **Job lease TTL (ShardExec)**: `heartbeat(host)` на каждом
+  work_once; `requeue_stale(ttl)` возвращает зависшие claimed-джобы в
+  pending (host/route переоценка); `stats()` — queue depth, счётчики,
+  stale_claimed, heartbeats. CLI `shards jobs --stats`,
+  `shards requeue-stale --ttl N`.
+- **Встроенные виды джоб**: `default_handlers` — `autopilot`,
+  `reels`, `dm-flush`, `marker-check` (guarded shell-out,
+  payload.args).
+- **Human-like pacing (`platforms/pacing.py`)**: `Pacer` — jitter
+  (seed-able RNG), actions/hour скользящим окном, session limit;
+  честный стоп циклов в OLXCollector/InstagramCollector/ReelsCollector;
+  `pacer_from_limits` из pool kv; CLI `--pace-actions/--pace-jitter`,
+  отчёт `pacing` в autopilot.
+- **Own-promote (`platforms/promote.py`)**: `promotion_plan` — DRY-RUN
+  план продвижения stagnant-постов (кандидаты, равномерный бюджет,
+  boost); autopilot `--promote [--promote-budget --promote-min-age-days]`,
+  webhook `promote-suggestion`.
+
 ## [9.0.0-alpha.18] - 2026-07-21
 
 ### Added

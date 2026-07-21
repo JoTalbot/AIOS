@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS shard_jobs (
     result TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_shard_jobs_status ON shard_jobs(status);
+CREATE TABLE IF NOT EXISTS shard_heartbeats (
+    host TEXT PRIMARY KEY,
+    seen_at TEXT NOT NULL
+);
 """
 
 
@@ -157,6 +161,82 @@ class ShardJobs:
             )
             return bool(cursor.rowcount)
 
+    # -- lease TTL / метрики ------------------------------------------
+
+    def heartbeat(self, host: str) -> None:
+        """Исполнитель жив: обновляет отметку времени ноды."""
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO shard_heartbeats (host, seen_at)"
+                " VALUES (?, ?)",
+                (host, _now()),
+            )
+
+    def requeue_stale(
+        self, stale_after_s: float = 600.0, now: Optional[str] = None
+    ) -> List[Dict]:
+        """Вернуть в pending claimed-джобы, зависшие дольше TTL.
+
+        Джоба считается зависшей, если с момента claim прошло больше
+        ``stale_after_s`` секунд (нода умерла/повисла). Host снимается —
+        следующий claim переоценит маршрут.
+        """
+        from datetime import datetime as _dt
+        now_dt = _dt.fromisoformat(now) if now else _dt.now(timezone.utc)
+        moved: List[Dict] = []
+        with self._lock, self._conn:
+            for job in self.list(status="claimed"):
+                claimed = job.get("claimed_at")
+                if not claimed:
+                    continue
+                age = (now_dt - _dt.fromisoformat(claimed)).total_seconds()
+                if age < stale_after_s:
+                    continue
+                self._conn.execute(
+                    "UPDATE shard_jobs SET status = 'pending', host = NULL, "
+                    "claimed_at = NULL WHERE id = ?",
+                    (job["id"],),
+                )
+                job["status"] = "pending"
+                job["host"] = None
+                job["requeued_age_s"] = round(age, 3)
+                moved.append(job)
+        return moved
+
+    def stats(self, stale_after_s: float = 600.0,
+              now: Optional[str] = None) -> Dict:
+        """Глубина очереди и счётчики по статусам (+зависшие claim'ы)."""
+        from datetime import datetime as _dt
+        now_dt = _dt.fromisoformat(now) if now else _dt.now(timezone.utc)
+        counts: Dict[str, int] = {}
+        with self._lock:
+            for row in self._conn.execute(
+                "SELECT status, COUNT(*) AS n FROM shard_jobs GROUP BY status"
+            ).fetchall():
+                counts[row["status"]] = int(row["n"])
+            heartbeats = {
+                row["host"]: row["seen_at"]
+                for row in self._conn.execute(
+                    "SELECT host, seen_at FROM shard_heartbeats"
+                ).fetchall()
+            }
+        def _age(ts: str) -> float:
+            return (now_dt - _dt.fromisoformat(ts)).total_seconds()
+        stale = sum(
+            1 for job in self.list(status="claimed")
+            if job.get("claimed_at")
+            and _age(job["claimed_at"]) >= stale_after_s
+        )
+        return {
+            "pending": counts.get("pending", 0),
+            "claimed": counts.get("claimed", 0),
+            "done": counts.get("done", 0),
+            "failed": counts.get("failed", 0),
+            "queue_depth": counts.get("pending", 0) + counts.get("claimed", 0),
+            "stale_claimed": stale,
+            "heartbeats": heartbeats,
+        }
+
 
 class ShardJobWorker:
     """Исполнитель джобов ноды: claim → handler(kind) → complete.
@@ -184,6 +264,7 @@ class ShardJobWorker:
         Handler изолирован: исключение → джоба ``failed`` с текстом
         ошибки (соседние джобы не страдают).
         """
+        self.jobs.heartbeat(self.host)
         job = self.jobs.claim_next(self.host)
         if job is None:
             return None
@@ -217,26 +298,76 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
     root = Path(cli_path or Path(__file__).resolve().parent.parent.parent)
     cli = str(root / "aios_cli.py")
 
+    def _run_cli(cmd: List[str], extra: List) -> Dict:
+        args = [str(arg) for arg in (extra or [])]
+        proc = subprocess.run(
+            cmd + args, capture_output=True, text=True, timeout=900,
+        )
+        return {
+            "code": proc.returncode,
+            "stdout_tail": proc.stdout[-2000:],
+            "cmd": " ".join(cmd + args),
+        }
+
+    def _profile_db(platform: str, name: str) -> str:
+        return str(root / "data" / f"{platform}-{name}.sqlite")
+
     def autopilot(profile_key: str, payload: Dict) -> Dict:
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
             raise ValueError(
                 f"autopilot job поддерживает instagram-профили, не {platform!r}"
             )
-        db = str(root / "data" / f"instagram-{name}.sqlite")
-        cmd = [
-            "python3", cli, "instagram", "autopilot", "--login",
-            "--db", db,
-        ]
-        args = payload.get("args") or []
-        proc = subprocess.run(
-            cmd + [str(arg) for arg in args],
-            capture_output=True, text=True, timeout=900,
+        return _run_cli(
+            [
+                "python3", cli, "instagram", "autopilot", "--login",
+                "--db", _profile_db(platform, name),
+            ],
+            payload.get("args"),
         )
-        return {
-            "code": proc.returncode,
-            "stdout_tail": proc.stdout[-2000:],
-            "cmd": " ".join(cmd + [str(a) for a in args]),
-        }
 
-    return {"autopilot": autopilot}
+    def reels(profile_key: str, payload: Dict) -> Dict:
+        platform, _, name = profile_key.partition(":")
+        if platform != "instagram":
+            raise ValueError(
+                f"reels job поддерживает instagram-профили, не {platform!r}"
+            )
+        return _run_cli(
+            [
+                "python3", cli, "instagram", "reels", "--open-tab",
+                "--db", _profile_db(platform, name),
+            ],
+            payload.get("args"),
+        )
+
+    def dm_flush(profile_key: str, payload: Dict) -> Dict:
+        platform, _, name = profile_key.partition(":")
+        if platform != "instagram":
+            raise ValueError(
+                f"dm-flush job поддерживает instagram-профили, не {platform!r}"
+            )
+        return _run_cli(
+            [
+                "python3", cli, "instagram", "dm-flush",
+                "--db", _profile_db(platform, name),
+            ],
+            payload.get("args"),
+        )
+
+    def marker_check(profile_key: str, payload: Dict) -> Dict:
+        platform, _, _name = profile_key.partition(":")
+        dump = str(root / "data" / f"marker-{platform}.xml")
+        return _run_cli(
+            [
+                "python3", cli, "platforms", "marker-check",
+                "--platform", platform, "--dump", dump,
+            ],
+            payload.get("args"),
+        )
+
+    return {
+        "autopilot": autopilot,
+        "reels": reels,
+        "dm-flush": dm_flush,
+        "marker-check": marker_check,
+    }

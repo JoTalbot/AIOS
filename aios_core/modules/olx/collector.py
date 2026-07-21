@@ -30,6 +30,7 @@ class OLXCollector:
         swipe_pause_s: float = 0.0,
         screen_width: int = 1080,
         screen_height: int = 2400,
+        pacer=None,
     ):
         self.adb = adb or ADBController()
         self.parser = parser or CardParser()
@@ -37,6 +38,7 @@ class OLXCollector:
         self.swipe_pause_s = swipe_pause_s
         self.screen_width = screen_width
         self.screen_height = screen_height
+        self.pacer = pacer
 
     @staticmethod
     def search_deep_link(
@@ -126,6 +128,8 @@ class OLXCollector:
                 else:
                     idle_pages = 0
 
+                if self.pacer is not None and not self.pacer.before_action():
+                    break  # pacing-лимит — честный стоп, не обход
                 self._swipe_feed()
                 if self.swipe_pause_s:
                     time.sleep(self.swipe_pause_s)

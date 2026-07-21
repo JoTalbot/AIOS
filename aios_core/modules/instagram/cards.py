@@ -46,6 +46,7 @@ class InstagramCollector:
         swipe_pause_s: float = 0.0,
         screen_width: int = 1080,
         screen_height: int = 2400,
+        pacer=None,
     ):
         self.adb = adb or ADBController(package=PACKAGE, serial=serial)
         self.parser = parser
@@ -55,6 +56,7 @@ class InstagramCollector:
         self.swipe_pause_s = swipe_pause_s
         self.screen_width = screen_width
         self.screen_height = screen_height
+        self.pacer = pacer
 
     def resolve_parser(self):
         """Парсер карточек: явный или runtime из дескриптора платформы."""
@@ -77,6 +79,7 @@ class InstagramCollector:
             swipe_pause_s=self.swipe_pause_s,
             screen_width=self.screen_width,
             screen_height=self.screen_height,
+            pacer=self.pacer,
         )
 
     def _drive(self, query: Optional[str]) -> None:

@@ -802,11 +802,19 @@ def _run_instagram(args) -> bool:
             if args.login:
                 login = InstagramLoginDriver(adb=adb, search_drive=PointDrive(adb))
                 driver = login.drive
+            pacer = None
+            if getattr(args, "pace_actions", 0):
+                from aios_core.platforms.pacing import Pacer
+                pacer = Pacer(
+                    actions_per_hour=args.pace_actions,
+                    jitter_s=(0.4, args.pace_jitter),
+                )
             storage = InstagramStorage(args.db)
             steps: dict = {}
             try:
                 cards_collector = InstagramCollector(
                     adb=adb, driver=driver, directory=args.directory,
+                    pacer=pacer,
                 )
                 steps["collect"] = cards_collector.collect_to_storage(
                     storage, query=args.query, max_cards=args.max_cards,
@@ -824,6 +832,7 @@ def _run_instagram(args) -> bool:
                     get_platform("instagram"),
                     adb=adb, directory=args.directory,
                     driver=tab_driver, notifier=notifier,
+                    pacer=pacer,
                 )
                 written_reels, reels_cards = reels.collect_to_storage(
                     storage, max_cards=args.reels_max,
@@ -894,6 +903,37 @@ def _run_instagram(args) -> bool:
                         own_notifier and (own_report.get("new") or negative)
                     ),
                 }
+            if args.promote:
+                from aios_core.modules.olx.own_ads import OwnAdsTracker
+                from aios_core.platforms.promote import promotion_plan
+
+                storage = InstagramStorage(args.db)
+                try:
+                    stagnant = OwnAdsTracker(storage,).stagnant(
+                        min_age_days=args.promote_min_age_days,
+                    )
+                finally:
+                    storage.close()
+                plan = promotion_plan(
+                    stagnant, daily_budget=args.promote_budget,
+                )
+                promote_notifier = (
+                    WebhookNotifier(url=args.webhook)
+                    if args.webhook else None
+                )
+                if promote_notifier is not None and plan["candidates"]:
+                    promote_notifier.send("promote-suggestion", {
+                        "platform": "instagram",
+                        "candidates": [
+                            c["title"] for c in plan["candidates"]],
+                        "budget": plan["budget"],
+                        "note": "DRY-RUN план в steps.promote",
+                    })
+                steps["promote"] = {
+                    **plan,
+                    "notified": bool(
+                        promote_notifier and plan["candidates"]),
+                }
             if args.post_image:
                 steps["post"] = PostComposer(adb=adb).publish(
                     args.post_image, args.post_text, confirm=args.confirm,
@@ -903,6 +943,8 @@ def _run_instagram(args) -> bool:
                 "login_drive": args.login,
                 "steps": steps,
             }
+            if pacer is not None:
+                report["pacing"] = pacer.stats()
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return True
 
@@ -1299,10 +1341,29 @@ def _run_shards(args) -> bool:
     if cmd == "jobs":
         from aios_core.platforms.shardexec import ShardJobs
         with ShardJobs() as jobs:
-            print(json.dumps(
-                jobs.list(status=getattr(args, "status", None)),
-                ensure_ascii=False, indent=2,
-            ))
+            if getattr(args, "stats", False):
+                print(json.dumps(
+                    jobs.stats(stale_after_s=getattr(args, "ttl", 600)),
+                    ensure_ascii=False, indent=2,
+                ))
+            else:
+                print(json.dumps(
+                    jobs.list(status=getattr(args, "status", None)),
+                    ensure_ascii=False, indent=2,
+                ))
+        return True
+
+    if cmd == "requeue-stale":
+        from aios_core.platforms.shardexec import ShardJobs
+        with ShardJobs() as jobs:
+            moved = jobs.requeue_stale(stale_after_s=args.ttl)
+        print(json.dumps(
+            {"requeued": len(moved),
+             "jobs": [{"id": j["id"], "profile_key": j["profile_key"],
+                       "requeued_age_s": j.get("requeued_age_s")}
+                      for j in moved]},
+            ensure_ascii=False, indent=2,
+        ))
         return True
 
     if cmd == "enqueue":
@@ -1676,6 +1737,16 @@ def main(argv=None):
                          help="Own-posts snapshot step (OwnAdsTracker)")
     ig_auto.add_argument("--own-dump", default=None,
                          help="Profile grid UI dump (default: live device)")
+    ig_auto.add_argument("--promote", action="store_true",
+                         help="DRY-RUN promote plan for stagnant own posts")
+    ig_auto.add_argument("--promote-budget", type=float, default=None,
+                         dest="promote_budget", help="daily budget (UAH)")
+    ig_auto.add_argument("--promote-min-age-days", type=float, default=3.0,
+                         dest="promote_min_age_days")
+    ig_auto.add_argument("--pace-actions", type=int, default=0,
+                         help="actions/hour pacing quota (0=off)")
+    ig_auto.add_argument("--pace-jitter", type=float, default=1.6,
+                         help="max jitter seconds between actions")
     ig_auto.add_argument("--post-text", default="", help="Caption")
     ig_auto.add_argument("--confirm", action="store_true",
                          help="Actually execute the publish flow")
@@ -1729,6 +1800,17 @@ def main(argv=None):
     sh_jobs = sh_sub.add_parser("jobs", help="List shard job queue")
     sh_jobs.add_argument("--status", default=None,
                          help="pending/claimed/done/failed")
+    sh_jobs.add_argument("--stats", action="store_true",
+                         help="queue depth / status counters / stale claims")
+    sh_jobs.add_argument("--ttl", type=float, default=600,
+                         help="stale claims threshold seconds (with --stats)")
+
+    sh_requeue = sh_sub.add_parser(
+        "requeue-stale",
+        help="Return claims stuck longer than TTL back to pending",
+    )
+    sh_requeue.add_argument("--ttl", type=float, default=600,
+                            help="claimed older than this is stale (seconds)")
 
     sh_enq = sh_sub.add_parser(
         "enqueue", help="Queue a pull-model job for a profile",
