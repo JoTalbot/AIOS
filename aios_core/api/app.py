@@ -59,6 +59,14 @@ Endpoints:
   GET /api/v1/audit                     — Query audit log
   GET /api/v1/audit/stats               — Audit stats
 
+  # OLX Parser Agent module
+  GET    /api/v1/modules/olx/ads                — List collected OLX ads
+  GET    /api/v1/modules/olx/stats              — OLX market statistics
+  POST   /api/v1/modules/olx/recommendations    — Listing recommendations
+  POST   /api/v1/modules/olx/collect            — One-off ADB collection run
+  POST   /api/v1/modules/olx/schedule           — Start periodic collection
+  DELETE /api/v1/modules/olx/schedule           — Stop periodic collection
+
   # JSON-RPC bridge
   POST /rpc                             — Forward to MCP Gateway
 """
@@ -92,7 +100,7 @@ class AIOSAPI:
     the Starlette application.
     """
 
-    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None):
+    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None, olx_storage=None, olx_collector=None):
         from aios_core.storage import Database
         from aios_core.orchestrator import Orchestrator
         from aios_core.test_engine import TestEngine
@@ -128,6 +136,17 @@ class AIOSAPI:
             db=self.db,
         )
 
+        # OLX Parser Agent module (aios_core.modules.olx)
+        if olx_storage is None:
+            from aios_core.modules.olx import OLXStorage
+            olx_storage = OLXStorage(os.environ.get("AIOS_OLX_DB", ":memory:"))
+        self.olx_storage = olx_storage
+        if olx_collector is None:
+            from aios_core.modules.olx import OLXCollector
+            olx_collector = OLXCollector()
+        self.olx_collector = olx_collector
+        self._olx_scheduler = None
+
     def create_starlette_app(self) -> Starlette:
         """Build the Starlette application with all routes."""
         routes = [
@@ -146,6 +165,14 @@ class AIOSAPI:
             Route("/api/v1/apk/profiles", self._apk_profiles, methods=["GET"]),
             Route("/api/v1/apps/transform", self._app_transform, methods=["POST"]),
             Route("/api/v1/apps/{package_name}/execute", self._app_execute, methods=["POST"]),
+
+            # OLX Parser Agent module
+            Route("/api/v1/modules/olx/ads", self._olx_ads, methods=["GET"]),
+            Route("/api/v1/modules/olx/stats", self._olx_stats, methods=["GET"]),
+            Route("/api/v1/modules/olx/recommendations", self._olx_recommend, methods=["POST"]),
+            Route("/api/v1/modules/olx/collect", self._olx_collect, methods=["POST"]),
+            Route("/api/v1/modules/olx/schedule", self._olx_schedule, methods=["POST"]),
+            Route("/api/v1/modules/olx/schedule", self._olx_unschedule, methods=["DELETE"]),
 
             # Constitutional evaluation
             Route("/api/v1/evaluate", self._evaluate, methods=["POST"]),
@@ -396,6 +423,112 @@ class AIOSAPI:
             return JSONResponse(res)
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
+
+    # ---- OLX Parser Agent module ----
+
+    def _olx_get_scheduler(self, interval_s: float = 3600.0):
+        if self._olx_scheduler is None:
+            from aios_core.modules.olx import CollectionScheduler
+            self._olx_scheduler = CollectionScheduler(
+                collector=self.olx_collector,
+                storage=self.olx_storage,
+                interval_s=interval_s,
+            )
+        self._olx_scheduler.interval_s = float(interval_s)
+        return self._olx_scheduler
+
+    async def _olx_ads(self, request: Request) -> JSONResponse:
+        """List collected OLX ads (`query` filter, bounded `limit`)."""
+        query = request.query_params.get("query")
+        limit = self._bounded_int(request.query_params.get("limit"), default=100, maximum=1000)
+        ads = self.olx_storage.get_ads(query=query, limit=limit)
+        return JSONResponse({
+            "count": len(ads),
+            "total": self.olx_storage.count(query=query),
+            "items": [ad.to_dict() for ad in ads],
+        })
+
+    async def _olx_stats(self, request: Request) -> JSONResponse:
+        """Competitor market statistics for a search query (or the whole store)."""
+        from aios_core.modules.olx import CompetitorAnalyzer
+        query = request.query_params.get("query")
+        ads = self.olx_storage.get_ads(query=query)
+        report = CompetitorAnalyzer().analyze(ads, query=query)
+        return JSONResponse(report.to_dict())
+
+    async def _olx_recommend(self, request: Request) -> JSONResponse:
+        """Generate listing advice from collected competitors."""
+        try:
+            from dataclasses import asdict
+            from aios_core.modules.olx import AdCard, RecommendationEngine
+            body = await request.json()
+            query = body.get("query")
+            ads = self.olx_storage.get_ads(query=query)
+            my_ad = None
+            if body.get("title") is not None or body.get("price") is not None:
+                my_ad = AdCard(
+                    title=body.get("title") or "",
+                    price=body.get("price"),
+                    currency=body.get("currency", "UAH"),
+                    query=query,
+                )
+            advice = RecommendationEngine().recommend(ads, my_ad=my_ad)
+            payload = asdict(advice)
+            payload["text"] = advice.to_text()
+            return JSONResponse(payload)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_collect(self, request: Request) -> JSONResponse:
+        """Run a one-off ADB collection for one or more search queries."""
+        try:
+            body = await request.json()
+            queries = body.get("queries")
+            if not isinstance(queries, list) or not queries:
+                queries = [body.get("query") or "olx"]
+            max_cards = self._bounded_int(body.get("max_cards"), default=50, maximum=500)
+            scheduler = self._olx_get_scheduler()
+            summaries = scheduler.run_once(queries, max_cards=max_cards)
+            return JSONResponse({"summaries": summaries})
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_schedule(self, request: Request) -> JSONResponse:
+        """Start periodic background collection."""
+        try:
+            body = await request.json()
+            queries = body.get("queries")
+            if not isinstance(queries, list) or not queries:
+                queries = [body.get("query") or "olx"]
+            interval_s = float(body.get("interval_s", 3600.0))
+            if interval_s < 10.0:
+                return JSONResponse(
+                    {"error": "interval_s must be at least 10 seconds"},
+                    status_code=400,
+                )
+            max_cards = self._bounded_int(body.get("max_cards"), default=50, maximum=500)
+            scheduler = self._olx_get_scheduler(interval_s)
+            started = scheduler.start(queries, max_cards=max_cards)
+            return JSONResponse({
+                "scheduled": scheduler.running,
+                "started_now": started,
+                "queries": queries,
+                "interval_s": scheduler.interval_s,
+                "max_cards": max_cards,
+            })
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_unschedule(self, request: Request) -> JSONResponse:
+        """Stop the periodic background collection."""
+        scheduler = self._olx_get_scheduler()
+        was_running = scheduler.running
+        scheduler.stop()
+        return JSONResponse({
+            "scheduled": False,
+            "was_running": was_running,
+            "history": scheduler.history[-20:],
+        })
 
     # ---- Evaluate ----
 

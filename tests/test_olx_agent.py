@@ -9,6 +9,7 @@ from datetime import datetime
 from aios_core.modules.olx import (
     AdCard,
     CardParser,
+    CollectionScheduler,
     CompetitorAnalyzer,
     OLXCollector,
     OLXStorage,
@@ -339,3 +340,61 @@ def test_recommendation_engine_below_market_and_empty_market():
     assert empty.verdict == "unknown"
     assert empty.suggested_price is None
     assert empty.title_keywords == []
+
+
+# --- CollectionScheduler ----------------------------------------------------
+
+
+def test_scheduler_run_once_records_history(tmp_path):
+    adb = FakeADB(pages=[SAMPLE_XML, SAMPLE_XML])
+    collector = OLXCollector(adb=adb)
+    storage = OLXStorage(tmp_path / "olx.sqlite")
+    scheduler = CollectionScheduler(collector=collector, storage=storage, interval_s=3600)
+
+    summaries = scheduler.run_once(["лобове скло"], max_cards=10)
+
+    record = summaries["лобове скло"]
+    assert record["parsed"] == 2
+    assert record["inserted"] == 2
+    assert record["total"] == 2
+    assert len(scheduler.history) == 1
+    assert scheduler.history[0]["query"] == "лобове скло"
+
+    # Second run: same feed — zero new inserts, history grows.
+    second = scheduler.run_once(["лобове скло"], max_cards=10)
+    assert second["лобове скло"]["inserted"] == 0
+    assert len(scheduler.history) == 2
+
+
+def test_scheduler_background_loop_start_stop(tmp_path):
+    import time
+
+    adb = FakeADB(pages=[SAMPLE_XML])
+    collector = OLXCollector(adb=adb)
+    storage = OLXStorage(tmp_path / "olx.sqlite")
+    scheduler = CollectionScheduler(collector=collector, storage=storage, interval_s=0.02)
+
+    assert scheduler.start(["лобове скло"], max_cards=5) is True
+    assert scheduler.running is True
+
+    deadline = time.time() + 2.0
+    while time.time() < deadline and len(scheduler.history) < 2:
+        time.sleep(0.01)
+
+    scheduler.stop()
+    assert scheduler.running is False
+    assert len(scheduler.history) >= 2
+    assert storage.count() == 2  # deduplicated across runs
+    storage.close()
+
+
+def test_scheduler_refuses_double_start():
+    adb = FakeADB(pages=[SAMPLE_XML])
+    collector = OLXCollector(adb=adb)
+    storage = OLXStorage()
+    scheduler = CollectionScheduler(collector=collector, storage=storage, interval_s=60)
+
+    assert scheduler.start(["q"]) is True
+    assert scheduler.start(["q"]) is False
+    scheduler.stop()
+    storage.close()

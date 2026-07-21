@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Union
@@ -36,42 +37,49 @@ class OLXStorage:
 
     def __init__(self, db_path: Union[str, Path] = ":memory:"):
         self.db_path = str(db_path)
-        self._conn = sqlite3.connect(self.db_path)
+        # check_same_thread=False + a write lock make the store safe to share
+        # between the REST API loop and background scheduler threads.
+        self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        self._lock = threading.RLock()
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(_SCHEMA)
 
     def save_ads(self, cards: List[AdCard]) -> int:
-        """Insert new cards; known fingerprints are skipped. Returns insert count."""
+        """Insert new cards; known fingerprints (per query) are skipped.
+
+        Returns the number of newly inserted rows.
+        """
         now = datetime.now(timezone.utc).isoformat()
         inserted = 0
-        with self._conn:
-            for card in cards:
-                row = card.to_dict()
-                cursor = self._conn.execute(
-                    """
-                    INSERT OR IGNORE INTO olx_ads (
-                        fingerprint, title, price, currency, city,
-                        published_text, published_at, is_top, ad_id, url,
-                        query, collected_at, raw_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        row["fingerprint"],
-                        row["title"],
-                        row["price"],
-                        row["currency"],
-                        row["city"],
-                        row["published_text"],
-                        row["published_at"],
-                        int(row["is_top"]),
-                        row["ad_id"],
-                        row["url"],
-                        row["query"],
-                        now,
-                        json.dumps(row["raw_texts"], ensure_ascii=False),
-                    ),
-                )
-                inserted += cursor.rowcount
+        with self._lock:
+            with self._conn:
+                for card in cards:
+                    row = card.to_dict()
+                    cursor = self._conn.execute(
+                        """
+                        INSERT OR IGNORE INTO olx_ads (
+                            fingerprint, title, price, currency, city,
+                            published_text, published_at, is_top, ad_id, url,
+                            query, collected_at, raw_json
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            row["fingerprint"],
+                            row["title"],
+                            row["price"],
+                            row["currency"],
+                            row["city"],
+                            row["published_text"],
+                            row["published_at"],
+                            int(row["is_top"]),
+                            row["ad_id"],
+                            row["url"],
+                            row["query"],
+                            now,
+                            json.dumps(row["raw_texts"], ensure_ascii=False),
+                        ),
+                    )
+                    inserted += cursor.rowcount
         return inserted
 
     def _row_to_card(self, row: sqlite3.Row) -> AdCard:
@@ -102,22 +110,25 @@ class OLXStorage:
         if limit is not None:
             sql += " LIMIT ?"
             params.append(limit)
-        rows = self._conn.execute(sql, params).fetchall()
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
         return [self._row_to_card(row) for row in rows]
 
     def count(self, query: Optional[str] = None) -> int:
         """Number of stored cards, optionally for a single query."""
-        if query is None:
-            return self._conn.execute("SELECT COUNT(*) FROM olx_ads").fetchone()[0]
-        return self._conn.execute(
-            "SELECT COUNT(*) FROM olx_ads WHERE query = ?", (query,)
-        ).fetchone()[0]
+        with self._lock:
+            if query is None:
+                return self._conn.execute("SELECT COUNT(*) FROM olx_ads").fetchone()[0]
+            return self._conn.execute(
+                "SELECT COUNT(*) FROM olx_ads WHERE query = ?", (query,)
+            ).fetchone()[0]
 
     def queries(self) -> List[str]:
         """Distinct search queries present in the store."""
-        rows = self._conn.execute(
-            "SELECT DISTINCT query FROM olx_ads WHERE query IS NOT NULL ORDER BY query"
-        ).fetchall()
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT DISTINCT query FROM olx_ads WHERE query IS NOT NULL ORDER BY query"
+            ).fetchall()
         return [row[0] for row in rows]
 
     def close(self) -> None:
