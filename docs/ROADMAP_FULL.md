@@ -55,18 +55,15 @@
 
 **Тема: «ещё N приложений» = конфигурация, а не код.**
 
-6. **Onboarding wizard**: `aios onboard <apk-or-package>` — единая
-   команда: fetch → bootup → login-driver (если стена) → doctor →
-   первый autowatch-цикл; печатает «паспорт платформы» (готовность
-   по чек-листу). Минимум ручных шагов = 0 в happy path. *(alpha.23)*
-7. **Новые платформы-мишени** (доказательство generic'ности): TikTok
-   (video-first: videocards+reelscout уже есть), Facebook Marketplace
-   (OLX-подобный), 1–2 региональные площадки по запросу. Каждая —
-   YAML + login-driver + документированный онбординг. *(alpha.24–26)*
-8. **Pull-first автоматизация по умолчанию**: pull-модель джобов как
-   основной способ эксплуатации (cron-plan → `shards enqueue`/
-   supervisor), web-pane очереди джобов и пула устройств в dashboard
-   (dashboard API уже есть — добить вкладками). *(alpha.26)*
+6. ~~**Onboarding wizard**~~ ✅ alpha.20: `aios onboard` (fetch→
+   bootup→паспорт+next_commands). TODO: login-driver/autowatch
+   в happy path (после H1.5).
+7. **Новые платформы**: ✅ alpha.20 — WhatsApp, Viber, TikTok
+   (onboarding-пакеты: storage/messenger/bootstrap + compliance).
+   Остаётся: Facebook Marketplace + региональные (on-device hints).
+8. **Pull-first автоматизация**: ✅ alpha.20 — cron-plan
+   `--via-shards` + jobs REST (`/api/v1/shards/jobs|stats`).
+   Остаётся: web-pane очереди/пула в dashboard UI.
 9. **Метрики/наблюдаемость**: Prometheus-экспортер (jobs done/failed,
    cards/cycle, drift events, pool utilization, per-profile health);
    alert-правила (drift, failed> N, queue depth). *(alpha.27)*

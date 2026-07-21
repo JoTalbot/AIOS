@@ -266,6 +266,9 @@ class AIOSAPI:
             Route("/api/v1/shards/route", self._shards_unroute, methods=["DELETE"]),
             Route("/api/v1/shards/gateway", self._shards_gateway, methods=["POST"]),
             Route("/api/v1/shards/{host}", self._shards_remove, methods=["DELETE"]),
+            Route("/api/v1/shards/jobs", self._shard_jobs_list, methods=["GET"]),
+            Route("/api/v1/shards/jobs", self._shard_jobs_enqueue, methods=["POST"]),
+            Route("/api/v1/shards/stats", self._shard_jobs_stats, methods=["GET"]),
 
             # Generic platform module surfaces (descriptor-driven). Статичные
             # роуты olx зарегистрированы выше и матчатся первыми.
@@ -883,6 +886,49 @@ class AIOSAPI:
             return JSONResponse({"error": "host not found"}, status_code=404)
         return JSONResponse({"removed": True})
 
+    # ------------------------------------------------------------------ #
+    # Shard pull-jobs (очередь джобов для dashboard/worker-нод)          #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _shard_jobs():
+        from aios_core.platforms.shardexec import ShardJobs
+        return ShardJobs()
+
+    async def _shard_jobs_list(self, request: Request) -> JSONResponse:
+        """Очередь джобов (?status=pending|claimed|done|failed)."""
+        with self._shard_jobs() as jobs:
+            return JSONResponse(
+                {"jobs": jobs.list(status=request.query_params.get("status"))}
+            )
+
+    async def _shard_jobs_enqueue(self, request: Request) -> JSONResponse:
+        """Повесить джобу на профиль {profile, kind, payload?}.
+
+        Нода-исполнитель заберёт её pull-моделью (sticky HRW-маршрут);
+        guarded-семантика сохраняется на уровне видов джоб.
+        """
+        body = await request.json()
+        profile_key = body.get("profile")
+        kind = body.get("kind")
+        if not profile_key or not kind:
+            return JSONResponse(
+                {"error": "'profile' and 'kind' are required"},
+                status_code=400,
+            )
+        with self._shard_jobs() as jobs:
+            job_id = jobs.enqueue(profile_key, kind, payload=body.get("payload"))
+        return JSONResponse(
+            {"enqueued": job_id, "profile_key": profile_key, "kind": kind},
+            status_code=201,
+        )
+
+    async def _shard_jobs_stats(self, request: Request) -> JSONResponse:
+        """Глубина очереди, счётчики, зависшие claim'ы, heartbeats."""
+        ttl = float(request.query_params.get("ttl", 600))
+        with self._shard_jobs() as jobs:
+            return JSONResponse(jobs.stats(stale_after_s=ttl))
+
     async def _shards_route(self, request: Request) -> JSONResponse:
         """Sticky route for a profile {profile: "olx:work"}.
 
@@ -981,14 +1027,14 @@ class AIOSAPI:
             stats = self.orchestrator.stats()
             return JSONResponse({
                 "status": "ok",
-                "version": "9.0.0-alpha.19",
+                "version": "9.0.0-alpha.20",
                 "constitution_articles": stats.get("constitution_articles", 0),
                 "memory_items": stats.get("memory_items", 0),
                 "active_tasks": stats.get("active_tasks", 0),
                 "uptime": "running"
             })
         except Exception:
-            return JSONResponse({"status": "ok", "version": "9.0.0-alpha.19"})
+            return JSONResponse({"status": "ok", "version": "9.0.0-alpha.20"})
 
     async def _stats(self, request: Request) -> JSONResponse:
         return JSONResponse(self.orchestrator.stats())

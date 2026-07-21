@@ -614,6 +614,35 @@ CLI autopilot: `--pace-actions N --pace-jitter S`, отчёт `pacing`.
 бюджет, действие boost. Промоут-флоу для платформы не реализован —
 честный dry_run всегда; autopilot `--promote [--promote-budget N --promote-min-age-days D]`, webhook `promote-suggestion`.
 
+## Onboarding wizard (`aios onboard`)
+
+`platforms/onboard.py: onboard_package` — единый вход подключения:
+resolve/fetch APK → bootup (scaffold→register→calibrate→codegen→
+verify) → паспорт готовности {scaffolded, registered, hints,
+codegen, verified_cards} + список next_commands (честный «needs
+device» вместо silently-заглушки). CLI: `aios onboard com.example.app
+[--name --fetch --dump --serial --root]`.
+
+## Generic messenger-платформы: WhatsApp, Viber, TikTok
+
+`platforms/hintmsg.py: HintsMessenger` — guarded-мессенджер целиком по
+hints (inbox-тап deep-link/monkey, list_chats по chat/bubble маркерам
+калибровки, HintSender ввод/отправка, общий outbox-контур).
+Платформенный модуль = 3 тонких класса (Storage/Bootstrap/Messenger)
++ YAML-дескриптор с `extras.compliance` (autopost_allowed: false,
+messenger: approval-only). Generic doctor: `platforms/doctor.py:
+platform_doctor` (adb/дескриптор/hints-секции/storage/device/package).
+CLI-группы `whatsapp`/`viber` (doctor/chats/dm-send/dm-flush/dm-outbox)
+одним раннером; `platforms doctor/reels` — generic для любого
+каталогового app (TikTok — video-first доказательство ReelsCollector).
+
+## Pull-first автоматизация + jobs REST
+
+`cron-plan --via-shards` генерирует enqueue-строки (`shards enqueue
+--profile p:n --kind autopilot`) вместо shell-cron; платформы без
+builtin-вида получают честный комментарий. REST-плоскость очереди для
+dashboard: `GET/POST /api/v1/shards/jobs`, `GET /api/v1/shards/stats`.
+
 ## Дальше (дорожная карта к 10000+)
 
 1. **Job-lease TTL**: повторная выдача claimed-джоб, зависших на

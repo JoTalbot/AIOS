@@ -713,6 +713,63 @@ def _run_platforms(args) -> bool:
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return True
 
+    if cmd == "reels":
+        from aios_core.modules.olx.adb import ADBController
+        from aios_core.modules.olx.notifier import WebhookNotifier
+        from aios_core.platforms import (
+            get_platform,
+            reels_driver_for,
+        )
+        from aios_core.platforms.reelscout import ReelsCollector
+        from aios_core.platforms.resolver import resolve_profile, storage_for
+
+        descriptor = get_platform(args.platform)
+        profile = resolve_profile(args.platform, args.profile)
+        adb = ADBController(
+            package=descriptor.android_package,
+            serial=getattr(args, "serial", None) or getattr(profile, "device_serial", None),
+        )
+        driver = None
+        if args.open_tab:
+            driver = reels_driver_for(
+                args.platform, adb=adb, directory=args.directory,
+            ).drive
+        notifier = (
+            WebhookNotifier(url=args.webhook) if args.webhook else None
+        )
+        collector = ReelsCollector(
+            descriptor, adb=adb, directory=args.directory,
+            driver=driver, notifier=notifier,
+        )
+        db = args.db or str(storage_for(descriptor, profile))
+        storage = descriptor.storage_factory(db)
+        try:
+            written, cards = collector.collect_to_storage(
+                storage, max_cards=args.max_cards,
+            )
+        finally:
+            storage.close()
+        print(json.dumps(
+            {"platform": args.platform, "profile": profile.name,
+             "new": written, "seen": len(cards),
+             "open_tab": bool(args.open_tab),
+             "cards": [c.to_dict() for c in cards]},
+            ensure_ascii=False, indent=2,
+        ))
+        return True
+
+    if cmd == "doctor":
+        from aios_core.platforms.doctor import platform_doctor
+        from aios_core.platforms import get_platform
+        descriptor = get_platform(args.platform)
+        report = platform_doctor(
+            args.platform, descriptor.android_package,
+            serial=getattr(args, "serial", None),
+            directory=args.directory,
+        )
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return True
+
     if cmd == "scaffold":
         files = scaffold_platform(
             args.name, args.package,
@@ -1095,6 +1152,85 @@ def _run_instagram(args) -> bool:
     return False
 
 
+def _adb_dump_driver(default_serial=None):
+    """Драйв удалённого дампа для bootup/onboard (open_app+pointdrive)."""
+    import time
+
+    def driver(package, query=None, serial=None):
+        import tempfile
+        from aios_core.modules.olx.adb import ADBController
+        from aios_core.platforms.pointdrive import PointDrive
+
+        adb = ADBController(package=package,
+                            serial=serial or default_serial)
+        if query:
+            return PointDrive(adb).drive(package, query)
+        adb.open_app()
+        time.sleep(2.0)
+        with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as tmp:
+            adb.dump_ui(tmp.name)
+            return Path(tmp.name).read_text(encoding="utf-8")
+
+    return driver
+
+
+def _run_msg_platform(args, platform: str) -> bool:
+    """Generic guarded-messenger CLI для платформ HintsMessenger."""
+    cmd = getattr(args, "messenger_command", None) or "doctor"
+    camel = {"whatsapp": "WhatsApp", "viber": "Viber",
+             "tiktok": "TikTok"}.get(platform, platform.capitalize())
+    try:
+        module = __import__(
+            f"aios_core.modules.{platform}", fromlist=[
+                f"{camel}Bootstrap", f"{camel}Messenger", f"{camel}Storage"],
+        )
+        bootstrap_cls = getattr(module, f"{camel}Bootstrap")
+        messenger_cls = getattr(module, f"{camel}Messenger")
+        storage_cls = getattr(module, f"{camel}Storage")
+        if cmd == "doctor":
+            report = bootstrap_cls(
+                serial=getattr(args, "serial", None),
+            ).doctor()
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return True
+        from aios_core.modules.olx.adb import ADBController
+        package = messenger_cls.PACKAGE
+        adb = ADBController(package=package, serial=getattr(args, "serial", None))
+        messenger = messenger_cls(
+            adb=adb,
+            storage=storage_cls(getattr(args, "db", f"data/{platform}.sqlite")),
+            directory=getattr(args, "directory", "platforms"),
+        )
+        if cmd == "chats":
+            messenger.open_chats()
+            threads = messenger.list_chats()
+            print(json.dumps(
+                [t.to_dict() for t in threads], ensure_ascii=False, indent=2))
+            return True
+        if cmd == "dm-send":
+            result = messenger.send_reply(args.chat, args.text,
+                                          interlocutor=args.interlocutor,
+                                          auto_send=args.auto_send)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return True
+        if cmd == "dm-flush":
+            results = messenger.flush_outbox()
+            print(json.dumps({"flushed": results}, ensure_ascii=False, indent=2))
+            return True
+        if cmd == "dm-outbox":
+            storage = storage_cls(getattr(args, "db", f"data/{platform}.sqlite"))
+            try:
+                rows = storage.outbox_list(status=getattr(args, "status", None))
+            finally:
+                storage.close()
+            print(json.dumps(rows, ensure_ascii=False, indent=2))
+            return True
+    except ValueError as exc:
+        print(json.dumps({"error": str(exc)}, ensure_ascii=False))
+        return True
+    return False
+
+
 def _run_profiles(args) -> bool:
     from aios_core.platforms import Profile, ProfileStore
 
@@ -1425,6 +1561,21 @@ def _run_cron_plan(args) -> bool:
     webhook = f" --webhook {args.webhook}" if args.webhook else ""
 
     def _profile_line(profile) -> str:
+        if getattr(args, "via_shards", False):
+            # Pull-модель: cron только вешает джобы, исполняют ноды-воркеры:
+            kinds = {"instagram": "autopilot"}
+            kind = kinds.get(profile.platform)
+            if kind is None:
+                return (
+                    f"# (нет builtin job kind для {profile.platform}; "
+                    f"оставьте shell-cron или добавьте handler)"
+                )
+            return (
+                f"*/{interval} * * * * cd {root} && "
+                f"python3 aios_cli.py shards enqueue "
+                f"--profile {profile.platform}:{profile.name} --kind {kind} "
+                f">> {root}/data/jobs-{profile.key.replace(':', '_')}.log 2>&1"
+            )
         if profile.platform == "olx":
             return (
                 f"*/{interval} * * * * cd {root} && "
@@ -1559,6 +1710,23 @@ def main(argv=None):
     p_cal = plat_sub.add_parser(
         "calibrate", help="Extract parser hints from a search-screen UI dump"
     )
+    p_reels2 = plat_sub.add_parser(
+        "reels", help="Reels scroll-cycle collector (any catalog platform)")
+    p_reels2.add_argument("--platform", required=True)
+    p_reels2.add_argument("--profile", default=None)
+    p_reels2.add_argument("--db", default=None)
+    p_reels2.add_argument("--max", type=int, default=100, dest="max_cards")
+    p_reels2.add_argument("--serial", default=None)
+    p_reels2.add_argument("--directory", default="platforms")
+    p_reels2.add_argument("--open-tab", action="store_true")
+    p_reels2.add_argument("--webhook", default=None)
+
+    p_doc2 = plat_sub.add_parser(
+        "doctor", help="Generic readiness checks for a platform")
+    p_doc2.add_argument("--platform", required=True)
+    p_doc2.add_argument("--serial", default=None)
+    p_doc2.add_argument("--directory", default="platforms")
+
     p_cal.add_argument("--platform", required=True, help="Platform name")
     p_cal.add_argument("--dump", required=True, help="Path to uiautomator XML dump")
     p_cal.add_argument("--detail", default=None,
@@ -1638,6 +1806,51 @@ def main(argv=None):
     p_boot.add_argument("--locale", default="uk-UA")
     p_boot.add_argument("--root", default=".", help="Project root")
     p_boot.add_argument("--dry-run", action="store_true")
+
+    # Onboarding wizard: всё подключение платформы одной командой
+    p_onb = subparsers.add_parser(
+        "onboard", help="Onboarding wizard: fetch→bootup→register→паспорт")
+    p_onb.add_argument("apk", nargs="?", default=None,
+                       help="APK path or android package (with fetch)")
+    p_onb.add_argument("--name", default=None)
+    p_onb.add_argument("--package", default=None)
+    p_onb.add_argument("--root", default=".", help="Project root")
+    p_onb.add_argument("--no-fetch", action="store_true",
+                       help="Do not download APK even if only package given")
+    p_onb.add_argument("--apks-dir", default="apks", dest="apks_dir")
+    p_onb.add_argument("--dump", default=None, help="Search-screen UI dump")
+    p_onb.add_argument("--query", default=None, help="Drive query for dump")
+    p_onb.add_argument("--serial", default=None, help="ADB serial for drive")
+    p_onb.add_argument("--dry-run", action="store_true")
+
+    # Generic messengers: whatsapp / viber (HintsMessenger-платформы)
+    for app_name in ("whatsapp", "viber"):
+        app_parser = subparsers.add_parser(
+            app_name, help=f"{app_name} guarded messenger agent")
+        app_sub = app_parser.add_subparsers(dest="messenger_command")
+        app_sub.add_parser("doctor", help="Readiness checks").add_argument(
+            "--serial", default=None)
+        app_chats = app_sub.add_parser("chats", help="List inbox threads")
+        app_chats.add_argument("--db", default=None)
+        app_chats.add_argument("--serial", default=None)
+        app_chats.add_argument("--directory", default="platforms")
+        app_send = app_sub.add_parser(
+            "dm-send", help="Guarded reply (outbox by default)")
+        app_send.add_argument("--chat", required=True)
+        app_send.add_argument("--text", required=True)
+        app_send.add_argument("--interlocutor", default=None)
+        app_send.add_argument("--db", default=None)
+        app_send.add_argument("--serial", default=None)
+        app_send.add_argument("--directory", default="platforms")
+        app_send.add_argument("--auto-send", action="store_true",
+                              help="Send immediately instead of queueing")
+        app_flush = app_sub.add_parser("dm-flush", help="Send approved outbox")
+        app_flush.add_argument("--db", default=None)
+        app_flush.add_argument("--serial", default=None)
+        app_flush.add_argument("--directory", default="platforms")
+        app_out = app_sub.add_parser("dm-outbox", help="List outbox entries")
+        app_out.add_argument("--db", default=None)
+        app_out.add_argument("--status", default=None)
 
     # Instagram platform agent (полный функционал)
     ig_parser = subparsers.add_parser(
@@ -1843,6 +2056,9 @@ def main(argv=None):
     cron_parser.add_argument("--shard-map", action="store_true",
                              help="group profile lines by sticky HRW shard host "
                                   "(AIOS_SHARDS_DB; unrouted → local group)")
+    cron_parser.add_argument("--via-shards", action="store_true",
+                             help="pull-model: cron only enqueues shard jobs "
+                                  "(workers: aios shards work --host X)")
 
     # Device pool (emulators/physical devices leased to profiles)
     devices_parser = subparsers.add_parser(
@@ -1931,6 +2147,33 @@ def main(argv=None):
     elif args.command == "platforms":
         if not _run_platforms(args):
             parser.parse_args(["platforms", "--help"])
+    elif args.command == "onboard":
+        from aios_core.platforms.onboard import onboard_package
+        try:
+            report = onboard_package(
+                apk=args.apk, name=args.name, package=args.package,
+                project_root=args.root, fetch=not args.no_fetch,
+                apks_dir=args.apks_dir,
+                dump_path=getattr(args, "dump", None),
+                query=getattr(args, "query", None),
+                serial=getattr(args, "serial", None),
+                driver=None if getattr(args, "serial", None) is None
+                else _adb_dump_driver(getattr(args, "serial")),
+                dry_run=args.dry_run,
+            )
+        except ValueError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False))
+            return
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    
+    elif args.command == "whatsapp":
+        if not _run_msg_platform(args, "whatsapp"):
+            parser.parse_args(["whatsapp", "--help"])
+
+    elif args.command == "viber":
+        if not _run_msg_platform(args, "viber"):
+            parser.parse_args(["viber", "--help"])
+
     elif args.command == "instagram":
         if not _run_instagram(args):
             parser.parse_args(["instagram", "--help"])
