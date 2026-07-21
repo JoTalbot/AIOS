@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [4.1.0-alpha] - 2026-07-21
+
+### Added
+- **Constitutional Verification Tool (`tula`)** — autonomous tool (`tools/complete_constitution_tula.py`) for scanning articles I-LXVII, strict structure verification, compliance matrix generation, master index tracking, and report generation.
+- **AI Safety & Ethics Test Suite** — comprehensive unit tests for safety layers, real-time safety monitor, dashboard, ethics evaluator, and benchmarks (`tests/test_ai_safety_framework.py`).
+- **Cognition & Role Engine Test Suite** — unit tests for Theory of Mind, Emotional Intelligence, Metacognition, Social Intelligence, Creativity, AI Scientist, AI Researcher, AI Engineer, AI Product Manager, AI Startup (`tests/test_cognition_framework.py`).
+- **Constitutional Verification Test Suite** — automated test suite for `tula` (`tests/test_tula.py`).
+- Total test coverage expanded to **526 passed tests** (100% passing).
+
+### Changed
+- Unified versioning across `aios_core/__init__.py`, REST API `/health`, and tests to `4.1.0-alpha`.
+- Fixed typing and compilation constraints in `ai_safety_evals.py` and `ai_safety_benchmark.py`.
+- Updated `docs/constitution/COMPLIANCE_MATRIX.md`, `docs/constitution/INDEX.md`, and `docs/constitution/CONSTITUTION_REPORT.md` with full 67-article mapping.
+
 ## [4.0.0-alpha] - 2026-07-21
 
 ### Added
