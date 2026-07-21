@@ -102,7 +102,7 @@ class AIOSAPI:
     the Starlette application.
     """
 
-    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None, olx_storage=None, olx_collector=None, olx_messenger=None, profile_store=None):
+    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None, olx_storage=None, olx_collector=None, olx_messenger=None, profile_store=None, device_pool=None):
         from aios_core.storage import Database
         from aios_core.orchestrator import Orchestrator
         from aios_core.test_engine import TestEngine
@@ -163,6 +163,15 @@ class AIOSAPI:
             )
         self.profile_store = profile_store
         self._olx_profile_storages = {}
+
+        # Device pool: emulators/physical devices leased to profiles.
+        # AIOS_DEVICES_DB points at the shared pool store; without it the
+        # API process keeps an in-memory pool (CLI default is the file
+        # data/devices.sqlite — set the env to share it).
+        from aios_core.platforms import DevicePool
+        self.device_pool = device_pool or DevicePool(
+            os.environ.get("AIOS_DEVICES_DB", ":memory:")
+        )
 
     def create_starlette_app(self) -> Starlette:
         """Build the Starlette application with all routes."""
@@ -227,6 +236,12 @@ class AIOSAPI:
             Route("/api/v1/profiles/{platform}/{name}", self._profiles_show, methods=["GET"]),
             Route("/api/v1/profiles/{platform}/{name}", self._profiles_remove, methods=["DELETE"]),
             Route("/api/v1/profiles/{platform}/default", self._profiles_set_default, methods=["POST"]),
+            Route("/api/v1/devices", self._devices_list, methods=["GET"]),
+            Route("/api/v1/devices/register", self._devices_register, methods=["POST"]),
+            Route("/api/v1/devices/lease", self._devices_lease, methods=["POST"]),
+            Route("/api/v1/devices/release", self._devices_release, methods=["POST"]),
+            Route("/api/v1/devices/heartbeat", self._devices_heartbeat, methods=["POST"]),
+            Route("/api/v1/devices/reap", self._devices_reap, methods=["POST"]),
             Route("/api/v1/modules/olx/advisor", self._olx_advisor, methods=["GET"]),
 
             # Constitutional evaluation
@@ -388,6 +403,68 @@ class AIOSAPI:
         if profile is None:
             return JSONResponse({"error": "profile not found"}, status_code=404)
         return JSONResponse(profile.to_dict())
+
+    # ------------------------------------------------------------------ #
+    # Device pool endpoints                                               #
+    # ------------------------------------------------------------------ #
+
+    async def _devices_list(self, request: Request) -> JSONResponse:
+        """Pool status: all registered devices with lease info."""
+        return JSONResponse({"devices": self.device_pool.status()})
+
+    async def _devices_register(self, request: Request) -> JSONResponse:
+        """Register a device {serial, avd_name?}."""
+        body = await request.json()
+        if not body.get("serial"):
+            return JSONResponse({"error": "'serial' is required"}, status_code=400)
+        record = self.device_pool.register(
+            body["serial"], avd_name=body.get("avd_name")
+        )
+        return JSONResponse(record, status_code=201)
+
+    async def _devices_lease(self, request: Request) -> JSONResponse:
+        """Lease a device to a profile {profile: "olx:work", serial?}.
+
+        Updates the profile's ``device_serial`` in the profiles registry
+        when the profile exists there.
+        """
+        body = await request.json()
+        profile_key = body.get("profile")
+        if not profile_key:
+            return JSONResponse({"error": "'profile' is required"}, status_code=400)
+        try:
+            record = self.device_pool.lease(
+                profile_key,
+                serial=body.get("serial"),
+                profile_store=self.profile_store,
+            )
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        if record is None:
+            return JSONResponse(
+                {"error": "no idle device available"}, status_code=409
+            )
+        return JSONResponse(record)
+
+    async def _devices_release(self, request: Request) -> JSONResponse:
+        """Release the device leased to a profile {profile}."""
+        body = await request.json()
+        freed = self.device_pool.release(body.get("profile"))
+        return JSONResponse({"released": freed})
+
+    async def _devices_heartbeat(self, request: Request) -> JSONResponse:
+        """Heartbeat from a device {serial}."""
+        body = await request.json()
+        ok = self.device_pool.heartbeat(body.get("serial"))
+        return JSONResponse({"ok": ok})
+
+    async def _devices_reap(self, request: Request) -> JSONResponse:
+        """Mark silent devices offline {max_silence_s?} and free leases."""
+        body = await request.json() if (request.headers.get("content-length") or "0") != "0" else {}
+        reaped = self.device_pool.reap_stale(
+            self._bounded_int(body.get("max_silence_s"), default=900, maximum=86400)
+        )
+        return JSONResponse({"reaped": reaped})
 
     def _memory_actor(self, request: Request) -> tuple[str, bool]:
         """Return authenticated subject and administrative scope for memory ACLs."""

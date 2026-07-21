@@ -310,13 +310,32 @@ class MCPGateway:
 
         self._register_olx_tools()
 
-    def _olx_store(self):
-        """Shared OLX Parser Agent storage (lazy; AIOS_OLX_DB env override)."""
-        if getattr(self, "_olx_storage", None) is None:
-            import os
-            from aios_core.modules.olx import OLXStorage
-            self._olx_storage = OLXStorage(os.environ.get("AIOS_OLX_DB", ":memory:"))
-        return self._olx_storage
+    def _olx_store(self, profile: "str | None" = None):
+        """OLX Parser Agent storage, optionally profile-scoped.
+
+        Без ``profile`` — общее хранилище (AIOS_OLX_DB env). С ``profile``
+        хранилище разрешается через платформенный реестр профилей
+        (``AIOS_PROFILES_DB``) и кэшируется по имени.
+        """
+        import os
+        from aios_core.modules.olx import OLXStorage
+
+        if getattr(self, "_olx_storages", None) is None:
+            self._olx_storages = {}
+        key = profile or ""
+        if key not in self._olx_storages:
+            if not profile:
+                storage = OLXStorage(os.environ.get("AIOS_OLX_DB", ":memory:"))
+            else:
+                from aios_core.platforms import resolve_profile
+                from aios_core.platforms.store import ProfileStore
+
+                resolved = resolve_profile(
+                    "olx", profile, store=ProfileStore.default()
+                )
+                storage = OLXStorage(resolved.db_path)
+            self._olx_storages[key] = storage
+        return self._olx_storages[key]
 
     def _register_olx_tools(self):
         """Register read-only OLX Parser Agent tools (market intelligence)."""
@@ -328,6 +347,7 @@ class MCPGateway:
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search query filter (optional — whole store)"},
+                    "profile": {"type": "string", "description": "Platform profile (account) name — storage is resolved from the profiles registry"},
                 },
             },
             handler=lambda p: self._olx_market_stats(p),
@@ -342,6 +362,7 @@ class MCPGateway:
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search query of competitors"},
+                    "profile": {"type": "string", "description": "Platform profile (account) name"},
                     "title": {"type": "string", "description": "Draft listing title"},
                     "price": {"type": "number", "description": "Draft listing price"},
                 },
@@ -358,6 +379,7 @@ class MCPGateway:
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search query filter (optional)"},
+                    "profile": {"type": "string", "description": "Platform profile (account) name"},
                 },
             },
             handler=lambda p: self._olx_price_drops(p),
@@ -367,7 +389,7 @@ class MCPGateway:
 
     def _olx_market_stats(self, params: dict) -> dict:
         from aios_core.modules.olx import CompetitorAnalyzer
-        store = self._olx_store()
+        store = self._olx_store(params.get("profile"))
         query = params.get("query")
         ads = store.get_ads(query=query)
         return CompetitorAnalyzer().analyze(ads, query=query).to_dict()
@@ -375,7 +397,7 @@ class MCPGateway:
     def _olx_listing_recommend(self, params: dict) -> dict:
         from dataclasses import asdict
         from aios_core.modules.olx import AdCard, RecommendationEngine
-        store = self._olx_store()
+        store = self._olx_store(params.get("profile"))
         query = params.get("query")
         ads = store.get_ads(query=query)
         my_ad = None
@@ -393,7 +415,7 @@ class MCPGateway:
 
     def _olx_price_drops(self, params: dict) -> dict:
         from aios_core.modules.olx import PriceTracker
-        store = self._olx_store()
+        store = self._olx_store(params.get("profile"))
         tracker = PriceTracker(store)
         query = params.get("query")
         return {

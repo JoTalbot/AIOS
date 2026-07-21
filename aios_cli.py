@@ -586,6 +586,53 @@ def _run_profiles(args) -> bool:
     return False
 
 
+def _run_devices(args) -> bool:
+    from aios_core.platforms import DevicePool
+
+    with DevicePool() as pool:
+        cmd = args.devices_command
+
+        if cmd == "register":
+            record = pool.register(args.serial, avd_name=args.avd)
+            print(json.dumps(record, ensure_ascii=False, indent=2))
+            return True
+
+        if cmd == "list":
+            print(json.dumps(pool.status(), ensure_ascii=False, indent=2))
+            return True
+
+        if cmd == "lease":
+            from aios_core.platforms import ProfileStore
+            store = ProfileStore.default() if args.sync else None
+            record = pool.lease(
+                args.profile, serial=args.serial, profile_store=store
+            )
+            if record is None:
+                print(json.dumps(
+                    {"error": "no idle device available"}, ensure_ascii=False
+                ))
+                return True
+            print(json.dumps(record, ensure_ascii=False, indent=2))
+            return True
+
+        if cmd == "release":
+            freed = pool.release(args.profile)
+            print(json.dumps({"released": freed}))
+            return True
+
+        if cmd == "heartbeat":
+            ok = pool.heartbeat(args.serial)
+            print(json.dumps({"ok": ok}))
+            return True
+
+        if cmd == "reap":
+            stale = pool.reap_stale(args.max_silence_s)
+            print(json.dumps({"reaped": stale}))
+            return True
+
+    return False
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="AIOS CLI")
     subparsers = parser.add_subparsers(dest="command")
@@ -632,6 +679,33 @@ def main(argv=None):
         p_one.add_argument("--platform", required=True)
         p_one.add_argument("--name", required=True)
 
+    # Device pool (emulators/physical devices leased to profiles)
+    devices_parser = subparsers.add_parser(
+        "devices", help="Device pool: register/lease/release emulators"
+    )
+    dev_sub = devices_parser.add_subparsers(dest="devices_command")
+
+    dev_sub.add_parser("list", help="Pool status")
+
+    d_reg = dev_sub.add_parser("register", help="Register a device")
+    d_reg.add_argument("--serial", required=True)
+    d_reg.add_argument("--avd", default=None, help="AVD name")
+
+    d_lease = dev_sub.add_parser("lease", help="Lease a device to a profile")
+    d_lease.add_argument("--profile", required=True, help="profile key, e.g. olx:work")
+    d_lease.add_argument("--serial", default=None, help="pin a specific device")
+    d_lease.add_argument("--sync", action="store_true",
+                         help="also write device_serial into the profiles registry")
+
+    d_rel = dev_sub.add_parser("release", help="Release a profile's device")
+    d_rel.add_argument("--profile", required=True)
+
+    d_hb = dev_sub.add_parser("heartbeat", help="Device heartbeat")
+    d_hb.add_argument("--serial", required=True)
+
+    d_reap = dev_sub.add_parser("reap", help="Mark silent devices offline")
+    d_reap.add_argument("--max-silence-s", type=float, default=900.0)
+
     # OLX Parser Agent
     _add_olx_parsers(subparsers)
 
@@ -659,6 +733,14 @@ def main(argv=None):
     elif args.command == "profiles":
         if not _run_profiles(args):
             parser.parse_args(["profiles", "--help"])
+    elif args.command == "devices":
+        try:
+            handled = _run_devices(args)
+        except ValueError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False))
+            handled = True
+        if not handled:
+            parser.parse_args(["devices", "--help"])
     elif args.command == "olx":
         try:
             handled = _run_olx(args)
