@@ -31,6 +31,10 @@ from .event_bus import EventBus, Event, EventType
 from .planner import Planner, Plan, PlanStep as PlannerStep, PlanStatus, EdgeCondition
 from .capability_engine import CapabilityEngine, CapabilityStatus, Capability
 from .autonomy_manager import AutonomyManager, AutonomyLevel, AgentAutonomyProfile
+from .model_registry import ModelRegistry
+from .model_serving import ModelServer
+from .anomaly_detection import AnomalyDetector
+from .predictive_autonomy import PredictiveAutonomyRegulator
 from .orchestrator import Orchestrator, Task, TaskStep, TaskStatus, StepStatus
 
 # Test Engine
@@ -141,6 +145,11 @@ __all__ = [
     "AutonomyManager",
     "AutonomyLevel",
     "AgentAutonomyProfile",
+    # ML & Anomaly Detection
+    "ModelRegistry",
+    "ModelServer",
+    "AnomalyDetector",
+    "PredictiveAutonomyRegulator",
     # REST API
     "create_app",
     "AIOSAPI",
