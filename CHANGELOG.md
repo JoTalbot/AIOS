@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [9.0.0-alpha.14] - 2026-07-21
 
 ### Added
 - **Generic AutoWatch (`platforms/autowatch.py`)**: цикл заботы OLX
