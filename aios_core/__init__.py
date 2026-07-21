@@ -36,6 +36,8 @@ from .model_serving import ModelServer
 from .anomaly_detection import AnomalyDetector
 from .predictive_autonomy import PredictiveAutonomyRegulator
 from .formal_code_verifier import FormalCodeVerifier
+from .global_swarm import ZeroKnowledgeSafetyProof, GlobalSwarmGovernance
+from .quantum_native import QuantumCircuitSimulator, QuantumNativeEngine
 from .orchestrator import Orchestrator, Task, TaskStep, TaskStatus, StepStatus
 
 # Test Engine
@@ -152,6 +154,11 @@ __all__ = [
     "AnomalyDetector",
     "PredictiveAutonomyRegulator",
     "FormalCodeVerifier",
+    # Horizon 5.0 Global Swarm & Quantum
+    "ZeroKnowledgeSafetyProof",
+    "GlobalSwarmGovernance",
+    "QuantumCircuitSimulator",
+    "QuantumNativeEngine",
     # REST API
     "create_app",
     "AIOSAPI",
