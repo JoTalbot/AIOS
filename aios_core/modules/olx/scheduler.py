@@ -53,12 +53,17 @@ class CollectionScheduler:
         for query in queries:
             cards = self.collector.collect(query=query, max_cards=max_cards)
             inserted = self.storage.save_ads(cards)
+            deactivated = self.storage.sync_activity(
+                query, [card.fingerprint for card in cards]
+            )
             record: Dict[str, object] = {
                 "ts": datetime.now(timezone.utc).isoformat(),
                 "query": query,
                 "parsed": len(cards),
                 "inserted": inserted,
+                "deactivated": deactivated,
                 "total": self.storage.count(query=query),
+                "active": self.storage.count(query=query, active_only=True),
             }
             self._record(record)
             summaries[query] = record

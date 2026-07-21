@@ -28,7 +28,7 @@ class FakeCollector:
 
 
 @pytest.fixture
-def app():
+def deps():
     from aios_core.api.app import AIOSAPI
 
     storage = OLXStorage(":memory:")
@@ -42,11 +42,12 @@ def app():
         olx_storage=storage,
         olx_collector=collector,
     )
-    return api.create_starlette_app()
+    return api.create_starlette_app(), storage
 
 
 @pytest.fixture
-async def client(app):
+async def client(deps):
+    app, _storage = deps
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
@@ -189,3 +190,60 @@ class TestOLXCollection:
         assert body["was_running"] is True
         assert body["history"][0]["query"] == "новий запит"
         assert body["history"][0]["parsed"] == 2
+
+
+# ============================================================
+# Price history & drops
+# ============================================================
+
+
+class TestOLXHistoryAndDrops:
+    async def test_history_requires_fingerprint(self, client):
+        resp = await client.get("/api/v1/modules/olx/history")
+        assert resp.status_code == 400
+
+    async def test_history_tracks_price_change(self, client, deps):
+        from aios_core.modules.olx import AdCard
+
+        _app, storage = deps
+        bmw = next(ad for ad in storage.get_ads() if ad.url)
+        repriced = AdCard.from_dict(bmw.to_dict())
+        repriced.price = 6500.0
+        # Explicitly later than the fixture seeding timestamp.
+        storage.save_ads([repriced], seen_at="2026-07-21T23:59:00+00:00")
+
+        resp = await client.get(
+            "/api/v1/modules/olx/history",
+            params={"fingerprint": bmw.fingerprint},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["count"] == 2
+        prices = [point["price"] for point in data["history"]]
+        assert prices == [7000.0, 6500.0]
+
+    async def test_drops_and_gone(self, client, deps):
+        from aios_core.modules.olx import AdCard
+
+        _app, storage = deps
+        ads = storage.get_ads()
+        bmw = next(ad for ad in ads if ad.url)
+        audi = next(ad for ad in ads if not ad.url)
+
+        repriced = AdCard.from_dict(bmw.to_dict())
+        repriced.price = 6500.0
+        storage.save_ads([repriced])
+        storage.sync_activity(QUERY, [bmw.fingerprint])  # Audi leaves the feed
+
+        resp = await client.get("/api/v1/modules/olx/drops", params={"query": QUERY})
+        assert resp.status_code == 200
+        data = resp.json()
+
+        assert data["drops_count"] == 1
+        drop = data["drops"][0]
+        assert drop["first_price"] == 7000.0
+        assert drop["last_price"] == 6500.0
+        assert drop["change_pct"] < 0
+
+        assert data["gone_count"] == 1
+        assert data["gone"][0]["title"] == audi.title

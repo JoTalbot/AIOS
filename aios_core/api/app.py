@@ -62,6 +62,8 @@ Endpoints:
   # OLX Parser Agent module
   GET    /api/v1/modules/olx/ads                — List collected OLX ads
   GET    /api/v1/modules/olx/stats              — OLX market statistics
+  GET    /api/v1/modules/olx/history            — Price history for one ad
+  GET    /api/v1/modules/olx/drops              — Price drops & gone-from-feed ads
   POST   /api/v1/modules/olx/recommendations    — Listing recommendations
   POST   /api/v1/modules/olx/collect            — One-off ADB collection run
   POST   /api/v1/modules/olx/schedule           — Start periodic collection
@@ -169,6 +171,8 @@ class AIOSAPI:
             # OLX Parser Agent module
             Route("/api/v1/modules/olx/ads", self._olx_ads, methods=["GET"]),
             Route("/api/v1/modules/olx/stats", self._olx_stats, methods=["GET"]),
+            Route("/api/v1/modules/olx/history", self._olx_history, methods=["GET"]),
+            Route("/api/v1/modules/olx/drops", self._olx_drops, methods=["GET"]),
             Route("/api/v1/modules/olx/recommendations", self._olx_recommend, methods=["POST"]),
             Route("/api/v1/modules/olx/collect", self._olx_collect, methods=["POST"]),
             Route("/api/v1/modules/olx/schedule", self._olx_schedule, methods=["POST"]),
@@ -425,6 +429,31 @@ class AIOSAPI:
             return JSONResponse({"error": str(exc)}, status_code=400)
 
     # ---- OLX Parser Agent module ----
+
+    async def _olx_history(self, request: Request) -> JSONResponse:
+        """Price history for one tracked ad (`fingerprint` is required)."""
+        fingerprint = request.query_params.get("fingerprint")
+        if not fingerprint:
+            return JSONResponse(
+                {"error": "query parameter 'fingerprint' is required"},
+                status_code=400,
+            )
+        history = self.olx_storage.price_history(fingerprint)
+        return JSONResponse({"fingerprint": fingerprint, "count": len(history), "history": history})
+
+    async def _olx_drops(self, request: Request) -> JSONResponse:
+        """Price drops and ads that left the feed (`gone` = sold/removed)."""
+        from aios_core.modules.olx import PriceTracker
+        query = request.query_params.get("query")
+        tracker = PriceTracker(self.olx_storage)
+        drops = tracker.price_drops(query=query)
+        gone = tracker.gone_from_feed(query=query)
+        return JSONResponse({
+            "drops_count": len(drops),
+            "drops": [change.to_dict() for change in drops],
+            "gone_count": len(gone),
+            "gone": [ad.to_dict() for ad in gone],
+        })
 
     def _olx_get_scheduler(self, interval_s: float = 3600.0):
         if self._olx_scheduler is None:

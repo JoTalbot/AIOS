@@ -1,4 +1,5 @@
-"""AIOS OLX Android Agent — competitor analysis and listing recommendations."""
+"""AIOS OLX Android Agent — competitor analysis, price tracking and
+listing recommendations."""
 
 from __future__ import annotations
 
@@ -205,3 +206,87 @@ class RecommendationEngine:
             counter.update(set(_tokenize(ad.title)))
         mine = set(_tokenize(my_title)) if my_title else set()
         return [word for word, _count in counter.most_common(20) if word not in mine][:10]
+
+
+@dataclass
+class PriceChange:
+    """A detected price movement for a single tracked ad."""
+
+    fingerprint: str
+    title: str
+    url: Optional[str]
+    city: Optional[str]
+    query: Optional[str]
+    first_price: float
+    last_price: float
+    change_pct: float
+    sightings: int
+    last_seen_at: Optional[str]
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "fingerprint": self.fingerprint,
+            "title": self.title,
+            "url": self.url,
+            "city": self.city,
+            "query": self.query,
+            "first_price": self.first_price,
+            "last_price": self.last_price,
+            "change_pct": self.change_pct,
+            "sightings": self.sightings,
+            "last_seen_at": self.last_seen_at,
+        }
+
+
+class PriceTracker:
+    """Analyses sighting history: price drops and ads that left the feed."""
+
+    def __init__(self, storage):
+        self.storage = storage
+
+    def price_drops(
+        self, query: Optional[str] = None, threshold_pct: float = -0.005
+    ) -> List[PriceChange]:
+        """Ads whose latest sighted price is below the first sighted price.
+
+        Args:
+            query: Restrict to one search query (None = the whole store).
+            threshold_pct: Relative change cut-off; -0.005 = at least 0.5% down.
+
+        Returns:
+            Changes sorted by relative drop, biggest first.
+        """
+        drops: List[PriceChange] = []
+        for ad in self.storage.get_ads(query=query):
+            history = self.storage.price_history(ad.fingerprint)
+            prices = [
+                (point["seen_at"], point["price"])
+                for point in history
+                if point["price"]
+            ]
+            if len(prices) < 2:
+                continue
+            first_price = prices[0][1]
+            last_price = prices[-1][1]
+            change_pct = (last_price - first_price) / first_price
+            if change_pct <= threshold_pct:
+                drops.append(
+                    PriceChange(
+                        fingerprint=ad.fingerprint,
+                        title=ad.title,
+                        url=ad.url,
+                        city=ad.city,
+                        query=ad.query,
+                        first_price=first_price,
+                        last_price=last_price,
+                        change_pct=round(change_pct, 4),
+                        sightings=len(history),
+                        last_seen_at=prices[-1][0],
+                    )
+                )
+        drops.sort(key=lambda change: change.change_pct)
+        return drops
+
+    def gone_from_feed(self, query: Optional[str] = None) -> List[AdCard]:
+        """Ads marked inactive (vanished from the feed — sold or removed)."""
+        return self.storage.get_ads(query=query, active_only=False)

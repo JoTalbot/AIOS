@@ -172,5 +172,34 @@ with OLXStorage("olx_ads.sqlite") as storage:
 | POST | `/api/v1/modules/olx/collect` | Разовый сбор через ADB |
 | POST | `/api/v1/modules/olx/schedule` | Запуск периодического сбора (`interval_s >= 10`) |
 | DELETE | `/api/v1/modules/olx/schedule` | Остановка периодического сбора |
+| GET | `/api/v1/modules/olx/history` | История цен по `fingerprint` |
+| GET | `/api/v1/modules/olx/drops` | Падения цен + ушедшие из выдачи |
 
 Тесты: `tests/test_olx_api.py`.
+
+## История цен и активность (2026-07-21)
+
+Хранилище версии v2 (`olx_sightings`) записывает каждое наблюдение
+объявления: цена, время, TOP. Это даёт:
+
+- **историю цен** по каждому объявлению (`price_history`);
+- **отслеживание активности**: объявление, исчезнувшее из выдачи запроса,
+  помечается `is_active = 0` (вероятно, продано) и воскресает при возврате;
+- **`PriceTracker.price_drops()`** — объявления с упавшей ценой
+  (первая против последней фиксации);
+- **экспорт** в CSV/JSON.
+
+Идентичность объявления (`fingerprint`) больше не зависит от цены:
+`ad_id` → `url` → `title|city|query`, поэтому изменение цены — это
+история одного объявления, а не новое объявление.
+
+### CLI
+
+```bash
+aios olx collect --query "лобове скло" --max-cards 50   # сбор через ADB
+aios olx stats --query "лобове скло"                    # статистика рынка
+aios olx recommend --query "лобове скло" --price 9000 --title "Скло BMW X3"
+aios olx export --format csv --output ads.csv           # экспорт
+aios olx history --fingerprint ab12cd34ef56gh78         # история цен
+aios olx drops --query "лобове скло"                    # падения цен
+```
