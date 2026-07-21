@@ -44,6 +44,9 @@ from .planetary_federation import PlanetaryMeshNode, PlanetaryMeshOrchestrator
 from .sovereign_reflection import SovereignReflectionEngine
 from .universal_invariant_prover import UniversalInvariantProver, SafetyInvariant
 from .multidimensional_world_model import MultiDimensionalWorldModel
+from .substrate_convergence import SubstrateConvergenceEngine, SubstrateType
+from .infinite_constitution import InfiniteConstitutionEngine
+from .cosmic_swarm_matrix import CosmicSwarmMatrix
 from .orchestrator import Orchestrator, Task, TaskStep, TaskStatus, StepStatus
 
 # Test Engine
@@ -177,6 +180,11 @@ __all__ = [
     "UniversalInvariantProver",
     "SafetyInvariant",
     "MultiDimensionalWorldModel",
+    # Horizon 8.0 Substrate Convergence, Infinite Constitution & Cosmic Matrix
+    "SubstrateConvergenceEngine",
+    "SubstrateType",
+    "InfiniteConstitutionEngine",
+    "CosmicSwarmMatrix",
     # REST API
     "create_app",
     "AIOSAPI",
