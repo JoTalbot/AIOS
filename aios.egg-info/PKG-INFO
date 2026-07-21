@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: aios
-Version: 9.0.0a21
+Version: 9.0.0a22
 Summary: Self-evolving Distributed Operating System
 Author-email: JoTalbot <jo.talbot@gmail.com>
 License: MIT
@@ -71,7 +71,7 @@ python run_dashboard.py
 - **Python SDK** — official client library
 - **Kubernetes** — deployment manifests
 
-**Current version:** 9.0.0-alpha.21 (925 tests passing)
+**Current version:** 9.0.0-alpha.22 (939 tests passing)
 
 Run a local REST service (requires authentication by default):
 

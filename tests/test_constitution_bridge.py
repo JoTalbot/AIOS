@@ -616,7 +616,7 @@ class TestRuntimePolicy(unittest.TestCase):
 
     def test_stats(self):
         stats = self.runtime.stats()
-        self.assertEqual(stats["version"], "9.0.0-alpha.21")
+        self.assertEqual(stats["version"], "9.0.0-alpha.22")
         self.assertGreater(stats["total_executions"], 0)
         self.assertIn("outcomes", stats)
 

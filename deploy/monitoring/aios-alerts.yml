@@ -1,0 +1,71 @@
+# Prometheus alert-правила для AIOS ops-metrics (alpha.22).
+#
+# Подключаются в prometheus.yml:
+#   rule_files:
+#     - "aios-alerts.yml"
+#
+# Правила честные: алёрт стреляет только когда метрика реально
+# присутствует; отсутствующий AIOS (scrape down) — отдельный алёрт.
+groups:
+  - name: aios-fleet
+    rules:
+      - alert: AIOSDown
+        expr: absent(aios_shard_job_queue_depth) == 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AIOS /metrics недоступен 5 минут"
+          description: "Scrape-цель aios не отдаёт метрики — агент упал?"
+
+      - alert: AIOSShardWorkersDown
+        expr: aios_shard_hosts < 1 and aios_shard_jobs{status="pending"} > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Есть pending-джобы, но ни одного живого shard-worker"
+          description: "Очередь не разбирается: workers не шлют heartbeat."
+
+      - alert: AIOSQueueBacklog
+        expr: aios_shard_job_queue_depth > 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Глубина очереди джобов {{ $value }} > 50 (10 минут)"
+
+      - alert: AIOSQueueCriticalBacklog
+        expr: aios_shard_job_queue_depth > 200
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Критический бэклог очереди джобов {{ $value }} > 200"
+
+      - alert: AIOSStaleClaims
+        expr: aios_shard_jobs_stale_claimed > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Зависшие claim'ы джобов: {{ $value }}"
+          hint: "aios_cli shards requeue-stale --ttl 600"
+
+      - alert: AIOSFleetExhausted
+        expr: aios_devices{state="free"} == 0 and aios_devices{state="registered"} > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Свободных устройств в пуле не осталось"
+          description: "Новые профили уйдут в waitlist; поднимите эмуляторы."
+
+      - alert: AIOSOutboxApprovalLag
+        expr: sum(aios_outbox_pending) > 100
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ожидающих одобрения черновиков {{ $value }} > 100 (1 час)"
+          hint: "dm-outbox → человеческое одобрение → dm-flush"

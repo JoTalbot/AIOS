@@ -19,12 +19,58 @@ def _default_db(env_var: str, fallback: str) -> str:
     return os.environ.get(env_var) or fallback
 
 
+def _platform_db_metrics(data_dir: str) -> Dict[str, Dict[str, int]]:
+    """Кумулятивные счётчики из per-platform БД в ``data/*.sqlite``.
+
+    Читает напрямую sqlite (без storage-классов): если в базе есть
+    ``olx_seen`` — receipts по kind, если ``olx_outbox`` — ожидающие
+    черновики. Чужие/битые базы честно пропускаются.
+    """
+    import sqlite3 as _sqlite3
+
+    per_platform: Dict[str, Dict[str, int]] = {}
+    root = Path(data_dir)
+    if not root.is_dir():
+        return per_platform
+    for db_file in sorted(root.glob("*.sqlite")):
+        platform = db_file.stem
+        entry: Dict[str, int] = {"seen_ad": 0, "seen_video": 0,
+                                 "outbox_pending": 0}
+        try:
+            conn = _sqlite3.connect(f"file:{db_file}?mode=ro", uri=True)
+            try:
+                tables = {
+                    row[0] for row in conn.execute(
+                        "SELECT name FROM sqlite_master "
+                        "WHERE type = 'table'")
+                }
+                if "olx_seen" in tables:
+                    for kind, count in conn.execute(
+                            "SELECT kind, COUNT(*) FROM olx_seen "
+                            "GROUP BY kind"):
+                        key = f"seen_{kind}"
+                        entry[key] = entry.get(key, 0) + int(count)
+                if "olx_outbox" in tables:
+                    (pending,) = conn.execute(
+                        "SELECT COUNT(*) FROM olx_outbox "
+                        "WHERE status = 'pending'").fetchone()
+                    entry["outbox_pending"] = int(pending)
+            finally:
+                conn.close()
+        except Exception:  # noqa: BLE001 — чужая/битая база не ломает /metrics
+            continue
+        if any(entry.values()):
+            per_platform[platform] = entry
+    return per_platform
+
+
 def fleet_snapshot(
     *,
     shards_db: Optional[str] = None,
     profiles_db: Optional[str] = None,
     devices_db: Optional[str] = None,
     catalog_dir: str = "platforms",
+    data_dir: str = "data",
 ) -> Dict[str, object]:
     """Считывает live-состояние флота одним снимком.
 
@@ -105,6 +151,7 @@ def fleet_snapshot(
         "profiles": profiles,
         "platforms": platforms,
         "shard_hosts": hosts_total,
+        "platform_db": _platform_db_metrics(data_dir),
     }
 
 
@@ -114,6 +161,7 @@ def prometheus_metrics(
     profiles_db: Optional[str] = None,
     devices_db: Optional[str] = None,
     catalog_dir: str = "platforms",
+    data_dir: str = "data",
     stale_after_s: float = 600.0,
 ) -> str:
     """Рендерит ops-метрики флота в Prometheus text exposition format.
@@ -129,7 +177,8 @@ def prometheus_metrics(
     """
     snapshot = fleet_snapshot(
         shards_db=shards_db, profiles_db=profiles_db,
-        devices_db=devices_db, catalog_dir=catalog_dir)
+        devices_db=devices_db, catalog_dir=catalog_dir,
+        data_dir=data_dir)
     stats = snapshot["jobs"]["stats"]
     jobs: Dict[str, int] = {
         "pending": int(stats.get("pending", 0) or 0),
@@ -183,4 +232,25 @@ def prometheus_metrics(
         "# TYPE aios_catalog_platforms gauge",
         f"aios_catalog_platforms {len(snapshot['platforms'])}",
     ]
+    platform_db = snapshot.get("platform_db") or {}
+    lines += [
+        "# HELP aios_seen_receipts Recorded sightings per platform/kind",
+        "# TYPE aios_seen_receipts gauge",
+    ]
+    for platform, entry in sorted(platform_db.items()):
+        for key, count in sorted(entry.items()):
+            if key.startswith("seen_"):
+                kind = key[len("seen_"):]
+                lines.append(
+                    f'aios_seen_receipts{{platform="{platform}",'
+                    f'kind="{kind}"}} {count}')
+    lines += [
+        "# HELP aios_outbox_pending Guarded outbox drafts awaiting "
+        "approval per platform",
+        "# TYPE aios_outbox_pending gauge",
+    ]
+    for platform, entry in sorted(platform_db.items()):
+        lines.append(
+            f'aios_outbox_pending{{platform="{platform}"}} '
+            f'{entry.get("outbox_pending", 0)}')
     return "\n".join(lines) + "\n"

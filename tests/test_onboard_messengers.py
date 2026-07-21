@@ -101,7 +101,11 @@ def _write_yaml(tmp_path, platform, package, hints=None):
         "agent_module": f"aios_core.modules.{platform}",
         "storage_class":
             f"aios_core.modules.{platform}.storage.{platform.capitalize()}Storage",
-        "extras": {"parser_hints": hints or {}},
+        "extras": {"parser_hints": hints or {},
+                   "compliance": {
+                       "autopost_allowed": False,
+                       "messenger": "approval-only",
+                       "collector": True}},
     }, allow_unicode=True), encoding="utf-8")
 
 

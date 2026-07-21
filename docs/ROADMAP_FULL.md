@@ -1,6 +1,6 @@
 # AIOS — Полный роадмап (линейка 9.0.0-alpha → 9.0 GA)
 
-> Статус на **v9.0.0-alpha.21** (2026-07-21, 925 тестов зелёные).
+> Статус на **v9.0.0-alpha.22** (2026-07-21, 939 тестов зелёные).
 > Принципы, которые действуют на всём роадмапе: **guarded-действия**
 > (ничего не трогает внешний мир молча: outbox/DRY-RUN/confirm),
 > **платформенность** (любая механика сразу generic, платформенный код
@@ -72,17 +72,20 @@
    ✅ alpha.21 — **web-pane очереди/пула**: `GET /dashboard`
    (самодостаточная read-only HTML-панель: очередь джобов, пул
    устройств, профили, shard-host; действий из UI нет — guarded).
-9. ✅ **Метрики/наблюдаемость** — alpha.21: Prometheus text
-   exposition на `/metrics` (`aios_shard_jobs{status}`,
-   `aios_shard_job_queue_depth`, `aios_shard_jobs_stale_claimed`,
-   `aios_shard_hosts`, `aios_devices{state}`, `aios_profiles*`,
-   `aios_catalog_platforms`); `deploy/monitoring/` —
-   prometheus.yml + Grafana-дашборд JSON + README. Остаётся:
-   cards/cycle, drift-events counters, alert-правила (alpha.27).
-10. **Compliance-контур**: ✅ флаги `extras.compliance` в дескрипторах
-    (alpha.20) — остаётся принуждение на уровне resolver:
-    rate-limits и запреты (no-autopost) из флагов + audit-log
-    действий в storage. *(alpha.28)*
+9. ~~**Метрики/наблюдаемость**~~ ✅ alpha.21: Prometheus text
+   exposition на `/metrics` (queue/hosts/devices/profiles/catalog);
+   ✅ alpha.22: счётчики `aios_seen_receipts{platform,kind}`,
+   `aios_outbox_pending{platform}` + alert-правила
+   `deploy/monitoring/aios-alerts.yml`. Остаётся: cards/cycle
+   rates и drift-events series (alpha.27, потребуются живые циклы
+   H1.5).
+10. ~~**Compliance-контур**~~ ✅ alpha.22: `platforms/compliance.py`
+    (`compliance_guard` — autopost/collect/send/auto_send из флагов
+    дескриптора, deny-by-default без блока) + проводка в CLI
+    dm-send, platforms reels, Instagram PostComposer (до инициализации
+    устройства); scaffold-шаблон с deny-by-default блоком; compliance
+    в дескрипторах olx/instagram; `actions_per_hour`; **audit-log**
+    `olx_audit` (audit()/audit_list(), outbox-lifecycle автописьмо).
 
 ## Горизонт H3 — продуктовое ядро и GA (alpha.31+ → 9.0)
 
@@ -98,7 +101,7 @@
 14. **Marketplace плагинов платформ**: публикация onboarding-пакетов
     (descriptor + hints + drivers) в marketplace-модуль ядра.
     *(alpha.35)*
-15. **9.0 GA-критерии**: ≥1000 тестов зелёные (сейчас 925); 3+
+15. **9.0 GA-критерии**: ≥1000 тестов зелёные (сейчас 939); 3+
     production-профиля Instagram под autopilot ≥2 недели без банов
     (pacing-метрики); онбординг новой платформы ≤ 30 минут по
     чек-листу; документация — PDF/сайт; API стабилизировано

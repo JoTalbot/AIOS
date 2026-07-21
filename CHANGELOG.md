@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.0.0-alpha.22] - 2026-07-21
+
+### Added
+- **Compliance-контур (H2.10)**: `platforms/compliance.py`
+  (`compliance_block`/`compliance_guard`/`rate_limit_hours`) —
+  ToS-флаги дескриптора принуждают guarded-действия: `autopost`
+  (даже с confirm), `collect`, `send` (draft), `auto_send`
+  (прямая запись на устройство только при `messenger: open`).
+  Проводка: CLI-группы мессенджеров (dm-send), generic
+  `platforms reels`, Instagram PostComposer; scaffold-шаблон
+  выдаёт deny-by-default блок; compliance-секции добавлены в
+  дескрипторы olx/instagram (autopost только с --confirm);
+  per-platform `actions_per_hour`.
+- **Audit-log в storage**: таблица `olx_audit` + `audit()`/
+  `audit_list()`; outbox-lifecycle (enqueue/mark) пишется
+  автоматически для всех платформ-наследников OLXStorage.
+- **Telemetry counters (H2.9 добивка)**: `aios_seen_receipts
+  {platform,kind}` и `aios_outbox_pending{platform}` из
+  per-platform БД `data/*.sqlite` (read-only, чужие базы
+  пропускаются); Prometheus alert-правила
+  `deploy/monitoring/aios-alerts.yml` (падение агента, бэклог
+  очереди, зависшие claim'ы, исчерпание пула, отставание
+  одобрения outbox) + подключение в prometheus.yml.
+
 ## [9.0.0-alpha.21] - 2026-07-21
 
 ### Added

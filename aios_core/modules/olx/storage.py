@@ -70,6 +70,16 @@ CREATE TABLE IF NOT EXISTS olx_outbox (
 );
 CREATE INDEX IF NOT EXISTS idx_olx_outbox_status ON olx_outbox(status);
 
+CREATE TABLE IF NOT EXISTS olx_audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at TEXT NOT NULL,
+    action TEXT NOT NULL,
+    detail TEXT,
+    ref TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_olx_audit_action ON olx_audit(action);
+CREATE INDEX IF NOT EXISTS idx_olx_audit_at ON olx_audit(at);
+
 CREATE TABLE IF NOT EXISTS own_ads (
     fingerprint TEXT PRIMARY KEY,
     title TEXT NOT NULL,
@@ -434,6 +444,48 @@ class OLXStorage:
             row = self._conn.execute(sql, params).fetchone()
         return int(row[0])
 
+    def audit(
+        self,
+        action: str,
+        detail: Optional[str] = None,
+        ref: Optional[str] = None,
+        at: Optional[str] = None,
+    ) -> int:
+        """Записывает guarded-действие в audit-log ``olx_audit``.
+
+        Args:
+            action: точечное имя действия (``outbox.enqueue`` и т.п.).
+            detail: человекочитаемый контекст (без секретов!).
+            ref: ссылка на сущность (id строки, fingerprint...).
+            at: ISO-метка времени (по умолчанию — сейчас, UTC).
+
+        Returns:
+            id вставленной строки.
+        """
+        stamp = at or datetime.now(timezone.utc).isoformat()
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                "INSERT INTO olx_audit (at, action, detail, ref) "
+                "VALUES (?, ?, ?, ?)",
+                (stamp, action, detail, ref),
+            )
+            return cursor.lastrowid
+
+    def audit_list(
+        self, limit: int = 100, action: Optional[str] = None
+    ) -> List[Dict[str, object]]:
+        """Последние записи audit-log (новые первыми)."""
+        sql = "SELECT * FROM olx_audit"
+        params: list = []
+        if action is not None:
+            sql += " WHERE action = ?"
+            params.append(action)
+        sql += " ORDER BY id DESC LIMIT ?"
+        params.append(limit)
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [dict(row) for row in rows]
+
     def enqueue_outbox(
         self, chat_key: str, text: str, interlocutor: Optional[str] = None
     ) -> int:
@@ -447,7 +499,12 @@ class OLXStorage:
                 """,
                 (chat_key, interlocutor, text, now),
             )
-            return cursor.lastrowid
+        self.audit(
+            "outbox.enqueue",
+            detail=f"draft for {chat_key} ({len(text)} chars)",
+            ref=str(cursor.lastrowid),
+        )
+        return cursor.lastrowid
 
     def outbox_pending(self) -> List[Dict[str, object]]:
         """All drafts waiting for approval/sending, oldest first."""
@@ -477,7 +534,14 @@ class OLXStorage:
                 "result = ? WHERE id = ?",
                 (status, sent_at, result, outbox_id),
             )
-            return cursor.rowcount > 0
+        if cursor.rowcount > 0:
+            self.audit(
+                "outbox.mark",
+                detail=f"status={status}" + (
+                    f" ({result[:120]})" if result else ""),
+                ref=str(outbox_id),
+            )
+        return cursor.rowcount > 0
 
     # ---- Own ads (my listings) ----
 

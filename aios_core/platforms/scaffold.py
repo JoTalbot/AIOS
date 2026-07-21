@@ -33,6 +33,13 @@ adb_class: {adb_class}
 default_locale: {locale}
 description: {description_yaml}
 legacy_default_db: {name}_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: false
+    messenger: approval-only
+    collector: false
+    note: "deny-by-default: задекларируйте ToS-политику площадки при onboarding"
+  parser_hints: {{}}
 """
 
 

@@ -288,6 +288,7 @@ aios_core/platforms/autowatch.py
 aios_core/platforms/bootup.py
 aios_core/platforms/calibrate.py
 aios_core/platforms/catalog.py
+aios_core/platforms/compliance.py
 aios_core/platforms/dashboard.py
 aios_core/platforms/descriptor.py
 aios_core/platforms/devices.py
@@ -359,6 +360,7 @@ tests/test_gateway_calibrate.py
 tests/test_global_swarm.py
 tests/test_h1_batch.py
 tests/test_h2_batch.py
+tests/test_h2_compliance.py
 tests/test_infinite_constitution.py
 tests/test_instagram_agent.py
 tests/test_instagram_full.py

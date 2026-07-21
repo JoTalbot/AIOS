@@ -7,3 +7,11 @@ adb_class: aios_core.modules.olx.adb.ADBController
 default_locale: uk-UA
 description: "Instagram (Meta) — Android agent: feed/marketplace collection, messenger; login via AIOS_SECRET env"
 legacy_default_db: instagram_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: true
+    messenger: approval-only
+    collector: true
+    actions_per_hour: 120
+    note: "Instagram (Meta): ToS запрещает автоматизацию — сбор read-only, Direct через approval-outbox, постинг только с явным --confirm (на свой риск)"
+  parser_hints: {}

@@ -11,3 +11,11 @@ description: >-
   OLX Ukraine Android agent: коллекция рынка, история цен, мессенджер,
   свои объявления, конкуренты, советник стратегии.
 legacy_default_db: olx_ads.sqlite
+extras:
+  compliance:
+    autopost_allowed: true
+    messenger: approval-only
+    collector: true
+    actions_per_hour: 120
+    note: "OLX UA: сбор read-only; ответы через approval-outbox; постинг/репост своих объявлений только с явным --confirm"
+  parser_hints: {}
