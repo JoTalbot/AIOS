@@ -36,6 +36,8 @@ from .planner import Planner, Plan, PlanStep as PlannerStep, PlanStatus
 from .capability_engine import CapabilityEngine, CapabilityStatus
 from .autonomy_manager import AutonomyManager, AutonomyLevel
 from .federation_manager import FederationManager
+from .ml_planner_scorer import MLPlannerScorer
+from .multi_agent_orchestrator import MultiAgentOrchestrator
 
 
 class TaskStatus(str, Enum):
@@ -148,6 +150,8 @@ class Orchestrator:
 
         # v4.0-alpha
         self.federation = FederationManager(db=self.db, local_node_id=f"aios_{uuid.uuid4().hex[:8]}")
+        self.ml_scorer = MLPlannerScorer(db=self.db)
+        self.multi_agent = MultiAgentOrchestrator(db=self.db, base_orchestrator=self)
 
         # Task tracking
         self._tasks: dict[str, Task] = {}
@@ -427,9 +431,21 @@ class Orchestrator:
                 "capabilities": self.capabilities.stats(),
                 "autonomy": self.autonomy.stats(),
                 "federation": self.federation.stats(),
+                "ml_scorer": self.ml_scorer.stats(),
+                "multi_agent": self.multi_agent.stats(),
             },
             "database": self.db.stats(),
         }
+
+    # --- ML-enhanced planning (v4.0) ---
+
+    def score_plan_with_ml(self, plan) -> dict:
+        """Score a plan using the ML-enhanced scorer."""
+        return self.ml_scorer.score_plan(plan, self.planner)
+
+    def optimize_plan_with_ml(self, plan) -> dict:
+        """Get ML-based optimization suggestions for a plan."""
+        return self.ml_scorer.optimize_plan(plan, self.planner)
 
     def close(self):
         self.db.close()
