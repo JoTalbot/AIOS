@@ -244,6 +244,7 @@ class AIOSAPI:
             Route("/api/v1/modules/olx/competitive/refresh", self._olx_competitive_refresh, methods=["POST"]),
             Route("/api/v1/modules/olx/competitive/seller-scan", self._olx_competitive_seller_scan, methods=["POST"]),
             Route("/api/v1/platforms", self._platforms_list, methods=["GET"]),
+            Route("/api/v1/platforms/{platform}/hints", self._platform_hints, methods=["POST"]),
             Route("/api/v1/profiles", self._profiles_list, methods=["GET"]),
             Route("/api/v1/profiles", self._profiles_create, methods=["POST"]),
             Route("/api/v1/profiles/{platform}/{name}", self._profiles_show, methods=["GET"]),
@@ -382,6 +383,47 @@ class AIOSAPI:
         return JSONResponse(
             {"platforms": [d.to_dict() for d in list_platforms()]}
         )
+
+    async def _platform_hints(self, request: Request) -> JSONResponse:
+        """POST {dump | hints}: calibrate/store parser_hints (runtime).
+
+        The hints are saved into the registered descriptor's
+        ``extras.parser_hints`` (in-memory). Persist them to the YAML
+        catalog with ``aios platforms calibrate --write``; compile a
+        parser module with ``aios platforms codegen`` / ``bootup``.
+        """
+        from aios_core.platforms import (
+            CalibrationAdvisor,
+            build_parser,
+            get_platform,
+        )
+        try:
+            descriptor = get_platform(request.path_params["platform"])
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=404)
+        body = await request.json()
+        dump_xml = body.get("dump")
+        hints = body.get("hints")
+        if hints is None and dump_xml:
+            hints = CalibrationAdvisor().analyze(dump_xml)
+        if not isinstance(hints, dict) or not hints:
+            return JSONResponse(
+                {"error": "provide 'dump' (ui xml) or 'hints' (object)"},
+                status_code=400,
+            )
+        descriptor.extras["parser_hints"] = hints
+        response = {
+            "platform": descriptor.name,
+            "hints": hints,
+            "saved": "descriptor.extras.parser_hints (runtime)",
+        }
+        if dump_xml:
+            cards = build_parser(hints).parse(dump_xml)
+            response["parser_preview"] = {
+                "cards": len(cards),
+                "sample_titles": [c.title for c in cards[:3]],
+            }
+        return JSONResponse(response)
 
     async def _profiles_list(self, request: Request) -> JSONResponse:
         """List profiles, optionally filtered by ?platform=."""

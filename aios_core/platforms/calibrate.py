@@ -136,3 +136,33 @@ def hints_to_yaml_doc(
         }
     }
     return yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)
+
+
+def write_hints_to_descriptor(
+    platform_name: str,
+    hints: Dict[str, object],
+    directory: Union[str, Path] = "platforms",
+) -> str:
+    """Записывает parser_hints в ``extras`` YAML-дескриптора платформы.
+
+    Общий helper CLI ``platforms calibrate --write`` и E2E-пайплайна
+    ``platforms bootup``. Файл пересохраняется целиком (safe_dump).
+
+    Returns:
+        Путь к обновлённому YAML-файлу.
+
+    Raises:
+        ValueError: Дескриптор ``<directory>/<platform>.yaml`` не найден.
+    """
+    import yaml
+
+    yaml_path = Path(directory) / f"{platform_name}.yaml"
+    if not yaml_path.exists():
+        raise ValueError(f"descriptor not found: {yaml_path}")
+    doc = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+    doc.setdefault("extras", {})["parser_hints"] = hints
+    yaml_path.write_text(
+        yaml.safe_dump(doc, allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
+    return str(yaml_path)

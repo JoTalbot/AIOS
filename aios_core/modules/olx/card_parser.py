@@ -26,7 +26,15 @@ _AD_ID_RE = re.compile(r"ID([A-Za-z0-9]{4,})\.html")
 
 
 class CardParser:
-    """Turns UIAutomator XML dumps into structured :class:`AdCard` objects."""
+    """Turns UIAutomator XML dumps into structured :class:`AdCard` objects.
+
+    ``CARD_RESOURCE_MARKERS`` is a class attribute: scaffolded platforms
+    subclass this parser and override the markers with the values found by
+    the CalibrationAdvisor (see ``aios_core.platforms.parsergen``), reusing
+    the whole card-text classification logic below unchanged.
+    """
+
+    CARD_RESOURCE_MARKERS: tuple = CARD_RESOURCE_MARKERS
 
     def parse(
         self,
@@ -54,7 +62,7 @@ class CardParser:
         cards: List[AdCard] = []
         for node in root.iter("node"):
             resource_id = (node.attrib.get("resource-id") or "").lower()
-            if any(marker in resource_id for marker in CARD_RESOURCE_MARKERS):
+            if any(marker in resource_id for marker in self.CARD_RESOURCE_MARKERS):
                 card = self._card_from_node(node, query=query)
                 if card.title:
                     cards.append(card)

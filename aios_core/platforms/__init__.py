@@ -11,6 +11,7 @@ CLI и REST API разрешают контекст работы через ед
 платформы → встроенный эфемерный ``default``.
 """
 
+from .bootup import bootup_platform
 from .catalog import load_catalog, load_catalog_file
 from .descriptor import (
     PlatformDescriptor,
@@ -19,9 +20,20 @@ from .descriptor import (
     register_platform,
 )
 from .devices import DevicePool
-from .calibrate import CalibrationAdvisor, hints_to_yaml_doc
+from .calibrate import (
+    CalibrationAdvisor,
+    hints_to_yaml_doc,
+    write_hints_to_descriptor,
+)
 from .fleet import PoolMonitor, ensure_device
 from .gateway import ShardGateway, ShardHealthMonitor
+from .parsergen import (
+    build_parser,
+    extract_markers,
+    generate_parser_source,
+    parser_for,
+    write_parser,
+)
 from .profile import Profile
 from .resolver import (
     adb_for,
@@ -43,16 +55,23 @@ __all__ = [
     "ShardGateway",
     "ShardHealthMonitor",
     "adb_for",
+    "bootup_platform",
+    "build_parser",
     "ensure_device",
+    "extract_markers",
+    "generate_parser_source",
     "hints_to_yaml_doc",
     "get_platform",
     "inspect_apk",
     "list_platforms",
     "load_catalog",
     "load_catalog_file",
+    "parser_for",
     "register_platform",
     "resolve_profile",
     "scaffold_from_apk",
     "scaffold_platform",
     "storage_for",
+    "write_hints_to_descriptor",
+    "write_parser",
 ]

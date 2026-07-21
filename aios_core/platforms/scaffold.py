@@ -31,9 +31,15 @@ agent_module: aios_core.modules.{module_name}
 storage_class: aios_core.modules.{module_name}.storage.{class_name}Storage
 adb_class: {adb_class}
 default_locale: {locale}
-description: {description}
+description: {description_yaml}
 legacy_default_db: {name}_default.sqlite
 """
+
+
+def _yaml_double_quoted(value: str) -> str:
+    """Безопасный YAML-скаляр в двойных кавычках (двоеточия/апострофы)."""
+    escaped = (value or "").replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 _INIT_TEMPLATE = '''"""{title} marketplace agent — скелет, сгенерированный scaffold.
 
@@ -225,7 +231,9 @@ def scaffold_platform(
             class_name=class_name,
             adb_class=_ADB_CLASS,
             locale=locale,
-            description=description or f"{title} marketplace agent",
+            description_yaml=_yaml_double_quoted(
+                description or f"{title} marketplace agent"
+            ),
         ),
         str(root / "aios_core" / "modules" / module_name / "__init__.py"):
             _INIT_TEMPLATE.format(
