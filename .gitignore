@@ -10,6 +10,11 @@ aios_config.yaml
 *.png
 *.apk
 
+# Secrets and downloaded APKs (never committed)
+*.env
+secrets.env
+apks/
+
 # local databases
 *.sqlite
 *.db

@@ -11,6 +11,7 @@ CLI и REST API разрешают контекст работы через ед
 платформы → встроенный эфемерный ``default``.
 """
 
+from .apkfetch import fetch_apk, resolve_apk
 from .bootup import bootup_platform
 from .catalog import load_catalog, load_catalog_file
 from .descriptor import (
@@ -22,7 +23,9 @@ from .descriptor import (
 from .devices import DevicePool
 from .calibrate import (
     CalibrationAdvisor,
+    DetailCalibrationAdvisor,
     hints_to_yaml_doc,
+    merge_hints,
     write_hints_to_descriptor,
 )
 from .fleet import PoolMonitor, ensure_device
@@ -35,17 +38,24 @@ from .parsergen import (
     write_parser,
 )
 from .profile import Profile
+from .regression import check_platform_markers, diff_markers
 from .resolver import (
     adb_for,
     resolve_profile,
     storage_for,
 )
 from .scaffold import inspect_apk, scaffold_from_apk, scaffold_platform
+from .secrets import (
+    load_secrets_file,
+    required_secret,
+    secret,
+)
 from .shards import ShardRouter
 from .store import ProfileStore
 
 __all__ = [
     "DevicePool",
+    "DetailCalibrationAdvisor",
     "PlatformDescriptor",
     "PoolMonitor",
     "Profile",
@@ -57,8 +67,11 @@ __all__ = [
     "adb_for",
     "bootup_platform",
     "build_parser",
+    "check_platform_markers",
+    "diff_markers",
     "ensure_device",
     "extract_markers",
+    "fetch_apk",
     "generate_parser_source",
     "hints_to_yaml_doc",
     "get_platform",
@@ -66,11 +79,16 @@ __all__ = [
     "list_platforms",
     "load_catalog",
     "load_catalog_file",
+    "load_secrets_file",
+    "merge_hints",
     "parser_for",
     "register_platform",
+    "required_secret",
+    "resolve_apk",
     "resolve_profile",
     "scaffold_from_apk",
     "scaffold_platform",
+    "secret",
     "storage_for",
     "write_hints_to_descriptor",
     "write_parser",

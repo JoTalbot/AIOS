@@ -1,0 +1,9 @@
+# Сгенерировано aios platforms scaffold (instagram)
+name: instagram
+android_package: com.instagram.android
+agent_module: aios_core.modules.instagram
+storage_class: aios_core.modules.instagram.storage.InstagramStorage
+adb_class: aios_core.modules.olx.adb.ADBController
+default_locale: uk-UA
+description: "Instagram (Meta) — Android agent: feed/marketplace collection, messenger; login via AIOS_SECRET env"
+legacy_default_db: instagram_default.sqlite
