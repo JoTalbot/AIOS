@@ -142,6 +142,8 @@ class AIOSAPI:
             Route("/api/v1/knowledge-graph", self._ui_knowledge_graph),
             Route("/api/v1/agents", self._ui_agents),
             Route("/api/v1/models", self._ui_models),
+            Route("/api/v1/apk/convert", self._apk_convert, methods=["POST"]),
+            Route("/api/v1/apk/profiles", self._apk_profiles, methods=["GET"]),
 
             # Constitutional evaluation
             Route("/api/v1/evaluate", self._evaluate, methods=["POST"]),
@@ -334,6 +336,36 @@ class AIOSAPI:
             {"name": "risk_scorer", "version": "1.0.0", "framework": "onnx", "stage": "production", "sha256": "a9f4c3b8812e99a701", "eval_metrics": {"accuracy": 0.982, "f1": 0.975}},
             {"name": "plan_evaluator", "version": "2.1.0", "framework": "scikit-learn", "stage": "production", "sha256": "e12d8a011245cce289", "eval_metrics": {"mse": 0.012}}
         ])
+
+    async def _apk_convert(self, request: Request) -> JSONResponse:
+        try:
+            from aios_core.apk_converter import APKFunctionConverter
+            body = await request.json()
+            apk_name = body.get("apk_name", "app.apk")
+            package_name = body.get("package_name", "com.example.app")
+            components = body.get("exported_components", [
+                {"name": "MainActivity", "type": "activity", "intent_filter": "android.intent.action.MAIN"},
+                {"name": "SyncService", "type": "service", "intent_filter": "com.example.app.SYNC"}
+            ])
+            user_id = body.get("user_id", "default_user")
+
+            converter = APKFunctionConverter(capability_engine=getattr(self.orchestrator, "capabilities", None))
+            profile = converter.convert_apk_functions_to_api_profile(
+                apk_name=apk_name,
+                package_name=package_name,
+                exported_components=components,
+                target_user_id=user_id
+            )
+            return JSONResponse(profile)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _apk_profiles(self, request: Request) -> JSONResponse:
+        user_id = request.query_params.get("user_id", "default_user")
+        from aios_core.apk_converter import APKFunctionConverter
+        converter = APKFunctionConverter()
+        profiles = converter.get_user_profiles(user_id)
+        return JSONResponse(profiles)
 
     # ---- Evaluate ----
 
