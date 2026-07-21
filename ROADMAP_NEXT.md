@@ -1,24 +1,22 @@
-# Актуальный Роадмап AIOS (Пост-версия 7.0.0-alpha)
+# Актуальный Роадмап AIOS (Пост-версия 8.0.0-alpha)
 
-## Текущий Статус: v7.0.0-alpha (21 июля 2026)
+## Текущий Статус: v8.0.0-alpha (21 июля 2026)
 
-- **Конституция (67/67 статей):** На 100% валидирована утилитой `tula`.
-- **Roadmap 4.2:** Выполнен на 100% (ML Registry, OpenTelemetry, React Web UI, PostgreSQL, HPA).
-- **Horizon 5.0:** Выполнен на 100% (Formal Code Verifier, Global Swarm W3C DID & ZK Proofs, Quantum QAOA).
-- **Horizon 6.0:** Выполнен на 100% (Neuromorphic SNN Matrix, Biological Evolution, Planetary Mesh).
-- **Horizon 7.0:** Выполнен на 100% (Sovereign Reflection, Universal Invariant Prover, Multi-D World Model).
-- **Тесты:** 561/561 тестов успешно пройдены (100% Pass).
-- **GitHub:** Все изменения отправлены в репозиторий `JoTalbot/AIOS`.
+- **Конституция (67/67 статей):** Полностью проиндексирована и верифицирована инструментом `tula`.
+- **Горизонты 1.0 – 8.0:** Выполнены на 100% (Substrate Engine, Infinite Constitution, Cosmic Swarm, Formal Code Verifier, OpenTelemetry, React Web UI, PostgreSQL).
+- **Дистрибутив PyPI:** Собран пакет v8.0.0-alpha (`dist/aios-8.0.0a0-py3-none-any.whl`).
+- **Тесты:** 564/564 тестов пройдены (100% Pass).
+- **GitHub:** Все коммиты синхронизированы с репозиторием `JoTalbot/AIOS`.
 
 ---
 
-## Следующий этап: AIOS Horizon 8.0 (Universal Substrate Convergence)
+## Перспективный Горизонт: AIOS Horizon 9.0 (2030+)
 
-1. **Universal Substrate-Agnostic Engine (Milestone 8.0.1)**
-   - Единый исполнительный движок поверх силикона, фотоники, квантовых и нейроморфных платформ.
-2. **Self-Amending Infinite Constitutional Engine (Milestone 8.0.2)**
-   - Само-пополняющаяся мета-конституция с математической гарантией нерасхождения ценностей.
-3. **Cosmic Scale Swarm Consciousness Matrix (Milestone 8.0.3)**
-   - Голографическое распределенное хранение и асинхронная роевая координация космического масштаба.
+1. **Quantum Entangled Mesh (Milestone 9.0.1)**
+   - Квантово-запутанная мгновенная синхронизация состояний.
+2. **Synthetic Biology DNA Computing (Milestone 9.0.2)**
+   - Выполнение системных правил на молекулярных bio-compute субстратах.
+3. **Universal Multi-Species Ethics (Milestone 9.0.3)**
+   - Расширение этики конституции на межпланетные и мульти-агентные сообщества.
 
-Детальный план см. в [ROADMAP_8.0.md](./ROADMAP_8.0.md).
+Детальный план см. в [ROADMAP_9.0_FUTURE.md](./ROADMAP_9.0_FUTURE.md).
