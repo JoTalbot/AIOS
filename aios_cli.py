@@ -538,6 +538,57 @@ def _run_platforms(args) -> bool:
         }, ensure_ascii=False, indent=2))
         return True
 
+    if cmd == "autowatch":
+        from aios_core.platforms.autowatch import autowatch_cycle
+        driver = None
+        if args.drive != "none":
+            from aios_core.platforms import get_platform
+            from aios_core.platforms.pointdrive import PointDrive
+            from aios_core.platforms.resolver import adb_for
+            descriptor = get_platform(args.platform)
+            adb = adb_for(args.platform, args.profile or None)
+            login_driver = None
+            if args.drive == "login":
+                import importlib
+                try:
+                    login_mod = importlib.import_module(
+                        f"{descriptor.agent_module}.login"
+                    )
+                    for attr in dir(login_mod):
+                        candidate = getattr(login_mod, attr)
+                        if isinstance(candidate, type) and \
+                                attr.endswith("LoginDriver"):
+                            login_driver = candidate(
+                                adb=adb, search_drive=PointDrive(adb),
+                            ).drive
+                            break
+                except ImportError:
+                    pass
+                if login_driver is None:
+                    print(json.dumps({
+                        "error": f"platform '{args.platform}' has no "
+                                 "login driver module"
+                    }))
+                    return True
+                driver = login_driver
+            else:
+                driver = PointDrive(adb).drive
+        try:
+            report = autowatch_cycle(
+                args.platform,
+                profile_name=args.profile or None,
+                queries=args.query or None,
+                webhook=args.webhook,
+                max_cards=args.max,
+                collect=not args.no_collect,
+                driver=driver,
+            )
+        except ValueError as exc:
+            print(json.dumps({"error": str(exc)}))
+            return True
+        print(json.dumps(report, ensure_ascii=False, indent=2, default=str))
+        return True
+
     if cmd == "fetch-apk":
         from aios_core.platforms import fetch_apk
         try:
@@ -1020,11 +1071,20 @@ def _run_cron_plan(args) -> bool:
     ]
     webhook = f" --webhook {args.webhook}" if args.webhook else ""
     for profile in profiles:
-        lines.append(
-            f"*/{interval} * * * * cd {root} && "
-            f"python3 aios_cli.py olx autowatch --profile {profile.name}{webhook} "
-            f">> {root}/data/autowatch-{profile.key.replace(':', '_')}.log 2>&1"
-        )
+        if profile.platform == "olx":
+            lines.append(
+                f"*/{interval} * * * * cd {root} && "
+                f"python3 aios_cli.py olx autowatch --profile {profile.name}{webhook} "
+                f">> {root}/data/autowatch-{profile.key.replace(':', '_')}.log 2>&1"
+            )
+        else:
+            # Generic AutoWatch engine (descriptor+profile driven):
+            lines.append(
+                f"*/{interval} * * * * cd {root} && "
+                f"python3 aios_cli.py platforms autowatch "
+                f"--platform {profile.platform} --profile {profile.name}{webhook} "
+                f">> {root}/data/autowatch-{profile.key.replace(':', '_')}.log 2>&1"
+            )
     lines.append(
         f"*/{interval} * * * * cd {root} && "
         f"python3 aios_cli.py devices monitor --once "
@@ -1121,6 +1181,23 @@ def main(argv=None):
     p_fetch.add_argument("--out", default="apks", help="Download directory")
     p_fetch.add_argument("--source", default="apkpure",
                          help="apkeep source: apkpure/google-play/f-droid")
+
+    p_watch = plat_sub.add_parser(
+        "autowatch",
+        help="Generic AutoWatch care cycle for any catalog platform",
+    )
+    p_watch.add_argument("--platform", required=True)
+    p_watch.add_argument("--profile", default=None)
+    p_watch.add_argument("--query", action="append", default=[],
+                         help="Subscription query (repeatable; default: "
+                              "all storage subscriptions)")
+    p_watch.add_argument("--max", type=int, default=50)
+    p_watch.add_argument("--webhook", default=None)
+    p_watch.add_argument("--drive", choices=["none", "point", "login"],
+                         default="none",
+                         help="Pre-collection navigation drive")
+    p_watch.add_argument("--no-collect", action="store_true",
+                         help="Skip collection stage (recompute alerts only)")
 
     p_mark = plat_sub.add_parser(
         "marker-check",

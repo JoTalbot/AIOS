@@ -275,6 +275,10 @@ class AIOSAPI:
             Route("/api/v1/modules/{platform}/ads/{fingerprint}/history", self._module_history, methods=["GET"]),
             Route("/api/v1/modules/{platform}/own", self._module_own, methods=["GET"]),
             Route("/api/v1/modules/{platform}/own/snapshot", self._module_own_snapshot, methods=["POST"]),
+            Route("/api/v1/modules/{platform}/chats", self._module_chats, methods=["GET"]),
+            Route("/api/v1/modules/{platform}/outbox", self._module_outbox, methods=["GET"]),
+            Route("/api/v1/modules/{platform}/outbox/send", self._module_outbox_send, methods=["POST"]),
+            Route("/api/v1/modules/{platform}/outbox/flush", self._module_outbox_flush, methods=["POST"]),
             Route("/api/v1/modules/olx/advisor", self._olx_advisor, methods=["GET"]),
 
             # Constitutional evaluation
@@ -579,6 +583,124 @@ class AIOSAPI:
         payload = CompetitorAnalyzer().analyze(ads, query=query).to_dict()
         payload["platform"] = platform
         return JSONResponse(payload)
+
+    # ------------------------------------------------------------------ #
+    # Generic guarded messenger plane (per-platform messenger module)     #
+    # ------------------------------------------------------------------ #
+
+    def _module_messenger(self, platform: str, storage, adb):
+        """OLXMessenger-совместимый мессенджер платформы или None.
+
+        Резолв: ``<agent_module>.messenger`` → класс *Messenger
+        (наследник OLXMessenger). Instagram получает hints-driven
+        Direct, OLX — родной; платформа без messenger-модуля → 404.
+        """
+        from aios_core.modules.olx.messenger import OLXMessenger
+        from aios_core.platforms import get_platform
+        import importlib
+
+        descriptor = get_platform(platform)
+        try:
+            module = importlib.import_module(f"{descriptor.agent_module}.messenger")
+        except ImportError:
+            if platform == "olx":
+                module = importlib.import_module("aios_core.modules.olx.messenger")
+            else:
+                return None
+        for attr in dir(module):
+            candidate = getattr(module, attr)
+            if (
+                isinstance(candidate, type)
+                and attr.endswith("Messenger")
+                and issubclass(candidate, OLXMessenger)
+                and candidate is not OLXMessenger
+            ):
+                return candidate(adb=adb, storage=storage)
+        if platform == "olx":
+            return OLXMessenger(adb=adb, storage=storage)
+        return None
+
+    def _module_messenger_or_404(self, request: Request):
+        """(messenger, storage, error_response) для guarded-плоскости."""
+        from aios_core.modules.olx.adb import ADBController
+        from aios_core.platforms import get_platform, resolve_profile
+
+        platform = request.path_params["platform"]
+        if self._module_or_404(request) is None:
+            return None, None, JSONResponse(
+                {"error": "unknown platform"}, status_code=404,
+            )
+        profile = resolve_profile(
+            platform,
+            request.query_params.get("profile") or None,
+            store=self.profile_store,
+        )
+        descriptor = get_platform(platform)
+        adb = descriptor.make_adb(profile.device_serial) \
+            if descriptor.adb_factory else ADBController(
+                package=descriptor.android_package,
+                serial=profile.device_serial,
+            )
+        storage = self._platform_storage(platform, request)
+        messenger = self._module_messenger(platform, storage, adb)
+        if messenger is None:
+            return None, None, JSONResponse(
+                {"error": f"platform '{platform}' has no messenger module "
+                          "(add <agent_module>.messenger with a "
+                          "*Messenger(OLXMessenger) class)"},
+                status_code=404,
+            )
+        return messenger, storage, None
+
+    async def _module_chats(self, request: Request) -> JSONResponse:
+        """Chat list of any platform messenger (live device dump)."""
+        messenger, _storage, error = self._module_messenger_or_404(request)
+        if error is not None:
+            return error
+        threads = messenger.list_chats()
+        return JSONResponse({
+            "platform": request.path_params["platform"],
+            "threads": [t.to_dict() for t in threads],
+        })
+
+    async def _module_outbox(self, request: Request) -> JSONResponse:
+        """Guarded outbox entries of any platform (?status, ?profile)."""
+        messenger, storage, error = self._module_messenger_or_404(request)
+        if error is not None:
+            return error
+        return JSONResponse({
+            "platform": request.path_params["platform"],
+            "outbox": storage.outbox_list(request.query_params.get("status")),
+        })
+
+    async def _module_outbox_send(self, request: Request) -> JSONResponse:
+        """Queue (default) or immediately send a messenger reply.
+
+        Guarded: without ``auto_send: true`` the text only lands in the
+        approval outbox — ничего не уходит на устройство молча.
+        """
+        messenger, _storage, error = self._module_messenger_or_404(request)
+        if error is not None:
+            return error
+        body = await request.json()
+        result = messenger.send_reply(
+            body.get("chat_key") or "",
+            body.get("text") or "",
+            interlocutor=body.get("interlocutor"),
+            auto_send=bool(body.get("auto_send")),
+        )
+        result["platform"] = request.path_params["platform"]
+        return JSONResponse(result)
+
+    async def _module_outbox_flush(self, request: Request) -> JSONResponse:
+        """Send every approved pending outbox entry of the platform."""
+        messenger, _storage, error = self._module_messenger_or_404(request)
+        if error is not None:
+            return error
+        return JSONResponse({
+            "platform": request.path_params["platform"],
+            "flushed": messenger.flush_outbox(),
+        })
 
     async def _module_history(self, request: Request) -> JSONResponse:
         """Price history of one ad by fingerprint."""
