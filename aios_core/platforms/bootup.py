@@ -29,26 +29,33 @@ import time
 from pathlib import Path
 from typing import Callable, Dict, Optional
 
+from .apkfetch import resolve_apk
 from .calibrate import CalibrationAdvisor, write_hints_to_descriptor
 from .catalog import load_catalog_file
 from .parsergen import build_parser, extract_markers, write_parser
 from .scaffold import scaffold_from_apk, scaffold_platform
 
 #: Сигнатура инъецируемого калибровочного драйва:
-#: driver(android_package, query) -> XML-текст дампа поисковой выдачи.
-Driver = Callable[[str, Optional[str]], str]
+#: driver(android_package, query) или driver(android_package, query,
+#: serial=...) -> XML-текст дампа поисковой выдачи.
+Driver = Callable[..., str]
 
 
-def _adb_calibrator_drive(package: str, query: Optional[str] = None) -> str:
+def _adb_calibrator_drive(
+    package: str,
+    query: Optional[str] = None,
+    serial: Optional[str] = None,
+) -> str:
     """Generic-драйв по ADB: открыть приложение → пауза → дамп экрана.
 
     Эвристика: большинство маркетплейс-приложений открываются лентой
     объявлений, её дампа достаточно калибровщику. Точечный драйв под
     конкретный экран поиска — задача профильного агента платформы.
+    ``serial`` привязывает драйв к устройству из DevicePool.
     """
     from aios_core.modules.olx.adb import ADBController
 
-    adb = ADBController(package=package)
+    adb = ADBController(package=package, serial=serial)
     opened = adb.open_app()
     if opened.get("code") != 0:
         raise ValueError(
@@ -66,6 +73,21 @@ def _adb_calibrator_drive(package: str, query: Optional[str] = None) -> str:
         return target.read_text(encoding="utf-8")
 
 
+def _call_driver(
+    driver: Driver,
+    package: str,
+    query: Optional[str],
+    serial: Optional[str],
+) -> str:
+    """Вызывает драйв, передавая serial, если сигнатура его принимает."""
+    if serial is None:
+        return driver(package, query)
+    try:
+        return driver(package, query, serial=serial)
+    except TypeError:
+        return driver(package, query)
+
+
 def bootup_platform(
     apk_path: Optional[str] = None,
     *,
@@ -78,21 +100,35 @@ def bootup_platform(
     driver: Optional[Driver] = None,
     runner=None,
     dry_run: bool = False,
+    fetch: bool = False,
+    apks_dir="apks",
+    apk_runner=None,
+    serial: Optional[str] = None,
+    pool=None,
 ) -> Dict[str, object]:
     """E2E-пайплайн подключения платформы.
 
     Args:
-        apk_path: Путь к APK (inspect через aapt). Если не задан —
-            обязательны ``name`` и ``package``.
+        apk_path: Путь к APK или имя пакета (будет скачан при
+            ``fetch=True`` через apkeep). Если не задан — обязательны
+            ``name`` и ``package``.
         name: Имя платформы (переопределяет guess из APK).
         package: Android-пакет (без APK).
         project_root: Корень репозитория.
         locale: Локаль дескриптора.
         dump_path: Готовый UI-дамп выдачи (обходит драйв).
         query: Поисковый запрос для live-драйва (контекст отчёта).
-        driver: Инъекция калибровочного драйва ``(package, query)->xml``.
+        driver: Инъекция калибровочного драйва
+            ``(package, query[, serial])->xml``.
         runner: Инъекция ``aapt dump badging`` runner'а (тесты).
         dry_run: Без записей на диск — только планы шагов.
+        fetch: Разрешить скачивание APK по имени пакета (apkeep).
+        apks_dir: Каталог кеша скачанных APK.
+        apk_runner: Инъекция вызова apkeep (тесты).
+        serial: ADB-serial устройства для live-драйва.
+        pool: DevicePool — при отсутствии ``serial``/``dump_path``
+            устройство арендуется под ключ ``<platform>:calibration``
+            и освобождается после драйва.
 
     Returns:
         {platform, android_package, status, dry_run, steps: {...}}.
@@ -102,19 +138,54 @@ def bootup_platform(
     """
     if not apk_path and not (name and package):
         raise ValueError(
-            "bootup needs either --apk or both --name and --package"
+            "bootup needs either --apk or both --name and --package "
+            "(package is downloadable with --fetch via apkeep)"
         )
 
     root = Path(project_root)
     steps: Dict[str, object] = {}
 
+    # -- 0. resolve APK (скачивание по имени пакета) ---------------------- #
+    resolved_apk: Optional[str] = None
+    if apk_path:
+        if dry_run and not Path(str(apk_path)).exists():
+            resolved_apk = apk_path  # имя пакета/несуществующий путь — план
+            steps["apk"] = {
+                "mode": "planned",
+                "target": apk_path,
+                "fetch": fetch,
+            }
+        else:
+            try:
+                resolved_apk = resolve_apk(
+                    apk_path, out_dir=apks_dir, fetch=fetch,
+                    runner=apk_runner,
+                )
+                steps["apk"] = {"mode": "resolved", "path": resolved_apk}
+                if resolved_apk != apk_path:
+                    steps["apk"]["fetched"] = True
+            except ValueError as exc:
+                if runner is not None:
+                    # Тестовый режим: aapt-runner инъецирован, файл-заглушка
+                    # на диске не обязателен (inspect пойдёт через runner).
+                    resolved_apk = apk_path
+                    steps["apk"] = {
+                        "mode": "stub",
+                        "reason": str(exc),
+                        "note": "aapt runner injected",
+                    }
+                elif name and package:
+                    steps["apk"] = {"mode": "skipped", "reason": str(exc)}
+                else:
+                    raise
+
     # -- 1. scaffold ----------------------------------------------------- #
     scaffold_files: Dict[str, str] = {}
     scaffold_mode = "planned" if dry_run else "written"
     try:
-        if apk_path:
+        if resolved_apk:
             result = scaffold_from_apk(
-                apk_path, name=name, project_root=root,
+                resolved_apk, name=name, project_root=root,
                 locale=locale, dry_run=dry_run, runner=runner,
             )
             spec = result["spec"]
@@ -141,11 +212,11 @@ def bootup_platform(
         if "file already exists" not in str(exc):
             raise
         # resume: скелет уже есть — продолжаем с дескриптора на диске
-        if not (name or apk_path):
+        if not (name or resolved_apk):
             raise
-        if apk_path:
+        if resolved_apk:
             from .scaffold import inspect_apk
-            spec = inspect_apk(apk_path, runner=runner)
+            spec = inspect_apk(resolved_apk, runner=runner)
             platform_name = name or spec["candidate_name"]
             android_package = spec["android_package"]
         else:
@@ -174,18 +245,37 @@ def bootup_platform(
         xml = Path(dump_path).read_text(encoding="utf-8")
         calibrate_step["source"] = f"dump:{dump_path}"
     else:
-        drive = driver or _adb_calibrator_drive
-        try:
-            xml = drive(android_package, query)
-            calibrate_step["source"] = (
-                "driver:injected" if driver else "driver:adb-generic"
-            )
-        except Exception as exc:  # noqa: BLE001 — драйв опционален
-            calibrate_step.update({
-                "source": "driver:adb-generic",
-                "mode": "skipped",
-                "reason": str(exc)[:200],
-            })
+        lease_key: Optional[str] = None
+        if serial is None and pool is not None:
+            lease_key = f"{platform_name}:calibration"
+            lease = pool.lease(lease_key)
+            if lease is None:
+                calibrate_step.update({
+                    "mode": "skipped",
+                    "reason": "no free device in pool",
+                    "lease_key": lease_key,
+                })
+            else:
+                serial = lease["serial"]
+                calibrate_step["leased_serial"] = serial
+                calibrate_step["lease_key"] = lease_key
+        if calibrate_step.get("mode") != "skipped":
+            drive = driver or _adb_calibrator_drive
+            try:
+                xml = _call_driver(drive, android_package, query, serial)
+                calibrate_step["source"] = (
+                    "driver:injected" if driver else "driver:adb-generic"
+                )
+            except Exception as exc:  # noqa: BLE001 — драйв опционален
+                calibrate_step.update({
+                    "source": "driver:injected" if driver
+                    else "driver:adb-generic",
+                    "mode": "skipped",
+                    "reason": str(exc)[:200],
+                })
+        if lease_key is not None and serial is not None:
+            pool.release(lease_key)
+            calibrate_step["released"] = True
     if xml:
         hints = CalibrationAdvisor().analyze(xml)
         calibrate_step["hints"] = hints

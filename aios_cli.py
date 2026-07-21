@@ -538,13 +538,51 @@ def _run_platforms(args) -> bool:
         }, ensure_ascii=False, indent=2))
         return True
 
+    if cmd == "fetch-apk":
+        from aios_core.platforms import fetch_apk
+        try:
+            path = fetch_apk(
+                args.package, out_dir=args.out, source=args.source,
+            )
+        except ValueError as exc:
+            print(json.dumps({"error": str(exc)}))
+            return True
+        print(json.dumps({"apk": path, "package": args.package},
+                         ensure_ascii=False, indent=2))
+        return True
+
+    if cmd == "marker-check":
+        from aios_core.platforms import check_platform_markers
+        try:
+            report = check_platform_markers(
+                args.platform, Path(args.dump).read_text(encoding="utf-8"),
+            )
+        except ValueError as exc:
+            print(json.dumps({"error": str(exc)}))
+            return True
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return True
+
     if cmd == "calibrate":
         from aios_core.platforms import (
             CalibrationAdvisor,
+            DetailCalibrationAdvisor,
             hints_to_yaml_doc,
+            merge_hints,
         )
         from aios_core.platforms.calibrate import write_hints_to_descriptor
         hints = CalibrationAdvisor().analyze(Path(args.dump).read_text(encoding="utf-8"))
+        detail_hints = None
+        messenger_hints = None
+        if args.detail:
+            detail_hints = DetailCalibrationAdvisor().analyze_detail(
+                Path(args.detail).read_text(encoding="utf-8")
+            )
+        if args.messages:
+            messenger_hints = DetailCalibrationAdvisor().analyze_messenger(
+                Path(args.messages).read_text(encoding="utf-8")
+            )
+        hints = merge_hints(hints, detail_hints, messenger_hints)
         output = {"platform": args.platform, "hints": hints}
         if args.write:
             try:
@@ -587,6 +625,10 @@ def _run_platforms(args) -> bool:
 
     if cmd == "bootup":
         from aios_core.platforms.bootup import bootup_platform
+        pool = None
+        if args.lease:
+            from aios_core.platforms import DevicePool
+            pool = DevicePool()  # AIOS_DEVICES_DB / data/devices.sqlite
         try:
             report = bootup_platform(
                 apk_path=args.apk,
@@ -597,10 +639,17 @@ def _run_platforms(args) -> bool:
                 dump_path=args.dump,
                 query=args.query,
                 dry_run=args.dry_run,
+                fetch=args.fetch,
+                apks_dir=args.apks_dir,
+                serial=args.serial,
+                pool=pool,
             )
         except ValueError as exc:
             print(json.dumps({"error": str(exc)}))
             return True
+        finally:
+            if pool is not None:
+                pool.close()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return True
 
@@ -931,8 +980,28 @@ def main(argv=None):
     )
     p_cal.add_argument("--platform", required=True, help="Platform name")
     p_cal.add_argument("--dump", required=True, help="Path to uiautomator XML dump")
+    p_cal.add_argument("--detail", default=None,
+                       help="Detail-screen UI dump (seller/CTA/description)")
+    p_cal.add_argument("--messages", default=None,
+                       help="Messenger-screen UI dump (input/send/bubbles)")
     p_cal.add_argument("--write", action="store_true",
                        help="Write hints into platforms/<name>.yaml extras")
+
+    p_fetch = plat_sub.add_parser(
+        "fetch-apk", help="Download a platform APK via apkeep"
+    )
+    p_fetch.add_argument("package", help="Android package, e.g. com.instagram.android")
+    p_fetch.add_argument("--out", default="apks", help="Download directory")
+    p_fetch.add_argument("--source", default="apkpure",
+                         help="apkeep source: apkpure/google-play/f-droid")
+
+    p_mark = plat_sub.add_parser(
+        "marker-check",
+        help="Diff descriptor parser_hints markers against a fresh dump",
+    )
+    p_mark.add_argument("--platform", required=True, help="Platform name")
+    p_mark.add_argument("--dump", required=True,
+                        help="Fresh search-screen UI dump")
 
     p_gen = plat_sub.add_parser(
         "codegen", help="Compile card_parser.py from descriptor parser_hints"
@@ -948,7 +1017,7 @@ def main(argv=None):
         help="E2E pipeline: APK dump → scaffold → calibrate → codegen → verify",
     )
     p_boot.add_argument("--apk", default=None,
-                        help="Path to the platform .apk (aapt badging)")
+                        help="Path to the .apk, or package name with --fetch")
     p_boot.add_argument("--name", default=None,
                         help="Platform name (with --package, skips APK)")
     p_boot.add_argument("--package", default=None,
@@ -957,6 +1026,14 @@ def main(argv=None):
                         help="Search-screen UI dump for calibration")
     p_boot.add_argument("--query", default=None,
                         help="Search query for the live calibration drive")
+    p_boot.add_argument("--fetch", action="store_true",
+                        help="Download the APK via apkeep when missing")
+    p_boot.add_argument("--apks-dir", default="apks",
+                        help="Directory for downloaded APKs")
+    p_boot.add_argument("--serial", default=None,
+                        help="ADB serial for the live calibration drive")
+    p_boot.add_argument("--lease", action="store_true",
+                        help="Lease a device for the drive from DevicePool")
     p_boot.add_argument("--locale", default="uk-UA")
     p_boot.add_argument("--root", default=".", help="Project root")
     p_boot.add_argument("--dry-run", action="store_true")
