@@ -47,6 +47,7 @@ class ReelsCollector:
         notifier=None,
         screen_width: int = 1080,
         screen_height: int = 2400,
+        pacer=None,
     ) -> None:
         self.platform = platform
         self.adb = adb or ADBController()
@@ -57,6 +58,7 @@ class ReelsCollector:
         self.notifier = notifier
         self.screen_width = screen_width
         self.screen_height = screen_height
+        self.pacer = pacer
 
     def resolve_parser(self) -> HintVideoParser:
         """Парсер видео из ``content_categories.video_markers`` дескриптора.
@@ -132,6 +134,8 @@ class ReelsCollector:
                     or swipes >= swipe_limit
                 ):
                     break
+                if self.pacer is not None and not self.pacer.before_action():
+                    break  # pacing-лимит — честный стоп цикла
                 self._swipe_feed()
                 swipes += 1
         return cards

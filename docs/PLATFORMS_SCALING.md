@@ -581,6 +581,39 @@ shell-out в `aios instagram autopilot --login`. CLI:
 `aios shards enqueue --profile ig:main --kind autopilot`,
 `aios shards jobs [--status]`, `aios shards work --host X [--once]`.
 
+## Job lease TTL и метрики очереди
+
+ShardExec закалён под реальные отказы: `heartbeat(host)` пишется
+воркером на каждом `work_once`; `requeue_stale(ttl)` возвращает в
+pending claimed-джобы, зависшие дольше TTL (host снимается, маршрут
+переоценится); `stats()` — глубина очереди, счётчики по статусам,
+число зависших claim'ов и карта heartbeat'ов. CLI:
+`aios shards jobs --stats [--ttl 600]`, `aios shards requeue-stale`.
+
+## Встроенные виды джоб
+
+`default_handlers` теперь покрывает основной эксплуатационный набор:
+`autopilot`, `reels` (--open-tab), `dm-flush`, `marker-check` (дамп
+`data/marker-<platform>.xml`). Все — shell-out в aios_cli с наследуемой
+guarded-семантикой; payload.args добавляет флаги.
+
+## Human-like pacing (антибан)
+
+`platforms/pacing.py`: `Pacer` — рандомизированный jitter перед
+действием (seed-able), квота actions/hour (скользящее окно) и лимит
+длины сессии; исчерпание — честный стоп цикла (`before_action` →
+False), не обход. Встроен в OLXCollector (тем самым в
+InstagramCollector) и ReelsCollector; `pacer_from_limits` читает
+per-profile квоты из pool kv (`pacing:<profile>:actions_per_hour`).
+CLI autopilot: `--pace-actions N --pace-jitter S`, отчёт `pacing`.
+
+## Own-promote (DRY-RUN)
+
+`platforms/promote.py: promotion_plan` — план продвижения застоявшихся
+постов (stagnant-анализ): очередь кандидатов, равномерный дневной
+бюджет, действие boost. Промоут-флоу для платформы не реализован —
+честный dry_run всегда; autopilot `--promote [--promote-budget N --promote-min-age-days D]`, webhook `promote-suggestion`.
+
 ## Дальше (дорожная карта к 10000+)
 
 1. **Job-lease TTL**: повторная выдача claimed-джоб, зависших на

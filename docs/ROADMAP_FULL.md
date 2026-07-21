@@ -1,6 +1,6 @@
 # AIOS — Полный роадмап (линейка 9.0.0-alpha → 9.0 GA)
 
-> Статус на **v9.0.0-alpha.18** (2026-07-21, 879 тестов зелёные).
+> Статус на **v9.0.0-alpha.19** (2026-07-21, 879 тестов зелёные).
 > Принципы, которые действуют на всём роадмапе: **guarded-действия**
 > (ничего не трогает внешний мир молча: outbox/DRY-RUN/confirm),
 > **платформенность** (любая механика сразу generic, платформенный код
@@ -28,22 +28,23 @@
 
 ## Горизонт H1 — операционная закалка мультиаккаунтности (alpha.19–22)
 
+> alpha.19 закрыл пп.1–4 (все кодовые пункты H1, кроме on-device H1.5).
+
 **Тема: автопилот и очереди должны переживать реальную эксплуатацию.**
 
-1. **Job-lease TTL** (ShardExec): heartbeat исполнителя, requeue
-   «зависших» claimed-джоб умерших нод, метрики глубины очереди,
-   CLI `shards jobs --stale`, `shards requeue-stale`. *(alpha.19)*
-2. **Встроенные виды джоб** в `default_handlers`: `reels`,
-   `dm-flush`, `marker-check` (+ `bootup`) по образцу `autopilot`;
-   cron-plan умеет генерировать enqueue-строки вместо shell-cron.
-   *(alpha.19)*
-3. **Own-promote → autopilot**: stagnant-анализ своих постов/объявлений
-   → DRY-RUN план продвижения (бюджет/действия), исполнение только с
-   confirm; webhook-предложения «стоит продвинуть». *(alpha.20)*
-4. **Human-like pacing**: рандомизированные паузы/лимиты действий в
-   коллекторах/мессенджерах (per-profile квоты: actions/hour,
-   session length, jitter) — антибан-профилирование как часть pool
-   limits. *(alpha.20)*
+1. ~~**Job-lease TTL**~~ ✅ alpha.19: heartbeat, `requeue_stale`,
+   `stats()` (queue depth/stale), CLI `shards jobs --stats`,
+   `shards requeue-stale`.
+2. ~~**Встроенные виды джоб**~~ ✅ alpha.19: `reels`, `dm-flush`,
+   `marker-check` в `default_handlers`. TODO: cron-plan →
+   enqueue-строки (перенос в H2.8).
+3. ~~**Own-promote → autopilot**~~ ✅ alpha.19: `promotion_plan`
+   (DRY-RUN, бюджет равномерно), шаг `--promote` в autopilot,
+   webhook `promote-suggestion`.
+4. ~~**Human-like pacing**~~ ✅ alpha.19: `Pacer` (jitter,
+   actions/hour, session limit) в OLXCollector/ReelsCollector/
+   InstagramCollector + `pacer_from_limits` из pool kv; CLI
+   `--pace-actions/--pace-jitter`.
 5. **On-device Instagram bootstrapping**: прогон `ONBOARDING.md` на
    реальной машине с Android SDK — fetch APK, login (env-секреты),
    калибровка feed/detail/Direct/navigation, `marker-check` baseline,
