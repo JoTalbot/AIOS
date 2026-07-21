@@ -50,7 +50,7 @@ class TestHealth:
         resp = await client.get("/health")
         data = resp.json()
         assert "version" in data
-        assert data["version"] == "9.0.0-alpha.16"
+        assert data["version"] == "9.0.0-alpha.17"
 
 
 # ============================================================

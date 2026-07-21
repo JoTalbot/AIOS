@@ -365,6 +365,7 @@ tests/test_quantum_entanglement_mesh.py
 tests/test_quantum_native.py
 tests/test_rate_limiter.py
 tests/test_reels_autopilot.py
+tests/test_reels_tab_alerts_shards.py
 tests/test_sovereign_reflection.py
 tests/test_storage_postgresql.py
 tests/test_substrate_convergence.py

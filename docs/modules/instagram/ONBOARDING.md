@@ -97,18 +97,22 @@ aios instagram post --image photo.jpg --text "Нові кросівки!"      #
 aios instagram post --image photo.jpg --text "..." --confirm       # публикация
 
 # Reels: scroll-цикл видео-ленты (квитанции kind="video", дедуп циклов)
-aios instagram reels --db data/instagram.sqlite [--max 100] [--serial X]
+aios instagram reels --db data/instagram.sqlite [--max 100] [--serial X] \
+    [--open-tab]              # калибруемый тап по вкладке Reels перед циклом \
+    [--webhook https://...]   # video-new алёрт на новые видео
 
 # Autopilot: полный цикл профиля одной командой —
 # collect → Reels → Direct-flush → guarded-пост (DRY-RUN по умолчанию)
 aios instagram autopilot --db data/instagram.sqlite --login \
-    [--max 100 --reels-max 50] \
+    [--max 100 --reels-max 50] [--open-tab] [--webhook URL] \
     [--post-image photo.jpg --post-text "..." [--confirm]]
 
 # Автоматизация: циклы заботы всех профилей на арендованных устройствах
 aios devices fleet-run --every-s 900 [--query "кросівки"] [--webhook URL]
 # cron-plan для instagram-профилей генерирует строки `instagram autopilot`
 aios cron-plan --platform instagram
+# multi-host: строки сгруппированы по sticky HRW-шардам (AIOS_SHARDS_DB)
+aios cron-plan --platform instagram --shard-map
 ```
 
 Модули:

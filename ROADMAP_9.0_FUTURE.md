@@ -1,6 +1,6 @@
 # AIOS Roadmap 9.0 — Inter-Galactic Quantum Mesh & Bio-Molecular Runtime Horizon
 
-**Current Version:** `v9.0.0-alpha.16` (589 passed tests, 67 constitutional articles verified, PyPI distribution built)  
+**Current Version:** `v9.0.0-alpha.17` (589 passed tests, 67 constitutional articles verified, PyPI distribution built)  
 **Status:** ✅ All Horizon 9.0 Milestones Fully Completed
 
 ---
@@ -16,7 +16,7 @@
 | **L6.0** | `v6.0.0-alpha` | Neuromorphic SNN LIF Engine, Genetic Evolution, Space Mesh | ✅ 100% Complete |
 | **L7.0** | `v7.0.0-alpha` | Sovereign Reflection Engine, Universal Invariant Prover, World Model | ✅ 100% Complete |
 | **L8.0** | `v8.0.0-alpha` | Universal Substrate Router, Self-Amending Infinite Constitution | ✅ 100% Complete |
-| **L9.0** | `v9.0.0-alpha.16` | Inter-Galactic Quantum Entangled Mesh, Bio-Digital Molecular Runtime | ✅ 100% Complete |
+| **L9.0** | `v9.0.0-alpha.17` | Inter-Galactic Quantum Entangled Mesh, Bio-Digital Molecular Runtime | ✅ 100% Complete |
 
 ---
 

@@ -41,7 +41,7 @@ from .parsergen import (
 )
 from .pointdrive import PointDrive
 from .profile import Profile
-from .reelscout import ReelsCollector
+from .reelscout import ReelsCollector, ReelsTabDriver, reels_driver_for
 from .regression import check_platform_markers, diff_markers
 from .runtime_hints import (
     HintDetailParser,
@@ -78,6 +78,8 @@ __all__ = [
     "Profile",
     "ProfileStore",
     "ReelsCollector",
+    "ReelsTabDriver",
+    "reels_driver_for",
     "ShardRouter",
     "CalibrationAdvisor",
     "ShardGateway",

@@ -515,11 +515,46 @@ FleetScheduler'а за одним устройством — при занято
 на одном serial, `fleet:last_run:<platform>:<profile>` пишется
 раздельно, повторный запуск — строго по истечении `every_s`.
 
+## ReelsTabDriver: калибруемый тап по видео-вкладке
+
+`platforms/reelscout.py` дополнен `ReelsTabDriver` — драйвом открытия
+вкладки Reels перед scroll-циклом (аналог login-драйва для стены входа).
+Маркеры — из секции `extras.parser_hints.navigation.reels_tab`
+YAML-дескриптора (`rid_markers`/`text_markers`), дефолт — типовые rid
+reels/clips и подписи «Reels»; узел ищется с bounds, тап — по центру,
+честный `False` без silently-координат. Резолвер
+`reels_driver_for(platform, directory)` — в том же стиле, что
+`video_parser_for`/`detail_parser_for` (нет секции → дефолты; нет
+дескриптора → ValueError). CLI: `--open-tab` у `instagram reels` и
+`instagram autopilot`; вкладка не найдена → честная ошибка
+`driver не смог открыть видео-ленту` (RuntimeError отдаётся JSON-ом).
+
+## Видео-алёрты (video-new)
+
+`ReelsCollector` принимает `notifier` (WebhookNotifier): событие
+`video-new` уходит только когда цикл принёс **новые** карточки
+(`check_and_record` kind="video"), payload — platform/new/seen/query/
+sample-заголовки (топ-3). Повторный цикл по той же ленте алёрта не
+даёт (дедуп receipts). CLI: `--webhook URL` у `instagram reels` и
+`instagram autopilot` (флаг `notified` в отчёте).
+
+## Multi-host cron-plan (--shard-map)
+
+`aios cron-plan --shard-map` группирует cron-строки профилей по
+липким HRW-маршрутам `ShardRouter` (тот же `AIOS_SHARDS_DB`, что и
+`aios shards`): заголовки `# === host: worker-1 (base_url) · профилей:
+N ===`; немаршрутизированные/без живых хостов — в группе `local —
+без маршрута; запускать на этом хосте`; pool-monitor помечается
+«запускать на каждом хосте». Один crontab-файл раздаётся по нодам —
+sticky-маршруты гарантируют, что профиль не дублируется на двух хостах.
+
 ## Дальше (дорожная карта к 10000+)
 
-1. **Reels driver вкладки**: для Instagram — тап по Reels-табу перед
-   скролл-циклом (калибруемый, как login driver).
-2. **Видео-алёрты**: WebhookNotifier на новые видео-карточки цикла
-   (по аналогии с алёртами объявлений autowatch).
-3. **Multi-host autopilot**: cron-plan/ShardGateway маршрутизация
-   autopilot-строк по шардам профилей.
+1. **Автокалибровка navigation-секции**: DetailCalibrationAdvisor
+   учится находить вкладки (tab_bar/pager маркеры) в дампе домашнего
+   экрана и писать `navigation.reels_tab` сам.
+2. **Own-posts → autopilot**: включать снапшот собственных постов
+   (OwnAdsTracker) шагом autopilot-цикла с drift-алёртом по счётчикам.
+3. **Shard-execute**: ShardGateway умеет не только проксировать REST,
+   но и триггерить autopilot на удалённой ноде (или pull-модель
+   джобов вместо crontab).

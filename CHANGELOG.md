@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.0.0-alpha.17] - 2026-07-21
+
+### Added
+- **ReelsTabDriver (`platforms/reelscout.py`)**: калибруемый драйв
+  открытия вкладки Reels перед scroll-циклом — маркеры из секции
+  `navigation.reels_tab` YAML-дескриптора (`rid_markers`/
+  `text_markers`, дефолт reels/clips/«Reels»), тап по центру bounds,
+  честный `False`/`RuntimeError` без silently-координат; резолвер
+  `reels_driver_for(platform, directory)`. CLI `--open-tab` у
+  `instagram reels` и `instagram autopilot`.
+- **Видео-алёрты**: `ReelsCollector(notifier=...)` — событие
+  `video-new` в WebhookNotifier при новых видео-карточках цикла
+  (payload: platform/new/seen/query/sample; дедуп через receipts,
+  повторный цикл — без алёрта). CLI `--webhook URL` у `instagram
+  reels`/`autopilot` + флаг `notified` в отчёте.
+- **Multi-host cron-plan**: флаг `--shard-map` группирует cron-строки
+  профилей по липким HRW-маршрутам ShardRouter (`AIOS_SHARDS_DB`) с
+  заголовками `# === host: ... ===`; немаршрутизированные профили →
+  группа `local`; pool-monitor помечен «на каждом хосте».
+
 ## [9.0.0-alpha.16] - 2026-07-21
 
 ### Added

@@ -638,7 +638,8 @@ def _run_platforms(args) -> bool:
         if args.write:
             try:
                 output["written"] = write_hints_to_descriptor(
-                    args.platform, hints,
+                    args.platform, hints, directory=str(
+                        Path(args.root) / "platforms"),
                 )
             except ValueError as exc:
                 print(json.dumps({"error": str(exc)}))
@@ -738,14 +739,24 @@ def _run_instagram(args) -> bool:
         if cmd == "reels":
             from aios_core.modules.instagram import InstagramStorage
             from aios_core.modules.olx.adb import ADBController
-            from aios_core.platforms import get_platform
+            from aios_core.modules.olx.notifier import WebhookNotifier
+            from aios_core.platforms import get_platform, reels_driver_for
             from aios_core.platforms.reelscout import ReelsCollector
 
             adb = ADBController(package="com.instagram.android",
                                 serial=args.serial)
+            driver = None
+            if args.open_tab:
+                driver = reels_driver_for(
+                    "instagram", adb=adb, directory=args.directory,
+                ).drive
+            notifier = (
+                WebhookNotifier(url=args.webhook) if args.webhook else None
+            )
             collector = ReelsCollector(
                 get_platform("instagram"),
                 adb=adb, directory=args.directory,
+                driver=driver, notifier=notifier,
             )
             storage = InstagramStorage(args.db)
             try:
@@ -756,6 +767,8 @@ def _run_instagram(args) -> bool:
                 storage.close()
             print(json.dumps(
                 {"new": written, "seen": len(cards),
+                 "open_tab": bool(args.open_tab),
+                 "notified": bool(notifier and written),
                  "cards": [c.to_dict() for c in cards]},
                 ensure_ascii=False, indent=2,
             ))
@@ -770,7 +783,8 @@ def _run_instagram(args) -> bool:
                 PostComposer,
             )
             from aios_core.modules.olx.adb import ADBController
-            from aios_core.platforms import get_platform
+            from aios_core.modules.olx.notifier import WebhookNotifier
+            from aios_core.platforms import get_platform, reels_driver_for
             from aios_core.platforms.pointdrive import PointDrive
             from aios_core.platforms.reelscout import ReelsCollector
 
@@ -789,15 +803,27 @@ def _run_instagram(args) -> bool:
                 steps["collect"] = cards_collector.collect_to_storage(
                     storage, query=args.query, max_cards=args.max_cards,
                 )
+                notifier = (
+                    WebhookNotifier(url=args.webhook)
+                    if args.webhook else None
+                )
+                tab_driver = None
+                if args.open_tab:
+                    tab_driver = reels_driver_for(
+                        "instagram", adb=adb, directory=args.directory,
+                    ).drive
                 reels = ReelsCollector(
                     get_platform("instagram"),
                     adb=adb, directory=args.directory,
+                    driver=tab_driver, notifier=notifier,
                 )
                 written_reels, reels_cards = reels.collect_to_storage(
                     storage, max_cards=args.reels_max,
                 )
                 steps["reels"] = {
                     "new": written_reels, "seen": len(reels_cards),
+                    "open_tab": bool(args.open_tab),
+                    "notified": bool(notifier and written_reels),
                     "cards": [c.to_dict() for c in reels_cards],
                 }
                 messenger = InstagramMessenger(
@@ -961,7 +987,7 @@ def _run_instagram(args) -> bool:
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return True
 
-    except ValueError as exc:
+    except (ValueError, RuntimeError) as exc:
         print(json.dumps({"error": str(exc)}))
         return True
 
@@ -1231,34 +1257,66 @@ def _run_cron_plan(args) -> bool:
         "",
     ]
     webhook = f" --webhook {args.webhook}" if args.webhook else ""
-    for profile in profiles:
+
+    def _profile_line(profile) -> str:
         if profile.platform == "olx":
-            lines.append(
+            return (
                 f"*/{interval} * * * * cd {root} && "
                 f"python3 aios_cli.py olx autowatch --profile {profile.name}{webhook} "
                 f">> {root}/data/autowatch-{profile.key.replace(':', '_')}.log 2>&1"
             )
-        elif profile.platform == "instagram":
+        if profile.platform == "instagram":
             # Полный цикл под профилем: collect + Reels + Direct-flush
             # (login-drive pre-drive, публикация — отдельной guarded-задачей):
-            lines.append(
+            return (
                 f"*/{interval} * * * * cd {root} && "
                 f"python3 aios_cli.py instagram autopilot --login "
                 f"--db {root}/data/instagram-{profile.name}.sqlite "
                 f">> {root}/data/autopilot-{profile.key.replace(':', '_')}.log 2>&1"
             )
-        else:
-            # Generic AutoWatch engine (descriptor+profile driven):
-            lines.append(
-                f"*/{interval} * * * * cd {root} && "
-                f"python3 aios_cli.py platforms autowatch "
-                f"--platform {profile.platform} --profile {profile.name}{webhook} "
-                f">> {root}/data/autowatch-{profile.key.replace(':', '_')}.log 2>&1"
+        # Generic AutoWatch engine (descriptor+profile driven):
+        return (
+            f"*/{interval} * * * * cd {root} && "
+            f"python3 aios_cli.py platforms autowatch "
+            f"--platform {profile.platform} --profile {profile.name}{webhook} "
+            f">> {root}/data/autowatch-{profile.key.replace(':', '_')}.log 2>&1"
+        )
+
+    entries = [(profile, _profile_line(profile)) for profile in profiles]
+    if getattr(args, "shard_map", False):
+        # Multi-host: липкие HRW-маршруты из ShardRouter (AIOS_SHARDS_DB).
+        from aios_core.platforms import ShardRouter
+        groups: dict = {}
+        with ShardRouter() as router:
+            for profile, line in entries:
+                route = router.route_for(
+                    f"{profile.platform}:{profile.name}",
+                )
+                key = (
+                    (route["host"], route["base_url"]) if route
+                    else ("local", "")
+                )
+                groups.setdefault(key, []).append(line)
+        for (host, base_url), group_lines in sorted(groups.items()):
+            note = (
+                f" ({base_url})" if base_url
+                else " — без маршрута; запускать на этом хосте"
             )
+            lines.append(
+                f"# === host: {host}{note} · профилей: {len(group_lines)} ==="
+            )
+            lines.extend(group_lines)
+            lines.append("")
+    else:
+        lines.extend(line for _, line in entries)
+    monitor_note = (
+        "  # pool monitor — запускать на каждом хосте"
+        if getattr(args, "shard_map", False) else ""
+    )
     lines.append(
         f"*/{interval} * * * * cd {root} && "
         f"python3 aios_cli.py devices monitor --once "
-        f">> {root}/data/pool-monitor.log 2>&1"
+        f">> {root}/data/pool-monitor.log 2>&1{monitor_note}"
     )
     if args.with_marker_check:
         from aios_core.platforms import load_catalog
@@ -1343,6 +1401,7 @@ def main(argv=None):
                        help="Messenger-screen UI dump (input/send/bubbles)")
     p_cal.add_argument("--write", action="store_true",
                        help="Write hints into platforms/<name>.yaml extras")
+    p_cal.add_argument("--root", default=".", help="Project root")
 
     p_fetch = plat_sub.add_parser(
         "fetch-apk", help="Download a platform APK via apkeep"
@@ -1483,6 +1542,10 @@ def main(argv=None):
     ig_reels.add_argument("--max", type=int, default=100, dest="max_cards")
     ig_reels.add_argument("--serial", default=None, help="ADB serial")
     ig_reels.add_argument("--directory", default="platforms")
+    ig_reels.add_argument("--open-tab", action="store_true",
+                          help="Tap the Reels tab first (calibrated driver)")
+    ig_reels.add_argument("--webhook", default=None,
+                          help="POST video-new events to this webhook URL")
 
     ig_auto = ig_sub.add_parser(
         "autopilot",
@@ -1496,6 +1559,10 @@ def main(argv=None):
     ig_auto.add_argument("--login", action="store_true",
                          help="Pre-drive with the login wall driver")
     ig_auto.add_argument("--directory", default="platforms")
+    ig_auto.add_argument("--open-tab", action="store_true",
+                         help="Tap the Reels tab before the reels cycle")
+    ig_auto.add_argument("--webhook", default=None,
+                         help="POST video-new events to this webhook URL")
     ig_auto.add_argument("--post-image", default=None,
                          help="Optional image for the guarded post step")
     ig_auto.add_argument("--post-text", default="", help="Caption")
@@ -1559,6 +1626,9 @@ def main(argv=None):
     cron_parser.add_argument("--write", default=None, help="write to file instead of stdout")
     cron_parser.add_argument("--with-marker-check", action="store_true",
                              help="add commented marker-check lines per catalog platform")
+    cron_parser.add_argument("--shard-map", action="store_true",
+                             help="group profile lines by sticky HRW shard host "
+                                  "(AIOS_SHARDS_DB; unrouted → local group)")
 
     # Device pool (emulators/physical devices leased to profiles)
     devices_parser = subparsers.add_parser(

@@ -30,7 +30,7 @@ class CapabilityMarketplace:
     def __init__(self, db: Optional[Database] = None):
         self.db = db
         self._items: Dict[str, MarketplaceCapability] = {}
-        self.version = "9.0.0-alpha.16"
+        self.version = "9.0.0-alpha.17"
         self._ensure_table()
 
     def _ensure_table(self):
