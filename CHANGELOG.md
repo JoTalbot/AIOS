@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **OLX profile & settings management (`profile.py`)**: profile/settings
+  screen parsers (name/phone/email/city/about, toggle states), kv mirror in
+  storage (`olx_profile_kv`), guarded `ProfileEditor` — edits staged as
+  `_pending_*` values, device only with `confirm=True`.
+- **Competitor surveillance from own listings (`competitive.py`)**:
+  `derive_query` from own titles, Jaccard+price+city link scoring,
+  `olx_competitor_links` persistence, per-own undercut counts, price
+  position (rank among similar ads).
+- **Strategy advisor (`advisor.py`)**: per-own actions
+  KEEP/EDIT_PRICE/EDIT_CONTENT/REPOST/PROMOTE with priorities and
+  rationale; `advise_new_listings()` — active market queries the portfolio
+  doesn't cover, with target price and seed title from market keywords.
+- **Fresh-server bootstrap (`bootstrap.py` + `tools/olx_bootstrap.sh`)**:
+  apt → Python deps → platform-tools → ADBKeyBoard → SDK cmdline-tools →
+  Android 34 system image → headless AVD `aios-olx` → device setup, with
+  dry-run plan by default and `doctor()` readiness checklist with fix hints.
+- **REST**: `/olx/doctor`, `/olx/profile*` (parse/edit guarded),
+  `/olx/competitive*`, `/olx/advisor` (with `?new=1`).
+- **CLI**: `aios olx profile|profile-edit|competitive|advisor|bootstrap|
+  doctor`.
+- AutoWatch cycle now also reports competitive links and advisor actions.
+- 17 new tests (`tests/test_olx_strategy.py` + REST additions).
+
 ## [9.0.0-alpha.3] - 2026-07-21
 
 ### Added

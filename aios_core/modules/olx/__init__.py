@@ -22,6 +22,16 @@ Quick start::
 """
 
 from .adb import ADBController
+from .advisor import (
+    ACTION_EDIT_CONTENT,
+    ACTION_EDIT_PRICE,
+    ACTION_KEEP,
+    ACTION_PROMOTE,
+    ACTION_REPOST,
+    ActionAdvice,
+    NewListingSuggestion,
+    StrategyAdvisor,
+)
 from .analytics import (
     CompetitorAnalyzer,
     CompetitorReport,
@@ -31,8 +41,10 @@ from .analytics import (
     RecommendationEngine,
 )
 from .autowatch import AutoWatch
+from .bootstrap import OLXBootstrap
 from .card_parser import CardParser
 from .collector import OLXCollector
+from .competitive import CompetitiveWatch, derive_query, link_score, title_similarity
 from .detail import AdDetail, AdDetailParser
 from .messenger import (
     ChatListParser,
@@ -58,13 +70,20 @@ from .promotion import (
     RepostPlanner,
     Reposter,
 )
+from .profile import ProfileEditor, ProfileInfo, ProfileParser, SettingsInfo
 from .scheduler import CollectionScheduler
 from .storage import OLXStorage
 from .ui_parser import UIParser
 from .watch import FavoritesWatch, SubscriptionManager
 
 __all__ = [
+    "ACTION_EDIT_CONTENT",
+    "ACTION_EDIT_PRICE",
+    "ACTION_KEEP",
+    "ACTION_PROMOTE",
+    "ACTION_REPOST",
     "ADBController",
+    "ActionAdvice",
     "AdCard",
     "AdDetail",
     "AdDetailParser",
@@ -75,11 +94,14 @@ __all__ = [
     "ChatThread",
     "ChatViewParser",
     "CollectionScheduler",
+    "CompetitiveWatch",
     "CompetitorAnalyzer",
     "CompetitorReport",
     "FavoritesWatch",
     "ImprovementSuggestion",
     "Message",
+    "NewListingSuggestion",
+    "OLXBootstrap",
     "OLXCollector",
     "OLXMessenger",
     "OLXStorage",
@@ -89,16 +111,24 @@ __all__ = [
     "OwnAdsTracker",
     "PriceChange",
     "PriceTracker",
+    "ProfileEditor",
+    "ProfileInfo",
+    "ProfileParser",
     "Recommendation",
     "RecommendationEngine",
     "ReplySuggester",
     "RepostDecision",
     "RepostPlanner",
     "Reposter",
+    "SettingsInfo",
+    "StrategyAdvisor",
     "SubscriptionManager",
     "UIParser",
     "WebhookNotifier",
     "collect_price_drop_alerts",
+    "derive_query",
+    "link_score",
     "notify_price_drops",
     "notify_stagnant",
+    "title_similarity",
 ]

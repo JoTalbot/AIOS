@@ -242,3 +242,30 @@ REST: `GET/POST /olx/own*`.
 ### MCP
 `olx_market_stats`, `olx_listing_recommend`, `olx_price_drops`
 (тільки читання, через ConstitutionGuard).
+
+## Профіль, конкуренти, радник, бутстрап (2026-07-21)
+
+### Профіль і налаштування
+`ProfileParser` читає поля профілю (ім'я, телефон, місто, про себе) та
+перемикачі налаштувань; `ProfileEditor` готує зміни (dry-run → `_pending_*`
+у kv-сховищі, пристрій тільки з `confirm=True`).
+
+### Стеження за конкурентами — від своїх оголошень
+`CompetitiveWatch` виводить пошуковий запит із заголовка свого оголошення,
+зв'язує схожі ринкові оголошення (`olx_competitor_links`, оцінка
+Jaccard+ціна+місто), рахує дешевших конкурентів і цінову позицію
+(ранг серед подібних).
+
+### Радник стратегії
+- `advise_actions()`: KEEP / EDIT_PRICE / EDIT_CONTENT / REPOST / PROMOTE з
+  пріоритетами й поясненнями по кожному своєму оголошенню.
+- `advise_new_listings()`: активні ніші без покриття портфоліо — цільова ціна
+  й стартовий заголовок із ринкових ключових слів.
+- REST: `GET /olx/advisor` (`?new=1`).
+
+### Бутстрап свіжого сервера
+`aios olx bootstrap` — друкує повний план (apt → Python deps →
+platform-tools → ADBKeyBoard → SDK → образ Android 34 → headless AVD
+`aios-olx` → налаштування пристрою); `--execute` — виконує. Обгортка:
+`tools/olx_bootstrap.sh`. Перевірка готовності: `aios olx doctor` або
+`GET /olx/doctor` — чекліст із підказками виправлення.
