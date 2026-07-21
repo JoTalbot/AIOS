@@ -20,6 +20,7 @@ from .descriptor import (
     list_platforms,
     register_platform,
 )
+from .dashboard import dashboard_html
 from .devices import DevicePool
 from .fleetsched import FleetScheduler
 from .videocards import HintVideoParser, VideoCard, video_parser_for
@@ -41,6 +42,7 @@ from .parsergen import (
 )
 from .pointdrive import PointDrive
 from .profile import Profile
+from .recipe import calibration_recipe
 from .reelscout import ReelsCollector, ReelsTabDriver, reels_driver_for
 from .regression import check_platform_markers, diff_markers
 from .runtime_hints import (
@@ -91,7 +93,9 @@ __all__ = [
     "adb_for",
     "bootup_platform",
     "build_parser",
+    "calibration_recipe",
     "chat_list_parser_for",
+    "dashboard_html",
     "check_platform_markers",
     "detail_parser_for",
     "diff_markers",

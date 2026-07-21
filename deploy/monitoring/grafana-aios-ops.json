@@ -1,0 +1,78 @@
+{
+  "title": "AIOS Ops",
+  "uid": "aios-ops",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "time": {"from": "now-3h", "to": "now"},
+  "refresh": "30s",
+  "tags": ["aios", "ops"],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Shard jobs queue",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [
+        {
+          "expr": "aios_shard_jobs",
+          "legendFormat": "{{status}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Stale claimed jobs",
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [
+        {"expr": "aios_shard_jobs_stale_claimed", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [
+        {"color": "green", "value": null},
+        {"color": "red", "value": 1}
+      ]}}}
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Shard hosts alive",
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [
+        {"expr": "aios_shard_hosts", "refId": "A"}
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Device pool",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [
+        {
+          "expr": "aios_devices",
+          "legendFormat": "{{state}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Profiles per platform",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [
+        {
+          "expr": "aios_profiles",
+          "legendFormat": "{{platform}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

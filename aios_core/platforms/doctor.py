@@ -15,6 +15,34 @@ from typing import Dict, List, Optional, Sequence
 import yaml
 
 from aios_core.platforms.secrets import secret
+from aios_core.platforms.recipe import calibration_recipe
+
+
+def _report_recipe(
+    platform: str,
+    package: str,
+    checks: Dict[str, Dict[str, object]],
+    hints: Dict[str, object],
+) -> Dict[str, object]:
+    """Calibrate-рецепт из чеков doctor'а и фактических parser_hints.
+
+    Платформа считается messenger-first, если среди обязательных секций
+    нет карточной ленты; иначе — маркетплейс полного стека. «Что уже
+    откалибровано» берётся из дескриптора (checks знают только про
+    required_hints, а навигация/детали могут быть закрыты вне их).
+    """
+    needed = {
+        key[len("hints_"):] for key in checks if key.startswith("hints_")
+    }
+    compliance = hints.get("__compliance__") or {}
+    if needed:
+        kind = "marketplace" if "cards" in needed else "messenger"
+    elif compliance.get("collector"):
+        kind = "collector"
+    else:
+        kind = "messenger"
+    return calibration_recipe(
+        platform, package, kind=kind, have_hints=hints)
 
 
 def platform_doctor(
@@ -27,6 +55,7 @@ def platform_doctor(
     required_hints: Sequence[str] = (),
     secret_fields: Sequence[str] = (),
     storage_factory=None,
+    report_recipe: bool = False,
 ) -> Dict[str, object]:
     """Собирает {ok, checks{name:{ok,detail}}} для платформы.
 
@@ -39,6 +68,8 @@ def platform_doctor(
             непустыми (например, ("messenger",)).
         secret_fields: env-поля, наличие которых проверяется.
         storage_factory: callable()->storage с .close(), иначе пропуск.
+        report_recipe: добавить в отчёт ``calibrate_recipe`` — пошаговый
+            on-device сценарий закрытия недостающих hints-секций.
     """
     which = which or shutil.which
     checks: Dict[str, Dict[str, object]] = {}
@@ -59,6 +90,9 @@ def platform_doctor(
         else f"descriptor not found: {yaml_path}",
     }
     hints = (doc.get("extras") or {}).get("parser_hints") or {}
+    compliance_block = (doc.get("extras") or {}).get("compliance") or {}
+    hints_for_recipe = dict(hints)
+    hints_for_recipe["__compliance__"] = compliance_block
     for section in required_hints:
         found = bool(hints.get(section))
         checks[f"hints_{section}"] = {
@@ -105,4 +139,10 @@ def platform_doctor(
                 ),
             }
     ok = all(check["ok"] for check in checks.values())
-    return {"platform": platform, "ok": ok, "checks": checks}
+    report: Dict[str, object] = {
+        "platform": platform, "ok": ok, "checks": checks,
+    }
+    if report_recipe:
+        report["calibrate_recipe"] = _report_recipe(
+            platform, package, checks, hints_for_recipe)
+    return report

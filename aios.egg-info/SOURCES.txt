@@ -237,6 +237,10 @@ aios_core/mcp/protocol.py
 aios_core/mcp/resources.py
 aios_core/mcp/tools.py
 aios_core/modules/__init__.py
+aios_core/modules/facebook/__init__.py
+aios_core/modules/facebook/bootstrap.py
+aios_core/modules/facebook/messenger.py
+aios_core/modules/facebook/storage.py
 aios_core/modules/instagram/__init__.py
 aios_core/modules/instagram/bootstrap.py
 aios_core/modules/instagram/cards.py
@@ -284,6 +288,7 @@ aios_core/platforms/autowatch.py
 aios_core/platforms/bootup.py
 aios_core/platforms/calibrate.py
 aios_core/platforms/catalog.py
+aios_core/platforms/dashboard.py
 aios_core/platforms/descriptor.py
 aios_core/platforms/devices.py
 aios_core/platforms/doctor.py
@@ -297,6 +302,7 @@ aios_core/platforms/parsergen.py
 aios_core/platforms/pointdrive.py
 aios_core/platforms/profile.py
 aios_core/platforms/promote.py
+aios_core/platforms/recipe.py
 aios_core/platforms/reelscout.py
 aios_core/platforms/regression.py
 aios_core/platforms/resolver.py
@@ -306,6 +312,7 @@ aios_core/platforms/secrets.py
 aios_core/platforms/shardexec.py
 aios_core/platforms/shards.py
 aios_core/platforms/store.py
+aios_core/platforms/telemetry.py
 aios_core/platforms/videocards.py
 aios_core/test_engine/__init__.py
 aios_core/test_engine/engine.py
@@ -351,6 +358,7 @@ tests/test_formal_code_verifier.py
 tests/test_gateway_calibrate.py
 tests/test_global_swarm.py
 tests/test_h1_batch.py
+tests/test_h2_batch.py
 tests/test_infinite_constitution.py
 tests/test_instagram_agent.py
 tests/test_instagram_full.py

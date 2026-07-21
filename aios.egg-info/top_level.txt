@@ -1,5 +1,6 @@
 aios_core
 constitution
+deploy
 dist
 docs
 examples
