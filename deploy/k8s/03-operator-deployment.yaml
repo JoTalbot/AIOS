@@ -1,0 +1,56 @@
+# AIOS operator deployment (watch-loop CRD → fleet state)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aios-operator
+  namespace: aios-fleet
+  labels:
+    app.kubernetes.io/name: aios-operator
+    app.kubernetes.io/part-of: aios
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aios-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: aios-operator
+    spec:
+      serviceAccountName: aios-operator
+      containers:
+        - name: operator
+          image: ghcr.io/jotalbot/aios:9.1.0-alpha.1
+          command: ["python3", "-m", "aios_core.platforms.koperator"]
+          env:
+            - name: AIOS_K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: AIOS_PROFILES_DB
+              value: /var/lib/aios/profiles.sqlite
+            - name: AIOS_SHARDS_DB
+              value: /var/lib/aios/shards.sqlite
+          volumeMounts:
+            - name: aios-data
+              mountPath: /var/lib/aios
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8081}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+      volumes:
+        - name: aios-data
+          persistentVolumeClaim:
+            claimName: aios-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aios-data
+  namespace: aios-fleet
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi

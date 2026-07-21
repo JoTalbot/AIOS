@@ -12,6 +12,7 @@ CLI и REST API разрешают контекст работы через ед
 """
 
 from .apkfetch import fetch_apk, resolve_apk
+from .advise import advise_drafts, reply_draft
 from .bootup import bootup_platform
 from .catalog import load_catalog, load_catalog_file
 from .compliance import compliance_block, compliance_guard, rate_limit_hours
@@ -45,7 +46,11 @@ from .pointdrive import PointDrive
 from .profile import Profile
 from .recipe import calibration_recipe
 from .reelscout import ReelsCollector, ReelsTabDriver, reels_driver_for
-from .regression import check_platform_markers, diff_markers
+from .regression import (
+    check_platform_markers,
+    diff_markers,
+    drift_events_summary,
+)
 from .runtime_hints import (
     HintDetailParser,
     HintSender,
@@ -92,6 +97,7 @@ __all__ = [
     "ShardGateway",
     "ShardHealthMonitor",
     "adb_for",
+    "advise_drafts",
     "bootup_platform",
     "build_parser",
     "calibration_recipe",
@@ -102,6 +108,7 @@ __all__ = [
     "compliance_guard",
     "detail_parser_for",
     "diff_markers",
+    "drift_events_summary",
     "rate_limit_hours",
     "ensure_device",
     "extract_markers",
@@ -118,6 +125,7 @@ __all__ = [
     "merge_hints",
     "parser_for",
     "register_platform",
+    "reply_draft",
     "required_secret",
     "resolve_apk",
     "resolve_profile",

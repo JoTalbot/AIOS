@@ -163,6 +163,7 @@ def prometheus_metrics(
     catalog_dir: str = "platforms",
     data_dir: str = "data",
     stale_after_s: float = 600.0,
+    drift_db: Optional[str] = None,
 ) -> str:
     """Рендерит ops-метрики флота в Prometheus text exposition format.
 
@@ -253,4 +254,14 @@ def prometheus_metrics(
         lines.append(
             f'aios_outbox_pending{{platform="{platform}"}} '
             f'{entry.get("outbox_pending", 0)}')
+    drift_db_path = drift_db or str(Path(data_dir) / "marker-drift.sqlite")
+    from aios_core.platforms.regression import drift_events_summary
+    lines += [
+        "# HELP aios_marker_drift_events Marker drift events per platform",
+        "# TYPE aios_marker_drift_events gauge",
+    ]
+    for platform, count in sorted(
+            drift_events_summary(drift_db_path).items()):
+        lines.append(
+            f'aios_marker_drift_events{{platform="{platform}"}} {count}')
     return "\n".join(lines) + "\n"

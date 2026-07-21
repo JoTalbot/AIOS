@@ -1,5 +1,4 @@
 aios_core
-build
 constitution
 deploy
 dist

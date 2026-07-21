@@ -2,7 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.1.0-alpha.1] - 2026-07-22
+
+### Added
+- **AI-советник Direct-черновиков (H3.11, draft-only)**:
+  `platforms/advise.py` — `reply_draft` (детерминированные шаблоны
+  uk/en: availability/price/generic, авто-переключение языка) +
+  `advise_drafts` (непрочитанные треды → guarded outbox,
+  deny-by-default без compliance-политики, audit
+  `advise.draft`/`advise.denied`, pluggable `composer` для LLM);
+  CLI `<platform> advise` у мессенджер-групп (WA/Viber/Facebook).
+- **Marker drift events → telemetry (H2.9 добивка)**: таблица
+  `platform_drift_events` + `--drift-db` у `platforms marker-check`;
+  `drift_events_summary`; Prometheus-series
+  `aios_marker_drift_events{platform}`; default drift-db у
+  builtin worker-джобы marker-check.
+- **Kubernetes operator (H2.13)**: `deploy/k8s/` — namespace,
+  CRD Platform/Profile/Job (status subresources), RBAC,
+  Deployment + PVC, example CR; тонкий controller
+  `platforms/koperator.py` (reconcile CR → yaml-дескрипторы/
+  ProfileStore upsert/ShardJobs enqueue; list через K8s REST
+  с подменяемым opener'ом; честный отказ без API-сервера).
+
 ## [9.0.0] - 2026-07-21
+
 
 ### Added
 - **Compliance-контур (H2.10)**: `platforms/compliance.py`

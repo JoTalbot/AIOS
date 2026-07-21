@@ -1,6 +1,6 @@
-# AIOS — Полный роадмап (линейка 9.0.0-alpha → 9.0 GA)
+# AIOS — Полный роадмап (9.0 GA ✅ → линейка 9.1.0-alpha)
 
-> Статус на **v9.0.0** (2026-07-21, 939 тестов зелёные).
+> Статус на **v9.1.0-alpha.1** (2026-07-21, 952 тестов зелёные).
 > Принципы, которые действуют на всём роадмапе: **guarded-действия**
 > (ничего не трогает внешний мир молча: outbox/DRY-RUN/confirm),
 > **платформенность** (любая механика сразу generic, платформенный код
@@ -75,10 +75,11 @@
 9. ~~**Метрики/наблюдаемость**~~ ✅ alpha.21: Prometheus text
    exposition на `/metrics` (queue/hosts/devices/profiles/catalog);
    ✅ alpha.22: счётчики `aios_seen_receipts{platform,kind}`,
-   `aios_outbox_pending{platform}` + alert-правила
-   `deploy/monitoring/aios-alerts.yml`. Остаётся: cards/cycle
-   rates и drift-events series (alpha.27, потребуются живые циклы
-   H1.5).
+   `aios_outbox_pending{platform}` + alert-правила;
+   ✅ alpha.23: **drift-events series** `aios_marker_drift_events
+   {platform}` (marker-check персистит в `platform_drift_events`,
+   `--drift-db` у CLI, дефолт в worker). Остаётся: cards/cycle
+   rates (потребуют живых циклов H1.5).
 10. ~~**Compliance-контур**~~ ✅ alpha.22: `platforms/compliance.py`
     (`compliance_guard` — autopost/collect/send/auto_send из флагов
     дескриптора, deny-by-default без блока) + проводка в CLI
@@ -89,19 +90,24 @@
 
 ## Горизонт H3 — продуктовое ядро и GA (alpha.31+ → 9.0)
 
-11. **AI-советник поверх платформ**: генеративные ответы Direct по
-    шаблонам (draft-only в outbox, human-approve обязателен),
-    саммари inbox, price-advice из истории (LLM-фасад AIOS уже есть —
-    прикрутить платформенные контексты). *(alpha.31–32)*
+11. **AI-советник поверх платформ**: ✅ alpha.23 — draft-only ядро
+    (`platforms/advise.py`: шаблонный движок uk/en + pluggable
+    composer=LLM-callable, deny-by-default без compliance-политики,
+    audit `advise.draft/advise.denied`; CLI `<platform> advise`).
+    Остаётся: hosted LLM-фасад (честная прореха — хардкода в репо
+    нет), саммари inbox, price-advice из истории. *(alpha.31–32)*
 12. **Официальный SDK** (`aios-sdk`): питон-клиент REST/WS + типы;
     примеры: «свой агент за 30 строк». *(alpha.33; см. веху v4.1)*
-13. **Kubernetes operator** (веха v4.1): CRD Platform/Profile/Job,
-    device-farm как daemonset эмуляторов, шард-контроллер.
-    *(alpha.34)*
+13. **Kubernetes operator** (веха v4.1): ✅ alpha.23 — CRD-манифесты
+    Platform/Profile/Job + RBAC/Deployment/example + тонкий
+    controller `platforms/koperator.py` (reconcile CR → yaml/
+    ProfileStore/ShardJobs, watch-loop через K8s REST; list подменя-
+    емый opener'ом). Остаётся: сборка образа, retry/reconnect watch,
+    device-farm daemonset. *(alpha.34)*
 14. **Marketplace плагинов платформ**: публикация onboarding-пакетов
     (descriptor + hints + drivers) в marketplace-модуль ядра.
     *(alpha.35)*
-15. **9.0 GA-критерии**: ≥1000 тестов зелёные (сейчас 939); 3+
+15. **9.0 GA-критерии**: ≥1000 тестов зелёные (сейчас 952); 3+
     production-профиля Instagram под autopilot ≥2 недели без банов
     (pacing-метрики); онбординг новой платформы ≤ 30 минут по
     чек-листу; документация — PDF/сайт; API стабилизировано

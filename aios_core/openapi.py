@@ -9,7 +9,7 @@ def generate_openapi_spec() -> Dict[str, Any]:
         "openapi": "3.0.0",
         "info": {
             "title": "AIOS API",
-            "version": "9.0.0",
+            "version": "9.1.0-alpha.1",
             "description": "Self-evolving Distributed Operating System API"
         },
         "paths": {

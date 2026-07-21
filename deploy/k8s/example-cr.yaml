@@ -1,0 +1,36 @@
+# Пример CR для ручной проверки (kubectl apply -f example-cr.yaml)
+apiVersion: aios.io/v1alpha1
+kind: Platform
+metadata:
+  name: facebook
+  namespace: aios-fleet
+spec:
+  name: facebook
+  androidPackage: com.facebook.katana
+  storageClass: aios_core.modules.facebook.storage.FacebookStorage
+  locale: uk-UA
+  compliance:
+    autopost_allowed: false
+    messenger: approval-only
+    collector: true
+---
+apiVersion: aios.io/v1alpha1
+kind: Profile
+metadata:
+  name: facebook-demo
+  namespace: aios-fleet
+spec:
+  platformRef: facebook
+  name: demo
+  deviceSerial: emulator-5554
+---
+apiVersion: aios.io/v1alpha1
+kind: Job
+metadata:
+  name: facebook-demo-dm-flush
+  namespace: aios-fleet
+spec:
+  profileKey: facebook:demo
+  kind: dm-flush
+  payload:
+    args: ["--max", "10"]
