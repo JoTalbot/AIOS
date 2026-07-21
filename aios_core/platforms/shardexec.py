@@ -357,10 +357,12 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
     def marker_check(profile_key: str, payload: Dict) -> Dict:
         platform, _, _name = profile_key.partition(":")
         dump = str(root / "data" / f"marker-{platform}.xml")
+        drift_db = str(root / "data" / "marker-drift.sqlite")
         return _run_cli(
             [
                 "python3", cli, "platforms", "marker-check",
                 "--platform", platform, "--dump", dump,
+                "--drift-db", drift_db,
             ],
             payload.get("args"),
         )

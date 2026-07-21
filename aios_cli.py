@@ -607,6 +607,7 @@ def _run_platforms(args) -> bool:
         try:
             report = check_platform_markers(
                 args.platform, Path(args.dump).read_text(encoding="utf-8"),
+                drift_db=getattr(args, "drift_db", None),
             )
         except ValueError as exc:
             print(json.dumps({"error": str(exc)}))
@@ -1249,6 +1250,25 @@ def _run_msg_platform(args, platform: str) -> bool:
                 storage.close()
             print(json.dumps(rows, ensure_ascii=False, indent=2))
             return True
+        if cmd == "advise":
+            from aios_core.platforms.advise import advise_drafts
+            storage = storage_cls(getattr(args, "db", f"data/{platform}.sqlite"))
+            try:
+                messenger = messenger_cls(
+                    adb=adb, storage=storage,
+                    directory=getattr(args, "directory", "platforms"),
+                )
+                threads = messenger.list_chats(
+                    dump_path=getattr(args, "dump", "chats.xml"))
+                report = advise_drafts(
+                    threads, storage, platform,
+                    locale=getattr(args, "locale", "uk-UA"),
+                    directory=getattr(args, "directory", "platforms"),
+                )
+            finally:
+                storage.close()
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return True
     except ValueError as exc:
         print(json.dumps({"error": str(exc)}, ensure_ascii=False))
         return True
@@ -1798,6 +1818,8 @@ def main(argv=None):
     p_mark.add_argument("--platform", required=True, help="Platform name")
     p_mark.add_argument("--dump", required=True,
                         help="Fresh search-screen UI dump")
+    p_mark.add_argument("--drift-db", default=None,
+                        help="Persist drift events into sqlite for telemetry")
 
     p_gen = plat_sub.add_parser(
         "codegen", help="Compile card_parser.py from descriptor parser_hints"
@@ -1878,6 +1900,14 @@ def main(argv=None):
         app_out = app_sub.add_parser("dm-outbox", help="List outbox entries")
         app_out.add_argument("--db", default=None)
         app_out.add_argument("--status", default=None)
+        app_adv = app_sub.add_parser(
+            "advise", help="Draft-only AI-советник: черновики в outbox")
+        app_adv.add_argument("--db", default=None)
+        app_adv.add_argument("--serial", default=None)
+        app_adv.add_argument("--directory", default="platforms")
+        app_adv.add_argument("--dump", default="chats.xml",
+                             help="UI dump chats screen (offline mode)")
+        app_adv.add_argument("--locale", default="uk-UA")
 
     # Instagram platform agent (полный функционал)
     ig_parser = subparsers.add_parser(

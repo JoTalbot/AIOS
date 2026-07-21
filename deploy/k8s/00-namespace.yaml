@@ -1,0 +1,7 @@
+# AIOS fleet namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: aios-fleet
+  labels:
+    app.kubernetes.io/part-of: aios

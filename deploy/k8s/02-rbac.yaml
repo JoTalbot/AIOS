@@ -1,0 +1,34 @@
+# RBAC для AIOS operator
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aios-operator
+  namespace: aios-fleet
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: aios-operator
+rules:
+  - apiGroups: ["aios.io"]
+    resources: [platforms, profiles, jobs]
+    verbs: [get, list, watch, create, update, patch]
+  - apiGroups: ["aios.io"]
+    resources: [platforms/status, profiles/status, jobs/status]
+    verbs: [get, update, patch]
+  - apiGroups: [""]
+    resources: [configmaps, secrets]
+    verbs: [get, list, watch, create, update, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aios-operator
+subjects:
+  - kind: ServiceAccount
+    name: aios-operator
+    namespace: aios-fleet
+roleRef:
+  kind: ClusterRole
+  name: aios-operator
+  apiGroup: rbac.authorization.k8s.io

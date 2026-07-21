@@ -283,6 +283,7 @@ aios_core/modules/whatsapp/bootstrap.py
 aios_core/modules/whatsapp/messenger.py
 aios_core/modules/whatsapp/storage.py
 aios_core/platforms/__init__.py
+aios_core/platforms/advise.py
 aios_core/platforms/apkfetch.py
 aios_core/platforms/autowatch.py
 aios_core/platforms/bootup.py
@@ -297,6 +298,7 @@ aios_core/platforms/fleet.py
 aios_core/platforms/fleetsched.py
 aios_core/platforms/gateway.py
 aios_core/platforms/hintmsg.py
+aios_core/platforms/koperator.py
 aios_core/platforms/onboard.py
 aios_core/platforms/pacing.py
 aios_core/platforms/parsergen.py
@@ -361,6 +363,7 @@ tests/test_global_swarm.py
 tests/test_h1_batch.py
 tests/test_h2_batch.py
 tests/test_h2_compliance.py
+tests/test_h3_batch.py
 tests/test_infinite_constitution.py
 tests/test_instagram_agent.py
 tests/test_instagram_full.py
