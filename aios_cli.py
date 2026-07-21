@@ -539,25 +539,69 @@ def _run_platforms(args) -> bool:
         return True
 
     if cmd == "calibrate":
-        from aios_core.platforms import CalibrationAdvisor, hints_to_yaml_doc
+        from aios_core.platforms import (
+            CalibrationAdvisor,
+            hints_to_yaml_doc,
+        )
+        from aios_core.platforms.calibrate import write_hints_to_descriptor
         hints = CalibrationAdvisor().analyze(Path(args.dump).read_text(encoding="utf-8"))
         output = {"platform": args.platform, "hints": hints}
         if args.write:
-            import yaml
-            yaml_path = Path("platforms") / f"{args.platform}.yaml"
-            if not yaml_path.exists():
-                print(json.dumps({"error": f"descriptor not found: {yaml_path}"}))
+            try:
+                output["written"] = write_hints_to_descriptor(
+                    args.platform, hints,
+                )
+            except ValueError as exc:
+                print(json.dumps({"error": str(exc)}))
                 return True
-            doc = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
-            doc.setdefault("extras", {})["parser_hints"] = hints
-            yaml_path.write_text(
-                yaml.safe_dump(doc, allow_unicode=True, sort_keys=False),
-                encoding="utf-8",
-            )
-            output["written"] = str(yaml_path)
         else:
             output["yaml_fragment"] = hints_to_yaml_doc(args.platform, hints)
         print(json.dumps(output, ensure_ascii=False, indent=2))
+        return True
+
+    if cmd == "codegen":
+        from aios_core.platforms.parsergen import write_parser
+        import yaml
+        yaml_path = Path(args.root) / "platforms" / f"{args.platform}.yaml"
+        if not yaml_path.exists():
+            print(json.dumps({"error": f"descriptor not found: {yaml_path}"}))
+            return True
+        doc = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+        hints = (doc.get("extras") or {}).get("parser_hints") or {}
+        try:
+            files = write_parser(
+                args.platform, hints,
+                project_root=args.root,
+                android_package=doc.get("android_package") or "",
+                dry_run=args.dry_run,
+                overwrite=args.force,
+            )
+        except ValueError as exc:
+            print(json.dumps({"error": str(exc)}))
+            return True
+        mode = "planned" if args.dry_run else "written"
+        print(json.dumps(
+            {mode: sorted(files)}, ensure_ascii=False, indent=2,
+        ))
+        return True
+
+    if cmd == "bootup":
+        from aios_core.platforms.bootup import bootup_platform
+        try:
+            report = bootup_platform(
+                apk_path=args.apk,
+                name=args.name,
+                package=args.package,
+                project_root=args.root,
+                locale=args.locale,
+                dump_path=args.dump,
+                query=args.query,
+                dry_run=args.dry_run,
+            )
+        except ValueError as exc:
+            print(json.dumps({"error": str(exc)}))
+            return True
+        print(json.dumps(report, ensure_ascii=False, indent=2))
         return True
 
     if cmd == "scaffold":
@@ -889,6 +933,33 @@ def main(argv=None):
     p_cal.add_argument("--dump", required=True, help="Path to uiautomator XML dump")
     p_cal.add_argument("--write", action="store_true",
                        help="Write hints into platforms/<name>.yaml extras")
+
+    p_gen = plat_sub.add_parser(
+        "codegen", help="Compile card_parser.py from descriptor parser_hints"
+    )
+    p_gen.add_argument("--platform", required=True, help="Platform name")
+    p_gen.add_argument("--root", default=".", help="Project root")
+    p_gen.add_argument("--dry-run", action="store_true")
+    p_gen.add_argument("--force", action="store_true",
+                       help="Overwrite an already generated card_parser.py")
+
+    p_boot = plat_sub.add_parser(
+        "bootup",
+        help="E2E pipeline: APK dump → scaffold → calibrate → codegen → verify",
+    )
+    p_boot.add_argument("--apk", default=None,
+                        help="Path to the platform .apk (aapt badging)")
+    p_boot.add_argument("--name", default=None,
+                        help="Platform name (with --package, skips APK)")
+    p_boot.add_argument("--package", default=None,
+                        help="Android package (with --name, skips APK)")
+    p_boot.add_argument("--dump", default=None,
+                        help="Search-screen UI dump for calibration")
+    p_boot.add_argument("--query", default=None,
+                        help="Search query for the live calibration drive")
+    p_boot.add_argument("--locale", default="uk-UA")
+    p_boot.add_argument("--root", default=".", help="Project root")
+    p_boot.add_argument("--dry-run", action="store_true")
 
     # Platform profiles (accounts)
     profiles_parser = subparsers.add_parser(
