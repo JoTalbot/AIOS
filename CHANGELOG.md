@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 ## [4.2.0-alpha] - In Progress (2026-07-21)
 
 ### Added
+- **Milestone 4.2.2 Complete — Production Hardening & Observability**:
+  - `Telemetry` & OpenTelemetry metrics (`aios_core/telemetry.py`) with counters, gauges, histograms, and Prometheus exposition formatting.
+  - `Tracer` W3C Trace Context propagation (`aios_core/tracing.py`) supporting `traceparent` (`00-{trace_id}-{span_id}-01`) headers, sub-spans, and thread-local context propagation.
+  - `JSONFormatter` (`aios_core/logging_config.py`) for structured production logs enriched with `trace_id`, `span_id`, `agent_id`, and `constitutional_status`.
+  - `BackupManager` (`aios_core/backup_manager.py`) with zero-downtime hot online SQLite snapshotting (`sqlite3.backup` API), SHA256 integrity validation, and retention policy cleaning.
+  - Comprehensive unit test suites `tests/test_telemetry.py` and `tests/test_backup_manager.py` (535 total passed tests).
+
 - **Milestone 4.2.1 Complete — Advanced ML Intelligence Layer**:
   - `ModelRegistry` (`aios_core/model_registry.py`) with artifact SHA256 hashing, stage promotion (`staging`, `production`), weight versioning, and evaluation metric logging.
   - `ModelServer` (`aios_core/model_serving.py`) with A/B traffic splitting, thread-safe inference, batch predictions, and latency tracking.

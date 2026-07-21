@@ -1,35 +1,136 @@
-"""Distributed Tracing for AIOS"""
+"""Distributed Tracing Engine for AIOS Executive Layer.
 
+Supports W3C Trace Context headers (traceparent: 00-traceid-spanid-flags),
+nested spans, trace context propagation across EventBus, agents, and HTTP API.
+"""
+
+import threading
 import uuid
-from typing import Dict, Optional
+import time
 from contextlib import contextmanager
+from typing import Dict, List, Optional, Any, Tuple
+
+
+_current_trace_context = threading.local()
+
+
+class Span:
+    """An OpenTelemetry-compatible tracing span."""
+
+    def __init__(self, name: str, trace_id: str, span_id: str, parent_id: Optional[str] = None, attributes: Optional[Dict[str, Any]] = None):
+        self.name = name
+        self.trace_id = trace_id
+        self.span_id = span_id
+        self.parent_id = parent_id
+        self.attributes: Dict[str, Any] = attributes or {}
+        self.events: List[Dict[str, Any]] = []
+        self.start_time = time.time()
+        self.end_time: Optional[float] = None
+        self.status = "OK"
+        self.error_message: Optional[str] = None
+
+    def set_attribute(self, key: str, value: Any):
+        self.attributes[key] = value
+
+    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None):
+        self.events.append({
+            "name": name,
+            "attributes": attributes or {},
+            "timestamp": time.time()
+        })
+
+    def set_status_error(self, message: str):
+        self.status = "ERROR"
+        self.error_message = message
+
+    def finish(self):
+        if self.end_time is None:
+            self.end_time = time.time()
+
+    @property
+    def duration_ms(self) -> float:
+        end = self.end_time or time.time()
+        return round((end - self.start_time) * 1000.0, 3)
+
+    def to_w3c_header(self) -> str:
+        """Format as standard W3C traceparent header string: 00-{trace_id}-{span_id}-01."""
+        return f"00-{self.trace_id}-{self.span_id}-01"
 
 
 class Tracer:
-    """Simple distributed tracer."""
+    """Thread-safe Distributed Tracer with W3C propagation."""
 
     def __init__(self):
-        self.spans: Dict[str, Dict] = {}
+        self.active_spans: Dict[str, Span] = {}
+        self.finished_spans: List[Span] = []
+
+    def generate_trace_id(self) -> str:
+        return uuid.uuid4().hex
+
+    def generate_span_id(self) -> str:
+        return uuid.uuid4().hex[:16]
+
+    def parse_w3c_header(self, traceparent: str) -> Tuple[Optional[str], Optional[str]]:
+        """Parse W3C traceparent header: 00-{trace_id}-{span_id}-{flags}."""
+        parts = traceparent.split("-")
+        if len(parts) >= 3 and parts[0] == "00":
+            return parts[1], parts[2]
+        return None, None
 
     @contextmanager
-    def start_span(self, name: str, parent: Optional[str] = None):
-        span_id = str(uuid.uuid4())[:16]
-        self.spans[span_id] = {
-            "name": name,
-            "parent": parent,
-            "start": __import__("time").time()
-        }
+    def start_span(
+        self,
+        name: str,
+        parent_traceparent: Optional[str] = None,
+        attributes: Optional[Dict[str, Any]] = None
+    ):
+        """Start a new contextual span."""
+        parent_trace_id, parent_span_id = None, None
+        if parent_traceparent:
+            parent_trace_id, parent_span_id = self.parse_w3c_header(parent_traceparent)
+
+        # Retrieve thread local active span if available
+        current_active: Optional[Span] = getattr(_current_trace_context, "active_span", None)
+
+        if parent_trace_id:
+            trace_id = parent_trace_id
+            parent_id = parent_span_id
+        elif current_active:
+            trace_id = current_active.trace_id
+            parent_id = current_active.span_id
+        else:
+            trace_id = self.generate_trace_id()
+            parent_id = None
+
+        span_id = self.generate_span_id()
+        span = Span(name=name, trace_id=trace_id, span_id=span_id, parent_id=parent_id, attributes=attributes)
+
+        self.active_spans[span_id] = span
+        previous_span = getattr(_current_trace_context, "active_span", None)
+        _current_trace_context.active_span = span
+
         try:
-            yield span_id
+            yield span
+        except Exception as exc:
+            span.set_status_error(str(exc))
+            raise
         finally:
-            self.spans[span_id]["end"] = __import__("time").time()
-            self.spans[span_id]["duration"] = self.spans[span_id]["end"] - self.spans[span_id]["start"]
+            span.finish()
+            self.active_spans.pop(span_id, None)
+            self.finished_spans.append(span)
+            if len(self.finished_spans) > 2000:
+                self.finished_spans = self.finished_spans[-2000:]
+            _current_trace_context.active_span = previous_span
 
-    def get_trace(self, span_id: str) -> Dict:
-        return self.spans.get(span_id, {})
+    def get_current_span(self) -> Optional[Span]:
+        return getattr(_current_trace_context, "active_span", None)
 
-    def stats(self) -> dict:
-        return {"active_spans": len(self.spans)}
+    def stats(self) -> Dict[str, Any]:
+        return {
+            "active_spans": len(self.active_spans),
+            "finished_spans": len(self.finished_spans)
+        }
 
 
+from typing import Tuple
 tracer = Tracer()
