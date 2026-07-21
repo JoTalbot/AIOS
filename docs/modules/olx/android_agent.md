@@ -303,3 +303,13 @@ UI-дампа (захисти: наявність заголовка блока 
 - REST: `/api/v1/platforms`, `/api/v1/profiles*`, будь-який модульний маршрут
   з `?profile=<name>`; невідомий профіль → 400.
 - Масштабування на 10000+ застосунків: docs/PLATFORMS_SCALING.md.
+
+## Scaffold, Fleet, PoolMonitor (2026-07-21)
+
+`aios platforms scaffold --name X --package ua.x.app` генерує скелет нової
+платформи (YAML-дескриптор + модуль зі storage-нащадком OLXStorage +
+smoke-тест). `ensure_device()` (CLI `aios devices ensure --profile
+olx:work`) гарантує профілю пристрій: аренда з пулу, а за нестачі —
+створення AVD, запуск headless-емулятора й реєстрація в пулі.
+`PoolMonitor` (CLI `aios devices monitor`) — демон heartbeats:
+`adb devices` → heartbeat + reap мовчазних у offline.

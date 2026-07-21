@@ -19,25 +19,30 @@ from .descriptor import (
     register_platform,
 )
 from .devices import DevicePool
+from .fleet import PoolMonitor, ensure_device
 from .profile import Profile
 from .resolver import (
     adb_for,
     resolve_profile,
     storage_for,
 )
+from .scaffold import scaffold_platform
 from .store import ProfileStore
 
 __all__ = [
     "DevicePool",
     "PlatformDescriptor",
+    "PoolMonitor",
     "Profile",
     "ProfileStore",
     "adb_for",
+    "ensure_device",
     "get_platform",
     "list_platforms",
     "load_catalog",
     "load_catalog_file",
     "register_platform",
     "resolve_profile",
+    "scaffold_platform",
     "storage_for",
 ]
