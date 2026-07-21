@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [9.0.0-alpha.15] - 2026-07-21
 
 ### Added
 - **Instagram own-posts**: `OwnPostsParser` (счётчики лайков/
