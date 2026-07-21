@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -25,6 +26,9 @@ from typing import Dict, List, Optional, Tuple, Union
 from aios_core.modules.olx.text_utils import parse_price
 
 _MIN_TITLE_LEN = 10
+_DURATION_RE = re.compile(r"^\d{1,2}:\d{2}$")
+_VIDEO_RID_MARKERS = ("reel", "video", "clips")
+_STORY_RID_MARKERS = ("story", "highlight")
 
 
 class CalibrationAdvisor:
@@ -44,10 +48,21 @@ class CalibrationAdvisor:
         # Все текстовые узлы один раз — сводка по ценам и валютам.
         currencies: Counter = Counter()
         prices_seen = 0
+        duration_labels = 0
+        video_rids: Counter = Counter()
+        story_rids: Counter = Counter()
         for node in root.iter("node"):
             text = (node.attrib.get("text") or "").strip()
+            resource_id = (node.attrib.get("resource-id") or "").lower()
+            if resource_id:
+                if any(m in resource_id for m in _VIDEO_RID_MARKERS):
+                    video_rids[resource_id] += 1
+                if any(m in resource_id for m in _STORY_RID_MARKERS):
+                    story_rids[resource_id] += 1
             if not text:
                 continue
+            if _DURATION_RE.match(text):
+                duration_labels += 1
             parsed = parse_price(text)
             if parsed is not None:
                 prices_seen += 1
@@ -106,6 +121,17 @@ class CalibrationAdvisor:
             "prices_seen": prices_seen,
             "currencies": dict(currencies),
             "titles_seen": titles_seen,
+            "content_categories": {
+                "video_markers": [
+                    rid for rid, _ in video_rids.most_common(5)
+                ],
+                "story_markers": [
+                    rid for rid, _ in story_rids.most_common(5)
+                ],
+                # Reels/клипы помечены тайм-кодами (0:32) — их карточки
+                # обычно без цены: отдельный класс контента платформы.
+                "duration_labels": duration_labels,
+            },
             "hint": (
                 "маркеры найдены — запишите в extras.parser_hints"
                 if card_markers
