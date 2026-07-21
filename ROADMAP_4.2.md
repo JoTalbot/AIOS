@@ -27,7 +27,7 @@
 ## Planned Features
 
 - [ ] ML Model Registry
-- [ ] WebSocket real-time updates
+- [x] WebSocket real-time updates
 - [ ] Advanced audit & compliance
 - [ ] Multi-tenant support
 - [ ] Official Helm chart improvements
