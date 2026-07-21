@@ -267,6 +267,7 @@ aios_core/modules/olx/ui_parser.py
 aios_core/modules/olx/watch.py
 aios_core/platforms/__init__.py
 aios_core/platforms/apkfetch.py
+aios_core/platforms/autowatch.py
 aios_core/platforms/bootup.py
 aios_core/platforms/calibrate.py
 aios_core/platforms/catalog.py
@@ -310,6 +311,7 @@ tests/test_apk_converter.py
 tests/test_apkfetch_instagram.py
 tests/test_approval_manager.py
 tests/test_autonomy_v3.py
+tests/test_autowatch_generic.py
 tests/test_backup_manager.py
 tests/test_biological_evolution.py
 tests/test_capability_suggestions.py
