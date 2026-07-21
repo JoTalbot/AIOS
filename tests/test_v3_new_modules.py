@@ -268,8 +268,11 @@ class TestAutonomyManager(unittest.TestCase):
         self.am.grant_autonomy("agent_3", AutonomyLevel.LEVEL_2_SUPERVISED)
         for _ in range(60):
             self.am.record_action("agent_3", success=True)
-        promo = self.am.should_promote("agent_3")
-        self.assertTrue(promo["should_promote"])
+
+        # After auto-adjustment the agent should have been promoted
+        profile = self.am.get_profile("agent_3")
+        self.assertIsNotNone(profile)
+        self.assertGreaterEqual(profile["level"], 3)  # Should be promoted at least to level 3
 
     def test_record_and_demote(self):
         from aios_core.autonomy_manager import AutonomyLevel
@@ -277,8 +280,11 @@ class TestAutonomyManager(unittest.TestCase):
         self.am.grant_autonomy("agent_4", AutonomyLevel.LEVEL_3_MANAGED)
         for i in range(30):
             self.am.record_action("agent_4", success=(i < 10))  # 33% success
-        demo = self.am.should_demote("agent_4")
-        self.assertTrue(demo["should_demote"])
+
+        # After auto-adjustment the agent should have been demoted
+        profile = self.am.get_profile("agent_4")
+        self.assertIsNotNone(profile)
+        self.assertLessEqual(profile["level"], 2)  # Should be demoted
 
     def test_persistence(self):
         from aios_core.autonomy_manager import AutonomyManager, AutonomyLevel
