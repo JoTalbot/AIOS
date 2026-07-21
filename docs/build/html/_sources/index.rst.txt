@@ -1,7 +1,7 @@
 AIOS — Autonomous Intelligence Operating System
 =================================================
 
-Welcome to the official documentation for AIOS (Version 9.0.0-alpha.6).
+Welcome to the official documentation for AIOS (Version 9.0.0-alpha.7).
 
 .. toctree::
    :maxdepth: 2

@@ -262,8 +262,10 @@ aios_core/platforms/__init__.py
 aios_core/platforms/catalog.py
 aios_core/platforms/descriptor.py
 aios_core/platforms/devices.py
+aios_core/platforms/fleet.py
 aios_core/platforms/profile.py
 aios_core/platforms/resolver.py
+aios_core/platforms/scaffold.py
 aios_core/platforms/store.py
 aios_core/test_engine/__init__.py
 aios_core/test_engine/engine.py
@@ -301,6 +303,7 @@ tests/test_constitution_evolver.py
 tests/test_cosmic_swarm_matrix.py
 tests/test_evolution_autonomy_integration.py
 tests/test_federation.py
+tests/test_fleet_scaffold.py
 tests/test_formal_code_verifier.py
 tests/test_global_swarm.py
 tests/test_infinite_constitution.py
