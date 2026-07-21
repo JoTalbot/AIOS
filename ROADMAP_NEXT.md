@@ -1,22 +1,20 @@
-# Актуальный Роадмап AIOS (Пост-версия 4.1.0-alpha)
+# Актуальный Роадмап AIOS (Horizon 5.0)
 
-## Текущий Статус: v4.1.0-alpha (21 июля 2026)
+## Текущий Статус: v5.0.0-alpha (21 июля 2026)
 
-- **Конституция:** Все 67 статей проиндексированы и проверены инструментом `tula` (`tools/complete_constitution_tula.py`).
-- **Безопасность и Этика:** Включены и протестированы все слои `AISafetyFramework`, `AIEthicsFramework`, `SafetyDashboard`.
-- **Когнитивные Модули:** Завершены `TheoryOfMind`, `EmotionalIntelligence`, `MetaCognition`, `CreativityEngine`, `AIScientist`, `AIEngineer`.
-- **Тесты:** 526/526 тестов успешно пройдены.
-- **Публикация:** Изменения синхронизированы с репозиторием `JoTalbot/AIOS`.
+- **Конституция (67/67 статей):** Полная верификация утилитой `tula` (`tools/complete_constitution_tula.py`).
+- **Roadmap 4.2:** Выполнен на 100% (ML Registry, OpenTelemetry W3C Tracing, React SPA Dashboard, PostgreSQL abstraction, Kubernetes HPA).
+- **Horizon 5.0:** Реализован модуль формальной математической верификации кода `FormalCodeVerifier`.
+- **Тесты:** 549/549 тестов успешно пройдены (100% Pass).
+- **GitHub:** Все изменения отправлены в репозиторий `JoTalbot/AIOS`.
 
 ---
 
-## Следующие шаги (Версия 4.2.0-alpha)
+## Следующие шаги (Horizon 5.0)
 
-1. **ML Integration & ONNX Model Registry**
-   - Интеграция локального реестра моделей ML для оценки сложности задач и риска.
-2. **Web UI (React + Vite)**
-   - Создание полноценного SPA фронтенда для управления агентами и мониторинга безопасности.
-3. **OpenTelemetry & Distributed Tracing**
-   - Сквозное логирование трассировки вызовов между агентами и серверами.
-4. **PostgreSQL & Scale Out**
-   - Расширение слоя хранения с поддержкой PostgreSQL для распределенных кластеров.
+1. **Global Swarm Governance & Cross-Node Safety Proofs (Milestone 5.0.2)**
+   - Меж-кластерная федерация агентов с ZK-доказательствами безопасности.
+2. **Quantum Native Computing & Circuit Simulation (Milestone 5.0.3)**
+   - Квантовая оптимизация DAG-планирования.
+
+Детальный план см. в [ROADMAP_5.0.md](./ROADMAP_5.0.md).
