@@ -49,6 +49,41 @@ def _add_olx_parsers(subparsers) -> None:
     drops.add_argument("--query", default=None)
     with_db(drops)
 
+    detail = olx_sub.add_parser("detail", help="Parse an ad detail page dump")
+    detail.add_argument("--xml", required=True, help="UIAutomator XML dump")
+    with_db(detail)
+
+    chats = olx_sub.add_parser("chats", help="List personal chat threads (ADB)")
+    with_db(chats)
+
+    reply = olx_sub.add_parser("reply", help="Queue/send a chat reply")
+    reply.add_argument("--chat-key", required=True)
+    reply.add_argument("--text", required=True)
+    reply.add_argument("--interlocutor", default=None)
+    reply.add_argument("--send-now", action="store_true", help="Send immediately (default: queue)")
+    with_db(reply)
+
+    outbox = olx_sub.add_parser("outbox", help="List pending reply drafts")
+    outbox.add_argument("--status", default=None)
+    with_db(outbox)
+
+    own = olx_sub.add_parser("own", help="Own listings: list / snapshot / stagnant")
+    own.add_argument("--xml", default=None, help="Parse 'My listings' XML dump and record snapshot")
+    own.add_argument("--stagnant", action="store_true", help="Show stagnant listings")
+    own.add_argument("--min-age-days", type=float, default=3.0)
+    own.add_argument("--min-views-per-day", type=float, default=1.0)
+    with_db(own)
+
+    improve = olx_sub.add_parser("improve", help="Improvement suggestion for an own ad")
+    improve.add_argument("--fingerprint", required=True)
+    improve.add_argument("--query", default=None, help="Competitor query for comparison")
+    with_db(improve)
+
+    repost = olx_sub.add_parser("repost", help="Repost plan (dry-run) or execute")
+    repost.add_argument("--fingerprint", required=True)
+    repost.add_argument("--confirm", action="store_true", help="Execute on device (default: dry-run)")
+    with_db(repost)
+
 
 def _run_olx(args) -> bool:
     from aios_core.modules.olx import (
@@ -120,6 +155,101 @@ def _run_olx(args) -> bool:
                 "drops": [change.to_dict() for change in tracker.price_drops(query=args.query)],
                 "gone": [ad.to_dict() for ad in tracker.gone_from_feed(query=args.query)],
             }
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        return True
+
+    if args.olx_command == "detail":
+        from aios_core.modules.olx import AdDetailParser
+        with open(args.xml, encoding="utf-8") as fh:
+            detail = AdDetailParser().parse(fh.read())
+        print(json.dumps(detail.to_dict(), ensure_ascii=False, indent=2))
+        return True
+
+    if args.olx_command == "chats":
+        from aios_core.modules.olx import OLXMessenger
+        with OLXStorage(args.db) as storage:
+            messenger = OLXMessenger(storage=storage)
+            threads = messenger.list_chats()
+            print(json.dumps(
+                [thread.to_dict() for thread in threads],
+                ensure_ascii=False, indent=2,
+            ))
+        return True
+
+    if args.olx_command == "reply":
+        from aios_core.modules.olx import OLXMessenger
+        with OLXStorage(args.db) as storage:
+            messenger = OLXMessenger(storage=storage)
+            result = messenger.send_reply(
+                chat_key=args.chat_key,
+                text=args.text,
+                interlocutor=args.interlocutor,
+                auto_send=args.send_now,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        return True
+
+    if args.olx_command == "outbox":
+        with OLXStorage(args.db) as storage:
+            print(json.dumps(
+                storage.outbox_list(status=args.status),
+                ensure_ascii=False, indent=2,
+            ))
+        return True
+
+    if args.olx_command == "own":
+        from aios_core.modules.olx import OwnAdsParser, OwnAdsTracker
+        with OLXStorage(args.db) as storage:
+            tracker = OwnAdsTracker(storage)
+            if args.xml:
+                with open(args.xml, encoding="utf-8") as fh:
+                    ads = OwnAdsParser().parse(fh.read())
+                result = tracker.record_snapshot(ads)
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            elif args.stagnant:
+                items = tracker.stagnant(
+                    min_age_days=args.min_age_days,
+                    min_views_per_day=args.min_views_per_day,
+                )
+                print(json.dumps(items, ensure_ascii=False, indent=2))
+            else:
+                print(json.dumps(
+                    storage.own_ads(), ensure_ascii=False, indent=2, default=str
+                ))
+        return True
+
+    if args.olx_command == "improve":
+        from aios_core.modules.olx import AdImprover, OwnAd
+        with OLXStorage(args.db) as storage:
+            rows = [row for row in storage.own_ads() if row["fingerprint"] == args.fingerprint]
+            if not rows:
+                print(f"Own ad not found: {args.fingerprint}")
+                return True
+            row = rows[0]
+            own_ad = OwnAd(
+                title=row["title"], price=row["price"], currency=row["currency"],
+                views=row["last_views"] or 0, url=row["url"], ad_id=row["ad_id"],
+                status=row["status"],
+            )
+            competitors = storage.get_ads(query=args.query)
+            print(AdImprover().improve(own_ad, competitors).to_text())
+        return True
+
+    if args.olx_command == "repost":
+        from aios_core.modules.olx import OwnAd, Reposter
+        with OLXStorage(args.db) as storage:
+            rows = [row for row in storage.own_ads() if row["fingerprint"] == args.fingerprint]
+            if not rows:
+                print(f"Own ad not found: {args.fingerprint}")
+                return True
+            row = rows[0]
+            own_ad = OwnAd(
+                title=row["title"], price=row["price"], currency=row["currency"],
+                url=row["url"], ad_id=row["ad_id"], status=row["status"],
+            )
+            result = Reposter().repost(own_ad, confirm=args.confirm)
+            if result.get("status") == "executed":
+                storage.own_ad_set_status(args.fingerprint, "inactive")
             print(json.dumps(result, ensure_ascii=False, indent=2))
         return True
 

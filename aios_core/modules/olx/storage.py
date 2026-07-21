@@ -57,6 +57,43 @@ CREATE TABLE IF NOT EXISTS olx_sightings (
     is_top INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_olx_sightings_fp ON olx_sightings(fingerprint);
+
+CREATE TABLE IF NOT EXISTS olx_outbox (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_key TEXT NOT NULL,
+    interlocutor TEXT,
+    text TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL,
+    sent_at TEXT,
+    result TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_olx_outbox_status ON olx_outbox(status);
+
+CREATE TABLE IF NOT EXISTS own_ads (
+    fingerprint TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    price REAL,
+    currency TEXT,
+    url TEXT,
+    ad_id TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    first_seen_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    last_views INTEGER,
+    last_favorites INTEGER,
+    last_messages INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS own_ad_sightings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fingerprint TEXT NOT NULL,
+    seen_at TEXT NOT NULL,
+    views INTEGER,
+    favorites INTEGER,
+    messages INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_own_ad_sightings_fp ON own_ad_sightings(fingerprint);
 """
 
 _V1_MIGRATION_COLUMNS = {
@@ -302,6 +339,146 @@ class OLXStorage:
                 "SELECT DISTINCT query FROM olx_ads WHERE query IS NOT NULL ORDER BY query"
             ).fetchall()
         return [row[0] for row in rows]
+
+    # ---- Outbox (guarded messenger replies) ----
+
+    def enqueue_outbox(
+        self, chat_key: str, text: str, interlocutor: Optional[str] = None
+    ) -> int:
+        """Queue a reply draft; returns the outbox row id."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                """
+                INSERT INTO olx_outbox (chat_key, interlocutor, text, status, created_at)
+                VALUES (?, ?, ?, 'pending', ?)
+                """,
+                (chat_key, interlocutor, text, now),
+            )
+            return cursor.lastrowid
+
+    def outbox_pending(self) -> List[Dict[str, object]]:
+        """All drafts waiting for approval/sending, oldest first."""
+        return self.outbox_list(status="pending")
+
+    def outbox_list(self, status: Optional[str] = None) -> List[Dict[str, object]]:
+        sql = "SELECT * FROM olx_outbox"
+        params: list = []
+        if status is not None:
+            sql += " WHERE status = ?"
+            params.append(status)
+        sql += " ORDER BY id"
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [dict(row) for row in rows]
+
+    def outbox_mark(
+        self, outbox_id: int, status: str, result: Optional[str] = None
+    ) -> bool:
+        """Transition an outbox row (pending → sent/failed/cancelled)."""
+        sent_at = (
+            datetime.now(timezone.utc).isoformat() if status == "sent" else None
+        )
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                "UPDATE olx_outbox SET status = ?, sent_at = COALESCE(?, sent_at), "
+                "result = ? WHERE id = ?",
+                (status, sent_at, result, outbox_id),
+            )
+            return cursor.rowcount > 0
+
+    # ---- Own ads (my listings) ----
+
+    def upsert_own_ad(self, ad, seen_at: Optional[str] = None) -> bool:
+        """Insert or refresh one own-ad row and log a stats sighting.
+
+        ``ad`` is an OwnAd-like object with title/price/currency/url/ad_id/
+        status/views/*/fingerprint. Returns True when the ad is new.
+        """
+        now = seen_at or datetime.now(timezone.utc).isoformat()
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                """
+                INSERT OR IGNORE INTO own_ads (
+                    fingerprint, title, price, currency, url, ad_id, status,
+                    first_seen_at, last_seen_at, last_views, last_favorites, last_messages
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    ad.fingerprint,
+                    ad.title,
+                    ad.price,
+                    ad.currency,
+                    ad.url,
+                    ad.ad_id,
+                    getattr(ad, "status", "active") or "active",
+                    now,
+                    now,
+                    ad.views,
+                    ad.favorites,
+                    ad.messages,
+                ),
+            )
+            if not cursor.rowcount:
+                self._conn.execute(
+                    """
+                    UPDATE own_ads SET
+                        last_seen_at = ?, last_views = ?, last_favorites = ?,
+                        last_messages = ?, price = COALESCE(?, price),
+                        status = ?, title = COALESCE(NULLIF(?, ''), title)
+                    WHERE fingerprint = ?
+                    """,
+                    (
+                        now,
+                        ad.views,
+                        ad.favorites,
+                        ad.messages,
+                        ad.price,
+                        getattr(ad, "status", "active") or "active",
+                        ad.title,
+                        ad.fingerprint,
+                    ),
+                )
+            self._conn.execute(
+                """
+                INSERT INTO own_ad_sightings (fingerprint, seen_at, views, favorites, messages)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (ad.fingerprint, now, ad.views, ad.favorites, ad.messages),
+            )
+        return bool(cursor.rowcount)
+
+    def own_ad_set_status(self, fingerprint: str, status: str) -> bool:
+        """Force-set an own-ad status (e.g. 'inactive' after a repost)."""
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                "UPDATE own_ads SET status = ? WHERE fingerprint = ?",
+                (status, fingerprint),
+            )
+            return cursor.rowcount > 0
+
+    def own_ads(self, status: Optional[str] = None) -> List[Dict[str, object]]:
+        sql = "SELECT * FROM own_ads"
+        params: list = []
+        if status is not None:
+            sql += " WHERE status = ?"
+            params.append(status)
+        sql += " ORDER BY last_seen_at DESC"
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [dict(row) for row in rows]
+
+    def own_ad_history(self, fingerprint: str) -> List[Dict[str, object]]:
+        """Chronological stats log for one own ad (earliest first)."""
+        with self._lock:
+            rows = self._conn.execute(
+                """
+                SELECT seen_at, views, favorites, messages FROM own_ad_sightings
+                WHERE fingerprint = ? ORDER BY seen_at, id
+                """,
+                (fingerprint,),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     # ---- Export ----
 
