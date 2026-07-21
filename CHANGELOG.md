@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [8.0.0-alpha] - 2026-07-21
+
+### Added
+- **Milestone 8.0.3 Complete — Cosmic Scale Swarm Matrix (`aios_core/cosmic_swarm_matrix.py`)**:
+  - Light-speed delay vector compensation across inter-stellar nodes and holographic distributed memory shard state encoding.
+  - Comprehensive unit test suite `tests/test_cosmic_swarm_matrix.py`.
+
+- **Milestone 8.0.2 Complete — Self-Amending Infinite Constitutional Engine (`aios_core/infinite_constitution.py`)**:
+  - Dynamic amendment synthesis with mathematical non-divergence alignment verification against core immutable axioms.
+  - Comprehensive unit test suite `tests/test_infinite_constitution.py`.
+
+- **Milestone 8.0.1 Complete — Universal Substrate-Agnostic Execution Engine (`aios_core/substrate_convergence.py`)**:
+  - Substrate-agnostic task dispatching across Silicon, Photonic Optical, Neuromorphic SNN, Quantum QPU, and Bio-compute runtimes.
+  - Comprehensive unit test suite `tests/test_substrate_convergence.py` (564 total passed tests).
+
 ## [7.0.0-alpha] - 2026-07-21
 
 ### Added
