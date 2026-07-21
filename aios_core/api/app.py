@@ -68,7 +68,7 @@ import os
 import sys
 
 from starlette.applications import Starlette
-from starlette.routing import Route
+from starlette.routing import Route, WebSocketRoute
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
@@ -194,7 +194,7 @@ class AIOSAPI:
             Route("/rpc", self._rpc, methods=["POST"]),
 
             # WebSocket (real-time)
-            Route("/ws", self._websocket_endpoint),
+            WebSocketRoute("/ws", self._websocket_endpoint),
         ]
 
         app = Starlette(
