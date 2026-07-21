@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **OLX Collection Scheduler (`aios_core/modules/olx/scheduler.py`)**:
+  - Thread-based periodic collection for a query list with run history
+    (parsed/inserted/total counters per run), idempotent start/stop.
+- **OLX REST endpoints (`/api/v1/modules/olx/*`)**:
+  - `GET /ads` — stored ads with query filter and bounded limit.
+  - `GET /stats` — competitor market statistics per query.
+  - `POST /recommendations` — listing advice (price, verdict, keywords, TOP).
+  - `POST /collect` — one-off ADB collection run.
+  - `POST/DELETE /schedule` — start/stop periodic background collection
+    (minimum interval guard).
+  - Suites `tests/test_olx_api.py` and scheduler tests in
+    `tests/test_olx_agent.py`.
+
+### Changed
+- `OLXStorage` is now thread-safe (`check_same_thread=False` + write lock) so
+  it can be shared between the REST API and the scheduler thread.
+- `AdCard.fingerprint` now includes the search query: the same ad found under
+  different queries is tracked once per query, keeping per-query market
+  reports consistent.
+
 ## [9.0.0-alpha] - 2026-07-21
 
 ### Added

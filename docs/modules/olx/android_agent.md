@@ -143,3 +143,34 @@ print(advice.to_text())
 ```
 
 Тесты: `tests/test_olx_agent.py`.
+
+## Планировщик и REST API (2026-07-21)
+
+### Периодический сбор — `CollectionScheduler`
+
+```python
+from aios_core.modules.olx import CollectionScheduler, OLXStorage
+
+with OLXStorage("olx_ads.sqlite") as storage:
+    scheduler = CollectionScheduler(storage=storage, interval_s=3600)
+    scheduler.start(["лобове скло", "скло бокове"], max_cards=100)
+    ...
+    scheduler.stop()
+    print(scheduler.history)  # parsed/inserted/total по каждому запуску
+```
+
+Хранилище `OLXStorage` потокобезопасно: одно подключение обслуживает и
+фоновый планировщик, и REST API.
+
+### REST-эндпоинты
+
+| Метод | Путь | Назначение |
+|---|---|---|
+| GET | `/api/v1/modules/olx/ads` | Сохранённые объявления (фильтр `query`, `limit`) |
+| GET | `/api/v1/modules/olx/stats` | Статистика рынка по запросу |
+| POST | `/api/v1/modules/olx/recommendations` | Рекомендации для объявления |
+| POST | `/api/v1/modules/olx/collect` | Разовый сбор через ADB |
+| POST | `/api/v1/modules/olx/schedule` | Запуск периодического сбора (`interval_s >= 10`) |
+| DELETE | `/api/v1/modules/olx/schedule` | Остановка периодического сбора |
+
+Тесты: `tests/test_olx_api.py`.

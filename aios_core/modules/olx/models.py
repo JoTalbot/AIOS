@@ -39,12 +39,18 @@ class AdCard:
 
     @property
     def fingerprint(self) -> str:
-        """Stable deduplication hash derived from title/price/city."""
+        """Stable deduplication hash derived from title/price/city/query.
+
+        The same physical ad found under different search queries is stored
+        once per query so per-query market reports stay consistent; within a
+        single query feed re-collection never duplicates rows.
+        """
         base = "|".join(
             [
                 (self.title or "").strip().lower(),
                 f"{self.price:.2f}" if self.price is not None else "",
                 (self.city or "").strip().lower(),
+                (self.query or "").strip().lower(),
             ]
         )
         return hashlib.sha256(base.encode("utf-8")).hexdigest()[:16]

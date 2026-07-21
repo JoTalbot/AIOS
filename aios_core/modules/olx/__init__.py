@@ -29,6 +29,7 @@ from .analytics import (
 from .card_parser import CardParser
 from .collector import OLXCollector
 from .models import AdCard
+from .scheduler import CollectionScheduler
 from .storage import OLXStorage
 from .ui_parser import UIParser
 
@@ -36,6 +37,7 @@ __all__ = [
     "ADBController",
     "AdCard",
     "CardParser",
+    "CollectionScheduler",
     "CompetitorAnalyzer",
     "CompetitorReport",
     "OLXCollector",
