@@ -22,6 +22,7 @@ from .cards import InstagramCollector
 from .detail import InstagramDetailParser
 from .login import InstagramLoginDriver, login_screen_detected
 from .messenger import InstagramMessenger
+from .own_posts import OwnPost, OwnPostsParser, PostComposer
 from .storage import InstagramStorage
 
 __all__ = [
@@ -31,5 +32,8 @@ __all__ = [
     "InstagramLoginDriver",
     "InstagramMessenger",
     "InstagramStorage",
+    "OwnPost",
+    "OwnPostsParser",
+    "PostComposer",
     "login_screen_detected",
 ]

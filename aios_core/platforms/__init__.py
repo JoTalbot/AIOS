@@ -21,6 +21,8 @@ from .descriptor import (
     register_platform,
 )
 from .devices import DevicePool
+from .fleetsched import FleetScheduler
+from .videocards import HintVideoParser, VideoCard, video_parser_for
 from .calibrate import (
     CalibrationAdvisor,
     DetailCalibrationAdvisor,
@@ -64,10 +66,13 @@ from .store import ProfileStore
 __all__ = [
     "DevicePool",
     "DetailCalibrationAdvisor",
+    "FleetScheduler",
     "HintDetailParser",
     "HintSender",
+    "HintVideoParser",
     "PlatformDescriptor",
     "PointDrive",
+    "VideoCard",
     "PoolMonitor",
     "Profile",
     "ProfileStore",
@@ -104,6 +109,7 @@ __all__ = [
     "scaffold_platform",
     "secret",
     "storage_for",
+    "video_parser_for",
     "write_hints_to_descriptor",
     "write_parser",
 ]
