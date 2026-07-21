@@ -798,6 +798,52 @@ def _run_instagram(args) -> bool:
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return True
 
+        if cmd == "own":
+            from aios_core.modules.instagram import (
+                InstagramStorage,
+                OwnPostsParser,
+            )
+            from aios_core.modules.olx.adb import ADBController
+            from aios_core.modules.olx.own_ads import OwnAdsTracker
+
+            if args.dump:
+                xml = Path(args.dump).read_text(encoding="utf-8")
+            else:
+                adb = ADBController(package="com.instagram.android",
+                                    serial=args.serial)
+                target = "data/instagram_own.xml"
+                pulled = adb.dump_ui(target)
+                if not Path(target).exists():
+                    raise ValueError(
+                        "dump_ui failed (no device?) — pass --dump "
+                        f"({(pulled.get('stderr') or '')[:120]})"
+                    )
+                xml = Path(target).read_text(encoding="utf-8")
+            markers = tuple(args.marker) or None
+            posts = OwnPostsParser(markers=markers).parse(xml)
+            storage = InstagramStorage(args.db)
+            try:
+                report = OwnAdsTracker(storage).record_snapshot(
+                    [post.to_own_ad() for post in posts],
+                )
+            finally:
+                storage.close()
+            report["posts"] = [post.to_dict() for post in posts]
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return True
+
+        if cmd == "post":
+            from aios_core.modules.instagram import PostComposer
+            from aios_core.modules.olx.adb import ADBController
+
+            adb = ADBController(package="com.instagram.android",
+                                serial=args.serial)
+            result = PostComposer(adb=adb).publish(
+                args.image, args.text, confirm=args.confirm,
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return True
+
         if cmd == "login-drive":
             from aios_core.modules.instagram import (
                 InstagramLoginDriver,
@@ -995,6 +1041,35 @@ def _run_devices(args) -> bool:
                 _time.sleep(1)
         except KeyboardInterrupt:
             monitor.close()
+        return True
+
+    if cmd == "fleet-run":
+        from aios_core.modules.olx.notifier import WebhookNotifier
+        from aios_core.platforms import (
+            DevicePool,
+            FleetScheduler,
+            ProfileStore,
+        )
+
+        store = ProfileStore.default()
+        jobs = [
+            {
+                "platform": profile.platform,
+                "profile": profile.name,
+                "every_s": args.every_s,
+                "queries": args.query or None,
+            }
+            for profile in store.list()
+        ]
+        # with-блок пула выше уже закрылся — открываем свой (тот же env):
+        with DevicePool() as fleet_pool:
+            scheduler = FleetScheduler(
+                fleet_pool, notifier=WebhookNotifier(url=args.webhook),
+            )
+            print(json.dumps(
+                scheduler.run_due(jobs), ensure_ascii=False, indent=2,
+                default=str,
+            ))
         return True
 
     return False
@@ -1290,6 +1365,23 @@ def main(argv=None):
     ig_drv.add_argument("--serial", default=None)
     ig_drv.add_argument("--directory", default="platforms")
 
+    ig_own = ig_sub.add_parser(
+        "own", help="Own posts snapshot (dump or live profile grid)")
+    ig_own.add_argument("--db", default="data/instagram.sqlite")
+    ig_own.add_argument("--dump", default=None,
+                        help="Profile grid UI dump (default: live device)")
+    ig_own.add_argument("--serial", default=None)
+    ig_own.add_argument("--marker", action="append", default=[],
+                        help="Extra grid-cell resource-id markers")
+
+    ig_post = ig_sub.add_parser(
+        "post", help="Guarded publish (DRY-RUN default, --confirm executes)")
+    ig_post.add_argument("--image", required=True, help="Local image path")
+    ig_post.add_argument("--text", required=True, help="Caption")
+    ig_post.add_argument("--serial", default=None)
+    ig_post.add_argument("--confirm", action="store_true",
+                         help="Actually execute the publish flow")
+
     # Platform profiles (accounts)
     profiles_parser = subparsers.add_parser(
         "profiles", help="Manage platform profiles (accounts)"
@@ -1396,6 +1488,15 @@ def main(argv=None):
     d_mon = dev_sub.add_parser("monitor", help="PoolMonitor: adb heartbeats")
     d_mon.add_argument("--interval", type=float, default=30.0)
     d_mon.add_argument("--once", action="store_true", help="single cycle (cron)")
+
+    d_fleet = dev_sub.add_parser(
+        "fleet-run", help="FleetScheduler: due autowatch jobs on leased devices"
+    )
+    d_fleet.add_argument("--every-s", type=float, default=900.0)
+    d_fleet.add_argument("--query", action="append", default=[],
+                         help="Collect queries for autowatch jobs (repeatable)")
+    d_fleet.add_argument("--webhook", default=None,
+                         help="Webhook for marker-drift alerts")
     d_mon.add_argument("--reap-after-s", type=float, default=900.0)
 
     d_lim = dev_sub.add_parser("limits", help="Show/set pool quotas")
