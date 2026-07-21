@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **ApkFetch (`platforms/apkfetch.py`)**: автозагрузка APK через apkeep
+  (APKPure/Google Play/F-Droid): `fetch_apk`/`resolve_apk` с кешем
+  `apks/`; `bootup --apk <package> --fetch` скачивает APK сам;
+  CLI `aios platforms fetch-apk`.
+- **Secrets (`platforms/secrets.py`)**: учётные данные платформ через
+  `AIOS_SECRET__<PLATFORM>[__<PROFILE>]__<FIELD>` +
+  `data/secrets.env` loader; значения никогда в git/БД/логах;
+  `.gitignore` расширен (`*.env`, `secrets.env`, `apks/`).
+- **DetailCalibrationAdvisor**: маркеры детального экрана
+  (цена/продавец/CTA/описание) и мессенджера (ввод/отправка/пузыри),
+  `merge_hints` в секции `detail`/`messenger` подсказок; CLI calibrate
+  `--detail`/`--messages`.
+- **Marker drift (`platforms/regression.py`)**: `diff_markers` +
+  `check_platform_markers` (ok/drift/no-baseline) — защита от
+  обновлений верстки приложений; CLI `platforms marker-check`.
+- **Bootup**: `--fetch`/`--apks-dir`/`--serial`/`--lease` — устройство
+  для live-драйва из DevicePool (аренда `<platform>:calibration` с
+  авто-release), serial-проброс в драйв; толерантность stub-APK при
+  инъецированном aapt-runner.
+- **Instagram (`com.instagram.android`)**: платформа заscaffoldена
+  (каталог + модуль + хранилище), `InstagramLoginDriver` — прохождение
+  стены входа через env-секреты (детекция логин-экрана, ввод без
+  координат, честная ошибка при неуспехе); онбординг
+  `docs/modules/instagram/ONBOARDING.md`.
+
 ## [9.0.0-alpha.11] - 2026-07-21
 
 ### Added

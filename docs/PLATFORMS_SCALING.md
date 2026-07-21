@@ -306,17 +306,91 @@ REST-эквивалент калибровки: `POST /api/v1/platforms/{platfor
 возвращает `parser_preview` (карточки + примеры заголовков);
 персистентность в YAML — через CLI (`calibrate --write`).
 
+## ApkFetch: сама скачивает APK
+
+`aios_core/platforms/apkfetch.py` — обёртка над
+[`apkeep`](https://github.com/EFForg/apkeep) (APKPure/Google Play/F-Droid
+без аккаунта; `cargo install apkeep`):
+
+- `fetch_apk(package, out_dir="apks", source="apkpure")` → путь к
+  скачанному APK; честные ValueError, runner инъецируется;
+- `resolve_apk(target, fetch=False)` — вход bootup: существующий `.apk`
+  | кеш `apks/<package>*.apk` | скачивание по имени пакета при
+  `--fetch`.
+
+CLI: `aios platforms fetch-apk com.instagram.android`, в пайплайне —
+`aios platforms bootup --apk com.instagram.android --fetch`.
+
+## Secrets: учётные данные только через env
+
+`aios_core/platforms/secrets.py`: логины/пароли аккаунтов (Instagram и
+т.п.) никогда не попадают в git/БД/логи:
+
+- `AIOS_SECRET__<PLATFORM>__<FIELD>` и профильные
+  `AIOS_SECRET__<PLATFORM>__<PROFILE>__<FIELD>` (вторые приоритетнее);
+- `secret()/required_secret()` — ошибки называют переменную, не значение;
+- `load_secrets_file()` — `data/secrets.env` (в `.gitignore`), по
+  умолчанию не затирает существующие переменные.
+
+## Калибровка детального экрана и мессенджера
+
+`DetailCalibrationAdvisor` (там же, `calibrate.py`) закрывает оставшиеся
+экраны паттерна OLX `detail.py`/`messenger.py`:
+
+- `analyze_detail(dump)` → price/seller-маркеры (resource-id содержит
+  seller/user/avatar/author/owner), CTA «написати/message/chat/call»,
+  узлы длинного описания;
+- `analyze_messenger(dump)` → классы поля ввода (EditText), кнопки
+  отправки (send/надіслати), пузыри сообщений (rid с повторениями);
+- `merge_hints(card, detail, messenger)` — секции `detail`/`messenger`
+  в общем `extras.parser_hints`.
+
+CLI: `aios platforms calibrate --platform X --dump feed.xml
+[--detail post.xml] [--messages dm.xml] --write`.
+
+## Marker drift: регрессия верстки
+
+`aios_core/platforms/regression.py`: приложения обновляются, resource-id
+меняются — `check_platform_markers(platform, fresh_dump)` сравнивает
+baseline из дескриптора со свежей калибровкой и возвращает
+`ok` / `drift` (baseline-маркеры потеряны → `calibrate --write` +
+`codegen --force`) / `no-baseline`. `diff_markers(old, new)` —
+removed/added/kept. CLI: `aios platforms marker-check --platform X
+--dump feed.xml`.
+
+## Bootup: устройства из пула и скачивание APK
+
+`bootup_platform(...)` расширен:
+
+- **APK**: `fetch=True, apks_dir, apk_runner` — шаг `apk` отчёта
+  (`resolved`/`fetched`/`stub` при инъецированном aapt-runner);
+- **устройство для live-драйва**: `serial=` напрямую, либо `pool=` —
+  аренда под ключ `<platform>:calibration` (DevicePool), авто-release
+  после драйва; свободных нет → `no free device in pool`;
+- драйв получает `serial` (если принимает): прямая привязка к
+  эмулятору профиля.
+
+CLI: `--fetch`, `--apks-dir`, `--serial`, `--lease` (пул из
+`AIOS_DEVICES_DB`).
+
+## Instagram: первый онбординг второй платформы
+
+`platforms/instagram.yaml` + `aios_core/modules/instagram/` —
+боевой прогон всей цепочки не на OLX. Особенность: стена логина →
+`InstagramLoginDriver` (login-wall детекция, ввод env-секретов
+без координат, честная ошибка при непрохождении). Пошагово:
+`docs/modules/instagram/ONBOARDING.md`.
+
 ## Дальше (дорожная карта к 10000+)
 
 Архитектурный цикл подключения платформы собран полностью: APK →
 scaffold → калибровка → parser_hints → codegen → verify. Возможные
 шаги дальше:
 
-1. **Калибровка детального экрана и мессенджера**: расширить
-   CalibrationAdvisor паттернами OLX `detail.py`/`messenger.py` (поля
-   описания/продавца, кнопка «Написати», форма ввода).
-2. **bootup + DevicePool**: автолизинг эмулятора из пула для live-драйва
-   (`ensure_device` + точечный драйв под конкретный flow поиска).
-3. **CI-регрессия маркеров**: периодический re-calibrate на свежих
-   сборках приложений, алёрт при смене resource-id (защита от
-   обновлений верстки).
+1. **Codegen detail/messenger-модулей из секций hints**: как CardParser,
+   но для `detail.py`/`messenger.py` платформы (шаблоны = OLX-модули).
+2. **Point-драйвы поиска по hints**: калибровщик не только анализирует
+   стартовую ленту, но и сам находит строку поиска/вводит query.
+3. **Расписание marker-check в cron-plan**: авто-re-calibrate +
+   алёрт drift по всем платформам из каталога (`devices monitor`
+   туда же).
