@@ -39,6 +39,7 @@ from .federation_manager import FederationManager
 from .ml_planner_scorer import MLPlannerScorer
 from .multi_agent_orchestrator import MultiAgentOrchestrator
 from .constitution_evolver import ConstitutionEvolver
+from .marketplace import CapabilityMarketplace
 
 
 class TaskStatus(str, Enum):
@@ -154,6 +155,7 @@ class Orchestrator:
         self.ml_scorer = MLPlannerScorer(db=self.db)
         self.multi_agent = MultiAgentOrchestrator(db=self.db, base_orchestrator=self)
         self.constitution_evolver = ConstitutionEvolver(db=self.db)
+        self.marketplace = CapabilityMarketplace(db=self.db)
 
         # Task tracking
         self._tasks: dict[str, Task] = {}
@@ -436,6 +438,7 @@ class Orchestrator:
                 "ml_scorer": self.ml_scorer.stats(),
                 "multi_agent": self.multi_agent.stats(),
                 "constitution_evolver": self.constitution_evolver.stats(),
+                "marketplace": self.marketplace.stats(),
             },
             "database": self.db.stats(),
         }
