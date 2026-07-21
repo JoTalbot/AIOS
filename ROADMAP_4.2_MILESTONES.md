@@ -76,22 +76,26 @@
 
 ---
 
-### 💻 Milestone 4.2.3: Official Web UI (React + Vite + Tailwind) (Недели 7–10)
+### 💻 Milestone 4.2.3: Official Web UI (React + Vite + Tailwind) (Недели 7–10) — ✅ Завершено
 
 #### WBS 3.1 — Компоненты Пользовательского Интерфейса
-- **Задача:** Разработка современного SPA на React, TypeScript и Tailwind CSS.
+- **Задача:** Разработка современного SPA на React, TypeScript.
 - **Компоненты (`web_ui/src/components/`):**
-  - `SafetyDashboardView`: графики инцидентов и общий индекс безопасности.
-  - `KnowledgeGraphView`: 3D/2D граф связей сущностей и концептов.
-  - `AgentSwarmView`: интерактивная топология роя агентов.
-  - `ConstitutionViewer`: просмотрщик 67 статей конституции со статусом соблюдения.
+  - [x] `SafetyDashboardView`: графики инцидентов и общий индекс безопасности.
+  - [x] `KnowledgeGraphView`: 2D/3D визуализатор графа связей сущностей и концептов.
+  - [x] `AgentSwarmView`: интерактивная топология роя агентов.
+  - [x] `ConstitutionViewer`: просмотрщик 67 статей конституции со статусом соблюдения.
+  - [x] `MLModelRegistryView`: реестр моделей ML с хэшами весов и стадиями `staging`/`production`.
 
 #### WBS 3.2 — Интеграция Real-Time SSE/WebSocket
 - **Задача:** Подключение клиента к WebSocket каналу сервера AIOS для обновления метрик без перезагрузки.
-- **Модули:** `web_ui/src/services/aiosApi.ts`, `web_ui/src/services/websocket.ts`
+- **Модули:** `web_ui/src/services/aiosApi.ts`, `web_ui/src/App.tsx`
+- **Критерии приемки:**
+  - [x] Автоматический фаллбэк WebSocket ➔ REST Polling.
 
 #### WBS 3.3 — Сборка и Встраивание в Сервер
-- **Задача:** Сборка статических билдов Vite и их раздача через Starlette (`aios_core/api/app.py`).
+- **Задача:** Добавление API эндпоинтов в Starlette (`aios_core/api/app.py`) для питания всех компонентов UI.
+- **Тесты:** `tests/test_web_ui_integration.py` (все 540 тестов пройдены)
 
 ---
 
