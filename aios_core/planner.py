@@ -753,6 +753,95 @@ class Planner:
             "storage": "sqlite" if self.db else "none",
         }
 
+    # ------------------------------------------------------------------
+    # v3.0 Advanced Planner Features
+    # ------------------------------------------------------------------
+
+    def score_plan(self, plan: Plan) -> dict:
+        """Calculate quality score for a plan (0.0 - 1.0).
+
+        Scoring factors:
+        - Parallelization (more layers = lower parallelism score)
+        - Dependency complexity
+        - Step diversity
+        """
+        if not plan.steps:
+            return {"score": 0.0, "reason": "empty plan"}
+
+        layers = self.get_execution_layers(plan)
+        parallelism = len(layers) / max(1, len(plan.steps))  # lower is better parallelism
+
+        # Dependency density
+        dep_count = sum(len(s.dependencies) for s in plan.steps)
+        dep_density = dep_count / max(1, len(plan.steps))
+
+        # Step type diversity
+        types = {s.step_type for s in plan.steps}
+        diversity = len(types) / len(VALID_STEP_TYPES)
+
+        # Weighted score
+        score = round(
+            (1 - parallelism) * 0.4 +
+            (1 - min(dep_density, 1.0)) * 0.35 +
+            diversity * 0.25,
+            3
+        )
+
+        return {
+            "score": max(0.0, min(1.0, score)),
+            "parallelism": round(parallelism, 3),
+            "dependency_density": round(dep_density, 3),
+            "step_diversity": round(diversity, 3),
+            "layers": len(layers),
+        }
+
+    def generate_multi_agent_plan(
+        self,
+        goal: str,
+        agents: list[str],
+        max_steps_per_agent: int = 4
+    ) -> Plan:
+        """Generate a simple multi-agent plan skeleton.
+
+        Each agent gets a dedicated 'plan' step + coordination.
+        """
+        plan = self.create_plan(
+            name=f"multi_agent_{goal[:20]}",
+            description=f"Multi-agent execution plan for: {goal}",
+            goal=goal,
+        )
+
+        # Coordination step
+        coord = self.add_step(
+            plan,
+            "plan",
+            params={"goal": goal, "mode": "coordination"},
+            name="coordination"
+        )
+
+        agent_steps = []
+        for agent in agents:
+            step = self.add_step(
+                plan,
+                "plan",
+                params={"agent_id": agent, "goal": goal},
+                name=f"agent_{agent}",
+                dependencies=[coord.id],
+            )
+            agent_steps.append(step)
+
+        # Final aggregation step
+        self.add_step(
+            plan,
+            "reason",
+            params={"goal": "aggregate_results"},
+            name="aggregation",
+            dependencies=[s.id for s in agent_steps],
+        )
+
+        plan.status = PlanStatus.PLANNED
+        return plan
+
     # ==================================================================
     # Internal helpers
     # ==================================================================
