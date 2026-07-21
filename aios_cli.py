@@ -625,6 +625,7 @@ def _run_platforms(args) -> bool:
         hints = CalibrationAdvisor().analyze(Path(args.dump).read_text(encoding="utf-8"))
         detail_hints = None
         messenger_hints = None
+        navigation_hints = None
         if args.detail:
             detail_hints = DetailCalibrationAdvisor().analyze_detail(
                 Path(args.detail).read_text(encoding="utf-8")
@@ -633,7 +634,14 @@ def _run_platforms(args) -> bool:
             messenger_hints = DetailCalibrationAdvisor().analyze_messenger(
                 Path(args.messages).read_text(encoding="utf-8")
             )
-        hints = merge_hints(hints, detail_hints, messenger_hints)
+        if getattr(args, "navigation", None):
+            navigation_hints = DetailCalibrationAdvisor().analyze_navigation(
+                Path(args.navigation).read_text(encoding="utf-8")
+            )
+        hints = merge_hints(
+            hints, detail_hints, messenger_hints,
+            navigation=navigation_hints,
+        )
         output = {"platform": args.platform, "hints": hints}
         if args.write:
             try:
@@ -835,6 +843,57 @@ def _run_instagram(args) -> bool:
                 ]
             finally:
                 storage.close()
+            if args.own:
+                from aios_core.modules.instagram import OwnPostsParser
+                from aios_core.modules.olx.own_ads import OwnAdsTracker
+
+                if args.own_dump:
+                    own_xml = Path(args.own_dump).read_text(encoding="utf-8")
+                else:
+                    target = "data/instagram_own.xml"
+                    adb.dump_ui(target)
+                    if not Path(target).exists():
+                        raise RuntimeError(
+                            "own-posts: dump_ui не вернул экран профиля — "
+                            "передайте --own-dump grid.xml"
+                        )
+                    own_xml = Path(target).read_text(encoding="utf-8")
+                posts = OwnPostsParser(markers=None).parse(own_xml)
+                storage = InstagramStorage(args.db)
+                try:
+                    own_report = OwnAdsTracker(storage).record_snapshot(
+                        [post.to_own_ad() for post in posts],
+                    )
+                finally:
+                    storage.close()
+                own_notifier = (
+                    WebhookNotifier(url=args.webhook)
+                    if args.webhook else None
+                )
+                deltas = own_report.get("deltas") or {}
+                negative = {
+                    fp: d for fp, d in deltas.items()
+                    if (d.get("views_delta") or 0) < 0
+                    or (d.get("favorites_delta") or 0) < 0
+                }
+                if own_notifier is not None and (
+                    own_report.get("new") or negative
+                ):
+                    own_notifier.send("own-posts", {
+                        "platform": "instagram",
+                        "recorded": own_report.get("recorded", 0),
+                        "new": own_report.get("new", 0),
+                        "negative_counters": [
+                            d.get("title") for d in negative.values()
+                        ],
+                    })
+                steps["own"] = {
+                    **own_report,
+                    "posts": [post.to_dict() for post in posts],
+                    "notified": bool(
+                        own_notifier and (own_report.get("new") or negative)
+                    ),
+                }
             if args.post_image:
                 steps["post"] = PostComposer(adb=adb).publish(
                     args.post_image, args.post_text, confirm=args.confirm,
@@ -1237,6 +1296,52 @@ def _run_shards(args) -> bool:
             monitor.close()
         return True
 
+    if cmd == "jobs":
+        from aios_core.platforms.shardexec import ShardJobs
+        with ShardJobs() as jobs:
+            print(json.dumps(
+                jobs.list(status=getattr(args, "status", None)),
+                ensure_ascii=False, indent=2,
+            ))
+        return True
+
+    if cmd == "enqueue":
+        from aios_core.platforms.shardexec import ShardJobs
+        payload = json.loads(args.payload) if args.payload else None
+        with ShardJobs() as jobs:
+            job_id = jobs.enqueue(args.profile, args.kind, payload=payload)
+        print(json.dumps({
+            "enqueued": job_id, "profile_key": args.profile,
+            "kind": args.kind,
+            "note": "нода-исполнитель заберёт джобу через "
+                    "`aios shards work` (pull-модель)",
+        }, ensure_ascii=False))
+        return True
+
+    if cmd == "work":
+        from aios_core.platforms.shardexec import ShardJobs, ShardJobWorker
+        with ShardJobs() as jobs:
+            worker = ShardJobWorker(host=args.host, jobs=jobs)
+            if args.once:
+                result = worker.work_once()
+                print(json.dumps(
+                    result if result is not None
+                    else {"status": "idle", "host": args.host,
+                          "note": "нет pending-джоб для этой ноды"},
+                    ensure_ascii=False, indent=2,
+                ))
+                return True
+            import time as _time
+            print(json.dumps(
+                {"working": True, "host": args.host,
+                 "poll_s": args.interval}))
+            try:
+                while True:
+                    worker.work_once()
+                    _time.sleep(args.interval)
+            except KeyboardInterrupt:
+                return True
+
     return False
 
 
@@ -1399,6 +1504,8 @@ def main(argv=None):
                        help="Detail-screen UI dump (seller/CTA/description)")
     p_cal.add_argument("--messages", default=None,
                        help="Messenger-screen UI dump (input/send/bubbles)")
+    p_cal.add_argument("--navigation", default=None,
+                       help="Home-screen UI dump (tab-bar → reels_tab hints)")
     p_cal.add_argument("--write", action="store_true",
                        help="Write hints into platforms/<name>.yaml extras")
     p_cal.add_argument("--root", default=".", help="Project root")
@@ -1565,6 +1672,10 @@ def main(argv=None):
                          help="POST video-new events to this webhook URL")
     ig_auto.add_argument("--post-image", default=None,
                          help="Optional image for the guarded post step")
+    ig_auto.add_argument("--own", action="store_true",
+                         help="Own-posts snapshot step (OwnAdsTracker)")
+    ig_auto.add_argument("--own-dump", default=None,
+                         help="Profile grid UI dump (default: live device)")
     ig_auto.add_argument("--post-text", default="", help="Caption")
     ig_auto.add_argument("--confirm", action="store_true",
                          help="Actually execute the publish flow")
@@ -1614,6 +1725,27 @@ def main(argv=None):
     sh_mon = sh_sub.add_parser("monitor", help="ShardHealthMonitor: host probes")
     sh_mon.add_argument("--interval", type=float, default=30.0)
     sh_mon.add_argument("--once", action="store_true", help="single cycle (cron)")
+
+    sh_jobs = sh_sub.add_parser("jobs", help="List shard job queue")
+    sh_jobs.add_argument("--status", default=None,
+                         help="pending/claimed/done/failed")
+
+    sh_enq = sh_sub.add_parser(
+        "enqueue", help="Queue a pull-model job for a profile",
+    )
+    sh_enq.add_argument("--profile", required=True, help="platform:name")
+    sh_enq.add_argument("--kind", required=True,
+                        help="job kind (builtin: autopilot)")
+    sh_enq.add_argument("--payload", default=None, help="JSON payload")
+
+    sh_work = sh_sub.add_parser(
+        "work", help="Pull-model worker: claim and run this host's jobs",
+    )
+    sh_work.add_argument("--host", required=True, help="this node's host name")
+    sh_work.add_argument("--once", action="store_true",
+                         help="single claim (cron-friendly)")
+    sh_work.add_argument("--interval", type=float, default=30.0,
+                         help="poll seconds in continuous mode")
 
     # Crontab generator for per-profile automation
     cron_parser = subparsers.add_parser(

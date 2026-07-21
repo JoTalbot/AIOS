@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.0.0-alpha.18] - 2026-07-21
+
+### Added
+- **Автокалибровка navigation**: `DetailCalibrationAdvisor.
+  analyze_navigation` — tab-bar/вкладки/reels_tab из дампа домашнего
+  экрана (честные диагнозы без вкладки/bар'а); `merge_hints` принимает
+  `navigation=`/`content_categories=`; CLI `calibrate --navigation`.
+- **Own-posts в autopilot**: флаг `--own [--own-dump]` — снапшот
+  собственных постов (OwnAdsTracker) шагом цикла; webhook-алёрт
+  `own-posts` на новые посты и негативные дельты счётчиков;
+  честная ошибка без живого экрана без `--own-dump`.
+- **ShardExec (`platforms/shardexec.py`)**: pull-модель джобов поверх
+  AIOS_SHARDS_DB — `ShardJobs` (enqueue/pending_for/claim_next/
+  complete, claim только sticky-HRW нодой), `ShardJobWorker.work_once`
+  с изоляцией ошибок handler'а, встроенный вид `autopilot` (guarded
+  shell-out); CLI `shards enqueue/jobs/work [--host --once]`.
+
 ## [9.0.0-alpha.17] - 2026-07-21
 
 ### Added
