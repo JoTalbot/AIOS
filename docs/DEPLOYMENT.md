@@ -1,5 +1,49 @@
 # AIOS Deployment Guide
 
+## Docker Deployment (Recommended)
+
+### Quick start with Docker Compose
+
+```bash
+docker-compose up -d --build
+```
+
+This starts:
+- REST API on port 8000
+- MCP server on port 8471
+- SQLite persistence volume
+
+### Manual Docker build
+
+```bash
+docker build -t aios .
+docker run -p 8000:8000 \
+  -e AIOS_API_KEYS='{"prod-key":{"subject":"admin","roles":["admin"]}}' \
+  -v $(pwd)/aios.sqlite:/app/aios.sqlite \
+  aios
+```
+
+## Environment Variables
+
+| Variable          | Description                        | Default       |
+|-------------------|------------------------------------|---------------|
+| `AIOS_API_KEYS`   | JSON with API keys and roles       | Required      |
+| `DB_PATH`         | SQLite database path               | `:memory:`    |
+
+## Health & Monitoring
+
+- `GET /health` — basic health check
+- `GET /metrics` — Prometheus-compatible metrics
+- Use `python monitor.py` for periodic checks
+
+## Production Recommendations
+
+- Always use TLS (reverse proxy)
+- Use persistent volume for `aios.sqlite`
+- Configure proper API keys
+- Enable audit logging
+- Run behind reverse proxy (nginx / traefik)
+
 ## Deployment Pipeline
 
 All deployments follow the AIOS Evolution Manager pipeline:

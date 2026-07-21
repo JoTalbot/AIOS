@@ -21,6 +21,20 @@ python -m pytest -q
 python demo.py
 ```
 
+## Docker (recommended)
+
+```bash
+docker-compose up -d --build
+curl http://localhost:8000/health
+curl http://localhost:8000/metrics
+```
+
+## Monitoring
+
+```bash
+python monitor.py --url http://localhost:8000 --interval 30
+```
+
 Run a local REST service (requires authentication by default):
 
 ```bash
