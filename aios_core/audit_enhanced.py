@@ -1,0 +1,47 @@
+"""Enhanced Audit Logging with Compliance"""
+
+from typing import Dict, Any, List
+from datetime import datetime
+import json
+
+
+class EnhancedAudit:
+    """Compliance-grade audit logging."""
+
+    def __init__(self, storage: str = "audit.log"):
+        self.storage = storage
+        self.records: List[Dict] = []
+
+    def record(self, action: str, actor: str, resource: str, decision: str, **metadata):
+        record = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "action": action,
+            "actor": actor,
+            "resource": resource,
+            "decision": decision,
+            "metadata": metadata
+        }
+        self.records.append(record)
+        with open(self.storage, "a") as f:
+            f.write(json.dumps(record) + "\n")
+
+    def query(self, actor: str = None, action: str = None, limit: int = 100) -> List[Dict]:
+        results = self.records
+        if actor:
+            results = [r for r in results if r["actor"] == actor]
+        if action:
+            results = [r for r in results if r["action"] == action]
+        return results[-limit:]
+
+    def compliance_report(self) -> dict:
+        decisions = {}
+        for r in self.records:
+            d = r["decision"]
+            decisions[d] = decisions.get(d, 0) + 1
+        return {
+            "total_events": len(self.records),
+            "decisions": decisions
+        }
+
+
+enhanced_audit = EnhancedAudit()
