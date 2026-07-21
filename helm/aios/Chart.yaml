@@ -1,0 +1,6 @@
+apiVersion: v2
+name: aios
+description: AIOS - Self-evolving Distributed Operating System
+type: application
+version: 4.1.0
+appVersion: "4.1.0-alpha"
