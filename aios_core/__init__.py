@@ -38,6 +38,9 @@ from .predictive_autonomy import PredictiveAutonomyRegulator
 from .formal_code_verifier import FormalCodeVerifier
 from .global_swarm import ZeroKnowledgeSafetyProof, GlobalSwarmGovernance
 from .quantum_native import QuantumCircuitSimulator, QuantumNativeEngine
+from .neuromorphic_matrix import LIFNeuron, NeuromorphicMatrixEngine
+from .biological_evolution import AgentGenome, BiologicalEvolutionEngine
+from .planetary_federation import PlanetaryMeshNode, PlanetaryMeshOrchestrator
 from .orchestrator import Orchestrator, Task, TaskStep, TaskStatus, StepStatus
 
 # Test Engine
@@ -159,6 +162,13 @@ __all__ = [
     "GlobalSwarmGovernance",
     "QuantumCircuitSimulator",
     "QuantumNativeEngine",
+    # Horizon 6.0 Neuromorphic, Genetic & Planetary Mesh
+    "LIFNeuron",
+    "NeuromorphicMatrixEngine",
+    "AgentGenome",
+    "BiologicalEvolutionEngine",
+    "PlanetaryMeshNode",
+    "PlanetaryMeshOrchestrator",
     # REST API
     "create_app",
     "AIOSAPI",

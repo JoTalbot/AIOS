@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.0.0-alpha] - 2026-07-21
+
+### Added
+- **Milestone 6.0.3 Complete — Planetary Mesh & Space Edge Orchestration (`aios_core/planetary_federation.py`)**:
+  - Delay-Tolerant Network (DTN) mesh routing across terrestrial, orbital LEO satellites, and Lunar/deep space edge nodes.
+  - Comprehensive unit test suite `tests/test_planetary_federation.py`.
+
+- **Milestone 6.0.2 Complete — Autonomous Bio-Inspired Genetic Evolution Engine (`aios_core/biological_evolution.py`)**:
+  - Chromosome genome encoding, single-point and uniform genetic crossover, Gaussian mutation, elitism survival selection, and constitutional integrity penalties.
+  - Comprehensive unit test suite `tests/test_biological_evolution.py`.
+
+- **Milestone 6.0.1 Complete — Neuromorphic Spiking Neural Network Matrix Engine (`aios_core/neuromorphic_matrix.py`)**:
+  - Event-driven Leaky Integrate-and-Fire (LIF) spiking neuron arrays with membrane potential decay and spike firing reset.
+  - Spike-Timing-Dependent Plasticity (STDP) unsupervised synaptic weight learning.
+  - Comprehensive unit test suite `tests/test_neuromorphic_matrix.py` (558 total passed tests).
+
 ## [5.0.0-alpha] - 2026-07-21
 
 ### Added
