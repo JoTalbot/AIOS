@@ -287,3 +287,19 @@ UI-дампа (захисти: наявність заголовка блока 
   `{fingerprint, xml, viewed_url?, viewed_ad_id?}`.
 - CLI: `aios olx competitive-seller dump.xml --fingerprint <fp>
   [--viewed-ad-id z7kLq]`.
+
+## Мультипрофільність: платформи й акаунти (2026-07-21)
+
+Архітектура «платформа → профілі» (`aios_core/platforms/`): реєстр
+дескрипторів платформ + реєстр профілів-акаунтів. Кожен профіль
+(`olx:work`) має ізольоване сховище `data/olx/<profile>.sqlite` і
+прив'язку до пристрою (`device_serial` → `adb -s <serial>`, паралельна
+робота емуляторів). Розв'язання профілю: `--profile`/`?profile=` →
+`AIOS_PROFILE` → default реєстру → вбудований legacy `default`
+(`olx_ads.sqlite`, повна зворотна сумісність).
+
+- CLI: `aios platforms`, `aios profiles list|add|show|remove|set-default`,
+  усі olx-команди з `--profile`; явний `--db` обходить реєстр.
+- REST: `/api/v1/platforms`, `/api/v1/profiles*`, будь-який модульний маршрут
+  з `?profile=<name>`; невідомий профіль → 400.
+- Масштабування на 10000+ застосунків: docs/PLATFORMS_SCALING.md.

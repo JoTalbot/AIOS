@@ -19,7 +19,14 @@ def _add_olx_parsers(subparsers) -> None:
     olx_sub = olx_parser.add_subparsers(dest="olx_command")
 
     def with_db(p):
-        p.add_argument("--db", default=DEFAULT_OLX_DB, help="SQLite database file")
+        p.add_argument(
+            "--db", default=None,
+            help="SQLite database file (переопределяет разрешение профиля)",
+        )
+        p.add_argument(
+            "--profile", default=None,
+            help="Имя профиля из реестра (иначе AIOS_PROFILE / default)",
+        )
 
     collect = olx_sub.add_parser("collect", help="Collect ads via ADB")
     collect.add_argument("--query", required=True, help="Search query")
@@ -152,6 +159,36 @@ def _add_olx_parsers(subparsers) -> None:
 
 
 
+def _resolve_olx_profile(args):
+    """Профиль OLX для команды: --db пропускает разрешение профиля."""
+    from aios_core.platforms import Profile, resolve_profile
+
+    if getattr(args, "db", None):
+        return Profile(
+            platform="olx", name="cli", db_path=args.db, ephemeral=True,
+        )
+    return resolve_profile("olx", getattr(args, "profile", None))
+
+
+def _resolve_olx_db(args) -> str:
+    """Путь БД для olx-команды (--db > --profile > AIOS_PROFILE > default)."""
+    return _resolve_olx_profile(args).db_path
+
+
+def _resolve_olx_adb(args):
+    """ADB-контроллер, привязанный к устройству профиля (device_serial)."""
+    from aios_core.platforms import get_platform
+
+    if getattr(args, "db", None) and not getattr(args, "profile", None):
+        # Явный --db без профиля: привязки к устройству нет.
+        from aios_core.modules.olx import ADBController
+
+        return ADBController()
+    return get_platform("olx").make_adb(
+        _resolve_olx_profile(args).device_serial
+    )
+
+
 def _run_olx(args) -> bool:
     from aios_core.modules.olx import (
         CollectionScheduler,
@@ -163,16 +200,16 @@ def _run_olx(args) -> bool:
     )
 
     if args.olx_command == "collect":
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             scheduler = CollectionScheduler(
-                collector=OLXCollector(), storage=storage
+                collector=OLXCollector(adb=_resolve_olx_adb(args)), storage=storage
             )
             summaries = scheduler.run_once([args.query], max_cards=args.max_cards)
             print(json.dumps(summaries, ensure_ascii=False, indent=2))
         return True
 
     if args.olx_command == "stats":
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             ads = storage.get_ads(query=args.query)
             report = CompetitorAnalyzer().analyze(ads, query=args.query)
             print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2))
@@ -187,14 +224,14 @@ def _run_olx(args) -> bool:
                 title=args.title or "", price=args.price,
                 currency="UAH", query=args.query,
             )
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             ads = storage.get_ads(query=args.query)
             advice = RecommendationEngine().recommend(ads, my_ad=my_ad)
             print(advice.to_text())
         return True
 
     if args.olx_command == "export":
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             if args.format == "json":
                 payload = storage.export_json(query=args.query)
             else:
@@ -208,7 +245,7 @@ def _run_olx(args) -> bool:
         return True
 
     if args.olx_command == "history":
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             print(json.dumps(
                 storage.price_history(args.fingerprint),
                 ensure_ascii=False, indent=2,
@@ -216,7 +253,7 @@ def _run_olx(args) -> bool:
         return True
 
     if args.olx_command == "drops":
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             tracker = PriceTracker(storage)
             result = {
                 "drops": [change.to_dict() for change in tracker.price_drops(query=args.query)],
@@ -234,8 +271,8 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "chats":
         from aios_core.modules.olx import OLXMessenger
-        with OLXStorage(args.db) as storage:
-            messenger = OLXMessenger(storage=storage)
+        with OLXStorage(_resolve_olx_db(args)) as storage:
+            messenger = OLXMessenger(adb=_resolve_olx_adb(args), storage=storage)
             threads = messenger.list_chats()
             print(json.dumps(
                 [thread.to_dict() for thread in threads],
@@ -245,8 +282,8 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "reply":
         from aios_core.modules.olx import OLXMessenger
-        with OLXStorage(args.db) as storage:
-            messenger = OLXMessenger(storage=storage)
+        with OLXStorage(_resolve_olx_db(args)) as storage:
+            messenger = OLXMessenger(adb=_resolve_olx_adb(args), storage=storage)
             result = messenger.send_reply(
                 chat_key=args.chat_key,
                 text=args.text,
@@ -257,7 +294,7 @@ def _run_olx(args) -> bool:
         return True
 
     if args.olx_command == "outbox":
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             print(json.dumps(
                 storage.outbox_list(status=args.status),
                 ensure_ascii=False, indent=2,
@@ -266,7 +303,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "own":
         from aios_core.modules.olx import OwnAdsParser, OwnAdsTracker
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             tracker = OwnAdsTracker(storage)
             if args.xml:
                 with open(args.xml, encoding="utf-8") as fh:
@@ -287,7 +324,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "improve":
         from aios_core.modules.olx import AdImprover, OwnAd
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             rows = [row for row in storage.own_ads() if row["fingerprint"] == args.fingerprint]
             if not rows:
                 print(f"Own ad not found: {args.fingerprint}")
@@ -304,7 +341,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "repost":
         from aios_core.modules.olx import OwnAd, Reposter
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             rows = [row for row in storage.own_ads() if row["fingerprint"] == args.fingerprint]
             if not rows:
                 print(f"Own ad not found: {args.fingerprint}")
@@ -322,7 +359,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "subscribe":
         from aios_core.modules.olx import SubscriptionManager
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             sub_id = SubscriptionManager(storage).add(
                 name=args.name or args.query,
                 query=args.query,
@@ -335,7 +372,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "subscriptions":
         from aios_core.modules.olx import SubscriptionManager
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             print(json.dumps(
                 SubscriptionManager(storage).list(), ensure_ascii=False, indent=2
             ))
@@ -343,7 +380,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "favorite":
         from aios_core.modules.olx import FavoritesWatch
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             watch = FavoritesWatch(storage)
             if args.remove:
                 print(json.dumps({"removed": watch.remove(args.fingerprint)}))
@@ -353,7 +390,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "favorites":
         from aios_core.modules.olx import FavoritesWatch
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             watch = FavoritesWatch(storage)
             if args.alerts:
                 print(json.dumps(watch.price_alerts(), ensure_ascii=False, indent=2))
@@ -363,10 +400,10 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "autowatch":
         from aios_core.modules.olx import AutoWatch, WebhookNotifier
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             watch = AutoWatch(
                 storage=storage,
-                collector=OLXCollector(),
+                collector=OLXCollector(adb=_resolve_olx_adb(args)),
                 notifier=WebhookNotifier(url=args.webhook, chat_id=args.chat_id),
                 max_cards=args.max_cards,
             )
@@ -378,7 +415,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "profile":
         from aios_core.modules.olx import ProfileParser
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             if args.xml:
                 with open(args.xml, encoding="utf-8") as fh:
                     xml_text = fh.read()
@@ -398,7 +435,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "profile-edit":
         from aios_core.modules.olx import ProfileEditor
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             result = ProfileEditor().apply(
                 storage, args.field, args.value, confirm=args.confirm
             )
@@ -408,7 +445,7 @@ def _run_olx(args) -> bool:
     if args.olx_command == "competitive-seller":
         from aios_core.modules.olx import CompetitiveWatch, OwnAd
         xml_text = Path(args.xml).read_text(encoding="utf-8")
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             rows = [r for r in storage.own_ads() if r["fingerprint"] == args.fingerprint]
             if not rows:
                 print(json.dumps({"error": f"own ad '{args.fingerprint}' not found"}))
@@ -428,7 +465,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "competitive":
         from aios_core.modules.olx import CompetitiveWatch, OwnAd
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             watch = CompetitiveWatch(storage)
             if args.fingerprint:
                 print(json.dumps(
@@ -448,7 +485,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "advisor":
         from aios_core.modules.olx import StrategyAdvisor
-        with OLXStorage(args.db) as storage:
+        with OLXStorage(_resolve_olx_db(args)) as storage:
             advisor = StrategyAdvisor(storage)
             payload = {"actions": [a.to_dict() for a in advisor.advise_actions()]}
             if args.new:
@@ -482,6 +519,73 @@ def _run_olx(args) -> bool:
     return False
 
 
+def _run_platforms(_args) -> bool:
+    from aios_core.platforms import list_platforms
+
+    print(json.dumps(
+        [descriptor.to_dict() for descriptor in list_platforms()],
+        ensure_ascii=False, indent=2,
+    ))
+    return True
+
+
+def _run_profiles(args) -> bool:
+    from aios_core.platforms import Profile, ProfileStore
+
+    store = ProfileStore.default()
+    cmd = args.profiles_command
+
+    if cmd == "list":
+        print(json.dumps(
+            [p.to_dict() for p in store.list(args.platform)],
+            ensure_ascii=False, indent=2,
+        ))
+        return True
+
+    if cmd == "add":
+        try:
+            profile = store.add(Profile(
+                platform=args.platform, name=args.name,
+                device_serial=args.device, android_user=args.android_user,
+                db_path=args.db, locale=args.locale, notes=args.notes,
+                is_default=args.default,
+            ))
+        except ValueError as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False))
+            return True
+        print(json.dumps(profile.to_dict(), ensure_ascii=False, indent=2))
+        return True
+
+    if cmd == "show":
+        profile = store.get(args.platform, args.name)
+        if profile is None:
+            print(json.dumps(
+                {"error": f"profile '{args.platform}:{args.name}' not found"},
+                ensure_ascii=False,
+            ))
+            return True
+        print(json.dumps(profile.to_dict(), ensure_ascii=False, indent=2))
+        return True
+
+    if cmd == "remove":
+        removed = store.remove(args.platform, args.name)
+        print(json.dumps({"removed": removed}))
+        return True
+
+    if cmd == "set-default":
+        profile = store.set_default(args.platform, args.name)
+        if profile is None:
+            print(json.dumps(
+                {"error": f"profile '{args.platform}:{args.name}' not found"},
+                ensure_ascii=False,
+            ))
+            return True
+        print(json.dumps(profile.to_dict(), ensure_ascii=False, indent=2))
+        return True
+
+    return False
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="AIOS CLI")
     subparsers = parser.add_subparsers(dest="command")
@@ -500,6 +604,33 @@ def main(argv=None):
 
     # Stats
     subparsers.add_parser("stats", help="Show system stats")
+
+    # Marketplace platforms registry
+    subparsers.add_parser("platforms", help="List registered marketplace platforms")
+
+    # Platform profiles (accounts)
+    profiles_parser = subparsers.add_parser(
+        "profiles", help="Manage platform profiles (accounts)"
+    )
+    prof_sub = profiles_parser.add_subparsers(dest="profiles_command")
+
+    p_list = prof_sub.add_parser("list", help="List profiles")
+    p_list.add_argument("--platform", default=None)
+
+    p_add = prof_sub.add_parser("add", help="Register a profile")
+    p_add.add_argument("--platform", required=True)
+    p_add.add_argument("--name", required=True)
+    p_add.add_argument("--device", default=None, help="ADB serial (device binding)")
+    p_add.add_argument("--db", default=None, help="Custom SQLite path")
+    p_add.add_argument("--android-user", type=int, default=0)
+    p_add.add_argument("--locale", default="uk-UA")
+    p_add.add_argument("--notes", default="")
+    p_add.add_argument("--default", action="store_true", help="Make platform default")
+
+    for p_cmd in ("show", "remove", "set-default"):
+        p_one = prof_sub.add_parser(p_cmd, help=f"{p_cmd} profile")
+        p_one.add_argument("--platform", required=True)
+        p_one.add_argument("--name", required=True)
 
     # OLX Parser Agent
     _add_olx_parsers(subparsers)
@@ -522,8 +653,20 @@ def main(argv=None):
         db = Database("aios.sqlite")
         orch = Orchestrator(db=db)
         print(json.dumps(orch.stats(), indent=2))
+    elif args.command == "platforms":
+        if not _run_platforms(args):
+            parser.parse_args(["platforms", "--help"])
+    elif args.command == "profiles":
+        if not _run_profiles(args):
+            parser.parse_args(["profiles", "--help"])
     elif args.command == "olx":
-        if not _run_olx(args):
+        try:
+            handled = _run_olx(args)
+        except ValueError as exc:
+            # Например: профиль не найден в реестре.
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False))
+            handled = True
+        if not handled:
             parser.parse_args(["olx", "--help"])
     else:
         parser.print_help()

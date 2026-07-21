@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Platforms & profiles architecture (`aios_core/platforms/`)** —
+  масштабируемая модель «платформа → профили» для тысяч маркетплейс-
+  приложений: реестр `PlatformDescriptor` (open/closed,
+  `register_platform`), `Profile` (аккаунт = device_serial + изолированное
+  хранилище + локаль), SQLite-реестр `ProfileStore`, единый резолвер
+  (`--profile` / `?profile=` → `AIOS_PROFILE` → default реестра →
+  legacy-совместимый эфемерный `default`).
+- **ADBController serial binding**: все команды формируются как
+  `adb -s <serial> ...` — параллельная работа эмуляторов под разными
+  аккаунтами; добавлены `tap()` и `input_text()` (ADBKeyBoard).
+- **CLI**: `aios platforms`, `aios profiles list|add|show|remove|
+  set-default`; все `aios olx …` принимают `--profile` (явный `--db`
+  обходит реестр); неизвестный профиль → чистая JSON-ошибка.
+- **REST**: `/api/v1/platforms`, CRUD `/api/v1/profiles*` (+default);
+  любой модульный маршрут OLX принимает `?profile=<name>` с кэшированием
+  профильных хранилищ в процессе; `ValueError` → HTTP 400.
+- OLXStorage создаёт дерево каталогов для profile-путей
+  (`data/olx/<profile>.sqlite`).
+- Документ `docs/PLATFORMS_SCALING.md` — модель, конвенции CLI/API,
+  дорожная карта к 10000+ приложений (каталог дескрипторов,
+  кодогенерация поверхностей, пул устройств, шардинг).
+- 17 новых тестов (`tests/test_platforms_profiles.py`).
+
 ## [9.0.0-alpha.4] - 2026-07-21
 
 ### Added
