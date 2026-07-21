@@ -16,3 +16,5 @@ aios_config.yaml
 
 # virtual environment
 venv/
+aios.log
+build/

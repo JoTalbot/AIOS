@@ -1,7 +1,7 @@
 # AIOS Architecture Documentation
 
 > **AIOS (AI Operating System)** — Self-Evolving Distributed Operating System for Application Intelligence
-> **Version:** 8.0.0-alpha | **Runtime:** Octopus Runtime | **Constitution:** 67 Articles, 1,320 Rules
+> **Version:** 9.0.0-alpha | **Runtime:** Octopus Runtime | **Constitution:** 67 Articles, 1,320 Rules
 
 ---
 
