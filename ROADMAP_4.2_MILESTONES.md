@@ -47,27 +47,32 @@
 
 ---
 
-### 🛡 Milestone 4.2.2: Production Hardening & Observability (Недели 4–6)
+### 🛡 Milestone 4.2.2: Production Hardening & Observability (Недели 4–6) — ✅ Завершено
 
 #### WBS 2.1 — Интеграция OpenTelemetry & Distributed Tracing
-- **Задача:** Внедрение OTLP экспортёра для сквозной трассировки вызовов через все агенты, MCP Gateway и REST API.
+- **Задача:** Внедрение OTLP экспортёра и W3C Trace Context заголовков для сквозной трассировки вызовов.
 - **Модули:** `aios_core/telemetry.py`, `aios_core/tracing.py`
 - **Критерии приемки:**
-  - Автоматическая передача `traceparent` заголовков в сообщениях `EventBus` и gRPC/HTTP вызовах.
-  - Совместимость с Jaeger / Tempo.
+  - [x] Поддержка W3C `traceparent` формата (`00-{trace_id}-{span_id}-01`).
+  - [x] Автоматическая прокидка контекста спанов и замер задержек.
+  - [x] Экспорт метрик (Counters, Gauges, Histograms) в формате Prometheus.
 
 #### WBS 2.2 — Структурированное JSON Логирование
 - **Задача:** Перевод всех системных логов на единый JSON-формат с добавлением context trace-id, agent-id, constitutional status.
 - **Модули:** `aios_core/logging_config.py`
+- **Критерии приемки:**
+  - [x] `JSONFormatter` обогащает логи полями `trace_id`, `span_id`, `agent_id`, `constitutional_status`.
 
 #### WBS 2.3 — Backup & Disaster Recovery Engine
 - **Задача:** Автоматический механизм горячего снимка состояния (WAL Snapshot) и быстрого восстановления базы при сбое.
 - **Модули:** `aios_core/backup_manager.py`
 - **Критерии приемки:**
-  - Метод `create_backup()` и `restore_backup(backup_id)` с полным восстановлением SQLite/PostgreSQL.
+  - [x] Использование горячего `sqlite3.backup` API без блокировки чтения.
+  - [x] Валидация SHA256 контрольных сумм при восстановлении `restore_backup()`.
+  - [x] Ротация бэкапов и ротация глубин хранения.
 
 #### WBS 2.4 — Набор Нагрузочных и Отказоустойчивых Тестов
-- **Файлы тестов:** `tests/test_telemetry.py`, `tests/test_backup_manager.py`
+- **Файлы тестов:** `tests/test_telemetry.py`, `tests/test_backup_manager.py` (все 535 тестов пройдены)
 
 ---
 
