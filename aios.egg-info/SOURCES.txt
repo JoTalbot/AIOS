@@ -259,7 +259,9 @@ aios_core/modules/olx/text_utils.py
 aios_core/modules/olx/ui_parser.py
 aios_core/modules/olx/watch.py
 aios_core/platforms/__init__.py
+aios_core/platforms/catalog.py
 aios_core/platforms/descriptor.py
+aios_core/platforms/devices.py
 aios_core/platforms/profile.py
 aios_core/platforms/resolver.py
 aios_core/platforms/store.py

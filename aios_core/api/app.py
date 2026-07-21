@@ -515,14 +515,14 @@ class AIOSAPI:
             stats = self.orchestrator.stats()
             return JSONResponse({
                 "status": "ok",
-                "version": "9.0.0-alpha.5",
+                "version": "9.0.0-alpha.6",
                 "constitution_articles": stats.get("constitution_articles", 0),
                 "memory_items": stats.get("memory_items", 0),
                 "active_tasks": stats.get("active_tasks", 0),
                 "uptime": "running"
             })
         except Exception:
-            return JSONResponse({"status": "ok", "version": "9.0.0-alpha.5"})
+            return JSONResponse({"status": "ok", "version": "9.0.0-alpha.6"})
 
     async def _stats(self, request: Request) -> JSONResponse:
         return JSONResponse(self.orchestrator.stats())
