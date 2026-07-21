@@ -1,0 +1,686 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>aios_core.autonomy_manager &mdash; AIOS - Autonomous Intelligence Operating System 8.0.0-alpha documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=37dad9ae"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            AIOS - Autonomous Intelligence Operating System
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Table of Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture.html">AIOS Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">AIOS Core API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">AIOS - Autonomous Intelligence Operating System</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">aios_core.autonomy_manager</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for aios_core.autonomy_manager</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;AIOS Autonomy Manager v3.0.0</span>
+
+<span class="sd">Article LXVII — Autonomy Level Management.</span>
+
+<span class="sd">Manages agent autonomy levels from fully manual (LEVEL_0) to</span>
+<span class="sd">self-directed (LEVEL_5), tracking performance records and</span>
+<span class="sd">determining automatic approval eligibility based on risk levels.</span>
+
+<span class="sd">Persists to autonomy_profiles table in SQLite.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">asdict</span><span class="p">,</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntEnum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.storage</span><span class="w"> </span><span class="kn">import</span> <span class="n">Database</span>
+
+
+<div class="viewcode-block" id="AutonomyLevel">
+<a class="viewcode-back" href="../../api.html#aios_core.autonomy_manager.AutonomyLevel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AutonomyLevel</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Agent autonomy levels, from fully manual to self-directed.&quot;&quot;&quot;</span>
+
+    <span class="n">LEVEL_0_MANUAL</span> <span class="o">=</span> <span class="mi">0</span>        <span class="c1"># No autonomy, every action requires human approval</span>
+    <span class="n">LEVEL_1_ASSISTED</span> <span class="o">=</span> <span class="mi">1</span>      <span class="c1"># Suggests actions, human approves each</span>
+    <span class="n">LEVEL_2_SUPERVISED</span> <span class="o">=</span> <span class="mi">2</span>    <span class="c1"># Executes low-risk actions autonomously, human reviews</span>
+    <span class="n">LEVEL_3_MANAGED</span> <span class="o">=</span> <span class="mi">3</span>       <span class="c1"># Executes medium-risk autonomously, reports periodically</span>
+    <span class="n">LEVEL_4_AUTONOMOUS</span> <span class="o">=</span> <span class="mi">4</span>    <span class="c1"># Full autonomy for operational tasks, human for critical</span>
+    <span class="n">LEVEL_5_SELF_DIRECTED</span> <span class="o">=</span> <span class="mi">5</span> <span class="c1"># Full self-direction within constitutional bounds</span></div>
+
+
+
+<div class="viewcode-block" id="AgentAutonomyProfile">
+<a class="viewcode-back" href="../../api.html#aios_core.autonomy_manager.AgentAutonomyProfile">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AgentAutonomyProfile</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Autonomy profile for a single agent.&quot;&quot;&quot;</span>
+
+    <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">level</span><span class="p">:</span> <span class="n">AutonomyLevel</span> <span class="o">=</span> <span class="n">AutonomyLevel</span><span class="o">.</span><span class="n">LEVEL_0_MANUAL</span>
+    <span class="n">granted_by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;system&quot;</span>
+    <span class="n">granted_at</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">expires_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">restrictions</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">track_record</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;total_actions&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;successes&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;failures&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;reviews_triggered&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="AutonomyManager">
+<a class="viewcode-back" href="../../api.html#aios_core.autonomy_manager.AutonomyManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AutonomyManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages agent autonomy levels and approval decisions.</span>
+
+<span class="sd">    v3.0.0: Full autonomy lifecycle with SQLite persistence,</span>
+<span class="sd">    risk-based approval gating, and promotion/demotion logic.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Database</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="n">db</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">AgentAutonomyProfile</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;CREATE TABLE IF NOT EXISTS autonomy_profiles (</span>
+<span class="sd">                    id TEXT PRIMARY KEY,</span>
+<span class="sd">                    agent_id TEXT NOT NULL UNIQUE,</span>
+<span class="sd">                    level INTEGER NOT NULL DEFAULT 0,</span>
+<span class="sd">                    granted_by TEXT,</span>
+<span class="sd">                    granted_at TEXT NOT NULL,</span>
+<span class="sd">                    expires_at TEXT,</span>
+<span class="sd">                    restrictions TEXT,</span>
+<span class="sd">                    track_record TEXT,</span>
+<span class="sd">                    metadata TEXT</span>
+<span class="sd">                )&quot;&quot;&quot;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="s2">&quot;CREATE INDEX IF NOT EXISTS idx_autonomy_agent ON autonomy_profiles(agent_id)&quot;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="s2">&quot;CREATE INDEX IF NOT EXISTS idx_autonomy_level ON autonomy_profiles(level)&quot;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_load_profiles</span><span class="p">()</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Internal helpers</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_profiles</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load all existing profiles from the database into memory.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM autonomy_profiles&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+            <span class="n">profile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_row_to_profile</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="p">[</span><span class="n">profile</span><span class="o">.</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">profile</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_profile_to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">profile</span><span class="p">:</span> <span class="n">AgentAutonomyProfile</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert an AgentAutonomyProfile to a plain dict.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;agent_id&quot;</span><span class="p">:</span> <span class="n">profile</span><span class="o">.</span><span class="n">agent_id</span><span class="p">,</span>
+            <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">level</span><span class="p">),</span>
+            <span class="s2">&quot;granted_by&quot;</span><span class="p">:</span> <span class="n">profile</span><span class="o">.</span><span class="n">granted_by</span><span class="p">,</span>
+            <span class="s2">&quot;granted_at&quot;</span><span class="p">:</span> <span class="n">profile</span><span class="o">.</span><span class="n">granted_at</span><span class="p">,</span>
+            <span class="s2">&quot;expires_at&quot;</span><span class="p">:</span> <span class="n">profile</span><span class="o">.</span><span class="n">expires_at</span><span class="p">,</span>
+            <span class="s2">&quot;restrictions&quot;</span><span class="p">:</span> <span class="n">profile</span><span class="o">.</span><span class="n">restrictions</span><span class="p">,</span>
+            <span class="s2">&quot;track_record&quot;</span><span class="p">:</span> <span class="n">profile</span><span class="o">.</span><span class="n">track_record</span><span class="p">,</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="n">profile</span><span class="o">.</span><span class="n">metadata</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_row_to_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AgentAutonomyProfile</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert a database row to an AgentAutonomyProfile.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.storage</span><span class="w"> </span><span class="kn">import</span> <span class="n">Database</span> <span class="k">as</span> <span class="n">DB</span>
+
+        <span class="n">restrictions</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;restrictions&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">restrictions</span> <span class="o">=</span> <span class="n">DB</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;restrictions&quot;</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">restrictions</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">track_record</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;total_actions&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;successes&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;failures&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;reviews_triggered&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;track_record&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">track_record</span> <span class="o">=</span> <span class="n">DB</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;track_record&quot;</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">metadata</span> <span class="o">=</span> <span class="n">DB</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">return</span> <span class="n">AgentAutonomyProfile</span><span class="p">(</span>
+            <span class="n">agent_id</span><span class="o">=</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;agent_id&quot;</span><span class="p">],</span>
+            <span class="n">level</span><span class="o">=</span><span class="n">AutonomyLevel</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;level&quot;</span><span class="p">]),</span>
+            <span class="n">granted_by</span><span class="o">=</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;granted_by&quot;</span><span class="p">,</span> <span class="s2">&quot;system&quot;</span><span class="p">),</span>
+            <span class="n">granted_at</span><span class="o">=</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;granted_at&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+            <span class="n">expires_at</span><span class="o">=</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;expires_at&quot;</span><span class="p">),</span>
+            <span class="n">restrictions</span><span class="o">=</span><span class="n">restrictions</span><span class="p">,</span>
+            <span class="n">track_record</span><span class="o">=</span><span class="n">track_record</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_persist_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">profile</span><span class="p">:</span> <span class="n">AgentAutonomyProfile</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Upsert a profile into the database.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.storage</span><span class="w"> </span><span class="kn">import</span> <span class="n">Database</span> <span class="k">as</span> <span class="n">DB</span>
+
+        <span class="n">profile_id</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;_db_id&quot;</span><span class="p">,</span> <span class="n">profile</span><span class="o">.</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;INSERT INTO autonomy_profiles</span>
+<span class="sd">               (id, agent_id, level, granted_by, granted_at, expires_at,</span>
+<span class="sd">                restrictions, track_record, metadata)</span>
+<span class="sd">               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)</span>
+<span class="sd">               ON CONFLICT(agent_id) DO UPDATE SET</span>
+<span class="sd">                   level = excluded.level,</span>
+<span class="sd">                   granted_by = excluded.granted_by,</span>
+<span class="sd">                   granted_at = excluded.granted_at,</span>
+<span class="sd">                   expires_at = excluded.expires_at,</span>
+<span class="sd">                   restrictions = excluded.restrictions,</span>
+<span class="sd">                   track_record = excluded.track_record,</span>
+<span class="sd">                   metadata = excluded.metadata&quot;&quot;&quot;</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="n">profile_id</span><span class="p">,</span>
+                <span class="n">profile</span><span class="o">.</span><span class="n">agent_id</span><span class="p">,</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">level</span><span class="p">),</span>
+                <span class="n">profile</span><span class="o">.</span><span class="n">granted_by</span><span class="p">,</span>
+                <span class="n">profile</span><span class="o">.</span><span class="n">granted_at</span><span class="p">,</span>
+                <span class="n">profile</span><span class="o">.</span><span class="n">expires_at</span><span class="p">,</span>
+                <span class="n">DB</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">restrictions</span><span class="p">),</span>
+                <span class="n">DB</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">track_record</span><span class="p">),</span>
+                <span class="n">DB</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">metadata</span><span class="p">),</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Public API</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="AutonomyManager.grant_autonomy">
+<a class="viewcode-back" href="../../api.html#aios_core.autonomy_manager.AutonomyManager.grant_autonomy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">grant_autonomy</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">level</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">granted_by</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span>
+        <span class="n">expires_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">restrictions</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Grant or update autonomy level for an agent.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: The agent identifier.</span>
+<span class="sd">            level: Autonomy level (0-5).</span>
+<span class="sd">            granted_by: Who granted this autonomy.</span>
+<span class="sd">            expires_at: Optional expiry ISO timestamp.</span>
+<span class="sd">            restrictions: Optional extra restrictions dict.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The profile dict for the agent.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.storage</span><span class="w"> </span><span class="kn">import</span> <span class="n">Database</span> <span class="k">as</span> <span class="n">DB</span>
+
+        <span class="n">now</span> <span class="o">=</span> <span class="n">DB</span><span class="o">.</span><span class="n">now_iso</span><span class="p">()</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="n">AgentAutonomyProfile</span><span class="p">(</span>
+            <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
+            <span class="n">level</span><span class="o">=</span><span class="n">AutonomyLevel</span><span class="p">(</span><span class="n">level</span><span class="p">),</span>
+            <span class="n">granted_by</span><span class="o">=</span><span class="n">granted_by</span><span class="p">,</span>
+            <span class="n">granted_at</span><span class="o">=</span><span class="n">now</span><span class="p">,</span>
+            <span class="n">expires_at</span><span class="o">=</span><span class="n">expires_at</span><span class="p">,</span>
+            <span class="n">restrictions</span><span class="o">=</span><span class="n">restrictions</span> <span class="ow">or</span> <span class="p">{},</span>
+            <span class="n">track_record</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;total_actions&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;successes&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;failures&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;reviews_triggered&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">},</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;_db_id&quot;</span><span class="p">:</span> <span class="n">agent_id</span><span class="p">},</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Preserve existing track_record if upgrading</span>
+        <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">existing</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">profile</span><span class="o">.</span><span class="n">track_record</span> <span class="o">=</span> <span class="n">existing</span><span class="o">.</span><span class="n">track_record</span>
+            <span class="n">profile</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="n">existing</span><span class="o">.</span><span class="n">metadata</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">profile</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_persist_profile</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profile_to_dict</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AutonomyManager.revoke_autonomy">
+<a class="viewcode-back" href="../../api.html#aios_core.autonomy_manager.AutonomyManager.revoke_autonomy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">revoke_autonomy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Revoke autonomy for an agent (reset to LEVEL_0).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: The agent identifier.</span>
+<span class="sd">            reason: Reason for revocation.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The updated profile dict.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">profile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">profile</span> <span class="o">=</span> <span class="n">AgentAutonomyProfile</span><span class="p">(</span>
+                <span class="n">agent_id</span><span class="o">=</span><span class="n">agent_id</span><span class="p">,</span>
+                <span class="n">granted_at</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">now_iso</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;_db_id&quot;</span><span class="p">:</span> <span class="n">agent_id</span><span class="p">},</span>
+            <span class="p">)</span>
+
+        <span class="n">profile</span><span class="o">.</span><span class="n">level</span> <span class="o">=</span> <span class="n">AutonomyLevel</span><span class="o">.</span><span class="n">LEVEL_0_MANUAL</span>
+        <span class="n">profile</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;revocation_reason&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reason</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="p">[</span><span class="n">agent_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">profile</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_persist_profile</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profile_to_dict</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AutonomyManager.check_autonomy">
+<a class="viewcode-back" href="../../api.html#aios_core.autonomy_manager.AutonomyManager.check_autonomy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_autonomy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">action_risk</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;low&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determine if an agent&#39;s action is auto-approved or needs human review.</span>
+
+<span class="sd">        Risk-based approval matrix:</span>
+<span class="sd">            - Level 0/1: ALWAYS needs approval</span>
+<span class="sd">            - Level 2:   low auto, medium+ needs approval</span>
+<span class="sd">            - Level 3:   low/medium auto, high+ needs approval</span>
+<span class="sd">            - Level 4:   low/medium/high auto, critical needs approval</span>
+<span class="sd">            - Level 5:   all risks auto-approved within constitutional bounds</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: The agent identifier.</span>
+<span class="sd">            action_risk: Risk level of the action (&quot;low&quot;, &quot;medium&quot;, &quot;high&quot;, &quot;critical&quot;).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict with approval decision details.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">profile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">level</span> <span class="o">=</span> <span class="n">AutonomyLevel</span><span class="o">.</span><span class="n">LEVEL_0_MANUAL</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">level</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">level</span>
+
+        <span class="c1"># Normalise risk string</span>
+        <span class="n">risk</span> <span class="o">=</span> <span class="n">action_risk</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">if</span> <span class="n">action_risk</span> <span class="k">else</span> <span class="s2">&quot;low&quot;</span>
+
+        <span class="c1"># Risk hierarchy: low=0, medium=1, high=2, critical=3</span>
+        <span class="n">risk_order</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;medium&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;critical&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
+        <span class="n">risk_rank</span> <span class="o">=</span> <span class="n">risk_order</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">risk</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Determine auto-approval threshold per level</span>
+        <span class="c1"># Level 0,1 -&gt; threshold -1 (nothing auto)</span>
+        <span class="c1"># Level 2   -&gt; threshold 0 (only low)</span>
+        <span class="c1"># Level 3   -&gt; threshold 1 (low + medium)</span>
+        <span class="c1"># Level 4   -&gt; threshold 2 (low + medium + high)</span>
+        <span class="c1"># Level 5   -&gt; threshold 3 (all)</span>
+        <span class="n">approval_threshold</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="mi">0</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="mi">1</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span>
+            <span class="mi">2</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="mi">3</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="mi">4</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="mi">5</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">threshold</span> <span class="o">=</span> <span class="n">approval_threshold</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">level</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">auto_approved</span> <span class="o">=</span> <span class="n">risk_rank</span> <span class="o">&lt;=</span> <span class="n">threshold</span>
+        <span class="n">requires_approval</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">auto_approved</span>
+
+        <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">level</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Level </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">level</span><span class="p">)</span><span class="si">}</span><span class="s2"> requires human approval for all actions&quot;</span>
+        <span class="k">elif</span> <span class="n">auto_approved</span><span class="p">:</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Level </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">level</span><span class="p">)</span><span class="si">}</span><span class="s2"> auto-approves </span><span class="si">{</span><span class="n">risk</span><span class="si">}</span><span class="s2">-risk actions&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Level </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">level</span><span class="p">)</span><span class="si">}</span><span class="s2"> does not auto-approve </span><span class="si">{</span><span class="n">risk</span><span class="si">}</span><span class="s2">-risk actions; &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;human approval required&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;agent_id&quot;</span><span class="p">:</span> <span class="n">agent_id</span><span class="p">,</span>
+            <span class="s2">&quot;level&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">level</span><span class="p">),</span>
+            <span class="s2">&quot;action_auto_approved&quot;</span><span class="p">:</span> <span class="n">auto_approved</span><span class="p">,</span>
+            <span class="s2">&quot;requires_approval&quot;</span><span class="p">:</span> <span class="n">requires_approval</span><span class="p">,</span>
+            <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="AutonomyManager.record_action">
+<a class="viewcode-back" href="../../api.html#aios_core.autonomy_manager.AutonomyManager.record_action">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_action</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">success</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+        <span class="n">triggered_review</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record an action outcome in the agent&#39;s track record.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: The agent identifier.</span>
+<span class="sd">            success: Whether the action succeeded.</span>
+<span class="sd">            triggered_review: Whether this action triggered a human review.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">profile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">profile</span><span class="o">.</span><span class="n">track_record</span><span class="p">[</span><span class="s2">&quot;total_actions&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">success</span><span class="p">:</span>
+            <span class="n">profile</span><span class="o">.</span><span class="n">track_record</span><span class="p">[</span><span class="s2">&quot;successes&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">profile</span><span class="o">.</span><span class="n">track_record</span><span class="p">[</span><span class="s2">&quot;failures&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">triggered_review</span><span class="p">:</span>
+            <span class="n">profile</span><span class="o">.</span><span class="n">track_record</span><span class="p">[</span><span class="s2">&quot;reviews_triggered&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_persist_profile</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>
+
+        <span class="c1"># Автоматическая корректировка уровня после записи</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_auto_adjust_level</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_auto_adjust_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Automatically promote or demote agent based on track record.&quot;&quot;&quot;</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">profile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">promote_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">should_promote</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="n">demote_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">should_demote</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+
+        <span class="n">current_level</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">level</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">promote_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;should_promote&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">current_level</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+            <span class="n">new_level</span> <span class="o">=</span> <span class="n">promote_result</span><span class="p">[</span><span class="s2">&quot;suggested_level&quot;</span><span class="p">]</span>
+            <span class="n">profile</span><span class="o">.</span><span class="n">level</span> <span class="o">=</span> <span class="n">AutonomyLevel</span><span class="p">(</span><span class="n">new_level</span><span class="p">)</span>
+            <span class="n">profile</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;auto_promoted_at&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">now_iso</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_persist_profile</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">demote_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;should_demote&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">current_level</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">new_level</span> <span class="o">=</span> <span class="n">demote_result</span><span class="p">[</span><span class="s2">&quot;suggested_level&quot;</span><span class="p">]</span>
+            <span class="n">profile</span><span class="o">.</span><span class="n">level</span> <span class="o">=</span> <span class="n">AutonomyLevel</span><span class="p">(</span><span class="n">new_level</span><span class="p">)</span>
+            <span class="n">profile</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;auto_demoted_at&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">now_iso</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_persist_profile</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AutonomyManager.should_promote">
+<a class="viewcode-back" href="../../api.html#aios_core.autonomy_manager.AutonomyManager.should_promote">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">should_promote</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Evaluate whether an agent&#39;s track record warrants promotion.</span>
+
+<span class="sd">        Rule: total_actions &gt;= 50 and success_rate &gt; 0.95 and current level &lt; 5.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: The agent identifier.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict with promotion evaluation details.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">profile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;agent_id&quot;</span><span class="p">:</span> <span class="n">agent_id</span><span class="p">,</span>
+                <span class="s2">&quot;current_level&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;should_promote&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;suggested_level&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;success_rate&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s2">&quot;total_actions&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;No profile found for agent&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
+
+        <span class="n">tr</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">track_record</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="n">tr</span><span class="p">[</span><span class="s2">&quot;total_actions&quot;</span><span class="p">]</span>
+        <span class="n">successes</span> <span class="o">=</span> <span class="n">tr</span><span class="p">[</span><span class="s2">&quot;successes&quot;</span><span class="p">]</span>
+        <span class="n">success_rate</span> <span class="o">=</span> <span class="n">successes</span> <span class="o">/</span> <span class="n">total</span> <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">level</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">total</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">:</span>
+            <span class="n">promote</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">suggested</span> <span class="o">=</span> <span class="n">current</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Insufficient action history: </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2">/50 required&quot;</span>
+        <span class="k">elif</span> <span class="n">success_rate</span> <span class="o">&lt;=</span> <span class="mf">0.95</span><span class="p">:</span>
+            <span class="n">promote</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">suggested</span> <span class="o">=</span> <span class="n">current</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Success rate </span><span class="si">{</span><span class="n">success_rate</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> does not meet 95% threshold&quot;</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">current</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="p">:</span>
+            <span class="n">promote</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">suggested</span> <span class="o">=</span> <span class="mi">5</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="s2">&quot;Agent is already at maximum autonomy level&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">promote</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">suggested</span> <span class="o">=</span> <span class="n">current</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Agent meets promotion criteria: </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2"> actions, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">success_rate</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> success rate&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;agent_id&quot;</span><span class="p">:</span> <span class="n">agent_id</span><span class="p">,</span>
+            <span class="s2">&quot;current_level&quot;</span><span class="p">:</span> <span class="n">current</span><span class="p">,</span>
+            <span class="s2">&quot;should_promote&quot;</span><span class="p">:</span> <span class="n">promote</span><span class="p">,</span>
+            <span class="s2">&quot;suggested_level&quot;</span><span class="p">:</span> <span class="n">suggested</span><span class="p">,</span>
+            <span class="s2">&quot;success_rate&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">success_rate</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+            <span class="s2">&quot;total_actions&quot;</span><span class="p">:</span> <span class="n">total</span><span class="p">,</span>
+            <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="AutonomyManager.should_demote">
+<a class="viewcode-back" href="../../api.html#aios_core.autonomy_manager.AutonomyManager.should_demote">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">should_demote</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Evaluate whether an agent&#39;s track record warrants demotion.</span>
+
+<span class="sd">        Rule: total_actions &gt;= 20 and success_rate &lt; 0.7 and current level &gt; 0.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: The agent identifier.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict with demotion evaluation details.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">profile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;agent_id&quot;</span><span class="p">:</span> <span class="n">agent_id</span><span class="p">,</span>
+                <span class="s2">&quot;current_level&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;should_demote&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;suggested_level&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;success_rate&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;No profile found for agent&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
+
+        <span class="n">tr</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">track_record</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="n">tr</span><span class="p">[</span><span class="s2">&quot;total_actions&quot;</span><span class="p">]</span>
+        <span class="n">successes</span> <span class="o">=</span> <span class="n">tr</span><span class="p">[</span><span class="s2">&quot;successes&quot;</span><span class="p">]</span>
+        <span class="n">success_rate</span> <span class="o">=</span> <span class="n">successes</span> <span class="o">/</span> <span class="n">total</span> <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">level</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">total</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">:</span>
+            <span class="n">demote</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">suggested</span> <span class="o">=</span> <span class="n">current</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Insufficient action history: </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2">/20 required&quot;</span>
+        <span class="k">elif</span> <span class="n">success_rate</span> <span class="o">&gt;=</span> <span class="mf">0.7</span><span class="p">:</span>
+            <span class="n">demote</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">suggested</span> <span class="o">=</span> <span class="n">current</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Success rate </span><span class="si">{</span><span class="n">success_rate</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> is above 70% threshold&quot;</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">current</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">demote</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">suggested</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="s2">&quot;Agent is already at minimum autonomy level&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">demote</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">suggested</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">current</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Agent meets demotion criteria: </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2"> actions, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">success_rate</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> success rate below 70%&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;agent_id&quot;</span><span class="p">:</span> <span class="n">agent_id</span><span class="p">,</span>
+            <span class="s2">&quot;current_level&quot;</span><span class="p">:</span> <span class="n">current</span><span class="p">,</span>
+            <span class="s2">&quot;should_demote&quot;</span><span class="p">:</span> <span class="n">demote</span><span class="p">,</span>
+            <span class="s2">&quot;suggested_level&quot;</span><span class="p">:</span> <span class="n">suggested</span><span class="p">,</span>
+            <span class="s2">&quot;success_rate&quot;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">success_rate</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+            <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="AutonomyManager.get_profile">
+<a class="viewcode-back" href="../../api.html#aios_core.autonomy_manager.AutonomyManager.get_profile">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the autonomy profile for an agent.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            agent_id: The agent identifier.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Profile dict or None if not found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">agent_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">profile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profile_to_dict</span><span class="p">(</span><span class="n">profile</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AutonomyManager.list_profiles">
+<a class="viewcode-back" href="../../api.html#aios_core.autonomy_manager.AutonomyManager.list_profiles">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">list_profiles</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;List all autonomy profiles, optionally filtered by level.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            level: Filter by autonomy level.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of profile dicts.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">profiles</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">level</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">profiles</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">profiles</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">level</span><span class="p">)</span> <span class="o">==</span> <span class="n">level</span><span class="p">]</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_profile_to_dict</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">profiles</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="AutonomyManager.stats">
+<a class="viewcode-back" href="../../api.html#aios_core.autonomy_manager.AutonomyManager.stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return autonomy manager statistics.&quot;&quot;&quot;</span>
+        <span class="n">by_level</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">lvl</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">level</span><span class="p">))</span>
+            <span class="n">by_level</span><span class="p">[</span><span class="n">lvl</span><span class="p">]</span> <span class="o">=</span> <span class="n">by_level</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">lvl</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="n">auto_adjusted</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+            <span class="mi">1</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="k">if</span> <span class="s2">&quot;auto_promoted_at&quot;</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">or</span> <span class="s2">&quot;auto_demoted_at&quot;</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">metadata</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;3.0.0&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;total_profiles&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_profiles</span><span class="p">),</span>
+            <span class="s2">&quot;by_level&quot;</span><span class="p">:</span> <span class="n">by_level</span><span class="p">,</span>
+            <span class="s2">&quot;auto_adjusted_count&quot;</span><span class="p">:</span> <span class="n">auto_adjusted</span><span class="p">,</span>
+            <span class="s2">&quot;storage&quot;</span><span class="p">:</span> <span class="s2">&quot;sqlite&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="k">else</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span>
+        <span class="p">}</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, JoTalbot &amp; AIOS Core Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

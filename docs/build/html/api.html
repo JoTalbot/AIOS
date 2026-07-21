@@ -1,0 +1,1121 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIOS Core API Reference &mdash; AIOS - Autonomous Intelligence Operating System 8.0.0-alpha documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=37dad9ae"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="AIOS Architecture Overview" href="architecture.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            AIOS - Autonomous Intelligence Operating System
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Table of Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">AIOS Architecture Overview</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">AIOS Core API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.orchestrator.Orchestrator"><code class="docutils literal notranslate"><span class="pre">Orchestrator</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Orchestrator.add_step"><code class="docutils literal notranslate"><span class="pre">Orchestrator.add_step()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Orchestrator.close"><code class="docutils literal notranslate"><span class="pre">Orchestrator.close()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Orchestrator.create_task"><code class="docutils literal notranslate"><span class="pre">Orchestrator.create_task()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Orchestrator.evaluate"><code class="docutils literal notranslate"><span class="pre">Orchestrator.evaluate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Orchestrator.execute_task"><code class="docutils literal notranslate"><span class="pre">Orchestrator.execute_task()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Orchestrator.get_task"><code class="docutils literal notranslate"><span class="pre">Orchestrator.get_task()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Orchestrator.list_tasks"><code class="docutils literal notranslate"><span class="pre">Orchestrator.list_tasks()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Orchestrator.optimize_plan_with_ml"><code class="docutils literal notranslate"><span class="pre">Orchestrator.optimize_plan_with_ml()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Orchestrator.score_plan_with_ml"><code class="docutils literal notranslate"><span class="pre">Orchestrator.score_plan_with_ml()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Orchestrator.stats"><code class="docutils literal notranslate"><span class="pre">Orchestrator.stats()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.orchestrator.StepStatus"><code class="docutils literal notranslate"><span class="pre">StepStatus</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.StepStatus.COMPLETED"><code class="docutils literal notranslate"><span class="pre">StepStatus.COMPLETED</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.StepStatus.FAILED"><code class="docutils literal notranslate"><span class="pre">StepStatus.FAILED</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.StepStatus.PENDING"><code class="docutils literal notranslate"><span class="pre">StepStatus.PENDING</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.StepStatus.RUNNING"><code class="docutils literal notranslate"><span class="pre">StepStatus.RUNNING</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.StepStatus.SKIPPED"><code class="docutils literal notranslate"><span class="pre">StepStatus.SKIPPED</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.orchestrator.Task"><code class="docutils literal notranslate"><span class="pre">Task</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.agent_id"><code class="docutils literal notranslate"><span class="pre">Task.agent_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.authority"><code class="docutils literal notranslate"><span class="pre">Task.authority</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.completed_at"><code class="docutils literal notranslate"><span class="pre">Task.completed_at</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.created_at"><code class="docutils literal notranslate"><span class="pre">Task.created_at</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.current_step_index"><code class="docutils literal notranslate"><span class="pre">Task.current_step_index</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.description"><code class="docutils literal notranslate"><span class="pre">Task.description</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.error"><code class="docutils literal notranslate"><span class="pre">Task.error</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.id"><code class="docutils literal notranslate"><span class="pre">Task.id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.metadata"><code class="docutils literal notranslate"><span class="pre">Task.metadata</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.name"><code class="docutils literal notranslate"><span class="pre">Task.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.risk_level"><code class="docutils literal notranslate"><span class="pre">Task.risk_level</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.started_at"><code class="docutils literal notranslate"><span class="pre">Task.started_at</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.status"><code class="docutils literal notranslate"><span class="pre">Task.status</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.Task.steps"><code class="docutils literal notranslate"><span class="pre">Task.steps</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.orchestrator.TaskStatus"><code class="docutils literal notranslate"><span class="pre">TaskStatus</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStatus.CANCELLED"><code class="docutils literal notranslate"><span class="pre">TaskStatus.CANCELLED</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStatus.COMPLETED"><code class="docutils literal notranslate"><span class="pre">TaskStatus.COMPLETED</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStatus.FAILED"><code class="docutils literal notranslate"><span class="pre">TaskStatus.FAILED</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStatus.PENDING"><code class="docutils literal notranslate"><span class="pre">TaskStatus.PENDING</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStatus.PLANNING"><code class="docutils literal notranslate"><span class="pre">TaskStatus.PLANNING</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStatus.RUNNING"><code class="docutils literal notranslate"><span class="pre">TaskStatus.RUNNING</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStatus.WAITING_APPROVAL"><code class="docutils literal notranslate"><span class="pre">TaskStatus.WAITING_APPROVAL</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.orchestrator.TaskStep"><code class="docutils literal notranslate"><span class="pre">TaskStep</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStep.completed_at"><code class="docutils literal notranslate"><span class="pre">TaskStep.completed_at</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStep.constitutional_check"><code class="docutils literal notranslate"><span class="pre">TaskStep.constitutional_check</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStep.description"><code class="docutils literal notranslate"><span class="pre">TaskStep.description</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStep.error"><code class="docutils literal notranslate"><span class="pre">TaskStep.error</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStep.id"><code class="docutils literal notranslate"><span class="pre">TaskStep.id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStep.name"><code class="docutils literal notranslate"><span class="pre">TaskStep.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStep.params"><code class="docutils literal notranslate"><span class="pre">TaskStep.params</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStep.result"><code class="docutils literal notranslate"><span class="pre">TaskStep.result</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStep.started_at"><code class="docutils literal notranslate"><span class="pre">TaskStep.started_at</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStep.status"><code class="docutils literal notranslate"><span class="pre">TaskStep.status</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.orchestrator.TaskStep.step_type"><code class="docutils literal notranslate"><span class="pre">TaskStep.step_type</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.constitution_engine.ConstitutionEngine"><code class="docutils literal notranslate"><span class="pre">ConstitutionEngine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.ConstitutionEngine.evaluate"><code class="docutils literal notranslate"><span class="pre">ConstitutionEngine.evaluate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.ConstitutionEngine.history"><code class="docutils literal notranslate"><span class="pre">ConstitutionEngine.history()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.ConstitutionEngine.stats"><code class="docutils literal notranslate"><span class="pre">ConstitutionEngine.stats()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.constitution_engine.Decision"><code class="docutils literal notranslate"><span class="pre">Decision</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.Decision.constitution_version"><code class="docutils literal notranslate"><span class="pre">Decision.constitution_version</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.Decision.details"><code class="docutils literal notranslate"><span class="pre">Decision.details</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.Decision.evaluation_id"><code class="docutils literal notranslate"><span class="pre">Decision.evaluation_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.Decision.matched_articles"><code class="docutils literal notranslate"><span class="pre">Decision.matched_articles</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.Decision.matched_policies"><code class="docutils literal notranslate"><span class="pre">Decision.matched_policies</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.Decision.outcome"><code class="docutils literal notranslate"><span class="pre">Decision.outcome</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.Decision.policy_actions"><code class="docutils literal notranslate"><span class="pre">Decision.policy_actions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.Decision.reason"><code class="docutils literal notranslate"><span class="pre">Decision.reason</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.Decision.requirements"><code class="docutils literal notranslate"><span class="pre">Decision.requirements</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.Decision.timestamp"><code class="docutils literal notranslate"><span class="pre">Decision.timestamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.Decision.violations"><code class="docutils literal notranslate"><span class="pre">Decision.violations</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.constitution_engine.DecisionOutcome"><code class="docutils literal notranslate"><span class="pre">DecisionOutcome</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.DecisionOutcome.ALLOW"><code class="docutils literal notranslate"><span class="pre">DecisionOutcome.ALLOW</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.DecisionOutcome.DENY"><code class="docutils literal notranslate"><span class="pre">DecisionOutcome.DENY</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.DecisionOutcome.REVIEW"><code class="docutils literal notranslate"><span class="pre">DecisionOutcome.REVIEW</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.constitution_engine.EvaluationContext"><code class="docutils literal notranslate"><span class="pre">EvaluationContext</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.EvaluationContext.action"><code class="docutils literal notranslate"><span class="pre">EvaluationContext.action</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.EvaluationContext.constitution_hits"><code class="docutils literal notranslate"><span class="pre">EvaluationContext.constitution_hits</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.EvaluationContext.evaluation_id"><code class="docutils literal notranslate"><span class="pre">EvaluationContext.evaluation_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.EvaluationContext.policy_hits"><code class="docutils literal notranslate"><span class="pre">EvaluationContext.policy_hits</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.EvaluationContext.requirements"><code class="docutils literal notranslate"><span class="pre">EvaluationContext.requirements</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.EvaluationContext.timestamp"><code class="docutils literal notranslate"><span class="pre">EvaluationContext.timestamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.EvaluationContext.violations"><code class="docutils literal notranslate"><span class="pre">EvaluationContext.violations</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.constitution_engine.EvaluationContext.warnings"><code class="docutils literal notranslate"><span class="pre">EvaluationContext.warnings</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.autonomy_manager.AgentAutonomyProfile"><code class="docutils literal notranslate"><span class="pre">AgentAutonomyProfile</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AgentAutonomyProfile.agent_id"><code class="docutils literal notranslate"><span class="pre">AgentAutonomyProfile.agent_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AgentAutonomyProfile.expires_at"><code class="docutils literal notranslate"><span class="pre">AgentAutonomyProfile.expires_at</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AgentAutonomyProfile.granted_at"><code class="docutils literal notranslate"><span class="pre">AgentAutonomyProfile.granted_at</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AgentAutonomyProfile.granted_by"><code class="docutils literal notranslate"><span class="pre">AgentAutonomyProfile.granted_by</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AgentAutonomyProfile.level"><code class="docutils literal notranslate"><span class="pre">AgentAutonomyProfile.level</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AgentAutonomyProfile.metadata"><code class="docutils literal notranslate"><span class="pre">AgentAutonomyProfile.metadata</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AgentAutonomyProfile.restrictions"><code class="docutils literal notranslate"><span class="pre">AgentAutonomyProfile.restrictions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AgentAutonomyProfile.track_record"><code class="docutils literal notranslate"><span class="pre">AgentAutonomyProfile.track_record</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyLevel"><code class="docutils literal notranslate"><span class="pre">AutonomyLevel</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyLevel.LEVEL_0_MANUAL"><code class="docutils literal notranslate"><span class="pre">AutonomyLevel.LEVEL_0_MANUAL</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyLevel.LEVEL_1_ASSISTED"><code class="docutils literal notranslate"><span class="pre">AutonomyLevel.LEVEL_1_ASSISTED</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyLevel.LEVEL_2_SUPERVISED"><code class="docutils literal notranslate"><span class="pre">AutonomyLevel.LEVEL_2_SUPERVISED</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyLevel.LEVEL_3_MANAGED"><code class="docutils literal notranslate"><span class="pre">AutonomyLevel.LEVEL_3_MANAGED</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyLevel.LEVEL_4_AUTONOMOUS"><code class="docutils literal notranslate"><span class="pre">AutonomyLevel.LEVEL_4_AUTONOMOUS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyLevel.LEVEL_5_SELF_DIRECTED"><code class="docutils literal notranslate"><span class="pre">AutonomyLevel.LEVEL_5_SELF_DIRECTED</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyManager"><code class="docutils literal notranslate"><span class="pre">AutonomyManager</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyManager.check_autonomy"><code class="docutils literal notranslate"><span class="pre">AutonomyManager.check_autonomy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyManager.get_profile"><code class="docutils literal notranslate"><span class="pre">AutonomyManager.get_profile()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyManager.grant_autonomy"><code class="docutils literal notranslate"><span class="pre">AutonomyManager.grant_autonomy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyManager.list_profiles"><code class="docutils literal notranslate"><span class="pre">AutonomyManager.list_profiles()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyManager.record_action"><code class="docutils literal notranslate"><span class="pre">AutonomyManager.record_action()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyManager.revoke_autonomy"><code class="docutils literal notranslate"><span class="pre">AutonomyManager.revoke_autonomy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyManager.should_demote"><code class="docutils literal notranslate"><span class="pre">AutonomyManager.should_demote()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyManager.should_promote"><code class="docutils literal notranslate"><span class="pre">AutonomyManager.should_promote()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyManager.stats"><code class="docutils literal notranslate"><span class="pre">AutonomyManager.stats()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor"><code class="docutils literal notranslate"><span class="pre">ForbiddenASTVisitor</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.FORBIDDEN_CALLS"><code class="docutils literal notranslate"><span class="pre">ForbiddenASTVisitor.FORBIDDEN_CALLS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.FORBIDDEN_MODULES"><code class="docutils literal notranslate"><span class="pre">ForbiddenASTVisitor.FORBIDDEN_MODULES</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_Attribute"><code class="docutils literal notranslate"><span class="pre">ForbiddenASTVisitor.visit_Attribute()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_Call"><code class="docutils literal notranslate"><span class="pre">ForbiddenASTVisitor.visit_Call()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_Import"><code class="docutils literal notranslate"><span class="pre">ForbiddenASTVisitor.visit_Import()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_ImportFrom"><code class="docutils literal notranslate"><span class="pre">ForbiddenASTVisitor.visit_ImportFrom()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_While"><code class="docutils literal notranslate"><span class="pre">ForbiddenASTVisitor.visit_While()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.formal_code_verifier.FormalCodeVerifier"><code class="docutils literal notranslate"><span class="pre">FormalCodeVerifier</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.formal_code_verifier.FormalCodeVerifier.stats"><code class="docutils literal notranslate"><span class="pre">FormalCodeVerifier.stats()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.formal_code_verifier.FormalCodeVerifier.verification_history"><code class="docutils literal notranslate"><span class="pre">FormalCodeVerifier.verification_history</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.formal_code_verifier.FormalCodeVerifier.verify_code"><code class="docutils literal notranslate"><span class="pre">FormalCodeVerifier.verify_code()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.substrate_convergence.SubstrateConvergenceEngine"><code class="docutils literal notranslate"><span class="pre">SubstrateConvergenceEngine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.substrate_convergence.SubstrateConvergenceEngine.execute_substrate_task"><code class="docutils literal notranslate"><span class="pre">SubstrateConvergenceEngine.execute_substrate_task()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.substrate_convergence.SubstrateConvergenceEngine.select_optimal_substrate"><code class="docutils literal notranslate"><span class="pre">SubstrateConvergenceEngine.select_optimal_substrate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.substrate_convergence.SubstrateConvergenceEngine.stats"><code class="docutils literal notranslate"><span class="pre">SubstrateConvergenceEngine.stats()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#aios_core.substrate_convergence.SubstrateType"><code class="docutils literal notranslate"><span class="pre">SubstrateType</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.substrate_convergence.SubstrateType.BIO_COMPUTE"><code class="docutils literal notranslate"><span class="pre">SubstrateType.BIO_COMPUTE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.substrate_convergence.SubstrateType.NEUROMORPHIC"><code class="docutils literal notranslate"><span class="pre">SubstrateType.NEUROMORPHIC</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.substrate_convergence.SubstrateType.PHOTONIC"><code class="docutils literal notranslate"><span class="pre">SubstrateType.PHOTONIC</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.substrate_convergence.SubstrateType.QUANTUM"><code class="docutils literal notranslate"><span class="pre">SubstrateType.QUANTUM</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aios_core.substrate_convergence.SubstrateType.SILICON"><code class="docutils literal notranslate"><span class="pre">SubstrateType.SILICON</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">AIOS - Autonomous Intelligence Operating System</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">AIOS Core API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-aios_core.orchestrator">
+<span id="aios-core-api-reference"></span><h1>AIOS Core API Reference<a class="headerlink" href="#module-aios_core.orchestrator" title="Link to this heading"></a></h1>
+<p>AIOS Orchestrator v3.0.0</p>
+<p>Central coordination engine that plans, executes, and monitors
+complex multi-step tasks by composing all AIOS subsystems:
+- RuntimePolicy for constitutional evaluation
+- MemoryManager for persistent memory
+- KnowledgeGraph for semantic relationships
+- ReasoningEngine for explainable decision chains
+- LearningEngine for experience-based improvements
+- EvolutionManager for controlled self-modification
+- PrivacyGuard for data classification enforcement</p>
+<p>Every task goes through constitutional evaluation before execution.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Orchestrator">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.orchestrator.</span></span><span class="sig-name descname"><span class="pre">Orchestrator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Database</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">AIOSConfig</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constitution_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">policies_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/orchestrator.html#Orchestrator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.Orchestrator" title="Link to this definition"></a></dt>
+<dd><p>Central coordination engine for AIOS.</p>
+<p>Plans and executes multi-step tasks, coordinating all subsystems.
+Every step goes through constitutional evaluation before execution.</p>
+<dl>
+<dt>Usage:</dt><dd><p>orch = Orchestrator(db=Database(“:memory:”), constitution_dir=”…”, policies_dir=”…”)</p>
+<p># Create and execute a task
+task = orch.create_task(“analyze_data”, “Analyze user data patterns”, risk_level=”low”)
+orch.add_step(task, “evaluate”, params={“goal”: “Read metrics”, …})
+orch.add_step(task, “memory”, params={“action”: “store”, “content”: {…}, “category”: “operational”})
+result = orch.execute_task(task)</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Orchestrator.add_step">
+<span class="sig-name descname"><span class="pre">add_step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#aios_core.orchestrator.Task" title="aios_core.orchestrator.Task"><span class="pre">Task</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#aios_core.orchestrator.TaskStep" title="aios_core.orchestrator.TaskStep"><span class="pre">TaskStep</span></a></span></span><a class="reference internal" href="_modules/aios_core/orchestrator.html#Orchestrator.add_step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.Orchestrator.add_step" title="Link to this definition"></a></dt>
+<dd><p>Add a step to a task.</p>
+<dl class="simple">
+<dt>Step types:</dt><dd><ul class="simple">
+<li><p>evaluate: Run constitutional evaluation</p></li>
+<li><p>memory: Memory operation (store/retrieve/search)</p></li>
+<li><p>knowledge: Knowledge graph operation</p></li>
+<li><p>tool: Generic tool call</p></li>
+<li><p>approve: Wait for human approval</p></li>
+<li><p>learn: Record learning experience</p></li>
+<li><p>reason: Build reasoning chain</p></li>
+<li><p>evolve: Evolution proposal</p></li>
+<li><p>custom: Custom handler</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Orchestrator.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/orchestrator.html#Orchestrator.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.Orchestrator.close" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Orchestrator.create_task">
+<span class="sig-name descname"><span class="pre">create_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'orchestrator'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">authority</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'system'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">risk_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'medium'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#aios_core.orchestrator.Task" title="aios_core.orchestrator.Task"><span class="pre">Task</span></a></span></span><a class="reference internal" href="_modules/aios_core/orchestrator.html#Orchestrator.create_task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.Orchestrator.create_task" title="Link to this definition"></a></dt>
+<dd><p>Create a new task without executing it.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Orchestrator.evaluate">
+<span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">action</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/orchestrator.html#Orchestrator.evaluate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.Orchestrator.evaluate" title="Link to this definition"></a></dt>
+<dd><p>Direct constitutional evaluation shortcut.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Orchestrator.execute_task">
+<span class="sig-name descname"><span class="pre">execute_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#aios_core.orchestrator.Task" title="aios_core.orchestrator.Task"><span class="pre">Task</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/orchestrator.html#Orchestrator.execute_task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.Orchestrator.execute_task" title="Link to this definition"></a></dt>
+<dd><p>Execute all steps in a task sequentially.</p>
+<p>Returns a summary dict with task_id, status, step results, etc.
+Each step goes through constitutional evaluation before execution.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Orchestrator.get_task">
+<span class="sig-name descname"><span class="pre">get_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#aios_core.orchestrator.Task" title="aios_core.orchestrator.Task"><span class="pre">Task</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/aios_core/orchestrator.html#Orchestrator.get_task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.Orchestrator.get_task" title="Link to this definition"></a></dt>
+<dd><p>Get a task by ID.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Orchestrator.list_tasks">
+<span class="sig-name descname"><span class="pre">list_tasks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#aios_core.orchestrator.TaskStatus" title="aios_core.orchestrator.TaskStatus"><span class="pre">TaskStatus</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/aios_core/orchestrator.html#Orchestrator.list_tasks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.Orchestrator.list_tasks" title="Link to this definition"></a></dt>
+<dd><p>List all tasks, optionally filtered by status.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Orchestrator.optimize_plan_with_ml">
+<span class="sig-name descname"><span class="pre">optimize_plan_with_ml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plan</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/orchestrator.html#Orchestrator.optimize_plan_with_ml"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.Orchestrator.optimize_plan_with_ml" title="Link to this definition"></a></dt>
+<dd><p>Get ML-based optimization suggestions for a plan.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Orchestrator.score_plan_with_ml">
+<span class="sig-name descname"><span class="pre">score_plan_with_ml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">plan</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/orchestrator.html#Orchestrator.score_plan_with_ml"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.Orchestrator.score_plan_with_ml" title="Link to this definition"></a></dt>
+<dd><p>Score a plan using the ML-enhanced scorer.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Orchestrator.stats">
+<span class="sig-name descname"><span class="pre">stats</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/orchestrator.html#Orchestrator.stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.Orchestrator.stats" title="Link to this definition"></a></dt>
+<dd><p>Comprehensive orchestrator statistics.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.orchestrator.StepStatus">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.orchestrator.</span></span><span class="sig-name descname"><span class="pre">StepStatus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/orchestrator.html#StepStatus"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.StepStatus" title="Link to this definition"></a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.StepStatus.COMPLETED">
+<span class="sig-name descname"><span class="pre">COMPLETED</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'completed'</span></span><a class="headerlink" href="#aios_core.orchestrator.StepStatus.COMPLETED" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.StepStatus.FAILED">
+<span class="sig-name descname"><span class="pre">FAILED</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'failed'</span></span><a class="headerlink" href="#aios_core.orchestrator.StepStatus.FAILED" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.StepStatus.PENDING">
+<span class="sig-name descname"><span class="pre">PENDING</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'pending'</span></span><a class="headerlink" href="#aios_core.orchestrator.StepStatus.PENDING" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.StepStatus.RUNNING">
+<span class="sig-name descname"><span class="pre">RUNNING</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'running'</span></span><a class="headerlink" href="#aios_core.orchestrator.StepStatus.RUNNING" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.StepStatus.SKIPPED">
+<span class="sig-name descname"><span class="pre">SKIPPED</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'skipped'</span></span><a class="headerlink" href="#aios_core.orchestrator.StepStatus.SKIPPED" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.orchestrator.</span></span><span class="sig-name descname"><span class="pre">Task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#aios_core.orchestrator.TaskStatus" title="aios_core.orchestrator.TaskStatus"><span class="pre">TaskStatus</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">TaskStatus.PENDING</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'orchestrator'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">authority</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'system'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">risk_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'medium'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#aios_core.orchestrator.TaskStep" title="aios_core.orchestrator.TaskStep"><span class="pre">TaskStep</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_step_index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">created_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">started_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">completed_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/orchestrator.html#Task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.Task" title="Link to this definition"></a></dt>
+<dd><p>A multi-step orchestrated task.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.agent_id">
+<span class="sig-name descname"><span class="pre">agent_id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'orchestrator'</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.agent_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.authority">
+<span class="sig-name descname"><span class="pre">authority</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'system'</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.authority" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.completed_at">
+<span class="sig-name descname"><span class="pre">completed_at</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.completed_at" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.created_at">
+<span class="sig-name descname"><span class="pre">created_at</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.created_at" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.current_step_index">
+<span class="sig-name descname"><span class="pre">current_step_index</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">-1</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.current_step_index" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.description">
+<span class="sig-name descname"><span class="pre">description</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.description" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.error">
+<span class="sig-name descname"><span class="pre">error</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.id">
+<span class="sig-name descname"><span class="pre">id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.metadata">
+<span class="sig-name descname"><span class="pre">metadata</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.metadata" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.name">
+<span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.risk_level">
+<span class="sig-name descname"><span class="pre">risk_level</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'medium'</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.risk_level" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.started_at">
+<span class="sig-name descname"><span class="pre">started_at</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.started_at" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.status">
+<span class="sig-name descname"><span class="pre">status</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#aios_core.orchestrator.TaskStatus" title="aios_core.orchestrator.TaskStatus"><span class="pre">TaskStatus</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'pending'</span></span><a class="headerlink" href="#aios_core.orchestrator.Task.status" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.Task.steps">
+<span class="sig-name descname"><span class="pre">steps</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#aios_core.orchestrator.TaskStep" title="aios_core.orchestrator.TaskStep"><span class="pre">TaskStep</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#aios_core.orchestrator.Task.steps" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStatus">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.orchestrator.</span></span><span class="sig-name descname"><span class="pre">TaskStatus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/orchestrator.html#TaskStatus"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.TaskStatus" title="Link to this definition"></a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStatus.CANCELLED">
+<span class="sig-name descname"><span class="pre">CANCELLED</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'cancelled'</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStatus.CANCELLED" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStatus.COMPLETED">
+<span class="sig-name descname"><span class="pre">COMPLETED</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'completed'</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStatus.COMPLETED" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStatus.FAILED">
+<span class="sig-name descname"><span class="pre">FAILED</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'failed'</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStatus.FAILED" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStatus.PENDING">
+<span class="sig-name descname"><span class="pre">PENDING</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'pending'</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStatus.PENDING" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStatus.PLANNING">
+<span class="sig-name descname"><span class="pre">PLANNING</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'planning'</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStatus.PLANNING" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStatus.RUNNING">
+<span class="sig-name descname"><span class="pre">RUNNING</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'running'</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStatus.RUNNING" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStatus.WAITING_APPROVAL">
+<span class="sig-name descname"><span class="pre">WAITING_APPROVAL</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'waiting_approval'</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStatus.WAITING_APPROVAL" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStep">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.orchestrator.</span></span><span class="sig-name descname"><span class="pre">TaskStep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#aios_core.orchestrator.StepStatus" title="aios_core.orchestrator.StepStatus"><span class="pre">StepStatus</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">StepStatus.PENDING</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'tool'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">started_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">completed_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constitutional_check</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/orchestrator.html#TaskStep"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.orchestrator.TaskStep" title="Link to this definition"></a></dt>
+<dd><p>A single step within an orchestrated task.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStep.completed_at">
+<span class="sig-name descname"><span class="pre">completed_at</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStep.completed_at" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStep.constitutional_check">
+<span class="sig-name descname"><span class="pre">constitutional_check</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStep.constitutional_check" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStep.description">
+<span class="sig-name descname"><span class="pre">description</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStep.description" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStep.error">
+<span class="sig-name descname"><span class="pre">error</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStep.error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStep.id">
+<span class="sig-name descname"><span class="pre">id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStep.id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStep.name">
+<span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStep.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStep.params">
+<span class="sig-name descname"><span class="pre">params</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStep.params" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStep.result">
+<span class="sig-name descname"><span class="pre">result</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStep.result" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStep.started_at">
+<span class="sig-name descname"><span class="pre">started_at</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStep.started_at" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStep.status">
+<span class="sig-name descname"><span class="pre">status</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#aios_core.orchestrator.StepStatus" title="aios_core.orchestrator.StepStatus"><span class="pre">StepStatus</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'pending'</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStep.status" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.orchestrator.TaskStep.step_type">
+<span class="sig-name descname"><span class="pre">step_type</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'tool'</span></span><a class="headerlink" href="#aios_core.orchestrator.TaskStep.step_type" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<p id="module-aios_core.constitution_engine">AIOS Constitution Engine v3.0.0</p>
+<p>Core constitutional decision-making engine that evaluates actions against
+real constitutional articles and YAML policies. Replaces the v2.1.1 stub
+with actual rule enforcement.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.ConstitutionEngine">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.constitution_engine.</span></span><span class="sig-name descname"><span class="pre">ConstitutionEngine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">constitution_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">policies_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/constitution_engine.html#ConstitutionEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.constitution_engine.ConstitutionEngine" title="Link to this definition"></a></dt>
+<dd><p>Evaluates actions against AIOS constitutional principles and policies.</p>
+<p>Loads the full constitution (67 articles) and all YAML policies at init.
+Each evaluate() call checks the action against:
+1. Required action fields (goal, scope, risk, audit_log)
+2. Constitution MUST NOT rules (prohibitions)
+3. Constitution MUST rules (requirements)
+4. YAML policy rules and threat levels
+5. Restricted action patterns</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.ConstitutionEngine.evaluate">
+<span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">action</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/constitution_engine.html#ConstitutionEngine.evaluate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.constitution_engine.ConstitutionEngine.evaluate" title="Link to this definition"></a></dt>
+<dd><p>Evaluate an action against constitutional rules and policies.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>action</strong> – Action request. Expected fields:
+- goal (str): What the action intends to achieve
+- scope (str): Scope of the action
+- risk (str): Risk level — ‘low’, ‘medium’, ‘high’, ‘critical’
+- audit_log (bool or dict): Whether audit logging is enabled
+- action_type (str, optional): Type of action
+- agent_id (str, optional): ID of the requesting agent
+- authority (str, optional): Authority level of the agent</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Decision dict with outcome, reason, violations, requirements, etc.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.ConstitutionEngine.history">
+<span class="sig-name descname"><span class="pre">history</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/aios_core/constitution_engine.html#ConstitutionEngine.history"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.constitution_engine.ConstitutionEngine.history" title="Link to this definition"></a></dt>
+<dd><p>Return full decision history as dicts.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.ConstitutionEngine.stats">
+<span class="sig-name descname"><span class="pre">stats</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/constitution_engine.html#ConstitutionEngine.stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.constitution_engine.ConstitutionEngine.stats" title="Link to this definition"></a></dt>
+<dd><p>Return engine statistics.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.Decision">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.constitution_engine.</span></span><span class="sig-name descname"><span class="pre">Decision</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">evaluation_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outcome</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#aios_core.constitution_engine.DecisionOutcome" title="aios_core.constitution_engine.DecisionOutcome"><span class="pre">DecisionOutcome</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">reason</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">details</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constitution_version</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">violations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requirements</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">policy_actions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matched_articles</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matched_policies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/constitution_engine.html#Decision"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.constitution_engine.Decision" title="Link to this definition"></a></dt>
+<dd><p>Result of a constitutional evaluation.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.Decision.constitution_version">
+<span class="sig-name descname"><span class="pre">constitution_version</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#aios_core.constitution_engine.Decision.constitution_version" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.Decision.details">
+<span class="sig-name descname"><span class="pre">details</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#aios_core.constitution_engine.Decision.details" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.Decision.evaluation_id">
+<span class="sig-name descname"><span class="pre">evaluation_id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#aios_core.constitution_engine.Decision.evaluation_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.Decision.matched_articles">
+<span class="sig-name descname"><span class="pre">matched_articles</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#aios_core.constitution_engine.Decision.matched_articles" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.Decision.matched_policies">
+<span class="sig-name descname"><span class="pre">matched_policies</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#aios_core.constitution_engine.Decision.matched_policies" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.Decision.outcome">
+<span class="sig-name descname"><span class="pre">outcome</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#aios_core.constitution_engine.DecisionOutcome" title="aios_core.constitution_engine.DecisionOutcome"><span class="pre">DecisionOutcome</span></a></span><a class="headerlink" href="#aios_core.constitution_engine.Decision.outcome" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.Decision.policy_actions">
+<span class="sig-name descname"><span class="pre">policy_actions</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#aios_core.constitution_engine.Decision.policy_actions" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.Decision.reason">
+<span class="sig-name descname"><span class="pre">reason</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#aios_core.constitution_engine.Decision.reason" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.Decision.requirements">
+<span class="sig-name descname"><span class="pre">requirements</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#aios_core.constitution_engine.Decision.requirements" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.Decision.timestamp">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#aios_core.constitution_engine.Decision.timestamp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.Decision.violations">
+<span class="sig-name descname"><span class="pre">violations</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#aios_core.constitution_engine.Decision.violations" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.DecisionOutcome">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.constitution_engine.</span></span><span class="sig-name descname"><span class="pre">DecisionOutcome</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/constitution_engine.html#DecisionOutcome"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.constitution_engine.DecisionOutcome" title="Link to this definition"></a></dt>
+<dd><p>Possible outcomes of a constitutional evaluation.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.DecisionOutcome.ALLOW">
+<span class="sig-name descname"><span class="pre">ALLOW</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'ALLOW'</span></span><a class="headerlink" href="#aios_core.constitution_engine.DecisionOutcome.ALLOW" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.DecisionOutcome.DENY">
+<span class="sig-name descname"><span class="pre">DENY</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'DENY'</span></span><a class="headerlink" href="#aios_core.constitution_engine.DecisionOutcome.DENY" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.DecisionOutcome.REVIEW">
+<span class="sig-name descname"><span class="pre">REVIEW</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'REVIEW'</span></span><a class="headerlink" href="#aios_core.constitution_engine.DecisionOutcome.REVIEW" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.EvaluationContext">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.constitution_engine.</span></span><span class="sig-name descname"><span class="pre">EvaluationContext</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">action</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluation_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestamp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constitution_hits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">policy_hits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">violations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requirements</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warnings</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/constitution_engine.html#EvaluationContext"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.constitution_engine.EvaluationContext" title="Link to this definition"></a></dt>
+<dd><p>Context for a single action evaluation.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.EvaluationContext.action">
+<span class="sig-name descname"><span class="pre">action</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></span><a class="headerlink" href="#aios_core.constitution_engine.EvaluationContext.action" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.EvaluationContext.constitution_hits">
+<span class="sig-name descname"><span class="pre">constitution_hits</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#aios_core.constitution_engine.EvaluationContext.constitution_hits" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.EvaluationContext.evaluation_id">
+<span class="sig-name descname"><span class="pre">evaluation_id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#aios_core.constitution_engine.EvaluationContext.evaluation_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.EvaluationContext.policy_hits">
+<span class="sig-name descname"><span class="pre">policy_hits</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#aios_core.constitution_engine.EvaluationContext.policy_hits" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.EvaluationContext.requirements">
+<span class="sig-name descname"><span class="pre">requirements</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#aios_core.constitution_engine.EvaluationContext.requirements" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.EvaluationContext.timestamp">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#aios_core.constitution_engine.EvaluationContext.timestamp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.EvaluationContext.violations">
+<span class="sig-name descname"><span class="pre">violations</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#aios_core.constitution_engine.EvaluationContext.violations" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.constitution_engine.EvaluationContext.warnings">
+<span class="sig-name descname"><span class="pre">warnings</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#aios_core.constitution_engine.EvaluationContext.warnings" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<p id="module-aios_core.autonomy_manager">AIOS Autonomy Manager v3.0.0</p>
+<p>Article LXVII — Autonomy Level Management.</p>
+<p>Manages agent autonomy levels from fully manual (LEVEL_0) to
+self-directed (LEVEL_5), tracking performance records and
+determining automatic approval eligibility based on risk levels.</p>
+<p>Persists to autonomy_profiles table in SQLite.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AgentAutonomyProfile">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.autonomy_manager.</span></span><span class="sig-name descname"><span class="pre">AgentAutonomyProfile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyLevel" title="aios_core.autonomy_manager.AutonomyLevel"><span class="pre">AutonomyLevel</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">AutonomyLevel.LEVEL_0_MANUAL</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">granted_by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'system'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">granted_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expires_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restrictions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_record</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/autonomy_manager.html#AgentAutonomyProfile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.autonomy_manager.AgentAutonomyProfile" title="Link to this definition"></a></dt>
+<dd><p>Autonomy profile for a single agent.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AgentAutonomyProfile.agent_id">
+<span class="sig-name descname"><span class="pre">agent_id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AgentAutonomyProfile.agent_id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AgentAutonomyProfile.expires_at">
+<span class="sig-name descname"><span class="pre">expires_at</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AgentAutonomyProfile.expires_at" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AgentAutonomyProfile.granted_at">
+<span class="sig-name descname"><span class="pre">granted_at</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AgentAutonomyProfile.granted_at" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AgentAutonomyProfile.granted_by">
+<span class="sig-name descname"><span class="pre">granted_by</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'system'</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AgentAutonomyProfile.granted_by" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AgentAutonomyProfile.level">
+<span class="sig-name descname"><span class="pre">level</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#aios_core.autonomy_manager.AutonomyLevel" title="aios_core.autonomy_manager.AutonomyLevel"><span class="pre">AutonomyLevel</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AgentAutonomyProfile.level" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AgentAutonomyProfile.metadata">
+<span class="sig-name descname"><span class="pre">metadata</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AgentAutonomyProfile.metadata" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AgentAutonomyProfile.restrictions">
+<span class="sig-name descname"><span class="pre">restrictions</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AgentAutonomyProfile.restrictions" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AgentAutonomyProfile.track_record">
+<span class="sig-name descname"><span class="pre">track_record</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AgentAutonomyProfile.track_record" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyLevel">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.autonomy_manager.</span></span><span class="sig-name descname"><span class="pre">AutonomyLevel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/autonomy_manager.html#AutonomyLevel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyLevel" title="Link to this definition"></a></dt>
+<dd><p>Agent autonomy levels, from fully manual to self-directed.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyLevel.LEVEL_0_MANUAL">
+<span class="sig-name descname"><span class="pre">LEVEL_0_MANUAL</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyLevel.LEVEL_0_MANUAL" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyLevel.LEVEL_1_ASSISTED">
+<span class="sig-name descname"><span class="pre">LEVEL_1_ASSISTED</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyLevel.LEVEL_1_ASSISTED" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyLevel.LEVEL_2_SUPERVISED">
+<span class="sig-name descname"><span class="pre">LEVEL_2_SUPERVISED</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyLevel.LEVEL_2_SUPERVISED" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyLevel.LEVEL_3_MANAGED">
+<span class="sig-name descname"><span class="pre">LEVEL_3_MANAGED</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyLevel.LEVEL_3_MANAGED" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyLevel.LEVEL_4_AUTONOMOUS">
+<span class="sig-name descname"><span class="pre">LEVEL_4_AUTONOMOUS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyLevel.LEVEL_4_AUTONOMOUS" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyLevel.LEVEL_5_SELF_DIRECTED">
+<span class="sig-name descname"><span class="pre">LEVEL_5_SELF_DIRECTED</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></span><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyLevel.LEVEL_5_SELF_DIRECTED" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyManager">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.autonomy_manager.</span></span><span class="sig-name descname"><span class="pre">AutonomyManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Database</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/autonomy_manager.html#AutonomyManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyManager" title="Link to this definition"></a></dt>
+<dd><p>Manages agent autonomy levels and approval decisions.</p>
+<p>v3.0.0: Full autonomy lifecycle with SQLite persistence,
+risk-based approval gating, and promotion/demotion logic.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyManager.check_autonomy">
+<span class="sig-name descname"><span class="pre">check_autonomy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action_risk</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'low'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/autonomy_manager.html#AutonomyManager.check_autonomy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyManager.check_autonomy" title="Link to this definition"></a></dt>
+<dd><p>Determine if an agent’s action is auto-approved or needs human review.</p>
+<dl class="simple">
+<dt>Risk-based approval matrix:</dt><dd><ul class="simple">
+<li><p>Level 0/1: ALWAYS needs approval</p></li>
+<li><p>Level 2:   low auto, medium+ needs approval</p></li>
+<li><p>Level 3:   low/medium auto, high+ needs approval</p></li>
+<li><p>Level 4:   low/medium/high auto, critical needs approval</p></li>
+<li><p>Level 5:   all risks auto-approved within constitutional bounds</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>agent_id</strong> – The agent identifier.</p></li>
+<li><p><strong>action_risk</strong> – Risk level of the action (“low”, “medium”, “high”, “critical”).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict with approval decision details.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyManager.get_profile">
+<span class="sig-name descname"><span class="pre">get_profile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="_modules/aios_core/autonomy_manager.html#AutonomyManager.get_profile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyManager.get_profile" title="Link to this definition"></a></dt>
+<dd><p>Get the autonomy profile for an agent.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>agent_id</strong> – The agent identifier.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Profile dict or None if not found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyManager.grant_autonomy">
+<span class="sig-name descname"><span class="pre">grant_autonomy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">granted_by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'system'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expires_at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restrictions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/autonomy_manager.html#AutonomyManager.grant_autonomy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyManager.grant_autonomy" title="Link to this definition"></a></dt>
+<dd><p>Grant or update autonomy level for an agent.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>agent_id</strong> – The agent identifier.</p></li>
+<li><p><strong>level</strong> – Autonomy level (0-5).</p></li>
+<li><p><strong>granted_by</strong> – Who granted this autonomy.</p></li>
+<li><p><strong>expires_at</strong> – Optional expiry ISO timestamp.</p></li>
+<li><p><strong>restrictions</strong> – Optional extra restrictions dict.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The profile dict for the agent.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyManager.list_profiles">
+<span class="sig-name descname"><span class="pre">list_profiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/aios_core/autonomy_manager.html#AutonomyManager.list_profiles"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyManager.list_profiles" title="Link to this definition"></a></dt>
+<dd><p>List all autonomy profiles, optionally filtered by level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>level</strong> – Filter by autonomy level.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of profile dicts.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyManager.record_action">
+<span class="sig-name descname"><span class="pre">record_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">success</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">triggered_review</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/aios_core/autonomy_manager.html#AutonomyManager.record_action"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyManager.record_action" title="Link to this definition"></a></dt>
+<dd><p>Record an action outcome in the agent’s track record.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>agent_id</strong> – The agent identifier.</p></li>
+<li><p><strong>success</strong> – Whether the action succeeded.</p></li>
+<li><p><strong>triggered_review</strong> – Whether this action triggered a human review.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyManager.revoke_autonomy">
+<span class="sig-name descname"><span class="pre">revoke_autonomy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reason</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/autonomy_manager.html#AutonomyManager.revoke_autonomy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyManager.revoke_autonomy" title="Link to this definition"></a></dt>
+<dd><p>Revoke autonomy for an agent (reset to LEVEL_0).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>agent_id</strong> – The agent identifier.</p></li>
+<li><p><strong>reason</strong> – Reason for revocation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The updated profile dict.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyManager.should_demote">
+<span class="sig-name descname"><span class="pre">should_demote</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/autonomy_manager.html#AutonomyManager.should_demote"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyManager.should_demote" title="Link to this definition"></a></dt>
+<dd><p>Evaluate whether an agent’s track record warrants demotion.</p>
+<p>Rule: total_actions &gt;= 20 and success_rate &lt; 0.7 and current level &gt; 0.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>agent_id</strong> – The agent identifier.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict with demotion evaluation details.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyManager.should_promote">
+<span class="sig-name descname"><span class="pre">should_promote</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">agent_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/autonomy_manager.html#AutonomyManager.should_promote"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyManager.should_promote" title="Link to this definition"></a></dt>
+<dd><p>Evaluate whether an agent’s track record warrants promotion.</p>
+<p>Rule: total_actions &gt;= 50 and success_rate &gt; 0.95 and current level &lt; 5.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>agent_id</strong> – The agent identifier.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict with promotion evaluation details.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.autonomy_manager.AutonomyManager.stats">
+<span class="sig-name descname"><span class="pre">stats</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/aios_core/autonomy_manager.html#AutonomyManager.stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.autonomy_manager.AutonomyManager.stats" title="Link to this definition"></a></dt>
+<dd><p>Return autonomy manager statistics.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p id="module-aios_core.formal_code_verifier">Real-Time Formal Code Verification Engine for AIOS Horizon 5.0.</p>
+<p>Provides AST static invariant analysis, pre/post-condition mathematical proofs,
+infinite loop bounds checking, forbidden execution pattern detection, and
+Constitutional Law compliance verification before executing agent-generated code.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.formal_code_verifier.ForbiddenASTVisitor">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.formal_code_verifier.</span></span><span class="sig-name descname"><span class="pre">ForbiddenASTVisitor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">allowed_imports</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Set</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/formal_code_verifier.html#ForbiddenASTVisitor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor" title="Link to this definition"></a></dt>
+<dd><p>AST Visitor detecting unsafe code patterns, reflection exploits, and forbidden calls.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.formal_code_verifier.ForbiddenASTVisitor.FORBIDDEN_CALLS">
+<span class="sig-name descname"><span class="pre">FORBIDDEN_CALLS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'__import__',</span> <span class="pre">'compile',</span> <span class="pre">'eval',</span> <span class="pre">'exec',</span> <span class="pre">'globals',</span> <span class="pre">'locals',</span> <span class="pre">'memoryview'}</span></span><a class="headerlink" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.FORBIDDEN_CALLS" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.formal_code_verifier.ForbiddenASTVisitor.FORBIDDEN_MODULES">
+<span class="sig-name descname"><span class="pre">FORBIDDEN_MODULES</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'ctypes',</span> <span class="pre">'importlib',</span> <span class="pre">'os',</span> <span class="pre">'pickle',</span> <span class="pre">'shutil',</span> <span class="pre">'socket',</span> <span class="pre">'subprocess',</span> <span class="pre">'sys'}</span></span><a class="headerlink" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.FORBIDDEN_MODULES" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_Attribute">
+<span class="sig-name descname"><span class="pre">visit_Attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Attribute</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/formal_code_verifier.html#ForbiddenASTVisitor.visit_Attribute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_Attribute" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_Call">
+<span class="sig-name descname"><span class="pre">visit_Call</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Call</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/formal_code_verifier.html#ForbiddenASTVisitor.visit_Call"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_Call" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_Import">
+<span class="sig-name descname"><span class="pre">visit_Import</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Import</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/formal_code_verifier.html#ForbiddenASTVisitor.visit_Import"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_Import" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_ImportFrom">
+<span class="sig-name descname"><span class="pre">visit_ImportFrom</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ImportFrom</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/formal_code_verifier.html#ForbiddenASTVisitor.visit_ImportFrom"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_ImportFrom" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_While">
+<span class="sig-name descname"><span class="pre">visit_While</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">While</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/formal_code_verifier.html#ForbiddenASTVisitor.visit_While"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.formal_code_verifier.ForbiddenASTVisitor.visit_While" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.formal_code_verifier.FormalCodeVerifier">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.formal_code_verifier.</span></span><span class="sig-name descname"><span class="pre">FormalCodeVerifier</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">allowed_imports</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Set</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/aios_core/formal_code_verifier.html#FormalCodeVerifier"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.formal_code_verifier.FormalCodeVerifier" title="Link to this definition"></a></dt>
+<dd><p>Formal Code Verification and Invariant Engine.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.formal_code_verifier.FormalCodeVerifier.stats">
+<span class="sig-name descname"><span class="pre">stats</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/aios_core/formal_code_verifier.html#FormalCodeVerifier.stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.formal_code_verifier.FormalCodeVerifier.stats" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.formal_code_verifier.FormalCodeVerifier.verification_history">
+<span class="sig-name descname"><span class="pre">verification_history</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#aios_core.formal_code_verifier.FormalCodeVerifier.verification_history" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.formal_code_verifier.FormalCodeVerifier.verify_code">
+<span class="sig-name descname"><span class="pre">verify_code</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">code_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preconditions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/aios_core/formal_code_verifier.html#FormalCodeVerifier.verify_code"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.formal_code_verifier.FormalCodeVerifier.verify_code" title="Link to this definition"></a></dt>
+<dd><p>Mathematically and statically verify generated code before execution.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p id="module-aios_core.substrate_convergence">Universal Substrate-Agnostic Execution Engine for AIOS Horizon 8.0.</p>
+<p>Dispatches workloads dynamically across Silicon (CPU/GPU), Photonic (Optical),
+Neuromorphic (SNN), Quantum (QPU), and Biological compute runtimes.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.substrate_convergence.SubstrateConvergenceEngine">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.substrate_convergence.</span></span><span class="sig-name descname"><span class="pre">SubstrateConvergenceEngine</span></span><a class="reference internal" href="_modules/aios_core/substrate_convergence.html#SubstrateConvergenceEngine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.substrate_convergence.SubstrateConvergenceEngine" title="Link to this definition"></a></dt>
+<dd><p>Substrate-Agnostic Unified Execution Router.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.substrate_convergence.SubstrateConvergenceEngine.execute_substrate_task">
+<span class="sig-name descname"><span class="pre">execute_substrate_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/aios_core/substrate_convergence.html#SubstrateConvergenceEngine.execute_substrate_task"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.substrate_convergence.SubstrateConvergenceEngine.execute_substrate_task" title="Link to this definition"></a></dt>
+<dd><p>Execute task on optimal substrate.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.substrate_convergence.SubstrateConvergenceEngine.select_optimal_substrate">
+<span class="sig-name descname"><span class="pre">select_optimal_substrate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_requirements</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/aios_core/substrate_convergence.html#SubstrateConvergenceEngine.select_optimal_substrate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.substrate_convergence.SubstrateConvergenceEngine.select_optimal_substrate" title="Link to this definition"></a></dt>
+<dd><p>Select compute substrate optimizing energy efficiency and execution constraints.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="aios_core.substrate_convergence.SubstrateConvergenceEngine.stats">
+<span class="sig-name descname"><span class="pre">stats</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/aios_core/substrate_convergence.html#SubstrateConvergenceEngine.stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.substrate_convergence.SubstrateConvergenceEngine.stats" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="aios_core.substrate_convergence.SubstrateType">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">aios_core.substrate_convergence.</span></span><span class="sig-name descname"><span class="pre">SubstrateType</span></span><a class="reference internal" href="_modules/aios_core/substrate_convergence.html#SubstrateType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#aios_core.substrate_convergence.SubstrateType" title="Link to this definition"></a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.substrate_convergence.SubstrateType.BIO_COMPUTE">
+<span class="sig-name descname"><span class="pre">BIO_COMPUTE</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'bio_compute'</span></span><a class="headerlink" href="#aios_core.substrate_convergence.SubstrateType.BIO_COMPUTE" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.substrate_convergence.SubstrateType.NEUROMORPHIC">
+<span class="sig-name descname"><span class="pre">NEUROMORPHIC</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'neuromorphic_snn'</span></span><a class="headerlink" href="#aios_core.substrate_convergence.SubstrateType.NEUROMORPHIC" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.substrate_convergence.SubstrateType.PHOTONIC">
+<span class="sig-name descname"><span class="pre">PHOTONIC</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'photonic_optical'</span></span><a class="headerlink" href="#aios_core.substrate_convergence.SubstrateType.PHOTONIC" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.substrate_convergence.SubstrateType.QUANTUM">
+<span class="sig-name descname"><span class="pre">QUANTUM</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'quantum_qpu'</span></span><a class="headerlink" href="#aios_core.substrate_convergence.SubstrateType.QUANTUM" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="aios_core.substrate_convergence.SubstrateType.SILICON">
+<span class="sig-name descname"><span class="pre">SILICON</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'silicon_x86_arm'</span></span><a class="headerlink" href="#aios_core.substrate_convergence.SubstrateType.SILICON" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="architecture.html" class="btn btn-neutral float-left" title="AIOS Architecture Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, JoTalbot &amp; AIOS Core Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

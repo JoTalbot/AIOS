@@ -28,4 +28,4 @@ python aios_cli.py demo
 
 ## Current Version
 
-**4.1.0-alpha** (504 tests passing)
+**8.0.0-alpha** (564 tests passing)
