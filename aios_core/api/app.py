@@ -163,6 +163,7 @@ class AIOSAPI:
             )
         self.profile_store = profile_store
         self._olx_profile_storages = {}
+        self._module_storages = {}
 
         # Device pool: emulators/physical devices leased to profiles.
         # AIOS_DEVICES_DB points at the shared pool store; without it the
@@ -242,6 +243,17 @@ class AIOSAPI:
             Route("/api/v1/devices/release", self._devices_release, methods=["POST"]),
             Route("/api/v1/devices/heartbeat", self._devices_heartbeat, methods=["POST"]),
             Route("/api/v1/devices/reap", self._devices_reap, methods=["POST"]),
+            Route("/api/v1/devices/limits", self._devices_limits_get, methods=["GET"]),
+            Route("/api/v1/devices/limits", self._devices_limits_set, methods=["POST"]),
+
+            # Generic platform module surfaces (descriptor-driven). Статичные
+            # роуты olx зарегистрированы выше и матчатся первыми.
+            Route("/api/v1/modules/{platform}/ads", self._module_ads, methods=["GET"]),
+            Route("/api/v1/modules/{platform}/ads/ingest", self._module_ads_ingest, methods=["POST"]),
+            Route("/api/v1/modules/{platform}/stats", self._module_stats, methods=["GET"]),
+            Route("/api/v1/modules/{platform}/ads/{fingerprint}/history", self._module_history, methods=["GET"]),
+            Route("/api/v1/modules/{platform}/own", self._module_own, methods=["GET"]),
+            Route("/api/v1/modules/{platform}/own/snapshot", self._module_own_snapshot, methods=["POST"]),
             Route("/api/v1/modules/olx/advisor", self._olx_advisor, methods=["GET"]),
 
             # Constitutional evaluation
@@ -405,6 +417,158 @@ class AIOSAPI:
         return JSONResponse(profile.to_dict())
 
     # ------------------------------------------------------------------ #
+    # Generic platform module surfaces (descriptor-driven)                #
+    # ------------------------------------------------------------------ #
+
+    def _platform_storage(self, platform: str, request: Request):
+        """Profile-scoped storage for ANY registered platform.
+
+        Works off the platform descriptor (``storage_factory``), so a
+        scaffold-генерированная платформа получает рабочий data-plane без
+        единой строки серверного кода. ``?profile=`` переключает аккаунт
+        точно так же, как у OLX; результат кэшируется на ключ
+        ``platform:profile``.
+        """
+        profile_name = request.query_params.get("profile") or ""
+        cache_key = f"{platform}:{profile_name}"
+        storage = self._module_storages.get(cache_key)
+        if storage is None:
+            if platform == "olx" and not profile_name:
+                storage = self.olx_storage
+            else:
+                from aios_core.platforms import get_platform, resolve_profile
+                descriptor = get_platform(platform)
+                profile = resolve_profile(
+                    platform, profile_name or None, store=self.profile_store
+                )
+                storage = descriptor.make_storage(profile.db_path)
+            self._module_storages[cache_key] = storage
+        return storage
+
+    def _module_or_404(self, request: Request):
+        """Дескриптор платформы пути или None (→ 404)."""
+        from aios_core.platforms import get_platform
+        try:
+            return get_platform(request.path_params["platform"])
+        except ValueError:
+            return None
+
+    async def _module_ads(self, request: Request) -> JSONResponse:
+        """List ads of any platform (?query, ?limit, ?profile)."""
+        if self._module_or_404(request) is None:
+            return JSONResponse({"error": "unknown platform"}, status_code=404)
+        platform = request.path_params["platform"]
+        query = request.query_params.get("query")
+        limit = self._bounded_int(
+            request.query_params.get("limit"), default=100, maximum=1000
+        )
+        storage = self._platform_storage(platform, request)
+        ads = storage.get_ads(query=query, limit=limit)
+        return JSONResponse({
+            "platform": platform,
+            "count": len(ads),
+            "total": storage.count(query=query),
+            "items": [ad.to_dict() for ad in ads],
+        })
+
+    async def _module_ads_ingest(self, request: Request) -> JSONResponse:
+        """Ingest platform-agnostic AdCard dicts (collector push)."""
+        if self._module_or_404(request) is None:
+            return JSONResponse({"error": "unknown platform"}, status_code=404)
+        try:
+            from aios_core.modules.olx import AdCard
+            platform = request.path_params["platform"]
+            body = await request.json()
+            cards = []
+            for raw in body.get("ads") or []:
+                cards.append(AdCard(
+                    title=raw.get("title") or "",
+                    price=raw.get("price"),
+                    currency=raw.get("currency"),
+                    city=raw.get("city"),
+                    published_text=raw.get("published_text"),
+                    is_top=bool(raw.get("is_top")),
+                    url=raw.get("url"),
+                    ad_id=raw.get("ad_id"),
+                    query=raw.get("query") or body.get("query"),
+                ))
+            storage = self._platform_storage(platform, request)
+            inserted, new_fps = storage.save_ads_with_new(
+                cards, seen_at=body.get("seen_at")
+            )
+            return JSONResponse({
+                "platform": platform,
+                "submitted": len(cards),
+                "new_ads": len(new_fps),
+                "new_fingerprints": new_fps,
+            })
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _module_stats(self, request: Request) -> JSONResponse:
+        """Market statistics of any platform (?query, ?profile)."""
+        if self._module_or_404(request) is None:
+            return JSONResponse({"error": "unknown platform"}, status_code=404)
+        from aios_core.modules.olx import CompetitorAnalyzer
+        platform = request.path_params["platform"]
+        query = request.query_params.get("query")
+        storage = self._platform_storage(platform, request)
+        ads = storage.get_ads(query=query, active_only=True)
+        payload = CompetitorAnalyzer().analyze(ads, query=query).to_dict()
+        payload["platform"] = platform
+        return JSONResponse(payload)
+
+    async def _module_history(self, request: Request) -> JSONResponse:
+        """Price history of one ad by fingerprint."""
+        if self._module_or_404(request) is None:
+            return JSONResponse({"error": "unknown platform"}, status_code=404)
+        storage = self._platform_storage(
+            request.path_params["platform"], request
+        )
+        history = storage.price_history(request.path_params["fingerprint"])
+        return JSONResponse({"history": history})
+
+    async def _module_own(self, request: Request) -> JSONResponse:
+        """Own ads of any platform (?status, ?profile)."""
+        if self._module_or_404(request) is None:
+            return JSONResponse({"error": "unknown platform"}, status_code=404)
+        storage = self._platform_storage(
+            request.path_params["platform"], request
+        )
+        items = storage.own_ads(status=request.query_params.get("status"))
+        return JSONResponse({"count": len(items), "items": items})
+
+    async def _module_own_snapshot(self, request: Request) -> JSONResponse:
+        """Record own-ads counters snapshot for any platform."""
+        if self._module_or_404(request) is None:
+            return JSONResponse({"error": "unknown platform"}, status_code=404)
+        try:
+            from aios_core.modules.olx import OwnAd, OwnAdsTracker
+            platform = request.path_params["platform"]
+            body = await request.json()
+            ads = []
+            for raw in body.get("ads") or []:
+                ads.append(OwnAd(
+                    title=raw.get("title") or "",
+                    price=raw.get("price"),
+                    currency=raw.get("currency"),
+                    views=int(raw.get("views") or 0),
+                    favorites=int(raw.get("favorites") or 0),
+                    messages=int(raw.get("messages") or 0),
+                    status=raw.get("status") or "active",
+                    url=raw.get("url"),
+                    ad_id=raw.get("ad_id"),
+                ))
+            storage = self._platform_storage(platform, request)
+            result = OwnAdsTracker(storage).record_snapshot(
+                ads, seen_at=body.get("seen_at")
+            )
+            result["platform"] = platform
+            return JSONResponse(result)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    # ------------------------------------------------------------------ #
     # Device pool endpoints                                               #
     # ------------------------------------------------------------------ #
 
@@ -465,6 +629,26 @@ class AIOSAPI:
             self._bounded_int(body.get("max_silence_s"), default=900, maximum=86400)
         )
         return JSONResponse({"reaped": reaped})
+
+    async def _devices_limits_get(self, request: Request) -> JSONResponse:
+        """Current pool quotas {max_devices, max_busy:<platform>, max_avds}."""
+        return JSONResponse({"limits": self.device_pool.limits()})
+
+    async def _devices_limits_set(self, request: Request) -> JSONResponse:
+        """Set one quota {key, value} (int)."""
+        body = await request.json()
+        key, value = body.get("key"), body.get("value")
+        if not key or value is None:
+            return JSONResponse(
+                {"error": "'key' and 'value' are required"}, status_code=400
+            )
+        try:
+            self.device_pool.set_limit(key, int(value))
+        except (TypeError, ValueError):
+            return JSONResponse(
+                {"error": "'value' must be an integer"}, status_code=400
+            )
+        return JSONResponse({"limits": self.device_pool.limits()})
 
     def _memory_actor(self, request: Request) -> tuple[str, bool]:
         """Return authenticated subject and administrative scope for memory ACLs."""

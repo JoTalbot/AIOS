@@ -21,6 +21,8 @@ from typing import Callable, Dict, List, Optional
 
 from .devices import DevicePool
 
+DEFAULT_MAX_AVDS = 8  # защитный потолок auto-создаваемых AVD на пул
+
 # --------------------------------------------------------------------------- #
 # реальные executor-функции (используются по умолчанию)                        #
 # --------------------------------------------------------------------------- #
@@ -121,6 +123,11 @@ def ensure_device(
         record = pool.lease(profile_key, profile_store=profile_store)
         if record is not None:
             return record
+
+        # Квота auto-созданных AVD — защита от бесконтрольного бутстрапа.
+        max_avds = pool.limit("max_avds", DEFAULT_MAX_AVDS)
+        if max_avds is not None and pool.count_avds() >= max_avds:
+            return None
 
         avd = _avd_name(avd_prefix, profile_key)
         known = list_devices()
