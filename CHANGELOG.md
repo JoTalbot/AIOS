@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [9.0.0-alpha.2] - 2026-07-21
 
 ### Added
 - **OLX Collection Scheduler (`aios_core/modules/olx/scheduler.py`)**:
