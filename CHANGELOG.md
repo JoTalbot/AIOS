@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **OLX ad detail parser (`detail.py`)**: full ad-page extraction — price,
+  params, description, seller (name/type/since), city, views counter,
+  publication date; resource-id and pure-text fallbacks.
+- **OLX personal messenger (`messenger.py`)**: chat list and conversation
+  parsers (direction via screen-side alignment), rule-based `ReplySuggester`
+  (availability/bargain/meeting/greeting), and `OLXMessenger` with a guarded
+  outbox — replies are enqueued and reach the device only via
+  `auto_send=True` or an explicit flush.
+- **Own listings control (`own_ads.py`)**: counters parser (views/favorites/
+  messages/status), snapshot tracker with deltas and `stagnant()` detection
+  (storage schema v3: `own_ads`, `own_ad_sightings`).
+- **Improvement & guarded reposting (`promotion.py`)**: `AdImprover`,
+  `RepostPlanner` (age/views-per-day + evening best-hours), `Reposter` —
+  DRY-RUN by default with OLX duplicate-rules warning.
+- **Notifications (`notifier.py`)**: webhook poster (Slack/Discord/Telegram)
+  with price-drop and stagnant-listing alert helpers.
+- **REST**: `/olx/detail`, `/olx/chats`, `/olx/chats/reply`, `/olx/outbox*`,
+  `/olx/own*`, `/olx/notify`.
+- **MCP tools** (read-only): `olx_market_stats`, `olx_listing_recommend`,
+  `olx_price_drops`.
+- **Dashboard OLX card** (`/api/olx` + UI block; `AIOS_OLX_DB` env).
+- **CLI**: `aios olx detail|chats|reply|outbox|own|improve|repost`.
+- 28 new tests (`tests/test_olx_actions.py` + REST additions).
 - **OLX price history & activity tracking (storage schema v2)**:
   - `olx_sightings` table logs every observation (price/timestamp) per ad —
     full chronological price history via `OLXStorage.price_history()`.

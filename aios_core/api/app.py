@@ -102,7 +102,7 @@ class AIOSAPI:
     the Starlette application.
     """
 
-    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None, olx_storage=None, olx_collector=None):
+    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None, olx_storage=None, olx_collector=None, olx_messenger=None):
         from aios_core.storage import Database
         from aios_core.orchestrator import Orchestrator
         from aios_core.test_engine import TestEngine
@@ -147,6 +147,10 @@ class AIOSAPI:
             from aios_core.modules.olx import OLXCollector
             olx_collector = OLXCollector()
         self.olx_collector = olx_collector
+        if olx_messenger is None:
+            from aios_core.modules.olx import OLXMessenger
+            olx_messenger = OLXMessenger(storage=self.olx_storage)
+        self.olx_messenger = olx_messenger
         self._olx_scheduler = None
 
     def create_starlette_app(self) -> Starlette:
@@ -177,6 +181,18 @@ class AIOSAPI:
             Route("/api/v1/modules/olx/collect", self._olx_collect, methods=["POST"]),
             Route("/api/v1/modules/olx/schedule", self._olx_schedule, methods=["POST"]),
             Route("/api/v1/modules/olx/schedule", self._olx_unschedule, methods=["DELETE"]),
+            Route("/api/v1/modules/olx/detail", self._olx_detail_parse, methods=["POST"]),
+            Route("/api/v1/modules/olx/chats", self._olx_chats, methods=["GET"]),
+            Route("/api/v1/modules/olx/chats/reply", self._olx_chat_reply, methods=["POST"]),
+            Route("/api/v1/modules/olx/outbox", self._olx_outbox, methods=["GET"]),
+            Route("/api/v1/modules/olx/outbox/send", self._olx_outbox_send, methods=["POST"]),
+            Route("/api/v1/modules/olx/outbox/cancel", self._olx_outbox_cancel, methods=["POST"]),
+            Route("/api/v1/modules/olx/own", self._olx_own_list, methods=["GET"]),
+            Route("/api/v1/modules/olx/own/snapshot", self._olx_own_snapshot, methods=["POST"]),
+            Route("/api/v1/modules/olx/own/stagnant", self._olx_own_stagnant, methods=["GET"]),
+            Route("/api/v1/modules/olx/own/improve", self._olx_own_improve, methods=["POST"]),
+            Route("/api/v1/modules/olx/own/repost", self._olx_own_repost, methods=["POST"]),
+            Route("/api/v1/modules/olx/notify", self._olx_notify, methods=["POST"]),
 
             # Constitutional evaluation
             Route("/api/v1/evaluate", self._evaluate, methods=["POST"]),
@@ -454,6 +470,180 @@ class AIOSAPI:
             "gone_count": len(gone),
             "gone": [ad.to_dict() for ad in gone],
         })
+
+    async def _olx_detail_parse(self, request: Request) -> JSONResponse:
+        """Parse a UIAutomator dump of an open ad into structured detail data."""
+        try:
+            from aios_core.modules.olx import AdDetailParser
+            body = await request.json()
+            xml_text = body.get("xml")
+            if not xml_text:
+                return JSONResponse({"error": "field 'xml' is required"}, status_code=400)
+            detail = AdDetailParser().parse(xml_text, url=body.get("url"))
+            return JSONResponse(detail.to_dict())
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_chats(self, request: Request) -> JSONResponse:
+        """List personal chat threads from the device (requires ADB)."""
+        try:
+            threads = self.olx_messenger.list_chats()
+            return JSONResponse({
+                "count": len(threads),
+                "unread_total": sum(t.unread_count for t in threads),
+                "items": [t.to_dict() for t in threads],
+            })
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_chat_reply(self, request: Request) -> JSONResponse:
+        """Queue a chat reply (default) or send it (`send_now: true`)."""
+        try:
+            body = await request.json()
+            text = body.get("text") or ""
+            if not text.strip():
+                return JSONResponse({"error": "field 'text' is required"}, status_code=400)
+            result = self.olx_messenger.send_reply(
+                chat_key=body.get("chat_key") or "unknown",
+                text=text,
+                interlocutor=body.get("interlocutor"),
+                auto_send=bool(body.get("send_now", False)),
+            )
+            return JSONResponse(result)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_outbox(self, request: Request) -> JSONResponse:
+        """List reply drafts (filterable by `status`)."""
+        items = self.olx_storage.outbox_list(status=request.query_params.get("status"))
+        return JSONResponse({"count": len(items), "items": items})
+
+    async def _olx_outbox_send(self, request: Request) -> JSONResponse:
+        """Flush every pending draft to the device."""
+        try:
+            results = self.olx_messenger.flush_outbox()
+            return JSONResponse({"processed": len(results), "results": results})
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_outbox_cancel(self, request: Request) -> JSONResponse:
+        """Cancel a pending draft by id."""
+        try:
+            body = await request.json()
+            outbox_id = int(body.get("id"))
+            cancelled = self.olx_storage.outbox_mark(outbox_id, "cancelled")
+            return JSONResponse({"id": outbox_id, "cancelled": cancelled})
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_own_list(self, request: Request) -> JSONResponse:
+        """List my own tracked listings (filterable by `status`)."""
+        items = self.olx_storage.own_ads(status=request.query_params.get("status"))
+        return JSONResponse({"count": len(items), "items": items})
+
+    async def _olx_own_snapshot(self, request: Request) -> JSONResponse:
+        """Record a counters snapshot of own ads (parsed client-side or by the agent)."""
+        try:
+            from aios_core.modules.olx import OwnAd, OwnAdsTracker
+            body = await request.json()
+            ads = []
+            for raw in body.get("ads") or []:
+                ads.append(OwnAd(
+                    title=raw.get("title") or "",
+                    price=raw.get("price"),
+                    currency=raw.get("currency"),
+                    views=int(raw.get("views") or 0),
+                    favorites=int(raw.get("favorites") or 0),
+                    messages=int(raw.get("messages") or 0),
+                    status=raw.get("status") or "active",
+                    url=raw.get("url"),
+                    ad_id=raw.get("ad_id"),
+                ))
+            result = OwnAdsTracker(self.olx_storage).record_snapshot(
+                ads, seen_at=body.get("seen_at")
+            )
+            return JSONResponse(result)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_own_stagnant(self, request: Request) -> JSONResponse:
+        """Own listings with too few views per day (repost candidates)."""
+        from aios_core.modules.olx import OwnAdsTracker
+        min_age = float(request.query_params.get("min_age_days", 3.0))
+        min_rate = float(request.query_params.get("min_views_per_day", 1.0))
+        items = OwnAdsTracker(self.olx_storage).stagnant(
+            min_age_days=min_age, min_views_per_day=min_rate
+        )
+        return JSONResponse({"count": len(items), "items": items})
+
+    async def _olx_own_improve(self, request: Request) -> JSONResponse:
+        """Improvement suggestion for one of my listings vs competitors."""
+        try:
+            from aios_core.modules.olx import AdImprover, OwnAd
+            body = await request.json()
+            fingerprint = body.get("fingerprint")
+            rows = [row for row in self.olx_storage.own_ads() if row["fingerprint"] == fingerprint]
+            if not rows:
+                return JSONResponse({"error": "own ad not found"}, status_code=404)
+            row = rows[0]
+            own_ad = OwnAd(
+                title=row["title"], price=row["price"], currency=row["currency"],
+                views=row["last_views"] or 0, url=row["url"], ad_id=row["ad_id"],
+                status=row["status"],
+            )
+            competitors = self.olx_storage.get_ads(query=body.get("query"))
+            suggestion = AdImprover().improve(own_ad, competitors)
+            payload = suggestion.to_dict()
+            payload["text"] = suggestion.to_text()
+            return JSONResponse(payload)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_own_repost(self, request: Request) -> JSONResponse:
+        """Repost plan (dry-run default) or guarded execution (`confirm: true`)."""
+        try:
+            from aios_core.modules.olx import OwnAd, Reposter
+            body = await request.json()
+            fingerprint = body.get("fingerprint")
+            rows = [row for row in self.olx_storage.own_ads() if row["fingerprint"] == fingerprint]
+            if not rows:
+                return JSONResponse({"error": "own ad not found"}, status_code=404)
+            row = rows[0]
+            own_ad = OwnAd(
+                title=row["title"], price=row["price"], currency=row["currency"],
+                url=row["url"], ad_id=row["ad_id"], status=row["status"],
+            )
+            reposter = Reposter(adb=self.olx_messenger.adb)
+            result = reposter.repost(own_ad, confirm=bool(body.get("confirm", False)))
+            if result.get("status") == "executed":
+                self.olx_storage.own_ad_set_status(fingerprint, "inactive")
+            return JSONResponse(result)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_notify(self, request: Request) -> JSONResponse:
+        """Send price-drop and stagnant-listing alerts to a webhook."""
+        try:
+            from aios_core.modules.olx import (
+                OwnAdsTracker, PriceTracker, WebhookNotifier,
+                notify_price_drops, notify_stagnant,
+            )
+            body = await request.json()
+            notifier = WebhookNotifier(
+                url=body.get("webhook_url"), chat_id=body.get("chat_id")
+            )
+            if not notifier.url:
+                return JSONResponse(
+                    {"error": "field 'webhook_url' is required"}, status_code=400
+                )
+            tracker = PriceTracker(self.olx_storage)
+            query = body.get("query")
+            drops_summary = notify_price_drops(tracker, notifier, query=query)
+            stagnant_items = OwnAdsTracker(self.olx_storage).stagnant()
+            stagnant_summary = notify_stagnant(stagnant_items, notifier)
+            return JSONResponse({"drops": drops_summary, "stagnant": stagnant_summary})
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
 
     def _olx_get_scheduler(self, interval_s: float = 3600.0):
         if self._olx_scheduler is None:

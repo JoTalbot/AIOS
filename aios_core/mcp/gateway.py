@@ -308,6 +308,99 @@ class MCPGateway:
             risk_level="low",
         ))
 
+        self._register_olx_tools()
+
+    def _olx_store(self):
+        """Shared OLX Parser Agent storage (lazy; AIOS_OLX_DB env override)."""
+        if getattr(self, "_olx_storage", None) is None:
+            import os
+            from aios_core.modules.olx import OLXStorage
+            self._olx_storage = OLXStorage(os.environ.get("AIOS_OLX_DB", ":memory:"))
+        return self._olx_storage
+
+    def _register_olx_tools(self):
+        """Register read-only OLX Parser Agent tools (market intelligence)."""
+
+        self.tools.register(ToolDefinition(
+            name="olx_market_stats",
+            description="Competitor market statistics for an OLX search query: price min/max/mean/median, TOP share, top cities.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query filter (optional — whole store)"},
+                },
+            },
+            handler=lambda p: self._olx_market_stats(p),
+            category="olx",
+            risk_level="low",
+        ))
+
+        self.tools.register(ToolDefinition(
+            name="olx_listing_recommend",
+            description="Listing advice for a draft OLX ad: suggested price, market verdict, title keywords, TOP promotion decision.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query of competitors"},
+                    "title": {"type": "string", "description": "Draft listing title"},
+                    "price": {"type": "number", "description": "Draft listing price"},
+                },
+            },
+            handler=lambda p: self._olx_listing_recommend(p),
+            category="olx",
+            risk_level="low",
+        ))
+
+        self.tools.register(ToolDefinition(
+            name="olx_price_drops",
+            description="OLX ads with a detected price drop plus listings that left the feed (sold/removed).",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query filter (optional)"},
+                },
+            },
+            handler=lambda p: self._olx_price_drops(p),
+            category="olx",
+            risk_level="low",
+        ))
+
+    def _olx_market_stats(self, params: dict) -> dict:
+        from aios_core.modules.olx import CompetitorAnalyzer
+        store = self._olx_store()
+        query = params.get("query")
+        ads = store.get_ads(query=query)
+        return CompetitorAnalyzer().analyze(ads, query=query).to_dict()
+
+    def _olx_listing_recommend(self, params: dict) -> dict:
+        from dataclasses import asdict
+        from aios_core.modules.olx import AdCard, RecommendationEngine
+        store = self._olx_store()
+        query = params.get("query")
+        ads = store.get_ads(query=query)
+        my_ad = None
+        if params.get("title") is not None or params.get("price") is not None:
+            my_ad = AdCard(
+                title=params.get("title") or "",
+                price=params.get("price"),
+                currency="UAH",
+                query=query,
+            )
+        advice = RecommendationEngine().recommend(ads, my_ad=my_ad)
+        payload = asdict(advice)
+        payload["text"] = advice.to_text()
+        return payload
+
+    def _olx_price_drops(self, params: dict) -> dict:
+        from aios_core.modules.olx import PriceTracker
+        store = self._olx_store()
+        tracker = PriceTracker(store)
+        query = params.get("query")
+        return {
+            "drops": [change.to_dict() for change in tracker.price_drops(query=query)],
+            "gone": [ad.to_dict() for ad in tracker.gone_from_feed(query=query)],
+        }
+
     # ------------------------------------------------------------------
     # Tool handlers
     # ------------------------------------------------------------------

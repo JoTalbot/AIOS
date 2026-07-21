@@ -53,6 +53,11 @@ class AIOSDashboard:
             </div>
 
             <div class="card">
+                <h2>🛒 OLX Parser Agent</h2>
+                <div id="olx"></div>
+            </div>
+
+            <div class="card">
                 <h2>⚡ Quick Actions</h2>
                 <button onclick="location.reload()">Refresh</button>
                 <button onclick="runHealthCheck()">Health Check</button>
@@ -94,8 +99,32 @@ class AIOSDashboard:
                     loadStats();
                 }}
                 
+                async function loadOlx() {{
+                    const container = document.getElementById('olx');
+                    try {{
+                        const res = await fetch('/api/olx');
+                        const data = await res.json();
+                        if (!data.available) {{
+                            container.innerHTML = '<div class="label">OLX db not configured (set AIOS_OLX_DB)</div>';
+                            return;
+                        }}
+                        container.innerHTML = `
+                            <div class="stat"><div class="label">Tracked ads</div><div class="value">${{data.ads_total}}</div></div>
+                            <div class="stat"><div class="label">Active</div><div class="value">${{data.ads_active}}</div></div>
+                            <div class="stat"><div class="label">Price drops</div><div class="value">${{data.drops_count}}</div></div>
+                            <div class="stat"><div class="label">Own ads</div><div class="value">${{data.own_ads}}</div></div>
+                            <div class="stat"><div class="label">Stagnant</div><div class="value">${{data.stagnant}}</div></div>
+                            <div class="stat"><div class="label">Outbox</div><div class="value">${{data.outbox_pending}}</div></div>
+                        `;
+                    }} catch (e) {{
+                        container.innerHTML = '<div class="label">OLX stats unavailable</div>';
+                    }}
+                }}
+
                 loadStats();
+                loadOlx();
                 setInterval(loadStats, 15000);
+                setInterval(loadOlx, 30000);
             </script>
         </body>
         </html>
@@ -105,10 +134,36 @@ class AIOSDashboard:
     async def api_stats(self, request: Request):
         return JSONResponse(self.orch.stats())
 
+    async def api_olx(self, request: Request):
+        """OLX Parser Agent counters (AIOS_OLX_DB env; unavailable otherwise)."""
+        import os
+        db_path = os.environ.get("AIOS_OLX_DB")
+        if not db_path or not os.path.exists(db_path):
+            return JSONResponse({"available": False})
+        from aios_core.modules.olx import (
+            OLXStorage, OwnAdsTracker, PriceTracker,
+        )
+        storage = OLXStorage(db_path)
+        try:
+            drops = PriceTracker(storage).price_drops()
+            payload = {
+                "available": True,
+                "ads_total": storage.count(),
+                "ads_active": storage.count(active_only=True),
+                "drops_count": len(drops),
+                "own_ads": len(storage.own_ads()),
+                "stagnant": len(OwnAdsTracker(storage).stagnant()),
+                "outbox_pending": len(storage.outbox_pending()),
+            }
+        finally:
+            storage.close()
+        return JSONResponse(payload)
+
     def create_app(self):
         routes = [
             Route("/", self.index),
             Route("/api/stats", self.api_stats),
+            Route("/api/olx", self.api_olx),
         ]
         return Starlette(routes=routes)
 
