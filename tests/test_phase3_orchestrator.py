@@ -229,7 +229,7 @@ class TestOrchestrator(unittest.TestCase):
     def test_stats(self):
         self.orch.create_task("s1", "Stats test", risk_level="low")
         stats = self.orch.stats()
-        self.assertEqual(stats["version"], "3.1.0")
+        self.assertEqual(stats["version"], "4.1.0-alpha")
         self.assertEqual(stats["total_tasks"], 1)
         self.assertIn("subsystems", stats)
         self.assertIn("policy", stats["subsystems"])
@@ -781,7 +781,7 @@ class TestIntegration(unittest.TestCase):
         self.orch.reasoning.build_chain("Stats question")
 
         stats = self.orch.stats()
-        self.assertEqual(stats["version"], "3.1.0")
+        self.assertEqual(stats["version"], "4.1.0-alpha")
         self.assertEqual(stats["total_tasks"], 1)
         self.assertGreater(stats["subsystems"]["memory"]["total"], 0)
         self.assertGreater(stats["subsystems"]["knowledge"]["nodes"], 0)
