@@ -1,13 +1,27 @@
-"""AIOS OLX Android Agent — SQLite persistence for collected ad cards."""
+"""AIOS OLX Android Agent — SQLite persistence for collected ad cards.
+
+Schema v2 adds sighting-based tracking on top of raw card storage:
+
+* ``olx_sightings`` — one row per ad per collection run (price/timestamp),
+  giving a full price history per ad.
+* ``olx_ads.first_seen_at`` / ``last_seen_at`` / ``sightings_count`` —
+  presence bookkeeping.
+* ``olx_ads.is_active`` — ads that vanish from the feed are marked inactive
+  (typically sold or removed), without losing their history.
+
+Existing v1 databases are migrated in place (columns are added if missing).
+"""
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import sqlite3
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from .models import AdCard
 
@@ -25,15 +39,52 @@ CREATE TABLE IF NOT EXISTS olx_ads (
     url TEXT,
     query TEXT,
     collected_at TEXT NOT NULL,
-    raw_json TEXT
+    raw_json TEXT,
+    first_seen_at TEXT,
+    last_seen_at TEXT,
+    sightings_count INTEGER NOT NULL DEFAULT 1,
+    is_active INTEGER NOT NULL DEFAULT 1
 );
 CREATE INDEX IF NOT EXISTS idx_olx_ads_query ON olx_ads(query);
 CREATE INDEX IF NOT EXISTS idx_olx_ads_city ON olx_ads(city);
+CREATE INDEX IF NOT EXISTS idx_olx_ads_active ON olx_ads(is_active);
+
+CREATE TABLE IF NOT EXISTS olx_sightings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fingerprint TEXT NOT NULL,
+    seen_at TEXT NOT NULL,
+    price REAL,
+    is_top INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_olx_sightings_fp ON olx_sightings(fingerprint);
 """
+
+_V1_MIGRATION_COLUMNS = {
+    "first_seen_at": "TEXT",
+    "last_seen_at": "TEXT",
+    "sightings_count": "INTEGER NOT NULL DEFAULT 1",
+    "is_active": "INTEGER NOT NULL DEFAULT 1",
+}
+
+_EXPORT_FIELDS = [
+    "fingerprint",
+    "title",
+    "price",
+    "currency",
+    "city",
+    "published_text",
+    "is_top",
+    "url",
+    "query",
+    "first_seen_at",
+    "last_seen_at",
+    "sightings_count",
+    "is_active",
+]
 
 
 class OLXStorage:
-    """Deduplicating SQLite store for OLX ad cards."""
+    """Deduplicating SQLite store for OLX ad cards with price tracking."""
 
     def __init__(self, db_path: Union[str, Path] = ":memory:"):
         self.db_path = str(db_path)
@@ -43,13 +94,39 @@ class OLXStorage:
         self._lock = threading.RLock()
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(_SCHEMA)
+        self._migrate_v1()
 
-    def save_ads(self, cards: List[AdCard]) -> int:
-        """Insert new cards; known fingerprints (per query) are skipped.
+    def _migrate_v1(self) -> None:
+        """Add v2 columns to databases created before sightings existed."""
+        with self._lock, self._conn:
+            existing = {
+                row[1] for row in self._conn.execute("PRAGMA table_info(olx_ads)")
+            }
+            for column, ddl in _V1_MIGRATION_COLUMNS.items():
+                if column not in existing:
+                    self._conn.execute(
+                        f"ALTER TABLE olx_ads ADD COLUMN {column} {ddl}"
+                    )
+            # Backfill presence timestamps for pre-v2 rows.
+            self._conn.execute(
+                "UPDATE olx_ads SET first_seen_at = collected_at "
+                "WHERE first_seen_at IS NULL"
+            )
+            self._conn.execute(
+                "UPDATE olx_ads SET last_seen_at = collected_at "
+                "WHERE last_seen_at IS NULL"
+            )
 
-        Returns the number of newly inserted rows.
+    def save_ads(
+        self, cards: List[AdCard], seen_at: Optional[str] = None
+    ) -> int:
+        """Store cards and record a sighting for each one.
+
+        New fingerprints are inserted; known fingerprints get their presence
+        timestamps refreshed and their current price updated. Every card adds
+        a row to the price-history log. Returns the number of new ads.
         """
-        now = datetime.now(timezone.utc).isoformat()
+        now = seen_at or datetime.now(timezone.utc).isoformat()
         inserted = 0
         with self._lock:
             with self._conn:
@@ -60,8 +137,9 @@ class OLXStorage:
                         INSERT OR IGNORE INTO olx_ads (
                             fingerprint, title, price, currency, city,
                             published_text, published_at, is_top, ad_id, url,
-                            query, collected_at, raw_json
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            query, collected_at, raw_json,
+                            first_seen_at, last_seen_at, sightings_count, is_active
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
                         """,
                         (
                             row["fingerprint"],
@@ -77,10 +155,86 @@ class OLXStorage:
                             row["query"],
                             now,
                             json.dumps(row["raw_texts"], ensure_ascii=False),
+                            now,
+                            now,
                         ),
                     )
+                    if not cursor.rowcount:
+                        self._conn.execute(
+                            """
+                            UPDATE olx_ads SET
+                                last_seen_at = ?,
+                                sightings_count = sightings_count + 1,
+                                is_active = 1,
+                                price = ?,
+                                currency = COALESCE(?, currency),
+                                is_top = ?,
+                                title = COALESCE(NULLIF(?, ''), title),
+                                city = COALESCE(?, city),
+                                url = COALESCE(?, url),
+                                ad_id = COALESCE(?, ad_id)
+                            WHERE fingerprint = ?
+                            """,
+                            (
+                                now,
+                                row["price"],
+                                row["currency"],
+                                int(row["is_top"]),
+                                row["title"],
+                                row["city"],
+                                row["url"],
+                                row["ad_id"],
+                                row["fingerprint"],
+                            ),
+                        )
                     inserted += cursor.rowcount
+                    self._conn.execute(
+                        """
+                        INSERT INTO olx_sightings (fingerprint, seen_at, price, is_top)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (row["fingerprint"], now, row["price"], int(row["is_top"])),
+                    )
         return inserted
+
+    def sync_activity(
+        self, query: str, seen_fingerprints: List[str]
+    ) -> int:
+        """Mark ads of ``query`` missing from the latest collection as inactive.
+
+        Returns the number of ads that changed state (were deactivated or
+        came back). Passing an empty list deactivates the whole query feed.
+        """
+        seen = set(seen_fingerprints)
+        changed = 0
+        with self._lock, self._conn:
+            rows = self._conn.execute(
+                "SELECT fingerprint, is_active FROM olx_ads WHERE query = ?", (query,)
+            ).fetchall()
+            for row in rows:
+                should_be_active = row["fingerprint"] in seen
+                if bool(row["is_active"]) != should_be_active:
+                    self._conn.execute(
+                        "UPDATE olx_ads SET is_active = ? WHERE fingerprint = ?",
+                        (int(should_be_active), row["fingerprint"]),
+                    )
+                    changed += 1
+        return changed
+
+    def price_history(self, fingerprint: str) -> List[Dict[str, object]]:
+        """Chronological price log for one ad (earliest first)."""
+        with self._lock:
+            rows = self._conn.execute(
+                """
+                SELECT seen_at, price, is_top FROM olx_sightings
+                WHERE fingerprint = ? ORDER BY seen_at, id
+                """,
+                (fingerprint,),
+            ).fetchall()
+        return [
+            {"seen_at": row["seen_at"], "price": row["price"], "is_top": bool(row["is_top"])}
+            for row in rows
+        ]
 
     def _row_to_card(self, row: sqlite3.Row) -> AdCard:
         return AdCard(
@@ -98,14 +252,23 @@ class OLXStorage:
         )
 
     def get_ads(
-        self, query: Optional[str] = None, limit: Optional[int] = None
+        self,
+        query: Optional[str] = None,
+        limit: Optional[int] = None,
+        active_only: Optional[bool] = None,
     ) -> List[AdCard]:
-        """Fetch stored cards, optionally filtered by search query."""
+        """Fetch stored cards with optional query/activity filters."""
         sql = "SELECT * FROM olx_ads"
+        conditions: List[str] = []
         params: list = []
         if query is not None:
-            sql += " WHERE query = ?"
+            conditions.append("query = ?")
             params.append(query)
+        if active_only is not None:
+            conditions.append("is_active = ?")
+            params.append(int(active_only))
+        if conditions:
+            sql += " WHERE " + " AND ".join(conditions)
         sql += " ORDER BY collected_at DESC"
         if limit is not None:
             sql += " LIMIT ?"
@@ -114,14 +277,23 @@ class OLXStorage:
             rows = self._conn.execute(sql, params).fetchall()
         return [self._row_to_card(row) for row in rows]
 
-    def count(self, query: Optional[str] = None) -> int:
-        """Number of stored cards, optionally for a single query."""
+    def count(
+        self, query: Optional[str] = None, active_only: Optional[bool] = None
+    ) -> int:
+        """Number of stored cards, optionally filtered by query/activity."""
+        sql = "SELECT COUNT(*) FROM olx_ads"
+        conditions: List[str] = []
+        params: list = []
+        if query is not None:
+            conditions.append("query = ?")
+            params.append(query)
+        if active_only is not None:
+            conditions.append("is_active = ?")
+            params.append(int(active_only))
+        if conditions:
+            sql += " WHERE " + " AND ".join(conditions)
         with self._lock:
-            if query is None:
-                return self._conn.execute("SELECT COUNT(*) FROM olx_ads").fetchone()[0]
-            return self._conn.execute(
-                "SELECT COUNT(*) FROM olx_ads WHERE query = ?", (query,)
-            ).fetchone()[0]
+            return self._conn.execute(sql, params).fetchone()[0]
 
     def queries(self) -> List[str]:
         """Distinct search queries present in the store."""
@@ -130,6 +302,37 @@ class OLXStorage:
                 "SELECT DISTINCT query FROM olx_ads WHERE query IS NOT NULL ORDER BY query"
             ).fetchall()
         return [row[0] for row in rows]
+
+    # ---- Export ----
+
+    def _export_rows(self, query: Optional[str]) -> List[Dict[str, object]]:
+        ads = self.get_ads(query=query)
+        extra: Dict[str, Dict[str, object]] = {}
+        with self._lock:
+            for row in self._conn.execute(
+                "SELECT fingerprint, first_seen_at, last_seen_at, "
+                "sightings_count, is_active FROM olx_ads"
+            ):
+                extra[row["fingerprint"]] = dict(row)
+        items: List[Dict[str, object]] = []
+        for ad in ads:
+            data = ad.to_dict()
+            data.update(extra.get(data["fingerprint"], {}))
+            items.append({field: data.get(field) for field in _EXPORT_FIELDS})
+        return items
+
+    def export_json(self, query: Optional[str] = None) -> str:
+        """Export stored ads as a JSON array string."""
+        return json.dumps(self._export_rows(query), ensure_ascii=False, indent=2)
+
+    def export_csv(self, query: Optional[str] = None) -> str:
+        """Export stored ads as CSV text with a header row."""
+        buffer = io.StringIO()
+        writer = csv.DictWriter(buffer, fieldnames=_EXPORT_FIELDS)
+        writer.writeheader()
+        for row in self._export_rows(query):
+            writer.writerow(row)
+        return buffer.getvalue()
 
     def close(self) -> None:
         self._conn.close()

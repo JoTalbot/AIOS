@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **OLX price history & activity tracking (storage schema v2)**:
+  - `olx_sightings` table logs every observation (price/timestamp) per ad —
+    full chronological price history via `OLXStorage.price_history()`.
+  - `first_seen_at` / `last_seen_at` / `sightings_count` / `is_active`
+    columns; v1 databases are migrated automatically.
+  - `OLXStorage.sync_activity()` marks ads that vanished from the feed as
+    inactive (typically sold), revives them when they reappear.
+  - `PriceTracker`: `price_drops()` (first vs latest sighted price) and
+    `gone_from_feed()` reports.
+  - CSV/JSON export: `OLXStorage.export_csv()` / `export_json()`.
+- **OLX REST endpoints**: `GET /api/v1/modules/olx/history` (per-ad price
+  log) and `GET /api/v1/modules/olx/drops` (price drops + gone-from-feed).
+- **CLI**: `aios olx collect|stats|recommend|export|history|drops`
+  (`--db`, `--query`, `--format` options).
+- Scheduler run records now include `deactivated` and `active` counters.
+
+### Changed
+- `AdCard.fingerprint` no longer includes the price: identity resolves via
+  `ad_id` → `url` → `title|city|query`, so price edits are tracked as
+  history of one ad instead of creating duplicate rows.
+- `OLXCollector.collect_to_storage()` reports `deactivated` ads.
+
 ## [9.0.0-alpha.2] - 2026-07-21
 
 ### Added

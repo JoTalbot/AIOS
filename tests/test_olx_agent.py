@@ -4,6 +4,7 @@ The UIAutomator sample dump is embedded as a string on purpose: ``*.xml``
 artifacts are git-ignored in this repository as OLX debug files.
 """
 
+import json
 from datetime import datetime
 
 from aios_core.modules.olx import (
@@ -61,7 +62,9 @@ PAGE_TWO_XML = SAMPLE_XML.replace(
     "BMW X3 G01 (2017-) - лобове скло, стекло лобовое",
     "Лобове скло Mercedes W211 E-class",
     1,
-).replace("7 000 грн", "5 500 грн", 1).replace("Львів", "Дніпро", 1)
+).replace("7 000 грн", "5 500 грн", 1).replace("Львів", "Дніпро", 1).replace(
+    "IDz7kLq.html", "IDm9wQe.html", 1
+)
 
 
 class FakeADB:
@@ -167,12 +170,23 @@ def test_card_parser_accepts_short_resource_ids_and_paths(tmp_path):
     assert len(cards_from_file) == 2
 
 
-def test_card_fingerprint_dedup_key():
+def test_card_fingerprint_identity_rules():
     card_a = CardParser.card_from_texts(["Скло лобове", "7 000 грн", "Львів"])
     card_b = CardParser.card_from_texts(["скло лобове", "7 000 грн", "Львів"])
-    card_c = CardParser.card_from_texts(["Скло лобове", "8 000 грн", "Львів"])
     assert card_a.fingerprint == card_b.fingerprint
-    assert card_a.fingerprint != card_c.fingerprint
+
+    # Price is NOT part of the identity — same ad with an edited price.
+    repriced = AdCard(title="Скло лобове", price=8000.0, currency="UAH", city="Львів")
+    assert repriced.fingerprint == card_a.fingerprint
+
+    moved = AdCard(title="Скло лобове", price=7000.0, currency="UAH", city="Київ")
+    assert moved.fingerprint != card_a.fingerprint
+
+    # ad_id wins over the title/city composite.
+    identified = AdCard(title="Скло лобове", city="Львів", ad_id="z7kLq")
+    other = AdCard(title="Скло лобове", city="Львів", ad_id="m9wQe")
+    assert identified.fingerprint != other.fingerprint
+    assert identified.fingerprint != card_a.fingerprint
 
 
 # --- OLXCollector -----------------------------------------------------------
@@ -211,7 +225,7 @@ def test_collector_persists_to_storage(tmp_path):
 
     summary = collector.collect_to_storage(storage, query="лобове скло")
 
-    assert summary == {"parsed": 2, "inserted": 2}
+    assert summary == {"parsed": 2, "inserted": 2, "deactivated": 0}
     assert storage.count() == 2
 
 
@@ -357,6 +371,8 @@ def test_scheduler_run_once_records_history(tmp_path):
     assert record["parsed"] == 2
     assert record["inserted"] == 2
     assert record["total"] == 2
+    assert record["deactivated"] == 0
+    assert record["active"] == 2
     assert len(scheduler.history) == 1
     assert scheduler.history[0]["query"] == "лобове скло"
 
@@ -398,3 +414,106 @@ def test_scheduler_refuses_double_start():
     assert scheduler.start(["q"]) is False
     scheduler.stop()
     storage.close()
+
+
+# --- Price history, activity & export ---------------------------------------
+
+
+def test_storage_tracks_price_history_and_activity(tmp_path):
+    from aios_core.modules.olx import PriceTracker
+
+    storage = OLXStorage(tmp_path / "olx.sqlite")
+    cards = CardParser().parse(SAMPLE_XML, query="q")
+
+    assert storage.save_ads(cards, seen_at="2026-07-21T10:00:00+00:00") == 2
+    # Same run again — no new ads, but sightings are appended.
+    assert storage.save_ads(cards, seen_at="2026-07-21T11:00:00+00:00") == 0
+
+    bmw = next(card for card in cards if card.url)
+    cheaper = AdCard.from_dict(bmw.to_dict())
+    cheaper.price = 6500.0
+    # Identity survives a price edit (price is history, not identity).
+    assert cheaper.fingerprint == bmw.fingerprint
+    assert storage.save_ads([cheaper], seen_at="2026-07-21T12:00:00+00:00") == 0
+
+    history = storage.price_history(bmw.fingerprint)
+    assert [point["price"] for point in history] == [7000.0, 7000.0, 6500.0]
+    assert history[0]["seen_at"] < history[-1]["seen_at"]
+
+    current = {ad.fingerprint: ad for ad in storage.get_ads()}[bmw.fingerprint]
+    assert current.price == 6500.0
+
+    # Audi vanishes from the feed → marked inactive, revivable.
+    assert storage.sync_activity("q", [bmw.fingerprint]) == 1
+    assert storage.count("q", active_only=True) == 1
+    assert storage.count("q", active_only=False) == 1
+    assert storage.sync_activity("q", [bmw.fingerprint]) == 0  # idempotent
+    assert storage.sync_activity("q", [c.fingerprint for c in cards]) == 1
+
+    drops = PriceTracker(storage).price_drops(query="q")
+    assert len(drops) == 1
+    assert drops[0].first_price == 7000.0
+    assert drops[0].last_price == 6500.0
+    assert drops[0].change_pct == round(-500 / 7000, 4)
+    storage.close()
+
+
+def test_price_tracker_gone_from_feed():
+    from aios_core.modules.olx import PriceTracker
+
+    storage = OLXStorage()
+    cards = CardParser().parse(SAMPLE_XML, query="q")
+    storage.save_ads(cards)
+    tracker = PriceTracker(storage)
+
+    assert tracker.gone_from_feed(query="q") == []
+    storage.sync_activity("q", [])
+    gone = tracker.gone_from_feed(query="q")
+    assert len(gone) == 2
+    assert {ad.title for ad in gone}
+    storage.close()
+
+
+def test_storage_export_json_and_csv():
+    import json as jsonlib
+
+    storage = OLXStorage()
+    storage.save_ads(CardParser().parse(SAMPLE_XML, query="q"))
+
+    rows = jsonlib.loads(storage.export_json(query="q"))
+    assert len(rows) == 2
+    assert rows[0]["fingerprint"]
+    assert "first_seen_at" in rows[0]
+    assert rows[0]["is_active"] == 1
+
+    csv_text = storage.export_csv(query="q")
+    lines = [line for line in csv_text.splitlines() if line.strip()]
+    assert len(lines) == 3  # header + 2 rows
+    assert lines[0].startswith("fingerprint,title,price")
+    storage.close()
+
+
+# --- CLI --------------------------------------------------------------------
+
+
+def test_cli_olx_export_stats_drops(tmp_path, capsys):
+    from aios_cli import main
+
+    db = tmp_path / "cli.sqlite"
+    storage = OLXStorage(db)
+    storage.save_ads(CardParser().parse(SAMPLE_XML, query="q"))
+    storage.close()
+
+    main(["olx", "export", "--db", str(db), "--format", "json"])
+    exported = json.loads(capsys.readouterr().out)
+    assert len(exported) == 2
+
+    main(["olx", "stats", "--db", str(db), "--query", "q"])
+    stats_out = capsys.readouterr().out
+    assert '"total_ads": 2' in stats_out
+    assert '"median_price": 7000.0' in stats_out
+
+    main(["olx", "drops", "--db", str(db), "--query", "q"])
+    drops_out = json.loads(capsys.readouterr().out)
+    assert drops_out["drops"] == []
+    assert drops_out["gone"] == []

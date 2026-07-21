@@ -111,10 +111,19 @@ class OLXCollector:
         max_cards: int = 100,
         progress: Optional[Callable[[int, int, int], None]] = None,
     ) -> Dict[str, int]:
-        """Collect cards and persist them, returning a small summary."""
+        """Collect cards, persist them and sync feed activity.
+
+        Ads of ``query`` missing from the collected feed are marked inactive
+        (likely sold/removed); the summary reports how many changed state.
+        """
         cards = self.collect(query=query, max_cards=max_cards, progress=progress)
         inserted = storage.save_ads(cards)
-        return {"parsed": len(cards), "inserted": inserted}
+        summary = {"parsed": len(cards), "inserted": inserted}
+        if query is not None:
+            summary["deactivated"] = storage.sync_activity(
+                query, [card.fingerprint for card in cards]
+            )
+        return summary
 
     def _swipe_feed(self) -> None:
         """Swipe up over the central part of the feed to load new cards."""

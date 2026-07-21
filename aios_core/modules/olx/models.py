@@ -39,20 +39,26 @@ class AdCard:
 
     @property
     def fingerprint(self) -> str:
-        """Stable deduplication hash derived from title/price/city/query.
+        """Stable identity hash for an ad across collection runs.
 
-        The same physical ad found under different search queries is stored
-        once per query so per-query market reports stay consistent; within a
-        single query feed re-collection never duplicates rows.
+        Resolution order: ``ad_id`` → ``url`` → ``title|city|query``.
+        The price is deliberately *not* part of the identity so that price
+        changes are tracked as history of one ad instead of creating a new
+        ad on every edit. The query stays in the composite identity so the
+        same physical ad found via different searches is tracked per query.
         """
-        base = "|".join(
-            [
-                (self.title or "").strip().lower(),
-                f"{self.price:.2f}" if self.price is not None else "",
-                (self.city or "").strip().lower(),
-                (self.query or "").strip().lower(),
-            ]
-        )
+        if self.ad_id:
+            base = f"id:{self.ad_id.strip().lower()}|{(self.query or '').strip().lower()}"
+        elif self.url:
+            base = f"url:{self.url.strip().lower()}|{(self.query or '').strip().lower()}"
+        else:
+            base = "|".join(
+                [
+                    (self.title or "").strip().lower(),
+                    (self.city or "").strip().lower(),
+                    (self.query or "").strip().lower(),
+                ]
+            )
         return hashlib.sha256(base.encode("utf-8")).hexdigest()[:16]
 
     def to_dict(self) -> Dict[str, Any]:

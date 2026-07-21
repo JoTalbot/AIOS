@@ -23,6 +23,8 @@ from .adb import ADBController
 from .analytics import (
     CompetitorAnalyzer,
     CompetitorReport,
+    PriceChange,
+    PriceTracker,
     Recommendation,
     RecommendationEngine,
 )
@@ -42,6 +44,8 @@ __all__ = [
     "CompetitorReport",
     "OLXCollector",
     "OLXStorage",
+    "PriceChange",
+    "PriceTracker",
     "Recommendation",
     "RecommendationEngine",
     "UIParser",
