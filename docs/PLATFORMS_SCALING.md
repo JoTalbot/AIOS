@@ -253,10 +253,70 @@ aios platforms calibrate --platform slando --dump screen.xml [--write]
 `platforms/<name>.yaml`; дальше генератор парсера читает их из каталога.
 `PlatformDescriptor.extras` — свободное расширение дескриптора.
 
+## ParserGen: компиляция парсера из parser_hints
+
+`aios_core/platforms/parsergen.py` замыкает петлю «калибровка →
+парсер» — OLX `CardParser` хранит маркеры как **атрибут класса**
+`CARD_RESOURCE_MARKERS`, поэтому платформенный парсер = подкласс с
+переопределёнными маркерами, вся классификация текстов карточки
+(цена/дата/ТОП/город) унаследована:
+
+- `extract_markers(hints)` — `com.demo:id/adCard` → `adcard`
+  (substring, lowercase, дедупликация);
+- `build_parser(hints)` — runtime-экземпляр парсера из словаря
+  подсказок без файлов (для verify-шагов и REST);
+- `write_parser(name, hints, overwrite=False)` — codegen
+  `aios_core/modules/<module>/card_parser.py` + идемпотентный импорт в
+  `__init__.py` (маркер `codegen: parser_hints`); отказ при пустых
+  маркерах/чужом модуле/существующем файле без `overwrite`;
+- `parser_for(name, directory)` — парсер прямо из YAML-дескриптора
+  каталога (коллектор работает сразу после `calibrate --write`).
+
+CLI: `aios platforms codegen --platform slando [--dry-run] [--force]`.
+
+## Bootup: E2E-пайплайн «из APK до коллектора»
+
+`aios_core/platforms/bootup.py` / `aios platforms bootup` — вся цепочка
+одной командой, каждый шаг инъецируем для тестов, `--dry-run` без
+записей на диск, повторный запуск продолжает (resume) готовый скелет:
+
+1. **scaffold** — из APK (`aapt dump badging`, runner инъецируется) или
+   из пары `--name/--package`;
+2. **register** — YAML-дескриптор регистрируется в реестре;
+3. **calibrate** — дамп поисковой выдачи из `--dump`, инъецированного
+   `driver(package, query)` или generic-драйва по ADB (открыть
+   приложение → пауза → `uiautomator dump`); падение драйва без
+   устройства → шаг `skipped`, статус `scaffolded`;
+4. **hints → descriptor** — `write_hints_to_descriptor()` в
+   `extras.parser_hints` + перерегистрация;
+5. **codegen** — `write_parser(..., overwrite=True)`;
+6. **verify** — дамп разбирается свежим парсером: карточки > 0 →
+   статус `ready`.
+
+```bash
+aios platforms bootup --apk slando.apk --query "велосипед" --dry-run
+aios platforms bootup --name slando --package com.slando.app --dump feed.xml
+```
+
+Отчёт JSON: `{platform, android_package, status, steps: {scaffold,
+register, calibrate, hints, codegen, verify}}`.
+
+REST-эквивалент калибровки: `POST /api/v1/platforms/{platform}/hints`
+`{dump | hints}` → сохраняет подсказки в runtime-дескриптор и
+возвращает `parser_preview` (карточки + примеры заголовков);
+персистентность в YAML — через CLI (`calibrate --write`).
+
 ## Дальше (дорожная карта к 10000+)
 
-1. **Генератор парсеров из parser_hints**: собирает CardParser-подобный
-   класс по маркерам без ручного кода (компиляция в python-модуль
-   платформы).
-2. **Авто-E2E**: scaffold из APK → калибровочный драйв в эмуляторе →
-   готовый коллектор в одном пайплайне.
+Архитектурный цикл подключения платформы собран полностью: APK →
+scaffold → калибровка → parser_hints → codegen → verify. Возможные
+шаги дальше:
+
+1. **Калибровка детального экрана и мессенджера**: расширить
+   CalibrationAdvisor паттернами OLX `detail.py`/`messenger.py` (поля
+   описания/продавца, кнопка «Написати», форма ввода).
+2. **bootup + DevicePool**: автолизинг эмулятора из пула для live-драйва
+   (`ensure_device` + точечный драйв под конкретный flow поиска).
+3. **CI-регрессия маркеров**: периодический re-calibrate на свежих
+   сборках приложений, алёрт при смене resource-id (защита от
+   обновлений верстки).
