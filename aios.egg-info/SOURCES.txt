@@ -259,10 +259,12 @@ aios_core/modules/olx/text_utils.py
 aios_core/modules/olx/ui_parser.py
 aios_core/modules/olx/watch.py
 aios_core/platforms/__init__.py
+aios_core/platforms/calibrate.py
 aios_core/platforms/catalog.py
 aios_core/platforms/descriptor.py
 aios_core/platforms/devices.py
 aios_core/platforms/fleet.py
+aios_core/platforms/gateway.py
 aios_core/platforms/profile.py
 aios_core/platforms/resolver.py
 aios_core/platforms/scaffold.py
@@ -307,6 +309,7 @@ tests/test_federation.py
 tests/test_fleet_scaffold.py
 tests/test_fleet_scale.py
 tests/test_formal_code_verifier.py
+tests/test_gateway_calibrate.py
 tests/test_global_swarm.py
 tests/test_infinite_constitution.py
 tests/test_marketplace.py
