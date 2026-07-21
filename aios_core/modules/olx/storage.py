@@ -94,6 +94,22 @@ CREATE TABLE IF NOT EXISTS own_ad_sightings (
     messages INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_own_ad_sightings_fp ON own_ad_sightings(fingerprint);
+
+CREATE TABLE IF NOT EXISTS olx_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    query TEXT NOT NULL,
+    min_price REAL,
+    max_price REAL,
+    city TEXT,
+    created_at TEXT NOT NULL,
+    last_checked_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS olx_favorites (
+    fingerprint TEXT PRIMARY KEY,
+    added_at TEXT NOT NULL
+);
 """
 
 _V1_MIGRATION_COLUMNS = {
@@ -154,16 +170,12 @@ class OLXStorage:
                 "WHERE last_seen_at IS NULL"
             )
 
-    def save_ads(
+    def save_ads_with_new(
         self, cards: List[AdCard], seen_at: Optional[str] = None
-    ) -> int:
-        """Store cards and record a sighting for each one.
-
-        New fingerprints are inserted; known fingerprints get their presence
-        timestamps refreshed and their current price updated. Every card adds
-        a row to the price-history log. Returns the number of new ads.
-        """
+    ) -> "tuple[int, List[str]]":
+        """Like :meth:`save_ads`, but also returns the *new* fingerprints."""
         now = seen_at or datetime.now(timezone.utc).isoformat()
+        new_fingerprints: List[str] = []
         inserted = 0
         with self._lock:
             with self._conn:
@@ -196,6 +208,8 @@ class OLXStorage:
                             now,
                         ),
                     )
+                    if cursor.rowcount:
+                        new_fingerprints.append(row["fingerprint"])
                     if not cursor.rowcount:
                         self._conn.execute(
                             """
@@ -232,7 +246,7 @@ class OLXStorage:
                         """,
                         (row["fingerprint"], now, row["price"], int(row["is_top"])),
                     )
-        return inserted
+        return inserted, new_fingerprints
 
     def sync_activity(
         self, query: str, seen_fingerprints: List[str]
@@ -272,6 +286,18 @@ class OLXStorage:
             {"seen_at": row["seen_at"], "price": row["price"], "is_top": bool(row["is_top"])}
             for row in rows
         ]
+
+    def save_ads(
+        self, cards: List[AdCard], seen_at: Optional[str] = None
+    ) -> int:
+        """Store cards and record a sighting for each one.
+
+        New fingerprints are inserted; known fingerprints get their presence
+        timestamps refreshed and their current price updated. Every card adds
+        a row to the price-history log. Returns the number of new ads.
+        """
+        inserted, _new = self.save_ads_with_new(cards, seen_at=seen_at)
+        return inserted
 
     def _row_to_card(self, row: sqlite3.Row) -> AdCard:
         return AdCard(
@@ -479,6 +505,74 @@ class OLXStorage:
                 (fingerprint,),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    # ---- Search subscriptions & favorites ----
+
+    def subscription_add(
+        self,
+        name: str,
+        query: str,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None,
+        city: Optional[str] = None,
+    ) -> int:
+        """Save a named search subscription (filters for new-ad alerts)."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                """
+                INSERT INTO olx_subscriptions
+                    (name, query, min_price, max_price, city, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (name, query, min_price, max_price, city, now),
+            )
+            return cursor.lastrowid
+
+    def subscriptions_list(self) -> List[Dict[str, object]]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM olx_subscriptions ORDER BY id"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def subscription_remove(self, subscription_id: int) -> bool:
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                "DELETE FROM olx_subscriptions WHERE id = ?", (subscription_id,)
+            )
+            return cursor.rowcount > 0
+
+    def subscription_touch(self, subscription_id: int) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._lock, self._conn:
+            self._conn.execute(
+                "UPDATE olx_subscriptions SET last_checked_at = ? WHERE id = ?",
+                (now, subscription_id),
+            )
+
+    def favorite_add(self, fingerprint: str) -> bool:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                "INSERT OR IGNORE INTO olx_favorites (fingerprint, added_at) VALUES (?, ?)",
+                (fingerprint, now),
+            )
+            return cursor.rowcount > 0
+
+    def favorite_remove(self, fingerprint: str) -> bool:
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                "DELETE FROM olx_favorites WHERE fingerprint = ?", (fingerprint,)
+            )
+            return cursor.rowcount > 0
+
+    def favorites_list(self) -> List[str]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT fingerprint FROM olx_favorites ORDER BY added_at"
+            ).fetchall()
+        return [row[0] for row in rows]
 
     # ---- Export ----
 

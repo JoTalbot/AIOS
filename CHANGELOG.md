@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **OLX search subscriptions & favorites (storage schema v4)**:
+  - `SubscriptionManager`: named saved searches with price/city filters and
+    new-ad alerts after each collection cycle (`olx_subscriptions`).
+  - `FavoritesWatch`: favorite ads with price-drop alerts (`olx_favorites`).
+  - Search deep-links with price-range and sorting filters
+    (`OLXCollector.search_deep_link`).
+- **AutoWatch (`autowatch.py`)**: one full unattended cycle — collect
+  queries, match subscription alerts, favorite-drop alerts, own-ads snapshot,
+  stagnant detection, improvement suggestions and repost plans, notifications.
+- **`OwnAdEditor`**: applies improvement suggestions as a listing *edit*
+  (keeps the ad id; DRY-RUN default, `confirm=True` to execute).
+- **REST**: `/olx/subscriptions*`, `/olx/favorites*`, `/olx/own/edit`,
+  `/olx/autowatch`.
+- **CLI**: `aios olx subscribe|subscriptions|favorite|favorites|autowatch`.
+- **Runbook**: `docs/modules/olx/DEVICE_RUNBOOK.md` — live-device setup
+  (ADB, ADBKeyBoard for Cyrillic input, calibration, cron, Telegram alerts).
 - **OLX ad detail parser (`detail.py`)**: full ad-page extraction — price,
   params, description, seller (name/type/since), city, views counter,
   publication date; resource-id and pure-text fallbacks.

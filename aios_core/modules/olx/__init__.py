@@ -30,6 +30,7 @@ from .analytics import (
     Recommendation,
     RecommendationEngine,
 )
+from .autowatch import AutoWatch
 from .card_parser import CardParser
 from .collector import OLXCollector
 from .detail import AdDetail, AdDetailParser
@@ -52,6 +53,7 @@ from .own_ads import OwnAd, OwnAdsParser, OwnAdsTracker
 from .promotion import (
     AdImprover,
     ImprovementSuggestion,
+    OwnAdEditor,
     RepostDecision,
     RepostPlanner,
     Reposter,
@@ -59,6 +61,7 @@ from .promotion import (
 from .scheduler import CollectionScheduler
 from .storage import OLXStorage
 from .ui_parser import UIParser
+from .watch import FavoritesWatch, SubscriptionManager
 
 __all__ = [
     "ADBController",
@@ -66,6 +69,7 @@ __all__ = [
     "AdDetail",
     "AdDetailParser",
     "AdImprover",
+    "AutoWatch",
     "CardParser",
     "ChatListParser",
     "ChatThread",
@@ -73,12 +77,14 @@ __all__ = [
     "CollectionScheduler",
     "CompetitorAnalyzer",
     "CompetitorReport",
+    "FavoritesWatch",
     "ImprovementSuggestion",
     "Message",
     "OLXCollector",
     "OLXMessenger",
     "OLXStorage",
     "OwnAd",
+    "OwnAdEditor",
     "OwnAdsParser",
     "OwnAdsTracker",
     "PriceChange",
@@ -89,6 +95,7 @@ __all__ = [
     "RepostDecision",
     "RepostPlanner",
     "Reposter",
+    "SubscriptionManager",
     "UIParser",
     "WebhookNotifier",
     "collect_price_drop_alerts",
