@@ -42,15 +42,18 @@ python run_dashboard.py
 # Open http://127.0.0.1:8080
 ```
 
-## v4.0 Features (Alpha)
+## v4.1 Features (Alpha)
 
 - **Federation** — multi-node coordination
 - **ML Planner Scorer** — intelligent plan optimization
 - **Multi-Agent Orchestration** — dynamic teams
 - **Constitution Evolver** — self-evolving rules
 - **Web Dashboard** — real-time monitoring
+- **Capability Marketplace** — publish & discover capabilities
+- **Python SDK** — official client library
+- **Kubernetes** — deployment manifests
 
-**Current version:** 4.0.0-alpha (501 tests passing)
+**Current version:** 4.1.0-alpha (504 tests passing)
 
 Run a local REST service (requires authentication by default):
 

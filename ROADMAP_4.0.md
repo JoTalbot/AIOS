@@ -56,11 +56,13 @@ AIOS 4.0 will introduce **collective intelligence**, **federation**, and **self-
 - [x] `ConstitutionEvolver`
 - [x] Automatic article generation
 
-### Phase 4: Ecosystem (In Progress)
+### Phase 4: Ecosystem (Completed)
 - [x] Web Dashboard (Starlette-based)
-- [ ] SDK + documentation
-- [ ] Helm + K8s manifests
-- [ ] Marketplace for capabilities
+- [x] Python SDK (aios_sdk.py)
+- [x] Kubernetes deployment
+- [x] Capability Marketplace v4.1
+
+**Roadmap 4.0 / 4.1 completed**
 
 ## Success Metrics for 4.0
 - 3+ federated instances running in production
