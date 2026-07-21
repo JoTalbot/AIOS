@@ -915,6 +915,78 @@ class CapabilityEngine:
             "storage": "sqlite",
         }
 
+    # ------------------------------------------------------------------
+    # v3.0 Dynamic capabilities — auto-suggestion
+    # ------------------------------------------------------------------
+
+    def suggest_capabilities(self, limit: int = 5) -> list[dict]:
+        """Suggest new capabilities based on execution patterns and gaps.
+
+        Heuristics:
+        - High-frequency capabilities that are still in early status
+        - Capabilities with many failures (suggest improvement)
+        - Missing common types (reasoning, memory, knowledge)
+        """
+        suggestions = []
+
+        # Get top executed capabilities
+        if self.db:
+            top = self.db.query(
+                """SELECT name, capability_type, metrics, status
+                   FROM capabilities
+                   ORDER BY json_extract(metrics, '$.execution_count') DESC
+                   LIMIT ?""",
+                (limit + 3,),
+            )
+        else:
+            top = sorted(
+                self._in_memory.values(),
+                key=lambda c: c.get("metrics", {}).get("execution_count", 0),
+                reverse=True,
+            )[:limit + 3]
+
+        for cap in top:
+            metrics = cap.get("metrics", {}) if isinstance(cap, dict) else {}
+            exec_count = metrics.get("execution_count", 0) if isinstance(metrics, dict) else 0
+            failure_rate = 0
+            if exec_count > 0:
+                failures = metrics.get("failure_count", 0)
+                failure_rate = failures / exec_count
+
+            # Suggest improvement if high failure rate
+            if failure_rate > 0.3:
+                suggestions.append({
+                    "name": f"improved_{cap.get('name', 'unknown')}",
+                    "description": f"Improved version of {cap.get('name')} (high failure rate)",
+                    "capability_type": cap.get("capability_type", "tool"),
+                    "reason": "high_failure_rate",
+                    "confidence": round(1 - failure_rate, 2),
+                })
+
+            # Suggest optimization for trusted capabilities with high usage
+            if cap.get("status") in ("trusted", "optimized") and exec_count > 100:
+                suggestions.append({
+                    "name": f"optimized_{cap.get('name', 'unknown')}",
+                    "description": f"Optimized variant of heavily used capability",
+                    "capability_type": "optimization",
+                    "reason": "high_usage",
+                    "confidence": 0.85,
+                })
+
+        # Add generic suggestions for missing core types
+        existing_types = {c.get("capability_type") for c in (self._in_memory.values() if not self.db else [])}
+        for missing in ["reasoning", "memory", "knowledge", "evolution"]:
+            if missing not in existing_types:
+                suggestions.append({
+                    "name": f"core_{missing}",
+                    "description": f"Core {missing} capability (auto-suggested)",
+                    "capability_type": missing,
+                    "reason": "missing_core_type",
+                    "confidence": 0.9,
+                })
+
+        return suggestions[:limit]
+
 
 # ---------------------------------------------------------------------------
 # Module-level helper
