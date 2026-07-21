@@ -158,6 +158,10 @@ class OLXStorage:
 
     def __init__(self, db_path: Union[str, Path] = ":memory:"):
         self.db_path = str(db_path)
+        if self.db_path != ":memory:":
+            # Profile-scoped paths like data/olx/<profile>.sqlite may not
+            # exist yet — create the directory tree on first use.
+            Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         # check_same_thread=False + a write lock make the store safe to share
         # between the REST API loop and background scheduler threads.
         self._conn = sqlite3.connect(self.db_path, check_same_thread=False)

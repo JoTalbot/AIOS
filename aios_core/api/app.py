@@ -102,7 +102,7 @@ class AIOSAPI:
     the Starlette application.
     """
 
-    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None, olx_storage=None, olx_collector=None, olx_messenger=None):
+    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None, olx_storage=None, olx_collector=None, olx_messenger=None, profile_store=None):
         from aios_core.storage import Database
         from aios_core.orchestrator import Orchestrator
         from aios_core.test_engine import TestEngine
@@ -152,6 +152,17 @@ class AIOSAPI:
             olx_messenger = OLXMessenger(storage=self.olx_storage)
         self.olx_messenger = olx_messenger
         self._olx_scheduler = None
+
+        # Marketplace platforms: multi-account profile registry.
+        # AIOS_PROFILES_DB points at the shared SQLite registry; without it
+        # every API instance gets an empty in-memory registry.
+        from aios_core.platforms import ProfileStore
+        if profile_store is None:
+            profile_store = ProfileStore(
+                os.environ.get("AIOS_PROFILES_DB", ":memory:")
+            )
+        self.profile_store = profile_store
+        self._olx_profile_storages = {}
 
     def create_starlette_app(self) -> Starlette:
         """Build the Starlette application with all routes."""
@@ -210,6 +221,12 @@ class AIOSAPI:
             Route("/api/v1/modules/olx/competitive", self._olx_competitive, methods=["GET"]),
             Route("/api/v1/modules/olx/competitive/refresh", self._olx_competitive_refresh, methods=["POST"]),
             Route("/api/v1/modules/olx/competitive/seller-scan", self._olx_competitive_seller_scan, methods=["POST"]),
+            Route("/api/v1/platforms", self._platforms_list, methods=["GET"]),
+            Route("/api/v1/profiles", self._profiles_list, methods=["GET"]),
+            Route("/api/v1/profiles", self._profiles_create, methods=["POST"]),
+            Route("/api/v1/profiles/{platform}/{name}", self._profiles_show, methods=["GET"]),
+            Route("/api/v1/profiles/{platform}/{name}", self._profiles_remove, methods=["DELETE"]),
+            Route("/api/v1/profiles/{platform}/default", self._profiles_set_default, methods=["POST"]),
             Route("/api/v1/modules/olx/advisor", self._olx_advisor, methods=["GET"]),
 
             # Constitutional evaluation
@@ -272,8 +289,13 @@ class AIOSAPI:
             WebSocketRoute("/ws", self._websocket_endpoint),
         ]
 
+        async def _value_error_response(request: Request, exc: ValueError):
+            # Например: неизвестный профиль платформы (?profile=...).
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
         app = Starlette(
             routes=routes,
+            exception_handlers={ValueError: _value_error_response},
             middleware=[
                 Middleware(RequestSafetyMiddleware),
                 Middleware(APIKeyAuthMiddleware, enabled=self.auth_required, api_keys=self.api_keys),
@@ -282,6 +304,90 @@ class AIOSAPI:
             ],
         )
         return app
+
+    def _olx_db(self, request: Request):
+        """Profile-scoped OLX storage.
+
+        ``?profile=<name>`` switches the request to that account's isolated
+        storage (cached per name); without the parameter the API-wide
+        default storage is used. Unknown names raise ``ValueError`` which
+        the app-level exception handler maps to HTTP 400.
+        """
+        name = request.query_params.get("profile")
+        if not name:
+            return self.olx_storage
+        storage = self._olx_profile_storages.get(name)
+        if storage is None:
+            from aios_core.platforms import resolve_profile
+            from aios_core.modules.olx import OLXStorage
+            profile = resolve_profile("olx", name, store=self.profile_store)
+            storage = OLXStorage(profile.db_path)
+            self._olx_profile_storages[name] = storage
+        return storage
+
+    # ------------------------------------------------------------------ #
+    # Platforms & profiles registry endpoints                             #
+    # ------------------------------------------------------------------ #
+
+    async def _platforms_list(self, request: Request) -> JSONResponse:
+        """List registered marketplace platform descriptors."""
+        from aios_core.platforms import list_platforms
+        return JSONResponse(
+            {"platforms": [d.to_dict() for d in list_platforms()]}
+        )
+
+    async def _profiles_list(self, request: Request) -> JSONResponse:
+        """List profiles, optionally filtered by ?platform=."""
+        return JSONResponse(
+            {"profiles": [
+                p.to_dict()
+                for p in self.profile_store.list(
+                    request.query_params.get("platform")
+                )
+            ]}
+        )
+
+    async def _profiles_create(self, request: Request) -> JSONResponse:
+        """Register a new profile {platform, name, device_serial?, ...}."""
+        from aios_core.platforms import Profile
+        body = await request.json()
+        profile = self.profile_store.add(Profile(
+            platform=body.get("platform"), name=body.get("name"),
+            device_serial=body.get("device_serial"),
+            android_user=int(body.get("android_user") or 0),
+            db_path=body.get("db_path"),
+            locale=body.get("locale") or "uk-UA",
+            notes=body.get("notes") or "",
+            is_default=bool(body.get("is_default")),
+        ))
+        return JSONResponse(profile.to_dict(), status_code=201)
+
+    async def _profiles_show(self, request: Request) -> JSONResponse:
+        """One profile by path {platform}/{name}."""
+        profile = self.profile_store.get(
+            request.path_params["platform"], request.path_params["name"]
+        )
+        if profile is None:
+            return JSONResponse({"error": "profile not found"}, status_code=404)
+        return JSONResponse(profile.to_dict())
+
+    async def _profiles_remove(self, request: Request) -> JSONResponse:
+        """Delete a profile (its storage file is kept untouched)."""
+        removed = self.profile_store.remove(
+            request.path_params["platform"], request.path_params["name"]
+        )
+        self._olx_profile_storages.pop(request.path_params["name"], None)
+        return JSONResponse({"removed": removed})
+
+    async def _profiles_set_default(self, request: Request) -> JSONResponse:
+        """Mark {name} as the default profile of {platform}."""
+        body = await request.json()
+        profile = self.profile_store.set_default(
+            request.path_params["platform"], body.get("name")
+        )
+        if profile is None:
+            return JSONResponse({"error": "profile not found"}, status_code=404)
+        return JSONResponse(profile.to_dict())
 
     def _memory_actor(self, request: Request) -> tuple[str, bool]:
         """Return authenticated subject and administrative scope for memory ACLs."""
@@ -472,14 +578,14 @@ class AIOSAPI:
                 {"error": "query parameter 'fingerprint' is required"},
                 status_code=400,
             )
-        history = self.olx_storage.price_history(fingerprint)
+        history = self._olx_db(request).price_history(fingerprint)
         return JSONResponse({"fingerprint": fingerprint, "count": len(history), "history": history})
 
     async def _olx_drops(self, request: Request) -> JSONResponse:
         """Price drops and ads that left the feed (`gone` = sold/removed)."""
         from aios_core.modules.olx import PriceTracker
         query = request.query_params.get("query")
-        tracker = PriceTracker(self.olx_storage)
+        tracker = PriceTracker(self._olx_db(request))
         drops = tracker.price_drops(query=query)
         gone = tracker.gone_from_feed(query=query)
         return JSONResponse({
@@ -533,7 +639,7 @@ class AIOSAPI:
 
     async def _olx_outbox(self, request: Request) -> JSONResponse:
         """List reply drafts (filterable by `status`)."""
-        items = self.olx_storage.outbox_list(status=request.query_params.get("status"))
+        items = self._olx_db(request).outbox_list(status=request.query_params.get("status"))
         return JSONResponse({"count": len(items), "items": items})
 
     async def _olx_outbox_send(self, request: Request) -> JSONResponse:
@@ -549,14 +655,14 @@ class AIOSAPI:
         try:
             body = await request.json()
             outbox_id = int(body.get("id"))
-            cancelled = self.olx_storage.outbox_mark(outbox_id, "cancelled")
+            cancelled = self._olx_db(request).outbox_mark(outbox_id, "cancelled")
             return JSONResponse({"id": outbox_id, "cancelled": cancelled})
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
 
     async def _olx_own_list(self, request: Request) -> JSONResponse:
         """List my own tracked listings (filterable by `status`)."""
-        items = self.olx_storage.own_ads(status=request.query_params.get("status"))
+        items = self._olx_db(request).own_ads(status=request.query_params.get("status"))
         return JSONResponse({"count": len(items), "items": items})
 
     async def _olx_own_snapshot(self, request: Request) -> JSONResponse:
@@ -577,7 +683,7 @@ class AIOSAPI:
                     url=raw.get("url"),
                     ad_id=raw.get("ad_id"),
                 ))
-            result = OwnAdsTracker(self.olx_storage).record_snapshot(
+            result = OwnAdsTracker(self._olx_db(request)).record_snapshot(
                 ads, seen_at=body.get("seen_at")
             )
             return JSONResponse(result)
@@ -589,7 +695,7 @@ class AIOSAPI:
         from aios_core.modules.olx import OwnAdsTracker
         min_age = float(request.query_params.get("min_age_days", 3.0))
         min_rate = float(request.query_params.get("min_views_per_day", 1.0))
-        items = OwnAdsTracker(self.olx_storage).stagnant(
+        items = OwnAdsTracker(self._olx_db(request)).stagnant(
             min_age_days=min_age, min_views_per_day=min_rate
         )
         return JSONResponse({"count": len(items), "items": items})
@@ -600,7 +706,7 @@ class AIOSAPI:
             from aios_core.modules.olx import AdImprover, OwnAd
             body = await request.json()
             fingerprint = body.get("fingerprint")
-            rows = [row for row in self.olx_storage.own_ads() if row["fingerprint"] == fingerprint]
+            rows = [row for row in self._olx_db(request).own_ads() if row["fingerprint"] == fingerprint]
             if not rows:
                 return JSONResponse({"error": "own ad not found"}, status_code=404)
             row = rows[0]
@@ -609,7 +715,7 @@ class AIOSAPI:
                 views=row["last_views"] or 0, url=row["url"], ad_id=row["ad_id"],
                 status=row["status"],
             )
-            competitors = self.olx_storage.get_ads(query=body.get("query"))
+            competitors = self._olx_db(request).get_ads(query=body.get("query"))
             suggestion = AdImprover().improve(own_ad, competitors)
             payload = suggestion.to_dict()
             payload["text"] = suggestion.to_text()
@@ -623,7 +729,7 @@ class AIOSAPI:
             from aios_core.modules.olx import OwnAd, Reposter
             body = await request.json()
             fingerprint = body.get("fingerprint")
-            rows = [row for row in self.olx_storage.own_ads() if row["fingerprint"] == fingerprint]
+            rows = [row for row in self._olx_db(request).own_ads() if row["fingerprint"] == fingerprint]
             if not rows:
                 return JSONResponse({"error": "own ad not found"}, status_code=404)
             row = rows[0]
@@ -634,7 +740,7 @@ class AIOSAPI:
             reposter = Reposter(adb=self.olx_messenger.adb)
             result = reposter.repost(own_ad, confirm=bool(body.get("confirm", False)))
             if result.get("status") == "executed":
-                self.olx_storage.own_ad_set_status(fingerprint, "inactive")
+                self._olx_db(request).own_ad_set_status(fingerprint, "inactive")
             return JSONResponse(result)
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
@@ -654,10 +760,10 @@ class AIOSAPI:
                 return JSONResponse(
                     {"error": "field 'webhook_url' is required"}, status_code=400
                 )
-            tracker = PriceTracker(self.olx_storage)
+            tracker = PriceTracker(self._olx_db(request))
             query = body.get("query")
             drops_summary = notify_price_drops(tracker, notifier, query=query)
-            stagnant_items = OwnAdsTracker(self.olx_storage).stagnant()
+            stagnant_items = OwnAdsTracker(self._olx_db(request)).stagnant()
             stagnant_summary = notify_stagnant(stagnant_items, notifier)
             return JSONResponse({"drops": drops_summary, "stagnant": stagnant_summary})
         except Exception as exc:
@@ -669,7 +775,7 @@ class AIOSAPI:
             from aios_core.modules.olx import AdImprover, OwnAd, OwnAdEditor
             body = await request.json()
             fingerprint = body.get("fingerprint")
-            rows = [row for row in self.olx_storage.own_ads() if row["fingerprint"] == fingerprint]
+            rows = [row for row in self._olx_db(request).own_ads() if row["fingerprint"] == fingerprint]
             if not rows:
                 return JSONResponse({"error": "own ad not found"}, status_code=404)
             row = rows[0]
@@ -678,7 +784,7 @@ class AIOSAPI:
                 views=row["last_views"] or 0, url=row["url"], ad_id=row["ad_id"],
                 status=row["status"],
             )
-            competitors = self.olx_storage.get_ads(query=body.get("query"))
+            competitors = self._olx_db(request).get_ads(query=body.get("query"))
             suggestion = AdImprover().improve(own_ad, competitors)
             editor = OwnAdEditor(adb=self.olx_messenger.adb)
             result = editor.apply(own_ad, suggestion, confirm=bool(body.get("confirm", False)))
@@ -688,7 +794,7 @@ class AIOSAPI:
 
     async def _olx_subscriptions(self, request: Request) -> JSONResponse:
         from aios_core.modules.olx import SubscriptionManager
-        items = SubscriptionManager(self.olx_storage).list()
+        items = SubscriptionManager(self._olx_db(request)).list()
         return JSONResponse({"count": len(items), "items": items})
 
     async def _olx_subscription_add(self, request: Request) -> JSONResponse:
@@ -698,7 +804,7 @@ class AIOSAPI:
             query = body.get("query")
             if not query:
                 return JSONResponse({"error": "field 'query' is required"}, status_code=400)
-            sub_id = SubscriptionManager(self.olx_storage).add(
+            sub_id = SubscriptionManager(self._olx_db(request)).add(
                 name=body.get("name") or query,
                 query=query,
                 min_price=body.get("min_price"),
@@ -712,7 +818,7 @@ class AIOSAPI:
     async def _olx_subscription_remove(self, request: Request) -> JSONResponse:
         from aios_core.modules.olx import SubscriptionManager
         sub_id = int(request.path_params["subscription_id"])
-        removed = SubscriptionManager(self.olx_storage).remove(sub_id)
+        removed = SubscriptionManager(self._olx_db(request)).remove(sub_id)
         return JSONResponse({"id": sub_id, "removed": removed})
 
     async def _olx_subscription_check(self, request: Request) -> JSONResponse:
@@ -720,9 +826,9 @@ class AIOSAPI:
         try:
             from aios_core.modules.olx import SubscriptionManager
             body = await request.json() if request.method == "POST" else {}
-            manager = SubscriptionManager(self.olx_storage)
+            manager = SubscriptionManager(self._olx_db(request))
             query_filter = body.get("query")
-            cards = self.olx_storage.get_ads(query=query_filter)
+            cards = self._olx_db(request).get_ads(query=query_filter)
             alerts = manager.check_new(cards)
             return JSONResponse({"alerts_count": len(alerts), "alerts": alerts})
         except Exception as exc:
@@ -730,7 +836,7 @@ class AIOSAPI:
 
     async def _olx_favorites(self, request: Request) -> JSONResponse:
         from aios_core.modules.olx import FavoritesWatch
-        items = FavoritesWatch(self.olx_storage).list()
+        items = FavoritesWatch(self._olx_db(request)).list()
         return JSONResponse({"count": len(items), "items": items})
 
     async def _olx_favorite_add(self, request: Request) -> JSONResponse:
@@ -742,7 +848,7 @@ class AIOSAPI:
                 return JSONResponse(
                     {"error": "field 'fingerprint' is required"}, status_code=400
                 )
-            added = FavoritesWatch(self.olx_storage).add(fingerprint)
+            added = FavoritesWatch(self._olx_db(request)).add(fingerprint)
             return JSONResponse({"fingerprint": fingerprint, "added": added})
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
@@ -750,12 +856,12 @@ class AIOSAPI:
     async def _olx_favorite_remove(self, request: Request) -> JSONResponse:
         from aios_core.modules.olx import FavoritesWatch
         fingerprint = request.path_params["fingerprint"]
-        removed = FavoritesWatch(self.olx_storage).remove(fingerprint)
+        removed = FavoritesWatch(self._olx_db(request)).remove(fingerprint)
         return JSONResponse({"fingerprint": fingerprint, "removed": removed})
 
     async def _olx_favorite_alerts(self, request: Request) -> JSONResponse:
         from aios_core.modules.olx import FavoritesWatch
-        alerts = FavoritesWatch(self.olx_storage).price_alerts()
+        alerts = FavoritesWatch(self._olx_db(request)).price_alerts()
         return JSONResponse({"count": len(alerts), "alerts": alerts})
 
     async def _olx_autowatch(self, request: Request) -> JSONResponse:
@@ -765,7 +871,7 @@ class AIOSAPI:
             body = await request.json()
             queries = body.get("queries")
             watch = AutoWatch(
-                storage=self.olx_storage,
+                storage=self._olx_db(request),
                 collector=self.olx_collector,
                 notifier=WebhookNotifier(
                     url=body.get("webhook_url"), chat_id=body.get("chat_id")
@@ -790,7 +896,7 @@ class AIOSAPI:
 
     async def _olx_profile(self, request: Request) -> JSONResponse:
         """Stored profile fields and pending edits."""
-        return JSONResponse({"fields": self.olx_storage.profile_all()})
+        return JSONResponse({"fields": self._olx_db(request).profile_all()})
 
     async def _olx_profile_parse(self, request: Request) -> JSONResponse:
         """Parse a profile/settings screen dump and store the fields."""
@@ -803,7 +909,7 @@ class AIOSAPI:
             parser = ProfileParser()
             profile = parser.parse_profile(xml_text)
             for key, value in profile.fields.items():
-                self.olx_storage.profile_set(key, value)
+                self._olx_db(request).profile_set(key, value)
             payload = profile.to_dict()
             if body.get("include_settings"):
                 texts = parser._texts(xml_text)
@@ -825,7 +931,7 @@ class AIOSAPI:
                 )
             editor = ProfileEditor(adb=self.olx_messenger.adb)
             result = editor.apply(
-                self.olx_storage, field_key, str(new_value),
+                self._olx_db(request), field_key, str(new_value),
                 confirm=bool(body.get("confirm", False)),
             )
             return JSONResponse(result)
@@ -837,14 +943,14 @@ class AIOSAPI:
         try:
             from aios_core.modules.olx import CompetitiveWatch, OwnAd
             body = await request.json() if (request.headers.get("content-length") or "0") != "0" else {}
-            watch = CompetitiveWatch(self.olx_storage)
+            watch = CompetitiveWatch(self._olx_db(request))
             own_list = [
                 OwnAd(
                     title=row["title"], price=row["price"], currency=row["currency"],
                     views=row["last_views"] or 0, url=row["url"],
                     ad_id=row["ad_id"], status=row["status"],
                 )
-                for row in self.olx_storage.own_ads(status="active")
+                for row in self._olx_db(request).own_ads(status="active")
             ]
             result = watch.refresh(own_list)
             return JSONResponse(result)
@@ -867,7 +973,7 @@ class AIOSAPI:
                     status_code=400,
                 )
             rows = [
-                row for row in self.olx_storage.own_ads()
+                row for row in self._olx_db(request).own_ads()
                 if row["fingerprint"] == fingerprint
             ]
             if not rows:
@@ -880,7 +986,7 @@ class AIOSAPI:
                 views=row["last_views"] or 0, url=row["url"],
                 ad_id=row["ad_id"], status=row["status"],
             )
-            result = CompetitiveWatch(self.olx_storage).observe_seller_ads(
+            result = CompetitiveWatch(self._olx_db(request)).observe_seller_ads(
                 xml, own,
                 viewed_url=body.get("viewed_url"),
                 viewed_ad_id=body.get("viewed_ad_id"),
@@ -897,13 +1003,13 @@ class AIOSAPI:
             return JSONResponse(
                 {"error": "query parameter 'fingerprint' is required"}, status_code=400
             )
-        report = CompetitiveWatch(self.olx_storage).report(fingerprint)
+        report = CompetitiveWatch(self._olx_db(request)).report(fingerprint)
         return JSONResponse(report)
 
     async def _olx_advisor(self, request: Request) -> JSONResponse:
         """Portfolio advice: actions for own ads + new-listing suggestions."""
         from aios_core.modules.olx import StrategyAdvisor
-        advisor = StrategyAdvisor(self.olx_storage)
+        advisor = StrategyAdvisor(self._olx_db(request))
         actions = [item.to_dict() for item in advisor.advise_actions()]
         payload: Dict[str, object] = {"actions": actions}
         if request.query_params.get("new") == "1":
@@ -913,6 +1019,9 @@ class AIOSAPI:
         return JSONResponse(payload)
 
     def _olx_get_scheduler(self, interval_s: float = 3600.0):
+        # Фоновый планировщик — API-wide синглтон: работает на дефолтном
+        # хранилище. Per-profile фоновые сборы запускаются через CLI/cron
+        # с --profile (см. docs/PLATFORMS_SCALING.md).
         if self._olx_scheduler is None:
             from aios_core.modules.olx import CollectionScheduler
             self._olx_scheduler = CollectionScheduler(
@@ -927,10 +1036,10 @@ class AIOSAPI:
         """List collected OLX ads (`query` filter, bounded `limit`)."""
         query = request.query_params.get("query")
         limit = self._bounded_int(request.query_params.get("limit"), default=100, maximum=1000)
-        ads = self.olx_storage.get_ads(query=query, limit=limit)
+        ads = self._olx_db(request).get_ads(query=query, limit=limit)
         return JSONResponse({
             "count": len(ads),
-            "total": self.olx_storage.count(query=query),
+            "total": self._olx_db(request).count(query=query),
             "items": [ad.to_dict() for ad in ads],
         })
 
@@ -938,7 +1047,7 @@ class AIOSAPI:
         """Competitor market statistics for a search query (or the whole store)."""
         from aios_core.modules.olx import CompetitorAnalyzer
         query = request.query_params.get("query")
-        ads = self.olx_storage.get_ads(query=query)
+        ads = self._olx_db(request).get_ads(query=query)
         report = CompetitorAnalyzer().analyze(ads, query=query)
         return JSONResponse(report.to_dict())
 
@@ -949,7 +1058,7 @@ class AIOSAPI:
             from aios_core.modules.olx import AdCard, RecommendationEngine
             body = await request.json()
             query = body.get("query")
-            ads = self.olx_storage.get_ads(query=query)
+            ads = self._olx_db(request).get_ads(query=query)
             my_ad = None
             if body.get("title") is not None or body.get("price") is not None:
                 my_ad = AdCard(
