@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Instagram own-posts**: `OwnPostsParser` (счётчики лайков/
+  комментариев/просмотров → OwnAdsTracker через `to_own_ad()`) и
+  `PostComposer` — guarded-публикация постов: DRY-RUN план по
+  умолчанию, `confirm=True` исполняет (push → deep link → текстовые
+  тапы Next/Share, без координат; честные ошибки дрейфа верстки);
+  CLI `instagram own`, `instagram post --image X --text Y [--confirm]`.
+- **VideoCards (`platforms/videocards.py`)**: экстрактор видео-карточек
+  (Reels/клипы) — `VideoCard` (подпись/тайм-код/просмотры/лайки),
+  `HintVideoParser` по video-маркерам калибровки, `parse_counter_text`,
+  `video_parser_for` из дескриптора.
+- **FleetScheduler (`platforms/fleetsched.py`)**: интервальные
+  autowatch-джобы платформ на арендованных из DevicePool устройствах
+  (last_run в kv пула; skipped-busy честно; ошибки изолированы с
+  release; marker-drift webhook-алёрты); CLI `devices fleet-run`.
+
 ## [9.0.0-alpha.14] - 2026-07-21
 
 ### Added

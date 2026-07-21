@@ -90,6 +90,17 @@ aios platforms autowatch --platform instagram --profile main \
 # GET  /api/v1/modules/instagram/outbox?profile=main
 # POST /api/v1/modules/instagram/outbox/send   {"chat_key","text"}
 # POST /api/v1/modules/instagram/outbox/flush
+
+# Свои посты: снапшот счётчиков + guarded-публикация (DRY-RUN!)
+aios instagram own --db data/instagram.sqlite [--dump grid.xml]
+aios instagram post --image photo.jpg --text "Нові кросівки!"      # план
+aios instagram post --image photo.jpg --text "..." --confirm       # публикация
+
+# Видео-контент (Reels): HintVideoParser/video_parser_for —
+# подпись/тайм-код/просмотры/лайки по video-маркерам калибровки
+
+# Автоматизация: циклы заботы всех профилей на арендованных устройствах
+aios devices fleet-run --every-s 900 [--query "кросівки"] [--webhook URL]
 ```
 
 Модули:
