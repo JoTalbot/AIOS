@@ -1,0 +1,44 @@
+"""Blockchain / Distributed Ledger for AIOS"""
+
+import hashlib
+import time
+from typing import List, Dict
+
+
+class Block:
+    def __init__(self, index: int, data: Dict, previous_hash: str):
+        self.index = index
+        self.timestamp = time.time()
+        self.data = data
+        self.previous_hash = previous_hash
+        self.hash = self.calculate_hash()
+
+    def calculate_hash(self) -> str:
+        block_string = f"{self.index}{self.timestamp}{self.data}{self.previous_hash}"
+        return hashlib.sha256(block_string.encode()).hexdigest()
+
+
+class Blockchain:
+    """Simple blockchain for audit and provenance."""
+
+    def __init__(self):
+        self.chain: List[Block] = []
+        self.create_genesis_block()
+
+    def create_genesis_block(self):
+        genesis = Block(0, {"message": "Genesis Block"}, "0")
+        self.chain.append(genesis)
+
+    def add_block(self, data: Dict):
+        previous = self.chain[-1]
+        new_block = Block(len(self.chain), data, previous.hash)
+        self.chain.append(new_block)
+
+    def is_valid(self) -> bool:
+        for i in range(1, len(self.chain)):
+            if self.chain[i].previous_hash != self.chain[i-1].hash:
+                return False
+        return True
+
+    def stats(self) -> dict:
+        return {"blocks": len(self.chain), "valid": self.is_valid()}
