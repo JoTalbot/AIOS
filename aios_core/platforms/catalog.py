@@ -72,6 +72,7 @@ def _descriptor_from_spec(spec: Dict, source: str) -> PlatformDescriptor:
         default_locale=spec.get("default_locale") or "uk-UA",
         description=spec.get("description") or "",
         legacy_default_db=spec.get("legacy_default_db"),
+        extras=spec.get("extras") or {},
     )
 
 

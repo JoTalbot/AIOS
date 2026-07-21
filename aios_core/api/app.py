@@ -102,7 +102,7 @@ class AIOSAPI:
     the Starlette application.
     """
 
-    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None, olx_storage=None, olx_collector=None, olx_messenger=None, profile_store=None, device_pool=None, shard_router=None):
+    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None, olx_storage=None, olx_collector=None, olx_messenger=None, profile_store=None, device_pool=None, shard_router=None, shard_gateway=None):
         from aios_core.storage import Database
         from aios_core.orchestrator import Orchestrator
         from aios_core.test_engine import TestEngine
@@ -182,6 +182,10 @@ class AIOSAPI:
             os.environ.get("AIOS_SHARDS_DB", ":memory:")
         )
 
+        # Shard gateway: proxies module calls to the profile's host.
+        from aios_core.platforms import ShardGateway
+        self.shard_gateway = shard_gateway or ShardGateway(self.shard_router)
+
     def create_starlette_app(self) -> Starlette:
         """Build the Starlette application with all routes."""
         routes = [
@@ -259,6 +263,7 @@ class AIOSAPI:
             Route("/api/v1/shards", self._shards_add, methods=["POST"]),
             Route("/api/v1/shards/route", self._shards_route, methods=["POST"]),
             Route("/api/v1/shards/route", self._shards_unroute, methods=["DELETE"]),
+            Route("/api/v1/shards/gateway", self._shards_gateway, methods=["POST"]),
             Route("/api/v1/shards/{host}", self._shards_remove, methods=["DELETE"]),
 
             # Generic platform module surfaces (descriptor-driven). Статичные
@@ -736,6 +741,32 @@ class AIOSAPI:
         body = await request.json()
         removed = self.shard_router.unroute(body.get("profile"))
         return JSONResponse({"unrouted": removed})
+
+    async def _shards_gateway(self, request: Request) -> JSONResponse:
+        """Proxy a module call to the profile's shard host.
+
+        Body: ``{profile, method, path, params?, body?}``. Когда маршрут
+        ведёт на этот узел (``AIOS_HOST_ID``) — возвращается маркер
+        ``local`` без HTTP-петли (клиент вызывает локальный роут напрямую).
+        """
+        body = await request.json()
+        profile_key = body.get("profile")
+        method = body.get("method") or "GET"
+        path = body.get("path") or ""
+        if not profile_key or not path:
+            return JSONResponse(
+                {"error": "'profile' and 'path' are required"}, status_code=400
+            )
+        result = self.shard_gateway.proxy(
+            profile_key, method, path,
+            params=body.get("params"), json_body=body.get("body"),
+        )
+        if result.get("local"):
+            return JSONResponse(result)
+        status = result.get("status", 502)
+        return JSONResponse(
+            result.get("payload", result), status_code=int(status)
+        )
 
     def _memory_actor(self, request: Request) -> tuple[str, bool]:
         """Return authenticated subject and administrative scope for memory ACLs."""

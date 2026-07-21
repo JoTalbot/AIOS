@@ -225,9 +225,38 @@ launchable-activity, target SDK; `scaffold_from_apk()` строит чернов
 пакета). CLI: `aios platforms from-apk app.apk [--name X] [--dry-run]`.
 Дальше: кандидаты resource-id для парсеров из UI-дампов калибровки.
 
+## ShardGateway + ShardHealthMonitor
+
+`aios_core/platforms/gateway.py`:
+
+- `ShardGateway.proxy(profile_key, method, path, ...)` — HTTP-хоп на
+  хост профиля по липкому маршруту; если маршрут ведёт на этот узел
+  (`AIOS_HOST_ID`), HTTP-петли нет — маркер `local` (клиент вызывает
+  локальный роут). REST: `POST /api/v1/shards/gateway`
+  `{profile, method, path, params?, body?}`.
+- `ShardHealthMonitor` — демон probe `GET <base_url>/health` по всем
+  хостам → `set_healthy`; больные хосты теряют маршруты автоматически.
+  CLI: `aios shards monitor [--interval N] [--once]`.
+
+## Калибровочный агент (parser_hints)
+
+`CalibrationAdvisor.analyze(ui_dump)` ищет в дампе поисковой выдачи
+повторяющиеся контейнеры, содержащие цену (распознаётся общим
+`parse_price`) и заголовок, → кандидатские resource-id маркеры карточек
++ сводка по валютам. CLI:
+
+```bash
+aios platforms calibrate --platform slando --dump screen.xml [--write]
+```
+
+`--write` вливает готовые подсказки в `extras.parser_hints` дескриптора
+`platforms/<name>.yaml`; дальше генератор парсера читает их из каталога.
+`PlatformDescriptor.extras` — свободное расширение дескриптора.
+
 ## Дальше (дорожная карта к 10000+)
 
-1. **REST-шлюз шардинга**: проксирование `/modules/<platform>/*` на
-   хост из ShardRouter.route_for; health-probe хостов демоном.
-2. **Калибровочный агент**: из UI-дампа новой платформы находит
-   маркеры карточек/цен и дописывает дескриптор автоматически.
+1. **Генератор парсеров из parser_hints**: собирает CardParser-подобный
+   класс по маркерам без ручного кода (компиляция в python-модуль
+   платформы).
+2. **Авто-E2E**: scaffold из APK → калибровочный драйв в эмуляторе →
+   готовый коллектор в одном пайплайне.

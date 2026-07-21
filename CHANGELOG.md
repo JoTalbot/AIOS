@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **ShardGateway (`platforms/gateway.py`)**: проксирование вызовов на
+  хост профиля по липкому маршруту; `local`-маркер без HTTP-петли при
+  маршруте на собственный узел (`AIOS_HOST_ID`); REST
+  `POST /api/v1/shards/gateway`. Инъецируемый транспорт.
+- **ShardHealthMonitor**: демон health-probe (`GET /health` по хостам →
+  set_healthy, больные теряют маршруты); CLI `aios shards monitor
+  [--once]`.
+- **CalibrationAdvisor (`platforms/calibrate.py`)**: автопоиск маркеров
+  карточек/цен в UI-дампе новой платформы (повторяющиеся контейнеры с
+  ценой и заголовком), сводка по валютам, подсказка при пустом дампе;
+  CLI `aios platforms calibrate --platform X dump.xml [--write]` —
+  подсказки вливаются в `extras.parser_hints` дескриптора.
+- **PlatformDescriptor.extras**: свободные расширения (parser_hints и
+  далее), проброшены через YAML-каталог и to_dict.
+- 11 новых тестов (`tests/test_gateway_calibrate.py`).
+
 ## [9.0.0-alpha.9] - 2026-07-21
 
 ### Added
