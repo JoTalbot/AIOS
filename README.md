@@ -53,7 +53,7 @@ python run_dashboard.py
 - **Python SDK** — official client library
 - **Kubernetes** — deployment manifests
 
-**Current version:** 9.0.0-alpha.2 (636 tests passing)
+**Current version:** 9.0.0-alpha.3 (648 tests passing)
 
 Run a local REST service (requires authentication by default):
 
