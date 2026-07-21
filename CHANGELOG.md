@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Generic module REST surfaces**: любая зарегистрированная платформа
+  получает data-plane из дескриптора без кода —
+  `/api/v1/modules/{platform}/ads[|/ingest]`, `/stats`,
+  `/ads/{fingerprint}/history`, `/own[|/snapshot]`, с `?profile=`
+  и кэшем по `platform:profile`; статические роуты OLX матчатся первыми,
+  неизвестная платформа → 404.
+- **Pool quotas**: `DevicePool` limits `max_devices`,
+  `max_busy:<platform>` (продление аренды не расходует квоту), `max_avds`
+  (потолок auto-созданных AVD в ensure_device, default 8). CLI
+  `aios devices limits [--set k=v]`; REST `GET|POST /api/v1/devices/limits`.
+- **`aios cron-plan`**: генерация crontab — per-profile `olx autowatch`
+  + `devices monitor --once`, env и per-profile логи, `--write`.
+- 7 новых тестов (`tests/test_module_generic.py`).
+
 ## [9.0.0-alpha.7] - 2026-07-21
 
 ### Added

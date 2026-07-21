@@ -6,6 +6,7 @@ AIOS Command Line Interface v4.1
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 from aios_core import Orchestrator, Database
 from aios_core.dashboard import create_dashboard
@@ -646,6 +647,15 @@ def _run_devices(args) -> bool:
             print(json.dumps({"reaped": stale}))
             return True
 
+        if cmd == "limits":
+            if args.set_limit:
+                key, sep, raw = args.set_limit.partition("=")
+                if not sep:
+                    raise ValueError("--set expects KEY=VALUE")
+                pool.set_limit(key.strip(), int(raw))
+            print(json.dumps(pool.limits(), ensure_ascii=False, indent=2))
+            return True
+
         if cmd == "ensure":
             from aios_core.platforms import ProfileStore, ensure_device
             record = ensure_device(
@@ -680,6 +690,44 @@ def _run_devices(args) -> bool:
         return True
 
     return False
+
+
+def _run_cron_plan(args) -> bool:
+    """Генерирует crontab: per-profile AutoWatch + монитор пула."""
+    from aios_core.platforms import ProfileStore
+
+    store = ProfileStore.default()
+    profiles = store.list(args.platform or None)
+    root = os.path.dirname(os.path.abspath(__file__))
+    interval = args.interval
+    lines = [
+        "# AIOS cron plan — сгенерировано 'aios cron-plan'",
+        f"# платформа: {args.platform or 'все'} · профилей: {len(profiles)}",
+        "SHELL=/bin/bash",
+        f"AIOS_PROFILES_DB={os.environ.get('AIOS_PROFILES_DB', f'{root}/data/profiles.sqlite')}",
+        f"AIOS_DEVICES_DB={os.environ.get('AIOS_DEVICES_DB', f'{root}/data/devices.sqlite')}",
+        "",
+    ]
+    webhook = f" --webhook {args.webhook}" if args.webhook else ""
+    for profile in profiles:
+        lines.append(
+            f"*/{interval} * * * * cd {root} && "
+            f"python3 aios_cli.py olx autowatch --profile {profile.name}{webhook} "
+            f">> {root}/data/autowatch-{profile.key.replace(':', '_')}.log 2>&1"
+        )
+    lines.append(
+        f"*/{interval} * * * * cd {root} && "
+        f"python3 aios_cli.py devices monitor --once "
+        f">> {root}/data/pool-monitor.log 2>&1"
+    )
+    plan = "\n".join(lines)
+    if args.write:
+        Path(args.write).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.write).write_text(plan + "\n", encoding="utf-8")
+        print(json.dumps({"written": args.write, "profiles": len(profiles)}))
+    else:
+        print(plan)
+    return True
 
 
 def main(argv=None):
@@ -742,6 +790,16 @@ def main(argv=None):
         p_one.add_argument("--platform", required=True)
         p_one.add_argument("--name", required=True)
 
+    # Crontab generator for per-profile automation
+    cron_parser = subparsers.add_parser(
+        "cron-plan", help="Generate crontab: per-profile AutoWatch + pool monitor"
+    )
+    cron_parser.add_argument("--platform", default="olx")
+    cron_parser.add_argument("--interval", type=int, default=15,
+                             help="minutes between runs")
+    cron_parser.add_argument("--webhook", default=None, help="webhook URL for alerts")
+    cron_parser.add_argument("--write", default=None, help="write to file instead of stdout")
+
     # Device pool (emulators/physical devices leased to profiles)
     devices_parser = subparsers.add_parser(
         "devices", help="Device pool: register/lease/release emulators"
@@ -780,6 +838,10 @@ def main(argv=None):
     d_mon.add_argument("--once", action="store_true", help="single cycle (cron)")
     d_mon.add_argument("--reap-after-s", type=float, default=900.0)
 
+    d_lim = dev_sub.add_parser("limits", help="Show/set pool quotas")
+    d_lim.add_argument("--set", dest="set_limit", default=None,
+                       metavar="KEY=VALUE", help="e.g. max_busy:olx=4")
+
     # OLX Parser Agent
     _add_olx_parsers(subparsers)
 
@@ -807,6 +869,9 @@ def main(argv=None):
     elif args.command == "profiles":
         if not _run_profiles(args):
             parser.parse_args(["profiles", "--help"])
+    elif args.command == "cron-plan":
+        if not _run_cron_plan(args):
+            parser.parse_args(["cron-plan", "--help"])
     elif args.command == "devices":
         try:
             handled = _run_devices(args)

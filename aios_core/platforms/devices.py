@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS devices (
     last_heartbeat TEXT NOT NULL,
     created_at     TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS pool_limits (
+    key   TEXT PRIMARY KEY,
+    value INTEGER NOT NULL
+);
 """
 
 STATUS_IDLE = "idle"
@@ -75,10 +79,78 @@ class DevicePool:
     # реестр                                                               #
     # ------------------------------------------------------------------ #
 
+    # ------------------------------------------------------------------ #
+    # квоты                                                                #
+    # ------------------------------------------------------------------ #
+
+    def set_limit(self, key: str, value: int) -> None:
+        """Устанавливает квоту пула.
+
+        Известные ключи: ``max_devices`` (всего в пуле),
+        ``max_busy:<platform>`` (одновременных аренд платформы),
+        ``max_avds`` (сколькими auto-созданными AVD может управлять
+        ensure_device). ``None``/отсутствие = без лимита.
+        """
+        with self._lock, self._conn:
+            self._conn.execute(
+                "INSERT INTO pool_limits (key, value) VALUES (?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (key, int(value)),
+            )
+
+    def limit(self, key: str, default: Optional[int] = None) -> Optional[int]:
+        """Значение квоты или default."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT value FROM pool_limits WHERE key = ?", (key,)
+            ).fetchone()
+        return int(row["value"]) if row else default
+
+    def limits(self) -> Dict[str, int]:
+        """Все установленные квоты."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT key, value FROM pool_limits ORDER BY key"
+            ).fetchall()
+        return {row["key"]: int(row["value"]) for row in rows}
+
+    def count_avds(self) -> int:
+        """Сколько устройств пула — auto-созданные AVD (есть avd_name)."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COUNT(*) AS c FROM devices WHERE avd_name IS NOT NULL"
+            ).fetchone()
+        return int(row["c"])
+
+    def _busy_platform(self, platform: str) -> int:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COUNT(*) AS c FROM devices "
+                "WHERE status = ? AND profile_key LIKE ?",
+                (STATUS_BUSY, f"{platform}:%"),
+            ).fetchone()
+        return int(row["c"])
+
     def register(self, serial: str, avd_name: Optional[str] = None) -> Dict:
-        """Регистрирует устройство (idle) или обновляет avd_name."""
+        """Регистрирует устройство (idle) или обновляет avd_name.
+
+        Raises:
+            ValueError: превышена квота ``max_devices``.
+        """
         now = self._now()
         with self._lock, self._conn:
+            existing = self._conn.execute(
+                "SELECT 1 FROM devices WHERE serial = ?", (serial,)
+            ).fetchone()
+            max_devices = self.limit("max_devices")
+            if existing is None and max_devices is not None:
+                total = self._conn.execute(
+                    "SELECT COUNT(*) AS c FROM devices"
+                ).fetchone()["c"]
+                if total >= max_devices:
+                    raise ValueError(
+                        f"pool quota reached: max_devices={max_devices}"
+                    )
             self._conn.execute(
                 """
                 INSERT INTO devices
@@ -143,6 +215,7 @@ class DevicePool:
             Запись об арендованном устройстве или None, если свободных нет.
         """
         now = self._now()
+        platform = profile_key.split(":", 1)[0]
         with self._lock, self._conn:
             if serial is not None:
                 row = self._conn.execute(
@@ -154,6 +227,11 @@ class DevicePool:
                     return None
                 if row["status"] == STATUS_OFFLINE:
                     return None
+                if row["status"] != STATUS_BUSY:
+                    busy_cap = self.limit(f"max_busy:{platform}")
+                    if (busy_cap is not None
+                            and self._busy_platform(platform) >= busy_cap):
+                        return None
                 chosen = row["serial"]
             else:
                 # Идемпотентность: профиль уже держит устройство — продлеваем.
@@ -171,6 +249,9 @@ class DevicePool:
                         held["serial"], profile_key, profile_store
                     )
                     return self.get(held["serial"])
+                busy_cap = self.limit(f"max_busy:{platform}")
+                if busy_cap is not None and self._busy_platform(platform) >= busy_cap:
+                    return None
                 row = self._conn.execute(
                     "SELECT * FROM devices WHERE status = ? "
                     "ORDER BY COALESCE(leased_at, created_at) ASC LIMIT 1",
