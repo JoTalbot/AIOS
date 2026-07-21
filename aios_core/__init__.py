@@ -51,6 +51,7 @@ from .quantum_entanglement_mesh import QuantumEntanglementMesh, QuantumEntangled
 from .molecular_dna_runtime import MolecularDNARuntime
 from .universal_multi_species_ethics import UniversalMultiSpeciesEthics
 from .apk_converter import APKFunctionConverter
+from .android_rpa_bridge import AndroidRPADeviceEmulator, AndroidRPAManager
 from .orchestrator import Orchestrator, Task, TaskStep, TaskStatus, StepStatus
 
 # Test Engine
@@ -195,6 +196,8 @@ __all__ = [
     "MolecularDNARuntime",
     "UniversalMultiSpeciesEthics",
     "APKFunctionConverter",
+    "AndroidRPADeviceEmulator",
+    "AndroidRPAManager",
     # REST API
     "create_app",
     "AIOSAPI",

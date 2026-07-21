@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [9.0.0-alpha] - 2026-07-21
 
 ### Added
+- **Android Play Store App-to-API Transformation Engine (`aios_core/android_rpa_bridge.py`)**:
+  - Transforms Play Store App URLs (including OLX Ukraine `ua.olx.android`) into working programmatic REST APIs.
+  - Automates UI emulator actions (search, view details, send direct messages, authentication) without manual screen clicking via endpoints (`/api/v1/apps/transform`, `/api/v1/apps/{package_name}/execute`).
+  - Comprehensive unit test suite `tests/test_android_rpa_bridge.py` (572 total passed tests).
+
 - **APK Function Converter & User API Profile Mapper (`aios_core/apk_converter.py`)**:
   - Converts Android APK exported components (Activities, Services, Receivers) into AIOS Capability instances, RBAC User API profiles, and API routes (`/api/v1/apk/convert`, `/api/v1/apk/profiles`).
   - Comprehensive unit test suite `tests/test_apk_converter.py` (570 total passed tests).
