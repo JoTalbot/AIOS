@@ -1,11 +1,12 @@
-# Актуальный Роадмап AIOS (Пост-версия 8.0.0-alpha)
+# Актуальный Роадмап AIOS (Пост-версия 9.0.0-alpha)
 
-## Текущий Статус: v8.0.0-alpha (21 июля 2026)
+## Текущий Статус: v9.0.0-alpha (21 июля 2026)
 
 - **Конституция (67/67 статей):** Полностью проиндексирована и верифицирована инструментом `tula`.
-- **Горизонты 1.0 – 8.0:** Выполнены на 100% (Substrate Engine, Infinite Constitution, Cosmic Swarm, Formal Code Verifier, OpenTelemetry, React Web UI, PostgreSQL).
-- **Дистрибутив PyPI:** Собран пакет v8.0.0-alpha (`dist/aios-8.0.0a0-py3-none-any.whl`).
-- **Тесты:** 564/564 тестов пройдены (100% Pass).
+- **Горизонты 1.0 – 9.0:** Выполнены на 100% (включая Quantum Entanglement Mesh, Bio-Molecular DNA Runtime, Multi-Species Ethics).
+- **OLX Parser Agent:** Завершён (`aios_core/modules/olx/`) — сбор карточек, извлечение ссылок, SQLite-хранилище, анализ конкурентов, рекомендации.
+- **Дистрибутив PyPI:** Собран пакет v9.0.0-alpha (`dist/aios-9.0.0a0-py3-none-any.whl`).
+- **Тесты:** 589/589 тестов пройдены (100% Pass).
 - **GitHub:** Все коммиты синхронизированы с репозиторием `JoTalbot/AIOS`.
 
 ---

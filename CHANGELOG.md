@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 ## [9.0.0-alpha] - 2026-07-21
 
 ### Added
+- **OLX Parser Agent (`aios_core/modules/olx/`)** — completes the OLX Android Agent "next stage" plan:
+  - `OLXCollector`: automated feed scrolling via ADB swipes with fingerprint deduplication and end-of-feed detection.
+  - `CardParser` / `AdCard`: structured extraction of listing cards from UIAutomator dumps (title, price in UAH/USD/EUR, city, publication date for uk/ru locales, TOP badge, listing URL and ad id).
+  - `OLXStorage`: deduplicating SQLite persistence for collected ads with query/city filters.
+  - `CompetitorAnalyzer`: market statistics (min/max/mean/median price, TOP share, top cities, price percentile).
+  - `RecommendationEngine`: suggested price (market median × 0.97), price verdict, title keywords and TOP-promotion advice.
+  - Comprehensive unit test suite `tests/test_olx_agent.py` (589 total passed tests).
+
 - **Android Play Store App-to-API Transformation Engine (`aios_core/android_rpa_bridge.py`)**:
   - Transforms Play Store App URLs (including OLX Ukraine `ua.olx.android`) into working programmatic REST APIs.
   - Automates UI emulator actions (search, view details, send direct messages, authentication) without manual screen clicking via endpoints (`/api/v1/apps/transform`, `/api/v1/apps/{package_name}/execute`).

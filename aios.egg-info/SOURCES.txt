@@ -49,9 +49,11 @@ aios_core/ai_safety_value_learning.py
 aios_core/ai_safety_weak_to_strong.py
 aios_core/ai_scientist.py
 aios_core/ai_startup.py
+aios_core/android_rpa_bridge.py
 aios_core/anomaly_detection.py
 aios_core/api_gateway.py
 aios_core/api_versioning.py
+aios_core/apk_converter.py
 aios_core/approval_manager.py
 aios_core/audit_enhanced.py
 aios_core/audit_logger.py
@@ -135,6 +137,7 @@ aios_core/model_based_rl.py
 aios_core/model_registry.py
 aios_core/model_serving.py
 aios_core/moe.py
+aios_core/molecular_dna_runtime.py
 aios_core/multi_agent_orchestrator.py
 aios_core/multi_agent_rl.py
 aios_core/multidimensional_world_model.py
@@ -167,6 +170,7 @@ aios_core/quantum_chemistry.py
 aios_core/quantum_computing.py
 aios_core/quantum_consciousness.py
 aios_core/quantum_cryptography.py
+aios_core/quantum_entanglement_mesh.py
 aios_core/quantum_error_correction.py
 aios_core/quantum_error_mitigation.py
 aios_core/quantum_gravity.py
@@ -215,6 +219,7 @@ aios_core/transformer.py
 aios_core/type_theory.py
 aios_core/uncertainty.py
 aios_core/universal_invariant_prover.py
+aios_core/universal_multi_species_ethics.py
 aios_core/vector_store.py
 aios_core/voice_interface.py
 aios_core/websocket.py
@@ -231,6 +236,16 @@ aios_core/mcp/prompts.py
 aios_core/mcp/protocol.py
 aios_core/mcp/resources.py
 aios_core/mcp/tools.py
+aios_core/modules/__init__.py
+aios_core/modules/olx/__init__.py
+aios_core/modules/olx/adb.py
+aios_core/modules/olx/analytics.py
+aios_core/modules/olx/card_parser.py
+aios_core/modules/olx/collector.py
+aios_core/modules/olx/models.py
+aios_core/modules/olx/storage.py
+aios_core/modules/olx/text_utils.py
+aios_core/modules/olx/ui_parser.py
 aios_core/test_engine/__init__.py
 aios_core/test_engine/engine.py
 aios_core/test_engine/models.py
@@ -250,8 +265,10 @@ sdk/aios_sdk.py
 tests/__init__.py
 tests/conftest.py
 tests/test_ai_safety_framework.py
+tests/test_android_rpa_bridge.py
 tests/test_api_request_safety.py
 tests/test_api_security.py
+tests/test_apk_converter.py
 tests/test_approval_manager.py
 tests/test_autonomy_v3.py
 tests/test_backup_manager.py
@@ -272,10 +289,13 @@ tests/test_marketplace.py
 tests/test_mcp_gateway.py
 tests/test_ml_planner_scorer.py
 tests/test_ml_registry.py
+tests/test_mobile_apk_tester.py
+tests/test_molecular_dna_runtime.py
 tests/test_monitoring.py
 tests/test_multi_agent.py
 tests/test_multidimensional_world_model.py
 tests/test_neuromorphic_matrix.py
+tests/test_olx_agent.py
 tests/test_phase1_persistence.py
 tests/test_phase3_orchestrator.py
 tests/test_phase4_test_engine.py
@@ -283,6 +303,7 @@ tests/test_phase5_api.py
 tests/test_planetary_federation.py
 tests/test_planner_v3.py
 tests/test_plugin_manager.py
+tests/test_quantum_entanglement_mesh.py
 tests/test_quantum_native.py
 tests/test_rate_limiter.py
 tests/test_sovereign_reflection.py
@@ -291,7 +312,9 @@ tests/test_substrate_convergence.py
 tests/test_telemetry.py
 tests/test_tula.py
 tests/test_universal_invariant_prover.py
+tests/test_universal_multi_species_ethics.py
 tests/test_v3_new_modules.py
 tests/test_web_ui_integration.py
 tests/test_websocket.py
 tools/complete_constitution_tula.py
+tools/mobile_apk_tester.py
