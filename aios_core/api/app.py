@@ -77,6 +77,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .security import APIKeyAuthMiddleware, Principal, load_api_keys
 from .errors import RequestSafetyMiddleware
+from aios_core.rate_limiter import rate_limiter
 
 # Ensure project root is importable
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -257,14 +258,14 @@ class AIOSAPI:
             stats = self.orchestrator.stats()
             return JSONResponse({
                 "status": "ok",
-                "version": "3.1.0",
+                "version": "4.1.0-alpha",
                 "constitution_articles": stats.get("constitution_articles", 0),
                 "memory_items": stats.get("memory_items", 0),
                 "active_tasks": stats.get("active_tasks", 0),
                 "uptime": "running"
             })
         except Exception:
-            return JSONResponse({"status": "ok", "version": "3.1.0"})
+            return JSONResponse({"status": "ok", "version": "4.1.0-alpha"})
 
     async def _stats(self, request: Request) -> JSONResponse:
         return JSONResponse(self.orchestrator.stats())
@@ -293,6 +294,11 @@ class AIOSAPI:
         return JSONResponse({"tasks": tasks, "count": len(tasks)})
 
     async def _tasks_create(self, request: Request) -> JSONResponse:
+        # Rate limiting
+        client_ip = request.client.host if request.client else "unknown"
+        if not rate_limiter.is_allowed(client_ip):
+            return JSONResponse({"error": "Rate limit exceeded"}, status_code=429)
+
         body = await request.json()
         task = self.orchestrator.create_task(
             name=body.get("name", "unnamed"),
