@@ -102,7 +102,7 @@ class AIOSAPI:
     the Starlette application.
     """
 
-    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None, olx_storage=None, olx_collector=None, olx_messenger=None, profile_store=None, device_pool=None):
+    def __init__(self, db_path=":memory:", constitution_dir=None, policies_dir=None, *, auth_required=True, api_keys=None, olx_storage=None, olx_collector=None, olx_messenger=None, profile_store=None, device_pool=None, shard_router=None):
         from aios_core.storage import Database
         from aios_core.orchestrator import Orchestrator
         from aios_core.test_engine import TestEngine
@@ -172,6 +172,14 @@ class AIOSAPI:
         from aios_core.platforms import DevicePool
         self.device_pool = device_pool or DevicePool(
             os.environ.get("AIOS_DEVICES_DB", ":memory:")
+        )
+
+        # Shard router: profile → host sticky routing across servers.
+        # AIOS_SHARDS_DB points at the shared routes store; without it the
+        # API process keeps an in-memory router.
+        from aios_core.platforms import ShardRouter
+        self.shard_router = shard_router or ShardRouter(
+            os.environ.get("AIOS_SHARDS_DB", ":memory:")
         )
 
     def create_starlette_app(self) -> Starlette:
@@ -245,6 +253,13 @@ class AIOSAPI:
             Route("/api/v1/devices/reap", self._devices_reap, methods=["POST"]),
             Route("/api/v1/devices/limits", self._devices_limits_get, methods=["GET"]),
             Route("/api/v1/devices/limits", self._devices_limits_set, methods=["POST"]),
+            Route("/api/v1/devices/waitlist", self._devices_waitlist, methods=["GET"]),
+            Route("/api/v1/devices/waitlist/cancel", self._devices_waitlist_cancel, methods=["POST"]),
+            Route("/api/v1/shards", self._shards_list, methods=["GET"]),
+            Route("/api/v1/shards", self._shards_add, methods=["POST"]),
+            Route("/api/v1/shards/route", self._shards_route, methods=["POST"]),
+            Route("/api/v1/shards/route", self._shards_unroute, methods=["DELETE"]),
+            Route("/api/v1/shards/{host}", self._shards_remove, methods=["DELETE"]),
 
             # Generic platform module surfaces (descriptor-driven). Статичные
             # роуты olx зарегистрированы выше и матчатся первыми.
@@ -587,10 +602,13 @@ class AIOSAPI:
         return JSONResponse(record, status_code=201)
 
     async def _devices_lease(self, request: Request) -> JSONResponse:
-        """Lease a device to a profile {profile: "olx:work", serial?}.
+        """Lease a device to a profile {profile: "olx:work", serial?,
+        enqueue?, priority?}.
 
         Updates the profile's ``device_serial`` in the profiles registry
-        when the profile exists there.
+        when the profile exists there. With ``enqueue`` a failed lease
+        puts the profile on the waitlist (HTTP 202) instead of 409 —
+        исполнение очереди происходит автоматически при release/reap.
         """
         body = await request.json()
         profile_key = body.get("profile")
@@ -605,6 +623,14 @@ class AIOSAPI:
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
         if record is None:
+            if body.get("enqueue"):
+                wait_id = self.device_pool.enqueue(
+                    profile_key, priority=int(body.get("priority") or 0)
+                )
+                return JSONResponse(
+                    {"queued": wait_id, "profile": profile_key},
+                    status_code=202,
+                )
             return JSONResponse(
                 {"error": "no idle device available"}, status_code=409
             )
@@ -649,6 +675,67 @@ class AIOSAPI:
                 {"error": "'value' must be an integer"}, status_code=400
             )
         return JSONResponse({"limits": self.device_pool.limits()})
+
+    async def _devices_waitlist(self, request: Request) -> JSONResponse:
+        """Device lease waitlist (?status=waiting|served|cancelled|all)."""
+        status = request.query_params.get("status", "waiting")
+        status = None if status == "all" else status
+        return JSONResponse({"waitlist": self.device_pool.waitlist(status)})
+
+    async def _devices_waitlist_cancel(self, request: Request) -> JSONResponse:
+        """Remove a profile from the waitlist {profile}."""
+        body = await request.json()
+        cancelled = self.device_pool.cancel_wait(body.get("profile"))
+        return JSONResponse({"cancelled": cancelled})
+
+    # ------------------------------------------------------------------ #
+    # Shard routing endpoints                                             #
+    # ------------------------------------------------------------------ #
+
+    async def _shards_list(self, request: Request) -> JSONResponse:
+        """All shard hosts with health flags."""
+        return JSONResponse({"shards": self.shard_router.hosts()})
+
+    async def _shards_add(self, request: Request) -> JSONResponse:
+        """Register a shard host {host, base_url}."""
+        body = await request.json()
+        if not body.get("host") or not body.get("base_url"):
+            return JSONResponse(
+                {"error": "'host' and 'base_url' are required"},
+                status_code=400,
+            )
+        record = self.shard_router.add_host(body["host"], body["base_url"])
+        return JSONResponse(record, status_code=201)
+
+    async def _shards_remove(self, request: Request) -> JSONResponse:
+        """Remove a shard host and its routes."""
+        removed = self.shard_router.remove_host(request.path_params["host"])
+        if not removed:
+            return JSONResponse({"error": "host not found"}, status_code=404)
+        return JSONResponse({"removed": True})
+
+    async def _shards_route(self, request: Request) -> JSONResponse:
+        """Sticky route for a profile {profile: "olx:work"}.
+
+        Роутинг липкий и персистентен: повторный вызов возвращает тот же
+        хост, пока он здоров.
+        """
+        body = await request.json()
+        profile_key = body.get("profile")
+        if not profile_key:
+            return JSONResponse({"error": "'profile' is required"}, status_code=400)
+        route = self.shard_router.route_for(profile_key)
+        if route is None:
+            return JSONResponse(
+                {"error": "no healthy shard hosts"}, status_code=409
+            )
+        return JSONResponse(route)
+
+    async def _shards_unroute(self, request: Request) -> JSONResponse:
+        """Forget a profile's route {profile} (re-assigned on next route)."""
+        body = await request.json()
+        removed = self.shard_router.unroute(body.get("profile"))
+        return JSONResponse({"unrouted": removed})
 
     def _memory_actor(self, request: Request) -> tuple[str, bool]:
         """Return authenticated subject and administrative scope for memory ACLs."""

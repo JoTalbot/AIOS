@@ -37,6 +37,18 @@ CREATE TABLE IF NOT EXISTS pool_limits (
     key   TEXT PRIMARY KEY,
     value INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS pool_waitlist (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    platform      TEXT NOT NULL,
+    profile_key   TEXT NOT NULL,
+    priority      INTEGER NOT NULL DEFAULT 0,
+    status        TEXT NOT NULL DEFAULT 'waiting',
+    served_serial TEXT,
+    requested_at  TEXT NOT NULL,
+    served_at     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_pool_waitlist_status
+    ON pool_waitlist (status, platform);
 """
 
 STATUS_IDLE = "idle"
@@ -130,6 +142,79 @@ class DevicePool:
                 (STATUS_BUSY, f"{platform}:%"),
             ).fetchone()
         return int(row["c"])
+
+    # ------------------------------------------------------------------ #
+    # waitlist                                                             #
+    # ------------------------------------------------------------------ #
+
+    def enqueue(self, profile_key: str, priority: int = 0) -> int:
+        """Ставит профиль в очередь ожидания устройства.
+
+        Идемпотентно: активная waiting-запись профиля возвращается
+        повторно. Возвращает id записи очереди.
+        """
+        platform = profile_key.split(":", 1)[0]
+        now = self._now()
+        with self._lock, self._conn:
+            existing = self._conn.execute(
+                "SELECT id FROM pool_waitlist "
+                "WHERE profile_key = ? AND status = 'waiting'",
+                (profile_key,),
+            ).fetchone()
+            if existing is not None:
+                return int(existing["id"])
+            cursor = self._conn.execute(
+                "INSERT INTO pool_waitlist "
+                "(platform, profile_key, priority, status, requested_at) "
+                "VALUES (?, ?, ?, 'waiting', ?)",
+                (platform, profile_key, int(priority), now),
+            )
+            return int(cursor.lastrowid)
+
+    def cancel_wait(self, profile_key: str) -> bool:
+        """Снимает профиль с очереди. True, если запись была."""
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                "UPDATE pool_waitlist SET status = 'cancelled' "
+                "WHERE profile_key = ? AND status = 'waiting'",
+                (profile_key,),
+            )
+            return bool(cursor.rowcount)
+
+    def waitlist(self, status: Optional[str] = "waiting") -> List[Dict]:
+        """Очередь ожидания (по умолчанию — активная), приоритет → FIFO."""
+        sql = "SELECT * FROM pool_waitlist"
+        params: list = []
+        if status is not None:
+            sql += " WHERE status = ?"
+            params.append(status)
+        sql += " ORDER BY priority DESC, requested_at ASC"
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [dict(row) for row in rows]
+
+    def serve_waitlist(self, profile_store=None) -> List[Dict]:
+        """Обслуживает очередь: арендует устройства ожидающим профилям.
+
+        Порядок — приоритет (DESC), затем FIFO. Останавливается, когда
+        свободных устройств не осталось или аренда не удалась (квоты).
+        """
+        served: List[Dict] = []
+        for entry in self.waitlist("waiting"):
+            record = self.lease(
+                entry["profile_key"], profile_store=profile_store
+            )
+            if record is None:
+                continue
+            with self._lock, self._conn:
+                self._conn.execute(
+                    "UPDATE pool_waitlist SET status = 'served', "
+                    "served_serial = ?, served_at = ? WHERE id = ?",
+                    (record["serial"], self._now(), entry["id"]),
+                )
+            entry = dict(entry, status="served", served_serial=record["serial"])
+            served.append(entry)
+        return served
 
     def register(self, serial: str, avd_name: Optional[str] = None) -> Dict:
         """Регистрирует устройство (idle) или обновляет avd_name.
@@ -289,7 +374,9 @@ class DevicePool:
                 "WHERE serial = ?",
                 (STATUS_IDLE, row["serial"]),
             )
-            return row["serial"]
+        serial = row["serial"]
+        self.serve_waitlist()
+        return serial
 
     def reap_stale(self, max_silence_s: float = 900.0) -> List[str]:
         """Помечает молчащие устройства offline и освобождает их аренды.
@@ -310,7 +397,10 @@ class DevicePool:
                 "WHERE status != ? AND last_heartbeat < ?",
                 (STATUS_OFFLINE, STATUS_OFFLINE, cutoff),
             )
-        return [row["serial"] for row in rows]
+        reaped = [row["serial"] for row in rows]
+        if reaped:
+            self.serve_waitlist()
+        return reaped
 
     def device_for(self, profile_key: str) -> Optional[Dict]:
         """Устройство, арендованное профилем (или None)."""

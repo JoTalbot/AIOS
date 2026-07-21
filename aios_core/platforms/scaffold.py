@@ -77,6 +77,100 @@ def test_{safe_name}_platform_registered():
 '''
 
 
+# --------------------------------------------------------------------------- #
+# APK inspection (aapt dump badging → черновой дескриптор)                     #
+# --------------------------------------------------------------------------- #
+
+_PKG_BADGE_RE = re.compile(r"package: name='(?P<pkg>[^']+)'")
+_LABEL_RE = re.compile(r"application-label:'(?P<label>[^']*)'")
+_LAUNCH_RE = re.compile(r"launchable-activity: name='(?P<activity>[^']+)'")
+_SDK_RE = re.compile(r"targetSdkVersion:'(?P<target_sdk>[^']+)'")
+
+
+def _badging(apk_path: str) -> Dict[str, str]:
+    """Реальный вызов aapt dump badging (требует Android SDK cmdline-tools)."""
+    import subprocess
+
+    result = subprocess.run(
+        f"aapt dump badging '{apk_path}'",
+        shell=True, capture_output=True, text=True, timeout=120,
+    )
+    return {"code": result.returncode, "stdout": result.stdout,
+            "stderr": result.stderr}
+
+
+def inspect_apk(apk_path: str, runner=None) -> Dict[str, Optional[str]]:
+    """Черновой дескриптор платформы из APK.
+
+    Читает `aapt dump badging`: android-пакет, метку приложения,
+    launchable-activity, target SDK. ``runner`` инъецируется для тестов.
+
+    Returns:
+        {android_package, candidate_name, app_label, launchable_activity,
+         target_sdk} — candidate_name = последний сегмент пакета.
+
+    Raises:
+        ValueError: APK не читается (aapt недоступен / битый файл).
+    """
+    runner = runner or _badging
+    if not str(apk_path).endswith(".apk"):
+        raise ValueError(f"not an .apk file: {apk_path}")
+    result = runner(str(apk_path))
+    if result.get("code") != 0:
+        raise ValueError(
+            "aapt dump badging failed (Android SDK cmdline-tools required): "
+            f"{(result.get('stderr') or '').strip()[:200]}"
+        )
+    stdout = result.get("stdout") or ""
+    package = _PKG_BADGE_RE.search(stdout)
+    if not package:
+        raise ValueError(f"could not read package name from {apk_path}")
+    android_package = package.group("pkg")
+    label = _LABEL_RE.search(stdout)
+    launch = _LAUNCH_RE.search(stdout)
+    sdk = _SDK_RE.search(stdout)
+    candidate = re.sub(
+        r"[^a-z0-9]+", "-", android_package.split(".")[-1].lower()
+    ).strip("-")
+    return {
+        "android_package": android_package,
+        "candidate_name": candidate,
+        "app_label": label.group(1) if label else None,
+        "launchable_activity": launch.group(1) if launch else None,
+        "target_sdk": sdk.group(1) if sdk else None,
+    }
+
+
+def scaffold_from_apk(
+    apk_path: str,
+    name: Optional[str] = None,
+    project_root=".",
+    locale: str = "uk-UA",
+    dry_run: bool = False,
+    runner=None,
+) -> Dict[str, object]:
+    """Авто-scaffold платформы из APK: inspect → scaffold_platform.
+
+    Returns:
+        {"spec": <inspect_apk result>, "files": {path: content}}.
+    """
+    spec = inspect_apk(apk_path, runner=runner)
+    platform_name = name or spec["candidate_name"]
+    files = scaffold_platform(
+        platform_name,
+        spec["android_package"],
+        project_root=project_root,
+        description=(
+            f"{spec.get('app_label') or platform_name} "
+            f"(auto-scaffold from {Path(apk_path).name}, "
+            f"launchable: {spec.get('launchable_activity') or 'n/a'})"
+        ),
+        locale=locale,
+        dry_run=dry_run,
+    )
+    return {"spec": spec, "files": files}
+
+
 def _class_name(platform_name: str) -> str:
     """Имя класса из имени платформы: demo-market → DemoMarket."""
     return "".join(part.capitalize() for part in platform_name.split("-"))

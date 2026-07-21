@@ -26,7 +26,8 @@ from .resolver import (
     resolve_profile,
     storage_for,
 )
-from .scaffold import scaffold_platform
+from .scaffold import inspect_apk, scaffold_from_apk, scaffold_platform
+from .shards import ShardRouter
 from .store import ProfileStore
 
 __all__ = [
@@ -35,14 +36,17 @@ __all__ = [
     "PoolMonitor",
     "Profile",
     "ProfileStore",
+    "ShardRouter",
     "adb_for",
     "ensure_device",
     "get_platform",
+    "inspect_apk",
     "list_platforms",
     "load_catalog",
     "load_catalog_file",
     "register_platform",
     "resolve_profile",
+    "scaffold_from_apk",
     "scaffold_platform",
     "storage_for",
 ]

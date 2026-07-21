@@ -525,6 +525,19 @@ def _run_platforms(args) -> bool:
 
     cmd = getattr(args, "platforms_command", None) or "list"
 
+    if cmd == "from-apk":
+        from aios_core.platforms import scaffold_from_apk
+        result = scaffold_from_apk(
+            args.apk, name=args.name, project_root=args.root,
+            locale=args.locale, dry_run=args.dry_run,
+        )
+        mode = "planned" if args.dry_run else "written"
+        print(json.dumps({
+            "spec": result["spec"],
+            mode: sorted(result["files"]),
+        }, ensure_ascii=False, indent=2))
+        return True
+
     if cmd == "scaffold":
         files = scaffold_platform(
             args.name, args.package,
@@ -625,11 +638,29 @@ def _run_devices(args) -> bool:
                 args.profile, serial=args.serial, profile_store=store
             )
             if record is None:
+                if args.enqueue:
+                    wait_id = pool.enqueue(args.profile, priority=args.priority)
+                    print(json.dumps({"queued": wait_id, "profile": args.profile}))
+                    return True
                 print(json.dumps(
                     {"error": "no idle device available"}, ensure_ascii=False
                 ))
                 return True
             print(json.dumps(record, ensure_ascii=False, indent=2))
+            return True
+
+        if cmd == "waitlist":
+            print(json.dumps(pool.waitlist(), ensure_ascii=False, indent=2))
+            return True
+
+        if cmd == "enqueue":
+            wait_id = pool.enqueue(args.profile, priority=args.priority)
+            print(json.dumps({"queued": wait_id, "profile": args.profile}))
+            return True
+
+        if cmd == "cancel-wait":
+            cancelled = pool.cancel_wait(args.profile)
+            print(json.dumps({"cancelled": cancelled}))
             return True
 
         if cmd == "release":
@@ -688,6 +719,42 @@ def _run_devices(args) -> bool:
         except KeyboardInterrupt:
             monitor.close()
         return True
+
+    return False
+
+
+def _run_shards(args) -> bool:
+    from aios_core.platforms import ShardRouter
+
+    with ShardRouter() as router:
+        cmd = args.shards_command
+
+        if cmd == "list":
+            print(json.dumps(router.hosts(), ensure_ascii=False, indent=2))
+            return True
+
+        if cmd == "add":
+            record = router.add_host(args.host, args.base_url)
+            print(json.dumps(record, ensure_ascii=False, indent=2))
+            return True
+
+        if cmd == "remove":
+            removed = router.remove_host(args.host)
+            print(json.dumps({"removed": removed}))
+            return True
+
+        if cmd == "route":
+            route = router.route_for(args.profile)
+            if route is None:
+                print(json.dumps({"error": "no healthy shard hosts"}))
+                return True
+            print(json.dumps(route, ensure_ascii=False, indent=2))
+            return True
+
+        if cmd == "unroute":
+            removed = router.unroute(args.profile)
+            print(json.dumps({"unrouted": removed}))
+            return True
 
     return False
 
@@ -766,6 +833,16 @@ def main(argv=None):
     p_scaf.add_argument("--root", default=".", help="Project root")
     p_scaf.add_argument("--dry-run", action="store_true")
 
+    p_apk = plat_sub.add_parser(
+        "from-apk", help="Auto-scaffold a platform from an APK (aapt badging)"
+    )
+    p_apk.add_argument("apk", help="Path to the .apk file")
+    p_apk.add_argument("--name", default=None,
+                       help="Platform name (default: last package segment)")
+    p_apk.add_argument("--locale", default="uk-UA")
+    p_apk.add_argument("--root", default=".", help="Project root")
+    p_apk.add_argument("--dry-run", action="store_true")
+
     # Platform profiles (accounts)
     profiles_parser = subparsers.add_parser(
         "profiles", help="Manage platform profiles (accounts)"
@@ -789,6 +866,24 @@ def main(argv=None):
         p_one = prof_sub.add_parser(p_cmd, help=f"{p_cmd} profile")
         p_one.add_argument("--platform", required=True)
         p_one.add_argument("--name", required=True)
+
+    # Shard routing across hosts
+    shards_parser = subparsers.add_parser(
+        "shards", help="Shard routing: hosts and sticky profile routes"
+    )
+    sh_sub = shards_parser.add_subparsers(dest="shards_command")
+    sh_sub.add_parser("list", help="List shard hosts")
+
+    sh_add = sh_sub.add_parser("add", help="Register a shard host")
+    sh_add.add_argument("--host", required=True)
+    sh_add.add_argument("--base-url", required=True)
+
+    sh_rm = sh_sub.add_parser("remove", help="Remove a shard host")
+    sh_rm.add_argument("--host", required=True)
+
+    for sub_name in ("route", "unroute"):
+        sh_route = sh_sub.add_parser(sub_name, help=f"{sub_name} a profile")
+        sh_route.add_argument("--profile", required=True)
 
     # Crontab generator for per-profile automation
     cron_parser = subparsers.add_parser(
@@ -815,8 +910,20 @@ def main(argv=None):
     d_lease = dev_sub.add_parser("lease", help="Lease a device to a profile")
     d_lease.add_argument("--profile", required=True, help="profile key, e.g. olx:work")
     d_lease.add_argument("--serial", default=None, help="pin a specific device")
+    d_lease.add_argument("--enqueue", action="store_true",
+                         help="put on the waitlist when no idle device")
+    d_lease.add_argument("--priority", type=int, default=0)
     d_lease.add_argument("--sync", action="store_true",
                          help="also write device_serial into the profiles registry")
+
+    dev_sub.add_parser("waitlist", help="Show the lease waitlist")
+
+    d_enq = dev_sub.add_parser("enqueue", help="Put a profile on the waitlist")
+    d_enq.add_argument("--profile", required=True)
+    d_enq.add_argument("--priority", type=int, default=0)
+
+    d_cw = dev_sub.add_parser("cancel-wait", help="Remove a profile from the waitlist")
+    d_cw.add_argument("--profile", required=True)
 
     d_rel = dev_sub.add_parser("release", help="Release a profile's device")
     d_rel.add_argument("--profile", required=True)
@@ -869,6 +976,9 @@ def main(argv=None):
     elif args.command == "profiles":
         if not _run_profiles(args):
             parser.parse_args(["profiles", "--help"])
+    elif args.command == "shards":
+        if not _run_shards(args):
+            parser.parse_args(["shards", "--help"])
     elif args.command == "cron-plan":
         if not _run_cron_plan(args):
             parser.parse_args(["cron-plan", "--help"])
