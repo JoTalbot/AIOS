@@ -542,3 +542,85 @@ class TestOLXEditAndAutowatch:
         )
         alerts = cycle.json()["subscription_alerts"]
         assert alerts and alerts[0]["subscription"] == "інший запит"
+
+
+# ============================================================
+# Profile, competitive, advisor, doctor
+# ============================================================
+
+
+class TestOLXProfile:
+    async def test_profile_parse_store_and_edit(self, client, deps):
+        from tests.test_olx_strategy import PROFILE_XML
+
+        parsed = await client.post(
+            "/api/v1/modules/olx/profile/parse",
+            json={"xml": PROFILE_XML, "include_settings": True},
+        )
+        assert parsed.status_code == 200
+        data = parsed.json()
+        assert data["fields"]["name"] == "Олександр"
+        assert data["settings"]["toggles"]["push_notifications"] is True
+
+        stored = await client.get("/api/v1/modules/olx/profile")
+        assert stored.json()["fields"]["name"]["value"] == "Олександр"
+
+        dry = await client.post(
+            "/api/v1/modules/olx/profile/edit",
+            json={"field": "name", "value": "Олександр Онуфрієнко"},
+        )
+        assert dry.json()["status"] == "dry_run"
+        _app, storage, _adb = deps
+        assert storage.profile_all()["_pending_name"]["value"] == "Олександр Онуфрієнко"
+
+        done = await client.post(
+            "/api/v1/modules/olx/profile/edit",
+            json={"field": "name", "value": "Олександр Онуфрієнко", "confirm": True},
+        )
+        assert done.json()["status"] == "executed"
+        assert storage.profile_all()["name"]["value"] == "Олександр Онуфрієнко"
+
+        missing = await client.post("/api/v1/modules/olx/profile/edit", json={"field": "name"})
+        assert missing.status_code == 400
+
+
+class TestOLXCompetitiveAndAdvisor:
+    async def test_competitive_refresh_and_report(self, client, deps):
+        _app, storage, _adb = deps
+        await client.post("/api/v1/modules/olx/own/snapshot", json={"ads": OWN_SNAPSHOT})
+
+        refresh = await client.post("/api/v1/modules/olx/competitive/refresh", json={})
+        assert refresh.status_code == 200
+        data = refresh.json()
+        assert data["total_links"] >= 1
+        fp = storage.own_ads()[0]["fingerprint"]
+        assert fp in data["per_own"]
+
+        report = await client.get(
+            "/api/v1/modules/olx/competitive", params={"fingerprint": fp}
+        )
+        assert report.status_code == 200
+        assert report.json()["competitors_count"] >= 1
+
+        missing = await client.get("/api/v1/modules/olx/competitive")
+        assert missing.status_code == 400
+
+    async def test_advisor_actions_and_new_listings(self, client, deps):
+        actions = await client.get("/api/v1/modules/olx/advisor")
+        assert actions.status_code == 200
+        assert isinstance(actions.json()["actions"], list)
+
+        full = await client.get("/api/v1/modules/olx/advisor", params={"new": "1"})
+        assert "new_listings" in full.json()
+
+
+class TestOLXDoctor:
+    async def test_doctor_reports_checklist(self, client):
+        resp = await client.get("/api/v1/modules/olx/doctor")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "ready" in data and "checks" in data
+        # CI has no ADB: adb_installed must fail with a fix hint.
+        adb_check = next(c for c in data["checks"] if c["name"] == "adb_installed")
+        assert adb_check["ok"] is False
+        assert adb_check["hint"]

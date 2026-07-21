@@ -203,6 +203,13 @@ class AIOSAPI:
             Route("/api/v1/modules/olx/favorites/alerts", self._olx_favorite_alerts, methods=["GET"]),
             Route("/api/v1/modules/olx/favorites/{fingerprint}", self._olx_favorite_remove, methods=["DELETE"]),
             Route("/api/v1/modules/olx/autowatch", self._olx_autowatch, methods=["POST"]),
+            Route("/api/v1/modules/olx/doctor", self._olx_doctor, methods=["GET"]),
+            Route("/api/v1/modules/olx/profile", self._olx_profile, methods=["GET"]),
+            Route("/api/v1/modules/olx/profile/parse", self._olx_profile_parse, methods=["POST"]),
+            Route("/api/v1/modules/olx/profile/edit", self._olx_profile_edit, methods=["POST"]),
+            Route("/api/v1/modules/olx/competitive", self._olx_competitive, methods=["GET"]),
+            Route("/api/v1/modules/olx/competitive/refresh", self._olx_competitive_refresh, methods=["POST"]),
+            Route("/api/v1/modules/olx/advisor", self._olx_advisor, methods=["GET"]),
 
             # Constitutional evaluation
             Route("/api/v1/evaluate", self._evaluate, methods=["POST"]),
@@ -773,6 +780,98 @@ class AIOSAPI:
             return JSONResponse(report)
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_doctor(self, request: Request) -> JSONResponse:
+        """Environment readiness checklist for OLX automation."""
+        from aios_core.modules.olx import OLXBootstrap
+        report = OLXBootstrap().doctor_report()
+        return JSONResponse(report)
+
+    async def _olx_profile(self, request: Request) -> JSONResponse:
+        """Stored profile fields and pending edits."""
+        return JSONResponse({"fields": self.olx_storage.profile_all()})
+
+    async def _olx_profile_parse(self, request: Request) -> JSONResponse:
+        """Parse a profile/settings screen dump and store the fields."""
+        try:
+            from aios_core.modules.olx import ProfileParser
+            body = await request.json()
+            xml_text = body.get("xml")
+            if not xml_text:
+                return JSONResponse({"error": "field 'xml' is required"}, status_code=400)
+            parser = ProfileParser()
+            profile = parser.parse_profile(xml_text)
+            for key, value in profile.fields.items():
+                self.olx_storage.profile_set(key, value)
+            payload = profile.to_dict()
+            if body.get("include_settings"):
+                texts = parser._texts(xml_text)
+                payload["settings"] = parser.settings_from_texts(texts).to_dict()
+            return JSONResponse(payload)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_profile_edit(self, request: Request) -> JSONResponse:
+        """Stage/execute a profile field edit (dry-run default)."""
+        try:
+            from aios_core.modules.olx import ProfileEditor
+            body = await request.json()
+            field_key = body.get("field")
+            new_value = body.get("value")
+            if not field_key or new_value is None:
+                return JSONResponse(
+                    {"error": "fields 'field' and 'value' are required"}, status_code=400
+                )
+            editor = ProfileEditor(adb=self.olx_messenger.adb)
+            result = editor.apply(
+                self.olx_storage, field_key, str(new_value),
+                confirm=bool(body.get("confirm", False)),
+            )
+            return JSONResponse(result)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_competitive_refresh(self, request: Request) -> JSONResponse:
+        """Re-link active own listings against the current market."""
+        try:
+            from aios_core.modules.olx import CompetitiveWatch, OwnAd
+            body = await request.json() if (request.headers.get("content-length") or "0") != "0" else {}
+            watch = CompetitiveWatch(self.olx_storage)
+            own_list = [
+                OwnAd(
+                    title=row["title"], price=row["price"], currency=row["currency"],
+                    views=row["last_views"] or 0, url=row["url"],
+                    ad_id=row["ad_id"], status=row["status"],
+                )
+                for row in self.olx_storage.own_ads(status="active")
+            ]
+            result = watch.refresh(own_list)
+            return JSONResponse(result)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    async def _olx_competitive(self, request: Request) -> JSONResponse:
+        """Competitive report for one own listing (`fingerprint` required)."""
+        from aios_core.modules.olx import CompetitiveWatch
+        fingerprint = request.query_params.get("fingerprint")
+        if not fingerprint:
+            return JSONResponse(
+                {"error": "query parameter 'fingerprint' is required"}, status_code=400
+            )
+        report = CompetitiveWatch(self.olx_storage).report(fingerprint)
+        return JSONResponse(report)
+
+    async def _olx_advisor(self, request: Request) -> JSONResponse:
+        """Portfolio advice: actions for own ads + new-listing suggestions."""
+        from aios_core.modules.olx import StrategyAdvisor
+        advisor = StrategyAdvisor(self.olx_storage)
+        actions = [item.to_dict() for item in advisor.advise_actions()]
+        payload: Dict[str, object] = {"actions": actions}
+        if request.query_params.get("new") == "1":
+            payload["new_listings"] = [
+                item.to_dict() for item in advisor.advise_new_listings()
+            ]
+        return JSONResponse(payload)
 
     def _olx_get_scheduler(self, interval_s: float = 3600.0):
         if self._olx_scheduler is None:

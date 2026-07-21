@@ -132,6 +132,27 @@ class AutoWatch:
         report["suggestions"] = suggestions
         report["repost_decisions"] = decisions
 
+        # 4b. Competitive surveillance driven by own listings
+        if rows:
+            from .competitive import CompetitiveWatch
+            from .advisor import StrategyAdvisor
+            own_list = [
+                OwnAd(
+                    title=row["title"], price=row["price"], currency=row["currency"],
+                    views=row["last_views"] or 0, url=row["url"],
+                    ad_id=row["ad_id"], status=row["status"],
+                )
+                for row in rows.values()
+            ]
+            report["competitive"] = CompetitiveWatch(self.storage).refresh(own_list)
+            report["advisor"] = [
+                item.to_dict()
+                for item in StrategyAdvisor(self.storage).advise_actions()
+            ]
+        else:
+            report["competitive"] = None
+            report["advisor"] = []
+
         # 5. Notifications (no-op without a configured webhook)
         sent = 0
         for alert in report["subscription_alerts"]:

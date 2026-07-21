@@ -110,6 +110,23 @@ CREATE TABLE IF NOT EXISTS olx_favorites (
     fingerprint TEXT PRIMARY KEY,
     added_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS olx_competitor_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    own_fingerprint TEXT NOT NULL,
+    competitor_fingerprint TEXT NOT NULL,
+    similarity REAL NOT NULL,
+    first_seen_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    UNIQUE(own_fingerprint, competitor_fingerprint)
+);
+CREATE INDEX IF NOT EXISTS idx_comp_links_own ON olx_competitor_links(own_fingerprint);
+
+CREATE TABLE IF NOT EXISTS olx_profile_kv (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TEXT NOT NULL
+);
 """
 
 _V1_MIGRATION_COLUMNS = {
@@ -573,6 +590,70 @@ class OLXStorage:
                 "SELECT fingerprint FROM olx_favorites ORDER BY added_at"
             ).fetchall()
         return [row[0] for row in rows]
+
+    # ---- Competitor links (own ad <-> similar market ad) ----
+
+    def competitor_link_upsert(
+        self, own_fingerprint: str, competitor_fingerprint: str,
+        similarity: float, seen_at: Optional[str] = None,
+    ) -> bool:
+        """Record/refresh an own↔competitor relation. True when it is new."""
+        now = seen_at or datetime.now(timezone.utc).isoformat()
+        with self._lock, self._conn:
+            cursor = self._conn.execute(
+                """
+                INSERT OR IGNORE INTO olx_competitor_links
+                    (own_fingerprint, competitor_fingerprint, similarity,
+                     first_seen_at, last_seen_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (own_fingerprint, competitor_fingerprint, similarity, now, now),
+            )
+            if not cursor.rowcount:
+                self._conn.execute(
+                    """
+                    UPDATE olx_competitor_links
+                    SET similarity = MAX(similarity, ?), last_seen_at = ?
+                    WHERE own_fingerprint = ? AND competitor_fingerprint = ?
+                    """,
+                    (similarity, now, own_fingerprint, competitor_fingerprint),
+                )
+            return bool(cursor.rowcount)
+
+    def competitor_links(self, own_fingerprint: str) -> List[Dict[str, object]]:
+        with self._lock:
+            rows = self._conn.execute(
+                """
+                SELECT * FROM olx_competitor_links
+                WHERE own_fingerprint = ?
+                ORDER BY similarity DESC, first_seen_at DESC
+                """,
+                (own_fingerprint,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    # ---- Profile key-value store ----
+
+    def profile_set(self, key: str, value: Optional[str]) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._lock, self._conn:
+            self._conn.execute(
+                """
+                INSERT INTO olx_profile_kv (key, value, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value,
+                    updated_at = excluded.updated_at
+                """,
+                (key, value, now),
+            )
+
+    def profile_all(self) -> Dict[str, Dict[str, Optional[str]]]:
+        """All stored profile fields with their update timestamps."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM olx_profile_kv ORDER BY key"
+            ).fetchall()
+        return {row["key"]: {"value": row["value"], "updated_at": row["updated_at"]} for row in rows}
 
     # ---- Export ----
 

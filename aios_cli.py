@@ -113,6 +113,34 @@ def _add_olx_parsers(subparsers) -> None:
     autowatch.add_argument("--chat-id", default=None)
     with_db(autowatch)
 
+    profile = olx_sub.add_parser("profile", help="Profile: show stored / parse dump")
+    profile.add_argument("--xml", default=None, help="Profile screen XML dump")
+    profile.add_argument("--settings", action="store_true", help="Also parse settings toggles")
+    with_db(profile)
+
+    profile_edit = olx_sub.add_parser("profile-edit", help="Edit a profile field")
+    profile_edit.add_argument("--field", required=True)
+    profile_edit.add_argument("--value", required=True)
+    profile_edit.add_argument("--confirm", action="store_true")
+    with_db(profile_edit)
+
+    competitive = olx_sub.add_parser("competitive", help="Competitor surveillance by own ads")
+    competitive.add_argument("--fingerprint", default=None, help="Report for one own ad")
+    with_db(competitive)
+
+    advisor = olx_sub.add_parser("advisor", help="Portfolio advice + new listings")
+    advisor.add_argument("--new", action="store_true", help="Include new-listing suggestions")
+    with_db(advisor)
+
+    bootstrap = olx_sub.add_parser("bootstrap", help="Fresh-server setup plan (or run)")
+    bootstrap.add_argument("--execute", action="store_true", help="Run commands (default: print)")
+    bootstrap.add_argument("--no-emulator", action="store_true")
+    bootstrap.add_argument("--no-apt", action="store_true")
+    bootstrap.add_argument("--apk", default=None, help="Path to OLX APK to install")
+
+    olx_sub.add_parser("doctor", help="Environment readiness checklist")
+
+
 
 def _run_olx(args) -> bool:
     from aios_core.modules.olx import (
@@ -336,6 +364,88 @@ def _run_olx(args) -> bool:
                 queries=args.query or None, collect=not args.no_collect
             )
             print(json.dumps(report, ensure_ascii=False, indent=2, default=str))
+        return True
+
+    if args.olx_command == "profile":
+        from aios_core.modules.olx import ProfileParser
+        with OLXStorage(args.db) as storage:
+            if args.xml:
+                with open(args.xml, encoding="utf-8") as fh:
+                    xml_text = fh.read()
+                parser = ProfileParser()
+                profile = parser.parse_profile(xml_text)
+                for key, value in profile.fields.items():
+                    storage.profile_set(key, value)
+                payload = profile.to_dict()
+                if args.settings:
+                    payload["settings"] = parser.settings_from_texts(
+                        parser._texts(xml_text)
+                    ).to_dict()
+                print(json.dumps(payload, ensure_ascii=False, indent=2))
+            else:
+                print(json.dumps(storage.profile_all(), ensure_ascii=False, indent=2))
+        return True
+
+    if args.olx_command == "profile-edit":
+        from aios_core.modules.olx import ProfileEditor
+        with OLXStorage(args.db) as storage:
+            result = ProfileEditor().apply(
+                storage, args.field, args.value, confirm=args.confirm
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        return True
+
+    if args.olx_command == "competitive":
+        from aios_core.modules.olx import CompetitiveWatch, OwnAd
+        with OLXStorage(args.db) as storage:
+            watch = CompetitiveWatch(storage)
+            if args.fingerprint:
+                print(json.dumps(
+                    watch.report(args.fingerprint), ensure_ascii=False, indent=2, default=str
+                ))
+            else:
+                own_list = [
+                    OwnAd(
+                        title=row["title"], price=row["price"], currency=row["currency"],
+                        views=row["last_views"] or 0, url=row["url"],
+                        ad_id=row["ad_id"], status=row["status"],
+                    )
+                    for row in storage.own_ads(status="active")
+                ]
+                print(json.dumps(watch.refresh(own_list), ensure_ascii=False, indent=2))
+        return True
+
+    if args.olx_command == "advisor":
+        from aios_core.modules.olx import StrategyAdvisor
+        with OLXStorage(args.db) as storage:
+            advisor = StrategyAdvisor(storage)
+            payload = {"actions": [a.to_dict() for a in advisor.advise_actions()]}
+            if args.new:
+                payload["new_listings"] = [
+                    n.to_dict() for n in advisor.advise_new_listings()
+                ]
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return True
+
+    if args.olx_command == "bootstrap":
+        from aios_core.modules.olx import OLXBootstrap
+        import os
+        bootstrap = OLXBootstrap(project_root=os.path.dirname(os.path.abspath(__file__)))
+        kwargs = {
+            "emulator": not args.no_emulator,
+            "apt": not args.no_apt,
+            "olx_apk": args.apk,
+        }
+        if args.execute:
+            print(json.dumps(bootstrap.execute(**kwargs), ensure_ascii=False, indent=2))
+        else:
+            print(bootstrap.print_plan(**kwargs))
+        return True
+
+    if args.olx_command == "doctor":
+        from aios_core.modules.olx import OLXBootstrap
+        report = OLXBootstrap().doctor_report()
+        print(json.dumps(report, ensure_ascii=False, indent=2))
         return True
 
     return False
