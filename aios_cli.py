@@ -538,6 +538,28 @@ def _run_platforms(args) -> bool:
         }, ensure_ascii=False, indent=2))
         return True
 
+    if cmd == "calibrate":
+        from aios_core.platforms import CalibrationAdvisor, hints_to_yaml_doc
+        hints = CalibrationAdvisor().analyze(Path(args.dump).read_text(encoding="utf-8"))
+        output = {"platform": args.platform, "hints": hints}
+        if args.write:
+            import yaml
+            yaml_path = Path("platforms") / f"{args.platform}.yaml"
+            if not yaml_path.exists():
+                print(json.dumps({"error": f"descriptor not found: {yaml_path}"}))
+                return True
+            doc = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+            doc.setdefault("extras", {})["parser_hints"] = hints
+            yaml_path.write_text(
+                yaml.safe_dump(doc, allow_unicode=True, sort_keys=False),
+                encoding="utf-8",
+            )
+            output["written"] = str(yaml_path)
+        else:
+            output["yaml_fragment"] = hints_to_yaml_doc(args.platform, hints)
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+        return True
+
     if cmd == "scaffold":
         files = scaffold_platform(
             args.name, args.package,
@@ -756,6 +778,23 @@ def _run_shards(args) -> bool:
             print(json.dumps({"unrouted": removed}))
             return True
 
+    if cmd == "monitor":
+        from aios_core.platforms import ShardHealthMonitor
+        monitor = ShardHealthMonitor()
+        if args.once:
+            print(json.dumps(monitor.run_once(), ensure_ascii=False))
+            monitor.close()
+            return True
+        monitor.start(interval_s=args.interval)
+        print(json.dumps({"monitoring": True, "interval_s": args.interval}))
+        try:
+            import time as _time
+            while True:
+                _time.sleep(1)
+        except KeyboardInterrupt:
+            monitor.close()
+        return True
+
     return False
 
 
@@ -843,6 +882,14 @@ def main(argv=None):
     p_apk.add_argument("--root", default=".", help="Project root")
     p_apk.add_argument("--dry-run", action="store_true")
 
+    p_cal = plat_sub.add_parser(
+        "calibrate", help="Extract parser hints from a search-screen UI dump"
+    )
+    p_cal.add_argument("--platform", required=True, help="Platform name")
+    p_cal.add_argument("--dump", required=True, help="Path to uiautomator XML dump")
+    p_cal.add_argument("--write", action="store_true",
+                       help="Write hints into platforms/<name>.yaml extras")
+
     # Platform profiles (accounts)
     profiles_parser = subparsers.add_parser(
         "profiles", help="Manage platform profiles (accounts)"
@@ -884,6 +931,10 @@ def main(argv=None):
     for sub_name in ("route", "unroute"):
         sh_route = sh_sub.add_parser(sub_name, help=f"{sub_name} a profile")
         sh_route.add_argument("--profile", required=True)
+
+    sh_mon = sh_sub.add_parser("monitor", help="ShardHealthMonitor: host probes")
+    sh_mon.add_argument("--interval", type=float, default=30.0)
+    sh_mon.add_argument("--once", action="store_true", help="single cycle (cron)")
 
     # Crontab generator for per-profile automation
     cron_parser = subparsers.add_parser(

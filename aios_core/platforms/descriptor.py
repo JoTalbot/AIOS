@@ -27,6 +27,8 @@ class PlatformDescriptor:
         description: Человекочитаемое описание.
         legacy_default_db: Путь БД встроенного профиля ``default``
             (обратная совместимость с однопрофильными установками).
+        extras: Свободные расширения дескриптора (например,
+            ``parser_hints`` из калибровки).
     """
 
     name: str
@@ -37,6 +39,7 @@ class PlatformDescriptor:
     default_locale: str = "uk-UA"
     description: str = ""
     legacy_default_db: Optional[str] = None
+    extras: Dict = field(default_factory=dict)
 
     def make_storage(self, db_path: str):
         """Создаёт хранилище этой платформы по пути БД."""
@@ -58,6 +61,7 @@ class PlatformDescriptor:
             "agent_module": self.agent_module,
             "default_locale": self.default_locale,
             "description": self.description,
+            "extras": self.extras,
         }
 
 

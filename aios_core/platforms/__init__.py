@@ -19,7 +19,9 @@ from .descriptor import (
     register_platform,
 )
 from .devices import DevicePool
+from .calibrate import CalibrationAdvisor, hints_to_yaml_doc
 from .fleet import PoolMonitor, ensure_device
+from .gateway import ShardGateway, ShardHealthMonitor
 from .profile import Profile
 from .resolver import (
     adb_for,
@@ -37,8 +39,12 @@ __all__ = [
     "Profile",
     "ProfileStore",
     "ShardRouter",
+    "CalibrationAdvisor",
+    "ShardGateway",
+    "ShardHealthMonitor",
     "adb_for",
     "ensure_device",
+    "hints_to_yaml_doc",
     "get_platform",
     "inspect_apk",
     "list_platforms",
