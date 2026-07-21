@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [9.0.0-alpha.8] - 2026-07-21
 
 ### Added
 - **Generic module REST surfaces**: любая зарегистрированная платформа
