@@ -182,8 +182,14 @@ class PostComposer:
         image_path: str,
         caption: str,
         confirm: bool = False,
+        directory: str = "platforms",
     ) -> Dict[str, object]:
         """Публикует пост. Без ``confirm`` — только DRY-RUN план.
+
+        Даже с ``confirm=True`` публикация проходит compliance-контур
+        платформы (``extras.compliance.autopost_allowed`` в дескрипторе):
+        запрещённый автопостинг честно отклоняется — guarded не только
+        технически, но и правово.
 
         Raises:
             ValueError: пустой caption/несуществующий image при confirm.
@@ -197,6 +203,16 @@ class PostComposer:
             return {"status": "dry-run", "plan": plan,
                     "note": "nothing touched the device; "
                             "pass confirm=True to execute"}
+
+        from aios_core.platforms.compliance import compliance_guard
+        check = compliance_guard("instagram", "autopost",
+                                 directory=directory)
+        if not check["allowed"]:
+            return {"status": "denied", "plan": plan,
+                    "error": check["reason"],
+                    "compliance": check,
+                    "note": "publish refused by extras.compliance — "
+                            "device untouched"}
 
         steps: List[Dict[str, object]] = []
         ext = Path(image_path).suffix or ".jpg"

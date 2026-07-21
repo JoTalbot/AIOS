@@ -14,6 +14,7 @@ CLI и REST API разрешают контекст работы через ед
 from .apkfetch import fetch_apk, resolve_apk
 from .bootup import bootup_platform
 from .catalog import load_catalog, load_catalog_file
+from .compliance import compliance_block, compliance_guard, rate_limit_hours
 from .descriptor import (
     PlatformDescriptor,
     get_platform,
@@ -97,8 +98,11 @@ __all__ = [
     "chat_list_parser_for",
     "dashboard_html",
     "check_platform_markers",
+    "compliance_block",
+    "compliance_guard",
     "detail_parser_for",
     "diff_markers",
+    "rate_limit_hours",
     "ensure_device",
     "extract_markers",
     "fetch_apk",

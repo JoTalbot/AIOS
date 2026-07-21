@@ -720,6 +720,14 @@ def _run_platforms(args) -> bool:
             get_platform,
             reels_driver_for,
         )
+        from aios_core.platforms.compliance import compliance_guard
+        check = compliance_guard(
+            args.platform, "collect", directory=args.directory)
+        if not check["allowed"]:
+            print(json.dumps(
+                {"error": check["reason"], "compliance": check},
+                ensure_ascii=False, indent=2))
+            return True
         from aios_core.platforms.reelscout import ReelsCollector
         from aios_core.platforms.resolver import resolve_profile, storage_for
 
@@ -1195,6 +1203,20 @@ def _run_msg_platform(args, platform: str) -> bool:
             ).doctor()
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return True
+        if cmd == "dm-send":
+            # compliance-контур ДО сборки adb/storage: запрещённое
+            # действие не должно даже инициализировать устройство.
+            from aios_core.platforms.compliance import compliance_guard
+            check = compliance_guard(
+                platform,
+                "auto_send" if args.auto_send else "send",
+                directory=getattr(args, "directory", "platforms"),
+            )
+            if not check["allowed"]:
+                print(json.dumps(
+                    {"error": check["reason"], "compliance": check},
+                    ensure_ascii=False, indent=2))
+                return True
         from aios_core.modules.olx.adb import ADBController
         package = messenger_cls.PACKAGE
         adb = ADBController(package=package, serial=getattr(args, "serial", None))

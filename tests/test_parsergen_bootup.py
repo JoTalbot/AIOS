@@ -265,7 +265,9 @@ def test_bootup_real_run_ready_and_registered(tmp_path):
             steps = report["steps"]
             assert steps["scaffold"]["mode"] == "written"
             assert steps["register"]["mode"] == "registered"
-            assert steps["hints"]["registered_extras"] == ["parser_hints"]
+            # scaffold сразу заявляет deny-by-default compliance:
+            assert steps["hints"]["registered_extras"] == [
+                "compliance", "parser_hints"]
             assert steps["codegen"]["mode"] == "written"
             assert steps["verify"]["cards"] == 2
 

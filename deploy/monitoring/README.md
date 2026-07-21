@@ -13,6 +13,17 @@ exposition format с gauges флота:
 | `aios_device_limits` | количество заданных квот пула |
 | `aios_profiles_total`, `aios_profiles{platform=...}` | профили аккаунтов |
 | `aios_catalog_platforms` | платформы в YAML-каталоге |
+| `aios_seen_receipts{platform,kind}` | записанные показы/встречи (ad/video) из per-platform БД `data/*.sqlite` |
+| `aios_outbox_pending{platform}` | черновики guarded outbox, ждущие одобрения |
+
+## Alert-правила
+
+`aios-alerts.yml` (уже подключён в `prometheus.yml` через `rule_files`):
+падение агента / отсутствие живых shard-worker'ов при pending-джобах,
+бэклог очереди (>50 warning, >200 critical), зависшие claim'ы,
+исчерпание пула устройств, отставание одобрения outbox (>100 за час).
+Группы видны в Prometheus → Alerts; роутинг в Alertmanager настраивается
+на вашей стороне.
 
 ## Prometheus (docker)
 
