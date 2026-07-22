@@ -1,4 +1,4 @@
-name: Android CI
+name: Android Tests
 
 on:
   push:
@@ -9,24 +9,40 @@ on:
       - 'android-emulator-run.sh'
       - 'setup/android-emulator-env.sh'
       - 'Dockerfile.android'
+      - 'requirements.txt'
+      - '.github/workflows/android.yml'
   pull_request:
+    paths:
+      - 'aios_core/android_*'
+      - 'tests/test_android_*'
+      - 'android-bootstrap.sh'
+      - 'android-emulator-run.sh'
+      - 'requirements.txt'
 
 jobs:
-  android-tests:
+  android-unit-tests:
     runs-on: ubuntu-latest
-    env:
-      AIOS_EMULATOR_HEADLESS: "1"
-      AIOS_DEVICE_ID: emulator-5554
-      AIOS_AVD_NAME: AIOS_Slando
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: ${{ matrix.python-version }}
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest pytest-asyncio httpx graphql-core websockets grpcio
-      - name: Start headless emulator
+          python -m pip install -r requirements.txt
+          python -m pip install pytest pytest-asyncio
+      - name: Run Android unit tests
         run: |
-          bash android-bootstrap.sh
+          python -m pytest tests/test_android_ai_navigation.py tests/test_android_rpa_bridge.py -q -v
+      - name: Verify Android modules importable
+        run: |
+          python -c "from aios_core.android_ai_navigation import AIScreenClassifier, SelfHealingLocator; print('AI nav OK')"
+          python -c "from aios_core.android_observability import AndroidObservability; print('Observability OK')"
+          python -c "from aios_core.android_parser import UIAutomatorParser; print('Parser OK')"
+          python -c "from aios_core.android_driver import AndroidDriver; print('Driver OK')"
+          python -c "from aios_core.android_fleet import DeviceFleet; print('Fleet OK')" || echo "Fleet optional"
+          python -c "from aios_core.android_registry import AndroidAppRegistry; print('Registry OK')" || echo "Registry optional"

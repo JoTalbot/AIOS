@@ -13,10 +13,16 @@ from __future__ import annotations
 
 import json
 import os
-import psutil
 import time
 from dataclasses import dataclass, asdict, field
 from typing import Any, Dict, List, Optional, Tuple
+
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    psutil = None
+    HAS_PSUTIL = False
 
 
 @dataclass
@@ -46,6 +52,8 @@ class AndroidObservability:
 
     def _isolate_process(self):
         """Isolate Android process for better monitoring."""
+        if not HAS_PSUTIL:
+            return
         try:
             for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
                 try:
@@ -60,9 +68,15 @@ class AndroidObservability:
         except Exception:
             pass
 
+    # Backward compat alias expected by docs
+    def isolate_process(self):
+        return self._isolate_process()
+
     def check_heuristic_anomalies(self) -> List[Dict[str, Any]]:
         """Check for heuristic anomalies in system state."""
         anomalies = []
+        if not HAS_PSUTIL:
+            return anomalies
         
         try:
             memory = psutil.virtual_memory()
