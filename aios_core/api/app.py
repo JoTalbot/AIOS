@@ -1155,7 +1155,7 @@ class AIOSAPI:
         try:
             from aios_core.android_rpa_bridge import AndroidRPAManager
             body = await request.json()
-            play_url = body.get("play_store_url", "https://play.google.com/store/apps/details?id=ua.olx.android")
+            play_url = body.get("play_store_url", "https://play.google.com/store/apps/details?id=ua.slando")
             credentials = body.get("credentials", {"login": "user@example.com", "password": "secure_password"})
             user_id = body.get("user_id", "default_user")
 
@@ -1168,7 +1168,7 @@ class AIOSAPI:
     async def _app_execute(self, request: Request) -> JSONResponse:
         try:
             from aios_core.android_rpa_bridge import AndroidRPADeviceEmulator
-            package_name = request.path_params.get("package_name", "ua.olx.android")
+            package_name = request.path_params.get("package_name", "ua.slando")
             body = await request.json()
             action = body.get("action", "search")
             params = body.get("params", {})

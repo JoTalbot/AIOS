@@ -44,7 +44,7 @@ class ProtocolConfig:
     auth_required: bool = True
     rate_limit: Optional[int] = None
     tls: bool = False
-    **kwargs
+    extra_config: Optional[Dict[str, Any]] = None
 
 
 class ProtocolAdapter:
