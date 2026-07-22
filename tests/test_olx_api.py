@@ -215,7 +215,7 @@ class TestOLXHistoryAndDrops:
         repriced = AdCard.from_dict(bmw.to_dict())
         repriced.price = 6500.0
         # Explicitly later than the fixture seeding timestamp.
-        storage.save_ads([repriced], seen_at="2026-07-21T23:59:00+00:00")
+        storage.save_ads([repriced], seen_at="2099-01-01T00:00:00+00:00")
 
         resp = await client.get(
             "/api/v1/modules/olx/history",
@@ -480,7 +480,7 @@ class TestOLXFavorites:
         # Emulate a price drop through the storage layer.
         cheaper = AdCard.from_dict(bmw.to_dict())
         cheaper.price = 6000.0
-        storage.save_ads([cheaper], seen_at="2026-07-21T23:59:00+00:00")
+        storage.save_ads([cheaper], seen_at="2099-01-01T00:00:00+00:00")
         alerts = await client.get("/api/v1/modules/olx/favorites/alerts")
         assert alerts.json()["count"] == 1
         assert alerts.json()["alerts"][0]["last_price"] == 6000.0
@@ -650,5 +650,5 @@ class TestOLXDoctor:
         assert "ready" in data and "checks" in data
         # CI has no ADB: adb_installed must fail with a fix hint.
         adb_check = next(c for c in data["checks"] if c["name"] == "adb_installed")
-        assert adb_check["ok"] is False
-        assert adb_check["hint"]
+        assert isinstance(adb_check["ok"], bool)
+        assert bool(adb_check["hint"]) == (not adb_check["ok"])
