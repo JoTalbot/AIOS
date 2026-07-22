@@ -192,47 +192,42 @@ class UIAutomatorParser:
 
     def find_search_results(self) -> List[SearchResult]:
         """Find search result cards in ua.slando."""
-        results = []
+        results: List[SearchResult] = []
 
-        # Try to find result cards by resource ID
         card_resources = [
             "ua.slando:id/adListing_adGridCard",
             "ua.slando:id/ad_grid_card",
-            "ua.slando:id/card_root"
+            "ua.slando:id/card_root",
         ]
 
         for resource_id in card_resources:
             elements = self.find_elements_by_resource(resource_id)
-            if elements:
-                for elem in elements:
-                    # Extract title, price, location from child nodes
-                    title = ""
-                    price = ""
-                    location = ""
+            for elem in elements:
+                title = ""
+                price = ""
+                location = ""
 
-                    for child in self.root.iter("node"):
-                        if self._is_child_of(child, elem):
-                            child_text = child.attrib.get("text", "")
-                            child_resource = child.attrib.get("resource-id", "")
+                for child in self.root.iter("node"):
+                    if self._is_child_of(child, elem):
+                        child_text = child.attrib.get("text", "")
+                        child_resource = child.attrib.get("resource-id", "")
 
-                            if "title" in child_resource.lower() or "name" in child_resource.lower():
-                                title = child_text
-                            elif "price" in child_resource.lower():
-                                price = child_text
-                            elif "location" in child_resource.lower() or "city" in child_resource.lower():
-                                location = child_text
+                        if ("title" in child_resource.lower() or "name" in child_resource.lower()) and child_text:
+                            title = child_text
+                        elif "price" in child_resource.lower() and child_text:
+                            price = child_text
+                        elif ("location" in child_resource.lower() or "city" in child_resource.lower()) and child_text:
+                            location = child_text
 
-                    if title:
-                        results.append(SearchResult(
-                            item_id=f"result_{len(results)}",
-                            title=title,
-                            price=price,
-                            location=location,
-                            bounds=elem.bounds
-                        ))
+                if title or price:
+                    item_id = f"result_{len(results)}"
+                    if not title:
+                        title = price or "Без названия"
+                    results.append(SearchResult(item_id=item_id, title=title, price=price, location=location, bounds=elem.bounds))
+            if results:
                 break
 
-        return results
+        return results[:20]
 
     def find_item_details(self) -> Optional[ItemDetails]:
         """Find item details on detail page."""
@@ -335,9 +330,11 @@ class RealDeviceExecutor:
         return self._adb(f"shell input tap {x} {y}")
 
     def type_text(self, text: str):
-        """Type text using ADB keyboard."""
-        encoded = text.replace(" ", "%s")
-        return self._adb(f"shell input text '{encoded}'")
+        """Type text using ADBKeyBoard or fallback input method."""
+        try:
+            return self._adb(f"shell ime set com.android.adbkeyboard/.ADBKeyboard && shell input text '{text.replace(' ', '%s')}'")
+        except Exception:
+            return self._adb(f"shell input text '{text.replace(' ', '%s')}'")
 
     def press_key(self, keycode: int):
         """Press key by keycode."""
@@ -356,7 +353,7 @@ class RealDeviceExecutor:
         return False
 
     def search(self, query: str, category: str = "all") -> Dict[str, Any]:
-        """Robust real search on ua.slando with fallbacks."""
+        """Robust real search on ua.slando with fallbacks and retries."""
         start_time = time.time()
 
         if not self.launch_app("ua.slando"):
@@ -372,23 +369,25 @@ class RealDeviceExecutor:
         search_field = self.parser.find_search_field()
 
         if search_field:
-            x, y, _ = search_field.center
+            center = search_field.center
+            x, y = center[0], center[1]
             self.tap(x, y)
         else:
             self.tap(160, 90)
 
         time.sleep(0.5)
 
-        self.press_key(123)
-        time.sleep(0.2)
-        self.type_text(query)
-        time.sleep(1)
-        self.press_key(66)
-        time.sleep(2)
-
-        ui_xml = self.dump_ui()
-        if not ui_xml:
-            return {"status": "partial_success", "error": "results_ui_missing", "real_adb": True}
+        for attempt in range(3):
+            self.press_key(123)
+            self.type_text(query)
+            time.sleep(0.5)
+            self.press_key(66)
+            time.sleep(2)
+            ui_xml = self.dump_ui()
+            if ui_xml:
+                break
+            if attempt == 2:
+                return {"status": "error", "error": "Failed to capture results UI after retries", "real_adb": True}
 
         self.parser = UIAutomatorParser(ui_xml)
         self.parser.parse()

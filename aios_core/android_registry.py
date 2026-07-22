@@ -1,8 +1,8 @@
 """AIOS Android App Registry (M3).
 
-Declarative multi-app abstraction. A platform descriptor plus a small driver
-selection layer is enough to support `ua.slando` plus other apps without
-changing the REST API surface.
+Declarative multi-app abstraction. Platform descriptor plus optional driver
+selection layer supports `ua.slando` plus other apps without changing the
+REST API surface.
 """
 
 from __future__ import annotations
@@ -12,22 +12,22 @@ from typing import Dict, Optional
 
 from aios_core.android_driver import AndroidDriver, DriverCapabilities
 from aios_core.android_execution import RealDeviceExecutor
-from aios_core.android_appium import AppiumAndroidDriver
+from aios_core.android_appium import AppiumAndroidDriver, AppiumDriverConfig
+from aios_core.platforms.catalog import load_catalog
 
 
 @dataclass
 class AndroidAppDescriptor:
+    name: str
     package: str
-    label: str
     backend: str = "adb"
     capabilities: Optional[DriverCapabilities] = None
 
     def build_driver(self, device_id: Optional[str] = None) -> AndroidDriver:
         if self.backend == "adb":
-            # Raw ADB path reuses existing execution helper.
             return RealDeviceExecutor(device_id=device_id or "emulator-5554")
         if self.backend == "appium":
-            cfg = self.capabilities or DriverCapabilities(package=self.package)
+            cfg = self.capabilities or AppiumDriverConfig(package=self.package, device_name=device_id or "emulator")
             return AppiumAndroidDriver(cfg)
         raise ValueError(f"Unsupported backend: {self.backend}")
 
@@ -55,3 +55,23 @@ class AndroidAppRegistry:
         if desc is None:
             return None
         return desc.build_driver(device_id)
+
+    def load_from_catalog(self, directory: str = "platforms"):
+        try:
+            descriptors = load_catalog(directory)
+        except Exception:
+            return
+        for descriptor in descriptors:
+            try:
+                self.register(
+                    AndroidAppDescriptor(
+                        name=descriptor.name,
+                        package=descriptor.android_package,
+                        backend="adb",
+                    )
+                )
+            except Exception:
+                continue
+
+    def all_packages(self) -> List[str]:
+        return list(self._apps.keys())

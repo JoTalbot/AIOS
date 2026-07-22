@@ -2,10 +2,13 @@
 
 Device pool: lease/release/heartbeat/sticky route across emulators/devices.
 Each profile can be bound to a dedicated device serial for parallel automation.
+Auto-restarts stuck emulators and exposes basic balancing.
 """
 
 from __future__ import annotations
 
+import os
+import subprocess
 import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -18,6 +21,7 @@ class DeviceRecord:
     status: str = "idle"
     leased_to: Optional[str] = None
     last_heartbeat: float = field(default_factory=time.time)
+    auto_restart: bool = True
 
 
 @dataclass
@@ -28,15 +32,32 @@ class WaitlistEntry:
 
 
 class DevicePool:
-    def __init__(self):
+    def __init__(self, emulator_bin: str = "/opt/android-sdk/emulator/emulator"):
         self.devices: Dict[str, DeviceRecord] = {}
         self.waitlist: List[WaitlistEntry] = []
+        self.emulator_bin = emulator_bin
 
-    def register(self, serial: str, avd_name: Optional[str] = None) -> DeviceRecord:
-        self.devices[serial] = DeviceRecord(serial=serial, avd_name=avd_name or serial)
+    def register(self, serial: str, avd_name: Optional[str] = None, auto_restart: bool = True) -> DeviceRecord:
+        self.devices[serial] = DeviceRecord(serial=serial, avd_name=avd_name or serial, auto_restart=auto_restart)
         return self.devices[serial]
 
-    def lease(self, profile: str, serial: Optional[str] = None) -> Optional[DeviceRecord]:
+    def _restart_emulator(self, record: DeviceRecord) -> bool:
+        if not record.auto_restart:
+            return False
+        try:
+            subprocess.Popen(
+                [self.emulator_bin, "-avd", record.avd_name, "-no-window", "-no-audio", "-gpu", "swiftshader_indirect"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            record.status = "idle"
+            record.leased_to = None
+            record.last_heartbeat = time.time()
+            return True
+        except Exception:
+            return False
+
+    def lease(self, profile: str, serial: Optional[str] = None, preferred_avd: Optional[str] = None) -> Optional[DeviceRecord]:
         if serial:
             dev = self.devices.get(serial)
             if dev and dev.status == "idle":
@@ -48,10 +69,17 @@ class DevicePool:
 
         for dev in self.devices.values():
             if dev.status == "idle":
+                if preferred_avd and dev.avd_name != preferred_avd:
+                    continue
                 dev.status = "busy"
                 dev.leased_to = profile
                 dev.last_heartbeat = time.time()
                 return dev
+
+        for dev in self.devices.values():
+            if dev.status == "busy":
+                self._restart_emulator(dev)
+
         return None
 
     def release(self, profile: str) -> Optional[DeviceRecord]:
@@ -72,10 +100,9 @@ class DevicePool:
     def reap_stale(self, max_silence_s: float = 900) -> List[str]:
         now = time.time()
         released = []
-        for dev in self.devices.values():
+        for dev in list(self.devices.values()):
             if dev.status == "busy" and now - dev.last_heartbeat > max_silence_s:
-                dev.status = "idle"
-                dev.leased_to = None
+                self._restart_emulator(dev)
                 released.append(dev.serial)
         return released
 
