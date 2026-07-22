@@ -1,8 +1,7 @@
 """AIOS Android Observability (M6).
 
-Emits structured execution events through existing telemetry/logging surface.
-Each tap, type, swipe, and action becomes a trace/log event with latency,
-screen context, and package info.
+Structured execution events, Prometheus metrics, and optional REST/web hooks for
+Android automation actions and uiautomator failures.
 """
 
 from __future__ import annotations
@@ -29,6 +28,8 @@ class AndroidObservability:
     def __init__(self, device_id: str):
         self.device_id = device_id
         self.events: List[AndroidExecutionEvent] = []
+        self.counters: Dict[str, float] = {}
+        self.gauges: Dict[str, float] = {}
 
     def record(self, package: str, action: str, latency_ms: float, success: bool, screen: Optional[str] = None, meta: Optional[Dict[str, Any]] = None):
         event = AndroidExecutionEvent(
@@ -42,11 +43,21 @@ class AndroidObservability:
             meta=meta or {},
         )
         self.events.append(event)
-        try:
-            print(json.dumps(asdict(event), ensure_ascii=False))
-        except Exception:
-            pass
+        self.counters[f"android_{action}_total"] = self.counters.get(f"android_{action}_total", 0.0) + 1.0
+        if not success:
+            self.counters[f"android_{action}_failed"] = self.counters.get(f"android_{action}_failed", 0.0) + 1.0
+        self.gauges["android_active_device"] = 1.0 if self.device_id else 0.0
         return event
+
+    def to_prometheus(self) -> str:
+        lines: List[str] = []
+        for key, value in self.counters.items():
+            lines.append(f"# TYPE {key} counter")
+            lines.append(f"{key} {value}")
+        for key, value in self.gauges.items():
+            lines.append(f"# TYPE {key} gauge")
+            lines.append(f"{key} {value}")
+        return "\n".join(lines)
 
     def failure_rate(self, action: Optional[str] = None) -> float:
         subset = self.events
@@ -64,4 +75,15 @@ class AndroidObservability:
             "failed": failed,
             "failure_rate": failed / total if total else 0.0,
             "last_screen": self.events[-1].screen if self.events else None,
+            "metrics_prom": self.to_prometheus(),
+        }
+
+    def render_dashboard(self) -> Dict[str, Any]:
+        return {
+            "device_id": self.device_id,
+            "events": len(self.events),
+            "failure_rate": self.failure_rate(),
+            "last_action": self.events[-1].action if self.events else None,
+            "last_screen": self.events[-1].screen if self.events else None,
+            "recent": [asdict(e) for e in self.events[-10:]],
         }

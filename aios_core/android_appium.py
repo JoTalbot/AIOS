@@ -1,6 +1,7 @@
 """AIOS Android Appium Driver (M2).
 
 Wraps Appium client to satisfy the shared AndroidDriver interface.
+Supports UiAutomator2 + XPath selectors and scenario playback hooks.
 Keeps raw ADB path untouched and adds a stable cross-platform automation backend.
 """
 
@@ -9,7 +10,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from aios_core.android_driver import AndroidDriver, DriverCapabilities, UIContext
 
@@ -17,6 +18,7 @@ from aios_core.android_driver import AndroidDriver, DriverCapabilities, UIContex
 @dataclass
 class AppiumDriverConfig(DriverCapabilities):
     server_url: str = "http://localhost:4723/wd/hub"
+    automation_name: str = "UiAutomator2"
 
 
 class AppiumAndroidDriver(AndroidDriver):
@@ -128,3 +130,30 @@ class AppiumAndroidDriver(AndroidDriver):
             return self._driver.current_package or self.config.package
         except Exception:
             return self.config.package
+
+    def find_element_by_xpath(self, xpath: str) -> Optional[Any]:
+        if self._driver is None:
+            return None
+        try:
+            return self._driver.find_element_by_xpath(xpath)
+        except Exception:
+            return None
+
+    def find_elements_by_xpath(self, xpath: str) -> List[Any]:
+        if self._driver is None:
+            return []
+        try:
+            return self._driver.find_elements_by_xpath(xpath)
+        except Exception:
+            return []
+
+    def find_element(self, by: str, value: str) -> Optional[Any]:
+        if self._driver is None:
+            return None
+        try:
+            from appium.webdriver.common.appiumby import AppiumBy
+            by_map = {"id": AppiumBy.ID, "accessibility_id": AppiumBy.ACCESSIBILITY_ID, "xpath": AppiumBy.XPATH}
+            by_enum = by_map.get(by, AppiumBy.XPATH)
+            return self._driver.find_element(by_enum, value)
+        except Exception:
+            return None

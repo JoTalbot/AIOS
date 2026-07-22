@@ -1,0 +1,35 @@
+FROM python:3.14-slim-bookworm
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV AIOS_AVD_NAME=AIOS_Slando
+ENV AIOS_API_LEVEL=35
+ENV AIOS_ABI=google_apis/x86_64
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      unzip curl git ca-certificates openjdk-17-jdk-headless \
+      libgl1 libglib2.0-0 libnss3 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 \
+      libxcursor1 libxdamage1 libxi6 libxtst6 libpulse0 libasound2 && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /opt/android-sdk/cmdline-tools /opt/android-sdk/platform-tools && \
+    curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/cmdline.zip && \
+    unzip -q /tmp/cmdline.zip -d /opt/android-sdk/cmdline-tools/ && \
+    mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest && \
+    rm -f /tmp/cmdline.zip
+
+ENV PATH="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${PATH}"
+
+RUN yes | sdkmanager --licenses >/dev/null && \
+    sdkmanager "platform-tools" "emulator" "system-images;android-${AIOS_API_LEVEL};${AIOS_ABI}"
+
+RUN avdmanager create avd -n "${AIOS_AVD_NAME}" -k "system-images;android-${AIOS_API_LEVEL};${AIOS_ABI}" -d "pixel" --force
+
+WORKDIR /workspace
+COPY . .
+
+RUN python -m pip install --upgrade pip && \
+    pip install pytest pytest-asyncio httpx graphql-core websockets grpcio
+
+CMD ["bash", "android-bootstrap.sh"]
