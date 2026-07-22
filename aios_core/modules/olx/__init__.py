@@ -1,6 +1,6 @@
 """AIOS OLX Android Agent.
 
-Turns the OLX Ukraine Android app (``ua.slando``) into a structured data
+Turns the Slando Ukraine Android app (``ua.slando``) into a structured data
 source and a guarded action surface: ADB device control, UIAutomator dump
 parsing, automated scrolling collection, SQLite persistence with price
 history, competitor analysis, recommendations, own-ads monitoring,

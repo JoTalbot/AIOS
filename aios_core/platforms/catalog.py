@@ -11,7 +11,7 @@
     storage_class: aios_core.modules.olx.storage.OLXStorage
     adb_class: aios_core.modules.olx.adb.ADBController
     default_locale: uk-UA
-    description: OLX Ukraine agent
+    description: Slando Ukraine agent
     legacy_default_db: olx_ads.sqlite
 
 ``storage_class``/``adb_class`` — dotted-пути классов; фабрики строятся

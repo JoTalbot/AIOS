@@ -15,12 +15,15 @@ Main exports:
 - MonitoringSystem: Comprehensive monitoring and alerting
 """
 
+from .app import create_app, AIOSAPI
 from .enhanced import create_enhanced_api, EnhancedAIOSAPI
 from .integration import ExternalIntegrationAPI, IntegrationEvent, IntegrationEventType
 from .protocols import ProtocolManager, ProtocolType, ProtocolConfig
 from .monitoring import MonitoringSystem, AlertManager, Alert, AlertSeverity, AlertType
 
 __all__ = [
+    'create_app',
+    'AIOSAPI',
     'create_enhanced_api',
     'EnhancedAIOSAPI',
     'ExternalIntegrationAPI',

@@ -1,6 +1,6 @@
 """Android RPA & Appium/ADB Emulator Automation Bridge for AIOS.
 
-Transforms Android apps running in an emulator (such as OLX Ukraine 'ua.olx.android')
+Transforms Android apps running in an emulator (such as Slando Ukraine 'ua.slando')
 into programmatic REST API endpoints, allowing full app interaction (Search, Item Details,
 Messaging, Login, Listing Creation) without manual phone screen taps.
 """
@@ -51,13 +51,15 @@ class AndroidRPADeviceEmulator:
             # Auto-authenticate if credentials supplied
             self.authenticate_user(package_name, {"login": "auto_user", "password": "pass"})
 
-        # Special app mapping logic (e.g. OLX Ukraine)
-        if package_name == "ua.olx.android":
+        # Special app mapping logic (e.g. Slando Ukraine / ua.slando)
+        if package_name == "ua.slando":
+            app_label = "Slando Ukraine"
             if action_name == "search":
                 query = params.get("query", "")
                 category = params.get("category", "all")
                 return {
-                    "app": "OLX Ukraine",
+                    "app": app_label,
+                    "package": package_name,
                     "action": "search",
                     "query": query,
                     "category": category,
@@ -72,7 +74,8 @@ class AndroidRPADeviceEmulator:
             elif action_name == "get_item_details":
                 item_id = params.get("item_id", "olx_781029")
                 return {
-                    "app": "OLX Ukraine",
+                    "app": app_label,
+                    "package": package_name,
                     "item_id": item_id,
                     "title": "Smartphone Galaxy S22",
                     "price_uah": 14500.0,
@@ -85,7 +88,8 @@ class AndroidRPADeviceEmulator:
                 seller_id = params.get("seller_id", "Olena_Kyiv")
                 message_text = params.get("message", "")
                 return {
-                    "app": "OLX Ukraine",
+                    "app": app_label,
+                    "package": package_name,
                     "status": "delivered",
                     "recipient_seller": seller_id,
                     "message_sent": message_text,
