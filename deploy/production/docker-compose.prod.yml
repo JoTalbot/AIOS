@@ -1,0 +1,131 @@
+services:
+  aios-api:
+    image: aios:9.1.0
+    container_name: aios-api-prod
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - AIOS_API_KEYS={"prod":{"subject":"prod","roles":["admin"]}}
+      - AIOS_PROFILES_DB=/app/data/profiles.sqlite
+      - AIOS_DEVICES_DB=/app/data/devices.sqlite
+      - AIOS_SHARDS_DB=/app/data/shards.sqlite
+      - AIOS_OLX_DB=/app/data/olx.sqlite
+      - AIOS_PRODUCTION_PROFILES=instagram:ig_shop_1,instagram:ig_shop_2,instagram:ig_shop_3
+      - AIOS_DEVICE_POOL_SIZE=3
+      - AIOS_CYCLE_INTERVAL=900
+      - AIOS_WEBHOOK_URL=${AIOS_WEBHOOK_URL:-}
+      - PYTHONUNBUFFERED=1
+      - AIOS_HOST_ID=shard-prod-1
+    volumes:
+      - ../../data:/app/data
+      - ../../logs:/app/logs
+      - aios-prod-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - aios-prod-net
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  aios-autopilot:
+    image: aios:9.1.0
+    container_name: aios-autopilot-prod
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ["python", "run_production_autopilot.py", "--config", "default_3_ig", "--cycles-per-day", "24", "--daemon", "--interval", "900"]
+    environment:
+      - AIOS_API_KEYS={"prod":{"subject":"prod","roles":["admin"]}}
+      - AIOS_PROFILES_DB=/app/data/profiles.sqlite
+      - AIOS_DEVICES_DB=/app/data/devices.sqlite
+      - AIOS_SHARDS_DB=/app/data/shards.sqlite
+      - AIOS_WEBHOOK_URL=${AIOS_WEBHOOK_URL:-}
+      - PYTHONUNBUFFERED=1
+      - AIOS_HOST_ID=autopilot-prod-1
+    volumes:
+      - ../../data:/app/data
+      - ../../logs:/app/logs
+    depends_on:
+      aios-api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - aios-prod-net
+
+  aios-dashboard:
+    image: aios:9.1.0
+    container_name: aios-dashboard-prod
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ["python", "run_dashboard.py"]
+    ports:
+      - "8080:8080"
+    environment:
+      - AIOS_API_KEYS={"prod":{"subject":"prod","roles":["admin"]}}
+    depends_on:
+      aios-api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - aios-prod-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aios-prometheus-prod
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ../monitoring/aios-alerts.yml:/etc/prometheus/aios-alerts.yml
+      - ../monitoring/production-alerts.yml:/etc/prometheus/production-alerts.yml
+      - prometheus-prod-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    restart: unless-stopped
+    networks:
+      - aios-prod-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aios-grafana-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ../monitoring/grafana-aios-ops.json:/var/lib/grafana/dashboards/aios-ops.json
+      - ../monitoring/grafana-production.json:/var/lib/grafana/dashboards/production.json
+      - grafana-prod-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - aios-prod-net
+
+volumes:
+  aios-prod-data:
+  prometheus-prod-data:
+  grafana-prod-data:
+
+networks:
+  aios-prod-net:
+    driver: bridge

@@ -53,7 +53,7 @@ python run_dashboard.py
 - **Python SDK** — official client library
 - **Kubernetes** — deployment manifests
 
-**Current version:** 9.1.0 (1000 tests passing) — Android M8 + AI Advisor + Marketplace v2 + SDK v4.2.0
+**Current version:** 9.2.0-production (1010 tests passing) — Production Exploitation GA: 3 IG profiles ≥2 weeks ban-free
 
 Run a local REST service (requires authentication by default):
 

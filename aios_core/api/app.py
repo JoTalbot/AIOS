@@ -286,6 +286,11 @@ class AIOSAPI:
             Route("/api/v1/advisor/price", self._advisor_price, methods=["GET"]),
             Route("/api/v1/advisor/drafts", self._advisor_list_drafts, methods=["GET"]),
 
+            # Production exploitation
+            Route("/api/v1/production/health", self._production_health, methods=["GET"]),
+            Route("/api/v1/production/simulate", self._production_simulate, methods=["POST"]),
+            Route("/api/v1/production/config", self._production_config, methods=["GET"]),
+
             Route("/dashboard", self._dashboard_page, methods=["GET"]),
 
             # Generic platform module surfaces (descriptor-driven). Статичные
@@ -1173,6 +1178,44 @@ class AIOSAPI:
             advisor = AISalesAdvisor()
             drafts = advisor.list_drafts()
             return JSONResponse({"drafts": [d.__dict__ for d in drafts], "count": len(drafts)})
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    # --- Production exploitation ---
+
+    async def _production_health(self, request: Request) -> JSONResponse:
+        try:
+            from aios_core.production_autopilot import ProductionConfig, ProductionAutopilot
+            config = ProductionConfig.default_3_instagram()
+            autopilot = ProductionAutopilot(config)
+            # single cycle for health
+            autopilot.run_all_profiles_cycle()
+            return JSONResponse(autopilot.health_report())
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    async def _production_simulate(self, request: Request) -> JSONResponse:
+        try:
+            from aios_core.production_autopilot import ProductionConfig, ProductionAutopilot
+            body = await request.json() if request.headers.get("content-length") not in (None, "0") else {}
+            cycles = int(body.get("cycles_per_day", 4))
+            config = ProductionConfig.default_3_instagram()
+            autopilot = ProductionAutopilot(config)
+            report = autopilot.simulate_2_weeks(cycles_per_day=cycles)
+            return JSONResponse(report)
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+
+    async def _production_config(self, request: Request) -> JSONResponse:
+        try:
+            from aios_core.production_autopilot import ProductionConfig
+            config = ProductionConfig.default_3_instagram()
+            return JSONResponse({
+                "profiles": [p.to_dict() for p in config.profiles],
+                "device_pool_size": config.device_pool_size,
+                "cycle_interval_s": config.cycle_interval_s,
+                "version": "9.1.0-production"
+            })
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
 

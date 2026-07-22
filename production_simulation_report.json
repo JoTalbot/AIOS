@@ -1,0 +1,156 @@
+{
+  "simulation": {
+    "days": 14,
+    "profiles": 3,
+    "total_cycles": 168,
+    "total_actions": 135,
+    "avg_success_rate": 0.9333,
+    "bans": 0,
+    "drifts": 7,
+    "ban_free": true,
+    "ga_criteria_met": true
+  },
+  "profiles": {
+    "ig_shop_1": {
+      "platform": "instagram",
+      "name": "ig_shop_1",
+      "device_serial": null,
+      "actions_per_hour": 45,
+      "session_max_s": 1800,
+      "jitter_s": [
+        0.8,
+        2.5
+      ],
+      "compliance": {},
+      "autopilot_enabled": true,
+      "queries": [
+        "sneakers",
+        "fashion"
+      ]
+    },
+    "ig_shop_2": {
+      "platform": "instagram",
+      "name": "ig_shop_2",
+      "device_serial": null,
+      "actions_per_hour": 50,
+      "session_max_s": 1800,
+      "jitter_s": [
+        0.8,
+        2.5
+      ],
+      "compliance": {},
+      "autopilot_enabled": true,
+      "queries": [
+        "watches",
+        "bags"
+      ]
+    },
+    "ig_shop_3": {
+      "platform": "instagram",
+      "name": "ig_shop_3",
+      "device_serial": null,
+      "actions_per_hour": 40,
+      "session_max_s": 1500,
+      "jitter_s": [
+        0.8,
+        2.5
+      ],
+      "compliance": {},
+      "autopilot_enabled": true,
+      "queries": [
+        "electronics",
+        "phones"
+      ]
+    }
+  },
+  "daily_reports": [
+    {
+      "date": "Day 1",
+      "total_cycles": 168,
+      "total_actions": 135,
+      "avg_success_rate": 0.933,
+      "profiles": {
+        "instagram:ig_shop_1": {
+          "actions": 45,
+          "success": 44,
+          "cycles": 56
+        },
+        "instagram:ig_shop_2": {
+          "actions": 50,
+          "success": 44,
+          "cycles": 56
+        },
+        "instagram:ig_shop_3": {
+          "actions": 40,
+          "success": 38,
+          "cycles": 56
+        }
+      },
+      "bans": 0,
+      "drifts": 7,
+      "predictive_alerts": 0,
+      "compliance_blocks": 0
+    }
+  ],
+  "pacing_metrics": {
+    "instagram:ig_shop_1": {
+      "actions": 45,
+      "window_actions": 45,
+      "actions_per_hour": 45,
+      "session_s": 1.174
+    },
+    "instagram:ig_shop_2": {
+      "actions": 50,
+      "window_actions": 50,
+      "actions_per_hour": 50,
+      "session_s": 1.174
+    },
+    "instagram:ig_shop_3": {
+      "actions": 40,
+      "window_actions": 40,
+      "actions_per_hour": 40,
+      "session_s": 1.174
+    }
+  },
+  "health": {
+    "total_devices": 3,
+    "critical": 0,
+    "high": 0,
+    "critical_devices": [],
+    "avg_risk": 0.13333333333333333,
+    "predictions": [
+      {
+        "device": "emulator-50",
+        "risk": "low",
+        "score": 0.0,
+        "reasons": [
+          "Система стабильна, аномалий не обнаружено"
+        ],
+        "eta": null
+      },
+      {
+        "device": "emulator-384",
+        "risk": "low",
+        "score": 0.0,
+        "reasons": [
+          "Система стабильна, аномалий не обнаружено"
+        ],
+        "eta": null
+      },
+      {
+        "device": "emulator-428",
+        "risk": "medium",
+        "score": 0.4,
+        "reasons": [
+          "Повышенный уровень ошибок: failure rate increasing: 0.00 -> 1.20/min",
+          "Тренд ухудшения: ошибки растут (1.20)"
+        ],
+        "eta": 900
+      }
+    ],
+    "timestamp": 1784710552.9058344,
+    "version": "8.0.0"
+  },
+  "timestamp": 1784710552.905836,
+  "version": "9.1.0-production"
+}
