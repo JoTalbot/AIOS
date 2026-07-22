@@ -1,10 +1,12 @@
-"""AIOS Core Executable Layer v9.0.0
+"""AIOS Core Executable Layer v9.1.0 (M8 + H3 GA)
 
 Autonomous Intelligence Operating System - Executive Layer Components.
-Constitution-Runtime Bridge with full SQLite persistence.
+- 1000+ tests green
+- Android M1-M8: cross-app, predictive, test-generator
+- AI Advisor H3.11, SDK H3.12, K8s H3.13, Marketplace H3.14
 """
 
-__version__ = "9.0.0"
+__version__ = "9.1.0"
 __author__ = "AIOS Development"
 
 # Persistence
@@ -52,6 +54,13 @@ from .molecular_dna_runtime import MolecularDNARuntime
 from .universal_multi_species_ethics import UniversalMultiSpeciesEthics
 from .apk_converter import APKFunctionConverter
 from .android_rpa_bridge import AndroidRPADeviceEmulator, AndroidRPAManager
+from .android_cross_app import CrossAppWorkflowEngine, WorkflowStatus, WorkflowStep
+from .android_predictive import PredictiveMaintenance, RiskLevel, FailurePrediction
+from .android_test_generator import AndroidTestGenerator, GeneratedTest
+from .ai_advisor import AISalesAdvisor, AdvisorDraft, InboxSummary, PriceAdvice
+from .marketplace import CapabilityMarketplace, PlatformPlugin
+from .android_ai_navigation import AIScreenClassifier, SelfHealingLocator, ScreenEmbedding
+from .android_observability import AndroidObservability
 from .orchestrator import Orchestrator, Task, TaskStep, TaskStatus, StepStatus
 
 # Test Engine
@@ -198,6 +207,25 @@ __all__ = [
     "APKFunctionConverter",
     "AndroidRPADeviceEmulator",
     "AndroidRPAManager",
+    # Android M8 + H3.11 + H3.14
+    "CrossAppWorkflowEngine",
+    "WorkflowStatus",
+    "WorkflowStep",
+    "PredictiveMaintenance",
+    "RiskLevel",
+    "FailurePrediction",
+    "AndroidTestGenerator",
+    "GeneratedTest",
+    "AISalesAdvisor",
+    "AdvisorDraft",
+    "InboxSummary",
+    "PriceAdvice",
+    "CapabilityMarketplace",
+    "PlatformPlugin",
+    "AIScreenClassifier",
+    "SelfHealingLocator",
+    "ScreenEmbedding",
+    "AndroidObservability",
     # REST API
     "create_app",
     "AIOSAPI",

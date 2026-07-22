@@ -13,11 +13,16 @@ import logging.handlers
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from contextlib import contextmanager
 from dataclasses import dataclass, asdict
 
-from .tracing import tracer
+try:
+    from .tracing import tracer
+except ImportError:
+    class _DummyTracer:
+        def get_current_context(self): return None
+    tracer = _DummyTracer()
 
 
 @dataclass
@@ -171,19 +176,50 @@ class LogAggregator:
         self.logger = logging.getLogger("aios.log_aggregator")
         
     def ship_logs(self, logs: List[Dict[str, Any]]) -> bool:
-        """Ship logs to external system."""
+        """Ship logs to external system (sync version)."""
         if not self.config.ship_to_external or not self.config.external_endpoint:
             return False
-            
+
         try:
-            import aiohttp
-            
+            import httpx
+
             payload = {
                 "logs": logs,
                 "timestamp": datetime.now().isoformat(),
                 "source": "aios"
             }
-            
+
+            with httpx.Client(timeout=5.0) as client:
+                response = client.post(
+                    self.config.external_endpoint,
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                if response.status_code == 200:
+                    self.logger.info("Logs shipped successfully")
+                    return True
+                else:
+                    self.logger.error(f"Failed to ship logs: {response.status_code}")
+                    return False
+
+        except Exception as e:
+            self.logger.error(f"Error shipping logs: {str(e)}")
+            return False
+
+    async def ship_logs_async(self, logs: List[Dict[str, Any]]) -> bool:
+        """Async version for shipping logs."""
+        if not self.config.ship_to_external or not self.config.external_endpoint:
+            return False
+
+        try:
+            import aiohttp
+
+            payload = {
+                "logs": logs,
+                "timestamp": datetime.now().isoformat(),
+                "source": "aios"
+            }
+
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     self.config.external_endpoint,
@@ -196,7 +232,7 @@ class LogAggregator:
                     else:
                         self.logger.error(f"Failed to ship logs: {response.status}")
                         return False
-                        
+
         except Exception as e:
             self.logger.error(f"Error shipping logs: {str(e)}")
             return False

@@ -3,12 +3,19 @@ replicaCount: 2
 image:
   repository: aios
   pullPolicy: IfNotPresent
-  tag: "4.2.0-alpha"
+  tag: "9.1.0"
 
 service:
   type: ClusterIP
   port: 80
   targetPort: 8000
+  name: aios
+
+serviceMcp:
+  enabled: true
+  type: ClusterIP
+  port: 8471
+  targetPort: 8471
 
 resources:
   limits:
@@ -21,6 +28,8 @@ resources:
 env:
   - name: AIOS_API_KEYS
     value: '{"k8s":{"subject":"admin","roles":["admin"]}}'
+  - name: PYTHONUNBUFFERED
+    value: "1"
 
 autoscaling:
   enabled: true
@@ -28,3 +37,40 @@ autoscaling:
   maxReplicas: 10
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
+
+# Persistence for SQLite (use PostgreSQL in prod via external secret)
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClass: ""
+
+# Monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+
+# Ingress
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: aios.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Device farm for Android (optional)
+deviceFarm:
+  enabled: false
+  emulators: 2
+  avdName: "AIOS_Slando"
+
+# Additional labels
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"
