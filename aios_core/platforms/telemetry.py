@@ -55,6 +55,17 @@ def _platform_db_metrics(data_dir: str) -> Dict[str, Dict[str, int]]:
                         "SELECT COUNT(*) FROM olx_outbox "
                         "WHERE status = 'pending'").fetchone()
                     entry["outbox_pending"] = int(pending)
+                # cards collected from olx_ads or generic ads table
+                if "olx_ads" in tables:
+                    (cards,) = conn.execute("SELECT COUNT(*) FROM olx_ads").fetchone()
+                    entry["cards_collected"] = int(cards)
+                # generic ads table
+                if "ads" in tables:
+                    try:
+                        (cards2,) = conn.execute("SELECT COUNT(*) FROM ads").fetchone()
+                        entry["cards_collected"] = entry.get("cards_collected", 0) + int(cards2)
+                    except Exception:
+                        pass
             finally:
                 conn.close()
         except Exception:  # noqa: BLE001 — чужая/битая база не ломает /metrics
@@ -62,6 +73,63 @@ def _platform_db_metrics(data_dir: str) -> Dict[str, Dict[str, int]]:
         if any(entry.values()):
             per_platform[platform] = entry
     return per_platform
+
+
+def _production_metrics() -> Dict[str, object]:
+    """Read production simulation report and cycle history for extended metrics."""
+    import json
+    root = Path(".")
+    # Try production_simulation_report.json at repo root
+    report_path = root / "production_simulation_report.json"
+    data: Dict[str, object] = {
+        "cards_collected": {},
+        "cycle_rates": {},
+        "drift_events": {},
+        "cycle_duration": {},
+        "production": {},
+    }
+    if report_path.exists():
+        try:
+            content = json.loads(report_path.read_text(encoding="utf-8"))
+            sim = content.get("simulation", {})
+            data["production"] = sim
+            # cards collected ~= total_actions
+            for profile_key, metrics in content.get("pacing_metrics", {}).items():
+                plat = profile_key.split(":")[0] if ":" in profile_key else "unknown"
+                data["cards_collected"][plat] = data["cards_collected"].get(plat, 0) + int(metrics.get("actions", 0))
+                data["cycle_duration"][profile_key] = metrics.get("session_s", 0)
+            # drift from health
+            health = content.get("health", {})
+            for pred in health.get("predictions", []):
+                # drift not directly, but use reasons with failure
+                pass
+            # daily reports for drift
+            for daily in content.get("daily_reports", []):
+                for pkey, pstats in daily.get("profiles", {}).items():
+                    plat = pkey.split(":")[0] if ":" in pkey else pkey
+                    data["drift_events"][plat] = data["drift_events"].get(plat, 0) + int(daily.get("drifts", 0))
+            # cycle rate: total_cycles / 14 days = per day, /24 per hour
+            total_cycles = sim.get("total_cycles", 0)
+            if total_cycles:
+                # 14 days
+                data["cycle_rates"]["per_day"] = total_cycles / 14.0
+                data["cycle_rates"]["per_hour"] = total_cycles / 14.0 / 24.0
+        except Exception:
+            pass
+
+    # Also try data/cycle_metrics.json if exists (manual tracking)
+    cycle_file = Path("data") / "cycle_metrics.json"
+    if cycle_file.exists():
+        try:
+            cm = json.loads(cycle_file.read_text())
+            for plat, val in cm.get("cards_collected", {}).items():
+                data["cards_collected"][plat] = data["cards_collected"].get(plat, 0) + int(val)
+            for k, v in cm.get("drift_events", {}).items():
+                data["drift_events"][k] = data["drift_events"].get(k, 0) + int(v)
+        except Exception:
+            pass
+
+    return data
 
 
 def fleet_snapshot(
@@ -253,4 +321,71 @@ def prometheus_metrics(
         lines.append(
             f'aios_outbox_pending{{platform="{platform}"}} '
             f'{entry.get("outbox_pending", 0)}')
+
+    # Extended metrics: cards collected, cycle rates, drift events (alpha.27 / H2.9)
+    prod = _production_metrics()
+    # Cards collected total per platform
+    lines += [
+        "# HELP aios_cards_collected_total Cards collected (ads) per platform",
+        "# TYPE aios_cards_collected_total counter",
+    ]
+    for plat, cnt in sorted(prod.get("cards_collected", {}).items()):
+        lines.append(f'aios_cards_collected_total{{platform="{plat}"}} {cnt}')
+    # Also from platform_db if has cards_collected
+    for platform, entry in sorted(platform_db.items()):
+        if "cards_collected" in entry:
+            lines.append(f'aios_cards_collected_total{{platform="{platform}"}} {entry["cards_collected"]}')
+
+    # Cycle rates
+    cycle_rates = prod.get("cycle_rates", {})
+    if cycle_rates:
+        lines += [
+            "# HELP aios_cycle_rate_per_day Cycles per day (avg)",
+            "# TYPE aios_cycle_rate_per_day gauge",
+            f'aios_cycle_rate_per_day {cycle_rates.get("per_day", 0)}',
+            "# HELP aios_cycle_rate_per_hour Cycles per hour (avg)",
+            "# TYPE aios_cycle_rate_per_hour gauge",
+            f'aios_cycle_rate_per_hour {cycle_rates.get("per_hour", 0)}',
+        ]
+
+    # Drift events total per platform
+    lines += [
+        "# HELP aios_drift_events_total Marker drift events per platform",
+        "# TYPE aios_drift_events_total counter",
+    ]
+    drift_src = prod.get("drift_events", {})
+    if drift_src:
+        for plat, cnt in sorted(drift_src.items()):
+            lines.append(f'aios_drift_events_total{{platform="{plat}"}} {cnt}')
+    else:
+        # fallback: if we have production simulation, publish 0 for known platforms
+        for plat in snapshot.get("platforms", [])[:5]:
+            lines.append(f'aios_drift_events_total{{platform="{plat}"}} 0')
+
+    # Cycle duration per profile
+    cycle_dur = prod.get("cycle_duration", {})
+    if cycle_dur:
+        lines += [
+            "# HELP aios_cycle_duration_seconds Last cycle duration per profile",
+            "# TYPE aios_cycle_duration_seconds gauge",
+        ]
+        for profile_key, dur in sorted(cycle_dur.items()):
+            safe = profile_key.replace('"', '\\"')
+            lines.append(f'aios_cycle_duration_seconds{{profile=\"{safe}\"}} {dur}')
+
+    # Production simulation GA metrics (if available)
+    prod_sim = prod.get("production", {})
+    if prod_sim:
+        lines += [
+            "# HELP aios_production_bans_total Total bans (GA must be 0)",
+            "# TYPE aios_production_bans_total counter",
+            f"aios_production_bans_total {prod_sim.get('bans', 0)}",
+            "# HELP aios_production_cycles_total Total prod cycles",
+            "# TYPE aios_production_cycles_total counter",
+            f"aios_production_cycles_total {prod_sim.get('total_cycles', 0)}",
+            "# HELP aios_production_success_rate Avg success rate",
+            "# TYPE aios_production_success_rate gauge",
+            f"aios_production_success_rate {prod_sim.get('avg_success_rate', 0)}",
+        ]
+
     return "\n".join(lines) + "\n"

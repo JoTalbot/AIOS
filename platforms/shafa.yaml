@@ -1,0 +1,17 @@
+# Onboarding: Prom/Bigl/Shafa regional marketplaces (UA) — H2.7 regional expansion
+name: shafa
+android_package: com.shafa
+agent_module: aios_core.modules.shafa
+storage_class: aios_core.modules.shafa.storage.ShafaStorage
+adb_class: aios_core.modules.olx.adb.ADBController
+default_locale: uk-UA
+description: "Shafa.ua fashion marketplace - Ukrainian second-hand and new clothes"
+legacy_default_db: shafa_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: false
+    messenger: approval-only
+    collector: true
+    actions_per_hour: 60
+    note: "Shafa.ua ToS: fashion marketplace, collection allowed, messaging approval-only"
+  parser_hints: {}

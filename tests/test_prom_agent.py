@@ -1,0 +1,15 @@
+"""Smoke-тесты сгенерированного модуля платформы prom."""
+
+from aios_core.platforms import get_platform
+from aios_core.modules.prom import PromStorage
+
+
+def test_prom_storage_opens_and_counts():
+    storage = PromStorage(":memory:")
+    assert storage.get_ads() == []
+    storage.close()
+
+
+def test_prom_platform_registered():
+    descriptor = get_platform("prom")
+    assert descriptor.android_package == "ua.prom"

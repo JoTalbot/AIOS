@@ -1,0 +1,17 @@
+# Onboarding: Prom/Bigl/Shafa regional marketplaces (UA) — H2.7 regional expansion
+name: prom
+android_package: ua.prom
+agent_module: aios_core.modules.prom
+storage_class: aios_core.modules.prom.storage.PromStorage
+adb_class: aios_core.modules.olx.adb.ADBController
+default_locale: uk-UA
+description: "Prom.ua marketplace - Ukrainian e-commerce platform, OLX-like, 3M+ listings"
+legacy_default_db: prom_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: false
+    messenger: approval-only
+    collector: true
+    actions_per_hour: 60
+    note: "Prom.ua ToS: read-only collection allowed, auto-posting and auto-messaging prohibited - approval-only outbox"
+  parser_hints: {}
