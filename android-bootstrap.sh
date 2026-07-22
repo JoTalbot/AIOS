@@ -32,9 +32,6 @@ echo "==> [bootstrap] Installing Python dependencies"
 python3 -m pip install --upgrade pip
 python3 -m pip install pytest pytest-asyncio httpx graphql-core websockets grpcio
 
-echo "==> [bootstrap] Verifying tests"
-python3 -m pytest tests/test_android_rpa_bridge.py -q
-
 echo "==> [bootstrap] Starting emulator '${AVD_NAME}'"
 bash "${SCRIPT_DIR}/android-emulator-run.sh" &
 BOOT_PID=$!
@@ -60,6 +57,9 @@ if [ "$boot" != "1" ]; then
     sleep 2
   done
 fi
+
+echo "==> [bootstrap] Verifying tests"
+python3 -m pytest tests/test_android_rpa_bridge.py -q
 
 echo "==> [bootstrap] Run real emulator test"
 python3 "${REPO_ROOT}/test_real_android_app.py" --package ua.slando --device emulator-5554

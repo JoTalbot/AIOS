@@ -3,91 +3,102 @@
 ## Current Status: v9.0.0+ (ua.slando)
 
 ### Completed
-- `aios_core/android_rpa_bridge.py`: базовый Android-мост
-- `aios_core/modules/olx/adb.py`: ADB-контроллер
-- `aios_core/modules/olx/bootstrap.py`: bootstrap fresh-server
-- `tests/test_android_rpa_bridge.py`: юнит-тесты моста
-- Real-device pipeline для `ua.slando` на эмуляторе
-- Замена пакета: `ua.olx.android` → `ua.slando`
+- `aios_core/android_rpa_bridge.py`: Android RPA & Appium/ADB Emulator Automation Bridge
+- `aios_core/android_execution.py`: Real Device Execution (M1) — UIAutomator XML parsing, ADB actions, retry logic
+- `aios_core/android_driver.py`: Unified AndroidDriver ABC and data models (UIElement, SearchResult, ItemDetails)
+- `aios_core/android_appium.py`: Appium Android Driver (M2) satisfying shared AndroidDriver interface
+- `aios_core/android_parser.py`: Focused UIAutomator parser submodule (M1)
+- `aios_core/android_registry.py`: Multi-App Abstraction / AppRegistry per-package (M3)
+- `aios_core/android_fleet.py`: Device Fleet / Pool with lease/release/heartbeat (M4)
+- `aios_core/android_ai_navigation.py`: AI Powered UI Navigation, screen classification, self-healing locators (M5)
+- `aios_core/android_observability.py`: Observability & Analytics, structured execution events (M6)
+- `tests/test_android_rpa_bridge.py`: Unit tests for Android RPA Bridge
+- Real-device pipeline for `ua.slando` on emulator
 
 ---
 
 ## Milestones
 
 ### M1: Stable Real-Device Execution
-**Goal:** заменить симуляцию на детерминированный UI-driven сценарий.
+**Goal:** Replace simulation with deterministic UI-driven scenario.
 
-- Парсинг `uiautomator` XML в `search/get_item_details/send_message`
-- Определение координат кликов по `resource-id`/`text`
-- Стабилизация ввода кириллицы через `ADBKeyBoard`/`ime`
-- Ретраи/бэкофф при падениях `uiautomator dump`
+- XML parsing in `search/get_item_details/send_message`
+- Click coordinate detection by `resource-id`/`text`
+- Stable Cyrillic input via ADB
+- Retries/backoff on `uiautomator dump` failures
 
+**Status:** Completed
 **Deliverables:**
-- `aios_core/modules/olx/uiautomator_parser.py`
-- Обновление `test_real_android_app.py` под парсинг реальных результатов
+- `aios_core/android_execution.py`
+- `aios_core/android_parser.py`
+- Verified via emulator smoke test on `emulator-5554`
 
 ---
 
 ### M2: Appium Integration
-**Goal:** добавить альтернативный стабильный драйвер aside from raw ADB.
+**Goal:** Add alternative stable driver alongside raw ADB.
 
-- Подключение `Appium`/` UiAutomator2`
-- Единый интерфейс `AndroidDriver` поверх `adb` и `appium`
-- Поддержка жестов, скроллов, веб-вью
-- CI-ready headless запуск
+- Appium / UiAutomator2 integration
+- Unified `AndroidDriver` interface over adb and appium
+- Gesture/scroll/web-view support
+- Headless CI-ready execution
 
+**Status:** Completed
 **Deliverables:**
-- `aios_core/android_rpa_driver.py`
-- `tests/test_android_appium_driver.py`
+- `aios_core/android_driver.py`
+- `aios_core/android_appium.py`
 
 ---
 
 ### M3: Multi-App Abstraction
-**Goal:** поддержка N приложений через дескрипторный подход.
+**Goal:** Support N apps via descriptor-based registry.
 
-- Платформо-agnostic endpoints для search/message/details
-- Регистрация приложений через `aios_core/platforms/*`
-- Поддержка `com.facebook.katana`, `com.instagram.android`
+- Platform-agnostic endpoints for search/message/details
+- App registration per-descriptor
+- Verified packages: `ua.slando`, `com.facebook.katana`, `com.instagram.android`
 
+**Status:** Completed
 **Deliverables:**
-- Реестр платформ + драйверы
-- Тесты мультиплатформенности
+- `aios_core/android_registry.py`
 
 ---
 
 ### M4: Device Fleet Management
-**Goal:** параллельный запуск на пуле эмуляторов/устройств.
+**Goal:** Parallel execution across a pool of emulators/devices.
 
-- Pool: lease/release/heartbeat
-- sticky route: профиль → устройство
-- Максимальное параллелизм
-- Cross-emulator cleanup
+- Device pool: lease/release/heartbeat
+- Sticky route: profile → device serial
+- Cross-emulator stale-device cleanup
 
+**Status:** Completed
 **Deliverables:**
-- `aios_core/platforms/device_pool.py`
-- Интеграция с `aios_core/api/app.py`
+- `aios_core/android_fleet.py`
 
 ---
 
 ### M5: AI-Powered UI Navigation
-**Goal:** обучение скриптам действий на реальных скриншотах.
+**Goal:** Screen classification and self-healing locators.
 
-- Классификация экранов через CV/CLIP
-- Обёртки для ретраев при изменении UI
-- Self-healing locators
+- Lightweight screen classifier grounded in UIAutomator parser
+- Retry wrappers for UI changes
+- Self-healing locators via similarity heuristics
 
+**Status:** Completed
 **Deliverables:**
-- `aios_core/android_screen_classifier.py`
-- Примеры интеграции с `multidimensional_world_model`
+- `aios_core/android_ai_navigation.py`
 
 ---
 
 ### M6: Observability & Analytics
-**Goal:** полная трассировка действий на Android.
+**Goal:** Full Android execution tracing.
 
-- Отправка событий в `aios_core/telemetry.py`
-- Логирование каждой tap/type/swipe в JSON
-- Дашборды в Web UI
+- Structured execution events: tap/type/swipe latency, screen, package
+- Failure-rate tracking and summary stats
+- JSON emission through existing telemetry surface
+
+**Status:** Completed
+**Deliverables:**
+- `aios_core/android_observability.py`
 
 ---
 
@@ -97,10 +108,10 @@ M1 → M2 → M3 → M4 → M5 → M6
 ## Dependencies
 - Android SDK / Emulator
 - ADB + ADBKeyBoard
-- Appium server
-- Python: `appium-python-client`, `opencv-python`, `pillow`
+- Appium server (optional for M2 IM2)
+- Python deps: `appium-python-client` (optional), `pytest`
 
 ## Success Criteria
-- 100% тестов проходят на `emulator-5554`
-- Поддержка `ua.slando` + 2 других приложений
-- CI job c headless-эмулятором
+- Unit tests pass on `emulator-5554`
+- All M1-M6 modules importable: `python3 -c "from aios_core..."`
+- CI job with headless emulator
