@@ -129,3 +129,10 @@ __all__ = [
     "write_hints_to_descriptor",
     "write_parser",
 ]
+
+# Auto-load catalog on import so that platforms/*.yaml are available
+# This fixes scaffolded platforms like prom/bigl/shafa that were not auto-registered
+try:
+    load_catalog()
+except Exception:
+    pass

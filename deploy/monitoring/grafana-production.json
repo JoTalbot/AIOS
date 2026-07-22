@@ -2,18 +2,18 @@
   "title": "AIOS Production Exploitation",
   "uid": "aios-production",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "editable": true,
   "time": {"from": "now-14d", "to": "now"},
   "refresh": "30s",
-  "tags": ["aios", "production", "ga"],
-  "description": "GA Criteria: 3+ Instagram profiles ≥2 weeks no bans, pacing metrics",
+  "tags": ["aios", "production", "ga", "m8"],
+  "description": "GA Criteria: 3+ Instagram profiles ≥2 weeks no bans, pacing metrics, cards/cycle rates, drift",
   "panels": [
     {
       "id": 1,
       "type": "stat",
       "title": "GA Criteria - Ban Free",
-      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+      "gridPos": {"h": 6, "w": 4, "x": 0, "y": 0},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
       "targets": [{"expr": "aios_production_bans_total", "refId": "A"}],
       "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}, "unit": "short"}}
@@ -22,7 +22,7 @@
       "id": 2,
       "type": "stat",
       "title": "Production Profiles",
-      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
+      "gridPos": {"h": 6, "w": 4, "x": 4, "y": 0},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
       "targets": [{"expr": "aios_production_profiles", "refId": "A"}],
       "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "red", "value": null}, {"color": "green", "value": 3}]}}}
@@ -30,8 +30,8 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "Success Rate (must >90%)",
-      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0},
+      "title": "Success Rate >90%",
+      "gridPos": {"h": 6, "w": 4, "x": 8, "y": 0},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
       "targets": [{"expr": "aios_production_success_rate * 100", "refId": "A"}],
       "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 80}, {"color": "green", "value": 90}]}}}
@@ -39,16 +39,33 @@
     {
       "id": 4,
       "type": "stat",
-      "title": "Total Cycles (need 336 for 2 weeks)",
-      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0},
+      "title": "Total Cycles 336 need",
+      "gridPos": {"h": 6, "w": 4, "x": 12, "y": 0},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
       "targets": [{"expr": "aios_production_cycles_total", "refId": "A"}]
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Cards Collected Total",
+      "gridPos": {"h": 6, "w": 4, "x": 16, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "sum(aios_cards_collected_total)", "refId": "A"}]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Drift Events",
+      "gridPos": {"h": 6, "w": 4, "x": 20, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "sum(aios_drift_events_total)", "refId": "A"}],
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 5}, {"color": "red", "value": 20}]}}}
     },
     {
       "id": 5,
       "type": "timeseries",
       "title": "Pacer Actions per Profile (vs limit)",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 6},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
       "targets": [{"expr": "aios_pacer_actions", "legendFormat": "{{profile}}", "refId": "A"}]
     },
@@ -56,15 +73,26 @@
       "id": 6,
       "type": "timeseries",
       "title": "Predictive Risk per Device",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 6},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
       "targets": [{"expr": "aios_production_risk_score", "legendFormat": "{{device}}", "refId": "A"}]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Cards Collected per Platform (cycle rates)",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 6},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [
+        {"expr": "aios_cards_collected_total", "legendFormat": "{{platform}}", "refId": "A"},
+        {"expr": "aios_cycle_rate_per_hour", "legendFormat": "cycle rate /h", "refId": "B"}
+      ]
     },
     {
       "id": 7,
       "type": "timeseries",
       "title": "Compliance Blocks",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 14},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
       "targets": [{"expr": "increase(aios_compliance_blocks_total[1h])", "refId": "A"}]
     },
@@ -72,17 +100,28 @@
       "id": 8,
       "type": "timeseries",
       "title": "Device Pool - Free vs Busy",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 14},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
       "targets": [{"expr": "aios_devices", "legendFormat": "{{state}}", "refId": "A"}]
     },
     {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Drift Events per Platform",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 14},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "aios_drift_events_total", "legendFormat": "{{platform}}", "refId": "A"}]
+    },
+    {
       "id": 9,
       "type": "table",
-      "title": "Last Production Cycles",
+      "title": "Last Production Cycles + Cycle Duration",
       "gridPos": {"h": 8, "w": 24, "x": 0, "y": 22},
       "datasource": {"type": "prometheus", "uid": "Prometheus"},
-      "targets": [{"expr": "aios_production_cycles_total", "refId": "A"}],
+      "targets": [
+        {"expr": "aios_production_cycles_total", "refId": "A"},
+        {"expr": "aios_cycle_duration_seconds", "legendFormat": "{{profile}} duration", "refId": "B"}
+      ],
       "description": "Use /api/v1/production/health for detailed last 10 cycles"
     }
   ]

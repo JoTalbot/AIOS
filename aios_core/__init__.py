@@ -7,7 +7,7 @@ Autonomous Intelligence Operating System - Production Exploitation
 - Production Autopilot: 3 IG profiles ≥2 weeks ban-free (simulated + prod-ready)
 """
 
-__version__ = "9.2.0"
+__version__ = "9.3.0"
 __author__ = "AIOS Development"
 
 # Persistence

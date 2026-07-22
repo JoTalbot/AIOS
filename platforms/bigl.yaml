@@ -1,0 +1,17 @@
+# Onboarding: Prom/Bigl/Shafa regional marketplaces (UA) — H2.7 regional expansion
+name: bigl
+android_package: ua.bigl
+agent_module: aios_core.modules.bigl
+storage_class: aios_core.modules.bigl.storage.BiglStorage
+adb_class: aios_core.modules.olx.adb.ADBController
+default_locale: uk-UA
+description: "Bigl.ua marketplace - Ukrainian e-commerce, Prom group"
+legacy_default_db: bigl_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: false
+    messenger: approval-only
+    collector: true
+    actions_per_hour: 60
+    note: "Bigl.ua ToS: collection allowed, messaging approval-only"
+  parser_hints: {}
