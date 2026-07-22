@@ -10,19 +10,24 @@ import json
 import time
 from typing import Dict, List, Optional, Any, Tuple
 from .apk_converter import APKFunctionConverter
+from .android_execution import RealDeviceExecutor, UIAutomatorParser
 
 
 class AndroidRPADeviceEmulator:
     """Simulated or Live ADB/UIAutomator Bridge for Android Emulator."""
 
-    def __init__(self, device_id: str = "emulator-5554"):
+    def __init__(self, device_id: str = "emulator-5554", real_execution: bool = False):
         self.device_id = device_id
         self.active_package: Optional[str] = None
         self.authenticated_sessions: Dict[str, Dict[str, Any]] = {}
+        self.real_execution = real_execution
+        self.real_executor = RealDeviceExecutor(device_id=device_id) if real_execution else None
 
     def launch_app(self, package_name: str) -> bool:
         """Launch target package inside emulator via ADB activity start."""
         self.active_package = package_name
+        if self.real_execution and self.real_executor:
+            return self.real_executor.launch_app(package_name)
         return True
 
     def authenticate_user(self, package_name: str, user_credentials: Dict[str, str]) -> Dict[str, Any]:
@@ -46,12 +51,17 @@ class AndroidRPADeviceEmulator:
     def execute_ui_action(self, package_name: str, action_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
         """Perform automated tap/type/scroll action inside emulator and extract view hierarchy data."""
         start_time = time.time()
+        if self.real_execution and self.real_executor:
+            if action_name == "search":
+                return self.real_executor.search(params.get("query", ""), params.get("category", "all"))
+            if action_name == "get_item_details":
+                return self.real_executor.get_item_details(params.get("item_id", ""))
+            if action_name == "send_message":
+                return self.real_executor.send_message(params.get("seller_id", ""), params.get("message", ""))
 
         if package_name not in self.authenticated_sessions:
-            # Auto-authenticate if credentials supplied
             self.authenticate_user(package_name, {"login": "auto_user", "password": "pass"})
 
-        # Special app mapping logic (e.g. Slando Ukraine / ua.slando)
         if package_name == "ua.slando":
             app_label = "Slando Ukraine"
             if action_name == "search":
@@ -71,7 +81,7 @@ class AndroidRPADeviceEmulator:
                     "latency_ms": round((time.time() - start_time) * 1000.0, 3)
                 }
 
-            elif action_name == "get_item_details":
+            if action_name == "get_item_details":
                 item_id = params.get("item_id", "olx_781029")
                 return {
                     "app": app_label,
@@ -84,7 +94,7 @@ class AndroidRPADeviceEmulator:
                     "status": "active"
                 }
 
-            elif action_name == "send_message":
+            if action_name == "send_message":
                 seller_id = params.get("seller_id", "Olena_Kyiv")
                 message_text = params.get("message", "")
                 return {
@@ -96,7 +106,6 @@ class AndroidRPADeviceEmulator:
                     "sent_at": time.time()
                 }
 
-        # Generic fallback for any other Play Store app
         return {
             "app_package": package_name,
             "action": action_name,
