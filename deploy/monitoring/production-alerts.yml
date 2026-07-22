@@ -1,0 +1,89 @@
+# Production Autopilot Alerts — 3+ profiles ≥2 weeks no bans
+groups:
+  - name: aios-production
+    rules:
+      # BAN DETECTION - critical
+      - alert: AIOSProductionBanDetected
+        expr: aios_production_bans_total > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "BAN DETECTED: {{ $value }} bans in production"
+          description: "Instagram profile ban detected — autopilot must stop, check pacing/compliance. GA criteria failed."
+          runbook: "Check logs, pacing metrics, reduce actions_per_hour, increase jitter"
+
+      - alert: AIOSProductionLowSuccessRate
+        expr: aios_production_success_rate < 0.8
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low success rate {{ $value }} < 80% for 15m"
+          description: "Selectors may have drifted, hints need recalibration. Run platforms doctor + calibrate."
+
+      - alert: AIOSProductionCriticalSuccessRate
+        expr: aios_production_success_rate < 0.5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical success rate {{ $value }} < 50%"
+          description: "Immediate intervention: check devices, ADB, UI dumps, marker regression."
+
+      - alert: AIOSProductionHighPredictiveRisk
+        expr: aios_production_risk_score > 0.7
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High predictive risk {{ $value }} on device"
+          description: "Predictive maintenance forecasts failure. Recommendations: restart emulator, clear cache, update hints."
+
+      - alert: AIOSProductionPacerThrottled
+        expr: increase(aios_pacer_actions[1h]) == 0
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pacer throttled — no actions for 2h"
+          description: "Profile hit actions_per_hour limit or session_max. Check if intentional or stuck."
+
+      # Fleet / Device
+      - alert: AIOSProductionDeviceOffline
+        expr: aios_devices{state="offline"} > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Device {{ $labels.serial }} offline"
+          description: "Emulator/device offline — lease will fail, profiles go to waitlist."
+
+      - alert: AIOSProductionNoFreeDevices
+        expr: aios_devices{state="free"} == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No free devices in pool for 10m"
+          description: "All devices leased/busy. Scale device farm or increase reap interval."
+
+      # Compliance
+      - alert: AIOSProductionComplianceBlocked
+        expr: increase(aios_compliance_blocks_total[1h]) > 10
+        for: 0m
+        labels:
+          severity: info
+        annotations:
+          summary: "Compliance blocked {{ $value }} actions in last hour"
+          description: "Guarded actions blocked by ToS policy — review compliance YAML."
+
+      # Long-term GA
+      - alert: AIOSProductionGAProgress
+        expr: aios_production_cycles_total < 336
+        for: 0m
+        labels:
+          severity: info
+        annotations:
+          summary: "GA criteria: {{ $value }}/336 cycles (2 weeks) completed"
+          description: "Need 336 cycles (14d x 24/d) per 3 profiles = 1008 total for GA."

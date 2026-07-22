@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aios"
-version = "9.1.0"
-description = "Self-evolving Distributed Operating System - Android M8 + AI Advisor + 1000 tests"
+version = "9.2.0"
+description = "Self-evolving Distributed Operating System - Production Exploitation GA"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
