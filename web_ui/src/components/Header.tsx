@@ -10,12 +10,14 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ health, activeTab, setActiveTab, wsConnected }) => {
   const tabs = [
-    { id: 'overview', label: '📊 System Overview' },
-    { id: 'safety', label: '🛡 Safety Dashboard' },
-    { id: 'swarm', label: '🤖 Agent Swarm' },
-    { id: 'constitution', label: '📜 Constitution (67 Articles)' },
-    { id: 'kg', label: '🕸 Knowledge Graph' },
-    { id: 'ml', label: '🧠 ML Registry & Serving' }
+    { id: 'overview', label: '📊 Overview' },
+    { id: 'android', label: '📱 Android Fleet M8' },
+    { id: 'marketplace', label: '🧩 Marketplace' },
+    { id: 'safety', label: '🛡 Safety' },
+    { id: 'swarm', label: '🤖 Swarm' },
+    { id: 'constitution', label: '📜 Constitution' },
+    { id: 'kg', label: '🕸 KG' },
+    { id: 'ml', label: '🧠 ML' }
   ];
 
   return (
@@ -24,7 +26,7 @@ export const Header: React.FC<HeaderProps> = ({ health, activeTab, setActiveTab,
         <div style={styles.logoBadge}>AIOS</div>
         <div>
           <h1 style={styles.title}>Autonomous Intelligence Operating System</h1>
-          <div style={styles.subTitle}>v4.2.0-alpha Executive Control Hub</div>
+          <div style={styles.subTitle}>v9.1.0 Executive Hub — M8 Cross-App + Predictive • 1000+ tests • 67 Articles</div>
         </div>
       </div>
 
@@ -46,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({ health, activeTab, setActiveTab,
       <div style={styles.statusGroup}>
         <div style={styles.badge}>
           <span style={{ ...styles.dot, backgroundColor: wsConnected ? '#10B981' : '#F59E0B' }}></span>
-          {wsConnected ? 'Live WS' : 'SSE Polling'}
+          {wsConnected ? 'Live WS' : 'Polling'}
         </div>
         <div style={styles.badge}>
           <span style={{ ...styles.dot, backgroundColor: health?.status === 'ok' ? '#10B981' : '#EF4444' }}></span>
@@ -65,7 +67,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '16px 28px',
     backgroundColor: '#0F172A',
     borderBottom: '1px solid #1E293B',
-    color: '#F8FAFC'
+    color: '#F8FAFC',
+    flexWrap: 'wrap',
+    gap: '12px'
   },
   branding: {
     display: 'flex',
@@ -83,28 +87,28 @@ const styles: Record<string, React.CSSProperties> = {
   },
   title: {
     margin: 0,
-    fontSize: '18px',
+    fontSize: '16px',
     fontWeight: 700,
     color: '#F8FAFC'
   },
   subTitle: {
-    fontSize: '12px',
+    fontSize: '11px',
     color: '#94A3B8'
   },
   nav: {
     display: 'flex',
-    gap: '8px'
+    gap: '6px',
+    flexWrap: 'wrap'
   },
   tabButton: {
     backgroundColor: 'transparent',
     border: 'none',
     color: '#94A3B8',
-    padding: '8px 14px',
+    padding: '6px 10px',
     borderRadius: '6px',
-    fontSize: '14px',
+    fontSize: '12px',
     fontWeight: 600,
-    cursor: 'pointer',
-    transition: 'all 0.2s ease'
+    cursor: 'pointer'
   },
   activeTab: {
     backgroundColor: '#1E293B',
@@ -113,16 +117,16 @@ const styles: Record<string, React.CSSProperties> = {
   },
   statusGroup: {
     display: 'flex',
-    gap: '10px'
+    gap: '8px'
   },
   badge: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
     backgroundColor: '#1E293B',
-    padding: '6px 12px',
+    padding: '6px 10px',
     borderRadius: '20px',
-    fontSize: '12px',
+    fontSize: '11px',
     fontWeight: 600,
     color: '#CBD5E1'
   },

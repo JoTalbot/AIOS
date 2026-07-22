@@ -1,26 +1,28 @@
-version: '3.8'
-
 services:
   aios-api:
     build: .
     container_name: aios-api
     ports:
       - "8000:8000"
-      - "8471:8471"
+      - "8080:8080"
     environment:
       - AIOS_API_KEYS={"local-dev":{"subject":"dev","roles":["admin"]}}
       - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
     volumes:
       - ./aios.sqlite:/app/aios.sqlite
       - ./logs:/app/logs
+      - ./data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
+    networks:
+      - aios-net
 
-  # Optional: MCP server
   aios-mcp:
     build: .
     container_name: aios-mcp
@@ -29,11 +31,56 @@ services:
       - "8471:8471"
     environment:
       - AIOS_API_KEYS={"local-dev":{"subject":"dev","roles":["admin"]}}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./aios.sqlite:/app/aios.sqlite
+      - ./logs:/app/logs
+    depends_on:
+      aios-api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - aios-net
+
+  aios-dashboard:
+    build: .
+    container_name: aios-dashboard
+    command: ["python", "run_dashboard.py"]
+    ports:
+      - "8080:8080"
+    environment:
+      - AIOS_API_KEYS={"local-dev":{"subject":"dev","roles":["admin"]}}
     volumes:
       - ./aios.sqlite:/app/aios.sqlite
     depends_on:
-      - aios-api
+      aios-api:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - aios-net
+
+  # Monitoring - Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aios-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
+    profiles:
+      - monitoring
+    networks:
+      - aios-net
 
 volumes:
   aios-data:
+  prometheus-data:
+
+networks:
+  aios-net:
+    driver: bridge

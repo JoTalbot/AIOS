@@ -115,6 +115,63 @@
 
 ---
 
+### M7 — AI Navigation Enhancements (fixed in v9.1.0)
+**Goal:** Screen embedding vectors, predictive positioning, cross-app pattern recognition
+
+- Screen embedding vectors for similarity matching (64-dim vectors)
+- Predictive element positioning based on historical data
+- Cross-app pattern recognition with pattern-cache
+- Automated test case generation from user flows
+- Fixed: pattern cache was extend() instead of append() breaking cache
+- Fixed: predict_element_position returning 0.8 scaled center (now true center)
+- Added: record_positioning_hint, generate_test_cases APIs
+- Added: failure-backoff in SelfHealingLocator
+- Observability: psutil optional, isolate_process alias
+
+**Status:** ✅ Completed (fixed CI failure 2026-07-22)
+
+**Deliverables:**
+- `aios_core/android_ai_navigation.py` (fixed)
+- `aios_core/android_observability.py` (psutil optional, heuristic)
+- `doc/user_guide.md` — M7 guide
+- `tests/test_android_ai_navigation.py` — 1 test green
+
+---
+
+### M8 — Autonomous Cross-App Workflows & Predictive Maintenance (NEW in v9.1.0)
+**Goal:** Multi-app orchestration, predictive failure, auto test generation
+
+**M8.1 Cross-App Engine:**
+- Workflow engine for sequential multi-app scenarios (OLX → Viber → Telegram)
+- Context templating {{search_results.title}}
+- Transactional rollback on critical failure
+- Prebuilt: olx_to_messenger, multi_platform_broadcast
+- File: `aios_core/android_cross_app.py`
+
+**M8.2 Predictive Maintenance:**
+- Failure trend analysis (rate per minute, slope)
+- Latency degradation detection
+- Self-healing recommendations (restart emulator, clear cache, update hints)
+- Fleet health report
+- File: `aios_core/android_predictive.py`
+
+**M8.3 Auto Test Generation:**
+- From ScenarioRecorder JSON
+- From user textual flows ("Tap search_field", "Type: iPhone")
+- From navigation history
+- Outputs: pytest code + JSON
+- File: `aios_core/android_test_generator.py`
+
+**Status:** ✅ Completed (v9.1.0)
+
+**Deliverables:**
+- `aios_core/android_cross_app.py`
+- `aios_core/android_predictive.py`
+- `aios_core/android_test_generator.py`
+- `ANDROID_ROADMAP.md` updated
+
+---
+
 ## General
 - `--real-emulator` CI job
 - Latency profiling per tap/type/swipe
