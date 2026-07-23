@@ -24,7 +24,7 @@ opencv-python-headless>=4.8.0
 black>=22.0.0
 isort>=5.0.0
 pre-commit>=3.0.0
-flake8>=4.0.0
+flake8>=7.3.0
 pylint>=2.10.0
 mypy>=1.0.0
 
