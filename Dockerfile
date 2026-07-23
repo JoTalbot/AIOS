@@ -1,10 +1,11 @@
-# AIOS Production Dockerfile — multi-stage build (v9.3.1)
+# AIOS Production Dockerfile — multi-stage + multi-arch (v9.4.0)
 # Final image: ~150MB vs ~400MB single-stage
+# Supports: linux/amd64, linux/arm64
 
 # ------------------------------------------------------------------
 # Stage 1: build dependencies
 # ------------------------------------------------------------------
-FROM python:3.12-slim AS builder
+FROM --platform=$BUILDPLATFORM python:3.12-slim AS builder
 
 WORKDIR /build
 COPY requirements.txt pyproject.toml ./
