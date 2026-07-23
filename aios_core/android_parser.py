@@ -23,15 +23,18 @@ class UIElement:
 
     @property
     def center(self) -> Tuple[int, int, int]:
+        """Execute center."""
         x1, y1, x2, y2 = self.bounds
         return ((x1 + x2) // 2, (y1 + y2) // 2, (y2 - y1))
 
     def matches_text(self, text: str, partial: bool = True) -> bool:
+        """Execute matches text."""
         if not text:
             return False
         return text.lower() in self.text.lower() if partial else text.lower() == self.text.lower()
 
     def matches_resource(self, resource_id: str) -> bool:
+        """Execute matches resource."""
         return self.resource_id == resource_id or self.resource_id.endswith(resource_id)
 
 
@@ -61,10 +64,12 @@ class UIAutomatorParser:
         self.root = None
 
     def parse(self) -> None:
+        """Execute parse."""
         self.root = ET.fromstring(self.xml_content)
         return self.root
 
     def find_elements_by_resource(self, resource_id: str) -> None:
+        """Execute find elements by resource."""
         result = []
         if self.root is None:
             return result
@@ -75,6 +80,7 @@ class UIAutomatorParser:
         return result
 
     def find_elements_by_text(self, text: str, partial: bool = True) -> None:
+        """Execute find elements by text."""
         result = []
         if self.root is None:
             return result
@@ -87,6 +93,7 @@ class UIAutomatorParser:
         return result
 
     def find_clickable_elements(self) -> None:
+        """Execute find clickable elements."""
         result = []
         if self.root is None:
             return result
@@ -96,6 +103,7 @@ class UIAutomatorParser:
         return result
 
     def find_search_field(self) -> None:
+        """Execute find search field."""
         for rid in (
             "ua.slando:id/search_field",
             "ua.slando:id/search_src_text",
@@ -112,6 +120,7 @@ class UIAutomatorParser:
         return None
 
     def find_search_results(self) -> None:
+        """Execute find search results."""
         results = []
         for rid in (
             "ua.slando:id/adListing_adGridCard",
@@ -148,6 +157,7 @@ class UIAutomatorParser:
         return results
 
     def find_item_details(self) -> None:
+        """Execute find item details."""
         title = price = seller = description = ""
         for node in self._nodes_by_resource_id("ua.slando:id/adTitle"):
             title = node.attrib.get("text", "")

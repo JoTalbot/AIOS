@@ -23,4 +23,5 @@ class NeRF:
         return [[random.random() for _ in range(3)] for _ in rays]
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"pos_dim": self.pos_dim, "hidden": self.hidden}

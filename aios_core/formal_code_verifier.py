@@ -42,6 +42,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
         self.call_count = 0
 
     def visit_Import(self, node: ast.Import) -> None:
+        """Execute visit Import."""
         for alias in node.names:
             mod_name = alias.name.split(".")[0]
             if mod_name in self.FORBIDDEN_MODULES and mod_name not in self.allowed_imports:
@@ -51,6 +52,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        """Execute visit ImportFrom."""
         if node.module:
             mod_name = node.module.split(".")[0]
             if mod_name in self.FORBIDDEN_MODULES and mod_name not in self.allowed_imports:
@@ -60,6 +62,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
+        """Execute visit Call."""
         self.call_count += 1
         func_name = None
         if isinstance(node.func, ast.Name):
@@ -75,6 +78,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
+        """Execute visit Attribute."""
         # Dunder exploit check
         if node.attr.startswith("__") and node.attr in {
             "__subclasses__",
@@ -88,6 +92,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_While(self, node: ast.While) -> None:
+        """Execute visit While."""
         # Check for un-bounded infinite while loop (while True without explicit break/return)
         has_break = any(isinstance(child, (ast.Break, ast.Return)) for child in ast.walk(node))
         if not has_break:
@@ -186,6 +191,7 @@ class FormalCodeVerifier:
         return result
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         total = len(self.verification_history)
         passed = sum(1 for v in self.verification_history if v["verified"])
         return {

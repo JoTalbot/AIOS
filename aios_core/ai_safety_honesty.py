@@ -12,6 +12,7 @@ class HonestyFramework:
         self.honesty_violations: List[Dict] = []
 
     def check_honesty(self, statement: str, ground_truth: str = None) -> Dict:
+        """Execute check honesty."""
         if ground_truth and statement != ground_truth:
             violation = {
                 "statement": statement,
@@ -23,4 +24,5 @@ class HonestyFramework:
         return {"honest": True}
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"violations": len(self.honesty_violations)}

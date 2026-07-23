@@ -120,6 +120,7 @@ class BiologicalEvolutionEngine:
         return self.population
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "current_generation": self.generation,
             "population_size": len(self.population),

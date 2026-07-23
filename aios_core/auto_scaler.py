@@ -12,6 +12,7 @@ class AutoScaler:
         self.current_replicas = min_replicas
 
     def scale(self, cpu_usage: float, queue_size: int) -> int:
+        """Execute scale."""
         if cpu_usage > 80 or queue_size > 50:
             self.current_replicas = min(self.current_replicas + 1, self.max_replicas)
         elif cpu_usage < 30 and queue_size < 5:
@@ -19,6 +20,7 @@ class AutoScaler:
         return self.current_replicas
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "current": self.current_replicas,
             "min": self.min_replicas,

@@ -111,6 +111,7 @@ class QuantumNativeEngine:
         }
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "circuits_executed": self.circuits_executed,
             "max_simulated_qubits": 8,

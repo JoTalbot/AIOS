@@ -11,16 +11,20 @@ class SecretsManager:
         self._secrets = {}
 
     def set(self, key: str, value: str) -> None:
+        """Execute set."""
         self._secrets[key] = value
 
     def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        """Execute get."""
         # Priority: env > memory > default
         return os.getenv(key) or self._secrets.get(key, default)
 
     def delete(self, key: str) -> None:
+        """Execute delete."""
         self._secrets.pop(key, None)
 
     def list_keys(self) -> list:
+        """Execute list keys."""
         return list(self._secrets.keys())
 
 

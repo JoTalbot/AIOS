@@ -14,12 +14,15 @@ class StateSpaceModel:
         self.state = [0.0] * state_dim
 
     def step(self, u: float) -> float:
+        """Execute step."""
         self.state = [a * s + b * u for a, s, b in zip(self.A, self.state, self.B)]
         y = sum(c * s for c, s in zip(self.C, self.state))
         return y
 
     def forward(self, sequence: List[float]) -> List[float]:
+        """Execute forward."""
         return [self.step(u) for u in sequence]
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"state_dim": self.state_dim}

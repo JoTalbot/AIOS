@@ -15,6 +15,7 @@ class NaturalLanguageInterface:
         }
 
     def parse(self, text: str) -> Dict[str, Any]:
+        """Execute parse."""
         text = text.lower()
         for phrase, cmd in self.command_map.items():
             if phrase in text:
@@ -22,6 +23,7 @@ class NaturalLanguageInterface:
         return {"command": "unknown", "original": text}
 
     def execute(self, parsed: Dict) -> str:
+        """Execute execute."""
         cmd = parsed.get("command")
         if cmd == "create_task":
             return "Task created successfully"
@@ -30,4 +32,5 @@ class NaturalLanguageInterface:
         return "Command not recognized"
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"supported_commands": len(self.command_map)}

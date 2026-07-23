@@ -19,6 +19,7 @@ class ConstitutionalAI:
         self.violations: List[Dict] = []
 
     def critique(self, output: str) -> List[str]:
+        """Execute critique."""
         violations = []
         for principle in self.constitution:
             if "harm" in principle.lower() and "harm" in output.lower():
@@ -28,9 +29,11 @@ class ConstitutionalAI:
         return violations
 
     def revise(self, output: str, violations: List[str]) -> str:
+        """Execute revise."""
         return f"Revised: {output} (following constitution)"
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "constitution_size": len(self.constitution),
             "violations": len(self.violations),

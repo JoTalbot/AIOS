@@ -26,9 +26,11 @@ class AIAgent:
         }
 
     def learn(self, experience: Dict) -> None:
+        """Execute learn."""
         self.memory[str(len(self.memory))] = experience
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "id": self.id,
             "autonomy": self.autonomy_level,

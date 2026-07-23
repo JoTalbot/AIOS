@@ -99,6 +99,7 @@ class NeuromorphicMatrixEngine:
                         self.synaptic_weights[pair] = max(0.01, self.synaptic_weights[pair] - 0.01)
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         total_spikes = sum(n.spike_count for n in self.neurons)
         return {
             "matrix_size": self.size,

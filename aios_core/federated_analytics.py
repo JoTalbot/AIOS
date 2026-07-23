@@ -10,9 +10,11 @@ class FederatedAnalytics:
         self.nodes: Dict[str, Dict] = {}
 
     def register_node(self, node_id: str) -> None:
+        """Execute register node."""
         self.nodes[node_id] = {"data_points": 0, "contributions": 0}
 
     def aggregate(self, local_stats: List[Dict]) -> Dict:
+        """Execute aggregate."""
         if not local_stats:
             return {}
         total = sum(s.get("count", 0) for s in local_stats)
@@ -20,4 +22,5 @@ class FederatedAnalytics:
         return {"total": total, "average": round(avg, 4)}
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"nodes": len(self.nodes)}

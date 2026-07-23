@@ -34,6 +34,7 @@ class AppiumAndroidDriver(AndroidDriver):
         self._driver = None
 
     def start(self) -> bool:
+        """Execute start."""
         try:
             from appium import webdriver
 
@@ -56,6 +57,7 @@ class AppiumAndroidDriver(AndroidDriver):
             return False
 
     def quit(self) -> None:
+        """Execute quit."""
         if self._driver is not None:
             try:
                 self._driver.quit()
@@ -64,6 +66,7 @@ class AppiumAndroidDriver(AndroidDriver):
             self._driver = None
 
     def launch_app(self) -> bool:
+        """Execute launch app."""
         try:
             if self._driver is None:
                 return self.start()
@@ -74,6 +77,7 @@ class AppiumAndroidDriver(AndroidDriver):
             return False  # Appium session may be stale
 
     def dump_ui(self) -> UIContext:
+        """Execute dump ui."""
         try:
             if self._driver is None:
                 return UIContext(xml="", package=self.config.package, current_activity="")
@@ -93,16 +97,19 @@ class AppiumAndroidDriver(AndroidDriver):
             )
 
     def tap(self, x: int, y: int) -> None:
+        """Execute tap."""
         if self._driver is None:
             return
         self._driver.tap([(x, y)])
 
     def type_text(self, text: str) -> None:
+        """Execute type text."""
         if self._driver is None:
             return
         self._driver.execute_script("mobile: type", {"text": text})
 
     def press_key(self, keycode: int) -> None:
+        """Execute press key."""
         if self._driver is None:
             return
         try:
@@ -111,6 +118,7 @@ class AppiumAndroidDriver(AndroidDriver):
             pass  # Key injection can fail on some devices/OS versions
 
     def swipe(self, x1: int, y1: int, x2: int, y2: int, duration: int = 300) -> None:
+        """Execute swipe."""
         if self._driver is None:
             return
         try:
@@ -119,6 +127,7 @@ class AppiumAndroidDriver(AndroidDriver):
             pass  # Swipe is best-effort; geometry may be off-screen
 
     def screenshot(self, path: str) -> bool:
+        """Execute screenshot."""
         try:
             if self._driver is None:
                 return False
@@ -129,6 +138,7 @@ class AppiumAndroidDriver(AndroidDriver):
             return False
 
     def is_app_installed(self) -> bool:
+        """Execute is app installed."""
         try:
             if self._driver is None:
                 return False
@@ -137,6 +147,7 @@ class AppiumAndroidDriver(AndroidDriver):
             return False
 
     def current_package(self) -> str:
+        """Execute current package."""
         try:
             if self._driver is None:
                 return self.config.package
@@ -145,6 +156,7 @@ class AppiumAndroidDriver(AndroidDriver):
             return self.config.package
 
     def find_element_by_xpath(self, xpath: str) -> Optional[Any]:
+        """Execute find element by xpath."""
         if self._driver is None:
             return None
         try:
@@ -153,6 +165,7 @@ class AppiumAndroidDriver(AndroidDriver):
             return None
 
     def find_elements_by_xpath(self, xpath: str) -> List[Any]:
+        """Execute find elements by xpath."""
         if self._driver is None:
             return []
         try:
@@ -161,6 +174,7 @@ class AppiumAndroidDriver(AndroidDriver):
             return []
 
     def find_element(self, by: str, value: str) -> Optional[Any]:
+        """Execute find element."""
         if self._driver is None:
             return None
         try:

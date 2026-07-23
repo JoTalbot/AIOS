@@ -141,9 +141,11 @@ class FederationManager:
         return False
 
     def get_node(self, node_id: str) -> Optional[FederatedNode]:
+        """Execute get node."""
         return self._nodes.get(node_id)
 
     def list_nodes(self, status: Optional[NodeStatus] = None) -> List[FederatedNode]:
+        """Execute list nodes."""
         nodes = list(self._nodes.values())
         if status:
             nodes = [n for n in nodes if n.status == status]

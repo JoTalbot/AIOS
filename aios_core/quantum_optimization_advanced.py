@@ -12,6 +12,7 @@ class QuantumApproximateOptimization:
         self.layers = layers
 
     def optimize(self, cost_func: Callable, num_params: int = 4, shots: int = 1000) -> Dict:
+        """Execute optimize."""
         best_params = [random.uniform(0, 2 * math.pi) for _ in range(num_params)]
         best_cost = cost_func(best_params)
         for _ in range(shots):
@@ -23,4 +24,5 @@ class QuantumApproximateOptimization:
         return {"params": best_params, "cost": best_cost}
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"layers": self.layers}

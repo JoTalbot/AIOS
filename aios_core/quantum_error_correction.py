@@ -10,13 +10,16 @@ class QuantumErrorCorrection:
         self.codes = {"repetition": 3, "surface": 9}
 
     def encode(self, logical_qubit: int, code: str = "repetition") -> List[int]:
+        """Execute encode."""
         if code == "repetition":
             return [logical_qubit] * self.codes["repetition"]
         return [logical_qubit] * 3
 
     def decode(self, physical_qubits: List[int]) -> int:
+        """Execute decode."""
         # Majority vote
         return 1 if sum(physical_qubits) > len(physical_qubits) // 2 else 0
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"codes": list(self.codes.keys())}

@@ -26,6 +26,7 @@ class PlanetaryMeshNode:
         self.active_tasks: List[str] = []
 
     def is_reachable(self) -> bool:
+        """Execute is reachable."""
         return self.status == "online"
 
 
@@ -86,6 +87,7 @@ class PlanetaryMeshOrchestrator:
         return route_record
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "total_planetary_nodes": len(self.nodes),
             "reachable_nodes": sum(1 for n in self.nodes.values() if n.is_reachable()),

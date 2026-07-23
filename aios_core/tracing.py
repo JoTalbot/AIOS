@@ -36,21 +36,26 @@ class Span:
         self.error_message: Optional[str] = None
 
     def set_attribute(self, key: str, value: Any) -> None:
+        """Execute set attribute."""
         self.attributes[key] = value
 
     def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+        """Execute add event."""
         self.events.append({"name": name, "attributes": attributes or {}, "timestamp": time.time()})
 
     def set_status_error(self, message: str) -> None:
+        """Execute set status error."""
         self.status = "ERROR"
         self.error_message = message
 
     def finish(self) -> None:
+        """Execute finish."""
         if self.end_time is None:
             self.end_time = time.time()
 
     @property
     def duration_ms(self) -> float:
+        """Execute duration ms."""
         end = self.end_time or time.time()
         return round((end - self.start_time) * 1000.0, 3)
 
@@ -67,9 +72,11 @@ class Tracer:
         self.finished_spans: List[Span] = []
 
     def generate_trace_id(self) -> str:
+        """Execute generate trace id."""
         return uuid.uuid4().hex
 
     def generate_span_id(self) -> str:
+        """Execute generate span id."""
         return uuid.uuid4().hex[:16]
 
     def parse_w3c_header(self, traceparent: str) -> Tuple[Optional[str], Optional[str]]:
@@ -131,9 +138,11 @@ class Tracer:
             _current_trace_context.active_span = previous_span
 
     def get_current_span(self) -> Optional[Span]:
+        """Execute get current span."""
         return getattr(_current_trace_context, "active_span", None)
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "active_spans": len(self.active_spans),
             "finished_spans": len(self.finished_spans),

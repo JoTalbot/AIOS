@@ -12,6 +12,7 @@ class AutoMLPipeline:
         self.algorithms = ["logistic", "random_forest", "neural_net", "svm"]
 
     def create_pipeline(self, name: str, dataset: str, target: str) -> str:
+        """Execute create pipeline."""
         pipeline_id = f"automl_{len(self.pipelines)}"
         self.pipelines[pipeline_id] = {
             "name": name,
@@ -24,6 +25,7 @@ class AutoMLPipeline:
         return pipeline_id
 
     def run(self, pipeline_id: str) -> Dict:
+        """Execute run."""
         if pipeline_id not in self.pipelines:
             return {"error": "Pipeline not found"}
 
@@ -47,4 +49,5 @@ class AutoMLPipeline:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"pipelines": len(self.pipelines)}

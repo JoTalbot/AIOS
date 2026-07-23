@@ -14,6 +14,7 @@ class EventStore:
         self.events: List[Dict] = []
 
     def append(self, event_type: str, data: Dict[str, Any], aggregate_id: str = None) -> str:
+        """Execute append."""
         event = {
             "id": str(uuid.uuid4()),
             "type": event_type,
@@ -30,6 +31,7 @@ class EventStore:
         return event["id"]
 
     def get_events(self, aggregate_id: str = None) -> List[Dict]:
+        """Execute get events."""
         if aggregate_id:
             return [e for e in self.events if e.get("aggregate_id") == aggregate_id]
         return self.events.copy()
@@ -43,4 +45,5 @@ class EventStore:
         return state
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"total_events": len(self.events), "storage": self.storage_path}

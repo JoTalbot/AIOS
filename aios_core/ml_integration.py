@@ -27,10 +27,12 @@ class SimpleMLPredictor:
         return 0.75
 
     def train(self, X, y) -> None:
+        """Execute train."""
         if self.model:
             self.model.fit(X, y)
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "sklearn_available": HAS_SKLEARN,
             "model_trained": self.model is not None,

@@ -90,6 +90,7 @@ class MLPlannerScorer:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "version": self.version,
             "model_loaded": self._model_loaded,

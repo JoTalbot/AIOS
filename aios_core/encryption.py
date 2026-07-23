@@ -13,12 +13,15 @@ class EncryptionManager:
         self.cipher = Fernet(self.key)
 
     def encrypt(self, data: str) -> bytes:
+        """Execute encrypt."""
         return self.cipher.encrypt(data.encode())
 
     def decrypt(self, token: bytes) -> str:
+        """Execute decrypt."""
         return self.cipher.decrypt(token).decode()
 
     def get_key(self) -> bytes:
+        """Execute get key."""
         return self.key
 
 

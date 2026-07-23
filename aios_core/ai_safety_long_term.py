@@ -13,6 +13,7 @@ class LongTermSafety:
         self.risk_assessments: List[Dict] = []
 
     def create_long_term_plan(self, horizon_years: int, goals: List[str]) -> Dict:
+        """Execute create long term plan."""
         plan = {
             "horizon": horizon_years,
             "goals": goals,
@@ -23,7 +24,9 @@ class LongTermSafety:
         return plan
 
     def assess_long_term_risk(self, scenario: str) -> float:
+        """Execute assess long term risk."""
         return 0.15  # 15% risk
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"plans": len(self.long_term_plans)}

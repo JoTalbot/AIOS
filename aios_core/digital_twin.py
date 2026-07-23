@@ -13,10 +13,12 @@ class DigitalTwin:
         self.history: list = []
 
     def sync(self, new_state: Dict) -> None:
+        """Execute sync."""
         self.history.append(self.state.copy())
         self.state.update(new_state)
 
     def simulate(self, action: str) -> Dict:
+        """Execute simulate."""
         return {
             "twin_id": self.twin_id,
             "action": action,
@@ -24,6 +26,7 @@ class DigitalTwin:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "id": self.twin_id,
             "entity": self.real_entity,

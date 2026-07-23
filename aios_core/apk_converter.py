@@ -96,6 +96,7 @@ class APKFunctionConverter:
         return [p for p in self.converted_profiles.values() if p["user_id"] == user_id]
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         total_caps = sum(
             p["total_converted_capabilities"] for p in self.converted_profiles.values()
         )

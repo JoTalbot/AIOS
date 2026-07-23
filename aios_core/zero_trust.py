@@ -10,13 +10,16 @@ class ZeroTrust:
         self.policies: Dict[str, Dict] = {}
 
     def add_policy(self, name: str, rules: Dict) -> None:
+        """Execute add policy."""
         self.policies[name] = rules
 
     def verify(self, context: Dict) -> bool:
+        """Execute verify."""
         # Simplified zero trust check
         if context.get("authenticated") and context.get("authorized"):
             return True
         return False
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"policies": len(self.policies)}

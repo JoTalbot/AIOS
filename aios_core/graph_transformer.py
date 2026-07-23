@@ -11,8 +11,10 @@ class GraphTransformer:
         self.heads = heads
 
     def forward(self, nodes: List[Dict], edges: List[tuple]) -> List[Dict]:
+        """Execute forward."""
         # Simplified attention over graph
         return [{"id": n["id"], "embedding": [0.1] * self.dim} for n in nodes]
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"dim": self.dim, "heads": self.heads}

@@ -88,6 +88,7 @@ class CompetitorReport:
     top_cities: List[Tuple[str, int]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dict."""
         return {
             "query": self.query,
             "total_ads": self.total_ads,
@@ -105,6 +106,7 @@ class CompetitorAnalyzer:
     """Builds :class:`CompetitorReport` statistics from collected cards."""
 
     def analyze(self, ads: List[AdCard], query: Optional[str] = None) -> CompetitorReport:
+        """Execute analyze."""
         prices = [ad.price for ad in ads if ad.price is not None]
         cities = Counter(ad.city for ad in ads if ad.city)
         top_count = sum(1 for ad in ads if ad.is_top)
@@ -148,6 +150,7 @@ class Recommendation:
     notes: List[str] = field(default_factory=list)
 
     def to_text(self) -> str:
+        """Execute to text."""
         lines = [f"Рекомендації для оголошення (запит: {self.query or '—'})"]
         if self.suggested_price is not None:
             lines.append(f"- Рекомендована ціна: {self.suggested_price:g}")
@@ -266,6 +269,7 @@ class PriceChange:
     last_seen_at: Optional[str]
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dict."""
         return {
             "fingerprint": self.fingerprint,
             "title": self.title,

@@ -11,6 +11,7 @@ class QuantumConsciousnessSimulator:
         self.coherence_time: float = 0.0
 
     def simulate(self, neurons: int) -> Dict:
+        """Execute simulate."""
         self.microtubules = neurons * 1000
         self.coherence_time = 25e-3  # 25ms
         return {
@@ -21,4 +22,5 @@ class QuantumConsciousnessSimulator:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"microtubules": self.microtubules}

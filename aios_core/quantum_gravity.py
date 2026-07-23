@@ -10,6 +10,7 @@ class QuantumGravitySimulator:
         self.spacetime_curvature = 0.0
 
     def simulate(self, mass: float, energy: float) -> Dict:
+        """Execute simulate."""
         self.spacetime_curvature = mass * energy * 1e-40
         return {
             "curvature": self.spacetime_curvature,
@@ -18,4 +19,5 @@ class QuantumGravitySimulator:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"curvature": self.spacetime_curvature}

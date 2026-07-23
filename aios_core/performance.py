@@ -13,6 +13,7 @@ class PerformanceProfiler:
 
     @contextmanager
     def measure(self, name: str) -> None:
+        """Execute measure."""
         start = time.perf_counter()
         try:
             yield
@@ -23,6 +24,7 @@ class PerformanceProfiler:
             self.measurements[name].append(duration)
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         result = {}
         for name, times in self.measurements.items():
             result[name] = {

@@ -14,6 +14,7 @@ class AIScientist:
         self.discoveries: List[Dict] = []
 
     def generate_hypothesis(self, domain: str) -> Dict:
+        """Execute generate hypothesis."""
         hypothesis = {
             "domain": domain,
             "hypothesis": f"Novel hypothesis in {domain}",
@@ -24,6 +25,7 @@ class AIScientist:
         return hypothesis
 
     def design_experiment(self, hypothesis: Dict) -> Dict:
+        """Execute design experiment."""
         experiment = {
             "hypothesis": hypothesis,
             "design": "rigorous experimental design",
@@ -33,9 +35,11 @@ class AIScientist:
         return experiment
 
     def record_discovery(self, discovery: Dict) -> None:
+        """Execute record discovery."""
         self.discoveries.append(discovery)
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "hypotheses": len(self.hypotheses),
             "experiments": len(self.experiments),

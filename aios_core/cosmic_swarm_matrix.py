@@ -53,6 +53,7 @@ class CosmicSwarmMatrix:
         return shard_record
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "registered_cosmic_nodes": len(self.cosmic_nodes),
             "holographic_shards_stored": len(self.holographic_shards),

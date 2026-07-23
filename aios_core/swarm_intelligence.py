@@ -12,6 +12,7 @@ class Particle:
         self.best_value = float("inf")
 
     def update(self, global_best: List[float], w=0.7, c1=1.5, c2=1.5) -> None:
+        """Execute update."""
         for i in range(len(self.position)):
             r1, r2 = random.random(), random.random()
             self.velocity[i] = (
@@ -34,6 +35,7 @@ class ParticleSwarmOptimizer:
         self.global_best_value = float("inf")
 
     def optimize(self, fitness_func, iterations: int = 100) -> None:
+        """Execute optimize."""
         for _ in range(iterations):
             for p in self.particles:
                 value = fitness_func(p.position)
@@ -47,4 +49,5 @@ class ParticleSwarmOptimizer:
         return self.global_best, self.global_best_value
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"particles": len(self.particles)}

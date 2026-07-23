@@ -11,12 +11,14 @@ class RetNetBlock:
         self.state = [0.0] * dim
 
     def forward(self, x: List[float]) -> List[float]:
+        """Execute forward."""
         # Parallel retention (simplified)
         new_state = [(s * 0.95 + xi * 0.05) for s, xi in zip(self.state, x)]
         self.state = new_state
         return new_state
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"dim": self.dim}
 
 
@@ -27,9 +29,11 @@ class RetNet:
         self.blocks = [RetNetBlock(dim) for _ in range(layers)]
 
     def forward(self, x: List[float]) -> List[float]:
+        """Execute forward."""
         for block in self.blocks:
             x = block.forward(x)
         return x
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"layers": len(self.blocks)}

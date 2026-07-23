@@ -12,7 +12,9 @@ class ChaosTester:
         self.latency_ms = latency_ms
 
     def inject(self, func: Callable) -> None:
+        """Execute inject."""
         def wrapper(*args, **kwargs) -> None:
+            """Execute wrapper."""
             if random.random() < self.failure_probability:
                 raise Exception("Chaos injection: simulated failure")
             if self.latency_ms > 0:
@@ -24,6 +26,7 @@ class ChaosTester:
         return wrapper
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "failure_probability": self.failure_probability,
             "latency_ms": self.latency_ms,

@@ -18,6 +18,7 @@ class JSONFormatter(logging.Formatter):
     """JSON Formatter for structured production logging."""
 
     def format(self, record: logging.LogRecord) -> str:
+        """Execute format."""
         current_span = tracer.get_current_span()
 
         log_data = {

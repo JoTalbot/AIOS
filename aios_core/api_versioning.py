@@ -12,14 +12,18 @@ class APIVersioning:
         self.versions: Dict[str, Dict] = {}
 
     def register(self, version: str, routes: Dict) -> None:
+        """Execute register."""
         self.versions[version] = routes
 
     def get_version(self, request) -> str:
+        """Execute get version."""
         # Check header or path
         return request.headers.get("X-API-Version", "v1")
 
     def route(self, version: str, path: str) -> None:
+        """Execute route."""
         def decorator(func: Callable) -> None:
+            """Execute decorator."""
             if version not in self.versions:
                 self.versions[version] = {}
             self.versions[version][path] = func

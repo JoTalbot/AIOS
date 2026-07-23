@@ -27,9 +27,11 @@ class MigrationManager:
         self.migrations: List[Migration] = []
 
     def add_migration(self, migration: Migration) -> None:
+        """Execute add migration."""
         self.migrations.append(migration)
 
     def create_migrations_table(self, conn: sqlite3.Connection) -> None:
+        """Execute create migrations table."""
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -40,6 +42,7 @@ class MigrationManager:
         )
 
     def get_applied_versions(self, conn: sqlite3.Connection) -> set:
+        """Execute get applied versions."""
         try:
             rows = conn.execute("SELECT version FROM schema_migrations").fetchall()
             return {row[0] for row in rows}
@@ -48,6 +51,7 @@ class MigrationManager:
             return set()
 
     def migrate(self) -> None:
+        """Execute migrate."""
         conn = sqlite3.connect(self.db_path)
         self.create_migrations_table(conn)
         applied = self.get_applied_versions(conn)

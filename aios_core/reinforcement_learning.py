@@ -14,14 +14,17 @@ class QLearningAgent:
         self.discount = discount
 
     def get_q(self, state: str, action: str) -> float:
+        """Execute get q."""
         return self.q_table.get(state, {}).get(action, 0.0)
 
     def choose_action(self, state: str, epsilon: float = 0.1) -> str:
+        """Execute choose action."""
         if random.random() < epsilon or state not in self.q_table:
             return random.choice(self.actions)
         return max(self.q_table[state], key=self.q_table[state].get)
 
     def learn(self, state: str, action: str, reward: float, next_state: str) -> None:
+        """Execute learn."""
         if state not in self.q_table:
             self.q_table[state] = {a: 0.0 for a in self.actions}
 
@@ -31,4 +34,5 @@ class QLearningAgent:
         self.q_table[state][action] = new_q
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"states": len(self.q_table)}

@@ -12,10 +12,12 @@ class KANLayer:
         self.grid_size = grid_size
 
     def forward(self, x: List[float]) -> List[float]:
+        """Execute forward."""
         # Placeholder for B-spline activation
         return [sum(x) / len(x)] * self.out_dim
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"in": self.in_dim, "out": self.out_dim, "grid": self.grid_size}
 
 
@@ -26,9 +28,11 @@ class KAN:
         self.layers = [KANLayer(layers[i], layers[i + 1]) for i in range(len(layers) - 1)]
 
     def forward(self, x: List[float]) -> List[float]:
+        """Execute forward."""
         for layer in self.layers:
             x = layer.forward(x)
         return x
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"layers": len(self.layers)}

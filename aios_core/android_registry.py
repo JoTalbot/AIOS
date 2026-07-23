@@ -27,6 +27,7 @@ class AndroidAppDescriptor:
     capabilities: Optional[DriverCapabilities] = None
 
     def build_driver(self, device_id: Optional[str] = None) -> AndroidDriver:
+        """Execute build driver."""
         if self.backend == "adb":
             return RealDeviceExecutor(device_id=device_id or "emulator-5554")
         if self.backend == "appium":
@@ -37,6 +38,7 @@ class AndroidAppDescriptor:
         raise ValueError(f"Unsupported backend: {self.backend}")
 
     def supports(self, action: str) -> bool:
+        """Execute supports."""
         supported = {
             "ua.slando": {"search", "get_item_details", "send_message"},
             "com.facebook.katana": {"search", "send_message"},
@@ -51,18 +53,22 @@ class AndroidAppRegistry:
         self._apps: Dict[str, AndroidAppDescriptor] = {}
 
     def register(self, descriptor: AndroidAppDescriptor) -> None:
+        """Execute register."""
         self._apps[descriptor.package] = descriptor
 
     def get(self, package: str) -> Optional[AndroidAppDescriptor]:
+        """Execute get."""
         return self._apps.get(package)
 
     def driver_for(self, package: str, device_id: Optional[str] = None) -> Optional[AndroidDriver]:
+        """Execute driver for."""
         desc = self.get(package)
         if desc is None:
             return None
         return desc.build_driver(device_id)
 
     def load_from_catalog(self, directory: str = "platforms") -> None:
+        """Execute load from catalog."""
         try:
             descriptors = load_catalog(directory)
         except Exception:
@@ -80,4 +86,5 @@ class AndroidAppRegistry:
                 continue
 
     def all_packages(self) -> List[str]:
+        """Execute all packages."""
         return list(self._apps.keys())

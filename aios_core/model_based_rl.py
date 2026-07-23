@@ -10,9 +10,11 @@ class DynamicsModel:
         self.model: Callable = lambda s, a: s
 
     def predict(self, state: Dict, action: Any) -> Dict:
+        """Execute predict."""
         return self.model(state, action)
 
     def train(self, data: List[Dict]) -> None:
+        """Execute train."""
         pass
 
 
@@ -24,7 +26,9 @@ class ModelBasedRL:
         self.planner = None
 
     def plan(self, horizon: int = 10) -> List:
+        """Execute plan."""
         return [{"action": "noop"} for _ in range(horizon)]
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"has_dynamics": True}

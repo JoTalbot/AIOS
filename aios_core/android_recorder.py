@@ -35,9 +35,11 @@ class ScenarioRecorder:
         self.steps: List[RecordedStep] = []
 
     def record(self, action: str, meta: Optional[Dict[str, Any]] = None) -> None:
+        """Execute record."""
         self.steps.append(RecordedStep(action=action, ts=time.time(), meta=meta or {}))
 
     def save(self) -> None:
+        """Execute save."""
         payload = {
             "package": self.package,
             "device_id": self.device_id,
@@ -48,5 +50,6 @@ class ScenarioRecorder:
 
     @classmethod
     def load(cls, path: str) -> Dict[str, Any]:
+        """Execute load."""
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)

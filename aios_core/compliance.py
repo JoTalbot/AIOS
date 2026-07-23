@@ -13,9 +13,11 @@ class ComplianceFramework:
         }
 
     def check_compliance(self, policy: str, implemented: List[str]) -> Dict:
+        """Execute check compliance."""
         required = self.policies.get(policy, [])
         missing = [p for p in required if p not in implemented]
         return {"policy": policy, "compliant": len(missing) == 0, "missing": missing}
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"policies": list(self.policies.keys())}

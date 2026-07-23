@@ -15,6 +15,7 @@ class RateLimiter:
         self.requests: Dict[str, list] = defaultdict(list)
 
     def is_allowed(self, key: str) -> bool:
+        """Execute is allowed."""
         now = time.time()
         window = 60  # 1 minute
 
@@ -27,6 +28,7 @@ class RateLimiter:
         return False
 
     def get_stats(self, key: str) -> dict:
+        """Execute get stats."""
         return {
             "remaining": max(0, self.requests_per_minute - len(self.requests[key])),
             "limit": self.requests_per_minute,

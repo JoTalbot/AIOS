@@ -12,10 +12,12 @@ class TTLCache:
         self._store: Dict[str, tuple] = {}  # key -> (value, expiry)
 
     def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+        """Execute set."""
         expiry = time.time() + (ttl or self.default_ttl)
         self._store[key] = (value, expiry)
 
     def get(self, key: str) -> Optional[Any]:
+        """Execute get."""
         if key not in self._store:
             return None
         value, expiry = self._store[key]
@@ -25,12 +27,15 @@ class TTLCache:
         return value
 
     def delete(self, key: str) -> None:
+        """Execute delete."""
         self._store.pop(key, None)
 
     def clear(self) -> None:
+        """Execute clear."""
         self._store.clear()
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"size": len(self._store), "default_ttl": self.default_ttl}
 
 

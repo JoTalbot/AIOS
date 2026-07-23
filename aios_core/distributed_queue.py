@@ -13,6 +13,7 @@ class DistributedQueue:
         os.makedirs(queue_dir, exist_ok=True)
 
     def enqueue(self, task: Dict[str, Any]) -> str:
+        """Execute enqueue."""
         task_id = task.get("id") or str(hash(json.dumps(task)))
         filepath = os.path.join(self.queue_dir, f"{task_id}.json")
         with open(filepath, "w") as f:
@@ -20,6 +21,7 @@ class DistributedQueue:
         return task_id
 
     def dequeue(self) -> Optional[Dict[str, Any]]:
+        """Execute dequeue."""
         files = sorted(os.listdir(self.queue_dir))
         if not files:
             return None
@@ -30,7 +32,9 @@ class DistributedQueue:
         return task
 
     def size(self) -> int:
+        """Execute size."""
         return len(os.listdir(self.queue_dir))
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"queue_size": self.size(), "queue_dir": self.queue_dir}

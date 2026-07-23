@@ -407,6 +407,7 @@ class SelfHealingLocator:
         self._failure_counts: Dict[str, int] = defaultdict(int)
 
     def find(self, hints: List[str]) -> Optional[UIElement]:
+        """Execute find."""
         ctx = self.driver.dump_ui()
         self.parser = UIAutomatorParser(ctx.xml)
         if self.parser.parse() is None:
@@ -426,6 +427,7 @@ class SelfHealingLocator:
         return None
 
     def tap_hint(self, hints: List[str]) -> bool:
+        """Execute tap hint."""
         elem = self.find(hints)
         if elem is None:
             return False

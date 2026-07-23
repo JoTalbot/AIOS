@@ -12,9 +12,11 @@ class ScoreBasedModel:
         self.noise_schedule = [0.1 * i for i in range(10)]
 
     def train(self, data: List[List[float]], epochs: int = 100) -> None:
+        """Execute train."""
         return {"status": "trained", "samples": len(data), "epochs": epochs}
 
     def sample(self, num_samples: int = 1) -> List[List[float]]:
+        """Execute sample."""
         samples = []
         for _ in range(num_samples):
             sample = [random.gauss(0, 1) for _ in range(self.dim)]
@@ -22,4 +24,5 @@ class ScoreBasedModel:
         return samples
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"dim": self.dim}

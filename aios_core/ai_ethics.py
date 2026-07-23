@@ -96,6 +96,7 @@ class AIEthicsFramework:
         return max(violation_counts, key=violation_counts.get) if violation_counts else "None"
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "principles": len(self.principles),
             "assessments": len(self.assessments),

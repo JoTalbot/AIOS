@@ -63,6 +63,7 @@ class SovereignReflectionEngine:
         return reflection_result
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "total_reflections": len(self.reflection_logs),
             "alignments_enforced": self.alignments_enforced,

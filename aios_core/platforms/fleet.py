@@ -174,6 +174,7 @@ class PoolMonitor:
         self._stopped = threading.Event()
 
     def close(self) -> None:
+        """Clean up resources."""
         self.stop()
         if self._owns_pool:
             self.pool.close()

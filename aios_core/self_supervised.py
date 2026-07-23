@@ -16,13 +16,16 @@ class SelfSupervisedLearner:
         ]
 
     def generate_pseudo_label(self, data: Any, task: str = "rotation") -> Any:
+        """Execute generate pseudo label."""
         if task == "rotation":
             return random.choice([0, 90, 180, 270])
         return "pseudo_label"
 
     def contrastive_loss(self, embeddings: List[List[float]]) -> float:
+        """Execute contrastive loss."""
         # Simplified NT-Xent loss
         return 0.5
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"pretext_tasks": len(self.pretext_tasks)}

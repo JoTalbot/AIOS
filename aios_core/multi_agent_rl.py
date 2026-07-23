@@ -12,12 +12,15 @@ class MultiAgentRL:
         self.shared_reward = 0.0
 
     def register_agent(self, agent_id: str) -> None:
+        """Execute register agent."""
         self.agents[agent_id] = {"policy": None, "reward": 0}
 
     def step(self, actions: Dict) -> Dict:
+        """Execute step."""
         # Placeholder environment step
         self.shared_reward += 1
         return {"rewards": {aid: 1 for aid in actions}, "done": False}
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"agents": len(self.agents)}

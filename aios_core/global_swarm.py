@@ -113,6 +113,7 @@ class GlobalSwarmGovernance:
             proposal["status"] = "rejected"
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "registered_nodes_count": len(self.registered_nodes),
             "total_proposals": len(self.proposals),

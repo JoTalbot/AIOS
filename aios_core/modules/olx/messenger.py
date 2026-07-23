@@ -68,6 +68,7 @@ class ChatThread:
 
     @property
     def key(self) -> str:
+        """Execute key."""
         base = "|".join(
             [
                 (self.interlocutor or "").strip().lower(),
@@ -77,6 +78,7 @@ class ChatThread:
         return hashlib.sha256(base.encode("utf-8")).hexdigest()[:12]
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dict."""
         return {
             "key": self.key,
             "interlocutor": self.interlocutor,
@@ -96,6 +98,7 @@ class Message:
     ts_text: Optional[str] = None
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dict."""
         return {"author": self.author, "text": self.text, "ts_text": self.ts_text}
 
 
@@ -112,6 +115,7 @@ class ChatListParser:
         self.markers = tuple(m.lower() for m in markers) or _CHAT_MARKERS
 
     def parse(self, xml_source: Union[str, Path, ET.Element]) -> List[ChatThread]:
+        """Execute parse."""
         if isinstance(xml_source, ET.Element):
             root = xml_source
         else:
@@ -143,6 +147,7 @@ class ChatListParser:
 
     @staticmethod
     def thread_from_texts(texts: List[str]) -> Optional[ChatThread]:
+        """Execute thread from texts."""
         if not texts:
             return None
         unread = 0
@@ -175,6 +180,7 @@ class ChatViewParser:
         self.me_side_ratio = me_side_ratio
 
     def parse(self, xml_source: Union[str, Path, ET.Element]) -> List[Message]:
+        """Execute parse."""
         if isinstance(xml_source, ET.Element):
             root = xml_source
         else:
@@ -301,6 +307,7 @@ class OLXMessenger:
         )
 
     def list_chats(self, dump_path: str = "chats.xml") -> List[ChatThread]:
+        """Execute list chats."""
         import os
         import tempfile
 
@@ -312,6 +319,7 @@ class OLXMessenger:
             return ChatListParser().parse(path)
 
     def read_chat(self, thread: ChatThread, dump_path: str = "chat.xml") -> List[Message]:
+        """Execute read chat."""
         import os
         import tempfile
 

@@ -94,6 +94,7 @@ class MultiAgentOrchestrator:
         }
 
     def get_team_status(self, team_id: str) -> Optional[dict]:
+        """Execute get team status."""
         team = self._teams.get(team_id)
         if not team:
             return None
@@ -107,6 +108,7 @@ class MultiAgentOrchestrator:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "version": self.version,
             "total_teams": len(self._teams),

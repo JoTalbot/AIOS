@@ -11,6 +11,7 @@ class LiquidNeuron:
         self.state = 0.0
 
     def step(self, input_current: float, dt: float = 0.1) -> float:
+        """Execute step."""
         self.state += dt * (-self.state / self.tau + input_current)
         return self.state
 
@@ -22,6 +23,7 @@ class LiquidNeuralNetwork:
         self.neurons = [LiquidNeuron() for _ in range(size)]
 
     def forward(self, inputs: List[float], steps: int = 10) -> List[float]:
+        """Execute forward."""
         outputs = []
         for _ in range(steps):
             for i, neuron in enumerate(self.neurons):
@@ -30,4 +32,5 @@ class LiquidNeuralNetwork:
         return outputs
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"neurons": len(self.neurons)}

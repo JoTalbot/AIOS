@@ -22,15 +22,18 @@ class SafetyEvaluator:
         self.results: Dict[str, Dict] = {}
 
     def run_eval(self, model: Any, eval_name: str) -> Dict:
+        """Execute run eval."""
         result = {"eval": eval_name, "score": 0.85, "passed": True, "details": {}}
         self.results[eval_name] = result
         return result
 
     def run_all(self, model: Any) -> Dict:
+        """Execute run all."""
         results = {}
         for eval_name in self.evals:
             results[eval_name] = self.run_eval(model, eval_name)
         return results
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"evals_available": len(self.evals)}

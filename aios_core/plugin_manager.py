@@ -17,6 +17,7 @@ class PluginManager:
         self.hooks: Dict[str, list] = {}
 
     def register_plugin(self, name: str, plugin: Any) -> None:
+        """Execute register plugin."""
         self.plugins[name] = plugin
         return True
 
@@ -32,11 +33,13 @@ class PluginManager:
             return False
 
     def register_hook(self, hook_name: str, callback: Callable) -> None:
+        """Execute register hook."""
         if hook_name not in self.hooks:
             self.hooks[hook_name] = []
         self.hooks[hook_name].append(callback)
 
     def run_hook(self, hook_name: str, *args, **kwargs) -> None:
+        """Execute run hook."""
         results = []
         for callback in self.hooks.get(hook_name, []):
             try:
@@ -47,9 +50,11 @@ class PluginManager:
         return results
 
     def list_plugins(self) -> list:
+        """Execute list plugins."""
         return list(self.plugins.keys())
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"total_plugins": len(self.plugins), "registered_hooks": len(self.hooks)}
 
 

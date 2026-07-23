@@ -12,6 +12,7 @@ class WeakToStrongGeneralization:
         self.experiments: Dict[str, Dict] = {}
 
     def train(self, weak_model: Any, strong_model: Any, dataset: list) -> Dict:
+        """Execute train."""
         experiment_id = f"w2s_{len(self.experiments)}"
         self.experiments[experiment_id] = {
             "weak": weak_model,
@@ -22,4 +23,5 @@ class WeakToStrongGeneralization:
         return self.experiments[experiment_id]
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"experiments": len(self.experiments)}

@@ -84,6 +84,7 @@ class SubstrateConvergenceEngine:
         return dispatch_record
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "registered_substrates": len(self.substrates),
             "total_dispatches": len(self.dispatch_history),

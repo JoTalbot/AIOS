@@ -588,6 +588,7 @@ class Orchestrator:
         return self.ml_scorer.optimize_plan(plan, self.planner)
 
     def close(self) -> None:
+        """Clean up resources."""
         self.db.close()
 
 

@@ -13,18 +13,21 @@ class MetricsExporter:
         self._labels: Dict[str, Dict[str, str]] = {}
 
     def inc_counter(self, name: str, value: float = 1.0, labels: Dict[str, str] = None) -> None:
+        """Execute inc counter."""
         key = self._make_key(name, labels)
         self.counters[key] = self.counters.get(key, 0) + value
         if labels:
             self._labels[key] = labels
 
     def set_gauge(self, name: str, value: float, labels: Dict[str, str] = None) -> None:
+        """Execute set gauge."""
         key = self._make_key(name, labels)
         self.gauges[key] = value
         if labels:
             self._labels[key] = labels
 
     def observe_histogram(self, name: str, value: float, labels: Dict[str, str] = None) -> None:
+        """Execute observe histogram."""
         key = self._make_key(name, labels)
         if key not in self.histograms:
             self.histograms[key] = []
@@ -39,6 +42,7 @@ class MetricsExporter:
         return f"{name}{{{label_str}}}"
 
     def export(self) -> str:
+        """Execute export."""
         lines = []
         # Counters
         seen_counter_names = set()
@@ -69,6 +73,7 @@ class MetricsExporter:
         return "\n".join(lines)
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "counters": len(self.counters),
             "gauges": len(self.gauges),

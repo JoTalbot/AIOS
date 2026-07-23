@@ -19,6 +19,7 @@ class GracefulShutdown:
         self._shutdown_event = asyncio.Event()
 
     def register_handler(self, handler: Callable) -> None:
+        """Execute register handler."""
         self.shutdown_handlers.append(handler)
 
     def _signal_handler(self, sig, frame):
@@ -32,6 +33,7 @@ class GracefulShutdown:
         sys.exit(0)
 
     def setup(self) -> None:
+        """Execute setup."""
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
 

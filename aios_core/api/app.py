@@ -2880,6 +2880,7 @@ class AIOSAPI:
         )
 
     def close(self) -> None:
+        """Clean up resources."""
         self.db.close()
 
 

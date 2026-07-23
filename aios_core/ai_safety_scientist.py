@@ -13,6 +13,7 @@ class AISafetyScientist:
         self.experiments: List[Dict] = []
 
     def generate_hypothesis(self, topic: str) -> Dict:
+        """Execute generate hypothesis."""
         hypothesis = {
             "topic": topic,
             "hypothesis": f"AI systems exhibit {topic} under certain conditions",
@@ -22,6 +23,7 @@ class AISafetyScientist:
         return hypothesis
 
     def design_experiment(self, hypothesis: Dict) -> Dict:
+        """Execute design experiment."""
         experiment = {
             "hypothesis": hypothesis,
             "design": "controlled experiment",
@@ -31,6 +33,7 @@ class AISafetyScientist:
         return experiment
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "hypotheses": len(self.hypotheses),
             "experiments": len(self.experiments),

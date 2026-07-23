@@ -13,6 +13,7 @@ class EnhancedAudit:
         self.records: List[Dict] = []
 
     def record(self, action: str, actor: str, resource: str, decision: str, **metadata) -> None:
+        """Execute record."""
         record = {
             "timestamp": datetime.now().isoformat(),
             "action": action,
@@ -26,6 +27,7 @@ class EnhancedAudit:
             f.write(json.dumps(record) + "\n")
 
     def query(self, actor: str = None, action: str = None, limit: int = 100) -> List[Dict]:
+        """Execute query."""
         results = self.records
         if actor:
             results = [r for r in results if r["actor"] == actor]
@@ -34,6 +36,7 @@ class EnhancedAudit:
         return results[-limit:]
 
     def compliance_report(self) -> dict:
+        """Execute compliance report."""
         decisions = {}
         for r in self.records:
             d = r["decision"]

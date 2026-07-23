@@ -10,6 +10,7 @@ class QuantumChemistrySimulator:
         self.molecules: Dict[str, Dict] = {}
 
     def simulate_molecule(self, formula: str, basis: str = "sto-3g") -> Dict:
+        """Execute simulate molecule."""
         return {
             "formula": formula,
             "energy": -1.0 * len(formula),
@@ -18,4 +19,5 @@ class QuantumChemistrySimulator:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"molecules": len(self.molecules)}

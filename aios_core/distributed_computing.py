@@ -21,17 +21,21 @@ class DistributedComputing:
         self.tasks: Dict[str, DistributedTask] = {}
 
     def register_worker(self, worker_id: str, capabilities: List[str]) -> None:
+        """Execute register worker."""
         self.workers[worker_id] = {"capabilities": capabilities, "status": "idle"}
 
     def submit(self, func: Callable, *args, **kwargs) -> str:
+        """Execute submit."""
         task_id = f"task_{len(self.tasks)}"
         task = DistributedTask(task_id, func, args, kwargs)
         self.tasks[task_id] = task
         return task_id
 
     def get_result(self, task_id: str) -> Any:
+        """Execute get result."""
         task = self.tasks.get(task_id)
         return task.result if task else None
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"workers": len(self.workers), "tasks": len(self.tasks)}

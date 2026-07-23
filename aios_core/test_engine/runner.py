@@ -165,6 +165,7 @@ class TestRunner:
         return suite
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "tests_run": self._run_count,
             "engine_version": self.engine.version,

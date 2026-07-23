@@ -68,6 +68,7 @@ class QuantumEntanglementMesh:
         return channel.teleport_state(payload)
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "active_entangled_channels": len(self.channels),
             "total_teleportations": sum(c.teleported_states_count for c in self.channels.values()),

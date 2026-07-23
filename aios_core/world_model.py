@@ -11,6 +11,7 @@ class WorldModel:
         self.observations: List[Dict] = []
 
     def observe(self, state: Dict, action: Any, next_state: Dict, reward: float) -> None:
+        """Execute observe."""
         self.observations.append(
             {
                 "state": state,
@@ -21,10 +22,12 @@ class WorldModel:
         )
 
     def predict(self, state: Dict, action: Any) -> Dict:
+        """Execute predict."""
         # Simple linear dynamics
         return {k: v * 0.9 for k, v in state.items()}
 
     def imagine(self, horizon: int = 10) -> List[Dict]:
+        """Execute imagine."""
         trajectory = []
         state = {"x": 0.0}
         for _ in range(horizon):
@@ -35,4 +38,5 @@ class WorldModel:
         return trajectory
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"observations": len(self.observations)}

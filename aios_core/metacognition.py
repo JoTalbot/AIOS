@@ -12,13 +12,16 @@ class MetaCognition:
         self.monitoring: List[Dict] = []
 
     def monitor_reasoning(self, task: str, confidence: float) -> None:
+        """Execute monitor reasoning."""
         self.monitoring.append({"task": task, "confidence": confidence})
 
     def self_assess(self, performance: float) -> Dict:
+        """Execute self assess."""
         return {
             "awareness": performance > 0.7,
             "calibration": abs(performance - 0.75) < 0.2,
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"monitoring_events": len(self.monitoring)}
