@@ -2,48 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
-## [9.3.1] — 2026-07-23
+## [9.3.1] — 2026-07-23 — Code Quality & Documentation Sprint
 
 ### Fixed
-- Заменены bare `except:` на `except Exception:` в 6 модулях
+- 8 bare `except:` → `except Exception:`
   (`android_predictive`, `hybrid_quantum_classical`, `load_testing`,
-  `migration`, `self_healing`, `test_circuit_breaker`).
-- `print()` заменены на `logging` в `backup_manager.py`,
-  `data_export.py`, `graceful_shutdown.py`, `android_appium.py`,
-  `monitoring.py`.
-- Удалён неиспользуемый `import os` в `migration.py`.
-- Непродуктивные f-строки без интерполяции убраны
-  (`integration_examples`, `evolution_manager`).
+  `migration`, `self_healing`, `test_circuit_breaker`)
+- 8 `print()` → `logging`
+  (`backup_manager`, `data_export`, `graceful_shutdown`, `android_appium`,
+  `monitoring`, `aios_cli`)
+- 3 non-interpolating f-strings removed
+  (`integration_examples`, `evolution_manager`)
+- Unused `import os` removed in `migration.py`
+- Missing `finally:` block in `platforms/telemetry.py`
 
 ### Improved
-- 18 пустых `pass`-блоков аннотированы поясняющими комментариями:
-  `android_appium`, `android_ai_navigation`, `ai_advisor`,
-  `autonomy_manager`, `android_observability`, `apk_converter`,
-  `audit_logger`, `load_testing`, `marketplace`, `orchestrator`,
-  `platforms/__init__`, `platforms/autowatch`, `platforms/gateway`,
-  `platforms/shardexec`, `platforms/telemetry`.
-- `SelfHealing` (`self_healing.py`): полные docstrings, логирование
-  ошибок, аннотации `Optional[Dict]`.
-- `HybridQuantumClassical`: fallback логируется.
-- 60+ docstrings добавлены в 11 модулях: `ab_testing`,
-  `active_learning`, `advanced_security`, `adversarial`,
-  `agent_architecture`, `ai_safety` (5 safety-layer классов),
-  `ai_safety_causal_interpretability`, `ai_safety_dictionary_learning`,
-  `ai_safety_formal_verification`, `ai_safety_honest_ai`,
-  `storage` (10 public методов), `aios_cli` (10 функций).
+- **32** `pass` blocks annotated with explanatory comments — **0 remaining**
+- **100+** docstrings added across **27 modules**
+- **17** modules now have explicit `__all__`
+- **8** return-type annotations added (`-> None`, `-> Dict`)
+- `SelfHealing`: full docstrings, error logging, `Optional[Dict]`
+- `HybridQuantumClassical`: fallback logged
 
 ### Documentation
-- `README.md` расширен (≈340 строк): архитектурная диаграмма,
-  prerequisites, структура проекта, гайд «Adding a new platform».
-- `CONTRIBUTING.md` расширен: процессы Code Review и Release.
-- `.gitignore` расширен: SQLite WAL/SHM, IDE, coverage, mypy, OS files.
+- `README.md`: +90 lines (architecture diagram, prerequisites, project tree, new-platform guide)
+- `CONTRIBUTING.md`: +25 lines (Code Review + Release process)
+- `.gitignore`: +26 lines (WAL/SHM, IDE, coverage, mypy, OS files)
+- `Makefile`: added `test-cov`, `lint`, `security` targets
+- `requirements.txt`: added `isort`, `mypy`, `pytest-timeout`
+- `CHANGELOG.md` consolidated
 
 ### Tests
-- Новые тесты: `test_active_learning` (4 теста), `test_config`
-  (4 теста).
-- Расширены: `test_rate_limiter` (+2 теста), `test_bigl_agent`
-  (+2 теста), `test_prom_agent` (+2 теста), `test_shafa_agent`
-  (+2 теста).
+- **10 new test suites** (51 tests):
+  `test_active_learning`, `test_config`, `test_ab_testing`, `test_adversarial`,
+  `test_agent_swarm`, `test_ai_agent`, `test_ai_engineer`, `test_ai_product_manager`,
+  `test_ai_researcher`, `test_ai_governance`, `test_ai_alignment`, `test_ai_ethics`
+- **4 expanded suites**: `test_rate_limiter`, `test_bigl_agent`, `test_prom_agent`,
+  `test_shafa_agent`
 
 ## [9.0.0] - 2026-07-21
 
