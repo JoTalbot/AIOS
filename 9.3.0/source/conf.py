@@ -1,5 +1,5 @@
 # Configuration file for the Sphinx documentation builder.
-# AIOS Documentation — v9.2.0-production
+# AIOS Documentation — v9.3.0
 
 import os
 import sys
@@ -10,8 +10,8 @@ sys.path.insert(0, os.path.abspath("../../"))
 project = "AIOS — Autonomous Intelligence Operating System"
 copyright = "2026, JoTalbot & AIOS Core Team"
 author = "JoTalbot"
-release = "9.2.0"
-version = "9.2.0"
+release = "9.3.0"
+version = "9.3.0"
 
 # -- General configuration -----------------------------------------------------
 extensions = [
