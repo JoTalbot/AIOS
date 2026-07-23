@@ -1,53 +1,17 @@
-"""AIOS MCP Gateway Package v1.0.0
+"""Backward-compatibility re-export.
 
-Model Context Protocol gateway for AIOS, providing JSON-RPC 2.0 access
-to constitution-guarded tools, resources, and prompt templates.
+The canonical MCP package is now ``aios_mcp``.  This module forwards
+all public names so that existing imports keep working.
 """
 
-from .gateway import ConstitutionGuard, GatewayConfig, MCPGateway
-from .prompts import PromptDefinition, PromptRegistry
-from .protocol import (
-    JSONRPCError,
-    JSONRPCNotification,
-    JSONRPCRequest,
-    JSONRPCResponse,
-    MCPPrompt,
-    MCPPromptResult,
-    MCPProtocol,
-    MCPResource,
-    MCPResourceContent,
-    MCPToolCall,
-    MCPToolResult,
-)
-from .resources import ResourceDefinition, ResourceRegistry
-from .tools import ToolDefinition, ToolRegistry
+from aios_mcp.gateway import GatewayConfig, MCPGateway  # noqa: F401
+from aios_mcp.tools import ToolRegistry  # noqa: F401
+from aios_mcp.resources import ResourceRegistry  # noqa: F401
+from aios_mcp.prompts import PromptRegistry  # noqa: F401
+from aios_mcp.protocol import MCPProtocol, MCPRequest, MCPResponse  # noqa: F401
 
 __all__ = [
-    # Protocol
-    "JSONRPCError",
-    "JSONRPCRequest",
-    "JSONRPCResponse",
-    "JSONRPCNotification",
-    "MCPProtocol",
-    "MCPToolCall",
-    "MCPToolResult",
-    "MCPResource",
-    "MCPResourceContent",
-    "MCPPrompt",
-    "MCPPromptResult",
-    # Tools
-    "ToolDefinition",
-    "ToolRegistry",
-    # Resources
-    "ResourceDefinition",
-    "ResourceRegistry",
-    # Prompts
-    "PromptDefinition",
-    "PromptRegistry",
-    # Gateway
-    "ConstitutionGuard",
-    "GatewayConfig",
-    "MCPGateway",
+    "GatewayConfig", "MCPGateway", "MCPProtocol",
+    "MCPRequest", "MCPResponse", "PromptRegistry",
+    "ResourceRegistry", "ToolRegistry",
 ]
-
-__version__ = "1.0.0"
