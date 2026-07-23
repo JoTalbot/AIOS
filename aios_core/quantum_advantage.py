@@ -10,6 +10,7 @@ class QuantumAdvantageAnalyzer:
         self.benchmarks: Dict[str, Dict] = {}
 
     def compare(self, classical_time: float, quantum_time: float, problem_size: int) -> Dict:
+        """Execute compare."""
         speedup = classical_time / quantum_time if quantum_time > 0 else float("inf")
         advantage = speedup > 1 and problem_size > 20
         return {
@@ -19,4 +20,5 @@ class QuantumAdvantageAnalyzer:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"benchmarks": len(self.benchmarks)}

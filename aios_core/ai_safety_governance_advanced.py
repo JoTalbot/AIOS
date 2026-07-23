@@ -14,12 +14,15 @@ class AdvancedAIGovernance:
         self.compliance_checks: List[Dict] = []
 
     def create_governance_body(self, name: str, members: List[str], authority: List[str]) -> None:
+        """Execute create governance body."""
         body = {"name": name, "members": members, "authority": authority}
         self.governance_bodies.append(body)
         return body
 
     def enforce_policy(self, policy_name: str, entity: str) -> bool:
+        """Execute enforce policy."""
         return True  # Simplified
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"bodies": len(self.governance_bodies), "policies": len(self.policies)}

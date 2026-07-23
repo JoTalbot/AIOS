@@ -241,6 +241,7 @@ class PredictiveMaintenance:
         return [self.predict(d) for d in devices]
 
     def get_recommendations(self, device_id: str) -> List[str]:
+        """Execute get recommendations."""
         pred = self.predict(device_id)
         return pred.recommendations
 

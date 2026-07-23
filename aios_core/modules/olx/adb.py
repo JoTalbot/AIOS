@@ -37,6 +37,7 @@ class ADBController:
         return "adb"
 
     def run(self, command) -> None:
+        """Execute run."""
         result = subprocess.run(command, shell=True, capture_output=True, text=True)
 
         return {
@@ -46,14 +47,17 @@ class ADBController:
         }
 
     def swipe(self, x1, y1, x2, y2, duration=500) -> None:
+        """Execute swipe."""
         cmd = f"{self.adb} shell input swipe " f"{x1} {y1} {x2} {y2} {duration}"
 
         return self.run(cmd)
 
     def tap(self, x, y) -> None:
+        """Execute tap."""
         return self.run(f"{self.adb} shell input tap {x} {y}")
 
     def dump_ui(self, filename="screen.xml") -> None:
+        """Execute dump ui."""
         remote = "/sdcard/aios_ui.xml"
 
         self.run(f"{self.adb} shell uiautomator dump {remote}")
@@ -63,11 +67,13 @@ class ADBController:
         return result
 
     def screenshot(self, filename="screen.png") -> None:
+        """Execute screenshot."""
         cmd = f"{self.adb} exec-out screencap -p > {filename}"
 
         return self.run(cmd)
 
     def open_app(self) -> None:
+        """Execute open app."""
         cmd = f"{self.adb} shell monkey " f"-p {self.package} 1"
 
         return self.run(cmd)

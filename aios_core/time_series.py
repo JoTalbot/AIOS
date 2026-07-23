@@ -11,6 +11,7 @@ class TimeSeriesAnalyzer:
         self.series: Dict[str, List[float]] = {}
 
     def add_data(self, series_name: str, value: float) -> None:
+        """Execute add data."""
         if series_name not in self.series:
             self.series[series_name] = []
         self.series[series_name].append(value)
@@ -18,12 +19,14 @@ class TimeSeriesAnalyzer:
             self.series[series_name] = self.series[series_name][-1000:]
 
     def moving_average(self, series_name: str, window: int = 5) -> List[float]:
+        """Execute moving average."""
         data = self.series.get(series_name, [])
         if len(data) < window:
             return data
         return [sum(data[i : i + window]) / window for i in range(len(data) - window + 1)]
 
     def detect_trend(self, series_name: str) -> str:
+        """Execute detect trend."""
         data = self.series.get(series_name, [])
         if len(data) < 3:
             return "insufficient_data"
@@ -35,4 +38,5 @@ class TimeSeriesAnalyzer:
         return "stable"
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"series": len(self.series)}

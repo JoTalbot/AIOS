@@ -11,9 +11,11 @@ class SimpleSearchEngine:
         self.documents: Dict[str, str] = {}
 
     def index(self, doc_id: str, text: str) -> None:
+        """Execute index."""
         self.documents[doc_id] = text.lower()
 
     def search(self, query: str, limit: int = 10) -> List[Dict]:
+        """Execute search."""
         q = query.lower()
         results = []
         for doc_id, text in self.documents.items():
@@ -23,4 +25,5 @@ class SimpleSearchEngine:
         return sorted(results, key=lambda x: x["score"], reverse=True)[:limit]
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"documents": len(self.documents)}

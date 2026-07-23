@@ -19,6 +19,7 @@ class SafetyMonitor:
         }
 
     def record_metric(self, metric: str, value: float) -> None:
+        """Execute record metric."""
         if metric not in self.metrics:
             self.metrics[metric] = []
         self.metrics[metric].append(value)
@@ -34,6 +35,7 @@ class SafetyMonitor:
             )
 
     def get_status(self) -> Dict:
+        """Execute get status."""
         return {
             "metrics": {k: v[-1] if v else 0 for k, v in self.metrics.items()},
             "alerts": len(self.alerts),
@@ -41,4 +43,5 @@ class SafetyMonitor:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"metrics_tracked": len(self.metrics), "alerts": len(self.alerts)}

@@ -10,6 +10,7 @@ class CausalInference:
         self.causal_graph: Dict[str, List[str]] = {}
 
     def add_causal_link(self, cause: str, effect: str) -> None:
+        """Execute add causal link."""
         if cause not in self.causal_graph:
             self.causal_graph[cause] = []
         self.causal_graph[cause].append(effect)
@@ -24,4 +25,5 @@ class CausalInference:
         return effects
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"causal_links": sum(len(v) for v in self.causal_graph.values())}

@@ -13,10 +13,13 @@ class ValueLearning:
         self.preferences: List[Dict] = []
 
     def learn_preference(self, option_a: str, option_b: str, preference: str) -> None:
+        """Execute learn preference."""
         self.preferences.append({"a": option_a, "b": option_b, "preference": preference})
 
     def infer_value(self, behavior: str) -> float:
+        """Execute infer value."""
         return 0.8
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"preferences": len(self.preferences)}

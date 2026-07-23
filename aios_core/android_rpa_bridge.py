@@ -218,6 +218,7 @@ class AndroidRPAManager:
         return app_api_profile
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "converted_apps_count": len(self.registered_app_apis),
             "active_emulator_sessions": len(self.emulator.authenticated_sessions),

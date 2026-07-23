@@ -498,6 +498,7 @@ class OLXStorage:
         return self.outbox_list(status="pending")
 
     def outbox_list(self, status: Optional[str] = None) -> List[Dict[str, object]]:
+        """Execute outbox list."""
         sql = "SELECT * FROM olx_outbox"
         params: list = []
         if status is not None:
@@ -596,6 +597,7 @@ class OLXStorage:
             return cursor.rowcount > 0
 
     def own_ads(self, status: Optional[str] = None) -> List[Dict[str, object]]:
+        """Execute own ads."""
         sql = "SELECT * FROM own_ads"
         params: list = []
         if status is not None:
@@ -642,11 +644,13 @@ class OLXStorage:
             return cursor.lastrowid
 
     def subscriptions_list(self) -> List[Dict[str, object]]:
+        """Execute subscriptions list."""
         with self._lock:
             rows = self._conn.execute("SELECT * FROM olx_subscriptions ORDER BY id").fetchall()
         return [dict(row) for row in rows]
 
     def subscription_remove(self, subscription_id: int) -> bool:
+        """Execute subscription remove."""
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 "DELETE FROM olx_subscriptions WHERE id = ?", (subscription_id,)
@@ -654,6 +658,7 @@ class OLXStorage:
             return cursor.rowcount > 0
 
     def subscription_touch(self, subscription_id: int) -> None:
+        """Execute subscription touch."""
         now = datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             self._conn.execute(
@@ -662,6 +667,7 @@ class OLXStorage:
             )
 
     def favorite_add(self, fingerprint: str) -> bool:
+        """Execute favorite add."""
         now = datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
@@ -671,6 +677,7 @@ class OLXStorage:
             return cursor.rowcount > 0
 
     def favorite_remove(self, fingerprint: str) -> bool:
+        """Execute favorite remove."""
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 "DELETE FROM olx_favorites WHERE fingerprint = ?", (fingerprint,)
@@ -678,6 +685,7 @@ class OLXStorage:
             return cursor.rowcount > 0
 
     def favorites_list(self) -> List[str]:
+        """Execute favorites list."""
         with self._lock:
             rows = self._conn.execute(
                 "SELECT fingerprint FROM olx_favorites ORDER BY added_at"
@@ -717,6 +725,7 @@ class OLXStorage:
             return bool(cursor.rowcount)
 
     def competitor_links(self, own_fingerprint: str) -> List[Dict[str, object]]:
+        """Execute competitor links."""
         with self._lock:
             rows = self._conn.execute(
                 """
@@ -731,6 +740,7 @@ class OLXStorage:
     # ---- Profile key-value store ----
 
     def profile_set(self, key: str, value: Optional[str]) -> None:
+        """Execute profile set."""
         now = datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             self._conn.execute(
@@ -783,6 +793,7 @@ class OLXStorage:
         return buffer.getvalue()
 
     def close(self) -> None:
+        """Clean up resources."""
         self._conn.close()
 
     def __enter__(self) -> "OLXStorage":

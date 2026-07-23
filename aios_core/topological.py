@@ -10,6 +10,7 @@ class TopologicalAnalyzer:
         self.filtrations: List = []
 
     def compute_persistence(self, point_cloud: List[List[float]]) -> Dict:
+        """Execute compute persistence."""
         # Simplified persistence diagram
         return {
             "betti_0": len(point_cloud),
@@ -18,8 +19,10 @@ class TopologicalAnalyzer:
         }
 
     def extract_features(self, point_cloud: List[List[float]]) -> List[float]:
+        """Execute extract features."""
         persistence = self.compute_persistence(point_cloud)
         return [persistence["betti_0"], persistence["betti_1"]]
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"filtrations": len(self.filtrations)}

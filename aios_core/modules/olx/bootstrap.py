@@ -56,6 +56,7 @@ class BootstrapStep:
     commands: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dict."""
         return {"name": self.name, "why": self.why, "commands": list(self.commands)}
 
 
@@ -66,6 +67,7 @@ class DoctorCheck:
     hint: str = ""
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dict."""
         return {"name": self.name, "ok": self.ok, "hint": self.hint}
 
 
@@ -214,6 +216,7 @@ class OLXBootstrap:
         return steps
 
     def print_plan(self, **kwargs) -> str:
+        """Execute print plan."""
         lines: List[str] = []
         for index, step in enumerate(self.plan(**kwargs), start=1):
             lines.append(f"{index}. {step.name} — {step.why}")
@@ -312,6 +315,7 @@ class OLXBootstrap:
         return checks
 
     def doctor_report(self, db_path: str = ":memory:") -> Dict[str, object]:
+        """Execute doctor report."""
         checks = self.doctor(db_path=db_path)
         ok = all(check.ok for check in checks)
         return {"ready": ok, "checks": [check.to_dict() for check in checks]}

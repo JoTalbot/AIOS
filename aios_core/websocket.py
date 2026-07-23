@@ -22,6 +22,7 @@ class WebSocketManager:
         self.active_connections.add(websocket)
 
     def disconnect(self, websocket: WebSocket) -> None:
+        """Execute disconnect."""
         self.active_connections.discard(websocket)
 
     async def broadcast(self, message: Dict[str, Any]) -> None:

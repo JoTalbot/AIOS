@@ -25,6 +25,7 @@ except ImportError:
 
     class _DummyTracer:
         def get_current_context(self) -> None:
+            """Execute get current context."""
             return None
 
     tracer = _DummyTracer()

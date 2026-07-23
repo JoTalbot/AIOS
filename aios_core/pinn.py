@@ -11,6 +11,7 @@ class PINN:
         self.boundary = boundary_conditions
 
     def train(self, epochs: int = 1000) -> Dict:
+        """Execute train."""
         # Placeholder training loop
         loss_history = [1.0 / (i + 1) for i in range(epochs)]
         return {
@@ -20,7 +21,9 @@ class PINN:
         }
 
     def predict(self, x: List[float]) -> float:
+        """Execute predict."""
         return sum(x) / len(x) if x else 0.0
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"type": "pinn"}

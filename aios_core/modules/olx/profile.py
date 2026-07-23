@@ -55,9 +55,11 @@ class ProfileInfo:
 
     @property
     def name(self) -> Optional[str]:
+        """Execute name."""
         return self.fields.get("name")
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dict."""
         return {"fields": dict(self.fields)}
 
 
@@ -68,6 +70,7 @@ class SettingsInfo:
     toggles: Dict[str, bool] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dict."""
         return {"toggles": dict(self.toggles)}
 
 
@@ -75,11 +78,13 @@ class ProfileParser:
     """Parses profile/settings screens into structured data."""
 
     def parse_profile(self, xml_source: Union[str, Path, ET.Element]) -> ProfileInfo:
+        """Execute parse profile."""
         texts = self._texts(xml_source)
         return self.profile_from_texts(texts)
 
     @staticmethod
     def profile_from_texts(texts: List[str]) -> ProfileInfo:
+        """Execute profile from texts."""
         fields: Dict[str, str] = {}
         for raw in texts:
             match = _KV_RE.match(raw)
@@ -95,6 +100,7 @@ class ProfileParser:
 
     @staticmethod
     def settings_from_texts(texts: List[str]) -> SettingsInfo:
+        """Execute settings from texts."""
         toggles: Dict[str, bool] = {}
         for raw in texts:
             lowered = raw.lower()
@@ -138,6 +144,7 @@ class ProfileEditor:
 
     @staticmethod
     def plan_steps(field_key: str, new_value: str) -> List[str]:
+        """Execute plan steps."""
         labels = {
             "name": "Ім'я",
             "phone": "Телефон",

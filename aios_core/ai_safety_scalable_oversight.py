@@ -19,6 +19,7 @@ class ScalableOversight:
         self.evaluations: List[Dict] = []
 
     def debate(self, claim: str, agents: int = 2) -> Dict:
+        """Execute debate."""
         return {
             "claim": claim,
             "agents": agents,
@@ -27,7 +28,9 @@ class ScalableOversight:
         }
 
     def weak_to_strong(self, weak_model: Any, strong_model: Any) -> Dict:
+        """Execute weak to strong."""
         return {"generalization": 0.75, "technique": "weak_to_strong"}
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"techniques": len(self.techniques)}

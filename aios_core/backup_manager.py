@@ -40,6 +40,7 @@ class BackupMetadata:
     row_counts: Dict[str, int]
 
     def to_dict(self) -> Dict:
+        """Serialize to dict."""
         return asdict(self)
 
 

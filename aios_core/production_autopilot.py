@@ -46,6 +46,7 @@ class ProductionProfile:
     webhook_url: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dict."""
         return {
             "platform": self.platform,
             "name": self.name,
@@ -157,6 +158,7 @@ class CycleReport:
     advisor_drafts: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dict."""
         return {
             "profile": self.profile_key,
             "status": self.status,
@@ -187,6 +189,7 @@ class DailyReport:
     compliance_blocks: int
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dict."""
         return {
             "date": self.date,
             "total_cycles": self.total_cycles,

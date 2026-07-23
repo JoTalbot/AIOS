@@ -12,6 +12,7 @@ class MambaBlock:
         self.state = [0.0] * d_state
 
     def forward(self, x: List[float]) -> List[float]:
+        """Execute forward."""
         # Simplified selective SSM
         output = []
         for val in x:
@@ -20,4 +21,5 @@ class MambaBlock:
         return output
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"d_model": self.d_model, "d_state": self.d_state}

@@ -12,13 +12,16 @@ class NAS:
         self.search_space = ["conv", "attention", "recurrent", "transformer"]
 
     def sample_architecture(self) -> List[str]:
+        """Execute sample architecture."""
         return [random.choice(self.search_space) for _ in range(random.randint(3, 8))]
 
     def evaluate(self, arch: List[str]) -> float:
+        """Execute evaluate."""
         # Simulated evaluation
         return sum(len(layer) for layer in arch) / 100
 
     def search(self, trials: int = 50) -> Dict:
+        """Execute search."""
         best_arch = None
         best_score = 0
         for _ in range(trials):
@@ -30,4 +33,5 @@ class NAS:
         return {"architecture": best_arch, "score": round(best_score, 4)}
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"architectures": len(self.architectures)}

@@ -44,10 +44,12 @@ class VideoCard:
 
     @property
     def fingerprint(self) -> str:
+        """Execute fingerprint."""
         base = f"video:{(self.title or '').strip().lower()}|{self.duration or ''}"
         return hashlib.sha256(base.encode("utf-8")).hexdigest()[:16]
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dict."""
         return {
             "fingerprint": self.fingerprint,
             "title": self.title,

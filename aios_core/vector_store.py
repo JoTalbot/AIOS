@@ -13,10 +13,12 @@ class VectorStore:
         self.metadata: Dict[str, Dict] = {}
 
     def add(self, id: str, vector: List[float], metadata: Dict = None) -> None:
+        """Execute add."""
         self.vectors[id] = np.array(vector)
         self.metadata[id] = metadata or {}
 
     def search(self, query_vector: List[float], top_k: int = 5) -> List[Dict]:
+        """Execute search."""
         q = np.array(query_vector)
         scores = {}
         for vid, vec in self.vectors.items():
@@ -29,4 +31,5 @@ class VectorStore:
         ]
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"vectors": len(self.vectors)}

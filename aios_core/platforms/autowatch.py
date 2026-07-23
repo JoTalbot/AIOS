@@ -76,6 +76,7 @@ class _DrivenCollector:
         return OLXCollector(adb=self._adb, parser=self._parser, max_swipes=self.max_swipes)
 
     def collect(self, query=None, max_cards=50, progress=None) -> None:
+        """Execute collect."""
         if self._driver is not None:
             self._driver(self._package, query)
         return self._engine().collect(
@@ -85,6 +86,7 @@ class _DrivenCollector:
         )
 
     def collect_to_storage(self, storage, query=None, max_cards=50, progress=None) -> None:
+        """Execute collect to storage."""
         if self._driver is not None:
             self._driver(self._package, query)
         return self._engine().collect_to_storage(

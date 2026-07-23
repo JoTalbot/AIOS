@@ -59,6 +59,7 @@ class OwnPost:
 
     @property
     def fingerprint(self) -> str:
+        """Execute fingerprint."""
         if self.post_id:
             base = f"own:ig:id:{self.post_id.strip().lower()}"
         else:
@@ -78,6 +79,7 @@ class OwnPost:
         )
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dict."""
         return {
             "fingerprint": self.fingerprint,
             "caption": self.caption,
@@ -102,6 +104,7 @@ class OwnPostsParser:
         self.markers = tuple(m.lower() for m in (markers or DEFAULT_GRID_MARKERS))
 
     def parse(self, xml_source: Union[str, Path, ET.Element]) -> List[OwnPost]:
+        """Execute parse."""
         from aios_core.platforms.calibrate import CalibrationAdvisor
 
         root = CalibrationAdvisor._root(xml_source)

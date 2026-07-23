@@ -13,12 +13,15 @@ class EdgeNode:
         self.load = 0
 
     def can_handle(self, task_size: int) -> bool:
+        """Execute can handle."""
         return self.load + task_size <= self.capacity
 
     def assign(self, task_size: int) -> None:
+        """Execute assign."""
         self.load += task_size
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "id": self.node_id,
             "location": self.location,
@@ -34,9 +37,11 @@ class EdgeOrchestrator:
         self.nodes: Dict[str, EdgeNode] = {}
 
     def register_node(self, node: EdgeNode) -> None:
+        """Execute register node."""
         self.nodes[node.node_id] = node
 
     def schedule(self, task_size: int, preferred_location: str = None) -> str:
+        """Execute schedule."""
         for node in sorted(self.nodes.values(), key=lambda n: n.load):
             if node.can_handle(task_size):
                 node.assign(task_size)
@@ -44,4 +49,5 @@ class EdgeOrchestrator:
         return None
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"nodes": len(self.nodes)}

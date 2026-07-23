@@ -209,6 +209,7 @@ class CrossAppWorkflowEngine:
                 import re
 
                 def repl(match) -> None:
+                    """Execute repl."""
                     path = match.group(1).strip()
                     # support dot notation
                     parts = path.split(".")
@@ -252,9 +253,11 @@ class CrossAppWorkflowEngine:
         execution.status = WorkflowStatus.ROLLED_BACK if rollback_log else WorkflowStatus.FAILED
 
     def get_execution(self, wf_id: str) -> Optional[WorkflowExecution]:
+        """Execute get execution."""
         return self._executions.get(wf_id)
 
     def list_executions(self) -> List[WorkflowExecution]:
+        """Execute list executions."""
         return list(self._executions.values())
 
     # --- Prebuilt workflows (per roadmap) ---

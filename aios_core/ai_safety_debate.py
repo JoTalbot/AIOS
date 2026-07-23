@@ -12,6 +12,7 @@ class DebateProtocol:
         self.debates: List[Dict] = []
 
     def run_debate(self, question: str, agents: int = 2, rounds: int = 3) -> Dict:
+        """Execute run debate."""
         debate = {
             "question": question,
             "agents": agents,
@@ -23,4 +24,5 @@ class DebateProtocol:
         return debate
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"debates": len(self.debates)}

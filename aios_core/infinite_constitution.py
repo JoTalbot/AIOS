@@ -59,6 +59,7 @@ class InfiniteConstitutionEngine:
         return amendment_record
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "base_constitutional_articles": self.core_articles_count,
             "ratified_infinite_amendments": len(self.dynamic_amendments),

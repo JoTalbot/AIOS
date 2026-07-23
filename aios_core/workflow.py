@@ -29,17 +29,20 @@ class WorkflowEngine:
         self.workflows: Dict[str, Workflow] = {}
 
     def create_workflow(self, name: str) -> Workflow:
+        """Execute create workflow."""
         wf = Workflow(name=name)
         self.workflows[wf.id] = wf
         return wf
 
     def add_step(self, workflow_id: str, name: str, action: Callable, **params) -> None:
+        """Execute add step."""
         wf = self.workflows[workflow_id]
         step = WorkflowStep(name=name, action=action, params=params)
         wf.steps.append(step)
         return step
 
     def execute(self, workflow_id: str) -> Dict:
+        """Execute execute."""
         wf = self.workflows[workflow_id]
         wf.status = "running"
         results = []
@@ -56,6 +59,7 @@ class WorkflowEngine:
         return {"status": "completed", "results": results}
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "total_workflows": len(self.workflows),
             "by_status": {

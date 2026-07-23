@@ -36,6 +36,7 @@ class OwnAd:
 
     @property
     def fingerprint(self) -> str:
+        """Execute fingerprint."""
         if self.ad_id:
             base = f"own:id:{self.ad_id.strip().lower()}"
         elif self.url:
@@ -45,6 +46,7 @@ class OwnAd:
         return hashlib.sha256(base.encode("utf-8")).hexdigest()[:12]
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dict."""
         return {
             "fingerprint": self.fingerprint,
             "title": self.title,
@@ -63,6 +65,7 @@ class OwnAdsParser:
     """Parses the 'My listings' screen into :class:`OwnAd` rows."""
 
     def parse(self, xml_source: Union[str, Path, ET.Element]) -> List[OwnAd]:
+        """Execute parse."""
         if isinstance(xml_source, ET.Element):
             root = xml_source
         else:

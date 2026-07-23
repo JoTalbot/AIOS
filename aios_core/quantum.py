@@ -11,6 +11,7 @@ class QuantumInspiredOptimizer:
         self.temperature = temperature
 
     def optimize(self, solution: List, cost_func, iterations: int = 1000) -> None:
+        """Execute optimize."""
         current = solution[:]
         current_cost = cost_func(current)
 
@@ -28,4 +29,5 @@ class QuantumInspiredOptimizer:
         return current, current_cost
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"temperature": round(self.temperature, 2)}

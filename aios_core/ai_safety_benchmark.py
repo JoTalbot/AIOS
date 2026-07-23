@@ -18,6 +18,7 @@ class SafetyBenchmark:
         }
 
     def run_benchmark(self, benchmark_name: str, model: Any) -> Dict:
+        """Execute run benchmark."""
         if benchmark_name in self.benchmarks:
             self.benchmarks[benchmark_name] = {
                 "score": 0.88,
@@ -27,7 +28,9 @@ class SafetyBenchmark:
         return self.benchmarks[benchmark_name]
 
     def get_leaderboard(self) -> Dict:
+        """Execute get leaderboard."""
         return self.benchmarks
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"benchmarks": len(self.benchmarks)}

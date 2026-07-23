@@ -101,10 +101,12 @@ class TemplateRegistry:
         }
 
     def get(self, platform: str, template_name: str = "default") -> str:
+        """Execute get."""
         plat = self.templates.get(platform.lower(), self.templates["generic"])
         return plat.get(template_name, plat.get("default", "Спасибо за сообщение!"))
 
     def render(self, platform: str, template_name: str, **kwargs) -> str:
+        """Execute render."""
         tmpl = self.get(platform, template_name)
         try:
             return tmpl.format(**kwargs)
@@ -389,9 +391,11 @@ class AISalesAdvisor:
         return min(score, 0.95)
 
     def list_drafts(self) -> List[AdvisorDraft]:
+        """Execute list drafts."""
         return list(self._drafts.values())
 
     def get_draft(self, draft_id: str) -> Optional[AdvisorDraft]:
+        """Execute get draft."""
         return self._drafts.get(draft_id)
 
     def approve_draft(self, draft_id: str, approved_by: str) -> Optional[AdvisorDraft]:

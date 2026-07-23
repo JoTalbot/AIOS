@@ -56,6 +56,7 @@ class ShardRouter:
         self.close()
 
     def close(self) -> None:
+        """Clean up resources."""
         with self._lock:
             self._conn.close()
 
@@ -111,6 +112,7 @@ class ShardRouter:
         """HRW: хост с максимальным хэшем (стабилен между процессами)."""
 
         def score(host: Dict) -> str:
+            """Execute score."""
             key = f"{host['host']}|{profile_key}".encode("utf-8")
             return hashlib.sha256(key).hexdigest()
 

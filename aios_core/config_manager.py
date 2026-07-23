@@ -17,6 +17,7 @@ class ConfigManager:
         self.load()
 
     def load(self) -> None:
+        """Execute load."""
         if os.path.exists(self.config_path):
             with open(self.config_path, "r") as f:
                 self.config = yaml.safe_load(f) or {}
@@ -27,14 +28,18 @@ class ConfigManager:
                 self.config[key] = env_val
 
     def get(self, key: str, default: Any = None) -> Any:
+        """Execute get."""
         return self.config.get(key, default)
 
     def set(self, key: str, value: Any) -> None:
+        """Execute set."""
         self.config[key] = value
 
     def save(self) -> None:
+        """Execute save."""
         with open(self.config_path, "w") as f:
             yaml.dump(self.config, f)
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"keys": len(self.config), "source": self.config_path}

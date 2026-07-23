@@ -17,12 +17,15 @@ class EmotionalIntelligence:
         }
 
     def recognize_emotion(self, signals: Dict) -> str:
+        """Execute recognize emotion."""
         # Simplified emotion recognition
         return "neutral"
 
     def regulate_emotion(self, emotion: str, intensity: float) -> Dict:
+        """Execute regulate emotion."""
         self.emotions[emotion] = max(0, min(1, intensity))
         return {"regulated": True, "emotion": emotion}
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"emotions_tracked": len(self.emotions)}

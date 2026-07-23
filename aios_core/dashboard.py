@@ -160,6 +160,7 @@ class AIOSDashboard:
         return JSONResponse(payload)
 
     def create_app(self) -> None:
+        """Execute create app."""
         routes = [
             Route("/", self.index),
             Route("/api/stats", self.api_stats),

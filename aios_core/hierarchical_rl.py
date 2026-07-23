@@ -21,10 +21,13 @@ class HierarchicalRL:
         self.high_level_policy = {}
 
     def add_option(self, option: Option) -> None:
+        """Execute add option."""
         self.options[option.name] = option
 
     def select_option(self, state: Dict) -> str:
+        """Execute select option."""
         return list(self.options.keys())[0] if self.options else "default"
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"options": len(self.options)}

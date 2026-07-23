@@ -11,6 +11,7 @@ class KnowledgeDistiller:
         self.student_models: Dict[str, Dict] = {}
 
     def distill(self, teacher_id: str, student_id: str, temperature: float = 2.0) -> Dict:
+        """Execute distill."""
         if teacher_id not in self.teacher_models:
             return {"error": "Teacher not found"}
         # Simplified distillation
@@ -22,6 +23,7 @@ class KnowledgeDistiller:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "teachers": len(self.teacher_models),
             "students": len(self.student_models),

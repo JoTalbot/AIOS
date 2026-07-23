@@ -24,6 +24,7 @@ class CircuitBreaker:
         self.state = CircuitState.CLOSED
 
     def call(self, func: Callable, *args, **kwargs) -> Any:
+        """Execute call."""
         if self.state == CircuitState.OPEN:
             if time.time() - self.last_failure_time > self.recovery_timeout:
                 self.state = CircuitState.HALF_OPEN
@@ -44,4 +45,5 @@ class CircuitBreaker:
             raise e
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"state": self.state.value, "failure_count": self.failure_count}

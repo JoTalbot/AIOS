@@ -77,6 +77,7 @@ class MultiDimensionalWorldModel:
         }
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "rollouts_count": self.rollouts_count,
             "simulation_horizon_steps": self.simulation_horizon_steps,

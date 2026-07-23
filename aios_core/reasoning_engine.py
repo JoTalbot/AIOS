@@ -226,6 +226,7 @@ class ReasoningEngine:
 
     # Backward compat
     def reason(self, decision: str, rules: list, sources: list) -> dict:
+        """Execute reason."""
         trace = {
             "decision": decision,
             "rules_applied": rules,
@@ -242,6 +243,7 @@ class ReasoningEngine:
         return min(0.95, base_confidence + rule_boost + source_boost)
 
     def last_trace(self) -> dict:
+        """Execute last trace."""
         return self._traces[-1] if self._traces else None
 
     # ------------------------------------------------------------------
@@ -690,6 +692,7 @@ class ReasoningEngine:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "version": "3.0.0",
             "chains_built": len(self._chains),

@@ -20,6 +20,7 @@ class MetricCounter:
         self.value = 0.0
 
     def add(self, value: float = 1.0) -> None:
+        """Execute add."""
         self.value += value
 
 
@@ -32,6 +33,7 @@ class MetricGauge:
         self.value = 0.0
 
     def set(self, value: float) -> None:
+        """Execute set."""
         self.value = value
 
 
@@ -44,11 +46,13 @@ class MetricHistogram:
         self.values: List[float] = []
 
     def observe(self, value: float) -> None:
+        """Execute observe."""
         self.values.append(value)
         if len(self.values) > 5000:
             self.values = self.values[-5000:]
 
     def get_summary(self) -> Dict[str, float]:
+        """Execute get summary."""
         if not self.values:
             return {
                 "count": 0,
@@ -64,6 +68,7 @@ class MetricHistogram:
         count = len(s_vals)
 
         def percentile(p: float) -> float:
+            """Execute percentile."""
             idx = int(math.ceil((p / 100.0) * count)) - 1
             return s_vals[max(0, min(count - 1, idx))]
 
@@ -88,6 +93,7 @@ class Telemetry:
         self.recorded_events: List[Dict[str, Any]] = []
 
     def counter(self, name: str, description: str = "") -> MetricCounter:
+        """Execute counter."""
         if name not in self.counters:
             self.counters[name] = MetricCounter(name, description)
         return self.counters[name]
@@ -109,6 +115,7 @@ class Telemetry:
         return self.counters.get(name, MetricCounter(name)).value
 
     def gauge(self, name: str, description: str = "") -> MetricGauge:
+        """Execute gauge."""
         if name not in self.gauges:
             self.gauges[name] = MetricGauge(name, description)
         return self.gauges[name]
@@ -126,6 +133,7 @@ class Telemetry:
         return self.gauges.get(name, MetricGauge(name)).value
 
     def histogram(self, name: str, description: str = "") -> MetricHistogram:
+        """Execute histogram."""
         if name not in self.histograms:
             self.histograms[name] = MetricHistogram(name, description)
         return self.histograms[name]
@@ -201,6 +209,7 @@ class Telemetry:
         self.recorded_events.clear()
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "total_counters": len(self.counters),
             "total_gauges": len(self.gauges),

@@ -11,6 +11,7 @@ class GraphNeuralNetwork:
         self.embeddings: Dict[str, List[float]] = {}
 
     def add_node(self, node_id: str, features: List[float]) -> None:
+        """Execute add node."""
         self.embeddings[node_id] = features
 
     def message_passing(self, edges: List[tuple]) -> Dict[str, List[float]]:
@@ -25,4 +26,5 @@ class GraphNeuralNetwork:
         return self.embeddings
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"nodes": len(self.embeddings), "layers": self.layers}

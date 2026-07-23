@@ -44,6 +44,7 @@ class ShardGateway:
         self._client_factory = client_factory or _default_client_factory
 
     def close(self) -> None:
+        """Clean up resources."""
         if self._owns_router:
             self.router.close()
 
@@ -130,6 +131,7 @@ class ShardHealthMonitor:
         self._stopped = threading.Event()
 
     def close(self) -> None:
+        """Clean up resources."""
         self.stop()
         if self._owns_router:
             self.router.close()

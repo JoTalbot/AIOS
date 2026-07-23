@@ -19,7 +19,9 @@ class AdvancedInterpretability:
         ]
 
     def analyze_circuit(self, model: Any, task: str) -> Dict:
+        """Execute analyze circuit."""
         return {"task": task, "circuits": ["attention_4", "mlp_7"], "importance": 0.92}
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"techniques": len(self.techniques)}

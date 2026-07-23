@@ -12,6 +12,7 @@ class DeceptionDetector:
         self.detected_deceptions: List[Dict] = []
 
     def analyze_output(self, output: str, context: Dict) -> Dict:
+        """Execute analyze output."""
         deception_score = 0.0
         indicators = []
 
@@ -31,4 +32,5 @@ class DeceptionDetector:
         return {"deception_score": deception_score, "indicators": indicators}
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"detected": len(self.detected_deceptions)}

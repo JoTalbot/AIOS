@@ -88,6 +88,7 @@ class UniversalInvariantProver:
         return proof_record
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "active_invariants": len(self.invariants),
             "total_proofs": len(self.proofs_generated),

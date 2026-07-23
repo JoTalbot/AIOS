@@ -13,6 +13,7 @@ class SpikingNeuron:
         self.spikes = 0
 
     def step(self, input_current: float) -> int:
+        """Execute step."""
         self.membrane = self.membrane * self.decay + input_current
         if self.membrane >= self.threshold:
             self.spikes += 1
@@ -28,6 +29,7 @@ class SpikingLayer:
         self.neurons = [SpikingNeuron() for _ in range(size)]
 
     def forward(self, inputs: List[float], timesteps: int = 10) -> List[int]:
+        """Execute forward."""
         outputs = [0] * len(self.neurons)
         for _ in range(timesteps):
             for i, neuron in enumerate(self.neurons):
@@ -37,4 +39,5 @@ class SpikingLayer:
         return outputs
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"neurons": len(self.neurons)}

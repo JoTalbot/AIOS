@@ -14,6 +14,7 @@ class JWTManager:
         self.algorithm = algorithm
 
     def create_token(self, subject: str, roles: list = None, expires_in: int = 3600) -> str:
+        """Execute create token."""
         payload = {
             "sub": subject,
             "roles": roles or ["user"],
@@ -23,12 +24,14 @@ class JWTManager:
         return jwt.encode(payload, self.secret, algorithm=self.algorithm)
 
     def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
+        """Execute verify token."""
         try:
             return jwt.decode(token, self.secret, algorithms=[self.algorithm])
         except jwt.PyJWTError:
             return None
 
     def get_principal(self, token: str) -> Optional[Dict]:
+        """Execute get principal."""
         payload = self.verify_token(token)
         if payload:
             return {

@@ -14,10 +14,12 @@ class SafetyDashboard:
         self.safety_score = 1.0
 
     def update_metric(self, name: str, value: float) -> None:
+        """Execute update metric."""
         self.metrics[name] = value
         self._recalculate_safety_score()
 
     def add_incident(self, incident: Dict) -> None:
+        """Execute add incident."""
         self.incidents.append(incident)
         self._recalculate_safety_score()
 
@@ -28,6 +30,7 @@ class SafetyDashboard:
             self.safety_score = max(0.0, 1.0 - len(self.incidents) * 0.05)
 
     def get_dashboard(self) -> Dict:
+        """Execute get dashboard."""
         return {
             "safety_score": round(self.safety_score, 3),
             "metrics": self.metrics,
@@ -36,4 +39,5 @@ class SafetyDashboard:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"metrics": len(self.metrics), "incidents": len(self.incidents)}

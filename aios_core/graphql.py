@@ -10,9 +10,11 @@ class GraphQLSchema:
         self.resolvers = {}
 
     def register(self, field: str, resolver) -> None:
+        """Execute register."""
         self.resolvers[field] = resolver
 
     def execute(self, query: str) -> Dict[str, Any]:
+        """Execute execute."""
         # Extremely simplified GraphQL executor
         if "stats" in query:
             return {"data": {"stats": {"total_tasks": 42}}}

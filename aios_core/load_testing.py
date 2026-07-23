@@ -17,10 +17,12 @@ class LoadTester:
         self.results = []
 
     def run(self, func: Callable, concurrent_users: int = 10, duration_seconds: int = 30) -> None:
+        """Execute run."""
         self.results = []
         start_time = time.time()
 
         def worker() -> None:
+            """Execute worker."""
             while time.time() - start_time < duration_seconds:
                 try:
                     start = time.perf_counter()
@@ -47,4 +49,5 @@ class LoadTester:
         }
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"tests_run": len(self.results)}

@@ -93,6 +93,7 @@ class GeneratedTest:
         return "\n".join(lines)
 
     def to_json(self) -> Dict[str, Any]:
+        """Execute to json."""
         return {
             "id": self.id,
             "name": self.name,
@@ -347,4 +348,5 @@ class AndroidTestGenerator:
         }
 
     def list_generated(self) -> List[GeneratedTest]:
+        """Execute list generated."""
         return self._generated

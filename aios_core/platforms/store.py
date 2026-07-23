@@ -78,6 +78,7 @@ class ProfileStore:
         self.close()
 
     def close(self) -> None:
+        """Clean up resources."""
         with self._lock:
             self._conn.close()
 

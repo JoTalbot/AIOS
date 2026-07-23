@@ -11,9 +11,11 @@ class HealthCheckRegistry:
         self.checks: Dict[str, Callable] = {}
 
     def register(self, name: str, check_func: Callable) -> None:
+        """Execute register."""
         self.checks[name] = check_func
 
     def run_all(self) -> Dict[str, Any]:
+        """Execute run all."""
         results = {}
         for name, func in self.checks.items():
             try:
@@ -30,6 +32,7 @@ class HealthCheckRegistry:
         return results
 
     def overall_status(self) -> str:
+        """Execute overall status."""
         results = self.run_all()
         unhealthy = [k for k, v in results.items() if v.get("status") != "healthy"]
         return "healthy" if not unhealthy else "degraded"

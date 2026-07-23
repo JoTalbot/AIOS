@@ -11,9 +11,11 @@ class FederatedLearning:
         self.global_model: Dict = {}
 
     def register_node(self, node_id: str, capabilities: List[str]) -> None:
+        """Execute register node."""
         self.nodes[node_id] = {"capabilities": capabilities, "status": "active"}
 
     def aggregate(self, local_updates: List[Dict]) -> Dict:
+        """Execute aggregate."""
         # Simple average aggregation
         if not local_updates:
             return self.global_model
@@ -22,6 +24,7 @@ class FederatedLearning:
         return self.global_model
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {
             "nodes": len(self.nodes),
             "model_version": self.global_model.get("version", 0),

@@ -72,6 +72,7 @@ class ShardJobs:
         self.close()
 
     def close(self) -> None:
+        """Clean up resources."""
         self._conn.close()
 
     # -- очередь ------------------------------------------------------
@@ -329,6 +330,7 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
         return str(root / "data" / f"{platform}-{name}.sqlite")
 
     def autopilot(profile_key: str, payload: Dict) -> Dict:
+        """Execute autopilot."""
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
             raise ValueError(f"autopilot job поддерживает instagram-профили, не {platform!r}")
@@ -346,6 +348,7 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
         )
 
     def reels(profile_key: str, payload: Dict) -> Dict:
+        """Execute reels."""
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
             raise ValueError(f"reels job поддерживает instagram-профили, не {platform!r}")
@@ -363,6 +366,7 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
         )
 
     def dm_flush(profile_key: str, payload: Dict) -> Dict:
+        """Execute dm flush."""
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
             raise ValueError(f"dm-flush job поддерживает instagram-профили, не {platform!r}")
@@ -379,6 +383,7 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
         )
 
     def marker_check(profile_key: str, payload: Dict) -> Dict:
+        """Execute marker check."""
         platform, _, _name = profile_key.partition(":")
         dump = str(root / "data" / f"marker-{platform}.xml")
         return _run_cli(

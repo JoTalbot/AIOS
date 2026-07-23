@@ -279,16 +279,19 @@ class KnowledgeGraph:
         return []  # No path found
 
     def count_nodes(self) -> int:
+        """Execute count nodes."""
         if self.db is None:
             return 0
         return self.db.query_one("SELECT COUNT(*) as cnt FROM kg_nodes")["cnt"]
 
     def count_edges(self) -> int:
+        """Execute count edges."""
         if self.db is None:
             return 0
         return self.db.query_one("SELECT COUNT(*) as cnt FROM kg_edges")["cnt"]
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         if self.db is None:
             return {"nodes": 0, "edges": 0, "storage": "none"}
 

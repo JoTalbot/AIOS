@@ -62,6 +62,7 @@ class UniversalMultiSpeciesEthics:
         return evaluation_record
 
     def stats(self) -> Dict[str, Any]:
+        """Return statistics dict."""
         return {
             "monitored_species_categories": len(self.species_manifest),
             "total_ethical_evaluations": len(self.ethical_evaluations),

@@ -13,6 +13,7 @@ class QuantumAnnealingOptimizer:
         self.cooling = cooling_rate
 
     def optimize(self, initial_solution: List, cost_func: Callable, iterations: int = 5000) -> None:
+        """Execute optimize."""
         current = initial_solution[:]
         best = current[:]
         best_cost = cost_func(best)
@@ -41,4 +42,5 @@ class QuantumAnnealingOptimizer:
         return best, best_cost
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"temperature": round(self.temp, 2)}

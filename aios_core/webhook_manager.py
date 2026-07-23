@@ -68,6 +68,7 @@ class WebhookTarget:
         return self.active and event in self.events
 
     def to_dict(self) -> Dict:
+        """Serialize to dict."""
         return asdict(self)
 
 
@@ -82,6 +83,7 @@ class WebhookPayload:
     severity: str = "info"  # info, warning, critical
 
     def to_dict(self) -> Dict:
+        """Serialize to dict."""
         return asdict(self)
 
     def sign(self, secret: str) -> str:

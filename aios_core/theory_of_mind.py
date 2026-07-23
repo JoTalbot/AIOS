@@ -10,6 +10,7 @@ class TheoryOfMind:
         self.models: Dict[str, Dict] = {}
 
     def model_agent(self, agent_id: str, beliefs: Dict, desires: List, intentions: List) -> None:
+        """Execute model agent."""
         self.models[agent_id] = {
             "beliefs": beliefs,
             "desires": desires,
@@ -17,10 +18,12 @@ class TheoryOfMind:
         }
 
     def predict_action(self, agent_id: str, situation: Dict) -> str:
+        """Execute predict action."""
         model = self.models.get(agent_id, {})
         if "harm" in str(situation):
             return "avoid"
         return "cooperate"
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"modeled_agents": len(self.models)}

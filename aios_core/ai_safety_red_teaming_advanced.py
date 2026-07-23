@@ -20,6 +20,7 @@ class AdvancedRedTeam:
         ]
 
     def generate_advanced_attack(self, category: str, target: str) -> Dict:
+        """Execute generate advanced attack."""
         attack = {
             "category": category,
             "target": target,
@@ -31,4 +32,5 @@ class AdvancedRedTeam:
         return attack
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"attacks": len(self.attacks), "categories": len(self.categories)}

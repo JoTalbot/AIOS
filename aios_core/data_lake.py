@@ -13,12 +13,14 @@ class DataLake:
         os.makedirs(path, exist_ok=True)
 
     def ingest(self, event: Dict[str, Any]) -> None:
+        """Execute ingest."""
         date = event.get("timestamp", "unknown")[:10]
         filepath = os.path.join(self.path, f"{date}.jsonl")
         with open(filepath, "a") as f:
             f.write(json.dumps(event) + "\n")
 
     def query(self, date: str = None) -> List[Dict]:
+        """Execute query."""
         results = []
         if date:
             filepath = os.path.join(self.path, f"{date}.jsonl")
@@ -29,5 +31,6 @@ class DataLake:
         return results
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         files = os.listdir(self.path)
         return {"files": len(files), "path": self.path}
