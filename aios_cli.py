@@ -2150,6 +2150,83 @@ def main(argv=None):
     d_lim.add_argument("--set", dest="set_limit", default=None,
                        metavar="KEY=VALUE", help="e.g. max_busy:olx=4")
 
+    # Admin commands (export, keys, backup)
+    admin_parser = subparsers.add_parser("admin", help="Admin operations (export, keys, backup)")
+    admin_sub = admin_parser.add_subparsers(dest="admin_command")
+
+    # admin export
+    exp_parser = admin_sub.add_parser("export", help="Export data from AIOS")
+    exp_parser.add_argument("--type", choices=["tasks", "memory", "audit", "knowledge", "all"], default="all")
+    exp_parser.add_argument("--format", choices=["json", "csv"], default="json")
+    exp_parser.add_argument("--output", "-o", default="./export", help="Output path")
+    exp_parser.add_argument("--since", default=None, help="Export since date (ISO)")
+    exp_parser.add_argument("--limit", type=int, default=None, help="Max records")
+    exp_parser.add_argument("--db", default="aios.sqlite")
+
+    # admin import
+    imp_parser = admin_sub.add_parser("import", help="Import data into AIOS")
+    imp_parser.add_argument("--type", choices=["tasks"], default="tasks")
+    imp_parser.add_argument("--format", choices=["json", "csv"], default="json")
+    imp_parser.add_argument("--input", "-i", required=True, help="Input file")
+    imp_parser.add_argument("--db", default="aios.sqlite")
+
+    # admin keys
+    keys_parser = admin_sub.add_parser("keys", help="API key management")
+    keys_sub = keys_parser.add_subparsers(dest="keys_command")
+
+    kg = keys_sub.add_parser("generate", help="Generate new API key")
+    kg.add_argument("--subject", required=True, help="Key owner")
+    kg.add_argument("--roles", nargs="+", default=["viewer"], help="Roles")
+    kg.add_argument("--ttl", type=int, default=None, help="TTL in days")
+    kg.add_argument("--prefix", default="aios")
+
+    kl = keys_sub.add_parser("list", help="List API keys")
+    kl.add_argument("--subject", default=None, help="Filter by subject")
+
+    kr = keys_sub.add_parser("revoke", help="Revoke API key")
+    kr.add_argument("--key", required=True, help="Full key string")
+    kr.add_argument("--reason", default="")
+
+    krot = keys_sub.add_parser("rotate", help="Rotate API key")
+    krot.add_argument("--key", required=True, help="Old key")
+    krot.add_argument("--ttl", type=int, default=None)
+    krot.add_argument("--reason", default="rotation")
+
+    keys_sub.add_parser("health", help="Keys health report")
+
+    # admin backup
+    backup_parser = admin_sub.add_parser("backup", help="Database backup management")
+    backup_sub = backup_parser.add_subparsers(dest="backup_command")
+
+    bc = backup_sub.add_parser("create", help="Create backup")
+    bc.add_argument("--label", default="", help="Backup label")
+    bc.add_argument("--mode", choices=["full", "incremental"], default="full")
+    bc.add_argument("--db", default="aios.sqlite")
+    bc.add_argument("--backup-dir", default="./backups")
+
+    bl = backup_sub.add_parser("list", help="List backups")
+    bl.add_argument("--db", default="aios.sqlite")
+    bl.add_argument("--backup-dir", default="./backups")
+
+    bv = backup_sub.add_parser("verify", help="Verify backup")
+    bv.add_argument("--backup-id", required=True)
+    bv.add_argument("--db", default="aios.sqlite")
+    bv.add_argument("--backup-dir", default="./backups")
+
+    br = backup_sub.add_parser("restore", help="Restore from backup")
+    br.add_argument("--backup-id", required=True)
+    br.add_argument("--target", default=None, help="Target DB path")
+    br.add_argument("--db", default="aios.sqlite")
+    br.add_argument("--backup-dir", default="./backups")
+
+    bcl = backup_sub.add_parser("cleanup", help="Remove old backups")
+    bcl.add_argument("--db", default="aios.sqlite")
+    bcl.add_argument("--backup-dir", default="./backups")
+
+    bh = backup_sub.add_parser("health", help="Backup health report")
+    bh.add_argument("--db", default="aios.sqlite")
+    bh.add_argument("--backup-dir", default="./backups")
+
     # OLX Parser Agent
     _add_olx_parsers(subparsers)
 
@@ -2234,6 +2311,47 @@ def main(argv=None):
             handled = True
         if not handled:
             parser.parse_args(["olx", "--help"])
+    elif args.command == "admin":
+        from aios_cli_admin import (
+            run_export, run_import,
+            run_keys_generate, run_keys_list, run_keys_revoke, run_keys_rotate, run_keys_health,
+            run_backup_create, run_backup_list, run_backup_verify, run_backup_restore,
+            run_backup_cleanup, run_backup_health,
+        )
+        if args.admin_command == "export":
+            run_export(args)
+        elif args.admin_command == "import":
+            run_import(args)
+        elif args.admin_command == "keys":
+            if args.keys_command == "generate":
+                run_keys_generate(args)
+            elif args.keys_command == "list":
+                run_keys_list(args)
+            elif args.keys_command == "revoke":
+                run_keys_revoke(args)
+            elif args.keys_command == "rotate":
+                run_keys_rotate(args)
+            elif args.keys_command == "health":
+                run_keys_health(args)
+            else:
+                admin_parser.parse_args(["keys", "--help"])
+        elif args.admin_command == "backup":
+            if args.backup_command == "create":
+                run_backup_create(args)
+            elif args.backup_command == "list":
+                run_backup_list(args)
+            elif args.backup_command == "verify":
+                run_backup_verify(args)
+            elif args.backup_command == "restore":
+                run_backup_restore(args)
+            elif args.backup_command == "cleanup":
+                run_backup_cleanup(args)
+            elif args.backup_command == "health":
+                run_backup_health(args)
+            else:
+                admin_parser.parse_args(["backup", "--help"])
+        else:
+            admin_parser.parse_args(["--help"])
     else:
         parser.print_help()
 
