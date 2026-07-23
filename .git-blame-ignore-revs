@@ -1,0 +1,5 @@
+# AIOS — commits to ignore in git blame
+# Add commit hashes for bulk formatting/docstring changes below:
+# <40-char-commit-hash>  # 2026-07-23: bulk __all__ injection
+# <40-char-commit-hash>  # 2026-07-23: bulk -> None annotations
+# <40-char-commit-hash>  # 2026-07-23: bulk docstring pass
