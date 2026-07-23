@@ -3,9 +3,13 @@ dashboard web-pane and the Facebook Marketplace onboarding package.
 """
 
 import json
+import os
+import tempfile
 from pathlib import Path
 
+import httpx
 import pytest
+import pytest_asyncio
 import yaml
 
 from aios_core.platforms import calibration_recipe, dashboard_html
@@ -222,12 +226,8 @@ def test_dashboard_html_custom_prefix_param():
     assert "10000" in html
 
 
-def test_rest_dashboard_page(monkeypatch):
-    import os
-    import tempfile
-
-    from starlette.testclient import TestClient
-
+@pytest.mark.asyncio
+async def test_rest_dashboard_page(monkeypatch):
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     with tempfile.TemporaryDirectory() as tmp:
         monkeypatch.setenv("AIOS_SHARDS_DB", str(Path(tmp) / "shards.sqlite"))
@@ -239,16 +239,20 @@ def test_rest_dashboard_page(monkeypatch):
             policies_dir=os.path.join(root, "policies"),
             auth_required=False,
         )
-        client = TestClient(api.create_starlette_app())
-        response = client.get("/dashboard")
-        assert response.status_code == 200
-        assert "text/html" in response.headers["content-type"]
-        body = response.text
-        assert "AIOS Ops" in body
-        assert "panel-jobs" in body
-        assert "/shards/stats" in body
-        # рядом живой REST-plane, на который панель смотрит:
-        assert client.get("/api/v1/shards/stats").status_code == 200
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=api.create_starlette_app()),
+            base_url="http://testserver",
+        ) as client:
+            response = await client.get("/dashboard")
+            assert response.status_code == 200
+            assert "text/html" in response.headers["content-type"]
+            body = response.text
+            assert "AIOS Ops" in body
+            assert "panel-jobs" in body
+            assert "/shards/stats" in body
+            # рядом живой REST-plane, на который панель смотрит:
+            stats_resp = await client.get("/api/v1/shards/stats")
+            assert stats_resp.status_code == 200
 
 
 # ---------------------------------------------------------------------------
@@ -327,11 +331,8 @@ def test_prometheus_metrics_empty_bases_are_honest_zeros(tmp_path):
     assert "aios_catalog_platforms 0" in text
 
 
-def test_rest_metrics_include_fleet_series(tmp_path, monkeypatch):
-    import os
-
-    from starlette.testclient import TestClient
-
+@pytest.mark.asyncio
+async def test_rest_metrics_include_fleet_series(tmp_path, monkeypatch):
     shards, profiles, devices = _telemetry_dbs(tmp_path)
     monkeypatch.setenv("AIOS_SHARDS_DB", shards)
     monkeypatch.setenv("AIOS_PROFILES_DB", profiles)
@@ -345,13 +346,16 @@ def test_rest_metrics_include_fleet_series(tmp_path, monkeypatch):
         policies_dir=os.path.join(root, "policies"),
         auth_required=False,
     )
-    client = TestClient(api.create_starlette_app())
-    response = client.get("/metrics")
-    assert response.status_code == 200
-    body = response.text
-    assert "aios_shard_jobs" in body
-    assert 'aios_devices{state="registered"} 2' in body
-    assert "aios_profiles_total 2" in body
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=api.create_starlette_app()),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/metrics")
+        assert response.status_code == 200
+        body = response.text
+        assert "aios_shard_jobs" in body
+        assert 'aios_devices{state="registered"} 2' in body
+        assert "aios_profiles_total 2" in body
 
 
 # ---------------------------------------------------------------------------

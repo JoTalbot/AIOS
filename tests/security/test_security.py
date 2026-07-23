@@ -2,12 +2,13 @@
 
 import secrets
 
+import httpx
 import pytest
+import pytest_asyncio
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
-from starlette.testclient import TestClient
 
 
 class TestSQLInjection:
@@ -71,19 +72,22 @@ class TestSQLInjection:
 class TestAuthenticationBypass:
     """Tests for authentication bypass vulnerabilities."""
 
-    def test_admin_endpoint_requires_auth(self):
+    @pytest.mark.asyncio
+    async def test_admin_endpoint_requires_auth(self):
         """Test admin endpoints require authentication."""
         from aios_core.api.admin_routes import get_admin_routes, init_admin_routes
 
         init_admin_routes("test.sqlite", "./backups")
         app = Starlette(routes=get_admin_routes())
-        client = TestClient(app)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            # Try accessing without auth
+            response = await client.get("/api/v1/admin/keys")
 
-        # Try accessing without auth
-        response = client.get("/api/v1/admin/keys")
-
-        # Should fail with 401 or 403
-        assert response.status_code in [401, 403, 500]
+            # Should fail with 401 or 403
+            assert response.status_code in [401, 403, 500]
 
     def test_invalid_api_key_rejected(self):
         """Test invalid API keys are rejected."""

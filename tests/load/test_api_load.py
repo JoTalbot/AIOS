@@ -1,23 +1,24 @@
 """Load tests for AIOS API under heavy concurrent load."""
 
-import concurrent.futures
+import asyncio
 import statistics
 import threading
 import time
 
+import httpx
 import pytest
+import pytest_asyncio
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
-from starlette.testclient import TestClient
 
 
 class TestAPILoadTests:
     """Load tests for API endpoints under heavy load."""
 
-    @pytest.fixture
-    def app(self):
+    @pytest_asyncio.fixture
+    async def app(self):
         """Create test app."""
 
         async def health(request: Request):
@@ -25,7 +26,7 @@ class TestAPILoadTests:
 
         async def stats(request: Request):
             # Simulate some work
-            time.sleep(0.001)
+            await asyncio.sleep(0.001)
             return JSONResponse({"tasks": 1000, "memory": 5000, "uptime": 86400})
 
         app = Starlette(
@@ -36,23 +37,26 @@ class TestAPILoadTests:
         )
         return app
 
-    @pytest.fixture
-    def client(self, app):
-        return TestClient(app)
+    @pytest_asyncio.fixture
+    async def client(self, app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as c:
+            yield c
 
-    def test_100_concurrent_requests(self, client):
+    @pytest.mark.asyncio
+    async def test_100_concurrent_requests(self, client):
         """Test 100 concurrent requests to health endpoint."""
-        results = []
 
-        def make_request():
+        async def make_request():
             start = time.perf_counter()
-            response = client.get("/health")
+            response = await client.get("/health")
             latency = (time.perf_counter() - start) * 1000
             return response.status_code, latency
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-            futures = [executor.submit(make_request) for _ in range(100)]
-            results = [f.result() for f in futures]
+        tasks = [make_request() for _ in range(100)]
+        results = await asyncio.gather(*tasks)
 
         # All should succeed
         status_codes = [r[0] for r in results]
@@ -62,13 +66,14 @@ class TestAPILoadTests:
         assert statistics.mean(latencies) < 200  # avg < 200ms
         assert max(latencies) < 1000  # max < 1s
 
-    def test_500_rapid_requests(self, client):
+    @pytest.mark.asyncio
+    async def test_500_rapid_requests(self, client):
         """Test 500 rapid sequential requests."""
         latencies = []
 
         for _ in range(500):
             start = time.perf_counter()
-            response = client.get("/health")
+            response = await client.get("/health")
             latency = (time.perf_counter() - start) * 1000
             latencies.append(latency)
             assert response.status_code == 200
@@ -83,7 +88,8 @@ class TestAPILoadTests:
         assert p95 < 300
         assert p99 < 500
 
-    def test_sustained_load_30_seconds(self, client):
+    @pytest.mark.asyncio
+    async def test_sustained_load_30_seconds(self, client):
         """Test sustained load over 30 seconds."""
         latencies = []
         start_time = time.time()
@@ -92,7 +98,7 @@ class TestAPILoadTests:
         # Run for 30 seconds
         while time.time() - start_time < 30:
             start = time.perf_counter()
-            response = client.get("/health")
+            response = await client.get("/health")
             latency = (time.perf_counter() - start) * 1000
             latencies.append(latency)
             request_count += 1
@@ -107,20 +113,19 @@ class TestAPILoadTests:
         assert avg_latency < 100
         assert rps > 20  # At least 20 req/s
 
-    def test_concurrent_write_load(self, client):
+    @pytest.mark.asyncio
+    async def test_concurrent_write_load(self, client):
         """Test concurrent write operations."""
-        results = []
 
-        def make_request(i):
+        async def make_request(i):
             start = time.perf_counter()
-            response = client.get(f"/api/v1/stats?id={i}")
+            response = await client.get(f"/api/v1/stats?id={i}")
             latency = (time.perf_counter() - start) * 1000
             return response.status_code, latency
 
         # 50 concurrent requests
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(make_request, i) for i in range(50)]
-            results = [f.result() for f in futures]
+        tasks = [make_request(i) for i in range(50)]
+        results = await asyncio.gather(*tasks)
 
         status_codes = [r[0] for r in results]
         latencies = [r[1] for r in results]
@@ -129,7 +134,8 @@ class TestAPILoadTests:
         assert all(code == 200 for code in status_codes)
         assert statistics.mean(latencies) < 300
 
-    def test_memory_under_load(self, client):
+    @pytest.mark.asyncio
+    async def test_memory_under_load(self, client):
         """Test memory usage under sustained load."""
         import os
 
@@ -140,7 +146,7 @@ class TestAPILoadTests:
 
         # Make 1000 requests
         for _ in range(1000):
-            client.get("/health")
+            await client.get("/health")
 
         final_memory = process.memory_info().rss / 1024 / 1024  # MB
         memory_growth = final_memory - initial_memory
@@ -148,19 +154,19 @@ class TestAPILoadTests:
         # Should not leak memory
         assert memory_growth < 100  # Less than 100MB growth
 
-    def test_latency_percentiles_under_load(self, client):
+    @pytest.mark.asyncio
+    async def test_latency_percentiles_under_load(self, client):
         """Test latency percentiles under concurrent load."""
         latencies = []
 
-        def make_request():
+        async def make_request():
             start = time.perf_counter()
-            client.get("/health")
+            await client.get("/health")
             return (time.perf_counter() - start) * 1000
 
         # 200 concurrent requests
-        with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
-            futures = [executor.submit(make_request) for _ in range(200)]
-            latencies = [f.result() for f in futures]
+        tasks = [make_request() for _ in range(200)]
+        latencies = await asyncio.gather(*tasks)
 
         # Calculate percentiles
         p50 = statistics.median(latencies)
@@ -306,17 +312,22 @@ class TestWebhookLoadTests:
 class TestStressTests:
     """Stress tests for extreme conditions."""
 
-    @pytest.fixture
-    def client(self):
-        """Create test client."""
+    @pytest_asyncio.fixture
+    async def client(self):
+        """Create async test client."""
 
         async def health(request: Request):
             return JSONResponse({"status": "ok"})
 
         app = Starlette(routes=[Route("/health", health)])
-        return TestClient(app)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as c:
+            yield c
 
-    def test_10000_requests_burst(self, client):
+    @pytest.mark.asyncio
+    async def test_10000_requests_burst(self, client):
         """Test 10000 requests in burst."""
         latencies = []
 
@@ -324,7 +335,7 @@ class TestStressTests:
 
         for _ in range(10000):
             start = time.perf_counter()
-            client.get("/health")
+            await client.get("/health")
             latencies.append((time.perf_counter() - start) * 1000)
 
         total_time = time.perf_counter() - start_time
@@ -333,9 +344,10 @@ class TestStressTests:
         # Should handle burst
         avg_latency = statistics.mean(latencies)
         assert avg_latency < 50
-        assert rps > 500  # In-process TestClient baseline; real load tests run separately
+        assert rps > 500  # In-process baseline; real load tests run separately
 
-    def test_memory_stability_5000_requests(self, client):
+    @pytest.mark.asyncio
+    async def test_memory_stability_5000_requests(self, client):
         """Test memory stability over 5000 requests."""
         import os
 
@@ -348,7 +360,7 @@ class TestStressTests:
         for batch in range(5):
             # Make 1000 requests
             for _ in range(1000):
-                client.get("/health")
+                await client.get("/health")
 
             # Record memory
             memory_mb = process.memory_info().rss / 1024 / 1024

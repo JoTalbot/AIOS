@@ -1,14 +1,16 @@
 """Performance tests for AIOS API endpoints."""
 
+import asyncio
 import statistics
 import time
 
+import httpx
 import pytest
+import pytest_asyncio
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
-from starlette.testclient import TestClient
 
 
 class TestAPIPerformance:
@@ -46,22 +48,27 @@ test_gauge 42.5
         )
         return app
 
-    @pytest.fixture
-    def client(self, simple_app):
-        return TestClient(simple_app)
+    @pytest_asyncio.fixture
+    async def client(self, simple_app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=simple_app),
+            base_url="http://testserver",
+        ) as c:
+            yield c
 
-    def test_health_endpoint_latency(self, client):
+    @pytest.mark.asyncio
+    async def test_health_endpoint_latency(self, client):
         """Test health endpoint response time."""
         latencies = []
 
         # Warm up
         for _ in range(10):
-            client.get("/health")
+            await await client.get("/health")
 
         # Measure
         for _ in range(100):
             start = time.perf_counter()
-            response = client.get("/health")
+            response = await await client.get("/health")
             latency = (time.perf_counter() - start) * 1000  # ms
             latencies.append(latency)
             assert response.status_code == 200
@@ -77,18 +84,18 @@ test_gauge 42.5
         assert p95 < 100, f"P95 latency {p95:.2f}ms > 100ms"
         assert p99 < 200, f"P99 latency {p99:.2f}ms > 200ms"
 
-    def test_stats_endpoint_latency(self, client):
+    async def test_stats_endpoint_latency(self, client):
         """Test stats endpoint response time."""
         latencies = []
 
         # Warm up
         for _ in range(10):
-            client.get("/api/v1/stats")
+            await client.get("/api/v1/stats")
 
         # Measure
         for _ in range(100):
             start = time.perf_counter()
-            response = client.get("/api/v1/stats")
+            response = await client.get("/api/v1/stats")
             latency = (time.perf_counter() - start) * 1000
             latencies.append(latency)
             assert response.status_code == 200
@@ -101,18 +108,18 @@ test_gauge 42.5
         assert avg_latency < 100, f"Average latency {avg_latency:.2f}ms > 100ms"
         assert p95 < 200, f"P95 latency {p95:.2f}ms > 200ms"
 
-    def test_metrics_endpoint_latency(self, client):
+    async def test_metrics_endpoint_latency(self, client):
         """Test metrics endpoint response time."""
         latencies = []
 
         # Warm up
         for _ in range(10):
-            client.get("/metrics")
+            await client.get("/metrics")
 
         # Measure
         for _ in range(100):
             start = time.perf_counter()
-            response = client.get("/metrics")
+            response = await client.get("/metrics")
             latency = (time.perf_counter() - start) * 1000
             latencies.append(latency)
             assert response.status_code == 200
@@ -125,13 +132,13 @@ test_gauge 42.5
         assert avg_latency < 100, f"Average latency {avg_latency:.2f}ms > 100ms"
         assert p95 < 200, f"P95 latency {p95:.2f}ms > 200ms"
 
-    def test_concurrent_requests(self, client):
+    async def test_concurrent_requests(self, client):
         """Test handling of concurrent requests."""
         import concurrent.futures
 
         def make_request():
             start = time.perf_counter()
-            response = client.get("/health")
+            response = await client.get("/health")
             latency = (time.perf_counter() - start) * 1000
             return latency
 
@@ -148,7 +155,7 @@ test_gauge 42.5
         assert avg_latency < 200, f"Average latency under load {avg_latency:.2f}ms > 200ms"
         assert p95 < 500, f"P95 latency under load {p95:.2f}ms > 500ms"
 
-    def test_sustained_load(self, client):
+    async def test_sustained_load(self, client):
         """Test sustained load over time."""
         latencies = []
 
@@ -158,7 +165,7 @@ test_gauge 42.5
 
         while time.time() - start_time < 5:
             start = time.perf_counter()
-            response = client.get("/health")
+            response = await client.get("/health")
             latency = (time.perf_counter() - start) * 1000
             latencies.append(latency)
             request_count += 1
@@ -176,7 +183,7 @@ test_gauge 42.5
         assert avg_latency < 100, f"Average latency under sustained load {avg_latency:.2f}ms"
         assert rps > 10, f"Throughput {rps:.2f} req/s < 10 req/s"
 
-    def test_response_size_impact(self, client):
+    async def test_response_size_impact(self, client):
         """Test that larger responses don't significantly impact latency."""
         small_latencies = []
         large_latencies = []
@@ -184,13 +191,13 @@ test_gauge 42.5
         # Measure small response
         for _ in range(50):
             start = time.perf_counter()
-            client.get("/health")
+            await client.get("/health")
             small_latencies.append((time.perf_counter() - start) * 1000)
 
         # Measure larger response
         for _ in range(50):
             start = time.perf_counter()
-            client.get("/api/v1/stats")
+            await client.get("/api/v1/stats")
             large_latencies.append((time.perf_counter() - start) * 1000)
 
         # Compare
@@ -240,7 +247,7 @@ class TestDatabasePerformance:
         conn.close()
         return str(db_path)
 
-    def test_query_performance_with_index(self, large_db, tmp_path):
+    async def test_query_performance_with_index(self, large_db, tmp_path):
         """Test query performance with indexed data."""
         import sqlite3
 
@@ -261,7 +268,7 @@ class TestDatabasePerformance:
 
         conn.close()
 
-    def test_insert_performance(self, tmp_path):
+    async def test_insert_performance(self, tmp_path):
         """Test bulk insert performance."""
         import sqlite3
 
