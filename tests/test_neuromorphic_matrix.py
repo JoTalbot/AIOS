@@ -1,2 +1,2 @@
-from aios_core.neuromorphic_matrix import NeuromorphicMatrix
-def test(): assert NeuromorphicMatrix().stats() is not None
+from aios_core.neuromorphic_matrix import NeuromorphicMatrixEngine
+def test(): assert NeuromorphicMatrixEngine().stats() is not None

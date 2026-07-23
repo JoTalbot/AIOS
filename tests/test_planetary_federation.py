@@ -1,2 +1,2 @@
-from aios_core.planetary_federation import PlanetaryFederation
-def test(): assert PlanetaryFederation().stats() is not None
+from aios_core.planetary_federation import PlanetaryMeshOrchestrator
+def test(): assert PlanetaryMeshOrchestrator().stats() is not None

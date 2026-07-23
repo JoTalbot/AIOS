@@ -1,2 +1,2 @@
-from aios_core.quantum_native import QuantumNativeRuntime
-def test(): assert QuantumNativeRuntime().stats() is not None
+from aios_core.quantum_native import QuantumNativeEngine
+def test(): assert QuantumNativeEngine().stats() is not None
