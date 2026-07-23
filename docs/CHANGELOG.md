@@ -1,6 +1,10 @@
 # Changelog
 
-## v9.2.0-production (2026-07-23)
+> **Note:** The canonical changelog is [`../CHANGELOG.md`](../CHANGELOG.md)
+> in the repository root. This document provides a condensed summary by
+> major version milestone.
+
+## v9.3.1 (2026-07-23) — Code Quality & Documentation
 
 ### Documentation
 - ✅ MkDocs site created (`mkdocs.yml`) — Material theme, full navigation for 162 markdown files

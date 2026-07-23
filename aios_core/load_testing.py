@@ -5,6 +5,8 @@ import threading
 import time
 from typing import Callable, Dict
 
+__all__ = ["LoadTester"]
+
 logger = logging.getLogger(__name__)
 
 

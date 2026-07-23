@@ -242,7 +242,7 @@ class WebhookManager:
             try:
                 handler(payload)
             except Exception:
-                pass
+                pass  # Event handler failure is isolated — continue dispatching
 
         return results
 

@@ -3,6 +3,8 @@
 import logging
 from typing import Callable, Dict, Optional
 
+__all__ = ["SelfHealing"]
+
 logger = logging.getLogger(__name__)
 
 

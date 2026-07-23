@@ -447,9 +447,7 @@ class ReasoningEngine:
                             seen_ids.add(n["id"])
                             all_nodes.append(n)
                 except Exception:
-                    pass
-
-            if all_nodes:
+                    pass  # Knowledge graph node parsing is best-effort
                 for n in all_nodes[:5]:
                     evidence_sources.append(f"knowledge:{n['id']}")
                 chain.steps.append(
@@ -481,9 +479,7 @@ class ReasoningEngine:
                             if path:
                                 paths_found.append(path)
                         except Exception:
-                            pass
-
-                if paths_found:
+                            pass  # Path search in KG is best-effort
                     path_descriptions = []
                     for p in paths_found[:3]:
                         path_desc = " -> ".join(
@@ -665,9 +661,7 @@ class ReasoningEngine:
                                 f"KG relation: {hn.get('label', hn['id'])} --[{rel_type}]--> {r.get('target_label', '')}"
                             )
             except Exception:
-                pass
-
-        support_score = round(min(support_score, 1.0), 3)
+                pass  # KG relation parsing is best-effort — continue evaluation
         contradiction_score = round(min(contradiction_score, 1.0), 3)
         supported = support_score > contradiction_score
 

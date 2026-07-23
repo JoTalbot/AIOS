@@ -3,6 +3,8 @@
 import random
 from typing import Any, Dict
 
+__all__ = ["ABTest"]
+
 
 class ABTest:
     """Simple A/B testing framework.
