@@ -12,12 +12,15 @@ class RobotInterface:
         self.actuators: Dict = {}
 
     def read_sensor(self, sensor: str) -> Dict:
+        """Execute read sensor."""
         return {"type": sensor, "value": 0.0}
 
     def actuate(self, actuator: str, value: float) -> None:
+        """Execute actuate."""
         pass
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"robot": self.robot_id}
 
 
@@ -28,9 +31,11 @@ class EmbodiedAI:
         self.robots: Dict[str, RobotInterface] = {}
 
     def register_robot(self, robot_id: str) -> RobotInterface:
+        """Execute register robot."""
         robot = RobotInterface(robot_id)
         self.robots[robot_id] = robot
         return robot
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"robots": len(self.robots)}
