@@ -18,7 +18,7 @@ class SafetyMonitor:
             "deception_score": 0.2,
         }
 
-    def record_metric(self, metric: str, value: float):
+    def record_metric(self, metric: str, value: float) -> None:
         if metric not in self.metrics:
             self.metrics[metric] = []
         self.metrics[metric].append(value)

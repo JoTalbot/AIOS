@@ -32,7 +32,7 @@ class AIScientist:
         self.experiments.append(experiment)
         return experiment
 
-    def record_discovery(self, discovery: Dict):
+    def record_discovery(self, discovery: Dict) -> None:
         self.discoveries.append(discovery)
 
     def stats(self) -> dict:
