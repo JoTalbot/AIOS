@@ -13,7 +13,12 @@ from typing import List, Dict, Optional, Any, Tuple
 class AnomalyDetector:
     """Multi-variate Anomaly Detection Engine for agent runtime metrics."""
 
-    def __init__(self, z_threshold: float = 2.5, iqr_multiplier: float = 1.5, window_size: int = 1000):
+    def __init__(
+        self,
+        z_threshold: float = 2.5,
+        iqr_multiplier: float = 1.5,
+        window_size: int = 1000,
+    ):
         self.z_threshold = z_threshold
         self.iqr_multiplier = iqr_multiplier
         self.window_size = window_size
@@ -28,7 +33,7 @@ class AnomalyDetector:
         history = self.histories[metric_name]
         history.append(value)
         if len(history) > self.window_size:
-            self.histories[metric_name] = history[-self.window_size:]
+            self.histories[metric_name] = history[-self.window_size :]
 
     def is_anomaly(self, value: float, metric_name: Optional[str] = None) -> bool:
         """Check if a new metric value is an outlier based on historical window Z-Score."""
@@ -53,14 +58,16 @@ class AnomalyDetector:
         is_anomalous = z_score > self.z_threshold
 
         if is_anomalous:
-            self.anomaly_log.append({
-                "metric": target_name,
-                "value": value,
-                "mean": round(mean, 4),
-                "stdev": round(stdev, 4),
-                "z_score": round(z_score, 4),
-                "timestamp": time.time()
-            })
+            self.anomaly_log.append(
+                {
+                    "metric": target_name,
+                    "value": value,
+                    "mean": round(mean, 4),
+                    "stdev": round(stdev, 4),
+                    "z_score": round(z_score, 4),
+                    "timestamp": time.time(),
+                }
+            )
 
         self.add_value(target_name, value)
         return is_anomalous
@@ -101,7 +108,7 @@ class AnomalyDetector:
         return {
             "overall_anomaly": any_anomalous,
             "metrics": results,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
     def stats(self) -> Dict[str, Any]:
@@ -110,7 +117,7 @@ class AnomalyDetector:
             "monitored_metrics": len(self.histories),
             "total_anomalies_logged": len(self.anomaly_log),
             "z_threshold": self.z_threshold,
-            "samples_window": {k: len(v) for k, v in self.histories.items()}
+            "samples_window": {k: len(v) for k, v in self.histories.items()},
         }
 
 

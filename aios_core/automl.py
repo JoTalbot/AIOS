@@ -19,7 +19,7 @@ class AutoMLPipeline:
             "target": target,
             "status": "created",
             "best_model": None,
-            "score": 0.0
+            "score": 0.0,
         }
         return pipeline_id
 
@@ -43,7 +43,7 @@ class AutoMLPipeline:
         return {
             "pipeline_id": pipeline_id,
             "best_model": best_algo,
-            "score": round(best_score, 4)
+            "score": round(best_score, 4),
         }
 
     def stats(self) -> dict:

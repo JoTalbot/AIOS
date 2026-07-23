@@ -16,7 +16,7 @@ class TaskScheduler:
             "func": func,
             "run_at": run_at,
             "kwargs": kwargs,
-            "status": "scheduled"
+            "status": "scheduled",
         }
 
     def schedule_in(self, name: str, func: Callable, seconds: int, **kwargs):
@@ -37,7 +37,9 @@ class TaskScheduler:
     def stats(self) -> dict:
         return {
             "total": len(self.tasks),
-            "scheduled": sum(1 for t in self.tasks.values() if t["status"] == "scheduled")
+            "scheduled": sum(
+                1 for t in self.tasks.values() if t["status"] == "scheduled"
+            ),
         }
 
 

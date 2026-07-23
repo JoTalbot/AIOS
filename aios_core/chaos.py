@@ -18,6 +18,7 @@ class ChaosMonkey:
         def wrapper(*args, **kwargs):
             self.maybe_fail()
             return func(*args, **kwargs)
+
         return wrapper
 
     def stats(self) -> dict:

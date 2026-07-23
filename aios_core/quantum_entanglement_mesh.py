@@ -35,7 +35,7 @@ class QuantumEntangledChannel:
             "teleported_hash": state_hash,
             "coherence_fidelity": self.coherence_fidelity,
             "latency_ms": 0.0001,  # Instantaneous quantum teleportation delay
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
 
@@ -45,14 +45,18 @@ class QuantumEntanglementMesh:
     def __init__(self):
         self.channels: Dict[str, QuantumEntangledChannel] = {}
 
-    def create_entangled_channel(self, node_a: str, node_b: str) -> QuantumEntangledChannel:
+    def create_entangled_channel(
+        self, node_a: str, node_b: str
+    ) -> QuantumEntangledChannel:
         """Pair two cosmic nodes with an active quantum entanglement link."""
         channel_id = f"qlink_{node_a}_{node_b}"
         channel = QuantumEntangledChannel(channel_id, node_a, node_b)
         self.channels[channel_id] = channel
         return channel
 
-    def sync_instantaneous_state(self, node_a: str, node_b: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def sync_instantaneous_state(
+        self, node_a: str, node_b: str, payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Perform zero-latency state synchronization between paired quantum nodes."""
         channel_id = f"qlink_{node_a}_{node_b}"
         if channel_id not in self.channels:
@@ -68,5 +72,7 @@ class QuantumEntanglementMesh:
     def stats(self) -> Dict[str, Any]:
         return {
             "active_entangled_channels": len(self.channels),
-            "total_teleportations": sum(c.teleported_states_count for c in self.channels.values())
+            "total_teleportations": sum(
+                c.teleported_states_count for c in self.channels.values()
+            ),
         }

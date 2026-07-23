@@ -13,7 +13,9 @@ class QuantumNLP:
         # Simplified quantum word embedding
         return [complex(ord(c) % 10, 0) for c in word[:4]]
 
-    def quantum_attention(self, query: List[complex], keys: List[List[complex]]) -> List[float]:
+    def quantum_attention(
+        self, query: List[complex], keys: List[List[complex]]
+    ) -> List[float]:
         # Quantum dot-product attention
         return [sum(q.real * k[0].real for q, k in zip([query[0]], keys)) for _ in keys]
 

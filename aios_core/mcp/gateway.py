@@ -24,7 +24,9 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 # Ensure AIOS core is importable
-_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_project_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
@@ -47,9 +49,10 @@ from .tools import ToolRegistry, ToolDefinition
 from .resources import ResourceRegistry, ResourceDefinition
 from .prompts import PromptRegistry, PromptDefinition
 
-
 # Default constitution/policy dirs relative to project root
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 
 class ConstitutionGuard:
@@ -63,7 +66,9 @@ class ConstitutionGuard:
         self.policy = runtime_policy
         self._call_log: list[dict] = []
 
-    def check(self, tool_call: MCPToolCall, tool_def: ToolDefinition | None = None) -> dict:
+    def check(
+        self, tool_call: MCPToolCall, tool_def: ToolDefinition | None = None
+    ) -> dict:
         """Evaluate a tool call against the constitution.
 
         Args:
@@ -92,12 +97,14 @@ class ConstitutionGuard:
 
         result = self.policy.request_execution(agent_action)
 
-        self._call_log.append({
-            "tool_name": tool_call.name,
-            "request_id": tool_call.request_id,
-            "decision": result.get("decision"),
-            "allowed": result.get("allowed", False),
-        })
+        self._call_log.append(
+            {
+                "tool_name": tool_call.name,
+                "request_id": tool_call.request_id,
+                "decision": result.get("decision"),
+                "allowed": result.get("allowed", False),
+            }
+        )
 
         return {
             "allowed": result.get("allowed", False),
@@ -154,7 +161,9 @@ class MCPGateway:
         )
     """
 
-    def __init__(self, config: Optional[GatewayConfig] = None, db: Optional[Database] = None):
+    def __init__(
+        self, config: Optional[GatewayConfig] = None, db: Optional[Database] = None
+    ):
         self.config = config or GatewayConfig()
         self.protocol = MCPProtocol()
 
@@ -163,8 +172,10 @@ class MCPGateway:
         # database and splits audit/approval/memory state.
         db = db or Database(db_path=self.config.db_path)
         self.runtime = RuntimePolicy(
-            constitution_dir=self.config.constitution_dir or os.path.join(_PROJECT_ROOT, "docs/constitution"),
-            policies_dir=self.config.policies_dir or os.path.join(_PROJECT_ROOT, "policies"),
+            constitution_dir=self.config.constitution_dir
+            or os.path.join(_PROJECT_ROOT, "docs/constitution"),
+            policies_dir=self.config.policies_dir
+            or os.path.join(_PROJECT_ROOT, "policies"),
             db=db,
         )
 
@@ -193,120 +204,182 @@ class MCPGateway:
         """Register built-in AIOS tools that expose core functionality through MCP."""
 
         # Tool: aios_evaluate — evaluate an action against constitution
-        self.tools.register(ToolDefinition(
-            name="aios_evaluate",
-            description="Evaluate a proposed action against the AIOS constitution and policies. Returns ALLOW/DENY/REVIEW decision with full evaluation details.",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "goal": {"type": "string", "description": "What the action intends to achieve"},
-                    "scope": {"type": "string", "description": "Scope of the action"},
-                    "risk": {"type": "string", "enum": ["low", "medium", "high", "critical"], "description": "Risk level"},
-                    "action_type": {"type": "string", "description": "Type of action (optional)"},
+        self.tools.register(
+            ToolDefinition(
+                name="aios_evaluate",
+                description="Evaluate a proposed action against the AIOS constitution and policies. Returns ALLOW/DENY/REVIEW decision with full evaluation details.",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "goal": {
+                            "type": "string",
+                            "description": "What the action intends to achieve",
+                        },
+                        "scope": {
+                            "type": "string",
+                            "description": "Scope of the action",
+                        },
+                        "risk": {
+                            "type": "string",
+                            "enum": ["low", "medium", "high", "critical"],
+                            "description": "Risk level",
+                        },
+                        "action_type": {
+                            "type": "string",
+                            "description": "Type of action (optional)",
+                        },
+                    },
+                    "required": ["goal", "scope", "risk"],
                 },
-                "required": ["goal", "scope", "risk"],
-            },
-            handler=lambda params: self.runtime.request_execution({
-                **params, "audit_log": True,
-                "agent_id": "mcp-gateway", "authority": "system",
-            }),
-            category="constitution",
-            risk_level="low",
-        ))
+                handler=lambda params: self.runtime.request_execution(
+                    {
+                        **params,
+                        "audit_log": True,
+                        "agent_id": "mcp-gateway",
+                        "authority": "system",
+                    }
+                ),
+                category="constitution",
+                risk_level="low",
+            )
+        )
 
         # Tool: aios_memory_store — store a memory item
-        self.tools.register(ToolDefinition(
-            name="aios_memory_store",
-            description="Store an item in AIOS memory. Category can be: personal, operational, constitutional.",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "content": {"type": "string", "description": "Memory content to store"},
-                    "category": {"type": "string", "enum": ["personal", "operational", "constitutional"], "description": "Memory category"},
-                    "tags": {"type": "string", "description": "Comma-separated tags"},
+        self.tools.register(
+            ToolDefinition(
+                name="aios_memory_store",
+                description="Store an item in AIOS memory. Category can be: personal, operational, constitutional.",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "content": {
+                            "type": "string",
+                            "description": "Memory content to store",
+                        },
+                        "category": {
+                            "type": "string",
+                            "enum": ["personal", "operational", "constitutional"],
+                            "description": "Memory category",
+                        },
+                        "tags": {
+                            "type": "string",
+                            "description": "Comma-separated tags",
+                        },
+                    },
+                    "required": ["content", "category"],
                 },
-                "required": ["content", "category"],
-            },
-            handler=self._handle_memory_store,
-            category="memory",
-            risk_level="low",
-        ))
+                handler=self._handle_memory_store,
+                category="memory",
+                risk_level="low",
+            )
+        )
 
         # Tool: aios_memory_search — search memories
-        self.tools.register(ToolDefinition(
-            name="aios_memory_search",
-            description="Search AIOS memory by category and/or text query.",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "category": {"type": "string", "description": "Filter by category"},
-                    "query": {"type": "string", "description": "Text search query"},
-                    "limit": {"type": "integer", "description": "Max results (default 20)"},
+        self.tools.register(
+            ToolDefinition(
+                name="aios_memory_search",
+                description="Search AIOS memory by category and/or text query.",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "category": {
+                            "type": "string",
+                            "description": "Filter by category",
+                        },
+                        "query": {"type": "string", "description": "Text search query"},
+                        "limit": {
+                            "type": "integer",
+                            "description": "Max results (default 20)",
+                        },
+                    },
                 },
-            },
-            handler=self._handle_memory_search,
-            category="memory",
-            risk_level="low",
-        ))
+                handler=self._handle_memory_search,
+                category="memory",
+                risk_level="low",
+            )
+        )
 
         # Tool: aios_knowledge_query — query the knowledge graph
-        self.tools.register(ToolDefinition(
-            name="aios_knowledge_query",
-            description="Query the AIOS knowledge graph for nodes and edges.",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "Search query for nodes"},
-                    "node_type": {"type": "string", "description": "Filter by node type"},
-                    "limit": {"type": "integer", "description": "Max results (default 20)"},
+        self.tools.register(
+            ToolDefinition(
+                name="aios_knowledge_query",
+                description="Query the AIOS knowledge graph for nodes and edges.",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query for nodes",
+                        },
+                        "node_type": {
+                            "type": "string",
+                            "description": "Filter by node type",
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Max results (default 20)",
+                        },
+                    },
                 },
-            },
-            handler=self._handle_knowledge_query,
-            category="knowledge",
-            risk_level="low",
-        ))
+                handler=self._handle_knowledge_query,
+                category="knowledge",
+                risk_level="low",
+            )
+        )
 
         # Tool: aios_approve — approve a pending action
-        self.tools.register(ToolDefinition(
-            name="aios_approve",
-            description="Approve a pending REVIEW action by its approval ID.",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "approval_id": {"type": "string", "description": "UUID of the pending approval"},
+        self.tools.register(
+            ToolDefinition(
+                name="aios_approve",
+                description="Approve a pending REVIEW action by its approval ID.",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "approval_id": {
+                            "type": "string",
+                            "description": "UUID of the pending approval",
+                        },
+                    },
+                    "required": ["approval_id"],
                 },
-                "required": ["approval_id"],
-            },
-            handler=lambda p: self.guard.approve(p["approval_id"]),
-            category="constitution",
-            risk_level="high",
-        ))
+                handler=lambda p: self.guard.approve(p["approval_id"]),
+                category="constitution",
+                risk_level="high",
+            )
+        )
 
         # Tool: aios_deny — deny a pending action
-        self.tools.register(ToolDefinition(
-            name="aios_deny",
-            description="Deny a pending REVIEW action by its approval ID.",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "approval_id": {"type": "string", "description": "UUID of the pending approval"},
+        self.tools.register(
+            ToolDefinition(
+                name="aios_deny",
+                description="Deny a pending REVIEW action by its approval ID.",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "approval_id": {
+                            "type": "string",
+                            "description": "UUID of the pending approval",
+                        },
+                    },
+                    "required": ["approval_id"],
                 },
-                "required": ["approval_id"],
-            },
-            handler=lambda p: self.guard.deny(p["approval_id"]),
-            category="constitution",
-            risk_level="high",
-        ))
+                handler=lambda p: self.guard.deny(p["approval_id"]),
+                category="constitution",
+                risk_level="high",
+            )
+        )
 
         # Tool: aios_stats — get gateway/runtime statistics
-        self.tools.register(ToolDefinition(
-            name="aios_stats",
-            description="Get comprehensive AIOS statistics including constitution, policies, and runtime metrics.",
-            input_schema={"type": "object", "properties": {}},
-            handler=lambda p: self.stats(),
-            category="constitution",
-            risk_level="low",
-        ))
+        self.tools.register(
+            ToolDefinition(
+                name="aios_stats",
+                description="Get comprehensive AIOS statistics including constitution, policies, and runtime metrics.",
+                input_schema={"type": "object", "properties": {}},
+                handler=lambda p: self.stats(),
+                category="constitution",
+                risk_level="low",
+            )
+        )
 
         self._register_olx_tools()
 
@@ -330,9 +403,7 @@ class MCPGateway:
                 from aios_core.platforms import resolve_profile
                 from aios_core.platforms.store import ProfileStore
 
-                resolved = resolve_profile(
-                    "olx", profile, store=ProfileStore.default()
-                )
+                resolved = resolve_profile("olx", profile, store=ProfileStore.default())
                 storage = OLXStorage(resolved.db_path)
             self._olx_storages[key] = storage
         return self._olx_storages[key]
@@ -340,55 +411,86 @@ class MCPGateway:
     def _register_olx_tools(self):
         """Register read-only OLX Parser Agent tools (market intelligence)."""
 
-        self.tools.register(ToolDefinition(
-            name="olx_market_stats",
-            description="Competitor market statistics for an OLX search query: price min/max/mean/median, TOP share, top cities.",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "Search query filter (optional — whole store)"},
-                    "profile": {"type": "string", "description": "Platform profile (account) name — storage is resolved from the profiles registry"},
+        self.tools.register(
+            ToolDefinition(
+                name="olx_market_stats",
+                description="Competitor market statistics for an OLX search query: price min/max/mean/median, TOP share, top cities.",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query filter (optional — whole store)",
+                        },
+                        "profile": {
+                            "type": "string",
+                            "description": "Platform profile (account) name — storage is resolved from the profiles registry",
+                        },
+                    },
                 },
-            },
-            handler=lambda p: self._olx_market_stats(p),
-            category="olx",
-            risk_level="low",
-        ))
+                handler=lambda p: self._olx_market_stats(p),
+                category="olx",
+                risk_level="low",
+            )
+        )
 
-        self.tools.register(ToolDefinition(
-            name="olx_listing_recommend",
-            description="Listing advice for a draft OLX ad: suggested price, market verdict, title keywords, TOP promotion decision.",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "Search query of competitors"},
-                    "profile": {"type": "string", "description": "Platform profile (account) name"},
-                    "title": {"type": "string", "description": "Draft listing title"},
-                    "price": {"type": "number", "description": "Draft listing price"},
+        self.tools.register(
+            ToolDefinition(
+                name="olx_listing_recommend",
+                description="Listing advice for a draft OLX ad: suggested price, market verdict, title keywords, TOP promotion decision.",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query of competitors",
+                        },
+                        "profile": {
+                            "type": "string",
+                            "description": "Platform profile (account) name",
+                        },
+                        "title": {
+                            "type": "string",
+                            "description": "Draft listing title",
+                        },
+                        "price": {
+                            "type": "number",
+                            "description": "Draft listing price",
+                        },
+                    },
                 },
-            },
-            handler=lambda p: self._olx_listing_recommend(p),
-            category="olx",
-            risk_level="low",
-        ))
+                handler=lambda p: self._olx_listing_recommend(p),
+                category="olx",
+                risk_level="low",
+            )
+        )
 
-        self.tools.register(ToolDefinition(
-            name="olx_price_drops",
-            description="OLX ads with a detected price drop plus listings that left the feed (sold/removed).",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "Search query filter (optional)"},
-                    "profile": {"type": "string", "description": "Platform profile (account) name"},
+        self.tools.register(
+            ToolDefinition(
+                name="olx_price_drops",
+                description="OLX ads with a detected price drop plus listings that left the feed (sold/removed).",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query filter (optional)",
+                        },
+                        "profile": {
+                            "type": "string",
+                            "description": "Platform profile (account) name",
+                        },
+                    },
                 },
-            },
-            handler=lambda p: self._olx_price_drops(p),
-            category="olx",
-            risk_level="low",
-        ))
+                handler=lambda p: self._olx_price_drops(p),
+                category="olx",
+                risk_level="low",
+            )
+        )
 
     def _olx_market_stats(self, params: dict) -> dict:
         from aios_core.modules.olx import CompetitorAnalyzer
+
         store = self._olx_store(params.get("profile"))
         query = params.get("query")
         ads = store.get_ads(query=query)
@@ -397,6 +499,7 @@ class MCPGateway:
     def _olx_listing_recommend(self, params: dict) -> dict:
         from dataclasses import asdict
         from aios_core.modules.olx import AdCard, RecommendationEngine
+
         store = self._olx_store(params.get("profile"))
         query = params.get("query")
         ads = store.get_ads(query=query)
@@ -415,6 +518,7 @@ class MCPGateway:
 
     def _olx_price_drops(self, params: dict) -> dict:
         from aios_core.modules.olx import PriceTracker
+
         store = self._olx_store(params.get("profile"))
         tracker = PriceTracker(store)
         query = params.get("query")
@@ -432,7 +536,9 @@ class MCPGateway:
         from aios_core.memory_manager import MemoryManager
 
         if params.get("category") == "personal":
-            raise PermissionError("Personal memory is available only through the authenticated REST API")
+            raise PermissionError(
+                "Personal memory is available only through the authenticated REST API"
+            )
 
         mm = MemoryManager(db=self.runtime.db)
         tags = params.get("tags", "")
@@ -450,7 +556,9 @@ class MCPGateway:
         from aios_core.memory_manager import MemoryManager
 
         if params.get("category") == "personal":
-            raise PermissionError("Personal memory is available only through the authenticated REST API")
+            raise PermissionError(
+                "Personal memory is available only through the authenticated REST API"
+            )
 
         mm = MemoryManager(db=self.runtime.db)
         results = mm.search(
@@ -480,22 +588,26 @@ class MCPGateway:
         """Register built-in AIOS resources."""
 
         # Resource: constitution overview
-        self.resources.register(ResourceDefinition(
-            uri="aios://constitution/overview",
-            name="Constitution Overview",
-            description="Summary of the AIOS constitutional articles and principles",
-            mime_type="text/plain",
-            provider=lambda: str(self.runtime.engine.constitution.stats()),
-        ))
+        self.resources.register(
+            ResourceDefinition(
+                uri="aios://constitution/overview",
+                name="Constitution Overview",
+                description="Summary of the AIOS constitutional articles and principles",
+                mime_type="text/plain",
+                provider=lambda: str(self.runtime.engine.constitution.stats()),
+            )
+        )
 
         # Resource: policies summary
-        self.resources.register(ResourceDefinition(
-            uri="aios://policies/summary",
-            name="Policy Summary",
-            description="Summary of active AIOS policies",
-            mime_type="text/plain",
-            provider=lambda: str(self.runtime.engine.policies.stats()),
-        ))
+        self.resources.register(
+            ResourceDefinition(
+                uri="aios://policies/summary",
+                name="Policy Summary",
+                description="Summary of active AIOS policies",
+                mime_type="text/plain",
+                provider=lambda: str(self.runtime.engine.policies.stats()),
+            )
+        )
 
         # Audit and approval records deliberately are not exposed as generic MCP
         # resources. They contain operational metadata and require the REST API
@@ -508,40 +620,64 @@ class MCPGateway:
     def _register_builtin_prompts(self):
         """Register built-in AIOS prompt templates."""
 
-        self.prompts.register(PromptDefinition(
-            name="evaluate_action",
-            description="Template for evaluating a proposed action against the AIOS constitution",
-            arguments=[
-                {"name": "goal", "description": "The action's goal", "required": True},
-                {"name": "scope", "description": "The action's scope", "required": True},
-                {"name": "risk", "description": "Risk level", "required": True},
-            ],
-            template=(
-                "Evaluate the following proposed action against the AIOS constitution:\n\n"
-                "Goal: {goal}\n"
-                "Scope: {scope}\n"
-                "Risk Level: {risk}\n\n"
-                "Provide your assessment of constitutional compliance."
-            ),
-        ))
+        self.prompts.register(
+            PromptDefinition(
+                name="evaluate_action",
+                description="Template for evaluating a proposed action against the AIOS constitution",
+                arguments=[
+                    {
+                        "name": "goal",
+                        "description": "The action's goal",
+                        "required": True,
+                    },
+                    {
+                        "name": "scope",
+                        "description": "The action's scope",
+                        "required": True,
+                    },
+                    {"name": "risk", "description": "Risk level", "required": True},
+                ],
+                template=(
+                    "Evaluate the following proposed action against the AIOS constitution:\n\n"
+                    "Goal: {goal}\n"
+                    "Scope: {scope}\n"
+                    "Risk Level: {risk}\n\n"
+                    "Provide your assessment of constitutional compliance."
+                ),
+            )
+        )
 
-        self.prompts.register(PromptDefinition(
-            name="evolution_proposal",
-            description="Template for proposing a system evolution change",
-            arguments=[
-                {"name": "component", "description": "Component to evolve", "required": True},
-                {"name": "change", "description": "Description of the change", "required": True},
-                {"name": "rationale", "description": "Why this change is needed", "required": True},
-            ],
-            template=(
-                "Evolution Proposal for AIOS:\n\n"
-                "Component: {component}\n"
-                "Proposed Change: {change}\n"
-                "Rationale: {rationale}\n\n"
-                "This proposal must comply with ARTICLE-XXXVI (Controlled Evolution) "
-                "and pass all constitutional checks before deployment."
-            ),
-        ))
+        self.prompts.register(
+            PromptDefinition(
+                name="evolution_proposal",
+                description="Template for proposing a system evolution change",
+                arguments=[
+                    {
+                        "name": "component",
+                        "description": "Component to evolve",
+                        "required": True,
+                    },
+                    {
+                        "name": "change",
+                        "description": "Description of the change",
+                        "required": True,
+                    },
+                    {
+                        "name": "rationale",
+                        "description": "Why this change is needed",
+                        "required": True,
+                    },
+                ],
+                template=(
+                    "Evolution Proposal for AIOS:\n\n"
+                    "Component: {component}\n"
+                    "Proposed Change: {change}\n"
+                    "Rationale: {rationale}\n\n"
+                    "This proposal must comply with ARTICLE-XXXVI (Controlled Evolution) "
+                    "and pass all constitutional checks before deployment."
+                ),
+            )
+        )
 
     # ------------------------------------------------------------------
     # Request handling
@@ -569,18 +705,22 @@ class MCPGateway:
 
         # 2. Handle notification — process but return no response
         if isinstance(message, JSONRPCNotification):
-            self._request_log.append({
-                "type": "notification",
-                "method": message.method,
-            })
+            self._request_log.append(
+                {
+                    "type": "notification",
+                    "method": message.method,
+                }
+            )
             return None
 
         # 3. Handle response (echo back) — should not happen in server mode
         if isinstance(message, JSONRPCResponse):
-            self._request_log.append({
-                "type": "response",
-                "id": message.id,
-            })
+            self._request_log.append(
+                {
+                    "type": "response",
+                    "id": message.id,
+                }
+            )
             return self.protocol.encode_response(
                 id=message.id,
                 result={"echoed": True},
@@ -594,11 +734,13 @@ class MCPGateway:
                 message="Unexpected message type",
             )
 
-        self._request_log.append({
-            "type": "request",
-            "method": message.method,
-            "id": message.id,
-        })
+        self._request_log.append(
+            {
+                "type": "request",
+                "method": message.method,
+                "id": message.id,
+            }
+        )
 
         response = self._route(message)
         return self.protocol.encode_response(
@@ -653,7 +795,10 @@ class MCPGateway:
         # Unknown method
         return JSONRPCResponse(
             id=request.id,
-            error={"code": JSONRPCError.METHOD_NOT_FOUND, "message": f"Unknown method: {method}"},
+            error={
+                "code": JSONRPCError.METHOD_NOT_FOUND,
+                "message": f"Unknown method: {method}",
+            },
         )
 
     # ------------------------------------------------------------------
@@ -663,18 +808,21 @@ class MCPGateway:
     def _handle_initialize(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle MCP initialize handshake."""
         self._initialized = True
-        return JSONRPCResponse(id=request.id, result={
-            "protocolVersion": "2024-11-05",
-            "capabilities": {
-                "tools": {"listChanged": True},
-                "resources": {"subscribe": False, "listChanged": True},
-                "prompts": {"listChanged": True},
+        return JSONRPCResponse(
+            id=request.id,
+            result={
+                "protocolVersion": "2024-11-05",
+                "capabilities": {
+                    "tools": {"listChanged": True},
+                    "resources": {"subscribe": False, "listChanged": True},
+                    "prompts": {"listChanged": True},
+                },
+                "serverInfo": {
+                    "name": self.config.server_name,
+                    "version": self.config.server_version,
+                },
             },
-            "serverInfo": {
-                "name": self.config.server_name,
-                "version": self.config.server_version,
-            },
-        })
+        )
 
     def _handle_tools_list(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle tools/list."""
@@ -690,11 +838,16 @@ class MCPGateway:
         if not tool_def:
             return JSONRPCResponse(
                 id=request.id,
-                error={"code": JSONRPCError.METHOD_NOT_FOUND, "message": f"Tool not found: {name}"},
+                error={
+                    "code": JSONRPCError.METHOD_NOT_FOUND,
+                    "message": f"Tool not found: {name}",
+                },
             )
 
         # Constitution check
-        tool_call = MCPToolCall(name=name, arguments=arguments, request_id=str(request.id))
+        tool_call = MCPToolCall(
+            name=name, arguments=arguments, request_id=str(request.id)
+        )
         guard_result = self.guard.check(tool_call, tool_def)
 
         if not guard_result["allowed"]:
@@ -720,10 +873,13 @@ class MCPGateway:
         # Execute the tool
         try:
             result = self.tools.call(tool_call)
-            return JSONRPCResponse(id=request.id, result={
-                "content": result.content,
-                "isError": result.is_error,
-            })
+            return JSONRPCResponse(
+                id=request.id,
+                result={
+                    "content": result.content,
+                    "isError": result.is_error,
+                },
+            )
         except Exception as e:
             return JSONRPCResponse(
                 id=request.id,
@@ -732,7 +888,9 @@ class MCPGateway:
 
     def _handle_resources_list(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle resources/list."""
-        return JSONRPCResponse(id=request.id, result={"resources": self.resources.list_resources()})
+        return JSONRPCResponse(
+            id=request.id, result={"resources": self.resources.list_resources()}
+        )
 
     def _handle_resources_read(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle resources/read."""
@@ -742,19 +900,29 @@ class MCPGateway:
         if content is None:
             return JSONRPCResponse(
                 id=request.id,
-                error={"code": JSONRPCError.RESOURCE_NOT_FOUND, "message": f"Resource not found: {uri}"},
+                error={
+                    "code": JSONRPCError.RESOURCE_NOT_FOUND,
+                    "message": f"Resource not found: {uri}",
+                },
             )
-        return JSONRPCResponse(id=request.id, result={
-            "contents": [{
-                "uri": content.uri,
-                "mimeType": content.mime_type,
-                "text": content.text,
-            }],
-        })
+        return JSONRPCResponse(
+            id=request.id,
+            result={
+                "contents": [
+                    {
+                        "uri": content.uri,
+                        "mimeType": content.mime_type,
+                        "text": content.text,
+                    }
+                ],
+            },
+        )
 
     def _handle_prompts_list(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle prompts/list."""
-        return JSONRPCResponse(id=request.id, result={"prompts": self.prompts.list_prompts()})
+        return JSONRPCResponse(
+            id=request.id, result={"prompts": self.prompts.list_prompts()}
+        )
 
     def _handle_prompts_get(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle prompts/get."""
@@ -765,28 +933,38 @@ class MCPGateway:
         if result is None:
             return JSONRPCResponse(
                 id=request.id,
-                error={"code": JSONRPCError.METHOD_NOT_FOUND, "message": f"Prompt not found: {name}"},
+                error={
+                    "code": JSONRPCError.METHOD_NOT_FOUND,
+                    "message": f"Prompt not found: {name}",
+                },
             )
-        return JSONRPCResponse(id=request.id, result={
-            "description": result.description,
-            "messages": result.messages,
-        })
+        return JSONRPCResponse(
+            id=request.id,
+            result={
+                "description": result.description,
+                "messages": result.messages,
+            },
+        )
 
     def _handle_aios_evaluate(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Direct constitution evaluation without going through tool dispatch."""
         params = request.params
-        result = self.runtime.request_execution({
-            **params,
-            "audit_log": True,
-            "agent_id": params.get("agent_id", "mcp-direct"),
-            "authority": params.get("authority", "user"),
-        })
+        result = self.runtime.request_execution(
+            {
+                **params,
+                "audit_log": True,
+                "agent_id": params.get("agent_id", "mcp-direct"),
+                "authority": params.get("authority", "user"),
+            }
+        )
         return JSONRPCResponse(id=request.id, result=result)
 
     def _handle_aios_approvals(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle aios/approvals."""
         pending = self.runtime.get_pending_approvals()
-        return JSONRPCResponse(id=request.id, result={"approvals": pending, "count": len(pending)})
+        return JSONRPCResponse(
+            id=request.id, result={"approvals": pending, "count": len(pending)}
+        )
 
     def _handle_aios_stats(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle aios/stats."""

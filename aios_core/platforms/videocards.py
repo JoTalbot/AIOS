@@ -82,9 +82,10 @@ class HintVideoParser:
 
     def __init__(self, video_markers: Optional[List[str]] = None):
         markers = video_markers or list(_DEFAULT_MARKERS)
-        self.markers = tuple(
-            str(m).rsplit("/", 1)[-1].lower() for m in markers if m
-        ) or _DEFAULT_MARKERS
+        self.markers = (
+            tuple(str(m).rsplit("/", 1)[-1].lower() for m in markers if m)
+            or _DEFAULT_MARKERS
+        )
 
     def parse(
         self,
@@ -100,15 +101,14 @@ class HintVideoParser:
             resource_id = (node.attrib.get("resource-id") or "").lower()
             if not any(marker in resource_id for marker in self.markers):
                 continue
-            texts = [
-                normalize_text(child.attrib.get("text"))
-                for child in node.iter()
-            ]
+            texts = [normalize_text(child.attrib.get("text")) for child in node.iter()]
             texts = [t for t in texts if t]
             if not texts:
                 continue
             card = self.card_from_texts(
-                texts, marker=resource_id, query=query,
+                texts,
+                marker=resource_id,
+                query=query,
             )
             if card is not None:
                 cards.append(card)
@@ -147,8 +147,13 @@ class HintVideoParser:
         if not title and duration is None:
             return None  # ни подписи, ни признака видео — не карточка
         return VideoCard(
-            title=title, duration=duration, views=views, likes=likes,
-            marker=marker, query=query, raw_texts=tuple(texts),
+            title=title,
+            duration=duration,
+            views=views,
+            likes=likes,
+            marker=marker,
+            query=query,
+            raw_texts=tuple(texts),
         )
 
 
@@ -157,6 +162,8 @@ def video_parser_for(platform_name: str, directory="platforms") -> HintVideoPars
     from aios_core.platforms.runtime_hints import load_hints_section
 
     categories = load_hints_section(
-        platform_name, "content_categories", directory,
+        platform_name,
+        "content_categories",
+        directory,
     )
     return HintVideoParser(categories.get("video_markers") or None)

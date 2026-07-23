@@ -59,25 +59,29 @@ class CrossAppWorkflowEngine:
         self._executions: Dict[str, WorkflowExecution] = {}
         self.version = "8.0.0"
 
-    def create_workflow(self, name: str, steps: List[Dict[str, Any]]) -> WorkflowExecution:
+    def create_workflow(
+        self, name: str, steps: List[Dict[str, Any]]
+    ) -> WorkflowExecution:
         """Create workflow from dict definitions."""
         workflow_steps = []
         for s in steps:
-            workflow_steps.append(WorkflowStep(
-                app_package=s.get("app_package", s.get("package", "")),
-                action=s.get("action", ""),
-                params=s.get("params", {}),
-                timeout=s.get("timeout", 60),
-                retry=s.get("retry", 2),
-                critical=s.get("critical", True),
-                output_key=s.get("output_key")
-            ))
+            workflow_steps.append(
+                WorkflowStep(
+                    app_package=s.get("app_package", s.get("package", "")),
+                    action=s.get("action", ""),
+                    params=s.get("params", {}),
+                    timeout=s.get("timeout", 60),
+                    retry=s.get("retry", 2),
+                    critical=s.get("critical", True),
+                    output_key=s.get("output_key"),
+                )
+            )
 
         execution = WorkflowExecution(
             id=f"wf_{uuid.uuid4().hex[:8]}_{int(time.time())}",
             name=name,
             steps=workflow_steps,
-            context={}
+            context={},
         )
         self._executions[execution.id] = execution
         return execution
@@ -88,11 +92,14 @@ class CrossAppWorkflowEngine:
         # fallback: mock driver
         try:
             from .android_driver import AndroidDriver
+
             return AndroidDriver()
         except Exception:
             return None
 
-    def execute(self, execution: WorkflowExecution, context: Optional[Dict[str, Any]] = None) -> WorkflowExecution:
+    def execute(
+        self, execution: WorkflowExecution, context: Optional[Dict[str, Any]] = None
+    ) -> WorkflowExecution:
         """Execute workflow sequentially with rollback on critical failure."""
         execution.status = WorkflowStatus.RUNNING
         execution.started_at = time.time()
@@ -110,14 +117,20 @@ class CrossAppWorkflowEngine:
                 try:
                     result = self._execute_step(step, execution.context)
                     last_result = result
-                    if result.get("status") in ("success", "delivered", "partial_success"):
+                    if result.get("status") in (
+                        "success",
+                        "delivered",
+                        "partial_success",
+                    ):
                         success = True
                         if step.output_key:
                             execution.context[step.output_key] = result
                         execution.results.append(result)
                     else:
                         if attempt > step.retry:
-                            execution.errors.append(f"Step {idx} {step.app_package}/{step.action} failed after {attempt} attempts: {result}")
+                            execution.errors.append(
+                                f"Step {idx} {step.app_package}/{step.action} failed after {attempt} attempts: {result}"
+                            )
                         time.sleep(1 * attempt)  # backoff
                 except Exception as e:
                     last_result = {"status": "error", "error": str(e)}
@@ -129,18 +142,25 @@ class CrossAppWorkflowEngine:
                     execution.status = WorkflowStatus.FAILED
                     self._rollback(execution, failed_at=idx)
                     execution.finished_at = time.time()
-                    execution.duration_ms = (execution.finished_at - execution.started_at) * 1000
+                    execution.duration_ms = (
+                        execution.finished_at - execution.started_at
+                    ) * 1000
                     return execution
                 else:
                     # non-critical, continue
-                    execution.results.append(last_result or {"status": "skipped", "reason": "non_critical_failure"})
+                    execution.results.append(
+                        last_result
+                        or {"status": "skipped", "reason": "non_critical_failure"}
+                    )
 
         execution.status = WorkflowStatus.COMPLETED
         execution.finished_at = time.time()
         execution.duration_ms = (execution.finished_at - execution.started_at) * 1000
         return execution
 
-    def _execute_step(self, step: WorkflowStep, context: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_step(
+        self, step: WorkflowStep, context: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Execute single step via driver."""
         # resolve params with context templating: {{context.key}}
         resolved_params = self._resolve_params(step.params, context)
@@ -154,42 +174,48 @@ class CrossAppWorkflowEngine:
                 "action": step.action,
                 "params": resolved_params,
                 "simulated": True,
-                "timestamp": time.time()
+                "timestamp": time.time(),
             }
 
         try:
             # Try rpa_bridge if available
             from .android_rpa_bridge import AndroidRPAManager
+
             manager = AndroidRPAManager()
             result = manager.emulator.execute_ui_action(
                 package_name=step.app_package,
                 action_name=step.action,
-                params=resolved_params
+                params=resolved_params,
             )
             return result
         except Exception:
             # fallback to direct driver
             try:
                 if hasattr(driver, "execute_action"):
-                    return driver.execute_action(step.app_package, step.action, resolved_params)
+                    return driver.execute_action(
+                        step.app_package, step.action, resolved_params
+                    )
                 # generic tap/type simulation
                 return {
                     "status": "success",
                     "app": step.app_package,
                     "action": step.action,
                     "simulated_driver": True,
-                    "timestamp": time.time()
+                    "timestamp": time.time(),
                 }
             except Exception as e:
                 return {"status": "error", "error": str(e)}
 
-    def _resolve_params(self, params: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+    def _resolve_params(
+        self, params: Dict[str, Any], context: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Resolve {{key}} templates from context."""
         resolved = {}
         for k, v in params.items():
             if isinstance(v, str) and "{{" in v and "}}" in v:
                 # simple templating: {{output_key.field}} or {{context.field}}
                 import re
+
                 def repl(match):
                     path = match.group(1).strip()
                     # support dot notation
@@ -201,6 +227,7 @@ class CrossAppWorkflowEngine:
                         else:
                             return match.group(0)
                     return str(cur)
+
                 resolved[k] = re.sub(r"\{\{(.*?)\}\}", repl, v)
             else:
                 resolved[k] = v
@@ -216,18 +243,23 @@ class CrossAppWorkflowEngine:
             comp = step.params.get("_compensate")
             if comp:
                 try:
-                    self._execute_step(WorkflowStep(
-                        app_package=step.app_package,
-                        action=comp,
-                        params={},
-                        critical=False
-                    ), execution.context)
+                    self._execute_step(
+                        WorkflowStep(
+                            app_package=step.app_package,
+                            action=comp,
+                            params={},
+                            critical=False,
+                        ),
+                        execution.context,
+                    )
                     rollback_log.append(f"Rolled back step {i}: {comp}")
                 except Exception as e:
                     rollback_log.append(f"Rollback failed step {i}: {e}")
 
         execution.context["_rollback_log"] = rollback_log
-        execution.status = WorkflowStatus.ROLLED_BACK if rollback_log else WorkflowStatus.FAILED
+        execution.status = (
+            WorkflowStatus.ROLLED_BACK if rollback_log else WorkflowStatus.FAILED
+        )
 
     def get_execution(self, wf_id: str) -> Optional[WorkflowExecution]:
         return self._executions.get(wf_id)
@@ -237,30 +269,43 @@ class CrossAppWorkflowEngine:
 
     # --- Prebuilt workflows (per roadmap) ---
 
-    def workflow_olx_to_messenger(self, search_query: str, recipient: str) -> WorkflowExecution:
+    def workflow_olx_to_messenger(
+        self, search_query: str, recipient: str
+    ) -> WorkflowExecution:
         """Example: Search OLX, pick first result, send via Viber/WhatsApp."""
-        return self.create_workflow("olx_to_messenger", [
-            {
-                "app_package": "ua.slando",
-                "action": "search",
-                "params": {"query": search_query, "category": "all"},
-                "output_key": "search_results"
-            },
-            {
-                "app_package": "ua.slando",
-                "action": "get_item_details",
-                "params": {"item_id": "{{search_results.items.0.id}}", "fallback": "olx_123"},
-                "output_key": "item_details"
-            },
-            {
-                "app_package": "com.viber.voip",
-                "action": "send_message",
-                "params": {"recipient": recipient, "message": "Смотри что нашел: {{item_details.title}} - {{item_details.price_uah}} грн"},
-                "critical": False
-            }
-        ])
+        return self.create_workflow(
+            "olx_to_messenger",
+            [
+                {
+                    "app_package": "ua.slando",
+                    "action": "search",
+                    "params": {"query": search_query, "category": "all"},
+                    "output_key": "search_results",
+                },
+                {
+                    "app_package": "ua.slando",
+                    "action": "get_item_details",
+                    "params": {
+                        "item_id": "{{search_results.items.0.id}}",
+                        "fallback": "olx_123",
+                    },
+                    "output_key": "item_details",
+                },
+                {
+                    "app_package": "com.viber.voip",
+                    "action": "send_message",
+                    "params": {
+                        "recipient": recipient,
+                        "message": "Смотри что нашел: {{item_details.title}} - {{item_details.price_uah}} грн",
+                    },
+                    "critical": False,
+                },
+            ],
+        )
 
-    def workflow_multi_platform_broadcast(self, message: str, platforms: List[str]) -> WorkflowExecution:
+    def workflow_multi_platform_broadcast(
+        self, message: str, platforms: List[str]
+    ) -> WorkflowExecution:
         """Broadcast message to multiple platforms."""
         steps = []
         for plat in platforms:
@@ -268,14 +313,16 @@ class CrossAppWorkflowEngine:
                 "viber": "com.viber.voip",
                 "whatsapp": "com.whatsapp",
                 "telegram": "org.telegram.messenger",
-                "olx": "ua.slando"
+                "olx": "ua.slando",
             }
             pkg = pkg_map.get(plat, plat)
-            steps.append({
-                "app_package": pkg,
-                "action": "send_message",
-                "params": {"message": message, "platform": plat},
-                "critical": False,
-                "output_key": f"sent_{plat}"
-            })
+            steps.append(
+                {
+                    "app_package": pkg,
+                    "action": "send_message",
+                    "params": {"message": message, "platform": plat},
+                    "critical": False,
+                    "output_key": f"sent_{plat}",
+                }
+            )
         return self.create_workflow(f"broadcast_{len(platforms)}", steps)

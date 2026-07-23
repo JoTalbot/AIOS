@@ -17,7 +17,9 @@ class PromptDefinition:
 
     name: str
     description: str = ""
-    arguments: list[dict] = field(default_factory=list)  # [{"name", "description", "required"}]
+    arguments: list[dict] = field(
+        default_factory=list
+    )  # [{"name", "description", "required"}]
     renderer: Optional[Callable[[dict], MCPPromptResult]] = None
     template: Optional[str] = None  # Simple string template with {var} placeholders
 
@@ -147,12 +149,8 @@ class PromptRegistry:
         Returns:
             Dict with total count.
         """
-        with_renderer = sum(
-            1 for p in self._prompts.values() if p.renderer is not None
-        )
-        with_template = sum(
-            1 for p in self._prompts.values() if p.template is not None
-        )
+        with_renderer = sum(1 for p in self._prompts.values() if p.renderer is not None)
+        with_template = sum(1 for p in self._prompts.values() if p.template is not None)
 
         return {
             "total": len(self._prompts),

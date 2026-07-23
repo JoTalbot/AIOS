@@ -16,7 +16,7 @@ class OfflineRL:
         return {
             "algorithm": algorithm,
             "dataset_size": len(self.dataset),
-            "status": "trained"
+            "status": "trained",
         }
 
     def stats(self) -> dict:

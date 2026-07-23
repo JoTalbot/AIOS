@@ -22,7 +22,7 @@ class AutoScaler:
         return {
             "current": self.current_replicas,
             "min": self.min_replicas,
-            "max": self.max_replicas
+            "max": self.max_replicas,
         }
 
 

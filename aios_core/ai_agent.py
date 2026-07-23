@@ -20,7 +20,7 @@ class AIAgent:
             "agent_id": self.id,
             "goal": goal,
             "status": "executed",
-            "result": f"Agent {self.name} completed: {goal}"
+            "result": f"Agent {self.name} completed: {goal}",
         }
 
     def learn(self, experience: Dict):
@@ -30,5 +30,5 @@ class AIAgent:
         return {
             "id": self.id,
             "autonomy": self.autonomy_level,
-            "experiences": len(self.memory)
+            "experiences": len(self.memory),
         }

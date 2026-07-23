@@ -28,6 +28,7 @@ class LearningEngine:
             self.memory = memory
         elif db is not None:
             from .memory_manager import MemoryManager
+
             self.memory = MemoryManager(db=db)
         else:
             self.memory = None
@@ -87,25 +88,31 @@ class LearningEngine:
         Returns:
             The stored learning record.
         """
-        success = task.status.value == "completed" if hasattr(task.status, 'value') else str(task.status) == "completed"
+        success = (
+            task.status.value == "completed"
+            if hasattr(task.status, "value")
+            else str(task.status) == "completed"
+        )
         step_results = []
-        if hasattr(task, 'steps'):
+        if hasattr(task, "steps"):
             for s in task.steps:
                 step_info = {
-                    "name": s.name if hasattr(s, 'name') else str(s),
-                    "status": s.status.value if hasattr(s.status, 'value') else str(s.status),
+                    "name": s.name if hasattr(s, "name") else str(s),
+                    "status": (
+                        s.status.value if hasattr(s.status, "value") else str(s.status)
+                    ),
                 }
-                if hasattr(s, 'error') and s.error:
+                if hasattr(s, "error") and s.error:
                     step_info["error"] = s.error
                 step_results.append(step_info)
 
         experience = {
-            "task_name": task.name if hasattr(task, 'name') else str(task),
-            "task_id": task.id if hasattr(task, 'id') else "unknown",
+            "task_name": task.name if hasattr(task, "name") else str(task),
+            "task_id": task.id if hasattr(task, "id") else "unknown",
             "success": success,
-            "total_steps": len(task.steps) if hasattr(task, 'steps') else 0,
+            "total_steps": len(task.steps) if hasattr(task, "steps") else 0,
             "step_results": step_results,
-            "risk_level": task.risk_level if hasattr(task, 'risk_level') else "unknown",
+            "risk_level": task.risk_level if hasattr(task, "risk_level") else "unknown",
         }
 
         return self.record(
@@ -156,15 +163,17 @@ class LearningEngine:
                 stats = task_stats.get(task_name, {"success": 0, "total": 0})
                 total = stats["total"]
                 succ = stats["success"]
-                patterns.append({
-                    "action": task_name,
-                    "outcome": "success",
-                    "confidence": mem.get("confidence", exp.get("confidence", 0.5)),
-                    "memory_id": mem.get("id"),
-                    "success_rate": round(succ / total, 4) if total else 0.0,
-                    "total_attempts": total,
-                    "success_count": succ,
-                })
+                patterns.append(
+                    {
+                        "action": task_name,
+                        "outcome": "success",
+                        "confidence": mem.get("confidence", exp.get("confidence", 0.5)),
+                        "memory_id": mem.get("id"),
+                        "success_rate": round(succ / total, 4) if total else 0.0,
+                        "total_attempts": total,
+                        "success_count": succ,
+                    }
+                )
 
         return patterns
 
@@ -230,7 +239,11 @@ class LearningEngine:
             worst_rate = 2.0
             total = 0
             for h, counts in hour_map.items():
-                rate = round(counts["success"] / counts["total"], 4) if counts["total"] else 0.0
+                rate = (
+                    round(counts["success"] / counts["total"], 4)
+                    if counts["total"]
+                    else 0.0
+                )
                 hourly_success_rates[h] = rate
                 total += counts["total"]
                 if rate > best_rate:
@@ -239,13 +252,15 @@ class LearningEngine:
                 if rate < worst_rate:
                     worst_rate = rate
                     worst_hour = h
-            results.append({
-                "task_name": task_name,
-                "best_hour": best_hour,
-                "worst_hour": worst_hour,
-                "hourly_success_rates": hourly_success_rates,
-                "total": total,
-            })
+            results.append(
+                {
+                    "task_name": task_name,
+                    "best_hour": best_hour,
+                    "worst_hour": worst_hour,
+                    "hourly_success_rates": hourly_success_rates,
+                    "total": total,
+                }
+            )
 
         return results
 
@@ -296,13 +311,15 @@ class LearningEngine:
         for (task_name, param_key, param_val), counts in buckets.items():
             total = counts["total"]
             rate = round(counts["success"] / total, 4) if total else 0.0
-            results.append({
-                "task_name": task_name,
-                "parameter": param_key,
-                "value": param_val,
-                "success_rate": rate,
-                "sample_size": total,
-            })
+            results.append(
+                {
+                    "task_name": task_name,
+                    "parameter": param_key,
+                    "value": param_val,
+                    "success_rate": rate,
+                    "sample_size": total,
+                }
+            )
 
         # Sort by sample_size descending so the most reliable come first
         results.sort(key=lambda r: r["sample_size"], reverse=True)
@@ -330,7 +347,9 @@ class LearningEngine:
                 "task_name": task_name,
                 "predicted_success_rate": 0.0,
                 "confidence": 0.0,
-                "factors": [{"factor": "no_storage", "impact": "unknown", "value": 0.0}],
+                "factors": [
+                    {"factor": "no_storage", "impact": "unknown", "value": 0.0}
+                ],
                 "recommendation": "No learning data available; cannot predict.",
             }
 
@@ -350,19 +369,32 @@ class LearningEngine:
                 task_hist_total += 1
                 if exp.get("success", False):
                     task_hist_success += 1
-        hist_rate = round(task_hist_success / task_hist_total, 4) if task_hist_total else 0.0
+        hist_rate = (
+            round(task_hist_success / task_hist_total, 4) if task_hist_total else 0.0
+        )
         if task_hist_total > 0:
-            factors.append({"factor": "historical_success_rate", "impact": "base_rate", "value": hist_rate})
+            factors.append(
+                {
+                    "factor": "historical_success_rate",
+                    "impact": "base_rate",
+                    "value": hist_rate,
+                }
+            )
 
         # --- Factor 2: Time-of-day ---
         current_hour = datetime.now(timezone.utc).hour
         temporal_data = self.analyze_temporal_patterns()
         temporal_rate: Optional[float] = None
         for td in temporal_data:
-            if td["task_name"] == task_name and current_hour in td["hourly_success_rates"]:
+            if (
+                td["task_name"] == task_name
+                and current_hour in td["hourly_success_rates"]
+            ):
                 temporal_rate = td["hourly_success_rates"][current_hour]
                 impact = "positive" if temporal_rate >= hist_rate else "negative"
-                factors.append({"factor": "time_of_day", "impact": impact, "value": temporal_rate})
+                factors.append(
+                    {"factor": "time_of_day", "impact": impact, "value": temporal_rate}
+                )
                 break
 
         # --- Factor 3: Parameter correlations ---
@@ -370,12 +402,16 @@ class LearningEngine:
             for corr in self._last_correlations:
                 if corr["task_name"] == task_name and corr["parameter"] in params:
                     if str(params[corr["parameter"]]) == corr["value"]:
-                        impact = "positive" if corr["success_rate"] >= 0.5 else "negative"
-                        factors.append({
-                            "factor": f"param_{corr['parameter']}={corr['value']}",
-                            "impact": impact,
-                            "value": corr["success_rate"],
-                        })
+                        impact = (
+                            "positive" if corr["success_rate"] >= 0.5 else "negative"
+                        )
+                        factors.append(
+                            {
+                                "factor": f"param_{corr['parameter']}={corr['value']}",
+                                "impact": impact,
+                                "value": corr["success_rate"],
+                            }
+                        )
 
         # --- Combine into a single prediction ---
         if not factors:
@@ -408,7 +444,9 @@ class LearningEngine:
 
         predicted = round(score / weight_sum, 4) if weight_sum else 0.0
         # Confidence is a function of sample size
-        confidence = min(round(task_hist_total / 20.0, 4), 1.0) if task_hist_total else 0.0
+        confidence = (
+            min(round(task_hist_total / 20.0, 4), 1.0) if task_hist_total else 0.0
+        )
 
         # Recommendation
         if predicted >= 0.8:
@@ -420,7 +458,11 @@ class LearningEngine:
 
         # Convert factor values to float for JSON serialisation
         serialised_factors = [
-            {"factor": f["factor"], "impact": str(f["impact"]), "value": float(f["value"])}
+            {
+                "factor": f["factor"],
+                "impact": str(f["impact"]),
+                "value": float(f["value"]),
+            }
             for f in factors
         ]
 
@@ -481,34 +523,42 @@ class LearningEngine:
 
             # Low success rate → improvement suggestion
             if rate < 0.5 and total >= 3:
-                suggestions.append({
-                    "component": task_name,
-                    "suggestion": f"Success rate is {rate:.0%} ({succ}/{total}). Investigate failure causes and refactor.",
-                    "priority": "high",
-                    "based_on": "low_success_rate",
-                    "success_rate": rate,
-                })
+                suggestions.append(
+                    {
+                        "component": task_name,
+                        "suggestion": f"Success rate is {rate:.0%} ({succ}/{total}). Investigate failure causes and refactor.",
+                        "priority": "high",
+                        "based_on": "low_success_rate",
+                        "success_rate": rate,
+                    }
+                )
 
             # High temporal variance → stabilisation suggestion
             var = temporal_variance.get(task_name)
-            if var is not None and var > 0.04 and total >= 5:  # variance > 0.04 (std > 0.2)
-                suggestions.append({
-                    "component": task_name,
-                    "suggestion": f"Success rate varies significantly by time of day (variance={var:.4f}). Consider time-independent improvements.",
-                    "priority": "medium",
-                    "based_on": "high_temporal_variance",
-                    "success_rate": rate,
-                })
+            if (
+                var is not None and var > 0.04 and total >= 5
+            ):  # variance > 0.04 (std > 0.2)
+                suggestions.append(
+                    {
+                        "component": task_name,
+                        "suggestion": f"Success rate varies significantly by time of day (variance={var:.4f}). Consider time-independent improvements.",
+                        "priority": "medium",
+                        "based_on": "high_temporal_variance",
+                        "success_rate": rate,
+                    }
+                )
 
             # Near-perfect but few samples → suggest more data collection
             if 0.8 <= rate <= 1.0 and total < 5:
-                suggestions.append({
-                    "component": task_name,
-                    "suggestion": f"Success rate is {rate:.0%} but only {total} attempt(s). Collect more data to confirm reliability.",
-                    "priority": "low",
-                    "based_on": "insufficient_data",
-                    "success_rate": rate,
-                })
+                suggestions.append(
+                    {
+                        "component": task_name,
+                        "suggestion": f"Success rate is {rate:.0%} but only {total} attempt(s). Collect more data to confirm reliability.",
+                        "priority": "low",
+                        "based_on": "insufficient_data",
+                        "success_rate": rate,
+                    }
+                )
 
         # Sort: high priority first
         priority_order = {"high": 0, "medium": 1, "low": 2}
@@ -566,13 +616,15 @@ class LearningEngine:
         results = []
         for mem in memories:
             content = mem.get("content", {})
-            results.append({
-                "id": mem.get("id"),
-                "experience": content.get("experience", {}),
-                "confidence": mem.get("confidence", 0.0),
-                "created_at": mem.get("created_at"),
-                "tags": mem.get("tags", []),
-            })
+            results.append(
+                {
+                    "id": mem.get("id"),
+                    "experience": content.get("experience", {}),
+                    "confidence": mem.get("confidence", 0.0),
+                    "created_at": mem.get("created_at"),
+                    "tags": mem.get("tags", []),
+                }
+            )
 
         return results
 
@@ -592,7 +644,8 @@ class LearningEngine:
             limit=10000,
         )
         successful = sum(
-            1 for m in learning_items
+            1
+            for m in learning_items
             if m.get("content", {}).get("experience", {}).get("success", False)
         )
 

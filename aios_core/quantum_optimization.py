@@ -12,7 +12,9 @@ class QuantumAnnealingOptimizer:
         self.temp = initial_temp
         self.cooling = cooling_rate
 
-    def optimize(self, initial_solution: List, cost_func: Callable, iterations: int = 5000):
+    def optimize(
+        self, initial_solution: List, cost_func: Callable, iterations: int = 5000
+    ):
         current = initial_solution[:]
         best = current[:]
         best_cost = cost_func(best)
@@ -31,7 +33,9 @@ class QuantumAnnealingOptimizer:
                 best_cost = new_cost
 
             # Accept with quantum probability
-            if new_cost < cost_func(current) or random.random() < math.exp(-abs(new_cost - cost_func(current)) / self.temp):
+            if new_cost < cost_func(current) or random.random() < math.exp(
+                -abs(new_cost - cost_func(current)) / self.temp
+            ):
                 current = neighbor[:]
 
             self.temp *= self.cooling

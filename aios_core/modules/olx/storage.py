@@ -199,9 +199,7 @@ class OLXStorage:
             }
             for column, ddl in _V1_MIGRATION_COLUMNS.items():
                 if column not in existing:
-                    self._conn.execute(
-                        f"ALTER TABLE olx_ads ADD COLUMN {column} {ddl}"
-                    )
+                    self._conn.execute(f"ALTER TABLE olx_ads ADD COLUMN {column} {ddl}")
             # Backfill presence timestamps for pre-v2 rows.
             self._conn.execute(
                 "UPDATE olx_ads SET first_seen_at = collected_at "
@@ -290,9 +288,7 @@ class OLXStorage:
                     )
         return inserted, new_fingerprints
 
-    def sync_activity(
-        self, query: str, seen_fingerprints: List[str]
-    ) -> int:
+    def sync_activity(self, query: str, seen_fingerprints: List[str]) -> int:
         """Mark ads of ``query`` missing from the latest collection as inactive.
 
         Returns the number of ads that changed state (were deactivated or
@@ -325,13 +321,15 @@ class OLXStorage:
                 (fingerprint,),
             ).fetchall()
         return [
-            {"seen_at": row["seen_at"], "price": row["price"], "is_top": bool(row["is_top"])}
+            {
+                "seen_at": row["seen_at"],
+                "price": row["price"],
+                "is_top": bool(row["is_top"]),
+            }
             for row in rows
         ]
 
-    def save_ads(
-        self, cards: List[AdCard], seen_at: Optional[str] = None
-    ) -> int:
+    def save_ads(self, cards: List[AdCard], seen_at: Optional[str] = None) -> int:
         """Store cards and record a sighting for each one.
 
         New fingerprints are inserted; known fingerprints get their presence
@@ -525,9 +523,7 @@ class OLXStorage:
         self, outbox_id: int, status: str, result: Optional[str] = None
     ) -> bool:
         """Transition an outbox row (pending → sent/failed/cancelled)."""
-        sent_at = (
-            datetime.now(timezone.utc).isoformat() if status == "sent" else None
-        )
+        sent_at = datetime.now(timezone.utc).isoformat() if status == "sent" else None
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 "UPDATE olx_outbox SET status = ?, sent_at = COALESCE(?, sent_at), "
@@ -537,8 +533,7 @@ class OLXStorage:
         if cursor.rowcount > 0:
             self.audit(
                 "outbox.mark",
-                detail=f"status={status}" + (
-                    f" ({result[:120]})" if result else ""),
+                detail=f"status={status}" + (f" ({result[:120]})" if result else ""),
                 ref=str(outbox_id),
             )
         return cursor.rowcount > 0
@@ -707,8 +702,11 @@ class OLXStorage:
     # ---- Competitor links (own ad <-> similar market ad) ----
 
     def competitor_link_upsert(
-        self, own_fingerprint: str, competitor_fingerprint: str,
-        similarity: float, seen_at: Optional[str] = None,
+        self,
+        own_fingerprint: str,
+        competitor_fingerprint: str,
+        similarity: float,
+        seen_at: Optional[str] = None,
     ) -> bool:
         """Record/refresh an own↔competitor relation. True when it is new."""
         now = seen_at or datetime.now(timezone.utc).isoformat()
@@ -766,7 +764,10 @@ class OLXStorage:
             rows = self._conn.execute(
                 "SELECT * FROM olx_profile_kv ORDER BY key"
             ).fetchall()
-        return {row["key"]: {"value": row["value"], "updated_at": row["updated_at"]} for row in rows}
+        return {
+            row["key"]: {"value": row["value"], "updated_at": row["updated_at"]}
+            for row in rows
+        }
 
     # ---- Export ----
 

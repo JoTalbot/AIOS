@@ -8,7 +8,7 @@ REST API surface.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from aios_core.android_driver import AndroidDriver, DriverCapabilities
 from aios_core.android_execution import RealDeviceExecutor
@@ -27,7 +27,9 @@ class AndroidAppDescriptor:
         if self.backend == "adb":
             return RealDeviceExecutor(device_id=device_id or "emulator-5554")
         if self.backend == "appium":
-            cfg = self.capabilities or AppiumDriverConfig(package=self.package, device_name=device_id or "emulator")
+            cfg = self.capabilities or AppiumDriverConfig(
+                package=self.package, device_name=device_id or "emulator"
+            )
             return AppiumAndroidDriver(cfg)
         raise ValueError(f"Unsupported backend: {self.backend}")
 
@@ -50,7 +52,9 @@ class AndroidAppRegistry:
     def get(self, package: str) -> Optional[AndroidAppDescriptor]:
         return self._apps.get(package)
 
-    def driver_for(self, package: str, device_id: Optional[str] = None) -> Optional[AndroidDriver]:
+    def driver_for(
+        self, package: str, device_id: Optional[str] = None
+    ) -> Optional[AndroidDriver]:
         desc = self.get(package)
         if desc is None:
             return None

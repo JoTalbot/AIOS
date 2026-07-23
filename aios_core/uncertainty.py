@@ -26,7 +26,9 @@ class UncertaintyQuantifier:
         return 0.1
 
     def total_uncertainty(self, model_id: str) -> float:
-        return self.epistemic_uncertainty(model_id) + self.aleatoric_uncertainty(model_id)
+        return self.epistemic_uncertainty(model_id) + self.aleatoric_uncertainty(
+            model_id
+        )
 
     def stats(self) -> dict:
         return {"models": len(self.predictions)}

@@ -17,12 +17,14 @@ class ChaosTester:
                 raise Exception("Chaos injection: simulated failure")
             if self.latency_ms > 0:
                 import time
+
                 time.sleep(self.latency_ms / 1000)
             return func(*args, **kwargs)
+
         return wrapper
 
     def stats(self) -> dict:
         return {
             "failure_probability": self.failure_probability,
-            "latency_ms": self.latency_ms
+            "latency_ms": self.latency_ms,
         }

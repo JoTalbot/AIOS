@@ -16,7 +16,9 @@ class WebhookNotifier:
     form ``{"chat_id": ..., "text": ...}``.
     """
 
-    def __init__(self, url: Optional[str] = None, poster=None, chat_id: Optional[str] = None):
+    def __init__(
+        self, url: Optional[str] = None, poster=None, chat_id: Optional[str] = None
+    ):
         self.url = url
         self.chat_id = chat_id
         self._poster = poster or self._urllib_post
@@ -44,7 +46,9 @@ class WebhookNotifier:
             return 200 <= response.status < 300
 
 
-def collect_price_drop_alerts(tracker, query: Optional[str] = None) -> List[Dict[str, object]]:
+def collect_price_drop_alerts(
+    tracker, query: Optional[str] = None
+) -> List[Dict[str, object]]:
     """Turn tracker price drops into notifier-ready alert payloads."""
     alerts: List[Dict[str, object]] = []
     for drop in tracker.price_drops(query=query):
@@ -62,7 +66,9 @@ def collect_price_drop_alerts(tracker, query: Optional[str] = None) -> List[Dict
     return alerts
 
 
-def notify_price_drops(tracker, notifier: WebhookNotifier, query: Optional[str] = None) -> Dict[str, object]:
+def notify_price_drops(
+    tracker, notifier: WebhookNotifier, query: Optional[str] = None
+) -> Dict[str, object]:
     """Send one webhook event per new price drop. Returns a summary."""
     alerts = collect_price_drop_alerts(tracker, query=query)
     sent = 0
@@ -72,7 +78,9 @@ def notify_price_drops(tracker, notifier: WebhookNotifier, query: Optional[str] 
     return {"alerts": len(alerts), "sent": sent}
 
 
-def notify_stagnant(stagnant_items: List[Dict[str, object]], notifier: WebhookNotifier) -> Dict[str, object]:
+def notify_stagnant(
+    stagnant_items: List[Dict[str, object]], notifier: WebhookNotifier
+) -> Dict[str, object]:
     """Notify about own stagnant listings (repost/improve candidates)."""
     sent = 0
     for item in stagnant_items:

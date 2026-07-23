@@ -19,10 +19,7 @@ class AIOSOperator:
         return {"status": "not_found"}
 
     def stats(self) -> dict:
-        return {
-            "crds": len(self.crds),
-            "deployments": len(self.deployments)
-        }
+        return {"crds": len(self.crds), "deployments": len(self.deployments)}
 
 
 operator = AIOSOperator()

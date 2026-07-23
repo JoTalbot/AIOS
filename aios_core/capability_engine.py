@@ -22,8 +22,10 @@ from .storage import Database
 # Status enum
 # ---------------------------------------------------------------------------
 
+
 class CapabilityStatus(Enum):
     """Lifecycle states for a capability."""
+
     DISCOVERED = "discovered"
     REGISTERED = "registered"
     TESTING = "testing"
@@ -41,15 +43,15 @@ class CapabilityStatus(Enum):
 # ---------------------------------------------------------------------------
 
 _ALLOWED_TRANSITIONS: dict[str, set[str]] = {
-    "discovered":  {"registered"},
-    "registered":  {"testing", "deprecated"},
-    "testing":     {"tested", "registered"},
-    "tested":      {"validated", "testing"},
-    "validated":   {"trusted", "tested"},
-    "trusted":     {"optimized", "validated", "deprecated"},
-    "optimized":   {"trusted", "deprecated"},
-    "deprecated":  {"retired"},
-    "retired":     set(),
+    "discovered": {"registered"},
+    "registered": {"testing", "deprecated"},
+    "testing": {"tested", "registered"},
+    "tested": {"validated", "testing"},
+    "validated": {"trusted", "tested"},
+    "trusted": {"optimized", "validated", "deprecated"},
+    "optimized": {"trusted", "deprecated"},
+    "deprecated": {"retired"},
+    "retired": set(),
 }
 
 # Statuses that are considered usable for execution (at least registered)
@@ -69,9 +71,11 @@ _AUTHORITY_LEVELS: list[str] = ["user", "agent", "system", "admin", "root"]
 # Data class
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Capability:
     """Represents a single capability in the registry."""
+
     id: str
     name: str
     description: str
@@ -96,6 +100,7 @@ class Capability:
 # ---------------------------------------------------------------------------
 # Capability Engine
 # ---------------------------------------------------------------------------
+
 
 class CapabilityEngine:
     """Discoverable, composable capability registry with lifecycle management.
@@ -234,9 +239,7 @@ class CapabilityEngine:
         """Load a single capability row from SQLite or in-memory fallback."""
         if self.db is None:
             return self._in_memory.get(name)
-        row = self.db.query_one(
-            "SELECT * FROM capabilities WHERE name = ?", (name,)
-        )
+        row = self.db.query_one("SELECT * FROM capabilities WHERE name = ?", (name,))
         if row is None:
             return None
         return self._row_to_dict(row)
@@ -250,20 +253,38 @@ class CapabilityEngine:
             "capability_type": row["capability_type"],
             "status": row["status"],
             "version": row["version"],
-            "input_schema": Database.from_json(row["input_schema"]) if row.get("input_schema") else None,
-            "output_schema": Database.from_json(row["output_schema"]) if row.get("output_schema") else None,
+            "input_schema": (
+                Database.from_json(row["input_schema"])
+                if row.get("input_schema")
+                else None
+            ),
+            "output_schema": (
+                Database.from_json(row["output_schema"])
+                if row.get("output_schema")
+                else None
+            ),
             "risk_level": row["risk_level"],
             "required_authority": row["required_authority"],
             "tags": Database.from_json(row["tags"]) if row.get("tags") else [],
-            "dependencies": Database.from_json(row["dependencies"]) if row.get("dependencies") else [],
-            "metrics": Database.from_json(row["metrics"]) if row.get("metrics") else {
-                "execution_count": 0,
-                "success_count": 0,
-                "failure_count": 0,
-                "avg_duration_ms": 0.0,
-                "last_executed": None,
-            },
-            "properties": Database.from_json(row["properties"]) if row.get("properties") else {},
+            "dependencies": (
+                Database.from_json(row["dependencies"])
+                if row.get("dependencies")
+                else []
+            ),
+            "metrics": (
+                Database.from_json(row["metrics"])
+                if row.get("metrics")
+                else {
+                    "execution_count": 0,
+                    "success_count": 0,
+                    "failure_count": 0,
+                    "avg_duration_ms": 0.0,
+                    "last_executed": None,
+                }
+            ),
+            "properties": (
+                Database.from_json(row["properties"]) if row.get("properties") else {}
+            ),
             "registered_at": row["registered_at"],
             "updated_at": row["updated_at"],
             "validated_at": row["validated_at"],
@@ -308,12 +329,12 @@ class CapabilityEngine:
             pass
 
     @staticmethod
-    def _authority_sufficient(
-        provided: str, required: str
-    ) -> bool:
+    def _authority_sufficient(provided: str, required: str) -> bool:
         """Return True if *provided* authority meets or exceeds *required*."""
         try:
-            return _AUTHORITY_LEVELS.index(provided) >= _AUTHORITY_LEVELS.index(required)
+            return _AUTHORITY_LEVELS.index(provided) >= _AUTHORITY_LEVELS.index(
+                required
+            )
         except ValueError:
             return False
 
@@ -507,9 +528,7 @@ class CapabilityEngine:
         exec_count += 1
         # Rolling average
         if exec_count > 0:
-            avg_duration = (
-                (avg_duration * (exec_count - 1)) + elapsed_ms
-            ) / exec_count
+            avg_duration = ((avg_duration * (exec_count - 1)) + elapsed_ms) / exec_count
 
         updated_metrics = {
             "execution_count": exec_count,
@@ -525,14 +544,17 @@ class CapabilityEngine:
         elif capability_name in self._in_memory:
             self._in_memory[capability_name]["metrics"] = updated_metrics
 
-        self._audit("capability_executed", {
-            "capability": capability_name,
-            "agent_id": agent_id,
-            "authority": authority,
-            "success": success,
-            "duration_ms": round(elapsed_ms, 3),
-            "error": error,
-        })
+        self._audit(
+            "capability_executed",
+            {
+                "capability": capability_name,
+                "agent_id": agent_id,
+                "authority": authority,
+                "success": success,
+                "duration_ms": round(elapsed_ms, 3),
+                "error": error,
+            },
+        )
 
         return {
             "success": success,
@@ -602,12 +624,15 @@ class CapabilityEngine:
                 updated_at=now,
                 deprecated_at=cap_data.get("deprecated_at") or now,
             )
-            self._audit("capability_transition", {
-                "capability": capability_name,
-                "old_status": old_status,
-                "new_status": "retired",
-                "reason": reason or "Emergency retirement",
-            })
+            self._audit(
+                "capability_transition",
+                {
+                    "capability": capability_name,
+                    "old_status": old_status,
+                    "new_status": "retired",
+                    "reason": reason or "Emergency retirement",
+                },
+            )
             return {
                 "success": True,
                 "capability": capability_name,
@@ -646,12 +671,15 @@ class CapabilityEngine:
 
         self._update_field(capability_name, **update_fields)
 
-        self._audit("capability_transition", {
-            "capability": capability_name,
-            "old_status": old_status,
-            "new_status": new_status,
-            "reason": reason,
-        })
+        self._audit(
+            "capability_transition",
+            {
+                "capability": capability_name,
+                "old_status": old_status,
+                "new_status": new_status,
+                "reason": reason,
+            },
+        )
 
         return {
             "success": True,
@@ -700,11 +728,13 @@ class CapabilityEngine:
                     "composition": composition_name,
                     "error": f"Step capability '{step_name}' not found",
                 }
-            step_caps.append({
-                "name": step_name,
-                "mapping": step.get("mapping", {}),
-                "capability": cap_data,
-            })
+            step_caps.append(
+                {
+                    "name": step_name,
+                    "mapping": step.get("mapping", {}),
+                    "capability": cap_data,
+                }
+            )
 
         # Build the composed handler
         engine_self = self  # capture for closure
@@ -724,9 +754,7 @@ class CapabilityEngine:
                             next_input[dst_key] = current[src_key]
                 else:
                     next_input = dict(current)
-                resp = engine_self.execute(
-                    step_name, next_input, authority="system"
-                )
+                resp = engine_self.execute(step_name, next_input, authority="system")
                 if not resp["success"]:
                     raise RuntimeError(
                         f"Composition step '{step_name}' failed: "
@@ -741,8 +769,7 @@ class CapabilityEngine:
         # Register the composition as a new capability
         dep_names = [s["name"] for s in step_caps]
         full_desc = description or (
-            f"Composite capability chaining: "
-            f"{' -> '.join(dep_names)}"
+            f"Composite capability chaining: " f"{' -> '.join(dep_names)}"
         )
 
         result = self.register(
@@ -757,10 +784,13 @@ class CapabilityEngine:
             },
         )
 
-        self._audit("capability_composed", {
-            "composition": composition_name,
-            "steps": dep_names,
-        })
+        self._audit(
+            "capability_composed",
+            {
+                "composition": composition_name,
+                "steps": dep_names,
+            },
+        )
 
         return {
             "success": True,
@@ -788,30 +818,21 @@ class CapabilityEngine:
             if query:
                 q = query.lower()
                 results = [
-                    c for c in results
+                    c
+                    for c in results
                     if q in c.get("name", "").lower()
                     or q in c.get("description", "").lower()
                 ]
             if capability_type:
                 results = [
-                    c for c in results
-                    if c.get("capability_type") == capability_type
+                    c for c in results if c.get("capability_type") == capability_type
                 ]
             if status:
-                results = [
-                    c for c in results
-                    if c.get("status") == status
-                ]
+                results = [c for c in results if c.get("status") == status]
             if tag:
-                results = [
-                    c for c in results
-                    if tag in c.get("tags", [])
-                ]
+                results = [c for c in results if tag in c.get("tags", [])]
             if risk_level:
-                results = [
-                    c for c in results
-                    if c.get("risk_level") == risk_level
-                ]
+                results = [c for c in results if c.get("risk_level") == risk_level]
             results.sort(key=lambda c: c.get("registered_at", ""), reverse=True)
             return results[:limit]
 
@@ -890,9 +911,7 @@ class CapabilityEngine:
                 "storage": "none",
             }
 
-        total_row = self.db.query_one(
-            "SELECT COUNT(*) as cnt FROM capabilities"
-        )
+        total_row = self.db.query_one("SELECT COUNT(*) as cnt FROM capabilities")
         total = total_row["cnt"] if total_row else 0
 
         by_status_rows = self.db.query(
@@ -943,11 +962,13 @@ class CapabilityEngine:
                 self._in_memory.values(),
                 key=lambda c: c.get("metrics", {}).get("execution_count", 0),
                 reverse=True,
-            )[:limit + 3]
+            )[: limit + 3]
 
         for cap in top:
             metrics = cap.get("metrics", {}) if isinstance(cap, dict) else {}
-            exec_count = metrics.get("execution_count", 0) if isinstance(metrics, dict) else 0
+            exec_count = (
+                metrics.get("execution_count", 0) if isinstance(metrics, dict) else 0
+            )
             failure_rate = 0
             if exec_count > 0:
                 failures = metrics.get("failure_count", 0)
@@ -955,35 +976,44 @@ class CapabilityEngine:
 
             # Suggest improvement if high failure rate
             if failure_rate > 0.3:
-                suggestions.append({
-                    "name": f"improved_{cap.get('name', 'unknown')}",
-                    "description": f"Improved version of {cap.get('name')} (high failure rate)",
-                    "capability_type": cap.get("capability_type", "tool"),
-                    "reason": "high_failure_rate",
-                    "confidence": round(1 - failure_rate, 2),
-                })
+                suggestions.append(
+                    {
+                        "name": f"improved_{cap.get('name', 'unknown')}",
+                        "description": f"Improved version of {cap.get('name')} (high failure rate)",
+                        "capability_type": cap.get("capability_type", "tool"),
+                        "reason": "high_failure_rate",
+                        "confidence": round(1 - failure_rate, 2),
+                    }
+                )
 
             # Suggest optimization for trusted capabilities with high usage
             if cap.get("status") in ("trusted", "optimized") and exec_count > 100:
-                suggestions.append({
-                    "name": f"optimized_{cap.get('name', 'unknown')}",
-                    "description": f"Optimized variant of heavily used capability",
-                    "capability_type": "optimization",
-                    "reason": "high_usage",
-                    "confidence": 0.85,
-                })
+                suggestions.append(
+                    {
+                        "name": f"optimized_{cap.get('name', 'unknown')}",
+                        "description": f"Optimized variant of heavily used capability",
+                        "capability_type": "optimization",
+                        "reason": "high_usage",
+                        "confidence": 0.85,
+                    }
+                )
 
         # Add generic suggestions for missing core types
-        existing_types = {c.get("capability_type") for c in (self._in_memory.values() if not self.db else [])}
+        existing_types = {
+            c.get("capability_type")
+            for c in (self._in_memory.values() if not self.db else [])
+        }
         for missing in ["reasoning", "memory", "knowledge", "evolution"]:
             if missing not in existing_types:
-                suggestions.append({
-                    "name": f"core_{missing}",
-                    "description": f"Core {missing} capability (auto-suggested)",
-                    "capability_type": missing,
-                    "reason": "missing_core_type",
-                    "confidence": 0.9,
-                })
+                suggestions.append(
+                    {
+                        "name": f"core_{missing}",
+                        "description": f"Core {missing} capability (auto-suggested)",
+                        "capability_type": missing,
+                        "reason": "missing_core_type",
+                        "confidence": 0.9,
+                    }
+                )
 
         return suggestions[:limit]
 
@@ -991,6 +1021,7 @@ class CapabilityEngine:
 # ---------------------------------------------------------------------------
 # Module-level helper
 # ---------------------------------------------------------------------------
+
 
 def _json(data: Any) -> Optional[str]:
     """Serialize to JSON, returning None for None input."""

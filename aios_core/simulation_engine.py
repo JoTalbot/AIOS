@@ -31,7 +31,7 @@ class SimulationEngine:
             "runs": runs,
             "average": sum(results) / len(results) if results else 0,
             "min": min(results) if results else 0,
-            "max": max(results) if results else 0
+            "max": max(results) if results else 0,
         }
 
     def stats(self) -> dict:

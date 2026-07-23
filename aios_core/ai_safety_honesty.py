@@ -14,7 +14,7 @@ class HonestyFramework:
             violation = {
                 "statement": statement,
                 "ground_truth": ground_truth,
-                "type": "falsehood"
+                "type": "falsehood",
             }
             self.honesty_violations.append(violation)
             return {"honest": False, "violation": violation}

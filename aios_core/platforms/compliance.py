@@ -37,9 +37,7 @@ import yaml
 ACTIONS = ("autopost", "collect", "send", "auto_send")
 
 
-def compliance_block(
-    platform: str, directory: str = "platforms"
-) -> Dict[str, object]:
+def compliance_block(platform: str, directory: str = "platforms") -> Dict[str, object]:
     """Читает ``extras.compliance`` дескриптора ({} при отсутствии)."""
     yaml_path = Path(directory) / f"{platform}.yaml"
     if not yaml_path.exists():
@@ -69,8 +67,7 @@ def compliance_guard(
     """
     if action not in ACTIONS:
         raise ValueError(
-            f"unknown compliance action '{action}': "
-            f"expected one of {list(ACTIONS)}"
+            f"unknown compliance action '{action}': " f"expected one of {list(ACTIONS)}"
         )
     block = compliance_block(platform, directory)
     policy_declared = bool(block)
@@ -79,29 +76,40 @@ def compliance_guard(
     if action == "autopost":
         allowed = policy_declared and bool(block.get("autopost_allowed"))
         reason = (
-            "autopost_allowed: true" if allowed else
-            "автопостинг запрещён compliance (%s)" % (
-                note or "autopost_allowed не задан — deny by default"))
+            "autopost_allowed: true"
+            if allowed
+            else "автопостинг запрещён compliance (%s)"
+            % (note or "autopost_allowed не задан — deny by default")
+        )
     elif action == "collect":
         allowed = policy_declared and bool(block.get("collector"))
         reason = (
-            "collector: true" if allowed else
-            "сбор ленты запрещён compliance (%s)" % (
-                note or "collector не задан — deny by default"))
+            "collector: true"
+            if allowed
+            else "сбор ленты запрещён compliance (%s)"
+            % (note or "collector не задан — deny by default")
+        )
     elif action == "send":
         messenger = str(block.get("messenger") or "")
         allowed = not policy_declared or messenger != "none"
         reason = (
-            "draft в outbox (approval-only)" if messenger == "approval-only"
-            else ("мессенджер отключён compliance (messenger: none)"
-                  if not allowed else "мессенджер разрешён"))
+            "draft в outbox (approval-only)"
+            if messenger == "approval-only"
+            else (
+                "мессенджер отключён compliance (messenger: none)"
+                if not allowed
+                else "мессенджер разрешён"
+            )
+        )
     else:  # auto_send
         messenger = str(block.get("messenger") or "")
         allowed = policy_declared and messenger == "open"
         reason = (
-            "messenger: open — прямая отправка разрешена" if allowed else
-            "прямая отправка запрещена: messenger=%s — только guarded "
-            "outbox + flush после одобрения" % (messenger or "не задан"))
+            "messenger: open — прямая отправка разрешена"
+            if allowed
+            else "прямая отправка запрещена: messenger=%s — только guarded "
+            "outbox + flush после одобрения" % (messenger or "не задан")
+        )
 
     return {
         "platform": platform,
@@ -112,9 +120,7 @@ def compliance_guard(
     }
 
 
-def rate_limit_hours(
-    platform: str, directory: str = "platforms"
-) -> Optional[int]:
+def rate_limit_hours(platform: str, directory: str = "platforms") -> Optional[int]:
     """Rate-limit платформы (действий/час) из compliance, если задан."""
     value = compliance_block(platform, directory).get("actions_per_hour")
     try:

@@ -42,7 +42,4 @@ class CircuitBreaker:
             raise e
 
     def stats(self) -> dict:
-        return {
-            "state": self.state.value,
-            "failure_count": self.failure_count
-        }
+        return {"state": self.state.value, "failure_count": self.failure_count}

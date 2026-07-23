@@ -13,9 +13,7 @@ from .text_utils import normalize_text, parse_price, parse_published
 _AD_ID_RE = re.compile(r"ID([A-Za-z0-9]{4,})\.html")
 _VIEWS_RE = re.compile(r"(?:переглядів|просмотров|views?)\s*:?\s*(\d+)", re.IGNORECASE)
 _PARAM_RE = re.compile(r"^([А-Яа-яІіЇїЄєҐґA-Za-z' -]{2,30}):\s+(.+)$")
-_SELLER_SINCE_RE = re.compile(
-    r"(?:на OLX з|на OLX с)\s+(.+)", re.IGNORECASE
-)
+_SELLER_SINCE_RE = re.compile(r"(?:на OLX з|на OLX с)\s+(.+)", re.IGNORECASE)
 _PRIVATE_MARKERS = ("приватн", "частн")
 _BUSINESS_MARKERS = ("бізнес", "business")
 
@@ -154,7 +152,10 @@ class AdDetailParser:
             param = _PARAM_RE.match(raw)
             if param and len(raw) < 80:
                 key = normalize_text(param.group(1))
-                if key.lower() not in {"стан", "состояние"} or "стан" not in detail.params:
+                if (
+                    key.lower() not in {"стан", "состояние"}
+                    or "стан" not in detail.params
+                ):
                     detail.params[key] = normalize_text(param.group(2))
                 continue
             leftovers.append(raw)

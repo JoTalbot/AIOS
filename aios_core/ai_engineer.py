@@ -15,7 +15,7 @@ class AIEngineer:
             "name": requirements.get("name", "NewSystem"),
             "architecture": "modular microservices",
             "components": ["api", "database", "ml_service"],
-            "status": "designed"
+            "status": "designed",
         }
         self.systems.append(system)
         return system
@@ -25,7 +25,7 @@ class AIEngineer:
             "system": design["name"],
             "files": 150,
             "tests": 300,
-            "coverage": 0.92
+            "coverage": 0.92,
         }
         self.codebases.append(codebase)
         return codebase

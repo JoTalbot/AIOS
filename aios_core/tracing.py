@@ -10,14 +10,20 @@ import time
 from contextlib import contextmanager
 from typing import Dict, List, Optional, Any, Tuple
 
-
 _current_trace_context = threading.local()
 
 
 class Span:
     """An OpenTelemetry-compatible tracing span."""
 
-    def __init__(self, name: str, trace_id: str, span_id: str, parent_id: Optional[str] = None, attributes: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        name: str,
+        trace_id: str,
+        span_id: str,
+        parent_id: Optional[str] = None,
+        attributes: Optional[Dict[str, Any]] = None,
+    ):
         self.name = name
         self.trace_id = trace_id
         self.span_id = span_id
@@ -33,11 +39,9 @@ class Span:
         self.attributes[key] = value
 
     def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None):
-        self.events.append({
-            "name": name,
-            "attributes": attributes or {},
-            "timestamp": time.time()
-        })
+        self.events.append(
+            {"name": name, "attributes": attributes or {}, "timestamp": time.time()}
+        )
 
     def set_status_error(self, message: str):
         self.status = "ERROR"
@@ -82,7 +86,7 @@ class Tracer:
         self,
         name: str,
         parent_traceparent: Optional[str] = None,
-        attributes: Optional[Dict[str, Any]] = None
+        attributes: Optional[Dict[str, Any]] = None,
     ):
         """Start a new contextual span."""
         parent_trace_id, parent_span_id = None, None
@@ -90,7 +94,9 @@ class Tracer:
             parent_trace_id, parent_span_id = self.parse_w3c_header(parent_traceparent)
 
         # Retrieve thread local active span if available
-        current_active: Optional[Span] = getattr(_current_trace_context, "active_span", None)
+        current_active: Optional[Span] = getattr(
+            _current_trace_context, "active_span", None
+        )
 
         if parent_trace_id:
             trace_id = parent_trace_id
@@ -103,7 +109,13 @@ class Tracer:
             parent_id = None
 
         span_id = self.generate_span_id()
-        span = Span(name=name, trace_id=trace_id, span_id=span_id, parent_id=parent_id, attributes=attributes)
+        span = Span(
+            name=name,
+            trace_id=trace_id,
+            span_id=span_id,
+            parent_id=parent_id,
+            attributes=attributes,
+        )
 
         self.active_spans[span_id] = span
         previous_span = getattr(_current_trace_context, "active_span", None)
@@ -128,9 +140,10 @@ class Tracer:
     def stats(self) -> Dict[str, Any]:
         return {
             "active_spans": len(self.active_spans),
-            "finished_spans": len(self.finished_spans)
+            "finished_spans": len(self.finished_spans),
         }
 
 
 from typing import Tuple
+
 tracer = Tracer()

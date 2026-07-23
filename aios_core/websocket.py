@@ -36,11 +36,13 @@ class WebSocketManager:
             self.active_connections.discard(conn)
 
     async def send_event(self, event_type: str, data: Any):
-        await self.broadcast({
-            "type": event_type,
-            "data": data,
-            "timestamp": __import__("datetime").datetime.now().isoformat()
-        })
+        await self.broadcast(
+            {
+                "type": event_type,
+                "data": data,
+                "timestamp": __import__("datetime").datetime.now().isoformat(),
+            }
+        )
 
 
 # Global manager instance

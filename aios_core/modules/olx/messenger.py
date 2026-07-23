@@ -238,7 +238,7 @@ class ReplySuggester:
             return None  # we already replied
         last = incoming[-1].text
 
-        item = f'«{title}»' if title else "оголошення"
+        item = f"«{title}»" if title else "оголошення"
         if _AVAILABILITY_RE.search(last):
             return f"Добрий день! Так, {item} ще актуальне. Коли зручно подивитись?"
         if _BARGAIN_RE.search(last) or self._looks_like_offer(last, my_price):
@@ -266,16 +266,13 @@ class ReplySuggester:
         values = [value for value in values if value >= 100]
         return max(values) if values else None
 
-    def _bargain_reply(
-        self, last: str, my_price: Optional[float], item: str
-    ) -> str:
+    def _bargain_reply(self, last: str, my_price: Optional[float], item: str) -> str:
         offer = self._extract_offer(last)
         if my_price is None:
             return f"По {item} можливий невеликий торг при огляді."
         if offer is not None and offer >= my_price * self.min_price_ratio:
             return (
-                f"Добре, домовились за {int(offer)} грн. "
-                "Коли зручно забрати товар?"
+                f"Добре, домовились за {int(offer)} грн. " "Коли зручно забрати товар?"
             )
         counter = round(my_price * 0.95)
         if offer is not None:
@@ -320,7 +317,9 @@ class OLXMessenger:
                 return []
             return ChatListParser().parse(path)
 
-    def read_chat(self, thread: ChatThread, dump_path: str = "chat.xml") -> List[Message]:
+    def read_chat(
+        self, thread: ChatThread, dump_path: str = "chat.xml"
+    ) -> List[Message]:
         import tempfile, os
 
         if thread.tap_center:
@@ -372,14 +371,15 @@ class OLXMessenger:
             result = self._type_and_send(item["text"])
             ok = result.get("code") == 0
             self.storage.outbox_mark(
-                item["id"], "sent" if ok else "failed",
+                item["id"],
+                "sent" if ok else "failed",
                 result=str(result.get("stderr") or "")[:500],
             )
             results.append({"id": item["id"], "status": "sent" if ok else "failed"})
         return results
 
     def _type_and_send(self, text: str) -> Dict[str, object]:
-        escaped = text.replace("'", r"\'").replace('"', r'\"').replace(" ", "%s")
+        escaped = text.replace("'", r"\'").replace('"', r"\"").replace(" ", "%s")
         type_result = self.adb.run(f"adb shell input text '{escaped}'")
         if type_result.get("code") != 0:
             return type_result

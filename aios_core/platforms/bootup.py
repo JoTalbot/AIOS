@@ -158,7 +158,9 @@ def bootup_platform(
         else:
             try:
                 resolved_apk = resolve_apk(
-                    apk_path, out_dir=apks_dir, fetch=fetch,
+                    apk_path,
+                    out_dir=apks_dir,
+                    fetch=fetch,
                     runner=apk_runner,
                 )
                 steps["apk"] = {"mode": "resolved", "path": resolved_apk}
@@ -185,8 +187,12 @@ def bootup_platform(
     try:
         if resolved_apk:
             result = scaffold_from_apk(
-                resolved_apk, name=name, project_root=root,
-                locale=locale, dry_run=dry_run, runner=runner,
+                resolved_apk,
+                name=name,
+                project_root=root,
+                locale=locale,
+                dry_run=dry_run,
+                runner=runner,
             )
             spec = result["spec"]
             scaffold_files = result["files"]
@@ -199,8 +205,11 @@ def bootup_platform(
             }
         else:
             scaffold_files = scaffold_platform(
-                name, package, project_root=root,
-                locale=locale, dry_run=dry_run,
+                name,
+                package,
+                project_root=root,
+                locale=locale,
+                dry_run=dry_run,
             )
             platform_name = name
             android_package = package
@@ -216,13 +225,13 @@ def bootup_platform(
             raise
         if resolved_apk:
             from .scaffold import inspect_apk
+
             spec = inspect_apk(resolved_apk, runner=runner)
             platform_name = name or spec["candidate_name"]
             android_package = spec["android_package"]
         else:
             platform_name, android_package = name, package
-        steps["scaffold"] = {"mode": "resumed",
-                             "note": str(exc).split(":")[0]}
+        steps["scaffold"] = {"mode": "resumed", "note": str(exc).split(":")[0]}
 
     yaml_path = root / "platforms" / f"{platform_name}.yaml"
 
@@ -250,11 +259,13 @@ def bootup_platform(
             lease_key = f"{platform_name}:calibration"
             lease = pool.lease(lease_key)
             if lease is None:
-                calibrate_step.update({
-                    "mode": "skipped",
-                    "reason": "no free device in pool",
-                    "lease_key": lease_key,
-                })
+                calibrate_step.update(
+                    {
+                        "mode": "skipped",
+                        "reason": "no free device in pool",
+                        "lease_key": lease_key,
+                    }
+                )
             else:
                 serial = lease["serial"]
                 calibrate_step["leased_serial"] = serial
@@ -267,12 +278,13 @@ def bootup_platform(
                     "driver:injected" if driver else "driver:adb-generic"
                 )
             except Exception as exc:  # noqa: BLE001 — драйв опционален
-                calibrate_step.update({
-                    "source": "driver:injected" if driver
-                    else "driver:adb-generic",
-                    "mode": "skipped",
-                    "reason": str(exc)[:200],
-                })
+                calibrate_step.update(
+                    {
+                        "source": "driver:injected" if driver else "driver:adb-generic",
+                        "mode": "skipped",
+                        "reason": str(exc)[:200],
+                    }
+                )
         if lease_key is not None and serial is not None:
             pool.release(lease_key)
             calibrate_step["released"] = True
@@ -289,7 +301,9 @@ def bootup_platform(
             steps["hints"] = {"mode": "planned", "target": str(yaml_path)}
         else:
             written = write_hints_to_descriptor(
-                platform_name, hints, directory=root / "platforms",
+                platform_name,
+                hints,
+                directory=root / "platforms",
             )
             reloaded = load_catalog_file(yaml_path)
             steps["hints"] = {
@@ -304,9 +318,12 @@ def bootup_platform(
     if markers and platform_name:
         try:
             codegen_files = write_parser(
-                platform_name, hints, project_root=root,
+                platform_name,
+                hints,
+                project_root=root,
                 android_package=android_package,
-                dry_run=dry_run, overwrite=True,
+                dry_run=dry_run,
+                overwrite=True,
             )
             steps["codegen"] = {
                 "mode": "planned" if dry_run else "written",

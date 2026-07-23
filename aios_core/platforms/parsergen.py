@@ -163,7 +163,9 @@ def write_parser(
 
     files: Dict[str, str] = {
         str(parser_path): generate_parser_source(
-            platform_name, hints, android_package=android_package,
+            platform_name,
+            hints,
+            android_package=android_package,
         ),
     }
 

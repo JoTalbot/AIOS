@@ -31,10 +31,12 @@ def _apkeep(package: str, out_dir: str, source: str) -> Dict[str, object]:
 
     result = subprocess.run(
         f"apkeep -a '{package}' -d '{source}' '{out_dir}'",
-        shell=True, capture_output=True, text=True, timeout=600,
+        shell=True,
+        capture_output=True,
+        text=True,
+        timeout=600,
     )
-    return {"code": result.returncode, "stdout": result.stdout,
-            "stderr": result.stderr}
+    return {"code": result.returncode, "stdout": result.stdout, "stderr": result.stderr}
 
 
 def fetch_apk(
@@ -69,12 +71,11 @@ def fetch_apk(
         )
     candidates = sorted(
         glob.glob(str(out / "*.apk")),
-        key=os.path.getmtime, reverse=True,
+        key=os.path.getmtime,
+        reverse=True,
     )
     if not candidates:
-        raise ValueError(
-            f"apkeep reported success but no .apk appeared in {out}"
-        )
+        raise ValueError(f"apkeep reported success but no .apk appeared in {out}")
     return candidates[0]
 
 

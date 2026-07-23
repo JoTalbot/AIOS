@@ -104,32 +104,36 @@ class RuntimePolicy:
             approval_id = approval["id"]
 
         # Step 4: Log the decision
-        audit_event = self.audit.record({
-            "type": "execution_decision",
-            "agent_id": agent_action.get("agent_id"),
-            "decision": decision_str,
-            "allowed": allowed,
-            "evaluation_id": evaluation.get("evaluation_id"),
-            "approval_id": approval_id,
-            "validation_valid": validation.get("valid", False),
-            "validation_errors": validation.get("error_count", 0),
-            "validation_warnings": validation.get("warning_count", 0),
-            "matched_articles": evaluation.get("matched_articles", []),
-            "matched_policies": evaluation.get("matched_policies", []),
-            "version": self.version,
-            "agent_action": {
-                "goal": agent_action.get("goal"),
-                "scope": agent_action.get("scope"),
-                "risk": agent_action.get("risk"),
-                "action_type": agent_action.get("action_type"),
-            },
-        })
+        audit_event = self.audit.record(
+            {
+                "type": "execution_decision",
+                "agent_id": agent_action.get("agent_id"),
+                "decision": decision_str,
+                "allowed": allowed,
+                "evaluation_id": evaluation.get("evaluation_id"),
+                "approval_id": approval_id,
+                "validation_valid": validation.get("valid", False),
+                "validation_errors": validation.get("error_count", 0),
+                "validation_warnings": validation.get("warning_count", 0),
+                "matched_articles": evaluation.get("matched_articles", []),
+                "matched_policies": evaluation.get("matched_policies", []),
+                "version": self.version,
+                "agent_action": {
+                    "goal": agent_action.get("goal"),
+                    "scope": agent_action.get("scope"),
+                    "risk": agent_action.get("risk"),
+                    "action_type": agent_action.get("action_type"),
+                },
+            }
+        )
 
         # Build execution result
         execution_result = {
             "allowed": allowed,
             "decision": decision_str,
-            "constitution_version": evaluation.get("constitution_version", self.version),
+            "constitution_version": evaluation.get(
+                "constitution_version", self.version
+            ),
             "details": evaluation.get("details", ""),
             "reason": evaluation.get("reason", ""),
             "validation": validation,
@@ -177,8 +181,7 @@ class RuntimePolicy:
             "total_executions": len(self.executions),
             "outcomes": outcome_counts,
             "pending_approvals": sum(
-                1 for a in self.approvals.history()
-                if a.get("status") == "pending"
+                1 for a in self.approvals.history() if a.get("status") == "pending"
             ),
             "constitution": engine_stats.get("constitution", {}),
             "policies": engine_stats.get("policies", {}),

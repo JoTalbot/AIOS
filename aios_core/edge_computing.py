@@ -23,7 +23,7 @@ class EdgeNode:
             "id": self.node_id,
             "location": self.location,
             "load": self.load,
-            "capacity": self.capacity
+            "capacity": self.capacity,
         }
 
 

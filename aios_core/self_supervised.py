@@ -8,7 +8,12 @@ class SelfSupervisedLearner:
     """Self-supervised pretraining."""
 
     def __init__(self):
-        self.pretext_tasks: List[str] = ["rotation", "colorization", "jigsaw", "contrastive"]
+        self.pretext_tasks: List[str] = [
+            "rotation",
+            "colorization",
+            "jigsaw",
+            "contrastive",
+        ]
 
     def generate_pseudo_label(self, data: Any, task: str = "rotation") -> Any:
         if task == "rotation":

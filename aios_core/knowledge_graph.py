@@ -84,9 +84,7 @@ class KnowledgeGraph:
         """Get a node by ID."""
         if self.db is None:
             return None
-        row = self.db.query_one(
-            "SELECT * FROM kg_nodes WHERE id = ?", (node_id,)
-        )
+        row = self.db.query_one("SELECT * FROM kg_nodes WHERE id = ?", (node_id,))
         if row is None:
             return None
         return self._node_row_to_dict(row)
@@ -226,11 +224,7 @@ class KnowledgeGraph:
             for nid in current_level:
                 edges = self.related(nid, relation=relation, direction="both")
                 for edge in edges:
-                    other = (
-                        edge["target"]
-                        if edge["source"] == nid
-                        else edge["source"]
-                    )
+                    other = edge["target"] if edge["source"] == nid else edge["source"]
                     if other not in visited:
                         visited.add(other)
                         next_level.append(other)
@@ -254,6 +248,7 @@ class KnowledgeGraph:
         visited = {source_id}
         # Queue items: (current_node, path_of_edges)
         from collections import deque
+
         queue: deque[tuple[str, list[dict]]] = deque()
 
         # Start: get all edges from source
@@ -315,7 +310,9 @@ class KnowledgeGraph:
             "id": row["id"],
             "label": row["label"],
             "type": row["node_type"],
-            "properties": Database.from_json(row["properties"]) if row["properties"] else {},
+            "properties": (
+                Database.from_json(row["properties"]) if row["properties"] else {}
+            ),
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
         }
@@ -326,7 +323,9 @@ class KnowledgeGraph:
             "source": row["source_id"],
             "target": row["target_id"],
             "relation": row["relation"],
-            "properties": Database.from_json(row["properties"]) if row["properties"] else {},
+            "properties": (
+                Database.from_json(row["properties"]) if row["properties"] else {}
+            ),
             "weight": row["weight"],
             "created_at": row["created_at"],
         }

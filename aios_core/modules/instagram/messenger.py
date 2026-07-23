@@ -62,9 +62,7 @@ class InstagramMessenger(OLXMessenger):
             screen_width=screen_width,
         )
         if messenger_hints is None:
-            messenger_hints = load_hints_section(
-                "instagram", "messenger", directory
-            )
+            messenger_hints = load_hints_section("instagram", "messenger", directory)
         self.messenger_hints = messenger_hints or {}
         bubbles = [
             m.get("resource_id", "").rsplit("/", 1)[-1].lower()
@@ -80,7 +78,7 @@ class InstagramMessenger(OLXMessenger):
     def open_chats(self) -> Dict[str, object]:
         """Открыть Direct inbox (deep-link; установленное приложение ловит)."""
         return self.adb.run(
-            f'{self.adb.adb} shell am start '
+            f"{self.adb.adb} shell am start "
             f'-a android.intent.action.VIEW -d "{DIRECT_INBOX_URL}"'
         )
 

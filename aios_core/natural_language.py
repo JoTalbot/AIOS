@@ -11,7 +11,7 @@ class NaturalLanguageInterface:
             "create task": "create_task",
             "show stats": "get_stats",
             "run demo": "run_demo",
-            "check health": "health_check"
+            "check health": "health_check",
         }
 
     def parse(self, text: str) -> Dict[str, Any]:

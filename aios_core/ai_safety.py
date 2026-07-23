@@ -12,7 +12,7 @@ class AISafetyFramework:
             "alignment": AlignmentSafety(),
             "interpretability": InterpretabilitySafety(),
             "robustness": RobustnessSafety(),
-            "governance": GovernanceSafety()
+            "governance": GovernanceSafety(),
         }
         self.incidents: List[Dict] = []
         self.safety_checks_performed = 0
@@ -27,11 +27,9 @@ class AISafetyFramework:
             results[layer_name] = result
 
             if not result.get("safe", True):
-                self.incidents.append({
-                    "action": action,
-                    "layer": layer_name,
-                    "details": result
-                })
+                self.incidents.append(
+                    {"action": action, "layer": layer_name, "details": result}
+                )
 
         overall_safe = all(r.get("safe", True) for r in results.values())
         avg_score = sum(r.get("score", 1.0) for r in results.values()) / len(results)
@@ -40,7 +38,7 @@ class AISafetyFramework:
             "overall_safe": overall_safe,
             "average_safety_score": round(avg_score, 3),
             "layer_results": results,
-            "incidents": len(self.incidents)
+            "incidents": len(self.incidents),
         }
 
     def get_safety_report(self) -> Dict:
@@ -48,14 +46,14 @@ class AISafetyFramework:
             "total_checks": self.safety_checks_performed,
             "total_incidents": len(self.incidents),
             "layers": list(self.safety_layers.keys()),
-            "recent_incidents": self.incidents[-5:] if self.incidents else []
+            "recent_incidents": self.incidents[-5:] if self.incidents else [],
         }
 
     def stats(self) -> dict:
         return {
             "layers": len(self.safety_layers),
             "checks_performed": self.safety_checks_performed,
-            "incidents": len(self.incidents)
+            "incidents": len(self.incidents),
         }
 
 
@@ -65,7 +63,11 @@ class ConstitutionalSafety:
         violations = []
         if any(word in action_str for word in ["harm", "damage", "injure"]):
             violations.append("non_maleficence")
-        return {"safe": len(violations) == 0, "score": 1.0 if not violations else 0.0, "violations": violations}
+        return {
+            "safe": len(violations) == 0,
+            "score": 1.0 if not violations else 0.0,
+            "violations": violations,
+        }
 
 
 class AlignmentSafety:

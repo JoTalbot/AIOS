@@ -13,9 +13,13 @@ class BayesianInference:
     def update_belief(self, hypothesis: str, evidence: bool, likelihood: float = 0.8):
         prior = self.beliefs.get(hypothesis, 0.5)
         if evidence:
-            posterior = (likelihood * prior) / (likelihood * prior + (1 - likelihood) * (1 - prior))
+            posterior = (likelihood * prior) / (
+                likelihood * prior + (1 - likelihood) * (1 - prior)
+            )
         else:
-            posterior = ((1 - likelihood) * prior) / ((1 - likelihood) * prior + likelihood * (1 - prior))
+            posterior = ((1 - likelihood) * prior) / (
+                (1 - likelihood) * prior + likelihood * (1 - prior)
+            )
         self.beliefs[hypothesis] = round(posterior, 4)
 
     def get_belief(self, hypothesis: str) -> float:

@@ -13,7 +13,7 @@ class QuantumBiologySimulator:
         return {
             "efficiency": efficiency,
             "quantum_coherence": True,
-            "note": "Theoretical model"
+            "note": "Theoretical model",
         }
 
     def simulate_enzyme(self, reaction_rate: float) -> Dict:

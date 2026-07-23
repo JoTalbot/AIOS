@@ -10,7 +10,7 @@ class QuantumNeuralNetwork:
     def __init__(self, qubits: int = 4, layers: int = 3):
         self.qubits = qubits
         self.layers = layers
-        self.params = [random.uniform(0, 2*3.14) for _ in range(qubits * layers)]
+        self.params = [random.uniform(0, 2 * 3.14) for _ in range(qubits * layers)]
 
     def forward(self, x: List[float]) -> float:
         # Simplified quantum forward pass

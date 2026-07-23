@@ -98,24 +98,23 @@ def calibration_recipe(
     """
     if kind not in _KIND_HINTS:
         raise ValueError(
-            f"unknown platform kind '{kind}': "
-            f"expected one of {sorted(_KIND_HINTS)}"
+            f"unknown platform kind '{kind}': " f"expected one of {sorted(_KIND_HINTS)}"
         )
     have_hints = have_hints or {}
     needed: List[str] = list(_KIND_HINTS[kind])
     if kind != "messenger":
         # tab-bar навигация (reels_tab) есть только у ленточных платформ
         needed.append("navigation")
-    missing = [
-        section for section in needed if not _has_hints(have_hints, section)
-    ]
+    missing = [section for section in needed if not _has_hints(have_hints, section)]
 
     serial_part = f"-s {serial} " if serial else ""
-    steps: List[Dict[str, str]] = [{
-        "action": "preflight",
-        "title": "Подключить устройство и убедиться, что пакет установлен",
-        "command": f"adb {serial_part}shell pm path {package}",
-    }]
+    steps: List[Dict[str, str]] = [
+        {
+            "action": "preflight",
+            "title": "Подключить устройство и убедиться, что пакет установлен",
+            "command": f"adb {serial_part}shell pm path {package}",
+        }
+    ]
 
     dump_flags: List[str] = []
     for section in _ALL_SECTIONS:
@@ -123,47 +122,58 @@ def calibration_recipe(
             continue
         screen = _SCREENS[section]
         dump_path = f"{directory}/{platform}-{screen['dump']}"
-        steps.append({
-            "action": f"open_{section}",
-            "title": screen["hint"],
-        })
-        steps.append({
-            "action": f"dump_{section}",
-            "title": f"Снять UI-дамп экрана '{section}'",
-            "command": (
-                f"adb {serial_part}shell uiautomator dump "
-                f"/sdcard/{platform}-{section}.xml && "
-                f"adb {serial_part}pull "
-                f"/sdcard/{platform}-{section}.xml {dump_path}"
-            ),
-        })
+        steps.append(
+            {
+                "action": f"open_{section}",
+                "title": screen["hint"],
+            }
+        )
+        steps.append(
+            {
+                "action": f"dump_{section}",
+                "title": f"Снять UI-дамп экрана '{section}'",
+                "command": (
+                    f"adb {serial_part}shell uiautomator dump "
+                    f"/sdcard/{platform}-{section}.xml && "
+                    f"adb {serial_part}pull "
+                    f"/sdcard/{platform}-{section}.xml {dump_path}"
+                ),
+            }
+        )
         dump_flags.append(f"{screen['cli_flag']} {dump_path}")
 
     if dump_flags:
-        steps.append({
-            "action": "calibrate",
-            "title": "Извлечь маркеры из дампов и записать в дескриптор",
-            "command": (
-                f"aios platforms calibrate --platform {platform} "
-                + " ".join(dump_flags) + " --write"
-            ),
-        })
-        steps.append({
-            "action": "verify",
-            "title": "Зафиксировать регрессию маркеров (baseline для drift)",
-            "command": (
-                f"aios platforms marker-check --platform {platform} "
-                f"--dump {directory}/{platform}-cards.xml"
-                if "cards" in missing else
-                f"aios platforms doctor --platform {platform}"
-            ),
-        })
+        steps.append(
+            {
+                "action": "calibrate",
+                "title": "Извлечь маркеры из дампов и записать в дескриптор",
+                "command": (
+                    f"aios platforms calibrate --platform {platform} "
+                    + " ".join(dump_flags)
+                    + " --write"
+                ),
+            }
+        )
+        steps.append(
+            {
+                "action": "verify",
+                "title": "Зафиксировать регрессию маркеров (baseline для drift)",
+                "command": (
+                    f"aios platforms marker-check --platform {platform} "
+                    f"--dump {directory}/{platform}-cards.xml"
+                    if "cards" in missing
+                    else f"aios platforms doctor --platform {platform}"
+                ),
+            }
+        )
 
-    steps.append({
-        "action": "doctor",
-        "title": "Финальная проверка готовности платформы",
-        "command": f"aios platforms doctor --platform {platform}",
-    })
+    steps.append(
+        {
+            "action": "doctor",
+            "title": "Финальная проверка готовности платформы",
+            "command": f"aios platforms doctor --platform {platform}",
+        }
+    )
 
     return {
         "platform": platform,

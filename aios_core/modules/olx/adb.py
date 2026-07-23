@@ -37,24 +37,16 @@ class ADBController:
         return "adb"
 
     def run(self, command):
-        result = subprocess.run(
-            command,
-            shell=True,
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
 
         return {
             "code": result.returncode,
             "stdout": result.stdout.strip(),
-            "stderr": result.stderr.strip()
+            "stderr": result.stderr.strip(),
         }
 
     def swipe(self, x1, y1, x2, y2, duration=500):
-        cmd = (
-            f"{self.adb} shell input swipe "
-            f"{x1} {y1} {x2} {y2} {duration}"
-        )
+        cmd = f"{self.adb} shell input swipe " f"{x1} {y1} {x2} {y2} {duration}"
 
         return self.run(cmd)
 
@@ -64,38 +56,29 @@ class ADBController:
     def dump_ui(self, filename="screen.xml"):
         remote = "/sdcard/aios_ui.xml"
 
-        self.run(
-            f"{self.adb} shell uiautomator dump {remote}"
-        )
+        self.run(f"{self.adb} shell uiautomator dump {remote}")
 
-        result = self.run(
-            f"{self.adb} pull {remote} {filename}"
-        )
+        result = self.run(f"{self.adb} pull {remote} {filename}")
 
         return result
 
     def screenshot(self, filename="screen.png"):
-        cmd = (
-            f"{self.adb} exec-out screencap -p > {filename}"
-        )
+        cmd = f"{self.adb} exec-out screencap -p > {filename}"
 
         return self.run(cmd)
 
     def open_app(self):
-        cmd = (
-            f"{self.adb} shell monkey "
-            f"-p {self.package} 1"
-        )
+        cmd = f"{self.adb} shell monkey " f"-p {self.package} 1"
 
         return self.run(cmd)
 
     def input_text(self, text):
         """Types text via the ADBKeyBoard broadcast IME (Cyrillic-safe)."""
         from urllib.parse import quote
+
         encoded = quote(text, safe="")
         return self.run(
-            f"{self.adb} shell am broadcast "
-            f"-a ADB_INPUT_TEXT --es msg '{encoded}'"
+            f"{self.adb} shell am broadcast " f"-a ADB_INPUT_TEXT --es msg '{encoded}'"
         )
 
 

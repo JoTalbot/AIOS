@@ -15,7 +15,7 @@ class DebateProtocol:
             "agents": agents,
             "rounds": rounds,
             "winner": "agent_1",
-            "confidence": 0.85
+            "confidence": 0.85,
         }
         self.debates.append(debate)
         return debate

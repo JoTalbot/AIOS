@@ -51,7 +51,8 @@ class InstagramBootstrap:
             checks[f"secrets_{field.lower()}"] = {
                 "ok": present,
                 "detail": (
-                    "set via env" if present
+                    "set via env"
+                    if present
                     else f"missing: export {env_name(PLATFORM, field)}"
                 ),
             }
@@ -74,17 +75,21 @@ class InstagramBootstrap:
         checks["card_markers"] = {
             "ok": bool(markers),
             "detail": (
-                f"markers: {', '.join(markers)}" if markers
+                f"markers: {', '.join(markers)}"
+                if markers
                 else "not calibrated: aios platforms bootup "
-                     "--apk com.instagram.android --fetch"
+                "--apk com.instagram.android --fetch"
             ),
         }
-        detail_hints = load_hints_section(
-            PLATFORM, "detail", self.directory
-        ) if yaml_path.exists() else {}
+        detail_hints = (
+            load_hints_section(PLATFORM, "detail", self.directory)
+            if yaml_path.exists()
+            else {}
+        )
         checks["detail_markers"] = {
-            "ok": bool(detail_hints.get("seller_markers")
-                       or detail_hints.get("price_nodes")),
+            "ok": bool(
+                detail_hints.get("seller_markers") or detail_hints.get("price_nodes")
+            ),
             "detail": "calibrate --detail post.xml --write",
         }
 
@@ -101,7 +106,8 @@ class InstagramBootstrap:
         if self.serial is not None:
             if self.adb is None:
                 checks["device"] = {
-                    "ok": False, "detail": "adb adapter not injected",
+                    "ok": False,
+                    "detail": "adb adapter not injected",
                 }
             else:
                 devices = self.adb.run(f"{self.adb.adb} devices")
@@ -110,7 +116,8 @@ class InstagramBootstrap:
                     "ok": online,
                     "detail": (
                         f"{self.serial} online"
-                        if online else f"{self.serial} not in adb devices"
+                        if online
+                        else f"{self.serial} not in adb devices"
                     ),
                 }
 

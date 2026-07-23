@@ -22,12 +22,12 @@ if TYPE_CHECKING:
 class AutonomyLevel(IntEnum):
     """Agent autonomy levels, from fully manual to self-directed."""
 
-    LEVEL_0_MANUAL = 0        # No autonomy, every action requires human approval
-    LEVEL_1_ASSISTED = 1      # Suggests actions, human approves each
-    LEVEL_2_SUPERVISED = 2    # Executes low-risk actions autonomously, human reviews
-    LEVEL_3_MANAGED = 3       # Executes medium-risk autonomously, reports periodically
-    LEVEL_4_AUTONOMOUS = 4    # Full autonomy for operational tasks, human for critical
-    LEVEL_5_SELF_DIRECTED = 5 # Full self-direction within constitutional bounds
+    LEVEL_0_MANUAL = 0  # No autonomy, every action requires human approval
+    LEVEL_1_ASSISTED = 1  # Suggests actions, human approves each
+    LEVEL_2_SUPERVISED = 2  # Executes low-risk actions autonomously, human reviews
+    LEVEL_3_MANAGED = 3  # Executes medium-risk autonomously, reports periodically
+    LEVEL_4_AUTONOMOUS = 4  # Full autonomy for operational tasks, human for critical
+    LEVEL_5_SELF_DIRECTED = 5  # Full self-direction within constitutional bounds
 
 
 @dataclass
@@ -63,8 +63,7 @@ class AutonomyManager:
         self._profiles: Dict[str, AgentAutonomyProfile] = {}
 
         if self.db:
-            self.db.execute(
-                """CREATE TABLE IF NOT EXISTS autonomy_profiles (
+            self.db.execute("""CREATE TABLE IF NOT EXISTS autonomy_profiles (
                     id TEXT PRIMARY KEY,
                     agent_id TEXT NOT NULL UNIQUE,
                     level INTEGER NOT NULL DEFAULT 0,
@@ -74,8 +73,7 @@ class AutonomyManager:
                     restrictions TEXT,
                     track_record TEXT,
                     metadata TEXT
-                )"""
-            )
+                )""")
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_autonomy_agent ON autonomy_profiles(agent_id)"
             )
@@ -218,7 +216,12 @@ class AutonomyManager:
             granted_at=now,
             expires_at=expires_at,
             restrictions=restrictions or {},
-            track_record={"total_actions": 0, "successes": 0, "failures": 0, "reviews_triggered": 0},
+            track_record={
+                "total_actions": 0,
+                "successes": 0,
+                "failures": 0,
+                "reviews_triggered": 0,
+            },
             metadata={"_db_id": agent_id},
         )
 
@@ -309,9 +312,7 @@ class AutonomyManager:
         if int(level) <= 1:
             reason = f"Level {int(level)} requires human approval for all actions"
         elif auto_approved:
-            reason = (
-                f"Level {int(level)} auto-approves {risk}-risk actions"
-            )
+            reason = f"Level {int(level)} auto-approves {risk}-risk actions"
         else:
             reason = (
                 f"Level {int(level)} does not auto-approve {risk}-risk actions; "
@@ -415,9 +416,7 @@ class AutonomyManager:
         elif success_rate <= 0.95:
             promote = False
             suggested = current
-            reason = (
-                f"Success rate {success_rate:.2%} does not meet 95% threshold"
-            )
+            reason = f"Success rate {success_rate:.2%} does not meet 95% threshold"
         elif current >= 5:
             promote = False
             suggested = 5
@@ -475,9 +474,7 @@ class AutonomyManager:
         elif success_rate >= 0.7:
             demote = False
             suggested = current
-            reason = (
-                f"Success rate {success_rate:.2%} is above 70% threshold"
-            )
+            reason = f"Success rate {success_rate:.2%} is above 70% threshold"
         elif current <= 0:
             demote = False
             suggested = 0
@@ -535,7 +532,8 @@ class AutonomyManager:
             by_level[lvl] = by_level.get(lvl, 0) + 1
 
         auto_adjusted = sum(
-            1 for p in self._profiles.values()
+            1
+            for p in self._profiles.values()
             if "auto_promoted_at" in p.metadata or "auto_demoted_at" in p.metadata
         )
 

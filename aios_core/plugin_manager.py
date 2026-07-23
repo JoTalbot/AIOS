@@ -48,10 +48,7 @@ class PluginManager:
         return list(self.plugins.keys())
 
     def stats(self) -> dict:
-        return {
-            "total_plugins": len(self.plugins),
-            "registered_hooks": len(self.hooks)
-        }
+        return {"total_plugins": len(self.plugins), "registered_hooks": len(self.hooks)}
 
 
 # Global instance

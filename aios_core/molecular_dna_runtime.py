@@ -11,9 +11,7 @@ from typing import Dict, List, Optional, Any, Tuple
 class MolecularDNARuntime:
     """Molecular Synthetic DNA Logic Engine."""
 
-    NUCLEOTIDE_MAP = {
-        "00": "A", "01": "C", "10": "G", "11": "T"
-    }
+    NUCLEOTIDE_MAP = {"00": "A", "01": "C", "10": "G", "11": "T"}
     REVERSE_NUCLEOTIDE_MAP = {v: k for k, v in NUCLEOTIDE_MAP.items()}
 
     def __init__(self):
@@ -48,24 +46,31 @@ class MolecularDNARuntime:
         self.dna_memory_bank[rule_id] = dna_seq
         return dna_seq
 
-    def simulate_pcr_amplification(self, rule_id: str, amplification_cycles: int = 10) -> Dict[str, Any]:
+    def simulate_pcr_amplification(
+        self, rule_id: str, amplification_cycles: int = 10
+    ) -> Dict[str, Any]:
         """Simulate Polymerase Chain Reaction (PCR) molecular strand amplification."""
         seq = self.dna_memory_bank.get(rule_id, "")
         if not seq:
-            return {"success": False, "error": f"Rule ID '{rule_id}' not found in DNA memory bank."}
+            return {
+                "success": False,
+                "error": f"Rule ID '{rule_id}' not found in DNA memory bank.",
+            }
 
-        molecule_count = 2 ** amplification_cycles
+        molecule_count = 2**amplification_cycles
         return {
             "success": True,
             "rule_id": rule_id,
             "dna_sequence_length": len(seq),
             "pcr_cycles": amplification_cycles,
             "amplified_molecules_count": molecule_count,
-            "molecular_density_pmo_per_ul": round(molecule_count * 1.66e-12, 6)
+            "molecular_density_pmo_per_ul": round(molecule_count * 1.66e-12, 6),
         }
 
     def stats(self) -> Dict[str, Any]:
         return {
             "synthesized_dna_rules": len(self.dna_memory_bank),
-            "total_nucleotides_stored": sum(len(s) for s in self.dna_memory_bank.values())
+            "total_nucleotides_stored": sum(
+                len(s) for s in self.dna_memory_bank.values()
+            ),
         }

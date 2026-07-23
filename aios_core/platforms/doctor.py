@@ -31,9 +31,7 @@ def _report_recipe(
     откалибровано» берётся из дескриптора (checks знают только про
     required_hints, а навигация/детали могут быть закрыты вне их).
     """
-    needed = {
-        key[len("hints_"):] for key in checks if key.startswith("hints_")
-    }
+    needed = {key[len("hints_") :] for key in checks if key.startswith("hints_")}
     compliance = hints.get("__compliance__") or {}
     if needed:
         kind = "marketplace" if "cards" in needed else "messenger"
@@ -41,8 +39,7 @@ def _report_recipe(
         kind = "collector"
     else:
         kind = "messenger"
-    return calibration_recipe(
-        platform, package, kind=kind, have_hints=hints)
+    return calibration_recipe(platform, package, kind=kind, have_hints=hints)
 
 
 def platform_doctor(
@@ -86,8 +83,11 @@ def platform_doctor(
         doc = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
     checks["descriptor"] = {
         "ok": bool(doc and doc.get("name") == platform),
-        "detail": str(yaml_path) if yaml_path.exists()
-        else f"descriptor not found: {yaml_path}",
+        "detail": (
+            str(yaml_path)
+            if yaml_path.exists()
+            else f"descriptor not found: {yaml_path}"
+        ),
     }
     hints = (doc.get("extras") or {}).get("parser_hints") or {}
     compliance_block = (doc.get("extras") or {}).get("compliance") or {}
@@ -98,9 +98,9 @@ def platform_doctor(
         checks[f"hints_{section}"] = {
             "ok": found,
             "detail": (
-                f"parser_hints.{section} откалиброван" if found
-                else f"нет parser_hints.{section} — "
-                     f"calibrate --write / onboarding"
+                f"parser_hints.{section} откалиброван"
+                if found
+                else f"нет parser_hints.{section} — " f"calibrate --write / onboarding"
             ),
         }
     for field in secret_fields:
@@ -108,7 +108,8 @@ def platform_doctor(
         checks[f"secrets_{field.lower()}"] = {
             "ok": present,
             "detail": (
-                "env set (value hidden)" if present
+                "env set (value hidden)"
+                if present
                 else f"set AIOS_SECRET__{platform.upper()}__{field}"
             ),
         }
@@ -125,7 +126,8 @@ def platform_doctor(
         checks["device"] = {
             "ok": bool(devices.get("code") == 0 and online),
             "detail": (
-                f"{serial} online" if online
+                f"{serial} online"
+                if online
                 else f"{serial} не в 'adb devices' (эмулятор запущен?)"
             ),
         }
@@ -134,15 +136,18 @@ def platform_doctor(
             checks["package"] = {
                 "ok": bool((pm.get("stdout") or "").startswith("package:")),
                 "detail": (
-                    pm.get("stdout", "").strip()[:120] or
-                    f"{package} не установлен — platforms fetch-apk {package}"
+                    pm.get("stdout", "").strip()[:120]
+                    or f"{package} не установлен — platforms fetch-apk {package}"
                 ),
             }
     ok = all(check["ok"] for check in checks.values())
     report: Dict[str, object] = {
-        "platform": platform, "ok": ok, "checks": checks,
+        "platform": platform,
+        "ok": ok,
+        "checks": checks,
     }
     if report_recipe:
         report["calibrate_recipe"] = _report_recipe(
-            platform, package, checks, hints_for_recipe)
+            platform, package, checks, hints_for_recipe
+        )
     return report

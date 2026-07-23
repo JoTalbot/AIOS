@@ -21,7 +21,7 @@ class ToolDefinition:
     input_schema: dict  # JSON Schema for parameters
     handler: Callable[[dict], Any]
     category: str = "general"  # general, memory, knowledge, evolution, constitution
-    risk_level: str = "low"    # low, medium, high, critical
+    risk_level: str = "low"  # low, medium, high, critical
     requires_consent: bool = False
 
 
@@ -114,10 +114,12 @@ class ToolRegistry:
         missing = [f for f in required_fields if f not in tool_call.arguments]
         if missing:
             return MCPToolResult(
-                content=[{
-                    "type": "text",
-                    "text": f"Missing required parameters: {', '.join(missing)}",
-                }],
+                content=[
+                    {
+                        "type": "text",
+                        "text": f"Missing required parameters: {', '.join(missing)}",
+                    }
+                ],
                 is_error=True,
             )
 
@@ -126,10 +128,12 @@ class ToolRegistry:
             raw_result = tool_def.handler(tool_call.arguments)
         except Exception as exc:
             return MCPToolResult(
-                content=[{
-                    "type": "text",
-                    "text": f"Tool execution error: {exc}",
-                }],
+                content=[
+                    {
+                        "type": "text",
+                        "text": f"Tool execution error: {exc}",
+                    }
+                ],
                 is_error=True,
             )
 
@@ -139,6 +143,7 @@ class ToolRegistry:
 
         # Convert dict/list/primitive to text content
         import json
+
         text = json.dumps(raw_result, ensure_ascii=False, default=str)
         return MCPToolResult(
             content=[{"type": "text", "text": text}],

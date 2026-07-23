@@ -60,7 +60,9 @@ class ProfileStore:
         """Process-wide реестр из ``AIOS_PROFILES_DB`` (fallback ``data/profiles.sqlite``)."""
         global _DEFAULT_STORE
         if _DEFAULT_STORE is None:
-            _DEFAULT_STORE = cls(os.environ.get("AIOS_PROFILES_DB", "data/profiles.sqlite"))
+            _DEFAULT_STORE = cls(
+                os.environ.get("AIOS_PROFILES_DB", "data/profiles.sqlite")
+            )
         return _DEFAULT_STORE
 
     @classmethod
@@ -98,15 +100,20 @@ class ProfileStore:
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        profile.platform, profile.name, profile.device_serial,
-                        profile.android_user, profile.db_path, profile.locale,
-                        profile.notes, int(profile.is_default), now, now,
+                        profile.platform,
+                        profile.name,
+                        profile.device_serial,
+                        profile.android_user,
+                        profile.db_path,
+                        profile.locale,
+                        profile.notes,
+                        int(profile.is_default),
+                        now,
+                        now,
                     ),
                 )
             except sqlite3.IntegrityError:
-                raise ValueError(
-                    f"profile '{profile.key}' already exists"
-                ) from None
+                raise ValueError(f"profile '{profile.key}' already exists") from None
             if profile.is_default:
                 self._set_default_locked(profile.platform, profile.name, now)
         return self.get(profile.platform, profile.name)
@@ -135,7 +142,11 @@ class ProfileStore:
     def update(self, platform: str, name: str, **fields) -> Optional[Profile]:
         """Точечное обновление полей профиля."""
         allowed = {
-            "device_serial", "android_user", "db_path", "locale", "notes",
+            "device_serial",
+            "android_user",
+            "db_path",
+            "locale",
+            "notes",
             "is_default",
         }
         patch = {k: v for k, v in fields.items() if k in allowed}
@@ -144,8 +155,7 @@ class ProfileStore:
         now = datetime.now(timezone.utc).isoformat()
         assignments = ", ".join(f"{key} = ?" for key in sorted(patch))
         values = [
-            int(v) if key == "is_default" else v
-            for key, v in sorted(patch.items())
+            int(v) if key == "is_default" else v for key, v in sorted(patch.items())
         ]
         with self._lock, self._conn:
             cursor = self._conn.execute(

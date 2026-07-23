@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 @dataclass
 class UIElement:
     """Represents a UI element from uiautomator dump."""
+
     resource_id: str
     text: str
     class_name: str
@@ -50,6 +51,7 @@ class UIElement:
 @dataclass
 class SearchResult:
     """Represents a search result from UI."""
+
     item_id: str
     title: str
     price: str
@@ -60,6 +62,7 @@ class SearchResult:
 @dataclass
 class ItemDetails:
     """Represents item details from UI."""
+
     item_id: str
     title: str
     price: float
@@ -79,6 +82,7 @@ class UIAutomatorParser:
         """Parse XML and extract elements."""
         try:
             import xml.etree.ElementTree as ET
+
             self.root = ET.fromstring(self.xml_content)
             return True
         except Exception as e:
@@ -94,16 +98,18 @@ class UIAutomatorParser:
             node_resource = node.attrib.get("resource-id", "")
             if resource_id in node_resource:
                 bounds = self._parse_bounds(node.attrib.get("bounds", "[0,0][0,0]"))
-                elements.append(UIElement(
-                    resource_id=node_resource,
-                    text=node.attrib.get("text", ""),
-                    class_name=node.attrib.get("class", ""),
-                    bounds=bounds,
-                    clickable=node.attrib.get("clickable") == "true",
-                    enabled=node.attrib.get("enabled") == "true",
-                    package=node.attrib.get("package", ""),
-                    content_desc=node.attrib.get("content-desc", "")
-                ))
+                elements.append(
+                    UIElement(
+                        resource_id=node_resource,
+                        text=node.attrib.get("text", ""),
+                        class_name=node.attrib.get("class", ""),
+                        bounds=bounds,
+                        clickable=node.attrib.get("clickable") == "true",
+                        enabled=node.attrib.get("enabled") == "true",
+                        package=node.attrib.get("package", ""),
+                        content_desc=node.attrib.get("content-desc", ""),
+                    )
+                )
         return elements
 
     def find_elements_by_text(self, text: str, partial: bool = True) -> List[UIElement]:
@@ -117,27 +123,31 @@ class UIAutomatorParser:
             if partial:
                 if text.lower() in node_text.lower():
                     bounds = self._parse_bounds(node.attrib.get("bounds", "[0,0][0,0]"))
-                    elements.append(UIElement(
-                        resource_id=node.attrib.get("resource-id", ""),
-                        text=node_text,
-                        class_name=node.attrib.get("class", ""),
-                        bounds=bounds,
-                        clickable=node.attrib.get("clickable") == "true",
-                        enabled=node.attrib.get("enabled") == "true",
-                        package=node.attrib.get("package", "")
-                    ))
+                    elements.append(
+                        UIElement(
+                            resource_id=node.attrib.get("resource-id", ""),
+                            text=node_text,
+                            class_name=node.attrib.get("class", ""),
+                            bounds=bounds,
+                            clickable=node.attrib.get("clickable") == "true",
+                            enabled=node.attrib.get("enabled") == "true",
+                            package=node.attrib.get("package", ""),
+                        )
+                    )
             else:
                 if text.lower() == node_text.lower():
                     bounds = self._parse_bounds(node.attrib.get("bounds", "[0,0][0,0]"))
-                    elements.append(UIElement(
-                        resource_id=node.attrib.get("resource-id", ""),
-                        text=node_text,
-                        class_name=node.attrib.get("class", ""),
-                        bounds=bounds,
-                        clickable=node.attrib.get("clickable") == "true",
-                        enabled=node.attrib.get("enabled") == "true",
-                        package=node.attrib.get("package", "")
-                    ))
+                    elements.append(
+                        UIElement(
+                            resource_id=node.attrib.get("resource-id", ""),
+                            text=node_text,
+                            class_name=node.attrib.get("class", ""),
+                            bounds=bounds,
+                            clickable=node.attrib.get("clickable") == "true",
+                            enabled=node.attrib.get("enabled") == "true",
+                            package=node.attrib.get("package", ""),
+                        )
+                    )
         return elements
 
     def find_clickable_elements(self) -> List[UIElement]:
@@ -147,17 +157,22 @@ class UIAutomatorParser:
 
         elements = []
         for node in self.root.iter("node"):
-            if node.attrib.get("clickable") == "true" and node.attrib.get("enabled") == "true":
+            if (
+                node.attrib.get("clickable") == "true"
+                and node.attrib.get("enabled") == "true"
+            ):
                 bounds = self._parse_bounds(node.attrib.get("bounds", "[0,0][0,0]"))
-                elements.append(UIElement(
-                    resource_id=node.attrib.get("resource-id", ""),
-                    text=node.attrib.get("text", ""),
-                    class_name=node.attrib.get("class", ""),
-                    bounds=bounds,
-                    clickable=True,
-                    enabled=True,
-                    package=node.attrib.get("package", "")
-                ))
+                elements.append(
+                    UIElement(
+                        resource_id=node.attrib.get("resource-id", ""),
+                        text=node.attrib.get("text", ""),
+                        class_name=node.attrib.get("class", ""),
+                        bounds=bounds,
+                        clickable=True,
+                        enabled=True,
+                        package=node.attrib.get("package", ""),
+                    )
+                )
         return elements
 
     def find_search_field(self) -> Optional[UIElement]:
@@ -166,7 +181,7 @@ class UIAutomatorParser:
             "ua.slando:id/search_field",
             "ua.slando:id/search_src_text",
             "android:id/search_src_text",
-            "com.google.android.search.widget:id/search_src_text"
+            "com.google.android.search.widget:id/search_src_text",
         ]
 
         for resource_id in search_resource_ids:
@@ -185,7 +200,7 @@ class UIAutomatorParser:
                     bounds=bounds,
                     clickable=True,
                     enabled=node.attrib.get("enabled") == "true",
-                    package=node.attrib.get("package", "")
+                    package=node.attrib.get("package", ""),
                 )
 
         return None
@@ -212,18 +227,32 @@ class UIAutomatorParser:
                         child_text = child.attrib.get("text", "")
                         child_resource = child.attrib.get("resource-id", "")
 
-                        if ("title" in child_resource.lower() or "name" in child_resource.lower()) and child_text:
+                        if (
+                            "title" in child_resource.lower()
+                            or "name" in child_resource.lower()
+                        ) and child_text:
                             title = child_text
                         elif "price" in child_resource.lower() and child_text:
                             price = child_text
-                        elif ("location" in child_resource.lower() or "city" in child_resource.lower()) and child_text:
+                        elif (
+                            "location" in child_resource.lower()
+                            or "city" in child_resource.lower()
+                        ) and child_text:
                             location = child_text
 
                 if title or price:
                     item_id = f"result_{len(results)}"
                     if not title:
                         title = price or "Без названия"
-                    results.append(SearchResult(item_id=item_id, title=title, price=price, location=location, bounds=elem.bounds))
+                    results.append(
+                        SearchResult(
+                            item_id=item_id,
+                            title=title,
+                            price=price,
+                            location=location,
+                            bounds=elem.bounds,
+                        )
+                    )
             if results:
                 break
 
@@ -260,20 +289,24 @@ class UIAutomatorParser:
             return ItemDetails(
                 item_id="detail",
                 title=title,
-                price=float(re.sub(r'[^\d.]', '', price)) if price else 0.0,
+                price=float(re.sub(r"[^\d.]", "", price)) if price else 0.0,
                 seller=seller,
                 description=description,
-                status="active"
+                status="active",
             )
 
         return None
 
     def _parse_bounds(self, bounds_str: str) -> Tuple[int, int, int, int]:
         """Parse bounds string '[x1,y1][x2,y2]' to tuple."""
-        match = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', bounds_str)
+        match = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds_str)
         if match:
-            return (int(match.group(1)), int(match.group(2)),
-                    int(match.group(3)), int(match.group(4)))
+            return (
+                int(match.group(1)),
+                int(match.group(2)),
+                int(match.group(3)),
+                int(match.group(4)),
+            )
         return (0, 0, 0, 0)
 
     def _is_child_of(self, child_node, parent_elem: UIElement) -> bool:
@@ -300,12 +333,12 @@ class RealDeviceExecutor:
                 shell=True,
                 capture_output=True,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
             )
             return {
                 "code": result.returncode,
                 "stdout": result.stdout.strip(),
-                "stderr": result.stderr.strip()
+                "stderr": result.stderr.strip(),
             }
         except subprocess.TimeoutExpired:
             return {"code": -1, "stdout": "", "stderr": "timeout"}
@@ -332,7 +365,9 @@ class RealDeviceExecutor:
     def type_text(self, text: str):
         """Type text using ADBKeyBoard or fallback input method."""
         try:
-            return self._adb(f"shell ime set com.android.adbkeyboard/.ADBKeyboard && shell input text '{text.replace(' ', '%s')}'")
+            return self._adb(
+                f"shell ime set com.android.adbkeyboard/.ADBKeyboard && shell input text '{text.replace(' ', '%s')}'"
+            )
         except Exception:
             return self._adb(f"shell input text '{text.replace(' ', '%s')}'")
 
@@ -346,7 +381,9 @@ class RealDeviceExecutor:
 
     def launch_app(self, package: str) -> bool:
         """Launch app."""
-        result = self._adb(f"shell monkey -p {package} -c android.intent.category.LAUNCHER 1")
+        result = self._adb(
+            f"shell monkey -p {package} -c android.intent.category.LAUNCHER 1"
+        )
         if result["code"] == 0:
             time.sleep(2)
             return True
@@ -387,12 +424,18 @@ class RealDeviceExecutor:
             if ui_xml:
                 break
             if attempt == 2:
-                return {"status": "error", "error": "Failed to capture results UI after retries", "real_adb": True}
+                return {
+                    "status": "error",
+                    "error": "Failed to capture results UI after retries",
+                    "real_adb": True,
+                }
 
         self.parser = UIAutomatorParser(ui_xml)
         self.parser.parse()
 
-        results = self.parser.find_search_results() or self._fallback_search_results(ui_xml)
+        results = self.parser.find_search_results() or self._fallback_search_results(
+            ui_xml
+        )
 
         return {
             "status": "success",
@@ -415,7 +458,9 @@ class RealDeviceExecutor:
         for el in clickable:
             txt = (el.text or "").strip()
             if txt and "UAH" in (el.content_desc or ""):
-                results.append(SearchResult(f"fallback_{len(results)}", txt, "", "", el.bounds))
+                results.append(
+                    SearchResult(f"fallback_{len(results)}", txt, "", "", el.bounds)
+                )
         return results[:10]
 
     def get_item_details(self, item_id: str) -> Dict[str, Any]:
@@ -441,14 +486,10 @@ class RealDeviceExecutor:
                 "seller": details.seller,
                 "description": details.description,
                 "latency_ms": round((time.time() - start_time) * 1000.0, 3),
-                "real_adb": True
+                "real_adb": True,
             }
 
-        return {
-            "status": "not_found",
-            "package": "ua.slando",
-            "item_id": item_id
-        }
+        return {"status": "not_found", "package": "ua.slando", "item_id": item_id}
 
     def send_message(self, seller_id: str, message: str) -> Dict[str, Any]:
         """Send real message."""
@@ -468,7 +509,7 @@ class RealDeviceExecutor:
             "message_sent": message,
             "sent_at": time.time(),
             "latency_ms": round((time.time() - start_time) * 1000.0, 3),
-            "real_adb": True
+            "real_adb": True,
         }
 
 
@@ -508,7 +549,9 @@ class SlandoScreenClassifier:
             return self.SCREEN_CHAT
 
         # Check for profile
-        profile_elements = self.parser.find_elements_by_resource("ua.slando:id/profile_container")
+        profile_elements = self.parser.find_elements_by_resource(
+            "ua.slando:id/profile_container"
+        )
         if profile_elements:
             return self.SCREEN_PROFILE
 
@@ -522,13 +565,15 @@ class SlandoScreenClassifier:
             "screen_type": screen_type,
             "clickable_elements_count": 0,
             "has_search": False,
-            "has_results": False
+            "has_results": False,
         }
 
         if ui_xml:
             self.parser = UIAutomatorParser(ui_xml)
             if self.parser.parse():
-                info["clickable_elements_count"] = len(self.parser.find_clickable_elements())
+                info["clickable_elements_count"] = len(
+                    self.parser.find_clickable_elements()
+                )
                 info["has_search"] = self.parser.find_search_field() is not None
                 info["has_results"] = len(self.parser.find_search_results()) > 0
 

@@ -27,7 +27,7 @@ class RateLimiter:
     def get_stats(self, key: str) -> dict:
         return {
             "remaining": max(0, self.requests_per_minute - len(self.requests[key])),
-            "limit": self.requests_per_minute
+            "limit": self.requests_per_minute,
         }
 
 

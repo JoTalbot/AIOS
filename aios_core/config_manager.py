@@ -34,7 +34,4 @@ class ConfigManager:
             yaml.dump(self.config, f)
 
     def stats(self) -> dict:
-        return {
-            "keys": len(self.config),
-            "source": self.config_path
-        }
+        return {"keys": len(self.config), "source": self.config_path}

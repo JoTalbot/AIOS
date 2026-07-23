@@ -11,9 +11,16 @@ from typing import Dict, List, Optional, Any, Tuple
 class PlanetaryMeshNode:
     """A Node in the Planetary Mesh network (Terrestrial, Orbital LEO/GEO, or Deep Space/Edge)."""
 
-    def __init__(self, node_id: str, location_type: str = "terrestrial", latency_to_earth_ms: float = 5.0):
+    def __init__(
+        self,
+        node_id: str,
+        location_type: str = "terrestrial",
+        latency_to_earth_ms: float = 5.0,
+    ):
         self.node_id = node_id
-        self.location_type = location_type  # "terrestrial", "orbital_leo", "lunar_edge", "deep_space"
+        self.location_type = (
+            location_type  # "terrestrial", "orbital_leo", "lunar_edge", "deep_space"
+        )
         self.latency_to_earth_ms = latency_to_earth_ms
         self.status = "online"
         self.active_tasks: List[str] = []
@@ -33,29 +40,41 @@ class PlanetaryMeshOrchestrator:
         self.register_node("earth_eu_1", "terrestrial", latency_to_earth_ms=2.0)
         self.register_node("earth_us_east", "terrestrial", latency_to_earth_ms=12.0)
         self.register_node("starlink_leo_74", "orbital_leo", latency_to_earth_ms=25.0)
-        self.register_node("lunar_gateway_edge", "lunar_edge", latency_to_earth_ms=1300.0)
+        self.register_node(
+            "lunar_gateway_edge", "lunar_edge", latency_to_earth_ms=1300.0
+        )
 
-    def register_node(self, node_id: str, location_type: str, latency_to_earth_ms: float) -> PlanetaryMeshNode:
+    def register_node(
+        self, node_id: str, location_type: str, latency_to_earth_ms: float
+    ) -> PlanetaryMeshNode:
         """Register a new planetary mesh node."""
         node = PlanetaryMeshNode(node_id, location_type, latency_to_earth_ms)
         self.nodes[node_id] = node
         return node
 
-    def route_planetary_task(self, task: Dict[str, Any], max_allowed_latency_ms: float = 100.0) -> Dict[str, Any]:
+    def route_planetary_task(
+        self, task: Dict[str, Any], max_allowed_latency_ms: float = 100.0
+    ) -> Dict[str, Any]:
         """Find the optimal planetary node based on task latency budget, location, and node availability."""
         start_time = time.time()
         task_id = task.get("id", f"p_task_{len(self.routed_tasks)}")
 
         eligible_nodes = [
-            n for n in self.nodes.values()
+            n
+            for n in self.nodes.values()
             if n.is_reachable() and n.latency_to_earth_ms <= max_allowed_latency_ms
         ]
 
         if not eligible_nodes:
             # Fallback to terrestrial minimum latency node if constrained
-            eligible_nodes = sorted([n for n in self.nodes.values() if n.is_reachable()], key=lambda x: x.latency_to_earth_ms)
+            eligible_nodes = sorted(
+                [n for n in self.nodes.values() if n.is_reachable()],
+                key=lambda x: x.latency_to_earth_ms,
+            )
 
-        selected_node = eligible_nodes[0] if eligible_nodes else list(self.nodes.values())[0]
+        selected_node = (
+            eligible_nodes[0] if eligible_nodes else list(self.nodes.values())[0]
+        )
         selected_node.active_tasks.append(task_id)
 
         route_record = {
@@ -64,7 +83,7 @@ class PlanetaryMeshOrchestrator:
             "node_type": selected_node.location_type,
             "estimated_latency_ms": selected_node.latency_to_earth_ms,
             "routing_time_ms": round((time.time() - start_time) * 1000.0, 3),
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
         self.routed_tasks.append(route_record)
@@ -78,5 +97,5 @@ class PlanetaryMeshOrchestrator:
             "node_distribution": {
                 loc: sum(1 for n in self.nodes.values() if n.location_type == loc)
                 for loc in {"terrestrial", "orbital_leo", "lunar_edge", "deep_space"}
-            }
+            },
         }

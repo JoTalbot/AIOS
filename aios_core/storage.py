@@ -196,7 +196,9 @@ CREATE INDEX IF NOT EXISTS idx_tasks_agent ON tasks(agent_id);
 class Database:
     """Enterprise-grade Multi-Backend Database Abstraction for AIOS."""
 
-    def __init__(self, db_path: Optional[str] = None, config: Optional[AIOSConfig] = None):
+    def __init__(
+        self, db_path: Optional[str] = None, config: Optional[AIOSConfig] = None
+    ):
         if db_path is not None:
             self.db_path = db_path
         elif config is not None:
@@ -205,7 +207,9 @@ class Database:
             config = load_config()
             self.db_path = config.resolve_path(config.database.path)
 
-        self.is_postgres = self.db_path.startswith("postgresql://") or self.db_path.startswith("postgres://")
+        self.is_postgres = self.db_path.startswith(
+            "postgresql://"
+        ) or self.db_path.startswith("postgres://")
         self.dialect = "postgresql" if self.is_postgres else "sqlite"
         self._conn: Any = None
         self._initialize()
@@ -225,6 +229,7 @@ class Database:
                 # Stub connection mock if psycopg/asyncpg not installed locally
                 try:
                     import psycopg2
+
                     self._conn = psycopg2.connect(self.db_path)
                 except Exception:
                     # In-memory SQLite fallthrough with PostgreSQL dialect flag set for unit testing
@@ -242,7 +247,9 @@ class Database:
 
     def _check_migration(self, conn: sqlite3.Connection):
         """Check and apply schema migrations."""
-        row = conn.execute("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1").fetchone()
+        row = conn.execute(
+            "SELECT version FROM schema_version ORDER BY version DESC LIMIT 1"
+        ).fetchone()
         current = row["version"] if row else 0
 
         if current < _SCHEMA_VERSION:
@@ -255,10 +262,14 @@ class Database:
 
     def _migrate(self, conn: sqlite3.Connection, from_ver: int, to_ver: int):
         if from_ver < 2:
-            columns = {row["name"] for row in conn.execute("PRAGMA table_info(memory_items)")}
+            columns = {
+                row["name"] for row in conn.execute("PRAGMA table_info(memory_items)")
+            }
             if "owner_id" not in columns:
                 conn.execute("ALTER TABLE memory_items ADD COLUMN owner_id TEXT")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_memory_owner ON memory_items(owner_id)")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_memory_owner ON memory_items(owner_id)"
+            )
 
     @contextmanager
     def transaction(self) -> Generator[Any, None, None]:
@@ -324,9 +335,13 @@ class Database:
 
     def tables(self) -> list[str]:
         if self.dialect == "postgresql":
-            rows = self.query("SELECT table_name as name FROM information_schema.tables WHERE table_schema='public'")
+            rows = self.query(
+                "SELECT table_name as name FROM information_schema.tables WHERE table_schema='public'"
+            )
         else:
-            rows = self.query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+            rows = self.query(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            )
         return [r["name"] for r in rows]
 
     def stats(self) -> dict:

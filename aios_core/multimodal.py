@@ -15,11 +15,7 @@ class MultiModalProcessor:
     def process(self, modality: str, data: Any) -> Dict:
         if modality not in self.modalities:
             return {"error": "Modality not supported"}
-        return {
-            "modality": modality,
-            "processed": True,
-            "embedding_dim": 512
-        }
+        return {"modality": modality, "processed": True, "embedding_dim": 512}
 
     def fuse(self, inputs: List[Dict]) -> Dict:
         return {"fused": True, "modalities": len(inputs)}

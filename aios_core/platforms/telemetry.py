@@ -34,26 +34,26 @@ def _platform_db_metrics(data_dir: str) -> Dict[str, Dict[str, int]]:
         return per_platform
     for db_file in sorted(root.glob("*.sqlite")):
         platform = db_file.stem
-        entry: Dict[str, int] = {"seen_ad": 0, "seen_video": 0,
-                                 "outbox_pending": 0}
+        entry: Dict[str, int] = {"seen_ad": 0, "seen_video": 0, "outbox_pending": 0}
         try:
             conn = _sqlite3.connect(f"file:{db_file}?mode=ro", uri=True)
             try:
                 tables = {
-                    row[0] for row in conn.execute(
-                        "SELECT name FROM sqlite_master "
-                        "WHERE type = 'table'")
+                    row[0]
+                    for row in conn.execute(
+                        "SELECT name FROM sqlite_master " "WHERE type = 'table'"
+                    )
                 }
                 if "olx_seen" in tables:
                     for kind, count in conn.execute(
-                            "SELECT kind, COUNT(*) FROM olx_seen "
-                            "GROUP BY kind"):
+                        "SELECT kind, COUNT(*) FROM olx_seen " "GROUP BY kind"
+                    ):
                         key = f"seen_{kind}"
                         entry[key] = entry.get(key, 0) + int(count)
                 if "olx_outbox" in tables:
                     (pending,) = conn.execute(
-                        "SELECT COUNT(*) FROM olx_outbox "
-                        "WHERE status = 'pending'").fetchone()
+                        "SELECT COUNT(*) FROM olx_outbox " "WHERE status = 'pending'"
+                    ).fetchone()
                     entry["outbox_pending"] = int(pending)
                 # cards collected from olx_ads or generic ads table
                 if "olx_ads" in tables:
@@ -63,7 +63,9 @@ def _platform_db_metrics(data_dir: str) -> Dict[str, Dict[str, int]]:
                 if "ads" in tables:
                     try:
                         (cards2,) = conn.execute("SELECT COUNT(*) FROM ads").fetchone()
-                        entry["cards_collected"] = entry.get("cards_collected", 0) + int(cards2)
+                        entry["cards_collected"] = entry.get(
+                            "cards_collected", 0
+                        ) + int(cards2)
                     except Exception:
                         pass
             finally:
@@ -78,6 +80,7 @@ def _platform_db_metrics(data_dir: str) -> Dict[str, Dict[str, int]]:
 def _production_metrics() -> Dict[str, object]:
     """Read production simulation report and cycle history for extended metrics."""
     import json
+
     root = Path(".")
     # Try production_simulation_report.json at repo root
     report_path = root / "production_simulation_report.json"
@@ -96,7 +99,9 @@ def _production_metrics() -> Dict[str, object]:
             # cards collected ~= total_actions
             for profile_key, metrics in content.get("pacing_metrics", {}).items():
                 plat = profile_key.split(":")[0] if ":" in profile_key else "unknown"
-                data["cards_collected"][plat] = data["cards_collected"].get(plat, 0) + int(metrics.get("actions", 0))
+                data["cards_collected"][plat] = data["cards_collected"].get(
+                    plat, 0
+                ) + int(metrics.get("actions", 0))
                 data["cycle_duration"][profile_key] = metrics.get("session_s", 0)
             # drift from health
             health = content.get("health", {})
@@ -107,7 +112,9 @@ def _production_metrics() -> Dict[str, object]:
             for daily in content.get("daily_reports", []):
                 for pkey, pstats in daily.get("profiles", {}).items():
                     plat = pkey.split(":")[0] if ":" in pkey else pkey
-                    data["drift_events"][plat] = data["drift_events"].get(plat, 0) + int(daily.get("drifts", 0))
+                    data["drift_events"][plat] = data["drift_events"].get(
+                        plat, 0
+                    ) + int(daily.get("drifts", 0))
             # cycle rate: total_cycles / 14 days = per day, /24 per hour
             total_cycles = sim.get("total_cycles", 0)
             if total_cycles:
@@ -123,7 +130,9 @@ def _production_metrics() -> Dict[str, object]:
         try:
             cm = json.loads(cycle_file.read_text())
             for plat, val in cm.get("cards_collected", {}).items():
-                data["cards_collected"][plat] = data["cards_collected"].get(plat, 0) + int(val)
+                data["cards_collected"][plat] = data["cards_collected"].get(
+                    plat, 0
+                ) + int(val)
             for k, v in cm.get("drift_events", {}).items():
                 data["drift_events"][k] = data["drift_events"].get(k, 0) + int(v)
         except Exception:
@@ -148,10 +157,8 @@ def fleet_snapshot(
         Отсутствующие базы трактуются как пустые (нулевые метрики).
     """
     shards_db = shards_db or _default_db("AIOS_SHARDS_DB", DEFAULT_SHARDS_DB)
-    profiles_db = profiles_db or _default_db(
-        "AIOS_PROFILES_DB", "data/profiles.sqlite")
-    devices_db = devices_db or _default_db(
-        "AIOS_DEVICES_DB", "data/devices.sqlite")
+    profiles_db = profiles_db or _default_db("AIOS_PROFILES_DB", "data/profiles.sqlite")
+    devices_db = devices_db or _default_db("AIOS_DEVICES_DB", "data/devices.sqlite")
 
     jobs_stats: Dict[str, object] = {}
     hosts_total = 0
@@ -160,6 +167,7 @@ def fleet_snapshot(
     else:
         from aios_core.platforms.shardexec import ShardJobs
         from aios_core.platforms.shards import ShardRouter
+
         with ShardJobs(shards_db) as jobs:
             jobs_stats = jobs.stats()
         router = ShardRouter(shards_db)
@@ -168,19 +176,17 @@ def fleet_snapshot(
         finally:
             router.close()
 
-    devices: Dict[str, object] = {"total": 0, "free": 0, "leased": 0,
-                                  "limits": 0}
+    devices: Dict[str, object] = {"total": 0, "free": 0, "leased": 0, "limits": 0}
     if Path(devices_db).exists():
         from aios_core.platforms.devices import DevicePool
+
         pool = DevicePool(devices_db)
         try:
             rows = pool.status()
             devices = {
                 "total": len(rows),
                 "free": sum(1 for r in rows if r.get("status") == "idle"),
-                "leased": sum(
-                    1 for r in rows
-                    if r.get("status") in ("busy", "leased")),
+                "leased": sum(1 for r in rows if r.get("status") in ("busy", "leased")),
                 "limits": len(pool.limits()),
             }
         finally:
@@ -189,15 +195,18 @@ def fleet_snapshot(
     profiles: Dict[str, object] = {"total": 0, "per_platform": {}}
     if Path(profiles_db).exists():
         from aios_core.platforms.store import ProfileStore
+
         store = ProfileStore(profiles_db)
         try:
             all_profiles = store.list()
             per_platform: Dict[str, int] = {}
             for profile in all_profiles:
                 per_platform[profile.platform] = (
-                    per_platform.get(profile.platform, 0) + 1)
+                    per_platform.get(profile.platform, 0) + 1
+                )
             profiles = {
-                "total": len(all_profiles), "per_platform": per_platform,
+                "total": len(all_profiles),
+                "per_platform": per_platform,
             }
         finally:
             store.close()
@@ -213,7 +222,8 @@ def fleet_snapshot(
             "stats": jobs_stats,
             "total": sum(
                 int(jobs_stats.get(k, 0) or 0)
-                for k in ("pending", "claimed", "done", "failed")),
+                for k in ("pending", "claimed", "done", "failed")
+            ),
         },
         "devices": devices,
         "profiles": profiles,
@@ -244,9 +254,12 @@ def prometheus_metrics(
       aios_catalog_platforms — платформы в yaml-каталоге.
     """
     snapshot = fleet_snapshot(
-        shards_db=shards_db, profiles_db=profiles_db,
-        devices_db=devices_db, catalog_dir=catalog_dir,
-        data_dir=data_dir)
+        shards_db=shards_db,
+        profiles_db=profiles_db,
+        devices_db=devices_db,
+        catalog_dir=catalog_dir,
+        data_dir=data_dir,
+    )
     stats = snapshot["jobs"]["stats"]
     jobs: Dict[str, int] = {
         "pending": int(stats.get("pending", 0) or 0),
@@ -263,12 +276,10 @@ def prometheus_metrics(
     lines += [
         "# HELP aios_shard_job_queue_depth Pending+claimed shard jobs",
         "# TYPE aios_shard_job_queue_depth gauge",
-        f"aios_shard_job_queue_depth "
-        f"{int(stats.get('queue_depth', 0) or 0)}",
+        f"aios_shard_job_queue_depth " f"{int(stats.get('queue_depth', 0) or 0)}",
         "# HELP aios_shard_jobs_stale_claimed Claimed jobs past the TTL",
         "# TYPE aios_shard_jobs_stale_claimed gauge",
-        f"aios_shard_jobs_stale_claimed "
-        f"{int(stats.get('stale_claimed', 0) or 0)}",
+        f"aios_shard_jobs_stale_claimed " f"{int(stats.get('stale_claimed', 0) or 0)}",
         "# HELP aios_shard_hosts Healthy shard hosts with heartbeats",
         "# TYPE aios_shard_hosts gauge",
         f"aios_shard_hosts {int(snapshot['shard_hosts'])}",
@@ -292,8 +303,7 @@ def prometheus_metrics(
         "# HELP aios_profiles Registered profiles per platform",
         "# TYPE aios_profiles gauge",
     ]
-    for platform, count in sorted(
-            profiles["per_platform"].items()):
+    for platform, count in sorted(profiles["per_platform"].items()):
         lines.append(f'aios_profiles{{platform="{platform}"}} {count}')
     lines += [
         "# HELP aios_catalog_platforms Platforms in the YAML catalog",
@@ -308,10 +318,11 @@ def prometheus_metrics(
     for platform, entry in sorted(platform_db.items()):
         for key, count in sorted(entry.items()):
             if key.startswith("seen_"):
-                kind = key[len("seen_"):]
+                kind = key[len("seen_") :]
                 lines.append(
                     f'aios_seen_receipts{{platform="{platform}",'
-                    f'kind="{kind}"}} {count}')
+                    f'kind="{kind}"}} {count}'
+                )
     lines += [
         "# HELP aios_outbox_pending Guarded outbox drafts awaiting "
         "approval per platform",
@@ -320,7 +331,8 @@ def prometheus_metrics(
     for platform, entry in sorted(platform_db.items()):
         lines.append(
             f'aios_outbox_pending{{platform="{platform}"}} '
-            f'{entry.get("outbox_pending", 0)}')
+            f'{entry.get("outbox_pending", 0)}'
+        )
 
     # Extended metrics: cards collected, cycle rates, drift events (alpha.27 / H2.9)
     prod = _production_metrics()
@@ -334,7 +346,9 @@ def prometheus_metrics(
     # Also from platform_db if has cards_collected
     for platform, entry in sorted(platform_db.items()):
         if "cards_collected" in entry:
-            lines.append(f'aios_cards_collected_total{{platform="{platform}"}} {entry["cards_collected"]}')
+            lines.append(
+                f'aios_cards_collected_total{{platform="{platform}"}} {entry["cards_collected"]}'
+            )
 
     # Cycle rates
     cycle_rates = prod.get("cycle_rates", {})
@@ -371,7 +385,7 @@ def prometheus_metrics(
         ]
         for profile_key, dur in sorted(cycle_dur.items()):
             safe = profile_key.replace('"', '\\"')
-            lines.append(f'aios_cycle_duration_seconds{{profile=\"{safe}\"}} {dur}')
+            lines.append(f'aios_cycle_duration_seconds{{profile="{safe}"}} {dur}')
 
     # Production simulation GA metrics (if available)
     prod_sim = prod.get("production", {})

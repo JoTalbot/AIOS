@@ -13,7 +13,13 @@ from typing import Dict, List, Optional, Any, Tuple
 class LIFNeuron:
     """Leaky Integrate-and-Fire (LIF) Spiking Neuron model."""
 
-    def __init__(self, neuron_id: str, v_threshold: float = 1.0, v_rest: float = 0.0, tau: float = 10.0):
+    def __init__(
+        self,
+        neuron_id: str,
+        v_threshold: float = 1.0,
+        v_rest: float = 0.0,
+        tau: float = 10.0,
+    ):
         self.neuron_id = neuron_id
         self.v_threshold = v_threshold
         self.v_rest = v_rest
@@ -25,7 +31,9 @@ class LIFNeuron:
     def integrate_current(self, current: float, dt_ms: float = 1.0) -> bool:
         """Integrate input current into membrane potential with exponential leak decay."""
         decay = math.exp(-dt_ms / self.tau)
-        self.v_membrane = self.v_rest + (self.v_membrane - self.v_rest) * decay + current
+        self.v_membrane = (
+            self.v_rest + (self.v_membrane - self.v_rest) * decay + current
+        )
 
         # Check threshold spike condition
         if self.v_membrane >= self.v_threshold:
@@ -51,7 +59,9 @@ class NeuromorphicMatrixEngine:
                 if i != j:
                     self.synaptic_weights[(i, j)] = 0.25
 
-    def step_simulation(self, input_currents: Dict[int, float], dt_ms: float = 1.0) -> List[int]:
+    def step_simulation(
+        self, input_currents: Dict[int, float], dt_ms: float = 1.0
+    ) -> List[int]:
         """Simulate one discrete time step dt across all neurons, returning indices of fired neurons."""
         spiked_neurons = []
 
@@ -87,10 +97,14 @@ class NeuromorphicMatrixEngine:
                     delta_t = time.time() - pre_neuron.last_spike_time
                     if delta_t > 0 and delta_t < 0.1:
                         # Potentiation: Pre before Post -> strengthen synapse
-                        self.synaptic_weights[pair] = min(1.0, self.synaptic_weights[pair] + 0.02)
+                        self.synaptic_weights[pair] = min(
+                            1.0, self.synaptic_weights[pair] + 0.02
+                        )
                     elif delta_t < 0:
                         # Depression: Post before Pre -> weaken synapse
-                        self.synaptic_weights[pair] = max(0.01, self.synaptic_weights[pair] - 0.01)
+                        self.synaptic_weights[pair] = max(
+                            0.01, self.synaptic_weights[pair] - 0.01
+                        )
 
     def stats(self) -> Dict[str, Any]:
         total_spikes = sum(n.spike_count for n in self.neurons)
@@ -98,5 +112,7 @@ class NeuromorphicMatrixEngine:
             "matrix_size": self.size,
             "total_synapses": len(self.synaptic_weights),
             "total_spikes_fired": total_spikes,
-            "mean_synaptic_weight": round(sum(self.synaptic_weights.values()) / len(self.synaptic_weights), 4)
+            "mean_synaptic_weight": round(
+                sum(self.synaptic_weights.values()) / len(self.synaptic_weights), 4
+            ),
         }

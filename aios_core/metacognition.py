@@ -17,7 +17,7 @@ class MetaCognition:
     def self_assess(self, performance: float) -> Dict:
         return {
             "awareness": performance > 0.7,
-            "calibration": abs(performance - 0.75) < 0.2
+            "calibration": abs(performance - 0.75) < 0.2,
         }
 
     def stats(self) -> dict:

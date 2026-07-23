@@ -85,8 +85,10 @@ class ShardJobs:
                 "INSERT INTO shard_jobs (profile_key, kind, payload, enqueued_at)"
                 " VALUES (?, ?, ?, ?)",
                 (
-                    profile_key, kind,
-                    json.dumps(payload or {}, ensure_ascii=False), _now(),
+                    profile_key,
+                    kind,
+                    json.dumps(payload or {}, ensure_ascii=False),
+                    _now(),
                 ),
             )
             return int(cursor.lastrowid)
@@ -127,7 +129,8 @@ class ShardJobs:
     def pending_for(self, host: str) -> List[Dict]:
         """Pending-джобы, маршрут которых указывает на ``host``."""
         return [
-            job for job in self.list(status="pending")
+            job
+            for job in self.list(status="pending")
             if self._host_for(job["profile_key"]) == host
         ]
 
@@ -155,8 +158,10 @@ class ShardJobs:
                 "UPDATE shard_jobs SET status = ?, finished_at = ?, result = ? "
                 "WHERE id = ?",
                 (
-                    "done" if ok else "failed", _now(),
-                    json.dumps(result or {}, ensure_ascii=False), job_id,
+                    "done" if ok else "failed",
+                    _now(),
+                    json.dumps(result or {}, ensure_ascii=False),
+                    job_id,
                 ),
             )
             return bool(cursor.rowcount)
@@ -182,6 +187,7 @@ class ShardJobs:
         следующий claim переоценит маршрут.
         """
         from datetime import datetime as _dt
+
         now_dt = _dt.fromisoformat(now) if now else _dt.now(timezone.utc)
         moved: List[Dict] = []
         with self._lock, self._conn:
@@ -203,10 +209,10 @@ class ShardJobs:
                 moved.append(job)
         return moved
 
-    def stats(self, stale_after_s: float = 600.0,
-              now: Optional[str] = None) -> Dict:
+    def stats(self, stale_after_s: float = 600.0, now: Optional[str] = None) -> Dict:
         """Глубина очереди и счётчики по статусам (+зависшие claim'ы)."""
         from datetime import datetime as _dt
+
         now_dt = _dt.fromisoformat(now) if now else _dt.now(timezone.utc)
         counts: Dict[str, int] = {}
         with self._lock:
@@ -220,12 +226,14 @@ class ShardJobs:
                     "SELECT host, seen_at FROM shard_heartbeats"
                 ).fetchall()
             }
+
         def _age(ts: str) -> float:
             return (now_dt - _dt.fromisoformat(ts)).total_seconds()
+
         stale = sum(
-            1 for job in self.list(status="claimed")
-            if job.get("claimed_at")
-            and _age(job["claimed_at"]) >= stale_after_s
+            1
+            for job in self.list(status="claimed")
+            if job.get("claimed_at") and _age(job["claimed_at"]) >= stale_after_s
         )
         return {
             "pending": counts.get("pending", 0),
@@ -271,22 +279,37 @@ class ShardJobWorker:
         handler = self.handlers.get(job["kind"])
         if handler is None:
             self.jobs.complete(
-                job["id"], ok=False,
+                job["id"],
+                ok=False,
                 result={"error": f"unknown job kind: {job['kind']}"},
             )
-            return {"job": job["id"], "kind": job["kind"], "status": "failed",
-                    "error": "unknown job kind"}
+            return {
+                "job": job["id"],
+                "kind": job["kind"],
+                "status": "failed",
+                "error": "unknown job kind",
+            }
         try:
             result = handler(job["profile_key"], job["payload"]) or {}
             self.jobs.complete(job["id"], ok=True, result=result)
-            return {"job": job["id"], "kind": job["kind"],
-                    "status": "done", "result": result}
+            return {
+                "job": job["id"],
+                "kind": job["kind"],
+                "status": "done",
+                "result": result,
+            }
         except Exception as exc:  # noqa: BLE001 — изолируем джобу
             self.jobs.complete(
-                job["id"], ok=False, result={"error": str(exc)[:300]},
+                job["id"],
+                ok=False,
+                result={"error": str(exc)[:300]},
             )
-            return {"job": job["id"], "kind": job["kind"],
-                    "status": "failed", "error": str(exc)[:300]}
+            return {
+                "job": job["id"],
+                "kind": job["kind"],
+                "status": "failed",
+                "error": str(exc)[:300],
+            }
 
 
 def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
@@ -301,7 +324,10 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
     def _run_cli(cmd: List[str], extra: List) -> Dict:
         args = [str(arg) for arg in (extra or [])]
         proc = subprocess.run(
-            cmd + args, capture_output=True, text=True, timeout=900,
+            cmd + args,
+            capture_output=True,
+            text=True,
+            timeout=900,
         )
         return {
             "code": proc.returncode,
@@ -320,8 +346,13 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
             )
         return _run_cli(
             [
-                "python3", cli, "instagram", "autopilot", "--login",
-                "--db", _profile_db(platform, name),
+                "python3",
+                cli,
+                "instagram",
+                "autopilot",
+                "--login",
+                "--db",
+                _profile_db(platform, name),
             ],
             payload.get("args"),
         )
@@ -334,8 +365,13 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
             )
         return _run_cli(
             [
-                "python3", cli, "instagram", "reels", "--open-tab",
-                "--db", _profile_db(platform, name),
+                "python3",
+                cli,
+                "instagram",
+                "reels",
+                "--open-tab",
+                "--db",
+                _profile_db(platform, name),
             ],
             payload.get("args"),
         )
@@ -348,8 +384,12 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
             )
         return _run_cli(
             [
-                "python3", cli, "instagram", "dm-flush",
-                "--db", _profile_db(platform, name),
+                "python3",
+                cli,
+                "instagram",
+                "dm-flush",
+                "--db",
+                _profile_db(platform, name),
             ],
             payload.get("args"),
         )
@@ -359,8 +399,14 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
         dump = str(root / "data" / f"marker-{platform}.xml")
         return _run_cli(
             [
-                "python3", cli, "platforms", "marker-check",
-                "--platform", platform, "--dump", dump,
+                "python3",
+                cli,
+                "platforms",
+                "marker-check",
+                "--platform",
+                platform,
+                "--dump",
+                dump,
             ],
             payload.get("args"),
         )

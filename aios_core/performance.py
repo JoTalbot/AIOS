@@ -29,7 +29,7 @@ class PerformanceProfiler:
                 "count": len(times),
                 "avg_ms": round(sum(times) / len(times), 2),
                 "max_ms": round(max(times), 2),
-                "min_ms": round(min(times), 2)
+                "min_ms": round(min(times), 2),
             }
         return result
 

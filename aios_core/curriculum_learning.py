@@ -11,12 +11,9 @@ class Curriculum:
         self.current_stage = 0
 
     def add_stage(self, name: str, difficulty: float, tasks: List):
-        self.stages.append({
-            "name": name,
-            "difficulty": difficulty,
-            "tasks": tasks,
-            "completed": 0
-        })
+        self.stages.append(
+            {"name": name, "difficulty": difficulty, "tasks": tasks, "completed": 0}
+        )
 
     def next_task(self) -> Any:
         if not self.stages:
@@ -33,7 +30,4 @@ class Curriculum:
                 self.current_stage += 1
 
     def stats(self) -> dict:
-        return {
-            "stages": len(self.stages),
-            "current_stage": self.current_stage
-        }
+        return {"stages": len(self.stages), "current_stage": self.current_stage}

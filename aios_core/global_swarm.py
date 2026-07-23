@@ -15,19 +15,25 @@ class ZeroKnowledgeSafetyProof:
     """Zero-Knowledge Safety Proof generator and verifier for zero-trust task delegation."""
 
     @staticmethod
-    def generate_proof(task_payload: Dict[str, Any], secret_salt: str = "aios_zk_salt") -> Dict[str, Any]:
+    def generate_proof(
+        task_payload: Dict[str, Any], secret_salt: str = "aios_zk_salt"
+    ) -> Dict[str, Any]:
         """Generate a zero-knowledge commitment proof asserting payload constitutional safety."""
         payload_str = json.dumps(task_payload, sort_keys=True)
-        commitment_hash = hashlib.sha256(f"{payload_str}:{secret_salt}".encode("utf-8")).hexdigest()
+        commitment_hash = hashlib.sha256(
+            f"{payload_str}:{secret_salt}".encode("utf-8")
+        ).hexdigest()
 
         # Simulated ZK circuit verification proof
-        proof_signature = hashlib.sha256(f"ZK_PROOF_{commitment_hash}".encode("utf-8")).hexdigest()
+        proof_signature = hashlib.sha256(
+            f"ZK_PROOF_{commitment_hash}".encode("utf-8")
+        ).hexdigest()
 
         return {
             "commitment_hash": commitment_hash,
             "proof_signature": proof_signature,
             "asserted_rules_count": len(task_payload.keys()),
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
     @staticmethod
@@ -36,7 +42,9 @@ class ZeroKnowledgeSafetyProof:
         if proof.get("commitment_hash") != commitment_hash:
             return False
 
-        expected_sig = hashlib.sha256(f"ZK_PROOF_{commitment_hash}".encode("utf-8")).hexdigest()
+        expected_sig = hashlib.sha256(
+            f"ZK_PROOF_{commitment_hash}".encode("utf-8")
+        ).hexdigest()
         return proof.get("proof_signature") == expected_sig
 
 
@@ -59,14 +67,18 @@ class GlobalSwarmGovernance:
             "role": role,
             "registered_at": time.time(),
             "reputation_score": 1.0,
-            "active": True
+            "active": True,
         }
         return did
 
-    def create_amendment_proposal(self, proposer_did: str, title: str, description: str) -> str:
+    def create_amendment_proposal(
+        self, proposer_did: str, title: str, description: str
+    ) -> str:
         """Create a swarm-wide constitutional amendment proposal."""
         if proposer_did not in self.registered_nodes:
-            raise ValueError(f"Proposer DID '{proposer_did}' is not registered in Swarm.")
+            raise ValueError(
+                f"Proposer DID '{proposer_did}' is not registered in Swarm."
+            )
 
         proposal_id = f"prop_{hashlib.md5(f'{title}:{time.time()}'.encode('utf-8')).hexdigest()[:10]}"
         self.proposals[proposal_id] = {
@@ -76,7 +88,7 @@ class GlobalSwarmGovernance:
             "description": description,
             "votes": {},  # did -> True/False
             "status": "voting",
-            "created_at": time.time()
+            "created_at": time.time(),
         }
         return proposal_id
 
@@ -112,6 +124,8 @@ class GlobalSwarmGovernance:
         return {
             "registered_nodes_count": len(self.registered_nodes),
             "total_proposals": len(self.proposals),
-            "ratified_proposals": sum(1 for p in self.proposals.values() if p["status"] == "ratified"),
-            "primary_did": self.primary_did
+            "ratified_proposals": sum(
+                1 for p in self.proposals.values() if p["status"] == "ratified"
+            ),
+            "primary_did": self.primary_did,
         }

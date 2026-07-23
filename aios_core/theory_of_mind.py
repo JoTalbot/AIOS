@@ -9,11 +9,13 @@ class TheoryOfMind:
     def __init__(self):
         self.models: Dict[str, Dict] = {}
 
-    def model_agent(self, agent_id: str, beliefs: Dict, desires: List, intentions: List):
+    def model_agent(
+        self, agent_id: str, beliefs: Dict, desires: List, intentions: List
+    ):
         self.models[agent_id] = {
             "beliefs": beliefs,
             "desires": desires,
-            "intentions": intentions
+            "intentions": intentions,
         }
 
     def predict_action(self, agent_id: str, situation: Dict) -> str:

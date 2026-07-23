@@ -1,6 +1,6 @@
 """Scalable Oversight for AI Safety"""
 
-from typing import Dict, List, Callable
+from typing import Any, Dict, List, Callable
 
 
 class ScalableOversight:
@@ -12,7 +12,7 @@ class ScalableOversight:
             "amplification",
             "recursive_reward_modeling",
             "honest_ai",
-            "weak_to_strong_generalization"
+            "weak_to_strong_generalization",
         ]
         self.evaluations: List[Dict] = []
 
@@ -21,7 +21,7 @@ class ScalableOversight:
             "claim": claim,
             "agents": agents,
             "winner": "agent_1",
-            "confidence": 0.85
+            "confidence": 0.85,
         }
 
     def weak_to_strong(self, weak_model: Any, strong_model: Any) -> Dict:

@@ -20,10 +20,10 @@ if TYPE_CHECKING:
 
 from .storage import Database
 
-
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
+
 
 class PlanStatus(str, Enum):
     DRAFT = "draft"
@@ -44,14 +44,15 @@ class StepStatus(str, Enum):
 
 
 class EdgeCondition(str, Enum):
-    SUCCESS = "success"       # Only proceed if source completed successfully
-    COMPLETION = "completion" # Proceed if source completed (even with failure)
-    ALWAYS = "always"         # Always proceed, regardless of source outcome
+    SUCCESS = "success"  # Only proceed if source completed successfully
+    COMPLETION = "completion"  # Proceed if source completed (even with failure)
+    ALWAYS = "always"  # Always proceed, regardless of source outcome
 
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PlanStep:
@@ -103,15 +104,26 @@ class Plan:
 # Valid step types (mirrors orchestrator)
 # ---------------------------------------------------------------------------
 
-VALID_STEP_TYPES = frozenset({
-    "evaluate", "memory", "knowledge", "tool", "reason",
-    "learn", "evolve", "approve", "custom", "plan",
-})
+VALID_STEP_TYPES = frozenset(
+    {
+        "evaluate",
+        "memory",
+        "knowledge",
+        "tool",
+        "reason",
+        "learn",
+        "evolve",
+        "approve",
+        "custom",
+        "plan",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Planner
 # ---------------------------------------------------------------------------
+
 
 class Planner:
     """DAG-based task planner with parallel execution support.
@@ -154,9 +166,7 @@ class Planner:
                 metadata    TEXT
             )
         """)
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_plans_status ON plans(status)"
-        )
+        self.db.execute("CREATE INDEX IF NOT EXISTS idx_plans_status ON plans(status)")
         self.db.execute(
             "CREATE INDEX IF NOT EXISTS idx_plans_created ON plans(created_at)"
         )
@@ -248,9 +258,7 @@ class Planner:
             return None
         return self._row_to_plan(row)
 
-    def list_plans(
-        self, status: Optional[str] = None, limit: int = 100
-    ) -> list[dict]:
+    def list_plans(self, status: Optional[str] = None, limit: int = 100) -> list[dict]:
         """List plans, optionally filtered by status.
 
         Returns a list of summary dicts (not full Plan objects).
@@ -276,8 +284,12 @@ class Planner:
                 "description": r["description"],
                 "goal": r["goal"],
                 "status": r["status"],
-                "step_count": len(Database.from_json(r["steps_data"])) if r["steps_data"] else 0,
-                "edge_count": len(Database.from_json(r["edges_data"])) if r["edges_data"] else 0,
+                "step_count": (
+                    len(Database.from_json(r["steps_data"])) if r["steps_data"] else 0
+                ),
+                "edge_count": (
+                    len(Database.from_json(r["edges_data"])) if r["edges_data"] else 0
+                ),
                 "created_at": r["created_at"],
                 "updated_at": r["updated_at"],
             }
@@ -330,15 +342,16 @@ class Planner:
         for dep_id in step.dependencies:
             # Avoid duplicate edges
             already = any(
-                e.source_id == dep_id and e.target_id == step.id
-                for e in plan.edges
+                e.source_id == dep_id and e.target_id == step.id for e in plan.edges
             )
             if not already:
-                plan.edges.append(PlanEdge(
-                    source_id=dep_id,
-                    target_id=step.id,
-                    condition="success",
-                ))
+                plan.edges.append(
+                    PlanEdge(
+                        source_id=dep_id,
+                        target_id=step.id,
+                        condition="success",
+                    )
+                )
 
         return step
 
@@ -471,9 +484,7 @@ class Planner:
                     break
 
         if cycle_found is not None:
-            readable = " -> ".join(
-                self._step_label(plan, sid) for sid in cycle_found
-            )
+            readable = " -> ".join(self._step_label(plan, sid) for sid in cycle_found)
             errors.append(f"Circular dependency detected: {readable}")
 
         # --- Disconnected steps (no path from any root) ---
@@ -536,9 +547,7 @@ class Planner:
 
         return self._compute_layers_kahn(in_degree, adj)
 
-    def estimate_duration(
-        self, plan: Plan, avg_step_ms: int = 100
-    ) -> dict:
+    def estimate_duration(self, plan: Plan, avg_step_ms: int = 100) -> dict:
         """Estimate total execution time based on parallel layers.
 
         Args:
@@ -569,12 +578,8 @@ class Planner:
 
         Only considers steps that are currently PENDING or READY.
         """
-        completed_ids = {
-            s.id for s in plan.steps if s.status == StepStatus.COMPLETED
-        }
-        failed_ids = {
-            s.id for s in plan.steps if s.status == StepStatus.FAILED
-        }
+        completed_ids = {s.id for s in plan.steps if s.status == StepStatus.COMPLETED}
+        failed_ids = {s.id for s in plan.steps if s.status == StepStatus.FAILED}
 
         ready: list[PlanStep] = []
         for step in plan.steps:
@@ -720,7 +725,11 @@ class Planner:
                 if self._find_step(plan, sid) is not None
             }
             # A layer is "current" if it has running or ready steps
-            if layer_statuses & {StepStatus.RUNNING, StepStatus.READY, StepStatus.PENDING}:
+            if layer_statuses & {
+                StepStatus.RUNNING,
+                StepStatus.READY,
+                StepStatus.PENDING,
+            }:
                 current_layer = i
                 break
 
@@ -769,7 +778,9 @@ class Planner:
             return {"score": 0.0, "reason": "empty plan"}
 
         layers = self.get_execution_layers(plan)
-        parallelism = len(layers) / max(1, len(plan.steps))  # lower is better parallelism
+        parallelism = len(layers) / max(
+            1, len(plan.steps)
+        )  # lower is better parallelism
 
         # Dependency density
         dep_count = sum(len(s.dependencies) for s in plan.steps)
@@ -781,10 +792,10 @@ class Planner:
 
         # Weighted score
         score = round(
-            (1 - parallelism) * 0.4 +
-            (1 - min(dep_density, 1.0)) * 0.35 +
-            diversity * 0.25,
-            3
+            (1 - parallelism) * 0.4
+            + (1 - min(dep_density, 1.0)) * 0.35
+            + diversity * 0.25,
+            3,
         )
 
         return {
@@ -796,10 +807,7 @@ class Planner:
         }
 
     def generate_multi_agent_plan(
-        self,
-        goal: str,
-        agents: list[str],
-        max_steps_per_agent: int = 4
+        self, goal: str, agents: list[str], max_steps_per_agent: int = 4
     ) -> Plan:
         """Generate a simple multi-agent plan skeleton.
 
@@ -816,7 +824,7 @@ class Planner:
             plan,
             "plan",
             params={"goal": goal, "mode": "coordination"},
-            name="coordination"
+            name="coordination",
         )
 
         agent_steps = []
@@ -860,9 +868,7 @@ class Planner:
             return f"{step.name} ({step_id[:8]})"
         return step_id[:8]
 
-    def _get_edge_condition(
-        self, plan: Plan, source_id: str, target_id: str
-    ) -> str:
+    def _get_edge_condition(self, plan: Plan, source_id: str, target_id: str) -> str:
         """Get the edge condition between source and target, default 'success'."""
         for e in plan.edges:
             if e.source_id == source_id and e.target_id == target_id:
@@ -883,9 +889,7 @@ class Planner:
                 if neighbor not in visited:
                     stack.append(neighbor)
 
-    def _has_cycle(
-        self, adj: dict[str, list[str]], nodes: set[str]
-    ) -> bool:
+    def _has_cycle(self, adj: dict[str, list[str]], nodes: set[str]) -> bool:
         """Return *True* if the graph contains a cycle (DFS 3-coloring)."""
         WHITE, GRAY, BLACK = 0, 1, 2
         color: dict[str, int] = {n: WHITE for n in nodes}
@@ -929,12 +933,8 @@ class Planner:
 
     def _refresh_dependent_statuses(self, plan: Plan) -> None:
         """Update PENDING -> READY for steps whose deps are all completed."""
-        completed_ids = {
-            s.id for s in plan.steps if s.status == StepStatus.COMPLETED
-        }
-        failed_ids = {
-            s.id for s in plan.steps if s.status == StepStatus.FAILED
-        }
+        completed_ids = {s.id for s in plan.steps if s.status == StepStatus.COMPLETED}
+        failed_ids = {s.id for s in plan.steps if s.status == StepStatus.FAILED}
 
         for step in plan.steps:
             if step.status != StepStatus.PENDING:
@@ -1006,7 +1006,9 @@ class Planner:
                 "name": s.name,
                 "step_type": s.step_type,
                 "params": s.params,
-                "status": s.status.value if isinstance(s.status, StepStatus) else s.status,
+                "status": (
+                    s.status.value if isinstance(s.status, StepStatus) else s.status
+                ),
                 "dependencies": s.dependencies,
             }
             if s.result is not None:

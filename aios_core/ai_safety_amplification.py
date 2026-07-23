@@ -15,6 +15,7 @@ class IteratedAmplification:
             sub_queries = [f"sub_{i}_{query}" for i in range(level)]
             results = [base_agent(q) for q in sub_queries]
             return f"Amplified result from {level} levels"
+
         return amplified_agent
 
     def stats(self) -> dict:

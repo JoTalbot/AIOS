@@ -17,7 +17,12 @@ from typing import Dict, List, Optional, Any
 class BackupManager:
     """Production Hot Backup and Recovery Manager."""
 
-    def __init__(self, db_path: str = "aios.sqlite", backup_dir: str = "backups", max_backups: int = 10):
+    def __init__(
+        self,
+        db_path: str = "aios.sqlite",
+        backup_dir: str = "backups",
+        max_backups: int = 10,
+    ):
         self.db_path = db_path
         self.backup_dir = backup_dir
         self.max_backups = max_backups
@@ -66,7 +71,7 @@ class BackupManager:
             "size_bytes": os.path.getsize(backup_file_path),
             "sha256": sha256_hash,
             "created_at": time.time(),
-            "timestamp_str": timestamp
+            "timestamp_str": timestamp,
         }
 
         # Save metadata JSON manifest
@@ -95,7 +100,9 @@ class BackupManager:
                 expected_hash = manifest.get("sha256")
                 actual_hash = self.compute_sha256(target_path)
                 if expected_hash and expected_hash != actual_hash:
-                    raise ValueError(f"Backup Integrity Check Failed! Expected {expected_hash}, got {actual_hash}")
+                    raise ValueError(
+                        f"Backup Integrity Check Failed! Expected {expected_hash}, got {actual_hash}"
+                    )
             except Exception:
                 return False
 
@@ -113,7 +120,11 @@ class BackupManager:
             if fname.endswith(".sqlite"):
                 full_path = os.path.join(self.backup_dir, fname)
                 manifest_path = f"{full_path}.json"
-                meta = {"backup_id": fname, "path": full_path, "size_bytes": os.path.getsize(full_path)}
+                meta = {
+                    "backup_id": fname,
+                    "path": full_path,
+                    "size_bytes": os.path.getsize(full_path),
+                }
                 if os.path.exists(manifest_path):
                     with open(manifest_path, "r", encoding="utf-8") as mf:
                         meta.update(json.load(mf))
@@ -139,5 +150,5 @@ class BackupManager:
             "total_backups": len(backups),
             "max_backups_retention": self.max_backups,
             "backup_directory": self.backup_dir,
-            "db_path": self.db_path
+            "db_path": self.db_path,
         }

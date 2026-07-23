@@ -12,7 +12,7 @@ class QuantumFeatureMap:
 
     def encode(self, classical_data: List[float]) -> List[complex]:
         # Simplified quantum encoding
-        return [complex(d, random.gauss(0, 0.1)) for d in classical_data[:self.qubits]]
+        return [complex(d, random.gauss(0, 0.1)) for d in classical_data[: self.qubits]]
 
     def kernel(self, x1: List[float], x2: List[float]) -> float:
         return sum(a * b for a, b in zip(x1, x2)) / len(x1)

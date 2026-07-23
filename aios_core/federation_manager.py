@@ -28,6 +28,7 @@ class NodeStatus(str, Enum):
 @dataclass
 class FederatedNode:
     """Represents a remote AIOS instance in the federation."""
+
     node_id: str
     name: str
     endpoint: str  # e.g. http://node2.aios.local:8000
@@ -42,7 +43,9 @@ class FederatedNode:
 class FederationManager:
     """Manages a network of federated AIOS nodes."""
 
-    def __init__(self, db: Optional[Database] = None, local_node_id: Optional[str] = None):
+    def __init__(
+        self, db: Optional[Database] = None, local_node_id: Optional[str] = None
+    ):
         self.db = db
         self.local_node_id = local_node_id or f"node_{uuid.uuid4().hex[:8]}"
         self._nodes: Dict[str, FederatedNode] = {}
@@ -110,6 +113,7 @@ class FederationManager:
         if self.db is None:
             return
         import json
+
         self.db.execute(
             """INSERT OR REPLACE INTO federation_nodes
                (node_id, name, endpoint, status, last_seen, capabilities, version, metadata, trust_score)
@@ -179,10 +183,7 @@ class FederationManager:
         results = []
         for node in online:
             if node.node_id != self.local_node_id:
-                results.append({
-                    "node_id": node.node_id,
-                    "status": "sent"
-                })
+                results.append({"node_id": node.node_id, "status": "sent"})
         return {
             "success": True,
             "recipients": len(results),
@@ -211,5 +212,7 @@ class FederationManager:
             "local_node": self.local_node_id,
             "total_nodes": len(self._nodes),
             "by_status": by_status,
-            "online_nodes": len([n for n in self._nodes.values() if n.status == NodeStatus.ONLINE]),
+            "online_nodes": len(
+                [n for n in self._nodes.values() if n.status == NodeStatus.ONLINE]
+            ),
         }

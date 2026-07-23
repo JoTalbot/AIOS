@@ -11,12 +11,14 @@ class WorldModel:
         self.observations: List[Dict] = []
 
     def observe(self, state: Dict, action: Any, next_state: Dict, reward: float):
-        self.observations.append({
-            "state": state,
-            "action": action,
-            "next_state": next_state,
-            "reward": reward
-        })
+        self.observations.append(
+            {
+                "state": state,
+                "action": action,
+                "next_state": next_state,
+                "reward": reward,
+            }
+        )
 
     def predict(self, state: Dict, action: Any) -> Dict:
         # Simple linear dynamics

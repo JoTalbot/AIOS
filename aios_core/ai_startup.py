@@ -28,5 +28,5 @@ class AIStartup:
             "name": self.name,
             "team_size": len(self.team),
             "funding": self.funding,
-            "products": len(self.products)
+            "products": len(self.products),
         }

@@ -201,9 +201,7 @@ class DevicePool:
         """
         served: List[Dict] = []
         for entry in self.waitlist("waiting"):
-            record = self.lease(
-                entry["profile_key"], profile_store=profile_store
-            )
+            record = self.lease(entry["profile_key"], profile_store=profile_store)
             if record is None:
                 continue
             with self._lock, self._conn:
@@ -233,9 +231,7 @@ class DevicePool:
                     "SELECT COUNT(*) AS c FROM devices"
                 ).fetchone()["c"]
                 if total >= max_devices:
-                    raise ValueError(
-                        f"pool quota reached: max_devices={max_devices}"
-                    )
+                    raise ValueError(f"pool quota reached: max_devices={max_devices}")
             self._conn.execute(
                 """
                 INSERT INTO devices
@@ -314,8 +310,10 @@ class DevicePool:
                     return None
                 if row["status"] != STATUS_BUSY:
                     busy_cap = self.limit(f"max_busy:{platform}")
-                    if (busy_cap is not None
-                            and self._busy_platform(platform) >= busy_cap):
+                    if (
+                        busy_cap is not None
+                        and self._busy_platform(platform) >= busy_cap
+                    ):
                         return None
                 chosen = row["serial"]
             else:
@@ -330,9 +328,7 @@ class DevicePool:
                         "WHERE serial = ?",
                         (now, now, held["serial"]),
                     )
-                    self._sync_profile_store(
-                        held["serial"], profile_key, profile_store
-                    )
+                    self._sync_profile_store(held["serial"], profile_key, profile_store)
                     return self.get(held["serial"])
                 busy_cap = self.limit(f"max_busy:{platform}")
                 if busy_cap is not None and self._busy_platform(platform) >= busy_cap:
@@ -370,8 +366,7 @@ class DevicePool:
             if row is None:
                 return None
             self._conn.execute(
-                "UPDATE devices SET status = ?, profile_key = NULL "
-                "WHERE serial = ?",
+                "UPDATE devices SET status = ?, profile_key = NULL " "WHERE serial = ?",
                 (STATUS_IDLE, row["serial"]),
             )
         serial = row["serial"]

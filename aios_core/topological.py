@@ -14,7 +14,7 @@ class TopologicalAnalyzer:
         return {
             "betti_0": len(point_cloud),
             "betti_1": max(0, len(point_cloud) // 3),
-            "betti_2": 0
+            "betti_2": 0,
         }
 
     def extract_features(self, point_cloud: List[List[float]]) -> List[float]:

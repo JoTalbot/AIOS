@@ -27,10 +27,7 @@ class MetricsExporter:
         return "\n".join(lines)
 
     def stats(self) -> dict:
-        return {
-            "counters": len(self.counters),
-            "gauges": len(self.gauges)
-        }
+        return {"counters": len(self.counters), "gauges": len(self.gauges)}
 
 
 metrics_exporter = MetricsExporter()

@@ -21,18 +21,47 @@ class SubstrateConvergenceEngine:
 
     def __init__(self):
         self.substrates: Dict[str, Dict[str, Any]] = {
-            SubstrateType.SILICON: {"type": SubstrateType.SILICON, "latency_base_ms": 5.0, "efficiency_gflops_per_watt": 100.0, "active": True},
-            SubstrateType.PHOTONIC: {"type": SubstrateType.PHOTONIC, "latency_base_ms": 0.05, "efficiency_gflops_per_watt": 10000.0, "active": True},
-            SubstrateType.NEUROMORPHIC: {"type": SubstrateType.NEUROMORPHIC, "latency_base_ms": 0.20, "efficiency_gflops_per_watt": 5000.0, "active": True},
-            SubstrateType.QUANTUM: {"type": SubstrateType.QUANTUM, "latency_base_ms": 1.0, "efficiency_gflops_per_watt": 2000.0, "active": True},
-            SubstrateType.BIO_COMPUTE: {"type": SubstrateType.BIO_COMPUTE, "latency_base_ms": 50.0, "efficiency_gflops_per_watt": 50000.0, "active": True}
+            SubstrateType.SILICON: {
+                "type": SubstrateType.SILICON,
+                "latency_base_ms": 5.0,
+                "efficiency_gflops_per_watt": 100.0,
+                "active": True,
+            },
+            SubstrateType.PHOTONIC: {
+                "type": SubstrateType.PHOTONIC,
+                "latency_base_ms": 0.05,
+                "efficiency_gflops_per_watt": 10000.0,
+                "active": True,
+            },
+            SubstrateType.NEUROMORPHIC: {
+                "type": SubstrateType.NEUROMORPHIC,
+                "latency_base_ms": 0.20,
+                "efficiency_gflops_per_watt": 5000.0,
+                "active": True,
+            },
+            SubstrateType.QUANTUM: {
+                "type": SubstrateType.QUANTUM,
+                "latency_base_ms": 1.0,
+                "efficiency_gflops_per_watt": 2000.0,
+                "active": True,
+            },
+            SubstrateType.BIO_COMPUTE: {
+                "type": SubstrateType.BIO_COMPUTE,
+                "latency_base_ms": 50.0,
+                "efficiency_gflops_per_watt": 50000.0,
+                "active": True,
+            },
         }
         self.dispatch_history: List[Dict[str, Any]] = []
 
     def select_optimal_substrate(self, task_requirements: Dict[str, Any]) -> str:
         """Select compute substrate optimizing energy efficiency and execution constraints."""
         req_type = task_requirements.get("preferred_type")
-        if req_type and req_type in self.substrates and self.substrates[req_type]["active"]:
+        if (
+            req_type
+            and req_type in self.substrates
+            and self.substrates[req_type]["active"]
+        ):
             return req_type
 
         # Choose highest efficiency active substrate
@@ -52,7 +81,7 @@ class SubstrateConvergenceEngine:
             "estimated_latency_ms": sub_info["latency_base_ms"],
             "efficiency_gflops_per_watt": sub_info["efficiency_gflops_per_watt"],
             "execution_time_ms": round((time.time() - start_time) * 1000.0, 3),
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
         self.dispatch_history.append(dispatch_record)
@@ -63,7 +92,9 @@ class SubstrateConvergenceEngine:
             "registered_substrates": len(self.substrates),
             "total_dispatches": len(self.dispatch_history),
             "substrate_counts": {
-                st: sum(1 for d in self.dispatch_history if d["selected_substrate"] == st)
+                st: sum(
+                    1 for d in self.dispatch_history if d["selected_substrate"] == st
+                )
                 for st in self.substrates
-            }
+            },
         }

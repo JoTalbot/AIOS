@@ -46,10 +46,19 @@ def onboard_package(
          hints_card_markers, parser_codegen, verified_cards}.
     """
     report = bootup_platform(
-        apk_path=apk, name=name, package=package,
-        project_root=project_root, fetch=fetch, apks_dir=apks_dir,
-        dump_path=dump_path, query=query, serial=serial, pool=pool,
-        driver=driver, runner=runner, apk_runner=apk_runner,
+        apk_path=apk,
+        name=name,
+        package=package,
+        project_root=project_root,
+        fetch=fetch,
+        apks_dir=apks_dir,
+        dump_path=dump_path,
+        query=query,
+        serial=serial,
+        pool=pool,
+        driver=driver,
+        runner=runner,
+        apk_runner=apk_runner,
         dry_run=dry_run,
     )
     platform = report["platform"]
@@ -72,14 +81,14 @@ def onboard_package(
                 "# калибровка: получить search-дамп с устройства и "
                 "повторить: aios onboard {apk} --dump dump.xml"
             )
-        next_commands.append(
-            f"aios platforms doctor --platform {platform or '<name>'}"
-        )
+        next_commands.append(f"aios platforms doctor --platform {platform or '<name>'}")
     else:
-        next_commands.extend([
-            f"aios platforms autowatch --platform {platform} --once",
-            f"aios platforms doctor --platform {platform}",
-        ])
+        next_commands.extend(
+            [
+                f"aios platforms autowatch --platform {platform} --once",
+                f"aios platforms doctor --platform {platform}",
+            ]
+        )
     return {
         "platform": platform,
         "package": report.get("android_package"),

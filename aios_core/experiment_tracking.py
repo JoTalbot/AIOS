@@ -16,7 +16,7 @@ class ExperimentTracker:
             "name": name,
             "params": params,
             "metrics": {},
-            "status": "running"
+            "status": "running",
         }
         return exp_id
 

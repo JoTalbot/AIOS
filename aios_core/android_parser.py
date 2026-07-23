@@ -1,4 +1,5 @@
 """AIOS Android UIAutomator Parser (M1) — focused submodule."""
+
 from __future__ import annotations
 
 import re
@@ -26,7 +27,11 @@ class UIElement:
     def matches_text(self, text: str, partial: bool = True) -> bool:
         if not text:
             return False
-        return text.lower() in self.text.lower() if partial else text.lower() == self.text.lower()
+        return (
+            text.lower() in self.text.lower()
+            if partial
+            else text.lower() == self.text.lower()
+        )
 
     def matches_resource(self, resource_id: str) -> bool:
         return self.resource_id == resource_id or self.resource_id.endswith(resource_id)
@@ -87,7 +92,10 @@ class UIAutomatorParser:
         if self.root is None:
             return result
         for node in self.root.iter("node"):
-            if node.attrib.get("clickable") == "true" and node.attrib.get("enabled") == "true":
+            if (
+                node.attrib.get("clickable") == "true"
+                and node.attrib.get("enabled") == "true"
+            ):
                 result.append(self._to_element(node))
         return result
 
@@ -131,7 +139,15 @@ class UIAutomatorParser:
                             elif "location" in rid_c.lower() or "city" in rid_c.lower():
                                 location = ctext
                     if title:
-                        results.append(SearchResult(f"result_{len(results)}", title, price, location, elem.bounds))
+                        results.append(
+                            SearchResult(
+                                f"result_{len(results)}",
+                                title,
+                                price,
+                                location,
+                                elem.bounds,
+                            )
+                        )
                 break
         return results
 
@@ -160,7 +176,11 @@ class UIAutomatorParser:
     def _nodes_by_resource_id(self, resource_id: str):
         if self.root is None:
             return []
-        return [node for node in self.root.iter("node") if resource_id in node.attrib.get("resource-id", "")]
+        return [
+            node
+            for node in self.root.iter("node")
+            if resource_id in node.attrib.get("resource-id", "")
+        ]
 
     def _to_element(self, node) -> UIElement:
         bounds = self._parse_bounds(node.attrib.get("bounds", "[0,0][0,0]"))
@@ -178,7 +198,12 @@ class UIAutomatorParser:
     def _parse_bounds(self, bounds_str: str) -> Tuple[int, int, int, int]:
         match = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds_str)
         if match:
-            return (int(match.group(1)), int(match.group(2)), int(match.group(3)), int(match.group(4)))
+            return (
+                int(match.group(1)),
+                int(match.group(2)),
+                int(match.group(3)),
+                int(match.group(4)),
+            )
         return (0, 0, 0, 0)
 
     def _is_child_of(self, child_node, parent_elem: UIElement) -> bool:

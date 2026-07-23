@@ -47,7 +47,8 @@ class MLPlannerScorer:
 
         return {
             "parallelism": len(layers) / max(1, total_steps),
-            "avg_dependencies": sum(len(s.dependencies) for s in plan.steps) / max(1, total_steps),
+            "avg_dependencies": sum(len(s.dependencies) for s in plan.steps)
+            / max(1, total_steps),
             "step_diversity": len({s.step_type for s in plan.steps}) / 10.0,
             "has_evolution": any(s.step_type == "evolve" for s in plan.steps),
             "has_memory": any(s.step_type == "memory" for s in plan.steps),
@@ -58,11 +59,11 @@ class MLPlannerScorer:
         """Simulate ML prediction (will be replaced with real model)."""
         # Simple linear combination as placeholder
         score = (
-            (1 - features["parallelism"]) * 0.25 +
-            (1 - min(features["avg_dependencies"], 1.0)) * 0.20 +
-            features["step_diversity"] * 0.15 +
-            (0.1 if features["has_evolution"] else 0) +
-            (0.05 if features["has_memory"] else 0)
+            (1 - features["parallelism"]) * 0.25
+            + (1 - min(features["avg_dependencies"], 1.0)) * 0.20
+            + features["step_diversity"] * 0.15
+            + (0.1 if features["has_evolution"] else 0)
+            + (0.05 if features["has_memory"] else 0)
         )
         return max(0.6, min(1.4, score + 0.8))
 

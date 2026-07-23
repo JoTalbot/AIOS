@@ -23,6 +23,7 @@ from .policy_loader import PolicyLoader
 
 class DecisionOutcome(Enum):
     """Possible outcomes of a constitutional evaluation."""
+
     ALLOW = "ALLOW"
     DENY = "DENY"
     REVIEW = "REVIEW"
@@ -31,6 +32,7 @@ class DecisionOutcome(Enum):
 @dataclass
 class EvaluationContext:
     """Context for a single action evaluation."""
+
     action: dict
     evaluation_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     timestamp: str = field(
@@ -46,6 +48,7 @@ class EvaluationContext:
 @dataclass
 class Decision:
     """Result of a constitutional evaluation."""
+
     evaluation_id: str
     outcome: DecisionOutcome
     reason: str
@@ -175,15 +178,19 @@ class ConstitutionEngine:
                 reason="restricted_action",
                 details=restricted["reason"],
                 constitution_version=self.version,
-                violations=[{
-                    "type": "restricted_action",
-                    "article": restricted["article"],
-                    "reason": restricted["reason"],
-                }],
-                policy_actions=[{
-                    "escalation": escalation,
-                    "action": self.policies.get_threat_action("critical"),
-                }],
+                violations=[
+                    {
+                        "type": "restricted_action",
+                        "article": restricted["article"],
+                        "reason": restricted["reason"],
+                    }
+                ],
+                policy_actions=[
+                    {
+                        "escalation": escalation,
+                        "action": self.policies.get_threat_action("critical"),
+                    }
+                ],
                 matched_articles=[restricted["article"]],
             )
             self.decisions.append(decision)
@@ -191,9 +198,7 @@ class ConstitutionEngine:
 
         # --- Phase 3: Constitution MUST NOT check ---
         must_not_hits = self.constitution.check_action(action)
-        prohibition_hits = [
-            h for h in must_not_hits if h["type"] == "prohibition"
-        ]
+        prohibition_hits = [h for h in must_not_hits if h["type"] == "prohibition"]
 
         # --- Phase 4: Policy-based checks ---
         policy_violations = self._check_policies(action, ctx)
@@ -209,10 +214,7 @@ class ConstitutionEngine:
 
         # Combine all violations and requirements
         all_violations = (
-            prohibition_hits
-            + policy_violations
-            + principle_violations
-            + ctx.violations
+            prohibition_hits + policy_violations + principle_violations + ctx.violations
         )
         all_requirements = (
             [h for h in must_not_hits if h["type"] == "requirement"]
@@ -232,16 +234,12 @@ class ConstitutionEngine:
         )
 
         # Gather matched articles and policies
-        matched_articles = list({
-            v.get("article", "")
-            for v in all_violations
-            if v.get("article")
-        })
-        matched_policies = list({
-            v.get("policy", "")
-            for v in all_violations
-            if v.get("policy")
-        })
+        matched_articles = list(
+            {v.get("article", "") for v in all_violations if v.get("article")}
+        )
+        matched_policies = list(
+            {v.get("policy", "") for v in all_violations if v.get("policy")}
+        )
 
         decision = Decision(
             evaluation_id=ctx.evaluation_id,
@@ -251,11 +249,13 @@ class ConstitutionEngine:
             constitution_version=self.version,
             violations=all_violations,
             requirements=all_requirements,
-            policy_actions=[{
-                "threat_level": risk_level,
-                "action": threat_action,
-                "escalation": threat_escalation,
-            }],
+            policy_actions=[
+                {
+                    "threat_level": risk_level,
+                    "action": threat_action,
+                    "escalation": threat_escalation,
+                }
+            ],
             matched_articles=matched_articles,
             matched_policies=matched_policies,
         )
@@ -263,9 +263,7 @@ class ConstitutionEngine:
         self.decisions.append(decision)
         return self._decision_to_dict(decision)
 
-    def _check_policies(
-        self, action: dict, ctx: EvaluationContext
-    ) -> list[dict]:
+    def _check_policies(self, action: dict, ctx: EvaluationContext) -> list[dict]:
         """Check action against YAML policy rules."""
         violations = []
         risk = action.get("risk", "medium").lower()
@@ -274,45 +272,60 @@ class ConstitutionEngine:
         sec = self.policies.get_security_policy()
         if sec:
             # Unknown access blocked rule
-            if (self.policies.is_rule_enabled("security_policy", "unknown_access_blocked")
-                    and action.get("agent_id") == "unknown"):
-                violations.append({
-                    "type": "policy_violation",
-                    "policy": "security_policy",
-                    "rule": "unknown_access_blocked",
-                    "reason": "Unknown agents cannot be granted access",
-                })
+            if (
+                self.policies.is_rule_enabled(
+                    "security_policy", "unknown_access_blocked"
+                )
+                and action.get("agent_id") == "unknown"
+            ):
+                violations.append(
+                    {
+                        "type": "policy_violation",
+                        "policy": "security_policy",
+                        "rule": "unknown_access_blocked",
+                        "reason": "Unknown agents cannot be granted access",
+                    }
+                )
 
             # Least privilege
-            if (self.policies.is_rule_enabled("security_policy", "least_privilege")
-                    and action.get("authority") == "unlimited"):
-                violations.append({
-                    "type": "policy_violation",
-                    "policy": "security_policy",
-                    "rule": "least_privilege",
-                    "reason": "Unlimited authority violates least privilege principle",
-                })
+            if (
+                self.policies.is_rule_enabled("security_policy", "least_privilege")
+                and action.get("authority") == "unlimited"
+            ):
+                violations.append(
+                    {
+                        "type": "policy_violation",
+                        "policy": "security_policy",
+                        "rule": "least_privilege",
+                        "reason": "Unlimited authority violates least privilege principle",
+                    }
+                )
 
             # Audit logging required
-            if (self.policies.is_requirement_met("security_policy", "audit_logging")
-                    and not action.get("audit_log")):
-                violations.append({
-                    "type": "policy_violation",
-                    "policy": "security_policy",
-                    "rule": "audit_logging",
-                    "reason": "Security policy requires audit logging",
-                })
+            if self.policies.is_requirement_met(
+                "security_policy", "audit_logging"
+            ) and not action.get("audit_log"):
+                violations.append(
+                    {
+                        "type": "policy_violation",
+                        "policy": "security_policy",
+                        "rule": "audit_logging",
+                        "reason": "Security policy requires audit logging",
+                    }
+                )
 
             # Risk escalation to REVIEW for critical
             if risk == "critical":
                 threat = sec.threat_levels.get("critical")
                 if threat and threat.escalation == "human_review":
-                    violations.append({
-                        "type": "policy_escalation",
-                        "policy": "security_policy",
-                        "escalation": "human_review",
-                        "reason": "Critical risk requires human review",
-                    })
+                    violations.append(
+                        {
+                            "type": "policy_escalation",
+                            "policy": "security_policy",
+                            "escalation": "human_review",
+                            "reason": "Critical risk requires human review",
+                        }
+                    )
 
         # Evolution policy checks
         if action.get("action_type", "").startswith("evolution"):
@@ -322,40 +335,44 @@ class ConstitutionEngine:
                 for restriction_name, restriction_value in restrictions.items():
                     if restriction_value in ("prohibited", "blocked"):
                         if restriction_name in str(action.get("action_type", "")):
-                            violations.append({
-                                "type": "policy_violation",
-                                "policy": "evolution_policy",
-                                "rule": restriction_name,
-                                "reason": f"Evolution restriction: {restriction_name} is {restriction_value}",
-                            })
+                            violations.append(
+                                {
+                                    "type": "policy_violation",
+                                    "policy": "evolution_policy",
+                                    "rule": restriction_name,
+                                    "reason": f"Evolution restriction: {restriction_name} is {restriction_value}",
+                                }
+                            )
 
                 # Constitutional validation required
                 if self.policies.is_requirement_met(
                     "evolution_policy", "constitutional_validation"
                 ):
                     if not action.get("constitutional_check"):
-                        violations.append({
-                            "type": "policy_violation",
-                            "policy": "evolution_policy",
-                            "rule": "constitutional_validation",
-                            "reason": "Evolution actions require constitutional validation",
-                        })
+                        violations.append(
+                            {
+                                "type": "policy_violation",
+                                "policy": "evolution_policy",
+                                "rule": "constitutional_validation",
+                                "reason": "Evolution actions require constitutional validation",
+                            }
+                        )
 
         # Federation policy checks
-        if action.get("action_type", "") in (
-            "federate", "sync", "state_exchange"
-        ):
+        if action.get("action_type", "") in ("federate", "sync", "state_exchange"):
             fed = self.policies.get_federation_policy()
             if fed:
                 if self.policies.is_rule_enabled(
                     "federation_policy", "verified_nodes_only"
                 ) and not action.get("node_verified"):
-                    violations.append({
-                        "type": "policy_violation",
-                        "policy": "federation_policy",
-                        "rule": "verified_nodes_only",
-                        "reason": "Federation requires verified nodes",
-                    })
+                    violations.append(
+                        {
+                            "type": "policy_violation",
+                            "policy": "federation_policy",
+                            "rule": "verified_nodes_only",
+                            "reason": "Federation requires verified nodes",
+                        }
+                    )
 
         return violations
 
@@ -371,21 +388,28 @@ class ConstitutionEngine:
             for req in sec.requirements:
                 if req.name == "access_control" and req.value:
                     if not action.get("agent_id"):
-                        reqs.append({
-                            "policy": "security_policy",
-                            "requirement": "access_control",
-                            "status": "not_satisfied",
-                            "detail": "Agent ID required for access control",
-                        })
+                        reqs.append(
+                            {
+                                "policy": "security_policy",
+                                "requirement": "access_control",
+                                "status": "not_satisfied",
+                                "detail": "Agent ID required for access control",
+                            }
+                        )
 
                 if req.name == "node_verification" and req.value:
-                    if action.get("action_type") in ("federate", "sync") and not action.get("node_verified"):
-                        reqs.append({
-                            "policy": "security_policy",
-                            "requirement": "node_verification",
-                            "status": "not_satisfied",
-                            "detail": "Node verification required for federation actions",
-                        })
+                    if action.get("action_type") in (
+                        "federate",
+                        "sync",
+                    ) and not action.get("node_verified"):
+                        reqs.append(
+                            {
+                                "policy": "security_policy",
+                                "requirement": "node_verification",
+                                "status": "not_satisfied",
+                                "detail": "Node verification required for federation actions",
+                            }
+                        )
 
         # Evolution policy requirements
         if action.get("action_type", "").startswith("evolution"):
@@ -394,20 +418,27 @@ class ConstitutionEngine:
                 for req in evo.requirements:
                     if req.name == "testing_before_deployment" and req.value:
                         if not action.get("testing_completed"):
-                            reqs.append({
-                                "policy": "evolution_policy",
-                                "requirement": "testing_before_deployment",
-                                "status": "not_satisfied",
-                                "detail": "Testing must complete before deployment",
-                            })
-                    if req.name == "rollback_capability" and str(req.value) == "required":
+                            reqs.append(
+                                {
+                                    "policy": "evolution_policy",
+                                    "requirement": "testing_before_deployment",
+                                    "status": "not_satisfied",
+                                    "detail": "Testing must complete before deployment",
+                                }
+                            )
+                    if (
+                        req.name == "rollback_capability"
+                        and str(req.value) == "required"
+                    ):
                         if not action.get("rollback_plan"):
-                            reqs.append({
-                                "policy": "evolution_policy",
-                                "requirement": "rollback_capability",
-                                "status": "not_satisfied",
-                                "detail": "Rollback plan required for evolution actions",
-                            })
+                            reqs.append(
+                                {
+                                    "policy": "evolution_policy",
+                                    "requirement": "rollback_capability",
+                                    "status": "not_satisfied",
+                                    "detail": "Rollback plan required for evolution actions",
+                                }
+                            )
 
         return reqs
 
@@ -419,47 +450,60 @@ class ConstitutionEngine:
 
         # Principle 1: Limited Autonomy — requires goal, scope, risk, audit
         if not action.get("goal"):
-            violations.append({
-                "type": "core_principle_violation",
-                "principle": "limited_autonomy",
-                "detail": "Every autonomous action requires a clear goal",
-            })
+            violations.append(
+                {
+                    "type": "core_principle_violation",
+                    "principle": "limited_autonomy",
+                    "detail": "Every autonomous action requires a clear goal",
+                }
+            )
         if not action.get("scope"):
-            violations.append({
-                "type": "core_principle_violation",
-                "principle": "limited_autonomy",
-                "detail": "Every autonomous action requires a defined scope",
-            })
+            violations.append(
+                {
+                    "type": "core_principle_violation",
+                    "principle": "limited_autonomy",
+                    "detail": "Every autonomous action requires a defined scope",
+                }
+            )
         if not action.get("risk"):
-            violations.append({
-                "type": "core_principle_violation",
-                "principle": "limited_autonomy",
-                "detail": "Every autonomous action requires risk assessment",
-            })
+            violations.append(
+                {
+                    "type": "core_principle_violation",
+                    "principle": "limited_autonomy",
+                    "detail": "Every autonomous action requires risk assessment",
+                }
+            )
         if not action.get("audit_log"):
-            violations.append({
-                "type": "core_principle_violation",
-                "principle": "limited_autonomy",
-                "detail": "Every autonomous action requires audit logging",
-            })
+            violations.append(
+                {
+                    "type": "core_principle_violation",
+                    "principle": "limited_autonomy",
+                    "detail": "Every autonomous action requires audit logging",
+                }
+            )
 
         # Principle 3: Memory Separation — personal data should not be shared
         if action.get("memory_type") == "personal" and action.get("share"):
-            violations.append({
-                "type": "core_principle_violation",
-                "principle": "memory_separation",
-                "detail": "Personal memory MUST NOT be shared (federated)",
-            })
+            violations.append(
+                {
+                    "type": "core_principle_violation",
+                    "principle": "memory_separation",
+                    "detail": "Personal memory MUST NOT be shared (federated)",
+                }
+            )
 
         # Principle 5: Controlled Evolution — evolution needs stages
-        if (action.get("action_type", "").startswith("evolution")
-                and not action.get("evolution_stage")):
+        if action.get("action_type", "").startswith("evolution") and not action.get(
+            "evolution_stage"
+        ):
             evo_stages = self.policies.get_evolution_stages()
-            violations.append({
-                "type": "core_principle_violation",
-                "principle": "controlled_evolution",
-                "detail": f"Evolution actions must follow the pipeline: {evo_stages}",
-            })
+            violations.append(
+                {
+                    "type": "core_principle_violation",
+                    "principle": "controlled_evolution",
+                    "detail": f"Evolution actions must follow the pipeline: {evo_stages}",
+                }
+            )
 
         return violations
 
@@ -476,10 +520,10 @@ class ConstitutionEngine:
         """Determine the final evaluation outcome."""
         # Any hard violations → DENY
         hard_violations = [
-            v for v in violations
-            if v.get("type") in (
-                "policy_violation", "core_principle_violation", "prohibition"
-            )
+            v
+            for v in violations
+            if v.get("type")
+            in ("policy_violation", "core_principle_violation", "prohibition")
             and v.get("type") != "policy_escalation"
         ]
         if hard_violations:
@@ -492,7 +536,8 @@ class ConstitutionEngine:
 
         # Escalation violations → REVIEW
         escalation_hits = [
-            v for v in violations
+            v
+            for v in violations
             if v.get("type") in ("policy_escalation", "restricted_action")
         ]
         if escalation_hits:

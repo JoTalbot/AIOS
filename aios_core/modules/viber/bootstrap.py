@@ -13,8 +13,7 @@ PACKAGE = "com.viber.voip"
 class ViberBootstrap:
     """Смотритель готовности viber (messenger-first платформа)."""
 
-    def __init__(self, adb=None, serial=None, directory: str = "platforms",
-                 which=None):
+    def __init__(self, adb=None, serial=None, directory: str = "platforms", which=None):
         self.adb = adb
         self.serial = serial
         self.directory = directory
@@ -22,8 +21,12 @@ class ViberBootstrap:
 
     def doctor(self):
         return platform_doctor(
-            PLATFORM, PACKAGE, adb=self.adb, serial=self.serial,
-            directory=self.directory, which=self.which,
+            PLATFORM,
+            PACKAGE,
+            adb=self.adb,
+            serial=self.serial,
+            directory=self.directory,
+            which=self.which,
             required_hints=("messenger",),
             storage_factory=lambda: ViberStorage(":memory:"),
         )

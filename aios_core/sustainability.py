@@ -26,7 +26,7 @@ class SustainabilityTracker:
         return {
             "energy_kwh": round(self.energy_kwh, 4),
             "co2_kg": round(self.co2_kg, 4),
-            "tasks": self.tasks_optimized
+            "tasks": self.tasks_optimized,
         }
 
 

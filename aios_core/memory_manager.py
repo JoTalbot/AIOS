@@ -61,6 +61,7 @@ class MemoryManager:
         expires_at = None
         if ttl_seconds is not None:
             from datetime import timedelta
+
             expires_at = (
                 datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
             ).isoformat()
@@ -103,9 +104,7 @@ class MemoryManager:
         """Retrieve an item, enforcing ownership when a requester is supplied."""
         if self.db is None:
             return None
-        row = self.db.query_one(
-            "SELECT * FROM memory_items WHERE id = ?", (item_id,)
-        )
+        row = self.db.query_one("SELECT * FROM memory_items WHERE id = ?", (item_id,))
         if row is None:
             return None
         item = self._row_to_dict(row)

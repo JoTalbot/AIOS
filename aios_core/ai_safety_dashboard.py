@@ -30,7 +30,7 @@ class SafetyDashboard:
             "safety_score": round(self.safety_score, 3),
             "metrics": self.metrics,
             "recent_incidents": self.incidents[-5:],
-            "status": "healthy" if self.safety_score > 0.8 else "warning"
+            "status": "healthy" if self.safety_score > 0.8 else "warning",
         }
 
     def stats(self) -> dict:

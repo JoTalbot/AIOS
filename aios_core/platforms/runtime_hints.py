@@ -54,9 +54,7 @@ class HintDetailParser:
         self.cta_ids = _rid_set(hints, "cta_markers", nested=True)
         self.configured = bool(self.price_ids or self.seller_ids or self.cta_ids)
 
-    def parse(
-        self, xml_source: Union[str, Path, ET.Element]
-    ) -> Dict[str, object]:
+    def parse(self, xml_source: Union[str, Path, ET.Element]) -> Dict[str, object]:
         """Разбирает дамп детального экрана в структурированные поля."""
         from aios_core.platforms.calibrate import CalibrationAdvisor
 
@@ -76,14 +74,21 @@ class HintDetailParser:
                 continue
             texts.append(text)
             parsed = parse_price(text)
-            if price is None and parsed is not None and (
-                not self.price_ids or rid in self.price_ids
+            if (
+                price is None
+                and parsed is not None
+                and (not self.price_ids or rid in self.price_ids)
             ):
                 price, currency = parsed
                 continue
-            if rid and self.seller_ids and rid in self.seller_ids \
-                    and seller is None and 2 <= len(text) <= 60 \
-                    and parsed is None:
+            if (
+                rid
+                and self.seller_ids
+                and rid in self.seller_ids
+                and seller is None
+                and 2 <= len(text) <= 60
+                and parsed is None
+            ):
                 seller = text
                 continue
             if rid and self.cta_ids and rid in self.cta_ids:
@@ -170,17 +175,15 @@ class HintSender:
             bounds = _parse_bounds(node.attrib.get("bounds"))
             if bounds is None:
                 continue
-            center = ((bounds[0] + bounds[2]) // 2,
-                      (bounds[1] + bounds[3]) // 2)
+            center = ((bounds[0] + bounds[2]) // 2, (bounds[1] + bounds[3]) // 2)
             if input_center is None and any(
                 marker in klass for marker in self.input_classes
             ):
                 input_center = center
             combined = f"{rid} {desc.lower()} {text_attr.lower()}"
             if send_center is None and (
-                rid in self.send_ids or any(
-                    marker in combined for marker in self._send_text_markers
-                )
+                rid in self.send_ids
+                or any(marker in combined for marker in self._send_text_markers)
             ):
                 send_center = center
 
@@ -192,18 +195,20 @@ class HintSender:
 
         if send_center is not None:
             result = self.adb.tap(*send_center)
-            steps.append({"action": "tap_send", "center": send_center,
-                          "code": result.get("code")})
+            steps.append(
+                {
+                    "action": "tap_send",
+                    "center": send_center,
+                    "code": result.get("code"),
+                }
+            )
         else:
             result = self.adb.run(f"{self.adb.adb} shell input keyevent 66")
-            steps.append({"action": "keyevent_enter",
-                          "code": result.get("code")})
+            steps.append({"action": "keyevent_enter", "code": result.get("code")})
         return {"code": result.get("code"), "steps": steps}
 
 
-def load_hints_section(
-    platform_name: str, section: str, directory="platforms"
-) -> Dict:
+def load_hints_section(platform_name: str, section: str, directory="platforms") -> Dict:
     """Секция ``extras.parser_hints`` из YAML-дескриптора платформы.
 
     Returns:
@@ -225,13 +230,12 @@ def load_hints_section(
 
 def detail_parser_for(platform_name: str, directory="platforms") -> HintDetailParser:
     """HintDetailParser из YAML-дескриптора платформы (секция detail)."""
-    return HintDetailParser(
-        load_hints_section(platform_name, "detail", directory)
-    )
+    return HintDetailParser(load_hints_section(platform_name, "detail", directory))
 
 
 def chat_list_parser_for(
-    platform_name: str, directory="platforms",
+    platform_name: str,
+    directory="platforms",
 ):
     """ChatListParser с thread-маркерами из ``parser_hints.messenger``.
 

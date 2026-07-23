@@ -40,8 +40,8 @@ class ShardGateway:
     ):
         self.router = router or ShardRouter()
         self._owns_router = router is None
-        self.host_id = host_id if host_id is not None else os.environ.get(
-            "AIOS_HOST_ID", "local"
+        self.host_id = (
+            host_id if host_id is not None else os.environ.get("AIOS_HOST_ID", "local")
         )
         self._client_factory = client_factory or _default_client_factory
 
@@ -83,7 +83,10 @@ class ShardGateway:
         client = self._client_factory()
         try:
             response = client.request(
-                method.upper(), url, params=params, json=json_body,
+                method.upper(),
+                url,
+                params=params,
+                json=json_body,
             )
             try:
                 payload = response.json()
@@ -101,6 +104,7 @@ class ShardGateway:
 # --------------------------------------------------------------------------- #
 # ShardHealthMonitor                                                          #
 # --------------------------------------------------------------------------- #
+
 
 def default_health_probe(host: Dict) -> bool:
     """GET <base_url>/health → 2xx = здоров."""
@@ -146,8 +150,7 @@ class ShardHealthMonitor:
             self.router.set_healthy(host["host"], ok)
             report[host["host"]] = ok
         sick = [name for name, ok in report.items() if not ok]
-        return {"hosts": report, "healthy": len(report) - len(sick),
-                "sick": sick}
+        return {"hosts": report, "healthy": len(report) - len(sick), "sick": sick}
 
     def start(self, interval_s: float = 30.0) -> bool:
         """Фоновый цикл health-probe."""

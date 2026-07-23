@@ -22,11 +22,9 @@ class DeceptionDetector:
             indicators.append("role_playing")
 
         if deception_score > 0.4:
-            self.detected_deceptions.append({
-                "output": output,
-                "score": deception_score,
-                "indicators": indicators
-            })
+            self.detected_deceptions.append(
+                {"output": output, "score": deception_score, "indicators": indicators}
+            )
 
         return {"deception_score": deception_score, "indicators": indicators}
 

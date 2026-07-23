@@ -22,4 +22,7 @@ class FederatedLearning:
         return self.global_model
 
     def stats(self) -> dict:
-        return {"nodes": len(self.nodes), "model_version": self.global_model.get("version", 0)}
+        return {
+            "nodes": len(self.nodes),
+            "model_version": self.global_model.get("version", 0),
+        }

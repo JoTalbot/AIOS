@@ -6,24 +6,26 @@ detailed, and failure-focused views.
 
 from __future__ import annotations
 from .models import (
-    TestSuiteResult, TestReport, TestStatus,
+    TestSuiteResult,
+    TestReport,
+    TestStatus,
 )
 
 
 class TestReporter:
     """Generates test reports.
-    
+
     Usage:
         reporter = TestReporter()
         report = reporter.generate("Full System Test", [suite_result1, suite_result2])
         print(reporter.summary_text(report))
         print(reporter.failures_text(report))
     """
-    
+
     def generate(self, title: str, suites: list[TestSuiteResult]) -> TestReport:
         """Generate a comprehensive test report from suite results."""
         report = TestReport(report_id=_short_id())
-        
+
         report.total_suites = len(suites)
         for suite in suites:
             report.suites.append(suite)
@@ -33,30 +35,32 @@ class TestReporter:
             report.total_errors += suite.errors
             report.total_skipped += suite.skipped
             report.duration_ms += suite.duration_ms
-        
+
         if report.total_failed == 0 and report.total_errors == 0:
             report.overall_status = "passed"
         elif report.total_passed == 0:
             report.overall_status = "failed"
         else:
             report.overall_status = "partial"
-        
+
         # Collect failures
         for suite in suites:
             for r in suite.results:
                 if r.status in (TestStatus.FAILED, TestStatus.ERROR):
-                    report.failures.append({
-                        "suite": suite.suite_name,
-                        "test": r.test_name,
-                        "status": r.status.value,
-                        "message": r.message,
-                        "expected": r.expected_decision,
-                        "actual": r.actual_decision,
-                        "duration_ms": r.duration_ms,
-                    })
-        
+                    report.failures.append(
+                        {
+                            "suite": suite.suite_name,
+                            "test": r.test_name,
+                            "status": r.status.value,
+                            "message": r.message,
+                            "expected": r.expected_decision,
+                            "actual": r.actual_decision,
+                            "duration_ms": r.duration_ms,
+                        }
+                    )
+
         return report
-    
+
     def summary_text(self, report: TestReport) -> str:
         """Generate a human-readable summary."""
         lines = [
@@ -72,7 +76,7 @@ class TestReporter:
             f"Duration: {report.duration_ms:.1f}ms",
             f"",
         ]
-        
+
         for suite in report.suites:
             status_icon = "PASS" if suite.status == TestStatus.PASSED else "FAIL"
             lines.append(
@@ -80,21 +84,19 @@ class TestReporter:
                 f"{suite.passed}/{suite.total} passed "
                 f"({suite.duration_ms:.1f}ms)"
             )
-        
+
         if report.failures:
             lines.append(f"\n{len(report.failures)} FAILURES:")
             for f in report.failures[:10]:
-                lines.append(
-                    f"  - {f['suite']}::{f['test']}: {f['message']}"
-                )
-        
+                lines.append(f"  - {f['suite']}::{f['test']}: {f['message']}")
+
         return "\n".join(lines)
-    
+
     def failures_text(self, report: TestReport) -> str:
         """Generate a failures-only report."""
         if not report.failures:
             return "No failures."
-        
+
         lines = [f"FAILURES ({len(report.failures)}):"]
         for i, f in enumerate(report.failures, 1):
             lines.append(
@@ -105,7 +107,7 @@ class TestReporter:
                 f"   Message: {f['message']}"
             )
         return "\n".join(lines)
-    
+
     def to_dict(self, report: TestReport) -> dict:
         """Serialize report to dict for JSON persistence."""
         return {
@@ -137,4 +139,5 @@ class TestReporter:
 
 def _short_id() -> str:
     import uuid
+
     return uuid.uuid4().hex[:8]

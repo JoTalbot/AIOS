@@ -18,12 +18,14 @@ class Observability:
 
     def start_trace(self, name: str, attributes: Dict = None) -> str:
         trace_id = f"trace_{len(self.traces)}"
-        self.traces.append({
-            "id": trace_id,
-            "name": name,
-            "start": time.time(),
-            "attributes": attributes or {}
-        })
+        self.traces.append(
+            {
+                "id": trace_id,
+                "name": name,
+                "start": time.time(),
+                "attributes": attributes or {},
+            }
+        )
         return trace_id
 
     def end_trace(self, trace_id: str):
@@ -34,12 +36,9 @@ class Observability:
                 break
 
     def log(self, level: str, message: str, **kwargs):
-        self.logs.append({
-            "level": level,
-            "message": message,
-            "timestamp": time.time(),
-            **kwargs
-        })
+        self.logs.append(
+            {"level": level, "message": message, "timestamp": time.time(), **kwargs}
+        )
 
     def export_prometheus(self) -> str:
         lines = []
@@ -51,7 +50,7 @@ class Observability:
         return {
             "metrics": len(self.metrics),
             "traces": len(self.traces),
-            "logs": len(self.logs)
+            "logs": len(self.logs),
         }
 
 

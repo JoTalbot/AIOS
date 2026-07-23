@@ -17,7 +17,7 @@ class QuantumCircuitSimulator:
 
     def __init__(self, num_qubits: int = 3):
         self.num_qubits = min(8, max(1, num_qubits))
-        self.state_vector_size = 2 ** self.num_qubits
+        self.state_vector_size = 2**self.num_qubits
         self.state_vector = [complex(0.0, 0.0)] * self.state_vector_size
         self.state_vector[0] = complex(1.0, 0.0)  # Initialized to |0...0> state
 
@@ -75,7 +75,9 @@ class QuantumNativeEngine:
     def __init__(self):
         self.circuits_executed = 0
 
-    def optimize_task_schedule_qaoa(self, tasks: List[Dict[str, Any]], num_agents: int = 2) -> Dict[str, Any]:
+    def optimize_task_schedule_qaoa(
+        self, tasks: List[Dict[str, Any]], num_agents: int = 2
+    ) -> Dict[str, Any]:
         """Use Quantum Approximate Optimization Algorithm (QAOA) simulation to solve task assignment."""
         start_time = time.time()
         num_qubits = min(6, max(2, len(tasks)))
@@ -105,12 +107,16 @@ class QuantumNativeEngine:
             "quantum_state_sampled": sample_state,
             "quantum_advantage_speedup": "12.4x (QAOA Superposition)",
             "qubits_used": num_qubits,
-            "execution_time_ms": execution_time_ms
+            "execution_time_ms": execution_time_ms,
         }
 
     def stats(self) -> Dict[str, Any]:
         return {
             "circuits_executed": self.circuits_executed,
             "max_simulated_qubits": 8,
-            "supported_algorithms": ["QAOA", "Quantum Fourier Transform", "Grover Search"]
+            "supported_algorithms": [
+                "QAOA",
+                "Quantum Fourier Transform",
+                "Grover Search",
+            ],
         }

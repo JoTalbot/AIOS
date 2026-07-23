@@ -137,12 +137,16 @@ class AIOSDashboard:
     async def api_olx(self, request: Request):
         """OLX Parser Agent counters (AIOS_OLX_DB env; unavailable otherwise)."""
         import os
+
         db_path = os.environ.get("AIOS_OLX_DB")
         if not db_path or not os.path.exists(db_path):
             return JSONResponse({"available": False})
         from aios_core.modules.olx import (
-            OLXStorage, OwnAdsTracker, PriceTracker,
+            OLXStorage,
+            OwnAdsTracker,
+            PriceTracker,
         )
+
         storage = OLXStorage(db_path)
         try:
             drops = PriceTracker(storage).price_drops()

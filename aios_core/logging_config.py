@@ -27,10 +27,18 @@ class JSONFormatter(logging.Formatter):
             "message": record.getMessage(),
             "module": record.module,
             "line": record.lineno,
-            "trace_id": current_span.trace_id if current_span else record.__dict__.get("trace_id"),
-            "span_id": current_span.span_id if current_span else record.__dict__.get("span_id"),
+            "trace_id": (
+                current_span.trace_id
+                if current_span
+                else record.__dict__.get("trace_id")
+            ),
+            "span_id": (
+                current_span.span_id if current_span else record.__dict__.get("span_id")
+            ),
             "agent_id": record.__dict__.get("agent_id", "system"),
-            "constitutional_status": record.__dict__.get("constitutional_status", "VALID")
+            "constitutional_status": record.__dict__.get(
+                "constitutional_status", "VALID"
+            ),
         }
 
         if record.exc_info:
@@ -39,16 +47,22 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_data)
 
 
-def setup_logging(level: str = "INFO", log_file: str = "aios.log", json_format: bool = True) -> logging.Logger:
+def setup_logging(
+    level: str = "INFO", log_file: str = "aios.log", json_format: bool = True
+) -> logging.Logger:
     """Configure structured logging for AIOS."""
     logger = logging.getLogger("aios")
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
     logger.handlers.clear()
 
     # Formatter selection
-    formatter = JSONFormatter() if json_format else logging.Formatter(
-        "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+    formatter = (
+        JSONFormatter()
+        if json_format
+        else logging.Formatter(
+            "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
     )
 
     # Console Handler
@@ -57,7 +71,9 @@ def setup_logging(level: str = "INFO", log_file: str = "aios.log", json_format: 
     logger.addHandler(console_handler)
 
     # File Handler
-    file_handler = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5)
+    file_handler = RotatingFileHandler(
+        log_file, maxBytes=10 * 1024 * 1024, backupCount=5
+    )
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 

@@ -25,7 +25,7 @@ class APKFunctionConverter:
         apk_name: str,
         package_name: str,
         exported_components: List[Dict[str, Any]],
-        target_user_id: str = "default_user"
+        target_user_id: str = "default_user",
     ) -> Dict[str, Any]:
         """Convert APK components (Activities, Services, Receivers) into AIOS User API Capabilities and Profile."""
         start_time = time.time()
@@ -33,7 +33,9 @@ class APKFunctionConverter:
 
         for comp in exported_components:
             comp_name = comp.get("name", "UnknownComponent")
-            comp_type = comp.get("type", "activity")  # "activity", "service", "receiver", "provider"
+            comp_type = comp.get(
+                "type", "activity"
+            )  # "activity", "service", "receiver", "provider"
             intent_filter = comp.get("intent_filter", "android.intent.action.MAIN")
 
             # Formulate AIOS Capability name and API route
@@ -51,10 +53,10 @@ class APKFunctionConverter:
                     "type": "object",
                     "properties": {
                         "intent_extras": {"type": "object"},
-                        "flags": {"type": "array", "items": {"type": "string"}}
-                    }
+                        "flags": {"type": "array", "items": {"type": "string"}},
+                    },
                 },
-                "status": "active"
+                "status": "active",
             }
 
             converted_capabilities.append(cap_entry)
@@ -66,7 +68,7 @@ class APKFunctionConverter:
                         name=cap_entry["name"],
                         capability_type=f"apk_{comp_type}",
                         description=f"Automated APK conversion for component {comp_name}",
-                        input_schema=cap_entry["input_schema"]
+                        input_schema=cap_entry["input_schema"],
                     )
                 except Exception:
                     pass
@@ -80,7 +82,7 @@ class APKFunctionConverter:
             "total_converted_capabilities": len(converted_capabilities),
             "converted_capabilities": converted_capabilities,
             "created_at": time.time(),
-            "conversion_latency_ms": round((time.time() - start_time) * 1000.0, 3)
+            "conversion_latency_ms": round((time.time() - start_time) * 1000.0, 3),
         }
 
         self.converted_profiles[profile_id] = user_api_profile
@@ -91,8 +93,10 @@ class APKFunctionConverter:
         return [p for p in self.converted_profiles.values() if p["user_id"] == user_id]
 
     def stats(self) -> Dict[str, Any]:
-        total_caps = sum(p["total_converted_capabilities"] for p in self.converted_profiles.values())
+        total_caps = sum(
+            p["total_converted_capabilities"] for p in self.converted_profiles.values()
+        )
         return {
             "total_profiles": len(self.converted_profiles),
-            "total_converted_capabilities": total_caps
+            "total_converted_capabilities": total_caps,
         }

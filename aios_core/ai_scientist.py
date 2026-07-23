@@ -16,7 +16,7 @@ class AIScientist:
             "domain": domain,
             "hypothesis": f"Novel hypothesis in {domain}",
             "novelty": 0.85,
-            "testability": 0.9
+            "testability": 0.9,
         }
         self.hypotheses.append(hypothesis)
         return hypothesis
@@ -25,7 +25,7 @@ class AIScientist:
         experiment = {
             "hypothesis": hypothesis,
             "design": "rigorous experimental design",
-            "predicted_outcome": "positive"
+            "predicted_outcome": "positive",
         }
         self.experiments.append(experiment)
         return experiment
@@ -37,5 +37,5 @@ class AIScientist:
         return {
             "hypotheses": len(self.hypotheses),
             "experiments": len(self.experiments),
-            "discoveries": len(self.discoveries)
+            "discoveries": len(self.discoveries),
         }

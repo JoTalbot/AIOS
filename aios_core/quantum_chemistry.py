@@ -14,7 +14,7 @@ class QuantumChemistrySimulator:
             "formula": formula,
             "energy": -1.0 * len(formula),
             "basis": basis,
-            "converged": True
+            "converged": True,
         }
 
     def stats(self) -> dict:
