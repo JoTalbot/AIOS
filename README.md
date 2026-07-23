@@ -53,43 +53,23 @@ Key docs:
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    AIOS Runtime                       │
-│  ┌──────────┐ ┌──────────┐ ┌──────────────────┐    │
-│  │ REST API  │ │ MCP GW   │ │ Web Dashboard    │    │
-│  │(Starlette)│ │(JSON-RPC)│ │ (React)          │    │
-│  └────┬──────┘ └────┬─────┘ └───────┬──────────┘    │
-│       │             │               │                │
-│  ┌────┴─────────────┴───────────────┴──────────┐    │
-│  │           Constitution Engine (67 articles)   │    │
-│  │     ┌──────────────────────────────────┐     │    │
-│  │     │  Compliance → Approval → Execute │     │    │
-│  │     └──────────────────────────────────┘     │    │
-│  └────┬─────────────────────────────────────────┘    │
-│       │                                              │
-│  ┌────┴──────────────────────────────────────────┐   │
-│  │            Agent / Platform Layer               │   │
-│  │  ┌────┐ ┌────┐ ┌──────┐ ┌──────┐ ┌─────────┐ │   │
-│  │  │OLX │ │ IG │ │Meta  │ │TikTok│ │ Custom… │ │   │
-│  │  └────┘ └────┘ └──────┘ └──────┘ └─────────┘ │   │
-│  │  ┌────────────────────────────────────────┐   │   │
-│  │  │   Device Pool · Shard Router · Fleet   │   │   │
-│  │  └────────────────────────────────────────┘   │   │
-│  └────┬──────────────────────────────────────────┘   │
-│       │                                              │
-│  ┌────┴──────────────────────────────────────────┐   │
-│  │     Persistence (SQLite)                        │   │
-│  │  Tasks · Memory · Knowledge Graph · Audit      │   │
-│  │  Backups · Export/Import · Migrations          │   │
-│  └────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────┘
+AIOS/
+├── aios_core/            # Core engine (273-line app.py!)
+│   ├── api/              #   REST API — routes.py + 4 handler mixins
+│   ├── container.py      #   DI container (sync + async services)
+│   ├── config_central.py #   YAML config with env overrides
+│   ├── async_bus.py      #   Non-blocking event bus
+│   ├── async_core.py     #   Async DB + KG wrappers
+│   └── modules/          #   9 platform modules
+├── aios_mcp/             # ✨ Standalone MCP Gateway package
+├── aios_cli/             # CLI sub-commands (olx, platforms, instagram, messengers)
+├── aios_cli.py           # Entry point (281 lines)
+├── platforms/            # YAML descriptors per platform
+├── tests/                # 446 test files, 1725 test functions
+├── docs/                 # 162+ documentation pages
+├── deploy/ helm/ k8s/    # Deployment manifests
+└── tools/                # quality_check.py, scripts
 ```
-
-Every action flows through the Constitution pipeline: the compliance guard
-checks platform-specific flags, the approval manager requires human sign-off
-for sensitive operations, and only then does the executor reach the device.
-
----
 
 ## Components
 
