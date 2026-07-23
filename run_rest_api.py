@@ -53,5 +53,25 @@ def main():
         print("\nShutting down...")
 
 
+# Gunicorn-compatible entry point
+# Usage: gunicorn run_rest_api:app --bind 0.0.0.0:8000 --workers 4 -k uvicorn.workers.UvicornWorker
+_app = None
+def _get_app():
+    """Create or return the cached Starlette application."""
+    global _app
+    if _app is None:
+        import os
+        root = os.path.dirname(os.path.abspath(__file__))
+        const_dir = os.environ.get("AIOS_CONSTITUTION_DIR", os.path.join(root, "docs/constitution"))
+        pol_dir = os.environ.get("AIOS_POLICIES_DIR", os.path.join(root, "policies"))
+        db_path = os.environ.get("AIOS_DB_PATH", os.path.join(root, "aios.sqlite"))
+        _app = create_app(
+            db_path=db_path,
+            constitution_dir=const_dir,
+            policies_dir=pol_dir,
+        )
+    return _app
+# Exported app for gunicorn/uvicorn discovery
+app = _get_app()
 if __name__ == "__main__":
     main()
