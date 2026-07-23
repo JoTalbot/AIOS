@@ -5,7 +5,9 @@ import sqlite3
 import time
 from pathlib import Path
 
+import httpx
 import pytest
+import pytest_asyncio
 
 
 class TestDatabaseChaos:
@@ -305,55 +307,56 @@ class TestBackupChaos:
 class TestAPIChaos:
     """Chaos tests for API resilience."""
 
-    def test_api_under_malformed_requests(self):
+    @pytest.mark.asyncio
+    async def test_api_under_malformed_requests(self):
         """Test API handles malformed requests gracefully."""
         from starlette.applications import Starlette
         from starlette.requests import Request
         from starlette.responses import JSONResponse
         from starlette.routing import Route
-        from starlette.testclient import TestClient
 
         async def endpoint(request: Request):
             return JSONResponse({"status": "ok"})
 
         app = Starlette(routes=[Route("/test", endpoint, methods=["POST"])])
-        client = TestClient(app)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            # Send malformed JSON
+            response = await client.post(
+                "/test", content="not json", headers={"Content-Type": "application/json"}
+            )
 
-        # Send malformed JSON
-        response = client.post(
-            "/test", content="not json", headers={"Content-Type": "application/json"}
-        )
+            # Should handle gracefully (not crash)
+            assert response.status_code in [200, 400, 422, 500]
 
-        # Should handle gracefully (not crash)
-        assert response.status_code in [200, 400, 422, 500]
-
-    def test_api_concurrent_identical_requests(self):
+    @pytest.mark.asyncio
+    async def test_api_concurrent_identical_requests(self):
         """Test API handles many identical concurrent requests."""
-        import concurrent.futures
+        import asyncio
 
         from starlette.applications import Starlette
         from starlette.requests import Request
         from starlette.responses import JSONResponse
         from starlette.routing import Route
-        from starlette.testclient import TestClient
 
         async def endpoint(request: Request):
-            time.sleep(0.01)  # Simulate work
+            await asyncio.sleep(0.01)  # Simulate work
             return JSONResponse({"id": id(request)})
 
         app = Starlette(routes=[Route("/test", endpoint)])
-        client = TestClient(app)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            # Send 100 identical requests concurrently via asyncio
+            tasks = [client.get("/test") for _ in range(100)]
+            responses = await asyncio.gather(*tasks)
+            results = [r.status_code for r in responses]
 
-        def make_request():
-            return client.get("/test").status_code
-
-        # Send 100 identical requests concurrently
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-            futures = [executor.submit(make_request) for _ in range(100)]
-            results = [f.result() for f in futures]
-
-        # All should succeed
-        assert all(code == 200 for code in results)
+            # All should succeed
+            assert all(code == 200 for code in results)
 
 
 class TestRecoveryScenarios:

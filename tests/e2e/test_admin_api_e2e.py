@@ -2,13 +2,14 @@
 
 import json
 
+import httpx
 import pytest
+import pytest_asyncio
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
-from starlette.testclient import TestClient
 
 from aios_core.api.admin_routes import get_admin_routes, init_admin_routes
 
@@ -43,20 +44,25 @@ def admin_app(tmp_path):
     return app
 
 
-@pytest.fixture
-def client(admin_app):
-    """Create test client."""
-    return TestClient(admin_app)
+@pytest_asyncio.fixture
+async def client(admin_app):
+    """Create async test client."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=admin_app),
+        base_url="http://testserver",
+    ) as c:
+        yield c
 
 
+@pytest.mark.asyncio
 class TestExportImportE2E:
     """End-to-end tests for export/import operations."""
 
-    def test_export_import_cycle(self, client, tmp_path):
+    async def test_export_import_cycle(self, client, tmp_path):
         """Test complete export and import cycle."""
         # Export data
         export_path = tmp_path / "export.json"
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/export",
             json={
                 "type": "all",
@@ -73,7 +79,7 @@ class TestExportImportE2E:
         assert export_path.exists()
 
         # Import data
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/import",
             json={
                 "type": "tasks",
@@ -86,11 +92,11 @@ class TestExportImportE2E:
         data = response.json()
         assert data["status"] == "success"
 
-    def test_export_csv_format(self, client, tmp_path):
+    async def test_export_csv_format(self, client, tmp_path):
         """Test export in CSV format."""
         export_path = tmp_path / "export.csv"
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/export",
             json={
                 "type": "tasks",
@@ -110,10 +116,10 @@ class TestExportImportE2E:
 class TestAPIKeysE2E:
     """End-to-end tests for API key management."""
 
-    def test_full_key_lifecycle(self, client):
+    async def test_full_key_lifecycle(self, client):
         """Test complete API key lifecycle."""
         # Generate key
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/keys/generate",
             json={
                 "subject": "test-user",
@@ -128,19 +134,19 @@ class TestAPIKeysE2E:
         key = data["key"]
 
         # List keys
-        response = client.get("/api/v1/admin/keys")
+        response = await client.get("/api/v1/admin/keys")
         assert response.status_code == 200
         data = response.json()
         assert data["total"] >= 1
 
         # Check key health
-        response = client.get("/api/v1/admin/keys/health")
+        response = await client.get("/api/v1/admin/keys/health")
         assert response.status_code == 200
         health = response.json()
         assert health["active_keys"] >= 1
 
         # Rotate key
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/keys/rotate",
             json={
                 "old_key": key,
@@ -154,7 +160,7 @@ class TestAPIKeysE2E:
         new_key = data["new_key"]
 
         # Revoke new key
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/keys/revoke",
             json={
                 "key": new_key,
@@ -165,11 +171,11 @@ class TestAPIKeysE2E:
         assert response.status_code == 200
         assert response.json()["status"] == "success"
 
-    def test_key_export_import(self, client, tmp_path):
+    async def test_key_export_import(self, client, tmp_path):
         """Test API key export and import."""
         # Generate some keys
         for i in range(3):
-            client.post(
+            await client.post(
                 "/api/v1/admin/keys/generate",
                 json={
                     "subject": f"user-{i}",
@@ -179,7 +185,7 @@ class TestAPIKeysE2E:
 
         # Export keys
         export_path = tmp_path / "keys.json"
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/keys/export",
             json={
                 "path": str(export_path),
@@ -197,10 +203,10 @@ class TestAPIKeysE2E:
 class TestBackupsE2E:
     """End-to-end tests for backup operations."""
 
-    def test_full_backup_cycle(self, client, tmp_path):
+    async def test_full_backup_cycle(self, client, tmp_path):
         """Test complete backup cycle."""
         # Create backup
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/backups",
             json={
                 "label": "e2e-test",
@@ -214,13 +220,13 @@ class TestBackupsE2E:
         backup_id = data["backup_id"]
 
         # List backups
-        response = client.get("/api/v1/admin/backups/list")
+        response = await client.get("/api/v1/admin/backups/list")
         assert response.status_code == 200
         data = response.json()
         assert data["total"] >= 1
 
         # Verify backup
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/backups/verify",
             json={
                 "backup_id": backup_id,
@@ -232,7 +238,7 @@ class TestBackupsE2E:
 
         # Restore backup
         restore_path = tmp_path / "restored.sqlite"
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/backups/restore",
             json={
                 "backup_id": backup_id,
@@ -244,22 +250,22 @@ class TestBackupsE2E:
         assert restore_path.exists()
 
         # Check backup health
-        response = client.get("/api/v1/admin/backups/health")
+        response = await client.get("/api/v1/admin/backups/health")
         assert response.status_code == 200
         health = response.json()
         assert "health" in health
         assert "schedule" in health
 
         # Cleanup old backups
-        response = client.post("/api/v1/admin/backups/cleanup")
+        response = await client.post("/api/v1/admin/backups/cleanup")
         assert response.status_code == 200
 
-    def test_multiple_backups_rotation(self, client):
+    async def test_multiple_backups_rotation(self, client):
         """Test creating and managing multiple backups."""
         # Create 5 backups
         backup_ids = []
         for i in range(5):
-            response = client.post(
+            response = await client.post(
                 "/api/v1/admin/backups",
                 json={
                     "label": f"rotation-{i}",
@@ -269,7 +275,7 @@ class TestBackupsE2E:
             backup_ids.append(response.json()["backup_id"])
 
         # Verify all exist
-        response = client.get("/api/v1/admin/backups/list")
+        response = await client.get("/api/v1/admin/backups/list")
         assert response.status_code == 200
         assert response.json()["total"] >= 5
 
@@ -277,10 +283,10 @@ class TestBackupsE2E:
 class TestWebhooksE2E:
     """End-to-end tests for webhook operations."""
 
-    def test_full_webhook_lifecycle(self, client):
+    async def test_full_webhook_lifecycle(self, client):
         """Test complete webhook lifecycle."""
         # Register webhook
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/webhooks",
             json={
                 "name": "test-webhook",
@@ -295,13 +301,13 @@ class TestWebhooksE2E:
         assert data["status"] == "success"
 
         # List webhooks
-        response = client.get("/api/v1/admin/webhooks/list")
+        response = await client.get("/api/v1/admin/webhooks/list")
         assert response.status_code == 200
         data = response.json()
         assert data["total"] >= 1
 
         # Toggle webhook
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/webhooks/toggle",
             json={
                 "name": "test-webhook",
@@ -313,7 +319,7 @@ class TestWebhooksE2E:
         assert not response.json()["active"]
 
         # Send notification
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/webhooks/notify",
             json={
                 "event": "ban_detected",
@@ -325,13 +331,13 @@ class TestWebhooksE2E:
         assert response.status_code == 200
 
         # Check history
-        response = client.get("/api/v1/admin/webhooks/history")
+        response = await client.get("/api/v1/admin/webhooks/history")
         assert response.status_code == 200
         history = response.json()
         assert history["total"] >= 1
 
         # Test webhook
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/webhooks/test",
             json={
                 "name": "test-webhook",
@@ -341,13 +347,13 @@ class TestWebhooksE2E:
         assert response.status_code == 200
 
         # Check webhook health
-        response = client.get("/api/v1/admin/webhooks/health")
+        response = await client.get("/api/v1/admin/webhooks/health")
         assert response.status_code == 200
         health = response.json()
         assert "total_targets" in health
 
         # Unregister webhook
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/webhooks/unregister",
             json={
                 "name": "test-webhook",
@@ -356,11 +362,11 @@ class TestWebhooksE2E:
 
         assert response.status_code == 200
 
-    def test_multiple_webhooks(self, client):
+    async def test_multiple_webhooks(self, client):
         """Test managing multiple webhooks."""
         # Register multiple webhooks
         for i in range(5):
-            response = client.post(
+            response = await client.post(
                 "/api/v1/admin/webhooks",
                 json={
                     "name": f"webhook-{i}",
@@ -371,7 +377,7 @@ class TestWebhooksE2E:
             assert response.status_code == 200
 
         # Verify all registered
-        response = client.get("/api/v1/admin/webhooks/list")
+        response = await client.get("/api/v1/admin/webhooks/list")
         assert response.status_code == 200
         assert response.json()["total"] >= 5
 
@@ -379,7 +385,7 @@ class TestWebhooksE2E:
 class TestAdminAPIPermissions:
     """Tests for admin API permission checks."""
 
-    def test_admin_access(self, client):
+    async def test_admin_access(self, client):
         """Test admin can access all endpoints."""
         endpoints = [
             ("GET", "/api/v1/admin/keys"),
@@ -389,9 +395,9 @@ class TestAdminAPIPermissions:
 
         for method, endpoint in endpoints:
             if method == "GET":
-                response = client.get(endpoint)
+                response = await client.get(endpoint)
             else:
-                response = client.post(endpoint, json={})
+                response = await client.post(endpoint, json={})
 
             # Should succeed with admin role
             assert response.status_code in [200, 405]  # 405 if method not allowed

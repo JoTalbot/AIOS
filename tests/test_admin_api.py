@@ -5,12 +5,13 @@ import sqlite3
 import tempfile
 from pathlib import Path
 
+import httpx
 import pytest
+import pytest_asyncio
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
-from starlette.testclient import TestClient
 
 from aios_core.api.admin_routes import (
     _backup_manager,
@@ -76,16 +77,21 @@ def admin_app(test_db, tmp_path, mock_principal):
     return app
 
 
-@pytest.fixture
-def client(admin_app):
-    """Create test client."""
-    return TestClient(admin_app)
+@pytest_asyncio.fixture
+async def client(admin_app):
+    """Create async test client via httpx ASGITransport."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=admin_app),
+        base_url="http://testserver",
+    ) as c:
+        yield c
 
 
+@pytest.mark.asyncio
 class TestDataExportAPI:
-    def test_export_tasks(self, client, tmp_path):
+    async def test_export_tasks(self, client, tmp_path):
         output = tmp_path / "tasks.json"
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/export",
             json={
                 "type": "tasks",
@@ -98,9 +104,9 @@ class TestDataExportAPI:
         assert data["status"] == "success"
         assert data["count"] == 1
 
-    def test_export_all(self, client, tmp_path):
+    async def test_export_all(self, client, tmp_path):
         output_dir = tmp_path / "export"
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/export",
             json={
                 "type": "all",
@@ -113,9 +119,10 @@ class TestDataExportAPI:
         assert "counts" in data
 
 
+@pytest.mark.asyncio
 class TestSecretsAPI:
-    def test_generate_key(self, client):
-        response = client.post(
+    async def test_generate_key(self, client):
+        response = await client.post(
             "/api/v1/admin/keys/generate",
             json={
                 "subject": "test-user",
@@ -130,9 +137,9 @@ class TestSecretsAPI:
         assert "key" in data
         assert data["key"].startswith("aios_")
 
-    def test_list_keys(self, client):
+    async def test_list_keys(self, client):
         # Generate a key first
-        client.post(
+        await client.post(
             "/api/v1/admin/keys/generate",
             json={
                 "subject": "user1",
@@ -140,14 +147,14 @@ class TestSecretsAPI:
             },
         )
 
-        response = client.get("/api/v1/admin/keys")
+        response = await client.get("/api/v1/admin/keys")
         assert response.status_code == 200
         data = response.json()
         assert data["total"] >= 1
 
-    def test_revoke_key(self, client):
+    async def test_revoke_key(self, client):
         # Generate a key
-        gen_response = client.post(
+        gen_response = await client.post(
             "/api/v1/admin/keys/generate",
             json={
                 "subject": "user1",
@@ -157,7 +164,7 @@ class TestSecretsAPI:
         key = gen_response.json()["key"]
 
         # Revoke it
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/keys/revoke",
             json={
                 "key": key,
@@ -167,9 +174,9 @@ class TestSecretsAPI:
         assert response.status_code == 200
         assert response.json()["status"] == "success"
 
-    def test_rotate_key(self, client):
+    async def test_rotate_key(self, client):
         # Generate a key
-        gen_response = client.post(
+        gen_response = await client.post(
             "/api/v1/admin/keys/generate",
             json={
                 "subject": "user1",
@@ -179,7 +186,7 @@ class TestSecretsAPI:
         old_key = gen_response.json()["key"]
 
         # Rotate it
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/keys/rotate",
             json={
                 "old_key": old_key,
@@ -193,17 +200,18 @@ class TestSecretsAPI:
         assert "new_key" in data
         assert data["new_key"] != old_key
 
-    def test_keys_health(self, client):
-        response = client.get("/api/v1/admin/keys/health")
+    async def test_keys_health(self, client):
+        response = await client.get("/api/v1/admin/keys/health")
         assert response.status_code == 200
         data = response.json()
         assert "total_keys" in data
         assert "active_keys" in data
 
 
+@pytest.mark.asyncio
 class TestBackupAPI:
-    def test_create_backup(self, client):
-        response = client.post(
+    async def test_create_backup(self, client):
+        response = await client.post(
             "/api/v1/admin/backups",
             json={
                 "label": "test-backup",
@@ -216,22 +224,22 @@ class TestBackupAPI:
         assert "backup_id" in data
         assert data["size_bytes"] > 0
 
-    def test_list_backups(self, client):
+    async def test_list_backups(self, client):
         # Create a backup first
-        client.post("/api/v1/admin/backups", json={"label": "test"})
+        await client.post("/api/v1/admin/backups", json={"label": "test"})
 
-        response = client.get("/api/v1/admin/backups/list")
+        response = await client.get("/api/v1/admin/backups/list")
         assert response.status_code == 200
         data = response.json()
         assert data["total"] >= 1
 
-    def test_verify_backup(self, client):
+    async def test_verify_backup(self, client):
         # Create a backup
-        create_response = client.post("/api/v1/admin/backups", json={"label": "verify-test"})
+        create_response = await client.post("/api/v1/admin/backups", json={"label": "verify-test"})
         backup_id = create_response.json()["backup_id"]
 
         # Verify it
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/backups/verify",
             json={
                 "backup_id": backup_id,
@@ -241,14 +249,14 @@ class TestBackupAPI:
         data = response.json()
         assert data["valid"] is True
 
-    def test_restore_backup(self, client, tmp_path):
+    async def test_restore_backup(self, client, tmp_path):
         # Create a backup
-        create_response = client.post("/api/v1/admin/backups", json={"label": "restore-test"})
+        create_response = await client.post("/api/v1/admin/backups", json={"label": "restore-test"})
         backup_id = create_response.json()["backup_id"]
 
         # Restore to new location
         target = tmp_path / "restored.sqlite"
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/backups/restore",
             json={
                 "backup_id": backup_id,
@@ -259,28 +267,29 @@ class TestBackupAPI:
         assert response.json()["status"] == "success"
         assert target.exists()
 
-    def test_cleanup_backups(self, client):
+    async def test_cleanup_backups(self, client):
         # Create some backups
         for i in range(3):
-            client.post("/api/v1/admin/backups", json={"label": f"cleanup-{i}"})
+            await client.post("/api/v1/admin/backups", json={"label": f"cleanup-{i}"})
 
-        response = client.post("/api/v1/admin/backups/cleanup")
+        response = await client.post("/api/v1/admin/backups/cleanup")
         assert response.status_code == 200
         data = response.json()
         assert "removed" in data
         assert "remaining" in data
 
-    def test_backups_health(self, client):
-        response = client.get("/api/v1/admin/backups/health")
+    async def test_backups_health(self, client):
+        response = await client.get("/api/v1/admin/backups/health")
         assert response.status_code == 200
         data = response.json()
         assert "health" in data
         assert "schedule" in data
 
 
+@pytest.mark.asyncio
 class TestWebhooksAPI:
-    def test_register_webhook(self, client):
-        response = client.post(
+    async def test_register_webhook(self, client):
+        response = await client.post(
             "/api/v1/admin/webhooks",
             json={
                 "name": "slack-alerts",
@@ -293,9 +302,9 @@ class TestWebhooksAPI:
         assert data["status"] == "success"
         assert data["webhook"]["name"] == "slack-alerts"
 
-    def test_list_webhooks(self, client):
+    async def test_list_webhooks(self, client):
         # Register a webhook first
-        client.post(
+        await client.post(
             "/api/v1/admin/webhooks",
             json={
                 "name": "test-hook",
@@ -304,14 +313,14 @@ class TestWebhooksAPI:
             },
         )
 
-        response = client.get("/api/v1/admin/webhooks/list")
+        response = await client.get("/api/v1/admin/webhooks/list")
         assert response.status_code == 200
         data = response.json()
         assert data["total"] >= 1
 
-    def test_toggle_webhook(self, client):
+    async def test_toggle_webhook(self, client):
         # Register
-        client.post(
+        await client.post(
             "/api/v1/admin/webhooks",
             json={
                 "name": "toggle-test",
@@ -321,7 +330,7 @@ class TestWebhooksAPI:
         )
 
         # Deactivate
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/webhooks/toggle",
             json={
                 "name": "toggle-test",
@@ -331,8 +340,8 @@ class TestWebhooksAPI:
         assert response.status_code == 200
         assert not response.json()["active"]
 
-    def test_test_webhook(self, client):
-        client.post(
+    async def test_test_webhook(self, client):
+        await client.post(
             "/api/v1/admin/webhooks",
             json={
                 "name": "test-hook",
@@ -341,7 +350,7 @@ class TestWebhooksAPI:
             },
         )
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/webhooks/test",
             json={
                 "name": "test-hook",
@@ -350,8 +359,8 @@ class TestWebhooksAPI:
         assert response.status_code == 200
         assert response.json()["status"] == "test_sent"
 
-    def test_send_webhook_event(self, client):
-        client.post(
+    async def test_send_webhook_event(self, client):
+        await client.post(
             "/api/v1/admin/webhooks",
             json={
                 "name": "event-hook",
@@ -360,7 +369,7 @@ class TestWebhooksAPI:
             },
         )
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/admin/webhooks/notify",
             json={
                 "event": "custom",
@@ -371,8 +380,8 @@ class TestWebhooksAPI:
         assert response.status_code == 200
         assert response.json()["targets_triggered"] >= 1
 
-    def test_webhook_history(self, client):
-        client.post(
+    async def test_webhook_history(self, client):
+        await client.post(
             "/api/v1/admin/webhooks",
             json={
                 "name": "history-hook",
@@ -382,7 +391,7 @@ class TestWebhooksAPI:
         )
 
         # Send some events
-        client.post(
+        await client.post(
             "/api/v1/admin/webhooks/notify",
             json={
                 "event": "ban_detected",
@@ -390,12 +399,12 @@ class TestWebhooksAPI:
             },
         )
 
-        response = client.get("/api/v1/admin/webhooks/history")
+        response = await client.get("/api/v1/admin/webhooks/history")
         assert response.status_code == 200
         assert response.json()["total"] >= 1
 
-    def test_webhooks_health(self, client):
-        response = client.get("/api/v1/admin/webhooks/health")
+    async def test_webhooks_health(self, client):
+        response = await client.get("/api/v1/admin/webhooks/health")
         assert response.status_code == 200
         data = response.json()
         assert "total_targets" in data

@@ -4,9 +4,13 @@ pull-first cron plans + shard jobs REST plane.
 """
 
 import json
+import os
+import tempfile
 from pathlib import Path
 
+import httpx
 import pytest
+import pytest_asyncio
 import yaml
 
 from aios_core.platforms import ShardJobs, ShardRouter
@@ -398,12 +402,8 @@ def test_cron_plan_via_shards_enqueues(tmp_path, capsys, monkeypatch):
     assert "нет builtin job kind для tiktok" in plan
 
 
-def test_rest_shard_jobs_plane(monkeypatch):
-    import os
-    import tempfile
-
-    from starlette.testclient import TestClient
-
+@pytest.mark.asyncio
+async def test_rest_shard_jobs_plane(monkeypatch):
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     with tempfile.TemporaryDirectory() as tmp:
         monkeypatch.setenv("AIOS_SHARDS_DB", str(Path(tmp) / "shards.sqlite"))
@@ -421,26 +421,28 @@ def test_rest_shard_jobs_plane(monkeypatch):
             policies_dir=os.path.join(root, "policies"),
             auth_required=False,
         )
-        client = TestClient(api.create_starlette_app())
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=api.create_starlette_app()),
+            base_url="http://testserver",
+        ) as client:
+            response = await client.post(
+                "/api/v1/shards/jobs",
+                json={
+                    "profile": "instagram:main",
+                    "kind": "autopilot",
+                    "payload": {"args": ["--max", "3"]},
+                },
+            )
+            assert response.status_code == 201
+            assert response.json()["enqueued"] >= 1
 
-        response = client.post(
-            "/api/v1/shards/jobs",
-            json={
-                "profile": "instagram:main",
-                "kind": "autopilot",
-                "payload": {"args": ["--max", "3"]},
-            },
-        )
-        assert response.status_code == 201
-        assert response.json()["enqueued"] >= 1
+            response = await client.post("/api/v1/shards/jobs", json={"profile": "x:y"})
+            assert response.status_code == 400
 
-        response = client.post("/api/v1/shards/jobs", json={"profile": "x:y"})
-        assert response.status_code == 400
+            response = await client.get("/api/v1/shards/jobs?status=pending")
+            jobs = response.json()["jobs"]
+            assert jobs and jobs[0]["kind"] == "autopilot"
 
-        response = client.get("/api/v1/shards/jobs?status=pending")
-        jobs = response.json()["jobs"]
-        assert jobs and jobs[0]["kind"] == "autopilot"
-
-        response = client.get("/api/v1/shards/stats")
-        stats = response.json()
-        assert stats["pending"] == 1 and stats["queue_depth"] == 1
+            response = await client.get("/api/v1/shards/stats")
+            stats = response.json()
+            assert stats["pending"] == 1 and stats["queue_depth"] == 1
