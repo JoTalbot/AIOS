@@ -1,7 +1,6 @@
 """AIOS Database Migration System"""
 
 import logging
-import os
 import sqlite3
 from typing import List
 

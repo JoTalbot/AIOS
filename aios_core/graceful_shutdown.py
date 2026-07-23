@@ -1,9 +1,12 @@
 """Graceful Shutdown Handler for AIOS"""
 
 import asyncio
+import logging
 import signal
 import sys
 from typing import Callable, List
+
+logger = logging.getLogger(__name__)
 
 
 class GracefulShutdown:
@@ -17,13 +20,13 @@ class GracefulShutdown:
         self.shutdown_handlers.append(handler)
 
     def _signal_handler(self, sig, frame):
-        print(f"\nReceived signal {sig}. Shutting down gracefully...")
+        logger.info("Received signal %s — shutting down gracefully", sig)
         self._shutdown_event.set()
         for handler in self.shutdown_handlers:
             try:
                 handler()
             except Exception as e:
-                print(f"Shutdown handler error: {e}")
+                logger.error("Shutdown handler error: %s", e)
         sys.exit(0)
 
     def setup(self):

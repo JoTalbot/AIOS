@@ -18,6 +18,8 @@ apks/
 # local databases
 *.sqlite
 *.db
+*.sqlite-shm
+*.sqlite-wal
 
 # virtual environment
 venv/
@@ -28,3 +30,27 @@ build/
 site/
 docs/source/_build/
 *.egg-info/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test / coverage artifacts
+.coverage
+htmlcov/
+.coverage.*
+coverage.xml
+
+# Python type checkers
+.mypy_cache/
+.dmypy.json
+
+# Docker
+docker-compose.override.yml
