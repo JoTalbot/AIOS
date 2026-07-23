@@ -28,12 +28,16 @@ class SubscriptionManager:
         max_price: Optional[float] = None,
         city: Optional[str] = None,
     ) -> int:
+        """Add a search subscription with filters."""
         return self.storage.subscription_add(name, query, min_price, max_price, city)
 
     def list(self) -> List[Dict[str, object]]:
+        """List all watched fingerprints."""
         return self.storage.subscriptions_list()
 
+        """Remove a fingerprint from the watch list."""
     def remove(self, subscription_id: int) -> bool:
+        """Remove a fingerprint from the watch list."""
         return self.storage.subscription_remove(subscription_id)
 
     @staticmethod
@@ -84,11 +88,14 @@ class FavoritesWatch:
 
     def __init__(self, storage):
         self.storage = storage
+        """Add a fingerprint to the watch list."""
 
     def add(self, fingerprint: str) -> bool:
+        """Remove a fingerprint from the watch list."""
         return self.storage.favorite_add(fingerprint)
 
     def remove(self, fingerprint: str) -> bool:
+        """Remove a fingerprint from the watch list."""
         return self.storage.favorite_remove(fingerprint)
 
     def list(self) -> List[Dict[str, object]]:

@@ -113,6 +113,7 @@ class CapabilityMarketplace:
         kind: str = "capability",
         metadata: Optional[Dict[str, Any]] = None,
     ) -> MarketplaceCapability:
+        """Publish a capability to the marketplace."""
         item = MarketplaceCapability(
             name=name,
             description=description,
@@ -147,6 +148,7 @@ class CapabilityMarketplace:
     def search(
         self, query: str = "", tag: str = "", limit: int = 20, kind: str = ""
     ) -> List[MarketplaceCapability]:
+        """Search marketplace for capabilities matching a query."""
         results = list(self._items.values())
         if query:
             q = query.lower()
@@ -158,9 +160,11 @@ class CapabilityMarketplace:
         return results[:limit]
 
     def get(self, item_id: str) -> Optional[MarketplaceCapability]:
+        """Retrieve a capability by ID."""
         return self._items.get(item_id)
 
     def download(self, item_id: str) -> Optional[dict]:
+        """Download a capability package."""
         item = self._items.get(item_id)
         if item:
             item.downloads += 1
@@ -179,6 +183,7 @@ class CapabilityMarketplace:
         readme: str = "",
         version: str = "1.0.0",
     ) -> PlatformPlugin:
+        """Publish a platform plugin to the marketplace."""
         plugin = PlatformPlugin(
             platform=platform,
             descriptor_yaml=descriptor_yaml,
@@ -223,6 +228,7 @@ class CapabilityMarketplace:
     def list_platform_plugins(
         self, platform: str = "", verified_only: bool = False
     ) -> List[PlatformPlugin]:
+        """List registered platform plugins."""
         results = list(self._plugins.values())
         if platform:
             results = [p for p in results if p.platform == platform]
@@ -231,9 +237,11 @@ class CapabilityMarketplace:
         return sorted(results, key=lambda x: x.created_at, reverse=True)
 
     def get_platform_plugin(self, plugin_id: str) -> Optional[PlatformPlugin]:
+        """Retrieve a platform plugin by ID."""
         return self._plugins.get(plugin_id)
 
     def verify_plugin(self, plugin_id: str, verifier: str = "system") -> bool:
+        """Verify plugin integrity and compatibility."""
         p = self._plugins.get(plugin_id)
         if not p:
             return False
@@ -241,6 +249,7 @@ class CapabilityMarketplace:
         return True
 
     def download_plugin(self, plugin_id: str) -> Optional[Dict[str, Any]]:
+        """Download a platform plugin package."""
         p = self._plugins.get(plugin_id)
         if not p:
             return None
@@ -269,6 +278,7 @@ class CapabilityMarketplace:
             return {"success": False, "error": str(e)}
 
     def stats(self) -> dict:
+        """Return marketplace statistics."""
         return {
             "version": self.version,
             "total_capabilities": len(self._items),
@@ -282,6 +292,7 @@ class CapabilityMarketplace:
     # --- Export for API ---
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize marketplace state to a dictionary."""
         return {
             "capabilities": [asdict(c) for c in list(self._items.values())[:50]],
             "plugins": [asdict(p) for p in list(self._plugins.values())[:50]],

@@ -43,6 +43,7 @@ class DevicePool:
     def register(
         self, serial: str, avd_name: Optional[str] = None, auto_restart: bool = True
     ) -> DeviceRecord:
+        """Register a device in the pool with optional AVD name."""
         self.devices[serial] = DeviceRecord(
             serial=serial, avd_name=avd_name or serial, auto_restart=auto_restart
         )
@@ -78,6 +79,7 @@ class DevicePool:
         serial: Optional[str] = None,
         preferred_avd: Optional[str] = None,
     ) -> Optional[DeviceRecord]:
+        """Lease a device to a profile, optionally enqueuing if busy."""
         if serial:
             dev = self.devices.get(serial)
             if dev and dev.status == "idle":
@@ -103,6 +105,7 @@ class DevicePool:
         return None
 
     def release(self, profile: str) -> Optional[DeviceRecord]:
+        """Release a leased device back to the pool."""
         for dev in self.devices.values():
             if dev.leased_to == profile and dev.status == "busy":
                 dev.status = "idle"
@@ -111,6 +114,7 @@ class DevicePool:
         return None
 
     def heartbeat(self, serial: str) -> bool:
+        """Record a heartbeat for an active device."""
         dev = self.devices.get(serial)
         if not dev:
             return False
@@ -118,6 +122,7 @@ class DevicePool:
         return True
 
     def reap_stale(self, max_silence_s: float = 900) -> List[str]:
+        """Mark silent devices as offline."""
         now = time.time()
         released = []
         for dev in list(self.devices.values()):
@@ -127,6 +132,7 @@ class DevicePool:
         return released
 
     def enqueue(self, profile: str, priority: int = 0) -> None:
+        """Enqueue a profile on the device waitlist."""
         self.waitlist.append(
             WaitlistEntry(profile=profile, priority=priority, requested_at=time.time())
         )

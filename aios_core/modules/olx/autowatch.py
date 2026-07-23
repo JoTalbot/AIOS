@@ -51,6 +51,7 @@ class AutoWatch:
         min_age_days: float = 3.0,
         min_views_per_day: float = 1.0,
     ) -> Dict[str, object]:
+        """Run one full AutoWatch cycle — collect, alert, advise."""
         report: Dict[str, object] = {}
 
         # 1. Collection + subscription alerts

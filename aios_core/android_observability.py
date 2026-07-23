@@ -73,6 +73,7 @@ class AndroidObservability:
         except Exception:
             pass  # psutil unavailable — skip resource anomaly detection
     def isolate_process(self) -> None:
+        """Isolate the Android test process for reliability."""
         return self._isolate_process()
 
     def check_heuristic_anomalies(self) -> List[Dict[str, Any]]:
@@ -133,6 +134,7 @@ class AndroidObservability:
         screen: Optional[str] = None,
         meta: Optional[Dict[str, Any]] = None,
     ):
+        """Record an Android execution event with metadata."""
         event = AndroidExecutionEvent(
             timestamp=time.time(),
             package=package,
@@ -155,6 +157,7 @@ class AndroidObservability:
         return event
 
     def to_prometheus(self) -> str:
+        """Export metrics in Prometheus text format."""
         lines: List[str] = []
         for key, value in self.counters.items():
             lines.append(f"# TYPE {key} counter")
@@ -165,6 +168,7 @@ class AndroidObservability:
         return "\n".join(lines)
 
     def failure_rate(self, action: Optional[str] = None) -> float:
+        """Return the observed failure rate over window seconds."""
         subset = self.events
         if action:
             subset = [e for e in subset if e.action == action]
@@ -173,6 +177,7 @@ class AndroidObservability:
         return sum(1 for e in subset if not e.success) / len(subset)
 
     def summary(self) -> Dict[str, Any]:
+        """Return a human-readable observability summary."""
         total = len(self.events)
         failed = sum(1 for event in self.events if not event.success)
         return {
@@ -184,6 +189,7 @@ class AndroidObservability:
         }
 
     def render_dashboard(self) -> Dict[str, Any]:
+        """Render an HTML dashboard of observability data."""
         return {
             "device_id": self.device_id,
             "events": len(self.events),

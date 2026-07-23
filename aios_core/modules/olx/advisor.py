@@ -41,6 +41,7 @@ class ActionAdvice:
     priority: int = 3  # 1 = urgent … 3 = informational
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dictionary."""
         return {
             "fingerprint": self.fingerprint,
             "title": self.title,
@@ -63,6 +64,7 @@ class NewListingSuggestion:
     priority: int = 3
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dictionary."""
         return {
             "query": self.query,
             "reason": self.reason,
@@ -89,6 +91,7 @@ class StrategyAdvisor:
         min_views_per_day: float = 1.0,
         now: Optional[datetime] = None,
     ) -> List[ActionAdvice]:
+        """Return recommended actions for owned ads."""
         now = now or datetime.now(timezone.utc)
         planner = RepostPlanner(min_age_days=min_age_days, min_views_per_day=min_views_per_day)
         advice: List[ActionAdvice] = []
