@@ -3,6 +3,8 @@
 import random
 from typing import Any, Dict, List
 
+__all__ = ["ActiveLearner"]
+
 
 class ActiveLearner:
     """Active learning query selection.

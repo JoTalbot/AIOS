@@ -6,6 +6,8 @@ import signal
 import sys
 from typing import Callable, List
 
+__all__ = ["GracefulShutdown", "shutdown_handler"]
+
 logger = logging.getLogger(__name__)
 
 

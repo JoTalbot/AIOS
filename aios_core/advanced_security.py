@@ -4,6 +4,8 @@ import hashlib
 import secrets
 from typing import Dict, List
 
+__all__ = ["AdvancedSecurity"]
+
 
 class AdvancedSecurity:
     """Multi-layer security system.

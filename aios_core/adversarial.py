@@ -3,6 +3,8 @@
 import random
 from typing import Dict, List
 
+__all__ = ["AdversarialDefense"]
+
 
 class AdversarialDefense:
     """Basic adversarial robustness tools.
