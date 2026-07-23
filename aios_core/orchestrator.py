@@ -72,11 +72,21 @@ class TaskStep:
     status: StepStatus = StepStatus.PENDING
     step_type: str = "tool"  # tool, evaluate, memory, knowledge, approve, custom
     params: dict = field(default_factory=dict)
+    # ``parameters`` was the public name in the original basic API. Keep both
+    # spellings as aliases while the runtime uses the shorter ``params`` name.
+    parameters: dict = field(default_factory=dict)
     result: Any = None
     error: str = None
     started_at: str = None
     completed_at: str = None
     constitutional_check: dict = None  # Result of constitution evaluation
+
+    def __post_init__(self) -> None:
+        """Keep legacy ``parameters`` and current ``params`` in sync."""
+        if self.parameters:
+            self.params = self.parameters
+        else:
+            self.parameters = self.params
 
 
 @dataclass
@@ -99,6 +109,37 @@ class Task:
     completed_at: str = None
     error: str = None
     metadata: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        """Return a serialisable representation of the task and its steps."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "status": self.status,
+            "agent_id": self.agent_id,
+            "authority": self.authority,
+            "risk_level": self.risk_level,
+            "steps": [
+                {
+                    "id": step.id,
+                    "name": step.name,
+                    "description": step.description,
+                    "status": step.status,
+                    "step_type": step.step_type,
+                    "parameters": step.parameters,
+                    "result": step.result,
+                    "error": step.error,
+                }
+                for step in self.steps
+            ],
+            "current_step_index": self.current_step_index,
+            "created_at": self.created_at,
+            "started_at": self.started_at,
+            "completed_at": self.completed_at,
+            "error": self.error,
+            "metadata": self.metadata,
+        }
 
 
 class Orchestrator:
@@ -176,15 +217,21 @@ class Orchestrator:
 
     def create_task(
         self,
-        name: str,
+        name: str = "",
         description: str = "",
         agent_id: str = "orchestrator",
         authority: str = "system",
         risk_level: str = "medium",
         metadata: Optional[dict] = None,
+        task_id: Optional[str] = None,
     ) -> Task:
-        """Create a new task without executing it."""
+        """Create a new task without executing it.
+
+        ``task_id`` is optional to preserve the stable public API for callers
+        that manage identifiers themselves.
+        """
         task = Task(
+            id=task_id or uuid.uuid4().hex[:12],
             name=name,
             description=description,
             agent_id=agent_id,
@@ -472,6 +519,10 @@ class Orchestrator:
     def get_task(self, task_id: str) -> Optional[Task]:
         """Get a task by ID."""
         return self._tasks.get(task_id)
+
+    def delete_task(self, task_id: str) -> bool:
+        """Remove an untracked task and return whether it existed."""
+        return self._tasks.pop(task_id, None) is not None
 
     def list_tasks(self, status: Optional[TaskStatus] = None) -> list[dict]:
         """List all tasks, optionally filtered by status."""
