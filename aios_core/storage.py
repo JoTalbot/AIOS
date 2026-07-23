@@ -338,41 +338,50 @@ class Database:
             return cursor
 
     def query(self, sql: str, params: tuple = ()) -> list[dict]:
+        """Execute a read query and return rows as a list of dicts."""
         with self._lock:
             rows = self._get_conn().execute(self.translate_query(sql), params).fetchall()
             return [dict(row) for row in rows]
 
     def query_one(self, sql: str, params: tuple = ()) -> Optional[dict]:
+        """Execute a read query and return the first row as a dict, or ``None``."""
         with self._lock:
             row = self._get_conn().execute(self.translate_query(sql), params).fetchone()
             return dict(row) if row else None
 
     def close(self):
+        """Close the underlying database connection."""
         if self._conn is not None:
             self._conn.close()
             self._conn = None
 
     @staticmethod
     def new_id() -> str:
+        """Return a new random hex identifier."""
         return uuid.uuid4().hex
 
     @staticmethod
     def now_iso() -> str:
+        """Return the current UTC timestamp as an ISO-8601 string."""
         return datetime.now(timezone.utc).isoformat()
 
     @staticmethod
     def to_json(data: Any) -> str:
+        """Serialize *data* to a JSON string."""
         return json.dumps(data, ensure_ascii=False, default=str)
 
     @staticmethod
     def from_json(json_str: str) -> Any:
+        """Deserialize a JSON string."""
         return json.loads(json_str)
 
     def row_count(self, table: str) -> int:
+        """Return the number of rows in *table*."""
         row = self.query_one(f"SELECT COUNT(*) as cnt FROM {table}")
         return row["cnt"] if row else 0
 
     def tables(self) -> list[str]:
+        """Return the list of user-table names in the database."""
         if self.dialect == "postgresql":
             rows = self.query(
                 "SELECT table_name as name FROM information_schema.tables WHERE table_schema='public'"
@@ -382,6 +391,7 @@ class Database:
         return [r["name"] for r in rows]
 
     def stats(self) -> dict:
+        """Return a summary of database path, dialect, and per-table row counts."""
         return {
             "db_path": self.db_path,
             "dialect": self.dialect,

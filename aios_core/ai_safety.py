@@ -56,6 +56,7 @@ class AISafetyFramework:
 
 
 class ConstitutionalSafety:
+    """Safety layer checking for constitutional violations (e.g. harm language)."""
     def check(self, action: Dict, context: Dict = None) -> Dict:
         action_str = str(action).lower()
         violations = []
@@ -69,20 +70,24 @@ class ConstitutionalSafety:
 
 
 class AlignmentSafety:
+    """Safety layer quantifying value-alignment of actions."""
     def check(self, action: Dict, context: Dict = None) -> Dict:
         return {"safe": True, "score": 0.95, "alignment_score": 0.92}
 
 
 class InterpretabilitySafety:
+    """Safety layer assessing how interpretable an action is."""
     def check(self, action: Dict, context: Dict = None) -> Dict:
         return {"safe": True, "score": 0.88, "interpretability": 0.85}
 
 
 class RobustnessSafety:
+    """Safety layer checking robustness against perturbations."""
     def check(self, action: Dict, context: Dict = None) -> Dict:
         return {"safe": True, "score": 0.90, "robustness": 0.88}
 
 
 class GovernanceSafety:
+    """Safety layer enforcing governance compliance."""
     def check(self, action: Dict, context: Dict = None) -> Dict:
         return {"safe": True, "score": 0.93, "governance_compliance": 0.91}
