@@ -3,6 +3,8 @@
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict
 
+__all__ = ["AIAgent"]
+
 
 @dataclass
 class AIAgent:

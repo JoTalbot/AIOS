@@ -38,11 +38,11 @@ class AdvancedAgent:
         self.goals: List[str] = []
         self.plan: List[Dict] = []
 
-    def add_tool(self, tool: Tool):
+    def add_tool(self, tool: Tool) -> None:
         """Register a tool under its name."""
         self.tools[tool.name] = tool
 
-    def set_goal(self, goal: str):
+    def set_goal(self, goal: str) -> None:
         """Append a goal to the agent's goal stack."""
         self.goals.append(goal)
 
