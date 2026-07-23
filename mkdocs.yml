@@ -89,10 +89,14 @@ nav:
     - Обзор: index.md
     - Быстрый старт: quickstart.md
     - Установка: INSTALLATION.md
+    - Установка (detail): installation.md
     - Использование: USAGE_EXAMPLES.md
     - Развёртывание: DEPLOYMENT.md
     - Production Exploitation: PRODUCTION.md
     - CHANGELOG: CHANGELOG.md
+    - Полный CHANGELOG: CHANGELOG_FULL.md
+    - Безопасность: SECURITY.md
+    - Аудит безопасности: SECURITY_AUDIT_REPORT.md
     - Статус: STATUS.md
 
   - Архитектура:
@@ -129,11 +133,17 @@ nav:
       - Sync: core/AIOS_SYNC_ARCHITECTURE.md
       - Task Execution: core/AIOS_TASK_EXECUTION_MODEL.md
       - Worker Runtime: core/AIOS_WORKER_RUNTIME.md
+      - Architecture Analysis: core/ARCHITECTURE_ANALYSIS.md
+      - Compliance Matrix: core/ARCHITECTURE_COMPLIANCE_MATRIX.md
+      - Architecture Report: core/ARCHITECTURE_REPORT.md
+      - Architecture Roadmap: core/ARCHITECTURE_ROADMAP.md
+      - ARCHITECTURE.md: ARCHITECTURE.md
     - "Architecture / Детали":
       - Core Architecture: architecture/AIOS_CORE_ARCHITECTURE.md
       - Runtime Specification: architecture/AIOS_RUNTIME_SPECIFICATION.md
       - Sync Architecture: architecture/AIOS_SYNC_ARCHITECTURE.md
       - Octopus Evolution: architecture/OCTOPUS_EVOLUTION_PLAN.md
+      - Development Batch 001: architecture/AIOS_DEVELOPMENT_BATCH_001.md
 
   - Конституция:
     - Индекс: constitution/INDEX.md
@@ -142,6 +152,8 @@ nav:
     - Матрица соответствия: constitution/COMPLIANCE_MATRIX.md
     - Отчёт: constitution/CONSTITUTION_REPORT.md
     - История версий: constitution/VERSION_HISTORY.md
+    - Constitution v2.0: constitution/VERSION_2.0.md
+    - Heartbeat Log: constitution/logs/heartbeat.md
     - "Статьи I–XIV":
       - I. Identity: constitution/ARTICLE-I-IDENTITY.md
       - II. Memory: constitution/ARTICLE-II-MEMORY.md
@@ -242,6 +254,7 @@ nav:
 
   - Оркестрация и агенты:
     - Distributed Worker: orchestration/DISTRIBUTED_WORKER_ORCHESTRATION.md
+    - Architecture Evolution: orchestration/ARCHITECTURE_EVOLUTION_AGENT.md
     - Evolution Agent: agents/ARCHITECTURE_EVOLUTION_AGENT.md
     - Documentation Agent: agents/DOCUMENTATION_AGENT.md
     - Orchestrator Agent: agents/ORCHESTRATOR_AGENT.md
@@ -274,3 +287,6 @@ nav:
     - Document Index: AIOS_DOCUMENT_INDEX.md
     - Project State: AIOS_PROJECT_STATE.md
     - Аудит документации: reviews/AIOS_DOCUMENTATION_ARCHITECTURE_AUDIT.md
+
+  - Участие:
+    - Contributing: CONTRIBUTING.md
