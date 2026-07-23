@@ -1,2 +1,2 @@
-from aios_core.multidimensional_world_model import MultidimensionalWorldModel
-def test(): assert MultidimensionalWorldModel().stats() is not None
+from aios_core.multidimensional_world_model import MultiDimensionalWorldModel
+def test(): assert MultiDimensionalWorldModel().stats() is not None

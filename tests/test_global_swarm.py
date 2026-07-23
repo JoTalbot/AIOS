@@ -1,2 +1,2 @@
-from aios_core.global_swarm import GlobalSwarm
-def test(): assert GlobalSwarm().stats() is not None
+from aios_core.global_swarm import GlobalSwarmGovernance
+def test(): assert GlobalSwarmGovernance().stats() is not None

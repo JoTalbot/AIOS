@@ -1,2 +1,2 @@
-from aios_core.substrate_convergence import SubstrateConvergence
-def test(): assert SubstrateConvergence().stats() is not None
+from aios_core.substrate_convergence import SubstrateConvergenceEngine
+def test(): assert SubstrateConvergenceEngine().stats() is not None
