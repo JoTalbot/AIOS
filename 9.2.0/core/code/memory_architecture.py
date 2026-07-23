@@ -37,8 +37,8 @@ class KnowledgeObject:
 @dataclass
 class AIOSMemory:
     # Memory layers (per AIOS_MEMORY_ARCHITECTURE.md)
-    short_term_memory: List[str] = field(default_factory=list)         # Minutes → Hours
-    operational_memory: List[str] = field(default_factory=list)        # Running processes
+    short_term_memory: List[str] = field(default_factory=list)  # Minutes → Hours
+    operational_memory: List[str] = field(default_factory=list)  # Running processes
     long_term_knowledge: Dict[str, KnowledgeObject] = field(default_factory=dict)
     experience_ledger: List[Experience] = field(default_factory=list)
 
