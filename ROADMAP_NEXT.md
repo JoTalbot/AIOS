@@ -12,3 +12,25 @@
 - 100% docstring coverage
 - Performance benchmarks CI integration
 - Multi-architecture Docker builds (arm64)
+
+## Release Instructions
+
+### Docker (GHCR)
+```bash
+git tag v9.3.1
+git push origin v9.3.1
+# → CI builds multi-arch image, pushes to ghcr.io/JoTalbot/AIOS:v9.3.1
+```
+
+### SDK (PyPI)
+```bash
+git tag sdk-v4.2.0
+git push origin sdk-v4.2.0
+# → CI builds sdk/ and publishes aios-client to PyPI
+```
+
+### Full Production Deploy
+```bash
+docker-compose -f docker-compose.prod.yml up -d
+docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
+```
