@@ -76,9 +76,7 @@ class ShardJobs:
 
     # -- очередь ------------------------------------------------------
 
-    def enqueue(
-        self, profile_key: str, kind: str, payload: Optional[Dict] = None
-    ) -> int:
+    def enqueue(self, profile_key: str, kind: str, payload: Optional[Dict] = None) -> int:
         """Повесить джобу на профиль; вернуть id."""
         with self._lock, self._conn:
             cursor = self._conn.execute(
@@ -129,9 +127,7 @@ class ShardJobs:
     def pending_for(self, host: str) -> List[Dict]:
         """Pending-джобы, маршрут которых указывает на ``host``."""
         return [
-            job
-            for job in self.list(status="pending")
-            if self._host_for(job["profile_key"]) == host
+            job for job in self.list(status="pending") if self._host_for(job["profile_key"]) == host
         ]
 
     def claim_next(self, host: str) -> Optional[Dict]:
@@ -149,14 +145,11 @@ class ShardJobs:
                     return job
         return None
 
-    def complete(
-        self, job_id: int, ok: bool = True, result: Optional[Dict] = None
-    ) -> bool:
+    def complete(self, job_id: int, ok: bool = True, result: Optional[Dict] = None) -> bool:
         """Зафиксировать результат джобы (done/failed)."""
         with self._lock, self._conn:
             cursor = self._conn.execute(
-                "UPDATE shard_jobs SET status = ?, finished_at = ?, result = ? "
-                "WHERE id = ?",
+                "UPDATE shard_jobs SET status = ?, finished_at = ?, result = ? " "WHERE id = ?",
                 (
                     "done" if ok else "failed",
                     _now(),
@@ -172,14 +165,11 @@ class ShardJobs:
         """Исполнитель жив: обновляет отметку времени ноды."""
         with self._lock, self._conn:
             self._conn.execute(
-                "INSERT OR REPLACE INTO shard_heartbeats (host, seen_at)"
-                " VALUES (?, ?)",
+                "INSERT OR REPLACE INTO shard_heartbeats (host, seen_at)" " VALUES (?, ?)",
                 (host, _now()),
             )
 
-    def requeue_stale(
-        self, stale_after_s: float = 600.0, now: Optional[str] = None
-    ) -> List[Dict]:
+    def requeue_stale(self, stale_after_s: float = 600.0, now: Optional[str] = None) -> List[Dict]:
         """Вернуть в pending claimed-джобы, зависшие дольше TTL.
 
         Джоба считается зависшей, если с момента claim прошло больше
@@ -341,9 +331,7 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
     def autopilot(profile_key: str, payload: Dict) -> Dict:
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
-            raise ValueError(
-                f"autopilot job поддерживает instagram-профили, не {platform!r}"
-            )
+            raise ValueError(f"autopilot job поддерживает instagram-профили, не {platform!r}")
         return _run_cli(
             [
                 "python3",
@@ -360,9 +348,7 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
     def reels(profile_key: str, payload: Dict) -> Dict:
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
-            raise ValueError(
-                f"reels job поддерживает instagram-профили, не {platform!r}"
-            )
+            raise ValueError(f"reels job поддерживает instagram-профили, не {platform!r}")
         return _run_cli(
             [
                 "python3",
@@ -379,9 +365,7 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
     def dm_flush(profile_key: str, payload: Dict) -> Dict:
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
-            raise ValueError(
-                f"dm-flush job поддерживает instagram-профили, не {platform!r}"
-            )
+            raise ValueError(f"dm-flush job поддерживает instagram-профили, не {platform!r}")
         return _run_cli(
             [
                 "python3",

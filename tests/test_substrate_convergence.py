@@ -12,7 +12,9 @@ def test_substrate_selection_and_task_execution():
     assert exec_1["selected_substrate"] == SubstrateType.BIO_COMPUTE
 
     # Specific preference request
-    exec_2 = engine.execute_substrate_task({"id": "task_quantum", "preferred_type": SubstrateType.QUANTUM})
+    exec_2 = engine.execute_substrate_task(
+        {"id": "task_quantum", "preferred_type": SubstrateType.QUANTUM}
+    )
     assert exec_2["selected_substrate"] == SubstrateType.QUANTUM
 
     stats = engine.stats()

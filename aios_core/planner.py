@@ -152,7 +152,8 @@ class Planner:
         """Create the plans table and indexes if they do not exist."""
         if self.db is None:
             return
-        self.db.execute("""
+        self.db.execute(
+            """
             CREATE TABLE IF NOT EXISTS plans (
                 id          TEXT PRIMARY KEY,
                 name        TEXT NOT NULL,
@@ -165,11 +166,10 @@ class Planner:
                 updated_at  TEXT,
                 metadata    TEXT
             )
-        """)
-        self.db.execute("CREATE INDEX IF NOT EXISTS idx_plans_status ON plans(status)")
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_plans_created ON plans(created_at)"
+        """
         )
+        self.db.execute("CREATE INDEX IF NOT EXISTS idx_plans_status ON plans(status)")
+        self.db.execute("CREATE INDEX IF NOT EXISTS idx_plans_created ON plans(created_at)")
 
     # ------------------------------------------------------------------
     # Plan CRUD
@@ -284,12 +284,8 @@ class Planner:
                 "description": r["description"],
                 "goal": r["goal"],
                 "status": r["status"],
-                "step_count": (
-                    len(Database.from_json(r["steps_data"])) if r["steps_data"] else 0
-                ),
-                "edge_count": (
-                    len(Database.from_json(r["edges_data"])) if r["edges_data"] else 0
-                ),
+                "step_count": (len(Database.from_json(r["steps_data"])) if r["steps_data"] else 0),
+                "edge_count": (len(Database.from_json(r["edges_data"])) if r["edges_data"] else 0),
                 "created_at": r["created_at"],
                 "updated_at": r["updated_at"],
             }
@@ -341,9 +337,7 @@ class Planner:
         # Auto-create edges for declared dependencies
         for dep_id in step.dependencies:
             # Avoid duplicate edges
-            already = any(
-                e.source_id == dep_id and e.target_id == step.id for e in plan.edges
-            )
+            already = any(e.source_id == dep_id and e.target_id == step.id for e in plan.edges)
             if not already:
                 plan.edges.append(
                     PlanEdge(
@@ -434,8 +428,7 @@ class Planner:
             for dep_id in step.dependencies:
                 if dep_id not in step_ids:
                     errors.append(
-                        f"Step '{step.name}' ({step.id}) depends on "
-                        f"unknown step '{dep_id}'"
+                        f"Step '{step.name}' ({step.id}) depends on " f"unknown step '{dep_id}'"
                     )
 
         # --- Build adjacency list (only from valid edges) ---
@@ -500,8 +493,7 @@ class Planner:
                 for did in sorted(disconnected):
                     label = self._step_label(plan, did)
                     errors.append(
-                        f"Disconnected step '{label}' ({did}): "
-                        f"no path from any root step"
+                        f"Disconnected step '{label}' ({did}): " f"no path from any root step"
                     )
 
         # --- Execution layers ---
@@ -633,9 +625,7 @@ class Planner:
 
         return step
 
-    def mark_step_failed(
-        self, plan: Plan, step_id: str, error: str = ""
-    ) -> Optional[PlanStep]:
+    def mark_step_failed(self, plan: Plan, step_id: str, error: str = "") -> Optional[PlanStep]:
         """Mark a step as failed and propagate failure to dependents.
 
         For edges with condition "success", dependent steps are skipped.
@@ -778,9 +768,7 @@ class Planner:
             return {"score": 0.0, "reason": "empty plan"}
 
         layers = self.get_execution_layers(plan)
-        parallelism = len(layers) / max(
-            1, len(plan.steps)
-        )  # lower is better parallelism
+        parallelism = len(layers) / max(1, len(plan.steps))  # lower is better parallelism
 
         # Dependency density
         dep_count = sum(len(s.dependencies) for s in plan.steps)
@@ -792,9 +780,7 @@ class Planner:
 
         # Weighted score
         score = round(
-            (1 - parallelism) * 0.4
-            + (1 - min(dep_density, 1.0)) * 0.35
-            + diversity * 0.25,
+            (1 - parallelism) * 0.4 + (1 - min(dep_density, 1.0)) * 0.35 + diversity * 0.25,
             3,
         )
 
@@ -875,9 +861,7 @@ class Planner:
                 return e.condition
         return "success"
 
-    def _dfs_reachable(
-        self, node: str, adj: dict[str, list[str]], visited: set[str]
-    ) -> None:
+    def _dfs_reachable(self, node: str, adj: dict[str, list[str]], visited: set[str]) -> None:
         """Mark all nodes reachable from *node*."""
         stack = [node]
         while stack:
@@ -1006,9 +990,7 @@ class Planner:
                 "name": s.name,
                 "step_type": s.step_type,
                 "params": s.params,
-                "status": (
-                    s.status.value if isinstance(s.status, StepStatus) else s.status
-                ),
+                "status": (s.status.value if isinstance(s.status, StepStatus) else s.status),
                 "dependencies": s.dependencies,
             }
             if s.result is not None:

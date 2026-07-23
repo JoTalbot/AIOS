@@ -12,9 +12,7 @@ class CausalInterpretability:
     def discover_causal_graph(self, model: Any, variables: List[str]) -> Dict:
         return {
             "variables": variables,
-            "edges": [
-                (variables[i], variables[i + 1]) for i in range(len(variables) - 1)
-            ],
+            "edges": [(variables[i], variables[i + 1]) for i in range(len(variables) - 1)],
             "interventions": {},
         }
 

@@ -90,29 +90,21 @@ class TestPlanner(unittest.TestCase):
 
     def test_add_step_and_dependency(self):
         plan = self.planner.create_plan("test", "", "goal")
-        s1 = self.planner.add_step(
-            plan, "memory", {"action": "store"}, name="store_data"
-        )
-        s2 = self.planner.add_step(
-            plan, "reason", {}, name="analyze", dependencies=[s1.id]
-        )
+        s1 = self.planner.add_step(plan, "memory", {"action": "store"}, name="store_data")
+        s2 = self.planner.add_step(plan, "reason", {}, name="analyze", dependencies=[s1.id])
         self.assertEqual(len(plan.edges), 1)
 
     def test_validate_no_cycle(self):
         plan = self.planner.create_plan("test", "", "goal")
         s1 = self.planner.add_step(plan, "memory", {}, name="a")
-        s2 = self.planner.add_step(
-            plan, "memory", {}, name="b", dependencies=[s1.id]
-        )
+        s2 = self.planner.add_step(plan, "memory", {}, name="b", dependencies=[s1.id])
         result = self.planner.validate_plan(plan)
         self.assertTrue(result["valid"])
 
     def test_detect_cycle(self):
         plan = self.planner.create_plan("test", "", "goal")
         s1 = self.planner.add_step(plan, "memory", {}, name="a")
-        s2 = self.planner.add_step(
-            plan, "memory", {}, name="b", dependencies=[s1.id]
-        )
+        s2 = self.planner.add_step(plan, "memory", {}, name="b", dependencies=[s1.id])
         self.planner.add_dependency(plan, s2.id, s1.id)  # Create cycle: a→b→a
         result = self.planner.validate_plan(plan)
         self.assertFalse(result["valid"])
@@ -121,24 +113,16 @@ class TestPlanner(unittest.TestCase):
     def test_execution_layers(self):
         plan = self.planner.create_plan("diamond", "", "goal")
         s1 = self.planner.add_step(plan, "memory", {}, name="start")
-        s2 = self.planner.add_step(
-            plan, "memory", {}, name="left", dependencies=[s1.id]
-        )
-        s3 = self.planner.add_step(
-            plan, "memory", {}, name="right", dependencies=[s1.id]
-        )
-        s4 = self.planner.add_step(
-            plan, "memory", {}, name="end", dependencies=[s2.id, s3.id]
-        )
+        s2 = self.planner.add_step(plan, "memory", {}, name="left", dependencies=[s1.id])
+        s3 = self.planner.add_step(plan, "memory", {}, name="right", dependencies=[s1.id])
+        s4 = self.planner.add_step(plan, "memory", {}, name="end", dependencies=[s2.id, s3.id])
         layers = self.planner.get_execution_layers(plan)
         self.assertEqual(len(layers), 3)  # [start], [left, right], [end]
 
     def test_mark_step_and_progress(self):
         plan = self.planner.create_plan("test", "", "goal")
         s1 = self.planner.add_step(plan, "memory", {}, name="a")
-        s2 = self.planner.add_step(
-            plan, "memory", {}, name="b", dependencies=[s1.id]
-        )
+        s2 = self.planner.add_step(plan, "memory", {}, name="b", dependencies=[s1.id])
         self.planner.mark_step_running(plan, s1.id)
         self.planner.mark_step_completed(plan, s1.id, {"result": "ok"})
         progress = self.planner.get_plan_progress(plan)
@@ -165,9 +149,7 @@ class TestCapabilityEngine(unittest.TestCase):
         self.db.close()
 
     def test_register_and_get(self):
-        cap = self.engine.register(
-            "test_cap", "A test capability", handler=lambda x: {"ok": True}
-        )
+        cap = self.engine.register("test_cap", "A test capability", handler=lambda x: {"ok": True})
         self.assertEqual(cap["name"], "test_cap")
         retrieved = self.engine.get_capability("test_cap")
         self.assertIsNotNone(retrieved)
@@ -178,9 +160,7 @@ class TestCapabilityEngine(unittest.TestCase):
         self.assertEqual(cap["status"], "discovered")
 
     def test_execute_capability(self):
-        self.engine.register(
-            "echo", "Echo input", handler=lambda x: x
-        )
+        self.engine.register("echo", "Echo input", handler=lambda x: x)
         result = self.engine.execute("echo", {"hello": "world"})
         self.assertTrue(result["success"])
         self.assertEqual(result["result"]["hello"], "world")
@@ -218,9 +198,7 @@ class TestCapabilityEngine(unittest.TestCase):
         self.assertEqual(result["result"]["result"], 20)  # (5*2)+10
 
     def test_search(self):
-        self.engine.register(
-            "tool_a", "Tool A", capability_type="tool", tags=["search"]
-        )
+        self.engine.register("tool_a", "Tool A", capability_type="tool", tags=["search"])
         self.engine.register("api_b", "API B", capability_type="api")
         results = self.engine.search(capability_type="tool")
         self.assertEqual(len(results), 1)
@@ -289,9 +267,7 @@ class TestAutonomyManager(unittest.TestCase):
     def test_persistence(self):
         from aios_core.autonomy_manager import AutonomyManager, AutonomyLevel
 
-        self.am.grant_autonomy(
-            "persist_agent", AutonomyLevel.LEVEL_5_SELF_DIRECTED
-        )
+        self.am.grant_autonomy("persist_agent", AutonomyLevel.LEVEL_5_SELF_DIRECTED)
         # Reload
         am2 = AutonomyManager(db=self.db)
         profile = am2.get_profile("persist_agent")
@@ -312,12 +288,8 @@ class TestV3Integration(unittest.TestCase):
         db = Database(":memory:")
         orch = Orchestrator(
             db=db,
-            constitution_dir=os.path.join(
-                os.path.dirname(__file__), "..", "docs", "constitution"
-            ),
-            policies_dir=os.path.join(
-                os.path.dirname(__file__), "..", "policies"
-            ),
+            constitution_dir=os.path.join(os.path.dirname(__file__), "..", "docs", "constitution"),
+            policies_dir=os.path.join(os.path.dirname(__file__), "..", "policies"),
         )
         # Check new subsystems exist
         self.assertIsNotNone(orch.events)

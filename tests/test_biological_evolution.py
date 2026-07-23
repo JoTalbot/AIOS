@@ -25,7 +25,9 @@ def test_genetic_evolution_generation_stepping():
 
     # Evaluate fitness for population
     for g in engine.population:
-        engine.evaluate_fitness(g, task_success_rate=0.9, latency_penalty=0.1, constitutional_violations=0)
+        engine.evaluate_fitness(
+            g, task_success_rate=0.9, latency_penalty=0.1, constitutional_violations=0
+        )
 
     # Advance 2 generations
     gen1 = engine.step_generation()
@@ -33,7 +35,9 @@ def test_genetic_evolution_generation_stepping():
     assert engine.generation == 1
 
     for g in engine.population:
-        engine.evaluate_fitness(g, task_success_rate=0.95, latency_penalty=0.05, constitutional_violations=0)
+        engine.evaluate_fitness(
+            g, task_success_rate=0.95, latency_penalty=0.05, constitutional_violations=0
+        )
 
     gen2 = engine.step_generation()
     assert engine.generation == 2

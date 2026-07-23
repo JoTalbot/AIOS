@@ -43,9 +43,7 @@ class FederatedNode:
 class FederationManager:
     """Manages a network of federated AIOS nodes."""
 
-    def __init__(
-        self, db: Optional[Database] = None, local_node_id: Optional[str] = None
-    ):
+    def __init__(self, db: Optional[Database] = None, local_node_id: Optional[str] = None):
         self.db = db
         self.local_node_id = local_node_id or f"node_{uuid.uuid4().hex[:8]}"
         self._nodes: Dict[str, FederatedNode] = {}
@@ -58,7 +56,8 @@ class FederationManager:
     def _ensure_table(self) -> None:
         if self.db is None:
             return
-        self.db.execute("""
+        self.db.execute(
+            """
             CREATE TABLE IF NOT EXISTS federation_nodes (
                 node_id TEXT PRIMARY KEY,
                 name TEXT,
@@ -70,7 +69,8 @@ class FederationManager:
                 metadata TEXT,
                 trust_score REAL DEFAULT 1.0
             )
-        """)
+        """
+        )
 
     def register_local_node(self) -> FederatedNode:
         """Register the current instance as a node."""
@@ -212,7 +212,5 @@ class FederationManager:
             "local_node": self.local_node_id,
             "total_nodes": len(self._nodes),
             "by_status": by_status,
-            "online_nodes": len(
-                [n for n in self._nodes.values() if n.status == NodeStatus.ONLINE]
-            ),
+            "online_nodes": len([n for n in self._nodes.values() if n.status == NodeStatus.ONLINE]),
         }

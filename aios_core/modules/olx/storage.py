@@ -194,20 +194,16 @@ class OLXStorage:
     def _migrate_v1(self) -> None:
         """Add v2 columns to databases created before sightings existed."""
         with self._lock, self._conn:
-            existing = {
-                row[1] for row in self._conn.execute("PRAGMA table_info(olx_ads)")
-            }
+            existing = {row[1] for row in self._conn.execute("PRAGMA table_info(olx_ads)")}
             for column, ddl in _V1_MIGRATION_COLUMNS.items():
                 if column not in existing:
                     self._conn.execute(f"ALTER TABLE olx_ads ADD COLUMN {column} {ddl}")
             # Backfill presence timestamps for pre-v2 rows.
             self._conn.execute(
-                "UPDATE olx_ads SET first_seen_at = collected_at "
-                "WHERE first_seen_at IS NULL"
+                "UPDATE olx_ads SET first_seen_at = collected_at " "WHERE first_seen_at IS NULL"
             )
             self._conn.execute(
-                "UPDATE olx_ads SET last_seen_at = collected_at "
-                "WHERE last_seen_at IS NULL"
+                "UPDATE olx_ads SET last_seen_at = collected_at " "WHERE last_seen_at IS NULL"
             )
 
     def save_ads_with_new(
@@ -380,9 +376,7 @@ class OLXStorage:
             rows = self._conn.execute(sql, params).fetchall()
         return [self._row_to_card(row) for row in rows]
 
-    def count(
-        self, query: Optional[str] = None, active_only: Optional[bool] = None
-    ) -> int:
+    def count(self, query: Optional[str] = None, active_only: Optional[bool] = None) -> int:
         """Number of stored cards, optionally filtered by query/activity."""
         sql = "SELECT COUNT(*) FROM olx_ads"
         conditions: List[str] = []
@@ -463,15 +457,12 @@ class OLXStorage:
         stamp = at or datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
-                "INSERT INTO olx_audit (at, action, detail, ref) "
-                "VALUES (?, ?, ?, ?)",
+                "INSERT INTO olx_audit (at, action, detail, ref) " "VALUES (?, ?, ?, ?)",
                 (stamp, action, detail, ref),
             )
             return cursor.lastrowid
 
-    def audit_list(
-        self, limit: int = 100, action: Optional[str] = None
-    ) -> List[Dict[str, object]]:
+    def audit_list(self, limit: int = 100, action: Optional[str] = None) -> List[Dict[str, object]]:
         """Последние записи audit-log (новые первыми)."""
         sql = "SELECT * FROM olx_audit"
         params: list = []
@@ -484,9 +475,7 @@ class OLXStorage:
             rows = self._conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
 
-    def enqueue_outbox(
-        self, chat_key: str, text: str, interlocutor: Optional[str] = None
-    ) -> int:
+    def enqueue_outbox(self, chat_key: str, text: str, interlocutor: Optional[str] = None) -> int:
         """Queue a reply draft; returns the outbox row id."""
         now = datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
@@ -519,9 +508,7 @@ class OLXStorage:
             rows = self._conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
 
-    def outbox_mark(
-        self, outbox_id: int, status: str, result: Optional[str] = None
-    ) -> bool:
+    def outbox_mark(self, outbox_id: int, status: str, result: Optional[str] = None) -> bool:
         """Transition an outbox row (pending → sent/failed/cancelled)."""
         sent_at = datetime.now(timezone.utc).isoformat() if status == "sent" else None
         with self._lock, self._conn:
@@ -656,9 +643,7 @@ class OLXStorage:
 
     def subscriptions_list(self) -> List[Dict[str, object]]:
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT * FROM olx_subscriptions ORDER BY id"
-            ).fetchall()
+            rows = self._conn.execute("SELECT * FROM olx_subscriptions ORDER BY id").fetchall()
         return [dict(row) for row in rows]
 
     def subscription_remove(self, subscription_id: int) -> bool:
@@ -761,12 +746,9 @@ class OLXStorage:
     def profile_all(self) -> Dict[str, Dict[str, Optional[str]]]:
         """All stored profile fields with their update timestamps."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT * FROM olx_profile_kv ORDER BY key"
-            ).fetchall()
+            rows = self._conn.execute("SELECT * FROM olx_profile_kv ORDER BY key").fetchall()
         return {
-            row["key"]: {"value": row["value"], "updated_at": row["updated_at"]}
-            for row in rows
+            row["key"]: {"value": row["value"], "updated_at": row["updated_at"]} for row in rows
         }
 
     # ---- Export ----

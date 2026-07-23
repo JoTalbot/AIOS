@@ -60,9 +60,7 @@ class ProfileStore:
         """Process-wide реестр из ``AIOS_PROFILES_DB`` (fallback ``data/profiles.sqlite``)."""
         global _DEFAULT_STORE
         if _DEFAULT_STORE is None:
-            _DEFAULT_STORE = cls(
-                os.environ.get("AIOS_PROFILES_DB", "data/profiles.sqlite")
-            )
+            _DEFAULT_STORE = cls(os.environ.get("AIOS_PROFILES_DB", "data/profiles.sqlite"))
         return _DEFAULT_STORE
 
     @classmethod
@@ -154,9 +152,7 @@ class ProfileStore:
             return self.get(platform, name)
         now = datetime.now(timezone.utc).isoformat()
         assignments = ", ".join(f"{key} = ?" for key in sorted(patch))
-        values = [
-            int(v) if key == "is_default" else v for key, v in sorted(patch.items())
-        ]
+        values = [int(v) if key == "is_default" else v for key, v in sorted(patch.items())]
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 f"UPDATE platform_profiles SET {assignments}, updated_at = ? "
@@ -191,8 +187,7 @@ class ProfileStore:
         """Профиль по умолчанию платформы или None."""
         with self._lock:
             row = self._conn.execute(
-                "SELECT * FROM platform_profiles "
-                "WHERE platform = ? AND is_default = 1",
+                "SELECT * FROM platform_profiles " "WHERE platform = ? AND is_default = 1",
                 (platform,),
             ).fetchone()
         return self._row_to_profile(row) if row else None

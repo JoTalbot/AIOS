@@ -20,37 +20,51 @@ def bridge(webhook_manager):
 
 class TestProductionWebhookBridge:
     def test_on_ban_detected(self, bridge, webhook_manager):
-        webhook_manager.register("slack", "https://hooks.slack.com/test", [WebhookEvent.BAN_DETECTED])
+        webhook_manager.register(
+            "slack", "https://hooks.slack.com/test", [WebhookEvent.BAN_DETECTED]
+        )
         result = bridge.on_ban_detected("ig_shop_1", "rate_limit")
         assert result["targets_triggered"] == 1
 
     def test_on_ban_detected_with_details(self, bridge, webhook_manager):
         webhook_manager.register("teams", "https://teams.webhook/test", [WebhookEvent.BAN_DETECTED])
-        result = bridge.on_ban_detected("ig_shop_1", "rate_limit", {"actions": 45, "device": "emulator-5554"})
+        result = bridge.on_ban_detected(
+            "ig_shop_1", "rate_limit", {"actions": 45, "device": "emulator-5554"}
+        )
         assert result["targets_triggered"] == 1
 
     def test_on_low_success_rate(self, bridge, webhook_manager):
-        webhook_manager.register("alerts", "https://alerts.example.com", [WebhookEvent.LOW_SUCCESS_RATE])
+        webhook_manager.register(
+            "alerts", "https://alerts.example.com", [WebhookEvent.LOW_SUCCESS_RATE]
+        )
         result = bridge.on_low_success_rate("ig_shop_2", 0.75, 0.80)
         assert result["targets_triggered"] == 1
 
     def test_on_device_offline(self, bridge, webhook_manager):
-        webhook_manager.register("monitoring", "https://monitor.example.com", [WebhookEvent.DEVICE_OFFLINE])
+        webhook_manager.register(
+            "monitoring", "https://monitor.example.com", [WebhookEvent.DEVICE_OFFLINE]
+        )
         result = bridge.on_device_offline("emulator-5554", "ig_shop_1")
         assert result["targets_triggered"] == 1
 
     def test_on_compliance_blocked(self, bridge, webhook_manager):
-        webhook_manager.register("compliance", "https://compliance.example.com", [WebhookEvent.COMPLIANCE_BLOCKED])
+        webhook_manager.register(
+            "compliance", "https://compliance.example.com", [WebhookEvent.COMPLIANCE_BLOCKED]
+        )
         result = bridge.on_compliance_blocked("ig_shop_1", "send_message", "deny-by-default")
         assert result["targets_triggered"] == 1
 
     def test_on_backup_completed(self, bridge, webhook_manager):
-        webhook_manager.register("backup-hook", "https://backup.example.com", [WebhookEvent.BACKUP_COMPLETED])
+        webhook_manager.register(
+            "backup-hook", "https://backup.example.com", [WebhookEvent.BACKUP_COMPLETED]
+        )
         result = bridge.on_backup_completed("backup_20260723", 45.2)
         assert result["targets_triggered"] == 1
 
     def test_on_backup_failed(self, bridge, webhook_manager):
-        webhook_manager.register("backup-hook", "https://backup.example.com", [WebhookEvent.BACKUP_FAILED])
+        webhook_manager.register(
+            "backup-hook", "https://backup.example.com", [WebhookEvent.BACKUP_FAILED]
+        )
         result = bridge.on_backup_failed("Disk full")
         assert result["targets_triggered"] == 1
 
@@ -110,7 +124,9 @@ class TestProductionWebhookBridge:
 
     def test_selective_subscription(self, bridge, webhook_manager):
         webhook_manager.register("ban-only", "https://ban.example.com", [WebhookEvent.BAN_DETECTED])
-        webhook_manager.register("backup-only", "https://backup.example.com", [WebhookEvent.BACKUP_COMPLETED])
+        webhook_manager.register(
+            "backup-only", "https://backup.example.com", [WebhookEvent.BACKUP_COMPLETED]
+        )
 
         # Ban should only trigger ban-only
         ban_result = bridge.on_ban_detected("ig_shop_1", "test")
@@ -124,6 +140,7 @@ class TestProductionWebhookBridge:
 class TestGetProductionBridge:
     def test_singleton(self):
         import aios_core.production_webhook_bridge as mod
+
         mod._production_bridge = None  # Reset
 
         bridge1 = get_production_bridge()

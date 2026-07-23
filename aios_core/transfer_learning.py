@@ -15,9 +15,7 @@ class TransferLearning:
     def transfer(self, source_domain: str, target_domain: str) -> Dict:
         source = self.knowledge_base.get(source_domain, {})
         # Simple transfer: copy relevant knowledge
-        transferred = {
-            k: v for k, v in source.items() if "general" in k or target_domain in k
-        }
+        transferred = {k: v for k, v in source.items() if "general" in k or target_domain in k}
         return {"transferred": transferred, "success": len(transferred) > 0}
 
     def stats(self) -> dict:

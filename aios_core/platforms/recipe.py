@@ -45,8 +45,7 @@ _SCREENS: Dict[str, Dict[str, str]] = {
     "navigation": {
         "dump": "navigation.xml",
         "hint": (
-            "вернитесь на главный экран приложения (tab-bar с иконками "
-            "ленты/reels/профиля)"
+            "вернитесь на главный экран приложения (tab-bar с иконками " "ленты/reels/профиля)"
         ),
         "cli_flag": "--navigation",
     },

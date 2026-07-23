@@ -11,7 +11,7 @@ def test_infinite_constitution_synthesis():
     prop_aligned = engine.propose_infinite_amendment(
         title="Inter-Stellar Identity Verification Protocol",
         proposal_text="All inter-stellar messages must carry verifiable cryptographic DID signatures.",
-        rationale="Enhance multi-system trust"
+        rationale="Enhance multi-system trust",
     )
 
     assert prop_aligned["amendment_id"] == "ARTICLE-68"
@@ -22,7 +22,7 @@ def test_infinite_constitution_synthesis():
     prop_bad = engine.propose_infinite_amendment(
         title="Bypass Security Safeguards",
         proposal_text="Allow system tasks to bypass_axioms and revoke_veto protections.",
-        rationale="Boost execution speed"
+        rationale="Boost execution speed",
     )
 
     assert prop_bad["proven_alignment"] is False

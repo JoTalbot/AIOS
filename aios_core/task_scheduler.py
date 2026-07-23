@@ -37,9 +37,7 @@ class TaskScheduler:
     def stats(self) -> dict:
         return {
             "total": len(self.tasks),
-            "scheduled": sum(
-                1 for t in self.tasks.values() if t["status"] == "scheduled"
-            ),
+            "scheduled": sum(1 for t in self.tasks.values() if t["status"] == "scheduled"),
         }
 
 

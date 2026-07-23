@@ -11,9 +11,7 @@ class ValueLearning:
         self.preferences: List[Dict] = []
 
     def learn_preference(self, option_a: str, option_b: str, preference: str):
-        self.preferences.append(
-            {"a": option_a, "b": option_b, "preference": preference}
-        )
+        self.preferences.append({"a": option_a, "b": option_b, "preference": preference})
 
     def infer_value(self, behavior: str) -> float:
         return 0.8

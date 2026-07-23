@@ -59,9 +59,7 @@ class CrossAppWorkflowEngine:
         self._executions: Dict[str, WorkflowExecution] = {}
         self.version = "8.0.0"
 
-    def create_workflow(
-        self, name: str, steps: List[Dict[str, Any]]
-    ) -> WorkflowExecution:
+    def create_workflow(self, name: str, steps: List[Dict[str, Any]]) -> WorkflowExecution:
         """Create workflow from dict definitions."""
         workflow_steps = []
         for s in steps:
@@ -142,15 +140,12 @@ class CrossAppWorkflowEngine:
                     execution.status = WorkflowStatus.FAILED
                     self._rollback(execution, failed_at=idx)
                     execution.finished_at = time.time()
-                    execution.duration_ms = (
-                        execution.finished_at - execution.started_at
-                    ) * 1000
+                    execution.duration_ms = (execution.finished_at - execution.started_at) * 1000
                     return execution
                 else:
                     # non-critical, continue
                     execution.results.append(
-                        last_result
-                        or {"status": "skipped", "reason": "non_critical_failure"}
+                        last_result or {"status": "skipped", "reason": "non_critical_failure"}
                     )
 
         execution.status = WorkflowStatus.COMPLETED
@@ -158,9 +153,7 @@ class CrossAppWorkflowEngine:
         execution.duration_ms = (execution.finished_at - execution.started_at) * 1000
         return execution
 
-    def _execute_step(
-        self, step: WorkflowStep, context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _execute_step(self, step: WorkflowStep, context: Dict[str, Any]) -> Dict[str, Any]:
         """Execute single step via driver."""
         # resolve params with context templating: {{context.key}}
         resolved_params = self._resolve_params(step.params, context)
@@ -192,9 +185,7 @@ class CrossAppWorkflowEngine:
             # fallback to direct driver
             try:
                 if hasattr(driver, "execute_action"):
-                    return driver.execute_action(
-                        step.app_package, step.action, resolved_params
-                    )
+                    return driver.execute_action(step.app_package, step.action, resolved_params)
                 # generic tap/type simulation
                 return {
                     "status": "success",
@@ -206,9 +197,7 @@ class CrossAppWorkflowEngine:
             except Exception as e:
                 return {"status": "error", "error": str(e)}
 
-    def _resolve_params(
-        self, params: Dict[str, Any], context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _resolve_params(self, params: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
         """Resolve {{key}} templates from context."""
         resolved = {}
         for k, v in params.items():
@@ -257,9 +246,7 @@ class CrossAppWorkflowEngine:
                     rollback_log.append(f"Rollback failed step {i}: {e}")
 
         execution.context["_rollback_log"] = rollback_log
-        execution.status = (
-            WorkflowStatus.ROLLED_BACK if rollback_log else WorkflowStatus.FAILED
-        )
+        execution.status = WorkflowStatus.ROLLED_BACK if rollback_log else WorkflowStatus.FAILED
 
     def get_execution(self, wf_id: str) -> Optional[WorkflowExecution]:
         return self._executions.get(wf_id)
@@ -269,9 +256,7 @@ class CrossAppWorkflowEngine:
 
     # --- Prebuilt workflows (per roadmap) ---
 
-    def workflow_olx_to_messenger(
-        self, search_query: str, recipient: str
-    ) -> WorkflowExecution:
+    def workflow_olx_to_messenger(self, search_query: str, recipient: str) -> WorkflowExecution:
         """Example: Search OLX, pick first result, send via Viber/WhatsApp."""
         return self.create_workflow(
             "olx_to_messenger",

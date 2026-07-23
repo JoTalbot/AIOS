@@ -39,7 +39,8 @@ class ConstitutionEvolver:
     def _ensure_table(self) -> None:
         if self.db is None:
             return
-        self.db.execute("""
+        self.db.execute(
+            """
             CREATE TABLE IF NOT EXISTS constitution_proposals (
                 id TEXT PRIMARY KEY,
                 title TEXT,
@@ -51,7 +52,8 @@ class ConstitutionEvolver:
                 proposed_by TEXT,
                 created_at TEXT
             )
-        """)
+        """
+        )
 
     def propose_article(
         self,
@@ -93,9 +95,7 @@ class ConstitutionEvolver:
 
         return article
 
-    def review_proposal(
-        self, proposal_id: str, decision: str, reviewer: str = "system"
-    ) -> dict:
+    def review_proposal(self, proposal_id: str, decision: str, reviewer: str = "system") -> dict:
         """Review and accept/reject a proposal."""
         proposal = self._proposals.get(proposal_id)
         if not proposal:
@@ -115,9 +115,7 @@ class ConstitutionEvolver:
             "reviewer": reviewer,
         }
 
-    def generate_article_from_experience(
-        self, experience: dict
-    ) -> Optional[ProposedArticle]:
+    def generate_article_from_experience(self, experience: dict) -> Optional[ProposedArticle]:
         """Automatically generate an article proposal from observed patterns."""
         # Simple heuristic-based generation (placeholder for real ML)
         if "repeated_failure" in experience:

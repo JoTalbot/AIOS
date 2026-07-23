@@ -1,4 +1,5 @@
 """Regression tests for API authentication, authorization and shared runtime state."""
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -24,13 +25,21 @@ async def test_role_guard_and_rest_mcp_share_database():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         viewer = {"Authorization": "Bearer viewer-key"}
         writer = {"Authorization": "Bearer writer-key"}
-        assert (await client.post("/api/v1/memory", json={"content": {"a": 1}}, headers=viewer)).status_code == 403
+        assert (
+            await client.post("/api/v1/memory", json={"content": {"a": 1}}, headers=viewer)
+        ).status_code == 403
         saved = await client.post("/api/v1/memory", json={"content": {"a": 1}}, headers=writer)
         assert saved.status_code == 201
-        rpc = await client.post("/rpc", json={
-            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
-            "params": {"name": "aios_memory_search", "arguments": {"query": "a"}},
-        }, headers=writer)
+        rpc = await client.post(
+            "/rpc",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {"name": "aios_memory_search", "arguments": {"query": "a"}},
+            },
+            headers=writer,
+        )
         assert rpc.status_code == 200
         assert '"count": 1' in rpc.json()["result"]["content"][0]["text"]
 
@@ -45,9 +54,11 @@ async def test_personal_memory_is_isolated_by_authenticated_subject():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         alice = {"Authorization": "Bearer alice-key"}
         bob = {"Authorization": "Bearer bob-key"}
-        saved = await client.post("/api/v1/memory", json={
-            "content": {"private": "alice only"}, "category": "personal"
-        }, headers=alice)
+        saved = await client.post(
+            "/api/v1/memory",
+            json={"content": {"private": "alice only"}, "category": "personal"},
+            headers=alice,
+        )
         assert saved.status_code == 201
         item_id = saved.json()["id"]
         assert (await client.get(f"/api/v1/memory/{item_id}", headers=bob)).status_code == 404
@@ -83,5 +94,8 @@ async def test_approver_role_is_required_for_approval_actions():
         writer = {"Authorization": "Bearer writer-key"}
         result = await client.post("/api/v1/approvals/not-a-real-id/approve", headers=writer)
         assert result.status_code == 403
-        result = await client.post("/api/v1/approvals/not-a-real-id/approve", headers={"Authorization": "Bearer approver-key"})
+        result = await client.post(
+            "/api/v1/approvals/not-a-real-id/approve",
+            headers={"Authorization": "Bearer approver-key"},
+        )
         assert result.status_code == 404

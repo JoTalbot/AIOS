@@ -16,16 +16,12 @@ class CosmicSwarmMatrix:
         self.cosmic_nodes: Dict[str, Dict[str, Any]] = {}  # node_id -> info
         self.holographic_shards: Dict[str, Dict[str, Any]] = {}  # shard_id -> payload
         self.register_cosmic_node("sol_earth_hub", light_delay_seconds=0.0)
-        self.register_cosmic_node(
-            "sol_mars_outpost", light_delay_seconds=780.0
-        )  # ~13 mins
+        self.register_cosmic_node("sol_mars_outpost", light_delay_seconds=780.0)  # ~13 mins
         self.register_cosmic_node(
             "proxima_centauri_node", light_delay_seconds=133800000.0
         )  # ~4.24 light-years
 
-    def register_cosmic_node(
-        self, node_id: str, light_delay_seconds: float
-    ) -> Dict[str, Any]:
+    def register_cosmic_node(self, node_id: str, light_delay_seconds: float) -> Dict[str, Any]:
         """Register inter-stellar node in cosmic mesh topology."""
         record = {
             "node_id": node_id,

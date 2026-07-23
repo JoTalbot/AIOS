@@ -200,9 +200,7 @@ class PolicyLoader:
     def _load_all(self):
         """Load and validate all YAML policy files."""
         if not os.path.isdir(self.policies_dir):
-            raise FileNotFoundError(
-                f"Policies directory not found: {self.policies_dir}"
-            )
+            raise FileNotFoundError(f"Policies directory not found: {self.policies_dir}")
 
         for filename in os.listdir(self.policies_dir):
             if not filename.endswith((".yaml", ".yml")):
@@ -274,9 +272,7 @@ class PolicyLoader:
         if policy_name == "federation_policy":
             policy.extra_sections["sync_frequency"] = data.get("sync_frequency", {})
             policy.extra_sections["local_autonomy"] = data.get("local_autonomy", False)
-            policy.extra_sections["offline_operation"] = data.get(
-                "offline_operation", False
-            )
+            policy.extra_sections["offline_operation"] = data.get("offline_operation", False)
 
         self.policies[policy_name] = policy
 

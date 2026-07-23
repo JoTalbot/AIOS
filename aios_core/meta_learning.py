@@ -11,14 +11,10 @@ class MetaLearner:
         self.strategies: Dict[str, float] = {}
 
     def record_task(self, task_type: str, success: bool, duration: float):
-        self.task_history.append(
-            {"type": task_type, "success": success, "duration": duration}
-        )
+        self.task_history.append({"type": task_type, "success": success, "duration": duration})
 
     def recommend_strategy(self, task_type: str) -> str:
-        successes = [
-            t for t in self.task_history if t["type"] == task_type and t["success"]
-        ]
+        successes = [t for t in self.task_history if t["type"] == task_type and t["success"]]
         if len(successes) > 3:
             return "reuse_previous_approach"
         return "explore_new_approach"

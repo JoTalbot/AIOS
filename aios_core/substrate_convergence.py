@@ -57,11 +57,7 @@ class SubstrateConvergenceEngine:
     def select_optimal_substrate(self, task_requirements: Dict[str, Any]) -> str:
         """Select compute substrate optimizing energy efficiency and execution constraints."""
         req_type = task_requirements.get("preferred_type")
-        if (
-            req_type
-            and req_type in self.substrates
-            and self.substrates[req_type]["active"]
-        ):
+        if req_type and req_type in self.substrates and self.substrates[req_type]["active"]:
             return req_type
 
         # Choose highest efficiency active substrate
@@ -92,9 +88,7 @@ class SubstrateConvergenceEngine:
             "registered_substrates": len(self.substrates),
             "total_dispatches": len(self.dispatch_history),
             "substrate_counts": {
-                st: sum(
-                    1 for d in self.dispatch_history if d["selected_substrate"] == st
-                )
+                st: sum(1 for d in self.dispatch_history if d["selected_substrate"] == st)
                 for st in self.substrates
             },
         }

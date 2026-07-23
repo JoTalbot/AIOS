@@ -21,11 +21,13 @@ def _add_olx_parsers(subparsers) -> None:
 
     def with_db(p):
         p.add_argument(
-            "--db", default=None,
+            "--db",
+            default=None,
             help="SQLite database file (переопределяет разрешение профиля)",
         )
         p.add_argument(
-            "--profile", default=None,
+            "--profile",
+            default=None,
             help="Имя профиля из реестра (иначе AIOS_PROFILE / default)",
         )
 
@@ -90,7 +92,9 @@ def _add_olx_parsers(subparsers) -> None:
 
     repost = olx_sub.add_parser("repost", help="Repost plan (dry-run) or execute")
     repost.add_argument("--fingerprint", required=True)
-    repost.add_argument("--confirm", action="store_true", help="Execute on device (default: dry-run)")
+    repost.add_argument(
+        "--confirm", action="store_true", help="Execute on device (default: dry-run)"
+    )
     with_db(repost)
 
     subscribe = olx_sub.add_parser("subscribe", help="Add a search subscription")
@@ -114,8 +118,9 @@ def _add_olx_parsers(subparsers) -> None:
     with_db(favorites)
 
     autowatch = olx_sub.add_parser("autowatch", help="Run one full AutoWatch cycle")
-    autowatch.add_argument("--query", action="append", default=[],
-                           help="Search query to collect (repeatable)")
+    autowatch.add_argument(
+        "--query", action="append", default=[], help="Search query to collect (repeatable)"
+    )
     autowatch.add_argument("--no-collect", action="store_true")
     autowatch.add_argument("--max-cards", type=int, default=50)
     autowatch.add_argument("--webhook", default=None)
@@ -142,8 +147,12 @@ def _add_olx_parsers(subparsers) -> None:
     )
     seller.add_argument("xml", help="Path to the dumped detail-page XML")
     seller.add_argument("--fingerprint", required=True, help="Own ad fingerprint to link against")
-    seller.add_argument("--viewed-url", default=None, help="URL of the viewed competitor ad (excluded)")
-    seller.add_argument("--viewed-ad-id", default=None, help="Ad-id of the viewed competitor ad (excluded)")
+    seller.add_argument(
+        "--viewed-url", default=None, help="URL of the viewed competitor ad (excluded)"
+    )
+    seller.add_argument(
+        "--viewed-ad-id", default=None, help="Ad-id of the viewed competitor ad (excluded)"
+    )
     with_db(seller)
 
     advisor = olx_sub.add_parser("advisor", help="Portfolio advice + new listings")
@@ -159,14 +168,16 @@ def _add_olx_parsers(subparsers) -> None:
     olx_sub.add_parser("doctor", help="Environment readiness checklist")
 
 
-
 def _resolve_olx_profile(args):
     """Профиль OLX для команды: --db пропускает разрешение профиля."""
     from aios_core.platforms import Profile, resolve_profile
 
     if getattr(args, "db", None):
         return Profile(
-            platform="olx", name="cli", db_path=args.db, ephemeral=True,
+            platform="olx",
+            name="cli",
+            db_path=args.db,
+            ephemeral=True,
         )
     return resolve_profile("olx", getattr(args, "profile", None))
 
@@ -185,9 +196,7 @@ def _resolve_olx_adb(args):
         from aios_core.modules.olx import ADBController
 
         return ADBController()
-    return get_platform("olx").make_adb(
-        _resolve_olx_profile(args).device_serial
-    )
+    return get_platform("olx").make_adb(_resolve_olx_profile(args).device_serial)
 
 
 def _run_olx(args) -> bool:
@@ -222,8 +231,10 @@ def _run_olx(args) -> bool:
         my_ad = None
         if args.title is not None or args.price is not None:
             my_ad = AdCard(
-                title=args.title or "", price=args.price,
-                currency="UAH", query=args.query,
+                title=args.title or "",
+                price=args.price,
+                currency="UAH",
+                query=args.query,
             )
         with OLXStorage(_resolve_olx_db(args)) as storage:
             ads = storage.get_ads(query=args.query)
@@ -247,10 +258,13 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "history":
         with OLXStorage(_resolve_olx_db(args)) as storage:
-            print(json.dumps(
-                storage.price_history(args.fingerprint),
-                ensure_ascii=False, indent=2,
-            ))
+            print(
+                json.dumps(
+                    storage.price_history(args.fingerprint),
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
         return True
 
     if args.olx_command == "drops":
@@ -265,6 +279,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "detail":
         from aios_core.modules.olx import AdDetailParser
+
         with open(args.xml, encoding="utf-8") as fh:
             detail = AdDetailParser().parse(fh.read())
         print(json.dumps(detail.to_dict(), ensure_ascii=False, indent=2))
@@ -272,17 +287,22 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "chats":
         from aios_core.modules.olx import OLXMessenger
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
             messenger = OLXMessenger(adb=_resolve_olx_adb(args), storage=storage)
             threads = messenger.list_chats()
-            print(json.dumps(
-                [thread.to_dict() for thread in threads],
-                ensure_ascii=False, indent=2,
-            ))
+            print(
+                json.dumps(
+                    [thread.to_dict() for thread in threads],
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
         return True
 
     if args.olx_command == "reply":
         from aios_core.modules.olx import OLXMessenger
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
             messenger = OLXMessenger(adb=_resolve_olx_adb(args), storage=storage)
             result = messenger.send_reply(
@@ -296,14 +316,18 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "outbox":
         with OLXStorage(_resolve_olx_db(args)) as storage:
-            print(json.dumps(
-                storage.outbox_list(status=args.status),
-                ensure_ascii=False, indent=2,
-            ))
+            print(
+                json.dumps(
+                    storage.outbox_list(status=args.status),
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
         return True
 
     if args.olx_command == "own":
         from aios_core.modules.olx import OwnAdsParser, OwnAdsTracker
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
             tracker = OwnAdsTracker(storage)
             if args.xml:
@@ -318,13 +342,12 @@ def _run_olx(args) -> bool:
                 )
                 print(json.dumps(items, ensure_ascii=False, indent=2))
             else:
-                print(json.dumps(
-                    storage.own_ads(), ensure_ascii=False, indent=2, default=str
-                ))
+                print(json.dumps(storage.own_ads(), ensure_ascii=False, indent=2, default=str))
         return True
 
     if args.olx_command == "improve":
         from aios_core.modules.olx import AdImprover, OwnAd
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
             rows = [row for row in storage.own_ads() if row["fingerprint"] == args.fingerprint]
             if not rows:
@@ -332,8 +355,12 @@ def _run_olx(args) -> bool:
                 return True
             row = rows[0]
             own_ad = OwnAd(
-                title=row["title"], price=row["price"], currency=row["currency"],
-                views=row["last_views"] or 0, url=row["url"], ad_id=row["ad_id"],
+                title=row["title"],
+                price=row["price"],
+                currency=row["currency"],
+                views=row["last_views"] or 0,
+                url=row["url"],
+                ad_id=row["ad_id"],
                 status=row["status"],
             )
             competitors = storage.get_ads(query=args.query)
@@ -342,6 +369,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "repost":
         from aios_core.modules.olx import OwnAd, Reposter
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
             rows = [row for row in storage.own_ads() if row["fingerprint"] == args.fingerprint]
             if not rows:
@@ -349,8 +377,12 @@ def _run_olx(args) -> bool:
                 return True
             row = rows[0]
             own_ad = OwnAd(
-                title=row["title"], price=row["price"], currency=row["currency"],
-                url=row["url"], ad_id=row["ad_id"], status=row["status"],
+                title=row["title"],
+                price=row["price"],
+                currency=row["currency"],
+                url=row["url"],
+                ad_id=row["ad_id"],
+                status=row["status"],
             )
             result = Reposter().repost(own_ad, confirm=args.confirm)
             if result.get("status") == "executed":
@@ -360,6 +392,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "subscribe":
         from aios_core.modules.olx import SubscriptionManager
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
             sub_id = SubscriptionManager(storage).add(
                 name=args.name or args.query,
@@ -373,14 +406,14 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "subscriptions":
         from aios_core.modules.olx import SubscriptionManager
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
-            print(json.dumps(
-                SubscriptionManager(storage).list(), ensure_ascii=False, indent=2
-            ))
+            print(json.dumps(SubscriptionManager(storage).list(), ensure_ascii=False, indent=2))
         return True
 
     if args.olx_command == "favorite":
         from aios_core.modules.olx import FavoritesWatch
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
             watch = FavoritesWatch(storage)
             if args.remove:
@@ -391,6 +424,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "favorites":
         from aios_core.modules.olx import FavoritesWatch
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
             watch = FavoritesWatch(storage)
             if args.alerts:
@@ -401,6 +435,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "autowatch":
         from aios_core.modules.olx import AutoWatch, WebhookNotifier
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
             watch = AutoWatch(
                 storage=storage,
@@ -408,14 +443,13 @@ def _run_olx(args) -> bool:
                 notifier=WebhookNotifier(url=args.webhook, chat_id=args.chat_id),
                 max_cards=args.max_cards,
             )
-            report = watch.run_cycle(
-                queries=args.query or None, collect=not args.no_collect
-            )
+            report = watch.run_cycle(queries=args.query or None, collect=not args.no_collect)
             print(json.dumps(report, ensure_ascii=False, indent=2, default=str))
         return True
 
     if args.olx_command == "profile":
         from aios_core.modules.olx import ProfileParser
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
             if args.xml:
                 with open(args.xml, encoding="utf-8") as fh:
@@ -436,15 +470,15 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "profile-edit":
         from aios_core.modules.olx import ProfileEditor
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
-            result = ProfileEditor().apply(
-                storage, args.field, args.value, confirm=args.confirm
-            )
+            result = ProfileEditor().apply(storage, args.field, args.value, confirm=args.confirm)
             print(json.dumps(result, ensure_ascii=False, indent=2))
         return True
 
     if args.olx_command == "competitive-seller":
         from aios_core.modules.olx import CompetitiveWatch, OwnAd
+
         xml_text = Path(args.xml).read_text(encoding="utf-8")
         with OLXStorage(_resolve_olx_db(args)) as storage:
             rows = [r for r in storage.own_ads() if r["fingerprint"] == args.fingerprint]
@@ -453,31 +487,44 @@ def _run_olx(args) -> bool:
                 return True
             row = rows[0]
             own = OwnAd(
-                title=row["title"], price=row["price"], currency=row["currency"],
-                views=row["last_views"] or 0, url=row["url"],
-                ad_id=row["ad_id"], status=row["status"],
+                title=row["title"],
+                price=row["price"],
+                currency=row["currency"],
+                views=row["last_views"] or 0,
+                url=row["url"],
+                ad_id=row["ad_id"],
+                status=row["status"],
             )
             result = CompetitiveWatch(storage).observe_seller_ads(
-                xml_text, own,
-                viewed_url=args.viewed_url, viewed_ad_id=args.viewed_ad_id,
+                xml_text,
+                own,
+                viewed_url=args.viewed_url,
+                viewed_ad_id=args.viewed_ad_id,
             )
             print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
         return True
 
     if args.olx_command == "competitive":
         from aios_core.modules.olx import CompetitiveWatch, OwnAd
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
             watch = CompetitiveWatch(storage)
             if args.fingerprint:
-                print(json.dumps(
-                    watch.report(args.fingerprint), ensure_ascii=False, indent=2, default=str
-                ))
+                print(
+                    json.dumps(
+                        watch.report(args.fingerprint), ensure_ascii=False, indent=2, default=str
+                    )
+                )
             else:
                 own_list = [
                     OwnAd(
-                        title=row["title"], price=row["price"], currency=row["currency"],
-                        views=row["last_views"] or 0, url=row["url"],
-                        ad_id=row["ad_id"], status=row["status"],
+                        title=row["title"],
+                        price=row["price"],
+                        currency=row["currency"],
+                        views=row["last_views"] or 0,
+                        url=row["url"],
+                        ad_id=row["ad_id"],
+                        status=row["status"],
                     )
                     for row in storage.own_ads(status="active")
                 ]
@@ -486,19 +533,19 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "advisor":
         from aios_core.modules.olx import StrategyAdvisor
+
         with OLXStorage(_resolve_olx_db(args)) as storage:
             advisor = StrategyAdvisor(storage)
             payload = {"actions": [a.to_dict() for a in advisor.advise_actions()]}
             if args.new:
-                payload["new_listings"] = [
-                    n.to_dict() for n in advisor.advise_new_listings()
-                ]
+                payload["new_listings"] = [n.to_dict() for n in advisor.advise_new_listings()]
             print(json.dumps(payload, ensure_ascii=False, indent=2))
         return True
 
     if args.olx_command == "bootstrap":
         from aios_core.modules.olx import OLXBootstrap
         import os
+
         bootstrap = OLXBootstrap(project_root=os.path.dirname(os.path.abspath(__file__)))
         kwargs = {
             "emulator": not args.no_emulator,
@@ -513,6 +560,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "doctor":
         from aios_core.modules.olx import OLXBootstrap
+
         report = OLXBootstrap().doctor_report()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return True
@@ -527,48 +575,60 @@ def _run_platforms(args) -> bool:
 
     if cmd == "from-apk":
         from aios_core.platforms import scaffold_from_apk
+
         result = scaffold_from_apk(
-            args.apk, name=args.name, project_root=args.root,
-            locale=args.locale, dry_run=args.dry_run,
+            args.apk,
+            name=args.name,
+            project_root=args.root,
+            locale=args.locale,
+            dry_run=args.dry_run,
         )
         mode = "planned" if args.dry_run else "written"
-        print(json.dumps({
-            "spec": result["spec"],
-            mode: sorted(result["files"]),
-        }, ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                {
+                    "spec": result["spec"],
+                    mode: sorted(result["files"]),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return True
 
     if cmd == "autowatch":
         from aios_core.platforms.autowatch import autowatch_cycle
+
         driver = None
         if args.drive != "none":
             from aios_core.platforms import get_platform
             from aios_core.platforms.pointdrive import PointDrive
             from aios_core.platforms.resolver import adb_for
+
             descriptor = get_platform(args.platform)
             adb = adb_for(args.platform, args.profile or None)
             login_driver = None
             if args.drive == "login":
                 import importlib
+
                 try:
-                    login_mod = importlib.import_module(
-                        f"{descriptor.agent_module}.login"
-                    )
+                    login_mod = importlib.import_module(f"{descriptor.agent_module}.login")
                     for attr in dir(login_mod):
                         candidate = getattr(login_mod, attr)
-                        if isinstance(candidate, type) and \
-                                attr.endswith("LoginDriver"):
+                        if isinstance(candidate, type) and attr.endswith("LoginDriver"):
                             login_driver = candidate(
-                                adb=adb, search_drive=PointDrive(adb),
+                                adb=adb,
+                                search_drive=PointDrive(adb),
                             ).drive
                             break
                 except ImportError:
                     pass
                 if login_driver is None:
-                    print(json.dumps({
-                        "error": f"platform '{args.platform}' has no "
-                                 "login driver module"
-                    }))
+                    print(
+                        json.dumps(
+                            {"error": f"platform '{args.platform}' has no " "login driver module"}
+                        )
+                    )
                     return True
                 driver = login_driver
             else:
@@ -591,22 +651,26 @@ def _run_platforms(args) -> bool:
 
     if cmd == "fetch-apk":
         from aios_core.platforms import fetch_apk
+
         try:
             path = fetch_apk(
-                args.package, out_dir=args.out, source=args.source,
+                args.package,
+                out_dir=args.out,
+                source=args.source,
             )
         except ValueError as exc:
             print(json.dumps({"error": str(exc)}))
             return True
-        print(json.dumps({"apk": path, "package": args.package},
-                         ensure_ascii=False, indent=2))
+        print(json.dumps({"apk": path, "package": args.package}, ensure_ascii=False, indent=2))
         return True
 
     if cmd == "marker-check":
         from aios_core.platforms import check_platform_markers
+
         try:
             report = check_platform_markers(
-                args.platform, Path(args.dump).read_text(encoding="utf-8"),
+                args.platform,
+                Path(args.dump).read_text(encoding="utf-8"),
             )
         except ValueError as exc:
             print(json.dumps({"error": str(exc)}))
@@ -622,6 +686,7 @@ def _run_platforms(args) -> bool:
             merge_hints,
         )
         from aios_core.platforms.calibrate import write_hints_to_descriptor
+
         hints = CalibrationAdvisor().analyze(Path(args.dump).read_text(encoding="utf-8"))
         detail_hints = None
         messenger_hints = None
@@ -639,15 +704,18 @@ def _run_platforms(args) -> bool:
                 Path(args.navigation).read_text(encoding="utf-8")
             )
         hints = merge_hints(
-            hints, detail_hints, messenger_hints,
+            hints,
+            detail_hints,
+            messenger_hints,
             navigation=navigation_hints,
         )
         output = {"platform": args.platform, "hints": hints}
         if args.write:
             try:
                 output["written"] = write_hints_to_descriptor(
-                    args.platform, hints, directory=str(
-                        Path(args.root) / "platforms"),
+                    args.platform,
+                    hints,
+                    directory=str(Path(args.root) / "platforms"),
                 )
             except ValueError as exc:
                 print(json.dumps({"error": str(exc)}))
@@ -660,6 +728,7 @@ def _run_platforms(args) -> bool:
     if cmd == "codegen":
         from aios_core.platforms.parsergen import write_parser
         import yaml
+
         yaml_path = Path(args.root) / "platforms" / f"{args.platform}.yaml"
         if not yaml_path.exists():
             print(json.dumps({"error": f"descriptor not found: {yaml_path}"}))
@@ -668,7 +737,8 @@ def _run_platforms(args) -> bool:
         hints = (doc.get("extras") or {}).get("parser_hints") or {}
         try:
             files = write_parser(
-                args.platform, hints,
+                args.platform,
+                hints,
                 project_root=args.root,
                 android_package=doc.get("android_package") or "",
                 dry_run=args.dry_run,
@@ -678,16 +748,22 @@ def _run_platforms(args) -> bool:
             print(json.dumps({"error": str(exc)}))
             return True
         mode = "planned" if args.dry_run else "written"
-        print(json.dumps(
-            {mode: sorted(files)}, ensure_ascii=False, indent=2,
-        ))
+        print(
+            json.dumps(
+                {mode: sorted(files)},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return True
 
     if cmd == "bootup":
         from aios_core.platforms.bootup import bootup_platform
+
         pool = None
         if args.lease:
             from aios_core.platforms import DevicePool
+
             pool = DevicePool()  # AIOS_DEVICES_DB / data/devices.sqlite
         try:
             report = bootup_platform(
@@ -721,12 +797,14 @@ def _run_platforms(args) -> bool:
             reels_driver_for,
         )
         from aios_core.platforms.compliance import compliance_guard
-        check = compliance_guard(
-            args.platform, "collect", directory=args.directory)
+
+        check = compliance_guard(args.platform, "collect", directory=args.directory)
         if not check["allowed"]:
-            print(json.dumps(
-                {"error": check["reason"], "compliance": check},
-                ensure_ascii=False, indent=2))
+            print(
+                json.dumps(
+                    {"error": check["reason"], "compliance": check}, ensure_ascii=False, indent=2
+                )
+            )
             return True
         from aios_core.platforms.reelscout import ReelsCollector
         from aios_core.platforms.resolver import resolve_profile, storage_for
@@ -740,38 +818,51 @@ def _run_platforms(args) -> bool:
         driver = None
         if args.open_tab:
             driver = reels_driver_for(
-                args.platform, adb=adb, directory=args.directory,
+                args.platform,
+                adb=adb,
+                directory=args.directory,
             ).drive
-        notifier = (
-            WebhookNotifier(url=args.webhook) if args.webhook else None
-        )
+        notifier = WebhookNotifier(url=args.webhook) if args.webhook else None
         collector = ReelsCollector(
-            descriptor, adb=adb, directory=args.directory,
-            driver=driver, notifier=notifier,
+            descriptor,
+            adb=adb,
+            directory=args.directory,
+            driver=driver,
+            notifier=notifier,
         )
         db = args.db or str(storage_for(descriptor, profile))
         storage = descriptor.storage_factory(db)
         try:
             written, cards = collector.collect_to_storage(
-                storage, max_cards=args.max_cards,
+                storage,
+                max_cards=args.max_cards,
             )
         finally:
             storage.close()
-        print(json.dumps(
-            {"platform": args.platform, "profile": profile.name,
-             "new": written, "seen": len(cards),
-             "open_tab": bool(args.open_tab),
-             "cards": [c.to_dict() for c in cards]},
-            ensure_ascii=False, indent=2,
-        ))
+        print(
+            json.dumps(
+                {
+                    "platform": args.platform,
+                    "profile": profile.name,
+                    "new": written,
+                    "seen": len(cards),
+                    "open_tab": bool(args.open_tab),
+                    "cards": [c.to_dict() for c in cards],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return True
 
     if cmd == "doctor":
         from aios_core.platforms.doctor import platform_doctor
         from aios_core.platforms import get_platform
+
         descriptor = get_platform(args.platform)
         report = platform_doctor(
-            args.platform, descriptor.android_package,
+            args.platform,
+            descriptor.android_package,
             serial=getattr(args, "serial", None),
             directory=args.directory,
             report_recipe=bool(getattr(args, "calibrate_recipe", False)),
@@ -781,22 +872,30 @@ def _run_platforms(args) -> bool:
 
     if cmd == "scaffold":
         files = scaffold_platform(
-            args.name, args.package,
+            args.name,
+            args.package,
             project_root=args.root,
             description=args.description,
             locale=args.locale,
             dry_run=args.dry_run,
         )
         mode = "planned" if args.dry_run else "written"
-        print(json.dumps(
-            {mode: sorted(files)}, ensure_ascii=False, indent=2,
-        ))
+        print(
+            json.dumps(
+                {mode: sorted(files)},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return True
 
-    print(json.dumps(
-        [descriptor.to_dict() for descriptor in list_platforms()],
-        ensure_ascii=False, indent=2,
-    ))
+    print(
+        json.dumps(
+            [descriptor.to_dict() for descriptor in list_platforms()],
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return True
 
 
@@ -806,6 +905,7 @@ def _run_instagram(args) -> bool:
     try:
         if cmd == "doctor":
             from aios_core.modules.instagram import InstagramBootstrap
+
             report = InstagramBootstrap(serial=args.serial).doctor()
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return True
@@ -817,35 +917,43 @@ def _run_instagram(args) -> bool:
             from aios_core.platforms import get_platform, reels_driver_for
             from aios_core.platforms.reelscout import ReelsCollector
 
-            adb = ADBController(package="com.instagram.android",
-                                serial=args.serial)
+            adb = ADBController(package="com.instagram.android", serial=args.serial)
             driver = None
             if args.open_tab:
                 driver = reels_driver_for(
-                    "instagram", adb=adb, directory=args.directory,
+                    "instagram",
+                    adb=adb,
+                    directory=args.directory,
                 ).drive
-            notifier = (
-                WebhookNotifier(url=args.webhook) if args.webhook else None
-            )
+            notifier = WebhookNotifier(url=args.webhook) if args.webhook else None
             collector = ReelsCollector(
                 get_platform("instagram"),
-                adb=adb, directory=args.directory,
-                driver=driver, notifier=notifier,
+                adb=adb,
+                directory=args.directory,
+                driver=driver,
+                notifier=notifier,
             )
             storage = InstagramStorage(args.db)
             try:
                 written, cards = collector.collect_to_storage(
-                    storage, max_cards=args.max_cards,
+                    storage,
+                    max_cards=args.max_cards,
                 )
             finally:
                 storage.close()
-            print(json.dumps(
-                {"new": written, "seen": len(cards),
-                 "open_tab": bool(args.open_tab),
-                 "notified": bool(notifier and written),
-                 "cards": [c.to_dict() for c in cards]},
-                ensure_ascii=False, indent=2,
-            ))
+            print(
+                json.dumps(
+                    {
+                        "new": written,
+                        "seen": len(cards),
+                        "open_tab": bool(args.open_tab),
+                        "notified": bool(notifier and written),
+                        "cards": [c.to_dict() for c in cards],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
             return True
 
         if cmd == "autopilot":
@@ -862,8 +970,7 @@ def _run_instagram(args) -> bool:
             from aios_core.platforms.pointdrive import PointDrive
             from aios_core.platforms.reelscout import ReelsCollector
 
-            adb = ADBController(package="com.instagram.android",
-                                serial=args.serial)
+            adb = ADBController(package="com.instagram.android", serial=args.serial)
             driver = None
             if args.login:
                 login = InstagramLoginDriver(adb=adb, search_drive=PointDrive(adb))
@@ -871,6 +978,7 @@ def _run_instagram(args) -> bool:
             pacer = None
             if getattr(args, "pace_actions", 0):
                 from aios_core.platforms.pacing import Pacer
+
                 pacer = Pacer(
                     actions_per_hour=args.pace_actions,
                     jitter_s=(0.4, args.pace_jitter),
@@ -879,42 +987,50 @@ def _run_instagram(args) -> bool:
             steps: dict = {}
             try:
                 cards_collector = InstagramCollector(
-                    adb=adb, driver=driver, directory=args.directory,
+                    adb=adb,
+                    driver=driver,
+                    directory=args.directory,
                     pacer=pacer,
                 )
                 steps["collect"] = cards_collector.collect_to_storage(
-                    storage, query=args.query, max_cards=args.max_cards,
+                    storage,
+                    query=args.query,
+                    max_cards=args.max_cards,
                 )
-                notifier = (
-                    WebhookNotifier(url=args.webhook)
-                    if args.webhook else None
-                )
+                notifier = WebhookNotifier(url=args.webhook) if args.webhook else None
                 tab_driver = None
                 if args.open_tab:
                     tab_driver = reels_driver_for(
-                        "instagram", adb=adb, directory=args.directory,
+                        "instagram",
+                        adb=adb,
+                        directory=args.directory,
                     ).drive
                 reels = ReelsCollector(
                     get_platform("instagram"),
-                    adb=adb, directory=args.directory,
-                    driver=tab_driver, notifier=notifier,
+                    adb=adb,
+                    directory=args.directory,
+                    driver=tab_driver,
+                    notifier=notifier,
                     pacer=pacer,
                 )
                 written_reels, reels_cards = reels.collect_to_storage(
-                    storage, max_cards=args.reels_max,
+                    storage,
+                    max_cards=args.reels_max,
                 )
                 steps["reels"] = {
-                    "new": written_reels, "seen": len(reels_cards),
+                    "new": written_reels,
+                    "seen": len(reels_cards),
                     "open_tab": bool(args.open_tab),
                     "notified": bool(notifier and written_reels),
                     "cards": [c.to_dict() for c in reels_cards],
                 }
                 messenger = InstagramMessenger(
-                    adb=adb, storage=storage, directory=args.directory,
+                    adb=adb,
+                    storage=storage,
+                    directory=args.directory,
                 )
                 steps["dm_flush"] = [
-                    {"id": r["id"], "status": r["status"]}
-                    for r in messenger.flush_outbox()
+                    {"id": r["id"], "status": r["status"]} for r in messenger.flush_outbox()
                 ]
             finally:
                 storage.close()
@@ -941,33 +1057,27 @@ def _run_instagram(args) -> bool:
                     )
                 finally:
                     storage.close()
-                own_notifier = (
-                    WebhookNotifier(url=args.webhook)
-                    if args.webhook else None
-                )
+                own_notifier = WebhookNotifier(url=args.webhook) if args.webhook else None
                 deltas = own_report.get("deltas") or {}
                 negative = {
-                    fp: d for fp, d in deltas.items()
-                    if (d.get("views_delta") or 0) < 0
-                    or (d.get("favorites_delta") or 0) < 0
+                    fp: d
+                    for fp, d in deltas.items()
+                    if (d.get("views_delta") or 0) < 0 or (d.get("favorites_delta") or 0) < 0
                 }
-                if own_notifier is not None and (
-                    own_report.get("new") or negative
-                ):
-                    own_notifier.send("own-posts", {
-                        "platform": "instagram",
-                        "recorded": own_report.get("recorded", 0),
-                        "new": own_report.get("new", 0),
-                        "negative_counters": [
-                            d.get("title") for d in negative.values()
-                        ],
-                    })
+                if own_notifier is not None and (own_report.get("new") or negative):
+                    own_notifier.send(
+                        "own-posts",
+                        {
+                            "platform": "instagram",
+                            "recorded": own_report.get("recorded", 0),
+                            "new": own_report.get("new", 0),
+                            "negative_counters": [d.get("title") for d in negative.values()],
+                        },
+                    )
                 steps["own"] = {
                     **own_report,
                     "posts": [post.to_dict() for post in posts],
-                    "notified": bool(
-                        own_notifier and (own_report.get("new") or negative)
-                    ),
+                    "notified": bool(own_notifier and (own_report.get("new") or negative)),
                 }
             if args.promote:
                 from aios_core.modules.olx.own_ads import OwnAdsTracker
@@ -975,34 +1085,37 @@ def _run_instagram(args) -> bool:
 
                 storage = InstagramStorage(args.db)
                 try:
-                    stagnant = OwnAdsTracker(storage,).stagnant(
+                    stagnant = OwnAdsTracker(
+                        storage,
+                    ).stagnant(
                         min_age_days=args.promote_min_age_days,
                     )
                 finally:
                     storage.close()
                 plan = promotion_plan(
-                    stagnant, daily_budget=args.promote_budget,
+                    stagnant,
+                    daily_budget=args.promote_budget,
                 )
-                promote_notifier = (
-                    WebhookNotifier(url=args.webhook)
-                    if args.webhook else None
-                )
+                promote_notifier = WebhookNotifier(url=args.webhook) if args.webhook else None
                 if promote_notifier is not None and plan["candidates"]:
-                    promote_notifier.send("promote-suggestion", {
-                        "platform": "instagram",
-                        "candidates": [
-                            c["title"] for c in plan["candidates"]],
-                        "budget": plan["budget"],
-                        "note": "DRY-RUN план в steps.promote",
-                    })
+                    promote_notifier.send(
+                        "promote-suggestion",
+                        {
+                            "platform": "instagram",
+                            "candidates": [c["title"] for c in plan["candidates"]],
+                            "budget": plan["budget"],
+                            "note": "DRY-RUN план в steps.promote",
+                        },
+                    )
                 steps["promote"] = {
                     **plan,
-                    "notified": bool(
-                        promote_notifier and plan["candidates"]),
+                    "notified": bool(promote_notifier and plan["candidates"]),
                 }
             if args.post_image:
                 steps["post"] = PostComposer(adb=adb).publish(
-                    args.post_image, args.post_text, confirm=args.confirm,
+                    args.post_image,
+                    args.post_text,
+                    confirm=args.confirm,
                 )
             report = {
                 "query": args.query,
@@ -1023,19 +1136,22 @@ def _run_instagram(args) -> bool:
             from aios_core.modules.olx.adb import ADBController
             from aios_core.platforms.pointdrive import PointDrive
 
-            adb = ADBController(package="com.instagram.android",
-                                serial=args.serial)
+            adb = ADBController(package="com.instagram.android", serial=args.serial)
             driver = None
             if args.login:
                 login = InstagramLoginDriver(adb=adb, search_drive=PointDrive(adb))
                 driver = login.drive
             collector = InstagramCollector(
-                adb=adb, driver=driver, directory=args.directory,
+                adb=adb,
+                driver=driver,
+                directory=args.directory,
             )
             storage = InstagramStorage(args.db)
             try:
                 summary = collector.collect_to_storage(
-                    storage, query=args.query, max_cards=args.max_cards,
+                    storage,
+                    query=args.query,
+                    max_cards=args.max_cards,
                 )
             finally:
                 storage.close()
@@ -1049,17 +1165,20 @@ def _run_instagram(args) -> bool:
             )
             from aios_core.modules.olx.adb import ADBController
 
-            adb = ADBController(package="com.instagram.android",
-                                serial=getattr(args, "serial", None))
+            adb = ADBController(
+                package="com.instagram.android", serial=getattr(args, "serial", None)
+            )
             storage = InstagramStorage(args.db)
             try:
                 messenger = InstagramMessenger(
-                    adb=adb, storage=storage,
+                    adb=adb,
+                    storage=storage,
                     directory=getattr(args, "directory", "platforms"),
                 )
                 if cmd == "dm-send":
                     result = messenger.send_reply(
-                        args.chat, args.text,
+                        args.chat,
+                        args.text,
                         interlocutor=args.interlocutor,
                         auto_send=args.auto_send,
                     )
@@ -1067,9 +1186,7 @@ def _run_instagram(args) -> bool:
                     result = {"flushed": messenger.flush_outbox()}
                 else:
                     result = [
-                        {k: item[k] for k in (
-                            "id", "chat_key", "interlocutor", "text",
-                            "status")}
+                        {k: item[k] for k in ("id", "chat_key", "interlocutor", "text", "status")}
                         for item in storage.outbox_list(args.status)
                     ]
             finally:
@@ -1088,8 +1205,7 @@ def _run_instagram(args) -> bool:
             if args.dump:
                 xml = Path(args.dump).read_text(encoding="utf-8")
             else:
-                adb = ADBController(package="com.instagram.android",
-                                    serial=args.serial)
+                adb = ADBController(package="com.instagram.android", serial=args.serial)
                 target = "data/instagram_own.xml"
                 pulled = adb.dump_ui(target)
                 if not Path(target).exists():
@@ -1115,10 +1231,11 @@ def _run_instagram(args) -> bool:
             from aios_core.modules.instagram import PostComposer
             from aios_core.modules.olx.adb import ADBController
 
-            adb = ADBController(package="com.instagram.android",
-                                serial=args.serial)
+            adb = ADBController(package="com.instagram.android", serial=args.serial)
             result = PostComposer(adb=adb).publish(
-                args.image, args.text, confirm=args.confirm,
+                args.image,
+                args.text,
+                confirm=args.confirm,
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return True
@@ -1132,8 +1249,7 @@ def _run_instagram(args) -> bool:
             from aios_core.platforms import parser_for
             from aios_core.platforms.pointdrive import PointDrive
 
-            adb = ADBController(package="com.instagram.android",
-                                serial=args.serial)
+            adb = ADBController(package="com.instagram.android", serial=args.serial)
             driver = InstagramLoginDriver(adb=adb, search_drive=PointDrive(adb))
             xml = driver.drive("com.instagram.android", args.query)
             output: dict = {
@@ -1143,11 +1259,11 @@ def _run_instagram(args) -> bool:
             }
             try:
                 cards = parser_for(
-                    "instagram", directory=args.directory,
+                    "instagram",
+                    directory=args.directory,
                 ).parse(xml, query=args.query)
                 output["cards"] = [
-                    {"title": c.title, "price": c.price,
-                     "currency": c.currency} for c in cards
+                    {"title": c.title, "price": c.price, "currency": c.currency} for c in cards
                 ]
             except ValueError:
                 output["cards"] = "parser hints not calibrated"
@@ -1170,8 +1286,7 @@ def _adb_dump_driver(default_serial=None):
         from aios_core.modules.olx.adb import ADBController
         from aios_core.platforms.pointdrive import PointDrive
 
-        adb = ADBController(package=package,
-                            serial=serial or default_serial)
+        adb = ADBController(package=package, serial=serial or default_serial)
         if query:
             return PointDrive(adb).drive(package, query)
         adb.open_app()
@@ -1186,13 +1301,16 @@ def _adb_dump_driver(default_serial=None):
 def _run_msg_platform(args, platform: str) -> bool:
     """Generic guarded-messenger CLI для платформ HintsMessenger."""
     cmd = getattr(args, "messenger_command", None) or "doctor"
-    camel = {"whatsapp": "WhatsApp", "viber": "Viber",
-             "tiktok": "TikTok", "facebook": "Facebook"}.get(
-        platform, platform.capitalize())
+    camel = {
+        "whatsapp": "WhatsApp",
+        "viber": "Viber",
+        "tiktok": "TikTok",
+        "facebook": "Facebook",
+    }.get(platform, platform.capitalize())
     try:
         module = __import__(
-            f"aios_core.modules.{platform}", fromlist=[
-                f"{camel}Bootstrap", f"{camel}Messenger", f"{camel}Storage"],
+            f"aios_core.modules.{platform}",
+            fromlist=[f"{camel}Bootstrap", f"{camel}Messenger", f"{camel}Storage"],
         )
         bootstrap_cls = getattr(module, f"{camel}Bootstrap")
         messenger_cls = getattr(module, f"{camel}Messenger")
@@ -1207,17 +1325,23 @@ def _run_msg_platform(args, platform: str) -> bool:
             # compliance-контур ДО сборки adb/storage: запрещённое
             # действие не должно даже инициализировать устройство.
             from aios_core.platforms.compliance import compliance_guard
+
             check = compliance_guard(
                 platform,
                 "auto_send" if args.auto_send else "send",
                 directory=getattr(args, "directory", "platforms"),
             )
             if not check["allowed"]:
-                print(json.dumps(
-                    {"error": check["reason"], "compliance": check},
-                    ensure_ascii=False, indent=2))
+                print(
+                    json.dumps(
+                        {"error": check["reason"], "compliance": check},
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
                 return True
         from aios_core.modules.olx.adb import ADBController
+
         package = messenger_cls.PACKAGE
         adb = ADBController(package=package, serial=getattr(args, "serial", None))
         messenger = messenger_cls(
@@ -1228,13 +1352,12 @@ def _run_msg_platform(args, platform: str) -> bool:
         if cmd == "chats":
             messenger.open_chats()
             threads = messenger.list_chats()
-            print(json.dumps(
-                [t.to_dict() for t in threads], ensure_ascii=False, indent=2))
+            print(json.dumps([t.to_dict() for t in threads], ensure_ascii=False, indent=2))
             return True
         if cmd == "dm-send":
-            result = messenger.send_reply(args.chat, args.text,
-                                          interlocutor=args.interlocutor,
-                                          auto_send=args.auto_send)
+            result = messenger.send_reply(
+                args.chat, args.text, interlocutor=args.interlocutor, auto_send=args.auto_send
+            )
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return True
         if cmd == "dm-flush":
@@ -1262,20 +1385,29 @@ def _run_profiles(args) -> bool:
     cmd = args.profiles_command
 
     if cmd == "list":
-        print(json.dumps(
-            [p.to_dict() for p in store.list(args.platform)],
-            ensure_ascii=False, indent=2,
-        ))
+        print(
+            json.dumps(
+                [p.to_dict() for p in store.list(args.platform)],
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return True
 
     if cmd == "add":
         try:
-            profile = store.add(Profile(
-                platform=args.platform, name=args.name,
-                device_serial=args.device, android_user=args.android_user,
-                db_path=args.db, locale=args.locale, notes=args.notes,
-                is_default=args.default,
-            ))
+            profile = store.add(
+                Profile(
+                    platform=args.platform,
+                    name=args.name,
+                    device_serial=args.device,
+                    android_user=args.android_user,
+                    db_path=args.db,
+                    locale=args.locale,
+                    notes=args.notes,
+                    is_default=args.default,
+                )
+            )
         except ValueError as exc:
             print(json.dumps({"error": str(exc)}, ensure_ascii=False))
             return True
@@ -1285,10 +1417,12 @@ def _run_profiles(args) -> bool:
     if cmd == "show":
         profile = store.get(args.platform, args.name)
         if profile is None:
-            print(json.dumps(
-                {"error": f"profile '{args.platform}:{args.name}' not found"},
-                ensure_ascii=False,
-            ))
+            print(
+                json.dumps(
+                    {"error": f"profile '{args.platform}:{args.name}' not found"},
+                    ensure_ascii=False,
+                )
+            )
             return True
         print(json.dumps(profile.to_dict(), ensure_ascii=False, indent=2))
         return True
@@ -1301,10 +1435,12 @@ def _run_profiles(args) -> bool:
     if cmd == "set-default":
         profile = store.set_default(args.platform, args.name)
         if profile is None:
-            print(json.dumps(
-                {"error": f"profile '{args.platform}:{args.name}' not found"},
-                ensure_ascii=False,
-            ))
+            print(
+                json.dumps(
+                    {"error": f"profile '{args.platform}:{args.name}' not found"},
+                    ensure_ascii=False,
+                )
+            )
             return True
         print(json.dumps(profile.to_dict(), ensure_ascii=False, indent=2))
         return True
@@ -1329,18 +1465,15 @@ def _run_devices(args) -> bool:
 
         if cmd == "lease":
             from aios_core.platforms import ProfileStore
+
             store = ProfileStore.default() if args.sync else None
-            record = pool.lease(
-                args.profile, serial=args.serial, profile_store=store
-            )
+            record = pool.lease(args.profile, serial=args.serial, profile_store=store)
             if record is None:
                 if args.enqueue:
                     wait_id = pool.enqueue(args.profile, priority=args.priority)
                     print(json.dumps({"queued": wait_id, "profile": args.profile}))
                     return True
-                print(json.dumps(
-                    {"error": "no idle device available"}, ensure_ascii=False
-                ))
+                print(json.dumps({"error": "no idle device available"}, ensure_ascii=False))
                 return True
             print(json.dumps(record, ensure_ascii=False, indent=2))
             return True
@@ -1385,22 +1518,27 @@ def _run_devices(args) -> bool:
 
         if cmd == "ensure":
             from aios_core.platforms import ProfileStore, ensure_device
+
             record = ensure_device(
-                args.profile, pool=pool,
+                args.profile,
+                pool=pool,
                 profile_store=ProfileStore.default(),
                 avd_prefix=args.avd_prefix,
             )
             if record is None:
-                print(json.dumps(
-                    {"error": "could not lease or create a device"},
-                    ensure_ascii=False,
-                ))
+                print(
+                    json.dumps(
+                        {"error": "could not lease or create a device"},
+                        ensure_ascii=False,
+                    )
+                )
                 return True
             print(json.dumps(record, ensure_ascii=False, indent=2))
             return True
 
     if cmd == "monitor":
         from aios_core.platforms import PoolMonitor
+
         monitor = PoolMonitor(reap_after_s=args.reap_after_s)
         if args.once:
             print(json.dumps(monitor.run_once()))
@@ -1410,6 +1548,7 @@ def _run_devices(args) -> bool:
         print(json.dumps({"monitoring": True, "interval_s": args.interval}))
         try:
             import time as _time
+
             while True:
                 _time.sleep(1)
         except KeyboardInterrupt:
@@ -1437,12 +1576,17 @@ def _run_devices(args) -> bool:
         # with-блок пула выше уже закрылся — открываем свой (тот же env):
         with DevicePool() as fleet_pool:
             scheduler = FleetScheduler(
-                fleet_pool, notifier=WebhookNotifier(url=args.webhook),
+                fleet_pool,
+                notifier=WebhookNotifier(url=args.webhook),
             )
-            print(json.dumps(
-                scheduler.run_due(jobs), ensure_ascii=False, indent=2,
-                default=str,
-            ))
+            print(
+                json.dumps(
+                    scheduler.run_due(jobs),
+                    ensure_ascii=False,
+                    indent=2,
+                    default=str,
+                )
+            )
         return True
 
     return False
@@ -1483,6 +1627,7 @@ def _run_shards(args) -> bool:
 
     if cmd == "monitor":
         from aios_core.platforms import ShardHealthMonitor
+
         monitor = ShardHealthMonitor()
         if args.once:
             print(json.dumps(monitor.run_once(), ensure_ascii=False))
@@ -1492,6 +1637,7 @@ def _run_shards(args) -> bool:
         print(json.dumps({"monitoring": True, "interval_s": args.interval}))
         try:
             import time as _time
+
             while True:
                 _time.sleep(1)
         except KeyboardInterrupt:
@@ -1500,62 +1646,96 @@ def _run_shards(args) -> bool:
 
     if cmd == "jobs":
         from aios_core.platforms.shardexec import ShardJobs
+
         with ShardJobs() as jobs:
             if getattr(args, "stats", False):
-                print(json.dumps(
-                    jobs.stats(stale_after_s=getattr(args, "ttl", 600)),
-                    ensure_ascii=False, indent=2,
-                ))
+                print(
+                    json.dumps(
+                        jobs.stats(stale_after_s=getattr(args, "ttl", 600)),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
             else:
-                print(json.dumps(
-                    jobs.list(status=getattr(args, "status", None)),
-                    ensure_ascii=False, indent=2,
-                ))
+                print(
+                    json.dumps(
+                        jobs.list(status=getattr(args, "status", None)),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
         return True
 
     if cmd == "requeue-stale":
         from aios_core.platforms.shardexec import ShardJobs
+
         with ShardJobs() as jobs:
             moved = jobs.requeue_stale(stale_after_s=args.ttl)
-        print(json.dumps(
-            {"requeued": len(moved),
-             "jobs": [{"id": j["id"], "profile_key": j["profile_key"],
-                       "requeued_age_s": j.get("requeued_age_s")}
-                      for j in moved]},
-            ensure_ascii=False, indent=2,
-        ))
+        print(
+            json.dumps(
+                {
+                    "requeued": len(moved),
+                    "jobs": [
+                        {
+                            "id": j["id"],
+                            "profile_key": j["profile_key"],
+                            "requeued_age_s": j.get("requeued_age_s"),
+                        }
+                        for j in moved
+                    ],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return True
 
     if cmd == "enqueue":
         from aios_core.platforms.shardexec import ShardJobs
+
         payload = json.loads(args.payload) if args.payload else None
         with ShardJobs() as jobs:
             job_id = jobs.enqueue(args.profile, args.kind, payload=payload)
-        print(json.dumps({
-            "enqueued": job_id, "profile_key": args.profile,
-            "kind": args.kind,
-            "note": "нода-исполнитель заберёт джобу через "
+        print(
+            json.dumps(
+                {
+                    "enqueued": job_id,
+                    "profile_key": args.profile,
+                    "kind": args.kind,
+                    "note": "нода-исполнитель заберёт джобу через "
                     "`aios shards work` (pull-модель)",
-        }, ensure_ascii=False))
+                },
+                ensure_ascii=False,
+            )
+        )
         return True
 
     if cmd == "work":
         from aios_core.platforms.shardexec import ShardJobs, ShardJobWorker
+
         with ShardJobs() as jobs:
             worker = ShardJobWorker(host=args.host, jobs=jobs)
             if args.once:
                 result = worker.work_once()
-                print(json.dumps(
-                    result if result is not None
-                    else {"status": "idle", "host": args.host,
-                          "note": "нет pending-джоб для этой ноды"},
-                    ensure_ascii=False, indent=2,
-                ))
+                print(
+                    json.dumps(
+                        (
+                            result
+                            if result is not None
+                            else {
+                                "status": "idle",
+                                "host": args.host,
+                                "note": "нет pending-джоб для этой ноды",
+                            }
+                        ),
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
                 return True
             import time as _time
-            print(json.dumps(
-                {"working": True, "host": args.host,
-                 "poll_s": args.interval}))
+
+            print(json.dumps({"working": True, "host": args.host, "poll_s": args.interval}))
             try:
                 while True:
                     worker.work_once()
@@ -1627,32 +1807,24 @@ def _run_cron_plan(args) -> bool:
     if getattr(args, "shard_map", False):
         # Multi-host: липкие HRW-маршруты из ShardRouter (AIOS_SHARDS_DB).
         from aios_core.platforms import ShardRouter
+
         groups: dict = {}
         with ShardRouter() as router:
             for profile, line in entries:
                 route = router.route_for(
                     f"{profile.platform}:{profile.name}",
                 )
-                key = (
-                    (route["host"], route["base_url"]) if route
-                    else ("local", "")
-                )
+                key = (route["host"], route["base_url"]) if route else ("local", "")
                 groups.setdefault(key, []).append(line)
         for (host, base_url), group_lines in sorted(groups.items()):
-            note = (
-                f" ({base_url})" if base_url
-                else " — без маршрута; запускать на этом хосте"
-            )
-            lines.append(
-                f"# === host: {host}{note} · профилей: {len(group_lines)} ==="
-            )
+            note = f" ({base_url})" if base_url else " — без маршрута; запускать на этом хосте"
+            lines.append(f"# === host: {host}{note} · профилей: {len(group_lines)} ===")
             lines.extend(group_lines)
             lines.append("")
     else:
         lines.extend(line for _, line in entries)
     monitor_note = (
-        "  # pool monitor — запускать на каждом хосте"
-        if getattr(args, "shard_map", False) else ""
+        "  # pool monitor — запускать на каждом хосте" if getattr(args, "shard_map", False) else ""
     )
     lines.append(
         f"*/{interval} * * * * cd {root} && "
@@ -1661,6 +1833,7 @@ def _run_cron_plan(args) -> bool:
     )
     if args.with_marker_check:
         from aios_core.platforms import load_catalog
+
         platforms = [d.name for d in load_catalog()] or ["olx"]
         lines.append("")
         lines.append(
@@ -1725,8 +1898,7 @@ def main(argv=None):
         "from-apk", help="Auto-scaffold a platform from an APK (aapt badging)"
     )
     p_apk.add_argument("apk", help="Path to the .apk file")
-    p_apk.add_argument("--name", default=None,
-                       help="Platform name (default: last package segment)")
+    p_apk.add_argument("--name", default=None, help="Platform name (default: last package segment)")
     p_apk.add_argument("--locale", default="uk-UA")
     p_apk.add_argument("--root", default=".", help="Project root")
     p_apk.add_argument("--dry-run", action="store_true")
@@ -1735,7 +1907,8 @@ def main(argv=None):
         "calibrate", help="Extract parser hints from a search-screen UI dump"
     )
     p_reels2 = plat_sub.add_parser(
-        "reels", help="Reels scroll-cycle collector (any catalog platform)")
+        "reels", help="Reels scroll-cycle collector (any catalog platform)"
+    )
     p_reels2.add_argument("--platform", required=True)
     p_reels2.add_argument("--profile", default=None)
     p_reels2.add_argument("--db", default=None)
@@ -1745,34 +1918,38 @@ def main(argv=None):
     p_reels2.add_argument("--open-tab", action="store_true")
     p_reels2.add_argument("--webhook", default=None)
 
-    p_doc2 = plat_sub.add_parser(
-        "doctor", help="Generic readiness checks for a platform")
+    p_doc2 = plat_sub.add_parser("doctor", help="Generic readiness checks for a platform")
     p_doc2.add_argument("--platform", required=True)
     p_doc2.add_argument("--serial", default=None)
     p_doc2.add_argument("--directory", default="platforms")
-    p_doc2.add_argument("--calibrate-recipe", action="store_true",
-                        help="Append on-device dump/calibrate recipe "
-                             "for missing hints sections")
+    p_doc2.add_argument(
+        "--calibrate-recipe",
+        action="store_true",
+        help="Append on-device dump/calibrate recipe " "for missing hints sections",
+    )
 
     p_cal.add_argument("--platform", required=True, help="Platform name")
     p_cal.add_argument("--dump", required=True, help="Path to uiautomator XML dump")
-    p_cal.add_argument("--detail", default=None,
-                       help="Detail-screen UI dump (seller/CTA/description)")
-    p_cal.add_argument("--messages", default=None,
-                       help="Messenger-screen UI dump (input/send/bubbles)")
-    p_cal.add_argument("--navigation", default=None,
-                       help="Home-screen UI dump (tab-bar → reels_tab hints)")
-    p_cal.add_argument("--write", action="store_true",
-                       help="Write hints into platforms/<name>.yaml extras")
+    p_cal.add_argument(
+        "--detail", default=None, help="Detail-screen UI dump (seller/CTA/description)"
+    )
+    p_cal.add_argument(
+        "--messages", default=None, help="Messenger-screen UI dump (input/send/bubbles)"
+    )
+    p_cal.add_argument(
+        "--navigation", default=None, help="Home-screen UI dump (tab-bar → reels_tab hints)"
+    )
+    p_cal.add_argument(
+        "--write", action="store_true", help="Write hints into platforms/<name>.yaml extras"
+    )
     p_cal.add_argument("--root", default=".", help="Project root")
 
-    p_fetch = plat_sub.add_parser(
-        "fetch-apk", help="Download a platform APK via apkeep"
-    )
+    p_fetch = plat_sub.add_parser("fetch-apk", help="Download a platform APK via apkeep")
     p_fetch.add_argument("package", help="Android package, e.g. com.instagram.android")
     p_fetch.add_argument("--out", default="apks", help="Download directory")
-    p_fetch.add_argument("--source", default="apkpure",
-                         help="apkeep source: apkpure/google-play/f-droid")
+    p_fetch.add_argument(
+        "--source", default="apkpure", help="apkeep source: apkpure/google-play/f-droid"
+    )
 
     p_watch = plat_sub.add_parser(
         "autowatch",
@@ -1780,24 +1957,30 @@ def main(argv=None):
     )
     p_watch.add_argument("--platform", required=True)
     p_watch.add_argument("--profile", default=None)
-    p_watch.add_argument("--query", action="append", default=[],
-                         help="Subscription query (repeatable; default: "
-                              "all storage subscriptions)")
+    p_watch.add_argument(
+        "--query",
+        action="append",
+        default=[],
+        help="Subscription query (repeatable; default: " "all storage subscriptions)",
+    )
     p_watch.add_argument("--max", type=int, default=50)
     p_watch.add_argument("--webhook", default=None)
-    p_watch.add_argument("--drive", choices=["none", "point", "login"],
-                         default="none",
-                         help="Pre-collection navigation drive")
-    p_watch.add_argument("--no-collect", action="store_true",
-                         help="Skip collection stage (recompute alerts only)")
+    p_watch.add_argument(
+        "--drive",
+        choices=["none", "point", "login"],
+        default="none",
+        help="Pre-collection navigation drive",
+    )
+    p_watch.add_argument(
+        "--no-collect", action="store_true", help="Skip collection stage (recompute alerts only)"
+    )
 
     p_mark = plat_sub.add_parser(
         "marker-check",
         help="Diff descriptor parser_hints markers against a fresh dump",
     )
     p_mark.add_argument("--platform", required=True, help="Platform name")
-    p_mark.add_argument("--dump", required=True,
-                        help="Fresh search-screen UI dump")
+    p_mark.add_argument("--dump", required=True, help="Fresh search-screen UI dump")
 
     p_gen = plat_sub.add_parser(
         "codegen", help="Compile card_parser.py from descriptor parser_hints"
@@ -1805,45 +1988,46 @@ def main(argv=None):
     p_gen.add_argument("--platform", required=True, help="Platform name")
     p_gen.add_argument("--root", default=".", help="Project root")
     p_gen.add_argument("--dry-run", action="store_true")
-    p_gen.add_argument("--force", action="store_true",
-                       help="Overwrite an already generated card_parser.py")
+    p_gen.add_argument(
+        "--force", action="store_true", help="Overwrite an already generated card_parser.py"
+    )
 
     p_boot = plat_sub.add_parser(
         "bootup",
         help="E2E pipeline: APK dump → scaffold → calibrate → codegen → verify",
     )
-    p_boot.add_argument("--apk", default=None,
-                        help="Path to the .apk, or package name with --fetch")
-    p_boot.add_argument("--name", default=None,
-                        help="Platform name (with --package, skips APK)")
-    p_boot.add_argument("--package", default=None,
-                        help="Android package (with --name, skips APK)")
-    p_boot.add_argument("--dump", default=None,
-                        help="Search-screen UI dump for calibration")
-    p_boot.add_argument("--query", default=None,
-                        help="Search query for the live calibration drive")
-    p_boot.add_argument("--fetch", action="store_true",
-                        help="Download the APK via apkeep when missing")
-    p_boot.add_argument("--apks-dir", default="apks",
-                        help="Directory for downloaded APKs")
-    p_boot.add_argument("--serial", default=None,
-                        help="ADB serial for the live calibration drive")
-    p_boot.add_argument("--lease", action="store_true",
-                        help="Lease a device for the drive from DevicePool")
+    p_boot.add_argument(
+        "--apk", default=None, help="Path to the .apk, or package name with --fetch"
+    )
+    p_boot.add_argument("--name", default=None, help="Platform name (with --package, skips APK)")
+    p_boot.add_argument("--package", default=None, help="Android package (with --name, skips APK)")
+    p_boot.add_argument("--dump", default=None, help="Search-screen UI dump for calibration")
+    p_boot.add_argument("--query", default=None, help="Search query for the live calibration drive")
+    p_boot.add_argument(
+        "--fetch", action="store_true", help="Download the APK via apkeep when missing"
+    )
+    p_boot.add_argument("--apks-dir", default="apks", help="Directory for downloaded APKs")
+    p_boot.add_argument("--serial", default=None, help="ADB serial for the live calibration drive")
+    p_boot.add_argument(
+        "--lease", action="store_true", help="Lease a device for the drive from DevicePool"
+    )
     p_boot.add_argument("--locale", default="uk-UA")
     p_boot.add_argument("--root", default=".", help="Project root")
     p_boot.add_argument("--dry-run", action="store_true")
 
     # Onboarding wizard: всё подключение платформы одной командой
     p_onb = subparsers.add_parser(
-        "onboard", help="Onboarding wizard: fetch→bootup→register→паспорт")
-    p_onb.add_argument("apk", nargs="?", default=None,
-                       help="APK path or android package (with fetch)")
+        "onboard", help="Onboarding wizard: fetch→bootup→register→паспорт"
+    )
+    p_onb.add_argument(
+        "apk", nargs="?", default=None, help="APK path or android package (with fetch)"
+    )
     p_onb.add_argument("--name", default=None)
     p_onb.add_argument("--package", default=None)
     p_onb.add_argument("--root", default=".", help="Project root")
-    p_onb.add_argument("--no-fetch", action="store_true",
-                       help="Do not download APK even if only package given")
+    p_onb.add_argument(
+        "--no-fetch", action="store_true", help="Do not download APK even if only package given"
+    )
     p_onb.add_argument("--apks-dir", default="apks", dest="apks_dir")
     p_onb.add_argument("--dump", default=None, help="Search-screen UI dump")
     p_onb.add_argument("--query", default=None, help="Drive query for dump")
@@ -1852,25 +2036,23 @@ def main(argv=None):
 
     # Generic messengers: whatsapp / viber / facebook (HintsMessenger)
     for app_name in ("whatsapp", "viber", "facebook"):
-        app_parser = subparsers.add_parser(
-            app_name, help=f"{app_name} guarded messenger agent")
+        app_parser = subparsers.add_parser(app_name, help=f"{app_name} guarded messenger agent")
         app_sub = app_parser.add_subparsers(dest="messenger_command")
-        app_sub.add_parser("doctor", help="Readiness checks").add_argument(
-            "--serial", default=None)
+        app_sub.add_parser("doctor", help="Readiness checks").add_argument("--serial", default=None)
         app_chats = app_sub.add_parser("chats", help="List inbox threads")
         app_chats.add_argument("--db", default=None)
         app_chats.add_argument("--serial", default=None)
         app_chats.add_argument("--directory", default="platforms")
-        app_send = app_sub.add_parser(
-            "dm-send", help="Guarded reply (outbox by default)")
+        app_send = app_sub.add_parser("dm-send", help="Guarded reply (outbox by default)")
         app_send.add_argument("--chat", required=True)
         app_send.add_argument("--text", required=True)
         app_send.add_argument("--interlocutor", default=None)
         app_send.add_argument("--db", default=None)
         app_send.add_argument("--serial", default=None)
         app_send.add_argument("--directory", default="platforms")
-        app_send.add_argument("--auto-send", action="store_true",
-                              help="Send immediately instead of queueing")
+        app_send.add_argument(
+            "--auto-send", action="store_true", help="Send immediately instead of queueing"
+        )
         app_flush = app_sub.add_parser("dm-flush", help="Send approved outbox")
         app_flush.add_argument("--db", default=None)
         app_flush.add_argument("--serial", default=None)
@@ -1885,33 +2067,30 @@ def main(argv=None):
     )
     ig_sub = ig_parser.add_subparsers(dest="instagram_command")
 
-    ig_sub.add_parser("doctor", help="Readiness checks (adb/secrets/hints/device)"
-                      ).add_argument(
-        "--serial", default=None, help="ADB serial to verify online")
+    ig_sub.add_parser("doctor", help="Readiness checks (adb/secrets/hints/device)").add_argument(
+        "--serial", default=None, help="ADB serial to verify online"
+    )
 
-    ig_col = ig_sub.add_parser(
-        "collect", help="Collect feed/search cards into InstagramStorage")
+    ig_col = ig_sub.add_parser("collect", help="Collect feed/search cards into InstagramStorage")
     ig_col.add_argument("--db", default="data/instagram.sqlite")
     ig_col.add_argument("--query", default=None)
     ig_col.add_argument("--max", type=int, default=100, dest="max_cards")
     ig_col.add_argument("--serial", default=None, help="ADB serial")
-    ig_col.add_argument("--login", action="store_true",
-                        help="Pre-drive with the login wall driver")
+    ig_col.add_argument("--login", action="store_true", help="Pre-drive with the login wall driver")
     ig_col.add_argument("--directory", default="platforms")
 
-    ig_dm = ig_sub.add_parser(
-        "dm-send", help="Guarded Direct reply (outbox by default)")
+    ig_dm = ig_sub.add_parser("dm-send", help="Guarded Direct reply (outbox by default)")
     ig_dm.add_argument("--chat", required=True, help="Chat key")
     ig_dm.add_argument("--text", required=True)
     ig_dm.add_argument("--interlocutor", default=None)
     ig_dm.add_argument("--db", default="data/instagram.sqlite")
     ig_dm.add_argument("--serial", default=None)
     ig_dm.add_argument("--directory", default="platforms")
-    ig_dm.add_argument("--auto-send", action="store_true",
-                       help="Send immediately instead of queueing")
+    ig_dm.add_argument(
+        "--auto-send", action="store_true", help="Send immediately instead of queueing"
+    )
 
-    ig_out = ig_sub.add_parser(
-        "dm-flush", help="Send every approved outbox entry")
+    ig_out = ig_sub.add_parser("dm-flush", help="Send every approved outbox entry")
     ig_out.add_argument("--db", default="data/instagram.sqlite")
     ig_out.add_argument("--serial", default=None)
     ig_out.add_argument("--directory", default="platforms")
@@ -1921,80 +2100,92 @@ def main(argv=None):
     ig_outbox.add_argument("--status", default=None)
 
     ig_drv = ig_sub.add_parser(
-        "login-drive", help="Open Instagram past the login wall, dump screen")
-    ig_drv.add_argument("--query", default=None,
-                        help="Search query via PointDrive after login")
+        "login-drive", help="Open Instagram past the login wall, dump screen"
+    )
+    ig_drv.add_argument("--query", default=None, help="Search query via PointDrive after login")
     ig_drv.add_argument("--serial", default=None)
     ig_drv.add_argument("--directory", default="platforms")
 
-    ig_own = ig_sub.add_parser(
-        "own", help="Own posts snapshot (dump or live profile grid)")
+    ig_own = ig_sub.add_parser("own", help="Own posts snapshot (dump or live profile grid)")
     ig_own.add_argument("--db", default="data/instagram.sqlite")
-    ig_own.add_argument("--dump", default=None,
-                        help="Profile grid UI dump (default: live device)")
+    ig_own.add_argument("--dump", default=None, help="Profile grid UI dump (default: live device)")
     ig_own.add_argument("--serial", default=None)
-    ig_own.add_argument("--marker", action="append", default=[],
-                        help="Extra grid-cell resource-id markers")
+    ig_own.add_argument(
+        "--marker", action="append", default=[], help="Extra grid-cell resource-id markers"
+    )
 
     ig_post = ig_sub.add_parser(
-        "post", help="Guarded publish (DRY-RUN default, --confirm executes)")
+        "post", help="Guarded publish (DRY-RUN default, --confirm executes)"
+    )
     ig_post.add_argument("--image", required=True, help="Local image path")
     ig_post.add_argument("--text", required=True, help="Caption")
     ig_post.add_argument("--serial", default=None)
-    ig_post.add_argument("--confirm", action="store_true",
-                         help="Actually execute the publish flow")
+    ig_post.add_argument("--confirm", action="store_true", help="Actually execute the publish flow")
 
-    ig_reels = ig_sub.add_parser(
-        "reels", help="Reels scroll-cycle collector into InstagramStorage")
+    ig_reels = ig_sub.add_parser("reels", help="Reels scroll-cycle collector into InstagramStorage")
     ig_reels.add_argument("--db", default="data/instagram.sqlite")
     ig_reels.add_argument("--max", type=int, default=100, dest="max_cards")
     ig_reels.add_argument("--serial", default=None, help="ADB serial")
     ig_reels.add_argument("--directory", default="platforms")
-    ig_reels.add_argument("--open-tab", action="store_true",
-                          help="Tap the Reels tab first (calibrated driver)")
-    ig_reels.add_argument("--webhook", default=None,
-                          help="POST video-new events to this webhook URL")
+    ig_reels.add_argument(
+        "--open-tab", action="store_true", help="Tap the Reels tab first (calibrated driver)"
+    )
+    ig_reels.add_argument(
+        "--webhook", default=None, help="POST video-new events to this webhook URL"
+    )
 
     ig_auto = ig_sub.add_parser(
         "autopilot",
-        help="Full cycle under one profile: collect → reels → Direct-flush "
-             "→ guarded post")
+        help="Full cycle under one profile: collect → reels → Direct-flush " "→ guarded post",
+    )
     ig_auto.add_argument("--db", default="data/instagram.sqlite")
     ig_auto.add_argument("--query", default=None)
     ig_auto.add_argument("--max", type=int, default=100, dest="max_cards")
     ig_auto.add_argument("--reels-max", type=int, default=50, dest="reels_max")
     ig_auto.add_argument("--serial", default=None, help="ADB serial")
-    ig_auto.add_argument("--login", action="store_true",
-                         help="Pre-drive with the login wall driver")
+    ig_auto.add_argument(
+        "--login", action="store_true", help="Pre-drive with the login wall driver"
+    )
     ig_auto.add_argument("--directory", default="platforms")
-    ig_auto.add_argument("--open-tab", action="store_true",
-                         help="Tap the Reels tab before the reels cycle")
-    ig_auto.add_argument("--webhook", default=None,
-                         help="POST video-new events to this webhook URL")
-    ig_auto.add_argument("--post-image", default=None,
-                         help="Optional image for the guarded post step")
-    ig_auto.add_argument("--own", action="store_true",
-                         help="Own-posts snapshot step (OwnAdsTracker)")
-    ig_auto.add_argument("--own-dump", default=None,
-                         help="Profile grid UI dump (default: live device)")
-    ig_auto.add_argument("--promote", action="store_true",
-                         help="DRY-RUN promote plan for stagnant own posts")
-    ig_auto.add_argument("--promote-budget", type=float, default=None,
-                         dest="promote_budget", help="daily budget (UAH)")
-    ig_auto.add_argument("--promote-min-age-days", type=float, default=3.0,
-                         dest="promote_min_age_days")
-    ig_auto.add_argument("--pace-actions", type=int, default=0,
-                         help="actions/hour pacing quota (0=off)")
-    ig_auto.add_argument("--pace-jitter", type=float, default=1.6,
-                         help="max jitter seconds between actions")
+    ig_auto.add_argument(
+        "--open-tab", action="store_true", help="Tap the Reels tab before the reels cycle"
+    )
+    ig_auto.add_argument(
+        "--webhook", default=None, help="POST video-new events to this webhook URL"
+    )
+    ig_auto.add_argument(
+        "--post-image", default=None, help="Optional image for the guarded post step"
+    )
+    ig_auto.add_argument(
+        "--own", action="store_true", help="Own-posts snapshot step (OwnAdsTracker)"
+    )
+    ig_auto.add_argument(
+        "--own-dump", default=None, help="Profile grid UI dump (default: live device)"
+    )
+    ig_auto.add_argument(
+        "--promote", action="store_true", help="DRY-RUN promote plan for stagnant own posts"
+    )
+    ig_auto.add_argument(
+        "--promote-budget",
+        type=float,
+        default=None,
+        dest="promote_budget",
+        help="daily budget (UAH)",
+    )
+    ig_auto.add_argument(
+        "--promote-min-age-days", type=float, default=3.0, dest="promote_min_age_days"
+    )
+    ig_auto.add_argument(
+        "--pace-actions", type=int, default=0, help="actions/hour pacing quota (0=off)"
+    )
+    ig_auto.add_argument(
+        "--pace-jitter", type=float, default=1.6, help="max jitter seconds between actions"
+    )
     ig_auto.add_argument("--post-text", default="", help="Caption")
-    ig_auto.add_argument("--confirm", action="store_true",
-                         help="Actually execute the publish flow")
+    ig_auto.add_argument("--confirm", action="store_true", help="Actually execute the publish flow")
 
     # Platform profiles (accounts)
-    profiles_parser = subparsers.add_parser(
-        "profiles", help="Manage platform profiles (accounts)"
-    )
+    profiles_parser = subparsers.add_parser("profiles", help="Manage platform profiles (accounts)")
     prof_sub = profiles_parser.add_subparsers(dest="profiles_command")
 
     p_list = prof_sub.add_parser("list", help="List profiles")
@@ -2038,54 +2229,64 @@ def main(argv=None):
     sh_mon.add_argument("--once", action="store_true", help="single cycle (cron)")
 
     sh_jobs = sh_sub.add_parser("jobs", help="List shard job queue")
-    sh_jobs.add_argument("--status", default=None,
-                         help="pending/claimed/done/failed")
-    sh_jobs.add_argument("--stats", action="store_true",
-                         help="queue depth / status counters / stale claims")
-    sh_jobs.add_argument("--ttl", type=float, default=600,
-                         help="stale claims threshold seconds (with --stats)")
+    sh_jobs.add_argument("--status", default=None, help="pending/claimed/done/failed")
+    sh_jobs.add_argument(
+        "--stats", action="store_true", help="queue depth / status counters / stale claims"
+    )
+    sh_jobs.add_argument(
+        "--ttl", type=float, default=600, help="stale claims threshold seconds (with --stats)"
+    )
 
     sh_requeue = sh_sub.add_parser(
         "requeue-stale",
         help="Return claims stuck longer than TTL back to pending",
     )
-    sh_requeue.add_argument("--ttl", type=float, default=600,
-                            help="claimed older than this is stale (seconds)")
+    sh_requeue.add_argument(
+        "--ttl", type=float, default=600, help="claimed older than this is stale (seconds)"
+    )
 
     sh_enq = sh_sub.add_parser(
-        "enqueue", help="Queue a pull-model job for a profile",
+        "enqueue",
+        help="Queue a pull-model job for a profile",
     )
     sh_enq.add_argument("--profile", required=True, help="platform:name")
-    sh_enq.add_argument("--kind", required=True,
-                        help="job kind (builtin: autopilot)")
+    sh_enq.add_argument("--kind", required=True, help="job kind (builtin: autopilot)")
     sh_enq.add_argument("--payload", default=None, help="JSON payload")
 
     sh_work = sh_sub.add_parser(
-        "work", help="Pull-model worker: claim and run this host's jobs",
+        "work",
+        help="Pull-model worker: claim and run this host's jobs",
     )
     sh_work.add_argument("--host", required=True, help="this node's host name")
-    sh_work.add_argument("--once", action="store_true",
-                         help="single claim (cron-friendly)")
-    sh_work.add_argument("--interval", type=float, default=30.0,
-                         help="poll seconds in continuous mode")
+    sh_work.add_argument("--once", action="store_true", help="single claim (cron-friendly)")
+    sh_work.add_argument(
+        "--interval", type=float, default=30.0, help="poll seconds in continuous mode"
+    )
 
     # Crontab generator for per-profile automation
     cron_parser = subparsers.add_parser(
         "cron-plan", help="Generate crontab: per-profile AutoWatch + pool monitor"
     )
     cron_parser.add_argument("--platform", default="olx")
-    cron_parser.add_argument("--interval", type=int, default=15,
-                             help="minutes between runs")
+    cron_parser.add_argument("--interval", type=int, default=15, help="minutes between runs")
     cron_parser.add_argument("--webhook", default=None, help="webhook URL for alerts")
     cron_parser.add_argument("--write", default=None, help="write to file instead of stdout")
-    cron_parser.add_argument("--with-marker-check", action="store_true",
-                             help="add commented marker-check lines per catalog platform")
-    cron_parser.add_argument("--shard-map", action="store_true",
-                             help="group profile lines by sticky HRW shard host "
-                                  "(AIOS_SHARDS_DB; unrouted → local group)")
-    cron_parser.add_argument("--via-shards", action="store_true",
-                             help="pull-model: cron only enqueues shard jobs "
-                                  "(workers: aios shards work --host X)")
+    cron_parser.add_argument(
+        "--with-marker-check",
+        action="store_true",
+        help="add commented marker-check lines per catalog platform",
+    )
+    cron_parser.add_argument(
+        "--shard-map",
+        action="store_true",
+        help="group profile lines by sticky HRW shard host "
+        "(AIOS_SHARDS_DB; unrouted → local group)",
+    )
+    cron_parser.add_argument(
+        "--via-shards",
+        action="store_true",
+        help="pull-model: cron only enqueues shard jobs " "(workers: aios shards work --host X)",
+    )
 
     # Device pool (emulators/physical devices leased to profiles)
     devices_parser = subparsers.add_parser(
@@ -2102,11 +2303,13 @@ def main(argv=None):
     d_lease = dev_sub.add_parser("lease", help="Lease a device to a profile")
     d_lease.add_argument("--profile", required=True, help="profile key, e.g. olx:work")
     d_lease.add_argument("--serial", default=None, help="pin a specific device")
-    d_lease.add_argument("--enqueue", action="store_true",
-                         help="put on the waitlist when no idle device")
+    d_lease.add_argument(
+        "--enqueue", action="store_true", help="put on the waitlist when no idle device"
+    )
     d_lease.add_argument("--priority", type=int, default=0)
-    d_lease.add_argument("--sync", action="store_true",
-                         help="also write device_serial into the profiles registry")
+    d_lease.add_argument(
+        "--sync", action="store_true", help="also write device_serial into the profiles registry"
+    )
 
     dev_sub.add_parser("waitlist", help="Show the lease waitlist")
 
@@ -2140,15 +2343,19 @@ def main(argv=None):
         "fleet-run", help="FleetScheduler: due autowatch jobs on leased devices"
     )
     d_fleet.add_argument("--every-s", type=float, default=900.0)
-    d_fleet.add_argument("--query", action="append", default=[],
-                         help="Collect queries for autowatch jobs (repeatable)")
-    d_fleet.add_argument("--webhook", default=None,
-                         help="Webhook for marker-drift alerts")
+    d_fleet.add_argument(
+        "--query",
+        action="append",
+        default=[],
+        help="Collect queries for autowatch jobs (repeatable)",
+    )
+    d_fleet.add_argument("--webhook", default=None, help="Webhook for marker-drift alerts")
     d_mon.add_argument("--reap-after-s", type=float, default=900.0)
 
     d_lim = dev_sub.add_parser("limits", help="Show/set pool quotas")
-    d_lim.add_argument("--set", dest="set_limit", default=None,
-                       metavar="KEY=VALUE", help="e.g. max_busy:olx=4")
+    d_lim.add_argument(
+        "--set", dest="set_limit", default=None, metavar="KEY=VALUE", help="e.g. max_busy:olx=4"
+    )
 
     # Admin commands (export, keys, backup)
     admin_parser = subparsers.add_parser("admin", help="Admin operations (export, keys, backup)")
@@ -2156,7 +2363,9 @@ def main(argv=None):
 
     # admin export
     exp_parser = admin_sub.add_parser("export", help="Export data from AIOS")
-    exp_parser.add_argument("--type", choices=["tasks", "memory", "audit", "knowledge", "all"], default="all")
+    exp_parser.add_argument(
+        "--type", choices=["tasks", "memory", "audit", "knowledge", "all"], default="all"
+    )
     exp_parser.add_argument("--format", choices=["json", "csv"], default="json")
     exp_parser.add_argument("--output", "-o", default="./export", help="Output path")
     exp_parser.add_argument("--since", default=None, help="Export since date (ISO)")
@@ -2256,6 +2465,7 @@ def main(argv=None):
 
     if args.command == "run":
         from run_rest_api import main as run_main
+
         run_main()
     elif args.command == "dashboard":
         db = Database("aios.sqlite")
@@ -2265,6 +2475,7 @@ def main(argv=None):
         uvicorn.run(app, host="127.0.0.1", port=args.port)
     elif args.command == "demo":
         from demo_v41 import main as demo_main
+
         demo_main()
     elif args.command == "stats":
         db = Database("aios.sqlite")
@@ -2275,16 +2486,23 @@ def main(argv=None):
             parser.parse_args(["platforms", "--help"])
     elif args.command == "onboard":
         from aios_core.platforms.onboard import onboard_package
+
         try:
             report = onboard_package(
-                apk=args.apk, name=args.name, package=args.package,
-                project_root=args.root, fetch=not args.no_fetch,
+                apk=args.apk,
+                name=args.name,
+                package=args.package,
+                project_root=args.root,
+                fetch=not args.no_fetch,
                 apks_dir=args.apks_dir,
                 dump_path=getattr(args, "dump", None),
                 query=getattr(args, "query", None),
                 serial=getattr(args, "serial", None),
-                driver=None if getattr(args, "serial", None) is None
-                else _adb_dump_driver(getattr(args, "serial")),
+                driver=(
+                    None
+                    if getattr(args, "serial", None) is None
+                    else _adb_dump_driver(getattr(args, "serial"))
+                ),
                 dry_run=args.dry_run,
             )
         except ValueError as exc:
@@ -2335,13 +2553,26 @@ def main(argv=None):
             parser.parse_args(["olx", "--help"])
     elif args.command == "admin":
         from aios_cli_admin import (
-            run_export, run_import,
-            run_keys_generate, run_keys_list, run_keys_revoke, run_keys_rotate, run_keys_health,
-            run_backup_create, run_backup_list, run_backup_verify, run_backup_restore,
-            run_backup_cleanup, run_backup_health,
-            run_webhooks_register, run_webhooks_list, run_webhooks_test,
-            run_webhooks_notify, run_webhooks_health,
+            run_export,
+            run_import,
+            run_keys_generate,
+            run_keys_list,
+            run_keys_revoke,
+            run_keys_rotate,
+            run_keys_health,
+            run_backup_create,
+            run_backup_list,
+            run_backup_verify,
+            run_backup_restore,
+            run_backup_cleanup,
+            run_backup_health,
+            run_webhooks_register,
+            run_webhooks_list,
+            run_webhooks_test,
+            run_webhooks_notify,
+            run_webhooks_health,
         )
+
         if args.admin_command == "export":
             run_export(args)
         elif args.admin_command == "import":

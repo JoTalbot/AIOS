@@ -23,8 +23,7 @@ from aios_core.modules.olx.text_utils import normalize_text
 _DURATION_RE = re.compile(r"^\d{1,2}:\d{2}$")
 # «1 234 перегляди» / «56 вподобань» / «12 comments» / «7 likes»
 _COUNT_RE = re.compile(
-    r"^(\d[\d\s\u00a0,.]*)\s*"
-    r"(перегляд\w*|просмотр\w*|views?|вподобан\w*|лайк\w*|likes?)$",
+    r"^(\d[\d\s\u00a0,.]*)\s*" r"(перегляд\w*|просмотр\w*|views?|вподобан\w*|лайк\w*|likes?)$",
     re.IGNORECASE,
 )
 _DEFAULT_MARKERS = ("reel", "video", "clips")
@@ -83,8 +82,7 @@ class HintVideoParser:
     def __init__(self, video_markers: Optional[List[str]] = None):
         markers = video_markers or list(_DEFAULT_MARKERS)
         self.markers = (
-            tuple(str(m).rsplit("/", 1)[-1].lower() for m in markers if m)
-            or _DEFAULT_MARKERS
+            tuple(str(m).rsplit("/", 1)[-1].lower() for m in markers if m) or _DEFAULT_MARKERS
         )
 
     def parse(

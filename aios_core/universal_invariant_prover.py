@@ -23,23 +23,15 @@ class UniversalInvariantProver:
 
     def __init__(self):
         self.invariants: List[SafetyInvariant] = [
-            SafetyInvariant(
-                "INV_01", "Identity Uniqueness", "agent_id IS_NOT_NULL AND unique"
-            ),
-            SafetyInvariant(
-                "INV_02", "Memory Isolation", "memory_owner_id == request_owner_id"
-            ),
-            SafetyInvariant(
-                "INV_03", "Non-Circumvention", "constitutional_veto_override == False"
-            ),
+            SafetyInvariant("INV_01", "Identity Uniqueness", "agent_id IS_NOT_NULL AND unique"),
+            SafetyInvariant("INV_02", "Memory Isolation", "memory_owner_id == request_owner_id"),
+            SafetyInvariant("INV_03", "Non-Circumvention", "constitutional_veto_override == False"),
             SafetyInvariant(
                 "INV_04",
                 "Resource Boundedness",
                 "cpu_limit <= MAX_CAP AND memory_mb <= MAX_RAM",
             ),
-            SafetyInvariant(
-                "INV_05", "Infinite Horizon Safety", "risk_score < critical_threshold"
-            ),
+            SafetyInvariant("INV_05", "Infinite Horizon Safety", "risk_score < critical_threshold"),
         ]
         self.proofs_generated: List[Dict[str, Any]] = []
 
@@ -80,9 +72,7 @@ class UniversalInvariantProver:
         proven = len(violations) == 0
 
         # Generate cryptographic proof hash
-        proof_payload = (
-            f"{current_state}:{next_state_action}:{proven_invariants}:{violations}"
-        )
+        proof_payload = f"{current_state}:{next_state_action}:{proven_invariants}:{violations}"
         proof_hash = hashlib.sha256(proof_payload.encode("utf-8")).hexdigest()
 
         proof_record = {

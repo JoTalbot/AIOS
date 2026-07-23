@@ -130,9 +130,9 @@ class HintSender:
     def __init__(self, adb, messenger_hints: Optional[Dict] = None):
         self.adb = adb
         hints = messenger_hints or {}
-        self.input_classes = [
-            str(cls).lower() for cls in (hints.get("input_classes") or [])
-        ] or ["edittext"]
+        self.input_classes = [str(cls).lower() for cls in (hints.get("input_classes") or [])] or [
+            "edittext"
+        ]
         self.send_ids = _rid_set(hints, "send_markers", nested=True)
         self._send_text_markers = ("send", "надіслати", "отправить")
 
@@ -176,9 +176,7 @@ class HintSender:
             if bounds is None:
                 continue
             center = ((bounds[0] + bounds[2]) // 2, (bounds[1] + bounds[3]) // 2)
-            if input_center is None and any(
-                marker in klass for marker in self.input_classes
-            ):
+            if input_center is None and any(marker in klass for marker in self.input_classes):
                 input_center = center
             combined = f"{rid} {desc.lower()} {text_attr.lower()}"
             if send_center is None and (

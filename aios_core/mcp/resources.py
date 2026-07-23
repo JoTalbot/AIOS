@@ -20,9 +20,7 @@ class ResourceDefinition:
     name: str
     description: str = ""
     mime_type: str = "text/plain"
-    provider: Optional[Callable[[], str]] = (
-        None  # Function that returns resource content
-    )
+    provider: Optional[Callable[[], str]] = None  # Function that returns resource content
     category: str = "general"
 
 

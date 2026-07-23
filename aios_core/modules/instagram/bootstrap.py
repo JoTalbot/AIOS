@@ -51,9 +51,7 @@ class InstagramBootstrap:
             checks[f"secrets_{field.lower()}"] = {
                 "ok": present,
                 "detail": (
-                    "set via env"
-                    if present
-                    else f"missing: export {env_name(PLATFORM, field)}"
+                    "set via env" if present else f"missing: export {env_name(PLATFORM, field)}"
                 ),
             }
 
@@ -77,19 +75,14 @@ class InstagramBootstrap:
             "detail": (
                 f"markers: {', '.join(markers)}"
                 if markers
-                else "not calibrated: aios platforms bootup "
-                "--apk com.instagram.android --fetch"
+                else "not calibrated: aios platforms bootup " "--apk com.instagram.android --fetch"
             ),
         }
         detail_hints = (
-            load_hints_section(PLATFORM, "detail", self.directory)
-            if yaml_path.exists()
-            else {}
+            load_hints_section(PLATFORM, "detail", self.directory) if yaml_path.exists() else {}
         )
         checks["detail_markers"] = {
-            "ok": bool(
-                detail_hints.get("seller_markers") or detail_hints.get("price_nodes")
-            ),
+            "ok": bool(detail_hints.get("seller_markers") or detail_hints.get("price_nodes")),
             "detail": "calibrate --detail post.xml --write",
         }
 
@@ -115,9 +108,7 @@ class InstagramBootstrap:
                 checks["device"] = {
                     "ok": online,
                     "detail": (
-                        f"{self.serial} online"
-                        if online
-                        else f"{self.serial} not in adb devices"
+                        f"{self.serial} online" if online else f"{self.serial} not in adb devices"
                     ),
                 }
 

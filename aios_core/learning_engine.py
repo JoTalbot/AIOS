@@ -98,9 +98,7 @@ class LearningEngine:
             for s in task.steps:
                 step_info = {
                     "name": s.name if hasattr(s, "name") else str(s),
-                    "status": (
-                        s.status.value if hasattr(s.status, "value") else str(s.status)
-                    ),
+                    "status": (s.status.value if hasattr(s.status, "value") else str(s.status)),
                 }
                 if hasattr(s, "error") and s.error:
                     step_info["error"] = s.error
@@ -239,11 +237,7 @@ class LearningEngine:
             worst_rate = 2.0
             total = 0
             for h, counts in hour_map.items():
-                rate = (
-                    round(counts["success"] / counts["total"], 4)
-                    if counts["total"]
-                    else 0.0
-                )
+                rate = round(counts["success"] / counts["total"], 4) if counts["total"] else 0.0
                 hourly_success_rates[h] = rate
                 total += counts["total"]
                 if rate > best_rate:
@@ -347,9 +341,7 @@ class LearningEngine:
                 "task_name": task_name,
                 "predicted_success_rate": 0.0,
                 "confidence": 0.0,
-                "factors": [
-                    {"factor": "no_storage", "impact": "unknown", "value": 0.0}
-                ],
+                "factors": [{"factor": "no_storage", "impact": "unknown", "value": 0.0}],
                 "recommendation": "No learning data available; cannot predict.",
             }
 
@@ -369,9 +361,7 @@ class LearningEngine:
                 task_hist_total += 1
                 if exp.get("success", False):
                     task_hist_success += 1
-        hist_rate = (
-            round(task_hist_success / task_hist_total, 4) if task_hist_total else 0.0
-        )
+        hist_rate = round(task_hist_success / task_hist_total, 4) if task_hist_total else 0.0
         if task_hist_total > 0:
             factors.append(
                 {
@@ -386,15 +376,10 @@ class LearningEngine:
         temporal_data = self.analyze_temporal_patterns()
         temporal_rate: Optional[float] = None
         for td in temporal_data:
-            if (
-                td["task_name"] == task_name
-                and current_hour in td["hourly_success_rates"]
-            ):
+            if td["task_name"] == task_name and current_hour in td["hourly_success_rates"]:
                 temporal_rate = td["hourly_success_rates"][current_hour]
                 impact = "positive" if temporal_rate >= hist_rate else "negative"
-                factors.append(
-                    {"factor": "time_of_day", "impact": impact, "value": temporal_rate}
-                )
+                factors.append({"factor": "time_of_day", "impact": impact, "value": temporal_rate})
                 break
 
         # --- Factor 3: Parameter correlations ---
@@ -402,9 +387,7 @@ class LearningEngine:
             for corr in self._last_correlations:
                 if corr["task_name"] == task_name and corr["parameter"] in params:
                     if str(params[corr["parameter"]]) == corr["value"]:
-                        impact = (
-                            "positive" if corr["success_rate"] >= 0.5 else "negative"
-                        )
+                        impact = "positive" if corr["success_rate"] >= 0.5 else "negative"
                         factors.append(
                             {
                                 "factor": f"param_{corr['parameter']}={corr['value']}",
@@ -444,9 +427,7 @@ class LearningEngine:
 
         predicted = round(score / weight_sum, 4) if weight_sum else 0.0
         # Confidence is a function of sample size
-        confidence = (
-            min(round(task_hist_total / 20.0, 4), 1.0) if task_hist_total else 0.0
-        )
+        confidence = min(round(task_hist_total / 20.0, 4), 1.0) if task_hist_total else 0.0
 
         # Recommendation
         if predicted >= 0.8:
@@ -535,9 +516,7 @@ class LearningEngine:
 
             # High temporal variance → stabilisation suggestion
             var = temporal_variance.get(task_name)
-            if (
-                var is not None and var > 0.04 and total >= 5
-            ):  # variance > 0.04 (std > 0.2)
+            if var is not None and var > 0.04 and total >= 5:  # variance > 0.04 (std > 0.2)
                 suggestions.append(
                     {
                         "component": task_name,

@@ -21,9 +21,7 @@ class TimeSeriesAnalyzer:
         data = self.series.get(series_name, [])
         if len(data) < window:
             return data
-        return [
-            sum(data[i : i + window]) / window for i in range(len(data) - window + 1)
-        ]
+        return [sum(data[i : i + window]) / window for i in range(len(data) - window + 1)]
 
     def detect_trend(self, series_name: str) -> str:
         data = self.series.get(series_name, [])

@@ -153,16 +153,12 @@ class TestOLXCollection:
         assert summary["total"] == 2
 
     async def test_collect_new_query_inserts(self, client):
-        resp = await client.post(
-            "/api/v1/modules/olx/collect", json={"query": "новий запит"}
-        )
+        resp = await client.post("/api/v1/modules/olx/collect", json={"query": "новий запит"})
         assert resp.status_code == 200
         assert resp.json()["summaries"]["новий запит"]["inserted"] == 2
 
     async def test_schedule_validates_min_interval(self, client):
-        resp = await client.post(
-            "/api/v1/modules/olx/schedule", json={"interval_s": 5}
-        )
+        resp = await client.post("/api/v1/modules/olx/schedule", json={"interval_s": 5})
         assert resp.status_code == 400
         assert "interval_s" in resp.json()["error"]
 
@@ -179,9 +175,7 @@ class TestOLXCollection:
         # The immediate background run inserts two fresh competitors.
         deadline = time.time() + 5.0
         while time.time() < deadline:
-            probe = await client.get(
-                "/api/v1/modules/olx/ads", params={"query": "новий запит"}
-            )
+            probe = await client.get("/api/v1/modules/olx/ads", params={"query": "новий запит"})
             if probe.json()["count"] == 2:
                 break
             time.sleep(0.01)
@@ -297,9 +291,7 @@ class TestOLXChats:
         assert outbox.json()["count"] == 1
         draft_id = outbox.json()["items"][0]["id"]
 
-        cancel = await client.post(
-            "/api/v1/modules/olx/outbox/cancel", json={"id": draft_id}
-        )
+        cancel = await client.post("/api/v1/modules/olx/outbox/cancel", json={"id": draft_id})
         assert cancel.json()["cancelled"] is True
         assert storage.outbox_pending() == []
 
@@ -347,8 +339,11 @@ class TestOLXOwnAds:
         from aios_core.modules.olx import OwnAd
 
         own = OwnAd(
-            title="Старе оголошення", price=1000.0, currency="UAH",
-            views=2, url="https://www.olx.ua/d/uk/obyavlenie/old-IDold0a.html",
+            title="Старе оголошення",
+            price=1000.0,
+            currency="UAH",
+            views=2,
+            url="https://www.olx.ua/d/uk/obyavlenie/old-IDold0a.html",
         )
         storage.upsert_own_ad(own, seen_at="2026-07-05T10:00:00+00:00")
         return own
@@ -356,9 +351,7 @@ class TestOLXOwnAds:
     async def test_snapshot_list_and_stagnant(self, client, deps):
         _app, storage, _adb = deps
 
-        resp = await client.post(
-            "/api/v1/modules/olx/own/snapshot", json={"ads": OWN_SNAPSHOT}
-        )
+        resp = await client.post("/api/v1/modules/olx/own/snapshot", json={"ads": OWN_SNAPSHOT})
         assert resp.status_code == 200
         assert resp.json()["recorded"] == 1
         assert resp.json()["new"] == 1
@@ -386,9 +379,7 @@ class TestOLXOwnAds:
         assert data["suggested_title"]
         assert "text" in data
 
-        dry = await client.post(
-            "/api/v1/modules/olx/own/repost", json={"fingerprint": fp}
-        )
+        dry = await client.post("/api/v1/modules/olx/own/repost", json={"fingerprint": fp})
         assert dry.json()["status"] == "dry_run"
         assert dry.json()["executed"] is False
 
@@ -400,9 +391,7 @@ class TestOLXOwnAds:
         assert storage.own_ads(status="active") == []
         assert storage.own_ads(status="inactive")
 
-        missing = await client.post(
-            "/api/v1/modules/olx/own/repost", json={"fingerprint": "nope"}
-        )
+        missing = await client.post("/api/v1/modules/olx/own/repost", json={"fingerprint": "nope"})
         assert missing.status_code == 404
 
 
@@ -452,9 +441,7 @@ class TestOLXSubscriptions:
         assert len(alerts) == 1
         assert alerts[0]["new_count"] == 1
 
-        removed = await client.request(
-            "DELETE", f"/api/v1/modules/olx/subscriptions/{sub_id}"
-        )
+        removed = await client.request("DELETE", f"/api/v1/modules/olx/subscriptions/{sub_id}")
         assert removed.json()["removed"] is True
 
         missing = await client.post("/api/v1/modules/olx/subscriptions", json={})
@@ -485,9 +472,7 @@ class TestOLXFavorites:
         assert alerts.json()["count"] == 1
         assert alerts.json()["alerts"][0]["last_price"] == 6000.0
 
-        removed = await client.request(
-            "DELETE", f"/api/v1/modules/olx/favorites/{bmw.fingerprint}"
-        )
+        removed = await client.request("DELETE", f"/api/v1/modules/olx/favorites/{bmw.fingerprint}")
         assert removed.json()["removed"] is True
 
         missing = await client.post("/api/v1/modules/olx/favorites", json={})
@@ -596,9 +581,7 @@ class TestOLXCompetitiveAndAdvisor:
         fp = storage.own_ads()[0]["fingerprint"]
         assert fp in data["per_own"]
 
-        report = await client.get(
-            "/api/v1/modules/olx/competitive", params={"fingerprint": fp}
-        )
+        report = await client.get("/api/v1/modules/olx/competitive", params={"fingerprint": fp})
         assert report.status_code == 200
         assert report.json()["competitors_count"] >= 1
 

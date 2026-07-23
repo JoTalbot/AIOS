@@ -25,10 +25,18 @@ def test_db(tmp_path):
     """Create a test database."""
     db_path = tmp_path / "test.sqlite"
     conn = sqlite3.connect(str(db_path))
-    conn.execute("CREATE TABLE tasks (id TEXT PRIMARY KEY, status TEXT, created_at TEXT, updated_at TEXT)")
-    conn.execute("CREATE TABLE personal_memory (id TEXT PRIMARY KEY, owner TEXT, content TEXT, created_at TEXT)")
-    conn.execute("CREATE TABLE audit_log (id TEXT PRIMARY KEY, event_type TEXT, timestamp TEXT, details TEXT)")
-    conn.execute("CREATE TABLE knowledge_graph (id TEXT PRIMARY KEY, subject TEXT, predicate TEXT, object TEXT, created_at TEXT)")
+    conn.execute(
+        "CREATE TABLE tasks (id TEXT PRIMARY KEY, status TEXT, created_at TEXT, updated_at TEXT)"
+    )
+    conn.execute(
+        "CREATE TABLE personal_memory (id TEXT PRIMARY KEY, owner TEXT, content TEXT, created_at TEXT)"
+    )
+    conn.execute(
+        "CREATE TABLE audit_log (id TEXT PRIMARY KEY, event_type TEXT, timestamp TEXT, details TEXT)"
+    )
+    conn.execute(
+        "CREATE TABLE knowledge_graph (id TEXT PRIMARY KEY, subject TEXT, predicate TEXT, object TEXT, created_at TEXT)"
+    )
     conn.execute("INSERT INTO tasks VALUES ('t1', 'done', '2026-01-01', '2026-01-02')")
     conn.commit()
     conn.close()
@@ -38,10 +46,12 @@ def test_db(tmp_path):
 @pytest.fixture
 def mock_principal():
     """Create a mock principal with admin role."""
+
     class Principal:
         def __init__(self):
             self.subject = "admin-user"
             self.roles = ["admin"]
+
     return Principal()
 
 
@@ -74,11 +84,14 @@ def client(admin_app):
 class TestDataExportAPI:
     def test_export_tasks(self, client, tmp_path):
         output = tmp_path / "tasks.json"
-        response = client.post("/api/v1/admin/export", json={
-            "type": "tasks",
-            "format": "json",
-            "output": str(output),
-        })
+        response = client.post(
+            "/api/v1/admin/export",
+            json={
+                "type": "tasks",
+                "format": "json",
+                "output": str(output),
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
@@ -86,11 +99,14 @@ class TestDataExportAPI:
 
     def test_export_all(self, client, tmp_path):
         output_dir = tmp_path / "export"
-        response = client.post("/api/v1/admin/export", json={
-            "type": "all",
-            "format": "json",
-            "output": str(output_dir),
-        })
+        response = client.post(
+            "/api/v1/admin/export",
+            json={
+                "type": "all",
+                "format": "json",
+                "output": str(output_dir),
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert "counts" in data
@@ -98,11 +114,14 @@ class TestDataExportAPI:
 
 class TestSecretsAPI:
     def test_generate_key(self, client):
-        response = client.post("/api/v1/admin/keys/generate", json={
-            "subject": "test-user",
-            "roles": ["admin", "viewer"],
-            "ttl_days": 30,
-        })
+        response = client.post(
+            "/api/v1/admin/keys/generate",
+            json={
+                "subject": "test-user",
+                "roles": ["admin", "viewer"],
+                "ttl_days": 30,
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
@@ -112,10 +131,13 @@ class TestSecretsAPI:
 
     def test_list_keys(self, client):
         # Generate a key first
-        client.post("/api/v1/admin/keys/generate", json={
-            "subject": "user1",
-            "roles": ["viewer"],
-        })
+        client.post(
+            "/api/v1/admin/keys/generate",
+            json={
+                "subject": "user1",
+                "roles": ["viewer"],
+            },
+        )
 
         response = client.get("/api/v1/admin/keys")
         assert response.status_code == 200
@@ -124,34 +146,46 @@ class TestSecretsAPI:
 
     def test_revoke_key(self, client):
         # Generate a key
-        gen_response = client.post("/api/v1/admin/keys/generate", json={
-            "subject": "user1",
-            "roles": ["viewer"],
-        })
+        gen_response = client.post(
+            "/api/v1/admin/keys/generate",
+            json={
+                "subject": "user1",
+                "roles": ["viewer"],
+            },
+        )
         key = gen_response.json()["key"]
 
         # Revoke it
-        response = client.post("/api/v1/admin/keys/revoke", json={
-            "key": key,
-            "reason": "test revocation",
-        })
+        response = client.post(
+            "/api/v1/admin/keys/revoke",
+            json={
+                "key": key,
+                "reason": "test revocation",
+            },
+        )
         assert response.status_code == 200
         assert response.json()["status"] == "success"
 
     def test_rotate_key(self, client):
         # Generate a key
-        gen_response = client.post("/api/v1/admin/keys/generate", json={
-            "subject": "user1",
-            "roles": ["admin"],
-        })
+        gen_response = client.post(
+            "/api/v1/admin/keys/generate",
+            json={
+                "subject": "user1",
+                "roles": ["admin"],
+            },
+        )
         old_key = gen_response.json()["key"]
 
         # Rotate it
-        response = client.post("/api/v1/admin/keys/rotate", json={
-            "old_key": old_key,
-            "ttl_days": 60,
-            "reason": "test rotation",
-        })
+        response = client.post(
+            "/api/v1/admin/keys/rotate",
+            json={
+                "old_key": old_key,
+                "ttl_days": 60,
+                "reason": "test rotation",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
@@ -168,10 +202,13 @@ class TestSecretsAPI:
 
 class TestBackupAPI:
     def test_create_backup(self, client):
-        response = client.post("/api/v1/admin/backups", json={
-            "label": "test-backup",
-            "mode": "full",
-        })
+        response = client.post(
+            "/api/v1/admin/backups",
+            json={
+                "label": "test-backup",
+                "mode": "full",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
@@ -193,9 +230,12 @@ class TestBackupAPI:
         backup_id = create_response.json()["backup_id"]
 
         # Verify it
-        response = client.post("/api/v1/admin/backups/verify", json={
-            "backup_id": backup_id,
-        })
+        response = client.post(
+            "/api/v1/admin/backups/verify",
+            json={
+                "backup_id": backup_id,
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["valid"] is True
@@ -207,10 +247,13 @@ class TestBackupAPI:
 
         # Restore to new location
         target = tmp_path / "restored.sqlite"
-        response = client.post("/api/v1/admin/backups/restore", json={
-            "backup_id": backup_id,
-            "target": str(target),
-        })
+        response = client.post(
+            "/api/v1/admin/backups/restore",
+            json={
+                "backup_id": backup_id,
+                "target": str(target),
+            },
+        )
         assert response.status_code == 200
         assert response.json()["status"] == "success"
         assert target.exists()
@@ -236,11 +279,14 @@ class TestBackupAPI:
 
 class TestWebhooksAPI:
     def test_register_webhook(self, client):
-        response = client.post("/api/v1/admin/webhooks", json={
-            "name": "slack-alerts",
-            "url": "https://hooks.slack.com/test",
-            "events": ["ban_detected", "low_success_rate"],
-        })
+        response = client.post(
+            "/api/v1/admin/webhooks",
+            json={
+                "name": "slack-alerts",
+                "url": "https://hooks.slack.com/test",
+                "events": ["ban_detected", "low_success_rate"],
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
@@ -248,11 +294,14 @@ class TestWebhooksAPI:
 
     def test_list_webhooks(self, client):
         # Register a webhook first
-        client.post("/api/v1/admin/webhooks", json={
-            "name": "test-hook",
-            "url": "https://example.com/hook",
-            "events": ["ban_detected"],
-        })
+        client.post(
+            "/api/v1/admin/webhooks",
+            json={
+                "name": "test-hook",
+                "url": "https://example.com/hook",
+                "events": ["ban_detected"],
+            },
+        )
 
         response = client.get("/api/v1/admin/webhooks/list")
         assert response.status_code == 200
@@ -261,60 +310,84 @@ class TestWebhooksAPI:
 
     def test_toggle_webhook(self, client):
         # Register
-        client.post("/api/v1/admin/webhooks", json={
-            "name": "toggle-test",
-            "url": "https://example.com/hook",
-            "events": ["ban_detected"],
-        })
+        client.post(
+            "/api/v1/admin/webhooks",
+            json={
+                "name": "toggle-test",
+                "url": "https://example.com/hook",
+                "events": ["ban_detected"],
+            },
+        )
 
         # Deactivate
-        response = client.post("/api/v1/admin/webhooks/toggle", json={
-            "name": "toggle-test",
-            "active": False,
-        })
+        response = client.post(
+            "/api/v1/admin/webhooks/toggle",
+            json={
+                "name": "toggle-test",
+                "active": False,
+            },
+        )
         assert response.status_code == 200
         assert not response.json()["active"]
 
     def test_test_webhook(self, client):
-        client.post("/api/v1/admin/webhooks", json={
-            "name": "test-hook",
-            "url": "https://example.com/hook",
-            "events": ["custom"],
-        })
+        client.post(
+            "/api/v1/admin/webhooks",
+            json={
+                "name": "test-hook",
+                "url": "https://example.com/hook",
+                "events": ["custom"],
+            },
+        )
 
-        response = client.post("/api/v1/admin/webhooks/test", json={
-            "name": "test-hook",
-        })
+        response = client.post(
+            "/api/v1/admin/webhooks/test",
+            json={
+                "name": "test-hook",
+            },
+        )
         assert response.status_code == 200
         assert response.json()["status"] == "test_sent"
 
     def test_send_webhook_event(self, client):
-        client.post("/api/v1/admin/webhooks", json={
-            "name": "event-hook",
-            "url": "https://example.com/hook",
-            "events": ["custom"],
-        })
+        client.post(
+            "/api/v1/admin/webhooks",
+            json={
+                "name": "event-hook",
+                "url": "https://example.com/hook",
+                "events": ["custom"],
+            },
+        )
 
-        response = client.post("/api/v1/admin/webhooks/notify", json={
-            "event": "custom",
-            "data": {"message": "Hello"},
-            "severity": "info",
-        })
+        response = client.post(
+            "/api/v1/admin/webhooks/notify",
+            json={
+                "event": "custom",
+                "data": {"message": "Hello"},
+                "severity": "info",
+            },
+        )
         assert response.status_code == 200
         assert response.json()["targets_triggered"] >= 1
 
     def test_webhook_history(self, client):
-        client.post("/api/v1/admin/webhooks", json={
-            "name": "history-hook",
-            "url": "https://example.com/hook",
-            "events": ["ban_detected"],
-        })
+        client.post(
+            "/api/v1/admin/webhooks",
+            json={
+                "name": "history-hook",
+                "url": "https://example.com/hook",
+                "events": ["ban_detected"],
+            },
+        )
 
         # Send some events
-        client.post("/api/v1/admin/webhooks/notify", json={
-            "event": "ban_detected",
-            "data": {"profile": "test"},
-        })
+        client.post(
+            "/api/v1/admin/webhooks/notify",
+            json={
+                "event": "ban_detected",
+                "data": {"profile": "test"},
+            },
+        )
 
         response = client.get("/api/v1/admin/webhooks/history")
         assert response.status_code == 200

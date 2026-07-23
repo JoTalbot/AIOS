@@ -190,7 +190,9 @@ class ProductionWebhookBridge:
 _production_bridge: Optional[ProductionWebhookBridge] = None
 
 
-def get_production_bridge(webhook_manager: Optional[WebhookManager] = None) -> ProductionWebhookBridge:
+def get_production_bridge(
+    webhook_manager: Optional[WebhookManager] = None,
+) -> ProductionWebhookBridge:
     """Get or create the singleton production webhook bridge."""
     global _production_bridge
     if _production_bridge is None:

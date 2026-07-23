@@ -77,9 +77,7 @@ class OLXCollector:
     ) -> Dict[str, object]:
         """Open the OLX app on the (optionally filtered) results screen."""
         link = self.search_deep_link(query, min_price, max_price, sort)
-        return self.adb.run(
-            f'adb shell am start -a android.intent.action.VIEW -d "{link}"'
-        )
+        return self.adb.run(f'adb shell am start -a android.intent.action.VIEW -d "{link}"')
 
     def collect(
         self,

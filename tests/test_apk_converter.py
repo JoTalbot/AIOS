@@ -11,19 +11,21 @@ def test_apk_function_converter_direct():
 
     components = [
         {"name": "MainActivity", "type": "activity", "intent_filter": "android.intent.action.MAIN"},
-        {"name": "BackgroundSyncService", "type": "service", "intent_filter": "com.app.SYNC"}
+        {"name": "BackgroundSyncService", "type": "service", "intent_filter": "com.app.SYNC"},
     ]
 
     profile = converter.convert_apk_functions_to_api_profile(
         apk_name="sample_mobile_app.apk",
         package_name="com.myenterprise.app",
         exported_components=components,
-        target_user_id="user_admin_01"
+        target_user_id="user_admin_01",
     )
 
     assert profile["user_id"] == "user_admin_01"
     assert profile["total_converted_capabilities"] == 2
-    assert profile["converted_capabilities"][0]["api_endpoint"].startswith("/api/v1/users/profiles/user_admin_01/apk/")
+    assert profile["converted_capabilities"][0]["api_endpoint"].startswith(
+        "/api/v1/users/profiles/user_admin_01/apk/"
+    )
 
     user_profiles = converter.get_user_profiles("user_admin_01")
     assert len(user_profiles) == 1
@@ -48,8 +50,8 @@ async def test_apk_convert_rest_endpoint(client):
         "user_id": "client_user_42",
         "exported_components": [
             {"name": "PaymentActivity", "type": "activity", "intent_filter": "com.bank.PAY"},
-            {"name": "NotifyReceiver", "type": "receiver", "intent_filter": "com.bank.NOTIFY"}
-        ]
+            {"name": "NotifyReceiver", "type": "receiver", "intent_filter": "com.bank.NOTIFY"},
+        ],
     }
 
     resp = await client.post("/api/v1/apk/convert", json=req_payload)

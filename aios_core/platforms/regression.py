@@ -76,8 +76,7 @@ def check_platform_markers(
         "platform": platform_name,
         "status": "drift" if diff["removed"] else "ok",
         "hint": (
-            "baseline markers lost — recalibrate: "
-            "calibrate --write && codegen --force"
+            "baseline markers lost — recalibrate: " "calibrate --write && codegen --force"
             if diff["removed"]
             else "baseline markers intact"
         ),

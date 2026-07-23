@@ -140,9 +140,7 @@ class Telemetry:
         """Return summary statistics for a histogram, or an empty summary."""
         return self.histogram(name).get_summary()
 
-    def record_metric(
-        self, name: str, value: float, tags: Optional[Dict[str, str]] = None
-    ):
+    def record_metric(self, name: str, value: float, tags: Optional[Dict[str, str]] = None):
         """Record a generic metric observation."""
         hist = self.histogram(name)
         hist.observe(value)
@@ -182,13 +180,10 @@ class Telemetry:
     def get_all_metrics(self) -> Dict[str, Dict[str, Any]]:
         """Return a serialisable snapshot of all collected metrics."""
         return {
-            "counters": {
-                name: counter.value for name, counter in self.counters.items()
-            },
+            "counters": {name: counter.value for name, counter in self.counters.items()},
             "gauges": {name: gauge.value for name, gauge in self.gauges.items()},
             "histograms": {
-                name: histogram.get_summary()
-                for name, histogram in self.histograms.items()
+                name: histogram.get_summary() for name, histogram in self.histograms.items()
             },
         }
 

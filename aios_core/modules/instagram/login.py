@@ -148,7 +148,6 @@ class InstagramLoginDriver:
             result = self.adb.dump_ui(str(target))
             if result.get("code") != 0 or not target.exists():
                 raise ValueError(
-                    "adb dump_ui failed: "
-                    f"{(result.get('stderr') or 'dump unavailable')[:160]}"
+                    "adb dump_ui failed: " f"{(result.get('stderr') or 'dump unavailable')[:160]}"
                 )
             return target.read_text(encoding="utf-8")

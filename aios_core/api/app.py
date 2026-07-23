@@ -90,9 +90,7 @@ from .errors import RequestSafetyMiddleware
 from aios_core.rate_limiter import rate_limiter
 
 # Ensure project root is importable
-_PROJECT_ROOT = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
@@ -127,13 +125,9 @@ class AIOSAPI:
 
         self.db = Database(db_path=db_path)
         self.auth_required = auth_required
-        self.api_keys = (
-            load_api_keys(api_keys) if isinstance(api_keys, str) else api_keys
-        )
+        self.api_keys = load_api_keys(api_keys) if isinstance(api_keys, str) else api_keys
 
-        _const_dir = constitution_dir or os.path.join(
-            _PROJECT_ROOT, "docs/constitution"
-        )
+        _const_dir = constitution_dir or os.path.join(_PROJECT_ROOT, "docs/constitution")
         _pol_dir = policies_dir or os.path.join(_PROJECT_ROOT, "policies")
 
         self.orchestrator = Orchestrator(
@@ -194,9 +188,7 @@ class AIOSAPI:
         # data/devices.sqlite — set the env to share it).
         from aios_core.platforms import DevicePool
 
-        self.device_pool = device_pool or DevicePool(
-            os.environ.get("AIOS_DEVICES_DB", ":memory:")
-        )
+        self.device_pool = device_pool or DevicePool(os.environ.get("AIOS_DEVICES_DB", ":memory:"))
 
         # Shard router: profile → host sticky routing across servers.
         # AIOS_SHARDS_DB points at the shared routes store; without it the
@@ -245,12 +237,8 @@ class AIOSAPI:
             ),
             Route("/api/v1/modules/olx/collect", self._olx_collect, methods=["POST"]),
             Route("/api/v1/modules/olx/schedule", self._olx_schedule, methods=["POST"]),
-            Route(
-                "/api/v1/modules/olx/schedule", self._olx_unschedule, methods=["DELETE"]
-            ),
-            Route(
-                "/api/v1/modules/olx/detail", self._olx_detail_parse, methods=["POST"]
-            ),
+            Route("/api/v1/modules/olx/schedule", self._olx_unschedule, methods=["DELETE"]),
+            Route("/api/v1/modules/olx/detail", self._olx_detail_parse, methods=["POST"]),
             Route("/api/v1/modules/olx/chats", self._olx_chats, methods=["GET"]),
             Route(
                 "/api/v1/modules/olx/chats/reply",
@@ -284,9 +272,7 @@ class AIOSAPI:
                 self._olx_own_improve,
                 methods=["POST"],
             ),
-            Route(
-                "/api/v1/modules/olx/own/repost", self._olx_own_repost, methods=["POST"]
-            ),
+            Route("/api/v1/modules/olx/own/repost", self._olx_own_repost, methods=["POST"]),
             Route("/api/v1/modules/olx/own/edit", self._olx_own_edit, methods=["POST"]),
             Route("/api/v1/modules/olx/notify", self._olx_notify, methods=["POST"]),
             Route(
@@ -309,9 +295,7 @@ class AIOSAPI:
                 self._olx_subscription_remove,
                 methods=["DELETE"],
             ),
-            Route(
-                "/api/v1/modules/olx/favorites", self._olx_favorites, methods=["GET"]
-            ),
+            Route("/api/v1/modules/olx/favorites", self._olx_favorites, methods=["GET"]),
             Route(
                 "/api/v1/modules/olx/favorites",
                 self._olx_favorite_add,
@@ -327,9 +311,7 @@ class AIOSAPI:
                 self._olx_favorite_remove,
                 methods=["DELETE"],
             ),
-            Route(
-                "/api/v1/modules/olx/autowatch", self._olx_autowatch, methods=["POST"]
-            ),
+            Route("/api/v1/modules/olx/autowatch", self._olx_autowatch, methods=["POST"]),
             Route("/api/v1/modules/olx/doctor", self._olx_doctor, methods=["GET"]),
             Route("/api/v1/modules/olx/profile", self._olx_profile, methods=["GET"]),
             Route(
@@ -384,9 +366,7 @@ class AIOSAPI:
             Route("/api/v1/devices/register", self._devices_register, methods=["POST"]),
             Route("/api/v1/devices/lease", self._devices_lease, methods=["POST"]),
             Route("/api/v1/devices/release", self._devices_release, methods=["POST"]),
-            Route(
-                "/api/v1/devices/heartbeat", self._devices_heartbeat, methods=["POST"]
-            ),
+            Route("/api/v1/devices/heartbeat", self._devices_heartbeat, methods=["POST"]),
             Route("/api/v1/devices/reap", self._devices_reap, methods=["POST"]),
             Route("/api/v1/devices/limits", self._devices_limits_get, methods=["GET"]),
             Route("/api/v1/devices/limits", self._devices_limits_set, methods=["POST"]),
@@ -407,9 +387,7 @@ class AIOSAPI:
             Route("/api/v1/shards/stats", self._shard_jobs_stats, methods=["GET"]),
             # Android M8 + Marketplace + AI Advisor (v9.1.0)
             Route("/api/v1/android/devices", self._android_devices, methods=["GET"]),
-            Route(
-                "/api/v1/android/predictive", self._android_predictive, methods=["GET"]
-            ),
+            Route("/api/v1/android/predictive", self._android_predictive, methods=["GET"]),
             Route(
                 "/api/v1/android/workflows",
                 self._android_workflows_list,
@@ -430,9 +408,7 @@ class AIOSAPI:
                 self._android_test_generator,
                 methods=["POST"],
             ),
-            Route(
-                "/api/v1/marketplace/search", self._marketplace_search, methods=["GET"]
-            ),
+            Route("/api/v1/marketplace/search", self._marketplace_search, methods=["GET"]),
             Route(
                 "/api/v1/marketplace/publish",
                 self._marketplace_publish,
@@ -449,23 +425,17 @@ class AIOSAPI:
                 methods=["POST"],
             ),
             Route("/api/v1/advisor/draft", self._advisor_draft, methods=["POST"]),
-            Route(
-                "/api/v1/advisor/summarize", self._advisor_summarize, methods=["POST"]
-            ),
+            Route("/api/v1/advisor/summarize", self._advisor_summarize, methods=["POST"]),
             Route("/api/v1/advisor/price", self._advisor_price, methods=["GET"]),
             Route("/api/v1/advisor/drafts", self._advisor_list_drafts, methods=["GET"]),
             # Production exploitation
-            Route(
-                "/api/v1/production/health", self._production_health, methods=["GET"]
-            ),
+            Route("/api/v1/production/health", self._production_health, methods=["GET"]),
             Route(
                 "/api/v1/production/simulate",
                 self._production_simulate,
                 methods=["POST"],
             ),
-            Route(
-                "/api/v1/production/config", self._production_config, methods=["GET"]
-            ),
+            Route("/api/v1/production/config", self._production_config, methods=["GET"]),
             Route("/dashboard", self._dashboard_page, methods=["GET"]),
             # Generic platform module surfaces (descriptor-driven). Статичные
             # роуты olx зарегистрированы выше и матчатся первыми.
@@ -475,9 +445,7 @@ class AIOSAPI:
                 self._module_ads_ingest,
                 methods=["POST"],
             ),
-            Route(
-                "/api/v1/modules/{platform}/stats", self._module_stats, methods=["GET"]
-            ),
+            Route("/api/v1/modules/{platform}/stats", self._module_stats, methods=["GET"]),
             Route(
                 "/api/v1/modules/{platform}/ads/{fingerprint}/history",
                 self._module_history,
@@ -489,9 +457,7 @@ class AIOSAPI:
                 self._module_own_snapshot,
                 methods=["POST"],
             ),
-            Route(
-                "/api/v1/modules/{platform}/chats", self._module_chats, methods=["GET"]
-            ),
+            Route("/api/v1/modules/{platform}/chats", self._module_chats, methods=["GET"]),
             Route(
                 "/api/v1/modules/{platform}/outbox",
                 self._module_outbox,
@@ -515,9 +481,7 @@ class AIOSAPI:
             Route("/api/v1/tasks", self._tasks_list, methods=["GET"]),
             Route("/api/v1/tasks", self._tasks_create, methods=["POST"]),
             Route("/api/v1/tasks/{task_id}", self._tasks_get),
-            Route(
-                "/api/v1/tasks/{task_id}/execute", self._tasks_execute, methods=["POST"]
-            ),
+            Route("/api/v1/tasks/{task_id}/execute", self._tasks_execute, methods=["POST"]),
             # Memory (stats route must come before {item_id} to avoid capture)
             Route("/api/v1/memory", self._memory_search, methods=["GET"]),
             Route("/api/v1/memory", self._memory_store, methods=["POST"]),
@@ -692,9 +656,7 @@ class AIOSAPI:
             {
                 "profiles": [
                     p.to_dict()
-                    for p in self.profile_store.list(
-                        request.query_params.get("platform")
-                    )
+                    for p in self.profile_store.list(request.query_params.get("platform"))
                 ]
             }
         )
@@ -738,9 +700,7 @@ class AIOSAPI:
     async def _profiles_set_default(self, request: Request) -> JSONResponse:
         """Mark {name} as the default profile of {platform}."""
         body = await request.json()
-        profile = self.profile_store.set_default(
-            request.path_params["platform"], body.get("name")
-        )
+        profile = self.profile_store.set_default(request.path_params["platform"], body.get("name"))
         if profile is None:
             return JSONResponse({"error": "profile not found"}, status_code=404)
         return JSONResponse(profile.to_dict())
@@ -768,9 +728,7 @@ class AIOSAPI:
                 from aios_core.platforms import get_platform, resolve_profile
 
                 descriptor = get_platform(platform)
-                profile = resolve_profile(
-                    platform, profile_name or None, store=self.profile_store
-                )
+                profile = resolve_profile(platform, profile_name or None, store=self.profile_store)
                 storage = descriptor.make_storage(profile.db_path)
             self._module_storages[cache_key] = storage
         return storage
@@ -790,9 +748,7 @@ class AIOSAPI:
             return JSONResponse({"error": "unknown platform"}, status_code=404)
         platform = request.path_params["platform"]
         query = request.query_params.get("query")
-        limit = self._bounded_int(
-            request.query_params.get("limit"), default=100, maximum=1000
-        )
+        limit = self._bounded_int(request.query_params.get("limit"), default=100, maximum=1000)
         storage = self._platform_storage(platform, request)
         ads = storage.get_ads(query=query, limit=limit)
         return JSONResponse(
@@ -829,9 +785,7 @@ class AIOSAPI:
                     )
                 )
             storage = self._platform_storage(platform, request)
-            inserted, new_fps = storage.save_ads_with_new(
-                cards, seen_at=body.get("seen_at")
-            )
+            inserted, new_fps = storage.save_ads_with_new(cards, seen_at=body.get("seen_at"))
             return JSONResponse(
                 {
                     "platform": platform,
@@ -1036,9 +990,7 @@ class AIOSAPI:
                     )
                 )
             storage = self._platform_storage(platform, request)
-            result = OwnAdsTracker(storage).record_snapshot(
-                ads, seen_at=body.get("seen_at")
-            )
+            result = OwnAdsTracker(storage).record_snapshot(ads, seen_at=body.get("seen_at"))
             result["platform"] = platform
             return JSONResponse(result)
         except Exception as exc:
@@ -1057,9 +1009,7 @@ class AIOSAPI:
         body = await request.json()
         if not body.get("serial"):
             return JSONResponse({"error": "'serial' is required"}, status_code=400)
-        record = self.device_pool.register(
-            body["serial"], avd_name=body.get("avd_name")
-        )
+        record = self.device_pool.register(body["serial"], avd_name=body.get("avd_name"))
         return JSONResponse(record, status_code=201)
 
     async def _devices_lease(self, request: Request) -> JSONResponse:
@@ -1109,11 +1059,7 @@ class AIOSAPI:
 
     async def _devices_reap(self, request: Request) -> JSONResponse:
         """Mark silent devices offline {max_silence_s?} and free leases."""
-        body = (
-            await request.json()
-            if (request.headers.get("content-length") or "0") != "0"
-            else {}
-        )
+        body = await request.json() if (request.headers.get("content-length") or "0") != "0" else {}
         reaped = self.device_pool.reap_stale(
             self._bounded_int(body.get("max_silence_s"), default=900, maximum=86400)
         )
@@ -1128,15 +1074,11 @@ class AIOSAPI:
         body = await request.json()
         key, value = body.get("key"), body.get("value")
         if not key or value is None:
-            return JSONResponse(
-                {"error": "'key' and 'value' are required"}, status_code=400
-            )
+            return JSONResponse({"error": "'key' and 'value' are required"}, status_code=400)
         try:
             self.device_pool.set_limit(key, int(value))
         except (TypeError, ValueError):
-            return JSONResponse(
-                {"error": "'value' must be an integer"}, status_code=400
-            )
+            return JSONResponse({"error": "'value' must be an integer"}, status_code=400)
         return JSONResponse({"limits": self.device_pool.limits()})
 
     async def _devices_waitlist(self, request: Request) -> JSONResponse:
@@ -1190,9 +1132,7 @@ class AIOSAPI:
     async def _shard_jobs_list(self, request: Request) -> JSONResponse:
         """Очередь джобов (?status=pending|claimed|done|failed)."""
         with self._shard_jobs() as jobs:
-            return JSONResponse(
-                {"jobs": jobs.list(status=request.query_params.get("status"))}
-            )
+            return JSONResponse({"jobs": jobs.list(status=request.query_params.get("status"))})
 
     async def _shard_jobs_enqueue(self, request: Request) -> JSONResponse:
         """Повесить джобу на профиль {profile, kind, payload?}.
@@ -1335,11 +1275,7 @@ class AIOSAPI:
             from aios_core.android_cross_app import CrossAppWorkflowEngine
 
             wf_id = request.path_params["workflow_id"]
-            body = (
-                await request.json()
-                if request.headers.get("content-length") != "0"
-                else {}
-            )
+            body = await request.json() if request.headers.get("content-length") != "0" else {}
             context = body.get("context", {})
             engine = CrossAppWorkflowEngine()
             # For demo, create a simple workflow if not exists
@@ -1399,9 +1335,7 @@ class AIOSAPI:
             mp = CapabilityMarketplace()
             query = request.query_params.get("query", "")
             tag = request.query_params.get("tag", "")
-            limit = self._bounded_int(
-                request.query_params.get("limit"), default=20, maximum=100
-            )
+            limit = self._bounded_int(request.query_params.get("limit"), default=20, maximum=100)
             results = mp.search(query=query, tag=tag, limit=limit)
             # seed with examples if empty
             if not results:
@@ -1481,11 +1415,7 @@ class AIOSAPI:
             from aios_core.marketplace import CapabilityMarketplace
 
             plugin_id = request.path_params["plugin_id"]
-            body = (
-                await request.json()
-                if request.headers.get("content-length") != "0"
-                else {}
-            )
+            body = await request.json() if request.headers.get("content-length") != "0" else {}
             target_dir = body.get("target_dir", "platforms")
             mp = CapabilityMarketplace()
             # try to find plugin, if not exists simulate success
@@ -1561,9 +1491,7 @@ class AIOSAPI:
 
             advisor = AISalesAdvisor()
             drafts = advisor.list_drafts()
-            return JSONResponse(
-                {"drafts": [d.__dict__ for d in drafts], "count": len(drafts)}
-            )
+            return JSONResponse({"drafts": [d.__dict__ for d in drafts], "count": len(drafts)})
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -1653,9 +1581,7 @@ class AIOSAPI:
         method = body.get("method") or "GET"
         path = body.get("path") or ""
         if not profile_key or not path:
-            return JSONResponse(
-                {"error": "'profile' and 'path' are required"}, status_code=400
-            )
+            return JSONResponse({"error": "'profile' and 'path' are required"}, status_code=400)
         result = self.shard_gateway.proxy(
             profile_key,
             method,
@@ -1965,9 +1891,7 @@ class AIOSAPI:
             user_id = body.get("user_id", "default_user")
 
             rpa_mgr = AndroidRPAManager()
-            api_profile = rpa_mgr.convert_app_to_working_api(
-                play_url, credentials, user_id=user_id
-            )
+            api_profile = rpa_mgr.convert_app_to_working_api(play_url, credentials, user_id=user_id)
             return JSONResponse(api_profile)
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
@@ -1998,9 +1922,7 @@ class AIOSAPI:
                 status_code=400,
             )
         history = self._olx_db(request).price_history(fingerprint)
-        return JSONResponse(
-            {"fingerprint": fingerprint, "count": len(history), "history": history}
-        )
+        return JSONResponse({"fingerprint": fingerprint, "count": len(history), "history": history})
 
     async def _olx_drops(self, request: Request) -> JSONResponse:
         """Price drops and ads that left the feed (`gone` = sold/removed)."""
@@ -2027,9 +1949,7 @@ class AIOSAPI:
             body = await request.json()
             xml_text = body.get("xml")
             if not xml_text:
-                return JSONResponse(
-                    {"error": "field 'xml' is required"}, status_code=400
-                )
+                return JSONResponse({"error": "field 'xml' is required"}, status_code=400)
             detail = AdDetailParser().parse(xml_text, url=body.get("url"))
             return JSONResponse(detail.to_dict())
         except Exception as exc:
@@ -2055,9 +1975,7 @@ class AIOSAPI:
             body = await request.json()
             text = body.get("text") or ""
             if not text.strip():
-                return JSONResponse(
-                    {"error": "field 'text' is required"}, status_code=400
-                )
+                return JSONResponse({"error": "field 'text' is required"}, status_code=400)
             result = self.olx_messenger.send_reply(
                 chat_key=body.get("chat_key") or "unknown",
                 text=text,
@@ -2070,9 +1988,7 @@ class AIOSAPI:
 
     async def _olx_outbox(self, request: Request) -> JSONResponse:
         """List reply drafts (filterable by `status`)."""
-        items = self._olx_db(request).outbox_list(
-            status=request.query_params.get("status")
-        )
+        items = self._olx_db(request).outbox_list(status=request.query_params.get("status"))
         return JSONResponse({"count": len(items), "items": items})
 
     async def _olx_outbox_send(self, request: Request) -> JSONResponse:
@@ -2145,9 +2061,7 @@ class AIOSAPI:
             body = await request.json()
             fingerprint = body.get("fingerprint")
             rows = [
-                row
-                for row in self._olx_db(request).own_ads()
-                if row["fingerprint"] == fingerprint
+                row for row in self._olx_db(request).own_ads() if row["fingerprint"] == fingerprint
             ]
             if not rows:
                 return JSONResponse({"error": "own ad not found"}, status_code=404)
@@ -2177,9 +2091,7 @@ class AIOSAPI:
             body = await request.json()
             fingerprint = body.get("fingerprint")
             rows = [
-                row
-                for row in self._olx_db(request).own_ads()
-                if row["fingerprint"] == fingerprint
+                row for row in self._olx_db(request).own_ads() if row["fingerprint"] == fingerprint
             ]
             if not rows:
                 return JSONResponse({"error": "own ad not found"}, status_code=404)
@@ -2212,13 +2124,9 @@ class AIOSAPI:
             )
 
             body = await request.json()
-            notifier = WebhookNotifier(
-                url=body.get("webhook_url"), chat_id=body.get("chat_id")
-            )
+            notifier = WebhookNotifier(url=body.get("webhook_url"), chat_id=body.get("chat_id"))
             if not notifier.url:
-                return JSONResponse(
-                    {"error": "field 'webhook_url' is required"}, status_code=400
-                )
+                return JSONResponse({"error": "field 'webhook_url' is required"}, status_code=400)
             tracker = PriceTracker(self._olx_db(request))
             query = body.get("query")
             drops_summary = notify_price_drops(tracker, notifier, query=query)
@@ -2236,9 +2144,7 @@ class AIOSAPI:
             body = await request.json()
             fingerprint = body.get("fingerprint")
             rows = [
-                row
-                for row in self._olx_db(request).own_ads()
-                if row["fingerprint"] == fingerprint
+                row for row in self._olx_db(request).own_ads() if row["fingerprint"] == fingerprint
             ]
             if not rows:
                 return JSONResponse({"error": "own ad not found"}, status_code=404)
@@ -2255,9 +2161,7 @@ class AIOSAPI:
             competitors = self._olx_db(request).get_ads(query=body.get("query"))
             suggestion = AdImprover().improve(own_ad, competitors)
             editor = OwnAdEditor(adb=self.olx_messenger.adb)
-            result = editor.apply(
-                own_ad, suggestion, confirm=bool(body.get("confirm", False))
-            )
+            result = editor.apply(own_ad, suggestion, confirm=bool(body.get("confirm", False)))
             return JSONResponse(result)
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
@@ -2275,9 +2179,7 @@ class AIOSAPI:
             body = await request.json()
             query = body.get("query")
             if not query:
-                return JSONResponse(
-                    {"error": "field 'query' is required"}, status_code=400
-                )
+                return JSONResponse({"error": "field 'query' is required"}, status_code=400)
             sub_id = SubscriptionManager(self._olx_db(request)).add(
                 name=body.get("name") or query,
                 query=query,
@@ -2323,9 +2225,7 @@ class AIOSAPI:
             body = await request.json()
             fingerprint = body.get("fingerprint")
             if not fingerprint:
-                return JSONResponse(
-                    {"error": "field 'fingerprint' is required"}, status_code=400
-                )
+                return JSONResponse({"error": "field 'fingerprint' is required"}, status_code=400)
             added = FavoritesWatch(self._olx_db(request)).add(fingerprint)
             return JSONResponse({"fingerprint": fingerprint, "added": added})
         except Exception as exc:
@@ -2354,12 +2254,8 @@ class AIOSAPI:
             watch = AutoWatch(
                 storage=self._olx_db(request),
                 collector=self.olx_collector,
-                notifier=WebhookNotifier(
-                    url=body.get("webhook_url"), chat_id=body.get("chat_id")
-                ),
-                max_cards=self._bounded_int(
-                    body.get("max_cards"), default=50, maximum=500
-                ),
+                notifier=WebhookNotifier(url=body.get("webhook_url"), chat_id=body.get("chat_id")),
+                max_cards=self._bounded_int(body.get("max_cards"), default=50, maximum=500),
             )
             report = watch.run_cycle(
                 queries=queries if isinstance(queries, list) else None,
@@ -2390,9 +2286,7 @@ class AIOSAPI:
             body = await request.json()
             xml_text = body.get("xml")
             if not xml_text:
-                return JSONResponse(
-                    {"error": "field 'xml' is required"}, status_code=400
-                )
+                return JSONResponse({"error": "field 'xml' is required"}, status_code=400)
             parser = ProfileParser()
             profile = parser.parse_profile(xml_text)
             for key, value in profile.fields.items():
@@ -2474,14 +2368,10 @@ class AIOSAPI:
                     status_code=400,
                 )
             rows = [
-                row
-                for row in self._olx_db(request).own_ads()
-                if row["fingerprint"] == fingerprint
+                row for row in self._olx_db(request).own_ads() if row["fingerprint"] == fingerprint
             ]
             if not rows:
-                return JSONResponse(
-                    {"error": f"own ad '{fingerprint}' not found"}, status_code=404
-                )
+                return JSONResponse({"error": f"own ad '{fingerprint}' not found"}, status_code=404)
             row = rows[0]
             own = OwnAd(
                 title=row["title"],
@@ -2523,9 +2413,7 @@ class AIOSAPI:
         actions = [item.to_dict() for item in advisor.advise_actions()]
         payload: Dict[str, object] = {"actions": actions}
         if request.query_params.get("new") == "1":
-            payload["new_listings"] = [
-                item.to_dict() for item in advisor.advise_new_listings()
-            ]
+            payload["new_listings"] = [item.to_dict() for item in advisor.advise_new_listings()]
         return JSONResponse(payload)
 
     def _olx_get_scheduler(self, interval_s: float = 3600.0):
@@ -2546,9 +2434,7 @@ class AIOSAPI:
     async def _olx_ads(self, request: Request) -> JSONResponse:
         """List collected OLX ads (`query` filter, bounded `limit`)."""
         query = request.query_params.get("query")
-        limit = self._bounded_int(
-            request.query_params.get("limit"), default=100, maximum=1000
-        )
+        limit = self._bounded_int(request.query_params.get("limit"), default=100, maximum=1000)
         ads = self._olx_db(request).get_ads(query=query, limit=limit)
         return JSONResponse(
             {
@@ -2598,9 +2484,7 @@ class AIOSAPI:
             queries = body.get("queries")
             if not isinstance(queries, list) or not queries:
                 queries = [body.get("query") or "olx"]
-            max_cards = self._bounded_int(
-                body.get("max_cards"), default=50, maximum=500
-            )
+            max_cards = self._bounded_int(body.get("max_cards"), default=50, maximum=500)
             scheduler = self._olx_get_scheduler()
             summaries = scheduler.run_once(queries, max_cards=max_cards)
             return JSONResponse({"summaries": summaries})
@@ -2620,9 +2504,7 @@ class AIOSAPI:
                     {"error": "interval_s must be at least 10 seconds"},
                     status_code=400,
                 )
-            max_cards = self._bounded_int(
-                body.get("max_cards"), default=50, maximum=500
-            )
+            max_cards = self._bounded_int(body.get("max_cards"), default=50, maximum=500)
             scheduler = self._olx_get_scheduler(interval_s)
             started = scheduler.start(queries, max_cards=max_cards)
             return JSONResponse(
@@ -2672,9 +2554,7 @@ class AIOSAPI:
         tasks = self.orchestrator.list_tasks(status=status)
         principal: Principal = request.state.principal
         if "admin" not in principal.roles:
-            tasks = [
-                task for task in tasks if task.get("agent_id") == principal.subject
-            ]
+            tasks = [task for task in tasks if task.get("agent_id") == principal.subject]
         return JSONResponse({"tasks": tasks, "count": len(tasks)})
 
     async def _tasks_create(self, request: Request) -> JSONResponse:
@@ -2733,9 +2613,7 @@ class AIOSAPI:
             query=request.query_params.get("query", ""),
             category=request.query_params.get("category"),
             tag=request.query_params.get("tag"),
-            limit=self._bounded_int(
-                request.query_params.get("limit"), default=100, maximum=100
-            ),
+            limit=self._bounded_int(request.query_params.get("limit"), default=100, maximum=100),
             requester_id=subject,
             is_admin=is_admin,
         )
@@ -2775,9 +2653,7 @@ class AIOSAPI:
             is_admin=is_admin,
         )
         if result is None:
-            return JSONResponse(
-                {"error": "Memory item not found or immutable"}, status_code=404
-            )
+            return JSONResponse({"error": "Memory item not found or immutable"}, status_code=404)
         return JSONResponse(result)
 
     async def _memory_delete(self, request: Request) -> JSONResponse:
@@ -2804,9 +2680,7 @@ class AIOSAPI:
         nodes = self.knowledge.find_nodes(
             label=request.query_params.get("label"),
             node_type=request.query_params.get("node_type"),
-            limit=self._bounded_int(
-                request.query_params.get("limit"), default=100, maximum=100
-            ),
+            limit=self._bounded_int(request.query_params.get("limit"), default=100, maximum=100),
         )
         return JSONResponse({"nodes": nodes, "count": len(nodes)})
 
@@ -2833,9 +2707,7 @@ class AIOSAPI:
         neighbors = self.knowledge.neighbors(
             node_id=node_id,
             relation=request.query_params.get("relation"),
-            depth=self._bounded_int(
-                request.query_params.get("depth"), default=1, maximum=5
-            ),
+            depth=self._bounded_int(request.query_params.get("depth"), default=1, maximum=5),
         )
         return JSONResponse({"neighbors": neighbors, "count": len(neighbors)})
 
@@ -2860,18 +2732,14 @@ class AIOSAPI:
 
     async def _approvals_approve(self, request: Request) -> JSONResponse:
         approval_id = request.path_params["approval_id"]
-        result = self.approvals.approve(
-            approval_id, resolved_by=request.state.principal.subject
-        )
+        result = self.approvals.approve(approval_id, resolved_by=request.state.principal.subject)
         if result is None:
             return JSONResponse({"error": "Approval not found"}, status_code=404)
         return JSONResponse(result)
 
     async def _approvals_deny(self, request: Request) -> JSONResponse:
         approval_id = request.path_params["approval_id"]
-        result = self.approvals.deny(
-            approval_id, resolved_by=request.state.principal.subject
-        )
+        result = self.approvals.deny(approval_id, resolved_by=request.state.principal.subject)
         if result is None:
             return JSONResponse({"error": "Approval not found"}, status_code=404)
         return JSONResponse(result)
@@ -2975,9 +2843,7 @@ class AIOSAPI:
             event_type=request.query_params.get("event_type"),
             agent_id=request.query_params.get("agent_id"),
             decision=request.query_params.get("decision"),
-            limit=self._bounded_int(
-                request.query_params.get("limit"), default=100, maximum=100
-            ),
+            limit=self._bounded_int(request.query_params.get("limit"), default=100, maximum=100),
             offset=self._bounded_int(
                 request.query_params.get("offset"), default=0, maximum=10_000, minimum=0
             ),
@@ -2993,9 +2859,7 @@ class AIOSAPI:
         from starlette.websockets import WebSocket
         from aios_core.websocket import ws_manager
 
-        websocket = WebSocket(
-            scope=request.scope, receive=request.receive, send=request.send
-        )
+        websocket = WebSocket(scope=request.scope, receive=request.receive, send=request.send)
         await ws_manager.connect(websocket)
         try:
             while True:

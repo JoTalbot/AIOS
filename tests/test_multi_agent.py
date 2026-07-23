@@ -8,9 +8,7 @@ def test_form_team():
     orch = Orchestrator(db=db)
 
     team = orch.multi_agent.form_team(
-        goal="analyze market data",
-        agents=["researcher", "analyst", "writer"],
-        leader="researcher"
+        goal="analyze market data", agents=["researcher", "analyst", "writer"], leader="researcher"
     )
 
     assert team.team_id is not None

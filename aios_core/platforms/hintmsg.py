@@ -93,9 +93,7 @@ class HintsMessenger(OLXMessenger):
                 return []
             return self._chat_parser.parse(path)
 
-    def read_chat(
-        self, thread: ChatThread, dump_path: str = "chat.xml"
-    ) -> List[Message]:
+    def read_chat(self, thread: ChatThread, dump_path: str = "chat.xml") -> List[Message]:
         """Открытый диалог: alignment-парсер OLX (shape-based)."""
         return super().read_chat(thread, dump_path)
 

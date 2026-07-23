@@ -4,6 +4,7 @@ import asyncio
 import websockets
 import json
 
+
 async def listen_to_aios():
     uri = "ws://127.0.0.1:8000/ws"
     async with websockets.connect(uri) as websocket:
@@ -11,6 +12,7 @@ async def listen_to_aios():
         async for message in websocket:
             data = json.loads(message)
             print(f"[{data.get('type')}] {data.get('data')}")
+
 
 if __name__ == "__main__":
     asyncio.run(listen_to_aios())

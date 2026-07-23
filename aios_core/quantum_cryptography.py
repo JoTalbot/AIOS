@@ -16,9 +16,7 @@ class QuantumKeyDistribution:
         self.keys.append((alice_bits, bob_bits))
         return alice_bits, bob_bits
 
-    def check_eavesdropper(
-        self, alice: List[int], bob: List[int], sample: int = 10
-    ) -> bool:
+    def check_eavesdropper(self, alice: List[int], bob: List[int], sample: int = 10) -> bool:
         errors = sum(a != b for a, b in zip(alice[:sample], bob[:sample]))
         return errors > sample * 0.1  # >10% error = eavesdropper
 

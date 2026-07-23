@@ -62,7 +62,6 @@ class InfiniteConstitutionEngine:
         return {
             "base_constitutional_articles": self.core_articles_count,
             "ratified_infinite_amendments": len(self.dynamic_amendments),
-            "total_effective_articles": self.core_articles_count
-            + len(self.dynamic_amendments),
+            "total_effective_articles": self.core_articles_count + len(self.dynamic_amendments),
             "immutable_axioms_count": len(self.immutable_axioms),
         }

@@ -29,6 +29,7 @@ def _make_db():
 # Database Tests
 # ======================================================================
 
+
 class TestDatabase(unittest.TestCase):
     def test_creates_tables(self):
         db = _make_db()
@@ -54,8 +55,7 @@ class TestDatabase(unittest.TestCase):
         db = _make_db()
         with db.transaction() as conn:
             conn.execute(
-                "INSERT INTO audit_events (id, event_type, data, timestamp) "
-                "VALUES (?, ?, ?, ?)",
+                "INSERT INTO audit_events (id, event_type, data, timestamp) " "VALUES (?, ?, ?, ?)",
                 ("test-1", "test", "{}", "2026-01-01T00:00:00Z"),
             )
         self.assertEqual(db.row_count("audit_events"), 1)
@@ -79,8 +79,7 @@ class TestDatabase(unittest.TestCase):
     def test_query(self):
         db = _make_db()
         db.execute(
-            "INSERT INTO audit_events (id, event_type, data, timestamp) "
-            "VALUES (?, ?, ?, ?)",
+            "INSERT INTO audit_events (id, event_type, data, timestamp) " "VALUES (?, ?, ?, ?)",
             ("q1", "type_a", '{"x":1}', "2026-01-01T00:00:00Z"),
         )
         rows = db.query("SELECT * FROM audit_events WHERE event_type = ?", ("type_a",))
@@ -109,6 +108,7 @@ class TestDatabase(unittest.TestCase):
 # Config Tests
 # ======================================================================
 
+
 class TestConfig(unittest.TestCase):
     def test_load_default_config(self):
         config = load_config()
@@ -135,10 +135,12 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(result["f"], 5)
 
     def test_from_dict(self):
-        config = AIOSConfig.from_dict({
-            "database": {"path": "test.db"},
-            "approval": {"timeout_seconds": 3600},
-        })
+        config = AIOSConfig.from_dict(
+            {
+                "database": {"path": "test.db"},
+                "approval": {"timeout_seconds": 3600},
+            }
+        )
         self.assertEqual(config.database.path, "test.db")
         self.assertEqual(config.approval.timeout_seconds, 3600)
         # Defaults preserved
@@ -148,6 +150,7 @@ class TestConfig(unittest.TestCase):
 # ======================================================================
 # AuditLogger Tests
 # ======================================================================
+
 
 class TestAuditLogger(unittest.TestCase):
     def setUp(self):
@@ -213,6 +216,7 @@ class TestAuditLogger(unittest.TestCase):
 # ======================================================================
 # ApprovalManager Tests
 # ======================================================================
+
 
 class TestApprovalManager(unittest.TestCase):
     def setUp(self):
@@ -306,6 +310,7 @@ class TestApprovalManager(unittest.TestCase):
 # ======================================================================
 # MemoryManager Tests
 # ======================================================================
+
 
 class TestMemoryManager(unittest.TestCase):
     def setUp(self):
@@ -410,6 +415,7 @@ class TestMemoryManager(unittest.TestCase):
 # ======================================================================
 # KnowledgeGraph Tests
 # ======================================================================
+
 
 class TestKnowledgeGraph(unittest.TestCase):
     def setUp(self):
@@ -529,6 +535,7 @@ class TestKnowledgeGraph(unittest.TestCase):
 # RuntimePolicy Integration with Persistence
 # ======================================================================
 
+
 class TestRuntimePolicyPersistence(unittest.TestCase):
     """Test that RuntimePolicy v3.1 works with SQLite persistence."""
 
@@ -536,6 +543,7 @@ class TestRuntimePolicyPersistence(unittest.TestCase):
     def setUpClass(cls):
         cls.db = _make_db()
         from aios_core.runtime_policy import RuntimePolicy
+
         cls.runtime = RuntimePolicy(
             constitution_dir=os.path.join(PROJECT_ROOT, "docs", "constitution"),
             policies_dir=os.path.join(PROJECT_ROOT, "policies"),
@@ -547,28 +555,32 @@ class TestRuntimePolicyPersistence(unittest.TestCase):
         cls.db.close()
 
     def test_allow_persists_audit(self):
-        result = self.runtime.request_execution({
-            "goal": "Read metrics",
-            "scope": "monitoring",
-            "risk": "low",
-            "audit_log": True,
-            "agent_id": "agent-persist-1",
-            "authority": "reader",
-        })
+        result = self.runtime.request_execution(
+            {
+                "goal": "Read metrics",
+                "scope": "monitoring",
+                "risk": "low",
+                "audit_log": True,
+                "agent_id": "agent-persist-1",
+                "authority": "reader",
+            }
+        )
         self.assertTrue(result["allowed"])
         # Verify it's in the DB
         events = self.runtime.audit.query(agent_id="agent-persist-1")
         self.assertGreater(len(events), 0)
 
     def test_review_creates_persistent_approval(self):
-        result = self.runtime.request_execution({
-            "goal": "Deploy module",
-            "scope": "production",
-            "risk": "high",
-            "audit_log": True,
-            "agent_id": "agent-persist-2",
-            "authority": "operator",
-        })
+        result = self.runtime.request_execution(
+            {
+                "goal": "Deploy module",
+                "scope": "production",
+                "risk": "high",
+                "audit_log": True,
+                "agent_id": "agent-persist-2",
+                "authority": "operator",
+            }
+        )
         self.assertEqual(result["decision"], "REVIEW")
         approval_id = result["approval_id"]
         self.assertIsNotNone(approval_id)
@@ -578,27 +590,31 @@ class TestRuntimePolicyPersistence(unittest.TestCase):
         self.assertEqual(approved["status"], "approved")
 
     def test_deny_persistent_approval(self):
-        result = self.runtime.request_execution({
-            "goal": "Critical change",
-            "scope": "core",
-            "risk": "critical",
-            "audit_log": True,
-            "agent_id": "agent-persist-3",
-            "authority": "senior",
-        })
+        result = self.runtime.request_execution(
+            {
+                "goal": "Critical change",
+                "scope": "core",
+                "risk": "critical",
+                "audit_log": True,
+                "agent_id": "agent-persist-3",
+                "authority": "senior",
+            }
+        )
         approval_id = result["approval_id"]
         denied = self.runtime.deny(approval_id)
         self.assertEqual(denied["status"], "denied")
 
     def test_get_pending_approvals(self):
-        self.runtime.request_execution({
-            "goal": "Pending test",
-            "scope": "test",
-            "risk": "high",
-            "audit_log": True,
-            "agent_id": "agent-pending",
-            "authority": "op",
-        })
+        self.runtime.request_execution(
+            {
+                "goal": "Pending test",
+                "scope": "test",
+                "risk": "high",
+                "audit_log": True,
+                "agent_id": "agent-pending",
+                "authority": "op",
+            }
+        )
         pending = self.runtime.get_pending_approvals()
         self.assertGreater(len(pending), 0)
 

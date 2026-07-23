@@ -24,8 +24,7 @@ class VectorStore:
 
         sorted_ids = sorted(scores, key=scores.get, reverse=True)[:top_k]
         return [
-            {"id": vid, "score": scores[vid], "metadata": self.metadata[vid]}
-            for vid in sorted_ids
+            {"id": vid, "score": scores[vid], "metadata": self.metadata[vid]} for vid in sorted_ids
         ]
 
     def stats(self) -> dict:

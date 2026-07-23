@@ -29,9 +29,7 @@ def test_instagram_platform_registered(instagram_registered):
 
 
 def test_instagram_descriptor_factories_work(instagram_registered, tmp_path):
-    storage = instagram_registered.make_storage(
-        str(tmp_path / "instagram.sqlite")
-    )
+    storage = instagram_registered.make_storage(str(tmp_path / "instagram.sqlite"))
     assert storage.get_ads() == []
     storage.close()
     adb = instagram_registered.make_adb("emulator-5554")

@@ -52,9 +52,7 @@ class AndroidAppRegistry:
     def get(self, package: str) -> Optional[AndroidAppDescriptor]:
         return self._apps.get(package)
 
-    def driver_for(
-        self, package: str, device_id: Optional[str] = None
-    ) -> Optional[AndroidDriver]:
+    def driver_for(self, package: str, device_id: Optional[str] = None) -> Optional[AndroidDriver]:
         desc = self.get(package)
         if desc is None:
             return None

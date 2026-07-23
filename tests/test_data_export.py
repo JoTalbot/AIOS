@@ -15,31 +15,38 @@ def temp_db(tmp_path):
     """Create a temporary test database."""
     db_path = tmp_path / "test.sqlite"
     conn = sqlite3.connect(str(db_path))
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE tasks (
             id TEXT PRIMARY KEY,
             status TEXT,
             created_at TEXT,
             updated_at TEXT
         )
-    """)
-    conn.execute("""
+    """
+    )
+    conn.execute(
+        """
         CREATE TABLE personal_memory (
             id TEXT PRIMARY KEY,
             owner TEXT,
             content TEXT,
             created_at TEXT
         )
-    """)
-    conn.execute("""
+    """
+    )
+    conn.execute(
+        """
         CREATE TABLE audit_log (
             id TEXT PRIMARY KEY,
             event_type TEXT,
             timestamp TEXT,
             details TEXT
         )
-    """)
-    conn.execute("""
+    """
+    )
+    conn.execute(
+        """
         CREATE TABLE knowledge_graph (
             id TEXT PRIMARY KEY,
             subject TEXT,
@@ -47,13 +54,18 @@ def temp_db(tmp_path):
             object TEXT,
             created_at TEXT
         )
-    """)
+    """
+    )
     # Insert test data
     conn.execute("INSERT INTO tasks VALUES ('task-1', 'completed', '2026-01-01', '2026-01-02')")
     conn.execute("INSERT INTO tasks VALUES ('task-2', 'running', '2026-07-01', '2026-07-02')")
-    conn.execute("INSERT INTO personal_memory VALUES ('mem-1', 'user1', 'test content', '2026-01-01')")
+    conn.execute(
+        "INSERT INTO personal_memory VALUES ('mem-1', 'user1', 'test content', '2026-01-01')"
+    )
     conn.execute("INSERT INTO audit_log VALUES ('log-1', 'task.create', '2026-07-20', '{}')")
-    conn.execute("INSERT INTO knowledge_graph VALUES ('kg-1', 'AIOS', 'is', 'awesome', '2026-01-01')")
+    conn.execute(
+        "INSERT INTO knowledge_graph VALUES ('kg-1', 'AIOS', 'is', 'awesome', '2026-01-01')"
+    )
     conn.commit()
     conn.close()
     return str(db_path)
@@ -136,7 +148,9 @@ class TestDataImporter:
         # Create new db
         new_db = tmp_path / "new.sqlite"
         conn = sqlite3.connect(str(new_db))
-        conn.execute("CREATE TABLE tasks (id TEXT PRIMARY KEY, status TEXT, created_at TEXT, updated_at TEXT)")
+        conn.execute(
+            "CREATE TABLE tasks (id TEXT PRIMARY KEY, status TEXT, created_at TEXT, updated_at TEXT)"
+        )
         conn.commit()
         conn.close()
 
@@ -152,7 +166,9 @@ class TestDataImporter:
 
         new_db = tmp_path / "new.sqlite"
         conn = sqlite3.connect(str(new_db))
-        conn.execute("CREATE TABLE tasks (id TEXT PRIMARY KEY, status TEXT, created_at TEXT, updated_at TEXT)")
+        conn.execute(
+            "CREATE TABLE tasks (id TEXT PRIMARY KEY, status TEXT, created_at TEXT, updated_at TEXT)"
+        )
         conn.commit()
         conn.close()
 

@@ -173,17 +173,13 @@ class AIScreenClassifier:
         embedding = self._calculate_embedding(self.parser)
 
         screen_signature = self._generate_screen_signature(xml)
-        pattern_score = self._calculate_similarity_with_cache(
-            embedding, screen_signature
-        )
+        pattern_score = self._calculate_similarity_with_cache(embedding, screen_signature)
 
         best_match = None
         highest_similarity = pattern_score
 
         for name, stored_embedding in self._embeddings.items():
-            similarity = self._calculate_similarity(
-                embedding, stored_embedding.embedding
-            )
+            similarity = self._calculate_similarity(embedding, stored_embedding.embedding)
             if similarity > highest_similarity:
                 highest_similarity = similarity
                 best_match = name
@@ -205,9 +201,7 @@ class AIScreenClassifier:
         )
 
         # Store if novel and confident enough
-        if screen_name == "unknown" or (
-            score > 0.5 and screen_name not in self._embeddings
-        ):
+        if screen_name == "unknown" or (score > 0.5 and screen_name not in self._embeddings):
             # avoid storing every unknown generic - only if has some elements
             if len(embedding) > 0:
                 self._embeddings[screen_signature or screen_name] = embedding_record
@@ -224,9 +218,7 @@ class AIScreenClassifier:
 
         return embedding_record
 
-    def _calculate_similarity_with_cache(
-        self, vec: List[float], cache_key: str
-    ) -> float:
+    def _calculate_similarity_with_cache(self, vec: List[float], cache_key: str) -> float:
         """Calculate similarity with cached patterns."""
         if cache_key not in self._pattern_cache:
             return 0.0
@@ -252,9 +244,7 @@ class AIScreenClassifier:
             return
         # store copy of vector truncated to 16 dims for cache efficiency
         self._pattern_cache[key].append(
-            embedding[:16].copy()
-            if hasattr(embedding, "copy")
-            else list(embedding[:16])
+            embedding[:16].copy() if hasattr(embedding, "copy") else list(embedding[:16])
         )
         # limit cache size to avoid memory bloat
         if len(self._pattern_cache[key]) > 20:
@@ -307,9 +297,7 @@ class AIScreenClassifier:
         except Exception:
             return self._template_classify(screenshot_path)
 
-    def find_with_cv(
-        self, driver: AndroidDriver, template_path: str
-    ) -> Optional[UIElement]:
+    def find_with_cv(self, driver: AndroidDriver, template_path: str) -> Optional[UIElement]:
         """Enhanced CV-based element finding with embedding similarity."""
         try:
             ctx = driver.dump_ui()

@@ -197,9 +197,7 @@ class BackupManager:
                 import tempfile
 
                 with gzip.open(backup_path, "rb") as f_in:
-                    with tempfile.NamedTemporaryFile(
-                        suffix=".sqlite", delete=False
-                    ) as f_out:
+                    with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f_out:
                         shutil.copyfileobj(f_in, f_out)
                         temp_path = f_out.name
 
@@ -376,9 +374,7 @@ if __name__ == "__main__":
         for backup in manager.list_backups():
             status = "✅" if backup.checksum else "❌"
             size_kb = backup.size_bytes / 1024
-            print(
-                f"{status} {backup.backup_id} | {size_kb:.1f} KB | {backup.created_at}"
-            )
+            print(f"{status} {backup.backup_id} | {size_kb:.1f} KB | {backup.created_at}")
 
     elif args.command == "verify":
         if manager.verify_backup(args.id):

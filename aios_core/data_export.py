@@ -365,16 +365,10 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="AIOS Data Export/Import")
-    parser.add_argument(
-        "action", choices=["export", "import"], help="Action to perform"
-    )
+    parser.add_argument("action", choices=["export", "import"], help="Action to perform")
     parser.add_argument("--db", default="aios.sqlite", help="Database path")
-    parser.add_argument(
-        "--format", choices=["json", "csv"], default="json", help="Export format"
-    )
-    parser.add_argument(
-        "--output", "-o", default="./export", help="Output directory/file"
-    )
+    parser.add_argument("--format", choices=["json", "csv"], default="json", help="Export format")
+    parser.add_argument("--output", "-o", default="./export", help="Output directory/file")
     parser.add_argument("--since", help="Export data since date (ISO format)")
     parser.add_argument("--limit", type=int, help="Maximum records to export")
     parser.add_argument(
@@ -399,9 +393,7 @@ if __name__ == "__main__":
                 count = exporter.export_memory(args.output, args.format, args.limit)
                 print(f"Exported {count} memory records")
             elif args.type == "audit":
-                count = exporter.export_audit_log(
-                    args.output, args.format, since=args.since
-                )
+                count = exporter.export_audit_log(args.output, args.format, since=args.since)
                 print(f"Exported {count} audit records")
             elif args.type == "knowledge":
                 count = exporter.export_knowledge_graph(args.output, args.format)

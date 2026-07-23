@@ -25,7 +25,7 @@ class APKManifestAnalyzer:
         "android.permission.CAMERA": "High Risk: Optical camera recording access",
         "android.permission.ACCESS_FINE_LOCATION": "High Risk: Precise GPS physical location",
         "android.permission.SYSTEM_ALERT_WINDOW": "Critical Risk: Can draw over other apps (Overlay attack risk)",
-        "android.permission.WRITE_EXTERNAL_STORAGE": "Medium Risk: Modifies external shared storage"
+        "android.permission.WRITE_EXTERNAL_STORAGE": "Medium Risk: Modifies external shared storage",
     }
 
     def __init__(self, apk_path: str):
@@ -53,39 +53,44 @@ class APKManifestAnalyzer:
             "apk_size_bytes": self.apk_path.stat().st_size,
             "total_files": len(file_list),
             "dex_classes_count": dex_count,
-            "has_native_c_libraries": has_native_libs
+            "has_native_c_libraries": has_native_libs,
         }
 
-    def analyze_security_permissions(self, sample_permissions: Optional[List[str]] = None) -> Dict[str, Any]:
+    def analyze_security_permissions(
+        self, sample_permissions: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
         """Analyze permissions against AIOS Constitutional Safety Guidelines (Article V / Article XXXII)."""
         permissions = sample_permissions or [
             "android.permission.INTERNET",
             "android.permission.READ_SMS",
-            "android.permission.SYSTEM_ALERT_WINDOW"
+            "android.permission.SYSTEM_ALERT_WINDOW",
         ]
 
         flagged_risks: List[Dict[str, str]] = []
         for perm in permissions:
             if perm in self.DANGEROUS_PERMISSIONS:
-                flagged_risks.append({
-                    "permission": perm,
-                    "risk_assessment": self.DANGEROUS_PERMISSIONS[perm]
-                })
+                flagged_risks.append(
+                    {"permission": perm, "risk_assessment": self.DANGEROUS_PERMISSIONS[perm]}
+                )
 
-        constitutional_safety = len(flagged_risks) == 0 or not any("Critical" in r["risk_assessment"] for r in flagged_risks)
+        constitutional_safety = len(flagged_risks) == 0 or not any(
+            "Critical" in r["risk_assessment"] for r in flagged_risks
+        )
 
         return {
             "requested_permissions_count": len(permissions),
             "flagged_dangerous_permissions": flagged_risks,
             "constitutional_safety_approved": constitutional_safety,
-            "risk_score": 1.0 if constitutional_safety else 0.4
+            "risk_score": 1.0 if constitutional_safety else 0.4,
         }
 
 
 def main():
     parser = argparse.ArgumentParser(description="AIOS Mobile APK Testing & Security Audit Tool")
     parser.add_argument("--apk", type=str, required=True, help="Path to target Android .apk file")
-    parser.add_argument("--report", type=str, default="apk_audit_report.json", help="Report output JSON path")
+    parser.add_argument(
+        "--report", type=str, default="apk_audit_report.json", help="Report output JSON path"
+    )
 
     args = parser.parse_args()
 
@@ -93,10 +98,7 @@ def main():
     structure = analyzer.inspect_apk_structure()
     security = analyzer.analyze_security_permissions()
 
-    report_data = {
-        "structure": structure,
-        "security": security
-    }
+    report_data = {"structure": structure, "security": security}
 
     report_path = Path(args.report)
     report_path.write_text(json.dumps(report_data, indent=2), encoding="utf-8")

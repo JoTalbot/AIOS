@@ -40,9 +40,7 @@ class ShardGateway:
     ):
         self.router = router or ShardRouter()
         self._owns_router = router is None
-        self.host_id = (
-            host_id if host_id is not None else os.environ.get("AIOS_HOST_ID", "local")
-        )
+        self.host_id = host_id if host_id is not None else os.environ.get("AIOS_HOST_ID", "local")
         self._client_factory = client_factory or _default_client_factory
 
     def close(self) -> None:
@@ -111,9 +109,7 @@ def default_health_probe(host: Dict) -> bool:
     import httpx
 
     try:
-        response = httpx.get(
-            host["base_url"].rstrip("/") + "/health", timeout=DEFAULT_TIMEOUT_S
-        )
+        response = httpx.get(host["base_url"].rstrip("/") + "/health", timeout=DEFAULT_TIMEOUT_S)
         return response.status_code < 500
     except Exception:
         return False

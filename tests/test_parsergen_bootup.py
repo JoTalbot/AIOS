@@ -76,6 +76,7 @@ def _importable(tmp_path, *module_names):
 # extract_markers / build_parser
 # ---------------------------------------------------------------------------
 
+
 def test_extract_markers_normalizes_and_deduplicates():
     hints = {
         "card_markers": [
@@ -129,6 +130,7 @@ def test_olx_card_parser_markers_still_backward_compatible():
 # codegen: generate_parser_source / write_parser / parser_for
 # ---------------------------------------------------------------------------
 
+
 def test_generate_parser_source_contains_class_and_markers():
     source = generate_parser_source("demo-market", HINTS, "com.demo")
     assert "class DemoMarketCardParser(" in source
@@ -149,7 +151,9 @@ def test_write_parser_requires_scaffolded_module(tmp_path):
 def test_write_parser_real_module_import_roundtrip(tmp_path):
     scaffold_platform("pg-demo", "com.pg.demo", project_root=tmp_path)
     files = write_parser(
-        "pg-demo", HINTS, project_root=tmp_path,
+        "pg-demo",
+        HINTS,
+        project_root=tmp_path,
         android_package="com.pg.demo",
     )
     module_dir = tmp_path / "aios_core" / "modules" / "pg_demo"
@@ -164,7 +168,8 @@ def test_write_parser_real_module_import_roundtrip(tmp_path):
         assert parser.CARD_RESOURCE_MARKERS == ("adcard",)
         cards = parser.parse(DUMP_XML)
         assert [c.title for c in cards] == [
-            "Продам велосипед у гарному стані", "iPhone 12 128GB",
+            "Продам велосипед у гарному стані",
+            "iPhone 12 128GB",
         ]
     finally:
         modules_pkg.__path__.remove(extra)
@@ -179,21 +184,19 @@ def test_write_parser_overwrite_flow_is_idempotent(tmp_path):
     with pytest.raises(ValueError, match="already exists"):
         write_parser("pg-demo", HINTS, project_root=tmp_path)
 
-    files = write_parser("pg-demo", HINTS, project_root=tmp_path,
-                         overwrite=True)
-    init_path = (tmp_path / "aios_core" / "modules" / "pg_demo"
-                 / "__init__.py")
+    files = write_parser("pg-demo", HINTS, project_root=tmp_path, overwrite=True)
+    init_path = tmp_path / "aios_core" / "modules" / "pg_demo" / "__init__.py"
     # Импорт не дублируется — __init__.py не входит в план повторно.
     assert str(init_path) not in files
-    assert init_path.read_text(encoding="utf-8").count(
-        "codegen: parser_hints"
-    ) == 1
+    assert init_path.read_text(encoding="utf-8").count("codegen: parser_hints") == 1
 
 
 def test_parser_for_reads_hints_from_descriptor_yaml(tmp_path):
     scaffold_platform("pg-demo", "com.pg.demo", project_root=tmp_path)
     write_hints_to_descriptor(
-        "pg-demo", HINTS, directory=tmp_path / "platforms",
+        "pg-demo",
+        HINTS,
+        directory=tmp_path / "platforms",
     )
     parser = parser_for("pg-demo", directory=tmp_path / "platforms")
     assert len(parser.parse(DUMP_XML)) == 2
@@ -204,21 +207,25 @@ def test_parser_for_reads_hints_from_descriptor_yaml(tmp_path):
 def test_write_hints_to_descriptor_registers_extras(tmp_path):
     scaffold_platform("pg-demo", "com.pg.demo", project_root=tmp_path)
     written = write_hints_to_descriptor(
-        "pg-demo", HINTS, directory=tmp_path / "platforms",
+        "pg-demo",
+        HINTS,
+        directory=tmp_path / "platforms",
     )
     assert written.endswith("pg-demo.yaml")
-    doc = yaml.safe_load((tmp_path / "platforms" / "pg-demo.yaml")
-                         .read_text(encoding="utf-8"))
+    doc = yaml.safe_load((tmp_path / "platforms" / "pg-demo.yaml").read_text(encoding="utf-8"))
     assert doc["extras"]["parser_hints"]["card_markers"]
     with pytest.raises(ValueError, match="descriptor not found"):
         write_hints_to_descriptor(
-            "pg-ghost", HINTS, directory=tmp_path / "platforms",
+            "pg-ghost",
+            HINTS,
+            directory=tmp_path / "platforms",
         )
 
 
 # ---------------------------------------------------------------------------
 # bootup E2E pipeline
 # ---------------------------------------------------------------------------
+
 
 def test_bootup_requires_apk_or_name_package(tmp_path):
     with pytest.raises(ValueError, match="either --apk or both"):
@@ -231,8 +238,11 @@ def test_bootup_dry_run_full_pipeline(tmp_path):
     dump = tmp_path / "dump.xml"
     dump.write_text(DUMP_XML, encoding="utf-8")
     report = bootup_platform(
-        apk_path="boot.apk", project_root=tmp_path,
-        dump_path=str(dump), runner=_badging_ok, dry_run=True,
+        apk_path="boot.apk",
+        project_root=tmp_path,
+        dump_path=str(dump),
+        runner=_badging_ok,
+        dry_run=True,
     )
     assert report["platform"] == "app"  # candidate из com.boot.app
     assert report["android_package"] == "com.boot.app"
@@ -244,8 +254,7 @@ def test_bootup_dry_run_full_pipeline(tmp_path):
     assert steps["hints"]["mode"] == "planned"
     assert steps["codegen"]["mode"] == "planned"
     assert steps["verify"]["cards"] == 2
-    assert "Продам велосипед у гарному стані" in \
-        steps["verify"]["sample_titles"]
+    assert "Продам велосипед у гарному стані" in steps["verify"]["sample_titles"]
     # dry-run: на диске пусто.
     assert not (tmp_path / "platforms").exists()
     assert not (tmp_path / "aios_core").exists()
@@ -257,8 +266,10 @@ def test_bootup_real_run_ready_and_registered(tmp_path):
     modules_pkg, extra = _importable(tmp_path, "app")
     try:
         report = bootup_platform(
-            apk_path="boot.apk", project_root=tmp_path,
-            dump_path=str(dump), runner=_badging_ok,
+            apk_path="boot.apk",
+            project_root=tmp_path,
+            dump_path=str(dump),
+            runner=_badging_ok,
         )
         try:
             assert report["status"] == "ready"
@@ -266,16 +277,14 @@ def test_bootup_real_run_ready_and_registered(tmp_path):
             assert steps["scaffold"]["mode"] == "written"
             assert steps["register"]["mode"] == "registered"
             # scaffold сразу заявляет deny-by-default compliance:
-            assert steps["hints"]["registered_extras"] == [
-                "compliance", "parser_hints"]
+            assert steps["hints"]["registered_extras"] == ["compliance", "parser_hints"]
             assert steps["codegen"]["mode"] == "written"
             assert steps["verify"]["cards"] == 2
 
             descriptor = get_platform("app")
             assert descriptor.android_package == "com.boot.app"
             assert descriptor.extras["parser_hints"]["card_markers"]
-            assert (tmp_path / "aios_core" / "modules" / "app"
-                    / "card_parser.py").exists()
+            assert (tmp_path / "aios_core" / "modules" / "app" / "card_parser.py").exists()
             # Хранилище платформы доступно через фабрику дескриптора:
             storage = descriptor.make_storage(":memory:")
             assert storage.get_ads() == []
@@ -298,8 +307,11 @@ def test_bootup_injected_driver_calibration(tmp_path):
     modules_pkg, extra = _importable(tmp_path, "driveo")
     try:
         report = bootup_platform(
-            name="driveo", package="com.driveo.app", project_root=tmp_path,
-            query="велосипед", driver=driver,
+            name="driveo",
+            package="com.driveo.app",
+            project_root=tmp_path,
+            query="велосипед",
+            driver=driver,
         )
         try:
             assert report["status"] == "ready"
@@ -320,14 +332,15 @@ def test_bootup_driver_failure_leaves_scaffolded(tmp_path):
     modules_pkg, extra = _importable(tmp_path, "nodev")
     try:
         report = bootup_platform(
-            name="nodev", package="com.nodev.app", project_root=tmp_path,
+            name="nodev",
+            package="com.nodev.app",
+            project_root=tmp_path,
             driver=driver,
         )
         try:
             assert report["status"] == "scaffolded"
             assert report["steps"]["calibrate"]["mode"] == "skipped"
-            assert "no emulator attached" in \
-                report["steps"]["calibrate"]["reason"]
+            assert "no emulator attached" in report["steps"]["calibrate"]["reason"]
             assert report["steps"]["codegen"]["mode"] == "skipped"
         finally:
             descriptor_mod._PLATFORMS.pop("nodev", None)
@@ -347,14 +360,18 @@ def test_bootup_resume_on_existing_scaffold(tmp_path):
     try:
         try:
             first = bootup_platform(
-                name="redo", package="com.redo.app",
-                project_root=tmp_path, driver=driver,
+                name="redo",
+                package="com.redo.app",
+                project_root=tmp_path,
+                driver=driver,
             )
             assert first["status"] == "scaffolded"
 
             second = bootup_platform(
-                name="redo", package="com.redo.app",
-                project_root=tmp_path, dump_path=str(dump),
+                name="redo",
+                package="com.redo.app",
+                project_root=tmp_path,
+                dump_path=str(dump),
             )
             assert second["status"] == "ready"
             assert second["steps"]["scaffold"]["mode"] == "resumed"
@@ -371,31 +388,29 @@ def test_bootup_resume_on_existing_scaffold(tmp_path):
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def test_cli_platforms_codegen_dry_run_and_real(tmp_path, capsys):
     from aios_cli import main
 
     scaffold_platform("cli-demo", "ua.cli.demo", project_root=tmp_path)
     write_hints_to_descriptor(
-        "cli-demo", HINTS, directory=tmp_path / "platforms",
+        "cli-demo",
+        HINTS,
+        directory=tmp_path / "platforms",
     )
 
-    main(["platforms", "codegen", "--platform", "cli-demo",
-          "--root", str(tmp_path), "--dry-run"])
+    main(["platforms", "codegen", "--platform", "cli-demo", "--root", str(tmp_path), "--dry-run"])
     out = json.loads(capsys.readouterr().out)
     assert any("card_parser.py" in path for path in out["planned"])
-    assert not (tmp_path / "aios_core" / "modules" / "cli_demo"
-                / "card_parser.py").exists()
+    assert not (tmp_path / "aios_core" / "modules" / "cli_demo" / "card_parser.py").exists()
 
-    main(["platforms", "codegen", "--platform", "cli-demo",
-          "--root", str(tmp_path)])
+    main(["platforms", "codegen", "--platform", "cli-demo", "--root", str(tmp_path)])
     out = json.loads(capsys.readouterr().out)
     assert any("card_parser.py" in path for path in out["written"])
-    assert (tmp_path / "aios_core" / "modules" / "cli_demo"
-            / "card_parser.py").exists()
+    assert (tmp_path / "aios_core" / "modules" / "cli_demo" / "card_parser.py").exists()
 
     # Повтор без --force — чистая JSON-ошибка.
-    main(["platforms", "codegen", "--platform", "cli-demo",
-          "--root", str(tmp_path)])
+    main(["platforms", "codegen", "--platform", "cli-demo", "--root", str(tmp_path)])
     out = json.loads(capsys.readouterr().out)
     assert "already exists" in out["error"]
 
@@ -404,13 +419,11 @@ def test_cli_platforms_codegen_without_hints_errors(tmp_path, capsys):
     from aios_cli import main
 
     scaffold_platform("cli-bare", "ua.cli.bare", project_root=tmp_path)
-    main(["platforms", "codegen", "--platform", "cli-bare",
-          "--root", str(tmp_path)])
+    main(["platforms", "codegen", "--platform", "cli-bare", "--root", str(tmp_path)])
     out = json.loads(capsys.readouterr().out)
     assert "no card markers" in out["error"]
 
-    main(["platforms", "codegen", "--platform", "cli-ghost",
-          "--root", str(tmp_path)])
+    main(["platforms", "codegen", "--platform", "cli-ghost", "--root", str(tmp_path)])
     out = json.loads(capsys.readouterr().out)
     assert "descriptor not found" in out["error"]
 
@@ -422,9 +435,22 @@ def test_cli_platforms_bootup_end_to_end(tmp_path, capsys, monkeypatch):
     dump.write_text(DUMP_XML, encoding="utf-8")
     modules_pkg, extra = _importable(tmp_path, "booto")
     try:
-        main(["platforms", "bootup", "--name", "booto",
-              "--package", "ua.booto.app", "--dump", str(dump),
-              "--root", str(tmp_path), "--query", "велосипед"])
+        main(
+            [
+                "platforms",
+                "bootup",
+                "--name",
+                "booto",
+                "--package",
+                "ua.booto.app",
+                "--dump",
+                str(dump),
+                "--root",
+                str(tmp_path),
+                "--query",
+                "велосипед",
+            ]
+        )
         out = json.loads(capsys.readouterr().out)
         try:
             assert out["status"] == "ready"
@@ -447,18 +473,22 @@ def test_cli_platforms_bootup_end_to_end(tmp_path, capsys, monkeypatch):
 # REST
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def hints_platform(tmp_path):
     def storage_factory(db_path):
         from aios_core.modules.olx import OLXStorage
+
         return OLXStorage(db_path)
 
-    register_platform(PlatformDescriptor(
-        name="hints-demo",
-        android_package="ua.hints.demo",
-        agent_module="hints_demo.agent",
-        storage_factory=storage_factory,
-    ))
+    register_platform(
+        PlatformDescriptor(
+            name="hints-demo",
+            android_package="ua.hints.demo",
+            agent_module="hints_demo.agent",
+            storage_factory=storage_factory,
+        )
+    )
     yield
     descriptor_mod._PLATFORMS.pop("hints-demo", None)
 
@@ -478,22 +508,21 @@ async def hints_client(hints_platform, tmp_path):
     )
     app = api.create_starlette_app()
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport,
-                           base_url="http://test") as ac:
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
 
 async def test_rest_platform_hints_calibrates_and_previews(hints_client):
     response = await hints_client.post(
-        "/api/v1/platforms/hints-demo/hints", json={"dump": DUMP_XML},
+        "/api/v1/platforms/hints-demo/hints",
+        json={"dump": DUMP_XML},
     )
     assert response.status_code == 200
     payload = response.json()
     assert payload["platform"] == "hints-demo"
     assert payload["hints"]["card_markers"]
     assert payload["parser_preview"]["cards"] == 2
-    assert "Продам велосипед у гарному стані" in \
-        payload["parser_preview"]["sample_titles"]
+    assert "Продам велосипед у гарному стані" in payload["parser_preview"]["sample_titles"]
     # Подсказки сохранены в runtime-дескрипторе:
     descriptor = get_platform("hints-demo")
     assert descriptor.extras["parser_hints"]["card_markers"]
@@ -501,12 +530,14 @@ async def test_rest_platform_hints_calibrates_and_previews(hints_client):
 
 async def test_rest_platform_hints_error_paths(hints_client):
     response = await hints_client.post(
-        "/api/v1/platforms/no-such/hints", json={"dump": DUMP_XML},
+        "/api/v1/platforms/no-such/hints",
+        json={"dump": DUMP_XML},
     )
     assert response.status_code == 404
 
     response = await hints_client.post(
-        "/api/v1/platforms/hints-demo/hints", json={},
+        "/api/v1/platforms/hints-demo/hints",
+        json={},
     )
     assert response.status_code == 400
 
@@ -514,12 +545,15 @@ async def test_rest_platform_hints_error_paths(hints_client):
 async def test_rest_platform_hints_direct_object(hints_client):
     response = await hints_client.post(
         "/api/v1/platforms/hints-demo/hints",
-        json={"hints": {"card_markers": [
-            {"resource_id": "ua.hints:id/itemCard", "occurrences": 3},
-        ]}},
+        json={
+            "hints": {
+                "card_markers": [
+                    {"resource_id": "ua.hints:id/itemCard", "occurrences": 3},
+                ]
+            }
+        },
     )
     assert response.status_code == 200
     payload = response.json()
-    assert payload["hints"]["card_markers"][0]["resource_id"] == \
-        "ua.hints:id/itemCard"
+    assert payload["hints"]["card_markers"][0]["resource_id"] == "ua.hints:id/itemCard"
     assert "parser_preview" not in payload  # без дампа превью нет

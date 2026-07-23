@@ -17,7 +17,7 @@ def test_model_registry():
         version="1.0.0",
         framework="onnx",
         metadata={"author": "AIOS Core Team"},
-        artifact_bytes=b"mock_onnx_bytes"
+        artifact_bytes=b"mock_onnx_bytes",
     )
 
     assert entry["name"] == "risk_scorer"
@@ -34,7 +34,9 @@ def test_model_registry():
     assert prod_model["version"] == "1.0.0"
 
     # Log metrics
-    logged = registry.log_evaluation_metrics("risk_scorer", "1.0.0", {"accuracy": 0.982, "f1": 0.975})
+    logged = registry.log_evaluation_metrics(
+        "risk_scorer", "1.0.0", {"accuracy": 0.982, "f1": 0.975}
+    )
     assert logged is True
     assert prod_model["eval_metrics"]["accuracy"] == 0.982
 
@@ -86,9 +88,7 @@ def test_predictive_autonomy_regulator():
     # Low risk step
     safe_step = {"action": "read_data", "complexity": 1.0}
     level, reason = regulator.regulate_autonomy(
-        agent_id="agent_001",
-        current_level=AutonomyLevel.LEVEL_5_SELF_DIRECTED,
-        plan_step=safe_step
+        agent_id="agent_001", current_level=AutonomyLevel.LEVEL_5_SELF_DIRECTED, plan_step=safe_step
     )
     assert level == AutonomyLevel.LEVEL_5_SELF_DIRECTED
 
@@ -98,7 +98,7 @@ def test_predictive_autonomy_regulator():
         agent_id="agent_001",
         current_level=AutonomyLevel.LEVEL_5_SELF_DIRECTED,
         plan_step=dangerous_step,
-        agent_history_stats={"failure_rate": 0.4}
+        agent_history_stats={"failure_rate": 0.4},
     )
 
     # Must be downgraded to Level 1 Assisted

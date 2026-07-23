@@ -12,9 +12,7 @@ from .autonomy_manager import AutonomyLevel
 class PredictiveAutonomyRegulator:
     """Predictive Autonomy Regulator that dynamically bounds agent execution scope."""
 
-    def __init__(
-        self, high_risk_threshold: float = 0.6, critical_risk_threshold: float = 0.85
-    ):
+    def __init__(self, high_risk_threshold: float = 0.6, critical_risk_threshold: float = 0.85):
         self.high_risk_threshold = high_risk_threshold
         self.critical_risk_threshold = critical_risk_threshold
         self.history: List[Dict[str, Any]] = []
@@ -36,8 +34,7 @@ class PredictiveAutonomyRegulator:
         ):
             risk_score += 0.5
         elif any(
-            keyword in action_type
-            for keyword in ["write", "modify", "deploy", "update", "exec"]
+            keyword in action_type for keyword in ["write", "modify", "deploy", "update", "exec"]
         ):
             risk_score += 0.2
 
@@ -64,7 +61,9 @@ class PredictiveAutonomyRegulator:
         """Dynamically regulate autonomy level based on predicted task risk."""
         risk = self.assess_risk(agent_id, plan_step, agent_history_stats)
         effective_level = current_level
-        reason = f"Risk evaluated at {risk:.2f} — autonomy maintained at Level {current_level.value}"
+        reason = (
+            f"Risk evaluated at {risk:.2f} — autonomy maintained at Level {current_level.value}"
+        )
 
         if risk >= self.critical_risk_threshold:
             # Drop to Level 1 (Human-assisted approval required)

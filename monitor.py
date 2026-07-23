@@ -71,7 +71,9 @@ def main():
 
         if "data" in stats:
             s = stats["data"]
-            print(f"  Stats: tasks={s.get('total_tasks', 0)} | memory={s.get('memory_items', 0)} | evolution={s.get('evolution_proposals', 0)}")
+            print(
+                f"  Stats: tasks={s.get('total_tasks', 0)} | memory={s.get('memory_items', 0)} | evolution={s.get('evolution_proposals', 0)}"
+            )
 
         print()
 

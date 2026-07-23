@@ -13,9 +13,7 @@ class EventStore:
         self.storage_path = storage_path
         self.events: List[Dict] = []
 
-    def append(
-        self, event_type: str, data: Dict[str, Any], aggregate_id: str = None
-    ) -> str:
+    def append(self, event_type: str, data: Dict[str, Any], aggregate_id: str = None) -> str:
         event = {
             "id": str(uuid.uuid4()),
             "type": event_type,

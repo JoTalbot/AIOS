@@ -67,8 +67,7 @@ def required_secret(
         if profile:
             names += f" или {env_name(platform, field)}"
         raise ValueError(
-            f"secret not configured: set {names} "
-            "(values are read from env only, never stored)"
+            f"secret not configured: set {names} " "(values are read from env only, never stored)"
         )
     return value
 

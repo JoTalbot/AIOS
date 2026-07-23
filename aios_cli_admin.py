@@ -31,45 +31,70 @@ def run_export(args):
         with DataExporter(db_path) as exporter:
             if export_type == "all":
                 counts = exporter.export_all(output, format_type, since)
-                print(json.dumps({
-                    "status": "success",
-                    "type": "all",
-                    "format": format_type,
-                    "output": output,
-                    "counts": counts,
-                }, indent=2))
+                print(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "type": "all",
+                            "format": format_type,
+                            "output": output,
+                            "counts": counts,
+                        },
+                        indent=2,
+                    )
+                )
             elif export_type == "tasks":
                 count = exporter.export_tasks(output, format_type, limit, since=since)
-                print(json.dumps({
-                    "status": "success",
-                    "type": "tasks",
-                    "count": count,
-                    "output": output,
-                }, indent=2))
+                print(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "type": "tasks",
+                            "count": count,
+                            "output": output,
+                        },
+                        indent=2,
+                    )
+                )
             elif export_type == "memory":
                 count = exporter.export_memory(output, format_type, limit)
-                print(json.dumps({
-                    "status": "success",
-                    "type": "memory",
-                    "count": count,
-                    "output": output,
-                }, indent=2))
+                print(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "type": "memory",
+                            "count": count,
+                            "output": output,
+                        },
+                        indent=2,
+                    )
+                )
             elif export_type == "audit":
                 count = exporter.export_audit_log(output, format_type, since=since)
-                print(json.dumps({
-                    "status": "success",
-                    "type": "audit",
-                    "count": count,
-                    "output": output,
-                }, indent=2))
+                print(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "type": "audit",
+                            "count": count,
+                            "output": output,
+                        },
+                        indent=2,
+                    )
+                )
             elif export_type == "knowledge":
                 count = exporter.export_knowledge_graph(output, format_type)
-                print(json.dumps({
-                    "status": "success",
-                    "type": "knowledge",
-                    "count": count,
-                    "output": output,
-                }, indent=2))
+                print(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "type": "knowledge",
+                            "count": count,
+                            "output": output,
+                        },
+                        indent=2,
+                    )
+                )
             else:
                 print(json.dumps({"error": f"Unknown type: {export_type}"}))
                 return False
@@ -91,12 +116,17 @@ def run_import(args):
     try:
         with DataImporter(db_path) as importer:
             count = importer.import_tasks(input_path, format_type)
-            print(json.dumps({
-                "status": "success",
-                "type": import_type,
-                "count": count,
-                "input": input_path,
-            }, indent=2))
+            print(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "type": import_type,
+                        "count": count,
+                        "input": input_path,
+                    },
+                    indent=2,
+                )
+            )
         return True
     except Exception as e:
         print(json.dumps({"error": str(e)}))
@@ -115,14 +145,19 @@ def run_keys_generate(args):
     try:
         manager = SecretManager()
         key = manager.generate_key(subject, roles, ttl, prefix)
-        print(json.dumps({
-            "status": "success",
-            "key": key.key,
-            "subject": key.subject,
-            "roles": key.roles,
-            "created_at": key.created_at,
-            "expires_at": key.expires_at,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "status": "success",
+                    "key": key.key,
+                    "subject": key.subject,
+                    "roles": key.roles,
+                    "created_at": key.created_at,
+                    "expires_at": key.expires_at,
+                },
+                indent=2,
+            )
+        )
         return True
     except Exception as e:
         print(json.dumps({"error": str(e)}))
@@ -188,13 +223,18 @@ def run_keys_rotate(args):
     new_key = manager.rotate_key(old_key, ttl, reason)
 
     if new_key:
-        print(json.dumps({
-            "status": "success",
-            "new_key": new_key.key,
-            "subject": new_key.subject,
-            "roles": new_key.roles,
-            "expires_at": new_key.expires_at,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "status": "success",
+                    "new_key": new_key.key,
+                    "subject": new_key.subject,
+                    "roles": new_key.roles,
+                    "expires_at": new_key.expires_at,
+                },
+                indent=2,
+            )
+        )
     else:
         print(json.dumps({"error": "Key not found"}))
     return new_key is not None
@@ -222,15 +262,20 @@ def run_backup_create(args):
     try:
         manager = BackupManager(db_path=db_path, backup_dir=backup_dir)
         metadata = manager.create_backup(mode, label)
-        print(json.dumps({
-            "status": "success",
-            "backup_id": metadata.backup_id,
-            "size_bytes": metadata.size_bytes,
-            "size_mb": round(metadata.size_bytes / 1024 / 1024, 2),
-            "checksum": metadata.checksum[:16] + "...",
-            "compressed": metadata.compressed,
-            "created_at": metadata.created_at,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "status": "success",
+                    "backup_id": metadata.backup_id,
+                    "size_bytes": metadata.size_bytes,
+                    "size_mb": round(metadata.size_bytes / 1024 / 1024, 2),
+                    "checksum": metadata.checksum[:16] + "...",
+                    "compressed": metadata.compressed,
+                    "created_at": metadata.created_at,
+                },
+                indent=2,
+            )
+        )
         return True
     except Exception as e:
         print(json.dumps({"error": str(e)}))
@@ -276,11 +321,16 @@ def run_backup_verify(args):
     manager = BackupManager(db_path=db_path, backup_dir=backup_dir)
     is_valid = manager.verify_backup(backup_id)
 
-    print(json.dumps({
-        "backup_id": backup_id,
-        "valid": is_valid,
-        "status": "healthy" if is_valid else "corrupted",
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "backup_id": backup_id,
+                "valid": is_valid,
+                "status": "healthy" if is_valid else "corrupted",
+            },
+            indent=2,
+        )
+    )
     return True
 
 
@@ -297,11 +347,16 @@ def run_backup_restore(args):
     success = manager.restore_backup(backup_id, target)
 
     if success:
-        print(json.dumps({
-            "status": "success",
-            "backup_id": backup_id,
-            "target": target or db_path,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "status": "success",
+                    "backup_id": backup_id,
+                    "target": target or db_path,
+                },
+                indent=2,
+            )
+        )
     else:
         print(json.dumps({"error": "Restore failed"}))
     return success
@@ -317,11 +372,16 @@ def run_backup_cleanup(args):
     manager = BackupManager(db_path=db_path, backup_dir=backup_dir)
     removed = manager.cleanup_old_backups()
 
-    print(json.dumps({
-        "status": "success",
-        "removed": removed,
-        "remaining": len(manager.backups),
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "status": "success",
+                "removed": removed,
+                "remaining": len(manager.backups),
+            },
+            indent=2,
+        )
+    )
     return True
 
 
@@ -336,16 +396,22 @@ def run_backup_health(args):
     report = manager.health_report()
     schedule = manager.schedule_info()
 
-    print(json.dumps({
-        "health": report,
-        "schedule": schedule,
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "health": report,
+                "schedule": schedule,
+            },
+            indent=2,
+        )
+    )
     return True
 
 
 # ============================================================
 # Webhook CLI Commands
 # ============================================================
+
 
 def run_webhooks_register(args):
     """Handle 'aios admin webhooks register' command."""
@@ -358,10 +424,15 @@ def run_webhooks_register(args):
         events=args.events,
         secret=getattr(args, "secret", None),
     )
-    print(json.dumps({
-        "status": "success",
-        "webhook": target.to_dict(),
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "status": "success",
+                "webhook": target.to_dict(),
+            },
+            indent=2,
+        )
+    )
     return True
 
 
@@ -371,10 +442,15 @@ def run_webhooks_list(args):
 
     manager = WebhookManager()
     targets = manager.list_targets()
-    print(json.dumps({
-        "webhooks": targets,
-        "total": len(targets),
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "webhooks": targets,
+                "total": len(targets),
+            },
+            indent=2,
+        )
+    )
     return True
 
 

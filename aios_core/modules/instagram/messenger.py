@@ -70,9 +70,7 @@ class InstagramMessenger(OLXMessenger):
             if isinstance(m, dict)
         ]
         # Маркеры контейнеров строк DM-инбокса (fallback — OLX-маркеры).
-        self._chat_parser = ChatListParser(
-            markers=tuple(sorted(b for b in bubbles if b))
-        )
+        self._chat_parser = ChatListParser(markers=tuple(sorted(b for b in bubbles if b)))
         self._sender = HintSender(self.adb, self.messenger_hints)
 
     def open_chats(self) -> Dict[str, object]:
@@ -91,9 +89,7 @@ class InstagramMessenger(OLXMessenger):
                 return []
             return self._chat_parser.parse(path)
 
-    def read_chat(
-        self, thread: ChatThread, dump_path: str = "chat.xml"
-    ) -> List[Message]:
+    def read_chat(self, thread: ChatThread, dump_path: str = "chat.xml") -> List[Message]:
         """Открытый диалог: наследуем alignment-парсер OLX (shape-based)."""
         return super().read_chat(thread, dump_path)
 

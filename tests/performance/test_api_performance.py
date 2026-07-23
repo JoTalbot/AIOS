@@ -16,15 +16,14 @@ class TestAPIPerformance:
     @pytest.fixture
     def simple_app(self):
         """Create a simple test app."""
+
         async def health(request: Request):
             return JSONResponse({"status": "healthy"})
 
         async def stats(request: Request):
-            return JSONResponse({
-                "tasks_total": 1000,
-                "memory_total": 5000,
-                "uptime_seconds": 86400
-            })
+            return JSONResponse(
+                {"tasks_total": 1000, "memory_total": 5000, "uptime_seconds": 86400}
+            )
 
         async def metrics(request: Request):
             # Simulate metrics generation
@@ -37,11 +36,13 @@ test_gauge 42.5
 """
             return JSONResponse({"metrics": metrics_text})
 
-        app = Starlette(routes=[
-            Route("/health", health),
-            Route("/api/v1/stats", stats),
-            Route("/metrics", metrics),
-        ])
+        app = Starlette(
+            routes=[
+                Route("/health", health),
+                Route("/api/v1/stats", stats),
+                Route("/metrics", metrics),
+            ]
+        )
         return app
 
     @pytest.fixture
@@ -207,24 +208,31 @@ class TestDatabasePerformance:
     def large_db(self, tmp_path):
         """Create a database with large dataset."""
         import sqlite3
+
         db_path = tmp_path / "large.sqlite"
         conn = sqlite3.connect(str(db_path))
 
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE tasks (
                 id TEXT PRIMARY KEY,
                 status TEXT,
                 created_at TEXT,
                 data TEXT
             )
-        """)
+        """
+        )
 
         # Insert 10000 records
         for i in range(10000):
             conn.execute(
                 "INSERT INTO tasks VALUES (?, ?, ?, ?)",
-                (f"task-{i}", "completed", f"2026-01-{i % 28 + 1:02d}",
-                 f'{{"index": {i}, "data": "value-{i}"}}')
+                (
+                    f"task-{i}",
+                    "completed",
+                    f"2026-01-{i % 28 + 1:02d}",
+                    f'{{"index": {i}, "data": "value-{i}"}}',
+                ),
             )
 
         conn.commit()
@@ -255,6 +263,7 @@ class TestDatabasePerformance:
     def test_insert_performance(self, tmp_path):
         """Test bulk insert performance."""
         import sqlite3
+
         db_path = tmp_path / "insert_test.sqlite"
         conn = sqlite3.connect(str(db_path))
 

@@ -23,8 +23,7 @@ def test_multi_agent_plan_generation():
     planner = orch.planner
 
     plan = planner.generate_multi_agent_plan(
-        goal="analyze data",
-        agents=["researcher", "analyst", "reviewer"]
+        goal="analyze data", agents=["researcher", "analyst", "reviewer"]
     )
 
     assert len(plan.steps) >= 5  # coordination + 3 agents + aggregation

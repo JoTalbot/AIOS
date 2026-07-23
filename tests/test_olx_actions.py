@@ -156,9 +156,7 @@ def test_reply_suggester_availability_intent():
 def test_reply_suggester_bargain_accept_and_counter():
     suggester = ReplySuggester(min_price_ratio=0.85)
 
-    accept = suggester.suggest(
-        [Message(author="them", text="Віддасте за 6700?")], my_price=7000.0
-    )
+    accept = suggester.suggest([Message(author="them", text="Віддасте за 6700?")], my_price=7000.0)
     assert "домовились за 6700" in accept
 
     counter = suggester.suggest(
@@ -262,7 +260,9 @@ def test_own_ads_tracker_snapshot_deltas_and_stagnation():
     assert first["new"] == 2
 
     # Second snapshot: BMW gains +5 views, +1 favorite.
-    grown = OwnAdsParser().parse(OWN_XML.replace("Переглядів: 35", "Переглядів: 40").replace("В обраних: 2", "В обраних: 3"))
+    grown = OwnAdsParser().parse(
+        OWN_XML.replace("Переглядів: 35", "Переглядів: 40").replace("В обраних: 2", "В обраних: 3")
+    )
     second = tracker.record_snapshot(grown, seen_at="2026-07-11T10:00:00+00:00")
     assert second["new"] == 0
     fp = ads[0].fingerprint
@@ -287,12 +287,14 @@ def test_own_ads_tracker_snapshot_deltas_and_stagnation():
 
 def _competitors():
     return [
-        AdCard(title="Лобове скло BMW X3 з підігрівом оригінал", price=6800.0,
-               currency="UAH", city="Київ"),
-        AdCard(title="Скло лобове BMW X3 оригінал", price=7000.0,
-               currency="UAH", city="Дніпро"),
-        AdCard(title="Лобове скло Mercedes оригінал", price=7200.0,
-               currency="UAH", city="Львів"),
+        AdCard(
+            title="Лобове скло BMW X3 з підігрівом оригінал",
+            price=6800.0,
+            currency="UAH",
+            city="Київ",
+        ),
+        AdCard(title="Скло лобове BMW X3 оригінал", price=7000.0, currency="UAH", city="Дніпро"),
+        AdCard(title="Лобове скло Mercedes оригінал", price=7200.0, currency="UAH", city="Львів"),
     ]
 
 
@@ -316,9 +318,7 @@ def test_repost_planner_decisions():
     too_young = planner.decide("2026-07-20T15:00:00+00:00", views_total=0, now=NOW)
     assert too_young.should_repost is False
 
-    working = planner.decide(
-        "2026-07-10T15:00:00+00:00", views_total=5, messages_total=2, now=NOW
-    )
+    working = planner.decide("2026-07-10T15:00:00+00:00", views_total=5, messages_total=2, now=NOW)
     assert working.should_repost is False
 
     stale = planner.decide("2026-07-05T15:00:00+00:00", views_total=4, now=NOW)
@@ -328,8 +328,11 @@ def test_repost_planner_decisions():
 
 
 def test_reposter_dry_run_and_confirm():
-    own = OwnAd(title="Скло лобове", price=7000.0,
-                url="https://www.olx.ua/d/uk/obyavlenie/test-IDown1a.html")
+    own = OwnAd(
+        title="Скло лобове",
+        price=7000.0,
+        url="https://www.olx.ua/d/uk/obyavlenie/test-IDown1a.html",
+    )
 
     adb = FakeADB(pages=[])
     dry = Reposter(adb=adb).repost(own)
@@ -412,18 +415,28 @@ def test_mcp_olx_tools_registered_and_callable(tmp_path, monkeypatch):
         db=Database(db_path=":memory:"),
     )
 
-    listed = json.loads(gateway.handle_request(json.dumps(
-        {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
-    )))
+    listed = json.loads(
+        gateway.handle_request(
+            json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
+        )
+    )
     names = [tool["name"] for tool in listed["result"]["tools"]]
     assert "olx_market_stats" in names
     assert "olx_listing_recommend" in names
     assert "olx_price_drops" in names
 
-    response = json.loads(gateway.handle_request(json.dumps({
-        "jsonrpc": "2.0", "id": 2, "method": "tools/call",
-        "params": {"name": "olx_market_stats", "arguments": {"query": "q"}},
-    })))
+    response = json.loads(
+        gateway.handle_request(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {"name": "olx_market_stats", "arguments": {"query": "q"}},
+                }
+            )
+        )
+    )
     assert "error" not in response, response.get("error")
     payload = json.loads(response["result"]["content"][0]["text"])
     assert payload["total_ads"] == 2

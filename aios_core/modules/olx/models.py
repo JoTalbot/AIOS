@@ -48,13 +48,9 @@ class AdCard:
         same physical ad found via different searches is tracked per query.
         """
         if self.ad_id:
-            base = (
-                f"id:{self.ad_id.strip().lower()}|{(self.query or '').strip().lower()}"
-            )
+            base = f"id:{self.ad_id.strip().lower()}|{(self.query or '').strip().lower()}"
         elif self.url:
-            base = (
-                f"url:{self.url.strip().lower()}|{(self.query or '').strip().lower()}"
-            )
+            base = f"url:{self.url.strip().lower()}|{(self.query or '').strip().lower()}"
         else:
             base = "|".join(
                 [

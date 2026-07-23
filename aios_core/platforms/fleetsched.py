@@ -111,8 +111,7 @@ class FleetScheduler:
                             {
                                 "platform": platform,
                                 "profile": profile,
-                                "hint": "recalibrate: calibrate --write && "
-                                "codegen --force",
+                                "hint": "recalibrate: calibrate --write && " "codegen --force",
                             },
                         )
             except Exception as exc:  # noqa: BLE001 — изолируем джоб

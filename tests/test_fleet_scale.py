@@ -17,6 +17,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Waitlist
 # ---------------------------------------------------------------------------
 
+
 def test_waitlist_priority_fifo_idempotent_and_cancel():
     with DevicePool(":memory:") as pool:
         id_b = pool.enqueue("olx:b", priority=1)
@@ -55,8 +56,8 @@ def test_waitlist_served_on_release_and_reap():
             )
         reaped = pool.reap_stale()
         assert reaped == ["e2"]
-        assert pool.device_for("olx:b") is None     # аренда мёртвого снята
-        assert pool.device_for("olx:d") is None     # ждать дальше
+        assert pool.device_for("olx:b") is None  # аренда мёртвого снята
+        assert pool.device_for("olx:d") is None  # ждать дальше
         assert [w["profile_key"] for w in pool.waitlist()] == ["olx:d"]
         # …пока живое устройство не освободится.
         pool.release("olx:c")
@@ -75,6 +76,7 @@ def test_waitlist_respects_platform_quota():
 # ---------------------------------------------------------------------------
 # ShardRouter
 # ---------------------------------------------------------------------------
+
 
 def test_shards_hosts_crud_and_sticky_route():
     with ShardRouter(":memory:") as router:
@@ -138,25 +140,25 @@ def test_inspect_apk_errors():
     with pytest.raises(ValueError):
         inspect_apk("not-an-apk.zip", runner=_fake_runner)
     with pytest.raises(ValueError) as exc:
-        inspect_apk("bad.apk", runner=lambda p: {"code": 1, "stdout": "",
-                                                 "stderr": "no aapt"})
+        inspect_apk("bad.apk", runner=lambda p: {"code": 1, "stdout": "", "stderr": "no aapt"})
     assert "aapt" in str(exc.value)
     with pytest.raises(ValueError):
-        inspect_apk("empty.apk", runner=lambda p: {"code": 0, "stdout": "junk",
-                                                   "stderr": ""})
+        inspect_apk("empty.apk", runner=lambda p: {"code": 0, "stdout": "junk", "stderr": ""})
 
 
 def test_scaffold_from_apk_dry_run_and_real(tmp_path):
     result = scaffold_from_apk(
-        "olx.apk", name="olx-dupe", project_root=tmp_path, dry_run=True,
+        "olx.apk",
+        name="olx-dupe",
+        project_root=tmp_path,
+        dry_run=True,
         runner=_fake_runner,
     )
     assert result["spec"]["android_package"] == "ua.slando"
     assert any(p.endswith("olx-dupe.yaml") for p in result["files"])
     assert not (tmp_path / "platforms").exists()
 
-    result = scaffold_from_apk("olx.apk", project_root=tmp_path,
-                               runner=_fake_runner)
+    result = scaffold_from_apk("olx.apk", project_root=tmp_path, runner=_fake_runner)
     yaml_text = (tmp_path / "platforms/slando.yaml").read_text()
     assert "ua.slando" in yaml_text
     assert "auto-scaffold from olx.apk" in yaml_text
@@ -166,6 +168,7 @@ def test_scaffold_from_apk_dry_run_and_real(tmp_path):
 # ---------------------------------------------------------------------------
 # CLI surfaces
 # ---------------------------------------------------------------------------
+
 
 def test_cli_devices_waitlist_flow(tmp_path, monkeypatch, capsys):
     from aios_cli import main
@@ -177,8 +180,7 @@ def test_cli_devices_waitlist_flow(tmp_path, monkeypatch, capsys):
     json.loads(capsys.readouterr().out)
 
     # Пул исчерпан: lease --enqueue ставит в очередь.
-    main(["devices", "lease", "--profile", "olx:b", "--enqueue",
-          "--priority", "5"])
+    main(["devices", "lease", "--profile", "olx:b", "--enqueue", "--priority", "5"])
     out = json.loads(capsys.readouterr().out)
     assert out["queued"] >= 1 and out["profile"] == "olx:b"
 
@@ -227,11 +229,8 @@ def test_cli_platforms_from_apk_dry_run(tmp_path, capsys, monkeypatch):
     import aios_core.platforms.scaffold as scaffold_mod
 
     # Подменяем _badging на тестовый runner (в CI нет aapt).
-    monkeypatch.setattr(
-        scaffold_mod, "_badging", _fake_runner
-    )
-    main(["platforms", "from-apk", "olx.apk", "--dry-run",
-          "--root", str(tmp_path)])
+    monkeypatch.setattr(scaffold_mod, "_badging", _fake_runner)
+    main(["platforms", "from-apk", "olx.apk", "--dry-run", "--root", str(tmp_path)])
     out = json.loads(capsys.readouterr().out)
     assert out["spec"]["android_package"] == "ua.slando"
     assert any(p.endswith("slando.yaml") for p in out["planned"])
@@ -241,6 +240,7 @@ def test_cli_platforms_from_apk_dry_run(tmp_path, capsys, monkeypatch):
 # ---------------------------------------------------------------------------
 # REST surfaces
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 async def client():
@@ -271,9 +271,14 @@ async def test_rest_waitlist_flow(client):
     busy = await client.post("/api/v1/devices/lease", json={"profile": "olx:b"})
     assert busy.status_code == 409
 
-    queued = await client.post("/api/v1/devices/lease", json={
-        "profile": "olx:b", "enqueue": True, "priority": 3,
-    })
+    queued = await client.post(
+        "/api/v1/devices/lease",
+        json={
+            "profile": "olx:b",
+            "enqueue": True,
+            "priority": 3,
+        },
+    )
     assert queued.status_code == 202
     assert queued.json()["queued"] >= 1
 
@@ -287,19 +292,25 @@ async def test_rest_waitlist_flow(client):
     served = await client.get("/api/v1/devices/waitlist?status=served")
     assert served.json()["waitlist"][0]["served_serial"] == "e1"
 
-    await client.post("/api/v1/devices/lease", json={
-        "profile": "olx:z", "enqueue": True,
-    })
-    cancelled = await client.post(
-        "/api/v1/devices/waitlist/cancel", json={"profile": "olx:z"}
+    await client.post(
+        "/api/v1/devices/lease",
+        json={
+            "profile": "olx:z",
+            "enqueue": True,
+        },
     )
+    cancelled = await client.post("/api/v1/devices/waitlist/cancel", json={"profile": "olx:z"})
     assert cancelled.json()["cancelled"] is True
 
 
 async def test_rest_shards_flow(client):
-    added = await client.post("/api/v1/shards", json={
-        "host": "h1", "base_url": "http://h1:8000",
-    })
+    added = await client.post(
+        "/api/v1/shards",
+        json={
+            "host": "h1",
+            "base_url": "http://h1:8000",
+        },
+    )
     assert added.status_code == 201
 
     bad = await client.post("/api/v1/shards", json={"host": "h2"})
@@ -322,6 +333,8 @@ async def test_rest_shards_flow(client):
     assert empty.status_code == 409
 
     unrouted = await client.request(
-        "DELETE", "/api/v1/shards/route", json={"profile": "olx:work"},
+        "DELETE",
+        "/api/v1/shards/route",
+        json={"profile": "olx:work"},
     )
     assert unrouted.status_code == 200

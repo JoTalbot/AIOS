@@ -12,7 +12,7 @@ def test_propose_article():
         principle="AI must act ethically and transparently.",
         laws=["Never harm humans", "Always explain decisions"],
         justification="Based on ethical guidelines.",
-        confidence=0.9
+        confidence=0.9,
     )
 
     assert article.id is not None

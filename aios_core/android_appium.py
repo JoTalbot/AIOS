@@ -69,18 +69,14 @@ class AppiumAndroidDriver(AndroidDriver):
     def dump_ui(self) -> UIContext:
         try:
             if self._driver is None:
-                return UIContext(
-                    xml="", package=self.config.package, current_activity=""
-                )
+                return UIContext(xml="", package=self.config.package, current_activity="")
             xml = self._driver.page_source
             current = ""
             try:
                 current = self._driver.current_activity or ""
             except Exception:
                 pass
-            return UIContext(
-                xml=xml, package=self.config.package, current_activity=current
-            )
+            return UIContext(xml=xml, package=self.config.package, current_activity=current)
         except Exception as exc:
             return UIContext(
                 xml="",

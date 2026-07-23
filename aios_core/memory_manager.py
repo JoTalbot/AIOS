@@ -62,9 +62,7 @@ class MemoryManager:
         if ttl_seconds is not None:
             from datetime import timedelta
 
-            expires_at = (
-                datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
-            ).isoformat()
+            expires_at = (datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)).isoformat()
 
         if self.db:
             self.db.execute(

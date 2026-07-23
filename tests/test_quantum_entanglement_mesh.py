@@ -10,7 +10,7 @@ def test_quantum_teleportation_sync():
     sync_res = mesh.sync_instantaneous_state(
         node_a="did:aios:earth_cluster_1",
         node_b="did:aios:alpha_centauri_cluster_9",
-        payload={"task_id": "qt_101", "constitutional_state": "valid"}
+        payload={"task_id": "qt_101", "constitutional_state": "valid"},
     )
 
     assert sync_res["latency_ms"] == 0.0001

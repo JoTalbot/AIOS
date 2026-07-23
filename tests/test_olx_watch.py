@@ -31,8 +31,10 @@ EMPTY_XML = "<hierarchy rotation='0'/>"
 
 def test_search_deep_link_filters():
     base = OLXCollector.search_deep_link("лобове скло")
-    assert base == "https://www.olx.ua/d/uk/list/q-%D0%BB%D0%BE%D0%B1%D0%BE%D0%B2%D0%B5-%D1%81%D0%BA%D0%BB%D0%BE/" or base.startswith(
-        "https://www.olx.ua/d/uk/list/q-лобове-скло/"
+    assert (
+        base
+        == "https://www.olx.ua/d/uk/list/q-%D0%BB%D0%BE%D0%B1%D0%BE%D0%B2%D0%B5-%D1%81%D0%BA%D0%BB%D0%BE/"
+        or base.startswith("https://www.olx.ua/d/uk/list/q-лобове-скло/")
     )
 
     filtered = OLXCollector.search_deep_link(
@@ -47,19 +49,29 @@ def test_search_deep_link_filters():
 
 
 def test_subscription_matching_filters():
-    sub = {"id": 1, "name": "скло до 8000", "query": "лобове скло",
-           "min_price": 1000.0, "max_price": 8000.0, "city": None}
-    ok = AdCard(title="Скло X", price=7000.0, currency="UAH", city="Київ",
-                query="лобове скло")
-    too_expensive = AdCard(title="Скло Y", price=9000.0, currency="UAH",
-                           query="лобове скло")
+    sub = {
+        "id": 1,
+        "name": "скло до 8000",
+        "query": "лобове скло",
+        "min_price": 1000.0,
+        "max_price": 8000.0,
+        "city": None,
+    }
+    ok = AdCard(title="Скло X", price=7000.0, currency="UAH", city="Київ", query="лобове скло")
+    too_expensive = AdCard(title="Скло Y", price=9000.0, currency="UAH", query="лобове скло")
     no_price = AdCard(title="Скло Z", price=None, query="лобове скло")
     assert SubscriptionManager.matches(sub, ok) is True
     assert SubscriptionManager.matches(sub, too_expensive) is False
     assert SubscriptionManager.matches(sub, no_price) is False
 
-    city_sub = {"id": 2, "name": "київ", "query": "скло", "min_price": None,
-                "max_price": None, "city": "Київ"}
+    city_sub = {
+        "id": 2,
+        "name": "київ",
+        "query": "скло",
+        "min_price": None,
+        "max_price": None,
+        "city": "Київ",
+    }
     from_kyiv = AdCard(title="Лобове скло", price=100.0, city="Київ", query="")
     from_lviv = AdCard(title="Лобове скло", price=100.0, city="Львів", query="")
     # Title-token fallback matches "скло" for empty card query
@@ -121,8 +133,11 @@ def test_favorites_watch_lists_and_alerts_on_drop():
 
 
 def test_own_ad_editor_plan_and_guard():
-    own = OwnAd(title="Скло лобове", price=9000.0,
-                url="https://www.olx.ua/d/uk/obyavlenie/test-IDown1a.html")
+    own = OwnAd(
+        title="Скло лобове",
+        price=9000.0,
+        url="https://www.olx.ua/d/uk/obyavlenie/test-IDown1a.html",
+    )
     suggestion = AdImprover().improve(own, _competitors())
 
     adb = FakeADB(pages=[])
@@ -159,8 +174,13 @@ def test_autowatch_full_cycle():
     storage.save_ads([cheaper], seen_at="2026-07-20T10:00:00+00:00")
     storage.favorite_add(bmw.fingerprint)
 
-    old_own = OwnAd(title="Скло старе", price=1000.0, currency="UAH", views=2,
-                    url="https://www.olx.ua/d/uk/obyavlenie/old-IDold9z.html")
+    old_own = OwnAd(
+        title="Скло старе",
+        price=1000.0,
+        currency="UAH",
+        views=2,
+        url="https://www.olx.ua/d/uk/obyavlenie/old-IDold9z.html",
+    )
     storage.upsert_own_ad(old_own, seen_at="2026-07-01T10:00:00+00:00")
 
     adb = FakeADB(pages=[EMPTY_XML])  # empty feed this run

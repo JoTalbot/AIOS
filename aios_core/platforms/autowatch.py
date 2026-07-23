@@ -63,9 +63,7 @@ def resolve_card_parser(platform_name: str, directory: str = "platforms"):
 class _DrivenCollector:
     """Обёртка движка OLXCollector с pre-drive навигацией на запрос."""
 
-    def __init__(
-        self, adb, parser, driver=None, package: str = "", max_swipes: int = 40
-    ):
+    def __init__(self, adb, parser, driver=None, package: str = "", max_swipes: int = 40):
         self._adb = adb
         self._parser = parser
         self._driver = driver
@@ -75,9 +73,7 @@ class _DrivenCollector:
     def _engine(self):
         from aios_core.modules.olx.collector import OLXCollector
 
-        return OLXCollector(
-            adb=self._adb, parser=self._parser, max_swipes=self.max_swipes
-        )
+        return OLXCollector(adb=self._adb, parser=self._parser, max_swipes=self.max_swipes)
 
     def collect(self, query=None, max_cards=50, progress=None):
         if self._driver is not None:
@@ -134,11 +130,7 @@ def autowatch_cycle(
 
     if queries is None:
         queries = sorted(
-            {
-                sub.get("query")
-                for sub in SubscriptionManager(storage).list()
-                if sub.get("query")
-            }
+            {sub.get("query") for sub in SubscriptionManager(storage).list() if sub.get("query")}
         )
 
     collector = (

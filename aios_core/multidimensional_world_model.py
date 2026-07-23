@@ -47,9 +47,7 @@ class MultiDimensionalWorldModel:
 
             env_state["cpu_load"] = min(1.0, env_state["cpu_load"] + delta_cpu)
             env_state["memory_mb"] = env_state["memory_mb"] + delta_mem
-            env_state["econ_cost_usd"] = round(
-                env_state["econ_cost_usd"] + delta_cost, 4
-            )
+            env_state["econ_cost_usd"] = round(env_state["econ_cost_usd"] + delta_cost, 4)
 
             # Check simulated threshold bounds
             if env_state["cpu_load"] >= 0.95 or env_state["memory_mb"] > 16384:

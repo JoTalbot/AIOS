@@ -47,9 +47,7 @@ def default_create_avd(
     avd_name: str, package: str = "system-images;android-34;google_apis;x86_64"
 ) -> bool:
     """Создаёт AVD через avdmanager (без интерактива)."""
-    result = _run(
-        f"echo no | avdmanager create avd -n {avd_name} -k '{package}' --force"
-    )
+    result = _run(f"echo no | avdmanager create avd -n {avd_name} -k '{package}' --force")
     return result["code"] == 0
 
 
@@ -63,9 +61,7 @@ def default_start_emulator(avd_name: str) -> None:
     )
 
 
-def default_wait_serial(
-    known_serials: List[str], timeout_s: int = 180
-) -> Optional[str]:
+def default_wait_serial(known_serials: List[str], timeout_s: int = 180) -> Optional[str]:
     """Ждёт появления НОВОГО serial в `adb devices` и его загрузки."""
     known = set(known_serials)
     deadline = time.time() + timeout_s

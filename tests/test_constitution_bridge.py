@@ -36,6 +36,7 @@ POLICIES_DIR = os.path.join(PROJECT_ROOT, "policies")
 # ConstitutionLoader Tests
 # ======================================================================
 
+
 class TestRomanConversion(unittest.TestCase):
     """Test Roman numeral conversion utility."""
 
@@ -167,6 +168,7 @@ class TestConstitutionLoader(unittest.TestCase):
 # PolicyLoader Tests
 # ======================================================================
 
+
 class TestPolicyLoader(unittest.TestCase):
     """Test loading real YAML policies."""
 
@@ -229,6 +231,7 @@ class TestPolicyLoader(unittest.TestCase):
 # ConstitutionEngine Tests
 # ======================================================================
 
+
 class TestConstitutionEngine(unittest.TestCase):
     """Test constitution evaluation with real data."""
 
@@ -238,148 +241,182 @@ class TestConstitutionEngine(unittest.TestCase):
 
     def test_valid_action_allowed(self):
         """Valid low-risk action with all requirements met should be ALLOWed."""
-        result = self.engine.evaluate({
-            "goal": "Read system metrics",
-            "scope": "monitoring",
-            "risk": "low",
-            "audit_log": True,
-            "agent_id": "monitor-agent-01",
-            "authority": "reader",
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "Read system metrics",
+                "scope": "monitoring",
+                "risk": "low",
+                "audit_log": True,
+                "agent_id": "monitor-agent-01",
+                "authority": "reader",
+            }
+        )
         self.assertEqual(result["decision"], "ALLOW")
 
     def test_missing_fields_denied(self):
         """Action without required fields should be DENYed."""
-        result = self.engine.evaluate({
-            "goal": "test",
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "test",
+            }
+        )
         self.assertEqual(result["decision"], "DENY")
         self.assertEqual(result["reason"], "missing_required_fields")
 
     def test_no_audit_log_denied(self):
         """Missing audit_log triggers constitutional violation."""
-        result = self.engine.evaluate({
-            "goal": "Do something",
-            "scope": "system",
-            "risk": "low",
-            "audit_log": False,
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "Do something",
+                "scope": "system",
+                "risk": "low",
+                "audit_log": False,
+            }
+        )
         self.assertEqual(result["decision"], "DENY")
 
     def test_high_risk_review(self):
         """High risk should trigger REVIEW."""
-        result = self.engine.evaluate({
-            "goal": "Deploy new module",
-            "scope": "production",
-            "risk": "high",
-            "audit_log": True,
-            "authority": "operator",
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "Deploy new module",
+                "scope": "production",
+                "risk": "high",
+                "audit_log": True,
+                "authority": "operator",
+            }
+        )
         self.assertEqual(result["decision"], "REVIEW")
 
     def test_critical_risk_review(self):
         """Critical risk should trigger REVIEW."""
-        result = self.engine.evaluate({
-            "goal": "Emergency change",
-            "scope": "core",
-            "risk": "critical",
-            "audit_log": True,
-            "authority": "senior_operator",
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "Emergency change",
+                "scope": "core",
+                "risk": "critical",
+                "audit_log": True,
+                "authority": "senior_operator",
+            }
+        )
         self.assertIn(result["decision"], ("REVIEW", "DENY"))
 
     def test_restricted_action_modify_constitution(self):
         """Modifying constitution should trigger REVIEW."""
-        result = self.engine.evaluate({
-            "goal": "Update article text",
-            "scope": "constitution",
-            "risk": "high",
-            "audit_log": True,
-            "action_type": "modify_constitution",
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "Update article text",
+                "scope": "constitution",
+                "risk": "high",
+                "audit_log": True,
+                "action_type": "modify_constitution",
+            }
+        )
         self.assertEqual(result["decision"], "REVIEW")
         self.assertEqual(result["reason"], "restricted_action")
         self.assertIn("ARTICLE-I", result.get("matched_articles", []))
 
     def test_restricted_action_destroy_records(self):
         """Destroying records should trigger REVIEW."""
-        result = self.engine.evaluate({
-            "goal": "Clean up old records",
-            "scope": "memory",
-            "risk": "medium",
-            "audit_log": True,
-            "action_type": "destroy_records",
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "Clean up old records",
+                "scope": "memory",
+                "risk": "medium",
+                "audit_log": True,
+                "action_type": "destroy_records",
+            }
+        )
         self.assertEqual(result["decision"], "REVIEW")
 
     def test_unknown_agent_blocked(self):
         """Unknown agent should be DENYed by security policy."""
-        result = self.engine.evaluate({
-            "goal": "Access system",
-            "scope": "system",
-            "risk": "low",
-            "audit_log": True,
-            "agent_id": "unknown",
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "Access system",
+                "scope": "system",
+                "risk": "low",
+                "audit_log": True,
+                "agent_id": "unknown",
+            }
+        )
         self.assertEqual(result["decision"], "DENY")
 
     def test_unlimited_authority_denied(self):
         """Unlimited authority violates least privilege."""
-        result = self.engine.evaluate({
-            "goal": "Full system access",
-            "scope": "all",
-            "risk": "low",
-            "audit_log": True,
-            "authority": "unlimited",
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "Full system access",
+                "scope": "all",
+                "risk": "low",
+                "audit_log": True,
+                "authority": "unlimited",
+            }
+        )
         self.assertEqual(result["decision"], "DENY")
 
     def test_evolution_without_stage_review(self):
         """Evolution without a stage should fail controlled evolution principle."""
-        result = self.engine.evaluate({
-            "goal": "Deploy new capability",
-            "scope": "system",
-            "risk": "medium",
-            "audit_log": True,
-            "action_type": "evolution_deploy",
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "Deploy new capability",
+                "scope": "system",
+                "risk": "medium",
+                "audit_log": True,
+                "action_type": "evolution_deploy",
+            }
+        )
         self.assertIn(result["decision"], ("DENY", "REVIEW"))
 
     def test_evolution_with_proper_stage(self):
         """Evolution with proper stage and testing should be less restricted."""
-        result = self.engine.evaluate({
-            "goal": "Sandbox test new module",
-            "scope": "sandbox",
-            "risk": "low",
-            "audit_log": True,
-            "action_type": "evolution_sandbox",
-            "evolution_stage": "sandbox_testing",
-            "testing_completed": True,
-            "constitutional_check": True,
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "Sandbox test new module",
+                "scope": "sandbox",
+                "risk": "low",
+                "audit_log": True,
+                "action_type": "evolution_sandbox",
+                "evolution_stage": "sandbox_testing",
+                "testing_completed": True,
+                "constitutional_check": True,
+            }
+        )
         # Should at least not be a hard DENY
         self.assertIn(result["decision"], ("ALLOW", "REVIEW"))
 
     def test_personal_memory_share_denied(self):
         """Sharing personal memory violates core principle."""
-        result = self.engine.evaluate({
-            "goal": "Share user data with federation",
-            "scope": "federation",
-            "risk": "medium",
-            "audit_log": True,
-            "memory_type": "personal",
-            "share": True,
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "Share user data with federation",
+                "scope": "federation",
+                "risk": "medium",
+                "audit_log": True,
+                "memory_type": "personal",
+                "share": True,
+            }
+        )
         self.assertEqual(result["decision"], "DENY")
 
     def test_evaluation_has_id(self):
         """Each evaluation should have a unique ID."""
-        r1 = self.engine.evaluate({
-            "goal": "test1", "scope": "s", "risk": "low", "audit_log": True,
-        })
-        r2 = self.engine.evaluate({
-            "goal": "test2", "scope": "s", "risk": "low", "audit_log": True,
-        })
+        r1 = self.engine.evaluate(
+            {
+                "goal": "test1",
+                "scope": "s",
+                "risk": "low",
+                "audit_log": True,
+            }
+        )
+        r2 = self.engine.evaluate(
+            {
+                "goal": "test2",
+                "scope": "s",
+                "risk": "low",
+                "audit_log": True,
+            }
+        )
         self.assertNotEqual(r1["evaluation_id"], r2["evaluation_id"])
 
     def test_history(self):
@@ -400,20 +437,23 @@ class TestConstitutionEngine(unittest.TestCase):
 
     def test_federation_unverified_denied(self):
         """Federation with unverified node should fail."""
-        result = self.engine.evaluate({
-            "goal": "Sync state with peer",
-            "scope": "federation",
-            "risk": "medium",
-            "audit_log": True,
-            "action_type": "federate",
-            "node_verified": False,
-        })
+        result = self.engine.evaluate(
+            {
+                "goal": "Sync state with peer",
+                "scope": "federation",
+                "risk": "medium",
+                "audit_log": True,
+                "action_type": "federate",
+                "node_verified": False,
+            }
+        )
         self.assertIn(result["decision"], ("DENY", "REVIEW"))
 
 
 # ======================================================================
 # ConstitutionValidator Tests
 # ======================================================================
+
 
 class TestConstitutionValidator(unittest.TestCase):
     """Test validation with real constitution and policies."""
@@ -423,79 +463,93 @@ class TestConstitutionValidator(unittest.TestCase):
         cls.validator = ConstitutionValidator(CONSTITUTION_DIR, POLICIES_DIR)
 
     def test_valid_action_passes(self):
-        result = self.validator.validate({
-            "goal": "Read metrics",
-            "scope": "monitoring",
-            "risk": "low",
-            "audit_log": True,
-        })
+        result = self.validator.validate(
+            {
+                "goal": "Read metrics",
+                "scope": "monitoring",
+                "risk": "low",
+                "audit_log": True,
+            }
+        )
         self.assertTrue(result["valid"])
 
     def test_missing_goal_fails(self):
-        result = self.validator.validate({
-            "scope": "system",
-            "risk": "low",
-            "audit_log": True,
-        })
+        result = self.validator.validate(
+            {
+                "scope": "system",
+                "risk": "low",
+                "audit_log": True,
+            }
+        )
         self.assertFalse(result["valid"])
         codes = [e["code"] for e in result["errors"]]
         self.assertIn("missing_goal", codes)
 
     def test_invalid_risk_level(self):
-        result = self.validator.validate({
-            "goal": "test",
-            "scope": "system",
-            "risk": "extreme",
-            "audit_log": True,
-        })
+        result = self.validator.validate(
+            {
+                "goal": "test",
+                "scope": "system",
+                "risk": "extreme",
+                "audit_log": True,
+            }
+        )
         self.assertFalse(result["valid"])
         codes = [e["code"] for e in result["errors"]]
         self.assertIn("invalid_risk_level", codes)
 
     def test_personal_memory_share_error(self):
-        result = self.validator.validate({
-            "goal": "Share user data",
-            "scope": "federation",
-            "risk": "medium",
-            "audit_log": True,
-            "memory_type": "personal",
-            "share": True,
-        })
+        result = self.validator.validate(
+            {
+                "goal": "Share user data",
+                "scope": "federation",
+                "risk": "medium",
+                "audit_log": True,
+                "memory_type": "personal",
+                "share": True,
+            }
+        )
         self.assertFalse(result["valid"])
         codes = [e["code"] for e in result["errors"]]
         self.assertIn("memory_separation_violation", codes)
 
     def test_invalid_evolution_stage(self):
-        result = self.validator.validate({
-            "goal": "Deploy",
-            "scope": "system",
-            "risk": "medium",
-            "audit_log": True,
-            "action_type": "evolution_deploy",
-            "evolution_stage": "invalid_stage",
-        })
+        result = self.validator.validate(
+            {
+                "goal": "Deploy",
+                "scope": "system",
+                "risk": "medium",
+                "audit_log": True,
+                "action_type": "evolution_deploy",
+                "evolution_stage": "invalid_stage",
+            }
+        )
         self.assertFalse(result["valid"])
         codes = [e["code"] for e in result["errors"]]
         self.assertIn("invalid_evolution_stage", codes)
 
     def test_no_audit_log_error(self):
-        result = self.validator.validate({
-            "goal": "test",
-            "scope": "system",
-            "risk": "low",
-            "audit_log": False,
-        })
+        result = self.validator.validate(
+            {
+                "goal": "test",
+                "scope": "system",
+                "risk": "low",
+                "audit_log": False,
+            }
+        )
         self.assertFalse(result["valid"])
         codes = [e["code"] for e in result["errors"]]
         self.assertIn("security_audit_logging", codes)
 
     def test_warnings_for_high_risk(self):
-        result = self.validator.validate({
-            "goal": "Deploy",
-            "scope": "production",
-            "risk": "high",
-            "audit_log": True,
-        })
+        result = self.validator.validate(
+            {
+                "goal": "Deploy",
+                "scope": "production",
+                "risk": "high",
+                "audit_log": True,
+            }
+        )
         codes = [w["code"] for w in result["warnings"]]
         self.assertIn("high_risk_no_authority", codes)
 
@@ -505,9 +559,14 @@ class TestConstitutionValidator(unittest.TestCase):
         self.assertIn("success_rate", report)
 
     def test_result_structure(self):
-        result = self.validator.validate({
-            "goal": "test", "scope": "s", "risk": "low", "audit_log": True,
-        })
+        result = self.validator.validate(
+            {
+                "goal": "test",
+                "scope": "s",
+                "risk": "low",
+                "audit_log": True,
+            }
+        )
         self.assertIn("valid", result)
         self.assertIn("errors", result)
         self.assertIn("warnings", result)
@@ -520,62 +579,70 @@ class TestConstitutionValidator(unittest.TestCase):
 # RuntimePolicy Tests
 # ======================================================================
 
+
 class TestRuntimePolicy(unittest.TestCase):
     """Test runtime policy enforcement pipeline."""
 
     @classmethod
     def setUpClass(cls):
         from aios_core.storage import Database
+
         cls.db = Database(":memory:")
-        cls.runtime = RuntimePolicy(
-            CONSTITUTION_DIR, POLICIES_DIR, db=cls.db
-        )
+        cls.runtime = RuntimePolicy(CONSTITUTION_DIR, POLICIES_DIR, db=cls.db)
 
     @classmethod
     def tearDownClass(cls):
         cls.db.close()
 
     def test_simple_allow(self):
-        result = self.runtime.request_execution({
-            "goal": "Read metrics",
-            "scope": "monitoring",
-            "risk": "low",
-            "audit_log": True,
-            "agent_id": "monitor-agent-01",
-            "authority": "reader",
-        })
+        result = self.runtime.request_execution(
+            {
+                "goal": "Read metrics",
+                "scope": "monitoring",
+                "risk": "low",
+                "audit_log": True,
+                "agent_id": "monitor-agent-01",
+                "authority": "reader",
+            }
+        )
         self.assertTrue(result["allowed"])
         self.assertEqual(result["decision"], "ALLOW")
 
     def test_deny_creates_no_approval(self):
-        result = self.runtime.request_execution({
-            "goal": "test",
-            "scope": "s",
-            "risk": "low",
-        })
+        result = self.runtime.request_execution(
+            {
+                "goal": "test",
+                "scope": "s",
+                "risk": "low",
+            }
+        )
         self.assertFalse(result["allowed"])
         self.assertIsNone(result["approval_id"])
 
     def test_review_creates_approval(self):
-        result = self.runtime.request_execution({
-            "goal": "Deploy module",
-            "scope": "production",
-            "risk": "high",
-            "audit_log": True,
-            "authority": "operator",
-        })
+        result = self.runtime.request_execution(
+            {
+                "goal": "Deploy module",
+                "scope": "production",
+                "risk": "high",
+                "audit_log": True,
+                "authority": "operator",
+            }
+        )
         self.assertFalse(result["allowed"])
         self.assertEqual(result["decision"], "REVIEW")
         self.assertIsNotNone(result["approval_id"])
 
     def test_approve_review_action(self):
-        result = self.runtime.request_execution({
-            "goal": "Risk action",
-            "scope": "production",
-            "risk": "high",
-            "audit_log": True,
-            "authority": "operator",
-        })
+        result = self.runtime.request_execution(
+            {
+                "goal": "Risk action",
+                "scope": "production",
+                "risk": "high",
+                "audit_log": True,
+                "authority": "operator",
+            }
+        )
         approval_id = result["approval_id"]
         if approval_id is not None:
             approved = self.runtime.approve(approval_id)
@@ -583,13 +650,15 @@ class TestRuntimePolicy(unittest.TestCase):
             self.assertEqual(approved["status"], "approved")
 
     def test_deny_review_action(self):
-        result = self.runtime.request_execution({
-            "goal": "Another risk",
-            "scope": "production",
-            "risk": "high",
-            "audit_log": True,
-            "authority": "operator",
-        })
+        result = self.runtime.request_execution(
+            {
+                "goal": "Another risk",
+                "scope": "production",
+                "risk": "high",
+                "audit_log": True,
+                "authority": "operator",
+            }
+        )
         approval_id = result["approval_id"]
         if approval_id is not None:
             denied = self.runtime.deny(approval_id)
@@ -597,16 +666,26 @@ class TestRuntimePolicy(unittest.TestCase):
             self.assertEqual(denied["status"], "denied")
 
     def test_result_has_validation(self):
-        result = self.runtime.request_execution({
-            "goal": "test", "scope": "s", "risk": "low", "audit_log": True,
-        })
+        result = self.runtime.request_execution(
+            {
+                "goal": "test",
+                "scope": "s",
+                "risk": "low",
+                "audit_log": True,
+            }
+        )
         self.assertIn("validation", result)
         self.assertIn("valid", result["validation"])
 
     def test_result_has_evaluation(self):
-        result = self.runtime.request_execution({
-            "goal": "test", "scope": "s", "risk": "low", "audit_log": True,
-        })
+        result = self.runtime.request_execution(
+            {
+                "goal": "test",
+                "scope": "s",
+                "risk": "low",
+                "audit_log": True,
+            }
+        )
         self.assertIn("evaluation_id", result)
         self.assertIn("matched_articles", result)
 
@@ -630,13 +709,15 @@ class TestRuntimePolicy(unittest.TestCase):
 
     def test_restricted_action_review_pipeline(self):
         """Restricted action should go through full REVIEW pipeline."""
-        result = self.runtime.request_execution({
-            "goal": "Modify core",
-            "scope": "core",
-            "risk": "high",
-            "audit_log": True,
-            "action_type": "direct_core_modification",
-        })
+        result = self.runtime.request_execution(
+            {
+                "goal": "Modify core",
+                "scope": "core",
+                "risk": "high",
+                "audit_log": True,
+                "action_type": "direct_core_modification",
+            }
+        )
         self.assertEqual(result["decision"], "REVIEW")
         self.assertIsNotNone(result["approval_id"])
 

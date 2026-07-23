@@ -11,9 +11,7 @@ class LoadTester:
     def __init__(self):
         self.results = []
 
-    def run(
-        self, func: Callable, concurrent_users: int = 10, duration_seconds: int = 30
-    ):
+    def run(self, func: Callable, concurrent_users: int = 10, duration_seconds: int = 30):
         self.results = []
         start_time = time.time()
 

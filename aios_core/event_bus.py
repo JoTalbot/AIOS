@@ -162,20 +162,18 @@ class EventBus:
         """Create the ``events`` table and indexes if they don't exist."""
         if self.db is None:
             return
-        self.db.execute("""CREATE TABLE IF NOT EXISTS events (
+        self.db.execute(
+            """CREATE TABLE IF NOT EXISTS events (
                    id          TEXT PRIMARY KEY,
                    event_type  TEXT NOT NULL,
                    source      TEXT NOT NULL,
                    data        TEXT NOT NULL,
                    timestamp   TEXT NOT NULL,
                    metadata    TEXT
-               )""")
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_events_type " "ON events(event_type)"
+               )"""
         )
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_events_timestamp " "ON events(timestamp)"
-        )
+        self.db.execute("CREATE INDEX IF NOT EXISTS idx_events_type " "ON events(event_type)")
+        self.db.execute("CREATE INDEX IF NOT EXISTS idx_events_timestamp " "ON events(timestamp)")
 
     # ------------------------------------------------------------------
     # Subscriptions
@@ -248,9 +246,7 @@ class EventBus:
                     del self._exact_handlers[event_type]
         else:
             self._pattern_handlers = [
-                (sid, p, h)
-                for sid, p, h in self._pattern_handlers
-                if sid != subscription_id
+                (sid, p, h) for sid, p, h in self._pattern_handlers if sid != subscription_id
             ]
 
         return True
@@ -491,7 +487,5 @@ def _row_to_dict(row: dict) -> dict:
         "source": row["source"],
         "data": Database.from_json(row["data"]),
         "timestamp": row["timestamp"],
-        "metadata": (
-            Database.from_json(row["metadata"]) if row.get("metadata") else {}
-        ),
+        "metadata": (Database.from_json(row["metadata"]) if row.get("metadata") else {}),
     }

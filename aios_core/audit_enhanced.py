@@ -25,9 +25,7 @@ class EnhancedAudit:
         with open(self.storage, "a") as f:
             f.write(json.dumps(record) + "\n")
 
-    def query(
-        self, actor: str = None, action: str = None, limit: int = 100
-    ) -> List[Dict]:
+    def query(self, actor: str = None, action: str = None, limit: int = 100) -> List[Dict]:
         results = self.records
         if actor:
             results = [r for r in results if r["actor"] == actor]

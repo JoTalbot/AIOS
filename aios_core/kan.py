@@ -23,9 +23,7 @@ class KAN:
     """Kolmogorov-Arnold Network."""
 
     def __init__(self, layers: List[int]):
-        self.layers = [
-            KANLayer(layers[i], layers[i + 1]) for i in range(len(layers) - 1)
-        ]
+        self.layers = [KANLayer(layers[i], layers[i + 1]) for i in range(len(layers) - 1)]
 
     def forward(self, x: List[float]) -> List[float]:
         for layer in self.layers:

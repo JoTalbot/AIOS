@@ -101,9 +101,7 @@ async def configure_protocols(api):
         },
     }
 
-    response = await api._protocols_configure(
-        type(websocket_config).__dict__, websocket_config
-    )
+    response = await api._protocols_configure(type(websocket_config).__dict__, websocket_config)
     logger.info(f"WebSocket protocol configured: {response}")
 
     # Configure GraphQL protocol
@@ -112,9 +110,7 @@ async def configure_protocols(api):
         "config": {"host": "localhost", "port": 8766, "endpoint": "/graphql"},
     }
 
-    response = await api._protocols_configure(
-        type(graphql_config).__dict__, graphql_config
-    )
+    response = await api._protocols_configure(type(graphql_config).__dict__, graphql_config)
     logger.info(f"GraphQL protocol configured: {response}")
 
 
@@ -145,9 +141,7 @@ async def create_monitoring_alerts(api):
         "metadata": {"error_threshold": 0.05},
     }
 
-    response = await api._monitoring_alerts_create(
-        type(error_alert).__dict__, error_alert
-    )
+    response = await api._monitoring_alerts_create(type(error_alert).__dict__, error_alert)
     logger.info(f"Error rate alert created: {response}")
 
 
@@ -165,9 +159,7 @@ async def test_external_connections(api):
         },
     }
 
-    response = await api._external_systems_connect(
-        type(external_system).__dict__, external_system
-    )
+    response = await api._external_systems_connect(type(external_system).__dict__, external_system)
     logger.info(f"External system connected: {response}")
 
     # Get system status
@@ -201,9 +193,7 @@ async def run_benchmark(api):
     # Run webhook benchmark
     benchmark_data = {"type": "webhook", "duration": 30, "rate": 20}
 
-    response = await api._integration_benchmark(
-        type(benchmark_data).__dict__, benchmark_data
-    )
+    response = await api._integration_benchmark(type(benchmark_data).__dict__, benchmark_data)
     logger.info(f"Benchmark results: {response}")
 
 
@@ -323,9 +313,7 @@ async def setup_production_monitoring(api):
         "metadata": {"threshold": 0.8},
     }
 
-    await api._monitoring_alerts_create(
-        type(performance_alert).__dict__, performance_alert
-    )
+    await api._monitoring_alerts_create(type(performance_alert).__dict__, performance_alert)
 
 
 async def demonstrate_error_handling():
@@ -344,17 +332,13 @@ async def demonstrate_error_handling():
             },
         }
 
-        response = await api._integrations_create(
-            type(invalid_config).__dict__, invalid_config
-        )
+        response = await api._integrations_create(type(invalid_config).__dict__, invalid_config)
         logger.warning(f"Expected error for invalid config: {response}")
 
         # Test invalid protocol configuration
         invalid_protocol = {"type": "invalid_protocol", "config": {}}
 
-        response = await api._protocols_configure(
-            type(invalid_protocol).__dict__, invalid_protocol
-        )
+        response = await api._protocols_configure(type(invalid_protocol).__dict__, invalid_protocol)
         logger.warning(f"Expected error for invalid protocol: {response}")
 
     except Exception as e:

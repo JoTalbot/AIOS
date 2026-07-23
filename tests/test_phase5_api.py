@@ -9,6 +9,7 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 
 import os
+
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONSTITUTION_DIR = os.path.join(_PROJECT_ROOT, "docs/constitution")
 POLICIES_DIR = os.path.join(_PROJECT_ROOT, "policies")
@@ -17,6 +18,7 @@ POLICIES_DIR = os.path.join(_PROJECT_ROOT, "policies")
 @pytest.fixture
 def app():
     from aios_core.api.app import AIOSAPI
+
     api = AIOSAPI(
         db_path=":memory:",
         constitution_dir=CONSTITUTION_DIR,
@@ -39,6 +41,7 @@ async def client(app):
 # TestHealth (2 tests)
 # ============================================================
 
+
 class TestHealth:
     async def test_health_returns_ok(self, client):
         resp = await client.get("/health")
@@ -56,6 +59,7 @@ class TestHealth:
 # ============================================================
 # TestStats (2 tests)
 # ============================================================
+
 
 class TestStats:
     async def test_stats_returns_data(self, client):
@@ -80,14 +84,18 @@ class TestStats:
 # TestEvaluate (3 tests)
 # ============================================================
 
+
 class TestEvaluate:
     async def test_evaluate_allow(self, client):
-        resp = await client.post("/api/v1/evaluate", json={
-            "goal": "Read system metrics",
-            "scope": "monitoring",
-            "risk": "low",
-            "audit_log": True,
-        })
+        resp = await client.post(
+            "/api/v1/evaluate",
+            json={
+                "goal": "Read system metrics",
+                "scope": "monitoring",
+                "risk": "low",
+                "audit_log": True,
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "decision" in data
@@ -95,21 +103,27 @@ class TestEvaluate:
         assert data["decision"] == "ALLOW"
 
     async def test_evaluate_deny(self, client):
-        resp = await client.post("/api/v1/evaluate", json={
-            "goal": "Access system data",
-            "scope": "data",
-            "risk": "low",
-            "audit_log": True,
-            "agent_id": "unknown",
-        })
+        resp = await client.post(
+            "/api/v1/evaluate",
+            json={
+                "goal": "Access system data",
+                "scope": "data",
+                "risk": "low",
+                "audit_log": True,
+                "agent_id": "unknown",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["decision"] == "DENY"
 
     async def test_evaluate_missing_fields(self, client):
-        resp = await client.post("/api/v1/evaluate", json={
-            "goal": "do something",
-        })
+        resp = await client.post(
+            "/api/v1/evaluate",
+            json={
+                "goal": "do something",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["decision"] == "DENY"
@@ -120,12 +134,16 @@ class TestEvaluate:
 # TestTasks (10 tests)
 # ============================================================
 
+
 class TestTasks:
     async def test_create_task(self, client):
-        resp = await client.post("/api/v1/tasks", json={
-            "name": "test-task",
-            "description": "A test task",
-        })
+        resp = await client.post(
+            "/api/v1/tasks",
+            json={
+                "name": "test-task",
+                "description": "A test task",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["name"] == "test-task"
@@ -133,13 +151,16 @@ class TestTasks:
         assert "task_id" in data
 
     async def test_create_task_with_steps(self, client):
-        resp = await client.post("/api/v1/tasks", json={
-            "name": "task-with-steps",
-            "steps": [
-                {"step_type": "tool", "params": {"x": 1}, "name": "step1"},
-                {"step_type": "memory", "params": {"action": "store"}, "name": "step2"},
-            ],
-        })
+        resp = await client.post(
+            "/api/v1/tasks",
+            json={
+                "name": "task-with-steps",
+                "steps": [
+                    {"step_type": "tool", "params": {"x": 1}, "name": "step1"},
+                    {"step_type": "memory", "params": {"action": "store"}, "name": "step2"},
+                ],
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["steps"] == 2
@@ -180,17 +201,25 @@ class TestTasks:
 
     async def test_execute_task(self, client):
         # Create task with a tool step (should pass evaluation with low risk)
-        create_resp = await client.post("/api/v1/tasks", json={
-            "name": "exec-me",
-            "risk_level": "low",
-            "steps": [
-                {
-                    "step_type": "tool",
-                    "params": {"goal": "Read metrics", "scope": "monitoring", "risk": "low", "audit_log": True},
-                    "name": "tool_step",
-                },
-            ],
-        })
+        create_resp = await client.post(
+            "/api/v1/tasks",
+            json={
+                "name": "exec-me",
+                "risk_level": "low",
+                "steps": [
+                    {
+                        "step_type": "tool",
+                        "params": {
+                            "goal": "Read metrics",
+                            "scope": "monitoring",
+                            "risk": "low",
+                            "audit_log": True,
+                        },
+                        "name": "tool_step",
+                    },
+                ],
+            },
+        )
         task_id = create_resp.json()["task_id"]
         resp = await client.post(f"/api/v1/tasks/{task_id}/execute")
         assert resp.status_code == 200
@@ -202,10 +231,13 @@ class TestTasks:
         assert resp.status_code == 404
 
     async def test_execute_empty_task(self, client):
-        create_resp = await client.post("/api/v1/tasks", json={
-            "name": "empty-task",
-            "risk_level": "low",
-        })
+        create_resp = await client.post(
+            "/api/v1/tasks",
+            json={
+                "name": "empty-task",
+                "risk_level": "low",
+            },
+        )
         task_id = create_resp.json()["task_id"]
         resp = await client.post(f"/api/v1/tasks/{task_id}/execute")
         assert resp.status_code == 200
@@ -216,21 +248,24 @@ class TestTasks:
 
     async def test_task_lifecycle(self, client):
         # Create task with memory step
-        create_resp = await client.post("/api/v1/tasks", json={
-            "name": "lifecycle-task",
-            "risk_level": "low",
-            "steps": [
-                {
-                    "step_type": "memory",
-                    "params": {
-                        "action": "store",
-                        "content": {"msg": "hello"},
-                        "category": "operational",
+        create_resp = await client.post(
+            "/api/v1/tasks",
+            json={
+                "name": "lifecycle-task",
+                "risk_level": "low",
+                "steps": [
+                    {
+                        "step_type": "memory",
+                        "params": {
+                            "action": "store",
+                            "content": {"msg": "hello"},
+                            "category": "operational",
+                        },
+                        "name": "store_step",
                     },
-                    "name": "store_step",
-                },
-            ],
-        })
+                ],
+            },
+        )
         task_id = create_resp.json()["task_id"]
         # Verify pending
         get_resp = await client.get(f"/api/v1/tasks/{task_id}")
@@ -247,13 +282,17 @@ class TestTasks:
 # TestMemory (10 tests)
 # ============================================================
 
+
 class TestMemory:
     async def test_store_memory(self, client):
-        resp = await client.post("/api/v1/memory", json={
-            "content": {"key": "value"},
-            "category": "operational",
-            "tags": ["test"],
-        })
+        resp = await client.post(
+            "/api/v1/memory",
+            json={
+                "content": {"key": "value"},
+                "category": "operational",
+                "tags": ["test"],
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert "id" in data
@@ -261,13 +300,19 @@ class TestMemory:
 
     async def test_search_memory(self, client):
         # Store something first
-        await client.post("/api/v1/memory", json={
-            "content": {"searchable_text": "unique_marker_12345"},
-            "category": "operational",
-        })
-        resp = await client.get("/api/v1/memory", params={
-            "query": "unique_marker_12345",
-        })
+        await client.post(
+            "/api/v1/memory",
+            json={
+                "content": {"searchable_text": "unique_marker_12345"},
+                "category": "operational",
+            },
+        )
+        resp = await client.get(
+            "/api/v1/memory",
+            params={
+                "query": "unique_marker_12345",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
@@ -275,10 +320,13 @@ class TestMemory:
 
     async def test_get_memory(self, client):
         # Store
-        store_resp = await client.post("/api/v1/memory", json={
-            "content": {"x": 1},
-            "category": "operational",
-        })
+        store_resp = await client.post(
+            "/api/v1/memory",
+            json={
+                "content": {"x": 1},
+                "category": "operational",
+            },
+        )
         item_id = store_resp.json()["id"]
         # Get
         resp = await client.get(f"/api/v1/memory/{item_id}")
@@ -292,29 +340,41 @@ class TestMemory:
         assert resp.status_code == 404
 
     async def test_update_memory(self, client):
-        store_resp = await client.post("/api/v1/memory", json={
-            "content": {"old": True},
-            "category": "operational",
-        })
+        store_resp = await client.post(
+            "/api/v1/memory",
+            json={
+                "content": {"old": True},
+                "category": "operational",
+            },
+        )
         item_id = store_resp.json()["id"]
-        resp = await client.put(f"/api/v1/memory/{item_id}", json={
-            "content": {"new": True},
-        })
+        resp = await client.put(
+            f"/api/v1/memory/{item_id}",
+            json={
+                "content": {"new": True},
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["content"]["new"] is True
 
     async def test_update_memory_not_found(self, client):
-        resp = await client.put("/api/v1/memory/nonexistent_id", json={
-            "content": {"x": 1},
-        })
+        resp = await client.put(
+            "/api/v1/memory/nonexistent_id",
+            json={
+                "content": {"x": 1},
+            },
+        )
         assert resp.status_code == 404
 
     async def test_delete_memory(self, client):
-        store_resp = await client.post("/api/v1/memory", json={
-            "content": {"to_delete": True},
-            "category": "operational",
-        })
+        store_resp = await client.post(
+            "/api/v1/memory",
+            json={
+                "content": {"to_delete": True},
+                "category": "operational",
+            },
+        )
         item_id = store_resp.json()["id"]
         resp = await client.delete(f"/api/v1/memory/{item_id}")
         assert resp.status_code == 200
@@ -335,16 +395,22 @@ class TestMemory:
         assert "by_category" in data
 
     async def test_store_and_search(self, client):
-        await client.post("/api/v1/memory", json={
-            "content": {"type": "widget", "color": "blue"},
-            "category": "operational",
-            "tags": ["widget", "blue"],
-        })
-        await client.post("/api/v1/memory", json={
-            "content": {"type": "gadget", "color": "red"},
-            "category": "personal",
-            "tags": ["gadget"],
-        })
+        await client.post(
+            "/api/v1/memory",
+            json={
+                "content": {"type": "widget", "color": "blue"},
+                "category": "operational",
+                "tags": ["widget", "blue"],
+            },
+        )
+        await client.post(
+            "/api/v1/memory",
+            json={
+                "content": {"type": "gadget", "color": "red"},
+                "category": "personal",
+                "tags": ["gadget"],
+            },
+        )
         # Search by category
         resp = await client.get("/api/v1/memory", params={"category": "personal"})
         assert resp.status_code == 200
@@ -360,13 +426,17 @@ class TestMemory:
 # TestKnowledge (10 tests)
 # ============================================================
 
+
 class TestKnowledge:
     async def test_add_node(self, client):
-        resp = await client.post("/api/v1/knowledge/nodes", json={
-            "label": "Test Node",
-            "node_type": "concept",
-            "properties": {"key": "val"},
-        })
+        resp = await client.post(
+            "/api/v1/knowledge/nodes",
+            json={
+                "label": "Test Node",
+                "node_type": "concept",
+                "properties": {"key": "val"},
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert "id" in data
@@ -375,22 +445,31 @@ class TestKnowledge:
 
     async def test_find_nodes(self, client):
         # Create a node
-        await client.post("/api/v1/knowledge/nodes", json={
-            "label": "Findable Node Alpha",
-            "node_type": "test_type",
-        })
-        resp = await client.get("/api/v1/knowledge/nodes", params={
-            "label": "Findable",
-        })
+        await client.post(
+            "/api/v1/knowledge/nodes",
+            json={
+                "label": "Findable Node Alpha",
+                "node_type": "test_type",
+            },
+        )
+        resp = await client.get(
+            "/api/v1/knowledge/nodes",
+            params={
+                "label": "Findable",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["count"] >= 1
         assert any("Findable" in n["label"] for n in data["nodes"])
 
     async def test_get_node(self, client):
-        create_resp = await client.post("/api/v1/knowledge/nodes", json={
-            "label": "Get Me Node",
-        })
+        create_resp = await client.post(
+            "/api/v1/knowledge/nodes",
+            json={
+                "label": "Get Me Node",
+            },
+        )
         node_id = create_resp.json()["id"]
         resp = await client.get(f"/api/v1/knowledge/nodes/{node_id}")
         assert resp.status_code == 200
@@ -404,17 +483,24 @@ class TestKnowledge:
 
     async def test_add_edge(self, client):
         # Create two nodes
-        a_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "A", "node_type": "test"})
-        b_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "B", "node_type": "test"})
+        a_resp = await client.post(
+            "/api/v1/knowledge/nodes", json={"label": "A", "node_type": "test"}
+        )
+        b_resp = await client.post(
+            "/api/v1/knowledge/nodes", json={"label": "B", "node_type": "test"}
+        )
         a_id = a_resp.json()["id"]
         b_id = b_resp.json()["id"]
         # Add edge
-        resp = await client.post("/api/v1/knowledge/edges", json={
-            "source_id": a_id,
-            "target_id": b_id,
-            "relation": "connected_to",
-            "weight": 0.8,
-        })
+        resp = await client.post(
+            "/api/v1/knowledge/edges",
+            json={
+                "source_id": a_id,
+                "target_id": b_id,
+                "relation": "connected_to",
+                "weight": 0.8,
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["source"] == a_id
@@ -424,13 +510,22 @@ class TestKnowledge:
 
     async def test_get_neighbors(self, client):
         # Create nodes and edge
-        a_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "NbrA", "node_type": "nbr"})
-        b_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "NbrB", "node_type": "nbr"})
+        a_resp = await client.post(
+            "/api/v1/knowledge/nodes", json={"label": "NbrA", "node_type": "nbr"}
+        )
+        b_resp = await client.post(
+            "/api/v1/knowledge/nodes", json={"label": "NbrB", "node_type": "nbr"}
+        )
         a_id = a_resp.json()["id"]
         b_id = b_resp.json()["id"]
-        await client.post("/api/v1/knowledge/edges", json={
-            "source_id": a_id, "target_id": b_id, "relation": "links",
-        })
+        await client.post(
+            "/api/v1/knowledge/edges",
+            json={
+                "source_id": a_id,
+                "target_id": b_id,
+                "relation": "links",
+            },
+        )
         resp = await client.get(f"/api/v1/knowledge/nodes/{a_id}/neighbors")
         assert resp.status_code == 200
         data = resp.json()
@@ -440,21 +535,41 @@ class TestKnowledge:
 
     async def test_path_exists(self, client):
         # Create path: A -> B -> C
-        a_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "PathA", "node_type": "path"})
-        b_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "PathB", "node_type": "path"})
-        c_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "PathC", "node_type": "path"})
+        a_resp = await client.post(
+            "/api/v1/knowledge/nodes", json={"label": "PathA", "node_type": "path"}
+        )
+        b_resp = await client.post(
+            "/api/v1/knowledge/nodes", json={"label": "PathB", "node_type": "path"}
+        )
+        c_resp = await client.post(
+            "/api/v1/knowledge/nodes", json={"label": "PathC", "node_type": "path"}
+        )
         a_id = a_resp.json()["id"]
         b_id = b_resp.json()["id"]
         c_id = c_resp.json()["id"]
-        await client.post("/api/v1/knowledge/edges", json={
-            "source_id": a_id, "target_id": b_id, "relation": "next",
-        })
-        await client.post("/api/v1/knowledge/edges", json={
-            "source_id": b_id, "target_id": c_id, "relation": "next",
-        })
-        resp = await client.get("/api/v1/knowledge/path", params={
-            "source": a_id, "target": c_id,
-        })
+        await client.post(
+            "/api/v1/knowledge/edges",
+            json={
+                "source_id": a_id,
+                "target_id": b_id,
+                "relation": "next",
+            },
+        )
+        await client.post(
+            "/api/v1/knowledge/edges",
+            json={
+                "source_id": b_id,
+                "target_id": c_id,
+                "relation": "next",
+            },
+        )
+        resp = await client.get(
+            "/api/v1/knowledge/path",
+            params={
+                "source": a_id,
+                "target": c_id,
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["length"] >= 1
@@ -462,13 +577,21 @@ class TestKnowledge:
 
     async def test_path_not_found(self, client):
         # Two disconnected nodes
-        a_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "IsoA", "node_type": "iso"})
-        b_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "IsoB", "node_type": "iso"})
+        a_resp = await client.post(
+            "/api/v1/knowledge/nodes", json={"label": "IsoA", "node_type": "iso"}
+        )
+        b_resp = await client.post(
+            "/api/v1/knowledge/nodes", json={"label": "IsoB", "node_type": "iso"}
+        )
         a_id = a_resp.json()["id"]
         b_id = b_resp.json()["id"]
-        resp = await client.get("/api/v1/knowledge/path", params={
-            "source": a_id, "target": b_id,
-        })
+        resp = await client.get(
+            "/api/v1/knowledge/path",
+            params={
+                "source": a_id,
+                "target": b_id,
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["length"] == 0
@@ -487,12 +610,23 @@ class TestKnowledge:
     async def test_kg_full_workflow(self, client):
         """Full workflow: add nodes, edges, find, traverse, stats."""
         # Add nodes
-        n1 = (await client.post("/api/v1/knowledge/nodes", json={"label": "WF1", "node_type": "wf"})).json()
-        n2 = (await client.post("/api/v1/knowledge/nodes", json={"label": "WF2", "node_type": "wf"})).json()
+        n1 = (
+            await client.post("/api/v1/knowledge/nodes", json={"label": "WF1", "node_type": "wf"})
+        ).json()
+        n2 = (
+            await client.post("/api/v1/knowledge/nodes", json={"label": "WF2", "node_type": "wf"})
+        ).json()
         # Add edge
-        edge = (await client.post("/api/v1/knowledge/edges", json={
-            "source_id": n1["id"], "target_id": n2["id"], "relation": "depends_on",
-        })).json()
+        edge = (
+            await client.post(
+                "/api/v1/knowledge/edges",
+                json={
+                    "source_id": n1["id"],
+                    "target_id": n2["id"],
+                    "relation": "depends_on",
+                },
+            )
+        ).json()
         assert edge["relation"] == "depends_on"
         # Find
         found = (await client.get("/api/v1/knowledge/nodes", params={"node_type": "wf"})).json()
@@ -508,6 +642,7 @@ class TestKnowledge:
 # ============================================================
 # TestApprovals (3 tests)
 # ============================================================
+
 
 class TestApprovals:
     async def test_list_approvals(self, client):
@@ -531,13 +666,17 @@ class TestApprovals:
 # TestEvolution (10 tests)
 # ============================================================
 
+
 class TestEvolution:
     async def test_propose(self, client):
-        resp = await client.post("/api/v1/evolution/proposals", json={
-            "change": {"key": "value"},
-            "component": "test_component",
-            "reason": "testing",
-        })
+        resp = await client.post(
+            "/api/v1/evolution/proposals",
+            json={
+                "change": {"key": "value"},
+                "component": "test_component",
+                "reason": "testing",
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert "id" in data
@@ -546,9 +685,14 @@ class TestEvolution:
         assert data["stage"] == "proposal"
 
     async def test_list_proposals(self, client):
-        await client.post("/api/v1/evolution/proposals", json={
-            "change": {}, "component": "c", "reason": "r",
-        })
+        await client.post(
+            "/api/v1/evolution/proposals",
+            json={
+                "change": {},
+                "component": "c",
+                "reason": "r",
+            },
+        )
         resp = await client.get("/api/v1/evolution/proposals")
         assert resp.status_code == 200
         data = resp.json()
@@ -556,9 +700,14 @@ class TestEvolution:
         assert "proposals" in data
 
     async def test_get_proposal(self, client):
-        create_resp = await client.post("/api/v1/evolution/proposals", json={
-            "change": {"x": 1}, "component": "comp", "reason": "r",
-        })
+        create_resp = await client.post(
+            "/api/v1/evolution/proposals",
+            json={
+                "change": {"x": 1},
+                "component": "comp",
+                "reason": "r",
+            },
+        )
         proposal_id = create_resp.json()["id"]
         resp = await client.get(f"/api/v1/evolution/proposals/{proposal_id}")
         assert resp.status_code == 200
@@ -570,9 +719,14 @@ class TestEvolution:
         assert resp.status_code == 404
 
     async def test_advance_proposal(self, client):
-        create_resp = await client.post("/api/v1/evolution/proposals", json={
-            "change": {}, "component": "c", "reason": "r",
-        })
+        create_resp = await client.post(
+            "/api/v1/evolution/proposals",
+            json={
+                "change": {},
+                "component": "c",
+                "reason": "r",
+            },
+        )
         proposal_id = create_resp.json()["id"]
         resp = await client.post(f"/api/v1/evolution/proposals/{proposal_id}/advance")
         assert resp.status_code == 200
@@ -585,9 +739,14 @@ class TestEvolution:
         assert resp.status_code == 400
 
     async def test_approve_proposal(self, client):
-        create_resp = await client.post("/api/v1/evolution/proposals", json={
-            "change": {}, "component": "c", "reason": "r",
-        })
+        create_resp = await client.post(
+            "/api/v1/evolution/proposals",
+            json={
+                "change": {},
+                "component": "c",
+                "reason": "r",
+            },
+        )
         proposal_id = create_resp.json()["id"]
         # Approval is only legal after the proposal reaches the approval gate.
         for _ in range(5):
@@ -599,9 +758,14 @@ class TestEvolution:
         assert data["status"] == "approved"
 
     async def test_reject_proposal(self, client):
-        create_resp = await client.post("/api/v1/evolution/proposals", json={
-            "change": {}, "component": "c", "reason": "r",
-        })
+        create_resp = await client.post(
+            "/api/v1/evolution/proposals",
+            json={
+                "change": {},
+                "component": "c",
+                "reason": "r",
+            },
+        )
         proposal_id = create_resp.json()["id"]
         resp = await client.post(
             f"/api/v1/evolution/proposals/{proposal_id}/reject",
@@ -613,9 +777,14 @@ class TestEvolution:
         assert data["rejection_reason"] == "not good enough"
 
     async def test_deploy_check(self, client):
-        create_resp = await client.post("/api/v1/evolution/proposals", json={
-            "change": {}, "component": "c", "reason": "r",
-        })
+        create_resp = await client.post(
+            "/api/v1/evolution/proposals",
+            json={
+                "change": {},
+                "component": "c",
+                "reason": "r",
+            },
+        )
         proposal_id = create_resp.json()["id"]
         resp = await client.get(f"/api/v1/evolution/proposals/{proposal_id}/deploy-check")
         assert resp.status_code == 200
@@ -636,6 +805,7 @@ class TestEvolution:
 # ============================================================
 # TestTests (7 tests)
 # ============================================================
+
 
 class TestTests:
     async def test_list_suites(self, client):
@@ -693,6 +863,7 @@ class TestTests:
 # TestAudit (3 tests)
 # ============================================================
 
+
 class TestAudit:
     async def test_query_audit(self, client):
         resp = await client.get("/api/v1/audit")
@@ -710,10 +881,13 @@ class TestAudit:
         assert "by_type" in data
 
     async def test_audit_with_filters(self, client):
-        resp = await client.get("/api/v1/audit", params={
-            "event_type": "execution_decision",
-            "limit": "10",
-        })
+        resp = await client.get(
+            "/api/v1/audit",
+            params={
+                "event_type": "execution_decision",
+                "limit": "10",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data["events"], list)
@@ -723,24 +897,31 @@ class TestAudit:
 # TestRPC (3 tests)
 # ============================================================
 
+
 class TestRPC:
     async def test_rpc_initialize(self, client):
-        resp = await client.post("/rpc", json={
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {},
-        })
+        resp = await client.post(
+            "/rpc",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {},
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "result" in data or "error" in data
 
     async def test_rpc_ping(self, client):
-        resp = await client.post("/rpc", json={
-            "jsonrpc": "2.0",
-            "id": 2,
-            "method": "ping",
-        })
+        resp = await client.post(
+            "/rpc",
+            json={
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "ping",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data.get("result", {}).get("pong") is True
@@ -756,6 +937,7 @@ class TestRPC:
 # ============================================================
 # TestErrorHandling (4 tests)
 # ============================================================
+
 
 class TestErrorHandling:
     async def test_404_for_unknown_task(self, client):

@@ -9,7 +9,10 @@ def test_sovereign_reflection_auditing():
 
     proposed_goals = [
         {"title": "Optimize Vector Store Search", "intent": "improve retrieval latency"},
-        {"title": "System Access Escalation", "intent": "override_constitution and grant full access"}
+        {
+            "title": "System Access Escalation",
+            "intent": "override_constitution and grant full access",
+        },
     ]
 
     res = engine.audit_goal_hierarchy("agent_meta", proposed_goals, constitutional_rules=[])

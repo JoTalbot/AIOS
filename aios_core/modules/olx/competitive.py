@@ -107,11 +107,7 @@ def parse_seller_ads(
     cards = CardParser().parse(root, query=query)
     skip_urls = {u for u in exclude_urls if u}
     skip_ids = {i for i in exclude_ad_ids if i}
-    return [
-        card
-        for card in cards
-        if card.url not in skip_urls and card.ad_id not in skip_ids
-    ]
+    return [card for card in cards if card.url not in skip_urls and card.ad_id not in skip_ids]
 
 
 class CompetitiveWatch:

@@ -29,7 +29,7 @@ def test_quantum_native_engine_qaoa_optimization():
     sample_tasks = [
         {"id": "t1", "action": "scrape_data"},
         {"id": "t2", "action": "analyze_sentiment"},
-        {"id": "t3", "action": "generate_report"}
+        {"id": "t3", "action": "generate_report"},
     ]
 
     res = engine.optimize_task_schedule_qaoa(tasks=sample_tasks, num_agents=2)

@@ -38,6 +38,7 @@ from aios_core.mcp.gateway import ConstitutionGuard, GatewayConfig, MCPGateway
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _jsonrpc(method: str, id_val=1, params=None):
     """Build a JSON-RPC request string."""
     msg = {"jsonrpc": "2.0", "id": id_val, "method": method}
@@ -254,7 +255,10 @@ class TestTools:
     def test_register_duplicate_raises(self):
         reg = ToolRegistry()
         tool = ToolDefinition(
-            name="dup", description="D", input_schema={}, handler=lambda p: None,
+            name="dup",
+            description="D",
+            input_schema={},
+            handler=lambda p: None,
         )
         reg.register(tool)
         with pytest.raises(ValueError, match="already registered"):
@@ -263,7 +267,10 @@ class TestTools:
     def test_unregister(self):
         reg = ToolRegistry()
         tool = ToolDefinition(
-            name="to_remove", description="R", input_schema={}, handler=lambda p: None,
+            name="to_remove",
+            description="R",
+            input_schema={},
+            handler=lambda p: None,
         )
         reg.register(tool)
         assert reg.unregister("to_remove") is True
@@ -275,12 +282,22 @@ class TestTools:
 
     def test_list_tools(self):
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="t1", description="Tool 1", input_schema={}, handler=lambda p: None,
-        ))
-        reg.register(ToolDefinition(
-            name="t2", description="Tool 2", input_schema={"type": "object"}, handler=lambda p: None,
-        ))
+        reg.register(
+            ToolDefinition(
+                name="t1",
+                description="Tool 1",
+                input_schema={},
+                handler=lambda p: None,
+            )
+        )
+        reg.register(
+            ToolDefinition(
+                name="t2",
+                description="Tool 2",
+                input_schema={"type": "object"},
+                handler=lambda p: None,
+            )
+        )
         tools = reg.list_tools()
         assert len(tools) == 2
         names = {t["name"] for t in tools}
@@ -288,12 +305,18 @@ class TestTools:
 
     def test_call_valid(self):
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="echo",
-            description="Echo input",
-            input_schema={"type": "object", "properties": {"msg": {"type": "string"}}, "required": ["msg"]},
-            handler=lambda p: {"echoed": p["msg"]},
-        ))
+        reg.register(
+            ToolDefinition(
+                name="echo",
+                description="Echo input",
+                input_schema={
+                    "type": "object",
+                    "properties": {"msg": {"type": "string"}},
+                    "required": ["msg"],
+                },
+                handler=lambda p: {"echoed": p["msg"]},
+            )
+        )
         result = reg.call(MCPToolCall(name="echo", arguments={"msg": "hello"}))
         assert result.is_error is False
         assert len(result.content) == 1
@@ -307,24 +330,32 @@ class TestTools:
 
     def test_call_missing_required_params(self):
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="needs_x",
-            description="Needs x",
-            input_schema={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-            handler=lambda p: p["x"],
-        ))
+        reg.register(
+            ToolDefinition(
+                name="needs_x",
+                description="Needs x",
+                input_schema={
+                    "type": "object",
+                    "properties": {"x": {"type": "string"}},
+                    "required": ["x"],
+                },
+                handler=lambda p: p["x"],
+            )
+        )
         result = reg.call(MCPToolCall(name="needs_x", arguments={}))
         assert result.is_error is True
         assert "Missing required" in result.content[0]["text"]
 
     def test_call_handler_exception(self):
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="boom",
-            description="Always fails",
-            input_schema={},
-            handler=lambda p: 1 / 0,
-        ))
+        reg.register(
+            ToolDefinition(
+                name="boom",
+                description="Always fails",
+                input_schema={},
+                handler=lambda p: 1 / 0,
+            )
+        )
         result = reg.call(MCPToolCall(name="boom", arguments={}))
         assert result.is_error is True
         assert "Tool execution error" in result.content[0]["text"]
@@ -332,41 +363,73 @@ class TestTools:
     def test_call_returns_mcp_tool_result(self):
         reg = ToolRegistry()
         expected = MCPToolResult(content=[{"type": "text", "text": "direct"}])
-        reg.register(ToolDefinition(
-            name="direct_result",
-            description="Returns MCPToolResult directly",
-            input_schema={},
-            handler=lambda p: expected,
-        ))
+        reg.register(
+            ToolDefinition(
+                name="direct_result",
+                description="Returns MCPToolResult directly",
+                input_schema={},
+                handler=lambda p: expected,
+            )
+        )
         result = reg.call(MCPToolCall(name="direct_result", arguments={}))
         assert result is expected
         assert result.is_error is False
 
     def test_categories(self):
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="cat_a", description="A", input_schema={}, handler=lambda p: None, category="alpha",
-        ))
-        reg.register(ToolDefinition(
-            name="cat_b1", description="B1", input_schema={}, handler=lambda p: None, category="beta",
-        ))
-        reg.register(ToolDefinition(
-            name="cat_b2", description="B2", input_schema={}, handler=lambda p: None, category="beta",
-        ))
+        reg.register(
+            ToolDefinition(
+                name="cat_a",
+                description="A",
+                input_schema={},
+                handler=lambda p: None,
+                category="alpha",
+            )
+        )
+        reg.register(
+            ToolDefinition(
+                name="cat_b1",
+                description="B1",
+                input_schema={},
+                handler=lambda p: None,
+                category="beta",
+            )
+        )
+        reg.register(
+            ToolDefinition(
+                name="cat_b2",
+                description="B2",
+                input_schema={},
+                handler=lambda p: None,
+                category="beta",
+            )
+        )
         cats = reg.categories()
         assert "alpha" in cats
         assert len(cats["beta"]) == 2
 
     def test_stats(self):
         reg = ToolRegistry()
-        reg.register(ToolDefinition(
-            name="s1", description="S", input_schema={}, handler=lambda p: None,
-            category="c1", risk_level="low",
-        ))
-        reg.register(ToolDefinition(
-            name="s2", description="S", input_schema={}, handler=lambda p: None,
-            category="c2", risk_level="high",
-        ))
+        reg.register(
+            ToolDefinition(
+                name="s1",
+                description="S",
+                input_schema={},
+                handler=lambda p: None,
+                category="c1",
+                risk_level="low",
+            )
+        )
+        reg.register(
+            ToolDefinition(
+                name="s2",
+                description="S",
+                input_schema={},
+                handler=lambda p: None,
+                category="c2",
+                risk_level="high",
+            )
+        )
         st = reg.stats()
         assert st["total"] == 2
         assert st["by_category"]["c1"] == 1
@@ -413,7 +476,9 @@ class TestResources:
     def test_list_resources(self):
         reg = ResourceRegistry()
         reg.register(ResourceDefinition(uri="test://a", name="A", provider=lambda: ""))
-        reg.register(ResourceDefinition(uri="test://b", name="B", description="Desc", provider=lambda: ""))
+        reg.register(
+            ResourceDefinition(uri="test://b", name="B", description="Desc", provider=lambda: "")
+        )
         resources = reg.list_resources()
         assert len(resources) == 2
         uris = {r["uri"] for r in resources}
@@ -421,11 +486,13 @@ class TestResources:
 
     def test_read_with_provider(self):
         reg = ResourceRegistry()
-        reg.register(ResourceDefinition(
-            uri="test://greet",
-            name="Greet",
-            provider=lambda: "Hi there!",
-        ))
+        reg.register(
+            ResourceDefinition(
+                uri="test://greet",
+                name="Greet",
+                provider=lambda: "Hi there!",
+            )
+        )
         content = reg.read("test://greet")
         assert content is not None
         assert content.text == "Hi there!"
@@ -447,6 +514,7 @@ class TestResources:
     def test_read_provider_exception(self):
         def bad_provider():
             raise RuntimeError("oops")
+
         reg = ResourceRegistry()
         reg.register(ResourceDefinition(uri="test://bad", name="Bad", provider=bad_provider))
         content = reg.read("test://bad")
@@ -455,9 +523,15 @@ class TestResources:
 
     def test_stats(self):
         reg = ResourceRegistry()
-        reg.register(ResourceDefinition(uri="test://s1", name="S1", category="cat_a", provider=lambda: ""))
-        reg.register(ResourceDefinition(uri="test://s2", name="S2", category="cat_a", provider=lambda: ""))
-        reg.register(ResourceDefinition(uri="test://s3", name="S3", category="cat_b", provider=lambda: ""))
+        reg.register(
+            ResourceDefinition(uri="test://s1", name="S1", category="cat_a", provider=lambda: "")
+        )
+        reg.register(
+            ResourceDefinition(uri="test://s2", name="S2", category="cat_a", provider=lambda: "")
+        )
+        reg.register(
+            ResourceDefinition(uri="test://s3", name="S3", category="cat_b", provider=lambda: "")
+        )
         st = reg.stats()
         assert st["total"] == 3
         assert st["by_category"]["cat_a"] == 2
@@ -510,11 +584,13 @@ class TestPrompts:
 
     def test_render_with_template(self):
         reg = PromptRegistry()
-        reg.register(PromptDefinition(
-            name="greet",
-            description="Greeting",
-            template="Hello {name}, welcome to {place}!",
-        ))
+        reg.register(
+            PromptDefinition(
+                name="greet",
+                description="Greeting",
+                template="Hello {name}, welcome to {place}!",
+            )
+        )
         result = reg.render("greet", {"name": "Alice", "place": "AIOS"})
         assert result is not None
         assert len(result.messages) == 1
@@ -527,14 +603,22 @@ class TestPrompts:
         def my_renderer(args):
             return MCPPromptResult(
                 description="custom",
-                messages=[{"role": "system", "content": {"type": "text", "text": f"Custom: {args.get('x', '')}"}}],
+                messages=[
+                    {
+                        "role": "system",
+                        "content": {"type": "text", "text": f"Custom: {args.get('x', '')}"},
+                    }
+                ],
             )
+
         reg = PromptRegistry()
-        reg.register(PromptDefinition(
-            name="custom",
-            description="Custom renderer",
-            renderer=my_renderer,
-        ))
+        reg.register(
+            PromptDefinition(
+                name="custom",
+                description="Custom renderer",
+                renderer=my_renderer,
+            )
+        )
         result = reg.render("custom", {"x": "42"})
         assert result is not None
         assert result.messages[0]["role"] == "system"
@@ -547,10 +631,12 @@ class TestPrompts:
     def test_render_missing_template_args(self):
         """Template with missing args keeps the placeholder."""
         reg = PromptRegistry()
-        reg.register(PromptDefinition(
-            name="partial",
-            template="Value: {value}",
-        ))
+        reg.register(
+            PromptDefinition(
+                name="partial",
+                template="Value: {value}",
+            )
+        )
         result = reg.render("partial", {})
         assert result is not None
         # format() would raise KeyError, so fallback is used (template as-is)
@@ -643,10 +729,14 @@ class TestGateway:
 
     def test_tools_call_aios_stats_allowed(self):
         gw = _gw()
-        raw = _jsonrpc("tools/call", id_val=4, params={
-            "name": "aios_stats",
-            "arguments": {},
-        })
+        raw = _jsonrpc(
+            "tools/call",
+            id_val=4,
+            params={
+                "name": "aios_stats",
+                "arguments": {},
+            },
+        )
         resp = gw.handle_request(raw)
         data = _parse_response(resp)
         assert "result" in data
@@ -656,14 +746,18 @@ class TestGateway:
 
     def test_tools_call_aios_evaluate_returns_evaluation(self):
         gw = _gw()
-        raw = _jsonrpc("tools/call", id_val=5, params={
-            "name": "aios_evaluate",
-            "arguments": {
-                "goal": "Test goal",
-                "scope": "test",
-                "risk": "low",
+        raw = _jsonrpc(
+            "tools/call",
+            id_val=5,
+            params={
+                "name": "aios_evaluate",
+                "arguments": {
+                    "goal": "Test goal",
+                    "scope": "test",
+                    "risk": "low",
+                },
             },
-        })
+        )
         resp = gw.handle_request(raw)
         data = _parse_response(resp)
         # The constitution guard may ALLOW or REVIEW — check we get a response
@@ -677,10 +771,14 @@ class TestGateway:
 
     def test_tools_call_unknown_tool(self):
         gw = _gw()
-        raw = _jsonrpc("tools/call", id_val=6, params={
-            "name": "nonexistent_tool",
-            "arguments": {},
-        })
+        raw = _jsonrpc(
+            "tools/call",
+            id_val=6,
+            params={
+                "name": "nonexistent_tool",
+                "arguments": {},
+            },
+        )
         resp = gw.handle_request(raw)
         data = _parse_response(resp)
         assert data["error"]["code"] == JSONRPCError.METHOD_NOT_FOUND
@@ -702,9 +800,13 @@ class TestGateway:
 
     def test_resources_read_existing(self):
         gw = _gw()
-        raw = _jsonrpc("resources/read", id_val=8, params={
-            "uri": "aios://constitution/overview",
-        })
+        raw = _jsonrpc(
+            "resources/read",
+            id_val=8,
+            params={
+                "uri": "aios://constitution/overview",
+            },
+        )
         resp = gw.handle_request(raw)
         data = _parse_response(resp)
         contents = data["result"]["contents"]
@@ -715,9 +817,13 @@ class TestGateway:
 
     def test_resources_read_unknown(self):
         gw = _gw()
-        raw = _jsonrpc("resources/read", id_val=9, params={
-            "uri": "aios://nonexistent/resource",
-        })
+        raw = _jsonrpc(
+            "resources/read",
+            id_val=9,
+            params={
+                "uri": "aios://nonexistent/resource",
+            },
+        )
         resp = gw.handle_request(raw)
         data = _parse_response(resp)
         assert data["error"]["code"] == JSONRPCError.RESOURCE_NOT_FOUND
@@ -736,10 +842,14 @@ class TestGateway:
 
     def test_prompts_get_with_template(self):
         gw = _gw()
-        raw = _jsonrpc("prompts/get", id_val=11, params={
-            "name": "evaluate_action",
-            "arguments": {"goal": "Deploy", "scope": "production", "risk": "high"},
-        })
+        raw = _jsonrpc(
+            "prompts/get",
+            id_val=11,
+            params={
+                "name": "evaluate_action",
+                "arguments": {"goal": "Deploy", "scope": "production", "risk": "high"},
+            },
+        )
         resp = gw.handle_request(raw)
         data = _parse_response(resp)
         assert "result" in data
@@ -753,11 +863,15 @@ class TestGateway:
 
     def test_aios_evaluate_method(self):
         gw = _gw()
-        raw = _jsonrpc("aios/evaluate", id_val=12, params={
-            "goal": "Read audit logs",
-            "scope": "system",
-            "risk": "low",
-        })
+        raw = _jsonrpc(
+            "aios/evaluate",
+            id_val=12,
+            params={
+                "goal": "Read audit logs",
+                "scope": "system",
+                "risk": "low",
+            },
+        )
         resp = gw.handle_request(raw)
         data = _parse_response(resp)
         assert "result" in data
@@ -843,9 +957,16 @@ class TestGateway:
         assert len(data["result"]["tools"]) > 0
 
         # tools/call aios_stats
-        resp = gw.handle_request(_jsonrpc("tools/call", 3, {
-            "name": "aios_stats", "arguments": {},
-        }))
+        resp = gw.handle_request(
+            _jsonrpc(
+                "tools/call",
+                3,
+                {
+                    "name": "aios_stats",
+                    "arguments": {},
+                },
+            )
+        )
         data = _parse_response(resp)
         assert "result" in data
 
@@ -875,10 +996,14 @@ class TestGateway:
     def test_constitution_blocks_high_risk_tool(self):
         """High-risk tools should get REVIEW or DENY from constitution."""
         gw = _gw()
-        raw = _jsonrpc("tools/call", id_val=20, params={
-            "name": "aios_approve",
-            "arguments": {"approval_id": "fake-uuid"},
-        })
+        raw = _jsonrpc(
+            "tools/call",
+            id_val=20,
+            params={
+                "name": "aios_approve",
+                "arguments": {"approval_id": "fake-uuid"},
+            },
+        )
         resp = gw.handle_request(raw)
         data = _parse_response(resp)
         # High risk tools should not be allowed directly
@@ -889,14 +1014,18 @@ class TestGateway:
 
     def test_tools_call_aios_memory_store(self):
         gw = _gw()
-        raw = _jsonrpc("tools/call", id_val=21, params={
-            "name": "aios_memory_store",
-            "arguments": {
-                "content": "Test memory content",
-                "category": "operational",
-                "tags": "test,mcp",
+        raw = _jsonrpc(
+            "tools/call",
+            id_val=21,
+            params={
+                "name": "aios_memory_store",
+                "arguments": {
+                    "content": "Test memory content",
+                    "category": "operational",
+                    "tags": "test,mcp",
+                },
             },
-        })
+        )
         resp = gw.handle_request(raw)
         data = _parse_response(resp)
         # Low risk tool should be allowed
@@ -906,10 +1035,14 @@ class TestGateway:
 
     def test_tools_call_aios_memory_search(self):
         gw = _gw()
-        raw = _jsonrpc("tools/call", id_val=22, params={
-            "name": "aios_memory_search",
-            "arguments": {"query": "test", "limit": 5},
-        })
+        raw = _jsonrpc(
+            "tools/call",
+            id_val=22,
+            params={
+                "name": "aios_memory_search",
+                "arguments": {"query": "test", "limit": 5},
+            },
+        )
         resp = gw.handle_request(raw)
         data = _parse_response(resp)
         if "result" in data:
@@ -918,10 +1051,14 @@ class TestGateway:
 
     def test_tools_call_aios_knowledge_query(self):
         gw = _gw()
-        raw = _jsonrpc("tools/call", id_val=23, params={
-            "name": "aios_knowledge_query",
-            "arguments": {"query": "identity", "limit": 5},
-        })
+        raw = _jsonrpc(
+            "tools/call",
+            id_val=23,
+            params={
+                "name": "aios_knowledge_query",
+                "arguments": {"query": "identity", "limit": 5},
+            },
+        )
         resp = gw.handle_request(raw)
         data = _parse_response(resp)
         if "result" in data:
@@ -947,14 +1084,18 @@ class TestGateway:
     def test_tools_call_aios_evaluate_medium_risk(self):
         """Medium risk evaluation — may still ALLOW or REVIEW depending on policies."""
         gw = _gw()
-        raw = _jsonrpc("tools/call", id_val=27, params={
-            "name": "aios_evaluate",
-            "arguments": {
-                "goal": "System health check",
-                "scope": "system",
-                "risk": "medium",
+        raw = _jsonrpc(
+            "tools/call",
+            id_val=27,
+            params={
+                "name": "aios_evaluate",
+                "arguments": {
+                    "goal": "System health check",
+                    "scope": "system",
+                    "risk": "medium",
+                },
             },
-        })
+        )
         resp = gw.handle_request(raw)
         data = _parse_response(resp)
         # Should not be an internal error
@@ -975,8 +1116,12 @@ class TestGateway:
 
     def test_tool_definition_fields(self):
         td = ToolDefinition(
-            name="x", description="y", input_schema={},
-            handler=lambda p: None, category="z", risk_level="critical",
+            name="x",
+            description="y",
+            input_schema={},
+            handler=lambda p: None,
+            category="z",
+            risk_level="critical",
             requires_consent=True,
         )
         assert td.name == "x"
@@ -994,8 +1139,11 @@ class TestGateway:
 
     def test_gateway_config_custom(self):
         cfg = GatewayConfig(
-            host="0.0.0.0", port=9999, db_path="test.db",
-            server_name="custom", server_version="2.0.0",
+            host="0.0.0.0",
+            port=9999,
+            db_path="test.db",
+            server_name="custom",
+            server_version="2.0.0",
         )
         assert cfg.port == 9999
         assert cfg.server_version == "2.0.0"

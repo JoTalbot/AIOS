@@ -11,7 +11,7 @@ from typing import List, Optional, Dict
 @dataclass
 class AIOS_Node:
     node_id: str
-    role: str              # planner, worker, mcp_gateway, knowledge_cache
+    role: str  # planner, worker, mcp_gateway, knowledge_cache
     status: str = "online"
     capabilities: List[str] = field(default_factory=list)
 
@@ -29,7 +29,7 @@ class MCP_Module:
 class WorkerPool:
     pool_id: str
     node_id: str
-    worker_type: str        # android_testing, api_worker, experimental_agent
+    worker_type: str  # android_testing, api_worker, experimental_agent
     available_workers: int = 0
     active_tasks: List[str] = field(default_factory=list)
 
@@ -41,7 +41,7 @@ class ExecutionPlan:
     selected_capabilities: List[str]
     assigned_nodes: List[str]
     assigned_workers: List[str]
-    status: str = "planned"     # planned → executing → completed → failed
+    status: str = "planned"  # planned → executing → completed → failed
 
 
 @dataclass
@@ -61,7 +61,9 @@ class AIOS_Orchestrator:
     def register_worker_pool(self, pool: WorkerPool) -> None:
         self.worker_pools.append(pool)
 
-    def create_plan(self, goal: str, capabilities: List[str], nodes: List[str], workers: List[str]) -> ExecutionPlan:
+    def create_plan(
+        self, goal: str, capabilities: List[str], nodes: List[str], workers: List[str]
+    ) -> ExecutionPlan:
         plan = ExecutionPlan(
             plan_id=f"plan_{len(self.execution_plans)}",
             goal=goal,

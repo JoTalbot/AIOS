@@ -35,9 +35,7 @@ class EvaluationContext:
 
     action: dict
     evaluation_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     constitution_hits: list[dict] = field(default_factory=list)
     policy_hits: list[dict] = field(default_factory=list)
     violations: list[dict] = field(default_factory=list)
@@ -57,9 +55,7 @@ class Decision:
     violations: list[dict] = field(default_factory=list)
     requirements: list[dict] = field(default_factory=list)
     policy_actions: list[dict] = field(default_factory=list)
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     matched_articles: list[str] = field(default_factory=list)
     matched_policies: list[str] = field(default_factory=list)
 
@@ -234,12 +230,8 @@ class ConstitutionEngine:
         )
 
         # Gather matched articles and policies
-        matched_articles = list(
-            {v.get("article", "") for v in all_violations if v.get("article")}
-        )
-        matched_policies = list(
-            {v.get("policy", "") for v in all_violations if v.get("policy")}
-        )
+        matched_articles = list({v.get("article", "") for v in all_violations if v.get("article")})
+        matched_policies = list({v.get("policy", "") for v in all_violations if v.get("policy")})
 
         decision = Decision(
             evaluation_id=ctx.evaluation_id,
@@ -273,9 +265,7 @@ class ConstitutionEngine:
         if sec:
             # Unknown access blocked rule
             if (
-                self.policies.is_rule_enabled(
-                    "security_policy", "unknown_access_blocked"
-                )
+                self.policies.is_rule_enabled("security_policy", "unknown_access_blocked")
                 and action.get("agent_id") == "unknown"
             ):
                 violations.append(
@@ -376,9 +366,7 @@ class ConstitutionEngine:
 
         return violations
 
-    def _check_policy_requirements(
-        self, action: dict, ctx: EvaluationContext
-    ) -> list[dict]:
+    def _check_policy_requirements(self, action: dict, ctx: EvaluationContext) -> list[dict]:
         """Check that policy requirements are satisfied."""
         reqs = []
 
@@ -426,10 +414,7 @@ class ConstitutionEngine:
                                     "detail": "Testing must complete before deployment",
                                 }
                             )
-                    if (
-                        req.name == "rollback_capability"
-                        and str(req.value) == "required"
-                    ):
+                    if req.name == "rollback_capability" and str(req.value) == "required":
                         if not action.get("rollback_plan"):
                             reqs.append(
                                 {
@@ -442,9 +427,7 @@ class ConstitutionEngine:
 
         return reqs
 
-    def _check_core_principles(
-        self, action: dict, ctx: EvaluationContext
-    ) -> list[dict]:
+    def _check_core_principles(self, action: dict, ctx: EvaluationContext) -> list[dict]:
         """Check action against the 6 core constitutional principles."""
         violations = []
 
@@ -522,8 +505,7 @@ class ConstitutionEngine:
         hard_violations = [
             v
             for v in violations
-            if v.get("type")
-            in ("policy_violation", "core_principle_violation", "prohibition")
+            if v.get("type") in ("policy_violation", "core_principle_violation", "prohibition")
             and v.get("type") != "policy_escalation"
         ]
         if hard_violations:
@@ -536,9 +518,7 @@ class ConstitutionEngine:
 
         # Escalation violations → REVIEW
         escalation_hits = [
-            v
-            for v in violations
-            if v.get("type") in ("policy_escalation", "restricted_action")
+            v for v in violations if v.get("type") in ("policy_escalation", "restricted_action")
         ]
         if escalation_hits:
             reasons = [v.get("reason", "") for v in escalation_hits]

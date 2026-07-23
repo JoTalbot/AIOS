@@ -36,12 +36,7 @@ class TestConstitutionEngine(unittest.TestCase):
 
     def test_history(self):
         """Test decision history."""
-        action = {
-            "goal": "test",
-            "scope": "local",
-            "risk": "low",
-            "audit_log": True
-        }
+        action = {"goal": "test", "scope": "local", "risk": "low", "audit_log": True}
         self.engine.evaluate(action)
         self.engine.evaluate(action)
         history = self.engine.history()
