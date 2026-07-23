@@ -10,6 +10,8 @@ These endpoints require 'admin' role.
 
 import json
 import os
+import sqlite3
+from pathlib import Path
 from typing import Optional
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -34,8 +36,19 @@ def init_admin_routes(db_path: str = "aios.sqlite", backup_dir: str = "./backups
     """Initialize admin route handlers with database path."""
     global _db_path, _secret_manager, _backup_manager, _webhook_manager
     _db_path = db_path
-    # Ensure export/import endpoints always target an initialized AIOS schema.
-    Database(db_path=db_path).close()
+    # Initialise only a new/empty database. Existing installations can have a
+    # deliberately partial or legacy schema and must not be mutated here.
+    needs_schema = not Path(db_path).exists()
+    if not needs_schema:
+        with sqlite3.connect(db_path) as conn:
+            needs_schema = (
+                conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1"
+                ).fetchone()
+                is None
+            )
+    if needs_schema:
+        Database(db_path=db_path).close()
     _secret_manager = SecretManager()
     _backup_manager = BackupManager(db_path=db_path, backup_dir=backup_dir)
     _webhook_manager = WebhookManager()
