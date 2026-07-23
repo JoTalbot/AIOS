@@ -210,7 +210,7 @@ class ProductionAutopilot:
         memory: Optional[Any] = None,
         knowledge: Optional[Any] = None,
         fast_mode: bool = False,
-    ):
+    ) -> None:
         self.config = config
         self.device_pool = device_pool
         self.memory = memory
