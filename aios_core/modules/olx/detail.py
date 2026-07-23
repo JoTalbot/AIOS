@@ -39,6 +39,7 @@ class AdDetail:
     raw_texts: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize ad detail to dictionary."""
         return {
             "title": self.title,
             "price": self.price,
@@ -63,6 +64,7 @@ class AdDetailParser:
     def parse(
         self, xml_source: Union[str, Path, ET.Element], url: Optional[str] = None
     ) -> AdDetail:
+        """Parse an ad detail XML dump into structured data."""
         if isinstance(xml_source, ET.Element):
             root = xml_source
         else:

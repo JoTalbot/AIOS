@@ -34,6 +34,7 @@ class ImprovementSuggestion:
     notes: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dictionary."""
         return {
             "title": self.title,
             "suggested_title": self.suggested_title,
@@ -46,6 +47,7 @@ class ImprovementSuggestion:
         }
 
     def to_text(self) -> str:
+        """Render advice as human-readable text."""
         lines = [f"Покращення оголошення: {self.title}"]
         if self.suggested_title != self.title:
             lines.append(f"- Новий заголовок: {self.suggested_title}")
@@ -75,6 +77,7 @@ class AdImprover:
         competitors: List[AdCard],
         existing_description: str = "",
     ) -> ImprovementSuggestion:
+        """Generate improvement suggestions for an ad."""
         keywords = RecommendationEngine._title_keywords(competitors, own_ad.title)
 
         suggested_title = own_ad.title
@@ -142,6 +145,7 @@ class RepostDecision:
     best_hours_local: List[int] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, object]:
+        """Serialize to dictionary."""
         return {
             "should_repost": self.should_repost,
             "reason": self.reason,
@@ -171,6 +175,7 @@ class RepostPlanner:
         messages_total: int = 0,
         now: Optional[datetime] = None,
     ) -> RepostDecision:
+        """Decide whether to repost based on ad metrics."""
         now = now or datetime.now(timezone.utc)
         age_days = max(
             0.0,
@@ -232,6 +237,7 @@ class Reposter:
     def plan_steps(
         self, own_ad: OwnAd, suggestion: Optional[ImprovementSuggestion] = None
     ) -> List[str]:
+        """Plan actionable steps for the repost."""
         title = suggestion.suggested_title if suggestion else own_ad.title
         price = (
             suggestion.suggested_price
@@ -257,6 +263,7 @@ class Reposter:
         suggestion: Optional[ImprovementSuggestion] = None,
         confirm: bool = False,
     ) -> Dict[str, object]:
+        """Execute or dry-run a repost operation."""
         steps = self.plan_steps(own_ad, suggestion)
         if not confirm:
             return {
@@ -299,6 +306,7 @@ class OwnAdEditor:
         self.adb = adb or ADBController()
 
     def plan_steps(self, own_ad: OwnAd, suggestion: ImprovementSuggestion) -> List[str]:
+        """Plan actionable steps for the repost."""
         steps = [
             f"Відкрити «{own_ad.title}» в «Мої оголошення»",
             f"{'/'.join(self.EDIT_LABELS)} → режим редагування",
@@ -320,6 +328,7 @@ class OwnAdEditor:
         suggestion: ImprovementSuggestion,
         confirm: bool = False,
     ) -> Dict[str, object]:
+        """Apply the improvement to the ad on the device."""
         steps = self.plan_steps(own_ad, suggestion)
         if not confirm:
             return {"status": "dry_run", "steps": steps, "executed": False}

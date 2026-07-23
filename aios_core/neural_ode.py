@@ -13,6 +13,7 @@ class NeuralODE:
     def integrate(
         self, initial_state: List[float], t_span: tuple, steps: int = 100
     ) -> List[List[float]]:
+        """Integrate the ODE dynamics over t_span with given steps."""
         t0, t1 = t_span
         dt = (t1 - t0) / steps
         trajectory = [initial_state[:]]
@@ -27,4 +28,5 @@ class NeuralODE:
         return trajectory
 
     def stats(self) -> dict:
+        """Return the ODE solver name."""
         return {"solver": self.solver}
