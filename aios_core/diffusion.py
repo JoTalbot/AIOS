@@ -8,7 +8,7 @@ __all__ = ["DiffusionModel"]
 
 class DiffusionModel:
     """Simplified diffusion probabilistic model with forward process and sampling."""
-    __slots__ = ()
+    __slots__ = ('timesteps', 'betas')
 
     def __init__(self, timesteps: int = 1000):
         self.timesteps = timesteps

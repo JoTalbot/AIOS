@@ -9,7 +9,7 @@ __all__ = ["RateLimiter"]
 
 class RateLimiter:
     """In-memory rate limiter (token bucket style)."""
-    __slots__ = ()
+    __slots__ = ('requests_per_minute', 'requests')
 
     def __init__(self, requests_per_minute: int = 60):
         self.requests_per_minute = requests_per_minute
