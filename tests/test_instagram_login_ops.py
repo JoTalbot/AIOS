@@ -1,4 +1,3 @@
-"""Instagram login tests."""
-from aios_core.modules.instagram.login import LoginDriver
-def test_login_exists():
-    assert LoginDriver is not None
+"""Instagram login ops."""
+from aios_core.modules.instagram.login import InstagramLoginDriver
+def test(): assert InstagramLoginDriver is not None
