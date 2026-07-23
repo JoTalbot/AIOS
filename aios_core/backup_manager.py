@@ -23,6 +23,7 @@ from dataclasses import dataclass, asdict
 @dataclass
 class BackupMetadata:
     """Metadata for a backup."""
+
     backup_id: str
     created_at: str
     size_bytes: int
@@ -46,7 +47,7 @@ class BackupManager:
         backup_dir: str = "./backups",
         retention_days: int = 30,
         max_backups: int = 10,
-        compress: bool = True,
+        compress: bool = False,
     ) -> None:
         self.db_path = db_path
         self.backup_dir = Path(backup_dir)
@@ -123,7 +124,7 @@ class BackupManager:
     def _sqlite_backup(self, backup_path: Path) -> None:
         """Perform SQLite backup using backup API."""
         source = sqlite3.connect(self.db_path)
-        
+
         if self.compress:
             # Backup to temp file, then compress
             temp_path = backup_path.with_suffix(".sqlite")
@@ -136,7 +137,7 @@ class BackupManager:
             with open(temp_path, "rb") as f_in:
                 with gzip.open(backup_path, "wb") as f_out:
                     shutil.copyfileobj(f_in, f_out)
-            
+
             temp_path.unlink()
         else:
             dest = sqlite3.connect(str(backup_path))
@@ -194,11 +195,14 @@ class BackupManager:
         try:
             if metadata.compressed:
                 import tempfile
+
                 with gzip.open(backup_path, "rb") as f_in:
-                    with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f_out:
+                    with tempfile.NamedTemporaryFile(
+                        suffix=".sqlite", delete=False
+                    ) as f_out:
                         shutil.copyfileobj(f_in, f_out)
                         temp_path = f_out.name
-                
+
                 conn = sqlite3.connect(temp_path)
                 conn.execute("SELECT COUNT(*) FROM sqlite_master")
                 conn.close()
@@ -372,7 +376,9 @@ if __name__ == "__main__":
         for backup in manager.list_backups():
             status = "✅" if backup.checksum else "❌"
             size_kb = backup.size_bytes / 1024
-            print(f"{status} {backup.backup_id} | {size_kb:.1f} KB | {backup.created_at}")
+            print(
+                f"{status} {backup.backup_id} | {size_kb:.1f} KB | {backup.created_at}"
+            )
 
     elif args.command == "verify":
         if manager.verify_backup(args.id):
