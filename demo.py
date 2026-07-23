@@ -46,7 +46,10 @@ def demo_constitutional_evaluation():
     print("📜 CONSTITUTIONAL EVALUATION")
     print("=" * 60)
 
-    db = Database(":memory:")
+    # Use in-memory DB via container override
+    from aios_core.container import container
+    container.configure(db_path=":memory:")
+    db = container.db()
     orch = Orchestrator(db=db)
 
     # Show constitution stats
@@ -132,7 +135,10 @@ def demo_task_orchestration():
     print("🎯 TASK ORCHESTRATION")
     print("=" * 60)
 
-    db = Database(":memory:")
+    # Use in-memory DB via container override
+    from aios_core.container import container
+    container.configure(db_path=":memory:")
+    db = container.db()
     orch = Orchestrator(db=db)
 
     # Create a complex task
@@ -254,7 +260,10 @@ def demo_memory_knowledge():
     print("🧠 MEMORY & KNOWLEDGE GRAPH")
     print("=" * 60)
 
-    db = Database(":memory:")
+    # Use in-memory DB via container override
+    from aios_core.container import container
+    container.configure(db_path=":memory:")
+    db = container.db()
     orch = Orchestrator(db=db)
 
     # Memory: 3 constitutional categories
@@ -316,7 +325,10 @@ def demo_reasoning_learning():
     print("🤔 REASONING & LEARNING")
     print("=" * 60)
 
-    db = Database(":memory:")
+    # Use in-memory DB via container override
+    from aios_core.container import container
+    container.configure(db_path=":memory:")
+    db = container.db()
     orch = Orchestrator(db=db)
 
     # Build reasoning chains
@@ -363,7 +375,10 @@ def demo_evolution():
     print("🧬 EVOLUTION MANAGER (7-Stage Pipeline)")
     print("=" * 60)
 
-    db = Database(":memory:")
+    # Use in-memory DB via container override
+    from aios_core.container import container
+    container.configure(db_path=":memory:")
+    db = container.db()
     orch = Orchestrator(db=db)
 
     print("Stages:", " → ".join(orch.evolution.stages))
@@ -566,7 +581,10 @@ def demo_test_engine():
     print("🧪 SELF-TEST ENGINE")
     print("=" * 60)
 
-    db = Database(":memory:")
+    # Use in-memory DB via container override
+    from aios_core.container import container
+    container.configure(db_path=":memory:")
+    db = container.db()
     engine = TestEngine(
         constitution_dir=os.path.join(os.path.dirname(__file__), "docs/constitution"),
         policies_dir=os.path.join(os.path.dirname(__file__), "policies"),

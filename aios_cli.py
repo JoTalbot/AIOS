@@ -195,8 +195,9 @@ def main(argv=None):
         from run_rest_api import main as run_main
         run_main()
     elif args.command == "dashboard":
-        db = Database("aios.sqlite")
-        orch = Orchestrator(db=db)
+        from aios_core.container import container as _c
+        db = _c.db()
+        orch = _c.orchestrator()
         app = create_dashboard(orch)
         print(f"Starting Dashboard on http://127.0.0.1:{args.port}")
         uvicorn.run(app, host="127.0.0.1", port=args.port)
@@ -204,8 +205,8 @@ def main(argv=None):
         from demo_v41 import main as demo_main
         demo_main()
     elif args.command == "stats":
-        db = Database("aios.sqlite")
-        orch = Orchestrator(db=db)
+        db = _c.db()
+        orch = _c.orchestrator()
         print(json.dumps(orch.stats(), indent=2))
     elif args.command == "platforms":
         if not _run_platforms(args): parser.parse_args(["platforms", "--help"])
