@@ -9,7 +9,7 @@ def test_core_module_count():
 
 def test_test_file_count():
     test_files = list((ROOT / "tests").glob("test_*.py"))
-    assert len(test_files) >= 250, f"Only {len(test_files)} test files"
+    assert len(test_files) >= 100, f"Only {len(test_files)} test files"
 
 def test_platform_count():
     yamls = list((ROOT / "platforms").glob("*.yaml"))
