@@ -67,3 +67,12 @@ clean:
 	find . -type d -name htmlcov -exec rm -rf {} +
 	find . -type f -name ".coverage" -delete
 	rm -rf site/ docs/source/_build/ build/ dist/ *.egg-info/
+
+quality-check:
+	python3 tools/quality_check.py
+
+hooks:
+	git config core.hooksPath .githooks
+
+git-blame-ignore:
+	git config blame.ignoreRevsFile .git-blame-ignore-revs

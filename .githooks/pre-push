@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+echo "🔍 AIOS pre-push quality check..."
+BARES=$(grep -rn 'except:' aios_core/ --include='*.py' | grep -v 'Exception\|noqa' | wc -l)
+[ "$BARES" -gt 0 ] && echo "❌ $BARES bare excepts!" && exit 1
+python3 tools/quality_check.py
