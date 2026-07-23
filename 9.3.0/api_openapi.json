@@ -1,0 +1,2227 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AIOS API",
+    "version": "9.3.1",
+    "description": "AIOS — Autonomous Intelligence Operating System. REST API for multi-platform marketplace automation, constitution-gated execution, device pool management, and agent orchestration.",
+    "contact": {
+      "email": "jo.talbot@gmail.com",
+      "name": "JoTalbot"
+    },
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Local development"
+    },
+    {
+      "url": "https://aios.example.com",
+      "description": "Production"
+    }
+  ],
+  "paths": {
+    "/api/v1/advisor/draft": {
+      "post": {
+        "tags": [
+          "Advisor"
+        ],
+        "summary": "Advisor Draft — /api/v1/advisor/draft",
+        "operationId": "post_advisor_draft",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/advisor/summarize": {
+      "post": {
+        "tags": [
+          "Advisor"
+        ],
+        "summary": "Advisor Summarize — /api/v1/advisor/summarize",
+        "operationId": "post_advisor_summarize",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/advisor/price": {
+      "get": {
+        "tags": [
+          "Advisor"
+        ],
+        "summary": "Advisor Price — /api/v1/advisor/price",
+        "operationId": "get_advisor_price",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/advisor/drafts": {
+      "get": {
+        "tags": [
+          "Advisor"
+        ],
+        "summary": "Advisor List Drafts — /api/v1/advisor/drafts",
+        "operationId": "get_advisor_list_drafts",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/agents": {
+      "post": {
+        "tags": [
+          "Agents"
+        ],
+        "summary": "Ui Agents — /api/v1/agents",
+        "operationId": "post_ui_agents",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/android/devices": {
+      "get": {
+        "tags": [
+          "Android"
+        ],
+        "summary": "Android Devices — /api/v1/android/devices",
+        "operationId": "get_android_devices",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/android/predictive": {
+      "get": {
+        "tags": [
+          "Android"
+        ],
+        "summary": "Android Predictive — /api/v1/android/predictive",
+        "operationId": "get_android_predictive",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/apk/convert": {
+      "post": {
+        "tags": [
+          "APK"
+        ],
+        "summary": "Apk Convert — /api/v1/apk/convert",
+        "operationId": "post_apk_convert",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/apk/profiles": {
+      "get": {
+        "tags": [
+          "APK"
+        ],
+        "summary": "Apk Profiles — /api/v1/apk/profiles",
+        "operationId": "get_apk_profiles",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/approvals": {
+      "post": {
+        "tags": [
+          "Approvals"
+        ],
+        "summary": "Approvals List — /api/v1/approvals",
+        "operationId": "post_approvals_list",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/apps/transform": {
+      "post": {
+        "tags": [
+          "APK"
+        ],
+        "summary": "App Transform — /api/v1/apps/transform",
+        "operationId": "post_app_transform",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit": {
+      "post": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Audit Query — /api/v1/audit",
+        "operationId": "post_audit_query",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/stats": {
+      "post": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Audit Stats — /api/v1/audit/stats",
+        "operationId": "post_audit_stats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/constitution": {
+      "post": {
+        "tags": [
+          "Constitution"
+        ],
+        "summary": "Ui Constitution — /api/v1/constitution",
+        "operationId": "post_ui_constitution",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/constitution/stats": {
+      "get": {
+        "tags": [
+          "Constitution"
+        ],
+        "summary": "Constitution Stats — /api/v1/constitution/stats",
+        "operationId": "get_constitution_stats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/dashboard": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Dashboard Page — /dashboard",
+        "operationId": "get_dashboard_page",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/devices": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Devices List — /api/v1/devices",
+        "operationId": "get_devices_list",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/devices/register": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Devices Register — /api/v1/devices/register",
+        "operationId": "post_devices_register",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/lease": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Devices Lease — /api/v1/devices/lease",
+        "operationId": "post_devices_lease",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/release": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Devices Release — /api/v1/devices/release",
+        "operationId": "post_devices_release",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/heartbeat": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Devices Heartbeat — /api/v1/devices/heartbeat",
+        "operationId": "post_devices_heartbeat",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/reap": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Devices Reap — /api/v1/devices/reap",
+        "operationId": "post_devices_reap",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/limits": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Devices Limits Set — /api/v1/devices/limits",
+        "operationId": "get_devices_limits_set",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/devices/waitlist": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Devices Waitlist — /api/v1/devices/waitlist",
+        "operationId": "get_devices_waitlist",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/evaluate": {
+      "post": {
+        "tags": [
+          "Evaluate"
+        ],
+        "summary": "Evaluate — /api/v1/evaluate",
+        "operationId": "post_evaluate",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evolution/proposals": {
+      "post": {
+        "tags": [
+          "Evolution"
+        ],
+        "summary": "Evo Propose — /api/v1/evolution/proposals",
+        "operationId": "post_evo_propose",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evolution/proposals/{proposal_id}": {
+      "post": {
+        "tags": [
+          "Evolution"
+        ],
+        "summary": "Evo Get — /api/v1/evolution/proposals/{proposal_id}",
+        "operationId": "post_evo_get",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evolution/stats": {
+      "post": {
+        "tags": [
+          "Evolution"
+        ],
+        "summary": "Evo Stats — /api/v1/evolution/stats",
+        "operationId": "post_evo_stats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "post": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health — /health",
+        "operationId": "post_health",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/knowledge/nodes": {
+      "post": {
+        "tags": [
+          "Knowledge"
+        ],
+        "summary": "Kg Find Nodes — /api/v1/knowledge/nodes",
+        "operationId": "post_kg_find_nodes",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/knowledge/nodes/{node_id}": {
+      "post": {
+        "tags": [
+          "Knowledge"
+        ],
+        "summary": "Kg Get Node — /api/v1/knowledge/nodes/{node_id}",
+        "operationId": "post_kg_get_node",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/knowledge/edges": {
+      "post": {
+        "tags": [
+          "Knowledge"
+        ],
+        "summary": "Kg Add Edge — /api/v1/knowledge/edges",
+        "operationId": "post_kg_add_edge",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/knowledge/nodes/{node_id}/neighbors": {
+      "post": {
+        "tags": [
+          "Knowledge"
+        ],
+        "summary": "Kg Neighbors — /api/v1/knowledge/nodes/{node_id}/neighbors",
+        "operationId": "post_kg_neighbors",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/knowledge/path": {
+      "post": {
+        "tags": [
+          "Knowledge"
+        ],
+        "summary": "Kg Path — /api/v1/knowledge/path",
+        "operationId": "post_kg_path",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/knowledge/stats": {
+      "post": {
+        "tags": [
+          "Knowledge"
+        ],
+        "summary": "Kg Stats — /api/v1/knowledge/stats",
+        "operationId": "post_kg_stats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/knowledge-graph": {
+      "post": {
+        "tags": [
+          "Knowledge-Graph"
+        ],
+        "summary": "Ui Knowledge Graph — /api/v1/knowledge-graph",
+        "operationId": "post_ui_knowledge_graph",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/marketplace/search": {
+      "get": {
+        "tags": [
+          "Marketplace"
+        ],
+        "summary": "Marketplace Search — /api/v1/marketplace/search",
+        "operationId": "get_marketplace_search",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/memory": {
+      "get": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "Memory Store — /api/v1/memory",
+        "operationId": "get_memory_store",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/memory/stats": {
+      "put": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "Memory Stats — /api/v1/memory/stats",
+        "operationId": "put_memory_stats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/memory/{item_id}": {
+      "put": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "Memory Delete — /api/v1/memory/{item_id}",
+        "operationId": "put_memory_delete",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "post": {
+        "tags": [
+          "Stats"
+        ],
+        "summary": "Metrics — /metrics",
+        "operationId": "post_metrics",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models": {
+      "post": {
+        "tags": [
+          "Models"
+        ],
+        "summary": "Ui Models — /api/v1/models",
+        "operationId": "post_ui_models",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/ads": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Ads — /api/v1/modules/olx/ads",
+        "operationId": "get_olx_ads",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/stats": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Stats — /api/v1/modules/olx/stats",
+        "operationId": "get_olx_stats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/history": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx History — /api/v1/modules/olx/history",
+        "operationId": "get_olx_history",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/drops": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Drops — /api/v1/modules/olx/drops",
+        "operationId": "get_olx_drops",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/collect": {
+      "post": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Collect — /api/v1/modules/olx/collect",
+        "operationId": "post_olx_collect",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/schedule": {
+      "post": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Unschedule — /api/v1/modules/olx/schedule",
+        "operationId": "post_olx_unschedule",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/detail": {
+      "post": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Detail Parse — /api/v1/modules/olx/detail",
+        "operationId": "post_olx_detail_parse",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/chats": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Chats — /api/v1/modules/olx/chats",
+        "operationId": "get_olx_chats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/outbox": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Outbox — /api/v1/modules/olx/outbox",
+        "operationId": "get_olx_outbox",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/own": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Own List — /api/v1/modules/olx/own",
+        "operationId": "get_olx_own_list",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/own/repost": {
+      "post": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Own Repost — /api/v1/modules/olx/own/repost",
+        "operationId": "post_olx_own_repost",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/own/edit": {
+      "post": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Own Edit — /api/v1/modules/olx/own/edit",
+        "operationId": "post_olx_own_edit",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/notify": {
+      "post": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Notify — /api/v1/modules/olx/notify",
+        "operationId": "post_olx_notify",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/favorites": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Favorites — /api/v1/modules/olx/favorites",
+        "operationId": "get_olx_favorites",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/autowatch": {
+      "post": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Autowatch — /api/v1/modules/olx/autowatch",
+        "operationId": "post_olx_autowatch",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/doctor": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Doctor — /api/v1/modules/olx/doctor",
+        "operationId": "get_olx_doctor",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/profile": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Profile — /api/v1/modules/olx/profile",
+        "operationId": "get_olx_profile",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/{platform}/ads": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Module Ads — /api/v1/modules/{platform}/ads",
+        "operationId": "get_module_ads",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/{platform}/stats": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Module Stats — /api/v1/modules/{platform}/stats",
+        "operationId": "get_module_stats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/{platform}/own": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Module Own — /api/v1/modules/{platform}/own",
+        "operationId": "get_module_own",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/{platform}/chats": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Module Chats — /api/v1/modules/{platform}/chats",
+        "operationId": "get_module_chats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/modules/olx/advisor": {
+      "get": {
+        "tags": [
+          "Modules"
+        ],
+        "summary": "Olx Advisor — /api/v1/modules/olx/advisor",
+        "operationId": "get_olx_advisor",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/platforms": {
+      "get": {
+        "tags": [
+          "Platforms"
+        ],
+        "summary": "Platforms List — /api/v1/platforms",
+        "operationId": "get_platforms_list",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/production/health": {
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "Production Health — /api/v1/production/health",
+        "operationId": "get_production_health",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/production/config": {
+      "get": {
+        "tags": [
+          "Production"
+        ],
+        "summary": "Production Config — /api/v1/production/config",
+        "operationId": "get_production_config",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/profiles": {
+      "get": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Profiles Create — /api/v1/profiles",
+        "operationId": "get_profiles_create",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/rpc": {
+      "post": {
+        "tags": [
+          "Rpc"
+        ],
+        "summary": "Rpc — /rpc",
+        "operationId": "post_rpc",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/safety": {
+      "post": {
+        "tags": [
+          "Safety"
+        ],
+        "summary": "Ui Safety — /api/v1/safety",
+        "operationId": "post_ui_safety",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shards": {
+      "get": {
+        "tags": [
+          "Shards"
+        ],
+        "summary": "Shards Add — /api/v1/shards",
+        "operationId": "get_shards_add",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/shards/route": {
+      "post": {
+        "tags": [
+          "Shards"
+        ],
+        "summary": "Shards Unroute — /api/v1/shards/route",
+        "operationId": "post_shards_unroute",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shards/gateway": {
+      "post": {
+        "tags": [
+          "Shards"
+        ],
+        "summary": "Shards Gateway — /api/v1/shards/gateway",
+        "operationId": "post_shards_gateway",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shards/{host}": {
+      "delete": {
+        "tags": [
+          "Shards"
+        ],
+        "summary": "Shards Remove — /api/v1/shards/{host}",
+        "operationId": "delete_shards_remove",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/shards/jobs": {
+      "get": {
+        "tags": [
+          "Shards"
+        ],
+        "summary": "Shard Jobs Enqueue — /api/v1/shards/jobs",
+        "operationId": "get_shard_jobs_enqueue",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/shards/stats": {
+      "get": {
+        "tags": [
+          "Shards"
+        ],
+        "summary": "Shard Jobs Stats — /api/v1/shards/stats",
+        "operationId": "get_shard_jobs_stats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/stats": {
+      "post": {
+        "tags": [
+          "Stats"
+        ],
+        "summary": "Stats — /api/v1/stats",
+        "operationId": "post_stats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Tasks Create — /api/v1/tasks",
+        "operationId": "get_tasks_create",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Tasks Get — /api/v1/tasks/{task_id}",
+        "operationId": "post_tasks_get",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/execute": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Tasks Execute — /api/v1/tasks/{task_id}/execute",
+        "operationId": "post_tasks_execute",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tests/suites": {
+      "post": {
+        "tags": [
+          "Tests"
+        ],
+        "summary": "Tests Suites — /api/v1/tests/suites",
+        "operationId": "post_tests_suites",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tests/run": {
+      "post": {
+        "tags": [
+          "Tests"
+        ],
+        "summary": "Tests Run All — /api/v1/tests/run",
+        "operationId": "post_tests_run_all",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tests/last-report": {
+      "post": {
+        "tags": [
+          "Tests"
+        ],
+        "summary": "Tests Last Report — /api/v1/tests/last-report",
+        "operationId": "post_tests_last_report",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tests/stats": {
+      "post": {
+        "tags": [
+          "Tests"
+        ],
+        "summary": "Tests Stats — /api/v1/tests/stats",
+        "operationId": "post_tests_stats",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ws": {
+      "get": {
+        "tags": [
+          "WebSocket"
+        ],
+        "summary": "Websocket — /ws",
+        "operationId": "get_websocket",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "Bearer <api-key>"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Stats"
+    },
+    {
+      "name": "OLX"
+    },
+    {
+      "name": "Devices"
+    },
+    {
+      "name": "Shards"
+    },
+    {
+      "name": "Profiles"
+    },
+    {
+      "name": "Constitution"
+    },
+    {
+      "name": "Evolution"
+    },
+    {
+      "name": "Advisor"
+    },
+    {
+      "name": "Android"
+    },
+    {
+      "name": "Platforms"
+    },
+    {
+      "name": "Marketplace"
+    },
+    {
+      "name": "APK"
+    },
+    {
+      "name": "Audit"
+    },
+    {
+      "name": "Modules"
+    },
+    {
+      "name": "Admin"
+    },
+    {
+      "name": "WebSocket"
+    }
+  ]
+}
