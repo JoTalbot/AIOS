@@ -1,89 +1,132 @@
-# Production Autopilot Alerts — 3+ profiles ≥2 weeks no bans
 groups:
-  - name: aios-production
+  - name: aios-production-alerts
+    interval: 30s
     rules:
-      # BAN DETECTION - critical
-      - alert: AIOSProductionBanDetected
+      # Critical: Ban detected - immediate action required
+      - alert: BanDetected
         expr: aios_production_bans_total > 0
-        for: 0m
+        for: 0s
         labels:
           severity: critical
+          component: production
         annotations:
-          summary: "BAN DETECTED: {{ $value }} bans in production"
-          description: "Instagram profile ban detected — autopilot must stop, check pacing/compliance. GA criteria failed."
-          runbook: "Check logs, pacing metrics, reduce actions_per_hour, increase jitter"
+          summary: "🚨 BAN DETECTED - Production autopilot banned!"
+          description: "Total bans: {{ $value }}. Immediately reduce Aph, increase jitter, check compliance. Profile: {{ $labels.profile }}"
+          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#ban-recovery"
 
-      - alert: AIOSProductionLowSuccessRate
-        expr: aios_production_success_rate < 0.8
+      # Warning: Success rate below 90% for 15 minutes
+      - alert: LowSuccessRateWarning
+        expr: aios_production_success_rate < 0.90
         for: 15m
         labels:
           severity: warning
+          component: production
         annotations:
-          summary: "Low success rate {{ $value }} < 80% for 15m"
-          description: "Selectors may have drifted, hints need recalibration. Run platforms doctor + calibrate."
+          summary: "⚠️ Success rate below 90% for 15m"
+          description: "Current success rate: {{ $value | humanizePercentage }}. Check pacing, device health, compliance blocks. Profile: {{ $labels.profile }}"
+          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#success-rate-recovery"
 
-      - alert: AIOSProductionCriticalSuccessRate
-        expr: aios_production_success_rate < 0.5
+      # Critical: Success rate below 50% for 5 minutes (imminent ban risk)
+      - alert: LowSuccessRateCritical
+        expr: aios_production_success_rate < 0.50
         for: 5m
         labels:
           severity: critical
+          component: production
         annotations:
-          summary: "Critical success rate {{ $value }} < 50%"
-          description: "Immediate intervention: check devices, ADB, UI dumps, marker regression."
+          summary: "🔴 Success rate below 50% - IMMINENT BAN RISK"
+          description: "Current success rate: {{ $value | humanizePercentage }}. Pause autopilot, investigate device/app state immediately. Profile: {{ $labels.profile }}"
+          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#critical-recovery"
 
-      - alert: AIOSProductionHighPredictiveRisk
+      # Warning: High predictive risk score
+      - alert: HighPredictiveRisk
         expr: aios_production_risk_score > 0.7
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High predictive risk {{ $value }} on device"
-          description: "Predictive maintenance forecasts failure. Recommendations: restart emulator, clear cache, update hints."
-
-      - alert: AIOSProductionPacerThrottled
-        expr: increase(aios_pacer_actions[1h]) == 0
-        for: 2h
-        labels:
-          severity: warning
-        annotations:
-          summary: "Pacer throttled — no actions for 2h"
-          description: "Profile hit actions_per_hour limit or session_max. Check if intentional or stuck."
-
-      # Fleet / Device
-      - alert: AIOSProductionDeviceOffline
-        expr: aios_devices{state="offline"} > 0
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Device {{ $labels.serial }} offline"
-          description: "Emulator/device offline — lease will fail, profiles go to waitlist."
-
-      - alert: AIOSProductionNoFreeDevices
-        expr: aios_devices{state="free"} == 0
         for: 10m
         labels:
+          severity: warning
+          component: production
+        annotations:
+          summary: "⚠️ High predictive risk score > 0.7"
+          description: "Device {{ $labels.device }} shows elevated failure risk. Consider recalibration or device rotation."
+          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#predictive-maintenance"
+
+      # Critical: Device offline
+      - alert: DeviceOffline
+        expr: aios_devices{state="offline"} > 0
+        for: 2m
+        labels:
           severity: critical
+          component: fleet
         annotations:
-          summary: "No free devices in pool for 10m"
-          description: "All devices leased/busy. Scale device farm or increase reap interval."
+          summary: "📱 Device offline: {{ $labels.serial }}"
+          description: "Device {{ $labels.serial }} (AVD: {{ $labels.avd }}) has been offline for 2m. Check emulator health or replace device."
 
-      # Compliance
-      - alert: AIOSProductionComplianceBlocked
-        expr: increase(aios_compliance_blocks_total[1h]) > 10
-        for: 0m
+      # Warning: No free devices for a platform
+      - alert: NoFreeDevices
+        expr: aios_devices{state="free"} == 0
+        for: 5m
         labels:
-          severity: info
+          severity: warning
+          component: fleet
         annotations:
-          summary: "Compliance blocked {{ $value }} actions in last hour"
-          description: "Guarded actions blocked by ToS policy — review compliance YAML."
+          summary: "⚠️ No free devices available"
+          description: "All devices busy or offline. Consider adding more emulators or checking waitlist. Platform: {{ $labels.platform }}"
+          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#device-pool-scaling"
 
-      # Long-term GA
-      - alert: AIOSProductionGAProgress
+      # Warning: Compliance blocked actions
+      - alert: ComplianceBlocked
+        expr: increase(aios_compliance_blocks_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: compliance
+        annotations:
+          summary: "⚠️ High compliance block rate"
+          description: "{{ $value }} actions blocked by compliance guard in 5m. Check platform compliance YAML and ToS decisions. Platform: {{ $labels.platform }}"
+          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#compliance-tuning"
+
+      # Info: GA progress tracking
+      - alert: GAProgress
         expr: aios_production_cycles_total < 336
-        for: 0m
+        for: 0s
         labels:
           severity: info
+          component: production
         annotations:
-          summary: "GA criteria: {{ $value }}/336 cycles (2 weeks) completed"
-          description: "Need 336 cycles (14d x 24/d) per 3 profiles = 1008 total for GA."
+          summary: "📊 GA Progress: {{ $value }}/336 cycles"
+          description: "Target: 336 cycles (14 days × 24 cycles/day) for GA. Current: {{ $value }} cycles. Profiles: {{ $labels.profile }}"
+          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#ga-criteria"
+
+      # Warning: Drift events spike
+      - alert: DriftEventsSpike
+        expr: increase(aios_drift_events_total[1h]) > 20
+        for: 5m
+        labels:
+          severity: warning
+          component: calibration
+        annotations:
+          summary: "⚠️ Marker drift spike detected"
+          description: "{{ $value }} drift events in 1h. Platform: {{ $labels.platform }}. Run marker-check and recalibrate."
+          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#drift-recovery"
+
+      # Warning: Cycle duration too high
+      - alert: CycleDurationHigh
+        expr: aios_cycle_duration_seconds > 300
+        for: 10m
+        labels:
+          severity: warning
+          component: production
+        annotations:
+          summary: "⚠️ Cycle duration > 5 minutes"
+          description: "Cycle for profile {{ $labels.profile }} taking {{ $value }}s. Check device performance, app responsiveness, or reduce batch size."
+
+      # Info: Cards collected rate
+      - alert: LowCardsCollected
+        expr: rate(aios_cards_collected_total[1h]) < 10
+        for: 30m
+        labels:
+          severity: info
+          component: collection
+        annotations:
+          summary: "📊 Low card collection rate"
+          description: "Collecting {{ $value | humanize }}/hr cards. Platform: {{ $labels.platform }}. Check search queries, app state, or increase max_cards."

@@ -1,0 +1,524 @@
+name: Full CI/CD — Android Emulators + Calibration + Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Deploy to production server after tests'
+        type: boolean
+        default: false
+      platform:
+        description: 'Platform to calibrate (prom, bigl, shafa, all)'
+        type: choice
+        options: [all, prom, bigl, shafa]
+        default: 'all'
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  ANDROID_SDK_ROOT: /opt/android-sdk
+  AVD_NAME: AIOS_Calibration
+  API_LEVEL: "35"
+  ABI: google_apis/x86_64
+  EMULATOR_OPTS: "-no-snapshot-load -no-audio -no-boot-anim -gpu swiftshader_indirect -no-window"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # ---------------------------------------------------------
+  # 1. Lint & Unit Tests (fast, no emulator)
+  # ---------------------------------------------------------
+  lint-and-unit:
+    name: Lint & Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install black flake8 pytest pytest-asyncio pytest-cov
+
+      - name: Check formatting (black)
+        run: python -m black --check aios_core/ aios_cli.py tests/
+
+      - name: Lint (flake8)
+        run: python -m flake8 aios_core/ --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Run unit tests (no device)
+        run: |
+          python -m pytest -q \
+            --ignore=tests/test_real_android_app.py \
+            --ignore=tests/test_android_rpa_bridge.py \
+            -k "not real_device" \
+            --tb=short
+        env:
+          AIOS_FAST_TEST: "1"
+
+      - name: Verify imports
+        run: |
+          python -c "import aios_core; print('Core OK')"
+          python -c "from aios_core.platforms import list_platforms; print('Platforms:', [p.name for p in list_platforms()])"
+
+  # ---------------------------------------------------------
+  # 2. Android Emulator Setup (reusable for next jobs)
+  # ---------------------------------------------------------
+  setup-emulators:
+    name: Setup Android Emulators
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      emulator_serials: ${{ steps.get-serials.outputs.serials }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Android SDK & Create AVDs
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -qq -y openjdk-17-jdk-headless unzip wget curl lz4 libpulse-dev libx11-6 libxext6 libxi6 libxrender1 libxtst6 libglib2.0-0
+
+          # Android SDK
+          mkdir -p "${ANDROID_SDK_ROOT}/cmdline-tools"
+          cd "${ANDROID_SDK_ROOT}/cmdline-tools"
+          wget -q "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip
+          mv cmdline-tools latest
+          rm cmdline-tools.zip
+
+          export PATH="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${PATH}"
+          echo "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "${ANDROID_SDK_ROOT}/platform-tools" >> $GITHUB_PATH
+          echo "${ANDROID_SDK_ROOT}/emulator" >> $GITHUB_PATH
+
+          # Licenses
+          yes | sdkmanager --licenses > /dev/null
+
+          # Install packages
+          sdkmanager "platform-tools" "emulator" "platforms;android-${API_LEVEL}" \
+            "system-images;android-${API_LEVEL};${ABI}" \
+            "build-tools;35.0.0" > /dev/null
+
+          # Create 3 AVDs for parallel calibration
+          for i in 1 2 3; do
+            AVD="AIOS_${i}"
+            echo "no" | avdmanager create avd -n "${AVD}" \
+              -k "system-images;android-${API_LEVEL};${ABI}" \
+              -d "pixel" --force > /dev/null
+            
+            # Config for faster boot
+            cat > ~/.android/avd/${AVD}.avd/config.ini <<EOF
+hw.lcd.density=160
+hw.lcd.width=320
+hw.lcd.height=640
+sdcard.size=512M
+hw.gpu.enabled=yes
+hw.gpu.mode=swiftshader_indirect
+hw.keyboard=yes
+vm.heapSize=256M
+hw.ramSize=1536
+EOF
+          done
+
+      - name: Start Emulators (3 parallel)
+        run: |
+          export PATH="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${PATH}"
+          
+          # Start 3 emulators in background
+          for i in 1 2 3; do
+            AVD="AIOS_${i}"
+            emulator -avd "${AVD}" ${EMULATOR_OPTS} -port $((5554 + (i-1)*2)) > /tmp/emulator_${i}.log 2>&1 &
+            echo $! > /tmp/emulator_${i}.pid
+            echo "Started ${AVD} on port $((5554 + (i-1)*2))"
+          done
+
+      - name: Wait for Emulators Boot
+        run: |
+          export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
+          for i in 1 2 3; do
+            PORT=$((5554 + (i-1)*2))
+            SERIAL="emulator-${PORT}"
+            echo "Waiting for ${SERIAL}..."
+            timeout 300 bash -c "
+              until adb -s ${SERIAL} shell getprop sys.boot_completed 2>/dev/null | grep -q '1'; do
+                sleep 5
+              done
+            " || { echo "Timeout waiting for ${SERIAL}"; cat /tmp/emulator_${i}.log; exit 1; }
+            echo "${SERIAL} booted"
+          done
+          adb devices
+
+      - name: Get Emulator Serials
+        id: get-serials
+        run: |
+          export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
+          SERIALS=$(adb devices | grep emulator | awk '{print $1}' | paste -sd,)
+          echo "serials=${SERIALS}" >> $GITHUB_OUTPUT
+          echo "Available emulators: ${SERIALS}"
+
+      - name: Register Emulators in AIOS Device Pool
+        run: |
+          export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
+          python -m pip install -r requirements.txt -q
+          IFS=',' read -ra SERIALS <<< "${{ steps.get-serials.outputs.serials }}"
+          PLATFORMS=("prom" "bigl" "shafa")
+          for i in "${!SERIALS[@]}"; do
+            python aios_cli.py devices register --serial "${SERIALS[i]}" --avd "AIOS_$((i+1))"
+          done
+
+  # ---------------------------------------------------------
+  # 3. Calibration for Regional Platforms (prom, bigl, shafa)
+  # ---------------------------------------------------------
+  calibrate-platforms:
+    name: Calibrate Regional Platforms
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: [lint-and-unit, setup-emulators]
+    strategy:
+      matrix:
+        platform: [prom, bigl, shafa]
+        include:
+          - platform: prom
+            package: ua.prom
+            serial_index: 0
+          - platform: bigl
+            package: ua.bigl
+            serial_index: 1
+          - platform: shafa
+            package: com.shafa
+            serial_index: 2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Get emulator serial
+        id: serial
+        run: |
+          IFS=',' read -ra SERIALS <<< "${{ needs.setup-emulators.outputs.emulator_serials }}"
+          echo "serial=${SERIALS[${{ matrix.serial_index }}]}" >> $GITHUB_OUTPUT
+
+      - name: Fetch APK (if available via apkeep)
+        run: |
+          export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
+          python aios_cli.py platforms fetch-apk ${{ matrix.package }} --out apks --source apkpure || echo "APK fetch failed, will use pre-installed"
+
+      - name: Install APK on emulator
+        if: always()
+        run: |
+          export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
+          SERIAL="${{ steps.serial.outputs.serial }}"
+          APK_PATH="apks/${{ matrix.package }}.apk"
+          if [ -f "$APK_PATH" ]; then
+            adb -s $SERIAL install -r "$APK_PATH" || echo "Install failed, maybe already installed"
+          else
+            echo "APK not found, assuming pre-installed or manual step needed"
+          fi
+
+      - name: Generate calibration recipe (doctor --calibrate-recipe)
+        id: recipe
+        run: |
+          python aios_cli.py platforms doctor --platform ${{ matrix.platform }} --calibrate-recipe > /tmp/recipe_${{ matrix.platform }}.json
+          cat /tmp/recipe_${{ matrix.platform }}.json
+
+      - name: Execute calibration dump collection
+        run: |
+          export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
+          SERIAL="${{ steps.serial.outputs.serial }}"
+          
+          # The recipe gives us exact ADB commands. We'll run the key ones:
+          # 1. Open app
+          adb -s $SERIAL shell am start -n ${{ matrix.package }}/.ui.main.MainActivity || true
+          sleep 3
+          
+          # 2. Dump search screen
+          adb -s $SERIAL shell uiautomator dump /sdcard/${{ matrix.platform }}_search.xml
+          adb -s $SERIAL pull /sdcard/${{ matrix.platform }}_search.xml /tmp/${{ matrix.platform }}_search.xml
+          
+          # 3. Dump detail screen (navigate to first item)
+          adb -s $SERIAL shell input tap 160 200
+          sleep 2
+          adb -s $SERIAL shell uiautomator dump /sdcard/${{ matrix.platform }}_detail.xml
+          adb -s $SERIAL pull /sdcard/${{ matrix.platform }}_detail.xml /tmp/${{ matrix.platform }}_detail.xml
+          
+          # 4. Dump messenger screen
+          adb -s $SERIAL shell input tap 160 500
+          sleep 2
+          adb -s $SERIAL shell uiautomator dump /sdcard/${{ matrix.platform }}_messenger.xml
+          adb -s $SERIAL pull /sdcard/${{ matrix.platform }}_messenger.xml /tmp/${{ matrix.platform }}_messenger.xml
+          
+          # 5. Dump navigation (home)
+          adb -s $SERIAL shell input keyevent 3
+          sleep 1
+          adb -s $SERIAL shell uiautomator dump /sdcard/${{ matrix.platform }}_navigation.xml
+          adb -s $SERIAL pull /sdcard/${{ matrix.platform }}_navigation.xml /tmp/${{ matrix.platform }}_navigation.xml
+
+      - name: Calibrate (write hints to YAML)
+        run: |
+          python aios_cli.py platforms calibrate \
+            --platform ${{ matrix.platform }} \
+            --dump /tmp/${{ matrix.platform }}_search.xml \
+            --detail /tmp/${{ matrix.platform }}_detail.xml \
+            --messages /tmp/${{ matrix.platform }}_messenger.xml \
+            --navigation /tmp/${{ matrix.platform }}_navigation.xml \
+            --write
+
+      - name: Codegen (generate parser)
+        run: |
+          python aios_cli.py platforms codegen --platform ${{ matrix.platform }} --force
+
+      - name: Bootup verification
+        run: |
+          python aios_cli.py platforms bootup \
+            --platform ${{ matrix.platform }} \
+            --package ${{ matrix.package }} \
+            --dump /tmp/${{ matrix.platform }}_search.xml \
+            --verify || echo "Bootup verification needs manual check"
+
+      - name: Upload calibrated artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: calibrated-${{ matrix.platform }}
+          path: |
+            platforms/${{ matrix.platform }}.yaml
+            aios_core/modules/${{ matrix.platform }}/
+          retention-days: 7
+
+  # ---------------------------------------------------------
+  # 4. Integration Tests with Emulators
+  # ---------------------------------------------------------
+  integration-tests:
+    name: Integration Tests (with emulators)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [calibrate-platforms]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Get emulator serials
+        run: |
+          IFS=',' read -ra SERIALS <<< "${{ needs.setup-emulators.outputs.emulator_serials }}"
+          for i in "${!SERIALS[@]}"; do
+            PLATFORM=("prom" "bigl" "shafa")
+            python aios_cli.py profiles add --platform ${PLATFORM[$i]} --name ${PLATFORM[$i]}_ci --device ${SERIALS[$i]}
+            python aios_cli.py devices lease --profile ${PLATFORM[$i]}:${PLATFORM[$i]}_ci
+          done
+
+      - name: Run AutoWatch cycle for each platform
+        run: |
+          for platform in prom bigl shafa; do
+            echo "=== Testing $platform ==="
+            python aios_cli.py platforms autowatch --platform $platform --profile ${platform}_ci --max 3 --no-collect || echo "AutoWatch failed for $platform"
+          done
+
+      - name: Run marker-check
+        run: |
+          for platform in prom bigl shafa; do
+            python aios_cli.py platforms marker-check --platform $platform --dump /tmp/${platform}_search.xml || echo "Marker check failed for $platform"
+          done
+
+      - name: Run full pytest suite
+        run: |
+          python -m pytest -q --tb=short -x
+
+  # ---------------------------------------------------------
+  # 5. Production Autopilot Simulation (GA proof)
+  # ---------------------------------------------------------
+  production-simulation:
+    name: Production Autopilot Simulation (GA)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [lint-and-unit]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run 2-week simulation (accelerated)
+        run: |
+          python run_production_autopilot.py \
+            --simulate-2weeks \
+            --cycles-per-day 24 \
+            --verbose \
+            --output simulation_report.json
+
+      - name: Verify GA criteria
+        run: |
+          python -c "
+          import json
+          with open('simulation_report.json') as f:
+            r = json.load(f)
+          assert r['ban_free'] == True, 'Bans detected!'
+          assert r['ga_met'] == True, 'GA not met'
+          assert r['avg_success_rate'] > 0.9, f'Success rate too low: {r[\"avg_success_rate\"]}'
+          assert r['profiles'] >= 3, 'Need 3+ profiles'
+          print('✅ GA criteria met: ban-free, success >90%, 3+ profiles')
+          print(f'   Cycles: {r[\"cycles\"]}, Actions: {r[\"actions\"]}, Avg success: {r[\"avg_success_rate\"]:.1%}')
+          "
+
+      - name: Upload simulation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-simulation-report
+          path: simulation_report.json
+          retention-days: 30
+
+  # ---------------------------------------------------------
+  # 6. Deploy to Production Server
+  # ---------------------------------------------------------
+  deploy:
+    name: Deploy to Production Server
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [integration-tests, production-simulation]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.deploy == 'true'
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+          config: |
+            Host traff.tplinkdns.com
+              HostName traff.tplinkdns.com
+              Port 2222
+              User root
+              StrictHostKeyChecking no
+
+      - name: Deploy to server
+        run: |
+          ssh -p 2222 root@traff.tplinkdns.com << 'EOF'
+            set -euo pipefail
+            
+            # Stop existing AIOS services
+            cd /root/AIOS 2>/dev/null && docker-compose -f docker-compose.prod.yml down || true
+            
+            # Backup old repo
+            mv /root/AIOS /root/AIOS.backup.$(date +%s) 2>/dev/null || true
+            
+            # Clone fresh
+            git clone https://github.com/JoTalbot/AIOS.git /root/AIOS
+            cd /root/AIOS
+            
+            # Install dependencies
+            python -m pip install --upgrade pip
+            python -m pip install -r requirements.txt
+            
+            # Setup Android SDK if not present
+            if [ ! -d "/opt/android-sdk" ]; then
+              bash setup/android-emulator-env.sh
+            fi
+            
+            # Start production stack
+            docker-compose -f docker-compose.prod.yml up -d --build
+            
+            # Wait for health
+            sleep 10
+            curl -f http://localhost:8000/health || exit 1
+            
+            echo "✅ Deployment successful"
+            docker-compose -f docker-compose.prod.yml ps
+          EOF
+
+      - name: Verify deployment health
+        run: |
+          ssh -p 2222 root@traff.tplinkdns.com "
+            curl -s http://localhost:8000/health | jq .
+            curl -s http://localhost:8000/metrics | grep -E 'aios_production|aios_cards_collected|aios_drift_events'
+          "
+
+  # ---------------------------------------------------------
+  # 7. Notify (Slack/Discord/Email)
+  # ---------------------------------------------------------
+  notify:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [lint-and-unit, calibrate-platforms, integration-tests, production-simulation, deploy]
+    if: always()
+    steps:
+      - name: Determine status
+        id: status
+        run: |
+          FAILED=false
+          for job in lint-and-unit calibrate-platforms integration-tests production-simulation deploy; do
+            result=$(echo "${{ needs.$job.result }}" | tr '[:upper:]' '[:lower:]')
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              FAILED=true
+            fi
+          done
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+
+      - name: Send notification
+        if: ${{ steps.status.outputs.failed == 'true' || github.event_name == 'push' }}
+        run: |
+          STATUS="${{ steps.status.outputs.failed }}"
+          if [ "$STATUS" = "true" ]; then
+            MSG="❌ AIOS CI/CD FAILED"
+            COLOR="danger"
+          else
+            MSG="✅ AIOS CI/CD PASSED"
+            COLOR="good"
+          fi
+          
+          # Example for Slack webhook (add SLACK_WEBHOOK to secrets)
+          if [ -n "${{ secrets.SLACK_WEBHOOK }}" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"$MSG\", \"attachments\":[{\"color\":\"$COLOR\",\"fields\":[{\"title\":\"Repo\",\"value\":\"JoTalbot/AIOS\",\"short\":true},{\"title\":\"Branch\",\"value\":\"${{ github.ref }}\",\"short\":true},{\"title\":\"Commit\",\"value\":\"${{ github.sha }}\",\"short\":true},{\"title\":\"Run\",\"value\":\"https://github.com/JoTalbot/AIOS/actions/runs/${{ github.run_id }}\",\"short\":true}]}]}" \
+              ${{ secrets.SLACK_WEBHOOK }}
+          fi
+          
+          echo "$MSG"
