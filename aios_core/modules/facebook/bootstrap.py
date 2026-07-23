@@ -20,6 +20,7 @@ class FacebookBootstrap:
         self.which = which
 
     def doctor(self) -> None:
+        """Run readiness checks for this platform agent."""
         return platform_doctor(
             PLATFORM,
             PACKAGE,
