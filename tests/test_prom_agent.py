@@ -19,7 +19,7 @@ def test_prom_platform_registered():
 
 def test_prom_storage_subscriptions_empty():
     storage = PromStorage(":memory:")
-    assert storage.subscription_list() == []
+    assert storage.subscriptions_list() == []
     storage.close()
 
 

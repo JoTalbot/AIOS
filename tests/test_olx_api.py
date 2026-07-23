@@ -65,6 +65,7 @@ async def client(deps):
 
 
 class TestOLXAds:
+    @pytest.mark.asyncio
     async def test_list_ads(self, client):
         resp = await client.get("/api/v1/modules/olx/ads")
         assert resp.status_code == 200
@@ -74,6 +75,7 @@ class TestOLXAds:
         titles = {item["title"] for item in data["items"]}
         assert any("BMW X3" in title for title in titles)
 
+    @pytest.mark.asyncio
     async def test_list_ads_query_filter(self, client):
         resp = await client.get("/api/v1/modules/olx/ads", params={"query": "інше"})
         assert resp.status_code == 200
@@ -82,6 +84,7 @@ class TestOLXAds:
         resp = await client.get("/api/v1/modules/olx/ads", params={"query": QUERY})
         assert resp.json()["count"] == 2
 
+    @pytest.mark.asyncio
     async def test_list_ads_limit_is_bounded(self, client):
         resp = await client.get("/api/v1/modules/olx/ads", params={"limit": 1})
         assert resp.json()["count"] == 1
@@ -93,6 +96,7 @@ class TestOLXAds:
 
 
 class TestOLXStats:
+    @pytest.mark.asyncio
     async def test_stats_for_query(self, client):
         resp = await client.get("/api/v1/modules/olx/stats", params={"query": QUERY})
         assert resp.status_code == 200
@@ -103,6 +107,7 @@ class TestOLXStats:
         assert data["median_price"] == 7000.0
         assert data["query"] == QUERY
 
+    @pytest.mark.asyncio
     async def test_stats_empty_query(self, client):
         resp = await client.get("/api/v1/modules/olx/stats", params={"query": "немає"})
         assert resp.status_code == 200
@@ -117,6 +122,7 @@ class TestOLXStats:
 
 
 class TestOLXRecommendations:
+    @pytest.mark.asyncio
     async def test_recommend_above_market(self, client):
         resp = await client.post(
             "/api/v1/modules/olx/recommendations",
@@ -128,6 +134,7 @@ class TestOLXRecommendations:
         assert data["suggested_price"] == round(7000.0 * 0.97)
         assert "text" in data
 
+    @pytest.mark.asyncio
     async def test_recommend_unknown_market(self, client):
         resp = await client.post("/api/v1/modules/olx/recommendations", json={})
         assert resp.status_code == 200
@@ -143,6 +150,7 @@ class TestOLXRecommendations:
 
 
 class TestOLXCollection:
+    @pytest.mark.asyncio
     async def test_collect_one_off_dedupes(self, client):
         resp = await client.post(
             "/api/v1/modules/olx/collect", json={"query": QUERY, "max_cards": 10}
@@ -153,16 +161,19 @@ class TestOLXCollection:
         assert summary["inserted"] == 0  # fixture pre-seeded the same cards
         assert summary["total"] == 2
 
+    @pytest.mark.asyncio
     async def test_collect_new_query_inserts(self, client):
         resp = await client.post("/api/v1/modules/olx/collect", json={"query": "новий запит"})
         assert resp.status_code == 200
         assert resp.json()["summaries"]["новий запит"]["inserted"] == 2
 
+    @pytest.mark.asyncio
     async def test_schedule_validates_min_interval(self, client):
         resp = await client.post("/api/v1/modules/olx/schedule", json={"interval_s": 5})
         assert resp.status_code == 400
         assert "interval_s" in resp.json()["error"]
 
+    @pytest.mark.asyncio
     async def test_schedule_start_and_stop(self, client):
         start = await client.post(
             "/api/v1/modules/olx/schedule",
@@ -198,10 +209,12 @@ class TestOLXCollection:
 
 
 class TestOLXHistoryAndDrops:
+    @pytest.mark.asyncio
     async def test_history_requires_fingerprint(self, client):
         resp = await client.get("/api/v1/modules/olx/history")
         assert resp.status_code == 400
 
+    @pytest.mark.asyncio
     async def test_history_tracks_price_change(self, client, deps):
         from aios_core.modules.olx import AdCard
 
@@ -222,6 +235,7 @@ class TestOLXHistoryAndDrops:
         prices = [point["price"] for point in data["history"]]
         assert prices == [7000.0, 6500.0]
 
+    @pytest.mark.asyncio
     async def test_drops_and_gone(self, client, deps):
         from aios_core.modules.olx import AdCard
 
@@ -255,6 +269,7 @@ class TestOLXHistoryAndDrops:
 
 
 class TestOLXDetail:
+    @pytest.mark.asyncio
     async def test_detail_parse_endpoint(self, client):
         from tests.test_olx_actions import DETAIL_XML
 
@@ -265,12 +280,14 @@ class TestOLXDetail:
         assert data["views_count"] == 342
         assert data["seller_name"] == "Олена"
 
+    @pytest.mark.asyncio
     async def test_detail_parse_requires_xml(self, client):
         resp = await client.post("/api/v1/modules/olx/detail", json={})
         assert resp.status_code == 400
 
 
 class TestOLXChats:
+    @pytest.mark.asyncio
     async def test_list_chats(self, client):
         resp = await client.get("/api/v1/modules/olx/chats")
         assert resp.status_code == 200
@@ -279,6 +296,7 @@ class TestOLXChats:
         assert data["unread_total"] == 2
         assert data["items"][0]["interlocutor"] == "Олексій"
 
+    @pytest.mark.asyncio
     async def test_reply_flow_queue_cancel(self, client, deps):
         _app, storage, _adb = deps
         resp = await client.post(
@@ -296,6 +314,7 @@ class TestOLXChats:
         assert cancel.json()["cancelled"] is True
         assert storage.outbox_pending() == []
 
+    @pytest.mark.asyncio
     async def test_reply_send_now_and_flush(self, client, deps):
         _app, storage, adb = deps
         queued = await client.post(
@@ -316,6 +335,7 @@ class TestOLXChats:
         assert direct.json()["status"] == "sent"
         assert any("input text" in command for command in adb.commands)
 
+    @pytest.mark.asyncio
     async def test_reply_requires_text(self, client):
         resp = await client.post("/api/v1/modules/olx/chats/reply", json={"chat_key": "k"})
         assert resp.status_code == 400
@@ -349,6 +369,7 @@ class TestOLXOwnAds:
         storage.upsert_own_ad(own, seen_at="2026-07-05T10:00:00+00:00")
         return own
 
+    @pytest.mark.asyncio
     async def test_snapshot_list_and_stagnant(self, client, deps):
         _app, storage, _adb = deps
 
@@ -366,6 +387,7 @@ class TestOLXOwnAds:
         titles = [item["title"] for item in stagnant.json()["items"]]
         assert "Старе оголошення" in titles
 
+    @pytest.mark.asyncio
     async def test_improve_and_repost_flow(self, client, deps):
         _app, storage, _adb = deps
         await client.post("/api/v1/modules/olx/own/snapshot", json={"ads": OWN_SNAPSHOT})
@@ -397,10 +419,12 @@ class TestOLXOwnAds:
 
 
 class TestOLXNotify:
+    @pytest.mark.asyncio
     async def test_notify_requires_webhook(self, client):
         resp = await client.post("/api/v1/modules/olx/notify", json={})
         assert resp.status_code == 400
 
+    @pytest.mark.asyncio
     async def test_notify_posts_drops(self, client, deps):
         # No webhook reachable in tests → summary reports zero sent, no crash.
         import socket
@@ -423,6 +447,7 @@ class TestOLXNotify:
 
 
 class TestOLXSubscriptions:
+    @pytest.mark.asyncio
     async def test_add_list_check_remove(self, client, deps):
         add = await client.post(
             "/api/v1/modules/olx/subscriptions",
@@ -450,6 +475,7 @@ class TestOLXSubscriptions:
 
 
 class TestOLXFavorites:
+    @pytest.mark.asyncio
     async def test_add_list_alerts_remove(self, client, deps):
         from aios_core.modules.olx import AdCard
 
@@ -481,6 +507,7 @@ class TestOLXFavorites:
 
 
 class TestOLXEditAndAutowatch:
+    @pytest.mark.asyncio
     async def test_edit_dry_run_and_confirm(self, client, deps):
         _app, storage, _adb = deps
         await client.post("/api/v1/modules/olx/own/snapshot", json={"ads": OWN_SNAPSHOT})
@@ -499,6 +526,7 @@ class TestOLXEditAndAutowatch:
         )
         assert done.json()["status"] == "executed"
 
+    @pytest.mark.asyncio
     async def test_autowatch_endpoint(self, client, deps):
         resp = await client.post(
             "/api/v1/modules/olx/autowatch",
@@ -536,6 +564,7 @@ class TestOLXEditAndAutowatch:
 
 
 class TestOLXProfile:
+    @pytest.mark.asyncio
     async def test_profile_parse_store_and_edit(self, client, deps):
         from tests.test_olx_strategy import PROFILE_XML
 
@@ -571,6 +600,7 @@ class TestOLXProfile:
 
 
 class TestOLXCompetitiveAndAdvisor:
+    @pytest.mark.asyncio
     async def test_competitive_refresh_and_report(self, client, deps):
         _app, storage, _adb = deps
         await client.post("/api/v1/modules/olx/own/snapshot", json={"ads": OWN_SNAPSHOT})
@@ -589,6 +619,7 @@ class TestOLXCompetitiveAndAdvisor:
         missing = await client.get("/api/v1/modules/olx/competitive")
         assert missing.status_code == 400
 
+    @pytest.mark.asyncio
     async def test_competitive_seller_scan(self, client, deps):
         from tests.test_olx_strategy import SELLER_XML
 
@@ -617,6 +648,7 @@ class TestOLXCompetitiveAndAdvisor:
         assert data["new_market_ads"] == 2
         assert data["linked_competitors"] >= 1
 
+    @pytest.mark.asyncio
     async def test_advisor_actions_and_new_listings(self, client, deps):
         actions = await client.get("/api/v1/modules/olx/advisor")
         assert actions.status_code == 200
@@ -627,6 +659,7 @@ class TestOLXCompetitiveAndAdvisor:
 
 
 class TestOLXDoctor:
+    @pytest.mark.asyncio
     async def test_doctor_reports_checklist(self, client):
         resp = await client.get("/api/v1/modules/olx/doctor")
         assert resp.status_code == 200

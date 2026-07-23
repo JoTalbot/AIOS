@@ -5,8 +5,11 @@ This brings ``app.py`` under 300 lines — just the class skeleton + lifecycle.
 """
 from __future__ import annotations
 
+import json
+
+from aios_core.rate_limiter import rate_limiter
 from starlette.requests import Request
-from starlette.responses import JSONResponse, HTMLResponse
+from starlette.responses import JSONResponse, HTMLResponse, PlainTextResponse
 
 
 class CoreHandlersMixin:

@@ -357,13 +357,11 @@ class Database:
             self._conn = None
 
     @staticmethod
-    @lru_cache(maxsize=128)
     def new_id() -> str:
         """Return a new random hex identifier."""
         return uuid.uuid4().hex
 
     @staticmethod
-    @lru_cache(maxsize=128)
     def now_iso() -> str:
         """Return the current UTC timestamp as an ISO-8601 string."""
         return datetime.now(timezone.utc).isoformat()

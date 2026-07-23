@@ -44,12 +44,14 @@ async def client(app):
 
 
 class TestHealth:
+    @pytest.mark.asyncio
     async def test_health_returns_ok(self, client):
         resp = await client.get("/health")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"
 
+    @pytest.mark.asyncio
     async def test_health_has_version(self, client):
         resp = await client.get("/health")
         data = resp.json()
@@ -63,6 +65,7 @@ class TestHealth:
 
 
 class TestStats:
+    @pytest.mark.asyncio
     async def test_stats_returns_data(self, client):
         resp = await client.get("/api/v1/stats")
         assert resp.status_code == 200
@@ -70,6 +73,7 @@ class TestStats:
         assert "version" in data
         assert "total_tasks" in data
 
+    @pytest.mark.asyncio
     async def test_stats_has_subsystems(self, client):
         resp = await client.get("/api/v1/stats")
         data = resp.json()
@@ -87,6 +91,7 @@ class TestStats:
 
 
 class TestEvaluate:
+    @pytest.mark.asyncio
     async def test_evaluate_allow(self, client):
         resp = await client.post(
             "/api/v1/evaluate",
@@ -103,6 +108,7 @@ class TestEvaluate:
         # Low risk with proper fields should get ALLOW
         assert data["decision"] == "ALLOW"
 
+    @pytest.mark.asyncio
     async def test_evaluate_deny(self, client):
         resp = await client.post(
             "/api/v1/evaluate",
@@ -118,6 +124,7 @@ class TestEvaluate:
         data = resp.json()
         assert data["decision"] == "DENY"
 
+    @pytest.mark.asyncio
     async def test_evaluate_missing_fields(self, client):
         resp = await client.post(
             "/api/v1/evaluate",
@@ -137,6 +144,7 @@ class TestEvaluate:
 
 
 class TestTasks:
+    @pytest.mark.asyncio
     async def test_create_task(self, client):
         resp = await client.post(
             "/api/v1/tasks",
@@ -151,6 +159,7 @@ class TestTasks:
         assert data["status"] == "pending"
         assert "task_id" in data
 
+    @pytest.mark.asyncio
     async def test_create_task_with_steps(self, client):
         resp = await client.post(
             "/api/v1/tasks",
@@ -167,6 +176,7 @@ class TestTasks:
         assert data["steps"] == 2
         assert data["name"] == "task-with-steps"
 
+    @pytest.mark.asyncio
     async def test_list_tasks(self, client):
         # Create a task first
         await client.post("/api/v1/tasks", json={"name": "for-listing"})
@@ -177,12 +187,14 @@ class TestTasks:
         assert "count" in data
         assert data["count"] >= 1
 
+    @pytest.mark.asyncio
     async def test_list_tasks_empty(self, client):
         resp = await client.get("/api/v1/tasks")
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data["tasks"], list)
 
+    @pytest.mark.asyncio
     async def test_get_task(self, client):
         # Create a task
         create_resp = await client.post("/api/v1/tasks", json={"name": "get-me"})
@@ -194,12 +206,14 @@ class TestTasks:
         assert data["task_id"] == task_id
         assert data["name"] == "get-me"
 
+    @pytest.mark.asyncio
     async def test_get_task_not_found(self, client):
         resp = await client.get("/api/v1/tasks/nonexistent_id")
         assert resp.status_code == 404
         data = resp.json()
         assert "error" in data
 
+    @pytest.mark.asyncio
     async def test_execute_task(self, client):
         # Create task with a tool step (should pass evaluation with low risk)
         create_resp = await client.post(
@@ -227,10 +241,12 @@ class TestTasks:
         data = resp.json()
         assert "status" in data
 
+    @pytest.mark.asyncio
     async def test_execute_task_not_found(self, client):
         resp = await client.post("/api/v1/tasks/nonexistent_id/execute")
         assert resp.status_code == 404
 
+    @pytest.mark.asyncio
     async def test_execute_empty_task(self, client):
         create_resp = await client.post(
             "/api/v1/tasks",
@@ -247,6 +263,7 @@ class TestTasks:
         assert data["status"] == "completed"
         assert data["completed_steps"] == 0
 
+    @pytest.mark.asyncio
     async def test_task_lifecycle(self, client):
         # Create task with memory step
         create_resp = await client.post(
@@ -285,6 +302,7 @@ class TestTasks:
 
 
 class TestMemory:
+    @pytest.mark.asyncio
     async def test_store_memory(self, client):
         resp = await client.post(
             "/api/v1/memory",
@@ -299,6 +317,7 @@ class TestMemory:
         assert "id" in data
         assert data["category"] == "operational"
 
+    @pytest.mark.asyncio
     async def test_search_memory(self, client):
         # Store something first
         await client.post(
@@ -319,6 +338,7 @@ class TestMemory:
         assert "items" in data
         assert data["count"] >= 1
 
+    @pytest.mark.asyncio
     async def test_get_memory(self, client):
         # Store
         store_resp = await client.post(
@@ -336,10 +356,12 @@ class TestMemory:
         assert data["id"] == item_id
         assert data["content"]["x"] == 1
 
+    @pytest.mark.asyncio
     async def test_get_memory_not_found(self, client):
         resp = await client.get("/api/v1/memory/nonexistent_id")
         assert resp.status_code == 404
 
+    @pytest.mark.asyncio
     async def test_update_memory(self, client):
         store_resp = await client.post(
             "/api/v1/memory",
@@ -359,6 +381,7 @@ class TestMemory:
         data = resp.json()
         assert data["content"]["new"] is True
 
+    @pytest.mark.asyncio
     async def test_update_memory_not_found(self, client):
         resp = await client.put(
             "/api/v1/memory/nonexistent_id",
@@ -368,6 +391,7 @@ class TestMemory:
         )
         assert resp.status_code == 404
 
+    @pytest.mark.asyncio
     async def test_delete_memory(self, client):
         store_resp = await client.post(
             "/api/v1/memory",
@@ -382,12 +406,14 @@ class TestMemory:
         data = resp.json()
         assert data["deleted"] is True
 
+    @pytest.mark.asyncio
     async def test_delete_memory_not_found(self, client):
         resp = await client.delete("/api/v1/memory/nonexistent_id")
         assert resp.status_code == 200
         data = resp.json()
         assert data["deleted"] is False
 
+    @pytest.mark.asyncio
     async def test_memory_stats(self, client):
         resp = await client.get("/api/v1/memory/stats")
         assert resp.status_code == 200
@@ -395,6 +421,7 @@ class TestMemory:
         assert "total" in data
         assert "by_category" in data
 
+    @pytest.mark.asyncio
     async def test_store_and_search(self, client):
         await client.post(
             "/api/v1/memory",
@@ -429,6 +456,7 @@ class TestMemory:
 
 
 class TestKnowledge:
+    @pytest.mark.asyncio
     async def test_add_node(self, client):
         resp = await client.post(
             "/api/v1/knowledge/nodes",
@@ -444,6 +472,7 @@ class TestKnowledge:
         assert data["label"] == "Test Node"
         assert data["type"] == "concept"
 
+    @pytest.mark.asyncio
     async def test_find_nodes(self, client):
         # Create a node
         await client.post(
@@ -464,6 +493,7 @@ class TestKnowledge:
         assert data["count"] >= 1
         assert any("Findable" in n["label"] for n in data["nodes"])
 
+    @pytest.mark.asyncio
     async def test_get_node(self, client):
         create_resp = await client.post(
             "/api/v1/knowledge/nodes",
@@ -478,10 +508,12 @@ class TestKnowledge:
         assert data["id"] == node_id
         assert data["label"] == "Get Me Node"
 
+    @pytest.mark.asyncio
     async def test_get_node_not_found(self, client):
         resp = await client.get("/api/v1/knowledge/nodes/nonexistent_id")
         assert resp.status_code == 404
 
+    @pytest.mark.asyncio
     async def test_add_edge(self, client):
         # Create two nodes
         a_resp = await client.post(
@@ -509,6 +541,7 @@ class TestKnowledge:
         assert data["relation"] == "connected_to"
         assert data["weight"] == 0.8
 
+    @pytest.mark.asyncio
     async def test_get_neighbors(self, client):
         # Create nodes and edge
         a_resp = await client.post(
@@ -534,6 +567,7 @@ class TestKnowledge:
         neighbor_ids = [n["id"] for n in data["neighbors"]]
         assert b_id in neighbor_ids
 
+    @pytest.mark.asyncio
     async def test_path_exists(self, client):
         # Create path: A -> B -> C
         a_resp = await client.post(
@@ -576,6 +610,7 @@ class TestKnowledge:
         assert data["length"] >= 1
         assert len(data["path"]) >= 1
 
+    @pytest.mark.asyncio
     async def test_path_not_found(self, client):
         # Two disconnected nodes
         a_resp = await client.post(
@@ -598,6 +633,7 @@ class TestKnowledge:
         assert data["length"] == 0
         assert data["path"] == []
 
+    @pytest.mark.asyncio
     async def test_kg_stats(self, client):
         # Ensure at least one node exists
         await client.post("/api/v1/knowledge/nodes", json={"label": "Stats Node"})
@@ -608,6 +644,7 @@ class TestKnowledge:
         assert "edges" in data
         assert data["nodes"] >= 1
 
+    @pytest.mark.asyncio
     async def test_kg_full_workflow(self, client):
         """Full workflow: add nodes, edges, find, traverse, stats."""
         # Add nodes
@@ -646,6 +683,7 @@ class TestKnowledge:
 
 
 class TestApprovals:
+    @pytest.mark.asyncio
     async def test_list_approvals(self, client):
         resp = await client.get("/api/v1/approvals")
         assert resp.status_code == 200
@@ -654,10 +692,12 @@ class TestApprovals:
         assert "count" in data
         assert isinstance(data["approvals"], list)
 
+    @pytest.mark.asyncio
     async def test_approve_not_found(self, client):
         resp = await client.post("/api/v1/approvals/nonexistent_id/approve")
         assert resp.status_code == 404
 
+    @pytest.mark.asyncio
     async def test_deny_not_found(self, client):
         resp = await client.post("/api/v1/approvals/nonexistent_id/deny")
         assert resp.status_code == 404
@@ -669,6 +709,7 @@ class TestApprovals:
 
 
 class TestEvolution:
+    @pytest.mark.asyncio
     async def test_propose(self, client):
         resp = await client.post(
             "/api/v1/evolution/proposals",
@@ -685,6 +726,7 @@ class TestEvolution:
         assert data["status"] == "proposed"
         assert data["stage"] == "proposal"
 
+    @pytest.mark.asyncio
     async def test_list_proposals(self, client):
         await client.post(
             "/api/v1/evolution/proposals",
@@ -700,6 +742,7 @@ class TestEvolution:
         assert data["count"] >= 1
         assert "proposals" in data
 
+    @pytest.mark.asyncio
     async def test_get_proposal(self, client):
         create_resp = await client.post(
             "/api/v1/evolution/proposals",
@@ -715,10 +758,12 @@ class TestEvolution:
         data = resp.json()
         assert data["id"] == proposal_id
 
+    @pytest.mark.asyncio
     async def test_get_proposal_not_found(self, client):
         resp = await client.get("/api/v1/evolution/proposals/nonexistent_id")
         assert resp.status_code == 404
 
+    @pytest.mark.asyncio
     async def test_advance_proposal(self, client):
         create_resp = await client.post(
             "/api/v1/evolution/proposals",
@@ -735,10 +780,12 @@ class TestEvolution:
         assert data["stage"] == "testing"
         assert data["stage_index"] == 1
 
+    @pytest.mark.asyncio
     async def test_advance_unknown_proposal(self, client):
         resp = await client.post("/api/v1/evolution/proposals/nonexistent_id/advance")
         assert resp.status_code == 400
 
+    @pytest.mark.asyncio
     async def test_approve_proposal(self, client):
         create_resp = await client.post(
             "/api/v1/evolution/proposals",
@@ -758,6 +805,7 @@ class TestEvolution:
         data = resp.json()
         assert data["status"] == "approved"
 
+    @pytest.mark.asyncio
     async def test_reject_proposal(self, client):
         create_resp = await client.post(
             "/api/v1/evolution/proposals",
@@ -777,6 +825,7 @@ class TestEvolution:
         assert data["status"] == "rejected"
         assert data["rejection_reason"] == "not good enough"
 
+    @pytest.mark.asyncio
     async def test_deploy_check(self, client):
         create_resp = await client.post(
             "/api/v1/evolution/proposals",
@@ -794,6 +843,7 @@ class TestEvolution:
         # Fresh proposal at stage 0 should not be deployable
         assert data["can_deploy"] is False
 
+    @pytest.mark.asyncio
     async def test_evolution_stats(self, client):
         resp = await client.get("/api/v1/evolution/stats")
         assert resp.status_code == 200
@@ -809,6 +859,7 @@ class TestEvolution:
 
 
 class TestTests:
+    @pytest.mark.asyncio
     async def test_list_suites(self, client):
         resp = await client.get("/api/v1/tests/suites")
         assert resp.status_code == 200
@@ -816,6 +867,7 @@ class TestTests:
         assert "suites" in data
         assert len(data["suites"]) >= 4  # 4 built-in suites
 
+    @pytest.mark.asyncio
     async def test_run_all(self, client):
         resp = await client.post("/api/v1/tests/run")
         assert resp.status_code == 200
@@ -825,6 +877,7 @@ class TestTests:
         assert "overall_status" in data
         assert data["total_tests"] > 0
 
+    @pytest.mark.asyncio
     async def test_run_specific_suite(self, client):
         resp = await client.post("/api/v1/tests/run/constitutional_compliance")
         assert resp.status_code == 200
@@ -835,14 +888,17 @@ class TestTests:
         assert "failed" in data
         assert data["total"] > 0
 
+    @pytest.mark.asyncio
     async def test_run_unknown_suite(self, client):
         resp = await client.post("/api/v1/tests/run/nonexistent_suite")
         assert resp.status_code == 404
 
+    @pytest.mark.asyncio
     async def test_last_report_not_found(self, client):
         resp = await client.get("/api/v1/tests/last-report")
         assert resp.status_code == 404
 
+    @pytest.mark.asyncio
     async def test_last_report_after_run(self, client):
         # Run all tests first
         await client.post("/api/v1/tests/run")
@@ -852,6 +908,7 @@ class TestTests:
         assert "total_tests" in data
         assert data["total_tests"] > 0
 
+    @pytest.mark.asyncio
     async def test_test_stats(self, client):
         resp = await client.get("/api/v1/tests/stats")
         assert resp.status_code == 200
@@ -866,6 +923,7 @@ class TestTests:
 
 
 class TestAudit:
+    @pytest.mark.asyncio
     async def test_query_audit(self, client):
         resp = await client.get("/api/v1/audit")
         assert resp.status_code == 200
@@ -874,6 +932,7 @@ class TestAudit:
         assert "count" in data
         assert isinstance(data["events"], list)
 
+    @pytest.mark.asyncio
     async def test_audit_stats(self, client):
         resp = await client.get("/api/v1/audit/stats")
         assert resp.status_code == 200
@@ -881,6 +940,7 @@ class TestAudit:
         assert "total_events" in data
         assert "by_type" in data
 
+    @pytest.mark.asyncio
     async def test_audit_with_filters(self, client):
         resp = await client.get(
             "/api/v1/audit",
@@ -900,6 +960,7 @@ class TestAudit:
 
 
 class TestRPC:
+    @pytest.mark.asyncio
     async def test_rpc_initialize(self, client):
         resp = await client.post(
             "/rpc",
@@ -914,6 +975,7 @@ class TestRPC:
         data = resp.json()
         assert "result" in data or "error" in data
 
+    @pytest.mark.asyncio
     async def test_rpc_ping(self, client):
         resp = await client.post(
             "/rpc",
@@ -927,6 +989,7 @@ class TestRPC:
         data = resp.json()
         assert data.get("result", {}).get("pong") is True
 
+    @pytest.mark.asyncio
     async def test_rpc_invalid_json(self, client):
         resp = await client.post("/rpc", content=b"not json at all")
         assert resp.status_code == 200
@@ -941,21 +1004,25 @@ class TestRPC:
 
 
 class TestErrorHandling:
+    @pytest.mark.asyncio
     async def test_404_for_unknown_task(self, client):
         resp = await client.get("/api/v1/tasks/this_task_does_not_exist_ever")
         assert resp.status_code == 404
         assert "error" in resp.json()
 
+    @pytest.mark.asyncio
     async def test_404_for_unknown_memory(self, client):
         resp = await client.get("/api/v1/memory/no_such_memory_id_ever")
         assert resp.status_code == 404
         assert "error" in resp.json()
 
+    @pytest.mark.asyncio
     async def test_400_for_missing_params_kg_path(self, client):
         resp = await client.get("/api/v1/knowledge/path")
         assert resp.status_code == 400
         assert "error" in resp.json()
 
+    @pytest.mark.asyncio
     async def test_404_for_unknown_proposal(self, client):
         resp = await client.get("/api/v1/evolution/proposals/no_such_proposal")
         assert resp.status_code == 404

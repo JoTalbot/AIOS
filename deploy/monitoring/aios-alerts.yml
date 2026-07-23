@@ -36,7 +36,47 @@ groups:
       - alert: NoCardsCollected
         expr: rate(aios_cards_collected[30m]) == 0
         for: 30m
-        labels: {severity: info}
+        labels: {severity: warning}
         annotations:
           summary: "No cards collected in 30m"
           description: "{{ $labels.platform }} has not collected any cards in the last 30 minutes"
+
+      - alert: AIOSShardWorkersDown
+        expr: aios_shard_workers_active == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "All shard workers down"
+          description: "No active shard workers on {{ $labels.instance }}"
+
+      - alert: AIOSQueueBacklog
+        expr: aios_queue_depth > 50
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Queue backlog growing"
+          description: "{{ $labels.platform }} queue depth {{ $value }}"
+
+      - alert: AIOSStaleClaims
+        expr: aios_shard_stale_claims > 3
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "Stale shard claims"
+          description: "{{ $value }} stale claims on {{ $labels.instance }}"
+
+      - alert: AIOSFleetExhausted
+        expr: aios_free_devices == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Device fleet exhausted"
+          description: "No free devices in fleet on {{ $labels.instance }}"
+
+      - alert: AIOSOutboxApprovalLag
+        expr: aios_outbox_pending_approval > 10
+        for: 30m
+        labels: {severity: warning}
+        annotations:
+          summary: "Outbox approval lag"
+          description: "{{ $value }} outbox items awaiting approval"

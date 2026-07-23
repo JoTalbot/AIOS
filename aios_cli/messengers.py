@@ -75,7 +75,7 @@ def _run_msg_platform(args, platform: str) -> bool:
             return True
         if cmd == "dm-send":
             result = messenger.send_reply(
-                args.chat, args.text, interlocutor=args.interlocutor, auto_send=args.auto_send
+                args.chat, args.text, interlocutor=getattr(args, "interlocutor", None), auto_send=args.auto_send
             )
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return True
