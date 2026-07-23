@@ -134,8 +134,8 @@ class AIScreenClassifier:
         return dot_product / (norm1 * norm2)
 
     def _generate_screen_signature(self, xml: str) -> str:
-        """Generate a signature for screen matching."""
-        signature_parts = []
+        """Generate a signature string for screen matching."""
+        signature_parts: List[str] = []
         parser = UIAutomatorParser(xml)
         try:
             if parser.parse():
@@ -144,32 +144,30 @@ class AIScreenClassifier:
                 clickables = parser.find_clickable_elements()
                 if clickables:
                     signature_parts.append(f"clickable_{min(len(clickables), 10)}")
-                    # add resource-id hints
                     for el in clickables[:3]:
                         if el.resource_id:
                             signature_parts.append(el.resource_id.split("/")[-1][:20])
         except Exception:
             pass  # Signature extraction is best-effort; return generic on failure
-        try:
-            if self.parser.parse() is None:
-                return ScreenEmbedding(
-                    name="unknown",
-                    score=0.0,
-                    matched_elements=0,
-                    embedding=[],
-                    metadata={"reason": "parse_failed"},
-                )
-        except Exception as e:
+        return "|".join(signature_parts) or "unknown"
+
+    def classify(self, xml: str) -> ScreenEmbedding:
+        """Classify a UI XML dump into a screen embedding.
+
+        Parses the XML, computes an embedding vector, and matches it
+        against known screen patterns using cosine similarity.
+        """
+        parser = UIAutomatorParser(xml)
+        if not parser.parse():
             return ScreenEmbedding(
                 name="unknown",
                 score=0.0,
                 matched_elements=0,
                 embedding=[],
-                metadata={"error": str(e)},
+                metadata={"reason": "parse_failed"},
             )
 
-        embedding = self._calculate_embedding(self.parser)
-
+        embedding = self._calculate_embedding(parser)
         screen_signature = self._generate_screen_signature(xml)
         pattern_score = self._calculate_similarity_with_cache(embedding, screen_signature)
 
@@ -200,7 +198,6 @@ class AIScreenClassifier:
 
         # Store if novel and confident enough
         if screen_name == "unknown" or (score > 0.5 and screen_name not in self._embeddings):
-            # avoid storing every unknown generic - only if has some elements
             if len(embedding) > 0:
                 self._embeddings[screen_signature or screen_name] = embedding_record
             self._navigation_history.append(

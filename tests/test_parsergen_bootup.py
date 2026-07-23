@@ -5,6 +5,7 @@ import os
 import sys
 
 import pytest
+import pytest_asyncio
 import yaml
 from httpx import ASGITransport, AsyncClient
 
@@ -488,7 +489,7 @@ def hints_platform(tmp_path):
     descriptor_mod._PLATFORMS.pop("hints-demo", None)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def hints_client(hints_platform, tmp_path):
     from aios_core.api.app import AIOSAPI
     from aios_core.platforms import DevicePool, ProfileStore
@@ -507,6 +508,7 @@ async def hints_client(hints_platform, tmp_path):
         yield ac
 
 
+@pytest.mark.asyncio
 async def test_rest_platform_hints_calibrates_and_previews(hints_client):
     response = await hints_client.post(
         "/api/v1/platforms/hints-demo/hints",
@@ -523,6 +525,7 @@ async def test_rest_platform_hints_calibrates_and_previews(hints_client):
     assert descriptor.extras["parser_hints"]["card_markers"]
 
 
+@pytest.mark.asyncio
 async def test_rest_platform_hints_error_paths(hints_client):
     response = await hints_client.post(
         "/api/v1/platforms/no-such/hints",
@@ -537,6 +540,7 @@ async def test_rest_platform_hints_error_paths(hints_client):
     assert response.status_code == 400
 
 
+@pytest.mark.asyncio
 async def test_rest_platform_hints_direct_object(hints_client):
     response = await hints_client.post(
         "/api/v1/platforms/hints-demo/hints",

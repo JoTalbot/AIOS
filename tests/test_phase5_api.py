@@ -8,6 +8,7 @@ knowledge graph, approvals, evolution, tests, audit, and JSON-RPC bridge.
 import os
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,7 +31,7 @@ def app():
     return api.create_starlette_app()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(app):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

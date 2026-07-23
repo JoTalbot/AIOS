@@ -4,6 +4,7 @@ import os
 import time
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from aios_core.modules.olx import CardParser, OLXStorage
@@ -50,7 +51,7 @@ def deps():
     return api.create_starlette_app(), storage, messenger.adb
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(deps):
     app, _storage, _adb = deps
     transport = ASGITransport(app=app)
