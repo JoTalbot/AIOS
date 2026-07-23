@@ -3,7 +3,7 @@ version: "2.1.1"
 federation_policy:
   local_autonomy: true
   offline_operation: true
-  
+
   requirements:
     state_exchange: verified
     version_validation: required

@@ -3,8 +3,8 @@
 # ARTICLE VII — LEARNING
 ## Constitutional Law of AIOS Learning and Evolution
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS learning systems, adaptive processes, agents, models, and evolutionary mechanisms
 
 ---

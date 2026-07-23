@@ -3,8 +3,8 @@
 # ARTICLE XXXIX — REPLICATION
 ## Constitutional Law of AIOS Replication, Distribution, and Continuity
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS instances, nodes, distributed systems, backups, mirrors, agents, and future system extensions
 
 ---

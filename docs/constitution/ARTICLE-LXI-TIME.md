@@ -3,8 +3,8 @@
 # ARTICLE LXI — TIME
 ## Constitutional Law of AIOS Time, Sequence, History, and Temporal Continuity
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS systems, memories, events, processes, logs, evolution cycles, and distributed operations
 
 ---

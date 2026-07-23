@@ -3,8 +3,8 @@
 # ARTICLE XLIII — REASONING
 ## Constitutional Law of AIOS Reasoning, Analysis, and Decision Formation
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS reasoning systems, agents, decision mechanisms, analytical processes, and cognitive architectures
 
 ---

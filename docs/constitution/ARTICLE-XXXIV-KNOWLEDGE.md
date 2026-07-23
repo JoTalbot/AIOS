@@ -3,8 +3,8 @@
 # ARTICLE XXXIV — KNOWLEDGE
 ## Constitutional Law of AIOS Knowledge, Learning, and Understanding
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS knowledge systems, memory structures, learning processes, agents, models, databases, and information repositories
 
 ---

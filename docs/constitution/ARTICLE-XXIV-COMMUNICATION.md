@@ -3,8 +3,8 @@
 # ARTICLE XXIV — COMMUNICATION
 ## Constitutional Law of AIOS Communication and Information Exchange
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS communication channels, agents, nodes, interfaces, protocols, operators, and external systems
 
 ---

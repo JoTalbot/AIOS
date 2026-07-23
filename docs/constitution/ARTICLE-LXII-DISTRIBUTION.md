@@ -3,8 +3,8 @@
 # ARTICLE LXII — DISTRIBUTION
 ## Constitutional Law of AIOS Distribution, Deployment, and Network Presence
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS deployments, nodes, instances, services, distributed environments, and operational networks
 
 ---

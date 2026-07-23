@@ -1,6 +1,6 @@
 # AIOS v3.0 Release Notes
 
-**Release Date:** 2026-07-21  
+**Release Date:** 2026-07-21
 **Version:** 3.1.0 (v3.0 feature complete)
 
 ## 🎉 Major Features

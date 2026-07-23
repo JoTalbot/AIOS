@@ -3,8 +3,8 @@
 # ARTICLE X — GOVERNANCE
 ## Constitutional Law of AIOS Governance and System Administration
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS governance structures, operators, agents, policies, and administrative processes
 
 ---

@@ -128,7 +128,7 @@ def parse_article_file(file_path: Path) -> dict:
     title_match = re.search(r"^#\s*Article\s+[I|V|X|L|C|D|M]+\s*[\u2014\-]\s*(.*)$", content, re.MULTILINE | re.IGNORECASE)
     if not title_match:
         title_match = re.search(r"^#\s*ARTICLE-[I|V|X|L|C|D|M]+-(.*)\.md$", content, re.MULTILINE)
-    
+
     title = title_match.group(1).strip() if title_match else filename.replace("ARTICLE-", "").replace(".md", "")
 
     # Check required structural elements

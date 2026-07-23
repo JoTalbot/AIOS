@@ -2291,7 +2291,7 @@ def main(argv=None):
             print(json.dumps({"error": str(exc)}, ensure_ascii=False))
             return
         print(json.dumps(report, ensure_ascii=False, indent=2))
-    
+
     elif args.command == "whatsapp":
         if not _run_msg_platform(args, "whatsapp"):
             parser.parse_args(["whatsapp", "--help"])

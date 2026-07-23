@@ -13,7 +13,7 @@ Usage:
     python3 test_real_android_app.py --package ua.slando
     python3 test_real_android_app.py --device emulator-5554
 
-NOTE: This file contains manual helpers, not pytest tests. 
+NOTE: This file contains manual helpers, not pytest tests.
 Pytest collection is disabled via __test__=False flags below.
 """
 
@@ -58,7 +58,7 @@ def get_connected_devices() -> list[str]:
     success, output = run_adb_command("devices")
     if not success:
         return []
-    
+
     devices = []
     for line in output.split('\n')[1:]:
         if '\tdevice' in line:
@@ -83,7 +83,7 @@ def launch_app(package_name: str, device_id: str) -> bool:
         if success:
             time.sleep(2)
             return True
-    
+
     success, _ = run_adb_command(f"shell monkey -p {package_name} -c android.intent.category.LAUNCHER 1", device_id=device_id)
     if success:
         time.sleep(2)
@@ -124,26 +124,26 @@ def take_screenshot(device_id: str, output_path: str = "/tmp/screenshot.png") ->
 
 def search_on_olx(device_id: str, query: str, category: str = "all") -> Dict[str, Any]:
     start_time = time.time()
-    
+
     if not check_app_installed("ua.slando", device_id) and not check_app_installed("ua.slando", device_id):
         return {
             "status": "error",
             "error": "App not installed",
             "package": "ua.slando"
         }
-    
+
     package = "ua.slando" if check_app_installed("ua.slando", device_id) else "ua.slando"
     launch_app(package, device_id)
     time.sleep(3)
-    
+
     search_resource_ids = [
         "com.olx.slando:id/search_field",
-        "ua.slando:id/search_field", 
+        "ua.slando:id/search_field",
         "ua.slando:id/search_field",
         "com.olx.slando:id/search_src_text",
         "android:id/search_src_text"
     ]
-    
+
     search_found = False
     for resource_id in search_resource_ids:
         success, output = run_adb_command(
@@ -155,23 +155,23 @@ def search_on_olx(device_id: str, query: str, category: str = "all") -> Dict[str
             run_adb_command(f"shell input tap 160 100", device_id=device_id)
             search_found = True
             break
-    
+
     if not search_found:
         run_adb_command("shell input tap 160 100", device_id=device_id)
-    
+
     time.sleep(1)
     run_adb_command(f"shell input text '{query}'", device_id=device_id)
     time.sleep(1)
     run_adb_command("shell input keyevent 66", device_id=device_id)
     time.sleep(2)
-    
+
     ui_dump = get_ui_dump(device_id)
     if ui_dump:
         items = []
         for line in ui_dump.split('\n'):
             if 'text=' in line and 'resource-id=' in line:
                 pass
-        
+
         return {
             "status": "success",
             "app": "Slando Ukraine",
@@ -184,7 +184,7 @@ def search_on_olx(device_id: str, query: str, category: str = "all") -> Dict[str
             "latency_ms": round((time.time() - start_time) * 1000.0, 3),
             "real_adb": True
         }
-    
+
     return {
         "status": "partial_success",
         "app": "Slando Ukraine",
@@ -202,11 +202,11 @@ def real_device_interaction(package_name: str, device_id: str):
     print(f"\n=== Testing Real Device Interaction ===")
     print(f"Package: {package_name}")
     print(f"Device: {device_id}")
-    
+
     if not check_app_installed(package_name, device_id):
         print(f"❌ App {package_name} is not installed on device {device_id}")
         return False
-    
+
     print(f"✅ App {package_name} is installed")
     print(f"🚀 Launching app...")
     if launch_app(package_name, device_id):
@@ -214,10 +214,10 @@ def real_device_interaction(package_name: str, device_id: str):
     else:
         print(f"❌ Failed to launch app")
         return False
-    
+
     current_activity = get_current_activity(device_id)
     print(f"📱 Current activity: {current_activity}")
-    
+
     print(f"📸 Getting UI hierarchy...")
     ui_dump = get_ui_dump(device_id)
     if ui_dump:
@@ -227,45 +227,45 @@ def real_device_interaction(package_name: str, device_id: str):
         print(f"💾 Saved to /tmp/ui_dump_real_{package_name.replace('.', '_')}.xml")
     else:
         print(f"⚠️  Could not capture UI dump")
-    
+
     print(f"📸 Taking screenshot...")
     if take_screenshot(device_id):
         print(f"✅ Screenshot saved to /tmp/screenshot.png")
     else:
         print(f"⚠️  Could not take screenshot")
-    
+
     print(f"🔍 Testing search on real device...")
     search_result = search_on_olx(device_id, "iPhone 13", "electronics")
     print(json.dumps(search_result, indent=2))
-    
+
     return True
 
 
 def aios_integration_real(package_name: str):
     """Manual helper: Test AIOS integration with real app on emulator."""
     print(f"\n=== Testing AIOS Integration (Real Device Mode) ===")
-    
+
     try:
         from aios_core.android_rpa_bridge import AndroidRPAManager, AndroidRPADeviceEmulator
-        
+
         manager = AndroidRPAManager()
         url = f"https://play.google.com/store/apps/details?id={package_name}"
         parsed = manager.parse_play_store_url(url)
         print(f"🔗 Parsed package: {parsed}")
-        
+
         print(f"🔄 Converting app to API...")
         profile = manager.convert_app_to_working_api(
             url,
             {"login": "test_user", "password": "password123"},
             user_id="real_device_test"
         )
-        
+
         print(f"✅ App converted to API:")
         print(f"   Package: {profile['app_package']}")
         print(f"   Status: {profile['automation_status']}")
         print(f"   User ID: {profile['user_id']}")
         print(f"   Endpoints: {len(profile['available_api_endpoints'])}")
-        
+
         print(f"\n🔍 Testing search on real emulator...")
         device_id = "emulator-5554"
         if device_id:
@@ -297,23 +297,23 @@ def aios_integration_real(package_name: str):
                         "real_adb": True
                     }
                 return original_execute(package_name, action_name, params)
-            
+
             real_emulator.execute_ui_action = real_execute_ui_action
-            
+
             search_result = real_emulator.execute_ui_action(
                 package_name=package_name,
                 action_name="search",
                 params={"query": "iPhone 13", "category": "electronics"}
             )
             print(f"✅ Real search result: {search_result.get('app')} / {search_result.get('query')} real={search_result.get('real_adb')}")
-            
+
             item_result = real_emulator.execute_ui_action(
                 package_name=package_name,
                 action_name="get_item_details",
                 params={"item_id": "olx_123"}
             )
             print(f"✅ Real item details: {item_result.get('title')} real={item_result.get('real_adb')}")
-            
+
             msg_result = real_emulator.execute_ui_action(
                 package_name=package_name,
                 action_name="send_message",
@@ -322,9 +322,9 @@ def aios_integration_real(package_name: str):
             print(f"✅ Real message: {msg_result.get('status')} real={msg_result.get('real_adb')}")
         else:
             print("⚠️  No device connected, using simulation mode")
-        
+
         return True
-        
+
     except Exception as e:
         print(f"❌ Error testing AIOS integration: {str(e)}")
         import traceback
@@ -349,19 +349,19 @@ def main():
     parser.add_argument("--package", default="ua.slando", help="Android package name")
     parser.add_argument("--device", help="Device ID")
     parser.add_argument("--no-real-device", action="store_true", help="Skip real device test")
-    
+
     args = parser.parse_args()
     package = args.package
-    
+
     print(f"🤖 AIOS Android RPA Bridge - Real App Testing")
     print(f"📦 Package: {package}")
-    
+
     if not check_adb_available():
         print("❌ ADB is not available.")
         sys.exit(1)
-    
+
     print("✅ ADB is available")
-    
+
     devices = get_connected_devices()
     if not devices:
         print("⚠️  No devices connected. Running in simulation mode only.")
@@ -375,7 +375,7 @@ def main():
                 print("⚠️  Real device test had issues, continuing...")
 
     success = aios_integration_real(package)
-    
+
     if success:
         print(f"\n🎉 All tests completed successfully!")
     else:

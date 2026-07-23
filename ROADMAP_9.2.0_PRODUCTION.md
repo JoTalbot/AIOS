@@ -61,7 +61,7 @@
 
 12. ✅ Официальный SDK (H3.12): `sdk/aios_sdk.py` v4.2.0 — async AIOSClient 25+ методов (health, ready, stats, metrics, tasks, evaluate, evolution, memory, kg, android, marketplace, advisor, watch_events WS), sync wrapper AIOSClientSync mirrored, timeout 30s, example agent 30 lines, 6 тестов
 
-13. ✅ Kubernetes operator (H3.13): 
+13. ✅ Kubernetes operator (H3.13):
     - Dockerfile: python:3.12-slim + curl + sqlite3 + non-root aios UID 1000, healthcheck
     - docker-compose.yml: api, mcp, dashboard
     - docker-compose.prod.yml: api (resource limits 2CPU/2GB, prod DBs), autopilot daemon (interval 900), dashboard, prometheus (2 yml), grafana (2 dashboards), volumes, networks, depends_on healthy

@@ -3,8 +3,8 @@
 # ARTICLE XXXIII — RESOURCE MANAGEMENT
 ## Constitutional Law of AIOS Resources, Allocation, and Sustainability
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS computational resources, storage systems, networks, energy usage, knowledge capacity, and operational assets
 
 ---

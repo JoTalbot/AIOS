@@ -56,11 +56,11 @@ def main():
     parser.add_argument("--prometheus-metrics", action="store_true", help="Print Prometheus metrics and exit")
     parser.add_argument("--output", default="production_simulation_report.json", help="Output file for simulation report")
     parser.add_argument("--verbose", action="store_true", help="Verbose logging")
-    
+
     args = parser.parse_args()
 
     config = load_config(args.config)
-    
+
     if args.verbose:
         print(f"🌐 AIOS Production Autopilot v9.1.0")
         print(f"   Config: {args.config}")
@@ -84,11 +84,11 @@ def main():
         print(f"🎬 Starting 2-week simulation: {len(config.profiles)} profiles, {args.cycles_per_day} cycles/day")
         print(f"   Expected total cycles: 14 * {args.cycles_per_day} * {len(config.profiles)} = {14*args.cycles_per_day*len(config.profiles)}")
         print()
-        
+
         start = time.time()
         report = autopilot.simulate_2_weeks(cycles_per_day=args.cycles_per_day)
         elapsed = time.time() - start
-        
+
         print(f"\n✅ Simulation finished in {elapsed:.2f}s (accelerated)")
         print(f"   Total cycles: {report['simulation']['total_cycles']}")
         print(f"   Total actions: {report['simulation']['total_actions']}")
@@ -134,11 +134,11 @@ def main():
                 reports = autopilot.run_all_profiles_cycle()
                 for r in reports:
                     print(f"   {r.profile_key}: {r.status} {r.actions} actions, {r.success}/{r.actions} success, risk {r.predictive_risk:.2f}, drafts {r.advisor_drafts}")
-                
+
                 if cycle_num % 10 == 0:
                     health = autopilot.health_report()
                     print(f"\n📊 Health after {cycle_num} cycles: success_rate={health['avg_success_rate']*100:.1f}%, bans={health['bans']}, total_actions={health['total_actions']}")
-                
+
                 print(f"   Sleeping {args.interval}s...")
                 time.sleep(args.interval)
         except KeyboardInterrupt:
@@ -152,7 +152,7 @@ def main():
     reports = autopilot.run_all_profiles_cycle()
     for r in reports:
         print(f"   {r.profile_key}: {r.status} | {r.actions} actions | {r.success} success | risk {r.predictive_risk:.2f} | {r.duration_ms:.0f}ms")
-    
+
     health = autopilot.health_report()
     print(f"\n📊 Overall health: {health['total_cycles']} cycles, {health['avg_success_rate']*100:.1f}% success, bans={health['bans']}")
 

@@ -3,8 +3,8 @@
 # ARTICLE XXIX — ACCOUNTABILITY
 ## Constitutional Law of AIOS Responsibility, Verification, and Answerability
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS components, agents, operators, decisions, processes, and autonomous actions
 
 ---

@@ -3,8 +3,8 @@
 # ARTICLE XXVII — SELF-KNOWLEDGE
 ## Constitutional Law of AIOS Self-Understanding and System Awareness
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS instances, agents, architectures, knowledge systems, and operational states
 
 ---

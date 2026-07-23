@@ -3,8 +3,8 @@
 # ARTICLE XXXVI — EVOLUTION
 ## Constitutional Law of AIOS Evolution, Growth, and Transformation
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS systems, architectures, agents, learning mechanisms, capabilities, and future states
 
 ---

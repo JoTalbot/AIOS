@@ -1,6 +1,6 @@
 # AIOS Roadmap 6.0 — Neuromorphic Self-Evolution & Planetary Mesh Horizon
 
-**Current Version:** `v6.0.0-alpha` (558 passed tests, 67 constitutional articles verified)  
+**Current Version:** `v6.0.0-alpha` (558 passed tests, 67 constitutional articles verified)
 **Status:** ✅ All Horizon 6.0 Milestones Completed
 
 ---

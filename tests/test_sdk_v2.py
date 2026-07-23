@@ -60,7 +60,7 @@ async def test_client_health_mock(monkeypatch):
         def json(self): return {"status": "ok"}
         @property
         def text(self): return "metrics"
-    
+
     class MockClient:
         def __init__(self, timeout=None): pass
         async def __aenter__(self): return self

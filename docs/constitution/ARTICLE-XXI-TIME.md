@@ -3,8 +3,8 @@
 # ARTICLE XXI — TIME
 ## Constitutional Law of AIOS Time, History, and Temporal Continuity
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS components, memories, events, decisions, logs, agents, and distributed systems
 
 ---

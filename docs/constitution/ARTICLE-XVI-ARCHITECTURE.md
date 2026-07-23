@@ -3,8 +3,8 @@
 # ARTICLE XVI — ARCHITECTURE
 ## Constitutional Law of AIOS System Architecture
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS infrastructure, software components, distributed systems, agents, services, and future architectural expansions
 
 ---

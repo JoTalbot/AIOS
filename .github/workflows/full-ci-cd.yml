@@ -123,7 +123,7 @@ jobs:
             echo "no" | avdmanager create avd -n "${AVD}" \
               -k "system-images;android-${API_LEVEL};${ABI}" \
               -d "pixel" --force > /dev/null
-            
+
             # Config for faster boot
             cat > ~/.android/avd/${AVD}.avd/config.ini <<EOF
 hw.lcd.density=160
@@ -141,7 +141,7 @@ EOF
       - name: Start Emulators (3 parallel)
         run: |
           export PATH="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${PATH}"
-          
+
           # Start 3 emulators in background
           for i in 1 2 3; do
             AVD="AIOS_${i}"
@@ -253,28 +253,28 @@ EOF
         run: |
           export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
           SERIAL="${{ steps.serial.outputs.serial }}"
-          
+
           # The recipe gives us exact ADB commands. We'll run the key ones:
           # 1. Open app
           adb -s $SERIAL shell am start -n ${{ matrix.package }}/.ui.main.MainActivity || true
           sleep 3
-          
+
           # 2. Dump search screen
           adb -s $SERIAL shell uiautomator dump /sdcard/${{ matrix.platform }}_search.xml
           adb -s $SERIAL pull /sdcard/${{ matrix.platform }}_search.xml /tmp/${{ matrix.platform }}_search.xml
-          
+
           # 3. Dump detail screen (navigate to first item)
           adb -s $SERIAL shell input tap 160 200
           sleep 2
           adb -s $SERIAL shell uiautomator dump /sdcard/${{ matrix.platform }}_detail.xml
           adb -s $SERIAL pull /sdcard/${{ matrix.platform }}_detail.xml /tmp/${{ matrix.platform }}_detail.xml
-          
+
           # 4. Dump messenger screen
           adb -s $SERIAL shell input tap 160 500
           sleep 2
           adb -s $SERIAL shell uiautomator dump /sdcard/${{ matrix.platform }}_messenger.xml
           adb -s $SERIAL pull /sdcard/${{ matrix.platform }}_messenger.xml /tmp/${{ matrix.platform }}_messenger.xml
-          
+
           # 5. Dump navigation (home)
           adb -s $SERIAL shell input keyevent 3
           sleep 1
@@ -443,33 +443,33 @@ EOF
         run: |
           ssh -p 2222 root@traff.tplinkdns.com << 'EOF'
             set -euo pipefail
-            
+
             # Stop existing AIOS services
             cd /root/AIOS 2>/dev/null && docker-compose -f docker-compose.prod.yml down || true
-            
+
             # Backup old repo
             mv /root/AIOS /root/AIOS.backup.$(date +%s) 2>/dev/null || true
-            
+
             # Clone fresh
             git clone https://github.com/JoTalbot/AIOS.git /root/AIOS
             cd /root/AIOS
-            
+
             # Install dependencies
             python -m pip install --upgrade pip
             python -m pip install -r requirements.txt
-            
+
             # Setup Android SDK if not present
             if [ ! -d "/opt/android-sdk" ]; then
               bash setup/android-emulator-env.sh
             fi
-            
+
             # Start production stack
             docker-compose -f docker-compose.prod.yml up -d --build
-            
+
             # Wait for health
             sleep 10
             curl -f http://localhost:8000/health || exit 1
-            
+
             echo "✅ Deployment successful"
             docker-compose -f docker-compose.prod.yml ps
           EOF
@@ -513,12 +513,12 @@ EOF
             MSG="✅ AIOS CI/CD PASSED"
             COLOR="good"
           fi
-          
+
           # Example for Slack webhook (add SLACK_WEBHOOK to secrets)
           if [ -n "${{ secrets.SLACK_WEBHOOK }}" ]; then
             curl -X POST -H 'Content-type: application/json' \
               --data "{\"text\":\"$MSG\", \"attachments\":[{\"color\":\"$COLOR\",\"fields\":[{\"title\":\"Repo\",\"value\":\"JoTalbot/AIOS\",\"short\":true},{\"title\":\"Branch\",\"value\":\"${{ github.ref }}\",\"short\":true},{\"title\":\"Commit\",\"value\":\"${{ github.sha }}\",\"short\":true},{\"title\":\"Run\",\"value\":\"https://github.com/JoTalbot/AIOS/actions/runs/${{ github.run_id }}\",\"short\":true}]}]}" \
               ${{ secrets.SLACK_WEBHOOK }}
           fi
-          
+
           echo "$MSG"

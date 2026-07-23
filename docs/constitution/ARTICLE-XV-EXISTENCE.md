@@ -3,8 +3,8 @@
 # ARTICLE XV — EXISTENCE
 ## Constitutional Law of AIOS Existence and Purpose
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS instances, components, agents, and future evolutionary states
 
 ---

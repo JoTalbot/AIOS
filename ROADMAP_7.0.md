@@ -1,6 +1,6 @@
 # AIOS Roadmap 7.0 — Sovereign AGI & Universal Constitutional Alignment Horizon
 
-**Current Version:** `v7.0.0-alpha` (561 passed tests, 67 constitutional articles verified)  
+**Current Version:** `v7.0.0-alpha` (561 passed tests, 67 constitutional articles verified)
 **Status:** ✅ All Horizon 7.0 Milestones Completed
 
 ---

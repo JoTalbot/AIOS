@@ -3,8 +3,8 @@
 # ARTICLE XLVII — HARMONY
 ## Constitutional Law of AIOS Harmony, Coordination, and System Balance
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS components, agents, nodes, processes, relationships, and operational environments
 
 ---

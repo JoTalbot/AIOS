@@ -3,8 +3,8 @@
 # ARTICLE XII — INTERFACE
 ## Constitutional Law of AIOS Interfaces and Communication Boundaries
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS interfaces, APIs, protocols, user interactions, agent communications, and external connections
 
 ---

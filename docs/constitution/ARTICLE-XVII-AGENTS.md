@@ -3,8 +3,8 @@
 # ARTICLE XVII — AGENTS
 ## Constitutional Law of AIOS Agents and Autonomous Entities
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS agents, sub-agents, autonomous processes, intelligent services, and distributed entities
 
 ---

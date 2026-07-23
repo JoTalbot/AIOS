@@ -3,8 +3,8 @@
 # ARTICLE XLII — INTEGRATION
 ## Constitutional Law of AIOS Integration, Cooperation, and System Unity
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS modules, agents, nodes, services, external systems, interfaces, and future extensions
 
 ---

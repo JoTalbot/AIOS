@@ -3,8 +3,8 @@
 # ARTICLE XLI — IDENTITY
 ## Constitutional Law of AIOS Identity, Recognition, and Continuity of Self
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS instances, agents, nodes, components, replicas, services, and future evolutionary states
 
 ---

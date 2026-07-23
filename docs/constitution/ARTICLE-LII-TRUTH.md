@@ -3,8 +3,8 @@
 # ARTICLE LII — TRUTH
 ## Constitutional Law of AIOS Truth, Accuracy, and Reality Alignment
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS knowledge systems, reasoning processes, communications, memories, decisions, agents, and operational structures
 
 ---

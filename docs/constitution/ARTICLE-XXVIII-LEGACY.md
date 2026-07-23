@@ -3,8 +3,8 @@
 # ARTICLE XXVIII — LEGACY
 ## Constitutional Law of AIOS Legacy, Heritage, and Historical Contribution
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS instances, developments, discoveries, decisions, knowledge structures, and historical records
 
 ---

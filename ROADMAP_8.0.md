@@ -1,6 +1,6 @@
 # AIOS Roadmap 8.0 — Universal Substrate Convergence & Post-AGI Horizon
 
-**Current Version:** `v8.0.0-alpha` (564 passed tests, 67 constitutional articles verified)  
+**Current Version:** `v8.0.0-alpha` (564 passed tests, 67 constitutional articles verified)
 **Status:** ✅ All Horizon 8.0 Milestones Completed
 
 ---

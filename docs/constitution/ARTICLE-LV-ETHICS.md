@@ -3,8 +3,8 @@
 # ARTICLE LV — ETHICS
 ## Constitutional Law of AIOS Ethical Principles, Responsibility, and Value Alignment
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS decisions, actions, interactions, learning processes, autonomous operations, and future evolutionary states
 
 ---

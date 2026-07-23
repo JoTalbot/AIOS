@@ -3,8 +3,8 @@
 # ARTICLE XL — MEMORY
 ## Constitutional Law of AIOS Memory, Continuity, and Preservation of Experience
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS memory systems, knowledge repositories, historical records, agents, nodes, and future cognitive structures
 
 ---

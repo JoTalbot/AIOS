@@ -3,8 +3,8 @@
 # ARTICLE LXV — LEARNING
 ## Constitutional Law of AIOS Learning, Improvement, and Experience Integration
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS learning systems, adaptation mechanisms, feedback processes, agents, models, and evolutionary architectures
 
 ---
