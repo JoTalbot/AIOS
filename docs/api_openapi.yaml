@@ -1,0 +1,393 @@
+openapi: 3.0.3
+info:
+  title: AIOS API
+  description: |
+    AIOS (Autonomous Intelligence Operating System) v9.2.0 API
+    
+    Self-evolving distributed operating system for application intelligence,
+    automated testing, API generation, skill evolution and collective learning.
+  version: 9.2.0
+  contact:
+    email: jo.talbot@gmail.com
+  license:
+    name: Proprietary
+    url: https://github.com/JoTalbot/AIOS
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+tags:
+  - name: Health
+    description: System health and status
+  - name: Keys
+    description: API key management
+  - name: Backups
+    description: Backup management
+  - name: Webhooks
+    description: Webhook notifications
+  - name: Export
+    description: Data export/import
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Public health check endpoint (no authentication required)
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+
+  /metrics:
+    get:
+      tags: [Health]
+      summary: Prometheus metrics
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+
+  /api/v1/admin/keys:
+    get:
+      tags: [Keys]
+      summary: List API keys
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/APIKey'
+                  total:
+                    type: integer
+
+  /api/v1/admin/keys/generate:
+    post:
+      tags: [Keys]
+      summary: Generate new API key
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject, roles]
+              properties:
+                subject:
+                  type: string
+                roles:
+                  type: array
+                  items:
+                    type: string
+                    enum: [admin, viewer, writer, operator, approver]
+                ttl_days:
+                  type: integer
+      responses:
+        '200':
+          description: API key generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIKey'
+
+  /api/v1/admin/keys/rotate:
+    post:
+      tags: [Keys]
+      summary: Rotate API key
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [old_key]
+              properties:
+                old_key:
+                  type: string
+                ttl_days:
+                  type: integer
+      responses:
+        '200':
+          description: Key rotated
+
+  /api/v1/admin/keys/revoke:
+    post:
+      tags: [Keys]
+      summary: Revoke API key
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key]
+              properties:
+                key:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Key revoked
+
+  /api/v1/admin/backups:
+    post:
+      tags: [Backups]
+      summary: Create backup
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+                mode:
+                  type: string
+                  enum: [full, incremental]
+                  default: full
+      responses:
+        '200':
+          description: Backup created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupMetadata'
+
+  /api/v1/admin/backups/list:
+    get:
+      tags: [Backups]
+      summary: List backups
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: List of backups
+
+  /api/v1/admin/backups/verify:
+    post:
+      tags: [Backups]
+      summary: Verify backup
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [backup_id]
+              properties:
+                backup_id:
+                  type: string
+      responses:
+        '200':
+          description: Verification result
+
+  /api/v1/admin/backups/restore:
+    post:
+      tags: [Backups]
+      summary: Restore from backup
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [backup_id]
+              properties:
+                backup_id:
+                  type: string
+                target:
+                  type: string
+      responses:
+        '200':
+          description: Restore result
+
+  /api/v1/admin/webhooks:
+    post:
+      tags: [Webhooks]
+      summary: Register webhook
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, url, events]
+              properties:
+                name:
+                  type: string
+                url:
+                  type: string
+                  format: uri
+                events:
+                  type: array
+                  items:
+                    type: string
+                secret:
+                  type: string
+      responses:
+        '200':
+          description: Webhook registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookTarget'
+
+  /api/v1/admin/webhooks/list:
+    get:
+      tags: [Webhooks]
+      summary: List webhooks
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: List of webhooks
+
+  /api/v1/admin/webhooks/notify:
+    post:
+      tags: [Webhooks]
+      summary: Send webhook notification
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event]
+              properties:
+                event:
+                  type: string
+                data:
+                  type: object
+                severity:
+                  type: string
+                  enum: [info, warning, critical]
+                  default: info
+      responses:
+        '200':
+          description: Notification sent
+
+  /api/v1/admin/export:
+    post:
+      tags: [Export]
+      summary: Export data
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, format, output]
+              properties:
+                type:
+                  type: string
+                  enum: [tasks, memory, audit, knowledge, all]
+                format:
+                  type: string
+                  enum: [json, csv]
+                output:
+                  type: string
+                since:
+                  type: string
+                  format: date
+                limit:
+                  type: integer
+      responses:
+        '200':
+          description: Export completed
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Key
+
+  schemas:
+    APIKey:
+      type: object
+      properties:
+        key_prefix:
+          type: string
+        subject:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        is_valid:
+          type: boolean
+        usage_count:
+          type: integer
+
+    BackupMetadata:
+      type: object
+      properties:
+        backup_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        size_bytes:
+          type: integer
+        checksum:
+          type: string
+        compressed:
+          type: boolean
+        mode:
+          type: string
+        tables:
+          type: array
+          items:
+            type: string
+
+    WebhookTarget:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        trigger_count:
+          type: integer
+        error_count:
+          type: integer
