@@ -25,3 +25,17 @@ A static security inspection and code analysis was performed across all `aios_co
 - **Constitutional Scanner (`tula`)**: 67/67 Articles compliant.
 - **Formal AST Code Verifier (`FormalCodeVerifier`)**: 100% verified.
 - **Zero-Knowledge Safety Proofs (`ZeroKnowledgeSafetyProof`)**: Validated for inter-cluster delegation.
+
+---
+
+## 📝 Documentation Security Audit — July 23, 2026
+
+| Check | Status | Details |
+|---|---|---|
+| Secrets in docs | ✅ CLEAN | No hardcoded passwords, tokens or keys in documentation files |
+| SECURITY.md checklist | ✅ COMPLETE | Secrets rotation checklist added (GitHub, Instagram, API keys, DB, Network) |
+| MkDocs site | ✅ CREATED | Full navigation for 162 markdown files, Material theme, search |
+| Sphinx PDF | ✅ UPDATED | Version 9.2.0, all core modules documented |
+| Production guide | ✅ CREATED | PRODUCTION.md with compliance, pacing, monitoring, troubleshooting |
+| .gitignore secrets | ✅ OK | .env, credentials, *.sqlite excluded |
+| Git history review | ⚠️ RECOMMENDED | Run `git filter-branch` to remove any previously committed secrets |
