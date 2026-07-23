@@ -26,11 +26,16 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+<<<<<<< HEAD
     "pytest>=7.0.0",
     "pytest-asyncio>=1.4.0",
     "pytest-xdist>=3.0.0",
     "pytest-timeout>=2.1.0",
     "pytest-cov>=4.0.0",
+=======
+    "pytest>=9.1.1",
+    "pytest-asyncio>=0.21.0",
+>>>>>>> origin/dependabot/pip/pytest-gte-9.1.1
     "black>=22.0.0",
     "isort>=5.0.0",
     "pre-commit>=3.0.0",
