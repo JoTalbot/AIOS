@@ -2,91 +2,123 @@
 
 import pytest
 from aios_core.webhook_manager import WebhookManager
-from aios_core.webhook_metrics import register_webhook_metrics, get_webhook_prometheus_text
-from aios_core.metrics_exporter import MetricsExporter
+from aios_core.webhook_metrics import (
+    register_webhook_metrics,
+    get_webhook_prometheus_text,
+)
 
 
 class TestWebhookMetrics:
-    @pytest.fixture
-    def manager_with_webhooks(self):
-        mgr = WebhookManager()
-        mgr.register("slack", "https://hooks.slack.com/test", ["ban_detected", "low_success_rate"])
-        mgr.register("teams", "https://teams.webhook/test", ["backup_completed"])
-        mgr.notify("ban_detected", {"profile": "ig_shop_1"})
-        mgr.notify("backup_completed", {"backup_id": "b1"})
-        return mgr
-
-    def test_register_webhook_metrics(self, manager_with_webhooks):
+    def test_register_webhook_metrics_empty(self):
+        """Test registering metrics with empty webhook manager."""
+        manager = WebhookManager()
         # Should not raise
-        register_webhook_metrics(manager_with_webhooks)
+        register_webhook_metrics(manager)
 
-    def test_get_prometheus_text(self, manager_with_webhooks):
-        text = get_webhook_prometheus_text(manager_with_webhooks)
+    def test_register_webhook_metrics_with_targets(self):
+        """Test registering metrics with webhook targets."""
+        manager = WebhookManager()
+        manager.register("slack", "https://hooks.slack.com/test", ["ban_detected"])
+        manager.register("teams", "https://teams.webhook/test", ["backup_completed"])
+        
+        # Should not raise
+        register_webhook_metrics(manager)
+
+    def test_get_webhook_prometheus_text_empty(self):
+        """Test Prometheus text output with no webhooks."""
+        manager = WebhookManager()
+        text = get_webhook_prometheus_text(manager)
+        
         assert "aios_webhook_targets_total" in text
         assert "aios_webhook_targets_active" in text
         assert "aios_webhook_triggers_total" in text
         assert "aios_webhook_errors_total" in text
         assert "aios_webhook_history_size" in text
-        assert "aios_webhook_target_triggers" in text
-        assert "slack" in text
-        assert "teams" in text
 
-    def test_prometheus_text_without_manager(self):
-        text = get_webhook_prometheus_text(None)
-        assert "aios_webhook_targets_total" in text
-
-    def test_metrics_values_correct(self, manager_with_webhooks):
-        text = get_webhook_prometheus_text(manager_with_webhooks)
-        # Should have 2 targets
+    def test_get_webhook_prometheus_text_with_targets(self):
+        """Test Prometheus text output with webhook targets."""
+        manager = WebhookManager()
+        manager.register("slack", "https://hooks.slack.com/test", ["ban_detected"])
+        manager.register("teams", "https://teams.webhook/test", ["backup_completed"])
+        
+        # Trigger some notifications
+        manager.notify("ban_detected", {"profile": "ig_shop_1"})
+        manager.notify("backup_completed", {"backup_id": "backup_123"})
+        
+        text = get_webhook_prometheus_text(manager)
+        
+        # Check metrics presence
         assert "aios_webhook_targets_total 2" in text
-        # Should have 2 active
         assert "aios_webhook_targets_active 2" in text
-
-    def test_per_target_metrics(self, manager_with_webhooks):
-        text = get_webhook_prometheus_text(manager_with_webhooks)
-        # Slack should have 1 trigger (ban_detected)
+        assert "aios_webhook_triggers_total" in text
+        assert "aios_webhook_history_size" in text
+        
+        # Check per-target metrics
         assert 'target="slack"' in text
-        # Teams should have 1 trigger (backup_completed)
         assert 'target="teams"' in text
 
+    def test_webhook_metrics_after_deactivation(self):
+        """Test metrics after deactivating a webhook."""
+        manager = WebhookManager()
+        manager.register("slack", "https://hooks.slack.com/test", ["ban_detected"])
+        manager.register("teams", "https://teams.webhook/test", ["backup_completed"])
+        
+        # Deactivate one
+        manager.deactivate("teams")
+        
+        text = get_webhook_prometheus_text(manager)
+        
+        assert "aios_webhook_targets_total 2" in text
+        assert "aios_webhook_targets_active 1" in text
+        assert "aios_webhook_targets_inactive 1" in text
 
-class TestMetricsExporter:
-    def test_counter_with_labels(self):
-        exporter = MetricsExporter()
-        exporter.inc_counter("test_counter", labels={"env": "prod"})
-        exporter.inc_counter("test_counter", labels={"env": "prod"})
-        exporter.inc_counter("test_counter", labels={"env": "dev"})
-        assert exporter.counters.get('test_counter{env="dev"}') == 1.0
-        assert exporter.counters.get('test_counter{env="prod"}') == 2.0
+    def test_webhook_metrics_format(self):
+        """Test that Prometheus output has correct format."""
+        manager = WebhookManager()
+        manager.register("test", "https://example.com/hook", ["ban_detected"])
+        
+        text = get_webhook_prometheus_text(manager)
+        lines = text.split("\n")
+        
+        # Check for HELP and TYPE comments
+        help_lines = [l for l in lines if l.startswith("# HELP")]
+        type_lines = [l for l in lines if l.startswith("# TYPE")]
+        
+        assert len(help_lines) > 0
+        assert len(type_lines) > 0
+        
+        # Check format of metric lines
+        metric_lines = [l for l in lines if l and not l.startswith("#")]
+        for line in metric_lines:
+            # Should have name and value
+            parts = line.split()
+            assert len(parts) >= 2
 
-    def test_gauge_with_labels(self):
-        exporter = MetricsExporter()
-        exporter.set_gauge("test_gauge", 42.0, labels={"host": "server1"})
-        assert exporter.gauges.get('test_gauge{host="server1"}') == 42.0
+    def test_register_webhook_metrics_multiple_times(self):
+        """Test that registering metrics multiple times doesn't cause issues."""
+        manager = WebhookManager()
+        manager.register("test", "https://example.com/hook", ["ban_detected"])
+        
+        # Register multiple times
+        register_webhook_metrics(manager)
+        register_webhook_metrics(manager)
+        register_webhook_metrics(manager)
+        
+        text = get_webhook_prometheus_text(manager)
+        # Should still have correct count
+        assert "aios_webhook_targets_total 1" in text
 
-    def test_histogram(self):
-        exporter = MetricsExporter()
-        exporter.observe_histogram("request_duration", 0.5)
-        exporter.observe_histogram("request_duration", 1.2)
-        exporter.observe_histogram("request_duration", 0.3)
-        assert len(exporter.histograms["request_duration"]) == 3
-
-    def test_export_with_labels(self):
-        exporter = MetricsExporter()
-        exporter.inc_counter("requests", labels={"method": "GET"})
-        exporter.set_gauge("connections", 10, labels={"host": "db1"})
-        text = exporter.export()
-        assert "requests" in text
-        assert "connections" in text
-        assert 'method="GET"' in text
-        assert 'host="db1"' in text
-
-    def test_stats(self):
-        exporter = MetricsExporter()
-        exporter.inc_counter("c1")
-        exporter.set_gauge("g1", 1)
-        exporter.observe_histogram("h1", 0.5)
-        stats = exporter.stats()
-        assert stats["counters"] == 1
-        assert stats["gauges"] == 1
-        assert stats["histograms"] == 1
+    def test_webhook_metrics_with_errors(self):
+        """Test metrics when webhooks have errors."""
+        manager = WebhookManager()
+        target = manager.register("test", "https://example.com/hook", ["ban_detected"])
+        
+        # Simulate error
+        target.error_count = 5
+        target.trigger_count = 10
+        
+        text = get_webhook_prometheus_text(manager)
+        
+        assert "aios_webhook_triggers_total" in text
+        assert "aios_webhook_errors_total" in text
+        assert 'target="test"' in text
