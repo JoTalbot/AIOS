@@ -1,0 +1,11 @@
+# Exclude generated artifacts from source distributions.
+prune site
+prune dist
+prune build
+prune coverage
+prune .pytest_cache
+
+# Never distribute Python bytecode or editor backup files.
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *~
