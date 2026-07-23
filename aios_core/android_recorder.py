@@ -32,10 +32,10 @@ class ScenarioRecorder:
         self.path = path
         self.steps: List[RecordedStep] = []
 
-    def record(self, action: str, meta: Optional[Dict[str, Any]] = None):
+    def record(self, action: str, meta: Optional[Dict[str, Any]] = None) -> None:
         self.steps.append(RecordedStep(action=action, ts=time.time(), meta=meta or {}))
 
-    def save(self):
+    def save(self) -> None:
         payload = {
             "package": self.package,
             "device_id": self.device_id,

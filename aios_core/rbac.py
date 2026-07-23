@@ -10,7 +10,7 @@ class RBAC:
         self.roles: Dict[str, Set[str]] = {}
         self.permissions: Dict[str, Set[str]] = {}
 
-    def create_role(self, role: str, permissions: List[str]):
+    def create_role(self, role: str, permissions: List[str]) -> None:
         self.roles[role] = set(permissions)
 
     def has_permission(self, role: str, permission: str) -> bool:

@@ -21,7 +21,7 @@ class QuantumCircuitSimulator:
         self.state_vector = [complex(0.0, 0.0)] * self.state_vector_size
         self.state_vector[0] = complex(1.0, 0.0)  # Initialized to |0...0> state
 
-    def apply_hadamard(self, qubit_index: int):
+    def apply_hadamard(self, qubit_index: int) -> None:
         """Apply Hadamard gate H to put target qubit into superposition."""
         if qubit_index < 0 or qubit_index >= self.num_qubits:
             return
@@ -42,7 +42,7 @@ class QuantumCircuitSimulator:
 
         self.state_vector = new_vector
 
-    def apply_cnot(self, control_qubit: int, target_qubit: int):
+    def apply_cnot(self, control_qubit: int, target_qubit: int) -> None:
         """Apply Controlled-NOT (CNOT) gate between control and target qubits."""
         new_vector = list(self.state_vector)
         for i in range(self.state_vector_size):

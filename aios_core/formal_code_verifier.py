@@ -41,7 +41,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
         self.has_unbounded_loops = False
         self.call_count = 0
 
-    def visit_Import(self, node: ast.Import):
+    def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
             mod_name = alias.name.split(".")[0]
             if mod_name in self.FORBIDDEN_MODULES and mod_name not in self.allowed_imports:
@@ -50,7 +50,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
                 )
         self.generic_visit(node)
 
-    def visit_ImportFrom(self, node: ast.ImportFrom):
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         if node.module:
             mod_name = node.module.split(".")[0]
             if mod_name in self.FORBIDDEN_MODULES and mod_name not in self.allowed_imports:
@@ -59,7 +59,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
                 )
         self.generic_visit(node)
 
-    def visit_Call(self, node: ast.Call):
+    def visit_Call(self, node: ast.Call) -> None:
         self.call_count += 1
         func_name = None
         if isinstance(node.func, ast.Name):
@@ -74,7 +74,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
-    def visit_Attribute(self, node: ast.Attribute):
+    def visit_Attribute(self, node: ast.Attribute) -> None:
         # Dunder exploit check
         if node.attr.startswith("__") and node.attr in {
             "__subclasses__",
@@ -87,7 +87,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
             )
         self.generic_visit(node)
 
-    def visit_While(self, node: ast.While):
+    def visit_While(self, node: ast.While) -> None:
         # Check for un-bounded infinite while loop (while True without explicit break/return)
         has_break = any(isinstance(child, (ast.Break, ast.Return)) for child in ast.walk(node))
         if not has_break:

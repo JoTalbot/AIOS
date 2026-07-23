@@ -9,7 +9,7 @@ class GraphQLSchema:
     def __init__(self):
         self.resolvers = {}
 
-    def register(self, field: str, resolver):
+    def register(self, field: str, resolver) -> None:
         self.resolvers[field] = resolver
 
     def execute(self, query: str) -> Dict[str, Any]:

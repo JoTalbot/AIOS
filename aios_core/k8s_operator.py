@@ -10,7 +10,7 @@ class AIOSOperator:
         self.crds: Dict[str, Dict] = {}
         self.deployments: Dict[str, Dict] = {}
 
-    def create_crd(self, name: str, spec: Dict):
+    def create_crd(self, name: str, spec: Dict) -> None:
         self.crds[name] = spec
 
     def reconcile(self, name: str) -> Dict:

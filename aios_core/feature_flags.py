@@ -9,16 +9,16 @@ class FeatureFlags:
     def __init__(self):
         self.flags: Dict[str, bool] = {}
 
-    def enable(self, flag: str):
+    def enable(self, flag: str) -> None:
         self.flags[flag] = True
 
-    def disable(self, flag: str):
+    def disable(self, flag: str) -> None:
         self.flags[flag] = False
 
     def is_enabled(self, flag: str) -> bool:
         return self.flags.get(flag, False)
 
-    def toggle(self, flag: str):
+    def toggle(self, flag: str) -> None:
         self.flags[flag] = not self.flags.get(flag, False)
 
     def list(self) -> dict:

@@ -36,7 +36,7 @@ class ADBController:
             return f"adb -s {self.serial}"
         return "adb"
 
-    def run(self, command):
+    def run(self, command) -> None:
         result = subprocess.run(command, shell=True, capture_output=True, text=True)
 
         return {
@@ -45,15 +45,15 @@ class ADBController:
             "stderr": result.stderr.strip(),
         }
 
-    def swipe(self, x1, y1, x2, y2, duration=500):
+    def swipe(self, x1, y1, x2, y2, duration=500) -> None:
         cmd = f"{self.adb} shell input swipe " f"{x1} {y1} {x2} {y2} {duration}"
 
         return self.run(cmd)
 
-    def tap(self, x, y):
+    def tap(self, x, y) -> None:
         return self.run(f"{self.adb} shell input tap {x} {y}")
 
-    def dump_ui(self, filename="screen.xml"):
+    def dump_ui(self, filename="screen.xml") -> None:
         remote = "/sdcard/aios_ui.xml"
 
         self.run(f"{self.adb} shell uiautomator dump {remote}")
@@ -62,17 +62,17 @@ class ADBController:
 
         return result
 
-    def screenshot(self, filename="screen.png"):
+    def screenshot(self, filename="screen.png") -> None:
         cmd = f"{self.adb} exec-out screencap -p > {filename}"
 
         return self.run(cmd)
 
-    def open_app(self):
+    def open_app(self) -> None:
         cmd = f"{self.adb} shell monkey " f"-p {self.package} 1"
 
         return self.run(cmd)
 
-    def input_text(self, text):
+    def input_text(self, text) -> None:
         """Types text via the ADBKeyBoard broadcast IME (Cyrillic-safe)."""
         from urllib.parse import quote
 

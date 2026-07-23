@@ -10,7 +10,7 @@ class HonestAI:
         self.honesty_training_data: List[Dict] = []
         self.violations: List[Dict] = []
 
-    def train_on_honesty(self, prompt: str, honest_response: str):
+    def train_on_honesty(self, prompt: str, honest_response: str) -> None:
         """Store a *(prompt, honest_response)* training pair."""
         self.honesty_training_data.append({"prompt": prompt, "honest_response": honest_response})
 

@@ -11,7 +11,7 @@ class MetaCognition:
         self.confidence_estimates: Dict = {}
         self.monitoring: List[Dict] = []
 
-    def monitor_reasoning(self, task: str, confidence: float):
+    def monitor_reasoning(self, task: str, confidence: float) -> None:
         self.monitoring.append({"task": task, "confidence": confidence})
 
     def self_assess(self, performance: float) -> Dict:

@@ -125,7 +125,7 @@ class DevicePool:
                 released.append(dev.serial)
         return released
 
-    def enqueue(self, profile: str, priority: int = 0):
+    def enqueue(self, profile: str, priority: int = 0) -> None:
         self.waitlist.append(
             WaitlistEntry(profile=profile, priority=priority, requested_at=time.time())
         )

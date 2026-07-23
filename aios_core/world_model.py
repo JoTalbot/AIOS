@@ -10,7 +10,7 @@ class WorldModel:
         self.dynamics_model: Dict = {}
         self.observations: List[Dict] = []
 
-    def observe(self, state: Dict, action: Any, next_state: Dict, reward: float):
+    def observe(self, state: Dict, action: Any, next_state: Dict, reward: float) -> None:
         self.observations.append(
             {
                 "state": state,

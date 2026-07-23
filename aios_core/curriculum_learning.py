@@ -10,7 +10,7 @@ class Curriculum:
         self.stages: List[Dict] = []
         self.current_stage = 0
 
-    def add_stage(self, name: str, difficulty: float, tasks: List):
+    def add_stage(self, name: str, difficulty: float, tasks: List) -> None:
         self.stages.append({"name": name, "difficulty": difficulty, "tasks": tasks, "completed": 0})
 
     def next_task(self) -> Any:
@@ -21,7 +21,7 @@ class Curriculum:
             return stage["tasks"][0]
         return None
 
-    def complete_task(self):
+    def complete_task(self) -> None:
         if self.stages and self.current_stage < len(self.stages):
             self.stages[self.current_stage]["completed"] += 1
             if self.stages[self.current_stage]["completed"] >= 5:

@@ -12,7 +12,7 @@ class DynamicsModel:
     def predict(self, state: Dict, action: Any) -> Dict:
         return self.model(state, action)
 
-    def train(self, data: List[Dict]):
+    def train(self, data: List[Dict]) -> None:
         pass
 
 

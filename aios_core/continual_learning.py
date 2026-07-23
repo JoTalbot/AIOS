@@ -10,7 +10,7 @@ class ContinualLearner:
         self.tasks: List[str] = []
         self.importance: Dict[str, float] = {}
 
-    def learn_task(self, task_name: str, importance: float = 1.0):
+    def learn_task(self, task_name: str, importance: float = 1.0) -> None:
         self.tasks.append(task_name)
         self.importance[task_name] = importance
 

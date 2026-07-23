@@ -40,7 +40,7 @@ def _module_card_parser(agent_module: str):
     return None
 
 
-def resolve_card_parser(platform_name: str, directory: str = "platforms"):
+def resolve_card_parser(platform_name: str, directory: str = "platforms") -> None:
     """Цепочка резолва парсера карточек платформы.
 
     Codegen-класс модуля → runtime build_parser из hints дескриптора →
@@ -75,7 +75,7 @@ class _DrivenCollector:
 
         return OLXCollector(adb=self._adb, parser=self._parser, max_swipes=self.max_swipes)
 
-    def collect(self, query=None, max_cards=50, progress=None):
+    def collect(self, query=None, max_cards=50, progress=None) -> None:
         if self._driver is not None:
             self._driver(self._package, query)
         return self._engine().collect(
@@ -84,7 +84,7 @@ class _DrivenCollector:
             progress=progress,
         )
 
-    def collect_to_storage(self, storage, query=None, max_cards=50, progress=None):
+    def collect_to_storage(self, storage, query=None, max_cards=50, progress=None) -> None:
         if self._driver is not None:
             self._driver(self._package, query)
         return self._engine().collect_to_storage(

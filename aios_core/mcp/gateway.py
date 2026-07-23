@@ -975,6 +975,6 @@ class MCPGateway:
             "database": self.runtime.db.stats(),
         }
 
-    def close(self):
+    def close(self) -> None:
         """Cleanup resources."""
         self.runtime.db.close()

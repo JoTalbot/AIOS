@@ -10,7 +10,7 @@ class SocialIntelligence:
         self.relationships: Dict[str, Dict] = {}
         self.norms: List[str] = ["cooperation", "fairness", "reciprocity"]
 
-    def update_relationship(self, agent_a: str, agent_b: str, interaction: Dict):
+    def update_relationship(self, agent_a: str, agent_b: str, interaction: Dict) -> None:
         key = f"{agent_a}_{agent_b}"
         self.relationships[key] = interaction
 

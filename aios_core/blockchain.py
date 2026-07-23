@@ -25,11 +25,11 @@ class Blockchain:
         self.chain: List[Block] = []
         self.create_genesis_block()
 
-    def create_genesis_block(self):
+    def create_genesis_block(self) -> None:
         genesis = Block(0, {"message": "Genesis Block"}, "0")
         self.chain.append(genesis)
 
-    def add_block(self, data: Dict):
+    def add_block(self, data: Dict) -> None:
         previous = self.chain[-1]
         new_block = Block(len(self.chain), data, previous.hash)
         self.chain.append(new_block)

@@ -10,7 +10,7 @@ class GraphNeuralNetwork:
         self.layers = layers
         self.embeddings: Dict[str, List[float]] = {}
 
-    def add_node(self, node_id: str, features: List[float]):
+    def add_node(self, node_id: str, features: List[float]) -> None:
         self.embeddings[node_id] = features
 
     def message_passing(self, edges: List[tuple]) -> Dict[str, List[float]]:

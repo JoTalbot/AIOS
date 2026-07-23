@@ -78,12 +78,12 @@ class ExternalIntegrationManager:
         }
         self._running = False
 
-    def register_webhook(self, endpoint: str, handler: callable):
+    def register_webhook(self, endpoint: str, handler: callable) -> None:
         """Register a webhook handler for a specific endpoint."""
         self.webhook_handlers[endpoint] = handler
         logger.info(f"Registered webhook handler for {endpoint}")
 
-    async def process_event(self, event: IntegrationEvent):
+    async def process_event(self, event: IntegrationEvent) -> None:
         """Process an integration event."""
         start_time = time.time()
 
@@ -152,7 +152,7 @@ class ExternalIntegrationManager:
             logger.warning(f"Security event: {security_data}")
             # Could trigger security responses here
 
-    async def start_event_processor(self):
+    async def start_event_processor(self) -> None:
         """Start the background event processor."""
         self._running = True
         while self._running:
@@ -164,7 +164,7 @@ class ExternalIntegrationManager:
             except Exception as e:
                 logger.error(f"Error in event processor: {e}")
 
-    def stop_event_processor(self):
+    def stop_event_processor(self) -> None:
         """Stop the background event processor."""
         self._running = False
 
@@ -250,7 +250,7 @@ class ExternalIntegrationAPI:
                 )
 
             # Create a simple webhook handler that forwards to the URL
-            async def webhook_handler(event_data: Dict[str, Any]):
+            async def webhook_handler(event_data: Dict[str, Any]) -> None:
                 import aiohttp
 
                 async with aiohttp.ClientSession() as session:
@@ -286,7 +286,7 @@ class ExternalIntegrationAPI:
     async def _event_stream(self, request: Request) -> StreamingResponse:
         """Server-sent events stream for real-time integration events."""
 
-        async def event_generator():
+        async def event_generator() -> None:
             # For demo purposes, send periodic system status
             while True:
                 if await request.is_disconnected():

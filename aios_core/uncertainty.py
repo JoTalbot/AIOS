@@ -10,7 +10,7 @@ class UncertaintyQuantifier:
     def __init__(self):
         self.predictions: Dict[str, List[float]] = {}
 
-    def add_prediction(self, model_id: str, value: float):
+    def add_prediction(self, model_id: str, value: float) -> None:
         if model_id not in self.predictions:
             self.predictions[model_id] = []
         self.predictions[model_id].append(value)

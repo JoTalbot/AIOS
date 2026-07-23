@@ -20,7 +20,7 @@ class DistributedComputing:
         self.workers: Dict[str, Dict] = {}
         self.tasks: Dict[str, DistributedTask] = {}
 
-    def register_worker(self, worker_id: str, capabilities: List[str]):
+    def register_worker(self, worker_id: str, capabilities: List[str]) -> None:
         self.workers[worker_id] = {"capabilities": capabilities, "status": "idle"}
 
     def submit(self, func: Callable, *args, **kwargs) -> str:

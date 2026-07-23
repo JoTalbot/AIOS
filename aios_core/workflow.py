@@ -32,7 +32,7 @@ class WorkflowEngine:
         self.workflows[wf.id] = wf
         return wf
 
-    def add_step(self, workflow_id: str, name: str, action: Callable, **params):
+    def add_step(self, workflow_id: str, name: str, action: Callable, **params) -> None:
         wf = self.workflows[workflow_id]
         step = WorkflowStep(name=name, action=action, params=params)
         wf.steps.append(step)

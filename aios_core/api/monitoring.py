@@ -86,17 +86,17 @@ class AlertManager:
         self.notification_handlers: List[Callable] = []
         self._running = False
 
-    def add_alert_rule(self, rule: Callable):
+    def add_alert_rule(self, rule: Callable) -> None:
         """Add an alert evaluation rule."""
         self.alert_rules.append(rule)
         logger.info(f"Added alert rule: {rule.__name__}")
 
-    def add_notification_handler(self, handler: Callable):
+    def add_notification_handler(self, handler: Callable) -> None:
         """Add a notification handler for alerts."""
         self.notification_handlers.append(handler)
         logger.info(f"Added notification handler: {handler.__name__}")
 
-    async def evaluate_rules(self, metrics: MetricSnapshot):
+    async def evaluate_rules(self, metrics: MetricSnapshot) -> None:
         """Evaluate all alert rules against current metrics."""
         for rule in self.alert_rules:
             try:
@@ -106,7 +106,7 @@ class AlertManager:
             except Exception as e:
                 logger.error(f"Error evaluating alert rule {rule.__name__}: {e}")
 
-    async def create_alert(self, alert: Alert):
+    async def create_alert(self, alert: Alert) -> None:
         """Create a new monitoring alert."""
         alert.id = f"alert_{int(time.time())}_{hash(alert.title)}"
         alert.timestamp = time.time()
@@ -123,7 +123,7 @@ class AlertManager:
             except Exception as e:
                 logger.error(f"Error in notification handler {handler.__name__}: {e}")
 
-    async def resolve_alert(self, alert_id: str):
+    async def resolve_alert(self, alert_id: str) -> None:
         """Resolve an alert."""
         if alert_id in self.alerts:
             alert = self.alerts[alert_id]
@@ -162,7 +162,7 @@ class PerformanceMonitor:
             "response_time_threshold": 1.0,
         }
 
-    def record_request(self, response_time: float, status_code: int = 200):
+    def record_request(self, response_time: float, status_code: int = 200) -> None:
         """Record a request and its response time."""
         self.metrics["request_count"].add(1)
         self.metrics["response_time"].observe(response_time)
@@ -174,7 +174,7 @@ class PerformanceMonitor:
         else:
             self.error_rates.append((time.time(), 0))
 
-    def update_system_metrics(self, cpu_usage: float, memory_usage: float):
+    def update_system_metrics(self, cpu_usage: float, memory_usage: float) -> None:
         """Update system resource metrics."""
         self.metrics["cpu_usage"].set(cpu_usage)
         self.metrics["memory_usage"].set(memory_usage)
@@ -243,7 +243,7 @@ class IntegrationMonitor:
             ),
         }
 
-    def register_integration(self, name: str, health_check: Callable):
+    def register_integration(self, name: str, health_check: Callable) -> None:
         """Register an integration for monitoring."""
         self.health_checks[name] = health_check
         logger.info(f"Registered integration for monitoring: {name}")
@@ -318,19 +318,19 @@ class EnhancedLoggingManager:
             logger_obj.addHandler(handler)
             self.loggers[logger_name] = logger_obj
 
-    def add_log_aggregator(self, aggregator: Callable):
+    def add_log_aggregator(self, aggregator: Callable) -> None:
         """Add a log aggregator for external log collection."""
         self.log_aggregators.append(aggregator)
         logger.info(f"Added log aggregator: {aggregator.__name__}")
 
-    def log_integration_event(self, event_type: str, data: Dict[str, Any]):
+    def log_integration_event(self, event_type: str, data: Dict[str, Any]) -> None:
         """Log integration events."""
         self.loggers["aios_integration"].info(
             f"Integration event: {event_type}",
             extra={"event_type": event_type, "data": data},
         )
 
-    def log_performance_metrics(self, metrics: MetricSnapshot):
+    def log_performance_metrics(self, metrics: MetricSnapshot) -> None:
         """Log performance metrics."""
         self.loggers["aios_performance"].info(
             "Performance metrics snapshot",
@@ -343,7 +343,7 @@ class EnhancedLoggingManager:
             },
         )
 
-    def log_alert(self, alert: Alert):
+    def log_alert(self, alert: Alert) -> None:
         """Log monitoring alerts."""
         self.loggers["aios_alerts"].warning(
             f"Alert: {alert.title}",
@@ -426,11 +426,11 @@ class MonitoringSystem:
     def _setup_default_notification_handlers(self):
         """Setup default notification handlers."""
 
-        async def log_notification(alert: Alert):
+        async def log_notification(alert: Alert) -> None:
             """Log alerts to the logging system."""
             self.logging_manager.log_alert(alert)
 
-        async def console_notification(alert: Alert):
+        async def console_notification(alert: Alert) -> None:
             """Log alerts to console via the logging system."""
             logger.critical(
                 "ALERT: %s (%s) — %s",
@@ -442,7 +442,7 @@ class MonitoringSystem:
         self.alert_manager.add_notification_handler(log_notification)
         self.alert_manager.add_notification_handler(console_notification)
 
-    async def start_monitoring(self):
+    async def start_monitoring(self) -> None:
         """Start the monitoring system."""
         self._running = True
         logger.info("Monitoring system started")
@@ -474,7 +474,7 @@ class MonitoringSystem:
                 logger.error(f"Error in monitoring loop: {e}")
                 await asyncio.sleep(5)
 
-    def stop_monitoring(self):
+    def stop_monitoring(self) -> None:
         """Stop the monitoring system."""
         self._running = False
         logger.info("Monitoring system stopped")
@@ -494,7 +494,7 @@ def create_monitoring_system() -> MonitoringSystem:
     system = MonitoringSystem()
 
     # Register some default integrations for monitoring
-    async def default_api_health_check():
+    async def default_api_health_check() -> None:
         """Default API health check."""
         return {"status": "healthy", "timestamp": time.time()}
 

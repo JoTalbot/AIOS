@@ -18,7 +18,7 @@ class GracefulShutdown:
         self.shutdown_handlers: List[Callable] = []
         self._shutdown_event = asyncio.Event()
 
-    def register_handler(self, handler: Callable):
+    def register_handler(self, handler: Callable) -> None:
         self.shutdown_handlers.append(handler)
 
     def _signal_handler(self, sig, frame):
@@ -31,11 +31,11 @@ class GracefulShutdown:
                 logger.error("Shutdown handler error: %s", e)
         sys.exit(0)
 
-    def setup(self):
+    def setup(self) -> None:
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
 
-    async def wait_for_shutdown(self):
+    async def wait_for_shutdown(self) -> None:
         await self._shutdown_event.wait()
 
 

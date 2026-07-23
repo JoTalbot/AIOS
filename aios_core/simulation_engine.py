@@ -10,7 +10,7 @@ class SimulationEngine:
     def __init__(self):
         self.scenarios: Dict[str, Callable] = {}
 
-    def register_scenario(self, name: str, scenario_func: Callable):
+    def register_scenario(self, name: str, scenario_func: Callable) -> None:
         self.scenarios[name] = scenario_func
 
     def run(self, scenario_name: str, params: Dict = None) -> Dict:

@@ -14,7 +14,7 @@ class SparseAutoencoder:
         self.sparsity = sparsity
         self.features: Dict = {}
 
-    def train(self, activations: List[List[float]]):
+    def train(self, activations: List[List[float]]) -> None:
         # Placeholder training
         self.features = {f"feature_{i}": 0.0 for i in range(self.hidden_dim)}
 

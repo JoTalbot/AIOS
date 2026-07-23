@@ -20,11 +20,11 @@ class ExperimentTracker:
         }
         return exp_id
 
-    def log_metric(self, exp_id: str, metric: str, value: float):
+    def log_metric(self, exp_id: str, metric: str, value: float) -> None:
         if exp_id in self.experiments:
             self.experiments[exp_id]["metrics"][metric] = value
 
-    def end_experiment(self, exp_id: str, status: str = "completed"):
+    def end_experiment(self, exp_id: str, status: str = "completed") -> None:
         if exp_id in self.experiments:
             self.experiments[exp_id]["status"] = status
 

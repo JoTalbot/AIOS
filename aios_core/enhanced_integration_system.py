@@ -85,7 +85,7 @@ class EnhancedIntegrationSystem:
         self.protocol_manager = None
         self.is_running = False
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Initialize the integration system."""
         try:
             # Setup enhanced logging
@@ -137,7 +137,7 @@ class EnhancedIntegrationSystem:
                 print(f"Failed to initialize integration system: {str(e)}")
             return False
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the integration system."""
         try:
             if not self.integration_api or not self.monitoring_api or not self.protocol_manager:
@@ -157,7 +157,7 @@ class EnhancedIntegrationSystem:
                 print(f"Failed to start integration system: {str(e)}")
             return False
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the integration system."""
         try:
             if self.protocol_manager:
@@ -206,7 +206,7 @@ class EnhancedIntegrationSystem:
 
         return status
 
-    def create_app(self):
+    def create_app(self) -> None:
         """Create Starlette application with all integration endpoints."""
         from starlette.applications import Starlette
         from starlette.routing import Mount
@@ -225,7 +225,7 @@ class EnhancedIntegrationSystem:
 
         # Add main status endpoint
         @app.route("/status")
-        async def status_endpoint(request):
+        async def status_endpoint(request) -> None:
             return json.dumps(await self.get_system_status())
 
         return app
@@ -363,7 +363,7 @@ def create_default_config() -> IntegrationConfig:
     )
 
 
-async def main():
+async def main() -> None:
     """Main function to run the enhanced integration system."""
     # Create default configuration
     config = create_default_config()

@@ -10,12 +10,12 @@ class ChaosMonkey:
     def __init__(self, failure_rate: float = 0.1):
         self.failure_rate = failure_rate
 
-    def maybe_fail(self):
+    def maybe_fail(self) -> None:
         if random.random() < self.failure_rate:
             raise Exception("ChaosMonkey injected failure")
 
-    def wrap(self, func: Callable):
-        def wrapper(*args, **kwargs):
+    def wrap(self, func: Callable) -> None:
+        def wrapper(*args, **kwargs) -> None:
             self.maybe_fail()
             return func(*args, **kwargs)
 

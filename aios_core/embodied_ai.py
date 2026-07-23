@@ -14,7 +14,7 @@ class RobotInterface:
     def read_sensor(self, sensor: str) -> Dict:
         return {"type": sensor, "value": 0.0}
 
-    def actuate(self, actuator: str, value: float):
+    def actuate(self, actuator: str, value: float) -> None:
         pass
 
     def stats(self) -> dict:

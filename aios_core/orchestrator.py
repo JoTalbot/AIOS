@@ -587,7 +587,7 @@ class Orchestrator:
         """Get ML-based optimization suggestions for a plan."""
         return self.ml_scorer.optimize_plan(plan, self.planner)
 
-    def close(self):
+    def close(self) -> None:
         self.db.close()
 
 

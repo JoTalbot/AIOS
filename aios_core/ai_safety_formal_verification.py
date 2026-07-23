@@ -9,7 +9,7 @@ class FormalVerifier:
     def __init__(self):
         self.properties: Dict[str, Callable] = {}
 
-    def add_property(self, name: str, verifier: Callable[[Any], bool]):
+    def add_property(self, name: str, verifier: Callable[[Any], bool]) -> None:
         """Register *verifier* under *name* for later use in :meth:`verify`."""
         self.properties[name] = verifier
 

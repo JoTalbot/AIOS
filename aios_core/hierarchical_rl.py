@@ -20,7 +20,7 @@ class HierarchicalRL:
         self.options: Dict[str, Option] = {}
         self.high_level_policy = {}
 
-    def add_option(self, option: Option):
+    def add_option(self, option: Option) -> None:
         self.options[option.name] = option
 
     def select_option(self, state: Dict) -> str:

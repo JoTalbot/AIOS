@@ -41,13 +41,13 @@ class PlatformDescriptor:
     legacy_default_db: Optional[str] = None
     extras: Dict = field(default_factory=dict)
 
-    def make_storage(self, db_path: str):
+    def make_storage(self, db_path: str) -> None:
         """Создаёт хранилище этой платформы по пути БД."""
         if self.storage_factory is None:
             raise ValueError(f"platform '{self.name}' has no storage factory")
         return self.storage_factory(db_path)
 
-    def make_adb(self, serial: Optional[str] = None):
+    def make_adb(self, serial: Optional[str] = None) -> None:
         """Создаёт ADB-контроллер этой платформы (с device-binding)."""
         if self.adb_factory is None:
             raise ValueError(f"platform '{self.name}' has no adb factory")

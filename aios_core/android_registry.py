@@ -60,7 +60,7 @@ class AndroidAppRegistry:
             return None
         return desc.build_driver(device_id)
 
-    def load_from_catalog(self, directory: str = "platforms"):
+    def load_from_catalog(self, directory: str = "platforms") -> None:
         try:
             descriptors = load_catalog(directory)
         except Exception:

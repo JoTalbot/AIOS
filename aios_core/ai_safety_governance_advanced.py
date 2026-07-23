@@ -13,7 +13,7 @@ class AdvancedAIGovernance:
         self.policies: Dict[str, Dict] = {}
         self.compliance_checks: List[Dict] = []
 
-    def create_governance_body(self, name: str, members: List[str], authority: List[str]):
+    def create_governance_body(self, name: str, members: List[str], authority: List[str]) -> None:
         body = {"name": name, "members": members, "authority": authority}
         self.governance_bodies.append(body)
         return body

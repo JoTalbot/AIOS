@@ -16,11 +16,11 @@ class PluginManager:
         self.plugins: Dict[str, Any] = {}
         self.hooks: Dict[str, list] = {}
 
-    def register_plugin(self, name: str, plugin: Any):
+    def register_plugin(self, name: str, plugin: Any) -> None:
         self.plugins[name] = plugin
         return True
 
-    def load_plugin(self, module_path: str, name: str = None):
+    def load_plugin(self, module_path: str, name: str = None) -> None:
         """Dynamically load a plugin module."""
         try:
             module = importlib.import_module(module_path)
@@ -31,12 +31,12 @@ class PluginManager:
             print(f"Failed to load plugin {module_path}: {e}")
             return False
 
-    def register_hook(self, hook_name: str, callback: Callable):
+    def register_hook(self, hook_name: str, callback: Callable) -> None:
         if hook_name not in self.hooks:
             self.hooks[hook_name] = []
         self.hooks[hook_name].append(callback)
 
-    def run_hook(self, hook_name: str, *args, **kwargs):
+    def run_hook(self, hook_name: str, *args, **kwargs) -> None:
         results = []
         for callback in self.hooks.get(hook_name, []):
             try:

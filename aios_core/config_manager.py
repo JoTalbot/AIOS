@@ -16,7 +16,7 @@ class ConfigManager:
         self.config: Dict[str, Any] = {}
         self.load()
 
-    def load(self):
+    def load(self) -> None:
         if os.path.exists(self.config_path):
             with open(self.config_path, "r") as f:
                 self.config = yaml.safe_load(f) or {}
@@ -29,10 +29,10 @@ class ConfigManager:
     def get(self, key: str, default: Any = None) -> Any:
         return self.config.get(key, default)
 
-    def set(self, key: str, value: Any):
+    def set(self, key: str, value: Any) -> None:
         self.config[key] = value
 
-    def save(self):
+    def save(self) -> None:
         with open(self.config_path, "w") as f:
             yaml.dump(self.config, f)
 

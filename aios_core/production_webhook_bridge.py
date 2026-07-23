@@ -21,7 +21,7 @@ class ProductionWebhookBridge:
         self.webhook = webhook_manager or WebhookManager()
         self.enabled = True
 
-    def on_ban_detected(self, profile: str, reason: str, details: Optional[Dict] = None):
+    def on_ban_detected(self, profile: str, reason: str, details: Optional[Dict] = None) -> None:
         """Notify when a ban is detected."""
         if not self.enabled:
             return
@@ -39,7 +39,7 @@ class ProductionWebhookBridge:
             severity="critical",
         )
 
-    def on_low_success_rate(self, profile: str, rate: float, threshold: float = 0.8):
+    def on_low_success_rate(self, profile: str, rate: float, threshold: float = 0.8) -> None:
         """Notify when success rate drops below threshold."""
         if not self.enabled:
             return
@@ -55,7 +55,7 @@ class ProductionWebhookBridge:
             severity="warning",
         )
 
-    def on_device_offline(self, device_serial: str, profile: str):
+    def on_device_offline(self, device_serial: str, profile: str) -> None:
         """Notify when a device goes offline."""
         if not self.enabled:
             return
@@ -70,7 +70,7 @@ class ProductionWebhookBridge:
             severity="warning",
         )
 
-    def on_compliance_blocked(self, profile: str, action: str, reason: str):
+    def on_compliance_blocked(self, profile: str, action: str, reason: str) -> None:
         """Notify when compliance guard blocks an action."""
         if not self.enabled:
             return
@@ -86,7 +86,7 @@ class ProductionWebhookBridge:
             severity="warning",
         )
 
-    def on_backup_completed(self, backup_id: str, size_mb: float):
+    def on_backup_completed(self, backup_id: str, size_mb: float) -> None:
         """Notify when backup completes."""
         if not self.enabled:
             return
@@ -101,7 +101,7 @@ class ProductionWebhookBridge:
             severity="info",
         )
 
-    def on_backup_failed(self, error: str):
+    def on_backup_failed(self, error: str) -> None:
         """Notify when backup fails."""
         if not self.enabled:
             return
@@ -115,7 +115,7 @@ class ProductionWebhookBridge:
             severity="critical",
         )
 
-    def on_daily_report(self, report: Dict[str, Any]):
+    def on_daily_report(self, report: Dict[str, Any]) -> None:
         """Send daily summary notification."""
         if not self.enabled:
             return
@@ -134,7 +134,7 @@ class ProductionWebhookBridge:
             severity="info",
         )
 
-    def on_simulation_complete(self, summary: Dict[str, Any]):
+    def on_simulation_complete(self, summary: Dict[str, Any]) -> None:
         """Send simulation completion notification."""
         if not self.enabled:
             return
@@ -154,7 +154,7 @@ class ProductionWebhookBridge:
             severity="info",
         )
 
-    def on_key_rotated(self, subject: str, old_key_prefix: str, new_key_prefix: str):
+    def on_key_rotated(self, subject: str, old_key_prefix: str, new_key_prefix: str) -> None:
         """Notify when an API key is rotated."""
         if not self.enabled:
             return
@@ -170,7 +170,7 @@ class ProductionWebhookBridge:
             severity="info",
         )
 
-    def on_key_revoked(self, subject: str, key_prefix: str, reason: str):
+    def on_key_revoked(self, subject: str, key_prefix: str, reason: str) -> None:
         """Notify when an API key is revoked."""
         if not self.enabled:
             return

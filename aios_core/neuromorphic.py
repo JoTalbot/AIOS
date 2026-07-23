@@ -11,13 +11,13 @@ class SpikingNeuron:
         self.potential = 0.0
         self.spikes = 0
 
-    def step(self, input_current: float):
+    def step(self, input_current: float) -> None:
         self.potential += input_current
         if self.potential >= self.threshold:
             self.spikes += 1
             self.potential = 0.0
 
-    def reset(self):
+    def reset(self) -> None:
         self.potential = 0.0
         self.spikes = 0
 

@@ -70,7 +70,7 @@ class AndroidObservability:
                     continue
         except Exception:
             pass  # psutil unavailable — skip resource anomaly detection
-    def isolate_process(self):
+    def isolate_process(self) -> None:
         return self._isolate_process()
 
     def check_heuristic_anomalies(self) -> List[Dict[str, Any]]:

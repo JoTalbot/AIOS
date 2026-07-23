@@ -58,7 +58,7 @@ class InstagramCollector:
         self.screen_height = screen_height
         self.pacer = pacer
 
-    def resolve_parser(self):
+    def resolve_parser(self) -> None:
         """Парсер карточек: явный или runtime из дескриптора платформы."""
         if self.parser is not None:
             return self.parser

@@ -34,7 +34,7 @@ _webhook_manager: Optional[WebhookManager] = None
 _db_path: str = "aios.sqlite"
 
 
-def init_admin_routes(db_path: str = "aios.sqlite", backup_dir: str = "./backups"):
+def init_admin_routes(db_path: str = "aios.sqlite", backup_dir: str = "./backups") -> None:
     """Initialize admin route handlers with database path."""
     global _db_path, _secret_manager, _backup_manager, _webhook_manager
     _db_path = db_path
@@ -69,7 +69,7 @@ def _require_admin(request: Request):
 # ============================================================
 
 
-async def export_data(request: Request):
+async def export_data(request: Request) -> None:
     """Export data from AIOS.
 
     POST /api/v1/admin/export
@@ -127,7 +127,7 @@ async def export_data(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-async def import_data(request: Request):
+async def import_data(request: Request) -> None:
     """Import data into AIOS.
 
     POST /api/v1/admin/import
@@ -167,7 +167,7 @@ async def import_data(request: Request):
 # ============================================================
 
 
-async def generate_api_key(request: Request):
+async def generate_api_key(request: Request) -> None:
     """Generate a new API key.
 
     POST /api/v1/admin/keys/generate
@@ -207,7 +207,7 @@ async def generate_api_key(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-async def list_api_keys(request: Request):
+async def list_api_keys(request: Request) -> None:
     """List all API keys.
 
     GET /api/v1/admin/keys
@@ -239,7 +239,7 @@ async def list_api_keys(request: Request):
     )
 
 
-async def revoke_api_key(request: Request):
+async def revoke_api_key(request: Request) -> None:
     """Revoke an API key.
 
     POST /api/v1/admin/keys/revoke
@@ -264,7 +264,7 @@ async def revoke_api_key(request: Request):
         return JSONResponse({"error": "Key not found"}, status_code=404)
 
 
-async def rotate_api_key(request: Request):
+async def rotate_api_key(request: Request) -> None:
     """Rotate an API key.
 
     POST /api/v1/admin/keys/rotate
@@ -300,7 +300,7 @@ async def rotate_api_key(request: Request):
         return JSONResponse({"error": "Old key not found"}, status_code=404)
 
 
-async def keys_health(request: Request):
+async def keys_health(request: Request) -> None:
     """Get API keys health report.
 
     GET /api/v1/admin/keys/health
@@ -310,7 +310,7 @@ async def keys_health(request: Request):
     return JSONResponse(report)
 
 
-async def export_keys(request: Request):
+async def export_keys(request: Request) -> None:
     """Export API keys to file.
 
     POST /api/v1/admin/keys/export
@@ -335,7 +335,7 @@ async def export_keys(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-async def generate_env_file(request: Request):
+async def generate_env_file(request: Request) -> None:
     """Generate AIOS_API_KEYS env file.
 
     POST /api/v1/admin/keys/env
@@ -365,7 +365,7 @@ async def generate_env_file(request: Request):
 # ============================================================
 
 
-async def create_backup(request: Request):
+async def create_backup(request: Request) -> None:
     """Create a database backup.
 
     POST /api/v1/admin/backups
@@ -398,7 +398,7 @@ async def create_backup(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-async def list_backups(request: Request):
+async def list_backups(request: Request) -> None:
     """List all backups.
 
     GET /api/v1/admin/backups
@@ -425,7 +425,7 @@ async def list_backups(request: Request):
     )
 
 
-async def verify_backup(request: Request):
+async def verify_backup(request: Request) -> None:
     """Verify backup integrity.
 
     POST /api/v1/admin/backups/verify
@@ -450,7 +450,7 @@ async def verify_backup(request: Request):
     )
 
 
-async def restore_backup(request: Request):
+async def restore_backup(request: Request) -> None:
     """Restore database from backup.
 
     POST /api/v1/admin/backups/restore
@@ -482,7 +482,7 @@ async def restore_backup(request: Request):
         return JSONResponse({"error": "Restore failed"}, status_code=500)
 
 
-async def cleanup_backups(request: Request):
+async def cleanup_backups(request: Request) -> None:
     """Remove old backups.
 
     POST /api/v1/admin/backups/cleanup
@@ -498,7 +498,7 @@ async def cleanup_backups(request: Request):
     )
 
 
-async def backups_health(request: Request):
+async def backups_health(request: Request) -> None:
     """Get backups health report.
 
     GET /api/v1/admin/backups/health
@@ -519,7 +519,7 @@ async def backups_health(request: Request):
 # ============================================================
 
 
-async def register_webhook(request: Request):
+async def register_webhook(request: Request) -> None:
     """Register a new webhook target.
 
     POST /api/v1/admin/webhooks
@@ -555,7 +555,7 @@ async def register_webhook(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-async def list_webhooks(request: Request):
+async def list_webhooks(request: Request) -> None:
     """List all webhook targets.
 
     GET /api/v1/admin/webhooks
@@ -570,7 +570,7 @@ async def list_webhooks(request: Request):
     )
 
 
-async def unregister_webhook(request: Request):
+async def unregister_webhook(request: Request) -> None:
     """Remove a webhook target.
 
     DELETE /api/v1/admin/webhooks
@@ -591,7 +591,7 @@ async def unregister_webhook(request: Request):
     return JSONResponse({"error": "Webhook not found"}, status_code=404)
 
 
-async def toggle_webhook(request: Request):
+async def toggle_webhook(request: Request) -> None:
     """Activate or deactivate a webhook.
 
     POST /api/v1/admin/webhooks/toggle
@@ -624,7 +624,7 @@ async def toggle_webhook(request: Request):
     return JSONResponse({"error": "Webhook not found"}, status_code=404)
 
 
-async def test_webhook(request: Request):
+async def test_webhook(request: Request) -> None:
     """Send a test notification to a webhook.
 
     POST /api/v1/admin/webhooks/test
@@ -643,7 +643,7 @@ async def test_webhook(request: Request):
     return JSONResponse(result)
 
 
-async def webhook_history(request: Request):
+async def webhook_history(request: Request) -> None:
     """Get webhook notification history.
 
     GET /api/v1/admin/webhooks/history?event=ban_detected&limit=50
@@ -662,7 +662,7 @@ async def webhook_history(request: Request):
     )
 
 
-async def send_webhook_event(request: Request):
+async def send_webhook_event(request: Request) -> None:
     """Send a custom webhook event.
 
     POST /api/v1/admin/webhooks/notify
@@ -683,7 +683,7 @@ async def send_webhook_event(request: Request):
     return JSONResponse(result)
 
 
-async def webhooks_health(request: Request):
+async def webhooks_health(request: Request) -> None:
     """Get webhook system health report.
 
     GET /api/v1/admin/webhooks/health
@@ -693,7 +693,7 @@ async def webhooks_health(request: Request):
     return JSONResponse(report)
 
 
-async def export_webhooks(request: Request):
+async def export_webhooks(request: Request) -> None:
     """Export webhook configuration.
 
     POST /api/v1/admin/webhooks/export
@@ -718,7 +718,7 @@ async def export_webhooks(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-async def import_webhooks(request: Request):
+async def import_webhooks(request: Request) -> None:
     """Import webhook configuration.
 
     POST /api/v1/admin/webhooks/import

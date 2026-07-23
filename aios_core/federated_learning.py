@@ -10,7 +10,7 @@ class FederatedLearning:
         self.nodes: Dict[str, Dict] = {}
         self.global_model: Dict = {}
 
-    def register_node(self, node_id: str, capabilities: List[str]):
+    def register_node(self, node_id: str, capabilities: List[str]) -> None:
         self.nodes[node_id] = {"capabilities": capabilities, "status": "active"}
 
     def aggregate(self, local_updates: List[Dict]) -> Dict:

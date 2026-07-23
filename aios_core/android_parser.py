@@ -59,11 +59,11 @@ class UIAutomatorParser:
         self.xml_content = xml_content
         self.root = None
 
-    def parse(self):
+    def parse(self) -> None:
         self.root = ET.fromstring(self.xml_content)
         return self.root
 
-    def find_elements_by_resource(self, resource_id: str):
+    def find_elements_by_resource(self, resource_id: str) -> None:
         result = []
         if self.root is None:
             return result
@@ -73,7 +73,7 @@ class UIAutomatorParser:
                 result.append(self._to_element(node))
         return result
 
-    def find_elements_by_text(self, text: str, partial: bool = True):
+    def find_elements_by_text(self, text: str, partial: bool = True) -> None:
         result = []
         if self.root is None:
             return result
@@ -85,7 +85,7 @@ class UIAutomatorParser:
                 result.append(self._to_element(node))
         return result
 
-    def find_clickable_elements(self):
+    def find_clickable_elements(self) -> None:
         result = []
         if self.root is None:
             return result
@@ -94,7 +94,7 @@ class UIAutomatorParser:
                 result.append(self._to_element(node))
         return result
 
-    def find_search_field(self):
+    def find_search_field(self) -> None:
         for rid in (
             "ua.slando:id/search_field",
             "ua.slando:id/search_src_text",
@@ -110,7 +110,7 @@ class UIAutomatorParser:
                 return self._to_element(node)
         return None
 
-    def find_search_results(self):
+    def find_search_results(self) -> None:
         results = []
         for rid in (
             "ua.slando:id/adListing_adGridCard",
@@ -146,7 +146,7 @@ class UIAutomatorParser:
                 break
         return results
 
-    def find_item_details(self):
+    def find_item_details(self) -> None:
         title = price = seller = description = ""
         for node in self._nodes_by_resource_id("ua.slando:id/adTitle"):
             title = node.attrib.get("text", "")

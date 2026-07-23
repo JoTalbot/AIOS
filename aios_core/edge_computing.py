@@ -15,7 +15,7 @@ class EdgeNode:
     def can_handle(self, task_size: int) -> bool:
         return self.load + task_size <= self.capacity
 
-    def assign(self, task_size: int):
+    def assign(self, task_size: int) -> None:
         self.load += task_size
 
     def stats(self) -> dict:
@@ -33,7 +33,7 @@ class EdgeOrchestrator:
     def __init__(self):
         self.nodes: Dict[str, EdgeNode] = {}
 
-    def register_node(self, node: EdgeNode):
+    def register_node(self, node: EdgeNode) -> None:
         self.nodes[node.node_id] = node
 
     def schedule(self, task_size: int, preferred_location: str = None) -> str:

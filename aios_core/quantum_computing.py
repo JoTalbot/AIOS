@@ -10,7 +10,7 @@ class Qubit:
     def __init__(self):
         self.state = complex(1, 0)  # |0>
 
-    def apply_hadamard(self):
+    def apply_hadamard(self) -> None:
         self.state = complex(0.707, 0)  # superposition
 
     def measure(self) -> int:
@@ -25,7 +25,7 @@ class QuantumCircuit:
         self.qubits = [Qubit() for _ in range(num_qubits)]
         self.gates: List = []
 
-    def hadamard(self, qubit: int):
+    def hadamard(self, qubit: int) -> None:
         self.qubits[qubit].apply_hadamard()
         self.gates.append(("H", qubit))
 

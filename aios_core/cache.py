@@ -11,7 +11,7 @@ class TTLCache:
         self.default_ttl = default_ttl
         self._store: Dict[str, tuple] = {}  # key -> (value, expiry)
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None):
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
         expiry = time.time() + (ttl or self.default_ttl)
         self._store[key] = (value, expiry)
 
@@ -24,10 +24,10 @@ class TTLCache:
             return None
         return value
 
-    def delete(self, key: str):
+    def delete(self, key: str) -> None:
         self._store.pop(key, None)
 
-    def clear(self):
+    def clear(self) -> None:
         self._store.clear()
 
     def stats(self) -> dict:

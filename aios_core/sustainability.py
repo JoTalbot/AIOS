@@ -11,7 +11,7 @@ class SustainabilityTracker:
         self.co2_kg = 0.0
         self.tasks_optimized = 0
 
-    def record_task(self, cpu_seconds: float, energy_per_second: float = 0.0001):
+    def record_task(self, cpu_seconds: float, energy_per_second: float = 0.0001) -> None:
         energy = cpu_seconds * energy_per_second
         self.energy_kwh += energy
         self.co2_kg += energy * 0.4  # rough estimate

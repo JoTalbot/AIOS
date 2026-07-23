@@ -13,11 +13,11 @@ class SafetyDashboard:
         self.incidents: List[Dict] = []
         self.safety_score = 1.0
 
-    def update_metric(self, name: str, value: float):
+    def update_metric(self, name: str, value: float) -> None:
         self.metrics[name] = value
         self._recalculate_safety_score()
 
-    def add_incident(self, incident: Dict):
+    def add_incident(self, incident: Dict) -> None:
         self.incidents.append(incident)
         self._recalculate_safety_score()
 

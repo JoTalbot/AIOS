@@ -35,17 +35,17 @@ class Span:
         self.status = "OK"
         self.error_message: Optional[str] = None
 
-    def set_attribute(self, key: str, value: Any):
+    def set_attribute(self, key: str, value: Any) -> None:
         self.attributes[key] = value
 
-    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None):
+    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
         self.events.append({"name": name, "attributes": attributes or {}, "timestamp": time.time()})
 
-    def set_status_error(self, message: str):
+    def set_status_error(self, message: str) -> None:
         self.status = "ERROR"
         self.error_message = message
 
-    def finish(self):
+    def finish(self) -> None:
         if self.end_time is None:
             self.end_time = time.time()
 

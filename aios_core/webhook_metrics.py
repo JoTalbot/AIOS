@@ -18,7 +18,7 @@ from .metrics_exporter import metrics_exporter
 from .webhook_manager import WebhookManager
 
 
-def register_webhook_metrics(manager: Optional[WebhookManager] = None):
+def register_webhook_metrics(manager: Optional[WebhookManager] = None) -> None:
     """Register webhook metrics with the global metrics exporter.
 
     Call this periodically or after webhook operations to update metrics.

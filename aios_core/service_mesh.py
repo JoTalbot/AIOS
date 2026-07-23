@@ -10,14 +10,14 @@ class ServiceMesh:
         self.services: Dict[str, Dict] = {}
         self.routes: List[Dict] = []
 
-    def register_service(self, name: str, endpoint: str, metadata: Dict = None):
+    def register_service(self, name: str, endpoint: str, metadata: Dict = None) -> None:
         self.services[name] = {
             "endpoint": endpoint,
             "metadata": metadata or {},
             "status": "healthy",
         }
 
-    def add_route(self, source: str, target: str, weight: int = 100):
+    def add_route(self, source: str, target: str, weight: int = 100) -> None:
         self.routes.append({"source": source, "target": target, "weight": weight})
 
     def discover(self, service: str) -> Dict:

@@ -71,7 +71,7 @@ def extract_markers(hints: Dict) -> Tuple[str, ...]:
     return tuple(markers)
 
 
-def build_parser(hints: Dict):
+def build_parser(hints: Dict) -> None:
     """Runtime-парсер из parser_hints (без файлов).
 
     Returns:
@@ -190,7 +190,7 @@ def write_parser(
     return files
 
 
-def parser_for(platform_name: str, directory="platforms"):
+def parser_for(platform_name: str, directory="platforms") -> None:
     """Парсер платформы прямо из её YAML-дескриптора в каталоге.
 
     Читает ``platforms/<name>.yaml``, берёт ``extras.parser_hints`` и

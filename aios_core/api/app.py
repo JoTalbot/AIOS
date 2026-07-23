@@ -2879,7 +2879,7 @@ class AIOSAPI:
             media_type="application/json",
         )
 
-    def close(self):
+    def close(self) -> None:
         self.db.close()
 
 

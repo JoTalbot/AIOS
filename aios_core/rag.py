@@ -10,7 +10,7 @@ class RAGSystem:
         self.vector_store = vector_store
         self.documents: List[Dict] = []
 
-    def index_document(self, doc_id: str, text: str, metadata: Dict = None):
+    def index_document(self, doc_id: str, text: str, metadata: Dict = None) -> None:
         self.documents.append({"id": doc_id, "text": text, "metadata": metadata or {}})
 
     def retrieve(self, query: str, top_k: int = 5) -> List[Dict]:

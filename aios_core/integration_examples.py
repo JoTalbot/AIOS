@@ -22,7 +22,7 @@ from .enhanced_integration_system import (
 )
 
 
-async def example_basic_usage():
+async def example_basic_usage() -> None:
     """Example of basic usage of the enhanced integration system."""
 
     print("=== Enhanced Integration System - Basic Usage Example ===")
@@ -91,7 +91,7 @@ async def example_basic_usage():
         print("Integration system stopped")
 
 
-async def example_advanced_usage():
+async def example_advanced_usage() -> None:
     """Example of advanced usage with multiple protocols and monitoring."""
 
     print("\n=== Enhanced Integration System - Advanced Usage Example ===")
@@ -347,7 +347,7 @@ async def example_advanced_usage():
         print("Advanced integration system stopped")
 
 
-async def simulate_system_metrics(integration_system: EnhancedIntegrationSystem):
+async def simulate_system_metrics(integration_system: EnhancedIntegrationSystem) -> None:
     """Simulate system metrics for demonstration."""
 
     print("Simulating system metrics...")
@@ -385,7 +385,7 @@ async def simulate_system_metrics(integration_system: EnhancedIntegrationSystem)
         await asyncio.sleep(1)
 
 
-async def example_integration_with_aios_core():
+async def example_integration_with_aios_core() -> None:
     """Example of integrating with AIOS core components."""
 
     print("\n=== Integration with AIOS Core Components Example ===")
@@ -458,7 +458,7 @@ async def example_integration_with_aios_core():
     print("AIOS core integration example completed")
 
 
-async def example_deployment_configuration():
+async def example_deployment_configuration() -> None:
     """Example of deployment configuration for the enhanced integration system."""
 
     print("\n=== Deployment Configuration Example ===")
@@ -603,7 +603,7 @@ async def example_deployment_configuration():
     print("\nDeployment configuration example completed")
 
 
-async def main():
+async def main() -> None:
     """Run all examples."""
     print("Enhanced Integration System - Examples and Guide")
     print("=" * 50)

@@ -17,14 +17,14 @@ class WebSocketManager:
     def __init__(self):
         self.active_connections: Set[WebSocket] = set()
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket) -> None:
         await websocket.accept()
         self.active_connections.add(websocket)
 
-    def disconnect(self, websocket: WebSocket):
+    def disconnect(self, websocket: WebSocket) -> None:
         self.active_connections.discard(websocket)
 
-    async def broadcast(self, message: Dict[str, Any]):
+    async def broadcast(self, message: Dict[str, Any]) -> None:
         """Send message to all connected clients."""
         disconnected = set()
         for connection in self.active_connections:
@@ -36,7 +36,7 @@ class WebSocketManager:
         for conn in disconnected:
             self.active_connections.discard(conn)
 
-    async def send_event(self, event_type: str, data: Any):
+    async def send_event(self, event_type: str, data: Any) -> None:
         await self.broadcast(
             {
                 "type": event_type,

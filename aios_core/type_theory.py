@@ -10,7 +10,7 @@ class TypeSystem:
         self.types: Dict[str, Type] = {}
         self.terms: Dict[str, Any] = {}
 
-    def define_type(self, name: str, base_type: Type):
+    def define_type(self, name: str, base_type: Type) -> None:
         self.types[name] = base_type
 
     def check_type(self, term: Any, expected: str) -> bool:
