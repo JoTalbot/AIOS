@@ -25,7 +25,7 @@ class AIAgent:
             "result": f"Agent {self.name} completed: {goal}",
         }
 
-    def learn(self, experience: Dict):
+    def learn(self, experience: Dict) -> None:
         self.memory[str(len(self.memory))] = experience
 
     def stats(self) -> dict:
