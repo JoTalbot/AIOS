@@ -149,7 +149,7 @@ class AISalesAdvisor:
                     memory_snippets = [r.get("content", {}) for r in results[:2]]
                     context_used.append(f"memory:{len(memory_snippets)} snippets")
             except Exception:
-                pass
+                pass  # Memory search is advisory — skip on error
 
         # Determine intent
         intent = self._classify_intent(original_message)
@@ -292,9 +292,9 @@ class AISalesAdvisor:
                 for entry in mem:
                     if isinstance(entry, dict) and "price" in str(entry).lower():
                         # naive extraction
-                        pass
+                        pass  # TODO: structured price extraction from memory
             except Exception:
-                pass
+                pass  # Market sample extraction failed — proceed without samples
 
         if not market_samples:
             suggested = current_price * 0.95 if current_price > 100 else current_price

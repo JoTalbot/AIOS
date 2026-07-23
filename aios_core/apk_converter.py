@@ -72,7 +72,7 @@ class APKFunctionConverter:
                         input_schema=cap_entry["input_schema"],
                     )
                 except Exception:
-                    pass
+                    pass  # Skip malformed capability entries during conversion
 
         profile_id = f"profile_apk_{package_name.replace('.', '_')}"
         user_api_profile = {

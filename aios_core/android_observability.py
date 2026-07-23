@@ -67,9 +67,7 @@ class AndroidObservability:
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
         except Exception:
-            pass
-
-    # Backward compat alias expected by docs
+            pass  # psutil unavailable — skip resource anomaly detection
     def isolate_process(self):
         return self._isolate_process()
 
@@ -90,7 +88,7 @@ class AndroidObservability:
                     }
                 )
         except Exception:
-            pass
+            pass  # Memory metric unavailable — skip this anomaly check
 
         try:
             cpu = psutil.cpu_percent(interval=0.1)
@@ -103,7 +101,7 @@ class AndroidObservability:
                     }
                 )
         except Exception:
-            pass
+            pass  # CPU metric unavailable — skip this anomaly check
 
         return anomalies
 

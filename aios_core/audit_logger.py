@@ -67,7 +67,7 @@ class AuditLogger:
                 with open(self.file_path, "a", encoding="utf-8") as f:
                     f.write(json.dumps(event, ensure_ascii=False, default=str) + "\n")
             except (IOError, OSError):
-                pass
+                pass  # Best-effort audit log — skip if disk is full/unavailable
 
         return event
 

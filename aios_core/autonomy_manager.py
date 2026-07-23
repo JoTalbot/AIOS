@@ -131,13 +131,12 @@ class AutonomyManager:
             try:
                 track_record = DB.from_json(row["track_record"])
             except Exception:
-                pass
-
-        metadata = {}
+                pass  # Corrupt track_record JSON — reset to defaults
         if row.get("metadata"):
             try:
                 metadata = DB.from_json(row["metadata"])
             except Exception:
+                pass  # Corrupt metadata JSON
                 metadata = {}
 
         return AgentAutonomyProfile(
