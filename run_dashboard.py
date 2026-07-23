@@ -3,13 +3,13 @@
 
 import uvicorn
 
-from aios_core import Database, Orchestrator
+from aios_core.container import container
 from aios_core.dashboard import create_dashboard
 
 
 def main():
-    db = Database("aios.sqlite")
-    orch = Orchestrator(db=db)
+    db = container.db()
+    orch = container.orchestrator()
 
     app = create_dashboard(orch)
     print("🌐 Starting AIOS Dashboard on http://127.0.0.1:8080")
