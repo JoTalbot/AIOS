@@ -11,6 +11,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 
+__all__ = ["EvolutionManager"]
+
 if TYPE_CHECKING:
     from .storage import Database
 

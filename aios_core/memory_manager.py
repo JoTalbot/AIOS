@@ -15,6 +15,8 @@ from typing import Any, Optional
 
 from .storage import Database
 
+__all__ = ["MemoryManager"]
+
 _VALID_CATEGORIES = {"personal", "operational", "constitutional"}
 
 

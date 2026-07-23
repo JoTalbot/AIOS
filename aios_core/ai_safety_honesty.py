@@ -2,6 +2,8 @@
 
 from typing import Dict, List
 
+__all__ = ["HonestyFramework"]
+
 
 class HonestyFramework:
     """Ensures AI systems are honest and truthful."""

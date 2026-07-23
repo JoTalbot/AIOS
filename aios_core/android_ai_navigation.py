@@ -21,6 +21,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from aios_core.android_driver import AndroidDriver
 from aios_core.android_parser import UIAutomatorParser, UIElement
 
+__all__ = ["ScreenEmbedding", "ScreenMatch", "AIScreenClassifier", "SelfHealingLocator"]
+
 
 def _text_vector(text: str) -> Dict[str, float]:
     """Create vector representation for text content."""

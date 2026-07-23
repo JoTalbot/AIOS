@@ -2,6 +2,8 @@
 
 from typing import Dict, List
 
+__all__ = ["AISafetyScientist"]
+
 
 class AISafetyScientist:
     """Automated AI safety research system."""

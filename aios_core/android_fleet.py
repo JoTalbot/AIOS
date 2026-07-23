@@ -13,6 +13,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+__all__ = ["DeviceRecord", "WaitlistEntry", "DevicePool"]
+
 
 @dataclass
 class DeviceRecord:

@@ -2,6 +2,8 @@
 
 from typing import Dict, List
 
+__all__ = ["MultiAgentSafety"]
+
 
 class MultiAgentSafety:
     """Safety in multi-agent systems."""

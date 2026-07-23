@@ -9,6 +9,8 @@ import json
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+__all__ = ["ModelRegistry"]
+
 
 class ModelRegistry:
     """Enterprise ML Model Registry with strict stage management and verification."""

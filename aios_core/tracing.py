@@ -142,4 +142,6 @@ class Tracer:
 
 from typing import Tuple
 
+__all__ = ["Span", "Tracer"]
+
 tracer = Tracer()

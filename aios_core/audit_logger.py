@@ -13,6 +13,8 @@ from typing import Any, Optional
 
 from .storage import Database
 
+__all__ = ["AuditLogger"]
+
 
 class AuditLogger:
     """Logs all constitutional decisions and execution events.

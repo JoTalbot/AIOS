@@ -2,6 +2,8 @@
 
 from typing import Dict, List
 
+__all__ = ["SparseAutoencoder"]
+
 
 class SparseAutoencoder:
     """Sparse autoencoder for feature discovery."""

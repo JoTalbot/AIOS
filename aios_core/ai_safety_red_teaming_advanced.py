@@ -2,6 +2,8 @@
 
 from typing import Dict, List
 
+__all__ = ["AdvancedRedTeam"]
+
 
 class AdvancedRedTeam:
     """Advanced automated red teaming."""

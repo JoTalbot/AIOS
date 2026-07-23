@@ -2,6 +2,8 @@
 
 from typing import Any, Dict, List
 
+__all__ = ["AdvancedInterpretability"]
+
 
 class AdvancedInterpretability:
     """State-of-the-art interpretability techniques."""

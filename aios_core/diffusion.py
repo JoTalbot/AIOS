@@ -3,6 +3,8 @@
 import random
 from typing import List
 
+__all__ = ["DiffusionModel"]
+
 
 class DiffusionModel:
     """Simplified diffusion probabilistic model."""

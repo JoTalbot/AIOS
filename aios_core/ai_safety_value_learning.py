@@ -2,6 +2,8 @@
 
 from typing import Dict, List
 
+__all__ = ["ValueLearning"]
+
 
 class ValueLearning:
     """Learns and represents human values."""

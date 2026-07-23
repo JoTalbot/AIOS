@@ -10,6 +10,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Optional
 
+__all__ = ["LearningEngine"]
+
 if TYPE_CHECKING:
     from .memory_manager import MemoryManager
     from .storage import Database

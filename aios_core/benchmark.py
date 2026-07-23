@@ -3,6 +3,8 @@
 import time
 from typing import Callable, Dict
 
+__all__ = ["Benchmark"]
+
 
 class Benchmark:
     """Performance benchmarking tool."""

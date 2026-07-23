@@ -2,6 +2,8 @@
 
 from typing import Any, Callable, Dict
 
+__all__ = ["WeakToStrongGeneralization"]
+
 
 class WeakToStrongGeneralization:
     """Trains strong models using weak supervisors."""

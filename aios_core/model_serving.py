@@ -8,6 +8,8 @@ import random
 import time
 from typing import Any, Callable, Dict, List, Optional
 
+__all__ = ["ModelServer"]
+
 
 class ModelServer:
     """Production ML Model Serving Engine."""

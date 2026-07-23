@@ -6,6 +6,8 @@ Simple plugin system for extending AIOS functionality.
 import importlib
 from typing import Any, Callable, Dict
 
+__all__ = ["PluginManager"]
+
 
 class PluginManager:
     """Manages plugins for AIOS."""

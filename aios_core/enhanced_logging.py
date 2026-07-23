@@ -17,6 +17,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
+__all__ = ["LogConfig", "CorrelationContext", "PerformanceTracker", "EnhancedJSONFormatter", "LogAggregator", "EnhancedLogger", "_DummyTracer"]
+
 try:
     from .tracing import tracer
 except ImportError:
