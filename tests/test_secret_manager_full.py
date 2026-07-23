@@ -1,8 +1,3 @@
-"""Full tests for secret manager."""
-
+"""Secret manager full."""
 from aios_core.secret_manager import SecretManager
-
-
-def test_secret_manager_init():
-    sm = SecretManager()
-    assert sm is not None
+def test(): sm=SecretManager(); assert sm is not None
