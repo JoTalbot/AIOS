@@ -341,3 +341,79 @@ def run_backup_health(args):
         "schedule": schedule,
     }, indent=2))
     return True
+
+
+# ============================================================
+# Webhook CLI Commands
+# ============================================================
+
+def run_webhooks_register(args):
+    """Handle 'aios admin webhooks register' command."""
+    from aios_core.webhook_manager import WebhookManager
+
+    manager = WebhookManager()
+    target = manager.register(
+        name=args.name,
+        url=args.url,
+        events=args.events,
+        secret=getattr(args, "secret", None),
+    )
+    print(json.dumps({
+        "status": "success",
+        "webhook": target.to_dict(),
+    }, indent=2))
+    return True
+
+
+def run_webhooks_list(args):
+    """Handle 'aios admin webhooks list' command."""
+    from aios_core.webhook_manager import WebhookManager
+
+    manager = WebhookManager()
+    targets = manager.list_targets()
+    print(json.dumps({
+        "webhooks": targets,
+        "total": len(targets),
+    }, indent=2))
+    return True
+
+
+def run_webhooks_test(args):
+    """Handle 'aios admin webhooks test' command."""
+    from aios_core.webhook_manager import WebhookManager
+
+    manager = WebhookManager()
+    result = manager.test_webhook(args.name)
+    print(json.dumps(result, indent=2))
+    return True
+
+
+def run_webhooks_notify(args):
+    """Handle 'aios admin webhooks notify' command."""
+    from aios_core.webhook_manager import WebhookManager
+
+    manager = WebhookManager()
+    data = {}
+    if args.data:
+        try:
+            data = json.loads(args.data)
+        except json.JSONDecodeError:
+            data = {"message": args.data}
+
+    result = manager.notify(
+        event=args.event,
+        data=data,
+        severity=getattr(args, "severity", "info"),
+    )
+    print(json.dumps(result, indent=2))
+    return True
+
+
+def run_webhooks_health(args):
+    """Handle 'aios admin webhooks health' command."""
+    from aios_core.webhook_manager import WebhookManager
+
+    manager = WebhookManager()
+    report = manager.health_report()
+    print(json.dumps(report, indent=2))
+    return True

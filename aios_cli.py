@@ -2227,6 +2227,28 @@ def main(argv=None):
     bh.add_argument("--db", default="aios.sqlite")
     bh.add_argument("--backup-dir", default="./backups")
 
+    # admin webhooks
+    wh_parser = admin_sub.add_parser("webhooks", help="Webhook notification management")
+    wh_sub = wh_parser.add_subparsers(dest="webhooks_command")
+
+    wr = wh_sub.add_parser("register", help="Register webhook target")
+    wr.add_argument("--name", required=True, help="Webhook name")
+    wr.add_argument("--url", required=True, help="Webhook URL")
+    wr.add_argument("--events", nargs="+", required=True, help="Events to subscribe")
+    wr.add_argument("--secret", default=None, help="HMAC secret")
+
+    wh_sub.add_parser("list", help="List webhooks")
+
+    wt = wh_sub.add_parser("test", help="Test webhook")
+    wt.add_argument("--name", required=True, help="Webhook name")
+
+    wn = wh_sub.add_parser("notify", help="Send webhook notification")
+    wn.add_argument("--event", required=True, help="Event type")
+    wn.add_argument("--data", default=None, help="JSON data or message")
+    wn.add_argument("--severity", choices=["info", "warning", "critical"], default="info")
+
+    wh_sub.add_parser("health", help="Webhook health report")
+
     # OLX Parser Agent
     _add_olx_parsers(subparsers)
 
@@ -2317,6 +2339,8 @@ def main(argv=None):
             run_keys_generate, run_keys_list, run_keys_revoke, run_keys_rotate, run_keys_health,
             run_backup_create, run_backup_list, run_backup_verify, run_backup_restore,
             run_backup_cleanup, run_backup_health,
+            run_webhooks_register, run_webhooks_list, run_webhooks_test,
+            run_webhooks_notify, run_webhooks_health,
         )
         if args.admin_command == "export":
             run_export(args)
@@ -2350,6 +2374,19 @@ def main(argv=None):
                 run_backup_health(args)
             else:
                 admin_parser.parse_args(["backup", "--help"])
+        elif args.admin_command == "webhooks":
+            if args.webhooks_command == "register":
+                run_webhooks_register(args)
+            elif args.webhooks_command == "list":
+                run_webhooks_list(args)
+            elif args.webhooks_command == "test":
+                run_webhooks_test(args)
+            elif args.webhooks_command == "notify":
+                run_webhooks_notify(args)
+            elif args.webhooks_command == "health":
+                run_webhooks_health(args)
+            else:
+                admin_parser.parse_args(["webhooks", "--help"])
         else:
             admin_parser.parse_args(["--help"])
     else:
