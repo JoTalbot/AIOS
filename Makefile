@@ -88,3 +88,6 @@ benchmark-compare:
 
 profile-import:
 	python -X importtime -c "import aios_core" 2>&1 | sort -rn | head -20
+
+bot:
+	AIOS_TELEGRAM_TOKEN=${AIOS_TELEGRAM_TOKEN:-} python run_telegram_bot.py
