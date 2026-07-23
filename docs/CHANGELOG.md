@@ -36,4 +36,4 @@
 - 939 tests passing
 
 ### Earlier Versions
-See [CHANGELOG.md](../CHANGELOG.md) in repository root for complete history.
+See [полный CHANGELOG](CHANGELOG_FULL.md) для полной истории.

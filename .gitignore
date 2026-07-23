@@ -23,3 +23,8 @@ apks/
 venv/
 aios.log
 build/
+
+# Documentation build output
+site/
+docs/source/_build/
+*.egg-info/

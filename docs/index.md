@@ -76,4 +76,4 @@ docker-compose -f docker-compose.prod.yml up -d --build
 
 ## Лицензия и безопасность
 
-Перед развёртыванием ознакомьтесь с [SECURITY.md](../SECURITY.md) и [политикой безопасности](../SECURITY_AUDIT_REPORT.md).
+Перед развёртыванием ознакомьтесь с [SECURITY.md](SECURITY.md) и [отчётом аудита](SECURITY_AUDIT_REPORT.md).
