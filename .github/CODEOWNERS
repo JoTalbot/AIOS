@@ -1,0 +1,21 @@
+# AIOS Code Ownership
+# Last updated: 2026-07-23
+
+# Global owners
+* @JoTalbot
+
+# CI/CD workflows
+.github/ @JoTalbot
+
+# Documentation
+docs/ @JoTalbot
+*.md @JoTalbot
+
+# Core engine
+aios_core/ @JoTalbot
+
+# Security-sensitive paths
+aios_core/api/security.py @JoTalbot
+aios_core/api/admin_routes.py @JoTalbot
+aios_core/secret_manager.py @JoTalbot
+aios_core/platforms/secrets.py @JoTalbot
