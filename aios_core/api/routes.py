@@ -1,4 +1,5 @@
 """AIOS Route Registration.
+import json
 
 All Starlette Route objects defined here.  Handler methods live on the
 ``AIOSAPI`` class in ``aios_core.api.app``.
@@ -6,11 +7,15 @@ All Starlette Route objects defined here.  Handler methods live on the
 Extracted to keep ``app.py`` under 500 lines.
 """
 
+from starlette.responses import HTMLResponse, JSONResponse
 from starlette.routing import Route, WebSocketRoute
 
 
 def register_routes(api) -> list:
     """Return the full list of Starlette Route objects for *api*."""
+    from aios_core.api.swagger import swagger_html, openapi_json
+    # NOTE: _swagger_html and _openapi_json are standalone functions, not api methods
+
     return [
             Route("/health", api._health),
             Route("/metrics", api._metrics),
@@ -354,5 +359,9 @@ def register_routes(api) -> list:
             Route("/rpc", api._rpc, methods=["POST"]),
             # WebSocket (real-time)
             WebSocketRoute("/ws", api._websocket_endpoint),
+        # Swagger UI (no auth required — documentation is public)
+        Route("/docs", lambda r: HTMLResponse(swagger_html())),
+        Route("/openapi.json", lambda r: JSONResponse(json.loads(openapi_json())))
+
         ]
 
