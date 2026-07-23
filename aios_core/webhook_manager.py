@@ -55,7 +55,7 @@ class WebhookTarget:
     trigger_count: int = 0
     error_count: int = 0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.created_at:
             self.created_at = datetime.now().isoformat()
 
@@ -88,7 +88,7 @@ class WebhookPayload:
 class WebhookManager:
     """Manages webhook notifications."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.targets: Dict[str, WebhookTarget] = {}
         self.history: List[Dict] = []
         self.max_history = 1000
@@ -241,7 +241,7 @@ class WebhookManager:
 
         return results
 
-    def on_event(self, event: str, handler: Callable):
+    def on_event(self, event: str, handler: Callable) -> None:
         """Register a local event handler.
 
         Args:
@@ -340,7 +340,7 @@ class WebhookManager:
 
 
 # Convenience functions for common events
-def notify_ban_detected(profile: str, reason: str, manager: Optional[WebhookManager] = None):
+def notify_ban_detected(profile: str, reason: str, manager: Optional[WebhookManager] = None) -> None:
     """Send ban detection notification."""
     mgr = manager or WebhookManager()
     return mgr.notify(
@@ -350,7 +350,7 @@ def notify_ban_detected(profile: str, reason: str, manager: Optional[WebhookMana
     )
 
 
-def notify_backup_completed(backup_id: str, size_mb: float, manager: Optional[WebhookManager] = None):
+def notify_backup_completed(backup_id: str, size_mb: float, manager: Optional[WebhookManager] = None) -> None:
     """Send backup completed notification."""
     mgr = manager or WebhookManager()
     return mgr.notify(
@@ -360,7 +360,7 @@ def notify_backup_completed(backup_id: str, size_mb: float, manager: Optional[We
     )
 
 
-def notify_low_success_rate(profile: str, rate: float, threshold: float, manager: Optional[WebhookManager] = None):
+def notify_low_success_rate(profile: str, rate: float, threshold: float, manager: Optional[WebhookManager] = None) -> None:
     """Send low success rate notification."""
     mgr = manager or WebhookManager()
     return mgr.notify(

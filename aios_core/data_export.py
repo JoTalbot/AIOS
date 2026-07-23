@@ -21,26 +21,26 @@ from pathlib import Path
 class DataExporter:
     """Export AIOS data to various formats."""
 
-    def __init__(self, db_path: str = "aios.sqlite"):
+    def __init__(self, db_path: str = "aios.sqlite") -> None:
         self.db_path = db_path
         self.conn = None
 
-    def connect(self):
+    def connect(self) -> None:
         """Connect to database."""
         self.conn = sqlite3.connect(self.db_path)
         self.conn.row_factory = sqlite3.Row
 
-    def close(self):
+    def close(self) -> None:
         """Close database connection."""
         if self.conn:
             self.conn.close()
             self.conn = None
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         self.connect()
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args) -> None:
         self.close()
 
     def export_tasks(
@@ -243,7 +243,7 @@ class DataExporter:
 
         return counts
 
-    def _write_json(self, path: str, data: List[Dict]):
+    def _write_json(self, path: str, data: List[Dict]) -> None:
         """Write data as JSON."""
         with open(path, "w", encoding="utf-8") as f:
             json.dump(
@@ -253,7 +253,7 @@ class DataExporter:
                 default=str,
             )
 
-    def _write_csv(self, path: str, data: List[Dict]):
+    def _write_csv(self, path: str, data: List[Dict]) -> None:
         """Write data as CSV."""
         if not data:
             with open(path, "w") as f:
@@ -270,25 +270,25 @@ class DataExporter:
 class DataImporter:
     """Import data into AIOS database."""
 
-    def __init__(self, db_path: str = "aios.sqlite"):
+    def __init__(self, db_path: str = "aios.sqlite") -> None:
         self.db_path = db_path
         self.conn = None
 
-    def connect(self):
+    def connect(self) -> None:
         """Connect to database."""
         self.conn = sqlite3.connect(self.db_path)
 
-    def close(self):
+    def close(self) -> None:
         """Close database connection."""
         if self.conn:
             self.conn.close()
             self.conn = None
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         self.connect()
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args) -> None:
         self.close()
 
     def import_tasks(self, input_path: str, format: str = "json") -> int:
