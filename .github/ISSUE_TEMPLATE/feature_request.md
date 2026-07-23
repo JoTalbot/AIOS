@@ -1,25 +1,16 @@
 ---
 name: Feature Request
-about: Suggest a new feature for AIOS
+about: Suggest a feature for AIOS
 title: '[FEATURE] '
-labels: 'enhancement'
-assignees: ''
+labels: enhancement
+assignees: JoTalbot
 ---
 
-## Problem Statement
-<!-- What problem does this feature solve? -->
+### Problem
+<!-- What problem does this solve? -->
 
-## Proposed Solution
-<!-- Describe the solution you'd like -->
+### Proposed Solution
+<!-- How should it work? -->
 
-## Alternatives Considered
-<!-- Describe alternatives you've considered -->
-
-## Use Cases
-<!-- Who would use this and how? -->
-
-## Implementation Ideas
-<!-- Optional: any thoughts on how to implement -->
-
-## Additional Context
-<!-- Screenshots, references, etc. -->
+### Alternatives Considered
+<!-- Other approaches you considered -->

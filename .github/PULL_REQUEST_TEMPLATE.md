@@ -1,35 +1,22 @@
-## Description
-<!-- Describe what this PR does -->
+# AIOS GitHub Templates
 
-## Type of Change
-- [ ] 🚀 Feature (new functionality)
-- [ ] 🐛 Bug fix (fixes an issue)
-- [ ] 📚 Documentation (docs only)
-- [ ] 🔧 Refactor (no functional change)
-- [ ] ⬆️ Dependencies (update deps)
-- [ ] 🧪 Testing (add/fix tests)
-- [ ] 🔒 Security (security fix)
+## Pull Request Template
 
-## Related Issues
-<!-- Link related issues: Fixes #123, Closes #456 -->
+### Description
+<!-- Describe your changes in detail -->
 
-## Changes Made
-<!-- Bullet list of key changes -->
--
--
+### Type of change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Documentation update
+- [ ] Code quality / refactoring
+- [ ] Test improvement
 
-## Testing
-- [ ] Tests added/updated
-- [ ] All tests pass (`python -m pytest -q`)
-- [ ] `python -m compileall -q aios_core` passes
-- [ ] No new lint errors (`flake8 aios_core/`)
-
-## Checklist
-- [ ] Code follows project style (Black, flake8)
-- [ ] Self-review completed
-- [ ] Documentation updated (if applicable)
-- [ ] No secrets/credentials in code
-- [ ] CHANGELOG.md updated (if user-facing change)
-
-## Screenshots
-<!-- If applicable, add screenshots -->
+### Checklist
+- [ ] Code compiles (`python -c "import ast; ast.parse(open('...').read())"`)
+- [ ] Tests pass or are added
+- [ ] Docstrings added for public functions
+- [ ] `__all__` updated if new public classes added
+- [ ] No bare `except:` clauses
+- [ ] No `print()` in library code
+- [ ] Conventional commit message format
