@@ -68,14 +68,14 @@ _YESTERDAY_RE = re.compile(r"(?:вчора|вчера)\s*(?:[воу]\s*)?(\d{1,2
 _DATE_RE = re.compile(r"(\d{1,2})\s+([а-яіїєґА-ЯІЇЄҐ]+)\s+(\d{4})")
 
 
-def normalize_text(text: Optional[str]) -> str:
+def normalize_text(text: str | None) -> str:
     """Collapse exotic whitespace into plain single spaces."""
     if not text:
         return ""
     return _SPACE_RE.sub(" ", text).strip()
 
 
-def parse_price(text: Optional[str]) -> Optional[Tuple[float, str]]:
+def parse_price(text: str | None) -> Optional[Tuple[float, str]]:
     """Extract ``(amount, currency)`` from an OLX price label.
 
     Handles ``"7 000 грн"``, ``"1 500 $"``, ``"$ 2 000"``, ``"900 €"`` and
@@ -96,7 +96,7 @@ def parse_price(text: Optional[str]) -> Optional[Tuple[float, str]]:
     tail = lowered[match.end() :].lstrip(" .,")
     head = lowered[: match.start()].rstrip()
 
-    currency: Optional[str] = None
+    currency: str | None = None
     for token, iso in _CURRENCY_SUFFIXES.items():
         if tail.startswith(token) or head.endswith(token) or head == token:
             currency = iso
@@ -112,7 +112,7 @@ def parse_price(text: Optional[str]) -> Optional[Tuple[float, str]]:
     return amount, currency
 
 
-def parse_published(text: Optional[str], now: Optional[datetime] = None) -> Optional[str]:
+def parse_published(text: str | None, now: Optional[datetime] = None) -> str | None:
     """Normalise an OLX publication label to an ISO-8601 timestamp.
 
     Supports ``"Сьогодні в 11:26"``, ``"Вчора о 18:02"`` and explicit dates
@@ -145,12 +145,12 @@ def parse_published(text: Optional[str], now: Optional[datetime] = None) -> Opti
     return None
 
 
-def is_no_price_label(text: Optional[str]) -> bool:
+def is_no_price_label(text: str | None) -> bool:
     """Whether the text is a non-numeric price label (negotiable/free/exchange)."""
     lowered = normalize_text(text).lower()
     return bool(lowered) and any(token in lowered for token in _NO_PRICE_TOKENS)
 
 
-def is_top_text(text: Optional[str]) -> bool:
+def is_top_text(text: str | None) -> bool:
     """Whether the text is a TOP promotion badge."""
     return normalize_text(text).lower() in {"top", "топ"}

@@ -23,9 +23,9 @@ __all__ = ["TestStep", "GeneratedTest", "AndroidTestGenerator"]
 @dataclass
 class TestStep:
     action: str  # tap, type, swipe, wait, assert
-    target: Optional[str] = None  # resource-id or text hint
-    value: Optional[str] = None  # for type
-    expected_screen: Optional[str] = None
+    target: str | None = None  # resource-id or text hint
+    value: str | None = None  # for type
+    expected_screen: str | None = None
     timeout: int = 10
     screenshot: bool = False
     description: str = ""
@@ -38,7 +38,7 @@ class GeneratedTest:
     description: str
     platform: str
     steps: List[TestStep]
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     generated_from: str = "manual"
     confidence: float = 0.8
     created_at: float = field(default_factory=time.time)
@@ -92,7 +92,7 @@ class GeneratedTest:
         lines.append("")
         return "\n".join(lines)
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         """Execute to json."""
         return {
             "id": self.id,
@@ -176,7 +176,7 @@ class AndroidTestGenerator:
         return test
 
     def from_user_flow(
-        self, flow: List[str], platform: str, name: str, description: str = ""
+        self, flow: list[str], platform: str, name: str, description: str = ""
     ) -> GeneratedTest:
         """Generate test from list of textual steps (user described flow)."""
         steps: List[TestStep] = []
@@ -215,14 +215,14 @@ class AndroidTestGenerator:
         return test
 
     def from_navigation_history(
-        self, history: List[Dict[str, Any]], platform: str
+        self, history: List[dict[str, Any]], platform: str
     ) -> List[GeneratedTest]:
         """Generate tests from AIScreenClassifier navigation history."""
         if not history:
             return []
 
         # Group by signature to find common flows
-        flows: Dict[str, List[Dict[str, Any]]] = {}
+        flows: Dict[str, List[dict[str, Any]]] = {}
         for entry in history:
             sig = entry.get("signature", "unknown")
             flows.setdefault(sig, []).append(entry)
@@ -269,7 +269,7 @@ class AndroidTestGenerator:
 
         return test
 
-    def generate_suite(self, platform: str = "ua.slando") -> Dict[str, Any]:
+    def generate_suite(self, platform: str = "ua.slando") -> dict[str, Any]:
         """Generate full suite of tests for platform - M8 showcase."""
         suite = []
 

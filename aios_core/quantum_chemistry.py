@@ -7,7 +7,7 @@ class QuantumChemistrySimulator:
     """Simulates molecular systems using quantum methods."""
 
     def __init__(self):
-        self.molecules: Dict[str, Dict] = {}
+        self.molecules: dict[str, dict] = {}
 
     def simulate_molecule(self, formula: str, basis: str = "sto-3g") -> Dict:
         """Execute simulate molecule."""

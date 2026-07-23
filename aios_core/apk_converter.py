@@ -21,18 +21,18 @@ class APKFunctionConverter:
 
     def __init__(self, capability_engine: Optional[CapabilityEngine] = None):
         self.capability_engine = capability_engine
-        self.converted_profiles: Dict[str, Dict[str, Any]] = {}
+        self.converted_profiles: Dict[str, dict[str, Any]] = {}
 
     def convert_apk_functions_to_api_profile(
         self,
         apk_name: str,
         package_name: str,
-        exported_components: List[Dict[str, Any]],
+        exported_components: List[dict[str, Any]],
         target_user_id: str = "default_user",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Convert APK components (Activities, Services, Receivers) into AIOS User API Capabilities and Profile."""
         start_time = time.time()
-        converted_capabilities: List[Dict[str, Any]] = []
+        converted_capabilities: List[dict[str, Any]] = []
 
         for comp in exported_components:
             comp_name = comp.get("name", "UnknownComponent")
@@ -91,11 +91,11 @@ class APKFunctionConverter:
         self.converted_profiles[profile_id] = user_api_profile
         return user_api_profile
 
-    def get_user_profiles(self, user_id: str) -> List[Dict[str, Any]]:
+    def get_user_profiles(self, user_id: str) -> List[dict[str, Any]]:
         """Retrieve all converted APK API profiles for a specific user."""
         return [p for p in self.converted_profiles.values() if p["user_id"] == user_id]
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         total_caps = sum(
             p["total_converted_capabilities"] for p in self.converted_profiles.values()

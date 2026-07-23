@@ -22,7 +22,7 @@ class LiquidNeuralNetwork:
     def __init__(self, size: int = 64):
         self.neurons = [LiquidNeuron() for _ in range(size)]
 
-    def forward(self, inputs: List[float], steps: int = 10) -> List[float]:
+    def forward(self, inputs: list[float], steps: int = 10) -> list[float]:
         """Execute forward."""
         outputs = []
         for _ in range(steps):

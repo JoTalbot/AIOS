@@ -23,7 +23,7 @@ class PlanetaryMeshNode:
         )
         self.latency_to_earth_ms = latency_to_earth_ms
         self.status = "online"
-        self.active_tasks: List[str] = []
+        self.active_tasks: list[str] = []
 
     def is_reachable(self) -> bool:
         """Execute is reachable."""
@@ -35,7 +35,7 @@ class PlanetaryMeshOrchestrator:
 
     def __init__(self):
         self.nodes: Dict[str, PlanetaryMeshNode] = {}
-        self.routed_tasks: List[Dict[str, Any]] = []
+        self.routed_tasks: List[dict[str, Any]] = []
 
         # Default mesh nodes
         self.register_node("earth_eu_1", "terrestrial", latency_to_earth_ms=2.0)
@@ -52,8 +52,8 @@ class PlanetaryMeshOrchestrator:
         return node
 
     def route_planetary_task(
-        self, task: Dict[str, Any], max_allowed_latency_ms: float = 100.0
-    ) -> Dict[str, Any]:
+        self, task: dict[str, Any], max_allowed_latency_ms: float = 100.0
+    ) -> dict[str, Any]:
         """Find the optimal planetary node based on task latency budget, location, and node availability."""
         start_time = time.time()
         task_id = task.get("id", f"p_task_{len(self.routed_tasks)}")
@@ -86,7 +86,7 @@ class PlanetaryMeshOrchestrator:
         self.routed_tasks.append(route_record)
         return route_record
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "total_planetary_nodes": len(self.nodes),

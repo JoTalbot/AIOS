@@ -33,7 +33,7 @@ class CardParser:
     def parse(
         self,
         xml_source: Union[str, Path, ET.Element],
-        query: Optional[str] = None,
+        query: str | None = None,
     ) -> List[AdCard]:
         """Parse every listing card found in a UI dump.
 
@@ -62,10 +62,10 @@ class CardParser:
                     cards.append(card)
         return cards
 
-    def _card_from_node(self, node: ET.Element, query: Optional[str]) -> AdCard:
-        texts: List[str] = []
-        url: Optional[str] = None
-        ad_id: Optional[str] = None
+    def _card_from_node(self, node: ET.Element, query: str | None) -> AdCard:
+        texts: list[str] = []
+        url: str | None = None
+        ad_id: str | None = None
 
         for child in node.iter():
             text = normalize_text(child.attrib.get("text"))
@@ -84,10 +84,10 @@ class CardParser:
 
     @staticmethod
     def card_from_texts(
-        texts: List[str],
-        query: Optional[str] = None,
-        url: Optional[str] = None,
-        ad_id: Optional[str] = None,
+        texts: list[str],
+        query: str | None = None,
+        url: str | None = None,
+        ad_id: str | None = None,
     ) -> AdCard:
         """Classify an ordered list of card texts into an :class:`AdCard`.
 
@@ -95,12 +95,12 @@ class CardParser:
         but the order is not guaranteed, so every text is classified by shape.
         The first unclassified text becomes the title, the second the city.
         """
-        price: Optional[float] = None
-        currency: Optional[str] = None
-        published_text: Optional[str] = None
-        published_at: Optional[str] = None
+        price: float | None = None
+        currency: str | None = None
+        published_text: str | None = None
+        published_at: str | None = None
         is_top = False
-        leftovers: List[str] = []
+        leftovers: list[str] = []
 
         for raw in texts:
             if is_no_price_label(raw):

@@ -39,7 +39,7 @@ class AlertRule:
     threshold: float
     duration: int  # seconds
     severity: str  # "info", "warning", "critical"
-    notification_channels: List[str]
+    notification_channels: list[str]
 
 
 @dataclass
@@ -49,7 +49,7 @@ class DashboardConfig:
     name: str
     title: str
     refresh_interval: int  # seconds
-    panels: List[Dict[str, Any]]
+    panels: List[dict[str, Any]]
 
 
 class MonitoringMetrics:
@@ -88,7 +88,7 @@ class AlertManager:
 
     def __init__(self):
         self.rules: Dict[str, AlertRule] = {}
-        self.active_alerts: Dict[str, Dict[str, Any]] = {}
+        self.active_alerts: Dict[str, dict[str, Any]] = {}
         self.metrics = MonitoringMetrics()
         self.logger = logging.getLogger("aios.alerts")
 
@@ -150,7 +150,7 @@ class AlertManager:
             self.metrics.record_alert_resolved()
             self.logger.info(f"Alert resolved: {alert_key}")
 
-    async def _send_notifications(self, alert: Dict[str, Any]):
+    async def _send_notifications(self, alert: dict[str, Any]):
         """Send alert notifications."""
         # Implementation would send to email, Slack, PagerDuty, etc.
         self.logger.info(f"Sending notification for alert: {alert['rule']}")
@@ -169,7 +169,7 @@ class DashboardManager:
         self.dashboards[config.name] = config
         self.logger.info(f"Added dashboard: {config.name}")
 
-    async def get_dashboard_data(self, dashboard_name: str) -> Dict[str, Any]:
+    async def get_dashboard_data(self, dashboard_name: str) -> dict[str, Any]:
         """Get dashboard data."""
         self.metrics.record_dashboard_request()
 
@@ -193,7 +193,7 @@ class DashboardManager:
 
         return data
 
-    async def _generate_panel_data(self, panel: Dict[str, Any]) -> Dict[str, Any]:
+    async def _generate_panel_data(self, panel: dict[str, Any]) -> dict[str, Any]:
         """Generate data for a single panel."""
         panel_type = panel.get("type", "metric")
 
@@ -226,7 +226,7 @@ class DashboardManager:
         # Implementation would query actual metrics
         return 0.0
 
-    async def _get_chart_data(self, metric_name: str) -> List[Dict[str, Any]]:
+    async def _get_chart_data(self, metric_name: str) -> List[dict[str, Any]]:
         """Get chart data for a metric."""
         # Implementation would get historical data
         return [{"timestamp": time.time() - 3600, "value": 10.0}]
@@ -249,7 +249,7 @@ class MonitoringAPI:
         """Add dashboard."""
         self.dashboard_manager.add_dashboard(config)
 
-    async def get_system_health(self) -> Dict[str, Any]:
+    async def get_system_health(self) -> dict[str, Any]:
         """Get system health status."""
         health_score = 90.0  # Example score
         self.metrics.set_system_health(health_score)
@@ -262,7 +262,7 @@ class MonitoringAPI:
             "total_rules": len(self.alert_manager.rules),
         }
 
-    async def get_alerts(self, active_only: bool = True) -> Dict[str, Any]:
+    async def get_alerts(self, active_only: bool = True) -> dict[str, Any]:
         """Get alerts."""
         alerts = []
 
@@ -277,11 +277,11 @@ class MonitoringAPI:
             "active": len([a for a in alerts if not a.get("resolved_at")]),
         }
 
-    async def get_dashboard(self, dashboard_name: str) -> Dict[str, Any]:
+    async def get_dashboard(self, dashboard_name: str) -> dict[str, Any]:
         """Get dashboard data."""
         return await self.dashboard_manager.get_dashboard_data(dashboard_name)
 
-    async def get_metrics_summary(self) -> Dict[str, Any]:
+    async def get_metrics_summary(self) -> dict[str, Any]:
         """Get metrics summary."""
         return {
             "alerts_triggered": self.metrics.alerts_triggered.value,

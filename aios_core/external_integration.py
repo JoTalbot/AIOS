@@ -35,8 +35,8 @@ class WebhookConfig:
     """Configuration for webhook endpoints."""
 
     url: str
-    events: List[str]
-    headers: Optional[Dict[str, str]] = None
+    events: list[str]
+    headers: dict[str, str] | None = None
     timeout: int = 30
     retry_count: int = 3
 
@@ -99,7 +99,7 @@ class WebhookManager:
         self.metrics = IntegrationMetrics()
         self.logger = logging.getLogger("aios.webhooks")
 
-    async def send_notification(self, event: str, data: Dict[str, Any]) -> bool:
+    async def send_notification(self, event: str, data: dict[str, Any]) -> bool:
         """Send webhook notification to external system."""
         if event not in self.config.events:
             self.logger.warning(f"Event {event} not in configured events")
@@ -148,8 +148,8 @@ class GraphQLAPI:
         self.logger = logging.getLogger("aios.graphql")
 
     def execute_query(
-        self, query: str, variables: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, query: str, variables: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute GraphQL query."""
         start_time = time.time()
 
@@ -181,7 +181,7 @@ class MessageQueueConnector(ABC):
         pass
 
     @abstractmethod
-    async def publish(self, topic: str, message: Dict[str, Any]) -> bool:
+    async def publish(self, topic: str, message: dict[str, Any]) -> bool:
         """Publish message to topic."""
         pass
 
@@ -209,7 +209,7 @@ class KafkaConnector(MessageQueueConnector):
             self.logger.error(f"Failed to connect to Kafka: {str(e)}")
             return False
 
-    async def publish(self, topic: str, message: Dict[str, Any]) -> bool:
+    async def publish(self, topic: str, message: dict[str, Any]) -> bool:
         """Publish message to Kafka topic."""
         try:
             # Implementation would use kafka-python or aiokafka
@@ -253,7 +253,7 @@ class ExternalIntegrationAPI:
         self.message_queues[name] = connector
         self.logger.info(f"Added message queue: {name}")
 
-    async def send_webhook(self, webhook_name: str, event: str, data: Dict[str, Any]) -> bool:
+    async def send_webhook(self, webhook_name: str, event: str, data: dict[str, Any]) -> bool:
         """Send webhook notification."""
         if webhook_name not in self.webhooks:
             self.logger.error(f"Webhook {webhook_name} not found")
@@ -261,7 +261,7 @@ class ExternalIntegrationAPI:
 
         return await self.webhooks[webhook_name].send_notification(event, data)
 
-    async def get_integration_metrics(self) -> Dict[str, Any]:
+    async def get_integration_metrics(self) -> dict[str, Any]:
         """Get integration metrics."""
         return {
             "webhooks": {

@@ -10,14 +10,14 @@ class VectorStore:
 
     def __init__(self):
         self.vectors: Dict[str, np.ndarray] = {}
-        self.metadata: Dict[str, Dict] = {}
+        self.metadata: dict[str, dict] = {}
 
-    def add(self, id: str, vector: List[float], metadata: Dict = None) -> None:
+    def add(self, id: str, vector: list[float], metadata: Dict = None) -> None:
         """Execute add."""
         self.vectors[id] = np.array(vector)
         self.metadata[id] = metadata or {}
 
-    def search(self, query_vector: List[float], top_k: int = 5) -> List[Dict]:
+    def search(self, query_vector: list[float], top_k: int = 5) -> List[Dict]:
         """Execute search."""
         q = np.array(query_vector)
         scores = {}

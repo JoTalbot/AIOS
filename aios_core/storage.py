@@ -198,7 +198,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_agent ON tasks(agent_id);
 class Database:
     """Enterprise-grade Multi-Backend Database Abstraction for AIOS."""
 
-    def __init__(self, db_path: Optional[str] = None, config: Optional[AIOSConfig] = None):
+    def __init__(self, db_path: str | None = None, config: Optional[AIOSConfig] = None):
         if db_path is not None:
             self.db_path = db_path
         elif config is not None:
@@ -357,13 +357,11 @@ class Database:
             self._conn = None
 
     @staticmethod
-    @lru_cache(maxsize=128)
     def new_id() -> str:
         """Return a new random hex identifier."""
         return uuid.uuid4().hex
 
     @staticmethod
-    @lru_cache(maxsize=128)
     def now_iso() -> str:
         """Return the current UTC timestamp as an ISO-8601 string."""
         return datetime.now(timezone.utc).isoformat()

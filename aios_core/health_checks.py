@@ -14,7 +14,7 @@ class HealthCheckRegistry:
         """Execute register."""
         self.checks[name] = check_func
 
-    def run_all(self) -> Dict[str, Any]:
+    def run_all(self) -> dict[str, Any]:
         """Execute run all."""
         results = {}
         for name, func in self.checks.items():

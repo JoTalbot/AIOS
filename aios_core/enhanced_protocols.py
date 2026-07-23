@@ -48,8 +48,8 @@ class ProtocolConfig:
     protocol_type: ProtocolType
     host: str
     port: int
-    options: Optional[Dict[str, Any]] = None
-    security: Optional[Dict[str, Any]] = None
+    options: dict[str, Any] | None = None
+    security: dict[str, Any] | None = None
     max_connections: int = 1000
     timeout: int = 30
 
@@ -60,7 +60,7 @@ class ProtocolAdapter(ABC):
     def __init__(self, config: ProtocolConfig):
         self.config = config
         self.logger = logging.getLogger(f"aios.protocol.{config.protocol_type.value}")
-        self.active_connections: List[Any] = []
+        self.active_connections: list[Any] = []
 
     @abstractmethod
     async def start(self) -> bool:
@@ -98,7 +98,7 @@ class GrpcAdapter(ProtocolAdapter):
     def __init__(self, config: ProtocolConfig):
         super().__init__(config)
         self.server = None
-        self.services: Dict[str, Any] = {}
+        self.services: dict[str, Any] = {}
 
     async def start(self) -> bool:
         """Start gRPC server."""
@@ -194,7 +194,7 @@ class AmqpAdapter(ProtocolAdapter):
         # AMQP requests are handled by message queues
         pass
 
-    async def publish(self, queue_name: str, message: Dict[str, Any]) -> bool:
+    async def publish(self, queue_name: str, message: dict[str, Any]) -> bool:
         """Publish message to queue."""
         try:
             import aio_pika
@@ -354,7 +354,7 @@ class MqttAdapter(ProtocolAdapter):
         # MQTT requests are handled by subscription callbacks
         pass
 
-    async def publish(self, topic: str, message: Dict[str, Any]) -> bool:
+    async def publish(self, topic: str, message: dict[str, Any]) -> bool:
         """Publish message to topic."""
         try:
             if not self.client:

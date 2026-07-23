@@ -27,7 +27,7 @@ class InstagramBootstrap:
     def __init__(
         self,
         adb=None,
-        serial: Optional[str] = None,
+        serial: str | None = None,
         directory: str = "platforms",
         which=None,
     ):

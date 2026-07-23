@@ -24,7 +24,7 @@ class AIEthicsFramework:
         self.assessments: List[Dict] = []
         self.violations: List[Dict] = []
 
-    def evaluate_action(self, action: Dict[str, Any], context: Dict = None) -> Dict:
+    def evaluate_action(self, action: dict[str, Any], context: Dict = None) -> Dict:
         """Comprehensive ethical evaluation of an action."""
         scores = {}
         violated = []

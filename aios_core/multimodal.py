@@ -7,7 +7,7 @@ class MultiModalProcessor:
     """Handles text, image, audio, and structured data."""
 
     def __init__(self):
-        self.modalities: Dict[str, Dict] = {}
+        self.modalities: dict[str, dict] = {}
 
     def register_modality(self, name: str, processor: Any) -> None:
         """Execute register modality."""

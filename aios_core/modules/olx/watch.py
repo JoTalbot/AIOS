@@ -24,9 +24,9 @@ class SubscriptionManager:
         self,
         name: str,
         query: str,
-        min_price: Optional[float] = None,
-        max_price: Optional[float] = None,
-        city: Optional[str] = None,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        city: str | None = None,
     ) -> int:
         """Add a search subscription with filters."""
         return self.storage.subscription_add(name, query, min_price, max_price, city)

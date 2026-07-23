@@ -43,8 +43,8 @@ Driver = Callable[..., str]
 
 def _adb_calibrator_drive(
     package: str,
-    query: Optional[str] = None,
-    serial: Optional[str] = None,
+    query: str | None = None,
+    serial: str | None = None,
 ) -> str:
     """Generic-драйв по ADB: открыть приложение → пауза → дамп экрана.
 
@@ -73,8 +73,8 @@ def _adb_calibrator_drive(
 def _call_driver(
     driver: Driver,
     package: str,
-    query: Optional[str],
-    serial: Optional[str],
+    query: str | None,
+    serial: str | None,
 ) -> str:
     """Вызывает драйв, передавая serial, если сигнатура его принимает."""
     if serial is None:
@@ -86,21 +86,21 @@ def _call_driver(
 
 
 def bootup_platform(
-    apk_path: Optional[str] = None,
+    apk_path: str | None = None,
     *,
-    name: Optional[str] = None,
-    package: Optional[str] = None,
+    name: str | None = None,
+    package: str | None = None,
     project_root=".",
     locale: str = "uk-UA",
-    dump_path: Optional[str] = None,
-    query: Optional[str] = None,
+    dump_path: str | None = None,
+    query: str | None = None,
     driver: Optional[Driver] = None,
     runner=None,
     dry_run: bool = False,
     fetch: bool = False,
     apks_dir="apks",
     apk_runner=None,
-    serial: Optional[str] = None,
+    serial: str | None = None,
     pool=None,
 ) -> Dict[str, object]:
     """E2E-пайплайн подключения платформы.
@@ -143,7 +143,7 @@ def bootup_platform(
     steps: Dict[str, object] = {}
 
     # -- 0. resolve APK (скачивание по имени пакета) ---------------------- #
-    resolved_apk: Optional[str] = None
+    resolved_apk: str | None = None
     if apk_path:
         if dry_run and not Path(str(apk_path)).exists():
             resolved_apk = apk_path  # имя пакета/несуществующий путь — план
@@ -179,7 +179,7 @@ def bootup_platform(
                     raise
 
     # -- 1. scaffold ----------------------------------------------------- #
-    scaffold_files: Dict[str, str] = {}
+    scaffold_files: dict[str, str] = {}
     scaffold_mode = "planned" if dry_run else "written"
     try:
         if resolved_apk:
@@ -244,14 +244,14 @@ def bootup_platform(
         }
 
     # -- 3. calibrate ---------------------------------------------------- #
-    xml: Optional[str] = None
+    xml: str | None = None
     hints: Optional[Dict[str, object]] = None
     calibrate_step: Dict[str, object] = {}
     if dump_path:
         xml = Path(dump_path).read_text(encoding="utf-8")
         calibrate_step["source"] = f"dump:{dump_path}"
     else:
-        lease_key: Optional[str] = None
+        lease_key: str | None = None
         if serial is None and pool is not None:
             lease_key = f"{platform_name}:calibration"
             lease = pool.lease(lease_key)

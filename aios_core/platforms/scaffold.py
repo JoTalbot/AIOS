@@ -101,7 +101,7 @@ _LAUNCH_RE = re.compile(r"launchable-activity: name='(?P<activity>[^']+)'")
 _SDK_RE = re.compile(r"targetSdkVersion:'(?P<target_sdk>[^']+)'")
 
 
-def _badging(apk_path: str) -> Dict[str, str]:
+def _badging(apk_path: str) -> dict[str, str]:
     """Реальный вызов aapt dump badging (требует Android SDK cmdline-tools)."""
     import subprocess
 
@@ -115,7 +115,7 @@ def _badging(apk_path: str) -> Dict[str, str]:
     return {"code": result.returncode, "stdout": result.stdout, "stderr": result.stderr}
 
 
-def inspect_apk(apk_path: str, runner=None) -> Dict[str, Optional[str]]:
+def inspect_apk(apk_path: str, runner=None) -> Dict[str, str | None]:
     """Черновой дескриптор платформы из APK.
 
     Читает `aapt dump badging`: android-пакет, метку приложения,
@@ -157,7 +157,7 @@ def inspect_apk(apk_path: str, runner=None) -> Dict[str, Optional[str]]:
 
 def scaffold_from_apk(
     apk_path: str,
-    name: Optional[str] = None,
+    name: str | None = None,
     project_root=".",
     locale: str = "uk-UA",
     dry_run: bool = False,
@@ -202,7 +202,7 @@ def scaffold_platform(
     description: str = "",
     locale: str = "uk-UA",
     dry_run: bool = False,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Генерирует скелет платформы.
 
     Args:

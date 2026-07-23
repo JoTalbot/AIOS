@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS shard_routes (
 class ShardRouter:
     """Роутер профилей по хостам-шардам."""
 
-    def __init__(self, db_path: "Optional[str]" = None):
+    def __init__(self, db_path: "str | None" = None):
         self.db_path = db_path or os.environ.get("AIOS_SHARDS_DB", ":memory:")
         if self.db_path != ":memory:":
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)

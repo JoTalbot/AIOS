@@ -28,7 +28,7 @@ class SpikingLayer:
     def __init__(self, size: int):
         self.neurons = [SpikingNeuron() for _ in range(size)]
 
-    def forward(self, inputs: List[float], timesteps: int = 10) -> List[int]:
+    def forward(self, inputs: list[float], timesteps: int = 10) -> list[int]:
         """Execute forward."""
         outputs = [0] * len(self.neurons)
         for _ in range(timesteps):

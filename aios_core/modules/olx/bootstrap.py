@@ -30,7 +30,7 @@ SYSTEM_IMAGE = "system-images;android-34;google_apis;x86_64"
 AVD_NAME = "aios-olx"
 
 
-def _shell_runner(command: List[str], timeout: int = 600) -> Dict[str, object]:
+def _shell_runner(command: list[str], timeout: int = 600) -> Dict[str, object]:
     try:
         result = subprocess.run(
             command,
@@ -53,7 +53,7 @@ def _shell_runner(command: List[str], timeout: int = 600) -> Dict[str, object]:
 class BootstrapStep:
     name: str
     why: str
-    commands: List[str] = field(default_factory=list)
+    commands: list[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, object]:
         """Serialize to dict."""
@@ -76,7 +76,7 @@ class OLXBootstrap:
 
     def __init__(
         self,
-        runner: Optional[Callable[[List[str]], Dict[str, object]]] = None,
+        runner: Optional[Callable[[list[str]], Dict[str, object]]] = None,
         project_root: str = ".",
         workdir: str = "/opt/aios-olx",
     ):
@@ -90,7 +90,7 @@ class OLXBootstrap:
         self,
         emulator: bool = True,
         apt: bool = True,
-        olx_apk: Optional[str] = None,
+        olx_apk: str | None = None,
     ) -> List[BootstrapStep]:
         """Ordered setup plan for a fresh Linux server."""
         steps: List[BootstrapStep] = []
@@ -217,7 +217,7 @@ class OLXBootstrap:
 
     def print_plan(self, **kwargs) -> str:
         """Execute print plan."""
-        lines: List[str] = []
+        lines: list[str] = []
         for index, step in enumerate(self.plan(**kwargs), start=1):
             lines.append(f"{index}. {step.name} — {step.why}")
             lines.extend(f"   $ {command}" for command in step.commands)

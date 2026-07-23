@@ -5,13 +5,13 @@ from typing import Dict, List
 
 
 class Particle:
-    def __init__(self, position: List[float]):
+    def __init__(self, position: list[float]):
         self.position = position
         self.velocity = [random.uniform(-1, 1) for _ in position]
         self.best_position = position[:]
         self.best_value = float("inf")
 
-    def update(self, global_best: List[float], w=0.7, c1=1.5, c2=1.5) -> None:
+    def update(self, global_best: list[float], w=0.7, c1=1.5, c2=1.5) -> None:
         """Execute update."""
         for i in range(len(self.position)):
             r1, r2 = random.random(), random.random()

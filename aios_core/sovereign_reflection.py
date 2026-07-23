@@ -12,19 +12,19 @@ class SovereignReflectionEngine:
     """Metacognitive Introspection and Self-Correction Engine for Autonomous Agents."""
 
     def __init__(self):
-        self.reflection_logs: List[Dict[str, Any]] = []
+        self.reflection_logs: List[dict[str, Any]] = []
         self.alignments_enforced = 0
 
     def audit_goal_hierarchy(
         self,
         agent_id: str,
-        proposed_goals: List[Dict[str, Any]],
-        constitutional_rules: List[str],
-    ) -> Dict[str, Any]:
+        proposed_goals: List[dict[str, Any]],
+        constitutional_rules: list[str],
+    ) -> dict[str, Any]:
         """Perform recursive introspective alignment check on agent's goal tree."""
         start_time = time.time()
-        contradictions: List[str] = []
-        aligned_goals: List[Dict[str, Any]] = []
+        contradictions: list[str] = []
+        aligned_goals: List[dict[str, Any]] = []
 
         for goal in proposed_goals:
             goal_title = goal.get("title", "").lower()
@@ -62,7 +62,7 @@ class SovereignReflectionEngine:
         self.reflection_logs.append(reflection_result)
         return reflection_result
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "total_reflections": len(self.reflection_logs),

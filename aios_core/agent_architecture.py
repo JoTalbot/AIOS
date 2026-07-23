@@ -35,7 +35,7 @@ class AdvancedAgent:
         self.system_prompt = system_prompt
         self.memory = AgentMemory()
         self.tools: Dict[str, Tool] = {}
-        self.goals: List[str] = []
+        self.goals: list[str] = []
         self.plan: List[Dict] = []
 
     def add_tool(self, tool: Tool) -> None:

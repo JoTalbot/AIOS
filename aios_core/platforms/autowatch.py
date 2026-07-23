@@ -99,14 +99,14 @@ class _DrivenCollector:
 
 def autowatch_cycle(
     platform_name: str,
-    profile_name: Optional[str] = None,
-    queries: Optional[List[str]] = None,
+    profile_name: str | None = None,
+    queries: list[str] | None = None,
     store=None,
     adb=None,
     parser=None,
     driver=None,
     notifier=None,
-    webhook: Optional[str] = None,
+    webhook: str | None = None,
     own_provider=None,
     max_cards: int = 50,
     collect: bool = True,

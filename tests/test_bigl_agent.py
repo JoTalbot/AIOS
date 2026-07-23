@@ -19,7 +19,7 @@ def test_bigl_platform_registered():
 
 def test_bigl_storage_subscriptions_empty():
     storage = BiglStorage(":memory:")
-    assert storage.subscription_list() == []
+    assert storage.subscriptions_list() == []
     storage.close()
 
 

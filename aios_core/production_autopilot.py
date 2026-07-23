@@ -36,16 +36,16 @@ __all__ = ["ProductionProfile", "ProductionConfig", "CycleReport", "DailyReport"
 class ProductionProfile:
     platform: str
     name: str  # unique profile name e.g., ig_shop_1
-    device_serial: Optional[str] = None
+    device_serial: str | None = None
     actions_per_hour: int = 60  # Instagram ToS safe default
     session_max_s: int = 1800  # 30 min session
     jitter_s: tuple = (0.8, 2.5)  # human-like pauses
-    compliance_policy: Dict[str, Any] = field(default_factory=dict)
+    compliance_policy: dict[str, Any] = field(default_factory=dict)
     autopilot_enabled: bool = True
-    queries: List[str] = field(default_factory=list)  # search queries for collector
-    webhook_url: Optional[str] = None
+    queries: list[str] = field(default_factory=list)  # search queries for collector
+    webhook_url: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "platform": self.platform,
@@ -64,9 +64,9 @@ class ProductionProfile:
 class ProductionConfig:
     profiles: List[ProductionProfile] = field(default_factory=list)
     device_pool_size: int = 3
-    shard_hosts: List[str] = field(default_factory=lambda: ["shard-1"])
+    shard_hosts: list[str] = field(default_factory=lambda: ["shard-1"])
     cycle_interval_s: int = 900  # 15 min per profile check
-    daily_report_webhook: Optional[str] = None
+    daily_report_webhook: str | None = None
     prometheus_enabled: bool = True
     compliance_strict: bool = True
     ai_advisor_enabled: bool = True
@@ -150,14 +150,14 @@ class CycleReport:
     actions: int
     success: int
     failed: int
-    pacing_stats: Dict[str, Any]
-    compliance_checks: List[Dict[str, Any]]
+    pacing_stats: dict[str, Any]
+    compliance_checks: List[dict[str, Any]]
     predictive_risk: float
     duration_ms: float
     drift_detected: bool = False
     advisor_drafts: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "profile": self.profile_key,
@@ -182,13 +182,13 @@ class DailyReport:
     total_cycles: int
     total_actions: int
     avg_success_rate: float
-    profiles: Dict[str, Dict[str, Any]]
+    profiles: Dict[str, dict[str, Any]]
     bans: int
     drifts: int
     predictive_alerts: int
     compliance_blocks: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "date": self.date,
@@ -240,7 +240,7 @@ class ProductionAutopilot:
             )
             self._pacers[key] = pacer
 
-    def _check_compliance(self, profile: ProductionProfile, action: str) -> Dict[str, Any]:
+    def _check_compliance(self, profile: ProductionProfile, action: str) -> dict[str, Any]:
         """Check compliance for action."""
         try:
             result = compliance_guard(profile.platform, action)
@@ -381,7 +381,7 @@ class ProductionAutopilot:
             reports.append(report)
         return reports
 
-    def simulate_2_weeks(self, cycles_per_day: int = 24) -> Dict[str, Any]:
+    def simulate_2_weeks(self, cycles_per_day: int = 24) -> dict[str, Any]:
         """
         Simulate 2 weeks production exploitation (for CI / demo).
         cycles_per_day=24 means every hour.
@@ -475,7 +475,7 @@ class ProductionAutopilot:
 
         return summary
 
-    def health_report(self) -> Dict[str, Any]:
+    def health_report(self) -> dict[str, Any]:
         """Current production health."""
         total_cycles = len(self._cycle_history)
         total_actions = sum(r.actions for r in self._cycle_history)

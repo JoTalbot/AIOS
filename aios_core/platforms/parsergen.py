@@ -123,7 +123,7 @@ def write_parser(
     android_package: str = "",
     dry_run: bool = False,
     overwrite: bool = False,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Пишет сгенерированный ``card_parser.py`` в модуль платформы.
 
     Побочно дописывает импорт парсера в ``__init__.py`` модуля
@@ -160,7 +160,7 @@ def write_parser(
             "to regenerate after re-calibration)"
         )
 
-    files: Dict[str, str] = {
+    files: dict[str, str] = {
         str(parser_path): generate_parser_source(
             platform_name,
             hints,
@@ -168,7 +168,7 @@ def write_parser(
         ),
     }
 
-    init_content: Optional[str] = None
+    init_content: str | None = None
     import_line = (
         f"from .card_parser import "
         f"{_class_name(platform_name)}{_PARSER_CLASS_SUFFIX}  "

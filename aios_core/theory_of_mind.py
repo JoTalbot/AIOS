@@ -7,7 +7,7 @@ class TheoryOfMind:
     """Model of other agents' mental states."""
 
     def __init__(self):
-        self.models: Dict[str, Dict] = {}
+        self.models: dict[str, dict] = {}
 
     def model_agent(self, agent_id: str, beliefs: Dict, desires: List, intentions: List) -> None:
         """Execute model agent."""

@@ -16,8 +16,8 @@ class ZeroKnowledgeSafetyProof:
 
     @staticmethod
     def generate_proof(
-        task_payload: Dict[str, Any], secret_salt: str = "aios_zk_salt"
-    ) -> Dict[str, Any]:
+        task_payload: dict[str, Any], secret_salt: str = "aios_zk_salt"
+    ) -> dict[str, Any]:
         """Generate a zero-knowledge commitment proof asserting payload constitutional safety."""
         payload_str = json.dumps(task_payload, sort_keys=True)
         commitment_hash = hashlib.sha256(f"{payload_str}:{secret_salt}".encode("utf-8")).hexdigest()
@@ -33,7 +33,7 @@ class ZeroKnowledgeSafetyProof:
         }
 
     @staticmethod
-    def verify_proof(proof: Dict[str, Any], commitment_hash: str) -> bool:
+    def verify_proof(proof: dict[str, Any], commitment_hash: str) -> bool:
         """Verify validity of ZK safety proof without inspecting private task variables."""
         if proof.get("commitment_hash") != commitment_hash:
             return False
@@ -48,8 +48,8 @@ class GlobalSwarmGovernance:
     def __init__(self, primary_node_id: str = "cluster_alpha"):
         self.primary_node_id = primary_node_id
         self.primary_did = f"did:aios:{primary_node_id}"
-        self.registered_nodes: Dict[str, Dict[str, Any]] = {}  # DID -> info
-        self.proposals: Dict[str, Dict[str, Any]] = {}
+        self.registered_nodes: Dict[str, dict[str, Any]] = {}  # DID -> info
+        self.proposals: Dict[str, dict[str, Any]] = {}
         self.register_node(primary_node_id, role="lead_cluster")
 
     def register_node(self, node_id: str, role: str = "worker_cluster") -> str:
@@ -112,7 +112,7 @@ class GlobalSwarmGovernance:
         elif rejections / total_active_nodes >= 0.33:
             proposal["status"] = "rejected"
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "registered_nodes_count": len(self.registered_nodes),

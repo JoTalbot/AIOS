@@ -25,7 +25,7 @@ class WebSocketManager:
         """Execute disconnect."""
         self.active_connections.discard(websocket)
 
-    async def broadcast(self, message: Dict[str, Any]) -> None:
+    async def broadcast(self, message: dict[str, Any]) -> None:
         """Send message to all connected clients."""
         disconnected = set()
         for connection in self.active_connections:

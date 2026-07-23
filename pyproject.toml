@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aios"
-version = "9.3.1"
+version = "9.4.0"
 description = "Self-evolving Distributed Operating System - Production Exploitation GA"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -28,8 +28,13 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+    "pytest-xdist>=3.0.0",
+    "pytest-timeout>=2.1.0",
+    "pytest-cov>=4.0.0",
     "black>=22.0.0",
+    "isort>=5.0.0",
     "pre-commit>=3.0.0",
+    "flake8>=6.0.0",
 ]
 docs = [
     "mkdocs>=1.5.0",
@@ -45,3 +50,21 @@ aios = "aios_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+timeout = 30
+addopts = "-q --tb=short"
+markers = [
+    "slow: marks tests as slow (deselect with '-m not slow')",
+    "e2e: end-to-end integration tests",
+    "bench: performance benchmark tests",
+]
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 120

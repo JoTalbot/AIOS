@@ -15,7 +15,7 @@ class MolecularDNARuntime:
     REVERSE_NUCLEOTIDE_MAP = {v: k for k, v in NUCLEOTIDE_MAP.items()}
 
     def __init__(self):
-        self.dna_memory_bank: Dict[str, str] = {}  # key -> nucleotide sequence
+        self.dna_memory_bank: dict[str, str] = {}  # key -> nucleotide sequence
 
     def encode_to_dna(self, text_payload: str) -> str:
         """Encode textual constitutional rule or payload into synthetic DNA nucleotide sequence."""
@@ -48,7 +48,7 @@ class MolecularDNARuntime:
 
     def simulate_pcr_amplification(
         self, rule_id: str, amplification_cycles: int = 10
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Simulate Polymerase Chain Reaction (PCR) molecular strand amplification."""
         seq = self.dna_memory_bank.get(rule_id, "")
         if not seq:
@@ -67,7 +67,7 @@ class MolecularDNARuntime:
             "molecular_density_pmo_per_ul": round(molecule_count * 1.66e-12, 6),
         }
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "synthesized_dna_rules": len(self.dna_memory_bank),

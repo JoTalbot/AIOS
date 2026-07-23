@@ -19,7 +19,7 @@ def test_shafa_platform_registered():
 
 def test_shafa_storage_subscriptions_empty():
     storage = ShafaStorage(":memory:")
-    assert storage.subscription_list() == []
+    assert storage.subscriptions_list() == []
     storage.close()
 
 

@@ -13,7 +13,7 @@ class ConfigManager:
 
     def __init__(self, config_path: str = "config.yaml"):
         self.config_path = config_path
-        self.config: Dict[str, Any] = {}
+        self.config: dict[str, Any] = {}
         self.load()
 
     def load(self) -> None:

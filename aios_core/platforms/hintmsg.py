@@ -32,13 +32,13 @@ class HintsMessenger(OLXMessenger):
         self,
         platform: str,
         package: str,
-        deep_link: Optional[str],
+        deep_link: str | None,
         adb: Optional[ADBController] = None,
         storage=None,
         messenger_hints: Optional[Dict] = None,
         directory: str = "platforms",
         screen_width: int = 1080,
-        serial: Optional[str] = None,
+        serial: str | None = None,
     ) -> None:
         super().__init__(
             adb=adb or ADBController(package=package, serial=serial),

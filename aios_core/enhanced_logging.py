@@ -43,18 +43,18 @@ class LogConfig:
     enable_correlation: bool = True
     enable_performance_tracking: bool = True
     ship_to_external: bool = False
-    external_endpoint: Optional[str] = None
+    external_endpoint: str | None = None
 
 
 class CorrelationContext:
     """Manages correlation context for logging."""
 
     def __init__(self):
-        self.correlation_id: Optional[str] = None
-        self.trace_id: Optional[str] = None
-        self.span_id: Optional[str] = None
-        self.user_id: Optional[str] = None
-        self.session_id: Optional[str] = None
+        self.correlation_id: str | None = None
+        self.trace_id: str | None = None
+        self.span_id: str | None = None
+        self.user_id: str | None = None
+        self.session_id: str | None = None
 
     def set_correlation_id(self, correlation_id: str) -> None:
         """Set correlation ID."""
@@ -70,7 +70,7 @@ class CorrelationContext:
         self.user_id = user_id
         self.session_id = session_id
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert context to dictionary."""
         return {
             "correlation_id": self.correlation_id,
@@ -85,7 +85,7 @@ class PerformanceTracker:
     """Tracks performance metrics through logging."""
 
     def __init__(self):
-        self.operations: Dict[str, Dict[str, Any]] = {}
+        self.operations: Dict[str, dict[str, Any]] = {}
 
     def start_operation(self, operation_name: str, **kwargs) -> str:
         """Start tracking an operation."""
@@ -101,7 +101,7 @@ class PerformanceTracker:
         }
         return operation_id
 
-    def end_operation(self, operation_id: str, success: bool = True, error: Optional[str] = None) -> None:
+    def end_operation(self, operation_id: str, success: bool = True, error: str | None = None) -> None:
         """End tracking an operation."""
         if operation_id in self.operations:
             operation = self.operations[operation_id]
@@ -110,7 +110,7 @@ class PerformanceTracker:
             operation["success"] = success
             operation["error"] = error
 
-    def get_operation_stats(self, operation_name: str) -> Dict[str, Any]:
+    def get_operation_stats(self, operation_name: str) -> dict[str, Any]:
         """Get statistics for an operation."""
         relevant_ops = [op for op in self.operations.values() if op["name"] == operation_name]
 
@@ -186,7 +186,7 @@ class LogAggregator:
         self.config = config
         self.logger = logging.getLogger("aios.log_aggregator")
 
-    def ship_logs(self, logs: List[Dict[str, Any]]) -> bool:
+    def ship_logs(self, logs: List[dict[str, Any]]) -> bool:
         """Ship logs to external system (sync version)."""
         if not self.config.ship_to_external or not self.config.external_endpoint:
             return False
@@ -217,7 +217,7 @@ class LogAggregator:
             self.logger.error(f"Error shipping logs: {str(e)}")
             return False
 
-    async def ship_logs_async(self, logs: List[Dict[str, Any]]) -> bool:
+    async def ship_logs_async(self, logs: List[dict[str, Any]]) -> bool:
         """Async version for shipping logs."""
         if not self.config.ship_to_external or not self.config.external_endpoint:
             return False
@@ -334,11 +334,11 @@ class EnhancedLogger:
         """Log debug message."""
         self.log_with_context("debug", message, **kwargs)
 
-    def get_performance_stats(self, operation_name: str) -> Dict[str, Any]:
+    def get_performance_stats(self, operation_name: str) -> dict[str, Any]:
         """Get performance statistics for an operation."""
         return self.performance_tracker.get_operation_stats(operation_name)
 
-    def ship_logs(self, logs: List[Dict[str, Any]]) -> bool:
+    def ship_logs(self, logs: List[dict[str, Any]]) -> bool:
         """Ship logs to external system."""
         return self.log_aggregator.ship_logs(logs)
 

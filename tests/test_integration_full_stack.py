@@ -17,7 +17,7 @@ def test_full_stack():
     assert orch.stats() is not None
     assert kg.stats() is not None
     assert rl.is_allowed("test") is True
-    eb.on("test", lambda p: None)
-    eb.emit("test", {"x": 1})
+    eb.subscribe("test", lambda p: None)
+    eb.emit("test", "test_source", {"x": 1})
     mm.store({"k": "v"}, "owner")
     assert mm.stats() is not None

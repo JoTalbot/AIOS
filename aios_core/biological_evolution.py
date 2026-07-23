@@ -12,10 +12,10 @@ from typing import Any, Dict, List, Optional, Tuple
 class AgentGenome:
     """Agent Chromosome Gene Sequence encoding cognitive parameters and capabilities."""
 
-    def __init__(self, genome_id: str, genes: Optional[Dict[str, float]] = None):
+    def __init__(self, genome_id: str, genes: Optional[dict[str, float]] = None):
         self.genome_id = genome_id
         # Genes encode weights in range [0.0, 1.0]
-        self.genes: Dict[str, float] = genes or {
+        self.genes: dict[str, float] = genes or {
             "risk_aversion": random.uniform(0.1, 0.9),
             "reasoning_depth": random.uniform(0.1, 0.9),
             "collaboration_weight": random.uniform(0.1, 0.9),
@@ -43,7 +43,7 @@ class BiologicalEvolutionEngine:
         self.population: List[AgentGenome] = [
             AgentGenome(f"g_0_{i}") for i in range(population_size)
         ]
-        self.history: List[Dict[str, Any]] = []
+        self.history: List[dict[str, Any]] = []
 
     def evaluate_fitness(
         self,
@@ -119,7 +119,7 @@ class BiologicalEvolutionEngine:
 
         return self.population
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "current_generation": self.generation,

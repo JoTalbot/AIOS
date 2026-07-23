@@ -43,7 +43,7 @@ class MetricHistogram:
     def __init__(self, name: str, description: str = ""):
         self.name = name
         self.description = description
-        self.values: List[float] = []
+        self.values: list[float] = []
 
     def observe(self, value: float) -> None:
         """Execute observe."""
@@ -51,7 +51,7 @@ class MetricHistogram:
         if len(self.values) > 5000:
             self.values = self.values[-5000:]
 
-    def get_summary(self) -> Dict[str, float]:
+    def get_summary(self) -> dict[str, float]:
         """Execute get summary."""
         if not self.values:
             return {
@@ -90,7 +90,7 @@ class Telemetry:
         self.counters: Dict[str, MetricCounter] = {}
         self.gauges: Dict[str, MetricGauge] = {}
         self.histograms: Dict[str, MetricHistogram] = {}
-        self.recorded_events: List[Dict[str, Any]] = []
+        self.recorded_events: List[dict[str, Any]] = []
 
     def counter(self, name: str, description: str = "") -> MetricCounter:
         """Execute counter."""
@@ -146,11 +146,11 @@ class Telemetry:
         """Record a histogram observation, creating it when necessary."""
         self.histogram(name).observe(value)
 
-    def get_histogram_summary(self, name: str) -> Dict[str, float]:
+    def get_histogram_summary(self, name: str) -> dict[str, float]:
         """Return summary statistics for a histogram, or an empty summary."""
         return self.histogram(name).get_summary()
 
-    def record_metric(self, name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None:
+    def record_metric(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
         """Record a generic metric observation."""
         hist = self.histogram(name)
         hist.observe(value)
@@ -187,7 +187,7 @@ class Telemetry:
         """Compatibility alias for :meth:`export_prometheus_format`."""
         return self.export_prometheus_format()
 
-    def get_all_metrics(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_metrics(self) -> Dict[str, dict[str, Any]]:
         """Return a serialisable snapshot of all collected metrics."""
         return {
             "counters": {name: counter.value for name, counter in self.counters.items()},
@@ -197,7 +197,7 @@ class Telemetry:
             },
         }
 
-    def export_json(self) -> Dict[str, Dict[str, Any]]:
+    def export_json(self) -> Dict[str, dict[str, Any]]:
         """Return the metric snapshot in a JSON-serialisable structure."""
         return self.get_all_metrics()
 
@@ -208,7 +208,7 @@ class Telemetry:
         self.histograms.clear()
         self.recorded_events.clear()
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "total_counters": len(self.counters),

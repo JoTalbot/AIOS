@@ -46,7 +46,7 @@ def platform_doctor(
     platform: str,
     package: str,
     adb=None,
-    serial: Optional[str] = None,
+    serial: str | None = None,
     directory: str = "platforms",
     which=None,
     required_hints: Sequence[str] = (),

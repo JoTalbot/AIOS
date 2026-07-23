@@ -32,7 +32,7 @@ def _norm(value: str) -> str:
     return value.upper().replace("-", "_")
 
 
-def env_name(platform: str, field: str, profile: Optional[str] = None) -> str:
+def env_name(platform: str, field: str, profile: str | None = None) -> str:
     """Имя env-переменной секрета (для сообщений об ошибках/доки)."""
     parts = [_ENV_PREFIX + _norm(platform)]
     if profile:
@@ -44,9 +44,9 @@ def env_name(platform: str, field: str, profile: Optional[str] = None) -> str:
 def secret(
     platform: str,
     field: str,
-    profile: Optional[str] = None,
-    default: Optional[str] = None,
-) -> Optional[str]:
+    profile: str | None = None,
+    default: str | None = None,
+) -> str | None:
     """Читает секрет из окружения (профильный приоритетнее)."""
     if profile:
         value = os.environ.get(env_name(platform, field, profile))
@@ -58,7 +58,7 @@ def secret(
 def required_secret(
     platform: str,
     field: str,
-    profile: Optional[str] = None,
+    profile: str | None = None,
 ) -> str:
     """Секрет или понятная ошибка — с именем переменной, без значения."""
     value = secret(platform, field, profile)
@@ -73,7 +73,7 @@ def required_secret(
 
 
 def load_secrets_file(
-    path: Optional[str] = None,
+    path: str | None = None,
     override: bool = False,
 ) -> int:
     """Подгружает KEY=VALUE строки в окружение (по умолчанию не затирая).

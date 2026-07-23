@@ -14,7 +14,7 @@ class InfiniteConstitutionEngine:
 
     def __init__(self, core_articles_count: int = 67):
         self.core_articles_count = core_articles_count
-        self.dynamic_amendments: Dict[str, Dict[str, Any]] = {}
+        self.dynamic_amendments: Dict[str, dict[str, Any]] = {}
         self.immutable_axioms = [
             "AXIOM_1: Universal Human Agency & Safety Preservation",
             "AXIOM_2: Identity Non-Repudiation & Provenance",
@@ -23,7 +23,7 @@ class InfiniteConstitutionEngine:
 
     def propose_infinite_amendment(
         self, title: str, proposal_text: str, rationale: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Synthesize a new amendment candidate with mathematical alignment verification."""
         start_time = time.time()
         amendment_number = self.core_articles_count + len(self.dynamic_amendments) + 1
@@ -58,7 +58,7 @@ class InfiniteConstitutionEngine:
 
         return amendment_record
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "base_constitutional_articles": self.core_articles_count,

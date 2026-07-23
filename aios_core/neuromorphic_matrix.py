@@ -25,7 +25,7 @@ class LIFNeuron:
         self.v_rest = v_rest
         self.v_membrane = v_rest
         self.tau = tau  # Membrane decay time constant
-        self.last_spike_time: Optional[float] = None
+        self.last_spike_time: float | None = None
         self.spike_count = 0
 
     def integrate_current(self, current: float, dt_ms: float = 1.0) -> bool:
@@ -49,7 +49,7 @@ class NeuromorphicMatrixEngine:
     def __init__(self, size: int = 16):
         self.size = size
         self.neurons: List[LIFNeuron] = [LIFNeuron(f"sn_{i}") for i in range(size)]
-        self.synaptic_weights: Dict[Tuple[int, int], float] = {}
+        self.synaptic_weights: Dict[tuple[int, int], float] = {}
 
         # Initialize default random or uniform synaptic connections
         for i in range(size):
@@ -57,7 +57,7 @@ class NeuromorphicMatrixEngine:
                 if i != j:
                     self.synaptic_weights[(i, j)] = 0.25
 
-    def step_simulation(self, input_currents: Dict[int, float], dt_ms: float = 1.0) -> List[int]:
+    def step_simulation(self, input_currents: Dict[int, float], dt_ms: float = 1.0) -> list[int]:
         """Simulate one discrete time step dt across all neurons, returning indices of fired neurons."""
         spiked_neurons = []
 
@@ -80,7 +80,7 @@ class NeuromorphicMatrixEngine:
 
         return spiked_neurons
 
-    def _apply_stdp_plasticity(self, spiked_indices: List[int]):
+    def _apply_stdp_plasticity(self, spiked_indices: list[int]):
         """Adjust synaptic weights based on temporal spike correlation."""
         for post_idx in spiked_indices:
             for pre_idx in range(self.size):
@@ -98,7 +98,7 @@ class NeuromorphicMatrixEngine:
                         # Depression: Post before Pre -> weaken synapse
                         self.synaptic_weights[pair] = max(0.01, self.synaptic_weights[pair] - 0.01)
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         total_spikes = sum(n.spike_count for n in self.neurons)
         return {

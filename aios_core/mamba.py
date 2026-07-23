@@ -11,7 +11,7 @@ class MambaBlock:
         self.d_state = d_state
         self.state = [0.0] * d_state
 
-    def forward(self, x: List[float]) -> List[float]:
+    def forward(self, x: list[float]) -> list[float]:
         """Execute forward."""
         # Simplified selective SSM
         output = []

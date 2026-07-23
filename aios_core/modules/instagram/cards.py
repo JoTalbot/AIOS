@@ -40,7 +40,7 @@ class InstagramCollector:
         adb: Optional[ADBController] = None,
         parser=None,
         driver=None,
-        serial: Optional[str] = None,
+        serial: str | None = None,
         directory: str = "platforms",
         max_swipes: int = 40,
         swipe_pause_s: float = 0.0,
@@ -82,14 +82,14 @@ class InstagramCollector:
             pacer=self.pacer,
         )
 
-    def _drive(self, query: Optional[str]) -> None:
+    def _drive(self, query: str | None) -> None:
         if self.driver is not None:
             package = getattr(self.adb, "package", PACKAGE)
             self.driver(package, query)
 
     def collect(
         self,
-        query: Optional[str] = None,
+        query: str | None = None,
         max_cards: int = 100,
         progress: Optional[Callable[[int, int, int], None]] = None,
     ) -> List[AdCard]:
@@ -104,7 +104,7 @@ class InstagramCollector:
     def collect_to_storage(
         self,
         storage,
-        query: Optional[str] = None,
+        query: str | None = None,
         max_cards: int = 100,
         progress: Optional[Callable[[int, int, int], None]] = None,
     ):

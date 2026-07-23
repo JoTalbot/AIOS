@@ -46,7 +46,7 @@ class AutoWatch:
 
     def run_cycle(
         self,
-        queries: Optional[List[str]] = None,
+        queries: list[str] | None = None,
         collect: bool = True,
         min_age_days: float = 3.0,
         min_views_per_day: float = 1.0,

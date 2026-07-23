@@ -22,8 +22,8 @@ class AgentTeam:
 
     team_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     goal: str = ""
-    agents: List[str] = field(default_factory=list)
-    leader: Optional[str] = None
+    agents: list[str] = field(default_factory=list)
+    leader: str | None = None
     status: str = "forming"
     metadata: dict = field(default_factory=dict)
 
@@ -41,7 +41,7 @@ class MultiAgentOrchestrator:
         self._teams: Dict[str, AgentTeam] = {}
         self.version = "4.0.0-alpha"
 
-    def form_team(self, goal: str, agents: List[str], leader: Optional[str] = None) -> AgentTeam:
+    def form_team(self, goal: str, agents: list[str], leader: str | None = None) -> AgentTeam:
         """Form a new agent team."""
         if leader is None and agents:
             leader = agents[0]

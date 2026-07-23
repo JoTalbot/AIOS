@@ -16,9 +16,9 @@ class ModelServer:
 
     def __init__(self, registry: Any = None):
         self.registry = registry
-        self.models: Dict[str, Dict[str, Any]] = {}
-        self.traffic_splits: Dict[str, Dict[str, float]] = {}  # model_name -> {version: weight}
-        self.performance_stats: Dict[str, Dict[str, float]] = {}
+        self.models: Dict[str, dict[str, Any]] = {}
+        self.traffic_splits: Dict[str, dict[str, float]] = {}  # model_name -> {version: weight}
+        self.performance_stats: Dict[str, dict[str, float]] = {}
 
     def deploy(
         self,
@@ -45,7 +45,7 @@ class ModelServer:
 
         return key
 
-    def set_traffic_split(self, model_id: str, split_dict: Dict[str, float]) -> None:
+    def set_traffic_split(self, model_id: str, split_dict: dict[str, float]) -> None:
         """Define A/B traffic splitting ratio across model versions."""
         total_weight = sum(split_dict.values())
         if total_weight <= 0:
@@ -55,8 +55,8 @@ class ModelServer:
         self.traffic_splits[model_id] = normalized
 
     def predict(
-        self, model_id: str, input_data: Any, explicit_version: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, model_id: str, input_data: Any, explicit_version: str | None = None
+    ) -> dict[str, Any]:
         """Perform thread-safe inference routing with performance timing."""
         start_time = time.time()
         key = None
@@ -112,11 +112,11 @@ class ModelServer:
                 "success": False,
             }
 
-    def predict_batch(self, model_id: str, items: List[Any]) -> List[Dict[str, Any]]:
+    def predict_batch(self, model_id: str, items: list[Any]) -> List[dict[str, Any]]:
         """Process a batch of predictions concurrently or sequentially."""
         return [self.predict(model_id, item) for item in items]
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Summary metrics across all active model endpoints."""
         total_requests = sum(m["total_requests"] for m in self.models.values())
         return {
