@@ -20,7 +20,7 @@ class ProposedArticle:
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     title: str = ""
     principle: str = ""
-    laws: List[str] = field(default_factory=list)
+    laws: list[str] = field(default_factory=list)
     justification: str = ""
     confidence: float = 0.0
     status: str = "proposed"  # proposed, reviewed, accepted, rejected
@@ -60,7 +60,7 @@ class ConstitutionEvolver:
         self,
         title: str,
         principle: str,
-        laws: List[str],
+        laws: list[str],
         justification: str = "",
         confidence: float = 0.75,
     ) -> ProposedArticle:
@@ -133,7 +133,7 @@ class ConstitutionEvolver:
             )
         return None
 
-    def list_proposals(self, status: Optional[str] = None) -> List[ProposedArticle]:
+    def list_proposals(self, status: str | None = None) -> List[ProposedArticle]:
         """Execute list proposals."""
         if status:
             return [p for p in self._proposals.values() if p.status == status]

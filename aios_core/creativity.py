@@ -11,7 +11,7 @@ class CreativityEngine:
         self.ideas: List[Dict] = []
         self.divergence: float = 0.7
 
-    def generate_idea(self, domain: str, constraints: List[str] = None) -> Dict:
+    def generate_idea(self, domain: str, constraints: list[str] = None) -> Dict:
         """Execute generate idea."""
         idea = {
             "id": len(self.ideas),

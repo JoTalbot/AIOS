@@ -10,7 +10,7 @@ class RecursiveRewardModel:
 
     def __init__(self):
         self.reward_models: Dict[str, Callable] = {}
-        self.iterations: Dict[str, int] = {}
+        self.iterations: dict[str, int] = {}
 
     def train_iteration(self, base_model: str, human_feedback: Dict) -> str:
         """Execute train iteration."""

@@ -65,7 +65,7 @@ _STOPWORDS = {
 _TOKEN_RE = re.compile(r"[0-9A-Za-zА-Яа-яІіЇїЄєҐґ'-]+")
 
 
-def _tokenize(text: str) -> List[str]:
+def _tokenize(text: str) -> list[str]:
     return [
         token
         for token in _TOKEN_RE.findall(text.lower())
@@ -77,13 +77,13 @@ def _tokenize(text: str) -> List[str]:
 class CompetitorReport:
     """Aggregated market picture for a set of competing listings."""
 
-    query: Optional[str]
+    query: str | None
     total_ads: int
     priced_ads: int
-    min_price: Optional[float]
-    max_price: Optional[float]
-    mean_price: Optional[float]
-    median_price: Optional[float]
+    min_price: float | None
+    max_price: float | None
+    mean_price: float | None
+    median_price: float | None
     top_share: float
     top_cities: List[Tuple[str, int]] = field(default_factory=list)
 
@@ -105,7 +105,7 @@ class CompetitorReport:
 class CompetitorAnalyzer:
     """Builds :class:`CompetitorReport` statistics from collected cards."""
 
-    def analyze(self, ads: List[AdCard], query: Optional[str] = None) -> CompetitorReport:
+    def analyze(self, ads: List[AdCard], query: str | None = None) -> CompetitorReport:
         """Execute analyze."""
         prices = [ad.price for ad in ads if ad.price is not None]
         cities = Counter(ad.city for ad in ads if ad.city)
@@ -124,7 +124,7 @@ class CompetitorAnalyzer:
             top_cities=cities.most_common(10),
         )
 
-    def price_percentile(self, ads: List[AdCard], price: float) -> Optional[float]:
+    def price_percentile(self, ads: List[AdCard], price: float) -> float | None:
         """Share of priced listings cheaper than or equal to ``price``.
 
         ``0.8`` means your price is cheaper than 80% of the market.
@@ -140,14 +140,14 @@ class CompetitorAnalyzer:
 class Recommendation:
     """Actionable advice for placing an ad against the current market."""
 
-    query: Optional[str]
-    my_title: Optional[str]
-    my_price: Optional[float]
-    suggested_price: Optional[float]
+    query: str | None
+    my_title: str | None
+    my_price: float | None
+    suggested_price: float | None
     verdict: str
-    title_keywords: List[str] = field(default_factory=list)
+    title_keywords: list[str] = field(default_factory=list)
     use_top_promotion: bool = False
-    notes: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
     def to_text(self) -> str:
         """Execute to text."""
@@ -184,9 +184,9 @@ class RecommendationEngine:
         my_title = my_ad.title if my_ad else None
         prices = [ad.price for ad in ads if ad.price is not None]
 
-        suggested_price: Optional[float] = None
+        suggested_price: float | None = None
         verdict = "unknown"
-        notes: List[str] = []
+        notes: list[str] = []
 
         if prices:
             market_median = median(prices)
@@ -238,7 +238,7 @@ class RecommendationEngine:
         )
 
     @staticmethod
-    def _title_keywords(ads: List[AdCard], my_title: Optional[str]) -> List[str]:
+    def _title_keywords(ads: List[AdCard], my_title: str | None) -> list[str]:
         """Frequent tokens from the cheaper half of listings missing in my title."""
         priced = sorted(
             (ad for ad in ads if ad.price is not None and ad.title),
@@ -259,14 +259,14 @@ class PriceChange:
 
     fingerprint: str
     title: str
-    url: Optional[str]
-    city: Optional[str]
-    query: Optional[str]
+    url: str | None
+    city: str | None
+    query: str | None
     first_price: float
     last_price: float
     change_pct: float
     sightings: int
-    last_seen_at: Optional[str]
+    last_seen_at: str | None
 
     def to_dict(self) -> Dict[str, object]:
         """Serialize to dict."""
@@ -291,7 +291,7 @@ class PriceTracker:
         self.storage = storage
 
     def price_drops(
-        self, query: Optional[str] = None, threshold_pct: float = -0.005
+        self, query: str | None = None, threshold_pct: float = -0.005
     ) -> List[PriceChange]:
         """Ads whose latest sighted price is below the first sighted price.
 
@@ -329,6 +329,6 @@ class PriceTracker:
         drops.sort(key=lambda change: change.change_pct)
         return drops
 
-    def gone_from_feed(self, query: Optional[str] = None) -> List[AdCard]:
+    def gone_from_feed(self, query: str | None = None) -> List[AdCard]:
         """Ads marked inactive (vanished from the feed — sold or removed)."""
         return self.storage.get_ads(query=query, active_only=False)

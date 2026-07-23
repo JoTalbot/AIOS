@@ -18,9 +18,9 @@ class MultiDimensionalWorldModel:
 
     def simulate_action_impact(
         self,
-        action_plan: Dict[str, Any],
-        initial_environment_state: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        action_plan: dict[str, Any],
+        initial_environment_state: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Run predictive Monte Carlo counterfactual simulation trajectory for proposed action plan."""
         start_time = time.time()
         env_state = dict(
@@ -33,7 +33,7 @@ class MultiDimensionalWorldModel:
             }
         )
 
-        trajectory: List[Dict[str, Any]] = []
+        trajectory: List[dict[str, Any]] = []
         projected_failures = 0
 
         action_complexity = action_plan.get("complexity", 1.0)
@@ -76,7 +76,7 @@ class MultiDimensionalWorldModel:
             "simulation_time_ms": execution_time_ms,
         }
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "rollouts_count": self.rollouts_count,

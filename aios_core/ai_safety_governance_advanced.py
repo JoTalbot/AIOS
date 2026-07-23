@@ -10,10 +10,10 @@ class AdvancedAIGovernance:
 
     def __init__(self):
         self.governance_bodies: List[Dict] = []
-        self.policies: Dict[str, Dict] = {}
+        self.policies: dict[str, dict] = {}
         self.compliance_checks: List[Dict] = []
 
-    def create_governance_body(self, name: str, members: List[str], authority: List[str]) -> None:
+    def create_governance_body(self, name: str, members: list[str], authority: list[str]) -> None:
         """Execute create governance body."""
         body = {"name": name, "members": members, "authority": authority}
         self.governance_bodies.append(body)

@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 
 def promotion_plan(
     stagnant_items: List[Dict],
-    daily_budget: Optional[float] = None,
+    daily_budget: float | None = None,
     currency: str = "UAH",
     max_items: int = 5,
 ) -> Dict[str, object]:

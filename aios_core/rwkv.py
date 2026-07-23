@@ -10,7 +10,7 @@ class RWKVBlock:
         self.dim = dim
         self.wkv_state = [0.0] * dim
 
-    def forward(self, x: List[float]) -> List[float]:
+    def forward(self, x: list[float]) -> list[float]:
         """Execute forward."""
         # Time-mixing + channel-mixing (simplified)
         new_state = [(s * 0.9 + xi) for s, xi in zip(self.wkv_state, x)]
@@ -28,7 +28,7 @@ class RWKV:
     def __init__(self, layers: int = 12, dim: int = 512):
         self.blocks = [RWKVBlock(dim) for _ in range(layers)]
 
-    def forward(self, x: List[float]) -> List[float]:
+    def forward(self, x: list[float]) -> list[float]:
         """Execute forward."""
         for block in self.blocks:
             x = block.forward(x)

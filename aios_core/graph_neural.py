@@ -8,13 +8,13 @@ class GraphNeuralNetwork:
 
     def __init__(self, layers: int = 2):
         self.layers = layers
-        self.embeddings: Dict[str, List[float]] = {}
+        self.embeddings: Dict[str, list[float]] = {}
 
-    def add_node(self, node_id: str, features: List[float]) -> None:
+    def add_node(self, node_id: str, features: list[float]) -> None:
         """Execute add node."""
         self.embeddings[node_id] = features
 
-    def message_passing(self, edges: List[tuple]) -> Dict[str, List[float]]:
+    def message_passing(self, edges: List[tuple]) -> Dict[str, list[float]]:
         """Simple message passing simulation."""
         new_embeddings = self.embeddings.copy()
         for src, dst in edges:

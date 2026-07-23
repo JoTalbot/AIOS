@@ -36,9 +36,9 @@ class AndroidExecutionEvent:
     device_id: str
     action: str
     latency_ms: float
-    screen: Optional[str]
+    screen: str | None
     success: bool
-    meta: Dict[str, Any]
+    meta: dict[str, Any]
 
 
     """Android observability — metrics, failure prediction."""
@@ -46,10 +46,10 @@ class AndroidObservability:
     def __init__(self, device_id: str):
         self.device_id = device_id
         self.events: List[AndroidExecutionEvent] = []
-        self.counters: Dict[str, float] = {}
-        self.gauges: Dict[str, float] = {}
-        self._active_android_pid: Optional[int] = None
-        self._heuristic_thresholds: Dict[str, float] = {
+        self.counters: dict[str, float] = {}
+        self.gauges: dict[str, float] = {}
+        self._active_android_pid: int | None = None
+        self._heuristic_thresholds: dict[str, float] = {
             "memory_mb": 500.0,
             "cpu_percent": 80.0,
             "event_rate": 100.0,
@@ -76,7 +76,7 @@ class AndroidObservability:
         """Isolate the Android test process for reliability."""
         return self._isolate_process()
 
-    def check_heuristic_anomalies(self) -> List[Dict[str, Any]]:
+    def check_heuristic_anomalies(self) -> List[dict[str, Any]]:
         """Check for heuristic anomalies in system state."""
         anomalies = []
         if not HAS_PSUTIL:
@@ -131,8 +131,8 @@ class AndroidObservability:
         action: str,
         latency_ms: float,
         success: bool,
-        screen: Optional[str] = None,
-        meta: Optional[Dict[str, Any]] = None,
+        screen: str | None = None,
+        meta: dict[str, Any] | None = None,
     ):
         """Record an Android execution event with metadata."""
         event = AndroidExecutionEvent(
@@ -158,7 +158,7 @@ class AndroidObservability:
 
     def to_prometheus(self) -> str:
         """Export metrics in Prometheus text format."""
-        lines: List[str] = []
+        lines: list[str] = []
         for key, value in self.counters.items():
             lines.append(f"# TYPE {key} counter")
             lines.append(f"{key} {value}")
@@ -167,7 +167,7 @@ class AndroidObservability:
             lines.append(f"{key} {value}")
         return "\n".join(lines)
 
-    def failure_rate(self, action: Optional[str] = None) -> float:
+    def failure_rate(self, action: str | None = None) -> float:
         """Return the observed failure rate over window seconds."""
         subset = self.events
         if action:
@@ -176,7 +176,7 @@ class AndroidObservability:
             return 0.0
         return sum(1 for e in subset if not e.success) / len(subset)
 
-    def summary(self) -> Dict[str, Any]:
+    def summary(self) -> dict[str, Any]:
         """Return a human-readable observability summary."""
         total = len(self.events)
         failed = sum(1 for event in self.events if not event.success)
@@ -188,7 +188,7 @@ class AndroidObservability:
             "metrics_prom": self.to_prometheus(),
         }
 
-    def render_dashboard(self) -> Dict[str, Any]:
+    def render_dashboard(self) -> dict[str, Any]:
         """Render an HTML dashboard of observability data."""
         return {
             "device_id": self.device_id,

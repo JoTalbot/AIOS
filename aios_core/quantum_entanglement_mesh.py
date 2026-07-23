@@ -20,7 +20,7 @@ class QuantumEntangledChannel:
         self.coherence_fidelity = 0.9999
         self.teleported_states_count = 0
 
-    def teleport_state(self, state_payload: Dict[str, Any]) -> Dict[str, Any]:
+    def teleport_state(self, state_payload: dict[str, Any]) -> dict[str, Any]:
         """Instantaneously teleport quantum state payload across entangled channel."""
         state_bytes = str(state_payload).encode("utf-8")
         state_hash = hashlib.sha256(state_bytes).hexdigest()
@@ -53,8 +53,8 @@ class QuantumEntanglementMesh:
         return channel
 
     def sync_instantaneous_state(
-        self, node_a: str, node_b: str, payload: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, node_a: str, node_b: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
         """Perform zero-latency state synchronization between paired quantum nodes."""
         channel_id = f"qlink_{node_a}_{node_b}"
         if channel_id not in self.channels:
@@ -67,7 +67,7 @@ class QuantumEntanglementMesh:
 
         return channel.teleport_state(payload)
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "active_entangled_channels": len(self.channels),

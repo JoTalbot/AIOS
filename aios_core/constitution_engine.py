@@ -120,8 +120,8 @@ class ConstitutionEngine:
 
     def __init__(
         self,
-        constitution_dir: Optional[str] = None,
-        policies_dir: Optional[str] = None,
+        constitution_dir: str | None = None,
+        policies_dir: str | None = None,
     ) -> None:
         self.version = "3.0.0"
         self.constitution = ConstitutionLoader(constitution_dir)
@@ -494,8 +494,8 @@ class ConstitutionEngine:
         violations: list[dict],
         requirements: list[dict],
         risk_level: str,
-        threat_action: Optional[str],
-        threat_escalation: Optional[str],
+        threat_action: str | None,
+        threat_escalation: str | None,
         warnings: list[str],
     ) -> tuple[DecisionOutcome, str, str]:
         """Determine the final evaluation outcome."""

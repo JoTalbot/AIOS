@@ -27,10 +27,10 @@ class APIKey:
 
     key: str
     subject: str
-    roles: List[str]
+    roles: list[str]
     created_at: str
-    expires_at: Optional[str] = None
-    last_used: Optional[str] = None
+    expires_at: str | None = None
+    last_used: str | None = None
     usage_count: int = 0
     revoked: bool = False
 
@@ -68,8 +68,8 @@ class SecretManager:
     def generate_key(
         self,
         subject: str,
-        roles: List[str],
-        ttl_days: Optional[int] = None,
+        roles: list[str],
+        ttl_days: int | None = None,
         prefix: str = "aios",
     ) -> APIKey:
         """Generate a new API key.
@@ -153,7 +153,7 @@ class SecretManager:
         return True
 
     def rotate_key(
-        self, old_key: str, ttl_days: Optional[int] = None, reason: str = "rotation"
+        self, old_key: str, ttl_days: int | None = None, reason: str = "rotation"
     ) -> Optional[APIKey]:
         """Rotate an API key (revoke old, create new with same subject/roles).
 

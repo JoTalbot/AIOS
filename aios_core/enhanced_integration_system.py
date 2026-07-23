@@ -174,13 +174,13 @@ class EnhancedIntegrationSystem:
                 print(f"Failed to stop integration system: {str(e)}")
             return False
 
-    async def send_webhook(self, webhook_name: str, event: str, data: Dict[str, Any]) -> bool:
+    async def send_webhook(self, webhook_name: str, event: str, data: dict[str, Any]) -> bool:
         """Send webhook notification."""
         if not self.integration_api:
             return False
         return await self.integration_api.send_webhook(webhook_name, event, data)
 
-    async def get_system_status(self) -> Dict[str, Any]:
+    async def get_system_status(self) -> dict[str, Any]:
         """Get overall system status."""
         status = {
             "is_running": self.is_running,

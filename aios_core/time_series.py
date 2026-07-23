@@ -8,7 +8,7 @@ class TimeSeriesAnalyzer:
     """Basic time series analysis and forecasting."""
 
     def __init__(self):
-        self.series: Dict[str, List[float]] = {}
+        self.series: Dict[str, list[float]] = {}
 
     def add_data(self, series_name: str, value: float) -> None:
         """Execute add data."""
@@ -18,7 +18,7 @@ class TimeSeriesAnalyzer:
         if len(self.series[series_name]) > 1000:
             self.series[series_name] = self.series[series_name][-1000:]
 
-    def moving_average(self, series_name: str, window: int = 5) -> List[float]:
+    def moving_average(self, series_name: str, window: int = 5) -> list[float]:
         """Execute moving average."""
         data = self.series.get(series_name, [])
         if len(data) < window:

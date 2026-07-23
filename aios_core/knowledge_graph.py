@@ -28,7 +28,7 @@ class KnowledgeGraph:
         label: str,
         node_type: str = "concept",
         properties: Optional[dict] = None,
-        node_id: Optional[str] = None,
+        node_id: str | None = None,
     ) -> dict:
         """Add a node to the graph.
 
@@ -93,8 +93,8 @@ class KnowledgeGraph:
 
     def find_nodes(
         self,
-        label: Optional[str] = None,
-        node_type: Optional[str] = None,
+        label: str | None = None,
+        node_type: str | None = None,
         limit: int = 100,
     ) -> list[dict]:
         """Find nodes by label (partial match) and/or type."""
@@ -125,7 +125,7 @@ class KnowledgeGraph:
         relation: str,
         properties: Optional[dict] = None,
         weight: float = 1.0,
-        edge_id: Optional[str] = None,
+        edge_id: str | None = None,
     ) -> dict:
         """Add a directed edge (relation) between two nodes.
 
@@ -169,7 +169,7 @@ class KnowledgeGraph:
     def related(
         self,
         node_id: str,
-        relation: Optional[str] = None,
+        relation: str | None = None,
         direction: str = "both",
         limit: int = 100,
     ) -> list[dict]:
@@ -210,7 +210,7 @@ class KnowledgeGraph:
     def neighbors(
         self,
         node_id: str,
-        relation: Optional[str] = None,
+        relation: str | None = None,
         depth: int = 1,
     ) -> list[dict]:
         """Find neighboring nodes (BFS traversal up to depth)."""

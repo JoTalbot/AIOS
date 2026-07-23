@@ -25,8 +25,8 @@ class ValidationResult:
     code: str  # machine-readable code e.g. "missing_goal"
     message: str
     severity: str  # "error" or "warning"
-    article_id: Optional[str] = None
-    policy_name: Optional[str] = None
+    article_id: str | None = None
+    policy_name: str | None = None
 
 
 @dataclass
@@ -53,8 +53,8 @@ class ConstitutionValidator:
 
     def __init__(
         self,
-        constitution_dir: Optional[str] = None,
-        policies_dir: Optional[str] = None,
+        constitution_dir: str | None = None,
+        policies_dir: str | None = None,
     ):
         self.version = "3.0.0"
         self.constitution = ConstitutionLoader(constitution_dir)

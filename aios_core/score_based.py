@@ -11,11 +11,11 @@ class ScoreBasedModel:
         self.dim = dim
         self.noise_schedule = [0.1 * i for i in range(10)]
 
-    def train(self, data: List[List[float]], epochs: int = 100) -> None:
+    def train(self, data: List[list[float]], epochs: int = 100) -> None:
         """Execute train."""
         return {"status": "trained", "samples": len(data), "epochs": epochs}
 
-    def sample(self, num_samples: int = 1) -> List[List[float]]:
+    def sample(self, num_samples: int = 1) -> List[list[float]]:
         """Execute sample."""
         samples = []
         for _ in range(num_samples):

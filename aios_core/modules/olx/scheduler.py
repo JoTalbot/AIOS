@@ -41,7 +41,7 @@ class CollectionScheduler:
         with self._history_lock:
             self.history.append(record)
 
-    def run_once(self, queries: List[str], max_cards: int = 100) -> Dict[str, Dict[str, object]]:
+    def run_once(self, queries: list[str], max_cards: int = 100) -> Dict[str, Dict[str, object]]:
         """Collect every query a single time and persist the results.
 
         Returns:
@@ -67,7 +67,7 @@ class CollectionScheduler:
 
     def start(
         self,
-        queries: List[str],
+        queries: list[str],
         max_cards: int = 100,
         run_immediately: bool = True,
     ) -> bool:

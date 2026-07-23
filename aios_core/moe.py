@@ -20,7 +20,7 @@ class MixtureOfExperts:
 
     def __init__(self, num_experts: int = 8):
         self.experts: List[Expert] = []
-        self.router_weights: List[float] = [1.0 / num_experts] * num_experts
+        self.router_weights: list[float] = [1.0 / num_experts] * num_experts
 
     def add_expert(self, name: str, func: Callable) -> None:
         """Execute add expert."""

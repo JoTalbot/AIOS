@@ -7,9 +7,9 @@ from typing import Any, Dict, List
 class QLearningAgent:
     """Simple Q-Learning agent."""
 
-    def __init__(self, actions: List[str], learning_rate: float = 0.1, discount: float = 0.9):
+    def __init__(self, actions: list[str], learning_rate: float = 0.1, discount: float = 0.9):
         self.actions = actions
-        self.q_table: Dict[str, Dict[str, float]] = {}
+        self.q_table: Dict[str, dict[str, float]] = {}
         self.lr = learning_rate
         self.discount = discount
 

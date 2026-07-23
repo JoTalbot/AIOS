@@ -8,7 +8,7 @@ class MetaLearner:
 
     def __init__(self):
         self.task_history: List[Dict] = []
-        self.strategies: Dict[str, float] = {}
+        self.strategies: dict[str, float] = {}
 
     def record_task(self, task_type: str, success: bool, duration: float) -> None:
         """Execute record task."""

@@ -53,7 +53,7 @@ class QuantumCircuitSimulator:
 
         self.state_vector = new_vector
 
-    def measure_probabilities(self) -> List[float]:
+    def measure_probabilities(self) -> list[float]:
         """Compute measurement probability distribution across state basis."""
         return [abs(amplitude) ** 2 for amplitude in self.state_vector]
 
@@ -76,8 +76,8 @@ class QuantumNativeEngine:
         self.circuits_executed = 0
 
     def optimize_task_schedule_qaoa(
-        self, tasks: List[Dict[str, Any]], num_agents: int = 2
-    ) -> Dict[str, Any]:
+        self, tasks: List[dict[str, Any]], num_agents: int = 2
+    ) -> dict[str, Any]:
         """Use Quantum Approximate Optimization Algorithm (QAOA) simulation to solve task assignment."""
         start_time = time.time()
         num_qubits = min(6, max(2, len(tasks)))
@@ -110,7 +110,7 @@ class QuantumNativeEngine:
             "execution_time_ms": execution_time_ms,
         }
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "circuits_executed": self.circuits_executed,

@@ -47,9 +47,9 @@ class IntegrationEvent:
     event_type: IntegrationEventType
     source: str
     timestamp: float
-    data: Dict[str, Any]
-    metadata: Optional[Dict[str, Any]] = None
-    correlation_id: Optional[str] = None
+    data: dict[str, Any]
+    metadata: dict[str, Any] | None = None
+    correlation_id: str | None = None
 
 
 class ExternalIntegrationManager:
@@ -250,7 +250,7 @@ class ExternalIntegrationAPI:
                 )
 
             # Create a simple webhook handler that forwards to the URL
-            async def webhook_handler(event_data: Dict[str, Any]) -> None:
+            async def webhook_handler(event_data: dict[str, Any]) -> None:
                 import aiohttp
 
                 async with aiohttp.ClientSession() as session:

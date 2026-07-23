@@ -163,8 +163,8 @@ class Orchestrator:
         self,
         db: Optional[Database] = None,
         config: Optional[AIOSConfig] = None,
-        constitution_dir: Optional[str] = None,
-        policies_dir: Optional[str] = None,
+        constitution_dir: str | None = None,
+        policies_dir: str | None = None,
     ):
         self.version = "9.0.0"
         self.config = config or load_config()
@@ -222,7 +222,7 @@ class Orchestrator:
         authority: str = "system",
         risk_level: str = "medium",
         metadata: Optional[dict] = None,
-        task_id: Optional[str] = None,
+        task_id: str | None = None,
     ) -> Task:
         """Create a new task without executing it.
 

@@ -11,7 +11,7 @@ class TTLCache:
         self.default_ttl = default_ttl
         self._store: Dict[str, tuple] = {}  # key -> (value, expiry)
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Execute set."""
         expiry = time.time() + (ttl or self.default_ttl)
         self._store[key] = (value, expiry)

@@ -26,12 +26,12 @@ class ImprovementSuggestion:
 
     title: str
     suggested_title: str
-    current_price: Optional[float]
-    suggested_price: Optional[float]
+    current_price: float | None
+    suggested_price: float | None
     price_verdict: str
-    keywords_to_add: List[str] = field(default_factory=list)
-    description_additions: List[str] = field(default_factory=list)
-    notes: List[str] = field(default_factory=list)
+    keywords_to_add: list[str] = field(default_factory=list)
+    description_additions: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, object]:
         """Serialize to dictionary."""
@@ -90,9 +90,9 @@ class AdImprover:
             suggested_title = candidate
 
         prices = [card.price for card in competitors if card.price is not None]
-        suggested_price: Optional[float] = None
+        suggested_price: float | None = None
         verdict = "unknown"
-        notes: List[str] = []
+        notes: list[str] = []
         if prices:
             market_median = median(prices)
             suggested_price = round(market_median * self.undercut_ratio)
@@ -110,7 +110,7 @@ class AdImprover:
         else:
             notes.append("Немає конкурентів з цінами для порівняння.")
 
-        additions: List[str] = []
+        additions: list[str] = []
         lowered_desc = existing_description.lower()
         cities = [card.city for card in competitors if card.city]
         if cities and own_ad.title:
@@ -142,7 +142,7 @@ class RepostDecision:
     reason: str
     age_days: float
     views_total: int
-    best_hours_local: List[int] = field(default_factory=list)
+    best_hours_local: list[int] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, object]:
         """Serialize to dictionary."""
@@ -236,7 +236,7 @@ class Reposter:
 
     def plan_steps(
         self, own_ad: OwnAd, suggestion: Optional[ImprovementSuggestion] = None
-    ) -> List[str]:
+    ) -> list[str]:
         """Plan actionable steps for the repost."""
         title = suggestion.suggested_title if suggestion else own_ad.title
         price = (
@@ -305,7 +305,7 @@ class OwnAdEditor:
     def __init__(self, adb: Optional[ADBController] = None):
         self.adb = adb or ADBController()
 
-    def plan_steps(self, own_ad: OwnAd, suggestion: ImprovementSuggestion) -> List[str]:
+    def plan_steps(self, own_ad: OwnAd, suggestion: ImprovementSuggestion) -> list[str]:
         """Plan actionable steps for the repost."""
         steps = [
             f"Відкрити «{own_ad.title}» в «Мої оголошення»",

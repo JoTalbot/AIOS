@@ -54,9 +54,9 @@ class Alert:
     message: str
     timestamp: float
     source: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
     resolved: bool = False
-    resolved_at: Optional[float] = None
+    resolved_at: float | None = None
 
 
 @dataclass
@@ -230,7 +230,7 @@ class IntegrationMonitor:
         self.health_checks = {}
         self._running = False
 
-    def _create_integration_metrics(self) -> Dict[str, Any]:
+    def _create_integration_metrics(self) -> dict[str, Any]:
         """Factory for per-integration metric objects (name set on first use)."""
         return {
             "requests": MetricCounter("integration_requests", "Requests for integration"),
@@ -260,7 +260,7 @@ class IntegrationMonitor:
         if not success:
             metrics["errors"].add(1)
 
-    async def run_health_checks(self) -> Dict[str, Dict[str, Any]]:
+    async def run_health_checks(self) -> Dict[str, dict[str, Any]]:
         """Run health checks for all registered integrations."""
         results = {}
 
@@ -323,7 +323,7 @@ class EnhancedLoggingManager:
         self.log_aggregators.append(aggregator)
         logger.info(f"Added log aggregator: {aggregator.__name__}")
 
-    def log_integration_event(self, event_type: str, data: Dict[str, Any]) -> None:
+    def log_integration_event(self, event_type: str, data: dict[str, Any]) -> None:
         """Log integration events."""
         self.loggers["aios_integration"].info(
             f"Integration event: {event_type}",
@@ -479,7 +479,7 @@ class MonitoringSystem:
         self._running = False
         logger.info("Monitoring system stopped")
 
-    def get_monitoring_dashboard_data(self) -> Dict[str, Any]:
+    def get_monitoring_dashboard_data(self) -> dict[str, Any]:
         """Get data for monitoring dashboard."""
         return {
             "active_alerts": len(self.alert_manager.get_active_alerts()),

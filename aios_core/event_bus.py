@@ -350,10 +350,10 @@ class EventBus:
 
     def query(
         self,
-        event_type: Optional[str] = None,
-        source: Optional[str] = None,
-        since: Optional[str] = None,
-        until: Optional[str] = None,
+        event_type: str | None = None,
+        source: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
         limit: int = 100,
     ) -> list[dict]:
         """Query persisted events with optional filters.
@@ -424,7 +424,7 @@ class EventBus:
 
     def recent(
         self,
-        event_type: Optional[str] = None,
+        event_type: str | None = None,
         limit: int = 50,
     ) -> list[dict]:
         """Return the most recent events, optionally filtered by type.

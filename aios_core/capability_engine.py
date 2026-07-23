@@ -94,9 +94,9 @@ class Capability:
     metrics: dict = field(default_factory=dict)
     properties: dict = field(default_factory=dict)
     registered_at: str = ""
-    updated_at: Optional[str] = None
-    validated_at: Optional[str] = None
-    deprecated_at: Optional[str] = None
+    updated_at: str | None = None
+    validated_at: str | None = None
+    deprecated_at: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -790,11 +790,11 @@ class CapabilityEngine:
 
     def search(
         self,
-        query: Optional[str] = None,
-        capability_type: Optional[str] = None,
-        status: Optional[str] = None,
-        tag: Optional[str] = None,
-        risk_level: Optional[str] = None,
+        query: str | None = None,
+        capability_type: str | None = None,
+        status: str | None = None,
+        tag: str | None = None,
+        risk_level: str | None = None,
         limit: int = 50,
     ) -> list[dict]:
         """Search / filter capabilities."""
@@ -1000,7 +1000,7 @@ class CapabilityEngine:
 # ---------------------------------------------------------------------------
 
 
-def _json(data: Any) -> Optional[str]:
+def _json(data: Any) -> str | None:
     """Serialize to JSON, returning None for None input."""
     if data is None:
         return None

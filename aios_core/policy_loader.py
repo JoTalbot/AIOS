@@ -182,7 +182,7 @@ class PolicyLoader:
     Supports security, federation, and evolution policies.
     """
 
-    def __init__(self, policies_dir: Optional[str] = None):
+    def __init__(self, policies_dir: str | None = None):
         """Initialize loader.
 
         Args:
@@ -294,14 +294,14 @@ class PolicyLoader:
         """Get the evolution policy."""
         return self.get_policy("evolution_policy")
 
-    def get_threat_action(self, threat_level: str) -> Optional[str]:
+    def get_threat_action(self, threat_level: str) -> str | None:
         """Get the action for a given threat level from security policy."""
         sec = self.get_security_policy()
         if sec and threat_level in sec.threat_levels:
             return sec.threat_levels[threat_level].action
         return None
 
-    def get_threat_escalation(self, threat_level: str) -> Optional[str]:
+    def get_threat_escalation(self, threat_level: str) -> str | None:
         """Get the escalation for a given threat level from security policy."""
         sec = self.get_security_policy()
         if sec and threat_level in sec.threat_levels:
@@ -318,7 +318,7 @@ class PolicyLoader:
                 return rule.enabled
         return False
 
-    def is_requirement_met(self, policy_name: str, req_name: str) -> Optional[bool]:
+    def is_requirement_met(self, policy_name: str, req_name: str) -> bool | None:
         """Check if a requirement is set in a policy. Returns None if not found."""
         policy = self.get_policy(policy_name)
         if policy is None:

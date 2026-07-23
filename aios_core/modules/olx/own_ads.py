@@ -25,14 +25,14 @@ class OwnAd:
     """One of my listings with its public counters."""
 
     title: str
-    price: Optional[float] = None
-    currency: Optional[str] = None
+    price: float | None = None
+    currency: str | None = None
     views: int = 0
     favorites: int = 0
     messages: int = 0
     status: str = "active"
-    url: Optional[str] = None
-    ad_id: Optional[str] = None
+    url: str | None = None
+    ad_id: str | None = None
 
     @property
     def fingerprint(self) -> str:
@@ -81,9 +81,9 @@ class OwnAdsParser:
             resource_id = (node.attrib.get("resource-id") or "").lower()
             if not any(marker in resource_id for marker in _CARD_MARKERS):
                 continue
-            texts: List[str] = []
-            url: Optional[str] = None
-            ad_id: Optional[str] = None
+            texts: list[str] = []
+            url: str | None = None
+            ad_id: str | None = None
             for child in node.iter():
                 text = normalize_text(child.attrib.get("text"))
                 if text:
@@ -101,9 +101,9 @@ class OwnAdsParser:
 
     @staticmethod
     def ad_from_texts(
-        texts: List[str],
-        url: Optional[str] = None,
-        ad_id: Optional[str] = None,
+        texts: list[str],
+        url: str | None = None,
+        ad_id: str | None = None,
     ) -> OwnAd:
         """Classify texts of one own-ad card: price/counters/status by shape,
         first remaining text becomes the title."""
@@ -141,7 +141,7 @@ class OwnAdsTracker:
     def __init__(self, storage):
         self.storage = storage
 
-    def record_snapshot(self, ads: List[OwnAd], seen_at: Optional[str] = None) -> Dict[str, object]:
+    def record_snapshot(self, ads: List[OwnAd], seen_at: str | None = None) -> Dict[str, object]:
         """Persist one snapshot of all own ads; reports counter deltas."""
         now = seen_at or datetime.now(timezone.utc).isoformat()
         result: Dict[str, object] = {"recorded": len(ads), "new": 0, "deltas": {}}

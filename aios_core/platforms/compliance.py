@@ -120,7 +120,7 @@ def compliance_guard(
     }
 
 
-def rate_limit_hours(platform: str, directory: str = "platforms") -> Optional[int]:
+def rate_limit_hours(platform: str, directory: str = "platforms") -> int | None:
     """Rate-limit платформы (действий/час) из compliance, если задан."""
     value = compliance_block(platform, directory).get("actions_per_hour")
     try:

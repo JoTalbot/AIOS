@@ -39,7 +39,7 @@ _COMMENT_RE = re.compile(r"^(\d[\d\s\u00a0,.]*)\s*(коментар\w*|comments?
 DEFAULT_GRID_MARKERS = ("row_profile", "grid_item", "profile_media")
 
 
-def _parse_comment_counter(text: str) -> Optional[int]:
+def _parse_comment_counter(text: str) -> int | None:
     match = _COMMENT_RE.match(text.strip())
     if not match:
         return None
@@ -54,8 +54,8 @@ class OwnPost:
     likes: int = 0
     comments: int = 0
     views: int = 0
-    post_id: Optional[str] = None
-    posted_text: Optional[str] = None
+    post_id: str | None = None
+    posted_text: str | None = None
 
     @property
     def fingerprint(self) -> str:
@@ -123,10 +123,10 @@ class OwnPostsParser:
         return posts
 
     @staticmethod
-    def post_from_texts(texts: List[str]) -> Optional[OwnPost]:
+    def post_from_texts(texts: list[str]) -> Optional[OwnPost]:
         """Классификация текстов ячейки: счётчики/подпись поста."""
         likes = comments = views = 0
-        leftovers: List[str] = []
+        leftovers: list[str] = []
         for raw in texts:
             counter = parse_counter_text(raw)
             if counter is not None:
@@ -165,7 +165,7 @@ class PostComposer:
         self.adb = adb or ADBController(package=PACKAGE)
         self.wait_s = wait_s
 
-    def publish_plan(self, image_path: str, caption: str) -> List[str]:
+    def publish_plan(self, image_path: str, caption: str) -> list[str]:
         """План шагов публикации (какой экран, что нажимаем)."""
         return [
             f"push {image_path} -> {MEDIA_REMOTE}",

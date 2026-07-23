@@ -8,7 +8,7 @@ class ExperimentTracker:
     """Track ML experiments and results."""
 
     def __init__(self):
-        self.experiments: Dict[str, Dict] = {}
+        self.experiments: dict[str, dict] = {}
 
     def start_experiment(self, name: str, params: Dict) -> str:
         """Execute start experiment."""

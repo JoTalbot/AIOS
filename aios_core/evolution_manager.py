@@ -227,7 +227,7 @@ class EvolutionManager:
             return self._row_to_dict(row)
         return None
 
-    def list_proposals(self, status: Optional[str] = None) -> list[dict]:
+    def list_proposals(self, status: str | None = None) -> list[dict]:
         """List all proposals, optionally filtered by status.
 
         Args:

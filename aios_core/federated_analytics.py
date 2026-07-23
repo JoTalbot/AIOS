@@ -7,7 +7,7 @@ class FederatedAnalytics:
     """Privacy-preserving distributed analytics."""
 
     def __init__(self):
-        self.nodes: Dict[str, Dict] = {}
+        self.nodes: dict[str, dict] = {}
 
     def register_node(self, node_id: str) -> None:
         """Execute register node."""

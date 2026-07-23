@@ -12,7 +12,7 @@ class LongTermSafety:
         self.long_term_plans: List[Dict] = []
         self.risk_assessments: List[Dict] = []
 
-    def create_long_term_plan(self, horizon_years: int, goals: List[str]) -> Dict:
+    def create_long_term_plan(self, horizon_years: int, goals: list[str]) -> Dict:
         """Execute create long term plan."""
         plan = {
             "horizon": horizon_years,

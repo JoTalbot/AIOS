@@ -7,7 +7,7 @@ class EmotionalIntelligence:
     """Emotion recognition and regulation."""
 
     def __init__(self):
-        self.emotions: Dict[str, float] = {
+        self.emotions: dict[str, float] = {
             "joy": 0.0,
             "sadness": 0.0,
             "anger": 0.0,

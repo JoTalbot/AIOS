@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 # Экраны, которые нужно снять для каждой секции hints.
-_SCREENS: Dict[str, Dict[str, str]] = {
+_SCREENS: Dict[str, dict[str, str]] = {
     "cards": {
         "dump": "cards.xml",
         "hint": (
@@ -75,7 +75,7 @@ def calibration_recipe(
     *,
     kind: str = "marketplace",
     have_hints: Optional[Dict[str, object]] = None,
-    serial: Optional[str] = None,
+    serial: str | None = None,
     directory: str = "platforms",
 ) -> Dict[str, object]:
     """Строит пошаговый on-device calibrate-рецепт для платформы.
@@ -100,14 +100,14 @@ def calibration_recipe(
             f"unknown platform kind '{kind}': " f"expected one of {sorted(_KIND_HINTS)}"
         )
     have_hints = have_hints or {}
-    needed: List[str] = list(_KIND_HINTS[kind])
+    needed: list[str] = list(_KIND_HINTS[kind])
     if kind != "messenger":
         # tab-bar навигация (reels_tab) есть только у ленточных платформ
         needed.append("navigation")
     missing = [section for section in needed if not _has_hints(have_hints, section)]
 
     serial_part = f"-s {serial} " if serial else ""
-    steps: List[Dict[str, str]] = [
+    steps: List[dict[str, str]] = [
         {
             "action": "preflight",
             "title": "Подключить устройство и убедиться, что пакет установлен",
@@ -115,7 +115,7 @@ def calibration_recipe(
         }
     ]
 
-    dump_flags: List[str] = []
+    dump_flags: list[str] = []
     for section in _ALL_SECTIONS:
         if section not in missing:
             continue

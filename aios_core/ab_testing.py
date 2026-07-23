@@ -14,10 +14,10 @@ class ABTest:
     results to determine a statistical winner.
     """
 
-    def __init__(self, name: str, variants: Dict[str, float]):
+    def __init__(self, name: str, variants: dict[str, float]):
         self.name = name
         self.variants = variants  # variant_name -> weight
-        self.results: Dict[str, int] = {v: 0 for v in variants}
+        self.results: dict[str, int] = {v: 0 for v in variants}
 
     def assign_variant(self, user_id: str) -> str:
         """Assign *user_id* to a variant using weighted random selection."""

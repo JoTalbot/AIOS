@@ -30,7 +30,7 @@ class NeuromorphicLayer:
     def __init__(self, size: int):
         self.neurons = [SpikingNeuron() for _ in range(size)]
 
-    def forward(self, inputs: List[float]) -> List[int]:
+    def forward(self, inputs: list[float]) -> list[int]:
         """Execute forward."""
         outputs = []
         for i, neuron in enumerate(self.neurons):

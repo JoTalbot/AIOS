@@ -35,7 +35,7 @@ class ShardGateway:
     def __init__(
         self,
         router: Optional[ShardRouter] = None,
-        host_id: Optional[str] = None,
+        host_id: str | None = None,
         client_factory: Optional[Callable] = None,
     ):
         self.router = router or ShardRouter()
@@ -138,7 +138,7 @@ class ShardHealthMonitor:
 
     def run_once(self) -> Dict[str, object]:
         """Один цикл: probe → set_healthy; больные теряют маршруты."""
-        report: Dict[str, bool] = {}
+        report: dict[str, bool] = {}
         for host in self.router.hosts():
             ok = False
             try:

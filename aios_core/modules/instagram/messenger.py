@@ -48,7 +48,7 @@ class InstagramMessenger(OLXMessenger):
         messenger_hints: Optional[Dict] = None,
         directory: str = "platforms",
         screen_width: int = 1080,
-        serial: Optional[str] = None,
+        serial: str | None = None,
         package: str = PACKAGE,
     ):
         super().__init__(

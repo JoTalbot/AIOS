@@ -35,11 +35,11 @@ class MemoryManager:
         content: dict,
         category: str = "operational",
         tags: Optional[list[str]] = None,
-        source: Optional[str] = None,
+        source: str | None = None,
         confidence: float = 1.0,
-        ttl_seconds: Optional[int] = None,
+        ttl_seconds: int | None = None,
         metadata: Optional[dict] = None,
-        owner_id: Optional[str] = None,
+        owner_id: str | None = None,
     ) -> dict:
         """Store a memory item.
 
@@ -99,7 +99,7 @@ class MemoryManager:
         }
 
     def retrieve(
-        self, item_id: str, requester_id: Optional[str] = None, is_admin: bool = False
+        self, item_id: str, requester_id: str | None = None, is_admin: bool = False
     ) -> Optional[dict]:
         """Retrieve an item, enforcing ownership when a requester is supplied."""
         if self.db is None:
@@ -120,11 +120,11 @@ class MemoryManager:
     def search(
         self,
         query: str = "",
-        category: Optional[str] = None,
-        tag: Optional[str] = None,
+        category: str | None = None,
+        tag: str | None = None,
         limit: int = 100,
         offset: int = 0,
-        requester_id: Optional[str] = None,
+        requester_id: str | None = None,
         is_admin: bool = False,
     ) -> list[dict]:
         """Search memory items by text query, category, and/or tag.
@@ -177,8 +177,8 @@ class MemoryManager:
         item_id: str,
         content: Optional[dict] = None,
         tags: Optional[list[str]] = None,
-        confidence: Optional[float] = None,
-        requester_id: Optional[str] = None,
+        confidence: float | None = None,
+        requester_id: str | None = None,
         is_admin: bool = False,
     ) -> Optional[dict]:
         """Update an existing memory item."""
@@ -215,7 +215,7 @@ class MemoryManager:
         return self.retrieve(item_id)
 
     def delete(
-        self, item_id: str, requester_id: Optional[str] = None, is_admin: bool = False
+        self, item_id: str, requester_id: str | None = None, is_admin: bool = False
     ) -> bool:
         """Delete a memory item, enforcing owner access when supplied."""
         if self.db is None:
@@ -239,7 +239,7 @@ class MemoryManager:
         """Get all items in a category."""
         return self.search(category=category, limit=limit)
 
-    def count(self, category: Optional[str] = None) -> int:
+    def count(self, category: str | None = None) -> int:
         """Count memory items, optionally by category."""
         if self.db is None:
             return 0

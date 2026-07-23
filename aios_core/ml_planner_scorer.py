@@ -23,7 +23,7 @@ class MLPlannerScorer:
         self.version = "4.0.0-alpha"
         self._model_loaded = False  # Placeholder for real ML model
 
-    def score_plan(self, plan: Plan, planner: Planner) -> Dict[str, Any]:
+    def score_plan(self, plan: Plan, planner: Planner) -> dict[str, Any]:
         """Return ML-enhanced score for a plan."""
         base_score = planner.score_plan(plan)
 
@@ -41,7 +41,7 @@ class MLPlannerScorer:
             "model_version": self.version,
         }
 
-    def _extract_features(self, plan: Plan, planner: Planner) -> Dict[str, float]:
+    def _extract_features(self, plan: Plan, planner: Planner) -> dict[str, float]:
         """Extract features for ML model."""
         layers = planner.get_execution_layers(plan)
         total_steps = len(plan.steps)
@@ -55,7 +55,7 @@ class MLPlannerScorer:
             "plan_length": min(total_steps / 20.0, 1.0),
         }
 
-    def _predict_adjustment(self, features: Dict[str, float]) -> float:
+    def _predict_adjustment(self, features: dict[str, float]) -> float:
         """Simulate ML prediction (will be replaced with real model)."""
         # Simple linear combination as placeholder
         score = (
@@ -67,7 +67,7 @@ class MLPlannerScorer:
         )
         return max(0.6, min(1.4, score + 0.8))
 
-    def optimize_plan(self, plan: Plan, planner: Planner) -> Dict[str, Any]:
+    def optimize_plan(self, plan: Plan, planner: Planner) -> dict[str, Any]:
         """Suggest optimizations for the plan."""
         score_result = self.score_plan(plan, planner)
 

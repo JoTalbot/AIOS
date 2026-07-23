@@ -9,7 +9,7 @@ class AGISafety:
     """Comprehensive AGI safety mechanisms."""
 
     def __init__(self):
-        self.safety_checks: List[str] = [
+        self.safety_checks: list[str] = [
             "value_alignment",
             "corrigibility",
             "impact_regularization",
@@ -18,7 +18,7 @@ class AGISafety:
         ]
         self.violations: List[Dict] = []
 
-    def check_alignment(self, action: Dict, values: List[str]) -> bool:
+    def check_alignment(self, action: Dict, values: list[str]) -> bool:
         """Execute check alignment."""
         if "harm" in str(action).lower():
             self.violations.append({"action": action, "reason": "potential_harm"})

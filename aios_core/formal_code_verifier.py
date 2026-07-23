@@ -35,9 +35,9 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
         "importlib",
     }
 
-    def __init__(self, allowed_imports: Optional[Set[str]] = None):
+    def __init__(self, allowed_imports: Optional[set[str]] = None):
         self.allowed_imports = allowed_imports or set()
-        self.violations: List[str] = []
+        self.violations: list[str] = []
         self.has_unbounded_loops = False
         self.call_count = 0
 
@@ -106,7 +106,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
 class FormalCodeVerifier:
     """Formal Code Verification and Invariant Engine."""
 
-    def __init__(self, allowed_imports: Optional[Set[str]] = None):
+    def __init__(self, allowed_imports: Optional[set[str]] = None):
         self.allowed_imports = allowed_imports or {
             "math",
             "json",
@@ -116,15 +116,15 @@ class FormalCodeVerifier:
             "collections",
             "typing",
         }
-        self.verification_history: List[Dict[str, Any]] = []
+        self.verification_history: List[dict[str, Any]] = []
 
     def verify_code(
-        self, code_str: str, preconditions: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, code_str: str, preconditions: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Mathematically and statically verify generated code before execution."""
         start_time = time.time()
-        violations: List[str] = []
-        proven_guarantees: List[str] = []
+        violations: list[str] = []
+        proven_guarantees: list[str] = []
 
         # 1. Syntax Correctness Proof
         try:
@@ -190,7 +190,7 @@ class FormalCodeVerifier:
 
         return result
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         total = len(self.verification_history)
         passed = sum(1 for v in self.verification_history if v["verified"])

@@ -19,7 +19,7 @@ def _default_db(env_var: str, fallback: str) -> str:
     return os.environ.get(env_var) or fallback
 
 
-def _platform_db_metrics(data_dir: str) -> Dict[str, Dict[str, int]]:
+def _platform_db_metrics(data_dir: str) -> Dict[str, dict[str, int]]:
     """Кумулятивные счётчики из per-platform БД в ``data/*.sqlite``.
 
     Читает напрямую sqlite (без storage-классов): если в базе есть
@@ -28,13 +28,13 @@ def _platform_db_metrics(data_dir: str) -> Dict[str, Dict[str, int]]:
     """
     import sqlite3 as _sqlite3
 
-    per_platform: Dict[str, Dict[str, int]] = {}
+    per_platform: Dict[str, dict[str, int]] = {}
     root = Path(data_dir)
     if not root.is_dir():
         return per_platform
     for db_file in sorted(root.glob("*.sqlite")):
         platform = db_file.stem
-        entry: Dict[str, int] = {"seen_ad": 0, "seen_video": 0, "outbox_pending": 0}
+        entry: dict[str, int] = {"seen_ad": 0, "seen_video": 0, "outbox_pending": 0}
         try:
             conn = _sqlite3.connect(f"file:{db_file}?mode=ro", uri=True)
             try:
@@ -139,9 +139,9 @@ def _production_metrics() -> Dict[str, object]:
 
 def fleet_snapshot(
     *,
-    shards_db: Optional[str] = None,
-    profiles_db: Optional[str] = None,
-    devices_db: Optional[str] = None,
+    shards_db: str | None = None,
+    profiles_db: str | None = None,
+    devices_db: str | None = None,
     catalog_dir: str = "platforms",
     data_dir: str = "data",
 ) -> Dict[str, object]:
@@ -195,7 +195,7 @@ def fleet_snapshot(
         store = ProfileStore(profiles_db)
         try:
             all_profiles = store.list()
-            per_platform: Dict[str, int] = {}
+            per_platform: dict[str, int] = {}
             for profile in all_profiles:
                 per_platform[profile.platform] = per_platform.get(profile.platform, 0) + 1
             profiles = {
@@ -205,7 +205,7 @@ def fleet_snapshot(
         finally:
             store.close()
 
-    platforms: List[str] = []
+    platforms: list[str] = []
     catalog = Path(catalog_dir)
     if catalog.is_dir():
         for yaml_file in sorted(catalog.glob("*.yaml")):
@@ -228,9 +228,9 @@ def fleet_snapshot(
 
 def prometheus_metrics(
     *,
-    shards_db: Optional[str] = None,
-    profiles_db: Optional[str] = None,
-    devices_db: Optional[str] = None,
+    shards_db: str | None = None,
+    profiles_db: str | None = None,
+    devices_db: str | None = None,
     catalog_dir: str = "platforms",
     data_dir: str = "data",
     stale_after_s: float = 600.0,
@@ -254,13 +254,13 @@ def prometheus_metrics(
         data_dir=data_dir,
     )
     stats = snapshot["jobs"]["stats"]
-    jobs: Dict[str, int] = {
+    jobs: dict[str, int] = {
         "pending": int(stats.get("pending", 0) or 0),
         "claimed": int(stats.get("claimed", 0) or 0),
         "done": int(stats.get("done", 0) or 0),
         "failed": int(stats.get("failed", 0) or 0),
     }
-    lines: List[str] = [
+    lines: list[str] = [
         "# HELP aios_shard_jobs Shard job queue entries by status",
         "# TYPE aios_shard_jobs gauge",
     ]

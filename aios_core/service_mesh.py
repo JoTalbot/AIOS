@@ -7,7 +7,7 @@ class ServiceMesh:
     """Simple service mesh for inter-service communication."""
 
     def __init__(self):
-        self.services: Dict[str, Dict] = {}
+        self.services: dict[str, dict] = {}
         self.routes: List[Dict] = []
 
     def register_service(self, name: str, endpoint: str, metadata: Dict = None) -> None:

@@ -32,10 +32,10 @@ class FailurePrediction:
     device_id: str
     risk_level: RiskLevel
     risk_score: float  # 0.0 - 1.0
-    predicted_failure_in: Optional[float]  # seconds until likely failure
-    reasons: List[str]
-    recommendations: List[str]
-    metrics_snapshot: Dict[str, Any]
+    predicted_failure_in: float | None  # seconds until likely failure
+    reasons: list[str]
+    recommendations: list[str]
+    metrics_snapshot: dict[str, Any]
     timestamp: float = field(default_factory=time.time)
 
 
@@ -240,12 +240,12 @@ class PredictiveMaintenance:
                 devices.add(k)
         return [self.predict(d) for d in devices]
 
-    def get_recommendations(self, device_id: str) -> List[str]:
+    def get_recommendations(self, device_id: str) -> list[str]:
         """Execute get recommendations."""
         pred = self.predict(device_id)
         return pred.recommendations
 
-    def health_report(self) -> Dict[str, Any]:
+    def health_report(self) -> dict[str, Any]:
         """Overall health report for fleet."""
         preds = self.predict_all_devices()
         critical = [p for p in preds if p.risk_level == RiskLevel.CRITICAL]

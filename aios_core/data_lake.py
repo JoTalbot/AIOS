@@ -12,7 +12,7 @@ class DataLake:
         self.path = path
         os.makedirs(path, exist_ok=True)
 
-    def ingest(self, event: Dict[str, Any]) -> None:
+    def ingest(self, event: dict[str, Any]) -> None:
         """Execute ingest."""
         date = event.get("timestamp", "unknown")[:10]
         filepath = os.path.join(self.path, f"{date}.jsonl")

@@ -34,9 +34,9 @@ class Profile:
 
     platform: str
     name: str
-    device_serial: Optional[str] = None
+    device_serial: str | None = None
     android_user: int = 0
-    db_path: Optional[str] = None
+    db_path: str | None = None
     locale: str = "uk-UA"
     notes: str = ""
     is_default: bool = False

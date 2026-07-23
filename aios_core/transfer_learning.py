@@ -7,7 +7,7 @@ class TransferLearning:
     """Transfer knowledge between tasks/domains."""
 
     def __init__(self):
-        self.knowledge_base: Dict[str, Dict] = {}
+        self.knowledge_base: dict[str, dict] = {}
 
     def store_knowledge(self, domain: str, knowledge: Dict) -> None:
         """Execute store knowledge."""
