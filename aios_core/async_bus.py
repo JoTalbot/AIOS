@@ -37,7 +37,7 @@ class AsyncEventBus:
     async def emit(self, event: str, payload: Dict[str, Any]) -> None:
         """Emit *event* — runs sync handlers inline, async handlers concurrently."""
         # Sync handlers via the underlying bus
-        self._sync.emit(event, payload)
+        self._sync.emit(event, 'async_bus', payload)
 
         # Async handlers run concurrently
         handlers = self._async_handlers.get(event, [])

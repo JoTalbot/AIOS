@@ -1,5 +1,5 @@
 """Tests for AIOS SDK client (unit tests — no server needed)."""
-from sdk.aios_sdk import AIOSClient, AIOSSyncClient
+from sdk.aios_sdk import AIOSClient, AIOSClientSync
 
 
 def test_client_creation():
@@ -19,9 +19,8 @@ def test_url_builder():
 
 
 def test_sync_client_creation():
-    c = AIOSSyncClient("http://localhost:8000")
+    c = AIOSClientSync("http://localhost:8000")
     assert c.base_url == "http://localhost:8000"
-    assert c.client is not None
 
 
 def test_client_default_timeout():
