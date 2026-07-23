@@ -11,10 +11,12 @@ class BCIInterface:
         self.signals: List[Dict] = []
 
     def connect(self) -> None:
+        """Execute connect."""
         self.connected = True
         return {"status": "connected"}
 
     def read_signal(self) -> Dict:
+        """Execute read signal."""
         if not self.connected:
             return {"error": "Not connected"}
         signal = {"type": "eeg", "channels": 64, "sample": [0.1] * 64}
@@ -22,7 +24,9 @@ class BCIInterface:
         return signal
 
     def decode_intent(self, signal: Dict) -> str:
+        """Execute decode intent."""
         return "move_forward" if sum(signal.get("sample", [])) > 0 else "stop"
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"connected": self.connected, "signals": len(self.signals)}

@@ -17,7 +17,9 @@ class DifferentialPrivacy:
         return value + noise
 
     def privatize_list(self, values: List[float], sensitivity: float = 1.0) -> List[float]:
+        """Execute privatize list."""
         return [self.add_noise(v, sensitivity) for v in values]
 
     def stats(self) -> dict:
+        """Return statistics dict."""
         return {"epsilon": self.epsilon}
