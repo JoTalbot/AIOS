@@ -21,7 +21,7 @@ from aios_core.data_export import DataExporter, DataImporter
 from aios_core.secret_manager import SecretManager
 from aios_core.backup_manager import BackupManager
 from aios_core.webhook_manager import WebhookManager
-
+from aios_core.storage import Database
 
 # Global instances (initialized in create_routes)
 _secret_manager: Optional[SecretManager] = None
@@ -34,6 +34,8 @@ def init_admin_routes(db_path: str = "aios.sqlite", backup_dir: str = "./backups
     """Initialize admin route handlers with database path."""
     global _db_path, _secret_manager, _backup_manager, _webhook_manager
     _db_path = db_path
+    # Ensure export/import endpoints always target an initialized AIOS schema.
+    Database(db_path=db_path).close()
     _secret_manager = SecretManager()
     _backup_manager = BackupManager(db_path=db_path, backup_dir=backup_dir)
     _webhook_manager = WebhookManager()
@@ -52,6 +54,7 @@ def _require_admin(request: Request):
 # ============================================================
 # Data Export/Import Endpoints
 # ============================================================
+
 
 async def export_data(request: Request):
     """Export data from AIOS.
@@ -78,15 +81,19 @@ async def export_data(request: Request):
         with DataExporter(_db_path) as exporter:
             if export_type == "all":
                 counts = exporter.export_all(output_path, format_type, since)
-                return JSONResponse({
-                    "status": "success",
-                    "type": "all",
-                    "format": format_type,
-                    "output": output_path,
-                    "counts": counts,
-                })
+                return JSONResponse(
+                    {
+                        "status": "success",
+                        "type": "all",
+                        "format": format_type,
+                        "output": output_path,
+                        "counts": counts,
+                    }
+                )
             elif export_type == "tasks":
-                count = exporter.export_tasks(output_path, format_type, limit, since=since)
+                count = exporter.export_tasks(
+                    output_path, format_type, limit, since=since
+                )
             elif export_type == "memory":
                 count = exporter.export_memory(output_path, format_type, limit)
             elif export_type == "audit":
@@ -94,15 +101,19 @@ async def export_data(request: Request):
             elif export_type == "knowledge":
                 count = exporter.export_knowledge_graph(output_path, format_type)
             else:
-                return JSONResponse({"error": f"Unknown type: {export_type}"}, status_code=400)
+                return JSONResponse(
+                    {"error": f"Unknown type: {export_type}"}, status_code=400
+                )
 
-            return JSONResponse({
-                "status": "success",
-                "type": export_type,
-                "format": format_type,
-                "output": output_path,
-                "count": count,
-            })
+            return JSONResponse(
+                {
+                    "status": "success",
+                    "type": export_type,
+                    "format": format_type,
+                    "output": output_path,
+                    "count": count,
+                }
+            )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -130,12 +141,14 @@ async def import_data(request: Request):
     try:
         with DataImporter(_db_path) as importer:
             count = importer.import_tasks(input_path, format_type)
-            return JSONResponse({
-                "status": "success",
-                "type": import_type,
-                "format": format_type,
-                "count": count,
-            })
+            return JSONResponse(
+                {
+                    "status": "success",
+                    "type": import_type,
+                    "format": format_type,
+                    "count": count,
+                }
+            )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -143,6 +156,7 @@ async def import_data(request: Request):
 # ============================================================
 # Secret Management Endpoints
 # ============================================================
+
 
 async def generate_api_key(request: Request):
     """Generate a new API key.
@@ -168,14 +182,16 @@ async def generate_api_key(request: Request):
 
     try:
         key = _secret_manager.generate_key(subject, roles, ttl_days, prefix)
-        return JSONResponse({
-            "status": "success",
-            "key": key.key,
-            "subject": key.subject,
-            "roles": key.roles,
-            "expires_at": key.expires_at,
-            "created_at": key.created_at,
-        })
+        return JSONResponse(
+            {
+                "status": "success",
+                "key": key.key,
+                "subject": key.subject,
+                "roles": key.roles,
+                "expires_at": key.expires_at,
+                "created_at": key.created_at,
+            }
+        )
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
@@ -194,22 +210,24 @@ async def list_api_keys(request: Request):
     if subject_filter:
         keys = [k for k in keys if k.subject == subject_filter]
 
-    return JSONResponse({
-        "keys": [
-            {
-                "key_prefix": k.key[:16] + "...",
-                "subject": k.subject,
-                "roles": k.roles,
-                "created_at": k.created_at,
-                "expires_at": k.expires_at,
-                "is_valid": k.is_valid(),
-                "usage_count": k.usage_count,
-                "last_used": k.last_used,
-            }
-            for k in keys
-        ],
-        "total": len(list(keys)),
-    })
+    return JSONResponse(
+        {
+            "keys": [
+                {
+                    "key_prefix": k.key[:16] + "...",
+                    "subject": k.subject,
+                    "roles": k.roles,
+                    "created_at": k.created_at,
+                    "expires_at": k.expires_at,
+                    "is_valid": k.is_valid(),
+                    "usage_count": k.usage_count,
+                    "last_used": k.last_used,
+                }
+                for k in keys
+            ],
+            "total": len(list(keys)),
+        }
+    )
 
 
 async def revoke_api_key(request: Request):
@@ -259,14 +277,16 @@ async def rotate_api_key(request: Request):
 
     new_key = _secret_manager.rotate_key(old_key, ttl_days, reason)
     if new_key:
-        return JSONResponse({
-            "status": "success",
-            "new_key": new_key.key,
-            "subject": new_key.subject,
-            "roles": new_key.roles,
-            "expires_at": new_key.expires_at,
-            "message": "Old key revoked, new key generated",
-        })
+        return JSONResponse(
+            {
+                "status": "success",
+                "new_key": new_key.key,
+                "subject": new_key.subject,
+                "roles": new_key.roles,
+                "expires_at": new_key.expires_at,
+                "message": "Old key revoked, new key generated",
+            }
+        )
     else:
         return JSONResponse({"error": "Old key not found"}, status_code=404)
 
@@ -295,11 +315,13 @@ async def export_keys(request: Request):
 
     try:
         count = _secret_manager.export_keys(path)
-        return JSONResponse({
-            "status": "success",
-            "path": path,
-            "count": count,
-        })
+        return JSONResponse(
+            {
+                "status": "success",
+                "path": path,
+                "count": count,
+            }
+        )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -318,11 +340,13 @@ async def generate_env_file(request: Request):
 
     try:
         _secret_manager.generate_env_export(path)
-        return JSONResponse({
-            "status": "success",
-            "path": path,
-            "message": "Environment file generated",
-        })
+        return JSONResponse(
+            {
+                "status": "success",
+                "path": path,
+                "message": "Environment file generated",
+            }
+        )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -330,6 +354,7 @@ async def generate_env_file(request: Request):
 # ============================================================
 # Backup Management Endpoints
 # ============================================================
+
 
 async def create_backup(request: Request):
     """Create a database backup.
@@ -348,16 +373,18 @@ async def create_backup(request: Request):
 
     try:
         metadata = _backup_manager.create_backup(mode, label)
-        return JSONResponse({
-            "status": "success",
-            "backup_id": metadata.backup_id,
-            "size_bytes": metadata.size_bytes,
-            "checksum": metadata.checksum,
-            "compressed": metadata.compressed,
-            "tables": metadata.tables,
-            "row_counts": metadata.row_counts,
-            "created_at": metadata.created_at,
-        })
+        return JSONResponse(
+            {
+                "status": "success",
+                "backup_id": metadata.backup_id,
+                "size_bytes": metadata.size_bytes,
+                "checksum": metadata.checksum,
+                "compressed": metadata.compressed,
+                "tables": metadata.tables,
+                "row_counts": metadata.row_counts,
+                "created_at": metadata.created_at,
+            }
+        )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -369,22 +396,24 @@ async def list_backups(request: Request):
     """
     _require_admin(request)
     backups = _backup_manager.list_backups()
-    return JSONResponse({
-        "backups": [
-            {
-                "backup_id": b.backup_id,
-                "created_at": b.created_at,
-                "size_bytes": b.size_bytes,
-                "size_mb": round(b.size_bytes / 1024 / 1024, 2),
-                "checksum": b.checksum[:16] + "...",
-                "compressed": b.compressed,
-                "mode": b.mode,
-                "tables": b.tables,
-            }
-            for b in backups
-        ],
-        "total": len(backups),
-    })
+    return JSONResponse(
+        {
+            "backups": [
+                {
+                    "backup_id": b.backup_id,
+                    "created_at": b.created_at,
+                    "size_bytes": b.size_bytes,
+                    "size_mb": round(b.size_bytes / 1024 / 1024, 2),
+                    "checksum": b.checksum[:16] + "...",
+                    "compressed": b.compressed,
+                    "mode": b.mode,
+                    "tables": b.tables,
+                }
+                for b in backups
+            ],
+            "total": len(backups),
+        }
+    )
 
 
 async def verify_backup(request: Request):
@@ -403,11 +432,13 @@ async def verify_backup(request: Request):
         return JSONResponse({"error": "backup_id required"}, status_code=400)
 
     is_valid = _backup_manager.verify_backup(backup_id)
-    return JSONResponse({
-        "backup_id": backup_id,
-        "valid": is_valid,
-        "status": "healthy" if is_valid else "corrupted",
-    })
+    return JSONResponse(
+        {
+            "backup_id": backup_id,
+            "valid": is_valid,
+            "status": "healthy" if is_valid else "corrupted",
+        }
+    )
 
 
 async def restore_backup(request: Request):
@@ -430,12 +461,14 @@ async def restore_backup(request: Request):
 
     success = _backup_manager.restore_backup(backup_id, target)
     if success:
-        return JSONResponse({
-            "status": "success",
-            "backup_id": backup_id,
-            "target": target or _db_path,
-            "message": "Database restored successfully",
-        })
+        return JSONResponse(
+            {
+                "status": "success",
+                "backup_id": backup_id,
+                "target": target or _db_path,
+                "message": "Database restored successfully",
+            }
+        )
     else:
         return JSONResponse({"error": "Restore failed"}, status_code=500)
 
@@ -447,11 +480,13 @@ async def cleanup_backups(request: Request):
     """
     _require_admin(request)
     removed = _backup_manager.cleanup_old_backups()
-    return JSONResponse({
-        "status": "success",
-        "removed": removed,
-        "remaining": len(_backup_manager.backups),
-    })
+    return JSONResponse(
+        {
+            "status": "success",
+            "removed": removed,
+            "remaining": len(_backup_manager.backups),
+        }
+    )
 
 
 async def backups_health(request: Request):
@@ -462,15 +497,18 @@ async def backups_health(request: Request):
     _require_admin(request)
     report = _backup_manager.health_report()
     schedule = _backup_manager.schedule_info()
-    return JSONResponse({
-        "health": report,
-        "schedule": schedule,
-    })
+    return JSONResponse(
+        {
+            "health": report,
+            "schedule": schedule,
+        }
+    )
 
 
 # ============================================================
 # Webhook Management Endpoints
 # ============================================================
+
 
 async def register_webhook(request: Request):
     """Register a new webhook target.
@@ -498,10 +536,12 @@ async def register_webhook(request: Request):
 
     try:
         target = _webhook_manager.register(name, url, events, secret, headers)
-        return JSONResponse({
-            "status": "success",
-            "webhook": target.to_dict(),
-        })
+        return JSONResponse(
+            {
+                "status": "success",
+                "webhook": target.to_dict(),
+            }
+        )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -513,10 +553,12 @@ async def list_webhooks(request: Request):
     """
     _require_admin(request)
     targets = _webhook_manager.list_targets()
-    return JSONResponse({
-        "webhooks": targets,
-        "total": len(targets),
-    })
+    return JSONResponse(
+        {
+            "webhooks": targets,
+            "total": len(targets),
+        }
+    )
 
 
 async def unregister_webhook(request: Request):
@@ -536,7 +578,9 @@ async def unregister_webhook(request: Request):
 
     success = _webhook_manager.unregister(name)
     if success:
-        return JSONResponse({"status": "success", "message": f"Webhook '{name}' removed"})
+        return JSONResponse(
+            {"status": "success", "message": f"Webhook '{name}' removed"}
+        )
     return JSONResponse({"error": "Webhook not found"}, status_code=404)
 
 
@@ -563,11 +607,13 @@ async def toggle_webhook(request: Request):
         success = _webhook_manager.deactivate(name)
 
     if success:
-        return JSONResponse({
-            "status": "success",
-            "name": name,
-            "active": active,
-        })
+        return JSONResponse(
+            {
+                "status": "success",
+                "name": name,
+                "active": active,
+            }
+        )
     return JSONResponse({"error": "Webhook not found"}, status_code=404)
 
 
@@ -600,11 +646,13 @@ async def webhook_history(request: Request):
     limit = int(request.query_params.get("limit", "50"))
 
     history = _webhook_manager.get_history(event=event, limit=limit)
-    return JSONResponse({
-        "history": history,
-        "total": len(history),
-        "filter_event": event,
-    })
+    return JSONResponse(
+        {
+            "history": history,
+            "total": len(history),
+            "filter_event": event,
+        }
+    )
 
 
 async def send_webhook_event(request: Request):
@@ -652,11 +700,13 @@ async def export_webhooks(request: Request):
 
     try:
         count = _webhook_manager.export_config(path)
-        return JSONResponse({
-            "status": "success",
-            "path": path,
-            "count": count,
-        })
+        return JSONResponse(
+            {
+                "status": "success",
+                "path": path,
+                "count": count,
+            }
+        )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -678,11 +728,13 @@ async def import_webhooks(request: Request):
 
     try:
         count = _webhook_manager.import_config(path)
-        return JSONResponse({
-            "status": "success",
-            "path": path,
-            "count": count,
-        })
+        return JSONResponse(
+            {
+                "status": "success",
+                "path": path,
+                "count": count,
+            }
+        )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -691,13 +743,13 @@ async def import_webhooks(request: Request):
 # Route Definitions
 # ============================================================
 
+
 def get_admin_routes():
     """Return admin API routes."""
     return [
         # Data Export/Import
         Route("/api/v1/admin/export", export_data, methods=["POST"]),
         Route("/api/v1/admin/import", import_data, methods=["POST"]),
-
         # Secret Management
         Route("/api/v1/admin/keys/generate", generate_api_key, methods=["POST"]),
         Route("/api/v1/admin/keys", list_api_keys, methods=["GET"]),
@@ -706,7 +758,6 @@ def get_admin_routes():
         Route("/api/v1/admin/keys/health", keys_health, methods=["GET"]),
         Route("/api/v1/admin/keys/export", export_keys, methods=["POST"]),
         Route("/api/v1/admin/keys/env", generate_env_file, methods=["POST"]),
-
         # Backup Management
         Route("/api/v1/admin/backups", create_backup, methods=["POST"]),
         Route("/api/v1/admin/backups/list", list_backups, methods=["GET"]),
@@ -714,11 +765,14 @@ def get_admin_routes():
         Route("/api/v1/admin/backups/restore", restore_backup, methods=["POST"]),
         Route("/api/v1/admin/backups/cleanup", cleanup_backups, methods=["POST"]),
         Route("/api/v1/admin/backups/health", backups_health, methods=["GET"]),
-
         # Webhook Management
         Route("/api/v1/admin/webhooks", register_webhook, methods=["POST"]),
         Route("/api/v1/admin/webhooks/list", list_webhooks, methods=["GET"]),
-        Route("/api/v1/admin/webhooks/unregister", unregister_webhook, methods=["DELETE", "POST"]),
+        Route(
+            "/api/v1/admin/webhooks/unregister",
+            unregister_webhook,
+            methods=["DELETE", "POST"],
+        ),
         Route("/api/v1/admin/webhooks/toggle", toggle_webhook, methods=["POST"]),
         Route("/api/v1/admin/webhooks/test", test_webhook, methods=["POST"]),
         Route("/api/v1/admin/webhooks/history", webhook_history, methods=["GET"]),
