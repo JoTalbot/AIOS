@@ -30,6 +30,7 @@ except ImportError:
 
 @dataclass
 class AndroidExecutionEvent:
+    """Structured event record for Android automation."""
     timestamp: float
     package: str
     device_id: str
@@ -40,6 +41,7 @@ class AndroidExecutionEvent:
     meta: Dict[str, Any]
 
 
+    """Android observability — metrics, failure prediction."""
 class AndroidObservability:
     def __init__(self, device_id: str):
         self.device_id = device_id

@@ -22,10 +22,12 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AppiumDriverConfig(DriverCapabilities):
+    """Appium driver configuration parameters."""
     server_url: str = "http://localhost:4723/wd/hub"
     automation_name: str = "UiAutomator2"
 
 
+    """Appium-based Android automation driver."""
 class AppiumAndroidDriver(AndroidDriver):
     def __init__(self, config: Optional[AppiumDriverConfig] = None):
         self.config = config or AppiumDriverConfig()

@@ -15,11 +15,13 @@ __all__ = ["RecordedStep", "ScenarioRecorder"]
 
 @dataclass
 class RecordedStep:
+    """Recorded automation step for scenario replay."""
     action: str
     ts: float
     meta: Dict[str, Any] = field(default_factory=dict)
 
 
+    """Records and replays automation scenarios."""
 class ScenarioRecorder:
     def __init__(
         self,

@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, List
 
 @dataclass
 class WorkflowStep:
+    """Single step in a cross-app workflow."""
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     name: str
     action: Callable
