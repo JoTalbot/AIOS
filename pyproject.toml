@@ -46,8 +46,13 @@ docs = [
     "mkdocs-material>=9.0.0",
     "mkdocs-minify-plugin>=0.7.0",
     "mike>=2.0.0",
+<<<<<<< HEAD
     "sphinx>=9.0.4",
     "sphinx-rtd-theme>=1.0.0",
+=======
+    "sphinx>=4.0.0",
+    "sphinx-rtd-theme>=3.1.0",
+>>>>>>> origin/dependabot/pip/sphinx-rtd-theme-gte-3.1.0
 ]
 
 [project.scripts]
