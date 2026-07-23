@@ -3,7 +3,7 @@
 ![Version](https://img.shields.io/badge/version-9.3.0-blue)
 ![Tests](https://img.shields.io/badge/tests-1255%20passing-green)
 ![API](https://img.shields.io/badge/API-169%20routes-blue)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-13%20workflows-green)
 
 Self-evolving distributed operating system for application intelligence,
