@@ -44,8 +44,8 @@ class AdvisorDraft:
 
 
 @dataclass
-    """Aggregated inbox summary with urgency and sentiment."""
 class InboxSummary:
+    """Aggregated inbox summary with urgency and sentiment."""
     platform: str
     total_messages: int
     unread: int
@@ -56,9 +56,9 @@ class InboxSummary:
     generated_at: float = field(default_factory=time.time)
 
 
-    """Pricing recommendation with confidence score."""
 @dataclass
 class PriceAdvice:
+    """Pricing recommendation with confidence score."""
     platform: str
     item_id: str
     current_price: float

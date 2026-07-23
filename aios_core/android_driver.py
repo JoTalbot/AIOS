@@ -15,7 +15,6 @@ __all__ = ["DriverCapabilities", "UIContext", "AndroidDriver"]
 
 @dataclass
 class DriverCapabilities:
-    """Android driver capability flags and settings."""
     package: str = "ua.slando"
     device_name: str = "emulator"
     platform_version: str = "35"
@@ -26,8 +25,8 @@ class DriverCapabilities:
 
 
 @dataclass
-    """Snapshot of the current UI state."""
 class UIContext:
+    """Snapshot of the current UI state."""
     xml: str
     package: str
     current_activity: str

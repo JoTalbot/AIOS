@@ -18,7 +18,6 @@ __all__ = ["DeviceRecord", "WaitlistEntry", "DevicePool"]
 
 @dataclass
 class DeviceRecord:
-    """Device pool record — serial, status, lease info."""
     serial: str
     avd_name: str
     status: str = "idle"
@@ -28,13 +27,12 @@ class DeviceRecord:
 
 
 @dataclass
-    """Queue entry for device leasing."""
 class WaitlistEntry:
+    """Queue entry for device leasing."""
     profile: str
     priority: int
     requested_at: float
 
-    """Device pool manager — register, lease, release devices."""
 
 class DevicePool:
     def __init__(self, emulator_bin: str = "/opt/android-sdk/emulator/emulator"):
