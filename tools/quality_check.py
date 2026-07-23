@@ -78,9 +78,9 @@ def main():
     pct = 100 * (total - undoc) / max(total, 1)
     print(f"  Docstrings: {total - undoc}/{total} ({pct:.1f}%)")
     
-    test_files = len(list((ROOT / "tests").glob("test_*.py")))
+    test_files = sum(1 for _ in (ROOT / "tests").rglob("test_*.py"))
     test_funcs = 0
-    for f in (ROOT / "tests").glob("test_*.py"):
+    for f in (ROOT / "tests").rglob("test_*.py"):
         test_funcs += len([l for l in open(f) if l.strip().startswith("def test_")])
     print(f"  Test files: {test_files}")
     print(f"  Test functions: {test_funcs}")
