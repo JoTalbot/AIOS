@@ -132,7 +132,7 @@ def _production_metrics() -> Dict[str, object]:
             for k, v in cm.get("drift_events", {}).items():
                 data["drift_events"][k] = data["drift_events"].get(k, 0) + int(v)
         except Exception:
-            pass
+            pass  # Cycle metrics file missing or corrupt — skip
 
     return data
 
