@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from .android_execution import RealDeviceExecutor, UIAutomatorParser
 from .apk_converter import APKFunctionConverter
 
+__all__ = ["AndroidRPADeviceEmulator", "AndroidRPAManager"]
+
 
 class AndroidRPADeviceEmulator:
     """Simulated or Live ADB/UIAutomator Bridge for Android Emulator."""

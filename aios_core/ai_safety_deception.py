@@ -2,6 +2,8 @@
 
 from typing import Dict, List
 
+__all__ = ["DeceptionDetector"]
+
 
 class DeceptionDetector:
     """Detects deceptive behavior in AI systems."""

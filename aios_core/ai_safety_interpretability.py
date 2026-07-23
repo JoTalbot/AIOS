@@ -2,6 +2,8 @@
 
 from typing import Any, Dict, List
 
+__all__ = ["SafetyInterpretability"]
+
 
 class SafetyInterpretability:
     """Uses interpretability for safety verification."""

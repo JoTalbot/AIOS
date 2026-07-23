@@ -7,6 +7,8 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
+__all__ = ["UIElement", "SearchResult", "ItemDetails", "UIAutomatorParser"]
+
 
 @dataclass
 class UIElement:

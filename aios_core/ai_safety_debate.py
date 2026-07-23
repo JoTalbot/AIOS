@@ -2,6 +2,8 @@
 
 from typing import Dict, List
 
+__all__ = ["DebateProtocol"]
+
 
 class DebateProtocol:
     """Multi-agent debate for truth-seeking."""

@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 
+__all__ = ["ReasoningStep", "ReasoningChain", "ReasoningEngine"]
+
 if TYPE_CHECKING:
     from .knowledge_graph import KnowledgeGraph
     from .memory_manager import MemoryManager

@@ -2,6 +2,8 @@
 
 from typing import Dict, List
 
+__all__ = ["ConstitutionalAI"]
+
 
 class ConstitutionalAI:
     """AI that follows a written constitution."""

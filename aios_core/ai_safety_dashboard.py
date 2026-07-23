@@ -2,6 +2,8 @@
 
 from typing import Dict, List
 
+__all__ = ["SafetyDashboard"]
+
 
 class SafetyDashboard:
     """Real-time safety monitoring dashboard."""

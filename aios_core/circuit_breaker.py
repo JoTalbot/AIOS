@@ -4,6 +4,8 @@ import time
 from enum import Enum
 from typing import Any, Callable
 
+__all__ = ["CircuitState", "CircuitBreaker"]
+
 
 class CircuitState(Enum):
     CLOSED = "closed"

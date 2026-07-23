@@ -2,6 +2,8 @@
 
 from typing import Any, Dict, List
 
+__all__ = ["SafetyBenchmark"]
+
 
 class SafetyBenchmark:
     """Standardized AI safety benchmarks."""

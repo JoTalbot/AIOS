@@ -2,6 +2,8 @@
 
 from typing import Any, Callable, Dict, List
 
+__all__ = ["ScalableOversight"]
+
 
 class ScalableOversight:
     """Techniques for overseeing superhuman AI systems."""

@@ -4,6 +4,8 @@ import time
 from collections import defaultdict
 from typing import Dict
 
+__all__ = ["RateLimiter"]
+
 
 class RateLimiter:
     """In-memory rate limiter (token bucket style)."""

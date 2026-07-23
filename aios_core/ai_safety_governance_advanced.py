@@ -2,6 +2,8 @@
 
 from typing import Dict, List
 
+__all__ = ["AdvancedAIGovernance"]
+
 
 class AdvancedAIGovernance:
     """Comprehensive AI governance framework."""

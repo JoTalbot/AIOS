@@ -26,6 +26,8 @@ from .logging_config import setup_logging
 from .telemetry import MetricCounter, MetricGauge, MetricHistogram
 from .tracing import tracer
 
+__all__ = ["AlertRule", "DashboardConfig", "MonitoringMetrics", "AlertManager", "DashboardManager", "MonitoringAPI"]
+
 
 @dataclass
 class AlertRule:

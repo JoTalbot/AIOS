@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from .storage import Database
 
+__all__ = ["CapabilityStatus", "Capability", "CapabilityEngine"]
+
 # ---------------------------------------------------------------------------
 # Status enum
 # ---------------------------------------------------------------------------

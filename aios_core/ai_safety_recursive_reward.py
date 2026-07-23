@@ -2,6 +2,8 @@
 
 from typing import Callable, Dict
 
+__all__ = ["RecursiveRewardModel"]
+
 
 class RecursiveRewardModel:
     """Recursively learns reward models."""

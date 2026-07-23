@@ -2,6 +2,8 @@
 
 from typing import Callable, Dict
 
+__all__ = ["IteratedAmplification"]
+
 
 class IteratedAmplification:
     """Amplifies AI capabilities while maintaining alignment."""

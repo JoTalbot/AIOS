@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from .autonomy_manager import AutonomyLevel
 from .capability_engine import Capability, CapabilityEngine
 
+__all__ = ["APKFunctionConverter"]
+
 
 class APKFunctionConverter:
     """Converts Android APK component signatures into AIOS User API Profiles."""

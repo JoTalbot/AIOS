@@ -10,6 +10,8 @@ from typing import Any, Optional
 
 from .storage import Database
 
+__all__ = ["KnowledgeGraph"]
+
 
 class KnowledgeGraph:
     """Manages a knowledge graph of concepts, rules, and relationships.

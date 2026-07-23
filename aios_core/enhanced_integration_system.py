@@ -28,6 +28,8 @@ from .enhanced_protocols import (
     create_protocol_app,
 )
 from .external_integration import (
+
+__all__ = ["IntegrationConfig", "EnhancedIntegrationSystem"]
     ExternalIntegrationAPI,
     GraphQLConfig,
     KafkaConnector,
