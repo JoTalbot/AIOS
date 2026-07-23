@@ -6,20 +6,21 @@ and detailed result collection.
 """
 
 from __future__ import annotations
+
 import time
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from ..storage import Database
 
 from .models import (
     TestCase,
+    TestCategory,
+    TestReport,
     TestResult,
+    TestSeverity,
     TestStatus,
     TestSuiteResult,
-    TestReport,
-    TestCategory,
-    TestSeverity,
 )
 
 

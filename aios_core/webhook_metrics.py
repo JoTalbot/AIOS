@@ -13,8 +13,9 @@ Usage:
 """
 
 from typing import Optional
-from .webhook_manager import WebhookManager
+
 from .metrics_exporter import metrics_exporter
+from .webhook_manager import WebhookManager
 
 
 def register_webhook_metrics(manager: Optional[WebhookManager] = None):

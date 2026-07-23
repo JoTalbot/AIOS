@@ -4,6 +4,7 @@ Defines test cases, test suites, test results, and test reports.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum

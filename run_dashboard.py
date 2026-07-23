@@ -2,7 +2,8 @@
 """Run AIOS Dashboard"""
 
 import uvicorn
-from aios_core import Orchestrator, Database
+
+from aios_core import Database, Orchestrator
 from aios_core.dashboard import create_dashboard
 
 

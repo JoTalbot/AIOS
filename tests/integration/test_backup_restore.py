@@ -1,9 +1,11 @@
 """Integration tests for backup and restore operations."""
 
-import pytest
 import sqlite3
 import tempfile
 from pathlib import Path
+
+import pytest
+
 from aios_core.backup_manager import BackupManager
 
 

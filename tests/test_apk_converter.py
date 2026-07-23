@@ -1,9 +1,10 @@
 """Tests for APK Function Converter & User API Profile Mapper."""
 
 import pytest
-from httpx import AsyncClient, ASGITransport
-from aios_core.apk_converter import APKFunctionConverter
+from httpx import ASGITransport, AsyncClient
+
 from aios_core.api.app import create_app
+from aios_core.apk_converter import APKFunctionConverter
 
 
 def test_apk_function_converter_direct():

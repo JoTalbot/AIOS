@@ -1,6 +1,6 @@
 """Offline Reinforcement Learning for AIOS"""
 
-from typing import List, Dict
+from typing import Dict, List
 
 
 class OfflineRL:

@@ -253,7 +253,7 @@ def aios_integration_real(package_name: str):
     print(f"\n=== Testing AIOS Integration (Real Device Mode) ===")
 
     try:
-        from aios_core.android_rpa_bridge import AndroidRPAManager, AndroidRPADeviceEmulator
+        from aios_core.android_rpa_bridge import AndroidRPADeviceEmulator, AndroidRPAManager
 
         manager = AndroidRPAManager()
         url = f"https://play.google.com/store/apps/details?id={package_name}"

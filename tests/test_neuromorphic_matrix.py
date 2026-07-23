@@ -1,6 +1,7 @@
 """Tests for Neuromorphic Spiking Neural Network (SNN) Matrix Engine (Horizon 6.0)."""
 
 import pytest
+
 from aios_core.neuromorphic_matrix import LIFNeuron, NeuromorphicMatrixEngine
 
 

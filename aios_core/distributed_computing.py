@@ -1,6 +1,6 @@
 """Distributed Computing Framework for AIOS"""
 
-from typing import Dict, List, Callable, Any
+from typing import Any, Callable, Dict, List
 
 
 class DistributedTask:

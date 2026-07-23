@@ -1,6 +1,6 @@
 """Natural Language Interface for AIOS"""
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 class NaturalLanguageInterface:

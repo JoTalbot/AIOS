@@ -1,7 +1,7 @@
 """AutoML Pipeline for AIOS"""
 
-from typing import Dict, Any, List, Callable
 import random
+from typing import Any, Callable, Dict, List
 
 
 class AutoMLPipeline:

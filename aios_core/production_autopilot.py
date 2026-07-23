@@ -17,17 +17,17 @@ Architecture:
 
 from __future__ import annotations
 
-import os
-import time
 import json
+import os
 import random
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Callable
+import time
 from collections import defaultdict, deque
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional
 
-from .platforms.pacing import Pacer
-from .platforms.compliance import compliance_guard, rate_limit_hours
 from .android_predictive import PredictiveMaintenance
+from .platforms.compliance import compliance_guard, rate_limit_hours
+from .platforms.pacing import Pacer
 
 
 @dataclass

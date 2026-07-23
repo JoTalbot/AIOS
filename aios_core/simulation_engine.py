@@ -1,7 +1,7 @@
 """Simulation Engine for AIOS"""
 
-from typing import Dict, Any, Callable
 import random
+from typing import Any, Callable, Dict
 
 
 class SimulationEngine:

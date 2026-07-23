@@ -1,7 +1,7 @@
 """Creativity and Innovation Engine for AIOS"""
 
-from typing import List, Dict
 import random
+from typing import Dict, List
 
 
 class CreativityEngine:

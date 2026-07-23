@@ -7,16 +7,9 @@ import pytest
 import yaml
 from httpx import ASGITransport, AsyncClient
 
-from aios_core.platforms import (
-    CalibrationAdvisor,
-    ShardGateway,
-    ShardHealthMonitor,
-    ShardRouter,
-    get_platform,
-    hints_to_yaml_doc,
-    load_catalog_file,
-)
+from aios_core.platforms import CalibrationAdvisor, ShardGateway, ShardHealthMonitor, ShardRouter
 from aios_core.platforms import descriptor as descriptor_mod
+from aios_core.platforms import get_platform, hints_to_yaml_doc, load_catalog_file
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -252,8 +245,8 @@ def test_cli_platforms_calibrate_write_and_show(tmp_path, monkeypatch, capsys):
 
 
 def test_cli_shards_monitor_once(tmp_path, monkeypatch, capsys):
-    from aios_cli import main
     import aios_core.platforms.gateway as gateway_mod
+    from aios_cli import main
 
     monkeypatch.setenv("AIOS_SHARDS_DB", str(tmp_path / "shards.sqlite"))
     # Подменяем default-probe (в CI нет сети до шардов).

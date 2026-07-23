@@ -1,6 +1,7 @@
 """SDK v4.2.0 tests"""
 
 import pytest
+
 from sdk.aios_sdk import AIOSClient, AIOSClientSync
 
 

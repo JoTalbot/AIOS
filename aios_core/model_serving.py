@@ -6,7 +6,7 @@ latency profiling, and automatic fallback handling.
 
 import random
 import time
-from typing import Dict, List, Any, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional
 
 
 class ModelServer:

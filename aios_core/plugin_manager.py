@@ -3,8 +3,8 @@
 Simple plugin system for extending AIOS functionality.
 """
 
-from typing import Dict, Callable, Any
 import importlib
+from typing import Any, Callable, Dict
 
 
 class PluginManager:

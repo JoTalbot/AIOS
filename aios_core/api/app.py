@@ -78,16 +78,17 @@ import os
 import sys
 
 from starlette.applications import Starlette
-from starlette.routing import Route, WebSocketRoute
 from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.routing import Route, WebSocketRoute
 
-from .security import APIKeyAuthMiddleware, Principal, load_api_keys
-from .errors import RequestSafetyMiddleware
 from aios_core.rate_limiter import rate_limiter
+
+from .errors import RequestSafetyMiddleware
+from .security import APIKeyAuthMiddleware, Principal, load_api_keys
 
 # Ensure project root is importable
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -118,10 +119,10 @@ class AIOSAPI:
         shard_router=None,
         shard_gateway=None,
     ):
-        from aios_core.storage import Database
+        from aios_core.mcp.gateway import GatewayConfig, MCPGateway
         from aios_core.orchestrator import Orchestrator
+        from aios_core.storage import Database
         from aios_core.test_engine import TestEngine
-        from aios_core.mcp.gateway import MCPGateway, GatewayConfig
 
         self.db = Database(db_path=db_path)
         self.auth_required = auth_required
@@ -590,8 +591,8 @@ class AIOSAPI:
             return self.olx_storage
         storage = self._olx_profile_storages.get(name)
         if storage is None:
-            from aios_core.platforms import resolve_profile
             from aios_core.modules.olx import OLXStorage
+            from aios_core.platforms import resolve_profile
 
             profile = resolve_profile("olx", name, store=self.profile_store)
             storage = OLXStorage(profile.db_path)
@@ -616,11 +617,7 @@ class AIOSAPI:
         catalog with ``aios platforms calibrate --write``; compile a
         parser module with ``aios platforms codegen`` / ``bootup``.
         """
-        from aios_core.platforms import (
-            CalibrationAdvisor,
-            build_parser,
-            get_platform,
-        )
+        from aios_core.platforms import CalibrationAdvisor, build_parser, get_platform
 
         try:
             descriptor = get_platform(request.path_params["platform"])
@@ -822,9 +819,10 @@ class AIOSAPI:
         (наследник OLXMessenger). Instagram получает hints-driven
         Direct, OLX — родной; платформа без messenger-модуля → 404.
         """
+        import importlib
+
         from aios_core.modules.olx.messenger import OLXMessenger
         from aios_core.platforms import get_platform
-        import importlib
 
         descriptor = get_platform(platform)
         try:
@@ -1499,10 +1497,7 @@ class AIOSAPI:
 
     async def _production_health(self, request: Request) -> JSONResponse:
         try:
-            from aios_core.production_autopilot import (
-                ProductionConfig,
-                ProductionAutopilot,
-            )
+            from aios_core.production_autopilot import ProductionAutopilot, ProductionConfig
 
             config = ProductionConfig.default_3_instagram()
             autopilot = ProductionAutopilot(config)
@@ -1514,10 +1509,7 @@ class AIOSAPI:
 
     async def _production_simulate(self, request: Request) -> JSONResponse:
         try:
-            from aios_core.production_autopilot import (
-                ProductionConfig,
-                ProductionAutopilot,
-            )
+            from aios_core.production_autopilot import ProductionAutopilot, ProductionConfig
 
             body = (
                 await request.json()
@@ -1671,6 +1663,7 @@ class AIOSAPI:
     async def _ui_constitution(self, request: Request) -> JSONResponse:
         try:
             from pathlib import Path
+
             from tools.complete_constitution_tula import scan_constitution
 
             _const_dir = getattr(
@@ -2407,6 +2400,7 @@ class AIOSAPI:
     async def _olx_advisor(self, request: Request) -> JSONResponse:
         """Portfolio advice: actions for own ads + new-listing suggestions."""
         from typing import Dict
+
         from aios_core.modules.olx import StrategyAdvisor
 
         advisor = StrategyAdvisor(self._olx_db(request))
@@ -2457,6 +2451,7 @@ class AIOSAPI:
         """Generate listing advice from collected competitors."""
         try:
             from dataclasses import asdict
+
             from aios_core.modules.olx import AdCard, RecommendationEngine
 
             body = await request.json()
@@ -2857,6 +2852,7 @@ class AIOSAPI:
 
     async def _websocket_endpoint(self, request: Request):
         from starlette.websockets import WebSocket
+
         from aios_core.websocket import ws_manager
 
         websocket = WebSocket(scope=request.scope, receive=request.receive, send=request.send)

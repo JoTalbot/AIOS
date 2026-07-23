@@ -1,8 +1,8 @@
 """Advanced Agent Architecture for AIOS"""
 
-from typing import Dict, List, Callable, Any
-from dataclasses import dataclass, field
 import uuid
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List
 
 
 @dataclass

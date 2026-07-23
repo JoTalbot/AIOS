@@ -8,9 +8,11 @@ import asyncio
 import json
 import os
 from pathlib import Path
-from aios_core import Orchestrator, Database
-from aios_core.dashboard import create_dashboard
+
 import uvicorn
+
+from aios_core import Database, Orchestrator
+from aios_core.dashboard import create_dashboard
 
 DEFAULT_OLX_DB = "olx_ads.sqlite"
 
@@ -543,8 +545,9 @@ def _run_olx(args) -> bool:
         return True
 
     if args.olx_command == "bootstrap":
-        from aios_core.modules.olx import OLXBootstrap
         import os
+
+        from aios_core.modules.olx import OLXBootstrap
 
         bootstrap = OLXBootstrap(project_root=os.path.dirname(os.path.abspath(__file__)))
         kwargs = {
@@ -726,8 +729,9 @@ def _run_platforms(args) -> bool:
         return True
 
     if cmd == "codegen":
-        from aios_core.platforms.parsergen import write_parser
         import yaml
+
+        from aios_core.platforms.parsergen import write_parser
 
         yaml_path = Path(args.root) / "platforms" / f"{args.platform}.yaml"
         if not yaml_path.exists():
@@ -792,10 +796,7 @@ def _run_platforms(args) -> bool:
     if cmd == "reels":
         from aios_core.modules.olx.adb import ADBController
         from aios_core.modules.olx.notifier import WebhookNotifier
-        from aios_core.platforms import (
-            get_platform,
-            reels_driver_for,
-        )
+        from aios_core.platforms import get_platform, reels_driver_for
         from aios_core.platforms.compliance import compliance_guard
 
         check = compliance_guard(args.platform, "collect", directory=args.directory)
@@ -856,8 +857,8 @@ def _run_platforms(args) -> bool:
         return True
 
     if cmd == "doctor":
-        from aios_core.platforms.doctor import platform_doctor
         from aios_core.platforms import get_platform
+        from aios_core.platforms.doctor import platform_doctor
 
         descriptor = get_platform(args.platform)
         report = platform_doctor(
@@ -1159,10 +1160,7 @@ def _run_instagram(args) -> bool:
             return True
 
         if cmd in ("dm-send", "dm-flush", "dm-outbox"):
-            from aios_core.modules.instagram import (
-                InstagramMessenger,
-                InstagramStorage,
-            )
+            from aios_core.modules.instagram import InstagramMessenger, InstagramStorage
             from aios_core.modules.olx.adb import ADBController
 
             adb = ADBController(
@@ -1195,10 +1193,7 @@ def _run_instagram(args) -> bool:
             return True
 
         if cmd == "own":
-            from aios_core.modules.instagram import (
-                InstagramStorage,
-                OwnPostsParser,
-            )
+            from aios_core.modules.instagram import InstagramStorage, OwnPostsParser
             from aios_core.modules.olx.adb import ADBController
             from aios_core.modules.olx.own_ads import OwnAdsTracker
 
@@ -1241,10 +1236,7 @@ def _run_instagram(args) -> bool:
             return True
 
         if cmd == "login-drive":
-            from aios_core.modules.instagram import (
-                InstagramLoginDriver,
-                login_screen_detected,
-            )
+            from aios_core.modules.instagram import InstagramLoginDriver, login_screen_detected
             from aios_core.modules.olx.adb import ADBController
             from aios_core.platforms import parser_for
             from aios_core.platforms.pointdrive import PointDrive
@@ -1283,6 +1275,7 @@ def _adb_dump_driver(default_serial=None):
 
     def driver(package, query=None, serial=None):
         import tempfile
+
         from aios_core.modules.olx.adb import ADBController
         from aios_core.platforms.pointdrive import PointDrive
 
@@ -1557,11 +1550,7 @@ def _run_devices(args) -> bool:
 
     if cmd == "fleet-run":
         from aios_core.modules.olx.notifier import WebhookNotifier
-        from aios_core.platforms import (
-            DevicePool,
-            FleetScheduler,
-            ProfileStore,
-        )
+        from aios_core.platforms import DevicePool, FleetScheduler, ProfileStore
 
         store = ProfileStore.default()
         jobs = [
@@ -2553,24 +2542,24 @@ def main(argv=None):
             parser.parse_args(["olx", "--help"])
     elif args.command == "admin":
         from aios_cli_admin import (
+            run_backup_cleanup,
+            run_backup_create,
+            run_backup_health,
+            run_backup_list,
+            run_backup_restore,
+            run_backup_verify,
             run_export,
             run_import,
             run_keys_generate,
+            run_keys_health,
             run_keys_list,
             run_keys_revoke,
             run_keys_rotate,
-            run_keys_health,
-            run_backup_create,
-            run_backup_list,
-            run_backup_verify,
-            run_backup_restore,
-            run_backup_cleanup,
-            run_backup_health,
-            run_webhooks_register,
-            run_webhooks_list,
-            run_webhooks_test,
-            run_webhooks_notify,
             run_webhooks_health,
+            run_webhooks_list,
+            run_webhooks_notify,
+            run_webhooks_register,
+            run_webhooks_test,
         )
 
         if args.admin_command == "export":

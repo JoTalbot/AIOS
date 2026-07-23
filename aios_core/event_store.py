@@ -2,8 +2,8 @@
 
 import json
 import uuid
-from typing import List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List
 
 
 class EventStore:

@@ -1,18 +1,16 @@
 """End-to-End tests for Admin API endpoints."""
 
-import pytest
 import json
-from starlette.testclient import TestClient
+
+import pytest
 from starlette.applications import Starlette
-from starlette.routing import Route
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.routing import Route
+from starlette.testclient import TestClient
 
-from aios_core.api.admin_routes import (
-    init_admin_routes,
-    get_admin_routes,
-)
+from aios_core.api.admin_routes import get_admin_routes, init_admin_routes
 
 
 class MockPrincipal:

@@ -1,15 +1,16 @@
 """Load tests for AIOS API under heavy concurrent load."""
 
-import pytest
-import time
-import statistics
 import concurrent.futures
+import statistics
 import threading
-from starlette.testclient import TestClient
+import time
+
+import pytest
 from starlette.applications import Starlette
-from starlette.routing import Route
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.routing import Route
+from starlette.testclient import TestClient
 
 
 class TestAPILoadTests:
@@ -130,8 +131,9 @@ class TestAPILoadTests:
 
     def test_memory_under_load(self, client):
         """Test memory usage under sustained load."""
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
@@ -335,8 +337,9 @@ class TestStressTests:
 
     def test_memory_stability_5000_requests(self, client):
         """Test memory stability over 5000 requests."""
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
 

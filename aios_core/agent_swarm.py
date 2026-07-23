@@ -1,6 +1,7 @@
 """Multi-Agent Swarm System for AIOS"""
 
-from typing import List, Dict
+from typing import Dict, List
+
 from .agent_architecture import AdvancedAgent
 
 

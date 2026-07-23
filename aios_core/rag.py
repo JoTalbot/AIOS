@@ -1,6 +1,6 @@
 """Retrieval-Augmented Generation (RAG) for AIOS"""
 
-from typing import List, Dict
+from typing import Dict, List
 
 
 class RAGSystem:

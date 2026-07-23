@@ -1,6 +1,7 @@
 """Tests for Quantum Entangled Zero-Latency Communication Mesh (Horizon 9.0)."""
 
 import pytest
+
 from aios_core.quantum_entanglement_mesh import QuantumEntanglementMesh
 
 

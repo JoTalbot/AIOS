@@ -1,6 +1,6 @@
 """Hybrid Quantum-Classical Computing for AIOS"""
 
-from typing import Dict, Any, Callable
+from typing import Any, Callable, Dict
 
 
 class HybridQuantumClassical:

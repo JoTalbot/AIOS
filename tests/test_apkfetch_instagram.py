@@ -12,6 +12,9 @@ from aios_core.platforms import (
     DevicePool,
     bootup_platform,
     check_platform_markers,
+)
+from aios_core.platforms import descriptor as descriptor_mod
+from aios_core.platforms import (
     diff_markers,
     fetch_apk,
     load_secrets_file,
@@ -22,7 +25,6 @@ from aios_core.platforms import (
     secret,
     write_hints_to_descriptor,
 )
-from aios_core.platforms import descriptor as descriptor_mod
 from aios_core.platforms.calibrate import CalibrationAdvisor
 from aios_core.platforms.secrets import env_name
 
@@ -566,8 +568,8 @@ def test_instagram_drive_already_logged_in_skips_flow():
 
 
 def test_cli_platforms_fetch_apk(monkeypatch, capsys, tmp_path):
-    from aios_cli import main
     import aios_core.platforms as platforms_mod
+    from aios_cli import main
 
     def fake_fetch(package, out_dir="apks", source="apkpure", runner=None):
         Path(out_dir).mkdir(parents=True, exist_ok=True)

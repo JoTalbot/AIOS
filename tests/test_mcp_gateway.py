@@ -7,6 +7,7 @@ constitution guard, and full gateway integration tests.
 import json
 import os
 import sys
+
 import pytest
 
 # Ensure project root is on path
@@ -14,25 +15,24 @@ _project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from aios_core.mcp.gateway import ConstitutionGuard, GatewayConfig, MCPGateway
+from aios_core.mcp.prompts import PromptDefinition, PromptRegistry
 from aios_core.mcp.protocol import (
     JSONRPCError,
+    JSONRPCNotification,
     JSONRPCParseError,
     JSONRPCRequest,
     JSONRPCResponse,
-    JSONRPCNotification,
-    MCPProtocol,
-    MCPToolCall,
-    MCPToolResult,
-    MCPResource,
-    MCPResourceContent,
     MCPPrompt,
     MCPPromptResult,
+    MCPProtocol,
+    MCPResource,
+    MCPResourceContent,
+    MCPToolCall,
+    MCPToolResult,
 )
-from aios_core.mcp.tools import ToolDefinition, ToolRegistry
 from aios_core.mcp.resources import ResourceDefinition, ResourceRegistry
-from aios_core.mcp.prompts import PromptDefinition, PromptRegistry
-from aios_core.mcp.gateway import ConstitutionGuard, GatewayConfig, MCPGateway
-
+from aios_core.mcp.tools import ToolDefinition, ToolRegistry
 
 # ---------------------------------------------------------------------------
 # Helpers

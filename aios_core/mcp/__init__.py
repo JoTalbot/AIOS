@@ -4,23 +4,23 @@ Model Context Protocol gateway for AIOS, providing JSON-RPC 2.0 access
 to constitution-guarded tools, resources, and prompt templates.
 """
 
+from .gateway import ConstitutionGuard, GatewayConfig, MCPGateway
+from .prompts import PromptDefinition, PromptRegistry
 from .protocol import (
     JSONRPCError,
+    JSONRPCNotification,
     JSONRPCRequest,
     JSONRPCResponse,
-    JSONRPCNotification,
-    MCPProtocol,
-    MCPToolCall,
-    MCPToolResult,
-    MCPResource,
-    MCPResourceContent,
     MCPPrompt,
     MCPPromptResult,
+    MCPProtocol,
+    MCPResource,
+    MCPResourceContent,
+    MCPToolCall,
+    MCPToolResult,
 )
-from .tools import ToolDefinition, ToolRegistry
 from .resources import ResourceDefinition, ResourceRegistry
-from .prompts import PromptDefinition, PromptRegistry
-from .gateway import ConstitutionGuard, GatewayConfig, MCPGateway
+from .tools import ToolDefinition, ToolRegistry
 
 __all__ = [
     # Protocol

@@ -1,10 +1,12 @@
 """Tests for OpenTelemetry Metrics and W3C Tracing (Milestone 4.2.2)."""
 
-import pytest
 import logging
+
+import pytest
+
+from aios_core.logging_config import JSONFormatter, setup_logging
 from aios_core.telemetry import Telemetry
 from aios_core.tracing import Tracer
-from aios_core.logging_config import JSONFormatter, setup_logging
 
 
 def test_telemetry_metrics():

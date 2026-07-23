@@ -1,6 +1,6 @@
 """Comprehensive AI Safety Evaluations"""
 
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 
 class SafetyEvaluator:

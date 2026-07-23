@@ -1,6 +1,7 @@
 """API Versioning for AIOS"""
 
-from typing import Dict, Callable
+from typing import Callable, Dict
+
 from starlette.responses import JSONResponse
 
 

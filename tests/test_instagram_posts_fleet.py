@@ -8,14 +8,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from aios_core.platforms import (
-    DevicePool,
-    FleetScheduler,
-    HintVideoParser,
-    video_parser_for,
-)
-from aios_core.platforms.videocards import VideoCard, parse_counter_text
+from aios_core.platforms import DevicePool, FleetScheduler, HintVideoParser
 from aios_core.platforms import descriptor as descriptor_mod
+from aios_core.platforms import video_parser_for
+from aios_core.platforms.videocards import VideoCard, parse_counter_text
 
 REELS_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <hierarchy rotation="0">
@@ -356,12 +352,7 @@ def test_cli_instagram_own_snapshot_and_post_dry_run(tmp_path, capsys):
 
 def test_cli_devices_fleet_run(tmp_path, capsys, monkeypatch):
     from aios_cli import main
-    from aios_core.platforms import (
-        DevicePool,
-        Profile,
-        ProfileStore,
-        load_catalog_file,
-    )
+    from aios_core.platforms import DevicePool, Profile, ProfileStore, load_catalog_file
 
     load_catalog_file("platforms/instagram.yaml")
     try:

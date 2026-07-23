@@ -1,6 +1,7 @@
 """Tests for Multi-Dimensional Universal World Model (Horizon 7.0)."""
 
 import pytest
+
 from aios_core.multidimensional_world_model import MultiDimensionalWorldModel
 
 

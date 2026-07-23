@@ -13,18 +13,6 @@ CLI и REST API разрешают контекст работы через ед
 
 from .apkfetch import fetch_apk, resolve_apk
 from .bootup import bootup_platform
-from .catalog import load_catalog, load_catalog_file
-from .compliance import compliance_block, compliance_guard, rate_limit_hours
-from .descriptor import (
-    PlatformDescriptor,
-    get_platform,
-    list_platforms,
-    register_platform,
-)
-from .dashboard import dashboard_html
-from .devices import DevicePool
-from .fleetsched import FleetScheduler
-from .videocards import HintVideoParser, VideoCard, video_parser_for
 from .calibrate import (
     CalibrationAdvisor,
     DetailCalibrationAdvisor,
@@ -32,7 +20,13 @@ from .calibrate import (
     merge_hints,
     write_hints_to_descriptor,
 )
+from .catalog import load_catalog, load_catalog_file
+from .compliance import compliance_block, compliance_guard, rate_limit_hours
+from .dashboard import dashboard_html
+from .descriptor import PlatformDescriptor, get_platform, list_platforms, register_platform
+from .devices import DevicePool
 from .fleet import PoolMonitor, ensure_device
+from .fleetsched import FleetScheduler
 from .gateway import ShardGateway, ShardHealthMonitor
 from .parsergen import (
     build_parser,
@@ -46,6 +40,7 @@ from .profile import Profile
 from .recipe import calibration_recipe
 from .reelscout import ReelsCollector, ReelsTabDriver, reels_driver_for
 from .regression import check_platform_markers, diff_markers
+from .resolver import adb_for, resolve_profile, storage_for
 from .runtime_hints import (
     HintDetailParser,
     HintSender,
@@ -53,20 +48,12 @@ from .runtime_hints import (
     detail_parser_for,
     load_hints_section,
 )
-from .resolver import (
-    adb_for,
-    resolve_profile,
-    storage_for,
-)
 from .scaffold import inspect_apk, scaffold_from_apk, scaffold_platform
-from .secrets import (
-    load_secrets_file,
-    required_secret,
-    secret,
-)
+from .secrets import load_secrets_file, required_secret, secret
 from .shardexec import ShardJobs, ShardJobWorker, default_handlers
 from .shards import ShardRouter
 from .store import ProfileStore
+from .videocards import HintVideoParser, VideoCard, video_parser_for
 
 __all__ = [
     "DevicePool",

@@ -7,14 +7,9 @@ import os
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from aios_core.platforms import (
-    DevicePool,
-    PlatformDescriptor,
-    Profile,
-    ProfileStore,
-    register_platform,
-)
+from aios_core.platforms import DevicePool, PlatformDescriptor, Profile, ProfileStore
 from aios_core.platforms import descriptor as descriptor_mod
+from aios_core.platforms import register_platform
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

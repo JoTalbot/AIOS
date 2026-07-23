@@ -1,10 +1,10 @@
 """Test fixed enhanced_logging"""
 
 from aios_core.enhanced_logging import (
-    LogConfig,
     EnhancedLogger,
-    setup_enhanced_logging,
     LogAggregator,
+    LogConfig,
+    setup_enhanced_logging,
 )
 
 

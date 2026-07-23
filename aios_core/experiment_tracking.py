@@ -1,7 +1,7 @@
 """Experiment Tracking for AIOS"""
 
-from typing import Dict, Any, List
 import uuid
+from typing import Any, Dict, List
 
 
 class ExperimentTracker:

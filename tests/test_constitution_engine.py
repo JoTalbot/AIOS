@@ -1,6 +1,7 @@
 """Tests for Constitution Engine."""
 
 import unittest
+
 from aios_core.constitution_engine import ConstitutionEngine
 
 

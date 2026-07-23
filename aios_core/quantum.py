@@ -1,7 +1,7 @@
 """Quantum-Inspired Algorithms for AIOS (v4.2)"""
 
 import random
-from typing import List, Dict
+from typing import Dict, List
 
 
 class QuantumInspiredOptimizer:

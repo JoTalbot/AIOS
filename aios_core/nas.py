@@ -1,7 +1,7 @@
 """Neural Architecture Search for AIOS"""
 
-from typing import Dict, List
 import random
+from typing import Dict, List
 
 
 class NAS:

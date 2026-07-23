@@ -1,8 +1,9 @@
 """JWT-based Authentication for AIOS"""
 
-import jwt
 import time
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
+import jwt
 
 
 class JWTManager:

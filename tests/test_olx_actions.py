@@ -10,6 +10,7 @@ from aios_core.modules.olx import (
     AdCard,
     AdDetailParser,
     AdImprover,
+    CardParser,
     ChatListParser,
     ChatViewParser,
     Message,
@@ -20,14 +21,13 @@ from aios_core.modules.olx import (
     OwnAdsTracker,
     PriceTracker,
     ReplySuggester,
-    RepostPlanner,
     Reposter,
+    RepostPlanner,
     WebhookNotifier,
     notify_price_drops,
     notify_stagnant,
 )
-from tests.test_olx_agent import FakeADB, SAMPLE_XML
-from aios_core.modules.olx import CardParser
+from tests.test_olx_agent import SAMPLE_XML, FakeADB
 
 NOW = datetime(2026, 7, 21, 15, 0, 0, tzinfo=timezone.utc)
 
@@ -396,7 +396,8 @@ def test_notifier_webhook_and_telegram_payload():
 
 def test_mcp_olx_tools_registered_and_callable(tmp_path, monkeypatch):
     import os
-    from aios_core.mcp.gateway import MCPGateway, GatewayConfig
+
+    from aios_core.mcp.gateway import GatewayConfig, MCPGateway
     from aios_core.storage import Database
 
     db_path = tmp_path / "olx.sqlite"

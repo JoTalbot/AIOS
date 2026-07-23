@@ -1,8 +1,8 @@
 """Advanced Quantum Optimization Algorithms"""
 
-from typing import Callable, Dict, List
-import random
 import math
+import random
+from typing import Callable, Dict, List
 
 
 class QuantumApproximateOptimization:

@@ -13,18 +13,15 @@ PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..")
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from aios_core.constitution_engine import ConstitutionEngine, DecisionOutcome
 from aios_core.constitution_loader import (
     ConstitutionLoader,
     ObligationLevel,
-    _roman_to_int,
     _detect_obligation,
+    _roman_to_int,
 )
-from aios_core.policy_loader import (
-    PolicyLoader,
-    PolicyValidationError,
-)
-from aios_core.constitution_engine import ConstitutionEngine, DecisionOutcome
 from aios_core.constitution_validator import ConstitutionValidator
+from aios_core.policy_loader import PolicyLoader, PolicyValidationError
 from aios_core.runtime_policy import RuntimePolicy
 
 # Paths to real project data

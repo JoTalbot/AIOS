@@ -8,10 +8,9 @@ import pytest
 import yaml
 from httpx import ASGITransport, AsyncClient
 
+from aios_core.platforms import PlatformDescriptor, bootup_platform, build_parser
+from aios_core.platforms import descriptor as descriptor_mod
 from aios_core.platforms import (
-    PlatformDescriptor,
-    bootup_platform,
-    build_parser,
     extract_markers,
     generate_parser_source,
     get_platform,
@@ -21,7 +20,6 @@ from aios_core.platforms import (
     write_hints_to_descriptor,
     write_parser,
 )
-from aios_core.platforms import descriptor as descriptor_mod
 from aios_core.platforms.calibrate import CalibrationAdvisor
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -113,10 +111,7 @@ def test_build_parser_empty_hints_matches_nothing():
 
 
 def test_olx_card_parser_markers_still_backward_compatible():
-    from aios_core.modules.olx.card_parser import (
-        CARD_RESOURCE_MARKERS,
-        CardParser,
-    )
+    from aios_core.modules.olx.card_parser import CARD_RESOURCE_MARKERS, CardParser
 
     assert "adlisting_adgridcard" in CARD_RESOURCE_MARKERS
     assert CardParser.CARD_RESOURCE_MARKERS == CARD_RESOURCE_MARKERS

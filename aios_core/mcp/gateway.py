@@ -28,24 +28,24 @@ _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
+from aios_core.config import AIOSConfig, load_config
 from aios_core.runtime_policy import RuntimePolicy
 from aios_core.storage import Database
-from aios_core.config import AIOSConfig, load_config
 
+from .prompts import PromptDefinition, PromptRegistry
 from .protocol import (
-    MCPProtocol,
+    JSONRPCError,
+    JSONRPCNotification,
+    JSONRPCParseError,
     JSONRPCRequest,
     JSONRPCResponse,
-    JSONRPCNotification,
-    JSONRPCError,
-    JSONRPCParseError,
+    MCPProtocol,
+    MCPResourceContent,
     MCPToolCall,
     MCPToolResult,
-    MCPResourceContent,
 )
-from .tools import ToolRegistry, ToolDefinition
-from .resources import ResourceRegistry, ResourceDefinition
-from .prompts import PromptRegistry, PromptDefinition
+from .resources import ResourceDefinition, ResourceRegistry
+from .tools import ToolDefinition, ToolRegistry
 
 # Default constitution/policy dirs relative to project root
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -382,6 +382,7 @@ class MCPGateway:
         (``AIOS_PROFILES_DB``) и кэшируется по имени.
         """
         import os
+
         from aios_core.modules.olx import OLXStorage
 
         if getattr(self, "_olx_storages", None) is None:
@@ -489,6 +490,7 @@ class MCPGateway:
 
     def _olx_listing_recommend(self, params: dict) -> dict:
         from dataclasses import asdict
+
         from aios_core.modules.olx import AdCard, RecommendationEngine
 
         store = self._olx_store(params.get("profile"))

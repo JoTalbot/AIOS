@@ -4,7 +4,7 @@ import os
 import time
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from aios_core.modules.olx import CardParser, OLXStorage
 from tests.test_olx_agent import SAMPLE_XML

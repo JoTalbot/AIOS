@@ -9,7 +9,7 @@ Persists to evolution_records table in SQLite.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from .storage import Database
@@ -370,7 +370,7 @@ class EvolutionManager:
         if self.db is None:
             return []
 
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         cutoff_iso = cutoff.isoformat()

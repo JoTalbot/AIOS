@@ -1,6 +1,6 @@
 """Basic AIOS Usage Example"""
 
-from aios_core import Orchestrator, Database
+from aios_core import Database, Orchestrator
 
 
 def main():

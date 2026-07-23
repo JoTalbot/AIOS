@@ -8,17 +8,17 @@ Includes real-time metrics, performance monitoring, and automated alerting.
 import asyncio
 import json
 import logging
-import time
-from typing import Any, Dict, List, Optional, Callable
-from dataclasses import dataclass, asdict
-from enum import Enum
-from datetime import datetime, timedelta
 import threading
+import time
 from collections import defaultdict, deque
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
+from aios_core.logging_config import JSONFormatter, setup_logging
 from aios_core.telemetry import MetricCounter, MetricGauge, MetricHistogram
 from aios_core.tracing import tracer
-from aios_core.logging_config import setup_logging, JSONFormatter
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 """Tests for CapabilityMarketplace v4.1"""
 
-from aios_core import Orchestrator, Database
+from aios_core import Database, Orchestrator
 
 
 def test_publish_and_search():

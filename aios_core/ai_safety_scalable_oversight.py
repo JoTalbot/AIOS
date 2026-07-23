@@ -1,6 +1,6 @@
 """Scalable Oversight for AI Safety"""
 
-from typing import Any, Dict, List, Callable
+from typing import Any, Callable, Dict, List
 
 
 class ScalableOversight:

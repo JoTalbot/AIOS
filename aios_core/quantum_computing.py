@@ -1,7 +1,7 @@
 """Quantum Computing Integration for AIOS"""
 
-from typing import List, Dict, Any
 import random
+from typing import Any, Dict, List
 
 
 class Qubit:

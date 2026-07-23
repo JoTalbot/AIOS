@@ -1,8 +1,10 @@
 """Fixed tests for Android AI Navigation (M7)."""
 
-import pytest
 from unittest.mock import Mock, patch
-from aios_core.android_ai_navigation import AIScreenClassifier, SelfHealingLocator, ScreenEmbedding
+
+import pytest
+
+from aios_core.android_ai_navigation import AIScreenClassifier, ScreenEmbedding, SelfHealingLocator
 
 
 class MockUIElement:

@@ -13,12 +13,7 @@ import tempfile
 from typing import Dict, List, Optional
 
 from aios_core.modules.olx.adb import ADBController
-from aios_core.modules.olx.messenger import (
-    ChatListParser,
-    ChatThread,
-    Message,
-    OLXMessenger,
-)
+from aios_core.modules.olx.messenger import ChatListParser, ChatThread, Message, OLXMessenger
 from aios_core.platforms.runtime_hints import HintSender, load_hints_section
 
 

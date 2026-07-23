@@ -6,7 +6,7 @@ strictly guarantees all 67 Constitutional Invariants for infinite horizon execut
 
 import hashlib
 import time
-from typing import Dict, List, Optional, Any, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 class SafetyInvariant:

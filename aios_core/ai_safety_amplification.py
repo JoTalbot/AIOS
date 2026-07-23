@@ -1,6 +1,6 @@
 """Iterated Amplification for AI Safety"""
 
-from typing import Dict, Callable
+from typing import Callable, Dict
 
 
 class IteratedAmplification:

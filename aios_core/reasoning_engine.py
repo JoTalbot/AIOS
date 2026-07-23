@@ -9,12 +9,12 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
-    from .storage import Database
-    from .memory_manager import MemoryManager
     from .knowledge_graph import KnowledgeGraph
+    from .memory_manager import MemoryManager
+    from .storage import Database
 
 
 @dataclass

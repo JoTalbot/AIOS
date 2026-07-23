@@ -1,6 +1,6 @@
 """OpenAPI Documentation Generator for AIOS"""
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 def generate_openapi_spec() -> Dict[str, Any]:

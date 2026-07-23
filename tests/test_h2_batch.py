@@ -8,15 +8,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from aios_core.platforms import (
-    calibration_recipe,
-    dashboard_html,
-    get_platform,
-    load_catalog_file,
-)
+from aios_core.platforms import calibration_recipe, dashboard_html
 from aios_core.platforms import descriptor as descriptor_mod
+from aios_core.platforms import get_platform, load_catalog_file
 from aios_core.platforms.recipe import _KIND_HINTS
-
 
 # ---------------------------------------------------------------------------
 # calibration_recipe
@@ -230,6 +225,7 @@ def test_dashboard_html_custom_prefix_param():
 def test_rest_dashboard_page(monkeypatch):
     import os
     import tempfile
+
     from starlette.testclient import TestClient
 
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -289,10 +285,7 @@ def _telemetry_dbs(tmp_path):
 
 
 def test_fleet_snapshot_and_prometheus_metrics(tmp_path):
-    from aios_core.platforms.telemetry import (
-        fleet_snapshot,
-        prometheus_metrics,
-    )
+    from aios_core.platforms.telemetry import fleet_snapshot, prometheus_metrics
 
     shards, profiles, devices = _telemetry_dbs(tmp_path)
     snapshot = fleet_snapshot(
@@ -336,6 +329,7 @@ def test_prometheus_metrics_empty_bases_are_honest_zeros(tmp_path):
 
 def test_rest_metrics_include_fleet_series(tmp_path, monkeypatch):
     import os
+
     from starlette.testclient import TestClient
 
     shards, profiles, devices = _telemetry_dbs(tmp_path)
@@ -394,10 +388,7 @@ def test_facebook_module_classes():
 
 
 def test_facebook_messenger_guarded_outbox():
-    from aios_core.modules.facebook import (
-        FacebookMessenger,
-        FacebookStorage,
-    )
+    from aios_core.modules.facebook import FacebookMessenger, FacebookStorage
 
     chat_xml = (
         '<hierarchy><node class="android.widget.EditText" '

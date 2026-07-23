@@ -6,19 +6,19 @@ This module provides examples and documentation for using the enhanced integrati
 import asyncio
 import json
 import time
-from typing import Any, Dict, List
 from dataclasses import asdict
+from typing import Any, Dict, List
 
 from .enhanced_integration_system import (
-    EnhancedIntegrationSystem,
-    IntegrationConfig,
-    WebhookConfig,
-    GraphQLConfig,
     AlertRule,
     DashboardConfig,
+    EnhancedIntegrationSystem,
+    GraphQLConfig,
+    IntegrationConfig,
     LogConfig,
     ProtocolConfig,
     ProtocolType,
+    WebhookConfig,
 )
 
 
@@ -393,9 +393,9 @@ async def example_integration_with_aios_core():
     # This example shows how to integrate the enhanced integration system
     # with existing AIOS core components
 
-    from .external_integration import ExternalIntegrationAPI
-    from .enhanced_monitoring import MonitoringAPI
     from .enhanced_logging import EnhancedLogger
+    from .enhanced_monitoring import MonitoringAPI
+    from .external_integration import ExternalIntegrationAPI
 
     # Create individual components
     integration_api = ExternalIntegrationAPI()

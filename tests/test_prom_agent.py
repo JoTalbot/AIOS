@@ -1,7 +1,7 @@
 """Smoke-тесты сгенерированного модуля платформы prom."""
 
-from aios_core.platforms import get_platform
 from aios_core.modules.prom import PromStorage
+from aios_core.platforms import get_platform
 
 
 def test_prom_storage_opens_and_counts():

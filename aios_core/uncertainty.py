@@ -1,7 +1,7 @@
 """Uncertainty Quantification for AIOS"""
 
-from typing import Dict, List
 import statistics
+from typing import Dict, List
 
 
 class UncertaintyQuantifier:

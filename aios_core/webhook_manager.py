@@ -13,15 +13,15 @@ Usage:
     webhook.notify("ban_detected", {"profile": "ig_shop_1", "reason": "rate limit"})
 """
 
-import json
-import time
 import hashlib
 import hmac
-from datetime import datetime
-from typing import Dict, List, Optional, Callable, Any
-from dataclasses import dataclass, field, asdict
-from enum import Enum
+import json
 import threading
+import time
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
 
 class WebhookEvent(str, Enum):

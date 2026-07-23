@@ -1,7 +1,7 @@
 """Mixture of Experts (MoE) for AIOS"""
 
-from typing import List, Dict, Callable
 import random
+from typing import Callable, Dict, List
 
 
 class Expert:

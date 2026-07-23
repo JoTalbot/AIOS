@@ -1,7 +1,7 @@
 """Bayesian Inference for AIOS"""
 
-from typing import Dict, Any
 import random
+from typing import Any, Dict
 
 
 class BayesianInference:

@@ -1,6 +1,7 @@
 """Tests for Universal Multi-Species Ethics Framework (Horizon 9.0)."""
 
 import pytest
+
 from aios_core.universal_multi_species_ethics import UniversalMultiSpeciesEthics
 
 

@@ -1,7 +1,7 @@
 """Score-Based Generative Models for AIOS"""
 
-from typing import List
 import random
+from typing import List
 
 
 class ScoreBasedModel:

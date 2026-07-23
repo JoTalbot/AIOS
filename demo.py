@@ -17,26 +17,26 @@ This script demonstrates the full AIOS (AI Operating System) capabilities:
 Run: python demo.py
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from aios_core import (
-    Orchestrator,
-    Database,
-    TaskStatus,
-    StepStatus,
-    ConstitutionLoader,
-    ConstitutionEngine,
-    MemoryManager,
-    KnowledgeGraph,
-    ReasoningEngine,
-    LearningEngine,
-    EvolutionManager,
-    create_app,
     AIOSAPI,
+    ConstitutionEngine,
+    ConstitutionLoader,
+    Database,
+    EvolutionManager,
+    KnowledgeGraph,
+    LearningEngine,
+    MemoryManager,
+    Orchestrator,
+    ReasoningEngine,
+    StepStatus,
+    TaskStatus,
     TestEngine,
+    create_app,
 )
 
 
@@ -401,7 +401,7 @@ def demo_mcp_gateway():
     print("🔌 MCP GATEWAY (JSON-RPC 2.0)")
     print("=" * 60)
 
-    from aios_core.mcp.gateway import MCPGateway, GatewayConfig
+    from aios_core.mcp.gateway import GatewayConfig, MCPGateway
 
     gateway = MCPGateway(
         GatewayConfig(
@@ -464,7 +464,8 @@ def demo_rest_api():
 
     # Test endpoints
     import asyncio
-    from httpx import AsyncClient, ASGITransport
+
+    from httpx import ASGITransport, AsyncClient
 
     async def test_api():
         app = api.create_starlette_app()

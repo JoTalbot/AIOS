@@ -8,7 +8,7 @@ task delegation, and Bayesian Consensus voting for constitutional amendments.
 import hashlib
 import json
 import time
-from typing import Dict, List, Optional, Any, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 class ZeroKnowledgeSafetyProof:

@@ -1,7 +1,7 @@
 """Smoke-тесты сгенерированного модуля платформы shafa."""
 
-from aios_core.platforms import get_platform
 from aios_core.modules.shafa import ShafaStorage
+from aios_core.platforms import get_platform
 
 
 def test_shafa_storage_opens_and_counts():

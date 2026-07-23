@@ -15,15 +15,16 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from aios_core.mcp.gateway import MCPGateway, GatewayConfig
+import uvicorn
 from starlette.applications import Starlette
-from starlette.routing import Route
-from starlette.requests import Request
-from starlette.responses import JSONResponse
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+
 from aios_core.api.security import APIKeyAuthMiddleware
-import uvicorn
+from aios_core.mcp.gateway import GatewayConfig, MCPGateway
 
 
 async def rpc_endpoint(request: Request, gateway: MCPGateway):

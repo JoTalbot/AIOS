@@ -5,10 +5,10 @@ nested spans, trace context propagation across EventBus, agents, and HTTP API.
 """
 
 import threading
-import uuid
 import time
+import uuid
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 _current_trace_context = threading.local()
 

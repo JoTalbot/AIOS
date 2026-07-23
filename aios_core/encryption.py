@@ -1,7 +1,8 @@
 """Data Encryption for AIOS"""
 
-from cryptography.fernet import Fernet
 from typing import Optional
+
+from cryptography.fernet import Fernet
 
 
 class EncryptionManager:

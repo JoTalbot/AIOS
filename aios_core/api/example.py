@@ -9,7 +9,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Dict, Any
+from typing import Any, Dict
 
 from aios_core.api.enhanced import create_enhanced_api
 from aios_core.api.integration import IntegrationEvent, IntegrationEventType

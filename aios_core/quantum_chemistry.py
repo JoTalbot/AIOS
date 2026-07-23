@@ -1,6 +1,6 @@
 """Quantum Chemistry Simulation for AIOS"""
 
-from typing import List, Dict
+from typing import Dict, List
 
 
 class QuantumChemistrySimulator:

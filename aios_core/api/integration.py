@@ -9,22 +9,22 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Dict, List, Optional, Union
 
 from starlette.applications import Starlette
-from starlette.routing import Route, Mount
-from starlette.requests import Request
-from starlette.responses import JSONResponse, StreamingResponse
+from starlette.background import BackgroundTask
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.background import BackgroundTask
+from starlette.requests import Request
+from starlette.responses import JSONResponse, StreamingResponse
+from starlette.routing import Mount, Route
 
 from aios_core.api.app import AIOSAPI
+from aios_core.logging_config import setup_logging
 from aios_core.telemetry import MetricCounter, MetricGauge, MetricHistogram
 from aios_core.tracing import tracer
-from aios_core.logging_config import setup_logging
 
 logger = logging.getLogger(__name__)
 

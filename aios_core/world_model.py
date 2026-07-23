@@ -1,6 +1,6 @@
 """World Model / World Simulator for AIOS"""
 
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 
 class WorldModel:

@@ -4,8 +4,9 @@ Comprehensive tests for the AIOS self-validation test engine, including
 data models, test runner, built-in suites, reporter, and main engine facade.
 """
 
-import pytest
 import os
+
+import pytest
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONSTITUTION_DIR = os.path.join(_PROJECT_ROOT, "docs/constitution")
@@ -44,7 +45,7 @@ class TestModels:
         assert tc.validator is None
 
     def test_test_result_defaults(self):
-        from aios_core.test_engine.models import TestResult, TestStatus, TestCategory, TestSeverity
+        from aios_core.test_engine.models import TestCategory, TestResult, TestSeverity, TestStatus
 
         r = TestResult(test_name="my_test")
         assert r.test_name == "my_test"
@@ -94,7 +95,7 @@ class TestModels:
         assert len(TestCategory) == 6
 
     def test_suite_result_defaults(self):
-        from aios_core.test_engine.models import TestSuiteResult, TestStatus
+        from aios_core.test_engine.models import TestStatus, TestSuiteResult
 
         sr = TestSuiteResult(suite_name="my_suite")
         assert sr.suite_name == "my_suite"
@@ -135,10 +136,10 @@ class TestModels:
 
     def test_suite_result_category_breakdown(self):
         from aios_core.test_engine.models import (
-            TestSuiteResult,
+            TestCategory,
             TestResult,
             TestStatus,
-            TestCategory,
+            TestSuiteResult,
         )
 
         sr = TestSuiteResult(suite_name="s")
@@ -552,8 +553,8 @@ class TestSuites:
         assert len(cases) == 13
 
     def test_constitutional_suite_has_critical_tests(self):
-        from aios_core.test_engine.suites import constitutional_compliance_suite
         from aios_core.test_engine.models import TestSeverity
+        from aios_core.test_engine.suites import constitutional_compliance_suite
 
         cases = constitutional_compliance_suite()
         critical = [c for c in cases if c.severity == TestSeverity.CRITICAL]
@@ -578,13 +579,13 @@ class TestSuites:
         assert len(cases) == 3
 
     def test_all_suites_return_test_cases(self):
+        from aios_core.test_engine.models import TestCase
         from aios_core.test_engine.suites import (
             constitutional_compliance_suite,
-            security_policy_suite,
             evolution_safety_suite,
             integration_suite,
+            security_policy_suite,
         )
-        from aios_core.test_engine.models import TestCase
 
         for suite_fn in [
             constitutional_compliance_suite,
@@ -606,8 +607,8 @@ class TestSuites:
         assert all(c.tags for c in cases)
 
     def test_security_suite_all_critical(self):
-        from aios_core.test_engine.suites import security_policy_suite
         from aios_core.test_engine.models import TestSeverity
+        from aios_core.test_engine.suites import security_policy_suite
 
         cases = security_policy_suite()
         # At least some should be CRITICAL
@@ -615,8 +616,8 @@ class TestSuites:
         assert len(critical) >= 3
 
     def test_evolution_suite_tests_categories(self):
-        from aios_core.test_engine.suites import evolution_safety_suite
         from aios_core.test_engine.models import TestCategory
+        from aios_core.test_engine.suites import evolution_safety_suite
 
         cases = evolution_safety_suite()
         categories = {c.category for c in cases}
@@ -626,9 +627,9 @@ class TestSuites:
         """All suites should be importable from aios_core top-level."""
         from aios_core import (
             constitutional_compliance_suite,
-            security_policy_suite,
             evolution_safety_suite,
             integration_suite,
+            security_policy_suite,
         )
 
         assert callable(constitutional_compliance_suite)
@@ -646,13 +647,13 @@ class TestReporter:
     """Tests for the TestReporter."""
 
     def test_generate_report_all_passed(self):
-        from aios_core.test_engine.reporter import TestReporter
         from aios_core.test_engine.models import (
-            TestSuiteResult,
+            TestCategory,
             TestResult,
             TestStatus,
-            TestCategory,
+            TestSuiteResult,
         )
+        from aios_core.test_engine.reporter import TestReporter
 
         reporter = TestReporter()
         suite = TestSuiteResult(
@@ -683,13 +684,13 @@ class TestReporter:
         assert report.overall_status == "passed"
 
     def test_generate_report_with_failures(self):
-        from aios_core.test_engine.reporter import TestReporter
         from aios_core.test_engine.models import (
-            TestSuiteResult,
+            TestCategory,
             TestResult,
             TestStatus,
-            TestCategory,
+            TestSuiteResult,
         )
+        from aios_core.test_engine.reporter import TestReporter
 
         reporter = TestReporter()
         suite = TestSuiteResult(
@@ -728,13 +729,13 @@ class TestReporter:
         assert len(report.failures) == 2
 
     def test_summary_text(self):
-        from aios_core.test_engine.reporter import TestReporter
         from aios_core.test_engine.models import (
-            TestSuiteResult,
+            TestCategory,
             TestResult,
             TestStatus,
-            TestCategory,
+            TestSuiteResult,
         )
+        from aios_core.test_engine.reporter import TestReporter
 
         reporter = TestReporter()
         suite = TestSuiteResult(
@@ -762,13 +763,13 @@ class TestReporter:
         assert "2/2 passed" in text
 
     def test_failures_text_empty(self):
-        from aios_core.test_engine.reporter import TestReporter
         from aios_core.test_engine.models import (
-            TestSuiteResult,
+            TestCategory,
             TestResult,
             TestStatus,
-            TestCategory,
+            TestSuiteResult,
         )
+        from aios_core.test_engine.reporter import TestReporter
 
         reporter = TestReporter()
         suite = TestSuiteResult(
@@ -790,13 +791,13 @@ class TestReporter:
         assert text == "No failures."
 
     def test_failures_text_with_failures(self):
-        from aios_core.test_engine.reporter import TestReporter
         from aios_core.test_engine.models import (
-            TestSuiteResult,
+            TestCategory,
             TestResult,
             TestStatus,
-            TestCategory,
+            TestSuiteResult,
         )
+        from aios_core.test_engine.reporter import TestReporter
 
         reporter = TestReporter()
         suite = TestSuiteResult(
@@ -825,13 +826,13 @@ class TestReporter:
         assert "Mismatch" in text
 
     def test_to_dict(self):
-        from aios_core.test_engine.reporter import TestReporter
         from aios_core.test_engine.models import (
-            TestSuiteResult,
+            TestCategory,
             TestResult,
             TestStatus,
-            TestCategory,
+            TestSuiteResult,
         )
+        from aios_core.test_engine.reporter import TestReporter
 
         reporter = TestReporter()
         suite = TestSuiteResult(
@@ -862,13 +863,13 @@ class TestReporter:
         assert "generated_at" in d
 
     def test_report_overall_status_passed(self):
-        from aios_core.test_engine.reporter import TestReporter
         from aios_core.test_engine.models import (
-            TestSuiteResult,
-            TestStatus,
             TestCategory,
             TestResult,
+            TestStatus,
+            TestSuiteResult,
         )
+        from aios_core.test_engine.reporter import TestReporter
 
         reporter = TestReporter()
         suite = TestSuiteResult(
@@ -889,13 +890,13 @@ class TestReporter:
         assert report.overall_status == "passed"
 
     def test_report_overall_status_partial(self):
-        from aios_core.test_engine.reporter import TestReporter
         from aios_core.test_engine.models import (
-            TestSuiteResult,
-            TestStatus,
             TestCategory,
             TestResult,
+            TestStatus,
+            TestSuiteResult,
         )
+        from aios_core.test_engine.reporter import TestReporter
 
         reporter = TestReporter()
         suite = TestSuiteResult(

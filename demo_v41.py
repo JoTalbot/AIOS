@@ -11,7 +11,7 @@ Demonstrates all major v4.1 features:
 - Capability Marketplace
 """
 
-from aios_core import Orchestrator, Database
+from aios_core import Database, Orchestrator
 
 
 def main():

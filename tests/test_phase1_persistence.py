@@ -12,12 +12,12 @@ PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..")
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from aios_core.storage import Database
-from aios_core.config import load_config, AIOSConfig, _deep_merge, _apply_env_overrides
-from aios_core.audit_logger import AuditLogger
 from aios_core.approval_manager import ApprovalManager
-from aios_core.memory_manager import MemoryManager
+from aios_core.audit_logger import AuditLogger
+from aios_core.config import AIOSConfig, _apply_env_overrides, _deep_merge, load_config
 from aios_core.knowledge_graph import KnowledgeGraph
+from aios_core.memory_manager import MemoryManager
+from aios_core.storage import Database
 
 
 def _make_db():

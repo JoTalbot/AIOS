@@ -1,7 +1,7 @@
 """Advanced Quantum Machine Learning"""
 
-from typing import List, Dict
 import random
+from typing import Dict, List
 
 
 class QuantumNeuralNetwork:

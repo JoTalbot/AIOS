@@ -1,7 +1,8 @@
 """M8 Predictive Maintenance tests"""
 
-from aios_core.android_predictive import PredictiveMaintenance, RiskLevel
 import time
+
+from aios_core.android_predictive import PredictiveMaintenance, RiskLevel
 
 
 def test_record_and_predict_low_risk():

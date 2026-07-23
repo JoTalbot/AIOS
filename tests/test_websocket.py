@@ -1,6 +1,7 @@
 """Tests for WebSocket support"""
 
 from starlette.testclient import TestClient
+
 from aios_core.api.app import create_app
 
 

@@ -15,8 +15,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from aios_core.api.app import create_app
 import uvicorn
+
+from aios_core.api.app import create_app
 
 
 def main():

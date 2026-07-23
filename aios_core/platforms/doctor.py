@@ -14,8 +14,8 @@ from typing import Dict, List, Optional, Sequence
 
 import yaml
 
-from aios_core.platforms.secrets import secret
 from aios_core.platforms.recipe import calibration_recipe
+from aios_core.platforms.secrets import secret
 
 
 def _report_recipe(

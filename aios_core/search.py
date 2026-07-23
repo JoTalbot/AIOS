@@ -1,7 +1,7 @@
 """Full-Text Search for AIOS Memory/Knowledge"""
 
 import re
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 
 class SimpleSearchEngine:

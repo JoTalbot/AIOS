@@ -9,10 +9,10 @@ import argparse
 import json
 import os
 import sys
-import zipfile
 import xml.etree.ElementTree as ET
+import zipfile
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 
 class APKManifestAnalyzer:

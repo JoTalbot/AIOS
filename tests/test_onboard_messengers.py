@@ -9,13 +9,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from aios_core.platforms import (
-    ShardJobs,
-    ShardRouter,
-    get_platform,
-    load_catalog_file,
-)
+from aios_core.platforms import ShardJobs, ShardRouter
 from aios_core.platforms import descriptor as descriptor_mod
+from aios_core.platforms import get_platform, load_catalog_file
 
 CHAT_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <hierarchy rotation="0">
@@ -403,10 +399,10 @@ def test_cron_plan_via_shards_enqueues(tmp_path, capsys, monkeypatch):
 
 
 def test_rest_shard_jobs_plane(monkeypatch):
-    from starlette.testclient import TestClient
-
     import os
     import tempfile
+
+    from starlette.testclient import TestClient
 
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     with tempfile.TemporaryDirectory() as tmp:

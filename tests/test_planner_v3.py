@@ -1,6 +1,6 @@
 """Tests for advanced Planner v3.0 features"""
 
-from aios_core import Orchestrator, Database
+from aios_core import Database, Orchestrator
 
 
 def test_plan_scoring():

@@ -1,6 +1,6 @@
 """Formal Verification for AI Safety"""
 
-from typing import Dict, Callable, Any
+from typing import Any, Callable, Dict
 
 
 class FormalVerifier:

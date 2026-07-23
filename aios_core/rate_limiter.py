@@ -1,7 +1,7 @@
 """Simple Rate Limiter for AIOS API"""
 
-from collections import defaultdict
 import time
+from collections import defaultdict
 from typing import Dict
 
 

@@ -20,9 +20,9 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .memory_manager import MemoryManager
-from .knowledge_graph import KnowledgeGraph
 from .constitution_engine import ConstitutionEngine
+from .knowledge_graph import KnowledgeGraph
+from .memory_manager import MemoryManager
 
 
 @dataclass

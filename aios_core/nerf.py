@@ -1,7 +1,7 @@
 """Neural Radiance Fields (NeRF) for AIOS"""
 
-from typing import List, Tuple
 import random
+from typing import List, Tuple
 
 
 class NeRF:

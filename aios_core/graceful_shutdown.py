@@ -1,8 +1,8 @@
 """Graceful Shutdown Handler for AIOS"""
 
+import asyncio
 import signal
 import sys
-import asyncio
 from typing import Callable, List
 
 

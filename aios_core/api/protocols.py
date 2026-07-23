@@ -9,14 +9,14 @@ import asyncio
 import json
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Callable, AsyncGenerator
+from concurrent import futures
 from dataclasses import dataclass
 from enum import Enum
-import websockets
-from graphql import GraphQLSchema, GraphQLObjectType, GraphQLField, GraphQLString
-from graphql import graphql
+from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
+
 import grpc
-from concurrent import futures
+import websockets
+from graphql import GraphQLField, GraphQLObjectType, GraphQLSchema, GraphQLString, graphql
 
 from aios_core.api.integration import (
     ExternalIntegrationManager,

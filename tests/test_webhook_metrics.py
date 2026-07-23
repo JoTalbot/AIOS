@@ -1,11 +1,9 @@
 """Tests for webhook Prometheus metrics."""
 
 import pytest
+
 from aios_core.webhook_manager import WebhookManager
-from aios_core.webhook_metrics import (
-    register_webhook_metrics,
-    get_webhook_prometheus_text,
-)
+from aios_core.webhook_metrics import get_webhook_prometheus_text, register_webhook_metrics
 
 
 class TestWebhookMetrics:

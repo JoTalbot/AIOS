@@ -1,8 +1,8 @@
 """Retry Mechanism with Exponential Backoff"""
 
-import time
 import random
-from typing import Callable, Any
+import time
+from typing import Any, Callable
 
 
 def retry(

@@ -4,7 +4,10 @@ TULA — Architecture Module Analysis Tool
 Для проекта AIOS (JoTalbot/AIOS) — автономный анализ docs/core/
 Без привязки к Octopus.
 """
-import os, sys, argparse, re
+import argparse
+import os
+import re
+import sys
 from datetime import datetime
 
 

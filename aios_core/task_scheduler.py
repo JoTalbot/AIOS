@@ -1,8 +1,8 @@
 """Task Scheduler for AIOS"""
 
 import time
-from typing import Callable, Dict, Any
 from datetime import datetime, timedelta
+from typing import Any, Callable, Dict
 
 
 class TaskScheduler:

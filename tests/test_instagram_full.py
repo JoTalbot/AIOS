@@ -20,10 +20,7 @@ from aios_core.platforms import (
     write_hints_to_descriptor,
 )
 from aios_core.platforms.calibrate import CalibrationAdvisor, DetailCalibrationAdvisor
-from aios_core.platforms.runtime_hints import (
-    chat_list_parser_for,
-    detail_parser_for,
-)
+from aios_core.platforms.runtime_hints import chat_list_parser_for, detail_parser_for
 
 FEED_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <hierarchy rotation="0">
@@ -293,10 +290,7 @@ def test_instagram_collector_with_driver_and_storage(tmp_path):
     card_hints = CalibrationAdvisor().analyze(FEED_XML)
     _write_instagram_yaml(tmp_path, card_hints)
 
-    from aios_core.modules.instagram import (
-        InstagramCollector,
-        InstagramStorage,
-    )
+    from aios_core.modules.instagram import InstagramCollector, InstagramStorage
 
     collector = InstagramCollector(adb=adb, driver=driver, directory=str(tmp_path))
     cards = collector.collect(query="кросівки")
@@ -371,10 +365,7 @@ def test_instagram_detail_parser_from_descriptor(tmp_path):
 
 
 def test_instagram_messenger_guarded_outbox_flow(tmp_path):
-    from aios_core.modules.instagram import (
-        InstagramMessenger,
-        InstagramStorage,
-    )
+    from aios_core.modules.instagram import InstagramMessenger, InstagramStorage
 
     _write_instagram_yaml(tmp_path, {"messenger": MESSENGER_HINTS})
     adb = _ADB([CHAT_XML])  # один дамп для executor-этапа
@@ -399,10 +390,7 @@ def test_instagram_messenger_guarded_outbox_flow(tmp_path):
 
 
 def test_instagram_messenger_auto_send_and_open_chats(tmp_path):
-    from aios_core.modules.instagram import (
-        InstagramMessenger,
-        InstagramStorage,
-    )
+    from aios_core.modules.instagram import InstagramMessenger, InstagramStorage
 
     adb = _ADB([CHAT_XML], adb_prefix="adb -s emulator-5557")
     storage = InstagramStorage(":memory:")

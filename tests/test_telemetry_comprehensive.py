@@ -1,7 +1,8 @@
 """Comprehensive tests for AIOS Telemetry module."""
 
 import pytest
-from aios_core.telemetry import Telemetry, MetricCounter, MetricGauge, MetricHistogram
+
+from aios_core.telemetry import MetricCounter, MetricGauge, MetricHistogram, Telemetry
 
 
 class TestMetricCounter:

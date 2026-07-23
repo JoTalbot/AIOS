@@ -1,9 +1,11 @@
 """Tests for AIOS backup manager."""
 
-import sqlite3
 import json
-import pytest
+import sqlite3
 from pathlib import Path
+
+import pytest
+
 from aios_core.backup_manager import BackupManager, BackupMetadata
 
 

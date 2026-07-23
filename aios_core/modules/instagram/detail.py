@@ -11,10 +11,7 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
-from aios_core.platforms.runtime_hints import (
-    HintDetailParser,
-    load_hints_section,
-)
+from aios_core.platforms.runtime_hints import HintDetailParser, load_hints_section
 
 PACKAGE = "com.instagram.android"
 

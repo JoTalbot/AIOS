@@ -9,14 +9,9 @@ from pathlib import Path
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from aios_core.platforms import (
-    DevicePool,
-    PlatformDescriptor,
-    Profile,
-    ProfileStore,
-    register_platform,
-)
+from aios_core.platforms import DevicePool, PlatformDescriptor, Profile, ProfileStore
 from aios_core.platforms import descriptor as descriptor_mod
+from aios_core.platforms import register_platform
 from aios_core.platforms.autowatch import autowatch_cycle, resolve_card_parser
 from aios_core.platforms.calibrate import CalibrationAdvisor
 
@@ -247,8 +242,9 @@ def test_cli_platforms_autowatch_report(watch_platform, capsys, monkeypatch):
 
 def watch_platform_path(monkeypatch, store):
     """Переносит профили in-memory стора в файловый для CLI-резолвера."""
-    from aios_core.platforms import ProfileStore as _Store
     import tempfile
+
+    from aios_core.platforms import ProfileStore as _Store
 
     path = Path(tempfile.mkdtemp()) / "profiles.sqlite"
     file_store = _Store(str(path))

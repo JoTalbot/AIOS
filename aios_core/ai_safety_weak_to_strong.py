@@ -1,6 +1,6 @@
 """Weak-to-Strong Generalization for AIOS"""
 
-from typing import Dict, Any, Callable
+from typing import Any, Callable, Dict
 
 
 class WeakToStrongGeneralization:

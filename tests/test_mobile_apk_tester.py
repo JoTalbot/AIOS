@@ -1,8 +1,10 @@
 """Tests for Mobile APK Testing Tool."""
 
 import zipfile
-import pytest
 from pathlib import Path
+
+import pytest
+
 from tools.mobile_apk_tester import APKManifestAnalyzer
 
 

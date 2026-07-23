@@ -1,7 +1,7 @@
 """Advanced Observability for AIOS (OpenTelemetry compatible)"""
 
-from typing import Dict, Any
 import time
+from typing import Any, Dict
 
 
 class Observability:

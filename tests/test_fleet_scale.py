@@ -225,8 +225,8 @@ def test_cli_shards_flow(tmp_path, monkeypatch, capsys):
 
 
 def test_cli_platforms_from_apk_dry_run(tmp_path, capsys, monkeypatch):
-    from aios_cli import main
     import aios_core.platforms.scaffold as scaffold_mod
+    from aios_cli import main
 
     # Подменяем _badging на тестовый runner (в CI нет aapt).
     monkeypatch.setattr(scaffold_mod, "_badging", _fake_runner)

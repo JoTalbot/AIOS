@@ -68,15 +68,15 @@ from .notifier import (
     notify_stagnant,
 )
 from .own_ads import OwnAd, OwnAdsParser, OwnAdsTracker
+from .profile import ProfileEditor, ProfileInfo, ProfileParser, SettingsInfo
 from .promotion import (
     AdImprover,
     ImprovementSuggestion,
     OwnAdEditor,
     RepostDecision,
-    RepostPlanner,
     Reposter,
+    RepostPlanner,
 )
-from .profile import ProfileEditor, ProfileInfo, ProfileParser, SettingsInfo
 from .scheduler import CollectionScheduler
 from .storage import OLXStorage
 from .ui_parser import UIParser

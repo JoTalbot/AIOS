@@ -9,12 +9,12 @@ Enhances M7 observability with predictive capabilities:
 
 from __future__ import annotations
 
-import time
 import statistics
-from collections import deque, defaultdict
+import time
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class RiskLevel(Enum):

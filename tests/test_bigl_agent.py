@@ -1,7 +1,7 @@
 """Smoke-тесты сгенерированного модуля платформы bigl."""
 
-from aios_core.platforms import get_platform
 from aios_core.modules.bigl import BiglStorage
+from aios_core.platforms import get_platform
 
 
 def test_bigl_storage_opens_and_counts():

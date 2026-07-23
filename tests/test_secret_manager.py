@@ -2,9 +2,11 @@
 
 import json
 import tempfile
-import pytest
 from pathlib import Path
-from aios_core.secret_manager import SecretManager, APIKey
+
+import pytest
+
+from aios_core.secret_manager import APIKey, SecretManager
 
 
 class TestAPIKey:

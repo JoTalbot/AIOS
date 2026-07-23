@@ -9,7 +9,7 @@ import ast
 import inspect
 import sys
 import time
-from typing import Dict, List, Optional, Any, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 class ForbiddenASTVisitor(ast.NodeVisitor):

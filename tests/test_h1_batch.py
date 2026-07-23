@@ -9,8 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from aios_core.platforms import ShardJobs, ShardJobWorker, ShardRouter
-from aios_core.platforms import shardexec
+from aios_core.platforms import ShardJobs, ShardJobWorker, ShardRouter, shardexec
 from aios_core.platforms.pacing import Pacer, pacer_from_limits
 from aios_core.platforms.promote import promotion_plan
 
@@ -192,8 +191,8 @@ def test_pacer_from_pool_limits():
 
 def test_collectors_stop_on_pacing(tmp_path):
     from aios_core.modules.instagram import InstagramCollector
-    from aios_core.platforms.reelscout import ReelsCollector
     from aios_core.platforms import PlatformDescriptor
+    from aios_core.platforms.reelscout import ReelsCollector
     from aios_core.platforms.videocards import HintVideoParser
 
     class _ADB:
@@ -279,11 +278,11 @@ def test_promotion_plan_even_budget_and_dry_run():
 
 
 def test_cli_autopilot_promote_step(tmp_path, capsys, monkeypatch):
+    import yaml
+
     from aios_cli import main
     from aios_core.modules.instagram import InstagramStorage
     from aios_core.modules.olx.own_ads import OwnAd
-
-    import yaml
 
     (tmp_path / "instagram.yaml").write_text(
         yaml.safe_dump(
@@ -324,8 +323,8 @@ def test_cli_autopilot_promote_step(tmp_path, capsys, monkeypatch):
 
     ProfileStore.reset_default()
 
-    from aios_core.platforms import load_catalog_file
     from aios_core.platforms import descriptor as descriptor_mod
+    from aios_core.platforms import load_catalog_file
 
     loaded = load_catalog_file("platforms/instagram.yaml")
     try:

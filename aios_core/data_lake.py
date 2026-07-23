@@ -1,8 +1,8 @@
 """Data Lake for AIOS Analytics"""
 
-from typing import List, Dict, Any
 import json
 import os
+from typing import Any, Dict, List
 
 
 class DataLake:
