@@ -200,6 +200,21 @@ remediation history is recorded in
 [`TEST_AUDIT_2026-07-23.md`](TEST_AUDIT_2026-07-23.md). Run the command above
 before deployment.
 
+## Development quality checks
+
+Install the local quality hooks once after cloning the repository:
+
+```bash
+python -m pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
+The hooks validate formatting, import order, YAML/TOML, merge-conflict markers,
+common debug statements and type hints before a commit. CI repeats the checks,
+runs the test suite on Python 3.11–3.13, builds distribution artifacts and
+scans for exposed secrets.
+
 ## Security
 
 Read [SECURITY.md](SECURITY.md) before deploying. Includes:
