@@ -126,16 +126,16 @@ jobs:
 
             # Config for faster boot
             cat > ~/.android/avd/${AVD}.avd/config.ini <<EOF
-hw.lcd.density=160
-hw.lcd.width=320
-hw.lcd.height=640
-sdcard.size=512M
-hw.gpu.enabled=yes
-hw.gpu.mode=swiftshader_indirect
-hw.keyboard=yes
-vm.heapSize=256M
-hw.ramSize=1536
-EOF
+          hw.lcd.density=160
+          hw.lcd.width=320
+          hw.lcd.height=640
+          sdcard.size=512M
+          hw.gpu.enabled=yes
+          hw.gpu.mode=swiftshader_indirect
+          hw.keyboard=yes
+          vm.heapSize=256M
+          hw.ramSize=1536
+          EOF
           done
 
       - name: Start Emulators (3 parallel)
