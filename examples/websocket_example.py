@@ -1,8 +1,9 @@
 """WebSocket Real-time Example for AIOS"""
 
 import asyncio
-import websockets
 import json
+
+import websockets
 
 
 async def listen_to_aios():

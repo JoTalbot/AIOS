@@ -5,9 +5,10 @@ Real-time updates for tasks, events, and stats.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Set
-from starlette.websockets import WebSocket, WebSocketDisconnect
 import json
+from typing import Any, Dict, Set
+
+from starlette.websockets import WebSocket, WebSocketDisconnect
 
 
 class WebSocketManager:

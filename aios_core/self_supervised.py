@@ -1,7 +1,7 @@
 """Self-Supervised Learning for AIOS"""
 
-from typing import Dict, List, Any
 import random
+from typing import Any, Dict, List
 
 
 class SelfSupervisedLearner:

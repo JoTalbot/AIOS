@@ -1,6 +1,6 @@
 """Tests for MLPlannerScorer v4.0-alpha"""
 
-from aios_core import Orchestrator, Database
+from aios_core import Database, Orchestrator
 from aios_core.ml_planner_scorer import MLPlannerScorer
 
 

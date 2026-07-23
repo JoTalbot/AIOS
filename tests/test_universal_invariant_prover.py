@@ -1,6 +1,7 @@
 """Tests for Universal Constitutional Invariant Prover (Horizon 7.0)."""
 
 import pytest
+
 from aios_core.universal_invariant_prover import UniversalInvariantProver
 
 

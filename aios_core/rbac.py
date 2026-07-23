@@ -1,6 +1,6 @@
 """Role-Based Access Control (RBAC) for AIOS"""
 
-from typing import Dict, Set, List
+from typing import Dict, List, Set
 
 
 class RBAC:

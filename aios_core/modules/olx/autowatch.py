@@ -22,7 +22,7 @@ from typing import Callable, Dict, List, Optional
 from .collector import OLXCollector
 from .notifier import WebhookNotifier, notify_stagnant
 from .own_ads import OwnAd, OwnAdsTracker
-from .promotion import AdImprover, RepostPlanner, Reposter
+from .promotion import AdImprover, Reposter, RepostPlanner
 from .scheduler import CollectionScheduler
 from .watch import FavoritesWatch, SubscriptionManager
 
@@ -126,8 +126,8 @@ class AutoWatch:
 
         # 4b. Competitive surveillance driven by own listings
         if rows:
-            from .competitive import CompetitiveWatch
             from .advisor import StrategyAdvisor
+            from .competitive import CompetitiveWatch
 
             own_list = [
                 OwnAd(

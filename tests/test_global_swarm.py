@@ -1,6 +1,7 @@
 """Tests for Global Swarm Governance & ZK Safety Proof Engine (Horizon 5.0)."""
 
 import pytest
+
 from aios_core.global_swarm import GlobalSwarmGovernance, ZeroKnowledgeSafetyProof
 
 

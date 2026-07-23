@@ -1,7 +1,8 @@
 """Tests for Planetary Mesh & Space Edge Orchestration Engine (Horizon 6.0)."""
 
 import pytest
-from aios_core.planetary_federation import PlanetaryMeshOrchestrator, PlanetaryMeshNode
+
+from aios_core.planetary_federation import PlanetaryMeshNode, PlanetaryMeshOrchestrator
 
 
 def test_planetary_mesh_routing():

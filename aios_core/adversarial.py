@@ -1,7 +1,7 @@
 """Adversarial Robustness for AIOS"""
 
-from typing import List, Dict
 import random
+from typing import Dict, List
 
 
 class AdversarialDefense:

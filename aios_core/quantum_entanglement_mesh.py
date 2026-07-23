@@ -7,7 +7,7 @@ and zero-latency inter-cluster state synchronization across cosmic distance node
 import hashlib
 import random
 import time
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class QuantumEntangledChannel:

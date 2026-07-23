@@ -5,7 +5,7 @@ Neuromorphic (SNN), Quantum (QPU), and Biological compute runtimes.
 """
 
 import time
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class SubstrateType:

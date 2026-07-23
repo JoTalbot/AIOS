@@ -1,7 +1,8 @@
 """Tests for CapabilityEngine v3.0 suggestions"""
 
 import pytest
-from aios_core import Orchestrator, Database
+
+from aios_core import Database, Orchestrator
 
 
 def test_suggest_capabilities():

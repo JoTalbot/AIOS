@@ -1,7 +1,8 @@
 """Integration tests for Evolution + Autonomy subsystems"""
 
 import pytest
-from aios_core import Orchestrator, Database
+
+from aios_core import Database, Orchestrator
 
 
 def test_evolution_and_autonomy_integration():

@@ -5,7 +5,7 @@ delay-tolerant task routing (DTN), and planetary mesh fault recovery.
 """
 
 import time
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class PlanetaryMeshNode:

@@ -5,7 +5,7 @@ belief contradiction resolution, and goal drift alignment auditing against Const
 """
 
 import time
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class SovereignReflectionEngine:

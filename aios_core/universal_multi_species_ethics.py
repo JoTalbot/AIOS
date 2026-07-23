@@ -5,7 +5,7 @@ biological, artificial, neuromorphic, and synthetic lifeforms in multi-planetary
 """
 
 import time
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class UniversalMultiSpeciesEthics:

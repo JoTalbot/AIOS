@@ -6,7 +6,7 @@ Gaussian Mutation, Constitutional Fitness Selection, and Natural Survival Select
 
 import random
 import time
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class AgentGenome:

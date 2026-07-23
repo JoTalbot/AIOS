@@ -1,8 +1,9 @@
 """AIOS Configuration Manager"""
 
 import os
-import yaml
 from typing import Any, Dict
+
+import yaml
 
 
 class ConfigManager:

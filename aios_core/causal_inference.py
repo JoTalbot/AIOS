@@ -1,6 +1,6 @@
 """Causal Inference Engine for AIOS"""
 
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 
 class CausalInference:

@@ -1,6 +1,7 @@
 """Tests for Approval Manager (legacy compatibility)."""
 
 import unittest
+
 from aios_core.approval_manager import ApprovalManager
 from aios_core.storage import Database
 

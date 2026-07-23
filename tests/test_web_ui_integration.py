@@ -1,7 +1,8 @@
 """Tests for Web UI REST API Endpoints (Milestone 4.2.3)."""
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
+
 from aios_core.api.app import create_app
 
 

@@ -8,14 +8,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from aios_core.platforms import (
-    compliance_block,
-    compliance_guard,
-    get_platform,
-    load_catalog_file,
-    rate_limit_hours,
-)
+from aios_core.platforms import compliance_block, compliance_guard
 from aios_core.platforms import descriptor as descriptor_mod
+from aios_core.platforms import get_platform, load_catalog_file, rate_limit_hours
 
 
 def _write_yaml(tmp_path, platform, package, compliance=None):
@@ -315,10 +310,7 @@ def test_storage_audit_tracks_outbox_lifecycle():
 
 def test_telemetry_platform_db_counters(tmp_path, monkeypatch):
     from aios_core.modules.whatsapp import WhatsAppStorage
-    from aios_core.platforms.telemetry import (
-        fleet_snapshot,
-        prometheus_metrics,
-    )
+    from aios_core.platforms.telemetry import fleet_snapshot, prometheus_metrics
 
     data_dir = tmp_path / "data"
     data_dir.mkdir()

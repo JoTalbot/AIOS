@@ -1,6 +1,6 @@
 """Comprehensive AI Safety Framework for AIOS"""
 
-from typing import Dict, List, Any, Callable
+from typing import Any, Callable, Dict, List
 
 
 class AISafetyFramework:

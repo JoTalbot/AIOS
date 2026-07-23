@@ -1,7 +1,7 @@
 """Load Testing Framework for AIOS"""
 
-import time
 import threading
+import time
 from typing import Callable, Dict
 
 

@@ -1,6 +1,6 @@
 """Tests for ConstitutionEvolver v4.0-alpha"""
 
-from aios_core import Orchestrator, Database
+from aios_core import Database, Orchestrator
 
 
 def test_propose_article():

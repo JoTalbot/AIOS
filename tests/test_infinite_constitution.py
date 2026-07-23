@@ -1,6 +1,7 @@
 """Tests for Self-Amending Infinite Constitutional Engine (Horizon 8.0)."""
 
 import pytest
+
 from aios_core.infinite_constitution import InfiniteConstitutionEngine
 
 

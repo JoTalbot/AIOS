@@ -1,7 +1,7 @@
 """Quantum Reinforcement Learning for AIOS"""
 
-from typing import Dict, List
 import random
+from typing import Dict, List
 
 
 class QuantumQLearning:

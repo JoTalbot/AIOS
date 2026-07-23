@@ -1,6 +1,6 @@
 """Quantum Error Mitigation Techniques"""
 
-from typing import List, Dict
+from typing import Dict, List
 
 
 class QuantumErrorMitigation:

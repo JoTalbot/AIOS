@@ -1,7 +1,7 @@
 """Advanced Health Checks for AIOS"""
 
-from typing import Dict, Callable, Any
 import time
+from typing import Any, Callable, Dict
 
 
 class HealthCheckRegistry:

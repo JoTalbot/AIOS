@@ -1,7 +1,7 @@
 """Time Series Analysis for AIOS"""
 
-from typing import List, Dict
 import statistics
+from typing import Dict, List
 
 
 class TimeSeriesAnalyzer:

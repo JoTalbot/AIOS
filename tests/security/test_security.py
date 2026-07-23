@@ -1,12 +1,13 @@
 """Security tests for AIOS system."""
 
-import pytest
 import secrets
-from starlette.testclient import TestClient
+
+import pytest
 from starlette.applications import Starlette
-from starlette.routing import Route
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.routing import Route
+from starlette.testclient import TestClient
 
 
 class TestSQLInjection:
@@ -72,7 +73,7 @@ class TestAuthenticationBypass:
 
     def test_admin_endpoint_requires_auth(self):
         """Test admin endpoints require authentication."""
-        from aios_core.api.admin_routes import init_admin_routes, get_admin_routes
+        from aios_core.api.admin_routes import get_admin_routes, init_admin_routes
 
         init_admin_routes("test.sqlite", "./backups")
         app = Starlette(routes=get_admin_routes())
@@ -202,8 +203,9 @@ class TestSecretsManagement:
 
     def test_expired_keys_rejected(self):
         """Test expired keys are rejected."""
-        from aios_core.secret_manager import SecretManager, APIKey
         from datetime import datetime, timedelta
+
+        from aios_core.secret_manager import APIKey, SecretManager
 
         # Create expired key
         expired_at = (datetime.now() - timedelta(days=1)).isoformat()

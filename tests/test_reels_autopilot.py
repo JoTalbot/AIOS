@@ -16,10 +16,9 @@ from aios_core.platforms import (
     HintVideoParser,
     PlatformDescriptor,
     ReelsCollector,
-    get_platform,
-    load_catalog_file,
 )
 from aios_core.platforms import descriptor as descriptor_mod
+from aios_core.platforms import get_platform, load_catalog_file
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -7,7 +7,8 @@ Currently uses simple heuristics + placeholder for future ML models.
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
-from .planner import Planner, Plan
+
+from .planner import Plan, Planner
 from .storage import Database
 
 

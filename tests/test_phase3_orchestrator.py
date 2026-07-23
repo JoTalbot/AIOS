@@ -12,20 +12,14 @@ PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..")
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from aios_core.storage import Database
-from aios_core.memory_manager import MemoryManager
-from aios_core.knowledge_graph import KnowledgeGraph
-from aios_core.reasoning_engine import ReasoningEngine
-from aios_core.learning_engine import LearningEngine
 from aios_core.evolution_manager import EvolutionManager
+from aios_core.knowledge_graph import KnowledgeGraph
+from aios_core.learning_engine import LearningEngine
+from aios_core.memory_manager import MemoryManager
+from aios_core.orchestrator import Orchestrator, StepStatus, Task, TaskStatus, TaskStep
 from aios_core.privacy_guard import PrivacyGuard
-from aios_core.orchestrator import (
-    Orchestrator,
-    Task,
-    TaskStep,
-    TaskStatus,
-    StepStatus,
-)
+from aios_core.reasoning_engine import ReasoningEngine
+from aios_core.storage import Database
 
 CONSTITUTION_DIR = os.path.join(PROJECT_ROOT, "docs", "constitution")
 POLICIES_DIR = os.path.join(PROJECT_ROOT, "policies")
@@ -451,7 +445,7 @@ class TestLearningEngine(unittest.TestCase):
         self.assertIn("id", result)
 
     def test_record_task_completion(self):
-        from aios_core.orchestrator import Task, TaskStep, TaskStatus, StepStatus
+        from aios_core.orchestrator import StepStatus, Task, TaskStatus, TaskStep
 
         task = Task(
             name="test_task",

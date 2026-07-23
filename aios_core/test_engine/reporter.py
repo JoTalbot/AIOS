@@ -5,11 +5,8 @@ detailed, and failure-focused views.
 """
 
 from __future__ import annotations
-from .models import (
-    TestSuiteResult,
-    TestReport,
-    TestStatus,
-)
+
+from .models import TestReport, TestStatus, TestSuiteResult
 
 
 class TestReporter:

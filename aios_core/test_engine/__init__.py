@@ -5,23 +5,23 @@ security policy tests, evolution safety tests, and integration tests
 against the AIOS Constitution Engine.
 """
 
+from .engine import TestEngine
 from .models import (
     TestCase,
-    TestResult,
-    TestSuiteResult,
-    TestReport,
-    TestStatus,
-    TestSeverity,
     TestCategory,
+    TestReport,
+    TestResult,
+    TestSeverity,
+    TestStatus,
+    TestSuiteResult,
 )
-from .runner import TestRunner
 from .reporter import TestReporter
-from .engine import TestEngine
+from .runner import TestRunner
 from .suites import (
     constitutional_compliance_suite,
-    security_policy_suite,
     evolution_safety_suite,
     integration_suite,
+    security_policy_suite,
 )
 
 __all__ = [

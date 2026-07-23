@@ -6,7 +6,7 @@ and Prometheus/OTLP metric formatting.
 
 import math
 import time
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 
 class MetricCounter:

@@ -5,7 +5,7 @@ executing molecular computing logic, enzymatic ligation, and PCR state sequence 
 """
 
 import time
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class MolecularDNARuntime:

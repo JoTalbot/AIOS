@@ -8,20 +8,21 @@ proposals, and by the Orchestrator for continuous self-validation.
 """
 
 from __future__ import annotations
-from typing import Optional, TYPE_CHECKING
+
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from ..storage import Database
 
-from .models import TestSuiteResult, TestReport, TestCase
+from .models import TestCase, TestReport, TestSuiteResult
+from .reporter import TestReporter
 from .runner import TestRunner
 from .suites import (
     constitutional_compliance_suite,
-    security_policy_suite,
     evolution_safety_suite,
     integration_suite,
+    security_policy_suite,
 )
-from .reporter import TestReporter
 
 # Registry of all built-in suites
 _BUILTIN_SUITES = {

@@ -1,15 +1,17 @@
 """Tests for AIOS webhook notification system."""
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
+
 from aios_core.webhook_manager import (
-    WebhookManager,
-    WebhookTarget,
-    WebhookPayload,
     WebhookEvent,
-    notify_ban_detected,
+    WebhookManager,
+    WebhookPayload,
+    WebhookTarget,
     notify_backup_completed,
+    notify_ban_detected,
     notify_low_success_rate,
 )
 

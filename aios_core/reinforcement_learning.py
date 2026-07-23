@@ -1,7 +1,7 @@
 """Reinforcement Learning for AIOS"""
 
-from typing import Dict, Any, List
 import random
+from typing import Any, Dict, List
 
 
 class QLearningAgent:

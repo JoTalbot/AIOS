@@ -11,13 +11,9 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, List, Optional, Any, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from .constitution_loader import (
-    ConstitutionLoader,
-    ConstitutionalRule,
-    ObligationLevel,
-)
+from .constitution_loader import ConstitutionalRule, ConstitutionLoader, ObligationLevel
 from .policy_loader import PolicyLoader
 
 

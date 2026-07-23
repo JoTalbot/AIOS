@@ -1,6 +1,7 @@
 """Tests for Autonomous Bio-Inspired Genetic Evolution Engine (Horizon 6.0)."""
 
 import pytest
+
 from aios_core.biological_evolution import AgentGenome, BiologicalEvolutionEngine
 
 

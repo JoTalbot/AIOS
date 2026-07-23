@@ -1,7 +1,7 @@
 """Real-time AI Safety Monitoring"""
 
-from typing import Dict, List
 import time
+from typing import Dict, List
 
 
 class SafetyMonitor:

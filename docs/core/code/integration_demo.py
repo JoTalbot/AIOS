@@ -4,19 +4,21 @@ Without Octopus integration (~/agents/). Only AIOS internal components.
 Based on docs/core/code/*.py modules.
 """
 
-import sys, os, datetime
+import datetime
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from agent_model import Agent, AgentIdentity, Capability, AgentMemory
-from memory_architecture import AIOSMemory, MemoryObservation
+from agent_model import Agent, AgentIdentity, AgentMemory, Capability
 from evolution_engine import AIOS_EvolutionEngine
+from memory_architecture import AIOSMemory, MemoryObservation
 from orchestrator_architecture import (
-    AIOS_Orchestrator,
     AIOS_Node,
+    AIOS_Orchestrator,
+    ExecutionPlan,
     MCP_Module,
     WorkerPool,
-    ExecutionPlan,
 )
 
 

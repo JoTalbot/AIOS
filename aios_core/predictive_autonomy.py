@@ -5,7 +5,8 @@ resource demand, and agent history, dynamically scaling autonomy levels.
 """
 
 import time
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
 from .autonomy_manager import AutonomyLevel
 
 

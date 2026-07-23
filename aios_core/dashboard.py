@@ -7,9 +7,9 @@ Built on Starlette (same as the main API).
 from __future__ import annotations
 
 from starlette.applications import Starlette
-from starlette.responses import HTMLResponse, JSONResponse
-from starlette.routing import Route, Mount
 from starlette.requests import Request
+from starlette.responses import HTMLResponse, JSONResponse
+from starlette.routing import Mount, Route
 
 from .orchestrator import Orchestrator
 
@@ -141,11 +141,7 @@ class AIOSDashboard:
         db_path = os.environ.get("AIOS_OLX_DB")
         if not db_path or not os.path.exists(db_path):
             return JSONResponse({"available": False})
-        from aios_core.modules.olx import (
-            OLXStorage,
-            OwnAdsTracker,
-            PriceTracker,
-        )
+        from aios_core.modules.olx import OLXStorage, OwnAdsTracker, PriceTracker
 
         storage = OLXStorage(db_path)
         try:

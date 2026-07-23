@@ -1,10 +1,11 @@
 """Chaos tests for AIOS system resilience."""
 
-import pytest
-import time
 import random
 import sqlite3
+import time
 from pathlib import Path
+
+import pytest
 
 
 class TestDatabaseChaos:
@@ -46,8 +47,9 @@ class TestDatabaseChaos:
 
     def test_concurrent_write_conflicts(self, tmp_path):
         """Test handling of concurrent write conflicts."""
-        from aios_core.storage import Database
         import concurrent.futures
+
+        from aios_core.storage import Database
 
         db_path = tmp_path / "concurrent_test.sqlite"
         db = Database(str(db_path))
@@ -78,8 +80,9 @@ class TestDatabaseChaos:
 
     def test_database_lock_timeout(self, tmp_path):
         """Test behavior under database lock contention."""
-        from aios_core.storage import Database
         import concurrent.futures
+
+        from aios_core.storage import Database
 
         db_path = tmp_path / "lock_test.sqlite"
         db = Database(str(db_path))
@@ -196,8 +199,9 @@ class TestBackupChaos:
 
     def test_backup_during_heavy_write_load(self, tmp_path):
         """Test backup creation during heavy write operations."""
-        from aios_core.backup_manager import BackupManager
         import concurrent.futures
+
+        from aios_core.backup_manager import BackupManager
 
         db_path = tmp_path / "write_load.sqlite"
         backup_dir = tmp_path / "backups"
@@ -303,11 +307,11 @@ class TestAPIChaos:
 
     def test_api_under_malformed_requests(self):
         """Test API handles malformed requests gracefully."""
-        from starlette.testclient import TestClient
         from starlette.applications import Starlette
-        from starlette.routing import Route
         from starlette.requests import Request
         from starlette.responses import JSONResponse
+        from starlette.routing import Route
+        from starlette.testclient import TestClient
 
         async def endpoint(request: Request):
             return JSONResponse({"status": "ok"})
@@ -325,12 +329,13 @@ class TestAPIChaos:
 
     def test_api_concurrent_identical_requests(self):
         """Test API handles many identical concurrent requests."""
-        from starlette.testclient import TestClient
+        import concurrent.futures
+
         from starlette.applications import Starlette
-        from starlette.routing import Route
         from starlette.requests import Request
         from starlette.responses import JSONResponse
-        import concurrent.futures
+        from starlette.routing import Route
+        from starlette.testclient import TestClient
 
         async def endpoint(request: Request):
             time.sleep(0.01)  # Simulate work

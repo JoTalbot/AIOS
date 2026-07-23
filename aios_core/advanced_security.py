@@ -1,8 +1,8 @@
 """Advanced Security Module for AIOS"""
 
-from typing import Dict, List
 import hashlib
 import secrets
+from typing import Dict, List
 
 
 class AdvancedSecurity:

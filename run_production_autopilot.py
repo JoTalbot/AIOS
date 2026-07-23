@@ -19,15 +19,15 @@ Secrets: all from env (AIOS_WEBHOOK_URL, etc) per constitution.
 
 import argparse
 import json
-import time
 import os
 import sys
+import time
 from pathlib import Path
 
 # Ensure project root importable
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from aios_core.production_autopilot import ProductionConfig, ProductionAutopilot
+from aios_core.production_autopilot import ProductionAutopilot, ProductionConfig
 
 
 def load_config(name: str) -> ProductionConfig:

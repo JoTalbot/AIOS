@@ -10,6 +10,7 @@ import sys
 import time
 from logging.handlers import RotatingFileHandler
 from typing import Optional
+
 from .tracing import tracer
 
 

@@ -8,9 +8,10 @@ and REST execution routes.
 import json
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
-from .capability_engine import CapabilityEngine, Capability
+from typing import Any, Dict, List, Optional, Tuple
+
 from .autonomy_manager import AutonomyLevel
+from .capability_engine import Capability, CapabilityEngine
 
 
 class APKFunctionConverter:

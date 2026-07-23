@@ -16,11 +16,7 @@ from aios_core.modules.olx import (
     OLXStorage,
     RecommendationEngine,
 )
-from aios_core.modules.olx.text_utils import (
-    is_top_text,
-    parse_price,
-    parse_published,
-)
+from aios_core.modules.olx.text_utils import is_top_text, parse_price, parse_published
 
 NODE_ATTRS = (
     'class="android.view.View" package="ua.slando" checkable="false" '

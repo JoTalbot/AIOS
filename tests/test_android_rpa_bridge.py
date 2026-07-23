@@ -1,11 +1,12 @@
 """Tests for Android RPA Bridge - Real Android App Integration"""
 
-import pytest
-import time
 import hashlib
-from typing import Dict, Any, Optional
+import time
+from typing import Any, Dict, Optional
 
-from aios_core.android_rpa_bridge import AndroidRPAManager, AndroidRPADeviceEmulator
+import pytest
+
+from aios_core.android_rpa_bridge import AndroidRPADeviceEmulator, AndroidRPAManager
 
 
 class TestAndroidRPABridge:

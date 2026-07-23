@@ -18,8 +18,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from aios_core.android_parser import UIAutomatorParser, UIElement
 from aios_core.android_driver import AndroidDriver
+from aios_core.android_parser import UIAutomatorParser, UIElement
 
 
 def _text_vector(text: str) -> Dict[str, float]:

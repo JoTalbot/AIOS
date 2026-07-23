@@ -1,7 +1,8 @@
 """Tests for AIOS Orchestrator."""
 
 import pytest
-from aios_core.orchestrator import Task, TaskStep, TaskStatus, StepStatus, Orchestrator
+
+from aios_core.orchestrator import Orchestrator, StepStatus, Task, TaskStatus, TaskStep
 
 
 class TestTaskStatus:

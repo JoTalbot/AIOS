@@ -1,8 +1,8 @@
 """Advanced Quantum-Inspired Optimization"""
 
-import random
 import math
-from typing import List, Callable
+import random
+from typing import Callable, List
 
 
 class QuantumAnnealingOptimizer:

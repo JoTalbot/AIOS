@@ -1,6 +1,6 @@
 """Production autopilot GA criteria tests — 3 IG profiles ≥2 weeks no bans"""
 
-from aios_core.production_autopilot import ProductionConfig, ProductionAutopilot, ProductionProfile
+from aios_core.production_autopilot import ProductionAutopilot, ProductionConfig, ProductionProfile
 
 
 def test_default_3_ig_config():

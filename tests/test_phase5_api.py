@@ -5,10 +5,10 @@ Covers all endpoint groups: health, stats, evaluate, tasks, memory,
 knowledge graph, approvals, evolution, tests, audit, and JSON-RPC bridge.
 """
 
-import pytest
-from httpx import AsyncClient, ASGITransport
-
 import os
+
+import pytest
+from httpx import ASGITransport, AsyncClient
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONSTITUTION_DIR = os.path.join(_PROJECT_ROOT, "docs/constitution")

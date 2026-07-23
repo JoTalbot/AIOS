@@ -5,18 +5,9 @@ import sys
 
 import pytest
 
-from aios_core.platforms import (
-    DevicePool,
-    PoolMonitor,
-    Profile,
-    ProfileStore,
-    ensure_device,
-    get_platform,
-    load_catalog_file,
-    scaffold_platform,
-)
+from aios_core.platforms import DevicePool, PoolMonitor, Profile, ProfileStore
 from aios_core.platforms import descriptor as descriptor_mod
-
+from aios_core.platforms import ensure_device, get_platform, load_catalog_file, scaffold_platform
 
 # ---------------------------------------------------------------------------
 # scaffold_platform

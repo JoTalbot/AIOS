@@ -7,7 +7,7 @@ version lineage, stage promotion, and metric tracking.
 import hashlib
 import json
 import time
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class ModelRegistry:

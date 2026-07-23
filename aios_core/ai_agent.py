@@ -1,7 +1,7 @@
 """AI Agent Abstraction for AIOS"""
 
-from typing import Any, Dict, Callable
 from dataclasses import dataclass, field
+from typing import Any, Callable, Dict
 
 
 @dataclass

@@ -7,7 +7,7 @@ execution metrics (latency, memory, error rate, failure count).
 import math
 import statistics
 import time
-from typing import List, Dict, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class AnomalyDetector:

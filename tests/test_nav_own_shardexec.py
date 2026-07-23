@@ -287,8 +287,8 @@ def _write_yaml(directory, hints):
 
 @pytest.fixture
 def instagram_registered():
-    from aios_core.platforms import load_catalog_file
     from aios_core.platforms import descriptor as descriptor_mod
+    from aios_core.platforms import load_catalog_file
 
     loaded = load_catalog_file("platforms/instagram.yaml")
     yield loaded[0]

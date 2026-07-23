@@ -8,13 +8,7 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 from .models import AdCard
-from .text_utils import (
-    is_no_price_label,
-    is_top_text,
-    normalize_text,
-    parse_price,
-    parse_published,
-)
+from .text_utils import is_no_price_label, is_top_text, normalize_text, parse_price, parse_published
 
 # Jetpack Compose leaves most cards without resource-ids; known markers are
 # matched as substrings so both "ua.slando:id/adListing_adGridCard" and short

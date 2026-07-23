@@ -10,9 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+from aios_core.android_appium import AppiumAndroidDriver, AppiumDriverConfig
 from aios_core.android_driver import AndroidDriver, DriverCapabilities
 from aios_core.android_execution import RealDeviceExecutor
-from aios_core.android_appium import AppiumAndroidDriver, AppiumDriverConfig
 from aios_core.platforms.catalog import load_catalog
 
 

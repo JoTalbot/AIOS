@@ -1,13 +1,13 @@
 """Tests for v3.0 new modules: EventBus, Planner, CapabilityEngine, AutonomyManager, and integration."""
 
-import unittest
-import sys
 import os
+import sys
+import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from aios_core.event_bus import Event, EventBus, EventType
 from aios_core.storage import Database
-from aios_core.event_bus import EventBus, Event, EventType
 
 
 class TestEventBus(unittest.TestCase):
@@ -212,7 +212,7 @@ class TestCapabilityEngine(unittest.TestCase):
 
 class TestAutonomyManager(unittest.TestCase):
     def setUp(self):
-        from aios_core.autonomy_manager import AutonomyManager, AutonomyLevel
+        from aios_core.autonomy_manager import AutonomyLevel, AutonomyManager
 
         self.db = Database(":memory:")
         self.am = AutonomyManager(db=self.db)
@@ -265,7 +265,7 @@ class TestAutonomyManager(unittest.TestCase):
         self.assertLessEqual(profile["level"], 2)  # Should be demoted
 
     def test_persistence(self):
-        from aios_core.autonomy_manager import AutonomyManager, AutonomyLevel
+        from aios_core.autonomy_manager import AutonomyLevel, AutonomyManager
 
         self.am.grant_autonomy("persist_agent", AutonomyLevel.LEVEL_5_SELF_DIRECTED)
         # Reload
@@ -283,7 +283,7 @@ class TestAutonomyManager(unittest.TestCase):
 
 class TestV3Integration(unittest.TestCase):
     def test_orchestrator_with_new_modules(self):
-        from aios_core import Orchestrator, Database
+        from aios_core import Database, Orchestrator
 
         db = Database(":memory:")
         orch = Orchestrator(
@@ -315,7 +315,7 @@ class TestV3Integration(unittest.TestCase):
         orch.close()
 
     def test_enhanced_reasoning(self):
-        from aios_core import Database, MemoryManager, KnowledgeGraph, ReasoningEngine
+        from aios_core import Database, KnowledgeGraph, MemoryManager, ReasoningEngine
 
         db = Database(":memory:")
         mm = MemoryManager(db=db)

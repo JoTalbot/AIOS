@@ -1,11 +1,12 @@
 """Tests for Advanced ML Intelligence Layer (Milestone 4.2.1)."""
 
 import pytest
+
+from aios_core.anomaly_detection import AnomalyDetector
+from aios_core.autonomy_manager import AutonomyLevel
 from aios_core.model_registry import ModelRegistry
 from aios_core.model_serving import ModelServer
-from aios_core.anomaly_detection import AnomalyDetector
 from aios_core.predictive_autonomy import PredictiveAutonomyRegulator
-from aios_core.autonomy_manager import AutonomyLevel
 
 
 def test_model_registry():

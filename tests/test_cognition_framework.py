@@ -1,16 +1,17 @@
 """Tests for Cognition, Autonomous Science, Engineering, and Role Frameworks."""
 
 import pytest
-from aios_core.theory_of_mind import TheoryOfMind
+
+from aios_core.ai_engineer import AIEngineer
+from aios_core.ai_product_manager import AIProductManager
+from aios_core.ai_researcher import AIResearcher
+from aios_core.ai_scientist import AIScientist
+from aios_core.ai_startup import AIStartup
+from aios_core.creativity import CreativityEngine
 from aios_core.emotional_intelligence import EmotionalIntelligence
 from aios_core.metacognition import MetaCognition
 from aios_core.social_intelligence import SocialIntelligence
-from aios_core.creativity import CreativityEngine
-from aios_core.ai_scientist import AIScientist
-from aios_core.ai_researcher import AIResearcher
-from aios_core.ai_engineer import AIEngineer
-from aios_core.ai_product_manager import AIProductManager
-from aios_core.ai_startup import AIStartup
+from aios_core.theory_of_mind import TheoryOfMind
 
 
 def test_theory_of_mind():

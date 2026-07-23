@@ -1,6 +1,6 @@
 """API Gateway for AIOS"""
 
-from typing import Dict, Callable, Any
+from typing import Any, Callable, Dict
 
 
 class APIGateway:

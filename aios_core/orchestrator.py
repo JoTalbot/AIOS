@@ -22,26 +22,27 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Optional
 
-from .storage import Database
-from .config import AIOSConfig, load_config
-from .runtime_policy import RuntimePolicy
-from .memory_manager import MemoryManager
-from .knowledge_graph import KnowledgeGraph
-from .reasoning_engine import ReasoningEngine, ReasoningStep
-from .learning_engine import LearningEngine
-from .evolution_manager import EvolutionManager
-from .privacy_guard import PrivacyGuard
-from .event_bus import EventBus, Event, EventType
-from .planner import Planner, Plan, PlanStep as PlannerStep, PlanStatus
+from .autonomy_manager import AutonomyLevel, AutonomyManager
 from .capability_engine import CapabilityEngine, CapabilityStatus
-from .autonomy_manager import AutonomyManager, AutonomyLevel
+from .config import AIOSConfig, load_config
+from .constitution_evolver import ConstitutionEvolver
+from .event_bus import Event, EventBus, EventType
+from .evolution_manager import EvolutionManager
 from .federation_manager import FederationManager
+from .knowledge_graph import KnowledgeGraph
+from .learning_engine import LearningEngine
+from .marketplace import CapabilityMarketplace
+from .memory_manager import MemoryManager
 from .ml_planner_scorer import MLPlannerScorer
 from .multi_agent_orchestrator import MultiAgentOrchestrator
-from .constitution_evolver import ConstitutionEvolver
-from .marketplace import CapabilityMarketplace
-from .websocket import ws_manager
+from .planner import Plan, Planner, PlanStatus
+from .planner import PlanStep as PlannerStep
 from .plugin_manager import plugin_manager
+from .privacy_guard import PrivacyGuard
+from .reasoning_engine import ReasoningEngine, ReasoningStep
+from .runtime_policy import RuntimePolicy
+from .storage import Database
+from .websocket import ws_manager
 
 
 class TaskStatus(str, Enum):

@@ -1,7 +1,8 @@
 """Vector Store for Semantic Search in AIOS"""
 
+from typing import Any, Dict, List
+
 import numpy as np
-from typing import List, Dict, Any
 
 
 class VectorStore:

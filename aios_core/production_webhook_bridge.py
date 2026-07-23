@@ -9,8 +9,9 @@ Sends webhook notifications for critical production events:
 - Daily report summary
 """
 
-from typing import Optional, Dict, Any, List
-from .webhook_manager import WebhookManager, WebhookEvent
+from typing import Any, Dict, List, Optional
+
+from .webhook_manager import WebhookEvent, WebhookManager
 
 
 class ProductionWebhookBridge:

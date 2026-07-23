@@ -1,7 +1,7 @@
 """A/B Testing Framework for AIOS"""
 
-from typing import Dict, Any
 import random
+from typing import Any, Dict
 
 
 class ABTest:

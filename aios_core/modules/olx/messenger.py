@@ -301,7 +301,8 @@ class OLXMessenger:
         )
 
     def list_chats(self, dump_path: str = "chats.xml") -> List[ChatThread]:
-        import tempfile, os
+        import os
+        import tempfile
 
         with tempfile.TemporaryDirectory(prefix="aios_olx_chats_") as tmp:
             path = os.path.join(tmp, dump_path)
@@ -311,7 +312,8 @@ class OLXMessenger:
             return ChatListParser().parse(path)
 
     def read_chat(self, thread: ChatThread, dump_path: str = "chat.xml") -> List[Message]:
-        import tempfile, os
+        import os
+        import tempfile
 
         if thread.tap_center:
             x, y = thread.tap_center

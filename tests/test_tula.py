@@ -1,13 +1,15 @@
 """Tests for the AIOS Constitutional Tool ('tula')."""
 
-import pytest
 from pathlib import Path
+
+import pytest
+
 from tools.complete_constitution_tula import (
-    scan_constitution,
-    parse_article_file,
-    generate_report,
-    generate_index,
     generate_compliance_matrix,
+    generate_index,
+    generate_report,
+    parse_article_file,
+    scan_constitution,
 )
 
 

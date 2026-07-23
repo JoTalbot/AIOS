@@ -12,10 +12,10 @@ import logging
 import logging.handlers
 import time
 import uuid
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
-from contextlib import contextmanager
-from dataclasses import dataclass, asdict
 
 try:
     from .tracing import tracer

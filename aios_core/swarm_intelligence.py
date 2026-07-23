@@ -1,7 +1,7 @@
 """Swarm Intelligence for AIOS"""
 
 import random
-from typing import List, Dict
+from typing import Dict, List
 
 
 class Particle:

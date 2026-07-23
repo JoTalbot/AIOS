@@ -1,6 +1,6 @@
 """Type Theory for AIOS"""
 
-from typing import Dict, Any, Callable, Type
+from typing import Any, Callable, Dict, Type
 
 
 class TypeSystem:

@@ -8,16 +8,16 @@ Provides:
 - Remote backup support (S3, GCS)
 """
 
+import gzip
+import hashlib
+import json
 import os
 import shutil
 import sqlite3
-import hashlib
-import json
-import gzip
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
 
 
 @dataclass

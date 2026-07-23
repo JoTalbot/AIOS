@@ -1,6 +1,7 @@
 """Tests for Cosmic Scale Swarm Matrix (Horizon 8.0)."""
 
 import pytest
+
 from aios_core.cosmic_swarm_matrix import CosmicSwarmMatrix
 
 

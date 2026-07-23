@@ -1,7 +1,7 @@
 """Quantum Machine Learning for AIOS"""
 
-from typing import List, Dict
 import random
+from typing import Dict, List
 
 
 class QuantumFeatureMap:

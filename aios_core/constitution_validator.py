@@ -10,11 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from .constitution_loader import (
-    ConstitutionLoader,
-    ConstitutionalRule,
-    ObligationLevel,
-)
+from .constitution_loader import ConstitutionalRule, ConstitutionLoader, ObligationLevel
 from .policy_loader import PolicyLoader
 
 
