@@ -4,7 +4,7 @@
 # ------------------------------------------------------------------
 # Stage 1: build dependencies
 # ------------------------------------------------------------------
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 WORKDIR /build
 COPY requirements.txt pyproject.toml ./
@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
 # ------------------------------------------------------------------
 # Stage 2: minimal runtime
 # ------------------------------------------------------------------
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 # Only curl + sqlite3 (no build-essential = −200MB)
 RUN apt-get update && apt-get install -y --no-install-recommends \
