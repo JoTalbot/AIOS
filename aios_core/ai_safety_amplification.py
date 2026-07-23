@@ -12,7 +12,7 @@ class IteratedAmplification:
         self.amplification_levels: Dict[int, Dict] = {}
 
     def amplify(self, base_agent: Callable, level: int = 1) -> Callable:
-        def amplified_agent(query):
+        def amplified_agent(query) -> None:
             # Simulate amplification through decomposition
             sub_queries = [f"sub_{i}_{query}" for i in range(level)]
             results = [base_agent(q) for q in sub_queries]
