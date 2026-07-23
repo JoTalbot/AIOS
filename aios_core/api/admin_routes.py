@@ -20,20 +20,23 @@ from starlette.exceptions import HTTPException
 from aios_core.data_export import DataExporter, DataImporter
 from aios_core.secret_manager import SecretManager
 from aios_core.backup_manager import BackupManager
+from aios_core.webhook_manager import WebhookManager
 
 
 # Global instances (initialized in create_routes)
 _secret_manager: Optional[SecretManager] = None
 _backup_manager: Optional[BackupManager] = None
+_webhook_manager: Optional[WebhookManager] = None
 _db_path: str = "aios.sqlite"
 
 
 def init_admin_routes(db_path: str = "aios.sqlite", backup_dir: str = "./backups"):
     """Initialize admin route handlers with database path."""
-    global _db_path, _secret_manager, _backup_manager
+    global _db_path, _secret_manager, _backup_manager, _webhook_manager
     _db_path = db_path
     _secret_manager = SecretManager()
     _backup_manager = BackupManager(db_path=db_path, backup_dir=backup_dir)
+    _webhook_manager = WebhookManager()
 
 
 def _require_admin(request: Request):
@@ -466,6 +469,225 @@ async def backups_health(request: Request):
 
 
 # ============================================================
+# Webhook Management Endpoints
+# ============================================================
+
+async def register_webhook(request: Request):
+    """Register a new webhook target.
+
+    POST /api/v1/admin/webhooks
+    Body: {
+        "name": "slack-alerts",
+        "url": "https://hooks.slack.com/...",
+        "events": ["ban_detected", "low_success_rate"],
+        "secret": "optional-hmac-secret",
+        "headers": {"X-Custom": "value"}
+    }
+    """
+    _require_admin(request)
+    body = await request.json()
+
+    name = body.get("name")
+    url = body.get("url")
+    events = body.get("events", [])
+    secret = body.get("secret")
+    headers = body.get("headers", {})
+
+    if not name or not url or not events:
+        return JSONResponse({"error": "name, url, events required"}, status_code=400)
+
+    try:
+        target = _webhook_manager.register(name, url, events, secret, headers)
+        return JSONResponse({
+            "status": "success",
+            "webhook": target.to_dict(),
+        })
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def list_webhooks(request: Request):
+    """List all webhook targets.
+
+    GET /api/v1/admin/webhooks
+    """
+    _require_admin(request)
+    targets = _webhook_manager.list_targets()
+    return JSONResponse({
+        "webhooks": targets,
+        "total": len(targets),
+    })
+
+
+async def unregister_webhook(request: Request):
+    """Remove a webhook target.
+
+    DELETE /api/v1/admin/webhooks
+    Body: {
+        "name": "slack-alerts"
+    }
+    """
+    _require_admin(request)
+    body = await request.json()
+    name = body.get("name")
+
+    if not name:
+        return JSONResponse({"error": "name required"}, status_code=400)
+
+    success = _webhook_manager.unregister(name)
+    if success:
+        return JSONResponse({"status": "success", "message": f"Webhook '{name}' removed"})
+    return JSONResponse({"error": "Webhook not found"}, status_code=404)
+
+
+async def toggle_webhook(request: Request):
+    """Activate or deactivate a webhook.
+
+    POST /api/v1/admin/webhooks/toggle
+    Body: {
+        "name": "slack-alerts",
+        "active": true
+    }
+    """
+    _require_admin(request)
+    body = await request.json()
+    name = body.get("name")
+    active = body.get("active", True)
+
+    if not name:
+        return JSONResponse({"error": "name required"}, status_code=400)
+
+    if active:
+        success = _webhook_manager.activate(name)
+    else:
+        success = _webhook_manager.deactivate(name)
+
+    if success:
+        return JSONResponse({
+            "status": "success",
+            "name": name,
+            "active": active,
+        })
+    return JSONResponse({"error": "Webhook not found"}, status_code=404)
+
+
+async def test_webhook(request: Request):
+    """Send a test notification to a webhook.
+
+    POST /api/v1/admin/webhooks/test
+    Body: {
+        "name": "slack-alerts"
+    }
+    """
+    _require_admin(request)
+    body = await request.json()
+    name = body.get("name")
+
+    if not name:
+        return JSONResponse({"error": "name required"}, status_code=400)
+
+    result = _webhook_manager.test_webhook(name)
+    return JSONResponse(result)
+
+
+async def webhook_history(request: Request):
+    """Get webhook notification history.
+
+    GET /api/v1/admin/webhooks/history?event=ban_detected&limit=50
+    """
+    _require_admin(request)
+    event = request.query_params.get("event")
+    limit = int(request.query_params.get("limit", "50"))
+
+    history = _webhook_manager.get_history(event=event, limit=limit)
+    return JSONResponse({
+        "history": history,
+        "total": len(history),
+        "filter_event": event,
+    })
+
+
+async def send_webhook_event(request: Request):
+    """Send a custom webhook event.
+
+    POST /api/v1/admin/webhooks/notify
+    Body: {
+        "event": "custom",
+        "data": {"message": "Hello"},
+        "severity": "info"
+    }
+    """
+    _require_admin(request)
+    body = await request.json()
+
+    event = body.get("event", "custom")
+    data = body.get("data", {})
+    severity = body.get("severity", "info")
+
+    result = _webhook_manager.notify(event, data, severity=severity)
+    return JSONResponse(result)
+
+
+async def webhooks_health(request: Request):
+    """Get webhook system health report.
+
+    GET /api/v1/admin/webhooks/health
+    """
+    _require_admin(request)
+    report = _webhook_manager.health_report()
+    return JSONResponse(report)
+
+
+async def export_webhooks(request: Request):
+    """Export webhook configuration.
+
+    POST /api/v1/admin/webhooks/export
+    Body: {
+        "path": "/path/to/webhooks.json"
+    }
+    """
+    _require_admin(request)
+    body = await request.json()
+    path = body.get("path", "webhooks_config.json")
+
+    try:
+        count = _webhook_manager.export_config(path)
+        return JSONResponse({
+            "status": "success",
+            "path": path,
+            "count": count,
+        })
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+async def import_webhooks(request: Request):
+    """Import webhook configuration.
+
+    POST /api/v1/admin/webhooks/import
+    Body: {
+        "path": "/path/to/webhooks.json"
+    }
+    """
+    _require_admin(request)
+    body = await request.json()
+    path = body.get("path")
+
+    if not path:
+        return JSONResponse({"error": "path required"}, status_code=400)
+
+    try:
+        count = _webhook_manager.import_config(path)
+        return JSONResponse({
+            "status": "success",
+            "path": path,
+            "count": count,
+        })
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ============================================================
 # Route Definitions
 # ============================================================
 
@@ -492,4 +714,16 @@ def get_admin_routes():
         Route("/api/v1/admin/backups/restore", restore_backup, methods=["POST"]),
         Route("/api/v1/admin/backups/cleanup", cleanup_backups, methods=["POST"]),
         Route("/api/v1/admin/backups/health", backups_health, methods=["GET"]),
+
+        # Webhook Management
+        Route("/api/v1/admin/webhooks", register_webhook, methods=["POST"]),
+        Route("/api/v1/admin/webhooks/list", list_webhooks, methods=["GET"]),
+        Route("/api/v1/admin/webhooks/unregister", unregister_webhook, methods=["DELETE", "POST"]),
+        Route("/api/v1/admin/webhooks/toggle", toggle_webhook, methods=["POST"]),
+        Route("/api/v1/admin/webhooks/test", test_webhook, methods=["POST"]),
+        Route("/api/v1/admin/webhooks/history", webhook_history, methods=["GET"]),
+        Route("/api/v1/admin/webhooks/notify", send_webhook_event, methods=["POST"]),
+        Route("/api/v1/admin/webhooks/health", webhooks_health, methods=["GET"]),
+        Route("/api/v1/admin/webhooks/export", export_webhooks, methods=["POST"]),
+        Route("/api/v1/admin/webhooks/import", import_webhooks, methods=["POST"]),
     ]

@@ -16,6 +16,7 @@ from aios_core.api.admin_routes import (
     get_admin_routes,
     _secret_manager,
     _backup_manager,
+    _webhook_manager,
 )
 
 
@@ -231,3 +232,97 @@ class TestBackupAPI:
         data = response.json()
         assert "health" in data
         assert "schedule" in data
+
+
+class TestWebhooksAPI:
+    def test_register_webhook(self, client):
+        response = client.post("/api/v1/admin/webhooks", json={
+            "name": "slack-alerts",
+            "url": "https://hooks.slack.com/test",
+            "events": ["ban_detected", "low_success_rate"],
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["webhook"]["name"] == "slack-alerts"
+
+    def test_list_webhooks(self, client):
+        # Register a webhook first
+        client.post("/api/v1/admin/webhooks", json={
+            "name": "test-hook",
+            "url": "https://example.com/hook",
+            "events": ["ban_detected"],
+        })
+
+        response = client.get("/api/v1/admin/webhooks/list")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] >= 1
+
+    def test_toggle_webhook(self, client):
+        # Register
+        client.post("/api/v1/admin/webhooks", json={
+            "name": "toggle-test",
+            "url": "https://example.com/hook",
+            "events": ["ban_detected"],
+        })
+
+        # Deactivate
+        response = client.post("/api/v1/admin/webhooks/toggle", json={
+            "name": "toggle-test",
+            "active": False,
+        })
+        assert response.status_code == 200
+        assert not response.json()["active"]
+
+    def test_test_webhook(self, client):
+        client.post("/api/v1/admin/webhooks", json={
+            "name": "test-hook",
+            "url": "https://example.com/hook",
+            "events": ["custom"],
+        })
+
+        response = client.post("/api/v1/admin/webhooks/test", json={
+            "name": "test-hook",
+        })
+        assert response.status_code == 200
+        assert response.json()["status"] == "test_sent"
+
+    def test_send_webhook_event(self, client):
+        client.post("/api/v1/admin/webhooks", json={
+            "name": "event-hook",
+            "url": "https://example.com/hook",
+            "events": ["custom"],
+        })
+
+        response = client.post("/api/v1/admin/webhooks/notify", json={
+            "event": "custom",
+            "data": {"message": "Hello"},
+            "severity": "info",
+        })
+        assert response.status_code == 200
+        assert response.json()["targets_triggered"] >= 1
+
+    def test_webhook_history(self, client):
+        client.post("/api/v1/admin/webhooks", json={
+            "name": "history-hook",
+            "url": "https://example.com/hook",
+            "events": ["ban_detected"],
+        })
+
+        # Send some events
+        client.post("/api/v1/admin/webhooks/notify", json={
+            "event": "ban_detected",
+            "data": {"profile": "test"},
+        })
+
+        response = client.get("/api/v1/admin/webhooks/history")
+        assert response.status_code == 200
+        assert response.json()["total"] >= 1
+
+    def test_webhooks_health(self, client):
+        response = client.get("/api/v1/admin/webhooks/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert "total_targets" in data
+        assert "active_targets" in data
