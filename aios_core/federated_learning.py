@@ -7,10 +7,10 @@ class FederatedLearning:
     """Basic federated learning coordinator."""
 
     def __init__(self):
-        self.nodes: Dict[str, Dict] = {}
+        self.nodes: dict[str, dict] = {}
         self.global_model: Dict = {}
 
-    def register_node(self, node_id: str, capabilities: List[str]) -> None:
+    def register_node(self, node_id: str, capabilities: list[str]) -> None:
         """Execute register node."""
         self.nodes[node_id] = {"capabilities": capabilities, "status": "active"}
 

@@ -36,8 +36,8 @@ class BackupMetadata:
     database: str
     mode: str  # 'full' or 'incremental'
     compressed: bool
-    tables: List[str]
-    row_counts: Dict[str, int]
+    tables: list[str]
+    row_counts: dict[str, int]
 
     def to_dict(self) -> Dict:
         """Serialize to dict."""
@@ -159,7 +159,7 @@ class BackupManager:
                 sha256.update(chunk)
         return sha256.hexdigest()
 
-    def _get_table_info(self) -> Tuple[List[str], Dict[str, int]]:
+    def _get_table_info(self) -> Tuple[list[str], dict[str, int]]:
         """Get table names and row counts from database."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -220,7 +220,7 @@ class BackupManager:
         except Exception:
             return False
 
-    def restore_backup(self, backup_id: str, target_path: Optional[str] = None) -> bool:
+    def restore_backup(self, backup_id: str, target_path: str | None = None) -> bool:
         """Restore database from backup.
 
         Args:

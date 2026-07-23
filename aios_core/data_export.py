@@ -61,9 +61,9 @@ class DataExporter:
         self,
         output_path: str,
         format: str = "json",
-        limit: Optional[int] = None,
-        status: Optional[str] = None,
-        since: Optional[str] = None,
+        limit: int | None = None,
+        status: str | None = None,
+        since: str | None = None,
     ) -> int:
         """Export tasks to file.
 
@@ -110,8 +110,8 @@ class DataExporter:
         self,
         output_path: str,
         format: str = "json",
-        subject: Optional[str] = None,
-        limit: Optional[int] = None,
+        subject: str | None = None,
+        limit: int | None = None,
     ) -> int:
         """Export memory records to file.
 
@@ -152,8 +152,8 @@ class DataExporter:
         self,
         output_path: str,
         format: str = "json",
-        since: Optional[str] = None,
-        event_type: Optional[str] = None,
+        since: str | None = None,
+        event_type: str | None = None,
     ) -> int:
         """Export audit log to file.
 
@@ -215,8 +215,8 @@ class DataExporter:
         return len(rows)
 
     def export_all(
-        self, output_dir: str, format: str = "json", since: Optional[str] = None
-    ) -> Dict[str, int]:
+        self, output_dir: str, format: str = "json", since: str | None = None
+    ) -> dict[str, int]:
         """Export all data to separate files.
 
         Args:

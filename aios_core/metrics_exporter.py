@@ -7,26 +7,26 @@ class MetricsExporter:
     """Exports AIOS metrics in Prometheus text format."""
 
     def __init__(self) -> None:
-        self.counters: Dict[str, float] = {}
-        self.gauges: Dict[str, float] = {}
+        self.counters: dict[str, float] = {}
+        self.gauges: dict[str, float] = {}
         self.histograms: Dict[str, list] = {}
-        self._labels: Dict[str, Dict[str, str]] = {}
+        self._labels: Dict[str, dict[str, str]] = {}
 
-    def inc_counter(self, name: str, value: float = 1.0, labels: Dict[str, str] = None) -> None:
+    def inc_counter(self, name: str, value: float = 1.0, labels: dict[str, str] = None) -> None:
         """Execute inc counter."""
         key = self._make_key(name, labels)
         self.counters[key] = self.counters.get(key, 0) + value
         if labels:
             self._labels[key] = labels
 
-    def set_gauge(self, name: str, value: float, labels: Dict[str, str] = None) -> None:
+    def set_gauge(self, name: str, value: float, labels: dict[str, str] = None) -> None:
         """Execute set gauge."""
         key = self._make_key(name, labels)
         self.gauges[key] = value
         if labels:
             self._labels[key] = labels
 
-    def observe_histogram(self, name: str, value: float, labels: Dict[str, str] = None) -> None:
+    def observe_histogram(self, name: str, value: float, labels: dict[str, str] = None) -> None:
         """Execute observe histogram."""
         key = self._make_key(name, labels)
         if key not in self.histograms:
@@ -35,7 +35,7 @@ class MetricsExporter:
         if labels:
             self._labels[key] = labels
 
-    def _make_key(self, name: str, labels: Dict[str, str] = None) -> str:
+    def _make_key(self, name: str, labels: dict[str, str] = None) -> str:
         if not labels:
             return name
         label_str = ",".join(f'{k}="{v}"' for k, v in sorted(labels.items()))

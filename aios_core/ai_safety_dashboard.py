@@ -9,7 +9,7 @@ class SafetyDashboard:
     """Real-time safety monitoring dashboard."""
 
     def __init__(self):
-        self.metrics: Dict[str, float] = {}
+        self.metrics: dict[str, float] = {}
         self.incidents: List[Dict] = []
         self.safety_score = 1.0
 

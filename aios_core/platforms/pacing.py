@@ -28,8 +28,8 @@ class Pacer:
 
     def __init__(
         self,
-        actions_per_hour: Optional[int] = None,
-        session_max_s: Optional[float] = None,
+        actions_per_hour: int | None = None,
+        session_max_s: float | None = None,
         jitter_s: Optional[Tuple[float, float]] = (0.4, 1.6),
         rng: Optional[random.Random] = None,
         sleeper: Optional[Callable[[float], None]] = None,

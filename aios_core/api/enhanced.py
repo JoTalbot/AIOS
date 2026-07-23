@@ -264,7 +264,7 @@ class EnhancedAIOSAPI:
                     )
 
                 # Create webhook handler
-                async def webhook_handler(event_data: Dict[str, Any]) -> None:
+                async def webhook_handler(event_data: dict[str, Any]) -> None:
                     import aiohttp
 
                     async with aiohttp.ClientSession() as session:
@@ -750,7 +750,7 @@ class EnhancedAIOSAPI:
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=400)
 
-    async def _test_webhook(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    async def _test_webhook(self, config: dict[str, Any]) -> dict[str, Any]:
         """Test webhook functionality."""
         endpoint = config.get("endpoint")
         test_payload = config.get("payload", {})
@@ -780,7 +780,7 @@ class EnhancedAIOSAPI:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    async def _test_protocol(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    async def _test_protocol(self, config: dict[str, Any]) -> dict[str, Any]:
         """Test protocol functionality."""
         protocol_type = config.get("type")
 
@@ -798,7 +798,7 @@ class EnhancedAIOSAPI:
             "status": "active",
         }
 
-    async def _test_monitoring(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    async def _test_monitoring(self, config: dict[str, Any]) -> dict[str, Any]:
         """Test monitoring functionality."""
         # Create test alert
         alert = Alert(
@@ -844,7 +844,7 @@ class EnhancedAIOSAPI:
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=400)
 
-    async def _run_benchmark(self, benchmark_type: str, duration: int, rate: int) -> Dict[str, Any]:
+    async def _run_benchmark(self, benchmark_type: str, duration: int, rate: int) -> dict[str, Any]:
         """Run benchmark and return results."""
         import statistics
 

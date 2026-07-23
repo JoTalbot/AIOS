@@ -15,7 +15,7 @@ from typing import Any, Awaitable, Callable, Dict, List
 
 from aios_core.event_bus import EventBus
 
-Handler = Callable[[Dict[str, Any]], Awaitable[None]]
+Handler = Callable[[dict[str, Any]], Awaitable[None]]
 
 
 class AsyncEventBus:
@@ -34,7 +34,7 @@ class AsyncEventBus:
         """Register an async *handler* for *event*."""
         self._async_handlers.setdefault(event, []).append(handler)
 
-    async def emit(self, event: str, payload: Dict[str, Any]) -> None:
+    async def emit(self, event: str, payload: dict[str, Any]) -> None:
         """Emit *event* — runs sync handlers inline, async handlers concurrently."""
         # Sync handlers via the underlying bus
         self._sync.emit(event, 'async_bus', payload)

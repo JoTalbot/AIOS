@@ -20,7 +20,7 @@ class SubstrateConvergenceEngine:
     """Substrate-Agnostic Unified Execution Router."""
 
     def __init__(self):
-        self.substrates: Dict[str, Dict[str, Any]] = {
+        self.substrates: Dict[str, dict[str, Any]] = {
             SubstrateType.SILICON: {
                 "type": SubstrateType.SILICON,
                 "latency_base_ms": 5.0,
@@ -52,9 +52,9 @@ class SubstrateConvergenceEngine:
                 "active": True,
             },
         }
-        self.dispatch_history: List[Dict[str, Any]] = []
+        self.dispatch_history: List[dict[str, Any]] = []
 
-    def select_optimal_substrate(self, task_requirements: Dict[str, Any]) -> str:
+    def select_optimal_substrate(self, task_requirements: dict[str, Any]) -> str:
         """Select compute substrate optimizing energy efficiency and execution constraints."""
         req_type = task_requirements.get("preferred_type")
         if req_type and req_type in self.substrates and self.substrates[req_type]["active"]:
@@ -65,7 +65,7 @@ class SubstrateConvergenceEngine:
         optimal = max(active_substrates, key=lambda x: x["efficiency_gflops_per_watt"])
         return optimal["type"]
 
-    def execute_substrate_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_substrate_task(self, task: dict[str, Any]) -> dict[str, Any]:
         """Execute task on optimal substrate."""
         start_time = time.time()
         substrate_type = self.select_optimal_substrate(task)
@@ -83,7 +83,7 @@ class SubstrateConvergenceEngine:
         self.dispatch_history.append(dispatch_record)
         return dispatch_record
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "registered_substrates": len(self.substrates),

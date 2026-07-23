@@ -7,8 +7,8 @@ class KnowledgeDistiller:
     """Distills knowledge from large models to smaller ones."""
 
     def __init__(self):
-        self.teacher_models: Dict[str, Dict] = {}
-        self.student_models: Dict[str, Dict] = {}
+        self.teacher_models: dict[str, dict] = {}
+        self.student_models: dict[str, dict] = {}
 
     def distill(self, teacher_id: str, student_id: str, temperature: float = 2.0) -> Dict:
         """Execute distill."""

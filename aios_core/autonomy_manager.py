@@ -40,7 +40,7 @@ class AgentAutonomyProfile:
     level: AutonomyLevel = AutonomyLevel.LEVEL_0_MANUAL
     granted_by: str = "system"
     granted_at: str = ""
-    expires_at: Optional[str] = None
+    expires_at: str | None = None
     restrictions: dict = field(default_factory=dict)
     track_record: dict = field(
         default_factory=lambda: {
@@ -194,7 +194,7 @@ class AutonomyManager:
         agent_id: str,
         level: int,
         granted_by: str = "system",
-        expires_at: Optional[str] = None,
+        expires_at: str | None = None,
         restrictions: Optional[dict] = None,
     ) -> dict:
         """Grant or update autonomy level for an agent.
@@ -513,7 +513,7 @@ class AutonomyManager:
             return None
         return self._profile_to_dict(profile)
 
-    def list_profiles(self, level: Optional[int] = None) -> List[dict]:
+    def list_profiles(self, level: int | None = None) -> list[dict]:
         """List all autonomy profiles, optionally filtered by level.
 
         Args:
@@ -529,7 +529,7 @@ class AutonomyManager:
 
     def stats(self) -> dict:
         """Return autonomy manager statistics."""
-        by_level: Dict[str, int] = {}
+        by_level: dict[str, int] = {}
         for p in self._profiles.values():
             lvl = str(int(p.level))
             by_level[lvl] = by_level.get(lvl, 0) + 1

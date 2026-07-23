@@ -7,10 +7,10 @@ class RBAC:
     """Simple RBAC implementation."""
 
     def __init__(self):
-        self.roles: Dict[str, Set[str]] = {}
-        self.permissions: Dict[str, Set[str]] = {}
+        self.roles: Dict[str, set[str]] = {}
+        self.permissions: Dict[str, set[str]] = {}
 
-    def create_role(self, role: str, permissions: List[str]) -> None:
+    def create_role(self, role: str, permissions: list[str]) -> None:
         """Execute create role."""
         self.roles[role] = set(permissions)
 
@@ -18,7 +18,7 @@ class RBAC:
         """Execute has permission."""
         return permission in self.roles.get(role, set())
 
-    def check_access(self, roles: List[str], permission: str) -> bool:
+    def check_access(self, roles: list[str], permission: str) -> bool:
         """Execute check access."""
         for role in roles:
             if self.has_permission(role, permission):

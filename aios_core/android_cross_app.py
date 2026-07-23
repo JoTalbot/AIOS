@@ -32,11 +32,11 @@ class WorkflowStep:
     """Single step in a cross-app workflow."""
     app_package: str
     action: str
-    params: Dict[str, Any] = field(default_factory=dict)
+    params: dict[str, Any] = field(default_factory=dict)
     timeout: int = 60
     retry: int = 2
     critical: bool = True  # if fails, rollback entire workflow
-    output_key: Optional[str] = None  # where to store output in context
+    output_key: str | None = None  # where to store output in context
 
 
 @dataclass
@@ -44,13 +44,13 @@ class WorkflowExecution:
     id: str
     name: str
     steps: List[WorkflowStep]
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
     status: WorkflowStatus = WorkflowStatus.PENDING
     current_step: int = 0
-    results: List[Dict[str, Any]] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
-    started_at: Optional[float] = None
-    finished_at: Optional[float] = None
+    results: List[dict[str, Any]] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    started_at: float | None = None
+    finished_at: float | None = None
     duration_ms: float = 0.0
 
 
@@ -62,7 +62,7 @@ class CrossAppWorkflowEngine:
         self._executions: Dict[str, WorkflowExecution] = {}
         self.version = "8.0.0"
 
-    def create_workflow(self, name: str, steps: List[Dict[str, Any]]) -> WorkflowExecution:
+    def create_workflow(self, name: str, steps: List[dict[str, Any]]) -> WorkflowExecution:
         """Create workflow from dict definitions."""
         workflow_steps = []
         for s in steps:
@@ -99,7 +99,7 @@ class CrossAppWorkflowEngine:
             return None
 
     def execute(
-        self, execution: WorkflowExecution, context: Optional[Dict[str, Any]] = None
+        self, execution: WorkflowExecution, context: dict[str, Any] | None = None
     ) -> WorkflowExecution:
         """Execute workflow sequentially with rollback on critical failure."""
         execution.status = WorkflowStatus.RUNNING
@@ -156,7 +156,7 @@ class CrossAppWorkflowEngine:
         execution.duration_ms = (execution.finished_at - execution.started_at) * 1000
         return execution
 
-    def _execute_step(self, step: WorkflowStep, context: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_step(self, step: WorkflowStep, context: dict[str, Any]) -> dict[str, Any]:
         """Execute single step via driver."""
         # resolve params with context templating: {{context.key}}
         resolved_params = self._resolve_params(step.params, context)
@@ -200,7 +200,7 @@ class CrossAppWorkflowEngine:
             except Exception as e:
                 return {"status": "error", "error": str(e)}
 
-    def _resolve_params(self, params: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+    def _resolve_params(self, params: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
         """Resolve {{key}} templates from context."""
         resolved = {}
         for k, v in params.items():
@@ -295,7 +295,7 @@ class CrossAppWorkflowEngine:
         )
 
     def workflow_multi_platform_broadcast(
-        self, message: str, platforms: List[str]
+        self, message: str, platforms: list[str]
     ) -> WorkflowExecution:
         """Broadcast message to multiple platforms."""
         steps = []

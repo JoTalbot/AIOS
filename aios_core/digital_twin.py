@@ -9,7 +9,7 @@ class DigitalTwin:
     def __init__(self, twin_id: str, real_entity: str):
         self.twin_id = twin_id
         self.real_entity = real_entity
-        self.state: Dict[str, Any] = {}
+        self.state: dict[str, Any] = {}
         self.history: list = []
 
     def sync(self, new_state: Dict) -> None:

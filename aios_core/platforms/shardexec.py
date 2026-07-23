@@ -55,7 +55,7 @@ class ShardJobs:
             или ``:memory:``.
     """
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db_path: str | None = None):
         self.db_path = db_path or os.environ.get("AIOS_SHARDS_DB", ":memory:")
         if self.db_path != ":memory:":
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -102,7 +102,7 @@ class ShardJobs:
                 pass  # Non-JSON result — keep as-is
         return item
 
-    def list(self, status: Optional[str] = None) -> List[Dict]:
+    def list(self, status: str | None = None) -> List[Dict]:
         """Джобы по статусу (None — все), старые первыми."""
         sql = "SELECT * FROM shard_jobs"
         params: list = []
@@ -114,7 +114,7 @@ class ShardJobs:
             rows = self._conn.execute(sql, params).fetchall()
         return [self._row(row) for row in rows]
 
-    def _host_for(self, profile_key: str) -> Optional[str]:
+    def _host_for(self, profile_key: str) -> str | None:
         """Sticky-хост маршрута профиля (та же shard-база)."""
         with self._lock:
             row = self._conn.execute(
@@ -170,7 +170,7 @@ class ShardJobs:
                 (host, _now()),
             )
 
-    def requeue_stale(self, stale_after_s: float = 600.0, now: Optional[str] = None) -> List[Dict]:
+    def requeue_stale(self, stale_after_s: float = 600.0, now: str | None = None) -> List[Dict]:
         """Вернуть в pending claimed-джобы, зависшие дольше TTL.
 
         Джоба считается зависшей, если с момента claim прошло больше
@@ -200,12 +200,12 @@ class ShardJobs:
                 moved.append(job)
         return moved
 
-    def stats(self, stale_after_s: float = 600.0, now: Optional[str] = None) -> Dict:
+    def stats(self, stale_after_s: float = 600.0, now: str | None = None) -> Dict:
         """Глубина очереди и счётчики по статусам (+зависшие claim'ы)."""
         from datetime import datetime as _dt
 
         now_dt = _dt.fromisoformat(now) if now else _dt.now(timezone.utc)
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         with self._lock:
             for row in self._conn.execute(
                 "SELECT status, COUNT(*) AS n FROM shard_jobs GROUP BY status"
@@ -303,7 +303,7 @@ class ShardJobWorker:
             }
 
 
-def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
+def default_handlers(cli_path: str | None = None) -> Dict[str, Callable]:
     """Встроенные виды джоб: shell-out в aios_cli (guarded сохранён).
 
     ``autopilot`` → ``instagram autopilot --login`` для профиля
@@ -312,7 +312,7 @@ def default_handlers(cli_path: Optional[str] = None) -> Dict[str, Callable]:
     root = Path(cli_path or Path(__file__).resolve().parent.parent.parent)
     cli = str(root / "aios_cli.py")
 
-    def _run_cli(cmd: List[str], extra: List) -> Dict:
+    def _run_cli(cmd: list[str], extra: List) -> Dict:
         args = [str(arg) for arg in (extra or [])]
         proc = subprocess.run(
             cmd + args,

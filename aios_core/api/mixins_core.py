@@ -5,8 +5,11 @@ This brings ``app.py`` under 300 lines — just the class skeleton + lifecycle.
 """
 from __future__ import annotations
 
+import json
+
+from aios_core.rate_limiter import rate_limiter
 from starlette.requests import Request
-from starlette.responses import JSONResponse, HTMLResponse
+from starlette.responses import JSONResponse, HTMLResponse, PlainTextResponse
 
 
 class CoreHandlersMixin:
@@ -663,7 +666,7 @@ class CoreHandlersMixin:
             lines.append("# AIOS fleet metrics unavailable")
         return PlainTextResponse("\n".join(lines))
 
-    def _bounded_int(value, *, default: int, maximum: int, minimum: int = 1) -> int:
+    def _bounded_int(self, value, *, default: int, maximum: int, minimum: int = 1) -> int:
         try:
             parsed = int(value) if value is not None else default
         except (TypeError, ValueError):
@@ -676,7 +679,6 @@ class CoreHandlersMixin:
         principal: Principal = request.state.principal
         return "admin" in principal.roles or task.agent_id == principal.subject
 
-    @staticmethod
     def _memory_actor(self, request: Request) -> tuple[str, bool]:
         """Return authenticated subject and administrative scope for memory ACLs."""
         principal: Principal = request.state.principal

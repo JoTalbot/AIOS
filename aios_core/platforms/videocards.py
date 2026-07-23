@@ -35,11 +35,11 @@ class VideoCard:
     """Одна видео-карточка ленты (Reels/клипы)."""
 
     title: str
-    duration: Optional[str] = None
-    views: Optional[int] = None
-    likes: Optional[int] = None
-    marker: Optional[str] = None
-    query: Optional[str] = None
+    duration: str | None = None
+    views: int | None = None
+    likes: int | None = None
+    marker: str | None = None
+    query: str | None = None
     raw_texts: Tuple[str, ...] = ()
 
     @property
@@ -81,7 +81,7 @@ class HintVideoParser:
             секции hints); None → дефолт reel/video/clips.
     """
 
-    def __init__(self, video_markers: Optional[List[str]] = None):
+    def __init__(self, video_markers: list[str] | None = None):
         markers = video_markers or list(_DEFAULT_MARKERS)
         self.markers = (
             tuple(str(m).rsplit("/", 1)[-1].lower() for m in markers if m) or _DEFAULT_MARKERS
@@ -90,7 +90,7 @@ class HintVideoParser:
     def parse(
         self,
         xml_source: Union[str, Path, ET.Element],
-        query: Optional[str] = None,
+        query: str | None = None,
     ) -> List[VideoCard]:
         """Разбирает дамп ленты на видео-карточки (хотя бы тайм-код/текст)."""
         from aios_core.platforms.calibrate import CalibrationAdvisor
@@ -116,15 +116,15 @@ class HintVideoParser:
 
     @staticmethod
     def card_from_texts(
-        texts: List[str],
-        marker: Optional[str] = None,
-        query: Optional[str] = None,
+        texts: list[str],
+        marker: str | None = None,
+        query: str | None = None,
     ) -> Optional[VideoCard]:
         """Классификация текстов карточки: тайм-код/счётчики/подпись."""
-        duration: Optional[str] = None
-        views: Optional[int] = None
-        likes: Optional[int] = None
-        leftovers: List[str] = []
+        duration: str | None = None
+        views: int | None = None
+        likes: int | None = None
+        leftovers: list[str] = []
 
         for raw in texts:
             if duration is None and _DURATION_RE.match(raw):

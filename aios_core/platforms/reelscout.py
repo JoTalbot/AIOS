@@ -87,9 +87,9 @@ class ReelsCollector:
     def collect(
         self,
         max_cards: int = 200,
-        max_swipes: Optional[int] = None,
+        max_swipes: int | None = None,
         stop_after_empty: int = 1,
-        query: Optional[str] = None,
+        query: str | None = None,
     ) -> List[VideoCard]:
         """Скролл-цикл по видео-ленте: дамп → новые карточки → свайп.
 
@@ -147,9 +147,9 @@ class ReelsCollector:
         self,
         storage,
         max_cards: int = 200,
-        max_swipes: Optional[int] = None,
+        max_swipes: int | None = None,
         stop_after_empty: int = 1,
-        query: Optional[str] = None,
+        query: str | None = None,
         category: str = "video",
     ) -> Tuple[int, List[VideoCard]]:
         """Цикл + квитанции в storage (дедуп между циклами).
@@ -209,8 +209,8 @@ class ReelsTabDriver:
     def __init__(
         self,
         adb: Optional[ADBController] = None,
-        rid_markers: Optional[List[str]] = None,
-        text_markers: Optional[List[str]] = None,
+        rid_markers: list[str] | None = None,
+        text_markers: list[str] | None = None,
         open_wait_s: float = 1.0,
         sleeper: Optional[Callable[[float], None]] = None,
     ) -> None:
@@ -282,8 +282,8 @@ def reels_driver_for(
     nav = load_hints_section(platform_name, "navigation", directory)
     tab = nav.get("reels_tab") or {}
 
-    def _tails(items) -> List[str]:
-        tails: List[str] = []
+    def _tails(items) -> list[str]:
+        tails: list[str] = []
         for item in items or []:
             value = item.get("resource_id") if isinstance(item, dict) else item
             if value:

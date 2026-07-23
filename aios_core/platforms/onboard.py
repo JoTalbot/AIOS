@@ -14,15 +14,15 @@ from aios_core.platforms.bootup import bootup_platform
 
 
 def onboard_package(
-    apk: Optional[str] = None,
-    name: Optional[str] = None,
-    package: Optional[str] = None,
+    apk: str | None = None,
+    name: str | None = None,
+    package: str | None = None,
     project_root: str = ".",
     fetch: bool = False,
     apks_dir: str = "apks",
-    dump_path: Optional[str] = None,
-    query: Optional[str] = None,
-    serial: Optional[str] = None,
+    dump_path: str | None = None,
+    query: str | None = None,
+    serial: str | None = None,
     pool=None,
     driver: Optional[Callable] = None,
     runner=None,
@@ -74,7 +74,7 @@ def onboard_package(
         "parser_codegen": bool(codegen.get("parser")),
         "verified_cards": int(verify.get("cards") or 0),
     }
-    next_commands: List[str] = []
+    next_commands: list[str] = []
     if report.get("status") != "ready":
         if not dump_path and driver is None:
             next_commands.append(

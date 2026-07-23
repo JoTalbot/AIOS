@@ -19,7 +19,7 @@ class StateSpaceModel:
         y = sum(c * s for c, s in zip(self.C, self.state))
         return y
 
-    def forward(self, sequence: List[float]) -> List[float]:
+    def forward(self, sequence: list[float]) -> list[float]:
         """Execute forward."""
         return [self.step(u) for u in sequence]
 

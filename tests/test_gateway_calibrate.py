@@ -4,6 +4,7 @@ import json
 import os
 
 import pytest
+import pytest_asyncio
 import yaml
 from httpx import ASGITransport, AsyncClient
 
@@ -264,7 +265,7 @@ def test_cli_shards_monitor_once(tmp_path, monkeypatch, capsys):
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client():
     from aios_core.api.app import AIOSAPI
     from aios_core.platforms import DevicePool, ProfileStore
@@ -299,6 +300,7 @@ async def client():
     store.close()
 
 
+@pytest.mark.asyncio
 async def test_rest_shard_gateway_proxies(client):
     ac, gateway, _router = client
     bad = await ac.post("/api/v1/shards/gateway", json={"profile": "olx:work"})
@@ -318,6 +320,7 @@ async def test_rest_shard_gateway_proxies(client):
     assert gateway.calls[0]["url"].endswith("/api/v1/modules/demo/ads/ingest")
 
 
+@pytest.mark.asyncio
 async def test_rest_shard_gateway_local_marker(client):
     ac, gateway, router = client
     router.add_host("local-api", "http://self:8000")

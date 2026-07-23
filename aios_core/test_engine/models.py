@@ -75,19 +75,19 @@ class TestResult:
     severity: TestSeverity = TestSeverity.MEDIUM
 
     # What we got vs what we expected
-    actual_decision: Optional[str] = None
-    expected_decision: Optional[str] = None
+    actual_decision: str | None = None
+    expected_decision: str | None = None
 
     # Details
     message: str = ""
     evaluation: Optional[dict] = None  # Full evaluation result
     duration_ms: float = 0.0
     retry_count: int = 0
-    error: Optional[str] = None
+    error: str | None = None
 
     # Timestamps
-    started_at: Optional[str] = None
-    completed_at: Optional[str] = None
+    started_at: str | None = None
+    completed_at: str | None = None
 
 
 @dataclass
@@ -96,8 +96,8 @@ class TestSuiteResult:
 
     suite_name: str
     status: TestStatus = TestStatus.PENDING
-    started_at: Optional[str] = None
-    completed_at: Optional[str] = None
+    started_at: str | None = None
+    completed_at: str | None = None
     duration_ms: float = 0.0
 
     total: int = 0

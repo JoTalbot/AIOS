@@ -28,13 +28,13 @@ class MarketplaceCapability:
     description: str = ""
     author: str = "community"
     version: str = "1.0.0"
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     downloads: int = 0
     rating: float = 0.0
     code_snippet: str = ""
     created_at: float = field(default_factory=time.time)
     kind: str = "capability"  # capability | platform_plugin | descriptor
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -42,8 +42,8 @@ class PlatformPlugin:
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     platform: str = ""  # e.g., olx, instagram, facebook, viber
     descriptor_yaml: str = ""
-    hints: Dict[str, Any] = field(default_factory=dict)
-    drivers: List[str] = field(default_factory=list)
+    hints: dict[str, Any] = field(default_factory=dict)
+    drivers: list[str] = field(default_factory=list)
     version: str = "1.0.0"
     author: str = "community"
     verified: bool = False
@@ -108,10 +108,10 @@ class CapabilityMarketplace:
         name: str,
         description: str,
         author: str = "system",
-        tags: Optional[List[str]] = None,
+        tags: list[str] | None = None,
         code: str = "",
         kind: str = "capability",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> MarketplaceCapability:
         """Publish a capability to the marketplace."""
         item = MarketplaceCapability(
@@ -145,6 +145,8 @@ class CapabilityMarketplace:
             except Exception:
                 pass  # Metadata serialisation failed — skip gracefully
 
+        return item
+
     def search(
         self, query: str = "", tag: str = "", limit: int = 20, kind: str = ""
     ) -> List[MarketplaceCapability]:
@@ -177,8 +179,8 @@ class CapabilityMarketplace:
         self,
         platform: str,
         descriptor_yaml: str,
-        hints: Optional[Dict[str, Any]] = None,
-        drivers: Optional[List[str]] = None,
+        hints: dict[str, Any] | None = None,
+        drivers: list[str] | None = None,
         author: str = "system",
         readme: str = "",
         version: str = "1.0.0",
@@ -248,7 +250,7 @@ class CapabilityMarketplace:
         p.verified = True
         return True
 
-    def download_plugin(self, plugin_id: str) -> Optional[Dict[str, Any]]:
+    def download_plugin(self, plugin_id: str) -> dict[str, Any] | None:
         """Download a platform plugin package."""
         p = self._plugins.get(plugin_id)
         if not p:
@@ -256,7 +258,7 @@ class CapabilityMarketplace:
         p.downloads += 1
         return {"success": True, "plugin": asdict(p), "downloads": p.downloads}
 
-    def install_plugin(self, plugin_id: str, target_dir: str = "platforms") -> Dict[str, Any]:
+    def install_plugin(self, plugin_id: str, target_dir: str = "platforms") -> dict[str, Any]:
         """Simulated install - writes descriptor yaml to platforms/<platform>.yaml"""
         p = self._plugins.get(plugin_id)
         if not p:
@@ -291,7 +293,7 @@ class CapabilityMarketplace:
 
     # --- Export for API ---
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize marketplace state to a dictionary."""
         return {
             "capabilities": [asdict(c) for c in list(self._items.values())[:50]],

@@ -5,6 +5,7 @@ import json
 import os
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from aios_core.platforms import DevicePool, ShardRouter
@@ -242,7 +243,7 @@ def test_cli_platforms_from_apk_dry_run(tmp_path, capsys, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client():
     from aios_core.api.app import AIOSAPI
     from aios_core.platforms import ProfileStore
@@ -264,6 +265,7 @@ async def client():
     store.close()
 
 
+@pytest.mark.asyncio
 async def test_rest_waitlist_flow(client):
     await client.post("/api/v1/devices/register", json={"serial": "e1"})
     await client.post("/api/v1/devices/lease", json={"profile": "olx:a"})
@@ -303,6 +305,7 @@ async def test_rest_waitlist_flow(client):
     assert cancelled.json()["cancelled"] is True
 
 
+@pytest.mark.asyncio
 async def test_rest_shards_flow(client):
     added = await client.post(
         "/api/v1/shards",

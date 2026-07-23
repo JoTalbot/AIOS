@@ -32,7 +32,7 @@ class ApprovalManager:
     def request(
         self,
         action: dict,
-        evaluation_id: Optional[str] = None,
+        evaluation_id: str | None = None,
         validation_data: Optional[dict] = None,
         metadata: Optional[dict] = None,
     ) -> dict:
@@ -151,7 +151,7 @@ class ApprovalManager:
 
     def history(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict]:

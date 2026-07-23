@@ -8,7 +8,7 @@ class TypeSystem:
 
     def __init__(self):
         self.types: Dict[str, Type] = {}
-        self.terms: Dict[str, Any] = {}
+        self.terms: dict[str, Any] = {}
 
     def define_type(self, name: str, base_type: Type) -> None:
         """Execute define type."""

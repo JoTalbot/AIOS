@@ -8,7 +8,7 @@ class BayesianInference:
     """Simple Bayesian belief updating."""
 
     def __init__(self):
-        self.beliefs: Dict[str, float] = {}
+        self.beliefs: dict[str, float] = {}
 
     def update_belief(self, hypothesis: str, evidence: bool, likelihood: float = 0.8) -> None:
         """Execute update belief."""

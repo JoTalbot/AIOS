@@ -7,12 +7,12 @@ class ComplianceFramework:
     """Basic compliance checker (GDPR, SOC2, etc.)."""
 
     def __init__(self):
-        self.policies: Dict[str, List[str]] = {
+        self.policies: Dict[str, list[str]] = {
             "gdpr": ["data_minimization", "consent", "right_to_be_forgotten"],
             "soc2": ["security", "availability", "confidentiality"],
         }
 
-    def check_compliance(self, policy: str, implemented: List[str]) -> Dict:
+    def check_compliance(self, policy: str, implemented: list[str]) -> Dict:
         """Execute check compliance."""
         required = self.policies.get(policy, [])
         missing = [p for p in required if p not in implemented]

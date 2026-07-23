@@ -59,7 +59,7 @@ STATUS_OFFLINE = "offline"
 class DevicePool:
     """Пул устройств с арендой под профили платформ."""
 
-    def __init__(self, db_path: "Optional[str]" = None):
+    def __init__(self, db_path: "str | None" = None):
         # По умолчанию — постоянный файл data/devices.sqlite, чтобы пул
         # переживал перезапуски CLI-процессов; ":memory:" — для тестов.
         self.db_path = db_path or os.environ.get("AIOS_DEVICES_DB", "data/devices.sqlite")
@@ -109,7 +109,7 @@ class DevicePool:
                 (key, int(value)),
             )
 
-    def limit(self, key: str, default: Optional[int] = None) -> Optional[int]:
+    def limit(self, key: str, default: int | None = None) -> int | None:
         """Значение квоты или default."""
         with self._lock:
             row = self._conn.execute(
@@ -117,7 +117,7 @@ class DevicePool:
             ).fetchone()
         return int(row["value"]) if row else default
 
-    def limits(self) -> Dict[str, int]:
+    def limits(self) -> dict[str, int]:
         """Все установленные квоты."""
         with self._lock:
             rows = self._conn.execute("SELECT key, value FROM pool_limits ORDER BY key").fetchall()
@@ -176,7 +176,7 @@ class DevicePool:
             )
             return bool(cursor.rowcount)
 
-    def waitlist(self, status: Optional[str] = "waiting") -> List[Dict]:
+    def waitlist(self, status: str | None = "waiting") -> List[Dict]:
         """Очередь ожидания (по умолчанию — активная), приоритет → FIFO."""
         sql = "SELECT * FROM pool_waitlist"
         params: list = []
@@ -209,7 +209,7 @@ class DevicePool:
             served.append(entry)
         return served
 
-    def register(self, serial: str, avd_name: Optional[str] = None) -> Dict:
+    def register(self, serial: str, avd_name: str | None = None) -> Dict:
         """Регистрирует устройство (idle) или обновляет avd_name.
 
         Raises:
@@ -269,7 +269,7 @@ class DevicePool:
     def lease(
         self,
         profile_key: str,
-        serial: Optional[str] = None,
+        serial: str | None = None,
         profile_store=None,
     ) -> Optional[Dict]:
         """Закрепляет устройство за профилем.
@@ -341,7 +341,7 @@ class DevicePool:
             platform, name = profile_key.split(":", 1)
             profile_store.update(platform, name, device_serial=serial)
 
-    def release(self, profile_key: str) -> Optional[str]:
+    def release(self, profile_key: str) -> str | None:
         """Снимает аренду профиля. Возвращает освобождённый serial/None."""
         with self._lock, self._conn:
             row = self._conn.execute(
@@ -358,7 +358,7 @@ class DevicePool:
         self.serve_waitlist()
         return serial
 
-    def reap_stale(self, max_silence_s: float = 900.0) -> List[str]:
+    def reap_stale(self, max_silence_s: float = 900.0) -> list[str]:
         """Помечает молчащие устройства offline и освобождает их аренды.
 
         Returns:

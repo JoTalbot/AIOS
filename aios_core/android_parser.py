@@ -15,14 +15,14 @@ class UIElement:
     resource_id: str
     text: str
     class_name: str
-    bounds: Tuple[int, int, int, int]
+    bounds: tuple[int, int, int, int]
     clickable: bool
     enabled: bool
     package: str
     content_desc: str = ""
 
     @property
-    def center(self) -> Tuple[int, int, int]:
+    def center(self) -> tuple[int, int, int]:
         """Execute center."""
         x1, y1, x2, y2 = self.bounds
         return ((x1 + x2) // 2, (y1 + y2) // 2, (y2 - y1))
@@ -45,7 +45,7 @@ class SearchResult:
     title: str
     price: str
     location: str
-    bounds: Tuple[int, int, int, int]
+    bounds: tuple[int, int, int, int]
 
 
 @dataclass
@@ -201,7 +201,7 @@ class UIAutomatorParser:
             content_desc=node.attrib.get("content-desc", ""),
         )
 
-    def _parse_bounds(self, bounds_str: str) -> Tuple[int, int, int, int]:
+    def _parse_bounds(self, bounds_str: str) -> tuple[int, int, int, int]:
         match = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds_str)
         if match:
             return (

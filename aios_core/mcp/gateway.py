@@ -676,7 +676,7 @@ class MCPGateway:
     # Request handling
     # ------------------------------------------------------------------
 
-    def handle_request(self, raw: str) -> Optional[str]:
+    def handle_request(self, raw: str) -> str | None:
         """Handle a single JSON-RPC 2.0 request string.
 
         Args:

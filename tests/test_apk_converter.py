@@ -1,6 +1,7 @@
 """Tests for APK Function Converter & User API Profile Mapper."""
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from aios_core.api.app import create_app
@@ -37,7 +38,7 @@ def app():
     return create_app(db_path=":memory:", auth_required=False)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(app):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c

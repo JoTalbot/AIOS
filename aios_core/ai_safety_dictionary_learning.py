@@ -10,7 +10,7 @@ class DictionaryLearner:
         self.dict_size = dict_size
         self.dictionary: Dict = {}
 
-    def learn_dictionary(self, activations: List[List[float]]) -> None:
+    def learn_dictionary(self, activations: List[list[float]]) -> None:
         """Fit a dictionary of *dict_size* concepts to *activations*."""
         self.dictionary = {f"concept_{i}": 0.0 for i in range(self.dict_size)}
 

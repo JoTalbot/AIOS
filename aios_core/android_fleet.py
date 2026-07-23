@@ -21,7 +21,7 @@ class DeviceRecord:
     serial: str
     avd_name: str
     status: str = "idle"
-    leased_to: Optional[str] = None
+    leased_to: str | None = None
     last_heartbeat: float = field(default_factory=time.time)
     auto_restart: bool = True
 
@@ -41,7 +41,7 @@ class DevicePool:
         self.emulator_bin = emulator_bin
 
     def register(
-        self, serial: str, avd_name: Optional[str] = None, auto_restart: bool = True
+        self, serial: str, avd_name: str | None = None, auto_restart: bool = True
     ) -> DeviceRecord:
         """Register a device in the pool with optional AVD name."""
         self.devices[serial] = DeviceRecord(
@@ -76,8 +76,8 @@ class DevicePool:
     def lease(
         self,
         profile: str,
-        serial: Optional[str] = None,
-        preferred_avd: Optional[str] = None,
+        serial: str | None = None,
+        preferred_avd: str | None = None,
     ) -> Optional[DeviceRecord]:
         """Lease a device to a profile, optionally enqueuing if busy."""
         if serial:
@@ -121,7 +121,7 @@ class DevicePool:
         dev.last_heartbeat = time.time()
         return True
 
-    def reap_stale(self, max_silence_s: float = 900) -> List[str]:
+    def reap_stale(self, max_silence_s: float = 900) -> list[str]:
         """Mark silent devices as offline."""
         now = time.time()
         released = []

@@ -164,7 +164,7 @@ def _apply_env_overrides(config: dict) -> dict:
     return config
 
 
-def load_config(config_path: Optional[str] = None) -> AIOSConfig:
+def load_config(config_path: str | None = None) -> AIOSConfig:
     """Load AIOS configuration.
 
     Priority (highest wins):

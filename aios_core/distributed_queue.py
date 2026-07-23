@@ -12,7 +12,7 @@ class DistributedQueue:
         self.queue_dir = queue_dir
         os.makedirs(queue_dir, exist_ok=True)
 
-    def enqueue(self, task: Dict[str, Any]) -> str:
+    def enqueue(self, task: dict[str, Any]) -> str:
         """Execute enqueue."""
         task_id = task.get("id") or str(hash(json.dumps(task)))
         filepath = os.path.join(self.queue_dir, f"{task_id}.json")
@@ -20,7 +20,7 @@ class DistributedQueue:
             json.dump(task, f)
         return task_id
 
-    def dequeue(self) -> Optional[Dict[str, Any]]:
+    def dequeue(self) -> dict[str, Any] | None:
         """Execute dequeue."""
         files = sorted(os.listdir(self.queue_dir))
         if not files:

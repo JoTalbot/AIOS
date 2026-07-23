@@ -126,7 +126,7 @@ class ProfileStore:
             ).fetchone()
         return self._row_to_profile(row) if row else None
 
-    def list(self, platform: Optional[str] = None) -> List[Profile]:
+    def list(self, platform: str | None = None) -> List[Profile]:
         """Все профили (опционально — одной платформы)."""
         sql = "SELECT * FROM platform_profiles"
         params: list = []

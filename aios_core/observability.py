@@ -8,7 +8,7 @@ class Observability:
     """Unified observability: metrics, traces, logs."""
 
     def __init__(self):
-        self.metrics: Dict[str, float] = {}
+        self.metrics: dict[str, float] = {}
         self.traces: list = []
         self.logs: list = []
 

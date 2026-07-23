@@ -19,7 +19,7 @@ class PromptDefinition:
     description: str = ""
     arguments: list[dict] = field(default_factory=list)  # [{"name", "description", "required"}]
     renderer: Optional[Callable[[dict], MCPPromptResult]] = None
-    template: Optional[str] = None  # Simple string template with {var} placeholders
+    template: str | None = None  # Simple string template with {var} placeholders
 
 
 class PromptRegistry:

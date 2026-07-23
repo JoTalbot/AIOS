@@ -38,7 +38,7 @@ class PlatformDescriptor:
     adb_factory: Optional[Callable] = None
     default_locale: str = "uk-UA"
     description: str = ""
-    legacy_default_db: Optional[str] = None
+    legacy_default_db: str | None = None
     extras: Dict = field(default_factory=dict)
 
     def make_storage(self, db_path: str) -> None:
@@ -47,7 +47,7 @@ class PlatformDescriptor:
             raise ValueError(f"platform '{self.name}' has no storage factory")
         return self.storage_factory(db_path)
 
-    def make_adb(self, serial: Optional[str] = None) -> None:
+    def make_adb(self, serial: str | None = None) -> None:
         """Создаёт ADB-контроллер этой платформы (с device-binding)."""
         if self.adb_factory is None:
             raise ValueError(f"platform '{self.name}' has no adb factory")
@@ -71,7 +71,7 @@ def _olx_storage_factory(db_path: str):
     return OLXStorage(db_path)
 
 
-def _olx_adb_factory(android_package: str, serial: Optional[str] = None):
+def _olx_adb_factory(android_package: str, serial: str | None = None):
     from aios_core.modules.olx import ADBController
 
     return ADBController(package=android_package, serial=serial)

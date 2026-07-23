@@ -11,8 +11,8 @@ class NeuralODE:
         self.solver = solver
 
     def integrate(
-        self, initial_state: List[float], t_span: tuple, steps: int = 100
-    ) -> List[List[float]]:
+        self, initial_state: list[float], t_span: tuple, steps: int = 100
+    ) -> List[list[float]]:
         """Integrate the ODE dynamics over t_span with given steps."""
         t0, t1 = t_span
         dt = (t1 - t0) / steps

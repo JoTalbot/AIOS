@@ -20,7 +20,7 @@ from .calibrate import CalibrationAdvisor
 from .parsergen import extract_markers
 
 
-def diff_markers(old_hints: Dict, new_hints: Dict) -> Dict[str, List[str]]:
+def diff_markers(old_hints: Dict, new_hints: Dict) -> Dict[str, list[str]]:
     """Сравнивает card-маркеры двух parser_hints.
 
     Returns:

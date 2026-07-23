@@ -16,18 +16,18 @@ class ModelRegistry:
     """Enterprise ML Model Registry with strict stage management and verification."""
 
     def __init__(self):
-        self.models: Dict[str, Dict[str, Any]] = {}  # key: "name:version"
-        self.stage_routes: Dict[str, Dict[str, str]] = {}  # name -> stage -> version
+        self.models: Dict[str, dict[str, Any]] = {}  # key: "name:version"
+        self.stage_routes: Dict[str, dict[str, str]] = {}  # name -> stage -> version
 
     def register_model(
         self,
         name: str,
         version: str,
         framework: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         artifact_bytes: Optional[bytes] = None,
         stage: str = "staging",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Register a new model version in the registry."""
         key = f"{name}:{version}"
         sha256_hash = hashlib.sha256(artifact_bytes).hexdigest() if artifact_bytes else "no_hash"
@@ -54,7 +54,7 @@ class ModelRegistry:
 
         return entry
 
-    def register(self, name: str, version: str, metadata: Dict) -> Dict[str, Any]:
+    def register(self, name: str, version: str, metadata: Dict) -> dict[str, Any]:
         """Backward-compatible registry wrapper."""
         framework = metadata.get("framework", "custom")
         return self.register_model(
@@ -79,7 +79,7 @@ class ModelRegistry:
 
     def get_model(
         self, name: str, version_or_stage: str = "production"
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Retrieve model metadata by explicit version or stage name."""
         if name in self.stage_routes and version_or_stage in self.stage_routes[name]:
             target_version = self.stage_routes[name][version_or_stage]
@@ -96,11 +96,11 @@ class ModelRegistry:
 
         return None
 
-    def get(self, name: str, version: str = "latest") -> Optional[Dict[str, Any]]:
+    def get(self, name: str, version: str = "latest") -> dict[str, Any] | None:
         """Backward-compatible fetcher."""
         return self.get_model(name, version)
 
-    def log_evaluation_metrics(self, name: str, version: str, metrics: Dict[str, float]) -> bool:
+    def log_evaluation_metrics(self, name: str, version: str, metrics: dict[str, float]) -> bool:
         """Log accuracy, latency, F1, or MSE evaluation metrics for a model version."""
         key = f"{name}:{version}"
         if key not in self.models:
@@ -110,11 +110,11 @@ class ModelRegistry:
         self.models[key]["updated_at"] = time.time()
         return True
 
-    def list_versions(self, name: str) -> List[Dict[str, Any]]:
+    def list_versions(self, name: str) -> List[dict[str, Any]]:
         """List all registered versions for a specific model name."""
         return [v for k, v in self.models.values() if v["name"] == name]
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return registry aggregate statistics."""
         production_count = sum(1 for v in self.models.values() if v["stage"] == "production")
         return {

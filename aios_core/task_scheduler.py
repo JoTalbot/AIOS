@@ -9,7 +9,7 @@ class TaskScheduler:
     """Simple in-memory task scheduler."""
 
     def __init__(self):
-        self.tasks: Dict[str, Dict] = {}
+        self.tasks: dict[str, dict] = {}
 
     def schedule(self, name: str, func: Callable, run_at: datetime, **kwargs) -> None:
         """Execute schedule."""

@@ -16,13 +16,13 @@ class PredictiveAutonomyRegulator:
     def __init__(self, high_risk_threshold: float = 0.6, critical_risk_threshold: float = 0.85):
         self.high_risk_threshold = high_risk_threshold
         self.critical_risk_threshold = critical_risk_threshold
-        self.history: List[Dict[str, Any]] = []
+        self.history: List[dict[str, Any]] = []
 
     def assess_risk(
         self,
         agent_id: str,
-        plan_step: Dict[str, Any],
-        agent_history_stats: Optional[Dict[str, float]] = None,
+        plan_step: dict[str, Any],
+        agent_history_stats: Optional[dict[str, float]] = None,
     ) -> float:
         """Calculate normalized failure risk score [0.0, 1.0]."""
         risk_score = 0.1  # baseline minimal risk
@@ -56,8 +56,8 @@ class PredictiveAutonomyRegulator:
         self,
         agent_id: str,
         current_level: AutonomyLevel,
-        plan_step: Dict[str, Any],
-        agent_history_stats: Optional[Dict[str, float]] = None,
+        plan_step: dict[str, Any],
+        agent_history_stats: Optional[dict[str, float]] = None,
     ) -> Tuple[AutonomyLevel, str]:
         """Dynamically regulate autonomy level based on predicted task risk."""
         risk = self.assess_risk(agent_id, plan_step, agent_history_stats)
@@ -92,7 +92,7 @@ class PredictiveAutonomyRegulator:
 
         return effective_level, reason
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Summary of predictive regulation decisions."""
         return {
             "total_regulations": len(self.history),

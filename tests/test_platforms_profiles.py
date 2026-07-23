@@ -5,6 +5,7 @@ precedence, storage isolation, CLI and REST surfaces."""
 import json
 
 import pytest
+import pytest_asyncio
 
 from aios_core.platforms import (
     PlatformDescriptor,
@@ -356,7 +357,7 @@ from httpx import ASGITransport, AsyncClient  # noqa: E402
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def api_client(tmp_path):
     from aios_core.api.app import AIOSAPI
 
@@ -375,6 +376,7 @@ async def api_client(tmp_path):
     store.close()
 
 
+@pytest.mark.asyncio
 async def test_rest_platforms_and_profiles_crud(api_client):
     client, tmp_path = api_client
 
@@ -419,6 +421,7 @@ async def test_rest_platforms_and_profiles_crud(api_client):
     assert removed.json()["removed"] is True
 
 
+@pytest.mark.asyncio
 async def test_rest_profile_scoped_olx_storage(api_client):
     from aios_core.modules.olx import AdCard, OLXStorage
 
@@ -691,6 +694,7 @@ def test_mcp_olx_tools_profile_scoping(tmp_path, monkeypatch):
         ProfileStore.reset_default()
 
 
+@pytest.mark.asyncio
 async def test_rest_device_pool_flow(api_client):
     client, tmp_path = api_client
 

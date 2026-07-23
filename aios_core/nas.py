@@ -8,14 +8,14 @@ class NAS:
     """Neural Architecture Search engine."""
 
     def __init__(self):
-        self.architectures: Dict[str, Dict] = {}
+        self.architectures: dict[str, dict] = {}
         self.search_space = ["conv", "attention", "recurrent", "transformer"]
 
-    def sample_architecture(self) -> List[str]:
+    def sample_architecture(self) -> list[str]:
         """Execute sample architecture."""
         return [random.choice(self.search_space) for _ in range(random.randint(3, 8))]
 
-    def evaluate(self, arch: List[str]) -> float:
+    def evaluate(self, arch: list[str]) -> float:
         """Execute evaluate."""
         # Simulated evaluation
         return sum(len(layer) for layer in arch) / 100

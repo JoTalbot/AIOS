@@ -14,7 +14,7 @@ class SecretsManager:
         """Execute set."""
         self._secrets[key] = value
 
-    def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    def get(self, key: str, default: str | None = None) -> str | None:
         """Execute get."""
         # Priority: env > memory > default
         return os.getenv(key) or self._secrets.get(key, default)

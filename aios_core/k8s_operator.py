@@ -7,8 +7,8 @@ class AIOSOperator:
     """Basic Kubernetes operator logic for AIOS."""
 
     def __init__(self):
-        self.crds: Dict[str, Dict] = {}
-        self.deployments: Dict[str, Dict] = {}
+        self.crds: dict[str, dict] = {}
+        self.deployments: dict[str, dict] = {}
 
     def create_crd(self, name: str, spec: Dict) -> None:
         """Execute create crd."""

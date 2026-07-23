@@ -14,7 +14,7 @@ class NaturalLanguageInterface:
             "check health": "health_check",
         }
 
-    def parse(self, text: str) -> Dict[str, Any]:
+    def parse(self, text: str) -> dict[str, Any]:
         """Execute parse."""
         text = text.lower()
         for phrase, cmd in self.command_map.items():
