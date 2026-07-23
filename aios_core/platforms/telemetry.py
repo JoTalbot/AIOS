@@ -65,7 +65,7 @@ def _platform_db_metrics(data_dir: str) -> Dict[str, Dict[str, int]]:
                         (cards2,) = conn.execute("SELECT COUNT(*) FROM ads").fetchone()
                         entry["cards_collected"] = entry.get("cards_collected", 0) + int(cards2)
                     except Exception:
-                        pass
+                        pass  # Telemetry read from foreign DB — skip
             finally:
                 conn.close()
         except Exception:  # noqa: BLE001 — чужая/битая база не ломает /metrics
@@ -120,7 +120,7 @@ def _production_metrics() -> Dict[str, object]:
                 data["cycle_rates"]["per_day"] = total_cycles / 14.0
                 data["cycle_rates"]["per_hour"] = total_cycles / 14.0 / 24.0
         except Exception:
-            pass
+            pass  # Cycle metrics unavailable — skip rate calculation
 
     # Also try data/cycle_metrics.json if exists (manual tracking)
     cycle_file = Path("data") / "cycle_metrics.json"

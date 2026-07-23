@@ -158,7 +158,7 @@ class ShardHealthMonitor:
                 try:
                     self.run_once()
                 except Exception:
-                    pass
+                    pass  # Single health-check probe failed — continue loop
 
         self._thread = threading.Thread(target=_loop, daemon=True)
         self._thread.start()

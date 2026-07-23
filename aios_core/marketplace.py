@@ -101,9 +101,7 @@ class CapabilityMarketplace:
             """
             )
         except Exception:
-            pass
-
-    # --- Capabilities ---
+            pass  # Schema already exists — skip creation
 
     def publish(
         self,
@@ -144,8 +142,7 @@ class CapabilityMarketplace:
                     ),
                 )
             except Exception:
-                pass
-        return item
+                pass  # Metadata serialisation failed — skip gracefully
 
     def search(
         self, query: str = "", tag: str = "", limit: int = 20, kind: str = ""
@@ -221,8 +218,7 @@ class CapabilityMarketplace:
                     ),
                 )
             except Exception:
-                pass
-        return plugin
+                pass  # Plugin registration DB write failed — skip
 
     def list_platform_plugins(
         self, platform: str = "", verified_only: bool = False

@@ -4,15 +4,17 @@ from typing import Any, Callable, Dict
 
 
 class FormalVerifier:
-    """Formal verification of AI safety properties."""
+    """Formal verification of AI safety properties via registered checkers."""
 
     def __init__(self):
         self.properties: Dict[str, Callable] = {}
 
     def add_property(self, name: str, verifier: Callable[[Any], bool]):
+        """Register *verifier* under *name* for later use in :meth:`verify`."""
         self.properties[name] = verifier
 
     def verify(self, model: Any, property_name: str) -> Dict:
+        """Run the verifier registered as *property_name* against *model*."""
         if property_name not in self.properties:
             return {"verified": False, "error": "Property not found"}
         try:
@@ -22,4 +24,5 @@ class FormalVerifier:
             return {"verified": False, "error": str(e)}
 
     def stats(self) -> dict:
+        """Return the number of registered verifier properties."""
         return {"properties": len(self.properties)}
