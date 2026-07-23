@@ -1,0 +1,232 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "aios-admin-ops",
+    "title": "AIOS Admin Operations",
+    "description": "Monitoring for webhooks, backups, API keys, and admin operations",
+    "tags": ["aios", "admin", "production"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "📊 Webhook Targets",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {"expr": "aios_webhook_targets_total", "legendFormat": "Total"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "green", "value": 3}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "✅ Active Webhooks",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {"expr": "aios_webhook_targets_active", "legendFormat": "Active"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "📨 Webhook Triggers (24h)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {"expr": "increase(aios_webhook_triggers_total[1h])", "legendFormat": "Triggers/hour"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "❌ Webhook Errors",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 4},
+        "targets": [
+          {"expr": "aios_webhook_errors_total", "legendFormat": "Errors"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "📜 Notification History",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 4},
+        "targets": [
+          {"expr": "aios_webhook_history_size", "legendFormat": "History"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 500},
+                {"color": "red", "value": 900}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "🎯 Per-Target Triggers",
+        "type": "bargauge",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {"expr": "aios_webhook_target_triggers", "legendFormat": "{{target}}"}
+        ],
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient"
+        }
+      },
+      {
+        "id": 7,
+        "title": "🔐 API Keys",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
+        "targets": [
+          {"expr": "aios_secret_keys_active", "legendFormat": "Active Keys"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "⏰ Keys Expiring Soon",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 8},
+        "targets": [
+          {"expr": "aios_secret_keys_expiring_soon", "legendFormat": "Expiring (7d)"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 3}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "💾 Backup Status",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 12},
+        "targets": [
+          {"expr": "aios_backup_total", "legendFormat": "Total Backups"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "green", "value": 3}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "💾 Backup Size (MB)",
+        "type": "gauge",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 12},
+        "targets": [
+          {"expr": "aios_backup_total_size_mb", "legendFormat": "Total Size"}
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 1000,
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 500},
+                {"color": "red", "value": 900}
+              ]
+            },
+            "unit": "decmbytes"
+          }
+        }
+      },
+      {
+        "id": 11,
+        "title": "📋 Recent Webhook Events",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
+        "targets": [
+          {"expr": "aios_webhook_target_triggers > 0", "legendFormat": "{{target}} - {{event}}"}
+        ],
+        "options": {
+          "showHeader": true,
+          "sortBy": [{"displayName": "Time", "desc": true}]
+        }
+      }
+    ]
+  },
+  "overwrite": true
+}
