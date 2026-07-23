@@ -14,7 +14,7 @@ class EnhancedAudit:
 
     def record(self, action: str, actor: str, resource: str, decision: str, **metadata):
         record = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now().isoformat(),
             "action": action,
             "actor": actor,
             "resource": resource,

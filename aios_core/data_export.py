@@ -216,7 +216,7 @@ class DataExporter:
         """
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         counts = {}
 
         counts["tasks"] = self.export_tasks(
@@ -247,7 +247,7 @@ class DataExporter:
         """Write data as JSON."""
         with open(path, "w", encoding="utf-8") as f:
             json.dump(
-                {"exported_at": datetime.utcnow().isoformat(), "count": len(data), "data": data},
+                {"exported_at": datetime.now().isoformat(), "count": len(data), "data": data},
                 f,
                 indent=2,
                 default=str,
