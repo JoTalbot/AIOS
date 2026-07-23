@@ -2,14 +2,17 @@
 
 from typing import Dict, List
 
+__all__ = ["AIResearcher"]
+
 
 class AIResearcher:
-    """Automated research paper writing system."""
+    """Automated research paper writing and peer-review agent."""
 
     def __init__(self):
         self.papers: List[Dict] = []
 
     def write_paper(self, topic: str, experiments: List[Dict]) -> Dict:
+        """Draft a research paper on *topic* with given *experiments*."""
         paper = {
             "title": f"Advances in {topic}",
             "abstract": f"This paper presents novel approaches to {topic}...",
@@ -21,6 +24,7 @@ class AIResearcher:
         return paper
 
     def peer_review(self, paper: Dict) -> Dict:
+        """Review *paper* and return score, feedback, and recommendation."""
         return {
             "paper": paper["title"],
             "score": 8.5,
@@ -29,4 +33,5 @@ class AIResearcher:
         }
 
     def stats(self) -> dict:
+        """Return number of drafted papers."""
         return {"papers": len(self.papers)}

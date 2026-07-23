@@ -2,6 +2,8 @@
 
 from typing import Any, Dict, List
 
+__all__ = ["AIEthicsFramework"]
+
 
 class AIEthicsFramework:
     """State-of-the-art AI ethics and responsible AI framework."""

@@ -2,9 +2,11 @@
 
 from typing import Dict, List
 
+__all__ = ["AIAlignment"]
+
 
 class AIAlignment:
-    """Core AI alignment mechanisms."""
+    """Core AI alignment — checks decisions against alignment goals."""
 
     def __init__(self):
         self.alignment_goals: List[str] = [
@@ -17,6 +19,7 @@ class AIAlignment:
         self.violations: List[Dict] = []
 
     def check_alignment(self, decision: Dict) -> Dict:
+        """Score *decision* against alignment goals; return score and issues."""
         score = 1.0
         issues = []
         if "deception" in str(decision).lower():
@@ -25,4 +28,5 @@ class AIAlignment:
         return {"score": max(0, score), "issues": issues}
 
     def stats(self) -> dict:
+        """Return counts of alignment goals and detected violations."""
         return {"goals": len(self.alignment_goals), "violations": len(self.violations)}
