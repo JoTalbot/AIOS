@@ -115,9 +115,7 @@ class AdImprover:
             if city.lower() not in lowered_desc:
                 additions.append(f"Місто та можливість огляду: {city}.")
         if keywords:
-            additions.append(
-                "Фрази з успішних оголошень: " + ", ".join(keywords[:5]) + "."
-            )
+            additions.append("Фрази з успішних оголошень: " + ", ".join(keywords[:5]) + ".")
         additions.append("Чіткі фото з кількох ракурсів (мінімум 4-6).")
         additions.append("Контакт для швидкого зв'язку та години відповідей.")
 
@@ -249,9 +247,7 @@ class Reposter:
         if price is not None:
             steps.append(f"Встановити ціну {price:g} {own_ad.currency or 'грн'}")
         if suggestion and suggestion.description_additions:
-            steps.append(
-                "Доповнити опис: " + " | ".join(suggestion.description_additions)
-            )
+            steps.append("Доповнити опис: " + " | ".join(suggestion.description_additions))
         steps.append("Опублікувати та перевірити появу в «Мої оголошення»")
         return steps
 
@@ -272,9 +268,7 @@ class Reposter:
         log: List[Dict[str, object]] = []
         if own_ad.url:
             log.append(
-                self.adb.run(
-                    f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"'
-                )
+                self.adb.run(f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"')
             )
         log.append(
             {
@@ -311,10 +305,7 @@ class OwnAdEditor:
         ]
         if suggestion.suggested_title != own_ad.title:
             steps.append(f"Заголовок: «{suggestion.suggested_title}»")
-        if (
-            suggestion.suggested_price is not None
-            and suggestion.suggested_price != own_ad.price
-        ):
+        if suggestion.suggested_price is not None and suggestion.suggested_price != own_ad.price:
             steps.append(
                 f"Ціна: {own_ad.price} → {suggestion.suggested_price:g} ({suggestion.price_verdict})"
             )
@@ -335,9 +326,7 @@ class OwnAdEditor:
         log: List[Dict[str, object]] = []
         if own_ad.url:
             log.append(
-                self.adb.run(
-                    f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"'
-                )
+                self.adb.run(f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"')
             )
         log.append(
             {

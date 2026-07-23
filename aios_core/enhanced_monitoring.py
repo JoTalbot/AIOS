@@ -54,16 +54,10 @@ class MonitoringMetrics:
     """Enhanced metrics for monitoring system."""
 
     def __init__(self):
-        self.alerts_triggered = MetricCounter(
-            "alerts_triggered", "Total alerts triggered"
-        )
+        self.alerts_triggered = MetricCounter("alerts_triggered", "Total alerts triggered")
         self.alerts_resolved = MetricCounter("alerts_resolved", "Total alerts resolved")
-        self.dashboard_requests = MetricCounter(
-            "dashboard_requests", "Total dashboard requests"
-        )
-        self.api_response_time = MetricHistogram(
-            "api_response_time", "API response time in ms"
-        )
+        self.dashboard_requests = MetricCounter("dashboard_requests", "Total dashboard requests")
+        self.api_response_time = MetricHistogram("api_response_time", "API response time in ms")
         self.system_health = MetricGauge("system_health", "System health score (0-100)")
 
     def record_alert_triggered(self):
@@ -108,9 +102,7 @@ class AlertManager:
                 if self._evaluate_condition(rule.condition, value, rule.threshold):
                     self._trigger_alert(rule, value, timestamp)
 
-    def _evaluate_condition(
-        self, condition: str, value: float, threshold: float
-    ) -> bool:
+    def _evaluate_condition(self, condition: str, value: float, threshold: float) -> bool:
         """Evaluate alert condition."""
         try:
             # Simple condition evaluation (in production, use proper expression parser)
@@ -144,9 +136,7 @@ class AlertManager:
             }
             self.active_alerts[alert_key] = alert
             self.metrics.record_alert_triggered()
-            self.logger.warning(
-                f"Alert triggered: {rule.name} - {value} > {rule.threshold}"
-            )
+            self.logger.warning(f"Alert triggered: {rule.name} - {value} > {rule.threshold}")
 
             # Send notifications
             asyncio.create_task(self._send_notifications(alert))
@@ -327,9 +317,7 @@ def create_monitoring_app(monitoring_api: MonitoringAPI) -> Starlette:
     async def alerts_endpoint(request: Request) -> JSONResponse:
         """Get alerts."""
         try:
-            active_only = (
-                request.query_params.get("active_only", "true").lower() == "true"
-            )
+            active_only = request.query_params.get("active_only", "true").lower() == "true"
             alerts = await monitoring_api.get_alerts(active_only)
             return JSONResponse(alerts)
         except Exception as e:

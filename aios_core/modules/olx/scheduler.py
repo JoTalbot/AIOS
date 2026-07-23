@@ -41,9 +41,7 @@ class CollectionScheduler:
         with self._history_lock:
             self.history.append(record)
 
-    def run_once(
-        self, queries: List[str], max_cards: int = 100
-    ) -> Dict[str, Dict[str, object]]:
+    def run_once(self, queries: List[str], max_cards: int = 100) -> Dict[str, Dict[str, object]]:
         """Collect every query a single time and persist the results.
 
         Returns:
@@ -53,9 +51,7 @@ class CollectionScheduler:
         for query in queries:
             cards = self.collector.collect(query=query, max_cards=max_cards)
             inserted = self.storage.save_ads(cards)
-            deactivated = self.storage.sync_activity(
-                query, [card.fingerprint for card in cards]
-            )
+            deactivated = self.storage.sync_activity(query, [card.fingerprint for card in cards])
             record: Dict[str, object] = {
                 "ts": datetime.now(timezone.utc).isoformat(),
                 "query": query,
@@ -86,9 +82,7 @@ class CollectionScheduler:
             while not self._stop.wait(self.interval_s):
                 self.run_once(queries, max_cards=max_cards)
 
-        self._thread = threading.Thread(
-            target=_loop, name="aios-olx-scheduler", daemon=True
-        )
+        self._thread = threading.Thread(target=_loop, name="aios-olx-scheduler", daemon=True)
         self._thread.start()
         return True
 

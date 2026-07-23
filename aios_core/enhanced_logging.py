@@ -98,9 +98,7 @@ class PerformanceTracker:
         }
         return operation_id
 
-    def end_operation(
-        self, operation_id: str, success: bool = True, error: Optional[str] = None
-    ):
+    def end_operation(self, operation_id: str, success: bool = True, error: Optional[str] = None):
         """End tracking an operation."""
         if operation_id in self.operations:
             operation = self.operations[operation_id]
@@ -111,9 +109,7 @@ class PerformanceTracker:
 
     def get_operation_stats(self, operation_name: str) -> Dict[str, Any]:
         """Get statistics for an operation."""
-        relevant_ops = [
-            op for op in self.operations.values() if op["name"] == operation_name
-        ]
+        relevant_ops = [op for op in self.operations.values() if op["name"] == operation_name]
 
         if not relevant_ops:
             return {"count": 0, "avg_duration": 0, "success_rate": 0}
@@ -126,14 +122,10 @@ class PerformanceTracker:
             "avg_duration": total_duration / len(relevant_ops) if relevant_ops else 0,
             "success_rate": success_count / len(relevant_ops) if relevant_ops else 0,
             "min_duration": (
-                min(op["duration"] for op in relevant_ops if op["duration"])
-                if relevant_ops
-                else 0
+                min(op["duration"] for op in relevant_ops if op["duration"]) if relevant_ops else 0
             ),
             "max_duration": (
-                max(op["duration"] for op in relevant_ops if op["duration"])
-                if relevant_ops
-                else 0
+                max(op["duration"] for op in relevant_ops if op["duration"]) if relevant_ops else 0
             ),
         }
 
@@ -305,16 +297,12 @@ class EnhancedLogger:
     @contextmanager
     def track_operation(self, operation_name: str, **kwargs):
         """Track operation performance."""
-        operation_id = self.performance_tracker.start_operation(
-            operation_name, **kwargs
-        )
+        operation_id = self.performance_tracker.start_operation(operation_name, **kwargs)
 
         try:
             yield operation_id
         except Exception as e:
-            self.performance_tracker.end_operation(
-                operation_id, success=False, error=str(e)
-            )
+            self.performance_tracker.end_operation(operation_id, success=False, error=str(e))
             raise
         else:
             self.performance_tracker.end_operation(operation_id, success=True)
@@ -398,9 +386,7 @@ def main():
     logger.info("Performance stats", stats=stats)
 
     # Ship logs
-    logs = [
-        {"timestamp": "2026-07-22T07:45:00Z", "level": "info", "message": "Test log"}
-    ]
+    logs = [{"timestamp": "2026-07-22T07:45:00Z", "level": "info", "message": "Test log"}]
     logger.ship_logs(logs)
 
 

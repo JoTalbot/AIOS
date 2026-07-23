@@ -7,6 +7,7 @@ TULA — Architecture Module Analysis Tool
 import os, sys, argparse, re
 from datetime import datetime
 
+
 def scan(directory):
     modules = {}
     for entry in sorted(os.listdir(directory)):
@@ -14,7 +15,13 @@ def scan(directory):
         if not os.path.isfile(path) or not entry.endswith(".md"):
             continue
         # Пропускаем INDEX, ROADMAP, ANALYSIS, REPORT
-        if entry in ["ARCHITECTURE_ANALYSIS.md", "ARCHITECTURE_ROADMAP.md", "INDEX.md", "ARCHITECTURE_REPORT.md", "ARCHITECTURE_COMPLIANCE_MATRIX.md"]:
+        if entry in [
+            "ARCHITECTURE_ANALYSIS.md",
+            "ARCHITECTURE_ROADMAP.md",
+            "INDEX.md",
+            "ARCHITECTURE_REPORT.md",
+            "ARCHITECTURE_COMPLIANCE_MATRIX.md",
+        ]:
             continue
         content = open(path, "r", encoding="utf-8").read()
         modules[entry] = {
@@ -26,6 +33,7 @@ def scan(directory):
         }
     return modules
 
+
 def generate_report(directory):
     modules = scan(directory)
     report_path = os.path.join(directory, "ARCHITECTURE_REPORT.md")
@@ -36,12 +44,27 @@ def generate_report(directory):
         f.write(f"Модулей найдено: {len(modules)} (ожидается 27)\n\n")
         for name, info in sorted(modules.items()):
             status = "✅" if info["has_purpose"] and info["has_core_principle"] else "⚠️"
-            f.write(f"- {status} `{name}` — Purpose: {'✅' if info['has_purpose'] else '❌'}, Core: {'✅' if info['has_core_principle'] else '❌'}, Секции: {'✅' if info['has_sections'] else '❌'}\n")
+            f.write(
+                f"- {status} `{name}` — Purpose: {'✅' if info['has_purpose'] else '❌'}, Core: {'✅' if info['has_core_principle'] else '❌'}, Секции: {'✅' if info['has_sections'] else '❌'}\n"
+            )
     print(f"📄 Отчёт архитектуры: {report_path}")
+
 
 def generate_index(directory):
     index_path = os.path.join(directory, "INDEX.md")
-    modules = [m for m in os.listdir(directory) if m.endswith(".md") and m not in ["ARCHITECTURE_ANALYSIS.md", "ARCHITECTURE_ROADMAP.md", "ARCHITECTURE_REPORT.md", "ARCHITECTURE_COMPLIANCE_MATRIX.md", "INDEX.md"]]
+    modules = [
+        m
+        for m in os.listdir(directory)
+        if m.endswith(".md")
+        and m
+        not in [
+            "ARCHITECTURE_ANALYSIS.md",
+            "ARCHITECTURE_ROADMAP.md",
+            "ARCHITECTURE_REPORT.md",
+            "ARCHITECTURE_COMPLIANCE_MATRIX.md",
+            "INDEX.md",
+        ]
+    ]
     modules.sort()
     with open(index_path, "w", encoding="utf-8") as f:
         f.write("# Указатель архитектуры AIOS (`docs/core/`)\n\n")
@@ -50,6 +73,7 @@ def generate_index(directory):
         for m in modules:
             f.write(f"- `{m}`\n")
     print(f"📄 Указатель архитектуры: {index_path}")
+
 
 def generate_matrix(directory):
     matrix_path = os.path.join(directory, "ARCHITECTURE_COMPLIANCE_MATRIX.md")
@@ -93,9 +117,12 @@ def generate_matrix(directory):
             f.write(f"| `{module}` | {articles} | {status} |\n")
     print(f"📄 Матрица соответствия архитектуры: {matrix_path}")
 
+
 def main():
     parser = argparse.ArgumentParser(description="TULA — Architecture Analysis Tool")
-    parser.add_argument("--scan", metavar="DIR", default="docs/core/", help="Директория архитектуры")
+    parser.add_argument(
+        "--scan", metavar="DIR", default="docs/core/", help="Директория архитектуры"
+    )
     parser.add_argument("--report", action="store_true", help="Сгенерировать отчёт")
     parser.add_argument("--index", action="store_true", help="Создать INDEX.md")
     parser.add_argument("--matrix", action="store_true", help="Создать матрицу соответствия")
@@ -112,6 +139,7 @@ def main():
         generate_report(directory)
         generate_index(directory)
         generate_matrix(directory)
+
 
 if __name__ == "__main__":
     main()

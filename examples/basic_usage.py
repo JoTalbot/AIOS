@@ -2,6 +2,7 @@
 
 from aios_core import Orchestrator, Database
 
+
 def main():
     db = Database(":memory:")
     orch = Orchestrator(db=db)
@@ -17,6 +18,7 @@ def main():
     # Check stats
     stats = orch.stats()
     print("Total tasks:", stats["total_tasks"])
+
 
 if __name__ == "__main__":
     main()

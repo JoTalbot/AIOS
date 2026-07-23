@@ -111,6 +111,7 @@ def _cleanup(tmp_path, extra, modules_pkg, platform, module):
 # ApkFetch
 # ---------------------------------------------------------------------------
 
+
 def test_fetch_apk_success(tmp_path):
     path = fetch_apk("com.demo.app", out_dir=tmp_path, runner=_fake_apkeep)
     assert path.endswith("com.demo.app.apk")
@@ -141,15 +142,15 @@ def test_resolve_apk_passthrough_cache_and_fetch(tmp_path):
     cached_dir = tmp_path / "cache"
     cached_dir.mkdir()
     (cached_dir / "com.demo.app.apk").write_text("old", encoding="utf-8")
-    assert resolve_apk("com.demo.app", out_dir=cached_dir).endswith(
-        "com.demo.app.apk"
-    )
+    assert resolve_apk("com.demo.app", out_dir=cached_dir).endswith("com.demo.app.apk")
 
     with pytest.raises(ValueError, match="--fetch"):
         resolve_apk("com.other.app", out_dir=cached_dir)
 
     fetched = resolve_apk(
-        "com.other.app", out_dir=cached_dir, fetch=True,
+        "com.other.app",
+        out_dir=cached_dir,
+        fetch=True,
         runner=_fake_apkeep,
     )
     assert Path(fetched).exists()
@@ -159,6 +160,7 @@ def test_resolve_apk_passthrough_cache_and_fetch(tmp_path):
 # Secrets
 # ---------------------------------------------------------------------------
 
+
 def test_secret_env_precedence(monkeypatch):
     monkeypatch.setenv("AIOS_SECRET__INSTAGRAM__USERNAME", "plat-user")
     monkeypatch.setenv("AIOS_SECRET__INSTAGRAM__WORK__USERNAME", "prof-user")
@@ -166,8 +168,10 @@ def test_secret_env_precedence(monkeypatch):
     assert secret("instagram", "USERNAME", profile="work") == "prof-user"
     assert secret("instagram", "PASSWORD") is None
     assert secret("instagram", "PASSWORD", default="fallback") == "fallback"
-    assert env_name("instagram", "PASSWORD", profile="work") == \
-        "AIOS_SECRET__INSTAGRAM__WORK__PASSWORD"
+    assert (
+        env_name("instagram", "PASSWORD", profile="work")
+        == "AIOS_SECRET__INSTAGRAM__WORK__PASSWORD"
+    )
 
 
 def test_required_secret_errors_with_env_name(monkeypatch):
@@ -202,14 +206,14 @@ def test_load_secrets_file_no_override_by_default(tmp_path, monkeypatch):
 # Detail/messenger calibration
 # ---------------------------------------------------------------------------
 
+
 def test_detail_advisor_finds_price_seller_cta():
     hints = DetailCalibrationAdvisor().analyze_detail(DETAIL_XML)
     price_ids = [p["resource_id"] for p in hints["price_nodes"]]
     assert "com.demo:id/detailprice" in price_ids
     assert "com.demo:id/selleravatar" in hints["seller_markers"]
     assert "com.demo:id/username" in hints["seller_markers"]
-    assert hints["cta_markers"][0]["resource_id"] == \
-        "com.demo:id/messagebutton"
+    assert hints["cta_markers"][0]["resource_id"] == "com.demo:id/messagebutton"
     assert hints["description_nodes"] == 1
     assert "найдены" in hints["hint"]
 
@@ -225,10 +229,8 @@ def test_detail_advisor_empty_screen_hint():
 def test_messenger_advisor_finds_input_send_bubbles():
     hints = DetailCalibrationAdvisor().analyze_messenger(MESSENGER_XML)
     assert "android.widget.EditText" in hints["input_classes"]
-    assert hints["send_markers"][0]["resource_id"] == \
-        "com.demo:id/sendbutton"
-    assert hints["bubble_markers"][0]["resource_id"] == \
-        "com.demo:id/messagebubble"
+    assert hints["send_markers"][0]["resource_id"] == "com.demo:id/sendbutton"
+    assert hints["bubble_markers"][0]["resource_id"] == "com.demo:id/messagebubble"
     assert hints["bubble_markers"][0]["occurrences"] == 2
 
 
@@ -236,7 +238,7 @@ def test_merge_hints_combines_sections():
     detail = DetailCalibrationAdvisor().analyze_detail(DETAIL_XML)
     messenger = DetailCalibrationAdvisor().analyze_messenger(MESSENGER_XML)
     merged = merge_hints(CARD_HINTS, detail, messenger)
-    assert merged["card_markers"]          # карточки сохранены
+    assert merged["card_markers"]  # карточки сохранены
     assert merged["detail"]["seller_markers"]
     assert merged["messenger"]["send_markers"]
     # Без опциональных секций — структура прежняя:
@@ -246,6 +248,7 @@ def test_merge_hints_combines_sections():
 # ---------------------------------------------------------------------------
 # Marker drift
 # ---------------------------------------------------------------------------
+
 
 def test_diff_markers_added_removed_kept():
     old = {"card_markers": [{"resource_id": "com.x:id/adCard"}]}
@@ -263,21 +266,29 @@ def test_check_platform_markers_ok_drift_no_baseline(tmp_path):
     scaffold_platform("mrk", "com.mrk.app", project_root=tmp_path)
     # no-baseline:
     report = check_platform_markers(
-        "mrk", DUMP_XML, directory=tmp_path / "platforms",
+        "mrk",
+        DUMP_XML,
+        directory=tmp_path / "platforms",
     )
     assert report["status"] == "no-baseline"
 
     write_hints_to_descriptor(
-        "mrk", CARD_HINTS, directory=tmp_path / "platforms",
+        "mrk",
+        CARD_HINTS,
+        directory=tmp_path / "platforms",
     )
     report = check_platform_markers(
-        "mrk", DUMP_XML, directory=tmp_path / "platforms",
+        "mrk",
+        DUMP_XML,
+        directory=tmp_path / "platforms",
     )
     assert report["status"] == "ok"
     assert report["diff"]["kept"] == ["adcard"]
 
     report = check_platform_markers(
-        "mrk", DRIFTED_DUMP_XML, directory=tmp_path / "platforms",
+        "mrk",
+        DRIFTED_DUMP_XML,
+        directory=tmp_path / "platforms",
     )
     assert report["status"] == "drift"
     assert report["diff"]["removed"] == ["adcard"]
@@ -285,7 +296,9 @@ def test_check_platform_markers_ok_drift_no_baseline(tmp_path):
 
     with pytest.raises(ValueError, match="descriptor not found"):
         check_platform_markers(
-            "ghost", DUMP_XML, directory=tmp_path / "platforms",
+            "ghost",
+            DUMP_XML,
+            directory=tmp_path / "platforms",
         )
 
 
@@ -293,16 +306,20 @@ def test_check_platform_markers_ok_drift_no_baseline(tmp_path):
 # Bootup: fetch + pool/serial
 # ---------------------------------------------------------------------------
 
+
 def test_bootup_fetch_apk_then_pipeline(tmp_path):
     dump = tmp_path / "dump.xml"
     dump.write_text(DUMP_XML, encoding="utf-8")
     modules_pkg, extra = _importable(tmp_path, "two")
     try:
         report = bootup_platform(
-            apk_path="com.boot.two", fetch=True,
+            apk_path="com.boot.two",
+            fetch=True,
             apks_dir=tmp_path / "apks",
-            apk_runner=_fake_apkeep, runner=_badging,
-            dump_path=str(dump), project_root=tmp_path,
+            apk_runner=_fake_apkeep,
+            runner=_badging,
+            dump_path=str(dump),
+            project_root=tmp_path,
         )
         try:
             assert report["status"] == "ready"
@@ -322,8 +339,10 @@ def test_bootup_fetch_apk_then_pipeline(tmp_path):
 def test_bootup_fetch_missing_apk_without_flag_errors(tmp_path):
     with pytest.raises(ValueError, match="--fetch"):
         bootup_platform(
-            apk_path="com.offline.app", project_root=tmp_path,
-            apks_dir=tmp_path / "apks", dry_run=False,
+            apk_path="com.offline.app",
+            project_root=tmp_path,
+            apks_dir=tmp_path / "apks",
+            dry_run=False,
         )
 
 
@@ -332,7 +351,9 @@ def test_bootup_injected_aapt_runner_allows_stub_apk(tmp_path):
     modules_pkg, extra = _importable(tmp_path, "two")
     try:
         report = bootup_platform(
-            apk_path="stub.apk", project_root=tmp_path, runner=_badging,
+            apk_path="stub.apk",
+            project_root=tmp_path,
+            runner=_badging,
             driver=lambda package, query, serial=None: DUMP_XML,
         )
         try:
@@ -358,8 +379,11 @@ def test_bootup_pool_lease_drive_release(tmp_path):
     modules_pkg, extra = _importable(tmp_path, "pooldemo")
     try:
         report = bootup_platform(
-            name="pooldemo", package="com.pool.demo",
-            project_root=tmp_path, pool=pool, driver=driver,
+            name="pooldemo",
+            package="com.pool.demo",
+            project_root=tmp_path,
+            pool=pool,
+            driver=driver,
         )
         try:
             assert report["status"] == "ready"
@@ -388,13 +412,15 @@ def test_bootup_pool_empty_skips_calibrate(tmp_path):
     modules_pkg, extra = _importable(tmp_path, "nodev2")
     try:
         report = bootup_platform(
-            name="nodev2", package="com.nodev2.app",
-            project_root=tmp_path, pool=pool, driver=driver,
+            name="nodev2",
+            package="com.nodev2.app",
+            project_root=tmp_path,
+            pool=pool,
+            driver=driver,
         )
         try:
             assert report["status"] == "scaffolded"
-            assert "no free device" in \
-                report["steps"]["calibrate"]["reason"]
+            assert "no free device" in report["steps"]["calibrate"]["reason"]
         finally:
             descriptor_mod._PLATFORMS.pop("nodev2", None)
     finally:
@@ -414,8 +440,11 @@ def test_bootup_explicit_serial_passthrough(tmp_path):
     modules_pkg, extra = _importable(tmp_path, "serialo")
     try:
         report = bootup_platform(
-            name="serialo", package="com.serialo.app",
-            project_root=tmp_path, serial="emulator-9", driver=driver,
+            name="serialo",
+            package="com.serialo.app",
+            project_root=tmp_path,
+            serial="emulator-9",
+            driver=driver,
         )
         try:
             assert "leased_serial" not in report["steps"]["calibrate"]
@@ -493,12 +522,11 @@ def test_instagram_drive_logs_in_and_returns_feed(monkeypatch):
     xml = driver.drive("com.instagram.android", query="sneakers")
     assert xml == IG_FEED_XML
     inputs = [c for c in adb.calls if isinstance(c, tuple)]
-    assert inputs == [("input_text", "u@example.com"),
-                      ("input_text", "p@ss")]
-    assert any("keyevent 61" in c for c in adb.calls
-               if isinstance(c, str))  # TAB между полями
-    assert any("keyevent 66" in c for c in adb.calls
-               if isinstance(c, str))  # ENTER — отправка формы
+    assert inputs == [("input_text", "u@example.com"), ("input_text", "p@ss")]
+    assert any("keyevent 61" in c for c in adb.calls if isinstance(c, str))  # TAB между полями
+    assert any(
+        "keyevent 66" in c for c in adb.calls if isinstance(c, str)
+    )  # ENTER — отправка формы
 
 
 def test_instagram_drive_without_credentials_explains_env(monkeypatch):
@@ -536,6 +564,7 @@ def test_instagram_drive_already_logged_in_skips_flow():
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def test_cli_platforms_fetch_apk(monkeypatch, capsys, tmp_path):
     from aios_cli import main
     import aios_core.platforms as platforms_mod
@@ -547,8 +576,7 @@ def test_cli_platforms_fetch_apk(monkeypatch, capsys, tmp_path):
         return str(target)
 
     monkeypatch.setattr(platforms_mod, "fetch_apk", fake_fetch)
-    main(["platforms", "fetch-apk", "com.instagram.android",
-          "--out", str(tmp_path)])
+    main(["platforms", "fetch-apk", "com.instagram.android", "--out", str(tmp_path)])
     out = json.loads(capsys.readouterr().out)
     assert out["package"] == "com.instagram.android"
     assert Path(out["apk"]).exists()
@@ -562,8 +590,7 @@ def test_cli_platforms_fetch_apk(monkeypatch, capsys, tmp_path):
     assert "apkeep failed" in out["error"]
 
 
-def test_cli_platforms_bootup_fetch_end_to_end(tmp_path, capsys,
-                                               monkeypatch):
+def test_cli_platforms_bootup_fetch_end_to_end(tmp_path, capsys, monkeypatch):
     from aios_cli import main
     from aios_core.platforms import apkfetch as apkfetch_mod
     from aios_core.platforms import scaffold as scaffold_mod
@@ -572,15 +599,29 @@ def test_cli_platforms_bootup_fetch_end_to_end(tmp_path, capsys,
     dump.write_text(DUMP_XML, encoding="utf-8")
     monkeypatch.setattr(apkfetch_mod, "_apkeep", _fake_apkeep)
     monkeypatch.setattr(
-        scaffold_mod, "_badging",
+        scaffold_mod,
+        "_badging",
         lambda apk: _badging(apk, package="com.clie2e.app"),
     )
     modules_pkg, extra = _importable(tmp_path, "clie2e")
     try:
-        main(["platforms", "bootup",
-              "--apk", "com.clie2e.app", "--name", "clie2e", "--fetch",
-              "--apks-dir", str(tmp_path / "apks"),
-              "--dump", str(dump), "--root", str(tmp_path)])
+        main(
+            [
+                "platforms",
+                "bootup",
+                "--apk",
+                "com.clie2e.app",
+                "--name",
+                "clie2e",
+                "--fetch",
+                "--apks-dir",
+                str(tmp_path / "apks"),
+                "--dump",
+                str(dump),
+                "--root",
+                str(tmp_path),
+            ]
+        )
         out = json.loads(capsys.readouterr().out)
         try:
             assert out["status"] == "ready"
@@ -595,17 +636,19 @@ def test_cli_platforms_bootup_fetch_end_to_end(tmp_path, capsys,
 
     # Без --fetch — чистая JSON-ошибка про apkeep/--fetch.
     monkeypatch.setattr(
-        apkfetch_mod, "_apkeep",
+        apkfetch_mod,
+        "_apkeep",
         lambda *a, **k: {"code": 1, "stdout": "", "stderr": "no apkeep"},
     )
-    main(["platforms", "bootup",
-          "--apk", "com.clie2e.app", "--root", str(tmp_path)])
+    main(["platforms", "bootup", "--apk", "com.clie2e.app", "--root", str(tmp_path)])
     out = json.loads(capsys.readouterr().out)
     assert "--fetch" in out["error"]
 
 
 def test_cli_platforms_calibrate_merge_and_marker_check(
-    tmp_path, capsys, monkeypatch,
+    tmp_path,
+    capsys,
+    monkeypatch,
 ):
     from aios_cli import main
 
@@ -618,9 +661,21 @@ def test_cli_platforms_calibrate_merge_and_marker_check(
     messages.write_text(MESSENGER_XML, encoding="utf-8")
 
     monkeypatch.chdir(tmp_path)
-    main(["platforms", "calibrate", "--platform", "climrg",
-          "--dump", str(feed), "--detail", str(detail),
-          "--messages", str(messages), "--write"])
+    main(
+        [
+            "platforms",
+            "calibrate",
+            "--platform",
+            "climrg",
+            "--dump",
+            str(feed),
+            "--detail",
+            str(detail),
+            "--messages",
+            str(messages),
+            "--write",
+        ]
+    )
     out = json.loads(capsys.readouterr().out)
     assert out["hints"]["card_markers"]
     assert out["hints"]["detail"]["seller_markers"]
@@ -628,16 +683,14 @@ def test_cli_platforms_calibrate_merge_and_marker_check(
     assert out["written"].endswith("climrg.yaml")
 
     # marker-check: тот же дамп — ok.
-    main(["platforms", "marker-check", "--platform", "climrg",
-          "--dump", str(feed)])
+    main(["platforms", "marker-check", "--platform", "climrg", "--dump", str(feed)])
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "ok"
 
     # верстка переименована — drift.
     drifted = tmp_path / "drifted.xml"
     drifted.write_text(DRIFTED_DUMP_XML, encoding="utf-8")
-    main(["platforms", "marker-check", "--platform", "climrg",
-          "--dump", str(drifted)])
+    main(["platforms", "marker-check", "--platform", "climrg", "--dump", str(drifted)])
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "drift"
     assert out["diff"]["removed"] == ["adcard"]

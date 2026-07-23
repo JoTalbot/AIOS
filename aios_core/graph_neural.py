@@ -19,10 +19,7 @@ class GraphNeuralNetwork:
         for src, dst in edges:
             if src in self.embeddings and dst in self.embeddings:
                 # Average features (simplified)
-                avg = [
-                    (a + b) / 2
-                    for a, b in zip(self.embeddings[src], self.embeddings[dst])
-                ]
+                avg = [(a + b) / 2 for a, b in zip(self.embeddings[src], self.embeddings[dst])]
                 new_embeddings[dst] = avg
         self.embeddings = new_embeddings
         return self.embeddings

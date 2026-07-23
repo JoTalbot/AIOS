@@ -87,12 +87,9 @@ def test_derive_query_and_similarity():
 
 def _market():
     return [
-        AdCard(title="Лобове скло оригінал", price=6800.0, currency="UAH",
-               city="Київ", query="q"),
-        AdCard(title="Скло лобове Mercedes", price=5500.0, currency="UAH",
-               city="Львів", query="q"),
-        AdCard(title="Коврики гумові салона", price=300.0, currency="UAH",
-               city="Одеса", query="q"),
+        AdCard(title="Лобове скло оригінал", price=6800.0, currency="UAH", city="Київ", query="q"),
+        AdCard(title="Скло лобове Mercedes", price=5500.0, currency="UAH", city="Львів", query="q"),
+        AdCard(title="Коврики гумові салона", price=300.0, currency="UAH", city="Одеса", query="q"),
     ]
 
 
@@ -132,21 +129,33 @@ def _storage_with_portfolio():
     storage = OLXStorage()
     # Undercut own ad: two cheaper similar competitors.
     storage.upsert_own_ad(
-        OwnAd(title="Лобове оголошення", price=9000.0, currency="UAH", views=40,
-              url="https://www.olx.ua/d/uk/obyavlenie/a-IDaaa1a.html"),
+        OwnAd(
+            title="Лобове оголошення",
+            price=9000.0,
+            currency="UAH",
+            views=40,
+            url="https://www.olx.ua/d/uk/obyavlenie/a-IDaaa1a.html",
+        ),
         seen_at="2026-07-19T10:00:00+00:00",
     )
     # Old stagnant own ad.
     storage.upsert_own_ad(
-        OwnAd(title="Багажник на дах", price=1000.0, currency="UAH", views=2,
-              url="https://www.olx.ua/d/uk/obyavlenie/b-IDbbb1b.html"),
+        OwnAd(
+            title="Багажник на дах",
+            price=1000.0,
+            currency="UAH",
+            views=2,
+            url="https://www.olx.ua/d/uk/obyavlenie/b-IDbbb1b.html",
+        ),
         seen_at="2026-07-01T10:00:00+00:00",
     )
     for card in [
-        AdCard(title="Лобове оголошення схоже", price=7000.0, currency="UAH",
-               city="Київ", query="q"),
-        AdCard(title="Аналог лобове оголошення", price=6500.0, currency="UAH",
-               city="Львів", query="q"),
+        AdCard(
+            title="Лобове оголошення схоже", price=7000.0, currency="UAH", city="Київ", query="q"
+        ),
+        AdCard(
+            title="Аналог лобове оголошення", price=6500.0, currency="UAH", city="Львів", query="q"
+        ),
     ]:
         storage.save_ads([card])
     return storage
@@ -173,10 +182,17 @@ def test_advisor_new_listings_fills_gaps():
     storage = _storage_with_portfolio()
     # An active niche the portfolio does not cover.
     for index in range(6):
-        storage.save_ads([AdCard(
-            title=f"Велосипед BMX модель {index}", price=4000.0 + index * 100,
-            currency="UAH", city="Дніпро", query="bmx велосипед",
-        )])
+        storage.save_ads(
+            [
+                AdCard(
+                    title=f"Велосипед BMX модель {index}",
+                    price=4000.0 + index * 100,
+                    currency="UAH",
+                    city="Дніпро",
+                    query="bmx велосипед",
+                )
+            ]
+        )
 
     advisor = StrategyAdvisor(storage)
     new_listings = advisor.advise_new_listings()
@@ -188,8 +204,9 @@ def test_advisor_new_listings_fills_gaps():
     assert first.suggested_price is not None
     assert first.reason and "ніша" in first.reason
     # A query whose tokens are covered by the portfolio is not suggested:
-    covered = AdCard(title="Лобове оголошення схоже", price=7000.0,
-                     currency="UAH", query="лобове оголошення")
+    covered = AdCard(
+        title="Лобове оголошення схоже", price=7000.0, currency="UAH", query="лобове оголошення"
+    )
     storage.save_ads([covered])
     fresh = advisor.advise_new_listings()
     assert all(item.query != "лобове оголошення" for item in fresh)
@@ -204,9 +221,16 @@ def test_bootstrap_plan_contains_emulator_pipeline():
     steps = bootstrap.plan(emulator=True, apt=True, olx_apk="/tmp/olx.apk")
     names = [step.name for step in steps]
     assert names == [
-        "apt-packages", "python-deps", "platform-tools", "adbkeyboard-apk",
-        "sdk-cmdline-tools", "sdk-packages", "create-avd", "start-emulator",
-        "device-setup", "verify",
+        "apt-packages",
+        "python-deps",
+        "platform-tools",
+        "adbkeyboard-apk",
+        "sdk-cmdline-tools",
+        "sdk-packages",
+        "create-avd",
+        "start-emulator",
+        "device-setup",
+        "verify",
     ]
     flat = bootstrap.print_plan(emulator=True, apt=True, olx_apk="/tmp/olx.apk")
     assert "platform-tools-latest-linux.zip" in flat
@@ -233,7 +257,11 @@ def _emulated_runner(command):
     if command == "adb version":
         return {"code": 0, "stdout": "Android Debug Bridge version 1.0.41", "stderr": ""}
     if command == "adb devices":
-        return {"code": 0, "stdout": "List of devices attached\nemulator-5554\tdevice", "stderr": ""}
+        return {
+            "code": 0,
+            "stdout": "List of devices attached\nemulator-5554\tdevice",
+            "stderr": "",
+        }
     if "pm list packages" in command:
         return {"code": 0, "stdout": "package:ua.slando", "stderr": ""}
     if "default_input_method" in command:
@@ -250,7 +278,9 @@ def test_doctor_ready_in_emulator_and_hints_when_bare():
     assert by_name["olx_installed"]["ok"] is True
     assert by_name["adbkeyboard_ime"]["ok"] is True
 
-    bare = OLXBootstrap(runner=lambda cmd: {"code": 127, "stdout": "", "stderr": "not found"}).doctor_report()
+    bare = OLXBootstrap(
+        runner=lambda cmd: {"code": 127, "stdout": "", "stderr": "not found"}
+    ).doctor_report()
     assert bare["ready"] is False
     adb_check = next(c for c in bare["checks"] if c["name"] == "adb_installed")
     assert adb_check["ok"] is False
@@ -334,7 +364,8 @@ def test_observe_seller_ads_stores_portfolio_and_links_similar():
     with OLXStorage(":memory:") as storage:
         my = OwnAd(
             title="Лобове скло BMW X3 G01",
-            price=7000.0, currency="UAH",
+            price=7000.0,
+            currency="UAH",
             url="https://www.olx.ua/d/uk/obyavlenie/moe-obyavlenie-IDmyOwn1.html",
             ad_id="myOwn1",
         )
@@ -377,7 +408,9 @@ def test_cli_competitive_seller_scan(tmp_path, capsys):
     dump = tmp_path / "detail.xml"
     dump.write_text(SELLER_XML, encoding="utf-8")
     my = OwnAd(
-        title="Лобове скло BMW X3 G01", price=7000.0, currency="UAH",
+        title="Лобове скло BMW X3 G01",
+        price=7000.0,
+        currency="UAH",
         ad_id="cliOwn1",
         url="https://www.olx.ua/d/uk/obyavlenie/moe-IDcliOwn1.html",
     )
@@ -385,17 +418,35 @@ def test_cli_competitive_seller_scan(tmp_path, capsys):
     storage.upsert_own_ad(my)
     storage.close()
 
-    main([
-        "olx", "competitive-seller", str(dump), "--db", str(db),
-        "--fingerprint", my.fingerprint, "--viewed-ad-id", "z7kLq",
-    ])
+    main(
+        [
+            "olx",
+            "competitive-seller",
+            str(dump),
+            "--db",
+            str(db),
+            "--fingerprint",
+            my.fingerprint,
+            "--viewed-ad-id",
+            "z7kLq",
+        ]
+    )
     out = json.loads(capsys.readouterr().out)
     assert out["seller_ads_found"] == 2
     assert out["linked_competitors"] == 1
 
-    main([
-        "olx", "competitive-seller", str(dump), "--db", str(db),
-        "--fingerprint", "unknown", "--viewed-ad-id", "z7kLq",
-    ])
+    main(
+        [
+            "olx",
+            "competitive-seller",
+            str(dump),
+            "--db",
+            str(db),
+            "--fingerprint",
+            "unknown",
+            "--viewed-ad-id",
+            "z7kLq",
+        ]
+    )
     err = json.loads(capsys.readouterr().out)
     assert "error" in err

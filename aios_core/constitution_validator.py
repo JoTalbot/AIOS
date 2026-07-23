@@ -39,9 +39,7 @@ class ValidationReport:
     errors: list[ValidationResult] = field(default_factory=list)
     warnings: list[ValidationResult] = field(default_factory=list)
     checked_rules_count: int = 0
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class ConstitutionValidator:
@@ -145,8 +143,7 @@ class ConstitutionValidator:
                         valid=False,
                         category="risk",
                         code="invalid_risk_level",
-                        message=f"Invalid risk level '{risk}'. "
-                        f"Must be one of: {valid_levels}",
+                        message=f"Invalid risk level '{risk}'. " f"Must be one of: {valid_levels}",
                         severity="error",
                     )
                 )
@@ -358,9 +355,7 @@ class ConstitutionValidator:
         # Federation policy
         fed = self.policies.get_federation_policy()
         if fed and action.get("action_type") in ("federate", "sync"):
-            if self.policies.is_rule_enabled(
-                "federation_policy", "verified_nodes_only"
-            ):
+            if self.policies.is_rule_enabled("federation_policy", "verified_nodes_only"):
                 if not action.get("node_verified"):
                     results.append(
                         ValidationResult(

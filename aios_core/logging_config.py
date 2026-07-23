@@ -28,17 +28,11 @@ class JSONFormatter(logging.Formatter):
             "module": record.module,
             "line": record.lineno,
             "trace_id": (
-                current_span.trace_id
-                if current_span
-                else record.__dict__.get("trace_id")
+                current_span.trace_id if current_span else record.__dict__.get("trace_id")
             ),
-            "span_id": (
-                current_span.span_id if current_span else record.__dict__.get("span_id")
-            ),
+            "span_id": (current_span.span_id if current_span else record.__dict__.get("span_id")),
             "agent_id": record.__dict__.get("agent_id", "system"),
-            "constitutional_status": record.__dict__.get(
-                "constitutional_status", "VALID"
-            ),
+            "constitutional_status": record.__dict__.get("constitutional_status", "VALID"),
         }
 
         if record.exc_info:
@@ -71,9 +65,7 @@ def setup_logging(
     logger.addHandler(console_handler)
 
     # File Handler
-    file_handler = RotatingFileHandler(
-        log_file, maxBytes=10 * 1024 * 1024, backupCount=5
-    )
+    file_handler = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 

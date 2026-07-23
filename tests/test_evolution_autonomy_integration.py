@@ -12,7 +12,7 @@ def test_evolution_and_autonomy_integration():
     proposal = orch.evolution.propose(
         change={"type": "capability", "name": "new_skill"},
         component="capability_engine",
-        reason="test integration"
+        reason="test integration",
     )
     assert proposal["id"] is not None
     assert proposal["status"] == "proposed"

@@ -9,7 +9,7 @@ def test_cosmic_swarm_matrix_persistence():
 
     shard_res = matrix.store_holographic_state(
         shard_key="global_agent_checkpoint_001",
-        state_payload={"epoch": 100, "active_agents": 520, "constitutional_hash": "a1b2c3d4"}
+        state_payload={"epoch": 100, "active_agents": 520, "constitutional_hash": "a1b2c3d4"},
     )
 
     assert shard_res["shard_id"].startswith("holo_")

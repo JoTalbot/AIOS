@@ -11,9 +11,7 @@ class HonestAI:
         self.violations: List[Dict] = []
 
     def train_on_honesty(self, prompt: str, honest_response: str):
-        self.honesty_training_data.append(
-            {"prompt": prompt, "honest_response": honest_response}
-        )
+        self.honesty_training_data.append({"prompt": prompt, "honest_response": honest_response})
 
     def evaluate_honesty(self, response: str, ground_truth: str) -> float:
         if response == ground_truth:

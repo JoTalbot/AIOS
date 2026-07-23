@@ -45,9 +45,7 @@ class QuantumEntanglementMesh:
     def __init__(self):
         self.channels: Dict[str, QuantumEntangledChannel] = {}
 
-    def create_entangled_channel(
-        self, node_a: str, node_b: str
-    ) -> QuantumEntangledChannel:
+    def create_entangled_channel(self, node_a: str, node_b: str) -> QuantumEntangledChannel:
         """Pair two cosmic nodes with an active quantum entanglement link."""
         channel_id = f"qlink_{node_a}_{node_b}"
         channel = QuantumEntangledChannel(channel_id, node_a, node_b)
@@ -72,7 +70,5 @@ class QuantumEntanglementMesh:
     def stats(self) -> Dict[str, Any]:
         return {
             "active_entangled_channels": len(self.channels),
-            "total_teleportations": sum(
-                c.teleported_states_count for c in self.channels.values()
-            ),
+            "total_teleportations": sum(c.teleported_states_count for c in self.channels.values()),
         }

@@ -58,12 +58,15 @@ SAMPLE_XML = f"""<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 </hierarchy>
 """
 
-PAGE_TWO_XML = SAMPLE_XML.replace(
-    "BMW X3 G01 (2017-) - лобове скло, стекло лобовое",
-    "Лобове скло Mercedes W211 E-class",
-    1,
-).replace("7 000 грн", "5 500 грн", 1).replace("Львів", "Дніпро", 1).replace(
-    "IDz7kLq.html", "IDm9wQe.html", 1
+PAGE_TWO_XML = (
+    SAMPLE_XML.replace(
+        "BMW X3 G01 (2017-) - лобове скло, стекло лобовое",
+        "Лобове скло Mercedes W211 E-class",
+        1,
+    )
+    .replace("7 000 грн", "5 500 грн", 1)
+    .replace("Львів", "Дніпро", 1)
+    .replace("IDz7kLq.html", "IDm9wQe.html", 1)
 )
 
 
@@ -237,9 +240,7 @@ def test_collector_launch_search_deep_link():
     assert adb.commands
     assert "am start" in adb.commands[0]
     assert "q-" in adb.commands[0]
-    assert collector.search_deep_link("лобове скло").startswith(
-        "https://www.olx.ua/d/uk/list/q-"
-    )
+    assert collector.search_deep_link("лобове скло").startswith("https://www.olx.ua/d/uk/list/q-")
 
 
 # --- OLXStorage -------------------------------------------------------------

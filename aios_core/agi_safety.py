@@ -22,9 +22,7 @@ class AGISafety:
             return False
         return True
 
-    def impact_regularization(
-        self, action_impact: float, threshold: float = 0.1
-    ) -> bool:
+    def impact_regularization(self, action_impact: float, threshold: float = 0.1) -> bool:
         return action_impact < threshold
 
     def stats(self) -> dict:

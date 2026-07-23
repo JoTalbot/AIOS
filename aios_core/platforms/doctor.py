@@ -83,11 +83,7 @@ def platform_doctor(
         doc = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
     checks["descriptor"] = {
         "ok": bool(doc and doc.get("name") == platform),
-        "detail": (
-            str(yaml_path)
-            if yaml_path.exists()
-            else f"descriptor not found: {yaml_path}"
-        ),
+        "detail": (str(yaml_path) if yaml_path.exists() else f"descriptor not found: {yaml_path}"),
     }
     hints = (doc.get("extras") or {}).get("parser_hints") or {}
     compliance_block = (doc.get("extras") or {}).get("compliance") or {}
@@ -126,9 +122,7 @@ def platform_doctor(
         checks["device"] = {
             "ok": bool(devices.get("code") == 0 and online),
             "detail": (
-                f"{serial} online"
-                if online
-                else f"{serial} не в 'adb devices' (эмулятор запущен?)"
+                f"{serial} online" if online else f"{serial} не в 'adb devices' (эмулятор запущен?)"
             ),
         }
         if online:
@@ -147,7 +141,5 @@ def platform_doctor(
         "checks": checks,
     }
     if report_recipe:
-        report["calibrate_recipe"] = _report_recipe(
-            platform, package, checks, hints_for_recipe
-        )
+        report["calibrate_recipe"] = _report_recipe(platform, package, checks, hints_for_recipe)
     return report

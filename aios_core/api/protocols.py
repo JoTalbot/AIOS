@@ -56,15 +56,11 @@ class ProtocolConfig:
 class ProtocolAdapter:
     """Base adapter for different communication protocols."""
 
-    def __init__(
-        self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager
-    ):
+    def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
         self.config = config
         self.integration_manager = integration_manager
         self.metrics = {
-            "connections": MetricCounter(
-                "protocol_connections", "Number of protocol connections"
-            ),
+            "connections": MetricCounter("protocol_connections", "Number of protocol connections"),
             "messages_processed": MetricCounter(
                 "protocol_messages", "Number of messages processed"
             ),
@@ -90,9 +86,7 @@ class ProtocolAdapter:
 class WebSocketAdapter(ProtocolAdapter):
     """WebSocket protocol adapter."""
 
-    def __init__(
-        self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager
-    ):
+    def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
         super().__init__(config, integration_manager)
         self.server = None
         self.clients = {}
@@ -131,9 +125,7 @@ class WebSocketAdapter(ProtocolAdapter):
             ssl=None if not self.config.tls else self._create_ssl_context(),
         )
 
-        logger.info(
-            f"WebSocket server started on {self.config.host}:{self.config.port}"
-        )
+        logger.info(f"WebSocket server started on {self.config.host}:{self.config.port}")
 
     async def stop(self):
         """Stop WebSocket server."""
@@ -179,9 +171,7 @@ class WebSocketAdapter(ProtocolAdapter):
 class GraphQLAdapter(ProtocolAdapter):
     """GraphQL protocol adapter."""
 
-    def __init__(
-        self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager
-    ):
+    def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
         super().__init__(config, integration_manager)
         self.schema = self._create_schema()
 
@@ -221,9 +211,7 @@ class GraphQLAdapter(ProtocolAdapter):
                     args={"limit": GraphQLString},
                     resolve=resolve_integration_events,
                 ),
-                "systemMetrics": GraphQLField(
-                    GraphQLString, resolve=resolve_system_metrics
-                ),
+                "systemMetrics": GraphQLField(GraphQLString, resolve=resolve_system_metrics),
             },
         )
 
@@ -266,9 +254,7 @@ class GraphQLAdapter(ProtocolAdapter):
 class GrpcAdapter(ProtocolAdapter):
     """gRPC protocol adapter."""
 
-    def __init__(
-        self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager
-    ):
+    def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
         super().__init__(config, integration_manager)
         self.server = None
 
@@ -316,9 +302,7 @@ class GrpcAdapter(ProtocolAdapter):
 class SSEAdapter(ProtocolAdapter):
     """Server-Sent Events adapter."""
 
-    def __init__(
-        self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager
-    ):
+    def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
         super().__init__(config, integration_manager)
         self.connections = {}
         self._running = False
@@ -375,9 +359,7 @@ class SSEAdapter(ProtocolAdapter):
 class MessageQueueAdapter(ProtocolAdapter):
     """Message Queue adapter (RabbitMQ, Kafka, etc.)."""
 
-    def __init__(
-        self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager
-    ):
+    def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
         super().__init__(config, integration_manager)
         self.queue_config = config.kwargs
         self.consumer = None
@@ -497,9 +479,7 @@ def create_protocol_manager(
         port=8765,
         endpoint="/ws",
     )
-    manager.add_adapter(
-        "websocket", WebSocketAdapter(websocket_config, integration_manager)
-    )
+    manager.add_adapter("websocket", WebSocketAdapter(websocket_config, integration_manager))
 
     graphql_config = ProtocolConfig(
         protocol_type=ProtocolType.GRAPHQL,

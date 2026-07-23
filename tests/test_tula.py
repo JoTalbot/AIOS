@@ -10,6 +10,7 @@ from tools.complete_constitution_tula import (
     generate_compliance_matrix,
 )
 
+
 def test_scan_constitution_exists():
     constitution_dir = Path(__file__).parent.parent / "docs" / "constitution"
     articles = scan_constitution(constitution_dir)
@@ -18,9 +19,11 @@ def test_scan_constitution_exists():
         assert i in articles
         assert articles[i]["valid"] is True
 
+
 def test_parse_single_article(tmp_path):
     art_file = tmp_path / "ARTICLE-I-TEST.md"
-    art_file.write_text("""# Article I — Test Identity
+    art_file.write_text(
+        """# Article I — Test Identity
 
 Status: Core
 Level: Constitutional
@@ -31,12 +34,15 @@ Everything must have identity.
 
 Laws:
 1. ID must be unique.
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
 
     parsed = parse_article_file(art_file)
     assert parsed["number"] == 1
     assert parsed["numeral"] == "I"
     assert parsed["valid"] is True
+
 
 def test_report_generation(tmp_path):
     constitution_dir = Path(__file__).parent.parent / "docs" / "constitution"
@@ -48,6 +54,7 @@ def test_report_generation(tmp_path):
     content = report_file.read_text(encoding="utf-8")
     assert "Compliance Ratio:** 100.00%" in content
     assert "LXVII" in content
+
 
 def test_matrix_and_index(tmp_path):
     matrix_file = tmp_path / "COMPLIANCE_MATRIX.md"

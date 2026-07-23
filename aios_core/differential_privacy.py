@@ -16,9 +16,7 @@ class DifferentialPrivacy:
         noise = random.gauss(0, scale)
         return value + noise
 
-    def privatize_list(
-        self, values: List[float], sensitivity: float = 1.0
-    ) -> List[float]:
+    def privatize_list(self, values: List[float], sensitivity: float = 1.0) -> List[float]:
         return [self.add_noise(v, sensitivity) for v in values]
 
     def stats(self) -> dict:

@@ -27,11 +27,7 @@ class UIElement:
     def matches_text(self, text: str, partial: bool = True) -> bool:
         if not text:
             return False
-        return (
-            text.lower() in self.text.lower()
-            if partial
-            else text.lower() == self.text.lower()
-        )
+        return text.lower() in self.text.lower() if partial else text.lower() == self.text.lower()
 
     def matches_resource(self, resource_id: str) -> bool:
         return self.resource_id == resource_id or self.resource_id.endswith(resource_id)
@@ -92,10 +88,7 @@ class UIAutomatorParser:
         if self.root is None:
             return result
         for node in self.root.iter("node"):
-            if (
-                node.attrib.get("clickable") == "true"
-                and node.attrib.get("enabled") == "true"
-            ):
+            if node.attrib.get("clickable") == "true" and node.attrib.get("enabled") == "true":
                 result.append(self._to_element(node))
         return result
 

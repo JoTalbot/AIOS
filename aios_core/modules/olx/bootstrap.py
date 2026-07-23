@@ -20,12 +20,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-PLATFORM_TOOLS_URL = (
-    "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
-)
+PLATFORM_TOOLS_URL = "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
 CMDLINE_TOOLS_URL = (
-    "https://dl.google.com/android/repository/"
-    "commandlinetools-linux-11076708_latest.zip"
+    "https://dl.google.com/android/repository/" "commandlinetools-linux-11076708_latest.zip"
 )
 ADBKEYBOARD_URL = "https://github.com/senzhk/ADBKeyBoard/raw/master/ADBKeyboard.apk"
 SDK_ROOT = "/opt/android-sdk"
@@ -197,9 +194,7 @@ class OLXBootstrap:
                     + (
                         [f"adb install -r {olx_apk}"]
                         if olx_apk
-                        else [
-                            "# Встановіть OLX: adb install -r olx.apk (або з Play Store вручну)"
-                        ]
+                        else ["# Встановіть OLX: adb install -r olx.apk (або з Play Store вручну)"]
                     )
                     + [
                         "adb shell ime set com.android.adbkeyboard/.AdbIME",
@@ -258,11 +253,7 @@ class OLXBootstrap:
             DoctorCheck(
                 "adb_installed",
                 adb_ok,
-                (
-                    ""
-                    if adb_ok
-                    else "Встановіть platform-tools (bootstrap: platform-tools)"
-                ),
+                ("" if adb_ok else "Встановіть platform-tools (bootstrap: platform-tools)"),
             )
         )
 
@@ -298,11 +289,7 @@ class OLXBootstrap:
                     DoctorCheck(
                         "adbkeyboard_ime",
                         ime_ok,
-                        (
-                            ""
-                            if ime_ok
-                            else "adb shell ime set com.android.adbkeyboard/.AdbIME"
-                        ),
+                        ("" if ime_ok else "adb shell ime set com.android.adbkeyboard/.AdbIME"),
                     )
                 )
 
@@ -311,9 +298,7 @@ class OLXBootstrap:
 
             checks.append(DoctorCheck("python_module", True))
         except Exception as exc:
-            checks.append(
-                DoctorCheck("python_module", False, f"pip install -e . ({exc})")
-            )
+            checks.append(DoctorCheck("python_module", False, f"pip install -e . ({exc})"))
 
         try:
             from .storage import OLXStorage

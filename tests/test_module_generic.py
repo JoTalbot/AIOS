@@ -25,15 +25,18 @@ def demo_platform(tmp_path):
 
     def storage_factory(db_path):
         from aios_core.modules.olx import OLXStorage
+
         return OLXStorage(db_path)
 
-    register_platform(PlatformDescriptor(
-        name="demo",
-        android_package="ua.demo.app",
-        agent_module="demo.agent",
-        storage_factory=storage_factory,
-        legacy_default_db=str(tmp_path / "demo-default.sqlite"),
-    ))
+    register_platform(
+        PlatformDescriptor(
+            name="demo",
+            android_package="ua.demo.app",
+            agent_module="demo.agent",
+            storage_factory=storage_factory,
+            legacy_default_db=str(tmp_path / "demo-default.sqlite"),
+        )
+    )
     yield
     descriptor_mod._PLATFORMS.pop("demo", None)
 
@@ -43,10 +46,14 @@ async def client(demo_platform, tmp_path):
     from aios_core.api.app import AIOSAPI
 
     store = ProfileStore(":memory:")
-    store.add(Profile(
-        platform="demo", name="main",
-        db_path=str(tmp_path / "demo-main.sqlite"), is_default=True,
-    ))
+    store.add(
+        Profile(
+            platform="demo",
+            name="main",
+            db_path=str(tmp_path / "demo-main.sqlite"),
+            is_default=True,
+        )
+    )
     api = AIOSAPI(
         db_path=":memory:",
         constitution_dir=os.path.join(_PROJECT_ROOT, "docs/constitution"),
@@ -63,10 +70,22 @@ async def client(demo_platform, tmp_path):
 
 
 ADS = [
-    {"title": "Демо товар А", "price": 100.0, "currency": "UAH",
-     "city": "Київ", "url": "http://demo/a.html", "query": "q"},
-    {"title": "Демо товар Б", "price": 250.0, "currency": "UAH",
-     "city": "Львів", "url": "http://demo/b.html", "query": "q"},
+    {
+        "title": "Демо товар А",
+        "price": 100.0,
+        "currency": "UAH",
+        "city": "Київ",
+        "url": "http://demo/a.html",
+        "query": "q",
+    },
+    {
+        "title": "Демо товар Б",
+        "price": 250.0,
+        "currency": "UAH",
+        "city": "Львів",
+        "url": "http://demo/b.html",
+        "query": "q",
+    },
 ]
 
 
@@ -77,15 +96,11 @@ async def test_generic_module_data_plane(client):
     assert empty.json()["total"] == 0
 
     # Ingest от внешнего коллектора (платформа-агностичный формат AdCard).
-    ingest = await client.post(
-        "/api/v1/modules/demo/ads/ingest", json={"ads": ADS, "query": "q"}
-    )
+    ingest = await client.post("/api/v1/modules/demo/ads/ingest", json={"ads": ADS, "query": "q"})
     assert ingest.status_code == 200
     assert ingest.json()["new_ads"] == 2
     # Повторный ingest идемпотентен.
-    again = await client.post(
-        "/api/v1/modules/demo/ads/ingest", json={"ads": ADS, "query": "q"}
-    )
+    again = await client.post("/api/v1/modules/demo/ads/ingest", json={"ads": ADS, "query": "q"})
     assert again.json()["new_ads"] == 0
 
     listed = await client.get("/api/v1/modules/demo/ads", params={"query": "q"})
@@ -119,8 +134,7 @@ async def test_generic_module_data_plane(client):
 
 async def test_generic_module_profile_isolation(client, tmp_path):
     # Ingest в профиль main: данные видны по ?profile=main.
-    await client.post("/api/v1/modules/demo/ads/ingest?profile=main",
-                      json={"ads": ADS})
+    await client.post("/api/v1/modules/demo/ads/ingest?profile=main", json={"ads": ADS})
     scoped = await client.get("/api/v1/modules/demo/ads?profile=main")
     assert scoped.json()["total"] == 2
 
@@ -131,11 +145,16 @@ async def test_generic_module_profile_isolation(client, tmp_path):
 
     # Второй профиль — собственное пустое хранилище (изоляция).
     from aios_core.platforms import Profile as _Profile
+
     # регистрируем через REST, чтобы проверить и его:
-    created = await client.post("/api/v1/profiles", json={
-        "platform": "demo", "name": "second",
-        "db_path": str(tmp_path / "demo-second.sqlite"),
-    })
+    created = await client.post(
+        "/api/v1/profiles",
+        json={
+            "platform": "demo",
+            "name": "second",
+            "db_path": str(tmp_path / "demo-second.sqlite"),
+        },
+    )
     assert created.status_code == 201
     second = await client.get("/api/v1/modules/demo/ads?profile=second")
     assert second.json()["total"] == 0
@@ -150,6 +169,7 @@ async def test_generic_module_profile_isolation(client, tmp_path):
 # Pool quotas
 # ---------------------------------------------------------------------------
 
+
 def test_pool_quota_caps():
     with DevicePool(":memory:") as pool:
         pool.set_limit("max_devices", 2)
@@ -161,7 +181,7 @@ def test_pool_quota_caps():
 
         pool.set_limit("max_busy:olx", 1)
         assert pool.lease("olx:x") is not None
-        assert pool.lease("olx:y") is None       # квота платформы
+        assert pool.lease("olx:y") is None  # квота платформы
         assert pool.lease("other:y") is not None  # другая платформа не ограничена
         assert pool.lease("olx:x")["serial"] == "a"  # продление — не новая аренда
         assert pool.lease("olx:y", serial="b") is None  # pinned тоже под квотой
@@ -176,7 +196,8 @@ def test_ensure_device_respects_max_avds_quota():
     with DevicePool(":memory:") as pool:
         pool.set_limit("max_avds", 0)
         record = ensure_device(
-            "olx:x", pool=pool,
+            "olx:x",
+            pool=pool,
             create_avd=lambda n: calls.append(n) or True,
             start_emulator=lambda n: None,
             wait_serial=lambda k: "emulator-1",
@@ -187,8 +208,7 @@ def test_ensure_device_respects_max_avds_quota():
 
 
 async def test_rest_devices_limits(client):
-    await client.post("/api/v1/devices/limits",
-                      json={"key": "max_devices", "value": 1})
+    await client.post("/api/v1/devices/limits", json={"key": "max_devices", "value": 1})
     limits = await client.get("/api/v1/devices/limits")
     assert limits.json()["limits"]["max_devices"] == 1
 
@@ -205,6 +225,7 @@ async def test_rest_devices_limits(client):
 # cron-plan
 # ---------------------------------------------------------------------------
 
+
 def test_cli_cron_plan_per_profile(tmp_path, monkeypatch, capsys):
     from aios_cli import main
 
@@ -218,8 +239,17 @@ def test_cli_cron_plan_per_profile(tmp_path, monkeypatch, capsys):
         json.loads(capsys.readouterr().out)
 
         capsys.readouterr()  # сброс
-        main(["cron-plan", "--platform", "olx", "--interval", "10",
-              "--webhook", "https://hook.example/x"])
+        main(
+            [
+                "cron-plan",
+                "--platform",
+                "olx",
+                "--interval",
+                "10",
+                "--webhook",
+                "https://hook.example/x",
+            ]
+        )
         plan = capsys.readouterr().out
         assert "autowatch --profile work" in plan
         assert "autowatch --profile home" in plan

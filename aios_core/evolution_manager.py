@@ -109,17 +109,13 @@ class EvolutionManager:
             raise ValueError(f"Proposal not found: {proposal_id}")
 
         if proposal.get("status") in {"rejected", "deploying"}:
-            raise ValueError(
-                f"Cannot advance proposal in terminal state: {proposal['status']}"
-            )
+            raise ValueError(f"Cannot advance proposal in terminal state: {proposal['status']}")
 
         current_index = proposal["stage_index"]
         if current_index >= len(self.stages) - 1:
             raise ValueError("Proposal is already at final stage")
         if proposal.get("stage") == "approval" and proposal.get("status") != "approved":
-            raise ValueError(
-                "An approval-stage proposal must be approved before deployment"
-            )
+            raise ValueError("An approval-stage proposal must be approved before deployment")
 
         next_index = current_index + 1
         next_stage = self.stages[next_index]
@@ -169,13 +165,8 @@ class EvolutionManager:
         if proposal is None:
             raise ValueError(f"Proposal not found: {proposal_id}")
 
-        if (
-            proposal.get("stage") != "approval"
-            or proposal.get("status") != "pending_approval"
-        ):
-            raise ValueError(
-                "Only proposals pending at the approval stage can be approved"
-            )
+        if proposal.get("stage") != "approval" or proposal.get("status") != "pending_approval":
+            raise ValueError("Only proposals pending at the approval stage can be approved")
 
         if self.db:
             self.db.execute(
@@ -203,9 +194,7 @@ class EvolutionManager:
         if proposal is None:
             raise ValueError(f"Proposal not found: {proposal_id}")
         if proposal.get("status") in {"approved", "rejected", "deploying"}:
-            raise ValueError(
-                f"Cannot reject proposal in terminal state: {proposal['status']}"
-            )
+            raise ValueError(f"Cannot reject proposal in terminal state: {proposal['status']}")
 
         if self.db:
             self.db.execute(
@@ -250,14 +239,11 @@ class EvolutionManager:
 
         if status:
             rows = self.db.query(
-                "SELECT * FROM evolution_records WHERE status = ? "
-                "ORDER BY proposed_at DESC",
+                "SELECT * FROM evolution_records WHERE status = ? " "ORDER BY proposed_at DESC",
                 (status,),
             )
         else:
-            rows = self.db.query(
-                "SELECT * FROM evolution_records ORDER BY proposed_at DESC"
-            )
+            rows = self.db.query("SELECT * FROM evolution_records ORDER BY proposed_at DESC")
 
         return [self._row_to_dict(r) for r in rows]
 

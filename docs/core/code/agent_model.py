@@ -11,7 +11,7 @@ from datetime import datetime
 
 @dataclass
 class AgentIdentity:
-    agent_id: str          # Unique identity (immutable, per ARTICLE-I)
+    agent_id: str  # Unique identity (immutable, per ARTICLE-I)
     role: str
     created_at: datetime
     version: str = "1.0"
@@ -28,8 +28,8 @@ class Capability:
 
 @dataclass
 class AgentMemory:
-    short_term: List[str] = field(default_factory=list)      # Minutes → Hours
-    operational: List[str] = field(default_factory=list)     # Running processes
+    short_term: List[str] = field(default_factory=list)  # Minutes → Hours
+    operational: List[str] = field(default_factory=list)  # Running processes
     long_term_knowledge: Dict[str, str] = field(default_factory=dict)  # Structured knowledge
 
 
@@ -55,8 +55,10 @@ class Agent:
 
     def evolve(self, improvement: Dict) -> None:
         # Integration with Evolution Engine (AIOS_EVOLUTION_ENGINE.md)
-        self.capabilities.append(Capability(
-            capability_id=f"cap_{len(self.capabilities)}",
-            name=improvement.get("name", "evolved_capability"),
-            description=improvement.get("description", ""),
-        ))
+        self.capabilities.append(
+            Capability(
+                capability_id=f"cap_{len(self.capabilities)}",
+                name=improvement.get("name", "evolved_capability"),
+                description=improvement.get("description", ""),
+            )
+        )

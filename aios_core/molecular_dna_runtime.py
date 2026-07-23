@@ -70,7 +70,5 @@ class MolecularDNARuntime:
     def stats(self) -> Dict[str, Any]:
         return {
             "synthesized_dna_rules": len(self.dna_memory_bank),
-            "total_nucleotides_stored": sum(
-                len(s) for s in self.dna_memory_bank.values()
-            ),
+            "total_nucleotides_stored": sum(len(s) for s in self.dna_memory_bank.values()),
         }

@@ -63,7 +63,8 @@ class AutonomyManager:
         self._profiles: Dict[str, AgentAutonomyProfile] = {}
 
         if self.db:
-            self.db.execute("""CREATE TABLE IF NOT EXISTS autonomy_profiles (
+            self.db.execute(
+                """CREATE TABLE IF NOT EXISTS autonomy_profiles (
                     id TEXT PRIMARY KEY,
                     agent_id TEXT NOT NULL UNIQUE,
                     level INTEGER NOT NULL DEFAULT 0,
@@ -73,7 +74,8 @@ class AutonomyManager:
                     restrictions TEXT,
                     track_record TEXT,
                     metadata TEXT
-                )""")
+                )"""
+            )
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_autonomy_agent ON autonomy_profiles(agent_id)"
             )

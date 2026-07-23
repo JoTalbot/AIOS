@@ -69,25 +69,33 @@ class _ADB:
 def watch_platform(tmp_path):
     def storage_factory(db_path):
         from aios_core.modules.olx import OLXStorage
+
         return OLXStorage(db_path)
 
     def adb_factory(package, serial=None):
         from aios_core.modules.olx.adb import ADBController
+
         return ADBController(package=package, serial=serial)
 
-    register_platform(PlatformDescriptor(
-        name="watch-demo",
-        android_package="com.watch.demo",
-        agent_module="aios_core.modules.olx",  # модуль с CardParser
-        storage_factory=storage_factory,
-        adb_factory=adb_factory,
-    ))
+    register_platform(
+        PlatformDescriptor(
+            name="watch-demo",
+            android_package="com.watch.demo",
+            agent_module="aios_core.modules.olx",  # модуль с CardParser
+            storage_factory=storage_factory,
+            adb_factory=adb_factory,
+        )
+    )
     store = ProfileStore(":memory:")
-    store.add(Profile(
-        platform="watch-demo", name="main",
-        device_serial="emulator-5554",
-        db_path=str(tmp_path / "watch.sqlite"), is_default=True,
-    ))
+    store.add(
+        Profile(
+            platform="watch-demo",
+            name="main",
+            device_serial="emulator-5554",
+            db_path=str(tmp_path / "watch.sqlite"),
+            is_default=True,
+        )
+    )
     yield store
     descriptor_mod._PLATFORMS.pop("watch-demo", None)
     store.close()
@@ -95,12 +103,14 @@ def watch_platform(tmp_path):
 
 def _hints_parser():
     from aios_core.platforms import build_parser
+
     return build_parser(CalibrationAdvisor().analyze(FEED_XML))
 
 
 # ---------------------------------------------------------------------------
 # resolve_card_parser chain
 # ---------------------------------------------------------------------------
+
 
 def test_resolve_card_parser_module_first(watch_platform):
     parser = resolve_card_parser("watch-demo")
@@ -112,18 +122,29 @@ def test_resolve_card_parser_hints_fallback(tmp_path):
 
     def storage_factory(db_path):
         from aios_core.modules.olx import OLXStorage
+
         return OLXStorage(db_path)
 
-    register_platform(PlatformDescriptor(
-        name="hints-only", android_package="com.hints.only",
-        agent_module="no.such.module", storage_factory=storage_factory,
-    ))
+    register_platform(
+        PlatformDescriptor(
+            name="hints-only",
+            android_package="com.hints.only",
+            agent_module="no.such.module",
+            storage_factory=storage_factory,
+        )
+    )
     try:
         hints = CalibrationAdvisor().analyze(FEED_XML)
-        (tmp_path / "hints-only.yaml").write_text(yaml.safe_dump({
-            "name": "hints-only", "android_package": "com.hints.only",
-            "extras": {"parser_hints": hints},
-        }), encoding="utf-8")
+        (tmp_path / "hints-only.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "name": "hints-only",
+                    "android_package": "com.hints.only",
+                    "extras": {"parser_hints": hints},
+                }
+            ),
+            encoding="utf-8",
+        )
         parser = resolve_card_parser("hints-only", directory=str(tmp_path))
         assert parser.CARD_RESOURCE_MARKERS == ("itemcard",)
 
@@ -138,6 +159,7 @@ def test_resolve_card_parser_hints_fallback(tmp_path):
 # Generic AutoWatch cycle
 # ---------------------------------------------------------------------------
 
+
 def test_autowatch_cycle_collects_alerts_and_reports(watch_platform):
     drives = []
 
@@ -147,9 +169,14 @@ def test_autowatch_cycle_collects_alerts_and_reports(watch_platform):
     adb = _ADB([FEED_XML, EMPTY_XML, EMPTY_XML])
     storage_profile_db = None
     report = autowatch_cycle(
-        "watch-demo", profile_name="main", queries=["кросівки"],
-        store=watch_platform, adb=adb, parser=_hints_parser(),
-        driver=driver, collect=True,
+        "watch-demo",
+        profile_name="main",
+        queries=["кросівки"],
+        store=watch_platform,
+        adb=adb,
+        parser=_hints_parser(),
+        driver=driver,
+        collect=True,
     )
     assert report["platform"] == "watch-demo"
     assert report["profile"] == "main"
@@ -161,14 +188,17 @@ def test_autowatch_cycle_collects_alerts_and_reports(watch_platform):
     assert report["favorite_alerts"] == []
     assert report["own_snapshot"] is None
     assert report["stagnant"] == []
-    assert drives == [{"package": "com.watch.demo",
-                       "query": "кросівки"}]
+    assert drives == [{"package": "com.watch.demo", "query": "кросівки"}]
 
 
 def test_autowatch_cycle_no_collect_is_storage_only(watch_platform):
     report = autowatch_cycle(
-        "watch-demo", profile_name="main", queries=["кросівки"],
-        store=watch_platform, parser=_hints_parser(), collect=False,
+        "watch-demo",
+        profile_name="main",
+        queries=["кросівки"],
+        store=watch_platform,
+        parser=_hints_parser(),
+        collect=False,
     )
     assert "collection" not in report
     assert report["subscription_alerts"] == []
@@ -184,13 +214,24 @@ def test_autowatch_unknown_platform_errors():
 # CLI autowatch + cron-plan generic lines
 # ---------------------------------------------------------------------------
 
+
 def test_cli_platforms_autowatch_report(watch_platform, capsys, monkeypatch):
     from aios_cli import main
 
     # CLI читает ProfileStore.default() → env на файловую БД:
     file_store = str(watch_platform_path(monkeypatch, watch_platform))
-    main(["platforms", "autowatch", "--platform", "watch-demo",
-          "--profile", "main", "--query", "кросівки"])
+    main(
+        [
+            "platforms",
+            "autowatch",
+            "--platform",
+            "watch-demo",
+            "--profile",
+            "main",
+            "--query",
+            "кросівки",
+        ]
+    )
     out = json.loads(capsys.readouterr().out)
     assert out["platform"] == "watch-demo"
     assert out["profile"] == "main"
@@ -199,8 +240,7 @@ def test_cli_platforms_autowatch_report(watch_platform, capsys, monkeypatch):
     assert out["collection"]["кросівки"]["parsed"] == 0
     assert file_store
 
-    main(["platforms", "autowatch", "--platform", "watch-demo",
-          "--drive", "login"])
+    main(["platforms", "autowatch", "--platform", "watch-demo", "--drive", "login"])
     out = json.loads(capsys.readouterr().out)
     assert "no login driver module" in out["error"]
 
@@ -209,6 +249,7 @@ def watch_platform_path(monkeypatch, store):
     """Переносит профили in-memory стора в файловый для CLI-резолвера."""
     from aios_core.platforms import ProfileStore as _Store
     import tempfile
+
     path = Path(tempfile.mkdtemp()) / "profiles.sqlite"
     file_store = _Store(str(path))
     for profile in store.list():
@@ -219,19 +260,23 @@ def watch_platform_path(monkeypatch, store):
     return path
 
 
-def test_cli_cron_plan_generic_lines_for_non_olx(tmp_path, capsys,
-                                                 monkeypatch):
+def test_cli_cron_plan_generic_lines_for_non_olx(tmp_path, capsys, monkeypatch):
     from aios_cli import main
     from aios_core.platforms import ProfileStore as _Store
 
     profiles_db = tmp_path / "profiles.sqlite"
     store = _Store(str(profiles_db))
-    store.add(Profile(platform="instagram", name="main", is_default=True,
-                      db_path=str(tmp_path / "ig.sqlite")))
-    store.add(Profile(platform="tiktok", name="fun", is_default=True,
-                      db_path=str(tmp_path / "tt.sqlite")))
-    store.add(Profile(platform="olx", name="work", is_default=True,
-                      db_path=str(tmp_path / "olx.sqlite")))
+    store.add(
+        Profile(
+            platform="instagram", name="main", is_default=True, db_path=str(tmp_path / "ig.sqlite")
+        )
+    )
+    store.add(
+        Profile(platform="tiktok", name="fun", is_default=True, db_path=str(tmp_path / "tt.sqlite"))
+    )
+    store.add(
+        Profile(platform="olx", name="work", is_default=True, db_path=str(tmp_path / "olx.sqlite"))
+    )
     store.close()
     monkeypatch.setenv("AIOS_PROFILES_DB", str(profiles_db))
     monkeypatch.setenv("AIOS_DEVICES_DB", str(tmp_path / "devices.sqlite"))
@@ -258,6 +303,7 @@ def test_cli_cron_plan_generic_lines_for_non_olx(tmp_path, capsys,
 # Content categories in CalibrationAdvisor
 # ---------------------------------------------------------------------------
 
+
 def test_calibration_content_categories():
     xml = """<hierarchy>
   <node text="0:32" resource-id="com.demo:id/reel_duration"/>
@@ -278,18 +324,19 @@ def test_calibration_content_categories():
 
 
 def test_calibration_content_categories_empty_on_plain_dump():
-    hints = CalibrationAdvisor().analyze(
-        "<hierarchy><node text='Привіт'/></hierarchy>"
-    )
+    hints = CalibrationAdvisor().analyze("<hierarchy><node text='Привіт'/></hierarchy>")
     categories = hints["content_categories"]
     assert categories == {
-        "video_markers": [], "story_markers": [], "duration_labels": 0,
+        "video_markers": [],
+        "story_markers": [],
+        "duration_labels": 0,
     }
 
 
 # ---------------------------------------------------------------------------
 # Guarded messenger REST plane per platform
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 async def messenger_client(tmp_path):
@@ -298,14 +345,21 @@ async def messenger_client(tmp_path):
 
     load_catalog_file(os.path.join(_PROJECT_ROOT, "platforms", "instagram.yaml"))
     store = ProfileStore(":memory:")
-    store.add(Profile(
-        platform="instagram", name="main",
-        db_path=str(tmp_path / "instagram-main.sqlite"), is_default=True,
-    ))
-    store.add(Profile(
-        platform="instagram", name="second",
-        db_path=str(tmp_path / "instagram-second.sqlite"),
-    ))
+    store.add(
+        Profile(
+            platform="instagram",
+            name="main",
+            db_path=str(tmp_path / "instagram-main.sqlite"),
+            is_default=True,
+        )
+    )
+    store.add(
+        Profile(
+            platform="instagram",
+            name="second",
+            db_path=str(tmp_path / "instagram-second.sqlite"),
+        )
+    )
     api = AIOSAPI(
         db_path=":memory:",
         constitution_dir=os.path.join(_PROJECT_ROOT, "docs/constitution"),
@@ -316,8 +370,7 @@ async def messenger_client(tmp_path):
     )
     app = api.create_starlette_app()
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport,
-                           base_url="http://test") as ac:
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     store.close()
     descriptor_mod._PLATFORMS.pop("instagram", None)
@@ -343,7 +396,8 @@ async def test_rest_module_outbox_guarded_flow(messenger_client):
 
     # flush без устройства — честный failed, без 500:
     flush = await messenger_client.post(
-        "/api/v1/modules/instagram/outbox/flush?profile=main", json={},
+        "/api/v1/modules/instagram/outbox/flush?profile=main",
+        json={},
     )
     flushed = flush.json()["flushed"]
     assert flushed[0]["status"] == "failed"
@@ -379,17 +433,23 @@ async def test_rest_module_chats_and_error_paths(messenger_client):
 async def test_rest_module_messenger_module_missing(messenger_client):
     def storage_factory(db_path):
         from aios_core.modules.olx import OLXStorage
+
         return OLXStorage(db_path)
 
     def adb_factory(package, serial=None):
         from aios_core.modules.olx.adb import ADBController
+
         return ADBController(package=package, serial=serial)
 
-    register_platform(PlatformDescriptor(
-        name="nomsg", android_package="com.nomsg.app",
-        agent_module="no.such.agent", storage_factory=storage_factory,
-        adb_factory=adb_factory,
-    ))
+    register_platform(
+        PlatformDescriptor(
+            name="nomsg",
+            android_package="com.nomsg.app",
+            agent_module="no.such.agent",
+            storage_factory=storage_factory,
+            adb_factory=adb_factory,
+        )
+    )
     try:
         response = await messenger_client.post(
             "/api/v1/modules/nomsg/outbox/send",

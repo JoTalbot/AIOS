@@ -107,7 +107,6 @@ def resolve_apk(
         return candidate  # уже скачан ранее
     if not fetch:
         raise ValueError(
-            f"apk for '{target}' not cached in {out_dir} — "
-            "run with --fetch or download manually"
+            f"apk for '{target}' not cached in {out_dir} — " "run with --fetch or download manually"
         )
     return fetch_apk(target, out_dir=out_dir, source=source, runner=runner)

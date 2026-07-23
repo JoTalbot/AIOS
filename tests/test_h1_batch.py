@@ -18,6 +18,7 @@ from aios_core.platforms.promote import promotion_plan
 # Job-lease TTL + queue stats
 # ---------------------------------------------------------------------------
 
+
 def _seed_db(tmp_path):
     db = str(tmp_path / "shards.sqlite")
     router = ShardRouter(db)
@@ -33,7 +34,8 @@ def _claimed_job(db, claimed_at):
         with jobs._lock, jobs._conn:
             jobs._conn.execute(
                 "UPDATE shard_jobs SET status='claimed', host='worker-1',"
-                " claimed_at=? WHERE id=?", (claimed_at, job_id),
+                " claimed_at=? WHERE id=?",
+                (claimed_at, job_id),
             )
         return job_id
 
@@ -94,6 +96,7 @@ def test_cli_jobs_stats_and_requeue(tmp_path, capsys, monkeypatch):
 # Builtin job kinds (default_handlers)
 # ---------------------------------------------------------------------------
 
+
 def test_default_handlers_all_kinds_shell_out(tmp_path, monkeypatch):
     ran = []
 
@@ -103,6 +106,7 @@ def test_default_handlers_all_kinds_shell_out(tmp_path, monkeypatch):
         class _P:
             returncode = 0
             stdout = "{}"
+
         return _P()
 
     monkeypatch.setattr(shardexec.subprocess, "run", fake_run)
@@ -112,8 +116,10 @@ def test_default_handlers_all_kinds_shell_out(tmp_path, monkeypatch):
     for kind in ("reels", "dm-flush"):
         result = handlers[kind]("instagram:main", {"args": ["--max", "3"]})
         assert result["code"] == 0
-        assert any(kind.replace("-", "-") in part or "reels" in part or
-                   "dm-flush" in part for part in ran[-1])
+        assert any(
+            kind.replace("-", "-") in part or "reels" in part or "dm-flush" in part
+            for part in ran[-1]
+        )
         assert any("instagram-main.sqlite" in part for part in ran[-1])
         with pytest.raises(ValueError, match="instagram"):
             handlers[kind]("olx:main", {})
@@ -129,11 +135,13 @@ def test_default_handlers_all_kinds_shell_out(tmp_path, monkeypatch):
 # Human-like pacing
 # ---------------------------------------------------------------------------
 
+
 def test_pacer_jitter_and_stats():
     rng = random.Random(7)
     slept = []
-    pacer = Pacer(actions_per_hour=0, jitter_s=(0.1, 0.2), rng=rng,
-                  sleeper=slept.append, now=lambda: 1000.0)
+    pacer = Pacer(
+        actions_per_hour=0, jitter_s=(0.1, 0.2), rng=rng, sleeper=slept.append, now=lambda: 1000.0
+    )
     assert pacer.before_action() is True
     assert pacer.before_action() is True
     assert len(slept) == 2
@@ -150,15 +158,13 @@ def test_pacer_hour_quota_honest_stop():
 
 def test_pacer_session_limit_and_window_rotation():
     clock = [0.0]
-    pacer = Pacer(actions_per_hour=1, session_max_s=None,
-                  jitter_s=None, now=lambda: clock[0])
+    pacer = Pacer(actions_per_hour=1, session_max_s=None, jitter_s=None, now=lambda: clock[0])
     assert pacer.before_action() is True
     assert pacer.before_action() is False
     clock[0] += 3601.0  # новое окно — снова можно
     assert pacer.before_action() is True
 
-    pacer2 = Pacer(session_max_s=10.0, jitter_s=None,
-                   now=lambda: clock[0])
+    pacer2 = Pacer(session_max_s=10.0, jitter_s=None, now=lambda: clock[0])
     clock[0] += 11.0
     assert pacer2.before_action() is False  # сессия дольше лимита
 
@@ -169,13 +175,17 @@ def test_pacer_from_pool_limits():
         "pacing:instagram:main:session_max_s": 120,
     }
     pacer = pacer_from_limits(
-        "instagram:main", lambda key, default=None: limits.get(key, default),
-        jitter_s=None, now=lambda: 1.0,
+        "instagram:main",
+        lambda key, default=None: limits.get(key, default),
+        jitter_s=None,
+        now=lambda: 1.0,
     )
     assert pacer.actions_per_hour == 3
     assert pacer.session_max_s == 120.0
     pacer2 = pacer_from_limits(
-        "ghost", lambda key, default=None: default, jitter_s=None,
+        "ghost",
+        lambda key, default=None: default,
+        jitter_s=None,
     )
     assert pacer2.actions_per_hour is None  # без ключей — без лимита
 
@@ -202,7 +212,9 @@ def test_collectors_stop_on_pacing(tmp_path):
                 "resource-id='com.instagram.android:id/reel_card'>"
                 "<node text='V' resource-id=''/>"
                 "<node text='0:15' resource-id=''/>"
-                "</node></hierarchy>", encoding="utf-8")
+                "</node></hierarchy>",
+                encoding="utf-8",
+            )
             return {"code": 0, "stdout": "", "stderr": ""}
 
         def swipe(self, *a, **k):
@@ -217,10 +229,11 @@ def test_collectors_stop_on_pacing(tmp_path):
     # квота 1 действие: лента бесконечная, но цикл обрублен честно:
     pacer = Pacer(actions_per_hour=1, jitter_s=None, now=lambda: 0.0)
     collector = ReelsCollector(
-        PlatformDescriptor(name="instagram",
-                           android_package="com.instagram.android",
-                           agent_module="x"),
-        adb=_ADB(), parser=HintVideoParser(["reel_card"]),
+        PlatformDescriptor(
+            name="instagram", android_package="com.instagram.android", agent_module="x"
+        ),
+        adb=_ADB(),
+        parser=HintVideoParser(["reel_card"]),
         pacer=pacer,
     )
     cards = collector.collect(max_cards=100, stop_after_empty=99)
@@ -242,10 +255,15 @@ def test_instagram_collector_pacer_passthrough():
 # Own-promote DRY-RUN
 # ---------------------------------------------------------------------------
 
+
 def test_promotion_plan_even_budget_and_dry_run():
     stagnant = [
-        {"fingerprint": f"fp{i}", "title": f"Пост {i}",
-         "views_per_day": 0.2 * i, "age_days": 5.0 + i}
+        {
+            "fingerprint": f"fp{i}",
+            "title": f"Пост {i}",
+            "views_per_day": 0.2 * i,
+            "age_days": 5.0 + i,
+        }
         for i in range(1, 8)
     ]
     plan = promotion_plan(stagnant, daily_budget=150.0, max_items=3)
@@ -266,39 +284,68 @@ def test_cli_autopilot_promote_step(tmp_path, capsys, monkeypatch):
     from aios_core.modules.olx.own_ads import OwnAd
 
     import yaml
-    (tmp_path / "instagram.yaml").write_text(yaml.safe_dump({
-        "name": "instagram",
-        "android_package": "com.instagram.android",
-        "extras": {"parser_hints": {}},
-    }), encoding="utf-8")
+
+    (tmp_path / "instagram.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "name": "instagram",
+                "android_package": "com.instagram.android",
+                "extras": {"parser_hints": {}},
+            }
+        ),
+        encoding="utf-8",
+    )
 
     # Зрелый пост с почти нулевыми просмотрами → stagnant:
     db = tmp_path / "ig.sqlite"
     storage = InstagramStorage(str(db))
     old = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-    storage.upsert_own_ad(OwnAd(
-        title="Старий пост", views=2, favorites=0, messages=0,
-    ), seen_at=old)
+    storage.upsert_own_ad(
+        OwnAd(
+            title="Старий пост",
+            views=2,
+            favorites=0,
+            messages=0,
+        ),
+        seen_at=old,
+    )
     storage.close()
 
     from aios_core.modules.olx import adb as adb_mod
 
-    feed = ("<hierarchy><node text='' resource-id=''/></hierarchy>")
+    feed = "<hierarchy><node text='' resource-id=''/></hierarchy>"
     monkeypatch.setattr(
-        adb_mod, "ADBController",
+        adb_mod,
+        "ADBController",
         lambda *a, **k: _CliADB([feed, feed]),
     )
     monkeypatch.setenv("AIOS_PROFILES_DB", str(tmp_path / "profiles.sqlite"))
     from aios_core.platforms import ProfileStore
+
     ProfileStore.reset_default()
 
     from aios_core.platforms import load_catalog_file
     from aios_core.platforms import descriptor as descriptor_mod
+
     loaded = load_catalog_file("platforms/instagram.yaml")
     try:
-        main(["instagram", "autopilot", "--db", str(db), "--max", "1",
-              "--reels-max", "1", "--directory", str(tmp_path),
-              "--promote", "--promote-budget", "100"])
+        main(
+            [
+                "instagram",
+                "autopilot",
+                "--db",
+                str(db),
+                "--max",
+                "1",
+                "--reels-max",
+                "1",
+                "--directory",
+                str(tmp_path),
+                "--promote",
+                "--promote-budget",
+                "100",
+            ]
+        )
     finally:
         descriptor_mod._PLATFORMS.pop(loaded[0].name, None)
     out = json.loads(capsys.readouterr().out)

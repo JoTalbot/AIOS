@@ -52,10 +52,7 @@ class Pacer:
         if now - self._window_started >= 3600.0:
             self._window_started = now
             self._window_actions = 0
-        if (
-            self.actions_per_hour is not None
-            and self._window_actions >= self.actions_per_hour
-        ):
+        if self.actions_per_hour is not None and self._window_actions >= self.actions_per_hour:
             return False
         if self.session_max_s and now - self._started >= self.session_max_s:
             return False

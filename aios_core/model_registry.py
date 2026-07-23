@@ -28,9 +28,7 @@ class ModelRegistry:
     ) -> Dict[str, Any]:
         """Register a new model version in the registry."""
         key = f"{name}:{version}"
-        sha256_hash = (
-            hashlib.sha256(artifact_bytes).hexdigest() if artifact_bytes else "no_hash"
-        )
+        sha256_hash = hashlib.sha256(artifact_bytes).hexdigest() if artifact_bytes else "no_hash"
 
         entry = {
             "name": name,
@@ -100,9 +98,7 @@ class ModelRegistry:
         """Backward-compatible fetcher."""
         return self.get_model(name, version)
 
-    def log_evaluation_metrics(
-        self, name: str, version: str, metrics: Dict[str, float]
-    ) -> bool:
+    def log_evaluation_metrics(self, name: str, version: str, metrics: Dict[str, float]) -> bool:
         """Log accuracy, latency, F1, or MSE evaluation metrics for a model version."""
         key = f"{name}:{version}"
         if key not in self.models:
@@ -118,9 +114,7 @@ class ModelRegistry:
 
     def stats(self) -> Dict[str, Any]:
         """Return registry aggregate statistics."""
-        production_count = sum(
-            1 for v in self.models.values() if v["stage"] == "production"
-        )
+        production_count = sum(1 for v in self.models.values() if v["stage"] == "production")
         return {
             "total_models": len(self.models),
             "production_models": production_count,

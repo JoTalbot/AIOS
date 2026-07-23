@@ -47,8 +47,7 @@ class MLPlannerScorer:
 
         return {
             "parallelism": len(layers) / max(1, total_steps),
-            "avg_dependencies": sum(len(s.dependencies) for s in plan.steps)
-            / max(1, total_steps),
+            "avg_dependencies": sum(len(s.dependencies) for s in plan.steps) / max(1, total_steps),
             "step_diversity": len({s.step_type for s in plan.steps}) / 10.0,
             "has_evolution": any(s.step_type == "evolve" for s in plan.steps),
             "has_memory": any(s.step_type == "memory" for s in plan.steps),

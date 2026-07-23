@@ -12,12 +12,12 @@ from datetime import datetime
 @dataclass
 class ImprovementProposal:
     proposal_id: str
-    target: str              # Which module/architecture component
+    target: str  # Which module/architecture component
     description: str
     reasoning: str
     expected_impact: str
     created_at: datetime = field(default_factory=datetime.now)
-    status: str = "pending"   # pending → simulation → validation → deployment → deployed
+    status: str = "pending"  # pending → simulation → validation → deployment → deployed
 
 
 @dataclass
@@ -36,19 +36,23 @@ class AIOS_EvolutionEngine:
     capability_performance: Dict[str, float] = field(default_factory=dict)
 
     def record_execution(self, action: str, result: str, metrics: Dict[str, float]) -> None:
-        self.execution_history.append(ExecutionHistory(
-            history_id=f"hist_{len(self.execution_history)}",
-            action=action,
-            result=result,
-            metrics=metrics,
-            timestamp=datetime.now(),
-        ))
+        self.execution_history.append(
+            ExecutionHistory(
+                history_id=f"hist_{len(self.execution_history)}",
+                action=action,
+                result=result,
+                metrics=metrics,
+                timestamp=datetime.now(),
+            )
+        )
 
     def analyze_experience(self) -> List[Dict]:
         # Analyze execution history for patterns, failures, bottlenecks
         return [{"pattern": "efficiency_trend", "value": 0.85}]
 
-    def propose_improvement(self, target: str, description: str, reasoning: str) -> ImprovementProposal:
+    def propose_improvement(
+        self, target: str, description: str, reasoning: str
+    ) -> ImprovementProposal:
         proposal = ImprovementProposal(
             proposal_id=f"prop_{len(self.improvement_proposals)}",
             target=target,

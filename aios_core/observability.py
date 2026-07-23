@@ -36,9 +36,7 @@ class Observability:
                 break
 
     def log(self, level: str, message: str, **kwargs):
-        self.logs.append(
-            {"level": level, "message": message, "timestamp": time.time(), **kwargs}
-        )
+        self.logs.append({"level": level, "message": message, "timestamp": time.time(), **kwargs})
 
     def export_prometheus(self) -> str:
         lines = []

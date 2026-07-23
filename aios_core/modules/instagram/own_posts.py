@@ -33,9 +33,7 @@ CREATE_DEEP_LINK = "instagram://library"
 
 NEXT_LABELS = ("next", "далі", "дальше", "continue")
 SHARE_LABELS = ("share", "поділитися", "поделиться", "опублікувати", "опубликовать")
-_COMMENT_RE = re.compile(
-    r"^(\d[\d\s\u00a0,.]*)\s*(коментар\w*|comments?)$", re.IGNORECASE
-)
+_COMMENT_RE = re.compile(r"^(\d[\d\s\u00a0,.]*)\s*(коментар\w*|comments?)$", re.IGNORECASE)
 
 #: Дефолтные маркеры ячеек сетки профиля (после калибровки — из hints).
 DEFAULT_GRID_MARKERS = ("row_profile", "grid_item", "profile_media")

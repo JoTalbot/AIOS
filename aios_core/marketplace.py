@@ -66,7 +66,8 @@ class CapabilityMarketplace:
         if self.db is None or Database is None:
             return
         try:
-            self.db.execute("""
+            self.db.execute(
+                """
                 CREATE TABLE IF NOT EXISTS marketplace (
                     id TEXT PRIMARY KEY,
                     name TEXT,
@@ -80,8 +81,10 @@ class CapabilityMarketplace:
                     kind TEXT,
                     metadata TEXT
                 )
-            """)
-            self.db.execute("""
+            """
+            )
+            self.db.execute(
+                """
                 CREATE TABLE IF NOT EXISTS platform_plugins (
                     id TEXT PRIMARY KEY,
                     platform TEXT,
@@ -95,7 +98,8 @@ class CapabilityMarketplace:
                     readme TEXT,
                     created_at REAL
                 )
-            """)
+            """
+            )
         except Exception:
             pass
 
@@ -149,9 +153,7 @@ class CapabilityMarketplace:
         results = list(self._items.values())
         if query:
             q = query.lower()
-            results = [
-                r for r in results if q in r.name.lower() or q in r.description.lower()
-            ]
+            results = [r for r in results if q in r.name.lower() or q in r.description.lower()]
         if tag:
             results = [r for r in results if tag in r.tags]
         if kind:
@@ -249,9 +251,7 @@ class CapabilityMarketplace:
         p.downloads += 1
         return {"success": True, "plugin": asdict(p), "downloads": p.downloads}
 
-    def install_plugin(
-        self, plugin_id: str, target_dir: str = "platforms"
-    ) -> Dict[str, Any]:
+    def install_plugin(self, plugin_id: str, target_dir: str = "platforms") -> Dict[str, Any]:
         """Simulated install - writes descriptor yaml to platforms/<platform>.yaml"""
         p = self._plugins.get(plugin_id)
         if not p:

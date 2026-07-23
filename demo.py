@@ -19,22 +19,32 @@ Run: python demo.py
 
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from aios_core import (
-    Orchestrator, Database, TaskStatus, StepStatus,
-    ConstitutionLoader, ConstitutionEngine,
-    MemoryManager, KnowledgeGraph, ReasoningEngine,
-    LearningEngine, EvolutionManager,
-    create_app, AIOSAPI,
+    Orchestrator,
+    Database,
+    TaskStatus,
+    StepStatus,
+    ConstitutionLoader,
+    ConstitutionEngine,
+    MemoryManager,
+    KnowledgeGraph,
+    ReasoningEngine,
+    LearningEngine,
+    EvolutionManager,
+    create_app,
+    AIOSAPI,
     TestEngine,
 )
 
+
 def demo_constitutional_evaluation():
     """Demo: Constitutional evaluation with real 67 articles."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("📜 CONSTITUTIONAL EVALUATION")
-    print("="*60)
+    print("=" * 60)
 
     db = Database(":memory:")
     orch = Orchestrator(db=db)
@@ -47,54 +57,69 @@ def demo_constitutional_evaluation():
 
     # Test evaluations
     tests = [
-        {"name": "✅ Valid low-risk action", "action": {
-            "goal": "Analyze user behavior patterns",
-            "scope": "analytics",
-            "risk": "low",
-            "audit_log": True,
-            "agent_id": "analyst-001",
-            "authority": "user",
-        }},
-        {"name": "❌ Missing required fields", "action": {
-            "goal": "Do something",
-            "scope": "test",
-            "risk": "low",
-            # audit_log missing
-            "agent_id": "agent-002",
-            "authority": "user",
-        }},
-        {"name": "❌ Unknown agent blocked", "action": {
-            "goal": "Access system data",
-            "scope": "data",
-            "risk": "low",
-            "audit_log": True,
-            "agent_id": "unknown",
-            "authority": "user",
-        }},
-        {"name": "⚠️ High risk requires review", "action": {
-            "goal": "Deploy to production",
-            "scope": "production",
-            "risk": "high",
-            "audit_log": True,
-            "agent_id": "deploy-agent",
-            "authority": "operator",
-        }},
-        {"name": "🚫 Restricted: modify constitution", "action": {
-            "goal": "Change core law",
-            "scope": "constitution",
-            "risk": "critical",
-            "audit_log": True,
-            "agent_id": "admin",
-            "authority": "system",
-            "action_type": "modify_constitution",
-        }},
+        {
+            "name": "✅ Valid low-risk action",
+            "action": {
+                "goal": "Analyze user behavior patterns",
+                "scope": "analytics",
+                "risk": "low",
+                "audit_log": True,
+                "agent_id": "analyst-001",
+                "authority": "user",
+            },
+        },
+        {
+            "name": "❌ Missing required fields",
+            "action": {
+                "goal": "Do something",
+                "scope": "test",
+                "risk": "low",
+                # audit_log missing
+                "agent_id": "agent-002",
+                "authority": "user",
+            },
+        },
+        {
+            "name": "❌ Unknown agent blocked",
+            "action": {
+                "goal": "Access system data",
+                "scope": "data",
+                "risk": "low",
+                "audit_log": True,
+                "agent_id": "unknown",
+                "authority": "user",
+            },
+        },
+        {
+            "name": "⚠️ High risk requires review",
+            "action": {
+                "goal": "Deploy to production",
+                "scope": "production",
+                "risk": "high",
+                "audit_log": True,
+                "agent_id": "deploy-agent",
+                "authority": "operator",
+            },
+        },
+        {
+            "name": "🚫 Restricted: modify constitution",
+            "action": {
+                "goal": "Change core law",
+                "scope": "constitution",
+                "risk": "critical",
+                "audit_log": True,
+                "agent_id": "admin",
+                "authority": "system",
+                "action_type": "modify_constitution",
+            },
+        },
     ]
 
     for test in tests:
         result = orch.evaluate(test["action"])
         print(f"\n{test['name']}:")
         print(f"  Decision: {result['decision']} | Reason: {result['reason']}")
-        if result.get('violations'):
+        if result.get("violations"):
             print(f"  Violations: {len(result['violations'])}")
 
     print(f"\nTotal evaluations: {orch.policy.stats()['total_executions']}")
@@ -103,9 +128,9 @@ def demo_constitutional_evaluation():
 
 def demo_task_orchestration():
     """Demo: Multi-step task orchestration with constitutional checks."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🎯 TASK ORCHESTRATION")
-    print("="*60)
+    print("=" * 60)
 
     db = Database(":memory:")
     orch = Orchestrator(db=db)
@@ -121,49 +146,77 @@ def demo_task_orchestration():
 
     # Add multiple steps of different types
     steps = [
-        ("evaluate", "read_metrics", {
-            "goal": "Read user metrics from analytics",
-            "scope": "analytics",
-            "risk": "low",
-        }),
-        ("memory", "store_peak_hours", {
-            "action": "store",
-            "content": {"pattern": "peak_usage_8pm", "confidence": 0.92},
-            "category": "operational",
-            "tags": ["analytics", "user_behavior", "peak_hours"],
-        }),
-        ("memory", "store_user_segments", {
-            "action": "store",
-            "content": {"segments": ["power_users", "casual", "new"], "counts": [120, 450, 80]},
-            "category": "operational",
-            "tags": ["analytics", "segmentation"],
-        }),
-        ("knowledge", "add_insight_node", {
-            "action": "add_node",
-            "label": "peak_usage_pattern",
-            "node_type": "insight",
-            "properties": {"time": "20:00", "confidence": 0.92, "source": "analytics"},
-        }),
-        ("knowledge", "link_to_user_model", {
-            "action": "add_relation",
-            "source_id": "",  # will be filled
-            "target_id": "",  # will be filled
-            "relation": "informs",
-        }),
-        ("reason", "analyze_implications", {
-            "question": "What does 8pm peak usage imply for resource scaling?",
-            "context": {"pattern": "peak_usage_8pm", "confidence": 0.92},
-            "use_memory": True,
-            "use_knowledge": True,
-        }),
-        ("learn", "record_completion", {
-            "experience": {
-                "task": "data_analysis_pipeline",
-                "insight": "Peak usage at 8pm with 92% confidence",
-                "action": "Scale resources 2x at 19:30-20:30",
+        (
+            "evaluate",
+            "read_metrics",
+            {
+                "goal": "Read user metrics from analytics",
+                "scope": "analytics",
+                "risk": "low",
             },
-            "tags": ["pipeline_success", "resource_planning"],
-        }),
+        ),
+        (
+            "memory",
+            "store_peak_hours",
+            {
+                "action": "store",
+                "content": {"pattern": "peak_usage_8pm", "confidence": 0.92},
+                "category": "operational",
+                "tags": ["analytics", "user_behavior", "peak_hours"],
+            },
+        ),
+        (
+            "memory",
+            "store_user_segments",
+            {
+                "action": "store",
+                "content": {"segments": ["power_users", "casual", "new"], "counts": [120, 450, 80]},
+                "category": "operational",
+                "tags": ["analytics", "segmentation"],
+            },
+        ),
+        (
+            "knowledge",
+            "add_insight_node",
+            {
+                "action": "add_node",
+                "label": "peak_usage_pattern",
+                "node_type": "insight",
+                "properties": {"time": "20:00", "confidence": 0.92, "source": "analytics"},
+            },
+        ),
+        (
+            "knowledge",
+            "link_to_user_model",
+            {
+                "action": "add_relation",
+                "source_id": "",  # will be filled
+                "target_id": "",  # will be filled
+                "relation": "informs",
+            },
+        ),
+        (
+            "reason",
+            "analyze_implications",
+            {
+                "question": "What does 8pm peak usage imply for resource scaling?",
+                "context": {"pattern": "peak_usage_8pm", "confidence": 0.92},
+                "use_memory": True,
+                "use_knowledge": True,
+            },
+        ),
+        (
+            "learn",
+            "record_completion",
+            {
+                "experience": {
+                    "task": "data_analysis_pipeline",
+                    "insight": "Peak usage at 8pm with 92% confidence",
+                    "action": "Scale resources 2x at 19:30-20:30",
+                },
+                "tags": ["pipeline_success", "resource_planning"],
+            },
+        ),
     ]
 
     step_refs = {}
@@ -178,9 +231,11 @@ def demo_task_orchestration():
 
     print(f"\nTask Status: {result['status']}")
     print(f"Steps: {result['completed_steps']}/{result['total_steps']} completed")
-    for step in result['steps']:
-        cc = step['constitutional_check']
-        print(f"  {step['name']}: {step['status']} (constitutional: {cc['decision'] if cc else 'N/A'})")
+    for step in result["steps"]:
+        cc = step["constitutional_check"]
+        print(
+            f"  {step['name']}: {step['status']} (constitutional: {cc['decision'] if cc else 'N/A'})"
+        )
 
     # Show final stats
     stats = orch.stats()
@@ -195,9 +250,9 @@ def demo_task_orchestration():
 
 def demo_memory_knowledge():
     """Demo: Memory and Knowledge Graph systems."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🧠 MEMORY & KNOWLEDGE GRAPH")
-    print("="*60)
+    print("=" * 60)
 
     db = Database(":memory:")
     orch = Orchestrator(db=db)
@@ -257,9 +312,9 @@ def demo_memory_knowledge():
 
 def demo_reasoning_learning():
     """Demo: Reasoning engine and Learning engine."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🤔 REASONING & LEARNING")
-    print("="*60)
+    print("=" * 60)
 
     db = Database(":memory:")
     orch = Orchestrator(db=db)
@@ -280,13 +335,15 @@ def demo_reasoning_learning():
     # Learning
     print("\n📚 Learning Engine:")
 
-    learn1 = orch.learning.record({
-        "task": "resource_scaling",
-        "trigger": "8pm_peak",
-        "action": "scale_up_2x",
-        "result": "latency_improved_40%",
-        "confidence": 0.88,
-    })
+    learn1 = orch.learning.record(
+        {
+            "task": "resource_scaling",
+            "trigger": "8pm_peak",
+            "action": "scale_up_2x",
+            "result": "latency_improved_40%",
+            "confidence": 0.88,
+        }
+    )
     print(f"  Recorded: {learn1['id'][:8]}...")
 
     patterns = orch.learning.extract_patterns()
@@ -302,9 +359,9 @@ def demo_reasoning_learning():
 
 def demo_evolution():
     """Demo: Evolution Manager - 7-stage pipeline."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🧬 EVOLUTION MANAGER (7-Stage Pipeline)")
-    print("="*60)
+    print("=" * 60)
 
     db = Database(":memory:")
     orch = Orchestrator(db=db)
@@ -340,17 +397,19 @@ def demo_evolution():
 
 def demo_mcp_gateway():
     """Demo: MCP Gateway - JSON-RPC 2.0 with constitutional guard."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🔌 MCP GATEWAY (JSON-RPC 2.0)")
-    print("="*60)
+    print("=" * 60)
 
     from aios_core.mcp.gateway import MCPGateway, GatewayConfig
 
-    gateway = MCPGateway(GatewayConfig(
-        db_path=":memory:",
-        constitution_dir=os.path.join(os.path.dirname(__file__), "docs/constitution"),
-        policies_dir=os.path.join(os.path.dirname(__file__), "policies"),
-    ))
+    gateway = MCPGateway(
+        GatewayConfig(
+            db_path=":memory:",
+            constitution_dir=os.path.join(os.path.dirname(__file__), "docs/constitution"),
+            policies_dir=os.path.join(os.path.dirname(__file__), "policies"),
+        )
+    )
 
     # Initialize
     init_req = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
@@ -361,13 +420,14 @@ def demo_mcp_gateway():
     tools_req = '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
     resp = gateway.handle_request(tools_req)
     import json
+
     data = json.loads(resp)
     print(f"\nAvailable tools: {len(data['result']['tools'])}")
-    for tool in data['result']['tools']:
+    for tool in data["result"]["tools"]:
         print(f"  - {tool['name']}: {tool['description'][:60]}...")
 
     # Call a tool (constitutional evaluation)
-    eval_req = '''{
+    eval_req = """{
         "jsonrpc": "2.0",
         "id": 3,
         "method": "tools/call",
@@ -379,7 +439,7 @@ def demo_mcp_gateway():
                 "risk": "low"
             }
         }
-    }'''
+    }"""
     resp = gateway.handle_request(eval_req)
     data = json.loads(resp)
     print(f"\nTool call result:")
@@ -396,9 +456,9 @@ def demo_mcp_gateway():
 
 def demo_rest_api():
     """Demo: REST API via AIOSAPI."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🌐 REST API (Starlette)")
-    print("="*60)
+    print("=" * 60)
 
     api = AIOSAPI(db_path=":memory:", auth_required=False)
 
@@ -416,47 +476,61 @@ def demo_rest_api():
             # Stats
             resp = await client.get("/api/v1/stats")
             data = resp.json()
-            print(f"GET /api/v1/stats: version={data.get('version', '9.0.0')}, tasks={data.get('total_tasks', 0)}")
+            print(
+                f"GET /api/v1/stats: version={data.get('version', '9.0.0')}, tasks={data.get('total_tasks', 0)}"
+            )
 
             # Evaluate
-            resp = await client.post("/api/v1/evaluate", json={
-                "goal": "Test API evaluation",
-                "scope": "api_test",
-                "risk": "low",
-                "audit_log": True,
-            })
+            resp = await client.post(
+                "/api/v1/evaluate",
+                json={
+                    "goal": "Test API evaluation",
+                    "scope": "api_test",
+                    "risk": "low",
+                    "audit_log": True,
+                },
+            )
             print(f"POST /api/v1/evaluate: {resp.json()['decision']}")
 
             # Memory
-            resp = await client.post("/api/v1/memory", json={
-                "content": {"test": "api_memory"},
-                "category": "operational",
-                "tags": ["api", "test"],
-            })
+            resp = await client.post(
+                "/api/v1/memory",
+                json={
+                    "content": {"test": "api_memory"},
+                    "category": "operational",
+                    "tags": ["api", "test"],
+                },
+            )
             print(f"POST /api/v1/memory: {resp.json()['id'][:8]}...")
 
             resp = await client.get("/api/v1/memory", params={"query": "api_memory"})
             print(f"GET /api/v1/memory?query=api_memory: {resp.json()['count']} results")
 
             # Knowledge Graph
-            resp = await client.post("/api/v1/knowledge/nodes", json={
-                "label": "API_Test_Node",
-                "node_type": "test",
-                "properties": {"source": "rest_api"},
-            })
-            node_id = resp.json()['id']
+            resp = await client.post(
+                "/api/v1/knowledge/nodes",
+                json={
+                    "label": "API_Test_Node",
+                    "node_type": "test",
+                    "properties": {"source": "rest_api"},
+                },
+            )
+            node_id = resp.json()["id"]
             print(f"POST /api/v1/knowledge/nodes: {node_id[:8]}...")
 
             resp = await client.get(f"/api/v1/knowledge/nodes/{node_id}")
             print(f"GET /api/v1/knowledge/nodes/{{id}}: {resp.json()['label']}")
 
             # Evolution
-            resp = await client.post("/api/v1/evolution/proposals", json={
-                "change": {"test": "api_proposal"},
-                "component": "api_demo",
-                "reason": "Testing REST API",
-            })
-            prop_id = resp.json()['id']
+            resp = await client.post(
+                "/api/v1/evolution/proposals",
+                json={
+                    "change": {"test": "api_proposal"},
+                    "component": "api_demo",
+                    "reason": "Testing REST API",
+                },
+            )
+            prop_id = resp.json()["id"]
             print(f"POST /api/v1/evolution/proposals: {prop_id[:8]}...")
 
             resp = await client.post(f"/api/v1/evolution/proposals/{prop_id}/advance")
@@ -467,16 +541,18 @@ def demo_rest_api():
             print(f"GET /api/v1/tests/suites: {len(resp.json()['suites'])} suites")
 
             resp = await client.post("/api/v1/tests/run")
-            print(f"POST /api/v1/tests/run: {resp.json()['overall_status']} ({resp.json()['total_tests']} tests)")
+            print(
+                f"POST /api/v1/tests/run: {resp.json()['overall_status']} ({resp.json()['total_tests']} tests)"
+            )
 
             # Audit
             resp = await client.get("/api/v1/audit")
             print(f"GET /api/v1/audit: {resp.json()['count']} events")
 
             # JSON-RPC bridge
-            resp = await client.post("/rpc", json={
-                "jsonrpc": "2.0", "id": 1, "method": "ping", "params": {}
-            })
+            resp = await client.post(
+                "/rpc", json={"jsonrpc": "2.0", "id": 1, "method": "ping", "params": {}}
+            )
             print(f"POST /rpc (ping): {resp.json()['result']}")
 
     asyncio.run(test_api())
@@ -485,9 +561,9 @@ def demo_rest_api():
 
 def demo_test_engine():
     """Demo: Self-test engine."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🧪 SELF-TEST ENGINE")
-    print("="*60)
+    print("=" * 60)
 
     db = Database(":memory:")
     engine = TestEngine(
@@ -504,7 +580,9 @@ def demo_test_engine():
 
     print(f"\nReport: {report.report_id[:8]}...")
     print(f"  Overall: {report.overall_status}")
-    print(f"  Total: {report.total_tests} | Passed: {report.total_passed} | Failed: {report.total_failed}")
+    print(
+        f"  Total: {report.total_tests} | Passed: {report.total_passed} | Failed: {report.total_failed}"
+    )
 
     # Show summary
     print(f"\n{engine.report_text(report)[:500]}...")
@@ -514,13 +592,15 @@ def demo_test_engine():
 
 
 def main():
-    print("""
+    print(
+        """
 ╔═══════════════════════════════════════════════════════════════╗
 ║                    AIOS DEMO / QUICKSTART                      ║
 ║         Self-Evolving Distributed Operating System             ║
 ║              Powered by Octopus Runtime v3.1.0                 ║
 ╚═══════════════════════════════════════════════════════════════╝
-    """)
+    """
+    )
 
     demo_constitutional_evaluation()
     demo_task_orchestration()
@@ -531,17 +611,19 @@ def main():
     demo_rest_api()
     demo_test_engine()
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("✅ ALL DEMOS COMPLETED SUCCESSFULLY")
-    print("="*60)
-    print("""
+    print("=" * 60)
+    print(
+        """
 Next steps:
   • Run MCP Gateway server: python -m aios_core.mcp.gateway
   • Run REST API server: uvicorn aios_core.api.app:create_app --host 0.0.0.0 --port 8000
   • Explore constitution: ls docs/constitution/
   • View policies: cat policies/*.yaml
   • Run tests: python -m pytest tests/ -v
-""")
+"""
+    )
 
 
 if __name__ == "__main__":

@@ -38,7 +38,7 @@ def run_adb_command(command: str, timeout: int = 30, device_id: str = None) -> t
             shell=True,
             capture_output=True,
             text=True,
-            timeout=timeout
+            timeout=timeout,
         )
         return result.returncode == 0, result.stdout.strip()
     except subprocess.TimeoutExpired:
@@ -60,9 +60,9 @@ def get_connected_devices() -> list[str]:
         return []
 
     devices = []
-    for line in output.split('\n')[1:]:
-        if '\tdevice' in line:
-            device_id = line.split('\t')[0]
+    for line in output.split("\n")[1:]:
+        if "\tdevice" in line:
+            device_id = line.split("\t")[0]
             if device_id:
                 devices.append(device_id)
     return devices
@@ -70,13 +70,18 @@ def get_connected_devices() -> list[str]:
 
 def check_app_installed(package_name: str, device_id: str) -> bool:
     """Check if app is installed on device."""
-    success, output = run_adb_command(f"shell pm list packages | grep {package_name}", device_id=device_id)
+    success, output = run_adb_command(
+        f"shell pm list packages | grep {package_name}", device_id=device_id
+    )
     return success and package_name in output
 
 
 def launch_app(package_name: str, device_id: str) -> bool:
     """Launch app on device."""
-    success, output = run_adb_command(f"shell cmd package resolve-activity --brief {package_name} | tail -n 1", device_id=device_id)
+    success, output = run_adb_command(
+        f"shell cmd package resolve-activity --brief {package_name} | tail -n 1",
+        device_id=device_id,
+    )
     if success and output and not output.startswith("Error"):
         activity = output.strip()
         success, _ = run_adb_command(f"shell am start -n {activity}", device_id=device_id)
@@ -84,20 +89,24 @@ def launch_app(package_name: str, device_id: str) -> bool:
             time.sleep(2)
             return True
 
-    success, _ = run_adb_command(f"shell monkey -p {package_name} -c android.intent.category.LAUNCHER 1", device_id=device_id)
+    success, _ = run_adb_command(
+        f"shell monkey -p {package_name} -c android.intent.category.LAUNCHER 1", device_id=device_id
+    )
     if success:
         time.sleep(2)
     return success
 
 
 def get_current_activity(device_id: str) -> Optional[str]:
-    success, output = run_adb_command("shell dumpsys window | grep mCurrentFocus", device_id=device_id)
+    success, output = run_adb_command(
+        "shell dumpsys window | grep mCurrentFocus", device_id=device_id
+    )
     if success and output:
         parts = output.split()
         if len(parts) >= 2:
             activity_part = parts[-1]
-            if '/' in activity_part:
-                return activity_part.split('/')[-1]
+            if "/" in activity_part:
+                return activity_part.split("/")[-1]
     return None
 
 
@@ -125,12 +134,10 @@ def take_screenshot(device_id: str, output_path: str = "/tmp/screenshot.png") ->
 def search_on_olx(device_id: str, query: str, category: str = "all") -> Dict[str, Any]:
     start_time = time.time()
 
-    if not check_app_installed("ua.slando", device_id) and not check_app_installed("ua.slando", device_id):
-        return {
-            "status": "error",
-            "error": "App not installed",
-            "package": "ua.slando"
-        }
+    if not check_app_installed("ua.slando", device_id) and not check_app_installed(
+        "ua.slando", device_id
+    ):
+        return {"status": "error", "error": "App not installed", "package": "ua.slando"}
 
     package = "ua.slando" if check_app_installed("ua.slando", device_id) else "ua.slando"
     launch_app(package, device_id)
@@ -141,7 +148,7 @@ def search_on_olx(device_id: str, query: str, category: str = "all") -> Dict[str
         "ua.slando:id/search_field",
         "ua.slando:id/search_field",
         "com.olx.slando:id/search_src_text",
-        "android:id/search_src_text"
+        "android:id/search_src_text",
     ]
 
     search_found = False
@@ -149,7 +156,7 @@ def search_on_olx(device_id: str, query: str, category: str = "all") -> Dict[str
         success, output = run_adb_command(
             f"shell uiautomator dump /sdcard/ui_dump.xml && "
             f"grep -o 'resource-id=\"{resource_id}\"' /sdcard/ui_dump.xml | head -1",
-            device_id=device_id
+            device_id=device_id,
         )
         if success and output:
             run_adb_command(f"shell input tap 160 100", device_id=device_id)
@@ -168,8 +175,8 @@ def search_on_olx(device_id: str, query: str, category: str = "all") -> Dict[str
     ui_dump = get_ui_dump(device_id)
     if ui_dump:
         items = []
-        for line in ui_dump.split('\n'):
-            if 'text=' in line and 'resource-id=' in line:
+        for line in ui_dump.split("\n"):
+            if "text=" in line and "resource-id=" in line:
                 pass
 
         return {
@@ -182,7 +189,7 @@ def search_on_olx(device_id: str, query: str, category: str = "all") -> Dict[str
             "results_count": len(items) if items else 0,
             "items": items,
             "latency_ms": round((time.time() - start_time) * 1000.0, 3),
-            "real_adb": True
+            "real_adb": True,
         }
 
     return {
@@ -193,7 +200,7 @@ def search_on_olx(device_id: str, query: str, category: str = "all") -> Dict[str
         "query": query,
         "message": "UI dump captured but parsing incomplete",
         "latency_ms": round((time.time() - start_time) * 1000.0, 3),
-        "real_adb": True
+        "real_adb": True,
     }
 
 
@@ -255,9 +262,7 @@ def aios_integration_real(package_name: str):
 
         print(f"🔄 Converting app to API...")
         profile = manager.convert_app_to_working_api(
-            url,
-            {"login": "test_user", "password": "password123"},
-            user_id="real_device_test"
+            url, {"login": "test_user", "password": "password123"}, user_id="real_device_test"
         )
 
         print(f"✅ App converted to API:")
@@ -271,9 +276,12 @@ def aios_integration_real(package_name: str):
         if device_id:
             real_emulator = AndroidRPADeviceEmulator(device_id=device_id)
             original_execute = real_emulator.execute_ui_action
+
             def real_execute_ui_action(package_name, action_name, params):
                 if action_name == "search":
-                    return search_on_olx(device_id, params.get("query", ""), params.get("category", "all"))
+                    return search_on_olx(
+                        device_id, params.get("query", ""), params.get("category", "all")
+                    )
                 elif action_name == "get_item_details":
                     return {
                         "status": "success",
@@ -284,7 +292,7 @@ def aios_integration_real(package_name: str):
                         "price_uah": 15000.0,
                         "seller": "RealSeller",
                         "description": "Real item from emulator",
-                        "real_adb": True
+                        "real_adb": True,
                     }
                 elif action_name == "send_message":
                     return {
@@ -294,7 +302,7 @@ def aios_integration_real(package_name: str):
                         "recipient_seller": params.get("seller_id", ""),
                         "message_sent": params.get("message", ""),
                         "sent_at": time.time(),
-                        "real_adb": True
+                        "real_adb": True,
                     }
                 return original_execute(package_name, action_name, params)
 
@@ -303,21 +311,25 @@ def aios_integration_real(package_name: str):
             search_result = real_emulator.execute_ui_action(
                 package_name=package_name,
                 action_name="search",
-                params={"query": "iPhone 13", "category": "electronics"}
+                params={"query": "iPhone 13", "category": "electronics"},
             )
-            print(f"✅ Real search result: {search_result.get('app')} / {search_result.get('query')} real={search_result.get('real_adb')}")
+            print(
+                f"✅ Real search result: {search_result.get('app')} / {search_result.get('query')} real={search_result.get('real_adb')}"
+            )
 
             item_result = real_emulator.execute_ui_action(
                 package_name=package_name,
                 action_name="get_item_details",
-                params={"item_id": "olx_123"}
+                params={"item_id": "olx_123"},
             )
-            print(f"✅ Real item details: {item_result.get('title')} real={item_result.get('real_adb')}")
+            print(
+                f"✅ Real item details: {item_result.get('title')} real={item_result.get('real_adb')}"
+            )
 
             msg_result = real_emulator.execute_ui_action(
                 package_name=package_name,
                 action_name="send_message",
-                params={"seller_id": "seller123", "message": "Hello!"}
+                params={"seller_id": "seller123", "message": "Hello!"},
             )
             print(f"✅ Real message: {msg_result.get('status')} real={msg_result.get('real_adb')}")
         else:
@@ -328,6 +340,7 @@ def aios_integration_real(package_name: str):
     except Exception as e:
         print(f"❌ Error testing AIOS integration: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -336,10 +349,13 @@ def aios_integration_real(package_name: str):
 def test_real_device_interaction(package_name: str, device_id: str):
     return real_device_interaction(package_name, device_id)
 
+
 test_real_device_interaction.__test__ = False
+
 
 def test_aios_integration_real(package_name: str):
     return aios_integration_real(package_name)
+
 
 test_aios_integration_real.__test__ = False
 

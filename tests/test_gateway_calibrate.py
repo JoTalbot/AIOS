@@ -25,6 +25,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # ShardGateway
 # ---------------------------------------------------------------------------
 
+
 class _FakeResponse:
     def __init__(self, status_code=200, payload=None, text=""):
         self.status_code = status_code
@@ -46,8 +47,7 @@ class _FakeClient:
     def request(self, method, url, params=None, json=None):
         if self._exc:
             raise self._exc
-        self.calls.append({"method": method, "url": url,
-                           "params": params, "json": json})
+        self.calls.append({"method": method, "url": url, "params": params, "json": json})
         return self._response
 
     def close(self):
@@ -57,8 +57,7 @@ class _FakeClient:
 def test_gateway_local_route_marks_without_http():
     with ShardRouter(":memory:") as router:
         router.add_host("this-host", "http://this:8000")
-        gateway = ShardGateway(router, host_id="this-host",
-                               client_factory=lambda: None)
+        gateway = ShardGateway(router, host_id="this-host", client_factory=lambda: None)
         route = gateway.resolve("olx:work")
         assert route["local"] is True
         result = gateway.proxy("olx:work", "GET", "/api/v1/modules/olx/stats")
@@ -71,15 +70,19 @@ def test_gateway_proxies_to_remote_and_reports_errors():
         router.add_host("remote", "http://remote:8000")
         calls = []
         gateway = ShardGateway(
-            router, host_id="this-host",
+            router,
+            host_id="this-host",
             client_factory=lambda: _FakeClient(
-                calls, response=_FakeResponse(status_code=200,
-                                              payload={"rows": 3}),
+                calls,
+                response=_FakeResponse(status_code=200, payload={"rows": 3}),
             ),
         )
         result = gateway.proxy(
-            "olx:work", "POST", "/api/v1/modules/demo/ads/ingest",
-            params={"profile": "work"}, json_body={"ads": []},
+            "olx:work",
+            "POST",
+            "/api/v1/modules/demo/ads/ingest",
+            params={"profile": "work"},
+            json_body={"ads": []},
         )
         assert result["status"] == 200
         assert result["payload"] == {"rows": 3}
@@ -88,9 +91,11 @@ def test_gateway_proxies_to_remote_and_reports_errors():
         assert calls[0]["params"] == {"profile": "work"}
 
         broken = ShardGateway(
-            router, host_id="this-host",
+            router,
+            host_id="this-host",
             client_factory=lambda: _FakeClient(
-                [], exc=ConnectionError("refused"),
+                [],
+                exc=ConnectionError("refused"),
             ),
         )
         failed = broken.proxy("olx:home", "GET", "/health")
@@ -104,6 +109,7 @@ def test_gateway_proxies_to_remote_and_reports_errors():
 # ---------------------------------------------------------------------------
 # ShardHealthMonitor
 # ---------------------------------------------------------------------------
+
 
 def test_health_monitor_flips_flags_and_moves_routes():
     with ShardRouter(":memory:") as router:
@@ -137,6 +143,7 @@ def test_health_monitor_start_stop():
         assert monitor.start(interval_s=0.05) is True
         assert monitor.start() is False
         import time
+
         time.sleep(0.12)
         assert monitor.stop() is True
         assert monitor.stop() is False
@@ -191,15 +198,23 @@ def test_hints_yaml_fragment_and_descriptor_roundtrip(tmp_path):
     assert "demo" in fragment
 
     catalog = tmp_path / "demo.yaml"
-    catalog.write_text(yaml.safe_dump({
-        "name": "demo", "android_package": "com.demo.app",
-        "extras": {"parser_hints": hints},
-    }), encoding="utf-8")
+    catalog.write_text(
+        yaml.safe_dump(
+            {
+                "name": "demo",
+                "android_package": "com.demo.app",
+                "extras": {"parser_hints": hints},
+            }
+        ),
+        encoding="utf-8",
+    )
     try:
         load_catalog_file(catalog)
         descriptor = get_platform("demo")
-        assert descriptor.extras["parser_hints"]["card_markers"][0]["resource_id"] \
-               == "com.demo:id/adCard"
+        assert (
+            descriptor.extras["parser_hints"]["card_markers"][0]["resource_id"]
+            == "com.demo:id/adCard"
+        )
         assert descriptor.to_dict()["extras"]["parser_hints"]["currencies"] == {"UAH": 2}
     finally:
         descriptor_mod._PLATFORMS.pop("demo", None)
@@ -209,6 +224,7 @@ def test_hints_yaml_fragment_and_descriptor_roundtrip(tmp_path):
 # CLI surfaces
 # ---------------------------------------------------------------------------
 
+
 def test_cli_platforms_calibrate_write_and_show(tmp_path, monkeypatch, capsys):
     from aios_cli import main
 
@@ -216,20 +232,19 @@ def test_cli_platforms_calibrate_write_and_show(tmp_path, monkeypatch, capsys):
     platforms_dir = tmp_path / "platforms"
     platforms_dir.mkdir()
     (platforms_dir / "demo.yaml").write_text(
-        "name: demo\nandroid_package: com.demo.app\n", encoding="utf-8",
+        "name: demo\nandroid_package: com.demo.app\n",
+        encoding="utf-8",
     )
     dump = tmp_path / "screen.xml"
     dump.write_text(DUMP_XML, encoding="utf-8")
 
     monkeypatch.chdir(tmp_path)
-    main(["platforms", "calibrate", "--platform", "demo",
-          "--dump", str(dump)])
+    main(["platforms", "calibrate", "--platform", "demo", "--dump", str(dump)])
     out = json.loads(capsys.readouterr().out)
     assert out["hints"]["card_markers"][0]["resource_id"] == "com.demo:id/adCard"
     assert "yaml_fragment" in out
 
-    main(["platforms", "calibrate", "--platform", "demo",
-          "--dump", str(dump), "--write"])
+    main(["platforms", "calibrate", "--platform", "demo", "--dump", str(dump), "--write"])
     out = json.loads(capsys.readouterr().out)
     assert out["written"].endswith("demo.yaml")
     doc = yaml.safe_load((platforms_dir / "demo.yaml").read_text())
@@ -255,6 +270,7 @@ def test_cli_shards_monitor_once(tmp_path, monkeypatch, capsys):
 # REST gateway
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 async def client():
     from aios_core.api.app import AIOSAPI
@@ -264,9 +280,11 @@ async def client():
     router.add_host("remote", "http://remote:8000")
     calls = []
     gateway = ShardGateway(
-        router, host_id="local-api",
+        router,
+        host_id="local-api",
         client_factory=lambda: _FakeClient(
-            calls, response=_FakeResponse(payload={"proxied": True}),
+            calls,
+            response=_FakeResponse(payload={"proxied": True}),
         ),
     )
     gateway.calls = calls
@@ -293,16 +311,18 @@ async def test_rest_shard_gateway_proxies(client):
     bad = await ac.post("/api/v1/shards/gateway", json={"profile": "olx:work"})
     assert bad.status_code == 400
 
-    proxied = await ac.post("/api/v1/shards/gateway", json={
-        "profile": "olx:work", "method": "POST",
-        "path": "/api/v1/modules/demo/ads/ingest",
-        "body": {"ads": []},
-    })
+    proxied = await ac.post(
+        "/api/v1/shards/gateway",
+        json={
+            "profile": "olx:work",
+            "method": "POST",
+            "path": "/api/v1/modules/demo/ads/ingest",
+            "body": {"ads": []},
+        },
+    )
     assert proxied.status_code == 200
     assert proxied.json() == {"proxied": True}
-    assert gateway.calls[0]["url"].endswith(
-        "/api/v1/modules/demo/ads/ingest"
-    )
+    assert gateway.calls[0]["url"].endswith("/api/v1/modules/demo/ads/ingest")
 
 
 async def test_rest_shard_gateway_local_marker(client):
@@ -312,8 +332,12 @@ async def test_rest_shard_gateway_local_marker(client):
     # Профиль, чей HRW-роут ведёт этот... маршрутизируем явно:
     # упростим: временно уберём remote.
     router.set_healthy("remote", False)
-    result = await ac.post("/api/v1/shards/gateway", json={
-        "profile": "olx:local-job", "path": "/api/v1/modules/olx/stats",
-    })
+    result = await ac.post(
+        "/api/v1/shards/gateway",
+        json={
+            "profile": "olx:local-job",
+            "path": "/api/v1/modules/olx/stats",
+        },
+    )
     assert result.status_code == 200
     assert result.json()["local"] is True

@@ -27,9 +27,7 @@ _CHAT_MARKERS = ("chatitem", "conversationitem", "chat_item", "chatroot")
 _MESSAGE_MARKERS = ("message", "bubble")
 _TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
 _UNREAD_RE = re.compile(r"^\d{1,3}$")
-_DATE_HINT_RE = re.compile(
-    r"(сьогодні|сегодня|вчора|вчера|\d{1,2}\s+[а-яіїєґ]+)", re.IGNORECASE
-)
+_DATE_HINT_RE = re.compile(r"(сьогодні|сегодня|вчора|вчера|\d{1,2}\s+[а-яіїєґ]+)", re.IGNORECASE)
 _BOUNDS_RE = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 
 _AVAILABILITY_RE = re.compile(
@@ -250,10 +248,7 @@ class ReplySuggester:
                 "напишіть, будь ласка, коли вам зручно."
             )
         if _GREETING_RE.search(last):
-            return (
-                f"Добрий день! Дякую за інтерес до {item}. "
-                "З радістю відповім на запитання."
-            )
+            return f"Добрий день! Дякую за інтерес до {item}. " "З радістю відповім на запитання."
         return "Добрий день! Дякую за повідомлення. Що саме вас цікавить?"
 
     def _looks_like_offer(self, text: str, my_price: Optional[float]) -> bool:
@@ -271,9 +266,7 @@ class ReplySuggester:
         if my_price is None:
             return f"По {item} можливий невеликий торг при огляді."
         if offer is not None and offer >= my_price * self.min_price_ratio:
-            return (
-                f"Добре, домовились за {int(offer)} грн. " "Коли зручно забрати товар?"
-            )
+            return f"Добре, домовились за {int(offer)} грн. " "Коли зручно забрати товар?"
         counter = round(my_price * 0.95)
         if offer is not None:
             return (
@@ -317,9 +310,7 @@ class OLXMessenger:
                 return []
             return ChatListParser().parse(path)
 
-    def read_chat(
-        self, thread: ChatThread, dump_path: str = "chat.xml"
-    ) -> List[Message]:
+    def read_chat(self, thread: ChatThread, dump_path: str = "chat.xml") -> List[Message]:
         import tempfile, os
 
         if thread.tap_center:
@@ -345,15 +336,11 @@ class OLXMessenger:
         if not auto_send:
             outbox_id = None
             if self.storage is not None:
-                outbox_id = self.storage.enqueue_outbox(
-                    chat_key, text, interlocutor=interlocutor
-                )
+                outbox_id = self.storage.enqueue_outbox(chat_key, text, interlocutor=interlocutor)
             return {"status": "queued", "outbox_id": outbox_id, "text": text}
         result = self._type_and_send(text)
         if self.storage is not None:
-            outbox_id = self.storage.enqueue_outbox(
-                chat_key, text, interlocutor=interlocutor
-            )
+            outbox_id = self.storage.enqueue_outbox(chat_key, text, interlocutor=interlocutor)
             self.storage.outbox_mark(
                 outbox_id,
                 "sent" if result.get("code") == 0 else "failed",

@@ -60,7 +60,7 @@ class TestAndroidRPABridge:
         result = emulator.execute_ui_action(
             package_name="ua.slando",
             action_name="search",
-            params={"query": "iPhone 13", "category": "electronics"}
+            params={"query": "iPhone 13", "category": "electronics"},
         )
 
         assert result["app"] == "Slando Ukraine"
@@ -79,7 +79,7 @@ class TestAndroidRPABridge:
         result = emulator.execute_ui_action(
             package_name="ua.slando",
             action_name="get_item_details",
-            params={"item_id": "olx_781029"}
+            params={"item_id": "olx_781029"},
         )
 
         assert result["app"] == "Slando Ukraine"
@@ -98,7 +98,7 @@ class TestAndroidRPABridge:
         result = emulator.execute_ui_action(
             package_name="ua.slando",
             action_name="send_message",
-            params={"seller_id": "Olena_Kyiv", "message": "Good day! Is the item still available?"}
+            params={"seller_id": "Olena_Kyiv", "message": "Good day! Is the item still available?"},
         )
 
         assert result["app"] == "Slando Ukraine"
@@ -115,7 +115,7 @@ class TestAndroidRPABridge:
         result = emulator.execute_ui_action(
             package_name="com.example.app",
             action_name="custom_action",
-            params={"param1": "value1", "param2": "value2"}
+            params={"param1": "value1", "param2": "value2"},
         )
 
         assert result["app_package"] == "com.example.app"
@@ -130,9 +130,7 @@ class TestAndroidRPABridge:
         emulator = AndroidRPADeviceEmulator()
 
         result = emulator.execute_ui_action(
-            package_name="ua.slando",
-            action_name="search",
-            params={"query": "test"}
+            package_name="ua.slando", action_name="search", params={"query": "test"}
         )
 
         # Should auto-authenticate
@@ -250,9 +248,7 @@ class TestAndroidRPABridge:
 
         # Test with invalid package
         result = emulator.execute_ui_action(
-            package_name="invalid.package",
-            action_name="search",
-            params={"query": "test"}
+            package_name="invalid.package", action_name="search", params={"query": "test"}
         )
 
         # Should still work with generic fallback
@@ -273,7 +269,7 @@ class TestAndroidRPAIntegration:
         profile = manager.convert_app_to_working_api(
             "https://play.google.com/store/apps/details?id=ua.slando",
             credentials,
-            user_id="test_buyer"
+            user_id="test_buyer",
         )
 
         assert profile["automation_status"] == "ready"
@@ -282,7 +278,7 @@ class TestAndroidRPAIntegration:
         search_result = manager.emulator.execute_ui_action(
             package_name="ua.slando",
             action_name="search",
-            params={"query": "laptop", "category": "electronics"}
+            params={"query": "laptop", "category": "electronics"},
         )
 
         assert search_result["results_count"] > 0
@@ -291,9 +287,7 @@ class TestAndroidRPAIntegration:
         # Step 3: Get item details
         item_id = search_result["items"][0]["id"]
         item_details = manager.emulator.execute_ui_action(
-            package_name="ua.slando",
-            action_name="get_item_details",
-            params={"item_id": item_id}
+            package_name="ua.slando", action_name="get_item_details", params={"item_id": item_id}
         )
 
         assert item_details["status"] == "active"
@@ -306,8 +300,8 @@ class TestAndroidRPAIntegration:
             action_name="send_message",
             params={
                 "seller_id": item_details["seller"],
-                "message": "Hello! Is this item still available?"
-            }
+                "message": "Hello! Is this item still available?",
+            },
         )
 
         assert message_result["status"] == "delivered"
@@ -321,21 +315,21 @@ class TestAndroidRPAIntegration:
         apps = [
             ("ua.slando", {"login": "olx_user", "password": "olx_pass"}),
             ("com.facebook.katana", {"login": "fb_user", "password": "fb_pass"}),
-            ("com.instagram.android", {"login": "ig_user", "password": "ig_pass"})
+            ("com.instagram.android", {"login": "ig_user", "password": "ig_pass"}),
         ]
 
         profiles = {}
         for package, credentials in apps:
-            profile = manager.convert_app_to_working_api(package, credentials, user_id=f"user_{package}")
+            profile = manager.convert_app_to_working_api(
+                package, credentials, user_id=f"user_{package}"
+            )
             profiles[package] = profile
 
             # Test basic functionality
             if package == "ua.slando":
                 # OLX specific tests
                 search_result = manager.emulator.execute_ui_action(
-                    package_name=package,
-                    action_name="search",
-                    params={"query": "test"}
+                    package_name=package, action_name="search", params={"query": "test"}
                 )
                 assert search_result["action"] == "search"
 

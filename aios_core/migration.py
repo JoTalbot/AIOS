@@ -26,12 +26,14 @@ class MigrationManager:
         self.migrations.append(migration)
 
     def create_migrations_table(self, conn: sqlite3.Connection):
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS schema_migrations (
                 version TEXT PRIMARY KEY,
                 applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
     def get_applied_versions(self, conn: sqlite3.Connection) -> set:
         try:
@@ -47,9 +49,7 @@ class MigrationManager:
 
         for migration in sorted(self.migrations, key=lambda m: m.version):
             if migration.version not in applied:
-                print(
-                    f"Applying migration {migration.version}: {migration.description}"
-                )
+                print(f"Applying migration {migration.version}: {migration.description}")
                 conn.executescript(migration.up_sql)
                 conn.execute(
                     "INSERT INTO schema_migrations (version) VALUES (?)",

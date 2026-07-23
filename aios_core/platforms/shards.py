@@ -83,9 +83,7 @@ class ShardRouter:
     def hosts(self) -> List[Dict]:
         """Все хосты-шарды."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT * FROM shard_hosts ORDER BY host"
-            ).fetchall()
+            rows = self._conn.execute("SELECT * FROM shard_hosts ORDER BY host").fetchall()
         return [{**dict(row), "healthy": bool(row["healthy"])} for row in rows]
 
     def set_healthy(self, host: str, healthy: bool) -> bool:
@@ -101,9 +99,7 @@ class ShardRouter:
         """Удаляет хост и все его маршруты. True, если существовал."""
         with self._lock, self._conn:
             self._conn.execute("DELETE FROM shard_routes WHERE host = ?", (host,))
-            cursor = self._conn.execute(
-                "DELETE FROM shard_hosts WHERE host = ?", (host,)
-            )
+            cursor = self._conn.execute("DELETE FROM shard_hosts WHERE host = ?", (host,))
             return bool(cursor.rowcount)
 
     # ------------------------------------------------------------------ #
@@ -165,8 +161,7 @@ class ShardRouter:
             "profile_key": profile_key,
             "host": chosen["host"],
             "base_url": chosen["base_url"],
-            "url": f"{chosen['base_url'].rstrip('/')}/profiles/"
-            f"{profile_key.replace(':', '/')}",
+            "url": f"{chosen['base_url'].rstrip('/')}/profiles/" f"{profile_key.replace(':', '/')}",
         }
 
     def unroute(self, profile_key: str) -> bool:
@@ -181,7 +176,5 @@ class ShardRouter:
     def reassign(self, host: str) -> int:
         """Сбрасывает все маршруты хоста (число освобождённых)."""
         with self._lock, self._conn:
-            cursor = self._conn.execute(
-                "DELETE FROM shard_routes WHERE host = ?", (host,)
-            )
+            cursor = self._conn.execute("DELETE FROM shard_routes WHERE host = ?", (host,))
             return int(cursor.rowcount)

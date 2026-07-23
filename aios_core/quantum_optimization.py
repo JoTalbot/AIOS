@@ -12,9 +12,7 @@ class QuantumAnnealingOptimizer:
         self.temp = initial_temp
         self.cooling = cooling_rate
 
-    def optimize(
-        self, initial_solution: List, cost_func: Callable, iterations: int = 5000
-    ):
+    def optimize(self, initial_solution: List, cost_func: Callable, iterations: int = 5000):
         current = initial_solution[:]
         best = current[:]
         best_cost = cost_func(best)

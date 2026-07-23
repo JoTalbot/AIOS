@@ -20,7 +20,11 @@ from aios_core.learning_engine import LearningEngine
 from aios_core.evolution_manager import EvolutionManager
 from aios_core.privacy_guard import PrivacyGuard
 from aios_core.orchestrator import (
-    Orchestrator, Task, TaskStep, TaskStatus, StepStatus,
+    Orchestrator,
+    Task,
+    TaskStep,
+    TaskStatus,
+    StepStatus,
 )
 
 CONSTITUTION_DIR = os.path.join(PROJECT_ROOT, "docs", "constitution")
@@ -44,6 +48,7 @@ def _make_orchestrator():
 # ======================================================================
 # TestOrchestrator (20 tests)
 # ======================================================================
+
 
 class TestOrchestrator(unittest.TestCase):
     """Tests for the central orchestrator."""
@@ -84,11 +89,15 @@ class TestOrchestrator(unittest.TestCase):
 
     def test_execute_single_evaluate_step(self):
         task = self.orch.create_task("eval_test", "Single eval step", risk_level="low")
-        self.orch.add_step(task, "evaluate", params={
-            "goal": "Read metrics",
-            "scope": "monitoring",
-            "risk": "low",
-        })
+        self.orch.add_step(
+            task,
+            "evaluate",
+            params={
+                "goal": "Read metrics",
+                "scope": "monitoring",
+                "risk": "low",
+            },
+        )
         result = self.orch.execute_task(task)
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["completed_steps"], 1)
@@ -104,11 +113,15 @@ class TestOrchestrator(unittest.TestCase):
 
     def test_execute_memory_store_step(self):
         task = self.orch.create_task("mem_store", "Store in memory", risk_level="low")
-        self.orch.add_step(task, "memory", params={
-            "action": "store",
-            "content": {"key": "value"},
-            "category": "operational",
-        })
+        self.orch.add_step(
+            task,
+            "memory",
+            params={
+                "action": "store",
+                "content": {"key": "value"},
+                "category": "operational",
+            },
+        )
         result = self.orch.execute_task(task)
         self.assertEqual(result["status"], "completed")
         self.assertIsNotNone(result["steps"][0]["result"])
@@ -116,10 +129,14 @@ class TestOrchestrator(unittest.TestCase):
 
     def test_execute_memory_search_step(self):
         task = self.orch.create_task("mem_search", "Search memory", risk_level="low")
-        self.orch.add_step(task, "memory", params={
-            "action": "search",
-            "query": "test",
-        })
+        self.orch.add_step(
+            task,
+            "memory",
+            params={
+                "action": "search",
+                "query": "test",
+            },
+        )
         result = self.orch.execute_task(task)
         self.assertEqual(result["status"], "completed")
         # Result should be a list (search results)
@@ -127,20 +144,28 @@ class TestOrchestrator(unittest.TestCase):
 
     def test_execute_knowledge_step(self):
         task = self.orch.create_task("kg_test", "Knowledge step", risk_level="low")
-        self.orch.add_step(task, "knowledge", params={
-            "action": "add_node",
-            "label": "TestConcept",
-            "node_type": "concept",
-        })
+        self.orch.add_step(
+            task,
+            "knowledge",
+            params={
+                "action": "add_node",
+                "label": "TestConcept",
+                "node_type": "concept",
+            },
+        )
         result = self.orch.execute_task(task)
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["steps"][0]["result"]["label"], "TestConcept")
 
     def test_execute_reason_step(self):
         task = self.orch.create_task("reason_test", "Reason step", risk_level="low")
-        self.orch.add_step(task, "reason", params={
-            "question": "What is the best approach?",
-        })
+        self.orch.add_step(
+            task,
+            "reason",
+            params={
+                "question": "What is the best approach?",
+            },
+        )
         result = self.orch.execute_task(task)
         self.assertEqual(result["status"], "completed")
         self.assertIn("conclusion", result["steps"][0]["result"])
@@ -148,20 +173,28 @@ class TestOrchestrator(unittest.TestCase):
 
     def test_execute_learn_step(self):
         task = self.orch.create_task("learn_test", "Learn step", risk_level="low")
-        self.orch.add_step(task, "learn", params={
-            "experience": {"action": "test", "success": True},
-        })
+        self.orch.add_step(
+            task,
+            "learn",
+            params={
+                "experience": {"action": "test", "success": True},
+            },
+        )
         result = self.orch.execute_task(task)
         self.assertEqual(result["status"], "completed")
         self.assertIsNotNone(result["steps"][0]["result"])
 
     def test_execute_evolve_step(self):
         task = self.orch.create_task("evolve_test", "Evolve step", risk_level="low")
-        self.orch.add_step(task, "evolve", params={
-            "change": {"param": "new_value"},
-            "component": "test_component",
-            "reason": "Improvement",
-        })
+        self.orch.add_step(
+            task,
+            "evolve",
+            params={
+                "change": {"param": "new_value"},
+                "component": "test_component",
+                "reason": "Improvement",
+            },
+        )
         result = self.orch.execute_task(task)
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["steps"][0]["result"]["component"], "test_component")
@@ -169,14 +202,21 @@ class TestOrchestrator(unittest.TestCase):
     def test_task_denied_by_constitution(self):
         """Unknown agent should be denied by security policy."""
         task = self.orch.create_task(
-            "deny_test", "Should be denied",
-            agent_id="unknown", authority="reader", risk_level="low",
+            "deny_test",
+            "Should be denied",
+            agent_id="unknown",
+            authority="reader",
+            risk_level="low",
         )
-        self.orch.add_step(task, "evaluate", params={
-            "goal": "Access system",
-            "scope": "system",
-            "risk": "low",
-        })
+        self.orch.add_step(
+            task,
+            "evaluate",
+            params={
+                "goal": "Access system",
+                "scope": "system",
+                "risk": "low",
+            },
+        )
         result = self.orch.execute_task(task)
         self.assertEqual(result["status"], "failed")
         self.assertIn("denied", result["error"].lower())
@@ -184,12 +224,16 @@ class TestOrchestrator(unittest.TestCase):
     def test_task_waiting_approval(self):
         """Critical risk should trigger REVIEW (waiting_approval)."""
         task = self.orch.create_task("review_test", "Needs approval", risk_level="critical")
-        self.orch.add_step(task, "evaluate", params={
-            "goal": "Critical change",
-            "scope": "core",
-            "risk": "critical",
-            "authority": "senior",
-        })
+        self.orch.add_step(
+            task,
+            "evaluate",
+            params={
+                "goal": "Critical change",
+                "scope": "core",
+                "risk": "critical",
+                "authority": "senior",
+            },
+        )
         result = self.orch.execute_task(task)
         self.assertEqual(result["status"], "waiting_approval")
 
@@ -216,9 +260,13 @@ class TestOrchestrator(unittest.TestCase):
 
     def test_execute_failed_step_stops_pipeline(self):
         task = self.orch.create_task("fail_test", "Should stop on failure", risk_level="low")
-        self.orch.add_step(task, "memory", params={
-            "action": "invalid_action_xyz",
-        })
+        self.orch.add_step(
+            task,
+            "memory",
+            params={
+                "action": "invalid_action_xyz",
+            },
+        )
         self.orch.add_step(task, "tool", params={"should_not_run": True})
         result = self.orch.execute_task(task)
         self.assertEqual(result["status"], "failed")
@@ -240,23 +288,27 @@ class TestOrchestrator(unittest.TestCase):
         self.assertIn("privacy", stats["subsystems"])
 
     def test_evaluate_shortcut(self):
-        result = self.orch.evaluate({
-            "goal": "Read metrics",
-            "scope": "monitoring",
-            "risk": "low",
-        })
+        result = self.orch.evaluate(
+            {
+                "goal": "Read metrics",
+                "scope": "monitoring",
+                "risk": "low",
+            }
+        )
         self.assertIn("decision", result)
         self.assertIn("evaluation_id", result)
 
     def test_direct_evaluate(self):
         """Test direct evaluation via orchestrator."""
-        result = self.orch.evaluate({
-            "goal": "Test evaluation",
-            "scope": "test",
-            "risk": "low",
-            "agent_id": "test-agent",
-            "authority": "reader",
-        })
+        result = self.orch.evaluate(
+            {
+                "goal": "Test evaluation",
+                "scope": "test",
+                "risk": "low",
+                "agent_id": "test-agent",
+                "authority": "reader",
+            }
+        )
         self.assertIn("allowed", result)
         self.assertIn("decision", result)
 
@@ -265,15 +317,14 @@ class TestOrchestrator(unittest.TestCase):
 # TestReasoningEngine (12 tests)
 # ======================================================================
 
+
 class TestReasoningEngine(unittest.TestCase):
 
     def setUp(self):
         self.db = _make_db()
         self.memory = MemoryManager(db=self.db)
         self.knowledge = KnowledgeGraph(db=self.db)
-        self.engine = ReasoningEngine(
-            db=self.db, memory=self.memory, knowledge=self.knowledge
-        )
+        self.engine = ReasoningEngine(db=self.db, memory=self.memory, knowledge=self.knowledge)
 
     def tearDown(self):
         self.db.close()
@@ -377,6 +428,7 @@ class TestReasoningEngine(unittest.TestCase):
 # TestLearningEngine (10 tests)
 # ======================================================================
 
+
 class TestLearningEngine(unittest.TestCase):
 
     def setUp(self):
@@ -400,6 +452,7 @@ class TestLearningEngine(unittest.TestCase):
 
     def test_record_task_completion(self):
         from aios_core.orchestrator import Task, TaskStep, TaskStatus, StepStatus
+
         task = Task(
             name="test_task",
             status=TaskStatus.COMPLETED,
@@ -463,6 +516,7 @@ class TestLearningEngine(unittest.TestCase):
 # ======================================================================
 # TestEvolutionManager (12 tests)
 # ======================================================================
+
 
 class TestEvolutionManager(unittest.TestCase):
 
@@ -572,6 +626,7 @@ class TestEvolutionManager(unittest.TestCase):
 # TestPrivacyGuard (12 tests)
 # ======================================================================
 
+
 class TestPrivacyGuard(unittest.TestCase):
 
     def setUp(self):
@@ -601,19 +656,23 @@ class TestPrivacyGuard(unittest.TestCase):
         self.assertIn("write", result["reason"])
 
     def test_check_request_allowed(self):
-        result = self.guard.check_request({
-            "agent_id": "agent-1",
-            "memory_category": "operational",
-            "action": "read",
-        })
+        result = self.guard.check_request(
+            {
+                "agent_id": "agent-1",
+                "memory_category": "operational",
+                "action": "read",
+            }
+        )
         self.assertTrue(result["allowed"])
 
     def test_check_request_denied(self):
-        result = self.guard.check_request({
-            "agent_id": "agent-1",
-            "memory_category": "personal",
-            "action": "write",
-        })
+        result = self.guard.check_request(
+            {
+                "agent_id": "agent-1",
+                "memory_category": "personal",
+                "action": "write",
+            }
+        )
         self.assertFalse(result["allowed"])
 
     def test_access_log(self):
@@ -623,20 +682,24 @@ class TestPrivacyGuard(unittest.TestCase):
         self.assertEqual(len(log), 2)
 
     def test_add_rule(self):
-        self.guard.add_rule({
-            "classification": "secret",
-            "actions_allowed": ["read"],
-            "share_allowed": False,
-        })
+        self.guard.add_rule(
+            {
+                "classification": "secret",
+                "actions_allowed": ["read"],
+                "share_allowed": False,
+            }
+        )
         result = self.guard.can_access("agent-1", "secret", "read")
         self.assertTrue(result["allowed"])
 
     def test_custom_rule_blocks(self):
-        self.guard.add_rule({
-            "classification": "secret",
-            "actions_allowed": ["read"],
-            "share_allowed": False,
-        })
+        self.guard.add_rule(
+            {
+                "classification": "secret",
+                "actions_allowed": ["read"],
+                "share_allowed": False,
+            }
+        )
         result = self.guard.can_access("agent-1", "secret", "delete")
         self.assertFalse(result["allowed"])
 
@@ -662,6 +725,7 @@ class TestPrivacyGuard(unittest.TestCase):
 # TestIntegration (6 tests)
 # ======================================================================
 
+
 class TestIntegration(unittest.TestCase):
     """Integration tests across subsystems."""
 
@@ -686,23 +750,35 @@ class TestIntegration(unittest.TestCase):
         task = self.orch.create_task("lifecycle", "Full lifecycle test", risk_level="low")
 
         # Add a memory store step
-        self.orch.add_step(task, "memory", params={
-            "action": "store",
-            "content": {"lifecycle": True},
-            "category": "operational",
-            "tags": ["test"],
-        })
+        self.orch.add_step(
+            task,
+            "memory",
+            params={
+                "action": "store",
+                "content": {"lifecycle": True},
+                "category": "operational",
+                "tags": ["test"],
+            },
+        )
 
         # Add a reasoning step
-        self.orch.add_step(task, "reason", params={
-            "question": "Test question",
-        })
+        self.orch.add_step(
+            task,
+            "reason",
+            params={
+                "question": "Test question",
+            },
+        )
 
         # Add a knowledge step
-        self.orch.add_step(task, "knowledge", params={
-            "action": "add_node",
-            "label": "LifecycleNode",
-        })
+        self.orch.add_step(
+            task,
+            "knowledge",
+            params={
+                "action": "add_node",
+                "label": "LifecycleNode",
+            },
+        )
 
         # Execute
         result = self.orch.execute_task(task)
@@ -742,12 +818,18 @@ class TestIntegration(unittest.TestCase):
 
     def test_evolution_through_orchestrator(self):
         """Evolution proposals should persist through the orchestrator."""
-        task = self.orch.create_task("evolution_task", "Evolution via orchestrator", risk_level="low")
-        self.orch.add_step(task, "evolve", params={
-            "change": {"optimization": True},
-            "component": "reasoning",
-            "reason": "Performance boost",
-        })
+        task = self.orch.create_task(
+            "evolution_task", "Evolution via orchestrator", risk_level="low"
+        )
+        self.orch.add_step(
+            task,
+            "evolve",
+            params={
+                "change": {"optimization": True},
+                "component": "reasoning",
+                "reason": "Performance boost",
+            },
+        )
         result = self.orch.execute_task(task)
         self.assertEqual(result["status"], "completed")
 
@@ -765,11 +847,13 @@ class TestIntegration(unittest.TestCase):
         self.assertFalse(result["allowed"])
 
         # Check request
-        result = self.orch.privacy.check_request({
-            "agent_id": "orchestrator",
-            "memory_category": "operational",
-            "action": "read",
-        })
+        result = self.orch.privacy.check_request(
+            {
+                "agent_id": "orchestrator",
+                "memory_category": "operational",
+                "action": "read",
+            }
+        )
         self.assertTrue(result["allowed"])
 
     def test_stats_integration(self):

@@ -21,13 +21,9 @@ class RequestSafetyMiddleware(BaseHTTPMiddleware):
         if content_length:
             try:
                 if int(content_length) > self.max_body_bytes:
-                    return JSONResponse(
-                        {"error": "Request body too large"}, status_code=413
-                    )
+                    return JSONResponse({"error": "Request body too large"}, status_code=413)
             except ValueError:
-                return JSONResponse(
-                    {"error": "Invalid Content-Length"}, status_code=400
-                )
+                return JSONResponse({"error": "Invalid Content-Length"}, status_code=400)
         try:
             response = await call_next(request)
             response.headers.setdefault("X-Content-Type-Options", "nosniff")
@@ -37,6 +33,4 @@ class RequestSafetyMiddleware(BaseHTTPMiddleware):
             return JSONResponse({"error": "Invalid JSON request body"}, status_code=400)
         except (KeyError, TypeError, ValueError):
             # Endpoint handlers use these for invalid client supplied fields.
-            return JSONResponse(
-                {"error": "Invalid request parameters"}, status_code=400
-            )
+            return JSONResponse({"error": "Invalid request parameters"}, status_code=400)

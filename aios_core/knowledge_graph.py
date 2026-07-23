@@ -293,9 +293,7 @@ class KnowledgeGraph:
         type_rows = self.db.query(
             "SELECT node_type, COUNT(*) as cnt FROM kg_nodes GROUP BY node_type"
         )
-        rel_rows = self.db.query(
-            "SELECT relation, COUNT(*) as cnt FROM kg_edges GROUP BY relation"
-        )
+        rel_rows = self.db.query("SELECT relation, COUNT(*) as cnt FROM kg_edges GROUP BY relation")
 
         return {
             "nodes": self.count_nodes(),
@@ -310,9 +308,7 @@ class KnowledgeGraph:
             "id": row["id"],
             "label": row["label"],
             "type": row["node_type"],
-            "properties": (
-                Database.from_json(row["properties"]) if row["properties"] else {}
-            ),
+            "properties": (Database.from_json(row["properties"]) if row["properties"] else {}),
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
         }
@@ -323,9 +319,7 @@ class KnowledgeGraph:
             "source": row["source_id"],
             "target": row["target_id"],
             "relation": row["relation"],
-            "properties": (
-                Database.from_json(row["properties"]) if row["properties"] else {}
-            ),
+            "properties": (Database.from_json(row["properties"]) if row["properties"] else {}),
             "weight": row["weight"],
             "created_at": row["created_at"],
         }

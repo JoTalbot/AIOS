@@ -17,7 +17,8 @@ class TestBackupRestoreIntegration:
         conn = sqlite3.connect(str(db_path))
 
         # Create tables
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE tasks (
                 id TEXT PRIMARY KEY,
                 status TEXT,
@@ -25,48 +26,59 @@ class TestBackupRestoreIntegration:
                 updated_at TEXT,
                 data TEXT
             )
-        """)
+        """
+        )
 
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE personal_memory (
                 id TEXT PRIMARY KEY,
                 owner TEXT,
                 content TEXT,
                 created_at TEXT
             )
-        """)
+        """
+        )
 
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE audit_log (
                 id TEXT PRIMARY KEY,
                 event_type TEXT,
                 timestamp TEXT,
                 details TEXT
             )
-        """)
+        """
+        )
 
         # Insert realistic data
         for i in range(100):
             conn.execute(
                 "INSERT INTO tasks VALUES (?, ?, ?, ?, ?)",
-                (f"task-{i}", "completed" if i % 2 == 0 else "running",
-                 f"2026-01-{i % 28 + 1:02d}", f"2026-07-{i % 28 + 1:02d}",
-                 f'{{"data": "value-{i}"}}')
+                (
+                    f"task-{i}",
+                    "completed" if i % 2 == 0 else "running",
+                    f"2026-01-{i % 28 + 1:02d}",
+                    f"2026-07-{i % 28 + 1:02d}",
+                    f'{{"data": "value-{i}"}}',
+                ),
             )
 
         for i in range(50):
             conn.execute(
                 "INSERT INTO personal_memory VALUES (?, ?, ?, ?)",
-                (f"mem-{i}", f"user-{i % 5}", f"Memory content {i}",
-                 f"2026-07-{i % 28 + 1:02d}")
+                (f"mem-{i}", f"user-{i % 5}", f"Memory content {i}", f"2026-07-{i % 28 + 1:02d}"),
             )
 
         for i in range(200):
             conn.execute(
                 "INSERT INTO audit_log VALUES (?, ?, ?, ?)",
-                (f"log-{i}", "task.create" if i % 3 == 0 else "task.update",
-                 f"2026-07-{i % 28 + 1:02d}T{i % 24:02d}:00:00",
-                 f'{{"action": "action-{i}"}}')
+                (
+                    f"log-{i}",
+                    "task.create" if i % 3 == 0 else "task.update",
+                    f"2026-07-{i % 28 + 1:02d}T{i % 24:02d}:00:00",
+                    f'{{"action": "action-{i}"}}',
+                ),
             )
 
         conn.commit()
@@ -79,11 +91,7 @@ class TestBackupRestoreIntegration:
         backup_dir = tmp_path / "backups"
 
         # Create backup
-        manager = BackupManager(
-            db_path=production_db,
-            backup_dir=str(backup_dir),
-            compress=False
-        )
+        manager = BackupManager(db_path=production_db, backup_dir=str(backup_dir), compress=False)
 
         metadata = manager.create_backup(label="integration-test")
 
@@ -127,11 +135,7 @@ class TestBackupRestoreIntegration:
         backup_dir = tmp_path / "backups_gz"
 
         # Create compressed backup
-        manager = BackupManager(
-            db_path=production_db,
-            backup_dir=str(backup_dir),
-            compress=True
-        )
+        manager = BackupManager(db_path=production_db, backup_dir=str(backup_dir), compress=True)
 
         metadata = manager.create_backup(label="compressed-test")
 
@@ -160,10 +164,7 @@ class TestBackupRestoreIntegration:
         """Test backup integrity verification."""
         backup_dir = tmp_path / "backups"
 
-        manager = BackupManager(
-            db_path=production_db,
-            backup_dir=str(backup_dir)
-        )
+        manager = BackupManager(db_path=production_db, backup_dir=str(backup_dir))
 
         # Create backup
         metadata = manager.create_backup(label="verify-test")
@@ -188,10 +189,7 @@ class TestBackupRestoreIntegration:
         backup_dir = tmp_path / "backups"
 
         manager = BackupManager(
-            db_path=production_db,
-            backup_dir=str(backup_dir),
-            max_backups=3,
-            retention_days=30
+            db_path=production_db, backup_dir=str(backup_dir), max_backups=3, retention_days=30
         )
 
         # Create 5 backups
@@ -222,10 +220,7 @@ class TestBackupRestoreIntegration:
         conn.close()
 
         # Create backup
-        manager = BackupManager(
-            db_path=str(db_path),
-            backup_dir=str(backup_dir)
-        )
+        manager = BackupManager(db_path=str(db_path), backup_dir=str(backup_dir))
         metadata = manager.create_backup(label="before-schema-change")
 
         # Modify schema
@@ -262,14 +257,13 @@ class TestBackupRestoreIntegration:
         backup_dir = tmp_path / "backups"
 
         # Start backup
-        manager = BackupManager(
-            db_path=production_db,
-            backup_dir=str(backup_dir)
-        )
+        manager = BackupManager(db_path=production_db, backup_dir=str(backup_dir))
 
         # Simulate concurrent access
         conn = sqlite3.connect(production_db)
-        conn.execute("INSERT INTO tasks VALUES ('concurrent-task', 'running', '2026-07-23', '2026-07-23', '{}')")
+        conn.execute(
+            "INSERT INTO tasks VALUES ('concurrent-task', 'running', '2026-07-23', '2026-07-23', '{}')"
+        )
 
         # Create backup while connection is open
         metadata = manager.create_backup(label="concurrent-test")

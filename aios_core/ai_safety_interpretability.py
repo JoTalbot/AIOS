@@ -13,9 +13,7 @@ class SafetyInterpretability:
         # Find circuits responsible for safety-relevant behaviors
         return ["attention_head_safety", "mlp_value_head"]
 
-    def verify_safety_feature(
-        self, circuit: List[str], test_cases: List[Dict]
-    ) -> float:
+    def verify_safety_feature(self, circuit: List[str], test_cases: List[Dict]) -> float:
         # Measure how well the circuit implements safety
         return 0.92
 

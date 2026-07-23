@@ -15,9 +15,7 @@ class ModelServer:
     def __init__(self, registry: Any = None):
         self.registry = registry
         self.models: Dict[str, Dict[str, Any]] = {}
-        self.traffic_splits: Dict[str, Dict[str, float]] = (
-            {}
-        )  # model_name -> {version: weight}
+        self.traffic_splits: Dict[str, Dict[str, float]] = {}  # model_name -> {version: weight}
         self.performance_stats: Dict[str, Dict[str, float]] = {}
 
     def deploy(

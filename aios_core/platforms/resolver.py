@@ -74,9 +74,7 @@ def resolve_profile(
 def _with_db_path(profile: Profile, descriptor) -> Profile:
     """Подставляет дефолтный путь БД, если у профиля он не задан."""
     if not profile.db_path:
-        profile.db_path = os.path.join(
-            "data", descriptor.name, f"{profile.name}.sqlite"
-        )
+        profile.db_path = os.path.join("data", descriptor.name, f"{profile.name}.sqlite")
     return profile
 
 

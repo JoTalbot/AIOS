@@ -40,6 +40,7 @@ REELS_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 # VideoCards
 # ---------------------------------------------------------------------------
 
+
 def test_parse_counter_text_units():
     assert parse_counter_text("12 340 переглядів") == ("views", 12340)
     assert parse_counter_text("543 вподобання") == ("likes", 543)
@@ -57,8 +58,7 @@ def test_hint_video_parser_cards():
     assert first.views == 12340
     assert first.likes == 543
     assert first.marker == "com.instagram.android:id/reel_card"
-    assert first.fingerprint == VideoCard(
-        title=first.title, duration="0:32").fingerprint
+    assert first.fingerprint == VideoCard(title=first.title, duration="0:32").fingerprint
     assert second.views == 2001 and second.likes is None
     payload = first.to_dict()
     assert payload["query"] == "cross"
@@ -68,18 +68,28 @@ def test_hint_video_parser_custom_markers_and_empty():
     parser = HintVideoParser(video_markers=["shop_reel"])
     assert parser.markers == ("shop_reel",)
     assert parser.parse(REELS_XML) == []  # маркер не совпал
-    assert HintVideoParser(video_markers=[]).markers == \
-        ("reel", "video", "clips")  # пусто → дефолт
+    assert HintVideoParser(video_markers=[]).markers == ("reel", "video", "clips")  # пусто → дефолт
 
 
 def test_video_parser_for_descriptor(tmp_path):
-    (tmp_path / "instagram.yaml").write_text(yaml.safe_dump({
-        "name": "instagram", "android_package": "com.instagram.android",
-        "extras": {"parser_hints": {"content_categories": {
-            "video_markers": ["com.instagram.android:id/clip_tile"],
-            "story_markers": [], "duration_labels": 0,
-        }}},
-    }), encoding="utf-8")
+    (tmp_path / "instagram.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "name": "instagram",
+                "android_package": "com.instagram.android",
+                "extras": {
+                    "parser_hints": {
+                        "content_categories": {
+                            "video_markers": ["com.instagram.android:id/clip_tile"],
+                            "story_markers": [],
+                            "duration_labels": 0,
+                        }
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
     parser = video_parser_for("instagram", directory=str(tmp_path))
     assert parser.markers == ("clip_tile",)
 
@@ -170,7 +180,8 @@ def test_post_composer_dry_run_default_touches_nothing():
 
     adb = _ADB()
     result = PostComposer(adb=adb, wait_s=0).publish(
-        "post.jpg", "Нові кросівки в наявності!",
+        "post.jpg",
+        "Нові кросівки в наявності!",
     )
     assert result["status"] == "dry-run"
     assert any("push post.jpg" in step for step in result["plan"])
@@ -186,16 +197,21 @@ def test_post_composer_confirm_full_flow(tmp_path):
     image.write_bytes(b"jpeg-bytes")
     adb = _ADB([NEXT_XML, SHARE_XML], adb_prefix="adb -s emulator-5557")
     result = PostComposer(adb=adb, wait_s=0).publish(
-        str(image), "Нові кросівки!", confirm=True,
+        str(image),
+        "Нові кросівки!",
+        confirm=True,
     )
     assert result["status"] == "published"
     actions = [step["action"] for step in result["steps"]]
-    assert actions == ["push", "open_create", "tap_next",
-                       "input_caption", "tap_share"]
-    assert any("instagram://library" in c and "adb -s emulator-5557" in c
-               for c in adb.calls if isinstance(c, str))
-    assert any("push" in c and "/sdcard/aios_post_input.jpg" in c
-               for c in adb.calls if isinstance(c, str))
+    assert actions == ["push", "open_create", "tap_next", "input_caption", "tap_share"]
+    assert any(
+        "instagram://library" in c and "adb -s emulator-5557" in c
+        for c in adb.calls
+        if isinstance(c, str)
+    )
+    assert any(
+        "push" in c and "/sdcard/aios_post_input.jpg" in c for c in adb.calls if isinstance(c, str)
+    )
     assert ("input_text", "Нові кросівки!") in adb.calls
     assert adb.calls.count(("tap", 540, 150)) == 2
 
@@ -205,14 +221,18 @@ def test_post_composer_confirm_honest_errors(tmp_path):
 
     with pytest.raises(ValueError, match="image not found"):
         PostComposer(adb=_ADB(), wait_s=0).publish(
-            "/nope.jpg", "caption", confirm=True,
+            "/nope.jpg",
+            "caption",
+            confirm=True,
         )
 
     image = tmp_path / "post.jpg"
     image.write_bytes(b"x")
     adb = _ADB([PLAIN_XML])  # кнопки Next на экране нет
     result = PostComposer(adb=adb, wait_s=0).publish(
-        str(image), "caption", confirm=True,
+        str(image),
+        "caption",
+        confirm=True,
     )
     assert result["status"] == "error"
     assert "layout drift" in result["error"]
@@ -221,6 +241,7 @@ def test_post_composer_confirm_honest_errors(tmp_path):
 # ---------------------------------------------------------------------------
 # FleetScheduler
 # ---------------------------------------------------------------------------
+
 
 def _jobs():
     return [
@@ -270,9 +291,12 @@ def test_fleet_drift_alert_and_error_isolation():
             return True
 
         from aios_core.modules.olx.notifier import WebhookNotifier
+
         scheduler = FleetScheduler(
-            pool, notifier=WebhookNotifier(
-                url="http://hook", poster=poster,
+            pool,
+            notifier=WebhookNotifier(
+                url="http://hook",
+                poster=poster,
             ),
         )
 
@@ -308,6 +332,7 @@ def test_fleet_error_releases_device():
 # CLI instagram own/post + devices fleet-run
 # ---------------------------------------------------------------------------
 
+
 def test_cli_instagram_own_snapshot_and_post_dry_run(tmp_path, capsys):
     from aios_cli import main
 
@@ -319,14 +344,12 @@ def test_cli_instagram_own_snapshot_and_post_dry_run(tmp_path, capsys):
     assert out["recorded"] == 2 and out["new"] == 2
     assert out["posts"][0]["caption"] == "Наші нові кросівки"
 
-    main(["instagram", "post", "--image", "post.jpg",
-          "--text", "Нові кросівки в наявності!"])
+    main(["instagram", "post", "--image", "post.jpg", "--text", "Нові кросівки в наявності!"])
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "dry-run"
     assert any("input caption" in step for step in out["plan"])
 
-    main(["instagram", "post", "--image", "/nope.jpg",
-          "--text", "caption", "--confirm"])
+    main(["instagram", "post", "--image", "/nope.jpg", "--text", "caption", "--confirm"])
     out = json.loads(capsys.readouterr().out)
     assert "image not found" in out["error"]
 
@@ -347,9 +370,14 @@ def test_cli_devices_fleet_run(tmp_path, capsys, monkeypatch):
         with DevicePool(str(devices_db)) as pool:
             pool.register("emulator-1", avd_name="a1")
         store = ProfileStore(str(profiles_db))
-        store.add(Profile(platform="instagram", name="main",
-                          is_default=True,
-                          db_path=str(tmp_path / "ig.sqlite")))
+        store.add(
+            Profile(
+                platform="instagram",
+                name="main",
+                is_default=True,
+                db_path=str(tmp_path / "ig.sqlite"),
+            )
+        )
         store.close()
         monkeypatch.setenv("AIOS_DEVICES_DB", str(devices_db))
         monkeypatch.setenv("AIOS_PROFILES_DB", str(profiles_db))

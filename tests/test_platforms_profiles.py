@@ -23,6 +23,7 @@ from aios_core.platforms import (
 # Descriptor registry
 # ---------------------------------------------------------------------------
 
+
 def test_registry_has_olx_and_lists_sorted():
     names = [d.name for d in list_platforms()]
     assert "olx" in names
@@ -42,8 +43,10 @@ def test_unknown_platform_raises_with_known_list():
 
 def test_register_platform_is_open_closed():
     descriptor = PlatformDescriptor(
-        name="demo-market", android_package="ua.demo.market",
-        agent_module="demo.agent", description="test-only descriptor",
+        name="demo-market",
+        android_package="ua.demo.market",
+        agent_module="demo.agent",
+        description="test-only descriptor",
     )
     register_platform(descriptor)
     try:
@@ -52,6 +55,7 @@ def test_register_platform_is_open_closed():
     finally:
         # Убираем тестовый дескриптор, не мутируя реестр для других тестов.
         from aios_core.platforms import descriptor as descriptor_mod
+
         descriptor_mod._PLATFORMS.pop("demo-market", None)
 
 
@@ -69,12 +73,18 @@ def test_profile_key_fingerprint_and_serialization():
 # ProfileStore CRUD
 # ---------------------------------------------------------------------------
 
+
 def test_store_crud_and_default_management(tmp_path):
     with ProfileStore(tmp_path / "profiles.sqlite") as store:
-        work = store.add(Profile(
-            platform="olx", name="work", device_serial="emulator-5556",
-            db_path=str(tmp_path / "work.sqlite"), is_default=True,
-        ))
+        work = store.add(
+            Profile(
+                platform="olx",
+                name="work",
+                device_serial="emulator-5556",
+                db_path=str(tmp_path / "work.sqlite"),
+                is_default=True,
+            )
+        )
         assert work.is_default is True
         store.add(Profile(platform="olx", name="home", notes="личный"))
         store.add(Profile(platform="other-app", name="main"))
@@ -104,17 +114,25 @@ def test_store_crud_and_default_management(tmp_path):
 # Resolver precedence
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def store(tmp_path):
     with ProfileStore(tmp_path / "profiles.sqlite") as s:
-        s.add(Profile(
-            platform="olx", name="work",
-            db_path=str(tmp_path / "work.sqlite"),
-        ))
-        s.add(Profile(
-            platform="olx", name="main",
-            db_path=str(tmp_path / "main.sqlite"), is_default=True,
-        ))
+        s.add(
+            Profile(
+                platform="olx",
+                name="work",
+                db_path=str(tmp_path / "work.sqlite"),
+            )
+        )
+        s.add(
+            Profile(
+                platform="olx",
+                name="main",
+                db_path=str(tmp_path / "main.sqlite"),
+                is_default=True,
+            )
+        )
         yield s
 
 
@@ -156,6 +174,7 @@ def test_resolver_auto_db_path_under_data_dir(store):
 # ---------------------------------------------------------------------------
 # Isolation + device binding
 # ---------------------------------------------------------------------------
+
 
 def test_storage_for_isolates_profiles(store, tmp_path):
     from aios_core.modules.olx import AdCard
@@ -214,6 +233,7 @@ def test_adb_controller_scopes_commands_to_serial():
 # CLI surface
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def cli_registry(tmp_path, monkeypatch):
     """Изолированный process-wide реестр профилей для CLI."""
@@ -229,8 +249,19 @@ def test_cli_profiles_crud_flow(cli_registry, capsys):
     main(["profiles", "list"])
     assert json.loads(capsys.readouterr().out) == []
 
-    main(["profiles", "add", "--platform", "olx", "--name", "work",
-          "--device", "emulator-5556", "--default"])
+    main(
+        [
+            "profiles",
+            "add",
+            "--platform",
+            "olx",
+            "--name",
+            "work",
+            "--device",
+            "emulator-5556",
+            "--default",
+        ]
+    )
     added = json.loads(capsys.readouterr().out)
     assert added["key"] == "olx:work"
     assert added["is_default"] is True
@@ -267,12 +298,12 @@ def test_cli_olx_profile_isolation_and_errors(cli_registry, tmp_path, capsys):
     from aios_core.modules.olx import AdCard
 
     work_db = tmp_path / "work.sqlite"
-    main(["profiles", "add", "--platform", "olx", "--name", "work",
-          "--db", str(work_db)])
+    main(["profiles", "add", "--platform", "olx", "--name", "work", "--db", str(work_db)])
     json.loads(capsys.readouterr().out)
 
     # Данные в профиле work:
     from aios_core.modules.olx import OLXStorage
+
     with OLXStorage(work_db) as s:
         s.save_ads([AdCard(title="Только в work", url="http://x/w.html")])
 
@@ -281,8 +312,18 @@ def test_cli_olx_profile_isolation_and_errors(cli_registry, tmp_path, capsys):
     assert work_stats["total_ads"] == 1
 
     # Другой профиль — пустой, дефолтный легаси-путь не задет.
-    main(["profiles", "add", "--platform", "olx", "--name", "home",
-          "--db", str(tmp_path / "home.sqlite")])
+    main(
+        [
+            "profiles",
+            "add",
+            "--platform",
+            "olx",
+            "--name",
+            "home",
+            "--db",
+            str(tmp_path / "home.sqlite"),
+        ]
+    )
     json.loads(capsys.readouterr().out)
     main(["olx", "stats", "--profile", "home"])
     assert json.loads(capsys.readouterr().out)["total_ads"] == 0
@@ -290,8 +331,12 @@ def test_cli_olx_profile_isolation_and_errors(cli_registry, tmp_path, capsys):
     # Явный --db обходит реестр профилей.
     other_db = tmp_path / "other.sqlite"
     with OLXStorage(other_db) as s:
-        s.save_ads([AdCard(title="Через --db", url="http://x/o.html"),
-                    AdCard(title="Ещё", url="http://x/o2.html")])
+        s.save_ads(
+            [
+                AdCard(title="Через --db", url="http://x/o.html"),
+                AdCard(title="Ещё", url="http://x/o2.html"),
+            ]
+        )
     main(["olx", "stats", "--db", str(other_db)])
     assert json.loads(capsys.readouterr().out)["total_ads"] == 2
 
@@ -336,16 +381,18 @@ async def test_rest_platforms_and_profiles_crud(api_client):
 
     platforms = await client.get("/api/v1/platforms")
     assert platforms.status_code == 200
-    assert any(
-        p["name"] == "olx" for p in platforms.json()["platforms"]
-    )
+    assert any(p["name"] == "olx" for p in platforms.json()["platforms"])
 
-    created = await client.post("/api/v1/profiles", json={
-        "platform": "olx", "name": "work",
-        "device_serial": "emulator-5556",
-        "db_path": str(tmp_path / "work.sqlite"),
-        "is_default": True,
-    })
+    created = await client.post(
+        "/api/v1/profiles",
+        json={
+            "platform": "olx",
+            "name": "work",
+            "device_serial": "emulator-5556",
+            "db_path": str(tmp_path / "work.sqlite"),
+            "is_default": True,
+        },
+    )
     assert created.status_code == 201
     assert created.json()["key"] == "olx:work"
 
@@ -358,13 +405,15 @@ async def test_rest_platforms_and_profiles_crud(api_client):
     missing = await client.get("/api/v1/profiles/olx/ghost")
     assert missing.status_code == 404
 
-    await client.post("/api/v1/profiles", json={
-        "platform": "olx", "name": "home",
-        "db_path": str(tmp_path / "home.sqlite"),
-    })
-    defaulted = await client.post(
-        "/api/v1/profiles/olx/default", json={"name": "home"}
+    await client.post(
+        "/api/v1/profiles",
+        json={
+            "platform": "olx",
+            "name": "home",
+            "db_path": str(tmp_path / "home.sqlite"),
+        },
     )
+    defaulted = await client.post("/api/v1/profiles/olx/default", json={"name": "home"})
     assert defaulted.json()["is_default"] is True
 
     removed = await client.delete("/api/v1/profiles/olx/home")
@@ -377,9 +426,14 @@ async def test_rest_profile_scoped_olx_storage(api_client):
     client, tmp_path = api_client
     work_db = tmp_path / "work.sqlite"
 
-    await client.post("/api/v1/profiles", json={
-        "platform": "olx", "name": "work", "db_path": str(work_db),
-    })
+    await client.post(
+        "/api/v1/profiles",
+        json={
+            "platform": "olx",
+            "name": "work",
+            "db_path": str(work_db),
+        },
+    )
 
     # Сидим объявление напрямую в БД профиля work.
     with OLXStorage(work_db) as seeded:
@@ -399,9 +453,7 @@ async def test_rest_profile_scoped_olx_storage(api_client):
         json={"ads": [{"title": "Моё", "price": 100.0, "ad_id": "p1"}]},
     )
     assert snapshot.status_code == 200
-    own_scoped = await client.get(
-        "/api/v1/modules/olx/own", params={"profile": "work"}
-    )
+    own_scoped = await client.get("/api/v1/modules/olx/own", params={"profile": "work"})
     assert own_scoped.json()["count"] == 1
     own_default = await client.get("/api/v1/modules/olx/own")
     assert own_default.json()["count"] == 0
@@ -475,9 +527,7 @@ def test_device_pool_heartbeat_and_reap():
 
         # Искусственно устаревший heartbeat → offline + аренда снята.
         with pool._lock, pool._conn:
-            pool._conn.execute(
-                "UPDATE devices SET last_heartbeat = '2020-01-01T00:00:00+00:00'"
-            )
+            pool._conn.execute("UPDATE devices SET last_heartbeat = '2020-01-01T00:00:00+00:00'")
         assert pool.reap_stale(max_silence_s=900) == ["emulator-5556"]
         record = pool.get("emulator-5556")
         assert record["status"] == "offline"
@@ -516,13 +566,17 @@ description: demo platform from YAML
         # Фабрики собраны по контракту:
         storage = descriptor.make_storage(":memory:")
         from aios_core.modules.olx import OLXStorage
+
         assert isinstance(storage, OLXStorage)
         adb = descriptor.make_adb(serial="emulator-1")
         assert adb.serial == "emulator-1"
         assert adb.package == "ua.demo.market"
-        assert resolve_profile("demo-market", store=ProfileStore(":memory:")).db_path == "demo.sqlite"
+        assert (
+            resolve_profile("demo-market", store=ProfileStore(":memory:")).db_path == "demo.sqlite"
+        )
     finally:
         from aios_core.platforms import descriptor as descriptor_mod
+
         descriptor_mod._PLATFORMS.pop("demo-market", None)
 
 
@@ -535,6 +589,7 @@ def test_catalog_platforms_list_and_missing_fields(tmp_path):
         encoding="utf-8",
     )
     from aios_core.platforms import descriptor as descriptor_mod
+
     try:
         loaded = load_catalog_file(listing)
         assert [d.name for d in loaded] == ["app-one", "app-two"]
@@ -558,6 +613,7 @@ def test_repo_catalog_olx_yaml_matches_builtin():
     assert descriptor.legacy_default_db == "olx_ads.sqlite"
     storage = descriptor.make_storage(":memory:")
     from aios_core.modules.olx import OLXStorage
+
     assert isinstance(storage, OLXStorage)
     storage.close()
     assert load_catalog("no-such-dir") == []
@@ -566,6 +622,7 @@ def test_repo_catalog_olx_yaml_matches_builtin():
 # ---------------------------------------------------------------------------
 # MCP tools with profile parameter
 # ---------------------------------------------------------------------------
+
 
 def test_mcp_olx_tools_profile_scoping(tmp_path, monkeypatch):
     from aios_core.mcp.gateway import GatewayConfig, MCPGateway
@@ -591,26 +648,44 @@ def test_mcp_olx_tools_profile_scoping(tmp_path, monkeypatch):
             db=Database(db_path=":memory:"),
         )
         # tools/list рекламирует параметр profile.
-        listed = json.loads(gateway.handle_request(json.dumps(
-            {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
-        )))
+        listed = json.loads(
+            gateway.handle_request(
+                json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
+            )
+        )
         stats_tool = next(t for t in listed["result"]["tools"] if t["name"] == "olx_market_stats")
         assert "profile" in stats_tool["inputSchema"]["properties"]
 
         # С profile=work видна запись из БД профиля.
-        response = json.loads(gateway.handle_request(json.dumps({
-            "jsonrpc": "2.0", "id": 2, "method": "tools/call",
-            "params": {"name": "olx_market_stats", "arguments": {"profile": "work"}},
-        })))
+        response = json.loads(
+            gateway.handle_request(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/call",
+                        "params": {"name": "olx_market_stats", "arguments": {"profile": "work"}},
+                    }
+                )
+            )
+        )
         assert "error" not in response, response.get("error")
         payload = json.loads(response["result"]["content"][0]["text"])
         assert payload["total_ads"] == 1
 
         # Без profile — общее хранилище (пустое).
-        response = json.loads(gateway.handle_request(json.dumps({
-            "jsonrpc": "2.0", "id": 3, "method": "tools/call",
-            "params": {"name": "olx_market_stats", "arguments": {}},
-        })))
+        response = json.loads(
+            gateway.handle_request(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 3,
+                        "method": "tools/call",
+                        "params": {"name": "olx_market_stats", "arguments": {}},
+                    }
+                )
+            )
+        )
         payload = json.loads(response["result"]["content"][0]["text"])
         assert payload["total_ads"] == 0
     finally:
@@ -626,9 +701,13 @@ async def test_rest_device_pool_flow(api_client):
     bad = await client.post("/api/v1/devices/lease", json={"profile": "olx:work"})
     assert bad.status_code == 409  # пул пуст
 
-    reg = await client.post("/api/v1/devices/register", json={
-        "serial": "emulator-5556", "avd_name": "aios-olx-1",
-    })
+    reg = await client.post(
+        "/api/v1/devices/register",
+        json={
+            "serial": "emulator-5556",
+            "avd_name": "aios-olx-1",
+        },
+    )
     assert reg.status_code == 201
     await client.post("/api/v1/devices/register", json={"serial": "emulator-5558"})
 
@@ -641,9 +720,14 @@ async def test_rest_device_pool_flow(api_client):
     assert lease.json()["profile_key"] == "olx:work"
 
     # Реестр профилей синхронизирован после создания профиля и повторной аренды.
-    await client.post("/api/v1/profiles", json={
-        "platform": "olx", "name": "work", "db_path": str(tmp_path / "w.sqlite"),
-    })
+    await client.post(
+        "/api/v1/profiles",
+        json={
+            "platform": "olx",
+            "name": "work",
+            "db_path": str(tmp_path / "w.sqlite"),
+        },
+    )
     lease2 = await client.post("/api/v1/devices/lease", json={"profile": "olx:work"})
     assert lease2.json()["serial"] == leased_serial
     shown = await client.get("/api/v1/profiles/olx/work")
@@ -654,14 +738,22 @@ async def test_rest_device_pool_flow(api_client):
     full = await client.post("/api/v1/devices/lease", json={"profile": "olx:z"})
     assert full.status_code == 409
 
-    pin = await client.post("/api/v1/devices/lease", json={
-        "profile": "olx:z", "serial": leased_serial,
-    })
+    pin = await client.post(
+        "/api/v1/devices/lease",
+        json={
+            "profile": "olx:z",
+            "serial": leased_serial,
+        },
+    )
     assert pin.status_code == 409  # устройство занято
 
-    unknown = await client.post("/api/v1/devices/lease", json={
-        "profile": "olx:z", "serial": "ghost",
-    })
+    unknown = await client.post(
+        "/api/v1/devices/lease",
+        json={
+            "profile": "olx:z",
+            "serial": "ghost",
+        },
+    )
     assert unknown.status_code == 400
 
     hb = await client.post("/api/v1/devices/heartbeat", json={"serial": leased_serial})

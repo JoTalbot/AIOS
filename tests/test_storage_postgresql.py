@@ -12,7 +12,7 @@ def test_sqlite_storage_basic():
     # Insert test record
     db.execute(
         "INSERT INTO audit_events (id, event_type, data, timestamp, agent_id) VALUES (?, ?, ?, ?, ?)",
-        ("audit_100", "task_executed", '{"status": "ok"}', db.now_iso(), "agent_001")
+        ("audit_100", "task_executed", '{"status": "ok"}', db.now_iso(), "agent_001"),
     )
 
     rows = db.query("SELECT * FROM audit_events WHERE id = ?", ("audit_100",))

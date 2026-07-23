@@ -13,9 +13,7 @@ class HybridQuantumClassical:
     def set_quantum_backend(self, backend: Any):
         self.quantum_backend = backend
 
-    def execute_hybrid(
-        self, quantum_part: Callable, classical_part: Callable, data: Any
-    ) -> Dict:
+    def execute_hybrid(self, quantum_part: Callable, classical_part: Callable, data: Any) -> Dict:
         try:
             if self.quantum_backend:
                 q_result = quantum_part(data)

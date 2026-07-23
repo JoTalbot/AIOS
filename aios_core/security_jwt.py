@@ -12,9 +12,7 @@ class JWTManager:
         self.secret = secret
         self.algorithm = algorithm
 
-    def create_token(
-        self, subject: str, roles: list = None, expires_in: int = 3600
-    ) -> str:
+    def create_token(self, subject: str, roles: list = None, expires_in: int = 3600) -> str:
         payload = {
             "sub": subject,
             "roles": roles or ["user"],

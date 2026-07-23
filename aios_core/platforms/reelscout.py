@@ -104,9 +104,7 @@ class ReelsCollector:
         """
         parser = self.resolve_parser()
         if self.driver is not None and not self.driver(self.adb):
-            raise RuntimeError(
-                f"driver не смог открыть видео-ленту «{self.platform.name}»"
-            )
+            raise RuntimeError(f"driver не смог открыть видео-ленту «{self.platform.name}»")
         swipe_limit = max_swipes if max_swipes is not None else max_cards
         cards: List[VideoCard] = []
         seen = set()
@@ -130,11 +128,7 @@ class ReelsCollector:
                             break
                 dump_path.unlink(missing_ok=True)
                 empties = 0 if fresh else empties + 1
-                if (
-                    empties >= stop_after_empty
-                    or len(cards) >= max_cards
-                    or swipes >= swipe_limit
-                ):
+                if empties >= stop_after_empty or len(cards) >= max_cards or swipes >= swipe_limit:
                     break
                 if self.pacer is not None and not self.pacer.before_action():
                     break  # pacing-лимит — честный стоп цикла
@@ -227,9 +221,7 @@ class ReelsTabDriver:
             if m
         )
         self.text_markers = tuple(
-            str(t).strip().lower()
-            for t in (text_markers or _DEFAULT_TAB_TEXT_MARKERS)
-            if t
+            str(t).strip().lower() for t in (text_markers or _DEFAULT_TAB_TEXT_MARKERS) if t
         )
         self.open_wait_s = open_wait_s
         self._sleep = sleeper or time.sleep
@@ -254,9 +246,7 @@ class ReelsTabDriver:
                 bounds = _parse_bounds(node.attrib.get("bounds"))
                 if bounds is None:
                     continue
-                rid_tail = (
-                    (node.attrib.get("resource-id") or "").rsplit("/", 1)[-1].lower()
-                )
+                rid_tail = (node.attrib.get("resource-id") or "").rsplit("/", 1)[-1].lower()
                 text = (node.attrib.get("text") or "").strip().lower()
                 desc = (node.attrib.get("content-desc") or "").strip().lower()
                 hit = any(marker in rid_tail for marker in self.rid_markers)

@@ -24,6 +24,7 @@ from dataclasses import dataclass, field, asdict
 @dataclass
 class APIKey:
     """Represents an API key with metadata."""
+
     key: str
     subject: str
     roles: List[str]
@@ -112,13 +113,15 @@ class SecretManager:
         self.keys[key] = api_key
 
         # Log rotation
-        self.rotation_log.append({
-            "action": "created",
-            "key_prefix": key[:12] + "...",
-            "subject": subject,
-            "roles": roles,
-            "timestamp": now.isoformat(),
-        })
+        self.rotation_log.append(
+            {
+                "action": "created",
+                "key_prefix": key[:12] + "...",
+                "subject": subject,
+                "roles": roles,
+                "timestamp": now.isoformat(),
+            }
+        )
 
         return api_key
 
@@ -137,13 +140,15 @@ class SecretManager:
 
         self.keys[key].revoked = True
 
-        self.rotation_log.append({
-            "action": "revoked",
-            "key_prefix": key[:12] + "...",
-            "subject": self.keys[key].subject,
-            "reason": reason,
-            "timestamp": datetime.now().isoformat(),
-        })
+        self.rotation_log.append(
+            {
+                "action": "revoked",
+                "key_prefix": key[:12] + "...",
+                "subject": self.keys[key].subject,
+                "reason": reason,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
         return True
 
@@ -175,14 +180,16 @@ class SecretManager:
         # Revoke old key
         self.revoke_key(old_key, reason=reason)
 
-        self.rotation_log.append({
-            "action": "rotated",
-            "old_key_prefix": old_key[:12] + "...",
-            "new_key_prefix": new_key.key[:12] + "...",
-            "subject": old.subject,
-            "reason": reason,
-            "timestamp": datetime.now().isoformat(),
-        })
+        self.rotation_log.append(
+            {
+                "action": "rotated",
+                "old_key_prefix": old_key[:12] + "...",
+                "new_key_prefix": new_key.key[:12] + "...",
+                "subject": old.subject,
+                "reason": reason,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
         return new_key
 
@@ -221,9 +228,9 @@ class SecretManager:
         """Get keys expiring within specified days."""
         threshold = datetime.now() + timedelta(days=within_days)
         return [
-            k for k in self.keys.values()
-            if k.expires_at and not k.revoked
-            and datetime.fromisoformat(k.expires_at) <= threshold
+            k
+            for k in self.keys.values()
+            if k.expires_at and not k.revoked and datetime.fromisoformat(k.expires_at) <= threshold
         ]
 
     def cleanup_revoked(self, older_than_days: int = 30) -> int:
@@ -309,11 +316,14 @@ class SecretManager:
             "expiring_soon": expiring,
             "revoked_keys": revoked,
             "subjects": len(set(k.subject for k in self.keys.values())),
-            "rotations_last_30d": len([
-                l for l in self.rotation_log
-                if l["action"] == "rotated"
-                and datetime.fromisoformat(l["timestamp"]) > datetime.now() - timedelta(days=30)
-            ]),
+            "rotations_last_30d": len(
+                [
+                    l
+                    for l in self.rotation_log
+                    if l["action"] == "rotated"
+                    and datetime.fromisoformat(l["timestamp"]) > datetime.now() - timedelta(days=30)
+                ]
+            ),
         }
 
     def generate_env_export(self, path: str) -> None:
@@ -331,7 +341,7 @@ class SecretManager:
         env_value = json.dumps(active_keys)
 
         with open(path, "w") as f:
-            f.write(f'export AIOS_API_KEYS=\'{env_value}\'\n')
+            f.write(f"export AIOS_API_KEYS='{env_value}'\n")
 
 
 # CLI entry point

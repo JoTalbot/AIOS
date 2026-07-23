@@ -145,20 +145,12 @@ class PerformanceMonitor:
 
     def __init__(self):
         self.metrics = {
-            "request_count": MetricCounter(
-                "requests_total", "Total number of requests"
-            ),
+            "request_count": MetricCounter("requests_total", "Total number of requests"),
             "error_count": MetricCounter("errors_total", "Total number of errors"),
-            "response_time": MetricHistogram(
-                "response_time_seconds", "Response time distribution"
-            ),
-            "active_connections": MetricGauge(
-                "active_connections", "Number of active connections"
-            ),
+            "response_time": MetricHistogram("response_time_seconds", "Response time distribution"),
+            "active_connections": MetricGauge("active_connections", "Number of active connections"),
             "cpu_usage": MetricGauge("cpu_usage_percent", "CPU usage percentage"),
-            "memory_usage": MetricGauge(
-                "memory_usage_percent", "Memory usage percentage"
-            ),
+            "memory_usage": MetricGauge("memory_usage_percent", "Memory usage percentage"),
         }
 
         self.request_times = deque(maxlen=1000)
@@ -241,9 +233,7 @@ class IntegrationMonitor:
     def _create_integration_metrics(self) -> Dict[str, Any]:
         """Factory for per-integration metric objects (name set on first use)."""
         return {
-            "requests": MetricCounter(
-                "integration_requests", "Requests for integration"
-            ),
+            "requests": MetricCounter("integration_requests", "Requests for integration"),
             "errors": MetricCounter("integration_errors", "Errors for integration"),
             "response_time": MetricHistogram(
                 "integration_response_time", "Response time for integration"

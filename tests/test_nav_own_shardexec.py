@@ -130,15 +130,14 @@ class _Notifier:
 # Navigation autocalibration
 # ---------------------------------------------------------------------------
 
+
 def test_analyze_navigation_finds_reels_tab():
     hints = DetailCalibrationAdvisor().analyze_navigation(HOME_NAV_XML)
     tab = hints["reels_tab"]
-    assert tab["rid_markers"] == [
-        {"resource_id": "com.instagram.android:id/reels_tab"}]
+    assert tab["rid_markers"] == [{"resource_id": "com.instagram.android:id/reels_tab"}]
     assert tab["text_markers"] == ["Reels"]
     assert tab["bounds"] == "[540,2300][810,2400]"
-    assert hints["tab_bar_markers"] == [
-        {"resource_id": "com.instagram.android:id/tab_bar"}]
+    assert hints["tab_bar_markers"] == [{"resource_id": "com.instagram.android:id/tab_bar"}]
     assert len(hints["tabs"]) == 4
     assert hints["hint"] == "видео-вкладка найдена"
 
@@ -163,19 +162,27 @@ def test_merge_hints_navigation_key():
 
 def test_navigation_hints_roundtrip_into_driver(tmp_path):
     nav = DetailCalibrationAdvisor().analyze_navigation(HOME_NAV_XML)
-    (tmp_path / "instagram.yaml").write_text(yaml.safe_dump({
-        "name": "instagram",
-        "android_package": "com.instagram.android",
-        "extras": {"parser_hints": {"navigation": nav}},
-    }), encoding="utf-8")
+    (tmp_path / "instagram.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "name": "instagram",
+                "android_package": "com.instagram.android",
+                "extras": {"parser_hints": {"navigation": nav}},
+            }
+        ),
+        encoding="utf-8",
+    )
     driver = reels_driver_for("instagram", adb=_ADB([]), directory=str(tmp_path))
     assert driver.rid_markers == ("reels_tab",)
     assert "reels" in driver.text_markers
     # И тап работает по автокалиброванным маркерам:
     adb = _ADB([HOME_NAV_XML])
     driver = reels_driver_for(
-        "instagram", adb=adb, directory=str(tmp_path),
-        open_wait_s=0, sleeper=lambda s: None,
+        "instagram",
+        adb=adb,
+        directory=str(tmp_path),
+        open_wait_s=0,
+        sleeper=lambda s: None,
     )
     assert driver.drive() is True
     assert ("tap", 675, 2350) in adb.calls
@@ -187,27 +194,39 @@ def test_cli_calibrate_navigation_write(tmp_path, capsys):
 
     monkey_cwd = tmp_path
     scaffold_platform(
-        "navdemo", "com.nav.demo", project_root=str(monkey_cwd),
+        "navdemo",
+        "com.nav.demo",
+        project_root=str(monkey_cwd),
     )
     home = tmp_path / "home.xml"
     home.write_text(HOME_NAV_XML, encoding="utf-8")
     feed = tmp_path / "feed.xml"
     feed.write_text("<hierarchy/>", encoding="utf-8")
     import os
+
     old = os.getcwd()
     os.chdir(monkey_cwd)
     try:
-        main(["platforms", "calibrate", "--platform", "navdemo",
-              "--dump", str(feed), "--navigation", str(home), "--write"])
+        main(
+            [
+                "platforms",
+                "calibrate",
+                "--platform",
+                "navdemo",
+                "--dump",
+                str(feed),
+                "--navigation",
+                str(home),
+                "--write",
+            ]
+        )
     finally:
         os.chdir(old)
     out = json.loads(capsys.readouterr().out)
     assert out["written"].endswith("navdemo.yaml")
-    doc = yaml.safe_load(
-        (monkey_cwd / "platforms" / "navdemo.yaml").read_text(encoding="utf-8"))
+    doc = yaml.safe_load((monkey_cwd / "platforms" / "navdemo.yaml").read_text(encoding="utf-8"))
     nav = doc["extras"]["parser_hints"]["navigation"]
-    assert nav["reels_tab"]["rid_markers"][0]["resource_id"].endswith(
-        "reels_tab")
+    assert nav["reels_tab"]["rid_markers"][0]["resource_id"].endswith("reels_tab")
 
 
 # ---------------------------------------------------------------------------
@@ -228,8 +247,11 @@ CHAT_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 
 def _patch_adb(monkeypatch, fake):
     from aios_core.modules.olx import adb as adb_mod
+
     monkeypatch.setattr(
-        adb_mod, "ADBController", lambda *args, **kwargs: fake,
+        adb_mod,
+        "ADBController",
+        lambda *args, **kwargs: fake,
     )
 
 
@@ -249,11 +271,17 @@ def _patch_notifier(monkeypatch, recorder):
 
 def _write_yaml(directory, hints):
     path = Path(directory) / "instagram.yaml"
-    path.write_text(yaml.safe_dump({
-        "name": "instagram",
-        "android_package": "com.instagram.android",
-        "extras": {"parser_hints": hints},
-    }, allow_unicode=True), encoding="utf-8")
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "name": "instagram",
+                "android_package": "com.instagram.android",
+                "extras": {"parser_hints": hints},
+            },
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
     return path
 
 
@@ -261,19 +289,23 @@ def _write_yaml(directory, hints):
 def instagram_registered():
     from aios_core.platforms import load_catalog_file
     from aios_core.platforms import descriptor as descriptor_mod
+
     loaded = load_catalog_file("platforms/instagram.yaml")
     yield loaded[0]
     descriptor_mod._PLATFORMS.pop(loaded[0].name, None)
 
 
-def test_cli_autopilot_own_step_new_posts_alert(tmp_path, capsys, monkeypatch,
-                                                instagram_registered):
+def test_cli_autopilot_own_step_new_posts_alert(
+    tmp_path, capsys, monkeypatch, instagram_registered
+):
     from aios_cli import main
 
-    _write_yaml(tmp_path, {
-        "card_markers": [
-            {"resource_id": "com.instagram.android:id/shop_card"}],
-    })
+    _write_yaml(
+        tmp_path,
+        {
+            "card_markers": [{"resource_id": "com.instagram.android:id/shop_card"}],
+        },
+    )
     db = tmp_path / "ig.sqlite"
     grid = tmp_path / "grid.xml"
     grid.write_text(GRID_XML, encoding="utf-8")
@@ -281,10 +313,25 @@ def test_cli_autopilot_own_step_new_posts_alert(tmp_path, capsys, monkeypatch,
     fake = _ADB([FEED_XML, EMPTY_XML])
     _patch_adb(monkeypatch, fake)
     _patch_notifier(monkeypatch, recorder)
-    main(["instagram", "autopilot", "--db", str(db), "--max", "1",
-          "--reels-max", "1", "--directory", str(tmp_path),
-          "--own", "--own-dump", str(grid),
-          "--webhook", "http://hook/in"])
+    main(
+        [
+            "instagram",
+            "autopilot",
+            "--db",
+            str(db),
+            "--max",
+            "1",
+            "--reels-max",
+            "1",
+            "--directory",
+            str(tmp_path),
+            "--own",
+            "--own-dump",
+            str(grid),
+            "--webhook",
+            "http://hook/in",
+        ]
+    )
     out = json.loads(capsys.readouterr().out)
     own = out["steps"]["own"]
     assert own["recorded"] == 2 and own["new"] == 2
@@ -293,15 +340,27 @@ def test_cli_autopilot_own_step_new_posts_alert(tmp_path, capsys, monkeypatch,
     # без --own шага нет:
     fake2 = _ADB([FEED_XML, EMPTY_XML])
     _patch_adb(monkeypatch, fake2)
-    main(["instagram", "autopilot", "--db", str(db), "--max", "1",
-          "--reels-max", "1", "--directory", str(tmp_path)])
+    main(
+        [
+            "instagram",
+            "autopilot",
+            "--db",
+            str(db),
+            "--max",
+            "1",
+            "--reels-max",
+            "1",
+            "--directory",
+            str(tmp_path),
+        ]
+    )
     out2 = json.loads(capsys.readouterr().out)
     assert "own" not in out2["steps"]
 
 
-def test_cli_autopilot_own_drift_on_shrunk_counters(tmp_path, capsys,
-                                                    monkeypatch,
-                                                    instagram_registered):
+def test_cli_autopilot_own_drift_on_shrunk_counters(
+    tmp_path, capsys, monkeypatch, instagram_registered
+):
     from aios_cli import main
 
     _write_yaml(tmp_path, {})
@@ -319,10 +378,25 @@ def test_cli_autopilot_own_drift_on_shrunk_counters(tmp_path, capsys,
     fake = _ADB([FEED_XML, EMPTY_XML])
     _patch_adb(monkeypatch, fake)
     _patch_notifier(monkeypatch, recorder)
-    main(["instagram", "autopilot", "--db", str(db), "--max", "1",
-          "--reels-max", "1", "--directory", str(tmp_path),
-          "--own", "--own-dump", str(grid),
-          "--webhook", "http://hook/in"])
+    main(
+        [
+            "instagram",
+            "autopilot",
+            "--db",
+            str(db),
+            "--max",
+            "1",
+            "--reels-max",
+            "1",
+            "--directory",
+            str(tmp_path),
+            "--own",
+            "--own-dump",
+            str(grid),
+            "--webhook",
+            "http://hook/in",
+        ]
+    )
     out = json.loads(capsys.readouterr().out)
     own = out["steps"]["own"]
     assert own["deltas"]  # счётчики изменились
@@ -334,17 +408,29 @@ def test_cli_autopilot_own_drift_on_shrunk_counters(tmp_path, capsys,
     storage.close()
 
 
-def test_cli_autopilot_own_live_dump_missing_is_honest(tmp_path, capsys,
-                                                       monkeypatch,
-                                                       instagram_registered):
+def test_cli_autopilot_own_live_dump_missing_is_honest(
+    tmp_path, capsys, monkeypatch, instagram_registered
+):
     from aios_cli import main
 
     _write_yaml(tmp_path, {})
     fake = _ADB([FEED_XML, EMPTY_XML])  # own: дампов нет → честная ошибка
     _patch_adb(monkeypatch, fake)
-    main(["instagram", "autopilot", "--db", str(tmp_path / "ig.sqlite"),
-          "--max", "1", "--reels-max", "1", "--directory", str(tmp_path),
-          "--own"])
+    main(
+        [
+            "instagram",
+            "autopilot",
+            "--db",
+            str(tmp_path / "ig.sqlite"),
+            "--max",
+            "1",
+            "--reels-max",
+            "1",
+            "--directory",
+            str(tmp_path),
+            "--own",
+        ]
+    )
     out = json.loads(capsys.readouterr().out)
     assert "error" in out and "own-dump" in out["error"]
 
@@ -352,6 +438,7 @@ def test_cli_autopilot_own_live_dump_missing_is_honest(tmp_path, capsys,
 # ---------------------------------------------------------------------------
 # ShardExec: pull-модель джобов
 # ---------------------------------------------------------------------------
+
 
 def _seed_shard_db(tmp_path):
     db = str(tmp_path / "shards.sqlite")
@@ -367,8 +454,7 @@ def test_shard_jobs_route_aware_claim(tmp_path):
     db, host_a = _seed_shard_db(tmp_path)
     other = "worker-1" if host_a == "worker-2" else "worker-2"
     with ShardJobs(db) as jobs:
-        job_id = jobs.enqueue("instagram:main", "autopilot",
-                              payload={"args": ["--max", "5"]})
+        job_id = jobs.enqueue("instagram:main", "autopilot", payload={"args": ["--max", "5"]})
         # Чужая нода джобу не получит (sticky-маршрут):
         assert jobs.pending_for(other) == []
         assert jobs.claim_next(other) is None
@@ -388,8 +474,7 @@ def test_shard_jobs_complete_failed_and_listing(tmp_path):
         jobs.enqueue("ghost:noop", "weird")
         assert len(jobs.list()) == 2
         assert len(jobs.list(status="pending")) == 2
-        bad = [j for j in jobs.list(status="pending")
-               if j["profile_key"] == "ghost:noop"][0]
+        bad = [j for j in jobs.list(status="pending") if j["profile_key"] == "ghost:noop"][0]
         jobs.complete(bad["id"], ok=False, result={"error": "boom"})
         failed = jobs.list(status="failed")
         assert failed[0]["result"]["error"] == "boom"
@@ -410,7 +495,8 @@ def test_shard_worker_executes_and_isolates_errors(tmp_path):
         jobs.enqueue("instagram:main", "autopilot")
         jobs.enqueue("instagram:main", "broken")
         worker = ShardJobWorker(
-            host=host_a, jobs=jobs,
+            host=host_a,
+            jobs=jobs,
             handlers={"autopilot": autopilot, "broken": broken},
         )
         first = worker.work_once()
@@ -439,8 +525,18 @@ def test_cli_shards_enqueue_and_work(tmp_path, capsys, monkeypatch):
 
     db, host_a = _seed_shard_db(tmp_path)
     monkeypatch.setenv("AIOS_SHARDS_DB", db)
-    main(["shards", "enqueue", "--profile", "instagram:main",
-          "--kind", "autopilot", "--payload", '{"args": ["--max", "3"]}'])
+    main(
+        [
+            "shards",
+            "enqueue",
+            "--profile",
+            "instagram:main",
+            "--kind",
+            "autopilot",
+            "--payload",
+            '{"args": ["--max", "3"]}',
+        ]
+    )
     out = json.loads(capsys.readouterr().out)
     assert out["enqueued"] >= 1 and out["kind"] == "autopilot"
 
@@ -457,11 +553,11 @@ def test_cli_shards_enqueue_and_work(tmp_path, capsys, monkeypatch):
     # Своя нода исполняет: handle без subprocess — через инъекцию нельзя,
     # поэтому проверяем claim-часть через API worker'а:
     from aios_core.platforms.shardexec import ShardJobs as _Jobs
+
     with _Jobs(db) as jobs:
         claimed = jobs.claim_next(host_a)
         assert claimed is not None and claimed["kind"] == "autopilot"
-        jobs.complete(claimed["id"], ok=True,
-                      result={"code": 0, "simulated": True})
+        jobs.complete(claimed["id"], ok=True, result={"code": 0, "simulated": True})
     main(["shards", "jobs", "--status", "done"])
     done = json.loads(capsys.readouterr().out)
     assert done[0]["result"]["simulated"] is True

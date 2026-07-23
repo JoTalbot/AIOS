@@ -21,9 +21,7 @@ class AndroidRPADeviceEmulator:
         self.active_package: Optional[str] = None
         self.authenticated_sessions: Dict[str, Dict[str, Any]] = {}
         self.real_execution = real_execution
-        self.real_executor = (
-            RealDeviceExecutor(device_id=device_id) if real_execution else None
-        )
+        self.real_executor = RealDeviceExecutor(device_id=device_id) if real_execution else None
 
     def launch_app(self, package_name: str) -> bool:
         """Launch target package inside emulator via ADB activity start."""
@@ -75,9 +73,7 @@ class AndroidRPADeviceEmulator:
                 )
 
         if package_name not in self.authenticated_sessions:
-            self.authenticate_user(
-                package_name, {"login": "auto_user", "password": "pass"}
-            )
+            self.authenticate_user(package_name, {"login": "auto_user", "password": "pass"})
 
         if package_name == "ua.slando":
             app_label = "Slando Ukraine"

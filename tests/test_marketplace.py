@@ -12,7 +12,7 @@ def test_publish_and_search():
         name="advanced_reasoner",
         description="Better reasoning capability",
         author="community",
-        tags=["reasoning", "ai"]
+        tags=["reasoning", "ai"],
     )
 
     results = mp.search("reasoner")

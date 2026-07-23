@@ -34,7 +34,7 @@ def test_global_swarm_node_registration_and_voting():
     prop_id = swarm.create_amendment_proposal(
         proposer_did=swarm.primary_did,
         title="ARTICLE-LXVIII Quantum Alignment Amendment",
-        description="Add quantum security assertions"
+        description="Add quantum security assertions",
     )
 
     # Cast votes (>66% Byzantine BFT threshold)

@@ -90,9 +90,7 @@ class StrategyAdvisor:
         now: Optional[datetime] = None,
     ) -> List[ActionAdvice]:
         now = now or datetime.now(timezone.utc)
-        planner = RepostPlanner(
-            min_age_days=min_age_days, min_views_per_day=min_views_per_day
-        )
+        planner = RepostPlanner(min_age_days=min_age_days, min_views_per_day=min_views_per_day)
         advice: List[ActionAdvice] = []
 
         for row in self.storage.own_ads(status="active"):
@@ -138,12 +136,7 @@ class StrategyAdvisor:
                         priority=2,
                     )
                 )
-            elif (
-                cheaper >= 1
-                and own.price
-                and median_price
-                and own.price > median_price * 1.1
-            ):
+            elif cheaper >= 1 and own.price and median_price and own.price > median_price * 1.1:
                 advice.append(
                     ActionAdvice(
                         row["fingerprint"],

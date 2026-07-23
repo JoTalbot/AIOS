@@ -37,9 +37,7 @@ class ReasoningChain:
     steps: list[ReasoningStep] = field(default_factory=list)
     conclusion: str = ""
     overall_confidence: float = 0.0
-    created_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class ReasoningEngine:
@@ -267,8 +265,7 @@ class ReasoningEngine:
 
         chain = ReasoningChain(
             id=chain_id,
-            question="forward_chain from "
-            + "; ".join(f["fact"][:40] for f in facts[:3]),
+            question="forward_chain from " + "; ".join(f["fact"][:40] for f in facts[:3]),
         )
 
         # Seed with the provided facts as premises
@@ -491,9 +488,7 @@ class ReasoningEngine:
                     for p in paths_found[:3]:
                         path_desc = " -> ".join(
                             step.get("label", step.get("id", "?"))
-                            for step in p.get(
-                                "nodes", p if isinstance(p, list) else [p]
-                            )
+                            for step in p.get("nodes", p if isinstance(p, list) else [p])
                         )
                         path_descriptions.append(path_desc)
 
@@ -606,9 +601,7 @@ class ReasoningEngine:
             if self.knowledge:
                 try:
                     ev_nodes = self.knowledge.find_nodes(label=ev_fact[:60], limit=3)
-                    hyp_nodes = self.knowledge.find_nodes(
-                        label=hypothesis[:60], limit=3
-                    )
+                    hyp_nodes = self.knowledge.find_nodes(label=hypothesis[:60], limit=3)
                 except Exception:
                     ev_nodes = []
                     hyp_nodes = []
@@ -645,9 +638,7 @@ class ReasoningEngine:
                 hyp_words = set(hypothesis.lower().split())
                 overlap = ev_words & hyp_words
                 if overlap:
-                    support_score += (
-                        ev_conf * 0.5 * (len(overlap) / max(len(hyp_words), 1))
-                    )
+                    support_score += ev_conf * 0.5 * (len(overlap) / max(len(hyp_words), 1))
                     supporting_details.append(f"Keyword overlap: {overlap}")
 
         # Also search KG directly for hypothesis-related relations

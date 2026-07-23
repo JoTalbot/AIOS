@@ -145,9 +145,7 @@ class AndroidTestGenerator:
             steps = [
                 TestStep(action="tap", target="search_field", description="Tap search"),
                 TestStep(action="type", value="iPhone 13", description="Type query"),
-                TestStep(
-                    action="tap", target="search_button", description="Submit search"
-                ),
+                TestStep(action="tap", target="search_button", description="Submit search"),
                 TestStep(
                     action="wait",
                     expected_screen="search_results",
@@ -193,9 +191,7 @@ class AndroidTestGenerator:
                 steps.append(TestStep(action="type", value=val, description=txt))
             elif "wait" in low or "жди" in low or "подожди" in low:
                 steps.append(
-                    TestStep(
-                        action="wait", expected_screen=txt, timeout=10, description=txt
-                    )
+                    TestStep(action="wait", expected_screen=txt, timeout=10, description=txt)
                 )
             elif "assert" in low or "проверь" in low or "убедись" in low:
                 steps.append(TestStep(action="assert", target=txt, description=txt))

@@ -27,9 +27,7 @@ class AISafetyFramework:
             results[layer_name] = result
 
             if not result.get("safe", True):
-                self.incidents.append(
-                    {"action": action, "layer": layer_name, "details": result}
-                )
+                self.incidents.append({"action": action, "layer": layer_name, "details": result})
 
         overall_safe = all(r.get("safe", True) for r in results.values())
         avg_score = sum(r.get("score", 1.0) for r in results.values()) / len(results)

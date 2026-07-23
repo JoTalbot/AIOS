@@ -1,4 +1,5 @@
 """Pytest fixtures for Android emulator and ua.slando automation."""
+
 from __future__ import annotations
 
 import os
@@ -88,12 +89,14 @@ def android_device(emulator_process):
 @pytest.fixture()
 def real_executor(android_device):
     from aios_core.android_execution import RealDeviceExecutor
+
     return RealDeviceExecutor(device_id=os.environ["AIOS_DEVICE_ID"])
 
 
 @pytest.fixture()
 def android_registry():
     from aios_core.android_registry import AndroidAppRegistry
+
     registry = AndroidAppRegistry()
     registry.register(
         type(

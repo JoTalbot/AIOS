@@ -26,6 +26,7 @@ import threading
 
 class WebhookEvent(str, Enum):
     """Standard webhook event types."""
+
     BAN_DETECTED = "ban_detected"
     LOW_SUCCESS_RATE = "low_success_rate"
     DEVICE_OFFLINE = "device_offline"
@@ -44,6 +45,7 @@ class WebhookEvent(str, Enum):
 @dataclass
 class WebhookTarget:
     """Webhook target configuration."""
+
     name: str
     url: str
     events: List[str]
@@ -70,6 +72,7 @@ class WebhookTarget:
 @dataclass
 class WebhookPayload:
     """Webhook notification payload."""
+
     event: str
     timestamp: str
     source: str
@@ -220,17 +223,19 @@ class WebhookManager:
                 results["results"].append(result)
 
             # Add to history
-            self.history.append({
-                "event": event,
-                "timestamp": payload.timestamp,
-                "severity": severity,
-                "targets_count": results["targets_triggered"],
-                "data_preview": {k: str(v)[:100] for k, v in data.items()},
-            })
+            self.history.append(
+                {
+                    "event": event,
+                    "timestamp": payload.timestamp,
+                    "severity": severity,
+                    "targets_count": results["targets_triggered"],
+                    "data_preview": {k: str(v)[:100] for k, v in data.items()},
+                }
+            )
 
             # Trim history
             if len(self.history) > self.max_history:
-                self.history = self.history[-self.max_history:]
+                self.history = self.history[-self.max_history :]
 
         # Call registered event handlers
         for handler in self._event_handlers.get(event, []):
@@ -340,7 +345,9 @@ class WebhookManager:
 
 
 # Convenience functions for common events
-def notify_ban_detected(profile: str, reason: str, manager: Optional[WebhookManager] = None) -> None:
+def notify_ban_detected(
+    profile: str, reason: str, manager: Optional[WebhookManager] = None
+) -> None:
     """Send ban detection notification."""
     mgr = manager or WebhookManager()
     return mgr.notify(
@@ -350,7 +357,9 @@ def notify_ban_detected(profile: str, reason: str, manager: Optional[WebhookMana
     )
 
 
-def notify_backup_completed(backup_id: str, size_mb: float, manager: Optional[WebhookManager] = None) -> None:
+def notify_backup_completed(
+    backup_id: str, size_mb: float, manager: Optional[WebhookManager] = None
+) -> None:
     """Send backup completed notification."""
     mgr = manager or WebhookManager()
     return mgr.notify(
@@ -360,7 +369,9 @@ def notify_backup_completed(backup_id: str, size_mb: float, manager: Optional[We
     )
 
 
-def notify_low_success_rate(profile: str, rate: float, threshold: float, manager: Optional[WebhookManager] = None) -> None:
+def notify_low_success_rate(
+    profile: str, rate: float, threshold: float, manager: Optional[WebhookManager] = None
+) -> None:
     """Send low success rate notification."""
     mgr = manager or WebhookManager()
     return mgr.notify(

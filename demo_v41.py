@@ -38,8 +38,7 @@ def main():
     # 3. Multi-Agent
     print("👥 Multi-Agent Demo")
     team = orch.multi_agent.form_team(
-        goal="Build report",
-        agents=["researcher", "analyst", "writer"]
+        goal="Build report", agents=["researcher", "analyst", "writer"]
     )
     print(f"  Created team: {team.team_id} with {len(team.agents)} agents\n")
 
@@ -48,7 +47,7 @@ def main():
     article = orch.constitution_evolver.propose_article(
         "ARTICLE-LXIX — TRANSPARENCY",
         "All decisions must be explainable.",
-        ["Log all high-risk actions", "Provide reasoning traces"]
+        ["Log all high-risk actions", "Provide reasoning traces"],
     )
     print(f"  Proposed: {article.title}\n")
 

@@ -145,9 +145,7 @@ def inspect_apk(apk_path: str, runner=None) -> Dict[str, Optional[str]]:
     label = _LABEL_RE.search(stdout)
     launch = _LAUNCH_RE.search(stdout)
     sdk = _SDK_RE.search(stdout)
-    candidate = re.sub(
-        r"[^a-z0-9]+", "-", android_package.split(".")[-1].lower()
-    ).strip("-")
+    candidate = re.sub(r"[^a-z0-9]+", "-", android_package.split(".")[-1].lower()).strip("-")
     return {
         "android_package": android_package,
         "candidate_name": candidate,
@@ -222,9 +220,7 @@ def scaffold_platform(
         ValueError: Невалидные входные данные или файлы уже существуют.
     """
     if not _NAME_RE.match(name or ""):
-        raise ValueError(
-            f"invalid platform name '{name}' (use lowercase, digits, dashes)"
-        )
+        raise ValueError(f"invalid platform name '{name}' (use lowercase, digits, dashes)")
     if not _PACKAGE_RE.match(android_package or ""):
         raise ValueError(f"invalid android package '{android_package}'")
 
@@ -241,22 +237,16 @@ def scaffold_platform(
             class_name=class_name,
             adb_class=_ADB_CLASS,
             locale=locale,
-            description_yaml=_yaml_double_quoted(
-                description or f"{title} marketplace agent"
-            ),
+            description_yaml=_yaml_double_quoted(description or f"{title} marketplace agent"),
         ),
-        str(
-            root / "aios_core" / "modules" / module_name / "__init__.py"
-        ): _INIT_TEMPLATE.format(
+        str(root / "aios_core" / "modules" / module_name / "__init__.py"): _INIT_TEMPLATE.format(
             title=title,
             name=name,
             module_name=module_name,
             class_name=class_name,
             android_package=android_package,
         ),
-        str(
-            root / "aios_core" / "modules" / module_name / "storage.py"
-        ): _STORAGE_TEMPLATE.format(
+        str(root / "aios_core" / "modules" / module_name / "storage.py"): _STORAGE_TEMPLATE.format(
             title=title,
             name=name,
             class_name=class_name,

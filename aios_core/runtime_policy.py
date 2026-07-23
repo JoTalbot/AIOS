@@ -131,9 +131,7 @@ class RuntimePolicy:
         execution_result = {
             "allowed": allowed,
             "decision": decision_str,
-            "constitution_version": evaluation.get(
-                "constitution_version", self.version
-            ),
+            "constitution_version": evaluation.get("constitution_version", self.version),
             "details": evaluation.get("details", ""),
             "reason": evaluation.get("reason", ""),
             "validation": validation,

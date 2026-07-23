@@ -152,10 +152,7 @@ class AdDetailParser:
             param = _PARAM_RE.match(raw)
             if param and len(raw) < 80:
                 key = normalize_text(param.group(1))
-                if (
-                    key.lower() not in {"стан", "состояние"}
-                    or "стан" not in detail.params
-                ):
+                if key.lower() not in {"стан", "состояние"} or "стан" not in detail.params:
                     detail.params[key] = normalize_text(param.group(2))
                 continue
             leftovers.append(raw)

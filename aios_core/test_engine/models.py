@@ -117,9 +117,7 @@ class TestReport:
     """Comprehensive test report across multiple suites."""
 
     report_id: str = ""
-    generated_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    generated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     total_suites: int = 0
     total_tests: int = 0

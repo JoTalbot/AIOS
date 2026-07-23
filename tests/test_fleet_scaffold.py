@@ -22,9 +22,13 @@ from aios_core.platforms import descriptor as descriptor_mod
 # scaffold_platform
 # ---------------------------------------------------------------------------
 
+
 def test_scaffold_dry_run_writes_nothing(tmp_path):
     files = scaffold_platform(
-        "demo-market", "ua.demo.market", project_root=tmp_path, dry_run=True,
+        "demo-market",
+        "ua.demo.market",
+        project_root=tmp_path,
+        dry_run=True,
     )
     assert len(files) == 4
     assert not any(p.exists() for p in tmp_path.rglob("*") if p.is_file())
@@ -46,7 +50,9 @@ def test_scaffold_validation_errors(tmp_path):
 
 def test_scaffolded_module_imports_and_yaml_registers(tmp_path, monkeypatch):
     scaffold_platform(
-        "test-market", "ua.test.market", project_root=tmp_path,
+        "test-market",
+        "ua.test.market",
+        project_root=tmp_path,
         description="scaffolded in test",
     )
     module_dir = tmp_path / "aios_core" / "modules" / "test_market"
@@ -57,12 +63,14 @@ def test_scaffolded_module_imports_and_yaml_registers(tmp_path, monkeypatch):
     # Сгенерированный модуль импортируется и хранилище работает:
     # расширяем __path__ пакета aios_core.modules на tmp-корень.
     import aios_core.modules as modules_pkg
+
     extra_path = str(tmp_path / "aios_core" / "modules")
     modules_pkg.__path__.append(extra_path)
     try:
         sys.modules.pop("aios_core.modules.test_market", None)
         sys.modules.pop("aios_core.modules.test_market.storage", None)
         from aios_core.modules.test_market import TestMarketStorage
+
         storage = TestMarketStorage(":memory:")
         assert storage.get_ads() == []
         storage.close()
@@ -89,7 +97,9 @@ def test_scaffolded_module_imports_and_yaml_registers(tmp_path, monkeypatch):
 
 def test_scaffold_class_and_module_naming():
     files = scaffold_platform(
-        "prom-ua", "ua.prom.app", project_root="/nonexistent-root",
+        "prom-ua",
+        "ua.prom.app",
+        project_root="/nonexistent-root",
         dry_run=True,
     )
     storage_py = next(p for p in files if p.endswith("storage.py"))
@@ -101,12 +111,14 @@ def test_scaffold_class_and_module_naming():
 # ensure_device (bootstrap × pool)
 # ---------------------------------------------------------------------------
 
+
 def test_ensure_device_prefers_pool_lease():
     calls = []
     with DevicePool(":memory:") as pool:
         pool.register("emulator-5556")
         record = ensure_device(
-            "olx:work", pool=pool,
+            "olx:work",
+            pool=pool,
             create_avd=lambda name: calls.append(("create", name)) or True,
             start_emulator=lambda name: calls.append(("start", name)),
             wait_serial=lambda known: calls.append(("wait", known)) or "emulator-9999",
@@ -121,7 +133,8 @@ def test_ensure_device_creates_avd_when_pool_empty():
     calls = []
     with DevicePool(":memory:") as pool:
         record = ensure_device(
-            "olx:work", pool=pool,
+            "olx:work",
+            pool=pool,
             create_avd=lambda name: calls.append(("create", name)) or True,
             start_emulator=lambda name: calls.append(("start", name)),
             wait_serial=lambda known: "emulator-5560",
@@ -139,16 +152,30 @@ def test_ensure_device_creates_avd_when_pool_empty():
 def test_ensure_device_failure_paths():
     with DevicePool(":memory:") as pool:
         # create_avd упал → None, устройство не регистрировалось.
-        assert ensure_device("olx:a", pool=pool, create_avd=lambda n: False,
-                             start_emulator=lambda n: None,
-                             wait_serial=lambda k: "emulator-1",
-                             list_devices=lambda: []) is None
+        assert (
+            ensure_device(
+                "olx:a",
+                pool=pool,
+                create_avd=lambda n: False,
+                start_emulator=lambda n: None,
+                wait_serial=lambda k: "emulator-1",
+                list_devices=lambda: [],
+            )
+            is None
+        )
         assert pool.status() == []
         # эмулятор не поднялся → None.
-        assert ensure_device("olx:b", pool=pool, create_avd=lambda n: True,
-                             start_emulator=lambda n: None,
-                             wait_serial=lambda k: None,
-                             list_devices=lambda: []) is None
+        assert (
+            ensure_device(
+                "olx:b",
+                pool=pool,
+                create_avd=lambda n: True,
+                start_emulator=lambda n: None,
+                wait_serial=lambda k: None,
+                list_devices=lambda: [],
+            )
+            is None
+        )
 
 
 def test_ensure_device_syncs_profile_store(tmp_path):
@@ -156,14 +183,14 @@ def test_ensure_device_syncs_profile_store(tmp_path):
         store.add(Profile(platform="olx", name="work"))
         with DevicePool(":memory:") as pool:
             pool.register("emulator-5556")
-            ensure_device("olx:work", pool=pool, profile_store=store,
-                          list_devices=lambda: [])
+            ensure_device("olx:work", pool=pool, profile_store=store, list_devices=lambda: [])
             assert store.get("olx", "work").device_serial == "emulator-5556"
 
 
 # ---------------------------------------------------------------------------
 # PoolMonitor
 # ---------------------------------------------------------------------------
+
 
 def test_pool_monitor_run_once_heartbeats_and_reap():
     with DevicePool(":memory:") as pool:
@@ -176,7 +203,9 @@ def test_pool_monitor_run_once_heartbeats_and_reap():
                 "WHERE serial = 'emulator-5558'"
             )
         monitor = PoolMonitor(
-            pool=pool, probe=lambda: ["emulator-5556"], reap_after_s=900,
+            pool=pool,
+            probe=lambda: ["emulator-5556"],
+            reap_after_s=900,
         )
         report = monitor.run_once()
         assert report["alive_devices"] == 1
@@ -192,6 +221,7 @@ def test_pool_monitor_start_stop():
         assert monitor.start(interval_s=0.05) is True
         assert monitor.start(interval_s=0.05) is False  # уже запущен
         import time
+
         time.sleep(0.15)
         assert monitor.stop() is True
         assert monitor.stop() is False
@@ -201,18 +231,39 @@ def test_pool_monitor_start_stop():
 # CLI surfaces
 # ---------------------------------------------------------------------------
 
+
 def test_cli_platforms_scaffold_and_list(tmp_path, capsys):
     from aios_cli import main
 
-    main(["platforms", "scaffold", "--name", "cli-market",
-          "--package", "ua.cli.market", "--root", str(tmp_path)])
+    main(
+        [
+            "platforms",
+            "scaffold",
+            "--name",
+            "cli-market",
+            "--package",
+            "ua.cli.market",
+            "--root",
+            str(tmp_path),
+        ]
+    )
     out = json.loads(capsys.readouterr().out)
     assert any(p.endswith("cli-market.yaml") for p in out["written"])
     assert (tmp_path / "aios_core/modules/cli_market/storage.py").exists()
 
-    main(["platforms", "scaffold", "--name", "ghost",
-          "--package", "ua.ghost", "--root", str(tmp_path / "x"),
-          "--dry-run"])
+    main(
+        [
+            "platforms",
+            "scaffold",
+            "--name",
+            "ghost",
+            "--package",
+            "ua.ghost",
+            "--root",
+            str(tmp_path / "x"),
+            "--dry-run",
+        ]
+    )
     out = json.loads(capsys.readouterr().out)
     assert any(p.endswith("ghost.yaml") for p in out["planned"])
     assert not (tmp_path / "x").exists()
@@ -233,8 +284,7 @@ def test_cli_devices_ensure_and_monitor(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("AIOS_PROFILES_DB", str(tmp_path / "profiles.sqlite"))
     ProfileStore.reset_default()
     try:
-        main(["devices", "register", "--serial", "emulator-5556",
-              "--avd", "aios-olx-1"])
+        main(["devices", "register", "--serial", "emulator-5556", "--avd", "aios-olx-1"])
         json.loads(capsys.readouterr().out)
 
         main(["devices", "ensure", "--profile", "olx:work"])

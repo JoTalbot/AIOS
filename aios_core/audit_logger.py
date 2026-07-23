@@ -21,9 +21,7 @@ class AuditLogger:
     Falls back to in-memory list if no Database is given.
     """
 
-    def __init__(
-        self, db: Optional[Database] = None, file_path: str = "audit_log.jsonl"
-    ):
+    def __init__(self, db: Optional[Database] = None, file_path: str = "audit_log.jsonl"):
         self.db = db
         self.file_path = file_path
         self._in_memory: list[dict] = []
@@ -202,19 +200,13 @@ class AuditLogger:
 
     def cleanup(self, retention_days: int = 90) -> int:
         """Delete events older than retention_days. Returns deleted count."""
-        cutoff = (
-            datetime.now(timezone.utc) - timedelta(days=retention_days)
-        ).isoformat()
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
 
         if self.db:
-            cursor = self.db.execute(
-                "DELETE FROM audit_events WHERE timestamp < ?", (cutoff,)
-            )
+            cursor = self.db.execute("DELETE FROM audit_events WHERE timestamp < ?", (cutoff,))
             return cursor.rowcount
 
         # In-memory cleanup
         before = len(self._in_memory)
-        self._in_memory = [
-            e for e in self._in_memory if e.get("timestamp", "") >= cutoff
-        ]
+        self._in_memory = [e for e in self._in_memory if e.get("timestamp", "") >= cutoff]
         return before - len(self._in_memory)

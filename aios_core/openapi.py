@@ -32,7 +32,5 @@ def generate_openapi_spec() -> Dict[str, Any]:
                 }
             },
         },
-        "components": {
-            "securitySchemes": {"BearerAuth": {"type": "http", "scheme": "bearer"}}
-        },
+        "components": {"securitySchemes": {"BearerAuth": {"type": "http", "scheme": "bearer"}}},
     }

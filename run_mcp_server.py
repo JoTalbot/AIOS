@@ -38,6 +38,7 @@ async def rpc_endpoint(request: Request, gateway: MCPGateway):
     if response_str is None:
         return JSONResponse({"processed": True})
     import json
+
     return JSONResponse(json.loads(response_str), media_type="application/json")
 
 
@@ -57,7 +58,12 @@ def create_starlette_app(gateway: MCPGateway) -> Starlette:
         routes=routes,
         middleware=[
             Middleware(APIKeyAuthMiddleware, enabled=True),
-            Middleware(CORSMiddleware, allow_origins=[], allow_methods=["POST"], allow_headers=["Authorization", "Content-Type"]),
+            Middleware(
+                CORSMiddleware,
+                allow_origins=[],
+                allow_methods=["POST"],
+                allow_headers=["Authorization", "Content-Type"],
+            ),
         ],
     )
 
@@ -83,13 +89,15 @@ def main():
     print(f"  RPC endpoint: http://{args.host}:{args.port}/rpc")
     print()
 
-    gateway = MCPGateway(GatewayConfig(
-        host=args.host,
-        port=args.port,
-        constitution_dir=constitution_dir,
-        policies_dir=policies_dir,
-        db_path=args.db,
-    ))
+    gateway = MCPGateway(
+        GatewayConfig(
+            host=args.host,
+            port=args.port,
+            constitution_dir=constitution_dir,
+            policies_dir=policies_dir,
+            db_path=args.db,
+        )
+    )
 
     app = create_starlette_app(gateway)
 

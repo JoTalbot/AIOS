@@ -66,7 +66,5 @@ class SovereignReflectionEngine:
         return {
             "total_reflections": len(self.reflection_logs),
             "alignments_enforced": self.alignments_enforced,
-            "clean_reflections": sum(
-                1 for r in self.reflection_logs if r["is_fully_aligned"]
-            ),
+            "clean_reflections": sum(1 for r in self.reflection_logs if r["is_fully_aligned"]),
         }

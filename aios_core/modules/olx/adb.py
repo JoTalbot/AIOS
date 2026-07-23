@@ -77,9 +77,7 @@ class ADBController:
         from urllib.parse import quote
 
         encoded = quote(text, safe="")
-        return self.run(
-            f"{self.adb} shell am broadcast " f"-a ADB_INPUT_TEXT --es msg '{encoded}'"
-        )
+        return self.run(f"{self.adb} shell am broadcast " f"-a ADB_INPUT_TEXT --es msg '{encoded}'")
 
 
 if __name__ == "__main__":

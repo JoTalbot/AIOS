@@ -94,9 +94,7 @@ class ProductionConfig:
                     name=name,
                     actions_per_hour=int(os.getenv(f"AIOS_{name.upper()}_APH", aph)),
                     queries=(
-                        ["iPhone", "Samsung", "Nike"]
-                        if plat == "olx"
-                        else ["fashion", "shoes"]
+                        ["iPhone", "Samsung", "Nike"] if plat == "olx" else ["fashion", "shoes"]
                     ),
                     webhook_url=webhook,
                 )
@@ -222,9 +220,7 @@ class ProductionAutopilot:
         self._ban_count = 0
         self.version = "9.1.0-production"
         self.fast_mode = (
-            fast_mode
-            or config.simulation_speed > 5
-            or os.getenv("AIOS_FAST_TEST", "") == "1"
+            fast_mode or config.simulation_speed > 5 or os.getenv("AIOS_FAST_TEST", "") == "1"
         )
 
         # init pacers
@@ -239,9 +235,7 @@ class ProductionAutopilot:
             )
             self._pacers[key] = pacer
 
-    def _check_compliance(
-        self, profile: ProductionProfile, action: str
-    ) -> Dict[str, Any]:
+    def _check_compliance(self, profile: ProductionProfile, action: str) -> Dict[str, Any]:
         """Check compliance for action."""
         try:
             result = compliance_guard(profile.platform, action)
@@ -290,9 +284,9 @@ class ProductionAutopilot:
             compliance_checks.append(check)
 
         # If compliance blocks collect, skip cycle guarded
-        collect_allowed = next(
-            (c for c in compliance_checks if c["action"] == "collect"), {}
-        ).get("allowed", True)
+        collect_allowed = next((c for c in compliance_checks if c["action"] == "collect"), {}).get(
+            "allowed", True
+        )
         if not collect_allowed and self.config.compliance_strict:
             return CycleReport(
                 profile_key=profile_key,
@@ -410,9 +404,7 @@ class ProductionAutopilot:
         daily = defaultdict(list)
         for r in all_reports:
             day_idx = (
-                int((r.started_at - all_reports[0].started_at) / (24 * 3600))
-                if all_reports
-                else 0
+                int((r.started_at - all_reports[0].started_at) / (24 * 3600)) if all_reports else 0
             )
             daily[day_idx].append(r)
 
@@ -442,9 +434,7 @@ class ProductionAutopilot:
                 bans=sum(1 for r in reps if r.failed / max(r.actions, 1) > 0.5),
                 drifts=sum(1 for r in reps if r.drift_detected),
                 predictive_alerts=sum(1 for r in reps if r.predictive_risk > 0.5),
-                compliance_blocks=sum(
-                    1 for r in reps if r.status == "blocked-compliance"
-                ),
+                compliance_blocks=sum(1 for r in reps if r.status == "blocked-compliance"),
             )
             daily_reports.append(dar)
             self._daily_reports.append(dar)
@@ -472,9 +462,7 @@ class ProductionAutopilot:
             },
             "profiles": {p.name: p.to_dict() for p in self.config.profiles},
             "daily_reports": [d.to_dict() for d in daily_reports],
-            "pacing_metrics": {
-                key: pacer.stats() for key, pacer in self._pacers.items()
-            },
+            "pacing_metrics": {key: pacer.stats() for key, pacer in self._pacers.items()},
             "health": self._predictive.health_report(),
             "timestamp": time.time(),
             "version": self.version,

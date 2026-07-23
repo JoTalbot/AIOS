@@ -331,9 +331,7 @@ class TestStressTests:
         # Should handle burst
         avg_latency = statistics.mean(latencies)
         assert avg_latency < 50
-        assert (
-            rps > 500
-        )  # In-process TestClient baseline; real load tests run separately
+        assert rps > 500  # In-process TestClient baseline; real load tests run separately
 
     def test_memory_stability_5000_requests(self, client):
         """Test memory stability over 5000 requests."""

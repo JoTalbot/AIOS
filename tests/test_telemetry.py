@@ -65,7 +65,9 @@ def test_w3c_tracer():
 def test_json_logging_formatter():
     formatter = JSONFormatter()
     logger = logging.getLogger("aios_test")
-    record = logger.makeRecord("aios_test", logging.INFO, "test.py", 10, "Test log message", (), None)
+    record = logger.makeRecord(
+        "aios_test", logging.INFO, "test.py", 10, "Test log message", (), None
+    )
 
     formatted = formatter.format(record)
     assert '"message": "Test log message"' in formatted

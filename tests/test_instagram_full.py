@@ -91,8 +91,7 @@ INBOX_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 MESSENGER_HINTS = {
     **DetailCalibrationAdvisor().analyze_messenger(CHAT_XML),
     "bubble_markers": [
-        {"resource_id": "com.instagram.android:id/messageBubble",
-         "occurrences": 3},
+        {"resource_id": "com.instagram.android:id/messageBubble", "occurrences": 3},
     ],
 }
 
@@ -157,6 +156,7 @@ def _write_instagram_yaml(tmp_path, hints=None):
 # HintDetailParser / load_hints_section
 # ---------------------------------------------------------------------------
 
+
 def test_hint_detail_parser_fields():
     parser = HintDetailParser(DETAIL_HINTS)
     assert parser.configured
@@ -174,15 +174,19 @@ def test_hint_detail_parser_unconfigured_shape_mode():
     parser = HintDetailParser({})
     assert not parser.configured
     result = parser.parse(DETAIL_XML)
-    assert result["price"] == 3200.0           # цена — по форме текста
+    assert result["price"] == 3200.0  # цена — по форме текста
     assert result["title"] == "Кросівки Nike Air"
-    assert result["seller"] is None            # маркеров нет
+    assert result["seller"] is None  # маркеров нет
 
 
 def test_load_hints_section_and_parsers_for(tmp_path):
-    _write_instagram_yaml(tmp_path, {
-        "detail": DETAIL_HINTS, "messenger": MESSENGER_HINTS,
-    })
+    _write_instagram_yaml(
+        tmp_path,
+        {
+            "detail": DETAIL_HINTS,
+            "messenger": MESSENGER_HINTS,
+        },
+    )
     assert load_hints_section("instagram", "detail", tmp_path)["cta_markers"]
     assert load_hints_section("instagram", "keys-missing", tmp_path) == {}
     with pytest.raises(ValueError, match="descriptor not found"):
@@ -203,6 +207,7 @@ def test_load_hints_section_and_parsers_for(tmp_path):
 # ---------------------------------------------------------------------------
 # HintSender / PointDrive
 # ---------------------------------------------------------------------------
+
 
 def test_hint_sender_taps_input_types_and_taps_send():
     adb = _ADB()
@@ -237,17 +242,16 @@ def test_hint_sender_dumps_screen_itself_when_no_xml():
     adb = _ADB([CHAT_XML])
     result = HintSender(adb, MESSENGER_HINTS).type_and_send("як справи?")
     assert result["code"] == 0
-    assert any(isinstance(c, tuple) and c[0] == "input_text"
-               for c in adb.calls)
+    assert any(isinstance(c, tuple) and c[0] == "input_text" for c in adb.calls)
 
 
 def test_pointdrive_finds_search_and_runs_query():
     search_xml = (
-        '<hierarchy>'
+        "<hierarchy>"
         '<node class="android.widget.EditText" '
         'resource-id="com.instagram.android:id/action_bar_search_edit_text" '
         'text="" bounds="[0,50][800,150]"/>'
-        '</hierarchy>'
+        "</hierarchy>"
     )
     adb = _ADB([search_xml, FEED_XML])
     drive = PointDrive(adb, open_wait_s=0, search_wait_s=0)
@@ -278,6 +282,7 @@ def test_pointdrive_open_app_failure_is_honest():
 # InstagramCollector / login+search chaining
 # ---------------------------------------------------------------------------
 
+
 def test_instagram_collector_with_driver_and_storage(tmp_path):
     calls = []
 
@@ -293,14 +298,12 @@ def test_instagram_collector_with_driver_and_storage(tmp_path):
         InstagramStorage,
     )
 
-    collector = InstagramCollector(adb=adb, driver=driver,
-                                   directory=str(tmp_path))
+    collector = InstagramCollector(adb=adb, driver=driver, directory=str(tmp_path))
     cards = collector.collect(query="кросівки")
     assert len(cards) == 2
     assert cards[0].title == "Кросівки Nike Air нові"
     assert cards[0].price == 3200.0
-    assert calls == [{"package": "com.instagram.android",
-                      "query": "кросівки"}]
+    assert calls == [{"package": "com.instagram.android", "query": "кросівки"}]
 
     # Вновь — с записью в хранилище:
     adb2 = _ADB([FEED_XML, EMPTY_FEED_XML, EMPTY_FEED_XML])
@@ -318,8 +321,9 @@ def test_instagram_collector_parser_override_and_missing_hints(tmp_path):
 
     # Явный парсер имеет приоритет над дескриптором:
     explicit = build_parser(CalibrationAdvisor().analyze(FEED_XML))
-    collector = InstagramCollector(adb=_ADB([FEED_XML]), parser=explicit,
-                                   directory=str(tmp_path))  # yaml отсутствует
+    collector = InstagramCollector(
+        adb=_ADB([FEED_XML]), parser=explicit, directory=str(tmp_path)
+    )  # yaml отсутствует
     assert collector.resolve_parser() is explicit
 
     # Без парсера и без дескриптора — честная подсказка:
@@ -334,7 +338,7 @@ def test_instagram_login_drive_chains_search_when_query(monkeypatch):
     monkeypatch.setenv("AIOS_SECRET__INSTAGRAM__USERNAME", "u")
     monkeypatch.setenv("AIOS_SECRET__INSTAGRAM__PASSWORD", "p")
     login_xml = (
-        '<hierarchy><node '
+        "<hierarchy><node "
         'resource-id="com.instagram.android:id/login_button" '
         'text="Log in"/></hierarchy>'
     )
@@ -346,8 +350,7 @@ def test_instagram_login_drive_chains_search_when_query(monkeypatch):
             return FEED_XML
 
     adb = _ADB([login_xml, "<hierarchy/>"])  # login wall → post-login dump
-    driver = InstagramLoginDriver(adb=adb, open_wait_s=0, login_wait_s=0,
-                                  search_drive=FakeSearch())
+    driver = InstagramLoginDriver(adb=adb, open_wait_s=0, login_wait_s=0, search_drive=FakeSearch())
     xml = driver.drive("com.instagram.android", query="кросівки")
     assert xml == FEED_XML
     assert search_calls[0]["query"] == "кросівки"
@@ -356,6 +359,7 @@ def test_instagram_login_drive_chains_search_when_query(monkeypatch):
 # ---------------------------------------------------------------------------
 # InstagramDetailParser / InstagramMessenger / Bootstrap
 # ---------------------------------------------------------------------------
+
 
 def test_instagram_detail_parser_from_descriptor(tmp_path):
     from aios_core.modules.instagram import InstagramDetailParser
@@ -375,8 +379,7 @@ def test_instagram_messenger_guarded_outbox_flow(tmp_path):
     _write_instagram_yaml(tmp_path, {"messenger": MESSENGER_HINTS})
     adb = _ADB([CHAT_XML])  # один дамп для executor-этапа
     storage = InstagramStorage(str(tmp_path / "ig.sqlite"))
-    messenger = InstagramMessenger(adb=adb, storage=storage,
-                                   directory=str(tmp_path))
+    messenger = InstagramMessenger(adb=adb, storage=storage, directory=str(tmp_path))
 
     # По умолчанию — только очередь, устройство не трогается:
     result = messenger.send_reply("chat:anna", "Ще актуально")
@@ -389,8 +392,7 @@ def test_instagram_messenger_guarded_outbox_flow(tmp_path):
     # Одобренная отправка проходит device-executor:
     flushed = messenger.flush_outbox()
     assert flushed == [{"id": pending[0]["id"], "status": "sent"}]
-    inputs = [c for c in adb.calls if isinstance(c, tuple)
-              and c[0] == "input_text"]
+    inputs = [c for c in adb.calls if isinstance(c, tuple) and c[0] == "input_text"]
     assert inputs == [("input_text", "Ще актуально")]
     assert storage.outbox_list("sent")
     storage.close()
@@ -404,16 +406,15 @@ def test_instagram_messenger_auto_send_and_open_chats(tmp_path):
 
     adb = _ADB([CHAT_XML], adb_prefix="adb -s emulator-5557")
     storage = InstagramStorage(":memory:")
-    messenger = InstagramMessenger(adb=adb, storage=storage,
-                                   messenger_hints=MESSENGER_HINTS)
-    result = messenger.send_reply("chat:x", " Ціна актуальна ",
-                                  auto_send=True)
+    messenger = InstagramMessenger(adb=adb, storage=storage, messenger_hints=MESSENGER_HINTS)
+    result = messenger.send_reply("chat:x", " Ціна актуальна ", auto_send=True)
     assert result["status"] == "sent"
     assert result["adb"]["code"] == 0
     # open_chats — deep link Direct inbox с serial-префиксом:
     messenger.open_chats()
-    assert any("direct/inbox" in c and "adb -s emulator-5557" in c
-               for c in adb.calls if isinstance(c, str))
+    assert any(
+        "direct/inbox" in c and "adb -s emulator-5557" in c for c in adb.calls if isinstance(c, str)
+    )
     storage.close()
 
 
@@ -421,8 +422,7 @@ def test_instagram_messenger_list_chats_uses_hints(tmp_path):
     from aios_core.modules.instagram import InstagramMessenger
 
     adb = _ADB([INBOX_XML])
-    messenger = InstagramMessenger(adb=adb, storage=None,
-                                   messenger_hints=MESSENGER_HINTS)
+    messenger = InstagramMessenger(adb=adb, storage=None, messenger_hints=MESSENGER_HINTS)
     threads = messenger.list_chats()
     assert len(threads) == 1
     assert threads[0].interlocutor == "buyer_anna"
@@ -432,16 +432,19 @@ def test_instagram_messenger_list_chats_uses_hints(tmp_path):
 def test_instagram_bootstrap_doctor_report(tmp_path, monkeypatch):
     from aios_core.modules.instagram import InstagramBootstrap
 
-    _write_instagram_yaml(tmp_path, {
-        "card_markers": [{"resource_id": "com.instagram.android:id/shop_card"}],
-        "detail": DETAIL_HINTS,
-    })
-    monkeypatch.setenv("AIOS_SECRET__INSTAGRAM__USERNAME",
-                       "user-secret-value")
-    monkeypatch.setenv("AIOS_SECRET__INSTAGRAM__PASSWORD",
-                       "pass-secret-value")
+    _write_instagram_yaml(
+        tmp_path,
+        {
+            "card_markers": [{"resource_id": "com.instagram.android:id/shop_card"}],
+            "detail": DETAIL_HINTS,
+        },
+    )
+    monkeypatch.setenv("AIOS_SECRET__INSTAGRAM__USERNAME", "user-secret-value")
+    monkeypatch.setenv("AIOS_SECRET__INSTAGRAM__PASSWORD", "pass-secret-value")
     bootstrap = InstagramBootstrap(
-        adb=_ADB(), serial="emulator-5554", directory=str(tmp_path),
+        adb=_ADB(),
+        serial="emulator-5554",
+        directory=str(tmp_path),
         which=lambda name: "/usr/bin/adb" if name == "adb" else None,
     )
     report = bootstrap.doctor()
@@ -460,19 +463,20 @@ def test_instagram_bootstrap_missing_pieces(tmp_path, monkeypatch):
     monkeypatch.delenv("AIOS_SECRET__INSTAGRAM__USERNAME", raising=False)
     monkeypatch.delenv("AIOS_SECRET__INSTAGRAM__PASSWORD", raising=False)
     bootstrap = InstagramBootstrap(
-        directory=str(tmp_path), which=lambda name: None,
+        directory=str(tmp_path),
+        which=lambda name: None,
     )
     report = bootstrap.doctor()
     assert report["ok"] is False
     assert report["checks"]["adb_binary"]["ok"] is False
-    assert "AIOS_SECRET__INSTAGRAM__PASSWORD" in \
-        report["checks"]["secrets_password"]["detail"]
+    assert "AIOS_SECRET__INSTAGRAM__PASSWORD" in report["checks"]["secrets_password"]["detail"]
     assert report["checks"]["descriptor"]["ok"] is False
 
 
 # ---------------------------------------------------------------------------
 # CLI instagram group + cron-plan marker lines
 # ---------------------------------------------------------------------------
+
 
 def test_cli_instagram_doctor_json(monkeypatch, capsys):
     from aios_cli import main
@@ -490,8 +494,7 @@ def test_cli_instagram_dm_guarded_flow(tmp_path, capsys):
     from aios_cli import main
 
     db = str(tmp_path / "ig.sqlite")
-    main(["instagram", "dm-send", "--chat", "chat:anna",
-          "--text", "Добрий день!", "--db", db])
+    main(["instagram", "dm-send", "--chat", "chat:anna", "--text", "Добрий день!", "--db", db])
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "queued"
     assert out["outbox_id"] >= 1
@@ -521,8 +524,7 @@ def test_cli_instagram_login_drive_with_fakes(tmp_path, capsys, monkeypatch):
             return FEED_XML
 
     monkeypatch.setattr(ig_mod, "InstagramLoginDriver", FakeLoginDriver)
-    main(["instagram", "login-drive", "--query", "кросівки",
-          "--directory", str(tmp_path)])
+    main(["instagram", "login-drive", "--query", "кросівки", "--directory", str(tmp_path)])
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "ok"
     assert out["login_wall"] is False
@@ -530,8 +532,7 @@ def test_cli_instagram_login_drive_with_fakes(tmp_path, capsys, monkeypatch):
     assert out["cards"][0]["price"] == 3200.0
 
 
-def test_cli_cron_plan_includes_marker_check_lines(tmp_path, capsys,
-                                                   monkeypatch):
+def test_cli_cron_plan_includes_marker_check_lines(tmp_path, capsys, monkeypatch):
     from aios_cli import main
 
     monkeypatch.setenv("AIOS_PROFILES_DB", str(tmp_path / "profiles.sqlite"))

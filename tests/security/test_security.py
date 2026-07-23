@@ -20,6 +20,7 @@ class TestSQLInjection:
 
         # Create test database
         import sqlite3
+
         conn = sqlite3.connect(str(db_path))
         conn.execute("CREATE TABLE tasks (id TEXT, status TEXT)")
         conn.execute("INSERT INTO tasks VALUES ('1', 'completed')")
@@ -33,9 +34,7 @@ class TestSQLInjection:
             # Should not execute malicious SQL
             try:
                 count = exporter.export_tasks(
-                    str(tmp_path / "export.json"),
-                    format="json",
-                    status=malicious_input
+                    str(tmp_path / "export.json"), format="json", status=malicious_input
                 )
                 # Should return 0 results, not crash
                 assert count == 0
@@ -139,6 +138,7 @@ class TestInputValidation:
 
         # Create test database
         import sqlite3
+
         conn = sqlite3.connect(str(db_path))
         conn.execute("CREATE TABLE test (id INTEGER)")
         conn.commit()
@@ -164,6 +164,7 @@ class TestInputValidation:
 
         # Create database with many records
         import sqlite3
+
         conn = sqlite3.connect(str(db_path))
         conn.execute("CREATE TABLE tasks (id INTEGER, data TEXT)")
 
@@ -176,10 +177,7 @@ class TestInputValidation:
 
         # Try to export
         with DataExporter(str(db_path)) as exporter:
-            count = exporter.export_tasks(
-                str(tmp_path / "large_export.json"),
-                format="json"
-            )
+            count = exporter.export_tasks(str(tmp_path / "large_export.json"), format="json")
 
             # Should handle large export
             assert count == 10000
@@ -247,6 +245,7 @@ class TestBackupSecurity:
 
         # Create test database
         import sqlite3
+
         conn = sqlite3.connect(str(db_path))
         conn.execute("CREATE TABLE test (id INTEGER, value TEXT)")
         conn.execute("INSERT INTO test VALUES (1, 'secret')")
@@ -264,6 +263,7 @@ class TestBackupSecurity:
 
         # Tamper with backup
         import glob
+
         backup_files = glob.glob(str(backup_dir / "*.sqlite"))
         if backup_files:
             with open(backup_files[0], "r+b") as f:
@@ -283,6 +283,7 @@ class TestBackupSecurity:
 
         # Create test database with sensitive data
         import sqlite3
+
         conn = sqlite3.connect(str(db_path))
         conn.execute("CREATE TABLE secrets (id INTEGER, data TEXT)")
         conn.execute("INSERT INTO secrets VALUES (1, 'password123')")
@@ -383,12 +384,15 @@ class TestDataIsolation:
 
         # Create database with memory records
         import sqlite3
+
         conn = sqlite3.connect(str(db_path))
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE personal_memory (
                 id TEXT, owner TEXT, content TEXT, created_at TEXT
             )
-        """)
+        """
+        )
         conn.execute("INSERT INTO personal_memory VALUES ('1', 'user1', 'secret1', '2026-01-01')")
         conn.execute("INSERT INTO personal_memory VALUES ('2', 'user2', 'secret2', '2026-01-01')")
         conn.commit()
@@ -397,9 +401,7 @@ class TestDataIsolation:
         # Export only user1's memory
         with DataExporter(str(db_path)) as exporter:
             count = exporter.export_memory(
-                str(tmp_path / "user1_memory.json"),
-                format="json",
-                subject="user1"
+                str(tmp_path / "user1_memory.json"), format="json", subject="user1"
             )
 
             # Should only export user1's records
@@ -407,6 +409,7 @@ class TestDataIsolation:
 
             # Verify content
             import json
+
             with open(tmp_path / "user1_memory.json") as f:
                 data = json.load(f)
                 assert len(data["data"]) == 1

@@ -152,8 +152,7 @@ def write_parser(
 
     if not dry_run and not init_path.exists():
         raise ValueError(
-            f"module not scaffolded: {module_dir} "
-            "(run aios platforms scaffold first)"
+            f"module not scaffolded: {module_dir} " "(run aios platforms scaffold first)"
         )
     if parser_path.exists() and not overwrite:
         raise ValueError(

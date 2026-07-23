@@ -126,9 +126,7 @@ class ProfileParser:
                 else ET.parse(text_or_path).getroot()
             )
         return [
-            text
-            for node in root.iter("node")
-            if (text := normalize_text(node.attrib.get("text")))
+            text for node in root.iter("node") if (text := normalize_text(node.attrib.get("text")))
         ]
 
 
