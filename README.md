@@ -1,9 +1,10 @@
 # AIOS
 
 ![Version](https://img.shields.io/badge/version-9.2.0--production-blue)
-![Tests](https://img.shields.io/badge/tests-1010%20passing-green)
+![Tests](https://img.shields.io/badge/tests-1124%20passing-green)
+![API](https://img.shields.io/badge/API-169%20routes-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![License](https://img.shields.io/badge/license-proprietary-orange)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-12%20workflows-green)
 
 Self-evolving distributed operating system for application intelligence,
 automated testing, API generation, skill evolution and collective learning.
@@ -11,16 +12,14 @@ Powered by the **Octopus Runtime**.
 
 ## 📚 Documentation
 
-Full documentation is available at **[GitHub Pages](https://jotalbot.github.io/AIOS/)** or locally:
+Full documentation at **[GitHub Pages](https://jotalbot.github.io/AIOS/)** or locally:
 
 ```bash
-# MkDocs site (recommended)
-pip install mkdocs mkdocs-material mkdocs-minify-plugin
-mkdocs serve          # http://localhost:8000
+# MkDocs site
+make docs-serve       # http://localhost:8000
 
 # Sphinx PDF
-pip install sphinx sphinx-rtd-theme
-cd docs/source && make latexpdf
+make docs-pdf
 ```
 
 Key docs:
@@ -32,78 +31,120 @@ Key docs:
 
 ## Components
 
-- **Constitution and policies** — 67 articles, rule loading and runtime decision pipeline
-- **Orchestrator** — sequential task execution with constitutional evaluation
-- **SQLite persistence** — audit events, approvals, memory, knowledge graph and evolution records
-- **MCP gateway** — JSON-RPC 2.0 tool/resource/prompt interface
-- **REST API** — Starlette application, 143 routes, bearer auth
-- **Production Autopilot** — industrial exploitation with compliance, pacing, predictive risk
-- **AI Advisor** — intelligent advisor with draft-only mode and human-approve
-- **SDK v4.2.0** — official Python client (async + sync, 25+ methods)
-- **Marketplace v2** — publish and discover platform plugins
-- **Web Dashboard** — real-time monitoring (React)
+| Component | Description | Status |
+|-----------|-------------|--------|
+| **Constitution Engine** | 67 articles, runtime decision pipeline | ✅ |
+| **Orchestrator** | Sequential task execution | ✅ |
+| **SQLite Persistence** | Audit, approvals, memory, knowledge graph | ✅ |
+| **MCP Gateway** | JSON-RPC 2.0 tools/resources/prompts | ✅ |
+| **REST API** | Starlette, 169 routes, bearer auth | ✅ |
+| **Production Autopilot** | Compliance, pacing, predictive risk | ✅ |
+| **AI Advisor** | Draft-only, human-approve, template registry | ✅ |
+| **SDK v4.2.0** | Async/sync Python client, 25+ methods | ✅ |
+| **Marketplace v2** | Publish & discover platform plugins | ✅ |
+| **Data Export/Import** | JSON/CSV export of tasks, memory, audit, KG | ✅ |
+| **Secret Manager** | API key generation, rotation, TTL, HMAC | ✅ |
+| **Backup Manager** | Automated backups, compression, verification | ✅ |
+| **Webhook System** | Event notifications (Slack/Teams/custom HTTP) | ✅ |
+| **Web Dashboard** | Real-time monitoring (React) | ✅ |
 
-## Quick start (development)
+## Quick start
 
 ```bash
-python -m pip install -r requirements.txt
+# Install
+pip install -r requirements.txt
+
+# Test (1124 tests)
 python -m pytest -q
+
+# Demo
 python demo.py
+
+# REST API
+export AIOS_API_KEYS='{"my-key":{"subject":"dev","roles":["admin"]}}'
+python run_rest_api.py --host 127.0.0.1 --port 8000
 ```
 
-## Docker (recommended)
+## Docker
 
 ```bash
+# Development
 docker-compose up -d --build
-curl http://localhost:8000/health
-curl http://localhost:8000/metrics
+
+# Production (API + autopilot + Prometheus + Grafana)
+docker-compose -f docker-compose.prod.yml up -d --build
 ```
+
+## CLI
+
+```bash
+# Core
+aios stats                           # System statistics
+aios platforms list                  # List platforms
+aios platforms scaffold --name prom  # Create platform skeleton
+
+# Admin operations
+aios admin export --type all --format json --output ./export
+aios admin import --input data.json
+
+# API key management
+aios admin keys generate --subject user1 --roles admin --ttl 90
+aios admin keys list
+aios admin keys rotate --key <key> --ttl 90
+aios admin keys health
+
+# Backup management
+aios admin backup create --label pre-deploy
+aios admin backup list
+aios admin backup verify --backup-id <id>
+aios admin backup restore --backup-id <id>
+aios admin backup health
+
+# Webhook notifications
+aios admin webhooks register --name slack --url https://hooks.slack.com/... --events ban_detected
+aios admin webhooks list
+aios admin webhooks notify --event ban_detected --data '{"profile":"ig_1"}' --severity critical
+aios admin webhooks health
+```
+
+## API Endpoints (169 routes)
+
+### Admin API (26 endpoints)
+
+| Category | Key Endpoints |
+|----------|--------------|
+| **Export/Import** | `POST /api/v1/admin/export`, `POST /api/v1/admin/import` |
+| **API Keys** | `POST /api/v1/admin/keys/generate`, `GET /api/v1/admin/keys`, `POST /api/v1/admin/keys/rotate`, `POST /api/v1/admin/keys/revoke` |
+| **Backups** | `POST /api/v1/admin/backups`, `POST /api/v1/admin/backups/verify`, `POST /api/v1/admin/backups/restore` |
+| **Webhooks** | `POST /api/v1/admin/webhooks`, `POST /api/v1/admin/webhooks/notify`, `GET /api/v1/admin/webhooks/health` |
+
+All admin endpoints require `admin` role.
 
 ## Production Exploitation
 
 ```bash
-# 2-week GA simulation (3 IG profiles, 168 cycles)
-python run_production_autopilot.py --simulate-2weeks --cycles-per-day 24 --verbose
+# 2-week GA simulation
+python run_production_autopilot.py --simulate-2weeks --verbose
 
-# Daemon mode (real exploitation)
+# Daemon mode
 python run_production_autopilot.py --daemon --interval 900
 
-# Docker production (API + autopilot + Prometheus + Grafana)
-docker-compose -f docker-compose.prod.yml up -d --build
+# Health check
+python run_production_autopilot.py --health
 ```
 
-See [Production Exploitation Guide](docs/PRODUCTION.md) for details.
-
-## Monitoring
+## Monitoring & Alerts
 
 ```bash
-# CLI monitor
-python monitor.py --url http://localhost:8000 --interval 30
-
 # Prometheus metrics
 curl http://localhost:8000/metrics
 
-# Grafana dashboards (production)
+# Webhook metrics
+aios admin webhooks health
+
+# Grafana dashboards
 open http://localhost:3000
 ```
-
-## REST API (requires authentication)
-
-```bash
-export AIOS_API_KEYS='{"local-development-key":{"subject":"developer","roles":["admin"]}}'
-python run_rest_api.py --host 127.0.0.1 --port 8000 --db ./aios.sqlite
-curl -H 'Authorization: Bearer local-development-key' http://127.0.0.1:8000/api/v1/stats
-```
-
-For the standalone MCP HTTP endpoint:
-
-```bash
-export AIOS_API_KEYS='{"local-development-key":{"subject":"developer","roles":["admin"]}}'
-python run_mcp_server.py --host 127.0.0.1 --port 8471 --db ./aios.sqlite
-```
-
-`GET /health` is public. Every other HTTP endpoint fails closed with `503` if
-no API keys are configured and responds with `401` without a valid bearer key.
 
 ## Supported Platforms
 
@@ -119,39 +160,57 @@ no API keys are configured and responds with `401` without a valid bearer key.
 | Bigl.ua | com.bigl.ua | ✅ Scaffold |
 | Shafa.ua | com.shafa.ua | ✅ Scaffold |
 
+## CI/CD (12 workflows)
+
+| Workflow | Purpose |
+|----------|---------|
+| `ci.yml` | Tests (Python 3.11-3.13) |
+| `docs.yml` | GitHub Pages deploy |
+| `docs-check.yml` | MkDocs strict build |
+| `codeql.yml` | Security scanning |
+| `docker.yml` | Multi-arch Docker + Trivy |
+| `coverage.yml` | Codecov integration |
+| `android.yml` | Android emulator tests |
+| `full-ci-cd.yml` | Full CI/CD + deploy |
+| `labeler.yml` | Auto-label PRs |
+| `release-drafter.yml` | Auto release notes |
+| `release.yml` | Release on tag |
+| `stale.yml` | Auto-close stale issues |
+
 ## Testing
 
 ```bash
-python -m pytest -q
+# All tests
+python -m pytest -q                    # 1124 tests
+
+# With coverage
+python -m pytest --cov=aios_core
+
+# Specific module
+python -m pytest tests/test_webhook_manager.py -v
 ```
-
-The suite covers persistence, constitutional policy, orchestration, MCP,
-REST, evolution state transitions, production autopilot and API security regressions.
-
-**Current:** 1010 tests, 997 passed (13 require real Android devices).
 
 ## Security
 
-Read [SECURITY.md](SECURITY.md) before deploying. In particular, use TLS, a
-secret manager, a persistent database and a reverse proxy; do not bind a
-production service directly to a public interface.
+Read [SECURITY.md](SECURITY.md) before deploying. Includes:
+- Secrets rotation checklist (GitHub, Instagram, API keys, DB, Network)
+- Role-based access control (viewer, writer, operator, approver, admin)
+- Data isolation per API key subject
+- TLS and reverse proxy requirements
 
-**Secrets rotation checklist** included — covers GitHub PAT, Instagram credentials,
-API keys, database encryption and network security.
-
-## Status
+## Project Stats
 
 | Metric | Value |
 |--------|-------|
 | Version | 9.2.0-production |
-| Tests | 1010 (997 passed) |
-| API routes | 143 |
-| Constitution | 67 articles |
-| Platforms | 9 supported |
-| Android milestones | M1–M8 ✅ |
-| SDK | v4.2.0 |
-| Marketplace | v2 |
-| Production sim | 14d / 3 profiles / 0 bans / 93.3% success |
+| Tests | 1124 |
+| API routes | 169 |
+| CLI commands | 35+ |
+| Constitution articles | 67 |
+| Platforms | 9 |
+| CI/CD workflows | 12 |
+| Core modules | ~250 |
+| Documentation pages | 162+ |
 
 ## Contact
 
