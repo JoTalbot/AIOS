@@ -2,39 +2,114 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "aios.fullname" . }}
-  labels:
-    {{- include "aios.labels" . | nindent 4 }}
+  labels: {{- include "aios.labels" . | nindent 4 }}
 spec:
+  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
+  {{- end }}
   selector:
-    matchLabels:
-      {{- include "aios.selectorLabels" . | nindent 6 }}
+    matchLabels: {{- include "aios.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      labels:
-        {{- include "aios.selectorLabels" . | nindent 8 }}
+      annotations: {{- toYaml .Values.podAnnotations | nindent 8 }}
+      labels: {{- include "aios.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "aios.fullname" . }}
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: aios
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        # --- Core API ---
+        - name: api
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["gunicorn", "run_rest_api:app", "--bind", "0.0.0.0:8000", "--workers", "4", "-k", "uvicorn.workers.UvicornWorker"]
           ports:
             - name: http
               containerPort: 8000
               protocol: TCP
           env:
-            {{- toYaml .Values.env | nindent 12 }}
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 10
+            - name: AIOS_API_KEYS
+              value: {{ .Values.apiKeys | toJson | quote }}
+            {{- range .Values.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          {{- with .Values.resources }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.startupProbe }}
+          startupProbe: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /etc/aios
+              readOnly: true
+
+        # --- MCP Gateway (optional) ---
+        {{- if .Values.serviceMcp.enabled }}
+        - name: mcp
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "run_mcp_server.py", "--host", "0.0.0.0", "--port", "8471", "--db", "/data/aios.sqlite"]
+          ports:
+            - name: mcp
+              containerPort: 8471
+              protocol: TCP
+          env:
+            {{- range .Values.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          {{- with .Values.resourcesMcp }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /etc/aios
+              readOnly: true
+        {{- end }}
+
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "aios.fullname" . }}-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: config
+          projected:
+            sources:
+              - configMap:
+                  name: {{ include "aios.fullname" . }}-config
+              {{- if .Values.constitution.enabled }}
+              - configMap:
+                  name: {{ include "aios.fullname" . }}-constitution
+              {{- end }}
+              {{- if .Values.policies.enabled }}
+              - configMap:
+                  name: {{ include "aios.fullname" . }}-policies
+              {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}

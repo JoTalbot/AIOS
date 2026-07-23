@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "aios.fullname" . }}-config
+  labels: {{- include "aios.labels" . | nindent 4 }}
+data:
+  aios_config.yaml: |
+    database:
+      path: /data/aios.sqlite
+    backup:
+      directory: /data/backups
+      retention_days: 30
+      max_backups: 10
+      compress: false
+    logging:
+      level: INFO
+    pacing:
+      actions_per_hour: 60
+      jitter_seconds: 1.6
+    platforms:
+      olx:
+        name: olx
+        package: ua.slando
+        enabled: true
+      instagram:
+        name: instagram
+        package: com.instagram.android
+        enabled: true
+      facebook:
+        name: facebook
+        package: com.facebook.katana
+        enabled: true

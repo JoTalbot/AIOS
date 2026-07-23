@@ -1,36 +1,131 @@
-replicaCount: 2
+# AIOS Helm Values — v9.3.1
+# All values can be overridden via --set or a custom values file.
 
+# -- Number of API replicas
+replicaCount: 3
+
+# -- Container image configuration
 image:
-  repository: aios
+  repository: ghcr.io/jotalbot/aios
   pullPolicy: IfNotPresent
-  tag: "9.3.0"
+  tag: "9.3.1"
 
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# -- Service account for the pods
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# -- Pod annotations (Prometheus scraping enabled by default)
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext: {}
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop: ["ALL"]
+  readOnlyRootFilesystem: false
+
+# -- Core API service
 service:
   type: ClusterIP
-  port: 80
+  port: 8000
   targetPort: 8000
-  name: aios
+  name: api
 
+# -- MCP Gateway service (optional)
 serviceMcp:
   enabled: true
   type: ClusterIP
   port: 8471
   targetPort: 8471
 
+# -- Dashboard service (optional)
+serviceDashboard:
+  enabled: false
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+# -- Resource limits and requests
 resources:
   limits:
-    cpu: 1000m
-    memory: 1Gi
+    cpu: 2000m
+    memory: 2Gi
   requests:
-    cpu: 200m
-    memory: 256Mi
+    cpu: 500m
+    memory: 512Mi
 
+# -- MCP Gateway resources (smaller footprint)
+resourcesMcp:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# -- Health check probes
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 15
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# -- Environment variables for the API container
 env:
-  - name: AIOS_API_KEYS
-    value: '{"k8s":{"subject":"admin","roles":["admin"]}}'
   - name: PYTHONUNBUFFERED
     value: "1"
+  - name: PYTHONDONTWRITEBYTECODE
+    value: "1"
+  - name: AIOS_DB_PATH
+    value: /data/aios.sqlite
+  - name: AIOS_BACKUP_DIR
+    value: /data/backups
+  - name: AIOS_CONSTITUTION_DIR
+    value: /etc/aios/constitution
+  - name: AIOS_POLICIES_DIR
+    value: /etc/aios/policies
 
+# -- API keys (injected as env var — use sealed secrets for production!)
+apiKeys:
+  k8s:
+    subject: admin
+    roles: ["admin"]
+
+# -- Constitution articles (mounted as ConfigMap)
+constitution:
+  enabled: true
+  path: /etc/aios/constitution
+
+# -- Policies (mounted as ConfigMap)
+policies:
+  enabled: true
+  path: /etc/aios/policies
+
+# -- Horizontal Pod Autoscaler
 autoscaling:
   enabled: true
   minReplicas: 2
@@ -38,20 +133,19 @@ autoscaling:
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
 
-# Persistence for SQLite (use PostgreSQL in prod via external secret)
+# -- Persistent storage for SQLite DB and backups
 persistence:
   enabled: true
-  size: 5Gi
+  size: 10Gi
   storageClass: ""
+  accessMode: ReadWriteOnce
 
-# Monitoring
-monitoring:
-  enabled: true
-  serviceMonitor:
-    enabled: false
-    interval: 30s
+# -- Prometheus ServiceMonitor (requires prometheus-operator)
+serviceMonitor:
+  enabled: false
+  interval: 30s
 
-# Ingress
+# -- Ingress configuration
 ingress:
   enabled: false
   className: "nginx"
@@ -63,14 +157,28 @@ ingress:
           pathType: Prefix
   tls: []
 
-# Device farm for Android (optional)
-deviceFarm:
-  enabled: false
-  emulators: 2
-  avdName: "AIOS_Slando"
+# -- Node selector for pod placement
+nodeSelector: {}
 
-# Additional labels
-podAnnotations:
-  prometheus.io/scrape: "true"
-  prometheus.io/port: "8000"
-  prometheus.io/path: "/metrics"
+# -- Tolerations for pod scheduling
+tolerations: []
+
+# -- Affinity rules (spread pods across nodes by default)
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: aios
+          topologyKey: kubernetes.io/hostname
+
+# -- Startup probe (waits for DB migration etc.)
+startupProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 30

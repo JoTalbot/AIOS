@@ -2,14 +2,42 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "aios.fullname" . }}
-  labels:
-    {{- include "aios.labels" . | nindent 4 }}
+  labels: {{- include "aios.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: http
+      targetPort: {{ .Values.service.targetPort }}
       protocol: TCP
-      name: http
-  selector:
-    {{- include "aios.selectorLabels" . | nindent 4 }}
+      name: {{ .Values.service.name }}
+  selector: {{- include "aios.selectorLabels" . | nindent 4 }}
+---
+{{- if .Values.serviceMcp.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aios.fullname" . }}-mcp
+  labels: {{- include "aios.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.serviceMcp.type }}
+  ports:
+    - port: {{ .Values.serviceMcp.port }}
+      targetPort: {{ .Values.serviceMcp.targetPort }}
+      protocol: TCP
+      name: mcp
+  selector: {{- include "aios.selectorLabels" . | nindent 4 }}
+{{- if .Values.serviceDashboard.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aios.fullname" . }}-dashboard
+  labels: {{- include "aios.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.serviceDashboard.type }}
+  ports:
+    - port: {{ .Values.serviceDashboard.port }}
+      targetPort: {{ .Values.serviceDashboard.targetPort }}
+      protocol: TCP
+      name: dashboard
+  selector: {{- include "aios.selectorLabels" . | nindent 4 }}
