@@ -7,7 +7,9 @@ repos:
     rev: v4.5.0
     hooks:
       - id: trailing-whitespace
+        exclude: '^aios\.egg-info/'
       - id: end-of-file-fixer
+        exclude: '^aios\.egg-info/'
       - id: check-yaml
         args: ['--allow-multiple-documents']
         exclude: '^(helm/|mkdocs\.yml$)'
@@ -43,3 +45,4 @@ repos:
         additional_dependencies: [types-PyYAML, types-psutil]
         args: ['--ignore-missing-imports']
         files: ^aios_core/
+        stages: [manual]

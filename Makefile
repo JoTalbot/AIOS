@@ -1,11 +1,12 @@
-.PHONY: help install test quality run dashboard demo clean docs docs-serve docs-pdf
+.PHONY: help install test quality typecheck run dashboard demo clean docs docs-serve docs-pdf
 
 help:
 	@echo "AIOS Makefile"
 	@echo ""
 	@echo "  make install     - Install dependencies"
 	@echo "  make test        - Run all tests"
-	@echo "  make quality     - Run all pre-commit quality checks"
+	@echo "  make quality     - Run automatic pre-commit quality checks"
+	@echo "  make typecheck   - Run the manual mypy type-check gate"
 	@echo "  make run         - Run REST API"
 	@echo "  make dashboard   - Run Web Dashboard"
 	@echo "  make demo        - Run v4.1 demo"
@@ -22,6 +23,9 @@ test:
 
 quality:
 	pre-commit run --all-files
+
+typecheck:
+	pre-commit run mypy --all-files --hook-stage manual
 
 run:
 	python run_rest_api.py
