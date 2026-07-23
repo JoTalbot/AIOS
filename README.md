@@ -4,7 +4,7 @@
 ![Tests](https://img.shields.io/badge/tests-1255%20passing-green)
 ![API](https://img.shields.io/badge/API-169%20routes-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![CI/CD](https://img.shields.io/badge/CI%2FCD-12%20workflows-green)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-13%20workflows-green)
 
 Self-evolving distributed operating system for application intelligence,
 automated testing, API generation, skill evolution and collective learning.
@@ -160,7 +160,7 @@ open http://localhost:3000
 | Bigl.ua | com.bigl.ua | ✅ Scaffold |
 | Shafa.ua | com.shafa.ua | ✅ Scaffold |
 
-## CI/CD (12 workflows)
+## CI/CD (13 workflows)
 
 | Workflow | Purpose |
 |----------|---------|
@@ -176,6 +176,7 @@ open http://localhost:3000
 | `release-drafter.yml` | Auto release notes |
 | `release.yml` | Release on tag |
 | `stale.yml` | Auto-close stale issues |
+| `secrets.yml` | Gitleaks secret scanning |
 
 ## Testing
 
@@ -217,7 +218,7 @@ Read [SECURITY.md](SECURITY.md) before deploying. Includes:
 | CLI commands | 35+ |
 | Constitution articles | 67 |
 | Platforms | 9 |
-| CI/CD workflows | 12 |
+| CI/CD workflows | 13 |
 | Core modules | ~250 |
 | Documentation pages | 162+ |
 
