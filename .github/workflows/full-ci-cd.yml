@@ -22,7 +22,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 env:
   ANDROID_SDK_ROOT: /opt/android-sdk
