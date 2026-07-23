@@ -1,139 +1,179 @@
+# AIOS Production Stack — v9.3.1
+# Services: API, MCP, Dashboard, Autopilot, Telegram Bot, Prometheus, Grafana
+#
+# Usage:
+#   docker-compose -f docker-compose.prod.yml up -d
+#   docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
+#
+# Environment (.env or shell):
+#   AIOS_API_KEYS, AIOS_TELEGRAM_TOKEN (optional), GRAFANA_PASSWORD
+
 services:
   aios-api:
     build: .
-    container_name: aios-api-prod
-    ports:
-      - "8000:8000"
+    container_name: aios-api
+    ports: ["8000:8000"]
     environment:
-      - AIOS_API_KEYS=${AIOS_API_KEYS:-{"prod-key":{"subject":"prod","roles":["admin"]}}}
-      - AIOS_PROFILES_DB=/app/data/profiles.sqlite
-      - AIOS_DEVICES_DB=/app/data/devices.sqlite
-      - AIOS_SHARDS_DB=/app/data/shards.sqlite
-      - AIOS_OLX_DB=/app/data/olx.sqlite
-      - PYTHONUNBUFFERED=1
-      - PYTHONDONTWRITEBYTECODE=1
+      AIOS_API_KEYS: ${AIOS_API_KEYS:-{"local":{"subject":"local","roles":["admin"]}}}
+      AIOS_PROFILES_DB: /app/data/profiles.sqlite
+      AIOS_DEVICES_DB: /app/data/devices.sqlite
+      AIOS_SHARDS_DB: /app/data/shards.sqlite
+      AIOS_OLX_DB: /app/data/olx.sqlite
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
+      - aios-data:/app/data
+      - aios-logs:/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
     deploy:
       resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    networks:
-      - aios-net
+        limits: {cpus: "2", memory: 2G}
+        reservations: {cpus: "0.5", memory: 512M}
+    logging:
+      driver: json-file
+      options: {max-size: "50m", max-file: "3"}
+    networks: [aios-net]
 
   aios-mcp:
     build: .
-    container_name: aios-mcp-prod
+    container_name: aios-mcp
     command: ["python", "run_mcp_server.py", "--host", "0.0.0.0", "--port", "8471", "--db", "/app/data/aios.sqlite"]
-    ports:
-      - "8471:8471"
+    ports: ["8471:8471"]
     environment:
-      - AIOS_API_KEYS=${AIOS_API_KEYS:-{"prod-key":{"subject":"prod","roles":["admin"]}}}
-      - AIOS_PROFILES_DB=/app/data/profiles.sqlite
-      - AIOS_DEVICES_DB=/app/data/devices.sqlite
-      - PYTHONUNBUFFERED=1
+      AIOS_API_KEYS: ${AIOS_API_KEYS:-{"local":{"subject":"local","roles":["admin"]}}}
+      AIOS_PROFILES_DB: /app/data/profiles.sqlite
+      AIOS_DEVICES_DB: /app/data/devices.sqlite
+      PYTHONUNBUFFERED: "1"
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
+      - aios-data:/app/data
+      - aios-logs:/app/logs
     depends_on:
-      aios-api:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - aios-net
-
-  aios-dashboard:
-    build: .
-    container_name: aios-dashboard-prod
-    command: ["python", "run_dashboard.py"]
-    ports:
-      - "8080:8080"
-    environment:
-      - AIOS_API_KEYS=${AIOS_API_KEYS:-{"prod-key":{"subject":"prod","roles":["admin"]}}}
-      - AIOS_PROFILES_DB=/app/data/profiles.sqlite
-    volumes:
-      - ./data:/app/data
-    depends_on:
-      aios-api:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - aios-net
-
-  aios-autopilot:
-    build: .
-    container_name: aios-autopilot-prod
-    command: ["python", "run_production_autopilot.py", "--daemon", "--interval", "900", "--config", "default_3_ig"]
-    environment:
-      - AIOS_API_KEYS=${AIOS_API_KEYS:-{"prod-key":{"subject":"prod","roles":["admin"]}}}
-      - AIOS_PROFILES_DB=/app/data/profiles.sqlite
-      - AIOS_DEVICES_DB=/app/data/devices.sqlite
-      - AIOS_WEBHOOK_URL=${AIOS_WEBHOOK_URL:-}
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-    depends_on:
-      aios-api:
-        condition: service_healthy
+      aios-api: {condition: service_healthy}
     restart: unless-stopped
     deploy:
       resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-    networks:
-      - aios-net
+        limits: {cpus: "1", memory: 1G}
+        reservations: {cpus: "0.25", memory: 256M}
+    logging:
+      driver: json-file
+      options: {max-size: "20m", max-file: "3"}
+    networks: [aios-net]
+
+  aios-dashboard:
+    build: .
+    container_name: aios-dashboard
+    command: ["python", "run_dashboard.py"]
+    ports: ["8080:8080"]
+    environment:
+      AIOS_API_KEYS: ${AIOS_API_KEYS:-{"local":{"subject":"local","roles":["admin"]}}}
+      AIOS_PROFILES_DB: /app/data/profiles.sqlite
+    volumes: [aios-data:/app/data]
+    depends_on:
+      aios-api: {condition: service_healthy}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 512M}
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+    networks: [aios-net]
+
+  aios-autopilot:
+    build: .
+    container_name: aios-autopilot
+    command: ["python", "run_production_autopilot.py", "--daemon", "--interval", "900"]
+    environment:
+      AIOS_API_KEYS: ${AIOS_API_KEYS:-{"local":{"subject":"local","roles":["admin"]}}}
+      AIOS_PROFILES_DB: /app/data/profiles.sqlite
+      AIOS_DEVICES_DB: /app/data/devices.sqlite
+      AIOS_WEBHOOK_URL: ${AIOS_WEBHOOK_URL:-}
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - aios-data:/app/data
+      - aios-logs:/app/logs
+    depends_on:
+      aios-api: {condition: service_healthy}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 1G}
+        reservations: {cpus: "0.25", memory: 256M}
+    logging:
+      driver: json-file
+      options: {max-size: "30m", max-file: "5"}
+    networks: [aios-net]
+
+  aios-telegram-bot:
+    build: .
+    container_name: aios-telegram-bot
+    command: ["python", "run_telegram_bot.py"]
+    profiles: [bot]
+    environment:
+      AIOS_TELEGRAM_TOKEN: ${AIOS_TELEGRAM_TOKEN:-}
+      AIOS_DB_PATH: /app/data/aios.sqlite
+      AIOS_PROFILES_DB: /app/data/profiles.sqlite
+      AIOS_OLX_DB: /app/data/olx.sqlite
+    volumes:
+      - aios-data:/app/data
+      - aios-logs:/app/logs
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 256M}
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+    networks: [aios-net]
 
   prometheus:
     image: prom/prometheus:latest
-    container_name: aios-prometheus-prod
-    ports:
-      - "9090:9090"
+    container_name: aios-prometheus
+    ports: ["9090:9090"]
     volumes:
-      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./deploy/monitoring/production-alerts.yml:/etc/prometheus/alerts.yml
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/production-alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus-data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.enable-lifecycle'
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-lifecycle
     restart: unless-stopped
-    networks:
-      - aios-net
+    logging:
+      driver: json-file
+      options: {max-size: "30m", max-file: "3"}
+    networks: [aios-net]
 
   grafana:
     image: grafana/grafana:latest
-    container_name: aios-grafana-prod
-    ports:
-      - "3000:3000"
+    container_name: aios-grafana
+    ports: ["3000:3000"]
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
-      - GF_USERS_ALLOW_SIGN_UP=false
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_LOG_MODE: console
     volumes:
-      - ./deploy/monitoring/grafana-production.json:/var/lib/grafana/dashboards/aios-production.json
-      - ./deploy/monitoring/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/aios.yml
+      - ./deploy/monitoring/grafana-production.json:/var/lib/grafana/dashboards/aios-production.json:ro
+      - ./deploy/monitoring/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/aios.yml:ro
       - grafana-data:/var/lib/grafana
-    depends_on:
-      - prometheus
+    depends_on: [prometheus]
     restart: unless-stopped
-    networks:
-      - aios-net
+    logging:
+      driver: json-file
+      options: {max-size: "20m", max-file: "3"}
+    networks: [aios-net]
 
 volumes:
+  aios-data:
+  aios-logs:
   prometheus-data:
   grafana-data:
 
