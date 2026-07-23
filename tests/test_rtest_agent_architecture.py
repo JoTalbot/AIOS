@@ -1,3 +1,0 @@
-"""agent_architecture round test."""
-from aios_core.agent_architecture import *
-def test(): assert True
