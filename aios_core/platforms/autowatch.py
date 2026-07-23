@@ -36,7 +36,7 @@ def _module_card_parser(agent_module: str):
             if isinstance(candidate, type) and attr.endswith("CardParser"):
                 return candidate()
     except (ImportError, AttributeError):
-        pass
+        pass  # Card parser not available for this platform
     return None
 
 

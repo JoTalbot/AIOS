@@ -254,8 +254,7 @@ class Orchestrator:
             except RuntimeError:
                 pass  # No running loop (sync context)
         except Exception:
-            pass
-        return task
+            pass  # Event publishing is best-effort — continue task execution
 
     def add_step(
         self,

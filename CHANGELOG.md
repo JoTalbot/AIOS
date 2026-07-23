@@ -8,30 +8,42 @@ All notable changes to this project will be documented in this file.
 - Заменены bare `except:` на `except Exception:` в 6 модулях
   (`android_predictive`, `hybrid_quantum_classical`, `load_testing`,
   `migration`, `self_healing`, `test_circuit_breaker`).
-- `print()` заменены на `logging` в `backup_manager.py` и
-  `data_export.py`.
-- `console_notification` в `monitoring.py` теперь использует
-  `logger.critical` вместо `print()`.
+- `print()` заменены на `logging` в `backup_manager.py`,
+  `data_export.py`, `graceful_shutdown.py`, `android_appium.py`,
+  `monitoring.py`.
+- Удалён неиспользуемый `import os` в `migration.py`.
+- Непродуктивные f-строки без интерполяции убраны
+  (`integration_examples`, `evolution_manager`).
 
 ### Improved
-- `SelfHealing` (`self_healing.py`): добавлены полные docstrings,
-  логирование ошибок восстановления, аннотации `Optional[Dict]`.
-- `HybridQuantumClassical`: fallback на классический режим теперь
-  пишется в лог с информацией об ошибке.
-- `MigrationManager`: ошибка чтения таблицы миграций логируется с
-  поясняющим сообщением.
-- Непродуктивные f-строки без интерполяции убраны в `integration_examples`
-  и `evolution_manager`.
+- 18 пустых `pass`-блоков аннотированы поясняющими комментариями:
+  `android_appium`, `android_ai_navigation`, `ai_advisor`,
+  `autonomy_manager`, `android_observability`, `apk_converter`,
+  `audit_logger`, `load_testing`, `marketplace`, `orchestrator`,
+  `platforms/__init__`, `platforms/autowatch`, `platforms/gateway`,
+  `platforms/shardexec`, `platforms/telemetry`.
+- `SelfHealing` (`self_healing.py`): полные docstrings, логирование
+  ошибок, аннотации `Optional[Dict]`.
+- `HybridQuantumClassical`: fallback логируется.
+- 60+ docstrings добавлены в 11 модулях: `ab_testing`,
+  `active_learning`, `advanced_security`, `adversarial`,
+  `agent_architecture`, `ai_safety` (5 safety-layer классов),
+  `ai_safety_causal_interpretability`, `ai_safety_dictionary_learning`,
+  `ai_safety_formal_verification`, `ai_safety_honest_ai`,
+  `storage` (10 public методов), `aios_cli` (10 функций).
 
 ### Documentation
-- `README.md` расширен (≈340 строк): архитектурная диаграмма, описание
-  проекта, prerequisites, структура проекта, пошаговый гайд «Adding a
-  new platform», секция Development.
+- `README.md` расширен (≈340 строк): архитектурная диаграмма,
+  prerequisites, структура проекта, гайд «Adding a new platform».
 - `CONTRIBUTING.md` расширен: процессы Code Review и Release.
-- `aios_cli.py`: 10 docstrings добавлены для ранее недокументированных
-  функций (`_add_olx_parsers`, `_run_olx`, `_run_platforms`,
-  `_run_profiles`, `_run_devices`, `_run_shards`, `main`,
-  `with_db`, `driver`, `_profile_line`).
+- `.gitignore` расширен: SQLite WAL/SHM, IDE, coverage, mypy, OS files.
+
+### Tests
+- Новые тесты: `test_active_learning` (4 теста), `test_config`
+  (4 теста).
+- Расширены: `test_rate_limiter` (+2 теста), `test_bigl_agent`
+  (+2 теста), `test_prom_agent` (+2 теста), `test_shafa_agent`
+  (+2 теста).
 
 ## [9.0.0] - 2026-07-21
 

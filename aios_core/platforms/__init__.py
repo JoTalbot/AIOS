@@ -122,4 +122,4 @@ __all__ = [
 try:
     load_catalog()
 except Exception:
-    pass
+    pass  # Catalog loading is best-effort on import

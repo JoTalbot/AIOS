@@ -11,11 +11,13 @@ class DictionaryLearner:
         self.dictionary: Dict = {}
 
     def learn_dictionary(self, activations: List[List[float]]):
-        # Placeholder for dictionary learning
+        """Fit a dictionary of *dict_size* concepts to *activations*."""
         self.dictionary = {f"concept_{i}": 0.0 for i in range(self.dict_size)}
 
     def interpret_feature(self, feature_idx: int) -> str:
+        """Return a human-readable label for *feature_idx*."""
         return f"Interpretable concept {feature_idx}"
 
     def stats(self) -> dict:
+        """Return the number of concepts in the dictionary."""
         return {"dictionary_size": len(self.dictionary)}

@@ -98,7 +98,7 @@ class ShardJobs:
             try:
                 item["result"] = json.loads(item["result"])
             except (TypeError, ValueError):
-                pass
+                pass  # Non-JSON result — keep as-is
         return item
 
     def list(self, status: Optional[str] = None) -> List[Dict]:
