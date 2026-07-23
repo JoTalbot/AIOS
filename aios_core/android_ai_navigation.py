@@ -24,7 +24,7 @@ from aios_core.android_parser import UIAutomatorParser, UIElement
 __all__ = ["ScreenEmbedding", "ScreenMatch", "AIScreenClassifier", "SelfHealingLocator"]
 
 
-def _text_vector(text: str) -> Dict[str, float]:
+def _text_vector(text: str) -> dict[str, float]:
     """Create vector representation for text content."""
     if not text:
         return {}
@@ -37,7 +37,7 @@ def _text_vector(text: str) -> Dict[str, float]:
     }
 
 
-def _geometry_vector(bounds: Tuple[int, int, int, int]) -> Dict[str, float]:
+def _geometry_vector(bounds: tuple[int, int, int, int]) -> dict[str, float]:
     """Create vector representation for element geometry."""
     x1, y1, x2, y2 = bounds
     width = max(x2 - x1, 1)
@@ -59,8 +59,8 @@ class ScreenEmbedding:
     name: str
     score: float
     matched_elements: int
-    embedding: List[float] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    embedding: list[float] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -76,18 +76,18 @@ class AIScreenClassifier:
     def __init__(self):
         self.parser = UIAutomatorParser("")
         self._embeddings: Dict[str, ScreenEmbedding] = {}
-        self._navigation_history: List[Dict[str, Any]] = []
+        self._navigation_history: List[dict[str, Any]] = []
         # Fixed: store actual vectors, not flat floats
-        self._pattern_cache: Dict[str, List[List[float]]] = defaultdict(list)
-        self._positioning_hints: Dict[str, Tuple[int, int]] = {}
+        self._pattern_cache: Dict[str, List[list[float]]] = defaultdict(list)
+        self._positioning_hints: Dict[str, tuple[int, int]] = {}
 
-    def _calculate_embedding(self, parser: UIAutomatorParser) -> List[float]:
+    def _calculate_embedding(self, parser: UIAutomatorParser) -> list[float]:
         """Calculate embedding vector for current screen."""
         elements = parser.find_clickable_elements()
         if not elements:
             return []
 
-        embedding_components: List[float] = []
+        embedding_components: list[float] = []
 
         screen_bounds = self._get_screen_bounds()
         embedding_components.extend(list(_geometry_vector(screen_bounds).values()))
@@ -109,11 +109,11 @@ class AIScreenClassifier:
         # cap to 64 dims for consistency
         return embedding_components[:64]
 
-    def _get_screen_bounds(self) -> Tuple[int, int, int, int]:
+    def _get_screen_bounds(self) -> tuple[int, int, int, int]:
         """Get screen bounds - would be determined by actual device dimensions."""
         return (0, 0, 1080, 1920)
 
-    def _calculate_similarity(self, vec1: List[float], vec2: List[float]) -> float:
+    def _calculate_similarity(self, vec1: list[float], vec2: list[float]) -> float:
         """Calculate cosine similarity between two vectors."""
         if not vec1 or not vec2:
             return 0.0
@@ -135,7 +135,7 @@ class AIScreenClassifier:
 
     def _generate_screen_signature(self, xml: str) -> str:
         """Generate a signature string for screen matching."""
-        signature_parts: List[str] = []
+        signature_parts: list[str] = []
         parser = UIAutomatorParser(xml)
         try:
             if parser.parse():
@@ -213,7 +213,7 @@ class AIScreenClassifier:
 
         return embedding_record
 
-    def _calculate_similarity_with_cache(self, vec: List[float], cache_key: str) -> float:
+    def _calculate_similarity_with_cache(self, vec: list[float], cache_key: str) -> float:
         """Calculate similarity with cached patterns."""
         if cache_key not in self._pattern_cache:
             return 0.0
@@ -233,7 +233,7 @@ class AIScreenClassifier:
 
         return total_similarity / count if count > 0 else 0.0
 
-    def _update_pattern_cache(self, key: str, embedding: List[float]):
+    def _update_pattern_cache(self, key: str, embedding: list[float]):
         """Update pattern cache with new screen data - FIXED to append vector, not extend."""
         if not key or not embedding:
             return
@@ -307,7 +307,7 @@ class AIScreenClassifier:
             return None
 
     def _select_best_match(
-        self, candidates: List[UIElement], parser: UIAutomatorParser
+        self, candidates: list[UIElement], parser: UIAutomatorParser
     ) -> Optional[UIElement]:
         """Select best match using enhanced similarity scoring."""
         if not candidates:
@@ -319,7 +319,7 @@ class AIScreenClassifier:
         best_score = -1.0
 
         for elem in candidates:
-            elem_embedding: List[float] = []
+            elem_embedding: list[float] = []
             text_vec = _text_vector(elem.text or "")
             elem_embedding.extend(list(text_vec.values()))
 
@@ -361,7 +361,7 @@ class AIScreenClassifier:
             bonus += 0.05
         return bonus
 
-    def predict_element_position(self, element: UIElement) -> Tuple[int, int]:
+    def predict_element_position(self, element: UIElement) -> tuple[int, int]:
         """Predict optimal tap position based on historical patterns - FIXED to return center."""
         if element.resource_id in self._positioning_hints:
             return self._positioning_hints[element.resource_id]
@@ -381,7 +381,7 @@ class AIScreenClassifier:
         """Record successful tap position for future prediction."""
         self._positioning_hints[resource_id] = (x, y)
 
-    def generate_test_cases(self, flows: List[List[str]]) -> List[Dict[str, Any]]:
+    def generate_test_cases(self, flows: List[list[str]]) -> List[dict[str, Any]]:
         """Automated test case generation from user flows (M7)."""
         cases = []
         for idx, flow in enumerate(flows):
@@ -401,9 +401,9 @@ class SelfHealingLocator:
     def __init__(self, driver: AndroidDriver):
         self.driver = driver
         self.parser = UIAutomatorParser("")
-        self._failure_counts: Dict[str, int] = defaultdict(int)
+        self._failure_counts: dict[str, int] = defaultdict(int)
 
-    def find(self, hints: List[str]) -> Optional[UIElement]:
+    def find(self, hints: list[str]) -> Optional[UIElement]:
         """Execute find."""
         ctx = self.driver.dump_ui()
         self.parser = UIAutomatorParser(ctx.xml)
@@ -423,7 +423,7 @@ class SelfHealingLocator:
             self._failure_counts[hint] += 1
         return None
 
-    def tap_hint(self, hints: List[str]) -> bool:
+    def tap_hint(self, hints: list[str]) -> bool:
         """Execute tap hint."""
         elem = self.find(hints)
         if elem is None:

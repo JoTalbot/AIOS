@@ -61,7 +61,7 @@ def default_start_emulator(avd_name: str) -> None:
     )
 
 
-def default_wait_serial(known_serials: List[str], timeout_s: int = 180) -> Optional[str]:
+def default_wait_serial(known_serials: list[str], timeout_s: int = 180) -> str | None:
     """Ждёт появления НОВОГО serial в `adb devices` и его загрузки."""
     known = set(known_serials)
     deadline = time.time() + timeout_s
@@ -82,7 +82,7 @@ def default_wait_serial(known_serials: List[str], timeout_s: int = 180) -> Optio
     return None
 
 
-def default_list_devices() -> List[str]:
+def default_list_devices() -> list[str]:
     """Serial-ы всех устройств в состоянии `device`."""
     result = _run("adb devices")
     return [
@@ -110,8 +110,8 @@ def ensure_device(
     avd_prefix: str = "aios",
     create_avd: Optional[Callable[[str], bool]] = None,
     start_emulator: Optional[Callable[[str], None]] = None,
-    wait_serial: Optional[Callable[[List[str]], Optional[str]]] = None,
-    list_devices: Callable[[], List[str]] = default_list_devices,
+    wait_serial: Optional[Callable[[list[str]], str | None]] = None,
+    list_devices: Callable[[], list[str]] = default_list_devices,
 ) -> Optional[Dict]:
     """Гарантирует профилю арендованное устройство.
 
@@ -163,7 +163,7 @@ class PoolMonitor:
     def __init__(
         self,
         pool: Optional[DevicePool] = None,
-        probe: Callable[[], List[str]] = default_list_devices,
+        probe: Callable[[], list[str]] = default_list_devices,
         reap_after_s: float = 900.0,
     ):
         self.pool = pool or DevicePool()

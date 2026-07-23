@@ -11,7 +11,7 @@ class KANLayer:
         self.out_dim = out_dim
         self.grid_size = grid_size
 
-    def forward(self, x: List[float]) -> List[float]:
+    def forward(self, x: list[float]) -> list[float]:
         """Execute forward."""
         # Placeholder for B-spline activation
         return [sum(x) / len(x)] * self.out_dim
@@ -24,10 +24,10 @@ class KANLayer:
 class KAN:
     """Kolmogorov-Arnold Network."""
 
-    def __init__(self, layers: List[int]):
+    def __init__(self, layers: list[int]):
         self.layers = [KANLayer(layers[i], layers[i + 1]) for i in range(len(layers) - 1)]
 
-    def forward(self, x: List[float]) -> List[float]:
+    def forward(self, x: list[float]) -> list[float]:
         """Execute forward."""
         for layer in self.layers:
             x = layer.forward(x)

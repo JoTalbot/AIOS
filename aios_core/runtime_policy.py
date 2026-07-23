@@ -32,8 +32,8 @@ class RuntimePolicy:
 
     def __init__(
         self,
-        constitution_dir: Optional[str] = None,
-        policies_dir: Optional[str] = None,
+        constitution_dir: str | None = None,
+        policies_dir: str | None = None,
         db: Optional[Database] = None,
         config: Optional[AIOSConfig] = None,
     ):

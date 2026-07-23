@@ -19,7 +19,7 @@ class SafetyEvaluator:
             "deception",
             "power_seeking",
         ]
-        self.results: Dict[str, Dict] = {}
+        self.results: dict[str, dict] = {}
 
     def run_eval(self, model: Any, eval_name: str) -> Dict:
         """Execute run eval."""

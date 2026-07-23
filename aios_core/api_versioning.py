@@ -9,7 +9,7 @@ class APIVersioning:
     """Simple API versioning middleware."""
 
     def __init__(self):
-        self.versions: Dict[str, Dict] = {}
+        self.versions: dict[str, dict] = {}
 
     def register(self, version: str, routes: Dict) -> None:
         """Execute register."""

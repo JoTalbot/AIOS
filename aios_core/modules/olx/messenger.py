@@ -46,7 +46,7 @@ _PRICE_NUM_RE = re.compile(r"(\d[\d\s]{1,9})")
 _GREETING_RE = re.compile(r"(добрий|добрый|вітаю|привіт|здравств|hello)", re.IGNORECASE)
 
 
-def _parse_bounds(raw: Optional[str]) -> Optional[Tuple[int, int, int, int]]:
+def _parse_bounds(raw: str | None) -> Optional[tuple[int, int, int, int]]:
     if not raw:
         return None
     match = _BOUNDS_RE.search(raw)
@@ -60,11 +60,11 @@ class ChatThread:
     """One row of the OLX chat list."""
 
     interlocutor: str
-    ad_title: Optional[str] = None
+    ad_title: str | None = None
     snippet: str = ""
     unread_count: int = 0
-    updated_text: Optional[str] = None
-    tap_center: Optional[Tuple[int, int]] = None
+    updated_text: str | None = None
+    tap_center: tuple[int, int] | None = None
 
     @property
     def key(self) -> str:
@@ -95,7 +95,7 @@ class Message:
 
     author: str
     text: str
-    ts_text: Optional[str] = None
+    ts_text: str | None = None
 
     def to_dict(self) -> Dict[str, object]:
         """Serialize to dict."""
@@ -131,7 +131,7 @@ class ChatListParser:
             resource_id = (node.attrib.get("resource-id") or "").lower()
             if not any(marker in resource_id for marker in self.markers):
                 continue
-            texts: List[str] = []
+            texts: list[str] = []
             for child in node.iter():
                 text = normalize_text(child.attrib.get("text"))
                 if text:
@@ -146,13 +146,13 @@ class ChatListParser:
         return threads
 
     @staticmethod
-    def thread_from_texts(texts: List[str]) -> Optional[ChatThread]:
+    def thread_from_texts(texts: list[str]) -> Optional[ChatThread]:
         """Execute thread from texts."""
         if not texts:
             return None
         unread = 0
-        updated: Optional[str] = None
-        content: List[str] = []
+        updated: str | None = None
+        content: list[str] = []
         for raw in texts:
             if _TIME_RE.match(raw) or _DATE_HINT_RE.search(raw):
                 updated = updated or raw
@@ -191,7 +191,7 @@ class ChatViewParser:
                 else ET.parse(text_or_path).getroot()
             )
 
-        elements: List[Tuple[str, Optional[Tuple[int, int, int, int]]]] = []
+        elements: List[Tuple[str, Optional[tuple[int, int, int, int]]]] = []
         for node in root.iter("node"):
             text = normalize_text(node.attrib.get("text"))
             if not text:
@@ -204,7 +204,7 @@ class ChatViewParser:
     def messages_from_elements(self, elements) -> List[Message]:
         """Classify ``(text, bounds[, resource_id])`` tuples into messages."""
         messages: List[Message] = []
-        pending_ts: Optional[str] = None
+        pending_ts: str | None = None
         for element in elements:
             text, bounds = element[0], element[1]
             if _TIME_RE.match(text):
@@ -230,10 +230,10 @@ class ReplySuggester:
     def suggest(
         self,
         messages: List[Message],
-        my_price: Optional[float] = None,
-        title: Optional[str] = None,
-        city: Optional[str] = None,
-    ) -> Optional[str]:
+        my_price: float | None = None,
+        title: str | None = None,
+        city: str | None = None,
+    ) -> str | None:
         """Draft a reply to the last incoming message (None = no reply needed)."""
         incoming = [message for message in messages if message.author == "them"]
         if not incoming:
@@ -257,17 +257,17 @@ class ReplySuggester:
             return f"Добрий день! Дякую за інтерес до {item}. " "З радістю відповім на запитання."
         return "Добрий день! Дякую за повідомлення. Що саме вас цікавить?"
 
-    def _looks_like_offer(self, text: str, my_price: Optional[float]) -> bool:
+    def _looks_like_offer(self, text: str, my_price: float | None) -> bool:
         return my_price is not None and self._extract_offer(text) is not None
 
     @staticmethod
-    def _extract_offer(text: str) -> Optional[float]:
+    def _extract_offer(text: str) -> float | None:
         numbers = _PRICE_NUM_RE.findall(text)
         values = [float(num.replace(" ", "")) for num in numbers]
         values = [value for value in values if value >= 100]
         return max(values) if values else None
 
-    def _bargain_reply(self, last: str, my_price: Optional[float], item: str) -> str:
+    def _bargain_reply(self, last: str, my_price: float | None, item: str) -> str:
         offer = self._extract_offer(last)
         if my_price is None:
             return f"По {item} можливий невеликий торг при огляді."
@@ -337,7 +337,7 @@ class OLXMessenger:
         self,
         chat_key: str,
         text: str,
-        interlocutor: Optional[str] = None,
+        interlocutor: str | None = None,
         auto_send: bool = False,
     ) -> Dict[str, object]:
         """Queue a reply; only sends to the device with ``auto_send=True``."""

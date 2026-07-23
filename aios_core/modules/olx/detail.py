@@ -23,20 +23,20 @@ class AdDetail:
     """Full ad page data parsed from the open listing screen."""
 
     title: str
-    price: Optional[float] = None
-    currency: Optional[str] = None
+    price: float | None = None
+    currency: str | None = None
     description: str = ""
-    params: Dict[str, str] = field(default_factory=dict)
-    seller_name: Optional[str] = None
-    seller_type: Optional[str] = None  # "private" | "business"
-    seller_since: Optional[str] = None
-    city: Optional[str] = None
-    views_count: Optional[int] = None
-    published_text: Optional[str] = None
-    published_at: Optional[str] = None
-    ad_id: Optional[str] = None
-    url: Optional[str] = None
-    raw_texts: List[str] = field(default_factory=list)
+    params: dict[str, str] = field(default_factory=dict)
+    seller_name: str | None = None
+    seller_type: str | None = None  # "private" | "business"
+    seller_since: str | None = None
+    city: str | None = None
+    views_count: int | None = None
+    published_text: str | None = None
+    published_at: str | None = None
+    ad_id: str | None = None
+    url: str | None = None
+    raw_texts: list[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, object]:
         """Serialize ad detail to dictionary."""
@@ -62,7 +62,7 @@ class AdDetailParser:
     """Parses the open ad screen into an :class:`AdDetail`."""
 
     def parse(
-        self, xml_source: Union[str, Path, ET.Element], url: Optional[str] = None
+        self, xml_source: Union[str, Path, ET.Element], url: str | None = None
     ) -> AdDetail:
         """Parse an ad detail XML dump into structured data."""
         if isinstance(xml_source, ET.Element):
@@ -74,9 +74,9 @@ class AdDetailParser:
             else:
                 root = ET.parse(text_or_path).getroot()
 
-        texts: List[str] = []
-        ad_id: Optional[str] = None
-        found_url: Optional[str] = url
+        texts: list[str] = []
+        ad_id: str | None = None
+        found_url: str | None = url
         title: str = ""
         description: str = ""
 
@@ -105,7 +105,7 @@ class AdDetailParser:
         return detail
 
     @staticmethod
-    def detail_from_texts(texts: List[str]) -> AdDetail:
+    def detail_from_texts(texts: list[str]) -> AdDetail:
         """Classify an ordered text list into an :class:`AdDetail`.
 
         Text-only fallback for Compose screens without resource-ids:
@@ -114,7 +114,7 @@ class AdDetailParser:
         and the first meaningful line is the title.
         """
         detail = AdDetail(title="", raw_texts=list(texts))
-        leftovers: List[str] = []
+        leftovers: list[str] = []
         expect_seller_name = False
 
         for raw in texts:

@@ -115,7 +115,7 @@ class ProductionWebhookBridge:
             severity="critical",
         )
 
-    def on_daily_report(self, report: Dict[str, Any]) -> None:
+    def on_daily_report(self, report: dict[str, Any]) -> None:
         """Send daily summary notification."""
         if not self.enabled:
             return
@@ -134,7 +134,7 @@ class ProductionWebhookBridge:
             severity="info",
         )
 
-    def on_simulation_complete(self, summary: Dict[str, Any]) -> None:
+    def on_simulation_complete(self, summary: dict[str, Any]) -> None:
         """Send simulation completion notification."""
         if not self.enabled:
             return

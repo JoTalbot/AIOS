@@ -25,14 +25,14 @@ class UIElement:
     resource_id: str
     text: str
     class_name: str
-    bounds: Tuple[int, int, int, int]
+    bounds: tuple[int, int, int, int]
     clickable: bool
     enabled: bool
     package: str
     content_desc: str = ""
 
     @property
-    def center(self) -> Tuple[int, int]:
+    def center(self) -> tuple[int, int]:
         """Get center coordinates of element."""
         x1, y1, x2, y2 = self.bounds
         return ((x1 + x2) // 2, (y1 + y2) // 2)
@@ -58,7 +58,7 @@ class SearchResult:
     title: str
     price: str
     location: str
-    bounds: Tuple[int, int, int, int]
+    bounds: tuple[int, int, int, int]
 
 
 @dataclass
@@ -90,7 +90,7 @@ class UIAutomatorParser:
         except Exception as e:
             return False
 
-    def find_elements_by_resource(self, resource_id: str) -> List[UIElement]:
+    def find_elements_by_resource(self, resource_id: str) -> list[UIElement]:
         """Find all elements with given resource ID."""
         if not self.root:
             return []
@@ -114,7 +114,7 @@ class UIAutomatorParser:
                 )
         return elements
 
-    def find_elements_by_text(self, text: str, partial: bool = True) -> List[UIElement]:
+    def find_elements_by_text(self, text: str, partial: bool = True) -> list[UIElement]:
         """Find all elements containing given text."""
         if not self.root:
             return []
@@ -152,7 +152,7 @@ class UIAutomatorParser:
                     )
         return elements
 
-    def find_clickable_elements(self) -> List[UIElement]:
+    def find_clickable_elements(self) -> list[UIElement]:
         """Find all clickable elements."""
         if not self.root:
             return []
@@ -294,7 +294,7 @@ class UIAutomatorParser:
 
         return None
 
-    def _parse_bounds(self, bounds_str: str) -> Tuple[int, int, int, int]:
+    def _parse_bounds(self, bounds_str: str) -> tuple[int, int, int, int]:
         """Parse bounds string '[x1,y1][x2,y2]' to tuple."""
         match = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds_str)
         if match:
@@ -322,7 +322,7 @@ class RealDeviceExecutor:
         self.device_id = device_id
         self.parser = UIAutomatorParser("")
 
-    def _adb(self, command: str, timeout: int = 30) -> Dict[str, Any]:
+    def _adb(self, command: str, timeout: int = 30) -> dict[str, Any]:
         """Execute ADB command."""
         try:
             result = subprocess.run(
@@ -342,7 +342,7 @@ class RealDeviceExecutor:
         except Exception as e:
             return {"code": -1, "stdout": "", "stderr": str(e)}
 
-    def dump_ui(self) -> Optional[str]:
+    def dump_ui(self) -> str | None:
         """Dump UI hierarchy."""
         result = self._adb("shell uiautomator dump /sdcard/aios_ui.xml")
         if result["code"] == 0:
@@ -384,7 +384,7 @@ class RealDeviceExecutor:
             return True
         return False
 
-    def search(self, query: str, category: str = "all") -> Dict[str, Any]:
+    def search(self, query: str, category: str = "all") -> dict[str, Any]:
         """Robust real search on ua.slando with fallbacks and retries."""
         start_time = time.time()
 
@@ -454,7 +454,7 @@ class RealDeviceExecutor:
                 results.append(SearchResult(f"fallback_{len(results)}", txt, "", "", el.bounds))
         return results[:10]
 
-    def get_item_details(self, item_id: str) -> Dict[str, Any]:
+    def get_item_details(self, item_id: str) -> dict[str, Any]:
         """Get real item details."""
         start_time = time.time()
 
@@ -482,7 +482,7 @@ class RealDeviceExecutor:
 
         return {"status": "not_found", "package": "ua.slando", "item_id": item_id}
 
-    def send_message(self, seller_id: str, message: str) -> Dict[str, Any]:
+    def send_message(self, seller_id: str, message: str) -> dict[str, Any]:
         """Send real message."""
         start_time = time.time()
 
@@ -546,7 +546,7 @@ class SlandoScreenClassifier:
 
         return self.SCREEN_UNKNOWN
 
-    def get_current_screen_info(self, ui_xml: str) -> Dict[str, Any]:
+    def get_current_screen_info(self, ui_xml: str) -> dict[str, Any]:
         """Get detailed info about current screen."""
         screen_type = self.classify(ui_xml)
 

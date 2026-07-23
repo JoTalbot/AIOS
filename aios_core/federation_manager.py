@@ -34,7 +34,7 @@ class FederatedNode:
     endpoint: str  # e.g. http://node2.aios.local:8000
     status: NodeStatus = NodeStatus.ONLINE
     last_seen: str = ""
-    capabilities: List[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
     version: str = "3.1.0"
     metadata: dict = field(default_factory=dict)
     trust_score: float = 1.0
@@ -43,7 +43,7 @@ class FederatedNode:
 class FederationManager:
     """Manages a network of federated AIOS nodes."""
 
-    def __init__(self, db: Optional[Database] = None, local_node_id: Optional[str] = None):
+    def __init__(self, db: Optional[Database] = None, local_node_id: str | None = None):
         self.db = db
         self.local_node_id = local_node_id or f"node_{uuid.uuid4().hex[:8]}"
         self._nodes: Dict[str, FederatedNode] = {}
@@ -91,7 +91,7 @@ class FederationManager:
         self,
         name: str,
         endpoint: str,
-        capabilities: Optional[List[str]] = None,
+        capabilities: list[str] | None = None,
         version: str = "3.1.0",
     ) -> FederatedNode:
         """Register a remote node."""

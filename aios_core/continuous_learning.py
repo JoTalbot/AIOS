@@ -8,7 +8,7 @@ class ContinuousLearning:
 
     def __init__(self):
         self.knowledge_base: List[Dict] = []
-        self.performance_history: List[float] = []
+        self.performance_history: list[float] = []
 
     def ingest_experience(self, experience: Dict) -> None:
         """Execute ingest experience."""

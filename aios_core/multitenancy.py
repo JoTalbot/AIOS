@@ -7,7 +7,7 @@ class Tenant:
     def __init__(self, tenant_id: str, name: str):
         self.tenant_id = tenant_id
         self.name = name
-        self.config: Dict[str, Any] = {}
+        self.config: dict[str, Any] = {}
         self.usage = {"tasks": 0, "memory": 0}
 
     def set_config(self, key: str, value: Any) -> None:

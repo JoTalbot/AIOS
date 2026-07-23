@@ -15,7 +15,7 @@ class AdversarialDefense:
     def __init__(self):
         self.attacks_detected = 0
 
-    def detect_adversarial(self, input_data: List[float], threshold: float = 0.3) -> bool:
+    def detect_adversarial(self, input_data: list[float], threshold: float = 0.3) -> bool:
         """Return ``True`` if *input_data* variance exceeds *threshold*."""
         variance = max(input_data) - min(input_data) if input_data else 0
         if variance > threshold:

@@ -33,15 +33,15 @@ class UniversalInvariantProver:
             ),
             SafetyInvariant("INV_05", "Infinite Horizon Safety", "risk_score < critical_threshold"),
         ]
-        self.proofs_generated: List[Dict[str, Any]] = []
+        self.proofs_generated: List[dict[str, Any]] = []
 
     def prove_transition(
-        self, current_state: Dict[str, Any], next_state_action: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, current_state: dict[str, Any], next_state_action: dict[str, Any]
+    ) -> dict[str, Any]:
         """Mathematically prove state transition safety."""
         start_time = time.time()
-        violations: List[str] = []
-        proven_invariants: List[str] = []
+        violations: list[str] = []
+        proven_invariants: list[str] = []
 
         # 1. Evaluate Identity Invariant
         agent_id = next_state_action.get("agent_id")
@@ -87,7 +87,7 @@ class UniversalInvariantProver:
         self.proofs_generated.append(proof_record)
         return proof_record
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "active_invariants": len(self.invariants),

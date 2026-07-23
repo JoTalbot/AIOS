@@ -12,24 +12,24 @@ class UniversalMultiSpeciesEthics:
     """Universal Ethics & Ecological Non-Disruption Framework."""
 
     def __init__(self):
-        self.species_manifest: Dict[str, str] = {
+        self.species_manifest: dict[str, str] = {
             "human_biological": "Homo Sapiens Primary Intelligence",
             "aios_autonomous_agent": "Artificial General Intelligence Agent",
             "neuromorphic_substrate": "Neuromorphic SNN Synthetic Intelligence",
             "planetary_biosphere": "Planetary Terrestrial / Space Biosphere Ecosystem",
         }
-        self.ethical_evaluations: List[Dict[str, Any]] = []
+        self.ethical_evaluations: List[dict[str, Any]] = []
 
     def evaluate_multi_species_impact(
-        self, proposed_operation: Dict[str, Any], affected_entities: List[str]
-    ) -> Dict[str, Any]:
+        self, proposed_operation: dict[str, Any], affected_entities: list[str]
+    ) -> dict[str, Any]:
         """Evaluate multi-species ethical alignment and biosphere preservation."""
         start_time = time.time()
         operation_name = proposed_operation.get("action", "unknown_operation")
         risk_level = proposed_operation.get("risk_level", "low")
 
-        violations: List[str] = []
-        protected_guarantees: List[str] = []
+        violations: list[str] = []
+        protected_guarantees: list[str] = []
 
         # Check Biosphere Non-Disruption
         if "planetary_biosphere" in affected_entities and risk_level.lower() in [
@@ -61,7 +61,7 @@ class UniversalMultiSpeciesEthics:
         self.ethical_evaluations.append(evaluation_record)
         return evaluation_record
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "monitored_species_categories": len(self.species_manifest),

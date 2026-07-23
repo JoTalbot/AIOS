@@ -32,7 +32,7 @@ class QuantumCircuit:
         self.qubits[qubit].apply_hadamard()
         self.gates.append(("H", qubit))
 
-    def measure_all(self) -> List[int]:
+    def measure_all(self) -> list[int]:
         """Execute measure all."""
         return [q.measure() for q in self.qubits]
 
@@ -53,7 +53,7 @@ class QuantumProcessor:
         self.circuits[name] = circuit
         return circuit
 
-    def run(self, name: str) -> List[int]:
+    def run(self, name: str) -> list[int]:
         """Execute run."""
         if name in self.circuits:
             return self.circuits[name].measure_all()

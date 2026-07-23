@@ -50,11 +50,11 @@ _KV_RE = re.compile(r"^(.{2,40}?):\s+(.+)$")
 class ProfileInfo:
     """Account profile as shown on the profile screen."""
 
-    fields: Dict[str, str] = field(default_factory=dict)
-    raw_texts: List[str] = field(default_factory=list)
+    fields: dict[str, str] = field(default_factory=dict)
+    raw_texts: list[str] = field(default_factory=list)
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         """Execute name."""
         return self.fields.get("name")
 
@@ -67,7 +67,7 @@ class ProfileInfo:
 class SettingsInfo:
     """Account settings toggles."""
 
-    toggles: Dict[str, bool] = field(default_factory=dict)
+    toggles: dict[str, bool] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, object]:
         """Serialize to dict."""
@@ -83,9 +83,9 @@ class ProfileParser:
         return self.profile_from_texts(texts)
 
     @staticmethod
-    def profile_from_texts(texts: List[str]) -> ProfileInfo:
+    def profile_from_texts(texts: list[str]) -> ProfileInfo:
         """Execute profile from texts."""
-        fields: Dict[str, str] = {}
+        fields: dict[str, str] = {}
         for raw in texts:
             match = _KV_RE.match(raw)
             if not match:
@@ -99,9 +99,9 @@ class ProfileParser:
         return ProfileInfo(fields=fields, raw_texts=list(texts))
 
     @staticmethod
-    def settings_from_texts(texts: List[str]) -> SettingsInfo:
+    def settings_from_texts(texts: list[str]) -> SettingsInfo:
         """Execute settings from texts."""
-        toggles: Dict[str, bool] = {}
+        toggles: dict[str, bool] = {}
         for raw in texts:
             lowered = raw.lower()
             match = _KV_RE.match(raw)
@@ -121,7 +121,7 @@ class ProfileParser:
         return SettingsInfo(toggles=toggles)
 
     @staticmethod
-    def _texts(xml_source: Union[str, Path, ET.Element]) -> List[str]:
+    def _texts(xml_source: Union[str, Path, ET.Element]) -> list[str]:
         if isinstance(xml_source, ET.Element):
             root = xml_source
         else:
@@ -143,7 +143,7 @@ class ProfileEditor:
         self.adb = adb or ADBController()
 
     @staticmethod
-    def plan_steps(field_key: str, new_value: str) -> List[str]:
+    def plan_steps(field_key: str, new_value: str) -> list[str]:
         """Execute plan steps."""
         labels = {
             "name": "Ім'я",

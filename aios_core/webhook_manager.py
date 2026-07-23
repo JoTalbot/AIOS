@@ -50,12 +50,12 @@ class WebhookTarget:
 
     name: str
     url: str
-    events: List[str]
-    secret: Optional[str] = None
-    headers: Dict[str, str] = field(default_factory=dict)
+    events: list[str]
+    secret: str | None = None
+    headers: dict[str, str] = field(default_factory=dict)
     active: bool = True
     created_at: str = ""
-    last_triggered: Optional[str] = None
+    last_triggered: str | None = None
     trigger_count: int = 0
     error_count: int = 0
 
@@ -79,7 +79,7 @@ class WebhookPayload:
     event: str
     timestamp: str
     source: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     severity: str = "info"  # info, warning, critical
 
     def to_dict(self) -> Dict:
@@ -106,9 +106,9 @@ class WebhookManager:
         self,
         name: str,
         url: str,
-        events: List[str],
-        secret: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
+        events: list[str],
+        secret: str | None = None,
+        headers: dict[str, str] | None = None,
     ) -> WebhookTarget:
         """Register a new webhook target.
 
@@ -156,10 +156,10 @@ class WebhookManager:
     def notify(
         self,
         event: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         source: str = "aios",
         severity: str = "info",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Send notification to all matching webhook targets.
 
         Args:
@@ -267,8 +267,8 @@ class WebhookManager:
 
     def get_history(
         self,
-        event: Optional[str] = None,
-        limit: Optional[int] = None,
+        event: str | None = None,
+        limit: int | None = None,
     ) -> List[Dict]:
         """Get notification history.
 

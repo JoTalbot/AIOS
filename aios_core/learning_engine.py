@@ -376,7 +376,7 @@ class LearningEngine:
         # --- Factor 2: Time-of-day ---
         current_hour = datetime.now(timezone.utc).hour
         temporal_data = self.analyze_temporal_patterns()
-        temporal_rate: Optional[float] = None
+        temporal_rate: float | None = None
         for td in temporal_data:
             if td["task_name"] == task_name and current_hour in td["hourly_success_rates"]:
                 temporal_rate = td["hourly_success_rates"][current_hour]

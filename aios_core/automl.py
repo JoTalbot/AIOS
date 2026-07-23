@@ -8,7 +8,7 @@ class AutoMLPipeline:
     """Automated Machine Learning pipeline."""
 
     def __init__(self):
-        self.pipelines: Dict[str, Dict] = {}
+        self.pipelines: dict[str, dict] = {}
         self.algorithms = ["logistic", "random_forest", "neural_net", "svm"]
 
     def create_pipeline(self, name: str, dataset: str, target: str) -> str:

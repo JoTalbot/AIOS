@@ -260,7 +260,7 @@ class Planner:
             return None
         return self._row_to_plan(row)
 
-    def list_plans(self, status: Optional[str] = None, limit: int = 100) -> list[dict]:
+    def list_plans(self, status: str | None = None, limit: int = 100) -> list[dict]:
         """List plans, optionally filtered by status.
 
         Returns a list of summary dicts (not full Plan objects).
@@ -445,7 +445,7 @@ class Planner:
         # --- Cycle detection (DFS with white/gray/black coloring) ---
         WHITE, GRAY, BLACK = 0, 1, 2
         color: dict[str, int] = {sid: WHITE for sid in step_ids}
-        parent: dict[str, Optional[str]] = {sid: None for sid in step_ids}
+        parent: dict[str, str | None] = {sid: None for sid in step_ids}
 
         def _dfs_cycle(node: str) -> Optional[list[str]]:
             """Return a cycle path if one is found from *node*, else None."""

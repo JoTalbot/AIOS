@@ -58,7 +58,7 @@ class PoliciesConfig:
 class APIKeysConfig:
     """API key definitions.  In YAML this is a dict of subject→config."""
 
-    keys: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    keys: Dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -68,7 +68,7 @@ class PlatformConfig:
     name: str = ""
     package: str = ""
     enabled: bool = True
-    profiles: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    profiles: Dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -163,7 +163,7 @@ def _apply_env_overrides(cfg: AIOSConfig) -> None:
             setattr(section, field_name, ftype(value))
 
 
-def load_config(path: Optional[str] = None) -> AIOSConfig:
+def load_config(path: str | None = None) -> AIOSConfig:
     """Load configuration from YAML file with env-var overrides.
 
     Resolution order:

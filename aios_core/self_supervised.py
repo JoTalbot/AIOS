@@ -8,7 +8,7 @@ class SelfSupervisedLearner:
     """Self-supervised pretraining."""
 
     def __init__(self):
-        self.pretext_tasks: List[str] = [
+        self.pretext_tasks: list[str] = [
             "rotation",
             "colorization",
             "jigsaw",
@@ -21,7 +21,7 @@ class SelfSupervisedLearner:
             return random.choice([0, 90, 180, 270])
         return "pseudo_label"
 
-    def contrastive_loss(self, embeddings: List[List[float]]) -> float:
+    def contrastive_loss(self, embeddings: List[list[float]]) -> float:
         """Execute contrastive loss."""
         # Simplified NT-Xent loss
         return 0.5

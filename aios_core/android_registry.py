@@ -26,7 +26,7 @@ class AndroidAppDescriptor:
     backend: str = "adb"
     capabilities: Optional[DriverCapabilities] = None
 
-    def build_driver(self, device_id: Optional[str] = None) -> AndroidDriver:
+    def build_driver(self, device_id: str | None = None) -> AndroidDriver:
         """Execute build driver."""
         if self.backend == "adb":
             return RealDeviceExecutor(device_id=device_id or "emulator-5554")
@@ -60,7 +60,7 @@ class AndroidAppRegistry:
         """Execute get."""
         return self._apps.get(package)
 
-    def driver_for(self, package: str, device_id: Optional[str] = None) -> Optional[AndroidDriver]:
+    def driver_for(self, package: str, device_id: str | None = None) -> Optional[AndroidDriver]:
         """Execute driver for."""
         desc = self.get(package)
         if desc is None:
@@ -85,6 +85,6 @@ class AndroidAppRegistry:
             except Exception:
                 continue
 
-    def all_packages(self) -> List[str]:
+    def all_packages(self) -> list[str]:
         """Execute all packages."""
         return list(self._apps.keys())

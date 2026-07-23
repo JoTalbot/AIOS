@@ -9,7 +9,7 @@ class MultiHeadAttention:
         self.dim = dim
         self.heads = heads
 
-    def forward(self, q: List[float], k: List[float], v: List[float]) -> List[float]:
+    def forward(self, q: list[float], k: list[float], v: list[float]) -> list[float]:
         """Execute forward."""
         # Simplified attention
         return [(q[i] + k[i] + v[i]) / 3 for i in range(len(q))]
@@ -20,7 +20,7 @@ class TransformerBlock:
         self.attention = MultiHeadAttention(dim)
         self.dim = dim
 
-    def forward(self, x: List[float]) -> List[float]:
+    def forward(self, x: list[float]) -> list[float]:
         """Execute forward."""
         attn = self.attention.forward(x, x, x)
         return [a + b for a, b in zip(x, attn)]
@@ -33,7 +33,7 @@ class Transformer:
         self.layers = [TransformerBlock(dim) for _ in range(layers)]
         self.dim = dim
 
-    def forward(self, x: List[float]) -> List[float]:
+    def forward(self, x: list[float]) -> list[float]:
         """Execute forward."""
         for layer in self.layers:
             x = layer.forward(x)

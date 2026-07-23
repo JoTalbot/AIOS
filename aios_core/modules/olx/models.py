@@ -26,16 +26,16 @@ class AdCard:
     """
 
     title: str
-    price: Optional[float] = None
-    currency: Optional[str] = None
-    city: Optional[str] = None
-    published_text: Optional[str] = None
-    published_at: Optional[str] = None
+    price: float | None = None
+    currency: str | None = None
+    city: str | None = None
+    published_text: str | None = None
+    published_at: str | None = None
     is_top: bool = False
-    ad_id: Optional[str] = None
-    url: Optional[str] = None
-    query: Optional[str] = None
-    raw_texts: List[str] = field(default_factory=list)
+    ad_id: str | None = None
+    url: str | None = None
+    query: str | None = None
+    raw_texts: list[str] = field(default_factory=list)
 
     @property
     def fingerprint(self) -> str:
@@ -61,7 +61,7 @@ class AdCard:
             )
         return hashlib.sha256(base.encode("utf-8")).hexdigest()[:16]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise the card to a plain dictionary."""
         return {
             "fingerprint": self.fingerprint,
@@ -79,7 +79,7 @@ class AdCard:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AdCard":
+    def from_dict(cls, data: dict[str, Any]) -> "AdCard":
         """Reconstruct a card from :meth:`to_dict` output."""
         return cls(
             title=data.get("title") or "",

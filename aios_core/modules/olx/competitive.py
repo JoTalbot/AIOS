@@ -71,7 +71,7 @@ def _has_seller_section(root: ET.Element) -> bool:
 
 def parse_seller_ads(
     xml_source: Union[str, Path, ET.Element],
-    query: Optional[str] = None,
+    query: str | None = None,
     exclude_urls: Tuple[str, ...] = (),
     exclude_ad_ids: Tuple[str, ...] = (),
 ) -> List[AdCard]:
@@ -121,7 +121,7 @@ class CompetitiveWatch:
         self,
         own_ads: List[OwnAd],
         candidates: Optional[List[AdCard]] = None,
-        seen_at: Optional[str] = None,
+        seen_at: str | None = None,
     ) -> Dict[str, object]:
         """(Re)link every own ad against its market candidates.
 
@@ -162,9 +162,9 @@ class CompetitiveWatch:
         self,
         xml_source: Union[str, Path, ET.Element],
         my_ad: OwnAd,
-        seen_at: Optional[str] = None,
-        viewed_url: Optional[str] = None,
-        viewed_ad_id: Optional[str] = None,
+        seen_at: str | None = None,
+        viewed_url: str | None = None,
+        viewed_ad_id: str | None = None,
     ) -> Dict[str, object]:
         """Crawl a competitor's portfolio from their detail page.
 

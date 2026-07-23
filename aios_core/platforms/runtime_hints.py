@@ -59,14 +59,14 @@ class HintDetailParser:
         from aios_core.platforms.calibrate import CalibrationAdvisor
 
         root = CalibrationAdvisor._root(xml_source)
-        title: Optional[str] = None
-        description: Optional[str] = None
-        price: Optional[float] = None
-        currency: Optional[str] = None
-        seller: Optional[str] = None
-        cta_texts: List[str] = []
+        title: str | None = None
+        description: str | None = None
+        price: float | None = None
+        currency: str | None = None
+        seller: str | None = None
+        cta_texts: list[str] = []
 
-        texts: List[str] = []
+        texts: list[str] = []
         for node in root.iter("node"):
             rid = _rid_tail(node.attrib.get("resource-id") or "")
             text = normalize_text(node.attrib.get("text"))

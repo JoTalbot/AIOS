@@ -15,7 +15,7 @@ class Benchmark:
     """
 
     def __init__(self):
-        self.results: Dict[str, Dict] = {}
+        self.results: dict[str, dict] = {}
 
     def run(self, name: str, func: Callable, iterations: int = 1000, **kwargs) -> Dict:
         """Benchmark *func* for *iterations* and store the result under *name*."""

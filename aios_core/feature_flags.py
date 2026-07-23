@@ -7,7 +7,7 @@ class FeatureFlags:
     """Simple feature flag system."""
 
     def __init__(self):
-        self.flags: Dict[str, bool] = {}
+        self.flags: dict[str, bool] = {}
 
     def enable(self, flag: str) -> None:
         """Execute enable."""

@@ -30,7 +30,7 @@ class UIContext:
     xml: str
     package: str
     current_activity: str
-    screenshot_path: Optional[str] = None
+    screenshot_path: str | None = None
 
 
 class AndroidDriver(ABC):

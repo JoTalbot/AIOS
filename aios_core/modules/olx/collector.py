@@ -43,9 +43,9 @@ class OLXCollector:
     @staticmethod
     def search_deep_link(
         query: str,
-        min_price: Optional[float] = None,
-        max_price: Optional[float] = None,
-        sort: Optional[str] = None,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        sort: str | None = None,
     ) -> str:
         """OLX search URL with optional filters, deep-linking into the app.
 
@@ -71,9 +71,9 @@ class OLXCollector:
     def launch_search(
         self,
         query: str,
-        min_price: Optional[float] = None,
-        max_price: Optional[float] = None,
-        sort: Optional[str] = None,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        sort: str | None = None,
     ) -> Dict[str, object]:
         """Open the OLX app on the (optionally filtered) results screen."""
         link = self.search_deep_link(query, min_price, max_price, sort)
@@ -81,7 +81,7 @@ class OLXCollector:
 
     def collect(
         self,
-        query: Optional[str] = None,
+        query: str | None = None,
         max_cards: int = 100,
         progress: Optional[Callable[[int, int, int], None]] = None,
     ) -> List[AdCard]:
@@ -137,10 +137,10 @@ class OLXCollector:
     def collect_to_storage(
         self,
         storage,
-        query: Optional[str] = None,
+        query: str | None = None,
         max_cards: int = 100,
         progress: Optional[Callable[[int, int, int], None]] = None,
-    ) -> Dict[str, int]:
+    ) -> dict[str, int]:
         """Collect cards, persist them and sync feed activity.
 
         Ads of ``query`` missing from the collected feed are marked inactive

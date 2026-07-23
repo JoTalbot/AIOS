@@ -75,11 +75,11 @@ class AuditLogger:
 
     def query(
         self,
-        event_type: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        decision: Optional[str] = None,
-        since: Optional[str] = None,
-        until: Optional[str] = None,
+        event_type: str | None = None,
+        agent_id: str | None = None,
+        decision: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
         limit: int = 1000,
         offset: int = 0,
     ) -> list[dict]:
@@ -147,7 +147,7 @@ class AuditLogger:
 
         return results[offset : offset + limit]
 
-    def count(self, event_type: Optional[str] = None) -> int:
+    def count(self, event_type: str | None = None) -> int:
         """Count events, optionally filtered by type."""
         if self.db:
             if event_type:

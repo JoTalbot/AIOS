@@ -198,7 +198,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_agent ON tasks(agent_id);
 class Database:
     """Enterprise-grade Multi-Backend Database Abstraction for AIOS."""
 
-    def __init__(self, db_path: Optional[str] = None, config: Optional[AIOSConfig] = None):
+    def __init__(self, db_path: str | None = None, config: Optional[AIOSConfig] = None):
         if db_path is not None:
             self.db_path = db_path
         elif config is not None:

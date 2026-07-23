@@ -48,9 +48,9 @@ class ProtocolConfig:
     port: int
     endpoint: str
     auth_required: bool = True
-    rate_limit: Optional[int] = None
+    rate_limit: int | None = None
     tls: bool = False
-    extra_config: Optional[Dict[str, Any]] = None
+    extra_config: dict[str, Any] | None = None
 
 
 class ProtocolAdapter:

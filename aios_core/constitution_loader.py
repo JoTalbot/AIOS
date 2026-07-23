@@ -215,7 +215,7 @@ class ConstitutionLoader:
     Provides structured access to articles, rules, and obligation-based queries.
     """
 
-    def __init__(self, constitution_dir: Optional[str] = None):
+    def __init__(self, constitution_dir: str | None = None):
         """Initialize loader.
 
         Args:

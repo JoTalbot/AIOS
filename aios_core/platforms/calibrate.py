@@ -69,7 +69,7 @@ class CalibrationAdvisor:
         # Считаем по каждому resource-id: сколько контейнеров выглядят
         # карточками (потомок-цена + потомок-заголовок).
         occurrences: Counter = Counter()
-        samples: Dict[str, List[str]] = defaultdict(list)
+        samples: Dict[str, list[str]] = defaultdict(list)
         titles_seen = 0
 
         for node in root.iter("node"):
@@ -81,7 +81,7 @@ class CalibrationAdvisor:
             if not texts:
                 continue
 
-            card_title: Optional[str] = None
+            card_title: str | None = None
             has_price = False
             for text in texts:
                 if parse_price(text) is not None:
@@ -219,7 +219,7 @@ class DetailCalibrationAdvisor:
         root = CalibrationAdvisor._root(xml_source)
         price_nodes: Counter = Counter()
         seller_markers: Counter = Counter()
-        cta_markers: List[Dict[str, str]] = []
+        cta_markers: List[dict[str, str]] = []
         description_nodes = 0
 
         for node in root.iter("node"):
@@ -270,7 +270,7 @@ class DetailCalibrationAdvisor:
         """
         root = CalibrationAdvisor._root(xml_source)
         input_classes: Counter = Counter()
-        send_markers: List[Dict[str, str]] = []
+        send_markers: List[dict[str, str]] = []
         bubbles: Counter = Counter()
 
         for node in root.iter("node"):
@@ -343,8 +343,8 @@ class DetailCalibrationAdvisor:
         tab_bar_markers: List[Dict[str, object]] = []
         tabs: List[Dict[str, object]] = []
         reels_rid: List[Dict[str, object]] = []
-        reels_texts: List[str] = []
-        reels_bounds: Optional[str] = None
+        reels_texts: list[str] = []
+        reels_bounds: str | None = None
 
         for node in root.iter("node"):
             resource_id = node.attrib.get("resource-id") or ""

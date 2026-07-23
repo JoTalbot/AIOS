@@ -35,7 +35,7 @@ class PointDrive:
     def __init__(
         self,
         adb,
-        input_classes: Optional[List[str]] = None,
+        input_classes: list[str] | None = None,
         open_wait_s: float = 6.0,
         search_wait_s: float = 5.0,
     ):
@@ -44,7 +44,7 @@ class PointDrive:
         self.open_wait_s = open_wait_s
         self.search_wait_s = search_wait_s
 
-    def drive(self, package: str, query: Optional[str] = None) -> str:
+    def drive(self, package: str, query: str | None = None) -> str:
         """Сигнатура калибровочного драйва bootup: ``(package, query)->xml``."""
         opened = self.adb.open_app()
         if opened.get("code") != 0:
@@ -57,7 +57,7 @@ class PointDrive:
             xml = self.search_in_open_app(query, xml)
         return xml
 
-    def search_in_open_app(self, query: str, xml: Optional[str] = None) -> str:
+    def search_in_open_app(self, query: str, xml: str | None = None) -> str:
         """Выполняет поиск из уже открытого приложения.
 
         Returns:

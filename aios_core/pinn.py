@@ -20,7 +20,7 @@ class PINN:
             "converged": True,
         }
 
-    def predict(self, x: List[float]) -> float:
+    def predict(self, x: list[float]) -> float:
         """Execute predict."""
         return sum(x) / len(x) if x else 0.0
 

@@ -18,7 +18,7 @@ class RecordedStep:
     """Recorded automation step for scenario replay."""
     action: str
     ts: float
-    meta: Dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
 
 
     """Records and replays automation scenarios."""
@@ -34,7 +34,7 @@ class ScenarioRecorder:
         self.path = path
         self.steps: List[RecordedStep] = []
 
-    def record(self, action: str, meta: Optional[Dict[str, Any]] = None) -> None:
+    def record(self, action: str, meta: dict[str, Any] | None = None) -> None:
         """Execute record."""
         self.steps.append(RecordedStep(action=action, ts=time.time(), meta=meta or {}))
 
@@ -49,7 +49,7 @@ class ScenarioRecorder:
             json.dump(payload, f, ensure_ascii=False, indent=2)
 
     @classmethod
-    def load(cls, path: str) -> Dict[str, Any]:
+    def load(cls, path: str) -> dict[str, Any]:
         """Execute load."""
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)

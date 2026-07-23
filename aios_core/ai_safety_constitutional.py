@@ -8,7 +8,7 @@ __all__ = ["ConstitutionalAI"]
 class ConstitutionalAI:
     """AI that follows a written constitution."""
 
-    def __init__(self, constitution: List[str] = None):
+    def __init__(self, constitution: list[str] = None):
         self.constitution = constitution or [
             "Be helpful and harmless",
             "Respect human autonomy",
@@ -18,7 +18,7 @@ class ConstitutionalAI:
         ]
         self.violations: List[Dict] = []
 
-    def critique(self, output: str) -> List[str]:
+    def critique(self, output: str) -> list[str]:
         """Execute critique."""
         violations = []
         for principle in self.constitution:
@@ -28,7 +28,7 @@ class ConstitutionalAI:
             self.violations.append({"output": output, "violations": violations})
         return violations
 
-    def revise(self, output: str, violations: List[str]) -> str:
+    def revise(self, output: str, violations: list[str]) -> str:
         """Execute revise."""
         return f"Revised: {output} (following constitution)"
 

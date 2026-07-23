@@ -3,7 +3,7 @@
 from typing import Any, Dict
 
 
-def generate_openapi_spec() -> Dict[str, Any]:
+def generate_openapi_spec() -> dict[str, Any]:
     """Generate basic OpenAPI 3.0 spec for AIOS API."""
     return {
         "openapi": "3.0.0",

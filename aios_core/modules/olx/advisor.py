@@ -37,7 +37,7 @@ class ActionAdvice:
     title: str
     action: str
     reason: str
-    suggested_price: Optional[float] = None
+    suggested_price: float | None = None
     priority: int = 3  # 1 = urgent … 3 = informational
 
     def to_dict(self) -> Dict[str, object]:
@@ -58,7 +58,7 @@ class NewListingSuggestion:
 
     query: str
     reason: str
-    suggested_price: Optional[float]
+    suggested_price: float | None
     sample_title: str
     active_competitors: int
     priority: int = 3

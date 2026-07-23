@@ -36,8 +36,8 @@ class AdvisorDraft:
     confidence: float
     reasoning: str
     requires_approval: bool = True
-    suggested_price: Optional[float] = None
-    context_used: List[str] = field(default_factory=list)
+    suggested_price: float | None = None
+    context_used: list[str] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
     template: str = "default"
     compliance_status: str = "pending"
@@ -49,10 +49,10 @@ class InboxSummary:
     platform: str
     total_messages: int
     unread: int
-    urgent: List[Dict[str, Any]]
-    by_sender: Dict[str, int]
+    urgent: List[dict[str, Any]]
+    by_sender: dict[str, int]
     sentiment_overview: str
-    action_items: List[str]
+    action_items: list[str]
     generated_at: float = field(default_factory=time.time)
 
 
@@ -65,15 +65,15 @@ class PriceAdvice:
     suggested_price: float
     reason: str
     confidence: float
-    market_data: Dict[str, Any] = field(default_factory=dict)
-    history_used: List[Dict[str, Any]] = field(default_factory=list)
+    market_data: dict[str, Any] = field(default_factory=dict)
+    history_used: List[dict[str, Any]] = field(default_factory=list)
 
 
 class TemplateRegistry:
     """Registry of response templates per platform."""
 
     def __init__(self):
-        self.templates: Dict[str, Dict[str, str]] = {
+        self.templates: Dict[str, dict[str, str]] = {
             "olx": {
                 "greeting": "Добрый день! Спасибо за интерес к {item_title}.",
                 "price_negotiation": "Понимаю ваше предложение {buyer_price} грн. Могу предложить {seller_price} грн, учитывая {reason}.",
@@ -136,8 +136,8 @@ class AISalesAdvisor:
         platform: str,
         original_message: str,
         recipient: str,
-        item_context: Optional[Dict[str, Any]] = None,
-        inbox_context: Optional[List[Dict[str, Any]]] = None,
+        item_context: dict[str, Any] | None = None,
+        inbox_context: Optional[List[dict[str, Any]]] = None,
     ) -> AdvisorDraft:
         """Generate draft reply - NEVER auto-sends."""
         item_context = item_context or {}
@@ -234,11 +234,11 @@ class AISalesAdvisor:
         self._drafts[draft_id] = draft
         return draft
 
-    def summarize_inbox(self, platform: str, messages: List[Dict[str, Any]]) -> InboxSummary:
+    def summarize_inbox(self, platform: str, messages: List[dict[str, Any]]) -> InboxSummary:
         """Summarize inbox - for operator dashboard."""
         total = len(messages)
         unread = sum(1 for m in messages if not m.get("read", True))
-        by_sender: Dict[str, int] = {}
+        by_sender: dict[str, int] = {}
         urgent = []
 
         for m in messages:
@@ -286,7 +286,7 @@ class AISalesAdvisor:
         platform: str,
         item_id: str,
         current_price: float,
-        market_samples: Optional[List[float]] = None,
+        market_samples: Optional[list[float]] = None,
     ) -> Optional[PriceAdvice]:
         """Generate price advice from history and market."""
         market_samples = market_samples or []
@@ -350,7 +350,7 @@ class AISalesAdvisor:
             return "greeting"
         return "default"
 
-    def _extract_price(self, text: str) -> Optional[str]:
+    def _extract_price(self, text: str) -> str | None:
         import re
 
         m = re.search(r"(\d{2,6})\s*(грн|uah|\$)", text.lower())
@@ -363,9 +363,9 @@ class AISalesAdvisor:
 
     def _build_context_text(
         self,
-        item_ctx: Dict[str, Any],
-        memory_snippets: List[Any],
-        inbox_ctx: List[Dict[str, Any]],
+        item_ctx: dict[str, Any],
+        memory_snippets: list[Any],
+        inbox_ctx: List[dict[str, Any]],
     ) -> str:
         parts = []
         if item_ctx.get("title"):
@@ -377,7 +377,7 @@ class AISalesAdvisor:
         return " ".join(parts) if parts else "готов уточнить детали"
 
     def _estimate_confidence(
-        self, original: str, item_ctx: Dict[str, Any], memory_snippets: List[Any]
+        self, original: str, item_ctx: dict[str, Any], memory_snippets: list[Any]
     ) -> float:
         score = 0.5
         if item_ctx.get("title"):

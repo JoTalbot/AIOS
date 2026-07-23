@@ -29,7 +29,7 @@ def _default_db_path(platform: str) -> str:
 
 def resolve_profile(
     platform: str,
-    name: Optional[str] = None,
+    name: str | None = None,
     store: Optional[ProfileStore] = None,
 ) -> Profile:
     """Разрешает профиль платформы по описанному приоритету.
@@ -80,7 +80,7 @@ def _with_db_path(profile: Profile, descriptor) -> Profile:
 
 def storage_for(
     platform: str,
-    name: Optional[str] = None,
+    name: str | None = None,
     store: Optional[ProfileStore] = None,
 ):
     """Хранилище платформы для разрешённого профиля."""
@@ -91,7 +91,7 @@ def storage_for(
 
 def adb_for(
     platform: str,
-    name: Optional[str] = None,
+    name: str | None = None,
     store: Optional[ProfileStore] = None,
 ):
     """ADB-контроллер платформы, привязанный к устройству профиля."""

@@ -7,7 +7,7 @@ class ZeroTrust:
     """Zero Trust security model implementation."""
 
     def __init__(self):
-        self.policies: Dict[str, Dict] = {}
+        self.policies: dict[str, dict] = {}
 
     def add_policy(self, name: str, rules: Dict) -> None:
         """Execute add policy."""

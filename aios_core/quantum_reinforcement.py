@@ -12,7 +12,7 @@ class QuantumQLearning:
         self.states = states
         self.actions = actions
 
-    def quantum_superposition_action(self, state: int) -> List[int]:
+    def quantum_superposition_action(self, state: int) -> list[int]:
         """Execute quantum superposition action."""
         return list(range(self.actions))
 

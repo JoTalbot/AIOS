@@ -164,7 +164,7 @@ class AppiumAndroidDriver(AndroidDriver):
         except Exception:
             return None
 
-    def find_elements_by_xpath(self, xpath: str) -> List[Any]:
+    def find_elements_by_xpath(self, xpath: str) -> list[Any]:
         """Execute find elements by xpath."""
         if self._driver is None:
             return []

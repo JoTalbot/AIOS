@@ -21,8 +21,8 @@ class AndroidRPADeviceEmulator:
 
     def __init__(self, device_id: str = "emulator-5554", real_execution: bool = False):
         self.device_id = device_id
-        self.active_package: Optional[str] = None
-        self.authenticated_sessions: Dict[str, Dict[str, Any]] = {}
+        self.active_package: str | None = None
+        self.authenticated_sessions: Dict[str, dict[str, Any]] = {}
         self.real_execution = real_execution
         self.real_executor = RealDeviceExecutor(device_id=device_id) if real_execution else None
 
@@ -34,8 +34,8 @@ class AndroidRPADeviceEmulator:
         return True
 
     def authenticate_user(
-        self, package_name: str, user_credentials: Dict[str, str]
-    ) -> Dict[str, Any]:
+        self, package_name: str, user_credentials: dict[str, str]
+    ) -> dict[str, Any]:
         """Automate UI login inputs (username/phone/password) inside emulator with security masking."""
         username = (
             user_credentials.get("phone")
@@ -59,8 +59,8 @@ class AndroidRPADeviceEmulator:
         return session_record
 
     def execute_ui_action(
-        self, package_name: str, action_name: str, params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, package_name: str, action_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
         """Perform automated tap/type/scroll action inside emulator and extract view hierarchy data."""
         start_time = time.time()
         if self.real_execution and self.real_executor:
@@ -147,7 +147,7 @@ class AndroidRPAManager:
 
     def __init__(self):
         self.emulator = AndroidRPADeviceEmulator()
-        self.registered_app_apis: Dict[str, Dict[str, Any]] = {}
+        self.registered_app_apis: Dict[str, dict[str, Any]] = {}
 
     def parse_play_store_url(self, play_url_or_package: str) -> str:
         """Extract Android package ID from Google Play link or raw ID."""
@@ -158,9 +158,9 @@ class AndroidRPAManager:
     def convert_app_to_working_api(
         self,
         play_url_or_package: str,
-        user_credentials: Dict[str, str],
+        user_credentials: dict[str, str],
         user_id: str = "default_user",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Convert a Google Play app into a fully functional user REST API wrapper."""
         package_name = self.parse_play_store_url(play_url_or_package)
 
@@ -217,7 +217,7 @@ class AndroidRPAManager:
         self.registered_app_apis[package_name] = app_api_profile
         return app_api_profile
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "converted_apps_count": len(self.registered_app_apis),

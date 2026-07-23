@@ -17,10 +17,10 @@ class DistributedComputing:
     """Simple distributed task execution."""
 
     def __init__(self):
-        self.workers: Dict[str, Dict] = {}
+        self.workers: dict[str, dict] = {}
         self.tasks: Dict[str, DistributedTask] = {}
 
-    def register_worker(self, worker_id: str, capabilities: List[str]) -> None:
+    def register_worker(self, worker_id: str, capabilities: list[str]) -> None:
         """Execute register worker."""
         self.workers[worker_id] = {"capabilities": capabilities, "status": "idle"}
 

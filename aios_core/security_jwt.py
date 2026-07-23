@@ -23,7 +23,7 @@ class JWTManager:
         }
         return jwt.encode(payload, self.secret, algorithm=self.algorithm)
 
-    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
+    def verify_token(self, token: str) -> dict[str, Any] | None:
         """Execute verify token."""
         try:
             return jwt.decode(token, self.secret, algorithms=[self.algorithm])

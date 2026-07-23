@@ -12,12 +12,12 @@ class QuantumNeuralNetwork:
         self.layers = layers
         self.params = [random.uniform(0, 2 * 3.14) for _ in range(qubits * layers)]
 
-    def forward(self, x: List[float]) -> float:
+    def forward(self, x: list[float]) -> float:
         """Execute forward."""
         # Simplified quantum forward pass
         return sum(x) / len(x) + random.gauss(0, 0.01)
 
-    def train(self, X: List[List[float]], y: List[float], epochs: int = 100) -> Dict:
+    def train(self, X: List[list[float]], y: list[float], epochs: int = 100) -> Dict:
         """Execute train."""
         for _ in range(epochs):
             for xi, yi in zip(X, y):

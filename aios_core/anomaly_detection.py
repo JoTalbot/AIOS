@@ -22,8 +22,8 @@ class AnomalyDetector:
         self.z_threshold = z_threshold
         self.iqr_multiplier = iqr_multiplier
         self.window_size = window_size
-        self.histories: Dict[str, List[float]] = {}
-        self.anomaly_log: List[Dict[str, Any]] = []
+        self.histories: Dict[str, list[float]] = {}
+        self.anomaly_log: List[dict[str, Any]] = []
 
     def add_value(self, metric_name: str, value: float) -> None:
         """Record a single metric sample into historical window."""
@@ -35,7 +35,7 @@ class AnomalyDetector:
         if len(history) > self.window_size:
             self.histories[metric_name] = history[-self.window_size :]
 
-    def is_anomaly(self, value: float, metric_name: Optional[str] = None) -> bool:
+    def is_anomaly(self, value: float, metric_name: str | None = None) -> bool:
         """Check if a new metric value is an outlier based on historical window Z-Score."""
         target_name = metric_name or "default"
         if target_name not in self.histories:
@@ -94,7 +94,7 @@ class AnomalyDetector:
         self.add_value(metric_name, value)
         return is_anomalous
 
-    def detect_multivariate(self, sample: Dict[str, float]) -> Dict[str, Any]:
+    def detect_multivariate(self, sample: dict[str, float]) -> dict[str, Any]:
         """Detect anomalies across multiple metrics simultaneously."""
         results = {}
         any_anomalous = False
@@ -111,7 +111,7 @@ class AnomalyDetector:
             "timestamp": time.time(),
         }
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Summary of anomaly detection engine activity."""
         return {
             "monitored_metrics": len(self.histories),
@@ -121,7 +121,7 @@ class AnomalyDetector:
         }
 
 
-def numpy_percentile(data: List[float], percentile: float) -> float:
+def numpy_percentile(data: list[float], percentile: float) -> float:
     """Compute percentile from sorted array."""
     if not data:
         return 0.0

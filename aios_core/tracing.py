@@ -21,25 +21,25 @@ class Span:
         name: str,
         trace_id: str,
         span_id: str,
-        parent_id: Optional[str] = None,
-        attributes: Optional[Dict[str, Any]] = None,
+        parent_id: str | None = None,
+        attributes: dict[str, Any] | None = None,
     ):
         self.name = name
         self.trace_id = trace_id
         self.span_id = span_id
         self.parent_id = parent_id
-        self.attributes: Dict[str, Any] = attributes or {}
-        self.events: List[Dict[str, Any]] = []
+        self.attributes: dict[str, Any] = attributes or {}
+        self.events: List[dict[str, Any]] = []
         self.start_time = time.time()
-        self.end_time: Optional[float] = None
+        self.end_time: float | None = None
         self.status = "OK"
-        self.error_message: Optional[str] = None
+        self.error_message: str | None = None
 
     def set_attribute(self, key: str, value: Any) -> None:
         """Execute set attribute."""
         self.attributes[key] = value
 
-    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         """Execute add event."""
         self.events.append({"name": name, "attributes": attributes or {}, "timestamp": time.time()})
 
@@ -79,7 +79,7 @@ class Tracer:
         """Execute generate span id."""
         return uuid.uuid4().hex[:16]
 
-    def parse_w3c_header(self, traceparent: str) -> Tuple[Optional[str], Optional[str]]:
+    def parse_w3c_header(self, traceparent: str) -> Tuple[str | None, str | None]:
         """Parse W3C traceparent header: 00-{trace_id}-{span_id}-{flags}."""
         parts = traceparent.split("-")
         if len(parts) >= 3 and parts[0] == "00":
@@ -90,8 +90,8 @@ class Tracer:
     def start_span(
         self,
         name: str,
-        parent_traceparent: Optional[str] = None,
-        attributes: Optional[Dict[str, Any]] = None,
+        parent_traceparent: str | None = None,
+        attributes: dict[str, Any] | None = None,
     ):
         """Start a new contextual span."""
         parent_trace_id, parent_span_id = None, None
@@ -141,7 +141,7 @@ class Tracer:
         """Execute get current span."""
         return getattr(_current_trace_context, "active_span", None)
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "active_spans": len(self.active_spans),
