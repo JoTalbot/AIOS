@@ -8,6 +8,7 @@ with transparent dialect translation, schema migrations, and connection manageme
 import json
 import os
 import sqlite3
+import threading
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -212,6 +213,11 @@ class Database:
         ) or self.db_path.startswith("postgres://")
         self.dialect = "postgresql" if self.is_postgres else "sqlite"
         self._conn: Any = None
+        # SQLite connections are shared by the synchronous Database facade.
+        # Serialise access and keep an explicit transaction lock so a BEGIN /
+        # COMMIT sequence cannot be interleaved by another worker thread.
+        self._lock = threading.RLock()
+        self._transaction_state = threading.local()
         self._initialize()
 
     def _initialize(self):
@@ -223,27 +229,38 @@ class Database:
             self._check_migration(conn)
 
     def _get_conn(self) -> Any:
-        """Get or establish database connection."""
-        if self._conn is None:
-            if self.is_postgres:
-                # Stub connection mock if psycopg/asyncpg not installed locally
-                try:
-                    import psycopg2
+        """Get or establish database connection.
 
-                    self._conn = psycopg2.connect(self.db_path)
-                except Exception:
-                    # In-memory SQLite fallthrough with PostgreSQL dialect flag set for unit testing
-                    self._conn = sqlite3.connect(":memory:")
+        The SQLite handle is intentionally shared by this facade.  Disabling
+        SQLite's same-thread guard is safe here because all access is protected
+        by ``_lock``; it avoids creating independent connections that would
+        otherwise contend for a write lock under concurrent workloads.
+        """
+        with self._lock:
+            if self._conn is None:
+                if self.is_postgres:
+                    # Stub connection mock if psycopg/asyncpg not installed locally
+                    try:
+                        import psycopg2
+
+                        self._conn = psycopg2.connect(self.db_path)
+                    except Exception:
+                        # In-memory SQLite fallthrough with PostgreSQL dialect flag set for unit testing
+                        self._conn = sqlite3.connect(
+                            ":memory:", check_same_thread=False
+                        )
+                        self._conn.row_factory = sqlite3.Row
+                        self._conn.executescript(_CREATE_TABLES_SQLITE)
+                        self._conn.commit()
+                else:
+                    self._conn = sqlite3.connect(
+                        self.db_path, check_same_thread=False, timeout=30
+                    )
                     self._conn.row_factory = sqlite3.Row
-                    self._conn.executescript(_CREATE_TABLES_SQLITE)
-                    self._conn.commit()
-            else:
-                self._conn = sqlite3.connect(self.db_path)
-                self._conn.row_factory = sqlite3.Row
-                self._conn.execute("PRAGMA journal_mode=WAL")
-                self._conn.execute("PRAGMA foreign_keys=ON")
+                    self._conn.execute("PRAGMA journal_mode=WAL")
+                    self._conn.execute("PRAGMA foreign_keys=ON")
 
-        return self._conn
+            return self._conn
 
     def _check_migration(self, conn: sqlite3.Connection):
         """Check and apply schema migrations."""
@@ -273,13 +290,20 @@ class Database:
 
     @contextmanager
     def transaction(self) -> Generator[Any, None, None]:
+        """Run operations atomically while excluding concurrent DB access."""
+        self._lock.acquire()
         conn = self._get_conn()
         try:
+            conn.execute("BEGIN")
+            self._transaction_state.active = True
             yield conn
             conn.commit()
         except Exception:
             conn.rollback()
             raise
+        finally:
+            self._transaction_state.active = False
+            self._lock.release()
 
     def translate_query(self, sql: str) -> str:
         """Translate SQL queries between SQLite and PostgreSQL syntax."""
@@ -290,23 +314,50 @@ class Database:
         return sql
 
     def execute(self, sql: str, params: tuple = ()) -> Any:
-        conn = self._get_conn()
-        t_sql = self.translate_query(sql)
-        cursor = conn.execute(t_sql, params)
-        conn.commit()
-        return cursor
+        """Execute a statement and commit automatic transactions.
+
+        Explicit ``BEGIN`` / ``COMMIT`` statements retain the lock across the
+        sequence.  This preserves SQLite transaction boundaries even when a
+        single ``Database`` instance is used from multiple worker threads.
+        """
+        command = sql.lstrip().split(None, 1)[0].upper() if sql.strip() else ""
+        if command == "BEGIN":
+            self._lock.acquire()
+            try:
+                cursor = self._get_conn().execute(self.translate_query(sql), params)
+                self._transaction_state.active = True
+                return cursor
+            except Exception:
+                self._lock.release()
+                raise
+
+        if command in {"COMMIT", "END", "ROLLBACK"}:
+            with self._lock:
+                try:
+                    return self._get_conn().execute(self.translate_query(sql), params)
+                finally:
+                    if getattr(self._transaction_state, "active", False):
+                        self._transaction_state.active = False
+                        self._lock.release()
+
+        with self._lock:
+            conn = self._get_conn()
+            cursor = conn.execute(self.translate_query(sql), params)
+            if not getattr(self._transaction_state, "active", False):
+                conn.commit()
+            return cursor
 
     def query(self, sql: str, params: tuple = ()) -> list[dict]:
-        conn = self._get_conn()
-        t_sql = self.translate_query(sql)
-        rows = conn.execute(t_sql, params).fetchall()
-        return [dict(row) for row in rows]
+        with self._lock:
+            rows = (
+                self._get_conn().execute(self.translate_query(sql), params).fetchall()
+            )
+            return [dict(row) for row in rows]
 
     def query_one(self, sql: str, params: tuple = ()) -> Optional[dict]:
-        conn = self._get_conn()
-        t_sql = self.translate_query(sql)
-        row = conn.execute(t_sql, params).fetchone()
-        return dict(row) if row else None
+        with self._lock:
+            row = self._get_conn().execute(self.translate_query(sql), params).fetchone()
+            return dict(row) if row else None
 
     def close(self):
         if self._conn is not None:
