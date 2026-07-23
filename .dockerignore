@@ -36,3 +36,8 @@ export/
 *.xml
 *.png
 docs/source/_build/
+# Docker build context excludes
+Dockerfile
+Dockerfile.android
+docker-compose*.yml
+.dockerignore
