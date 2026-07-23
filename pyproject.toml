@@ -8,7 +8,7 @@ version = "9.3.0"
 description = "Self-evolving Distributed Operating System - Production Exploitation GA"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "JoTalbot", email = "jo.talbot@gmail.com"}
 ]
