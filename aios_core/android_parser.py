@@ -12,6 +12,7 @@ __all__ = ["UIElement", "SearchResult", "ItemDetails", "UIAutomatorParser"]
 
 @dataclass
 class UIElement:
+    """Parsed UI element from UIAutomator XML dump."""
     resource_id: str
     text: str
     class_name: str
@@ -36,6 +37,7 @@ class UIElement:
 
 
 @dataclass
+    """Search result item with title, price, location."""
 class SearchResult:
     item_id: str
     title: str
@@ -44,6 +46,7 @@ class SearchResult:
     bounds: Tuple[int, int, int, int]
 
 
+    """Detailed view of a single listing item."""
 @dataclass
 class ItemDetails:
     item_id: str
@@ -52,6 +55,7 @@ class ItemDetails:
     seller: str
     description: str
     status: str
+        """Parser for UIAutomator XML hierarchy dumps."""
 
 
 class UIAutomatorParser:

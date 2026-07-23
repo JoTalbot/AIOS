@@ -20,6 +20,7 @@ __all__ = ["AndroidAppDescriptor", "AndroidAppRegistry"]
 
 @dataclass
 class AndroidAppDescriptor:
+    """Descriptor for a registered Android application."""
     name: str
     package: str
     backend: str = "adb"
@@ -44,6 +45,7 @@ class AndroidAppDescriptor:
         return action in supported.get(self.package, set())
 
 
+    """Registry of Android applications known to AIOS."""
 class AndroidAppRegistry:
     def __init__(self):
         self._apps: Dict[str, AndroidAppDescriptor] = {}

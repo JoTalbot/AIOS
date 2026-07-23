@@ -27,6 +27,7 @@ from .memory_manager import MemoryManager
 
 @dataclass
 class AdvisorDraft:
+    """Structured AI-generated reply draft with metadata."""
     id: str
     platform: str
     recipient: str
@@ -43,6 +44,7 @@ class AdvisorDraft:
 
 
 @dataclass
+    """Aggregated inbox summary with urgency and sentiment."""
 class InboxSummary:
     platform: str
     total_messages: int
@@ -54,6 +56,7 @@ class InboxSummary:
     generated_at: float = field(default_factory=time.time)
 
 
+    """Pricing recommendation with confidence score."""
 @dataclass
 class PriceAdvice:
     platform: str

@@ -65,11 +65,13 @@ class ScreenEmbedding:
 
 @dataclass
 class ScreenMatch:
+    """Screen classification match result."""
     screen_name: str
     score: float
     matched_elements: int
 
 
+    """AI-based screen classifier using embeddings."""
 class AIScreenClassifier:
     def __init__(self):
         self.parser = UIAutomatorParser("")
@@ -396,6 +398,7 @@ class AIScreenClassifier:
             )
         return cases
 
+    """Self-healing UI element locator with fallback strategies."""
 
 class SelfHealingLocator:
     def __init__(self, driver: AndroidDriver):

@@ -19,6 +19,7 @@ __all__ = ["WorkflowStatus", "WorkflowStep", "WorkflowExecution", "CrossAppWorkf
 
 
 class WorkflowStatus(Enum):
+    """Cross-app workflow status enumeration."""
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
@@ -28,6 +29,7 @@ class WorkflowStatus(Enum):
 
 
 @dataclass
+    """Single step in a cross-app workflow."""
 class WorkflowStep:
     app_package: str
     action: str
@@ -38,6 +40,7 @@ class WorkflowStep:
     output_key: Optional[str] = None  # where to store output in context
 
 
+    """Execution record for a cross-app workflow."""
 @dataclass
 class WorkflowExecution:
     id: str
