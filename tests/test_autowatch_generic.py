@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from aios_core.platforms import DevicePool, PlatformDescriptor, Profile, ProfileStore
@@ -334,7 +335,7 @@ def test_calibration_content_categories_empty_on_plain_dump():
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def messenger_client(tmp_path):
     from aios_core.api.app import AIOSAPI
     from aios_core.platforms import load_catalog_file
@@ -372,6 +373,7 @@ async def messenger_client(tmp_path):
     descriptor_mod._PLATFORMS.pop("instagram", None)
 
 
+@pytest.mark.asyncio
 async def test_rest_module_outbox_guarded_flow(messenger_client):
     send = await messenger_client.post(
         "/api/v1/modules/instagram/outbox/send?profile=main",
@@ -399,6 +401,7 @@ async def test_rest_module_outbox_guarded_flow(messenger_client):
     assert flushed[0]["status"] == "failed"
 
 
+@pytest.mark.asyncio
 async def test_rest_module_chats_and_error_paths(messenger_client):
     chats = await messenger_client.get(
         "/api/v1/modules/instagram/chats?profile=main",
@@ -426,6 +429,7 @@ async def test_rest_module_chats_and_error_paths(messenger_client):
     assert len(default_out.json()["outbox"]) == 1
 
 
+@pytest.mark.asyncio
 async def test_rest_module_messenger_module_missing(messenger_client):
     def storage_factory(db_path):
         from aios_core.modules.olx import OLXStorage

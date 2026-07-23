@@ -5,6 +5,7 @@ import json
 import os
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from aios_core.platforms import DevicePool, PlatformDescriptor, Profile, ProfileStore
@@ -36,7 +37,7 @@ def demo_platform(tmp_path):
     descriptor_mod._PLATFORMS.pop("demo", None)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(demo_platform, tmp_path):
     from aios_core.api.app import AIOSAPI
 
@@ -84,6 +85,7 @@ ADS = [
 ]
 
 
+@pytest.mark.asyncio
 async def test_generic_module_data_plane(client):
     # Пустой data-plane новой платформы работает без кода.
     empty = await client.get("/api/v1/modules/demo/ads")
@@ -127,6 +129,7 @@ async def test_generic_module_data_plane(client):
     assert unknown.status_code == 404
 
 
+@pytest.mark.asyncio
 async def test_generic_module_profile_isolation(client, tmp_path):
     # Ingest в профиль main: данные видны по ?profile=main.
     await client.post("/api/v1/modules/demo/ads/ingest?profile=main", json={"ads": ADS})
@@ -202,6 +205,7 @@ def test_ensure_device_respects_max_avds_quota():
         assert calls == []  # до создания AVD дело не дошло
 
 
+@pytest.mark.asyncio
 async def test_rest_devices_limits(client):
     await client.post("/api/v1/devices/limits", json={"key": "max_devices", "value": 1})
     limits = await client.get("/api/v1/devices/limits")
