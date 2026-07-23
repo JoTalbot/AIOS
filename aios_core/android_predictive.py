@@ -20,7 +20,6 @@ __all__ = ["PredictiveMaintenance", "FailureTrend"]
 
 
 class RiskLevel(Enum):
-    """Risk severity level enumeration."""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -28,8 +27,8 @@ class RiskLevel(Enum):
 
 
 @dataclass
-    """Predicted failure with risk level and confidence."""
 class FailurePrediction:
+    """Predicted failure with risk level and confidence."""
     device_id: str
     risk_level: RiskLevel
     risk_score: float  # 0.0 - 1.0
@@ -40,7 +39,6 @@ class FailurePrediction:
     timestamp: float = field(default_factory=time.time)
 
 
-    """Data point for trend analysis."""
 @dataclass
 class TrendPoint:
     timestamp: float
