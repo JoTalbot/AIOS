@@ -1,10 +1,11 @@
-.PHONY: help install test run dashboard demo clean docs docs-serve docs-pdf
+.PHONY: help install test quality run dashboard demo clean docs docs-serve docs-pdf
 
 help:
 	@echo "AIOS Makefile"
 	@echo ""
 	@echo "  make install     - Install dependencies"
 	@echo "  make test        - Run all tests"
+	@echo "  make quality     - Run all pre-commit quality checks"
 	@echo "  make run         - Run REST API"
 	@echo "  make dashboard   - Run Web Dashboard"
 	@echo "  make demo        - Run v4.1 demo"
@@ -18,6 +19,9 @@ install:
 
 test:
 	python -m pytest -q
+
+quality:
+	pre-commit run --all-files
 
 run:
 	python run_rest_api.py
