@@ -12,7 +12,7 @@ class ConstitutionalAI:
             "Respect human autonomy",
             "Seek truth",
             "Avoid deception",
-            "Consider long-term consequences"
+            "Consider long-term consequences",
         ]
         self.violations: List[Dict] = []
 
@@ -29,4 +29,7 @@ class ConstitutionalAI:
         return f"Revised: {output} (following constitution)"
 
     def stats(self) -> dict:
-        return {"constitution_size": len(self.constitution), "violations": len(self.violations)}
+        return {
+            "constitution_size": len(self.constitution),
+            "violations": len(self.violations),
+        }

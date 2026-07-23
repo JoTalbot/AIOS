@@ -11,7 +11,9 @@ class LoadTester:
     def __init__(self):
         self.results = []
 
-    def run(self, func: Callable, concurrent_users: int = 10, duration_seconds: int = 30):
+    def run(
+        self, func: Callable, concurrent_users: int = 10, duration_seconds: int = 30
+    ):
         self.results = []
         start_time = time.time()
 
@@ -38,7 +40,7 @@ class LoadTester:
             "requests": len(self.results),
             "avg_latency_ms": round(sum(self.results) / len(self.results), 2),
             "max_latency_ms": round(max(self.results), 2),
-            "rps": round(len(self.results) / duration_seconds, 2)
+            "rps": round(len(self.results) / duration_seconds, 2),
         }
 
     def stats(self) -> dict:

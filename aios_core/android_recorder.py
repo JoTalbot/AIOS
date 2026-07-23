@@ -19,7 +19,12 @@ class RecordedStep:
 
 
 class ScenarioRecorder:
-    def __init__(self, package: str, device_id: str, path: str = "/tmp/aios_android_scenario.json"):
+    def __init__(
+        self,
+        package: str,
+        device_id: str,
+        path: str = "/tmp/aios_android_scenario.json",
+    ):
         self.package = package
         self.device_id = device_id
         self.path = path

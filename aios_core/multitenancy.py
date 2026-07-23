@@ -35,7 +35,7 @@ class MultiTenantManager:
     def stats(self) -> dict:
         return {
             "tenants": len(self.tenants),
-            "total_tasks": sum(t.usage["tasks"] for t in self.tenants.values())
+            "total_tasks": sum(t.usage["tasks"] for t in self.tenants.values()),
         }
 
 

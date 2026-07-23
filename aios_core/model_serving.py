@@ -15,10 +15,18 @@ class ModelServer:
     def __init__(self, registry: Any = None):
         self.registry = registry
         self.models: Dict[str, Dict[str, Any]] = {}
-        self.traffic_splits: Dict[str, Dict[str, float]] = {}  # model_name -> {version: weight}
+        self.traffic_splits: Dict[str, Dict[str, float]] = (
+            {}
+        )  # model_name -> {version: weight}
         self.performance_stats: Dict[str, Dict[str, float]] = {}
 
-    def deploy(self, model_id: str, model_callable: Any, version: str = "1.0.0", weight: float = 1.0) -> str:
+    def deploy(
+        self,
+        model_id: str,
+        model_callable: Any,
+        version: str = "1.0.0",
+        weight: float = 1.0,
+    ) -> str:
         """Deploy a model callable or model instance into the serving container."""
         key = f"{model_id}:{version}"
         self.models[key] = {
@@ -28,7 +36,7 @@ class ModelServer:
             "deployed_at": time.time(),
             "total_requests": 0,
             "failed_requests": 0,
-            "total_latency_ms": 0.0
+            "total_latency_ms": 0.0,
         }
 
         if model_id not in self.traffic_splits:
@@ -46,7 +54,9 @@ class ModelServer:
         normalized = {v: w / total_weight for v, w in split_dict.items()}
         self.traffic_splits[model_id] = normalized
 
-    def predict(self, model_id: str, input_data: Any, explicit_version: Optional[str] = None) -> Dict[str, Any]:
+    def predict(
+        self, model_id: str, input_data: Any, explicit_version: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Perform thread-safe inference routing with performance timing."""
         start_time = time.time()
         key = None
@@ -67,7 +77,7 @@ class ModelServer:
         if not key or key not in self.models:
             return {
                 "error": f"No active deployment found for model '{model_id}'",
-                "success": False
+                "success": False,
             }
 
         deploy_entry = self.models[key]
@@ -90,7 +100,7 @@ class ModelServer:
                 "version": deploy_entry["version"],
                 "prediction": prediction,
                 "latency_ms": round(latency_ms, 3),
-                "success": True
+                "success": True,
             }
 
         except Exception as exc:
@@ -99,7 +109,7 @@ class ModelServer:
                 "model_id": model_id,
                 "version": deploy_entry["version"],
                 "error": str(exc),
-                "success": False
+                "success": False,
             }
 
     def predict_batch(self, model_id: str, items: List[Any]) -> List[Dict[str, Any]]:
@@ -112,5 +122,5 @@ class ModelServer:
         return {
             "deployed_models": len(self.models),
             "active_routes": len(self.traffic_splits),
-            "total_requests": total_requests
+            "total_requests": total_requests,
         }

@@ -12,7 +12,7 @@ class AGISafety:
             "corrigibility",
             "impact_regularization",
             "debate",
-            "recursive_reward_modeling"
+            "recursive_reward_modeling",
         ]
         self.violations: List[Dict] = []
 
@@ -22,11 +22,10 @@ class AGISafety:
             return False
         return True
 
-    def impact_regularization(self, action_impact: float, threshold: float = 0.1) -> bool:
+    def impact_regularization(
+        self, action_impact: float, threshold: float = 0.1
+    ) -> bool:
         return action_impact < threshold
 
     def stats(self) -> dict:
-        return {
-            "checks": len(self.safety_checks),
-            "violations": len(self.violations)
-        }
+        return {"checks": len(self.safety_checks), "violations": len(self.violations)}

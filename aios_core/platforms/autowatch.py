@@ -63,8 +63,9 @@ def resolve_card_parser(platform_name: str, directory: str = "platforms"):
 class _DrivenCollector:
     """Обёртка движка OLXCollector с pre-drive навигацией на запрос."""
 
-    def __init__(self, adb, parser, driver=None, package: str = "",
-                 max_swipes: int = 40):
+    def __init__(
+        self, adb, parser, driver=None, package: str = "", max_swipes: int = 40
+    ):
         self._adb = adb
         self._parser = parser
         self._driver = driver
@@ -74,22 +75,27 @@ class _DrivenCollector:
     def _engine(self):
         from aios_core.modules.olx.collector import OLXCollector
 
-        return OLXCollector(adb=self._adb, parser=self._parser,
-                            max_swipes=self.max_swipes)
+        return OLXCollector(
+            adb=self._adb, parser=self._parser, max_swipes=self.max_swipes
+        )
 
     def collect(self, query=None, max_cards=50, progress=None):
         if self._driver is not None:
             self._driver(self._package, query)
         return self._engine().collect(
-            query=query, max_cards=max_cards, progress=progress,
+            query=query,
+            max_cards=max_cards,
+            progress=progress,
         )
 
-    def collect_to_storage(self, storage, query=None, max_cards=50,
-                           progress=None):
+    def collect_to_storage(self, storage, query=None, max_cards=50, progress=None):
         if self._driver is not None:
             self._driver(self._package, query)
         return self._engine().collect_to_storage(
-            storage, query=query, max_cards=max_cards, progress=progress,
+            storage,
+            query=query,
+            max_cards=max_cards,
+            progress=progress,
         )
 
 
@@ -127,22 +133,36 @@ def autowatch_cycle(
     notifier = notifier or WebhookNotifier(url=webhook)
 
     if queries is None:
-        queries = sorted({
-            sub.get("query") for sub in SubscriptionManager(storage).list()
-            if sub.get("query")
-        })
+        queries = sorted(
+            {
+                sub.get("query")
+                for sub in SubscriptionManager(storage).list()
+                if sub.get("query")
+            }
+        )
 
-    collector = _DrivenCollector(
-        adb, parser, driver=driver,
-        package=descriptor.android_package,
-    ) if collect else None
+    collector = (
+        _DrivenCollector(
+            adb,
+            parser,
+            driver=driver,
+            package=descriptor.android_package,
+        )
+        if collect
+        else None
+    )
 
     watcher = AutoWatch(
-        storage, collector=collector, own_provider=own_provider,
-        notifier=notifier, max_cards=max_cards,
+        storage,
+        collector=collector,
+        own_provider=own_provider,
+        notifier=notifier,
+        max_cards=max_cards,
     )
     report = watcher.run_cycle(
-        queries=queries, collect=collect, min_age_days=min_age_days,
+        queries=queries,
+        collect=collect,
+        min_age_days=min_age_days,
     )
     report["platform"] = platform_name
     if profile_name:

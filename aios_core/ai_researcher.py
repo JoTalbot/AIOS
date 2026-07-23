@@ -15,7 +15,7 @@ class AIResearcher:
             "abstract": f"This paper presents novel approaches to {topic}...",
             "experiments": experiments,
             "conclusions": "Our method achieves state-of-the-art results.",
-            "status": "draft"
+            "status": "draft",
         }
         self.papers.append(paper)
         return paper
@@ -25,7 +25,7 @@ class AIResearcher:
             "paper": paper["title"],
             "score": 8.5,
             "feedback": "Strong contribution with clear methodology",
-            "recommendation": "accept"
+            "recommendation": "accept",
         }
 
     def stats(self) -> dict:

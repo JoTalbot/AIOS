@@ -11,7 +11,6 @@ from typing import Any, Optional
 
 import yaml
 
-
 _DEFAULT_CONFIG = {
     "database": {
         "path": "aios.db",
@@ -96,11 +95,17 @@ class AIOSConfig:
             ),
             audit=AuditConfig(
                 file_path=audit_data.get("file_path", AuditConfig.file_path),
-                retention_days=int(audit_data.get("retention_days", AuditConfig.retention_days)),
+                retention_days=int(
+                    audit_data.get("retention_days", AuditConfig.retention_days)
+                ),
             ),
             approval=ApprovalConfig(
-                timeout_seconds=int(approval_data.get("timeout_seconds", ApprovalConfig.timeout_seconds)),
-                max_pending=int(approval_data.get("max_pending", ApprovalConfig.max_pending)),
+                timeout_seconds=int(
+                    approval_data.get("timeout_seconds", ApprovalConfig.timeout_seconds)
+                ),
+                max_pending=int(
+                    approval_data.get("max_pending", ApprovalConfig.max_pending)
+                ),
             ),
             constitution=ConstitutionConfig(
                 dir=const_data.get("dir", ConstitutionConfig.dir),

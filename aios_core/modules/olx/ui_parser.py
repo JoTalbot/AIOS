@@ -53,12 +53,8 @@ if __name__ == "__main__":
 
     parser.load()
 
-    cards = parser.find_by_resource(
-        "adListing_adGridCard"
-    )
+    cards = parser.find_by_resource("adListing_adGridCard")
 
     print("Cards:", len(cards))
 
-    print(
-        parser.find_text()
-    )
+    print(parser.find_text())

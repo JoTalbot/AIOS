@@ -14,6 +14,7 @@ from typing import Optional
 
 class ObligationLevel(Enum):
     """Constitutional obligation levels extracted from directive keywords."""
+
     MUST = "must"
     MUST_NOT = "must_not"
     MAY = "may"
@@ -25,6 +26,7 @@ class ObligationLevel(Enum):
 @dataclass
 class ConstitutionalRule:
     """A single extracted constitutional rule."""
+
     article_id: str
     article_title: str
     section_number: int
@@ -39,6 +41,7 @@ class ConstitutionalRule:
 @dataclass
 class Article:
     """A parsed constitutional article."""
+
     article_id: str
     title: str
     status: str
@@ -164,10 +167,12 @@ def _parse_article(filepath: str) -> Optional[Article]:
         if section_match:
             current_section_num = int(section_match.group(1))
             current_section_title = section_match.group(2).strip()
-            sections.append({
-                "number": current_section_num,
-                "title": current_section_title,
-            })
+            sections.append(
+                {
+                    "number": current_section_num,
+                    "title": current_section_title,
+                }
+            )
             continue
 
         # Extract rules from lines with obligation keywords
@@ -238,10 +243,7 @@ class ConstitutionLoader:
             )
 
         filenames = sorted(os.listdir(self.constitution_dir))
-        article_files = [
-            f for f in filenames
-            if _ARTICLE_FILENAME_RE.match(f)
-        ]
+        article_files = [f for f in filenames if _ARTICLE_FILENAME_RE.match(f)]
 
         for filename in article_files:
             filepath = os.path.join(self.constitution_dir, filename)
@@ -267,13 +269,52 @@ class ConstitutionLoader:
         keywords = re.findall(r"\b[A-Z][A-Za-z]{3,}\b", text)
         # Filter out common words
         stop_words = {
-            "MUST", "MAY", "SHOULD", "Every", "When", "Before", "After",
-            "This", "That", "These", "Those", "Which", "Where", "What",
-            "Each", "Both", "Such", "From", "With", "Have", "Being",
-            "AIOS", "The", "For", "And", "Not", "But", "Are", "Can",
-            "Has", "Its", "New", "All", "Any", "How", "Who", "Why",
-            "Security", "Evolution", "Autonomy", "Constitutional",
-            "Constitution", "Article", "End", "Final", "Constitutional",
+            "MUST",
+            "MAY",
+            "SHOULD",
+            "Every",
+            "When",
+            "Before",
+            "After",
+            "This",
+            "That",
+            "These",
+            "Those",
+            "Which",
+            "Where",
+            "What",
+            "Each",
+            "Both",
+            "Such",
+            "From",
+            "With",
+            "Have",
+            "Being",
+            "AIOS",
+            "The",
+            "For",
+            "And",
+            "Not",
+            "But",
+            "Are",
+            "Can",
+            "Has",
+            "Its",
+            "New",
+            "All",
+            "Any",
+            "How",
+            "Who",
+            "Why",
+            "Security",
+            "Evolution",
+            "Autonomy",
+            "Constitutional",
+            "Constitution",
+            "Article",
+            "End",
+            "Final",
+            "Constitutional",
         }
         return [kw for kw in keywords if kw not in stop_words and len(kw) > 3]
 
@@ -290,7 +331,9 @@ class ConstitutionLoader:
         """Get a parsed article by its ID (e.g. 'ARTICLE-V')."""
         return self.articles.get(article_id)
 
-    def get_rules(self, obligation: Optional[ObligationLevel] = None) -> list[ConstitutionalRule]:
+    def get_rules(
+        self, obligation: Optional[ObligationLevel] = None
+    ) -> list[ConstitutionalRule]:
         """Get rules, optionally filtered by obligation level."""
         if obligation is None:
             return list(self.rules)
@@ -339,15 +382,43 @@ class ConstitutionLoader:
         return results
 
     # Words too generic to use as relevance signals
-    _NOISE_WORDS = frozenset({
-        "system", "should", "cannot", "without", "through",
-        "however", "operation", "every", "component", "process",
-        "mechanism", "structure", "capability", "function",
-        "result", "require", "provide", "maintain", "support",
-        "preserve", "ensure", "allow", "enable", "control",
-        "protect", "record", "produce", "verify", "receive",
-        "external", "internal", "sufficient", "available",
-    })
+    _NOISE_WORDS = frozenset(
+        {
+            "system",
+            "should",
+            "cannot",
+            "without",
+            "through",
+            "however",
+            "operation",
+            "every",
+            "component",
+            "process",
+            "mechanism",
+            "structure",
+            "capability",
+            "function",
+            "result",
+            "require",
+            "provide",
+            "maintain",
+            "support",
+            "preserve",
+            "ensure",
+            "allow",
+            "enable",
+            "control",
+            "protect",
+            "record",
+            "produce",
+            "verify",
+            "receive",
+            "external",
+            "internal",
+            "sufficient",
+            "available",
+        }
+    )
 
     def _is_relevant(self, action_text: str, rule_text: str) -> bool:
         """Check if an action is relevant to a rule using multi-word heuristic.
@@ -381,24 +452,28 @@ class ConstitutionLoader:
         # Check MUST NOT rules for potential violations
         for rule in self.get_must_not_rules():
             if self._is_relevant(action_text, rule.text):
-                results.append({
-                    "type": "prohibition",
-                    "article": rule.article_id,
-                    "section": rule.section_title,
-                    "rule": rule.text,
-                    "obligation": "MUST NOT",
-                })
+                results.append(
+                    {
+                        "type": "prohibition",
+                        "article": rule.article_id,
+                        "section": rule.section_title,
+                        "rule": rule.text,
+                        "obligation": "MUST NOT",
+                    }
+                )
 
         # Check MUST rules for unmet requirements
         for rule in self.get_must_rules():
             if self._is_relevant(action_text, rule.text):
-                results.append({
-                    "type": "requirement",
-                    "article": rule.article_id,
-                    "section": rule.section_title,
-                    "rule": rule.text,
-                    "obligation": "MUST",
-                })
+                results.append(
+                    {
+                        "type": "requirement",
+                        "article": rule.article_id,
+                        "section": rule.section_title,
+                        "rule": rule.text,
+                        "obligation": "MUST",
+                    }
+                )
 
         return results
 
@@ -411,8 +486,6 @@ class ConstitutionLoader:
             "must_not_count": len(self._rules_by_obligation[ObligationLevel.MUST_NOT]),
             "may_count": len(self._rules_by_obligation[ObligationLevel.MAY]),
             "should_count": len(self._rules_by_obligation[ObligationLevel.SHOULD]),
-            "articles_with_rules": sum(
-                1 for a in self.articles.values() if a.rules
-            ),
+            "articles_with_rules": sum(1 for a in self.articles.values() if a.rules),
             "constitution_dir": self.constitution_dir,
         }

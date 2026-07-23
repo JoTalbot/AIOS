@@ -48,7 +48,9 @@ class SubscriptionManager:
             if not (tokens and all(token in title for token in tokens)):
                 return False
         if subscription.get("city"):
-            if (card.city or "").strip().lower() != subscription["city"].strip().lower():
+            if (card.city or "").strip().lower() != subscription[
+                "city"
+            ].strip().lower():
                 return False
         if subscription.get("min_price") is not None:
             if card.price is None or card.price < subscription["min_price"]:

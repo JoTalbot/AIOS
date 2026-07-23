@@ -12,7 +12,7 @@ class AIAlignment:
             "truth_seeking",
             "corrigibility",
             "avoiding_deception",
-            "long_term_planning"
+            "long_term_planning",
         ]
         self.violations: List[Dict] = []
 

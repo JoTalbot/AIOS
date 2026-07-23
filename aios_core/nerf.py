@@ -12,7 +12,9 @@ class NeRF:
         self.dir_dim = dir_dim
         self.hidden = hidden
 
-    def query(self, position: List[float], direction: List[float]) -> Tuple[float, List[float]]:
+    def query(
+        self, position: List[float], direction: List[float]
+    ) -> Tuple[float, List[float]]:
         """Query density and color at a point."""
         density = sum(position) % 1.0
         color = [random.random() for _ in range(3)]

@@ -34,9 +34,7 @@ class InstagramDetailParser:
         directory: str = "platforms",
     ):
         if detail_hints is None:
-            detail_hints = load_hints_section(
-                "instagram", "detail", directory
-            )
+            detail_hints = load_hints_section("instagram", "detail", directory)
         self._parser = HintDetailParser(detail_hints)
 
     @property

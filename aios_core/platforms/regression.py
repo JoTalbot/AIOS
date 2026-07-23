@@ -20,9 +20,7 @@ from .calibrate import CalibrationAdvisor
 from .parsergen import extract_markers
 
 
-def diff_markers(
-    old_hints: Dict, new_hints: Dict
-) -> Dict[str, List[str]]:
+def diff_markers(old_hints: Dict, new_hints: Dict) -> Dict[str, List[str]]:
     """Сравнивает card-маркеры двух parser_hints.
 
     Returns:
@@ -80,7 +78,8 @@ def check_platform_markers(
         "hint": (
             "baseline markers lost — recalibrate: "
             "calibrate --write && codegen --force"
-            if diff["removed"] else "baseline markers intact"
+            if diff["removed"]
+            else "baseline markers intact"
         ),
         "baseline_markers": sorted(extract_markers(baseline)),
         "fresh_markers": sorted(extract_markers(fresh)),

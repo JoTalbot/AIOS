@@ -11,12 +11,7 @@ class AIProductManager:
         self.roadmaps: List[Dict] = []
 
     def create_product(self, name: str, vision: str) -> Dict:
-        product = {
-            "name": name,
-            "vision": vision,
-            "status": "ideation",
-            "metrics": {}
-        }
+        product = {"name": name, "vision": vision, "status": "ideation", "metrics": {}}
         self.products.append(product)
         return product
 
@@ -24,7 +19,7 @@ class AIProductManager:
         roadmap = {
             "product": product["name"],
             "quarters": quarters,
-            "milestones": [f"Q{i+1}: Feature {i}" for i in range(quarters)]
+            "milestones": [f"Q{i+1}: Feature {i}" for i in range(quarters)],
         }
         self.roadmaps.append(roadmap)
         return roadmap

@@ -19,11 +19,23 @@ class FacebookMessenger(HintsMessenger):
     PACKAGE = PACKAGE
     DEEP_LINK = DEEP_LINK
 
-    def __init__(self, adb=None, storage=None, messenger_hints=None,
-                 directory: str = "platforms", screen_width: int = 1080,
-                 serial=None):
+    def __init__(
+        self,
+        adb=None,
+        storage=None,
+        messenger_hints=None,
+        directory: str = "platforms",
+        screen_width: int = 1080,
+        serial=None,
+    ):
         super().__init__(
-            platform="facebook", package=PACKAGE, deep_link=DEEP_LINK,
-            adb=adb, storage=storage, messenger_hints=messenger_hints,
-            directory=directory, screen_width=screen_width, serial=serial,
+            platform="facebook",
+            package=PACKAGE,
+            deep_link=DEEP_LINK,
+            adb=adb,
+            storage=storage,
+            messenger_hints=messenger_hints,
+            directory=directory,
+            screen_width=screen_width,
+            serial=serial,
         )

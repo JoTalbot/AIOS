@@ -26,5 +26,9 @@ class ContinuousLearning:
     def stats(self) -> dict:
         return {
             "experiences": len(self.knowledge_base),
-            "avg_performance": sum(self.performance_history) / len(self.performance_history) if self.performance_history else 0
+            "avg_performance": (
+                sum(self.performance_history) / len(self.performance_history)
+                if self.performance_history
+                else 0
+            ),
         }

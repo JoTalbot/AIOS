@@ -37,8 +37,12 @@ class DevicePool:
         self.waitlist: List[WaitlistEntry] = []
         self.emulator_bin = emulator_bin
 
-    def register(self, serial: str, avd_name: Optional[str] = None, auto_restart: bool = True) -> DeviceRecord:
-        self.devices[serial] = DeviceRecord(serial=serial, avd_name=avd_name or serial, auto_restart=auto_restart)
+    def register(
+        self, serial: str, avd_name: Optional[str] = None, auto_restart: bool = True
+    ) -> DeviceRecord:
+        self.devices[serial] = DeviceRecord(
+            serial=serial, avd_name=avd_name or serial, auto_restart=auto_restart
+        )
         return self.devices[serial]
 
     def _restart_emulator(self, record: DeviceRecord) -> bool:
@@ -46,7 +50,15 @@ class DevicePool:
             return False
         try:
             subprocess.Popen(
-                [self.emulator_bin, "-avd", record.avd_name, "-no-window", "-no-audio", "-gpu", "swiftshader_indirect"],
+                [
+                    self.emulator_bin,
+                    "-avd",
+                    record.avd_name,
+                    "-no-window",
+                    "-no-audio",
+                    "-gpu",
+                    "swiftshader_indirect",
+                ],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -57,7 +69,12 @@ class DevicePool:
         except Exception:
             return False
 
-    def lease(self, profile: str, serial: Optional[str] = None, preferred_avd: Optional[str] = None) -> Optional[DeviceRecord]:
+    def lease(
+        self,
+        profile: str,
+        serial: Optional[str] = None,
+        preferred_avd: Optional[str] = None,
+    ) -> Optional[DeviceRecord]:
         if serial:
             dev = self.devices.get(serial)
             if dev and dev.status == "idle":
@@ -107,4 +124,6 @@ class DevicePool:
         return released
 
     def enqueue(self, profile: str, priority: int = 0):
-        self.waitlist.append(WaitlistEntry(profile=profile, priority=priority, requested_at=time.time()))
+        self.waitlist.append(
+            WaitlistEntry(profile=profile, priority=priority, requested_at=time.time())
+        )

@@ -48,7 +48,15 @@ class MetricHistogram:
 
     def get_summary(self) -> Dict[str, float]:
         if not self.values:
-            return {"count": 0, "min": 0, "max": 0, "mean": 0, "p50": 0, "p95": 0, "p99": 0}
+            return {
+                "count": 0,
+                "min": 0,
+                "max": 0,
+                "mean": 0,
+                "p50": 0,
+                "p95": 0,
+                "p99": 0,
+            }
 
         s_vals = sorted(self.values)
         count = len(s_vals)
@@ -64,7 +72,7 @@ class MetricHistogram:
             "mean": round(sum(s_vals) / count, 4),
             "p50": round(percentile(50), 4),
             "p95": round(percentile(95), 4),
-            "p99": round(percentile(99), 4)
+            "p99": round(percentile(99), 4),
         }
 
 
@@ -92,11 +100,15 @@ class Telemetry:
             self.histograms[name] = MetricHistogram(name, description)
         return self.histograms[name]
 
-    def record_metric(self, name: str, value: float, tags: Optional[Dict[str, str]] = None):
+    def record_metric(
+        self, name: str, value: float, tags: Optional[Dict[str, str]] = None
+    ):
         """Record a generic metric observation."""
         hist = self.histogram(name)
         hist.observe(value)
-        self.recorded_events.append({"metric": name, "value": value, "tags": tags or {}, "ts": time.time()})
+        self.recorded_events.append(
+            {"metric": name, "value": value, "tags": tags or {}, "ts": time.time()}
+        )
 
     def export_prometheus_format(self) -> str:
         """Export current metric state in Prometheus exposition format."""
@@ -127,7 +139,7 @@ class Telemetry:
             "total_counters": len(self.counters),
             "total_gauges": len(self.gauges),
             "total_histograms": len(self.histograms),
-            "recorded_events": len(self.recorded_events)
+            "recorded_events": len(self.recorded_events),
         }
 
 

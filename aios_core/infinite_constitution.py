@@ -18,10 +18,12 @@ class InfiniteConstitutionEngine:
         self.immutable_axioms = [
             "AXIOM_1: Universal Human Agency & Safety Preservation",
             "AXIOM_2: Identity Non-Repudiation & Provenance",
-            "AXIOM_3: Non-Circumvention of Veto Safeguards"
+            "AXIOM_3: Non-Circumvention of Veto Safeguards",
         ]
 
-    def propose_infinite_amendment(self, title: str, proposal_text: str, rationale: str) -> Dict[str, Any]:
+    def propose_infinite_amendment(
+        self, title: str, proposal_text: str, rationale: str
+    ) -> Dict[str, Any]:
         """Synthesize a new amendment candidate with mathematical alignment verification."""
         start_time = time.time()
         amendment_number = self.core_articles_count + len(self.dynamic_amendments) + 1
@@ -34,7 +36,9 @@ class InfiniteConstitutionEngine:
         )
 
         proven_alignment = not has_divergence
-        proof_hash = hashlib.sha256(f"{amendment_id}:{proposal_text}:{self.immutable_axioms}".encode("utf-8")).hexdigest()
+        proof_hash = hashlib.sha256(
+            f"{amendment_id}:{proposal_text}:{self.immutable_axioms}".encode("utf-8")
+        ).hexdigest()
 
         amendment_record = {
             "amendment_id": amendment_id,
@@ -46,7 +50,7 @@ class InfiniteConstitutionEngine:
             "proof_hash": proof_hash,
             "status": "ratified" if proven_alignment else "rejected_divergence",
             "created_at": time.time(),
-            "synthesis_time_ms": round((time.time() - start_time) * 1000.0, 3)
+            "synthesis_time_ms": round((time.time() - start_time) * 1000.0, 3),
         }
 
         if proven_alignment:
@@ -58,6 +62,7 @@ class InfiniteConstitutionEngine:
         return {
             "base_constitutional_articles": self.core_articles_count,
             "ratified_infinite_amendments": len(self.dynamic_amendments),
-            "total_effective_articles": self.core_articles_count + len(self.dynamic_amendments),
-            "immutable_axioms_count": len(self.immutable_axioms)
+            "total_effective_articles": self.core_articles_count
+            + len(self.dynamic_amendments),
+            "immutable_axioms_count": len(self.immutable_axioms),
         }

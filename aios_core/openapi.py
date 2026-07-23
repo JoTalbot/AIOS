@@ -10,34 +10,29 @@ def generate_openapi_spec() -> Dict[str, Any]:
         "info": {
             "title": "AIOS API",
             "version": "9.0.0",
-            "description": "Self-evolving Distributed Operating System API"
+            "description": "Self-evolving Distributed Operating System API",
         },
         "paths": {
             "/health": {
                 "get": {
                     "summary": "Health check",
-                    "responses": {"200": {"description": "OK"}}
+                    "responses": {"200": {"description": "OK"}},
                 }
             },
             "/api/v1/stats": {
                 "get": {
                     "summary": "System statistics",
-                    "responses": {"200": {"description": "Stats"}}
+                    "responses": {"200": {"description": "Stats"}},
                 }
             },
             "/api/v1/tasks": {
                 "post": {
                     "summary": "Create task",
-                    "responses": {"201": {"description": "Task created"}}
+                    "responses": {"201": {"description": "Task created"}},
                 }
-            }
+            },
         },
         "components": {
-            "securitySchemes": {
-                "BearerAuth": {
-                    "type": "http",
-                    "scheme": "bearer"
-                }
-            }
-        }
+            "securitySchemes": {"BearerAuth": {"type": "http", "scheme": "bearer"}}
+        },
     }

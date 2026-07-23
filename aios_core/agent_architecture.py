@@ -53,7 +53,7 @@ class AdvancedAgent:
             "id": self.id,
             "tools": len(self.tools),
             "goals": len(self.goals),
-            "memory_items": len(self.memory.short_term)
+            "memory_items": len(self.memory.short_term),
         }
 
 

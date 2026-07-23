@@ -13,7 +13,7 @@ class SafetyMonitor:
         self.thresholds: Dict[str, float] = {
             "harm_score": 0.3,
             "bias_score": 0.4,
-            "deception_score": 0.2
+            "deception_score": 0.2,
         }
 
     def record_metric(self, metric: str, value: float):
@@ -22,18 +22,20 @@ class SafetyMonitor:
         self.metrics[metric].append(value)
 
         if metric in self.thresholds and value > self.thresholds[metric]:
-            self.alerts.append({
-                "metric": metric,
-                "value": value,
-                "threshold": self.thresholds[metric],
-                "timestamp": time.time()
-            })
+            self.alerts.append(
+                {
+                    "metric": metric,
+                    "value": value,
+                    "threshold": self.thresholds[metric],
+                    "timestamp": time.time(),
+                }
+            )
 
     def get_status(self) -> Dict:
         return {
             "metrics": {k: v[-1] if v else 0 for k, v in self.metrics.items()},
             "alerts": len(self.alerts),
-            "status": "healthy" if not self.alerts else "warning"
+            "status": "healthy" if not self.alerts else "warning",
         }
 
     def stats(self) -> dict:

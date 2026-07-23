@@ -74,9 +74,7 @@ class SettingsInfo:
 class ProfileParser:
     """Parses profile/settings screens into structured data."""
 
-    def parse_profile(
-        self, xml_source: Union[str, Path, ET.Element]
-    ) -> ProfileInfo:
+    def parse_profile(self, xml_source: Union[str, Path, ET.Element]) -> ProfileInfo:
         texts = self._texts(xml_source)
         return self.profile_from_texts(texts)
 

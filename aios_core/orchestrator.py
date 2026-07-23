@@ -65,6 +65,7 @@ class StepStatus(str, Enum):
 @dataclass
 class TaskStep:
     """A single step within an orchestrated task."""
+
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     name: str = ""
     description: str = ""
@@ -81,6 +82,7 @@ class TaskStep:
 @dataclass
 class Task:
     """A multi-step orchestrated task."""
+
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     name: str = ""
     description: str = ""
@@ -90,7 +92,9 @@ class Task:
     risk_level: str = "medium"
     steps: list[TaskStep] = field(default_factory=list)
     current_step_index: int = -1
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
     started_at: str = None
     completed_at: str = None
     error: str = None
@@ -141,7 +145,9 @@ class Orchestrator:
         )
         self.memory = MemoryManager(db=self.db)
         self.knowledge = KnowledgeGraph(db=self.db)
-        self.reasoning = ReasoningEngine(db=self.db, memory=self.memory, knowledge=self.knowledge)
+        self.reasoning = ReasoningEngine(
+            db=self.db, memory=self.memory, knowledge=self.knowledge
+        )
         self.learning = LearningEngine(db=self.db, memory=self.memory)
         self.evolution = EvolutionManager(db=self.db)
         self.privacy = PrivacyGuard()
@@ -153,7 +159,9 @@ class Orchestrator:
         self.autonomy = AutonomyManager(db=self.db)
 
         # v4.0-alpha
-        self.federation = FederationManager(db=self.db, local_node_id=f"aios_{uuid.uuid4().hex[:8]}")
+        self.federation = FederationManager(
+            db=self.db, local_node_id=f"aios_{uuid.uuid4().hex[:8]}"
+        )
         self.ml_scorer = MLPlannerScorer(db=self.db)
         self.multi_agent = MultiAgentOrchestrator(db=self.db, base_orchestrator=self)
         self.constitution_evolver = ConstitutionEvolver(db=self.db)
@@ -185,13 +193,22 @@ class Orchestrator:
             metadata=metadata or {},
         )
         self._tasks[task.id] = task
-        self.events.emit("task_created", "orchestrator", {"task_id": task.id, "name": task.name, "agent_id": task.agent_id})
+        self.events.emit(
+            "task_created",
+            "orchestrator",
+            {"task_id": task.id, "name": task.name, "agent_id": task.agent_id},
+        )
         # Real-time WebSocket notification (safe)
         try:
             import asyncio
+
             try:
                 loop = asyncio.get_running_loop()
-                asyncio.create_task(ws_manager.send_event("task_created", {"task_id": task.id, "name": task.name}))
+                asyncio.create_task(
+                    ws_manager.send_event(
+                        "task_created", {"task_id": task.id, "name": task.name}
+                    )
+                )
             except RuntimeError:
                 pass  # No running loop (sync context)
         except Exception:
@@ -238,7 +255,9 @@ class Orchestrator:
             return self._task_summary(task)
 
         task.status = TaskStatus.RUNNING
-        self.events.emit("task_started", "orchestrator", {"task_id": task.id, "name": task.name})
+        self.events.emit(
+            "task_started", "orchestrator", {"task_id": task.id, "name": task.name}
+        )
         task.started_at = datetime.now(timezone.utc).isoformat()
 
         for i, step in enumerate(task.steps):
@@ -252,7 +271,9 @@ class Orchestrator:
 
                 if step.constitutional_check.get("decision") == "DENY":
                     step.status = StepStatus.FAILED
-                    step.error = step.constitutional_check.get("details", "Constitution denied")
+                    step.error = step.constitutional_check.get(
+                        "details", "Constitution denied"
+                    )
                     task.status = TaskStatus.FAILED
                     task.error = f"Step '{step.name}' denied by constitution"
                     break
@@ -262,18 +283,40 @@ class Orchestrator:
                     step.error = "Requires approval — task paused"
                     task.status = TaskStatus.WAITING_APPROVAL
                     task.error = f"Step '{step.name}' requires human approval"
-                    self.events.emit("approval_requested", "orchestrator", {"task_id": task.id, "step_id": step.id, "step_name": step.name})
+                    self.events.emit(
+                        "approval_requested",
+                        "orchestrator",
+                        {
+                            "task_id": task.id,
+                            "step_id": step.id,
+                            "step_name": step.name,
+                        },
+                    )
                     break
 
                 # Autonomy check (skip for system-level agents)
                 if task.agent_id not in ("orchestrator", "system"):
-                    autonomy_result = self.autonomy.check_autonomy(task.agent_id, action_risk=step.params.get("risk", task.risk_level))
-                    if autonomy_result["requires_approval"] and step.constitutional_check.get("decision") != "REVIEW":
+                    autonomy_result = self.autonomy.check_autonomy(
+                        task.agent_id,
+                        action_risk=step.params.get("risk", task.risk_level),
+                    )
+                    if (
+                        autonomy_result["requires_approval"]
+                        and step.constitutional_check.get("decision") != "REVIEW"
+                    ):
                         step.status = StepStatus.FAILED
                         step.error = f"Requires approval (autonomy level {autonomy_result['level']})"
                         task.status = TaskStatus.WAITING_APPROVAL
                         task.error = f"Step '{step.name}' requires approval due to autonomy level {autonomy_result['level']}"
-                        self.events.emit("approval_requested", "orchestrator", {"task_id": task.id, "step_id": step.id, "reason": "autonomy_level"})
+                        self.events.emit(
+                            "approval_requested",
+                            "orchestrator",
+                            {
+                                "task_id": task.id,
+                                "step_id": step.id,
+                                "reason": "autonomy_level",
+                            },
+                        )
                         break
 
                 # Execute the step
@@ -284,10 +327,16 @@ class Orchestrator:
             except Exception as e:
                 step.status = StepStatus.FAILED
                 step.error = str(e)
-                self.autonomy.record_action(task.agent_id, success=False, triggered_review=True)
+                self.autonomy.record_action(
+                    task.agent_id, success=False, triggered_review=True
+                )
                 task.status = TaskStatus.FAILED
                 task.error = f"Step '{step.name}' failed: {e}"
-                self.events.emit("task_failed", "orchestrator", {"task_id": task.id, "name": task.name, "error": task.error})
+                self.events.emit(
+                    "task_failed",
+                    "orchestrator",
+                    {"task_id": task.id, "name": task.name, "error": task.error},
+                )
                 break
 
             finally:
@@ -297,7 +346,15 @@ class Orchestrator:
         if task.status == TaskStatus.RUNNING:
             task.status = TaskStatus.COMPLETED
             task.completed_at = datetime.now(timezone.utc).isoformat()
-            self.events.emit("task_completed", "orchestrator", {"task_id": task.id, "name": task.name, "steps_completed": len(task.steps)})
+            self.events.emit(
+                "task_completed",
+                "orchestrator",
+                {
+                    "task_id": task.id,
+                    "name": task.name,
+                    "steps_completed": len(task.steps),
+                },
+            )
 
             # Record successful task as learning
             self.learning.record_task_completion(task)
@@ -310,15 +367,17 @@ class Orchestrator:
         scope = step.params.get("scope", task.name)
         risk = step.params.get("risk", task.risk_level)
 
-        return self.policy.request_execution({
-            "goal": goal,
-            "scope": scope,
-            "risk": risk,
-            "audit_log": True,
-            "agent_id": task.agent_id,
-            "authority": task.authority,
-            "action_type": step.step_type,
-        })
+        return self.policy.request_execution(
+            {
+                "goal": goal,
+                "scope": scope,
+                "risk": risk,
+                "audit_log": True,
+                "agent_id": task.agent_id,
+                "authority": task.authority,
+                "action_type": step.step_type,
+            }
+        )
 
     def _execute_step(self, task: Task, step: TaskStep) -> Any:
         """Execute a single step based on its type."""
@@ -334,7 +393,9 @@ class Orchestrator:
             "name": task.name,
             "status": task.status.value,
             "total_steps": len(task.steps),
-            "completed_steps": sum(1 for s in task.steps if s.status == StepStatus.COMPLETED),
+            "completed_steps": sum(
+                1 for s in task.steps if s.status == StepStatus.COMPLETED
+            ),
             "failed_steps": sum(1 for s in task.steps if s.status == StepStatus.FAILED),
             "error": task.error,
             "steps": [
@@ -345,10 +406,22 @@ class Orchestrator:
                     "status": s.status.value,
                     "result": s.result,
                     "error": s.error,
-                    "constitutional_check": {
-                        "decision": s.constitutional_check.get("decision") if s.constitutional_check else None,
-                        "evaluation_id": s.constitutional_check.get("evaluation_id") if s.constitutional_check else None,
-                    } if s.constitutional_check else None,
+                    "constitutional_check": (
+                        {
+                            "decision": (
+                                s.constitutional_check.get("decision")
+                                if s.constitutional_check
+                                else None
+                            ),
+                            "evaluation_id": (
+                                s.constitutional_check.get("evaluation_id")
+                                if s.constitutional_check
+                                else None
+                            ),
+                        }
+                        if s.constitutional_check
+                        else None
+                    ),
                 }
                 for s in task.steps
             ],
@@ -359,36 +432,42 @@ class Orchestrator:
 
     def _log_execution(self, task: Task, step: TaskStep):
         """Log step execution to audit trail."""
-        self._execution_log.append({
-            "task_id": task.id,
-            "step_id": step.id,
-            "step_name": step.name,
-            "step_type": step.step_type,
-            "status": step.status.value,
-            "error": step.error,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        self._execution_log.append(
+            {
+                "task_id": task.id,
+                "step_id": step.id,
+                "step_name": step.name,
+                "step_type": step.step_type,
+                "status": step.status.value,
+                "error": step.error,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
         # Also persist to audit log
-        self.policy.audit.record({
-            "type": "orchestrator_step",
-            "task_id": task.id,
-            "step_id": step.id,
-            "step_name": step.name,
-            "step_type": step.step_type,
-            "status": step.status.value,
-            "error": step.error,
-        })
+        self.policy.audit.record(
+            {
+                "type": "orchestrator_step",
+                "task_id": task.id,
+                "step_id": step.id,
+                "step_name": step.name,
+                "step_type": step.step_type,
+                "status": step.status.value,
+                "error": step.error,
+            }
+        )
 
     # --- Direct subsystem access ---
 
     def evaluate(self, action: dict) -> dict:
         """Direct constitutional evaluation shortcut."""
-        return self.policy.request_execution({
-            **action,
-            "audit_log": True,
-            "agent_id": action.get("agent_id", "orchestrator"),
-            "authority": action.get("authority", "system"),
-        })
+        return self.policy.request_execution(
+            {
+                **action,
+                "audit_log": True,
+                "agent_id": action.get("agent_id", "orchestrator"),
+                "authority": action.get("authority", "system"),
+            }
+        )
 
     def get_task(self, task_id: str) -> Optional[Task]:
         """Get a task by ID."""
@@ -431,7 +510,8 @@ class Orchestrator:
             "total_tasks": len(self._tasks),
             "tasks_by_status": status_counts,
             "total_steps_executed": len(self._execution_log),
-            "active_tasks": status_counts.get("running", 0) + status_counts.get("pending", 0),
+            "active_tasks": status_counts.get("running", 0)
+            + status_counts.get("pending", 0),
             "constitution_articles": 67,
             "memory_items": mem_stats.get("total_items", 0),
             "evolution_proposals": evo_stats.get("total_proposals", 0),
@@ -473,14 +553,17 @@ class Orchestrator:
 
 # --- Step Handlers ---
 
+
 def _step_evaluate(orch: Orchestrator, params: dict) -> dict:
     """Handler for 'evaluate' step type — runs constitutional evaluation."""
-    return orch.policy.request_execution({
-        **params,
-        "audit_log": True,
-        "agent_id": params.get("agent_id", "orchestrator"),
-        "authority": params.get("authority", "system"),
-    })
+    return orch.policy.request_execution(
+        {
+            **params,
+            "audit_log": True,
+            "agent_id": params.get("agent_id", "orchestrator"),
+            "authority": params.get("authority", "system"),
+        }
+    )
 
 
 def _step_memory(orch: Orchestrator, params: dict) -> dict:
@@ -577,12 +660,23 @@ def _step_plan(orch: Orchestrator, params: dict) -> dict:
         goal=params.get("goal", ""),
     )
     for step_def in params.get("steps", []):
-        orch.planner.add_step(plan, step_def.get("type", "tool"), step_def.get("params", {}), name=step_def.get("name", ""))
+        orch.planner.add_step(
+            plan,
+            step_def.get("type", "tool"),
+            step_def.get("params", {}),
+            name=step_def.get("name", ""),
+        )
     # Add dependencies if specified
     for dep in params.get("dependencies", []):
-        orch.planner.add_dependency(plan, dep["from"], dep["to"], dep.get("condition", "success"))
+        orch.planner.add_dependency(
+            plan, dep["from"], dep["to"], dep.get("condition", "success")
+        )
     validation = orch.planner.validate_plan(plan)
-    return {"plan_id": plan.id, "validation": validation, "layers": len(validation.get("execution_layers", []))}
+    return {
+        "plan_id": plan.id,
+        "validation": validation,
+        "layers": len(validation.get("execution_layers", [])),
+    }
 
 
 def _step_tool(orch: Orchestrator, params: dict) -> dict:

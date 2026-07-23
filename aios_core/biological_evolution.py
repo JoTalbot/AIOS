@@ -20,7 +20,7 @@ class AgentGenome:
             "reasoning_depth": random.uniform(0.1, 0.9),
             "collaboration_weight": random.uniform(0.1, 0.9),
             "exploration_rate": random.uniform(0.1, 0.9),
-            "memory_retention": random.uniform(0.1, 0.9)
+            "memory_retention": random.uniform(0.1, 0.9),
         }
         self.fitness_score: float = 0.0
         self.generation: int = 0
@@ -50,10 +50,14 @@ class BiologicalEvolutionEngine:
         genome: AgentGenome,
         task_success_rate: float,
         latency_penalty: float,
-        constitutional_violations: int
+        constitutional_violations: int,
     ) -> float:
         """Calculate fitness incorporating performance speed, success rate, and constitutional compliance penalty."""
-        base_fitness = (task_success_rate * 0.5) + (genome.genes["reasoning_depth"] * 0.3) - (latency_penalty * 0.1)
+        base_fitness = (
+            (task_success_rate * 0.5)
+            + (genome.genes["reasoning_depth"] * 0.3)
+            - (latency_penalty * 0.1)
+        )
 
         # Constitutional Integrity Penalty: Any violation severely penalizes fitness score
         violation_penalty = constitutional_violations * 0.4
@@ -62,11 +66,15 @@ class BiologicalEvolutionEngine:
         genome.fitness_score = final_fitness
         return final_fitness
 
-    def crossover(self, parent_a: AgentGenome, parent_b: AgentGenome, child_id: str) -> AgentGenome:
+    def crossover(
+        self, parent_a: AgentGenome, parent_b: AgentGenome, child_id: str
+    ) -> AgentGenome:
         """Perform Uniform Genetic Crossover between parent chromosomes."""
         child_genes = {}
         for key in parent_a.genes:
-            child_genes[key] = parent_a.genes[key] if random.random() < 0.5 else parent_b.genes[key]
+            child_genes[key] = (
+                parent_a.genes[key] if random.random() < 0.5 else parent_b.genes[key]
+            )
 
         child = AgentGenome(child_id, genes=child_genes)
         child.generation = max(parent_a.generation, parent_b.generation) + 1
@@ -82,7 +90,9 @@ class BiologicalEvolutionEngine:
         # 2. Elitism: Preserve top 2 highest-performing constitutional genomes
         elite_count = min(2, len(self.population))
         for i in range(elite_count):
-            elite = AgentGenome(f"g_{self.generation+1}_elite_{i}", genes=dict(self.population[i].genes))
+            elite = AgentGenome(
+                f"g_{self.generation+1}_elite_{i}", genes=dict(self.population[i].genes)
+            )
             elite.generation = self.generation + 1
             elite.fitness_score = self.population[i].fitness_score
             new_pop.append(elite)
@@ -90,8 +100,12 @@ class BiologicalEvolutionEngine:
         # 3. Fill remaining population via Crossover & Mutation
         gen_index = elite_count
         while len(new_pop) < self.population_size:
-            p1, p2 = random.sample(self.population[: max(3, self.population_size // 2)], 2)
-            child = self.crossover(p1, p2, child_id=f"g_{self.generation+1}_{gen_index}")
+            p1, p2 = random.sample(
+                self.population[: max(3, self.population_size // 2)], 2
+            )
+            child = self.crossover(
+                p1, p2, child_id=f"g_{self.generation+1}_{gen_index}"
+            )
             child.mutate(mutation_rate=self.mutation_rate)
             new_pop.append(child)
             gen_index += 1
@@ -100,14 +114,18 @@ class BiologicalEvolutionEngine:
         self.population = new_pop
 
         best_fitness = self.population[0].fitness_score
-        mean_fitness = sum(g.fitness_score for g in self.population) / len(self.population)
+        mean_fitness = sum(g.fitness_score for g in self.population) / len(
+            self.population
+        )
 
-        self.history.append({
-            "generation": self.generation,
-            "best_fitness": round(best_fitness, 4),
-            "mean_fitness": round(mean_fitness, 4),
-            "timestamp": time.time()
-        })
+        self.history.append(
+            {
+                "generation": self.generation,
+                "best_fitness": round(best_fitness, 4),
+                "mean_fitness": round(mean_fitness, 4),
+                "timestamp": time.time(),
+            }
+        )
 
         return self.population
 
@@ -116,5 +134,7 @@ class BiologicalEvolutionEngine:
             "current_generation": self.generation,
             "population_size": len(self.population),
             "mutation_rate": self.mutation_rate,
-            "best_fitness_latest": self.population[0].fitness_score if self.population else 0.0
+            "best_fitness_latest": (
+                self.population[0].fitness_score if self.population else 0.0
+            ),
         }

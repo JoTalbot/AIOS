@@ -34,9 +34,7 @@ _STORY_RID_MARKERS = ("story", "highlight")
 class CalibrationAdvisor:
     """Ищет маркеры карточек/цен в UI-дампе новой платформы."""
 
-    def analyze(
-        self, xml_source: Union[str, Path, ET.Element]
-    ) -> Dict[str, object]:
+    def analyze(self, xml_source: Union[str, Path, ET.Element]) -> Dict[str, object]:
         """Разбирает дамп и возвращает parser_hints.
 
         Returns:
@@ -79,8 +77,7 @@ class CalibrationAdvisor:
             if not resource_id:
                 continue
             texts = [
-                (child.attrib.get("text") or "").strip()
-                for child in node.iter("node")
+                (child.attrib.get("text") or "").strip() for child in node.iter("node")
             ]
             texts = [t for t in texts if t]
             if not texts:
@@ -122,12 +119,8 @@ class CalibrationAdvisor:
             "currencies": dict(currencies),
             "titles_seen": titles_seen,
             "content_categories": {
-                "video_markers": [
-                    rid for rid, _ in video_rids.most_common(5)
-                ],
-                "story_markers": [
-                    rid for rid, _ in story_rids.most_common(5)
-                ],
+                "video_markers": [rid for rid, _ in video_rids.most_common(5)],
+                "story_markers": [rid for rid, _ in story_rids.most_common(5)],
                 # Reels/клипы помечены тайм-кодами (0:32) — их карточки
                 # обычно без цены: отдельный класс контента платформы.
                 "duration_labels": duration_labels,
@@ -136,7 +129,7 @@ class CalibrationAdvisor:
                 "маркеры найдены — запишите в extras.parser_hints"
                 if card_markers
                 else "карточки не обнаружены: нужен дамп поисковой выдачи "
-                     "с хотя бы одной ценой"
+                "с хотя бы одной ценой"
             ),
         }
 
@@ -150,9 +143,7 @@ class CalibrationAdvisor:
         return ET.parse(text_or_path).getroot()
 
 
-def hints_to_yaml_doc(
-    platform_name: str, hints: Dict[str, object]
-) -> str:
+def hints_to_yaml_doc(platform_name: str, hints: Dict[str, object]) -> str:
     """Фрагмент YAML с parser_hints для ручной вставки в дескриптор."""
     import yaml
 
@@ -200,8 +191,14 @@ def write_hints_to_descriptor(
 
 _SELLER_ID_MARKERS = ("seller", "user", "avatar", "author", "owner", "profile")
 _CTA_TEXT_MARKERS = (
-    "написати", "повідомлення", "зателефонувати", "message", "chat",
-    "write", "call", "reply",
+    "написати",
+    "повідомлення",
+    "зателефонувати",
+    "message",
+    "chat",
+    "write",
+    "call",
+    "reply",
 )
 _SEND_MARKERS = ("send", "надіслати", "отправить")
 _MIN_DESCRIPTION_LEN = 40
@@ -244,16 +241,16 @@ class DetailCalibrationAdvisor:
                 seller_markers[resource_id] += 1
             if len(text) >= _MIN_DESCRIPTION_LEN:
                 description_nodes += 1
-            if resource_id and any(
-                marker in combined for marker in _CTA_TEXT_MARKERS
-            ):
+            if resource_id and any(marker in combined for marker in _CTA_TEXT_MARKERS):
                 if len(cta_markers) < 5 and all(
                     m["resource_id"] != resource_id for m in cta_markers
                 ):
-                    cta_markers.append({
-                        "resource_id": resource_id,
-                        "text": text[:60],
-                    })
+                    cta_markers.append(
+                        {
+                            "resource_id": resource_id,
+                            "text": text[:60],
+                        }
+                    )
 
         found = bool(price_nodes or seller_markers or cta_markers)
         return {
@@ -265,9 +262,10 @@ class DetailCalibrationAdvisor:
             "cta_markers": cta_markers,
             "description_nodes": description_nodes,
             "hint": (
-                "detail-маркеры найдены" if found
+                "detail-маркеры найдены"
+                if found
                 else "детальный экран не распознан: нужен дамп открытого "
-                     "объявления (цена/продавец/кнопка связи)"
+                "объявления (цена/продавец/кнопка связи)"
             ),
         }
 
@@ -294,19 +292,24 @@ class DetailCalibrationAdvisor:
             if "edittext" in klass.lower():
                 input_classes[klass] += 1
             if any(marker in combined for marker in _SEND_MARKERS):
-                if resource_id and len(send_markers) < 5 and all(
-                    m["resource_id"] != resource_id for m in send_markers
+                if (
+                    resource_id
+                    and len(send_markers) < 5
+                    and all(m["resource_id"] != resource_id for m in send_markers)
                 ):
-                    send_markers.append({
-                        "resource_id": resource_id,
-                        "hint_text": (desc or text)[:60],
-                    })
+                    send_markers.append(
+                        {
+                            "resource_id": resource_id,
+                            "hint_text": (desc or text)[:60],
+                        }
+                    )
             if resource_id and text:
                 bubbles[resource_id] += 1
 
         bubble_markers = [
             {"resource_id": rid, "occurrences": count}
-            for rid, count in bubbles.most_common(5) if count >= 2
+            for rid, count in bubbles.most_common(5)
+            if count >= 2
         ]
         found = bool(input_classes or send_markers)
         return {
@@ -314,9 +317,10 @@ class DetailCalibrationAdvisor:
             "send_markers": send_markers,
             "bubble_markers": bubble_markers,
             "hint": (
-                "messenger-маркеры найдены" if found
+                "messenger-маркеры найдены"
+                if found
                 else "диалог не распознан: нужен дамп переписки (поле "
-                     "ввода/кнопка отправки)"
+                "ввода/кнопка отправки)"
             ),
         }
 
@@ -325,7 +329,8 @@ class DetailCalibrationAdvisor:
     _REELS_MARKERS = ("reel", "clips", "video")
 
     def analyze_navigation(
-        self, xml_source,
+        self,
+        xml_source,
     ) -> Dict[str, object]:
         """Извлекает navigation-подсказки из дампа домашнего экрана.
 
@@ -358,9 +363,7 @@ class DetailCalibrationAdvisor:
             desc = (node.attrib.get("content-desc") or "").strip()
             bounds = node.attrib.get("bounds")
             if any(m in rid_tail for m in self._TAB_BAR_MARKERS):
-                if not any(
-                    m["resource_id"] == resource_id for m in tab_bar_markers
-                ):
+                if not any(m["resource_id"] == resource_id for m in tab_bar_markers):
                     tab_bar_markers.append({"resource_id": resource_id})
             is_tab = (
                 bool(rid_tail) and any(m in rid_tail for m in self._TAB_NODE_MARKERS)
@@ -368,18 +371,20 @@ class DetailCalibrationAdvisor:
             if not is_tab or bounds is None:
                 continue
             label = desc or text
-            tabs.append({
-                "resource_id": resource_id, "label": label, "bounds": bounds,
-            })
+            tabs.append(
+                {
+                    "resource_id": resource_id,
+                    "label": label,
+                    "bounds": bounds,
+                }
+            )
             combined = f"{rid_tail} {text.lower()} {desc.lower()}"
             if any(m in combined for m in self._REELS_MARKERS):
                 if resource_id and not any(
                     m["resource_id"] == resource_id for m in reels_rid
                 ):
                     reels_rid.append({"resource_id": resource_id})
-                if label and label.lower() not in (
-                    t.lower() for t in reels_texts
-                ):
+                if label and label.lower() not in (t.lower() for t in reels_texts):
                     reels_texts.append(label)
                 if reels_bounds is None:
                     reels_bounds = bounds
@@ -396,10 +401,13 @@ class DetailCalibrationAdvisor:
             "tab_bar_markers": tab_bar_markers,
             "tabs": tabs,
             "hint": (
-                "видео-вкладка найдена" if reels_tab
-                else ("tab-bar есть, видео-вкладка не распознана"
-                      if tab_bar_markers
-                      else "tab-bar не найден: нужен дамп домашнего экрана")
+                "видео-вкладка найдена"
+                if reels_tab
+                else (
+                    "tab-bar есть, видео-вкладка не распознана"
+                    if tab_bar_markers
+                    else "tab-bar не найден: нужен дамп домашнего экрана"
+                )
             ),
         }
 

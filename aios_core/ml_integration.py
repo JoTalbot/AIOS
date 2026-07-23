@@ -2,6 +2,7 @@
 
 try:
     from sklearn.linear_model import LogisticRegression
+
     HAS_SKLEARN = True
 except ImportError:
     HAS_SKLEARN = False
@@ -20,7 +21,9 @@ class SimpleMLPredictor:
         if not self.model:
             # Fallback heuristic
             risk = features.get("risk_level", "medium")
-            return {"low": 0.9, "medium": 0.7, "high": 0.4, "critical": 0.2}.get(risk, 0.6)
+            return {"low": 0.9, "medium": 0.7, "high": 0.4, "critical": 0.2}.get(
+                risk, 0.6
+            )
 
         # In real usage, this would use trained model
         return 0.75
@@ -32,7 +35,7 @@ class SimpleMLPredictor:
     def stats(self) -> dict:
         return {
             "sklearn_available": HAS_SKLEARN,
-            "model_trained": self.model is not None
+            "model_trained": self.model is not None,
         }
 
 

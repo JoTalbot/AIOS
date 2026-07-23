@@ -23,13 +23,10 @@ class HealthCheckRegistry:
                 results[name] = {
                     "status": "healthy" if result else "unhealthy",
                     "duration_ms": round(duration, 2),
-                    "details": result if isinstance(result, dict) else {}
+                    "details": result if isinstance(result, dict) else {},
                 }
             except Exception as e:
-                results[name] = {
-                    "status": "error",
-                    "error": str(e)
-                }
+                results[name] = {"status": "error", "error": str(e)}
         return results
 
     def overall_status(self) -> str:

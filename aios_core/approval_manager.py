@@ -133,9 +133,7 @@ class ApprovalManager:
             if row["validation_data"]
             else None
         )
-        metadata = (
-            Database.from_json(row["metadata"]) if row["metadata"] else None
-        )
+        metadata = Database.from_json(row["metadata"]) if row["metadata"] else None
         return {
             "id": row["id"],
             "action": action,
@@ -189,6 +187,7 @@ class ApprovalManager:
         if self.db is None:
             return
         from datetime import datetime, timedelta, timezone
+
         cutoff = (
             datetime.now(timezone.utc) - timedelta(seconds=self.timeout_seconds)
         ).isoformat()

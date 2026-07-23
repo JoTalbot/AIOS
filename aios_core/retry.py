@@ -10,7 +10,7 @@ def retry(
     max_attempts: int = 3,
     base_delay: float = 1.0,
     backoff: float = 2.0,
-    jitter: bool = True
+    jitter: bool = True,
 ) -> Any:
     """Retry a function with exponential backoff."""
     last_exception = None
@@ -25,7 +25,7 @@ def retry(
                 break
             sleep_time = delay
             if jitter:
-                sleep_time *= (0.5 + random.random())
+                sleep_time *= 0.5 + random.random()
             time.sleep(sleep_time)
             delay *= backoff
 

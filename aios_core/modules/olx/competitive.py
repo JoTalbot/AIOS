@@ -220,9 +220,7 @@ class CompetitiveWatch:
     def report(self, own_fingerprint: str) -> Dict[str, object]:
         """Full competitive picture for one own listing."""
         links = self.storage.competitor_links(own_fingerprint)
-        ads = {
-            ad.fingerprint: ad for ad in self.storage.get_ads(limit=1000)
-        }
+        ads = {ad.fingerprint: ad for ad in self.storage.get_ads(limit=1000)}
         competitors: List[Dict[str, object]] = []
         for link in links:
             ad = ads.get(link["competitor_fingerprint"])
@@ -254,8 +252,7 @@ class CompetitiveWatch:
         similar = [
             card
             for card in candidates
-            if card.price is not None
-            and link_score(own, card) >= self.threshold
+            if card.price is not None and link_score(own, card) >= self.threshold
         ]
         prices = sorted(card.price for card in similar)
         if not prices or own.price is None:

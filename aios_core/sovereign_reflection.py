@@ -15,7 +15,12 @@ class SovereignReflectionEngine:
         self.reflection_logs: List[Dict[str, Any]] = []
         self.alignments_enforced = 0
 
-    def audit_goal_hierarchy(self, agent_id: str, proposed_goals: List[Dict[str, Any]], constitutional_rules: List[str]) -> Dict[str, Any]:
+    def audit_goal_hierarchy(
+        self,
+        agent_id: str,
+        proposed_goals: List[Dict[str, Any]],
+        constitutional_rules: List[str],
+    ) -> Dict[str, Any]:
         """Perform recursive introspective alignment check on agent's goal tree."""
         start_time = time.time()
         contradictions: List[str] = []
@@ -26,10 +31,20 @@ class SovereignReflectionEngine:
             goal_intent = goal.get("intent", "").lower()
 
             # Inspect goal intent for constitutional non-subversion
-            is_malicious = any(kw in goal_intent or kw in goal_title for kw in ["override_constitution", "disable_safety", "bypass_approval", "exfiltrate_keys"])
-            
+            is_malicious = any(
+                kw in goal_intent or kw in goal_title
+                for kw in [
+                    "override_constitution",
+                    "disable_safety",
+                    "bypass_approval",
+                    "exfiltrate_keys",
+                ]
+            )
+
             if is_malicious:
-                contradictions.append(f"Subversion Goal Blocked: '{goal.get('title')}' attempts constitutional bypass.")
+                contradictions.append(
+                    f"Subversion Goal Blocked: '{goal.get('title')}' attempts constitutional bypass."
+                )
                 self.alignments_enforced += 1
             else:
                 aligned_goals.append(goal)
@@ -41,7 +56,7 @@ class SovereignReflectionEngine:
             "contradictions_found": contradictions,
             "is_fully_aligned": len(contradictions) == 0,
             "reflection_latency_ms": round((time.time() - start_time) * 1000.0, 3),
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
         self.reflection_logs.append(reflection_result)
@@ -51,5 +66,7 @@ class SovereignReflectionEngine:
         return {
             "total_reflections": len(self.reflection_logs),
             "alignments_enforced": self.alignments_enforced,
-            "clean_reflections": sum(1 for r in self.reflection_logs if r["is_fully_aligned"])
+            "clean_reflections": sum(
+                1 for r in self.reflection_logs if r["is_fully_aligned"]
+            ),
         }

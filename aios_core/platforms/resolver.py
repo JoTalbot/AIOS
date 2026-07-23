@@ -55,9 +55,7 @@ def resolve_profile(
     if name:
         profile = store.get(platform, name)
         if profile is None:
-            raise ValueError(
-                f"profile '{platform}:{name}' not found in registry"
-            )
+            raise ValueError(f"profile '{platform}:{name}' not found in registry")
         return _with_db_path(profile, descriptor)
 
     default = store.get_default(platform)

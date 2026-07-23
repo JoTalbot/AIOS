@@ -91,9 +91,7 @@ def get_platform(name: str) -> PlatformDescriptor:
         return _PLATFORMS[name]
     except KeyError:
         known = ", ".join(sorted(_PLATFORMS)) or "<empty>"
-        raise ValueError(
-            f"unknown platform '{name}' (registered: {known})"
-        ) from None
+        raise ValueError(f"unknown platform '{name}' (registered: {known})") from None
 
 
 def list_platforms() -> List[PlatformDescriptor]:
@@ -110,7 +108,7 @@ register_platform(
         adb_factory=_olx_adb_factory,
         default_locale="uk-UA",
         description="Slando Ukraine Android agent (коллекция, мессенджер, "
-                    "свои объявления, конкуренты, советник)",
+        "свои объявления, конкуренты, советник)",
         legacy_default_db="olx_ads.sqlite",
     )
 )

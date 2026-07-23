@@ -17,7 +17,7 @@ class SparseAutoencoder:
         self.features = {f"feature_{i}": 0.0 for i in range(self.hidden_dim)}
 
     def extract_features(self, activation: List[float]) -> Dict:
-        return {f"feature_{i}": a for i, a in enumerate(activation[:self.hidden_dim])}
+        return {f"feature_{i}": a for i, a in enumerate(activation[: self.hidden_dim])}
 
     def stats(self) -> dict:
         return {"features": len(self.features)}

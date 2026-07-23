@@ -60,7 +60,7 @@ class WorkflowEngine:
             "by_status": {
                 status: sum(1 for w in self.workflows.values() if w.status == status)
                 for status in ["pending", "running", "completed", "failed"]
-            }
+            },
         }
 
 

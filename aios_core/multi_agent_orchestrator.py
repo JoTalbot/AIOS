@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 @dataclass
 class AgentTeam:
     """A team of agents working on a shared goal."""
+
     team_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     goal: str = ""
     agents: List[str] = field(default_factory=list)
@@ -30,27 +31,30 @@ class AgentTeam:
 class MultiAgentOrchestrator:
     """Coordinates multiple agents and teams."""
 
-    def __init__(self, db: Optional[Database] = None, base_orchestrator: Optional[Orchestrator] = None):
+    def __init__(
+        self,
+        db: Optional[Database] = None,
+        base_orchestrator: Optional[Orchestrator] = None,
+    ):
         self.db = db
         self.base = base_orchestrator
         self._teams: Dict[str, AgentTeam] = {}
         self.version = "4.0.0-alpha"
 
-    def form_team(self, goal: str, agents: List[str], leader: Optional[str] = None) -> AgentTeam:
+    def form_team(
+        self, goal: str, agents: List[str], leader: Optional[str] = None
+    ) -> AgentTeam:
         """Form a new agent team."""
         if leader is None and agents:
             leader = agents[0]
 
-        team = AgentTeam(
-            goal=goal,
-            agents=agents,
-            leader=leader,
-            status="active"
-        )
+        team = AgentTeam(goal=goal, agents=agents, leader=leader, status="active")
         self._teams[team.team_id] = team
         return team
 
-    def create_team_task(self, team_id: str, task_name: str, description: str = "") -> Optional["Task"]:
+    def create_team_task(
+        self, team_id: str, task_name: str, description: str = ""
+    ) -> Optional["Task"]:
         """Create a coordinated task for the entire team."""
         team = self._teams.get(team_id)
         if not team or not self.base:
@@ -60,11 +64,13 @@ class MultiAgentOrchestrator:
             name=f"[TEAM-{team_id[:6]}] {task_name}",
             description=description or f"Team task: {team.goal}",
             agent_id=team.leader or "team_leader",
-            metadata={"team_id": team_id, "team_agents": team.agents}
+            metadata={"team_id": team_id, "team_agents": team.agents},
         )
 
         # Add coordination step
-        self.base.add_step(task, "plan", params={"mode": "team_coordination", "team_id": team_id})
+        self.base.add_step(
+            task, "plan", params={"mode": "team_coordination", "team_id": team_id}
+        )
 
         # Add individual agent steps
         for agent in team.agents:
@@ -72,7 +78,7 @@ class MultiAgentOrchestrator:
                 task,
                 "plan",
                 params={"agent_id": agent, "subgoal": team.goal},
-                name=f"agent_{agent}"
+                name=f"agent_{agent}",
             )
 
         return task
@@ -88,7 +94,7 @@ class MultiAgentOrchestrator:
             "team_id": team_id,
             "resolution": "majority_vote",
             "message": f"Conflict '{conflict_description}' resolved via leader decision",
-            "leader": team.leader
+            "leader": team.leader,
         }
 
     def get_team_status(self, team_id: str) -> Optional[dict]:
@@ -101,12 +107,14 @@ class MultiAgentOrchestrator:
             "agents": team.agents,
             "leader": team.leader,
             "status": team.status,
-            "size": len(team.agents)
+            "size": len(team.agents),
         }
 
     def stats(self) -> dict:
         return {
             "version": self.version,
             "total_teams": len(self._teams),
-            "active_teams": len([t for t in self._teams.values() if t.status == "active"]),
+            "active_teams": len(
+                [t for t in self._teams.values() if t.status == "active"]
+            ),
         }

@@ -48,6 +48,7 @@ def _yaml_double_quoted(value: str) -> str:
     escaped = (value or "").replace("\\", "\\\\").replace('"', '\\"')
     return f'"{escaped}"'
 
+
 _INIT_TEMPLATE = '''"""{title} marketplace agent — скелет, сгенерированный scaffold.
 
 Хранилище унаследовано от OLXStorage: схема объявлений, история цен,
@@ -106,10 +107,12 @@ def _badging(apk_path: str) -> Dict[str, str]:
 
     result = subprocess.run(
         f"aapt dump badging '{apk_path}'",
-        shell=True, capture_output=True, text=True, timeout=120,
+        shell=True,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
-    return {"code": result.returncode, "stdout": result.stdout,
-            "stderr": result.stderr}
+    return {"code": result.returncode, "stdout": result.stdout, "stderr": result.stderr}
 
 
 def inspect_apk(apk_path: str, runner=None) -> Dict[str, Optional[str]]:
@@ -242,20 +245,29 @@ def scaffold_platform(
                 description or f"{title} marketplace agent"
             ),
         ),
-        str(root / "aios_core" / "modules" / module_name / "__init__.py"):
-            _INIT_TEMPLATE.format(
-                title=title, name=name, module_name=module_name,
-                class_name=class_name, android_package=android_package,
-            ),
-        str(root / "aios_core" / "modules" / module_name / "storage.py"):
-            _STORAGE_TEMPLATE.format(
-                title=title, name=name, class_name=class_name,
-            ),
-        str(root / "tests" / f"test_{module_name}_agent.py"):
-            _TEST_TEMPLATE.format(
-                name=name, safe_name=module_name, module_name=module_name,
-                class_name=class_name, android_package=android_package,
-            ),
+        str(
+            root / "aios_core" / "modules" / module_name / "__init__.py"
+        ): _INIT_TEMPLATE.format(
+            title=title,
+            name=name,
+            module_name=module_name,
+            class_name=class_name,
+            android_package=android_package,
+        ),
+        str(
+            root / "aios_core" / "modules" / module_name / "storage.py"
+        ): _STORAGE_TEMPLATE.format(
+            title=title,
+            name=name,
+            class_name=class_name,
+        ),
+        str(root / "tests" / f"test_{module_name}_agent.py"): _TEST_TEMPLATE.format(
+            name=name,
+            safe_name=module_name,
+            module_name=module_name,
+            class_name=class_name,
+            android_package=android_package,
+        ),
     }
 
     for path in files:

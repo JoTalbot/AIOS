@@ -17,7 +17,7 @@ class CreativityEngine:
             "domain": domain,
             "novelty": random.uniform(0.3, 1.0),
             "usefulness": random.uniform(0.4, 0.9),
-            "description": f"Novel idea in {domain}"
+            "description": f"Novel idea in {domain}",
         }
         self.ideas.append(idea)
         return idea

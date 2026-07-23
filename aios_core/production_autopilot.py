@@ -73,7 +73,10 @@ class ProductionConfig:
     def from_env(cls) -> "ProductionConfig":
         """Load from env vars - secrets only in env per roadmap."""
         webhook = os.getenv("AIOS_WEBHOOK_URL")
-        profiles_env = os.getenv("AIOS_PRODUCTION_PROFILES", "instagram:ig_shop_1,instagram:ig_shop_2,instagram:ig_shop_3")
+        profiles_env = os.getenv(
+            "AIOS_PRODUCTION_PROFILES",
+            "instagram:ig_shop_1,instagram:ig_shop_2,instagram:ig_shop_3",
+        )
         profiles = []
         for item in profiles_env.split(","):
             item = item.strip()
@@ -85,13 +88,19 @@ class ProductionConfig:
                 plat, name = "instagram", item
             # per-platform safe defaults
             aph = 60 if plat == "instagram" else 120
-            profiles.append(ProductionProfile(
-                platform=plat,
-                name=name,
-                actions_per_hour=int(os.getenv(f"AIOS_{name.upper()}_APH", aph)),
-                queries=["iPhone", "Samsung", "Nike"] if plat == "olx" else ["fashion", "shoes"],
-                webhook_url=webhook
-            ))
+            profiles.append(
+                ProductionProfile(
+                    platform=plat,
+                    name=name,
+                    actions_per_hour=int(os.getenv(f"AIOS_{name.upper()}_APH", aph)),
+                    queries=(
+                        ["iPhone", "Samsung", "Nike"]
+                        if plat == "olx"
+                        else ["fashion", "shoes"]
+                    ),
+                    webhook_url=webhook,
+                )
+            )
         return cls(
             profiles=profiles,
             device_pool_size=int(os.getenv("AIOS_DEVICE_POOL_SIZE", "3")),
@@ -104,9 +113,27 @@ class ProductionConfig:
         """Default 3 Instagram profiles for GA criteria."""
         return cls(
             profiles=[
-                ProductionProfile(platform="instagram", name="ig_shop_1", actions_per_hour=45, session_max_s=1800, queries=["sneakers", "fashion"]),
-                ProductionProfile(platform="instagram", name="ig_shop_2", actions_per_hour=50, session_max_s=1800, queries=["watches", "bags"]),
-                ProductionProfile(platform="instagram", name="ig_shop_3", actions_per_hour=40, session_max_s=1500, queries=["electronics", "phones"]),
+                ProductionProfile(
+                    platform="instagram",
+                    name="ig_shop_1",
+                    actions_per_hour=45,
+                    session_max_s=1800,
+                    queries=["sneakers", "fashion"],
+                ),
+                ProductionProfile(
+                    platform="instagram",
+                    name="ig_shop_2",
+                    actions_per_hour=50,
+                    session_max_s=1800,
+                    queries=["watches", "bags"],
+                ),
+                ProductionProfile(
+                    platform="instagram",
+                    name="ig_shop_3",
+                    actions_per_hour=40,
+                    session_max_s=1500,
+                    queries=["electronics", "phones"],
+                ),
             ],
             device_pool_size=3,
             cycle_interval_s=900,
@@ -143,7 +170,7 @@ class CycleReport:
             "risk": round(self.predictive_risk, 3),
             "drift": self.drift_detected,
             "advisor_drafts": self.advisor_drafts,
-            "timestamp": self.started_at
+            "timestamp": self.started_at,
         }
 
 
@@ -176,11 +203,14 @@ class DailyReport:
 class ProductionAutopilot:
     """Production autopilot orchestrator - 3+ profiles ≥2 weeks no bans."""
 
-    def __init__(self, config: ProductionConfig, 
-                 device_pool: Optional[Any] = None,
-                 memory: Optional[Any] = None,
-                 knowledge: Optional[Any] = None,
-                 fast_mode: bool = False):
+    def __init__(
+        self,
+        config: ProductionConfig,
+        device_pool: Optional[Any] = None,
+        memory: Optional[Any] = None,
+        knowledge: Optional[Any] = None,
+        fast_mode: bool = False,
+    ):
         self.config = config
         self.device_pool = device_pool
         self.memory = memory
@@ -191,8 +221,12 @@ class ProductionAutopilot:
         self._daily_reports: List[DailyReport] = []
         self._ban_count = 0
         self.version = "9.1.0-production"
-        self.fast_mode = fast_mode or config.simulation_speed > 5 or os.getenv("AIOS_FAST_TEST", "") == "1"
-        
+        self.fast_mode = (
+            fast_mode
+            or config.simulation_speed > 5
+            or os.getenv("AIOS_FAST_TEST", "") == "1"
+        )
+
         # init pacers
         for prof in config.profiles:
             key = f"{prof.platform}:{prof.name}"
@@ -201,11 +235,13 @@ class ProductionAutopilot:
                 session_max_s=prof.session_max_s,
                 jitter_s=prof.jitter_s if not self.fast_mode else None,
                 rng=random.Random(hash(key) % 10000),
-                sleeper=(lambda x: None) if self.fast_mode else None
+                sleeper=(lambda x: None) if self.fast_mode else None,
             )
             self._pacers[key] = pacer
 
-    def _check_compliance(self, profile: ProductionProfile, action: str) -> Dict[str, Any]:
+    def _check_compliance(
+        self, profile: ProductionProfile, action: str
+    ) -> Dict[str, Any]:
         """Check compliance for action."""
         try:
             result = compliance_guard(profile.platform, action)
@@ -213,20 +249,40 @@ class ProductionAutopilot:
         except Exception:
             # fallback: deny autopost by default, allow collect
             if action == "autopost":
-                return {"platform": profile.platform, "action": action, "allowed": False, "reason": "deny by default (no compliance file)", "policy": {}}
+                return {
+                    "platform": profile.platform,
+                    "action": action,
+                    "allowed": False,
+                    "reason": "deny by default (no compliance file)",
+                    "policy": {},
+                }
             if action == "collect":
-                return {"platform": profile.platform, "action": action, "allowed": True, "reason": "collector allowed (fallback)", "policy": {}}
-            return {"platform": profile.platform, "action": action, "allowed": True, "reason": "allowed", "policy": {}}
+                return {
+                    "platform": profile.platform,
+                    "action": action,
+                    "allowed": True,
+                    "reason": "collector allowed (fallback)",
+                    "policy": {},
+                }
+            return {
+                "platform": profile.platform,
+                "action": action,
+                "allowed": True,
+                "reason": "allowed",
+                "policy": {},
+            }
 
     def _get_pacer(self, profile_key: str) -> Optional[Pacer]:
         return self._pacers.get(profile_key)
 
-    def run_single_cycle(self, profile: ProductionProfile, simulate_actions: int = 20) -> CycleReport:
+    def run_single_cycle(
+        self, profile: ProductionProfile, simulate_actions: int = 20
+    ) -> CycleReport:
         """Run single autopilot cycle for one profile."""
         profile_key = f"{profile.platform}:{profile.name}"
         started = time.time()
         pacer = self._get_pacer(profile_key)
-        
+
         compliance_checks = []
         # Check all relevant actions
         for act in ["collect", "send", "autopost"]:
@@ -234,7 +290,9 @@ class ProductionAutopilot:
             compliance_checks.append(check)
 
         # If compliance blocks collect, skip cycle guarded
-        collect_allowed = next((c for c in compliance_checks if c["action"] == "collect"), {}).get("allowed", True)
+        collect_allowed = next(
+            (c for c in compliance_checks if c["action"] == "collect"), {}
+        ).get("allowed", True)
         if not collect_allowed and self.config.compliance_strict:
             return CycleReport(
                 profile_key=profile_key,
@@ -247,7 +305,7 @@ class ProductionAutopilot:
                 pacing_stats=pacer.stats() if pacer else {},
                 compliance_checks=compliance_checks,
                 predictive_risk=0.0,
-                duration_ms=(time.time() - started)*1000
+                duration_ms=(time.time() - started) * 1000,
             )
 
         # Simulate actions with pacing
@@ -255,21 +313,23 @@ class ProductionAutopilot:
         success = 0
         failed = 0
         drafts = 0
-        
+
         for i in range(simulate_actions):
             if pacer:
                 if not pacer.before_action():
                     # pacing limit hit - honest stop, not a ban
                     break
-            
+
             # Simulate action success/failure (95% success for healthy)
             is_success = random.random() > 0.05
             latency = random.uniform(300, 1500)
-            
+
             # Record for predictive
             device_id = profile.device_serial or f"emulator-{hash(profile_key) % 1000}"
-            self._predictive.record_event(device_id, f"{profile.platform}_collect", latency, is_success)
-            
+            self._predictive.record_event(
+                device_id, f"{profile.platform}_collect", latency, is_success
+            )
+
             actions += 1
             if is_success:
                 success += 1
@@ -281,11 +341,11 @@ class ProductionAutopilot:
 
         finished = time.time()
         duration_ms = (finished - started) * 1000 / self.config.simulation_speed
-        
+
         # Predictive risk
         device_id = profile.device_serial or f"emulator-{hash(profile_key) % 1000}"
         pred = self._predictive.predict(device_id)
-        
+
         # Drift detection (5% chance)
         drift = random.random() < 0.03
 
@@ -302,10 +362,10 @@ class ProductionAutopilot:
             predictive_risk=pred.risk_score,
             duration_ms=duration_ms,
             drift_detected=drift,
-            advisor_drafts=drafts
+            advisor_drafts=drafts,
         )
         self._cycle_history.append(report)
-        
+
         # Ban detection: if failure rate > 50% or critical risk, count as potential ban
         if failed / max(actions, 1) > 0.5 or pred.risk_level.value == "critical":
             self._ban_count += 1
@@ -333,9 +393,11 @@ class ProductionAutopilot:
             pacer._sleep = lambda x: None
             pacer.jitter_s = None
 
-        print(f"🎬 Simulating 14 days x {cycles_per_day} cycles/day x {len(self.config.profiles)} profiles = {14*cycles_per_day*len(self.config.profiles)} cycles")
+        print(
+            f"🎬 Simulating 14 days x {cycles_per_day} cycles/day x {len(self.config.profiles)} profiles = {14*cycles_per_day*len(self.config.profiles)} cycles"
+        )
         all_reports = []
-        
+
         for day in range(14):
             for cycle_in_day in range(cycles_per_day):
                 reports = self.run_all_profiles_cycle()
@@ -347,7 +409,11 @@ class ProductionAutopilot:
         # Generate daily reports
         daily = defaultdict(list)
         for r in all_reports:
-            day_idx = int((r.started_at - all_reports[0].started_at) / (24*3600)) if all_reports else 0
+            day_idx = (
+                int((r.started_at - all_reports[0].started_at) / (24 * 3600))
+                if all_reports
+                else 0
+            )
             daily[day_idx].append(r)
 
         daily_reports = []
@@ -358,7 +424,11 @@ class ProductionAutopilot:
             profiles_stats = {}
             for r in reps:
                 if r.profile_key not in profiles_stats:
-                    profiles_stats[r.profile_key] = {"actions": 0, "success": 0, "cycles": 0}
+                    profiles_stats[r.profile_key] = {
+                        "actions": 0,
+                        "success": 0,
+                        "cycles": 0,
+                    }
                 profiles_stats[r.profile_key]["actions"] += r.actions
                 profiles_stats[r.profile_key]["success"] += r.success
                 profiles_stats[r.profile_key]["cycles"] += 1
@@ -369,10 +439,12 @@ class ProductionAutopilot:
                 total_actions=total_actions,
                 avg_success_rate=avg_success,
                 profiles=profiles_stats,
-                bans=sum(1 for r in reps if r.failed / max(r.actions,1) > 0.5),
+                bans=sum(1 for r in reps if r.failed / max(r.actions, 1) > 0.5),
                 drifts=sum(1 for r in reps if r.drift_detected),
                 predictive_alerts=sum(1 for r in reps if r.predictive_risk > 0.5),
-                compliance_blocks=sum(1 for r in reps if r.status == "blocked-compliance")
+                compliance_blocks=sum(
+                    1 for r in reps if r.status == "blocked-compliance"
+                ),
             )
             daily_reports.append(dar)
             self._daily_reports.append(dar)
@@ -380,8 +452,10 @@ class ProductionAutopilot:
         # Final summary
         total_bans = self._ban_count
         total_drifts = sum(1 for r in all_reports if r.drift_detected)
-        avg_success = sum(r.success for r in all_reports) / max(sum(r.actions for r in all_reports), 1)
-        
+        avg_success = sum(r.success for r in all_reports) / max(
+            sum(r.actions for r in all_reports), 1
+        )
+
         summary = {
             "simulation": {
                 "days": 14,
@@ -392,7 +466,9 @@ class ProductionAutopilot:
                 "bans": total_bans,
                 "drifts": total_drifts,
                 "ban_free": total_bans == 0,
-                "ga_criteria_met": total_bans == 0 and avg_success > 0.9 and len(self.config.profiles) >= 3,
+                "ga_criteria_met": total_bans == 0
+                and avg_success > 0.9
+                and len(self.config.profiles) >= 3,
             },
             "profiles": {p.name: p.to_dict() for p in self.config.profiles},
             "daily_reports": [d.to_dict() for d in daily_reports],
@@ -401,7 +477,7 @@ class ProductionAutopilot:
             },
             "health": self._predictive.health_report(),
             "timestamp": time.time(),
-            "version": self.version
+            "version": self.version,
         }
 
         return summary
@@ -410,8 +486,12 @@ class ProductionAutopilot:
         """Current production health."""
         total_cycles = len(self._cycle_history)
         total_actions = sum(r.actions for r in self._cycle_history)
-        avg_success = sum(r.success for r in self._cycle_history) / max(total_actions, 1) if total_cycles else 0
-        
+        avg_success = (
+            sum(r.success for r in self._cycle_history) / max(total_actions, 1)
+            if total_cycles
+            else 0
+        )
+
         return {
             "version": self.version,
             "profiles": len(self.config.profiles),
@@ -423,14 +503,14 @@ class ProductionAutopilot:
             "predictive_health": self._predictive.health_report(),
             "pacing": {k: v.stats() for k, v in self._pacers.items()},
             "last_cycles": [r.to_dict() for r in self._cycle_history[-10:]],
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
     def to_prometheus_metrics(self) -> str:
         """Prometheus exposition for production autopilot."""
         lines = []
         health = self.health_report()
-        
+
         lines += [
             "# HELP aios_production_profiles Total production profiles",
             "# TYPE aios_production_profiles gauge",
@@ -453,13 +533,13 @@ class ProductionAutopilot:
             f"aios_production_bans_total {health['bans']}",
             "",
         ]
-        
+
         for profile_key, pacing in health.get("pacing", {}).items():
             safe_key = profile_key.replace(":", "_").replace("-", "_")
             lines += [
-                f"# HELP aios_pacer_actions{{profile=\"{profile_key}\"}} Actions per pacer",
+                f'# HELP aios_pacer_actions{{profile="{profile_key}"}} Actions per pacer',
                 f"# TYPE aios_pacer_actions gauge",
                 f"aios_pacer_actions{{profile=\"{profile_key}\"}} {pacing.get('actions', 0)}",
             ]
-        
+
         return "\n".join(lines)

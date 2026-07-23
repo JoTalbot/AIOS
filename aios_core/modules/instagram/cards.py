@@ -96,7 +96,9 @@ class InstagramCollector:
         """Собирает дедуплицированные карточки с текущей выдачи."""
         self._drive(query)
         return self._collector().collect(
-            query=query, max_cards=max_cards, progress=progress,
+            query=query,
+            max_cards=max_cards,
+            progress=progress,
         )
 
     def collect_to_storage(
@@ -109,5 +111,8 @@ class InstagramCollector:
         """Сбор + персист в InstagramStorage (как OLXCollector)."""
         self._drive(query)
         return self._collector().collect_to_storage(
-            storage, query=query, max_cards=max_cards, progress=progress,
+            storage,
+            query=query,
+            max_cards=max_cards,
+            progress=progress,
         )

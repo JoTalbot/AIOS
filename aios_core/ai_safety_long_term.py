@@ -15,7 +15,7 @@ class LongTermSafety:
             "horizon": horizon_years,
             "goals": goals,
             "risks": ["misalignment", "power_seeking", "deception"],
-            "mitigations": ["monitoring", "interpretability", "governance"]
+            "mitigations": ["monitoring", "interpretability", "governance"],
         }
         self.long_term_plans.append(plan)
         return plan

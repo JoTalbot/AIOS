@@ -40,9 +40,7 @@ class ShardRouter:
     """Роутер профилей по хостам-шардам."""
 
     def __init__(self, db_path: "Optional[str]" = None):
-        self.db_path = db_path or os.environ.get(
-            "AIOS_SHARDS_DB", ":memory:"
-        )
+        self.db_path = db_path or os.environ.get("AIOS_SHARDS_DB", ":memory:")
         if self.db_path != ":memory:":
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
@@ -88,9 +86,7 @@ class ShardRouter:
             rows = self._conn.execute(
                 "SELECT * FROM shard_hosts ORDER BY host"
             ).fetchall()
-        return [
-            {**dict(row), "healthy": bool(row["healthy"])} for row in rows
-        ]
+        return [{**dict(row), "healthy": bool(row["healthy"])} for row in rows]
 
     def set_healthy(self, host: str, healthy: bool) -> bool:
         """Помечает хост здоровым/больным. False — хост не найден."""
@@ -104,9 +100,7 @@ class ShardRouter:
     def remove_host(self, host: str) -> bool:
         """Удаляет хост и все его маршруты. True, если существовал."""
         with self._lock, self._conn:
-            self._conn.execute(
-                "DELETE FROM shard_routes WHERE host = ?", (host,)
-            )
+            self._conn.execute("DELETE FROM shard_routes WHERE host = ?", (host,))
             cursor = self._conn.execute(
                 "DELETE FROM shard_hosts WHERE host = ?", (host,)
             )
@@ -119,6 +113,7 @@ class ShardRouter:
     @staticmethod
     def _rendezvous(profile_key: str, hosts: List[Dict]) -> Dict:
         """HRW: хост с максимальным хэшем (стабилен между процессами)."""
+
         def score(host: Dict) -> str:
             key = f"{host['host']}|{profile_key}".encode("utf-8")
             return hashlib.sha256(key).hexdigest()
@@ -145,7 +140,7 @@ class ShardRouter:
                     "host": route["host"],
                     "base_url": route["base_url"],
                     "url": f"{route['base_url'].rstrip('/')}/profiles/"
-                           f"{profile_key.replace(':', '/')}",
+                    f"{profile_key.replace(':', '/')}",
                 }
             if route is not None:
                 self._conn.execute(
@@ -153,7 +148,8 @@ class ShardRouter:
                     (profile_key,),
                 )
             healthy = [
-                dict(row) for row in self._conn.execute(
+                dict(row)
+                for row in self._conn.execute(
                     "SELECT * FROM shard_hosts WHERE healthy = 1"
                 ).fetchall()
             ]
@@ -170,7 +166,7 @@ class ShardRouter:
             "host": chosen["host"],
             "base_url": chosen["base_url"],
             "url": f"{chosen['base_url'].rstrip('/')}/profiles/"
-                   f"{profile_key.replace(':', '/')}",
+            f"{profile_key.replace(':', '/')}",
         }
 
     def unroute(self, profile_key: str) -> bool:

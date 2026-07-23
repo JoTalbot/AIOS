@@ -6,7 +6,9 @@ from typing import Dict, List
 class Option:
     """Temporal abstraction (option) in HRL."""
 
-    def __init__(self, name: str, initiation_set: List, policy, termination: float = 0.1):
+    def __init__(
+        self, name: str, initiation_set: List, policy, termination: float = 0.1
+    ):
         self.name = name
         self.initiation_set = initiation_set
         self.policy = policy

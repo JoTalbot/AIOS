@@ -1,6 +1,6 @@
 """Physics-Informed Neural Networks (PINNs) for AIOS"""
 
-from typing import Callable, List
+from typing import Callable, Dict, List
 
 
 class PINN:
@@ -16,7 +16,7 @@ class PINN:
         return {
             "epochs": epochs,
             "final_loss": round(loss_history[-1], 6),
-            "converged": True
+            "converged": True,
         }
 
     def predict(self, x: List[float]) -> float:

@@ -97,9 +97,13 @@ class StrategyAdvisor:
 
         for row in self.storage.own_ads(status="active"):
             own = OwnAd(
-                title=row["title"], price=row["price"], currency=row["currency"],
-                views=row["last_views"] or 0, url=row["url"],
-                ad_id=row["ad_id"], status=row["status"],
+                title=row["title"],
+                price=row["price"],
+                currency=row["currency"],
+                views=row["last_views"] or 0,
+                url=row["url"],
+                ad_id=row["ad_id"],
+                status=row["status"],
             )
             position = self.watch.price_position(own)
             decision = planner.decide(
@@ -113,37 +117,65 @@ class StrategyAdvisor:
 
             if cheaper >= self.undercut_alert and own.price and median_price:
                 suggested = round(median_price * 0.98)
-                advice.append(ActionAdvice(
-                    row["fingerprint"], own.title, ACTION_EDIT_PRICE,
-                    f"{cheaper} конкурентів дешевші; медіана ніші {median_price:g}. "
-                    f"Знизьте до ~{suggested} грн.",
-                    suggested_price=suggested, priority=1,
-                ))
+                advice.append(
+                    ActionAdvice(
+                        row["fingerprint"],
+                        own.title,
+                        ACTION_EDIT_PRICE,
+                        f"{cheaper} конкурентів дешевші; медіана ніші {median_price:g}. "
+                        f"Знизьте до ~{suggested} грн.",
+                        suggested_price=suggested,
+                        priority=1,
+                    )
+                )
             elif decision.should_repost:
-                advice.append(ActionAdvice(
-                    row["fingerprint"], own.title, ACTION_REPOST,
-                    decision.reason, priority=2,
-                ))
-            elif cheaper >= 1 and own.price and median_price and own.price > median_price * 1.1:
-                advice.append(ActionAdvice(
-                    row["fingerprint"], own.title, ACTION_EDIT_PRICE,
-                    f"Ціна вища за медіану ніші ({median_price:g}) — "
-                    "перегляди просідатимуть.",
-                    suggested_price=round(median_price * 0.98), priority=2,
-                ))
+                advice.append(
+                    ActionAdvice(
+                        row["fingerprint"],
+                        own.title,
+                        ACTION_REPOST,
+                        decision.reason,
+                        priority=2,
+                    )
+                )
+            elif (
+                cheaper >= 1
+                and own.price
+                and median_price
+                and own.price > median_price * 1.1
+            ):
+                advice.append(
+                    ActionAdvice(
+                        row["fingerprint"],
+                        own.title,
+                        ACTION_EDIT_PRICE,
+                        f"Ціна вища за медіану ніші ({median_price:g}) — "
+                        "перегляди просідатимуть.",
+                        suggested_price=round(median_price * 0.98),
+                        priority=2,
+                    )
+                )
             elif (row["last_views"] or 0) < 10 and position["of"] > 5:
-                advice.append(ActionAdvice(
-                    row["fingerprint"], own.title, ACTION_PROMOTE,
-                    f"Ніша конкурентна ({position['of']} схожих), переглядів мало — "
-                    "розгляньте офіційне просування або покращіть заголовок/фото.",
-                    priority=2,
-                ))
+                advice.append(
+                    ActionAdvice(
+                        row["fingerprint"],
+                        own.title,
+                        ACTION_PROMOTE,
+                        f"Ніша конкурентна ({position['of']} схожих), переглядів мало — "
+                        "розгляньте офіційне просування або покращіть заголовок/фото.",
+                        priority=2,
+                    )
+                )
             else:
-                advice.append(ActionAdvice(
-                    row["fingerprint"], own.title, ACTION_KEEP,
-                    "Позиція у нормі; періодично оновлюйте снапшот статистики.",
-                    priority=3,
-                ))
+                advice.append(
+                    ActionAdvice(
+                        row["fingerprint"],
+                        own.title,
+                        ACTION_KEEP,
+                        "Позиція у нормі; періодично оновлюйте снапшот статистики.",
+                        priority=3,
+                    )
+                )
 
         advice.sort(key=lambda item: item.priority)
         return advice
@@ -168,21 +200,21 @@ class StrategyAdvisor:
                 continue  # niche already covered by the portfolio
             prices = [ad.price for ad in ads if ad.price is not None]
             keywords = RecommendationEngine._title_keywords(ads, None)
-            recency = sum(
-                1 for ad in ads if ad.published_at and "T" in ad.published_at
-            )
+            recency = sum(1 for ad in ads if ad.published_at and "T" in ad.published_at)
             priority = 1 if len(ads) >= 10 else (2 if len(ads) >= 5 else 3)
-            suggestions.append(NewListingSuggestion(
-                query=query,
-                reason=(
-                    f"Активна ніша: {len(ads)} оголошень у базі, "
-                    f"своїх оголошень немає. Ринок живий — варто розміститись."
-                ),
-                suggested_price=round(median(prices) * 0.97) if prices else None,
-                sample_title=" ".join(keywords[:4]).title() or query.title(),
-                active_competitors=len(ads),
-                priority=priority,
-            ))
+            suggestions.append(
+                NewListingSuggestion(
+                    query=query,
+                    reason=(
+                        f"Активна ніша: {len(ads)} оголошень у базі, "
+                        f"своїх оголошень немає. Ринок живий — варто розміститись."
+                    ),
+                    suggested_price=round(median(prices) * 0.97) if prices else None,
+                    sample_title=" ".join(keywords[:4]).title() or query.title(),
+                    active_competitors=len(ads),
+                    priority=priority,
+                )
+            )
 
         suggestions.sort(key=lambda item: (-item.active_competitors, item.priority))
         return suggestions[:top_n]

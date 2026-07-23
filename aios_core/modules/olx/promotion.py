@@ -249,7 +249,9 @@ class Reposter:
         if price is not None:
             steps.append(f"Встановити ціну {price:g} {own_ad.currency or 'грн'}")
         if suggestion and suggestion.description_additions:
-            steps.append("Доповнити опис: " + " | ".join(suggestion.description_additions))
+            steps.append(
+                "Доповнити опис: " + " | ".join(suggestion.description_additions)
+            )
         steps.append("Опублікувати та перевірити появу в «Мої оголошення»")
         return steps
 
@@ -340,7 +342,8 @@ class OwnAdEditor:
         log.append(
             {
                 "code": 0,
-                "stdout": "edit flow via " + "/".join(self.EDIT_LABELS)
+                "stdout": "edit flow via "
+                + "/".join(self.EDIT_LABELS)
                 + " (requires per-device calibration)",
                 "stderr": "",
             }

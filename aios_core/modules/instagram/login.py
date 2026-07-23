@@ -107,8 +107,7 @@ class InstagramLoginDriver:
         opened = self.adb.open_app()
         if opened.get("code") != 0:
             raise ValueError(
-                "adb open_app failed: "
-                f"{(opened.get('stderr') or 'no device')[:160]}"
+                "adb open_app failed: " f"{(opened.get('stderr') or 'no device')[:160]}"
             )
         time.sleep(self.open_wait_s)
         xml = self._dump()
@@ -128,10 +127,14 @@ class InstagramLoginDriver:
     def _login_flow(self) -> None:
         """Ввод логина/пароля: focused input → username → TAB → password → ENTER."""
         username = required_secret(
-            self.platform, "USERNAME", profile=self.profile,
+            self.platform,
+            "USERNAME",
+            profile=self.profile,
         )
         password = required_secret(
-            self.platform, "PASSWORD", profile=self.profile,
+            self.platform,
+            "PASSWORD",
+            profile=self.profile,
         )
         self.adb.input_text(username)
         self.adb.run(f"{self.adb.adb} shell input keyevent {_KEYEVENT_TAB}")

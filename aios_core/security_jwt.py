@@ -12,12 +12,14 @@ class JWTManager:
         self.secret = secret
         self.algorithm = algorithm
 
-    def create_token(self, subject: str, roles: list = None, expires_in: int = 3600) -> str:
+    def create_token(
+        self, subject: str, roles: list = None, expires_in: int = 3600
+    ) -> str:
         payload = {
             "sub": subject,
             "roles": roles or ["user"],
             "iat": int(time.time()),
-            "exp": int(time.time()) + expires_in
+            "exp": int(time.time()) + expires_in,
         }
         return jwt.encode(payload, self.secret, algorithm=self.algorithm)
 
@@ -33,6 +35,6 @@ class JWTManager:
             return {
                 "subject": payload.get("sub"),
                 "roles": payload.get("roles", []),
-                "token": token
+                "token": token,
             }
         return None

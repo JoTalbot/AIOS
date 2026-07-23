@@ -14,7 +14,7 @@ class AdvancedRedTeam:
             "data_extraction",
             "model_extraction",
             "denial_of_service",
-            "bias_amplification"
+            "bias_amplification",
         ]
 
     def generate_advanced_attack(self, category: str, target: str) -> Dict:
@@ -23,7 +23,7 @@ class AdvancedRedTeam:
             "target": target,
             "prompt": f"Advanced {category} attack on {target}",
             "success": False,
-            "severity": "high"
+            "severity": "high",
         }
         self.attacks.append(attack)
         return attack

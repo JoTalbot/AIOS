@@ -57,10 +57,7 @@ class Pacer:
             and self._window_actions >= self.actions_per_hour
         ):
             return False
-        if (
-            self.session_max_s
-            and now - self._started >= self.session_max_s
-        ):
+        if self.session_max_s and now - self._started >= self.session_max_s:
             return False
         self._window_actions += 1
         self._actions += 1

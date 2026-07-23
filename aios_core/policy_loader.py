@@ -24,6 +24,7 @@ class PolicyValidationError(Exception):
 @dataclass
 class ThreatLevelConfig:
     """Configuration for a single threat level."""
+
     name: str
     action: str
     escalation: str
@@ -33,6 +34,7 @@ class ThreatLevelConfig:
 @dataclass
 class PolicyRule:
     """A named boolean policy rule."""
+
     name: str
     enabled: bool
 
@@ -40,6 +42,7 @@ class PolicyRule:
 @dataclass
 class PolicyRequirement:
     """A named policy requirement with a value."""
+
     name: str
     value: Any
 
@@ -47,6 +50,7 @@ class PolicyRequirement:
 @dataclass
 class Policy:
     """A loaded and validated policy."""
+
     name: str
     version: str
     requirements: list[PolicyRequirement] = field(default_factory=list)
@@ -64,7 +68,12 @@ _POLICY_SCHEMAS = {
     },
     "federation_policy": {
         "required_keys": ["requirements", "rules"],
-        "optional_keys": ["version", "sync_frequency", "local_autonomy", "offline_operation"],
+        "optional_keys": [
+            "version",
+            "sync_frequency",
+            "local_autonomy",
+            "offline_operation",
+        ],
     },
     "evolution_policy": {
         "required_keys": ["requirements", "stages", "restrictions"],
@@ -233,8 +242,13 @@ class PolicyLoader:
 
         # Collect extra sections not covered by standard parsing
         known_keys = {
-            "version", "requirements", "rules", "threat_levels",
-            "stages", "restrictions", "rollback",
+            "version",
+            "requirements",
+            "rules",
+            "threat_levels",
+            "stages",
+            "restrictions",
+            "rollback",
         }
         # Also exclude the policy name key
         known_keys.add(policy_name)
@@ -260,7 +274,9 @@ class PolicyLoader:
         if policy_name == "federation_policy":
             policy.extra_sections["sync_frequency"] = data.get("sync_frequency", {})
             policy.extra_sections["local_autonomy"] = data.get("local_autonomy", False)
-            policy.extra_sections["offline_operation"] = data.get("offline_operation", False)
+            policy.extra_sections["offline_operation"] = data.get(
+                "offline_operation", False
+            )
 
         self.policies[policy_name] = policy
 

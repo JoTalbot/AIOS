@@ -13,11 +13,53 @@ from .models import AdCard
 
 _STOPWORDS = {
     # Ukrainian / Russian filler words frequent in listings.
-    "для", "або", "та", "і", "й", "на", "в", "у", "з", "зі", "до", "по",
-    "що", "це", "як", "не", "від", "під", "над", "при", "без", "про",
-    "и", "а", "о", "с", "со", "к", "во", "из", "за", "от", "у",
-    "буде", "стан", "новый", "нова", "нове", "новий", "б/у", "бу",
-    "продам", "продаж", "куплю", "срочно", "гарний", "хороший",
+    "для",
+    "або",
+    "та",
+    "і",
+    "й",
+    "на",
+    "в",
+    "у",
+    "з",
+    "зі",
+    "до",
+    "по",
+    "що",
+    "це",
+    "як",
+    "не",
+    "від",
+    "під",
+    "над",
+    "при",
+    "без",
+    "про",
+    "и",
+    "а",
+    "о",
+    "с",
+    "со",
+    "к",
+    "во",
+    "из",
+    "за",
+    "от",
+    "у",
+    "буде",
+    "стан",
+    "новый",
+    "нова",
+    "нове",
+    "новий",
+    "б/у",
+    "бу",
+    "продам",
+    "продаж",
+    "куплю",
+    "срочно",
+    "гарний",
+    "хороший",
 }
 
 _TOKEN_RE = re.compile(r"[0-9A-Za-zА-Яа-яІіЇїЄєҐґ'-]+")
@@ -113,7 +155,9 @@ class Recommendation:
             lines.append(f"- Рекомендована ціна: {self.suggested_price:g}")
         lines.append(f"- Оцінка ціни: {self.verdict}")
         if self.title_keywords:
-            lines.append("- Ключові слова для заголовка: " + ", ".join(self.title_keywords))
+            lines.append(
+                "- Ключові слова для заголовка: " + ", ".join(self.title_keywords)
+            )
         top_verdict = "так" if self.use_top_promotion else "не обов'язково"
         lines.append(f"- TOP-просування: {top_verdict}")
         for note in self.notes:
@@ -151,7 +195,9 @@ class RecommendationEngine:
             if my_price is not None:
                 if my_price <= market_median * 0.9:
                     verdict = "below_market"
-                    notes.append("Ціна нижча за ринок — можна підняти без втрати інтересу.")
+                    notes.append(
+                        "Ціна нижча за ринок — можна підняти без втрати інтересу."
+                    )
                 elif my_price >= market_median * 1.1:
                     verdict = "above_market"
                     notes.append(
@@ -169,8 +215,11 @@ class RecommendationEngine:
         use_top = False
         if len(top_ads) >= 3:
             use_top = True
-        elif top_ads and plain_ads and median([a.price for a in top_ads]) >= median(
-            [a.price for a in plain_ads]
+        elif (
+            top_ads
+            and plain_ads
+            and median([a.price for a in top_ads])
+            >= median([a.price for a in plain_ads])
         ):
             use_top = True
         if use_top:
@@ -205,7 +254,9 @@ class RecommendationEngine:
         for ad in priced:
             counter.update(set(_tokenize(ad.title)))
         mine = set(_tokenize(my_title)) if my_title else set()
-        return [word for word, _count in counter.most_common(20) if word not in mine][:10]
+        return [word for word, _count in counter.most_common(20) if word not in mine][
+            :10
+        ]
 
 
 @dataclass

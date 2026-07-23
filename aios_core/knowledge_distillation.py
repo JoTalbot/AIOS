@@ -10,7 +10,9 @@ class KnowledgeDistiller:
         self.teacher_models: Dict[str, Dict] = {}
         self.student_models: Dict[str, Dict] = {}
 
-    def distill(self, teacher_id: str, student_id: str, temperature: float = 2.0) -> Dict:
+    def distill(
+        self, teacher_id: str, student_id: str, temperature: float = 2.0
+    ) -> Dict:
         if teacher_id not in self.teacher_models:
             return {"error": "Teacher not found"}
         # Simplified distillation
@@ -18,11 +20,11 @@ class KnowledgeDistiller:
             "teacher": teacher_id,
             "student": student_id,
             "temperature": temperature,
-            "success": True
+            "success": True,
         }
 
     def stats(self) -> dict:
         return {
             "teachers": len(self.teacher_models),
-            "students": len(self.student_models)
+            "students": len(self.student_models),
         }

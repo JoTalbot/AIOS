@@ -10,7 +10,7 @@ from __future__ import annotations
 from aios_core.platforms.hintmsg import HintsMessenger
 
 PACKAGE = "com.whatsapp"
-DEEP_LINK = 'whatsapp://'
+DEEP_LINK = "whatsapp://"
 
 
 class WhatsAppMessenger(HintsMessenger):
@@ -19,11 +19,23 @@ class WhatsAppMessenger(HintsMessenger):
     PACKAGE = PACKAGE
     DEEP_LINK = DEEP_LINK
 
-    def __init__(self, adb=None, storage=None, messenger_hints=None,
-                 directory: str = "platforms", screen_width: int = 1080,
-                 serial=None):
+    def __init__(
+        self,
+        adb=None,
+        storage=None,
+        messenger_hints=None,
+        directory: str = "platforms",
+        screen_width: int = 1080,
+        serial=None,
+    ):
         super().__init__(
-            platform="whatsapp", package=PACKAGE, deep_link=DEEP_LINK,
-            adb=adb, storage=storage, messenger_hints=messenger_hints,
-            directory=directory, screen_width=screen_width, serial=serial,
+            platform="whatsapp",
+            package=PACKAGE,
+            deep_link=DEEP_LINK,
+            adb=adb,
+            storage=storage,
+            messenger_hints=messenger_hints,
+            directory=directory,
+            screen_width=screen_width,
+            serial=serial,
         )

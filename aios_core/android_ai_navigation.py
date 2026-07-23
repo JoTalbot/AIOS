@@ -28,10 +28,10 @@ def _text_vector(text: str) -> Dict[str, float]:
         return {}
     hash_val = hashlib.md5(text.encode()).hexdigest()
     return {
-        'hash_1': float(int(hash_val[:8], 16) % 1000000) / 1000000.0,
-        'hash_2': float(int(hash_val[8:16], 16) % 1000000) / 1000000.0,
-        'hash_3': float(int(hash_val[16:24], 16) % 1000000) / 1000000.0,
-        'hash_4': float(int(hash_val[24:32], 16) % 1000000) / 1000000.0,
+        "hash_1": float(int(hash_val[:8], 16) % 1000000) / 1000000.0,
+        "hash_2": float(int(hash_val[8:16], 16) % 1000000) / 1000000.0,
+        "hash_3": float(int(hash_val[16:24], 16) % 1000000) / 1000000.0,
+        "hash_4": float(int(hash_val[24:32], 16) % 1000000) / 1000000.0,
     }
 
 
@@ -41,18 +41,19 @@ def _geometry_vector(bounds: Tuple[int, int, int, int]) -> Dict[str, float]:
     width = max(x2 - x1, 1)
     height = max(y2 - y1, 1)
     return {
-        'x_center': (x1 + x2) / 2.0,
-        'y_center': (y1 + y2) / 2.0,
-        'width': float(width),
-        'height': float(height),
-        'aspect_ratio': float(height) / float(width) if width > 0 else 0.0,
-        'area': float(width * height),
+        "x_center": (x1 + x2) / 2.0,
+        "y_center": (y1 + y2) / 2.0,
+        "width": float(width),
+        "height": float(height),
+        "aspect_ratio": float(height) / float(width) if width > 0 else 0.0,
+        "area": float(width * height),
     }
 
 
 @dataclass
 class ScreenEmbedding:
     """Represents a screen embedding vector for similarity matching."""
+
     name: str
     score: float
     matched_elements: int
@@ -142,7 +143,7 @@ class AIScreenClassifier:
                     # add resource-id hints
                     for el in clickables[:3]:
                         if el.resource_id:
-                            signature_parts.append(el.resource_id.split('/')[-1][:20])
+                            signature_parts.append(el.resource_id.split("/")[-1][:20])
         except Exception:
             pass
 
@@ -153,20 +154,36 @@ class AIScreenClassifier:
         self.parser = UIAutomatorParser(xml)
         try:
             if self.parser.parse() is None:
-                return ScreenEmbedding(name="unknown", score=0.0, matched_elements=0, embedding=[], metadata={"reason": "parse_failed"})
+                return ScreenEmbedding(
+                    name="unknown",
+                    score=0.0,
+                    matched_elements=0,
+                    embedding=[],
+                    metadata={"reason": "parse_failed"},
+                )
         except Exception as e:
-            return ScreenEmbedding(name="unknown", score=0.0, matched_elements=0, embedding=[], metadata={"error": str(e)})
+            return ScreenEmbedding(
+                name="unknown",
+                score=0.0,
+                matched_elements=0,
+                embedding=[],
+                metadata={"error": str(e)},
+            )
 
         embedding = self._calculate_embedding(self.parser)
 
         screen_signature = self._generate_screen_signature(xml)
-        pattern_score = self._calculate_similarity_with_cache(embedding, screen_signature)
+        pattern_score = self._calculate_similarity_with_cache(
+            embedding, screen_signature
+        )
 
         best_match = None
         highest_similarity = pattern_score
 
         for name, stored_embedding in self._embeddings.items():
-            similarity = self._calculate_similarity(embedding, stored_embedding.embedding)
+            similarity = self._calculate_similarity(
+                embedding, stored_embedding.embedding
+            )
             if similarity > highest_similarity:
                 highest_similarity = similarity
                 best_match = name
@@ -180,26 +197,36 @@ class AIScreenClassifier:
             score=score,
             matched_elements=matched_elements,
             embedding=embedding,
-            metadata={"source_len": len(xml), "pattern_score": pattern_score, "signature": screen_signature}
+            metadata={
+                "source_len": len(xml),
+                "pattern_score": pattern_score,
+                "signature": screen_signature,
+            },
         )
 
         # Store if novel and confident enough
-        if screen_name == "unknown" or (score > 0.5 and screen_name not in self._embeddings):
+        if screen_name == "unknown" or (
+            score > 0.5 and screen_name not in self._embeddings
+        ):
             # avoid storing every unknown generic - only if has some elements
             if len(embedding) > 0:
                 self._embeddings[screen_signature or screen_name] = embedding_record
-            self._navigation_history.append({
-                "screen_name": screen_name,
-                "embedding": embedding[:8],
-                "timestamp": time.time(),
-                "matched_elements": matched_elements,
-                "signature": screen_signature
-            })
+            self._navigation_history.append(
+                {
+                    "screen_name": screen_name,
+                    "embedding": embedding[:8],
+                    "timestamp": time.time(),
+                    "matched_elements": matched_elements,
+                    "signature": screen_signature,
+                }
+            )
             self._update_pattern_cache(screen_signature, embedding)
 
         return embedding_record
 
-    def _calculate_similarity_with_cache(self, vec: List[float], cache_key: str) -> float:
+    def _calculate_similarity_with_cache(
+        self, vec: List[float], cache_key: str
+    ) -> float:
         """Calculate similarity with cached patterns."""
         if cache_key not in self._pattern_cache:
             return 0.0
@@ -224,7 +251,11 @@ class AIScreenClassifier:
         if not key or not embedding:
             return
         # store copy of vector truncated to 16 dims for cache efficiency
-        self._pattern_cache[key].append(embedding[:16].copy() if hasattr(embedding, 'copy') else list(embedding[:16]))
+        self._pattern_cache[key].append(
+            embedding[:16].copy()
+            if hasattr(embedding, "copy")
+            else list(embedding[:16])
+        )
         # limit cache size to avoid memory bloat
         if len(self._pattern_cache[key]) > 20:
             self._pattern_cache[key] = self._pattern_cache[key][-20:]
@@ -232,6 +263,7 @@ class AIScreenClassifier:
     def _ensure_cv(self):
         """Ensure cv2 is importable."""
         import importlib
+
         importlib.import_module("cv2")
 
     def _template_classify(self, screenshot_path: str) -> Optional[ScreenEmbedding]:
@@ -239,8 +271,15 @@ class AIScreenClassifier:
         # heuristic fallback: if path exists, return unknown with low confidence
         try:
             import os
+
             if os.path.exists(screenshot_path):
-                return ScreenEmbedding(name="unknown", score=0.1, matched_elements=0, embedding=[], metadata={"fallback": "template"})
+                return ScreenEmbedding(
+                    name="unknown",
+                    score=0.1,
+                    matched_elements=0,
+                    embedding=[],
+                    metadata={"fallback": "template"},
+                )
         except Exception:
             pass
         return None
@@ -250,18 +289,27 @@ class AIScreenClassifier:
         try:
             self._ensure_cv()
             import cv2
+
             img = cv2.imread(screenshot_path)
             if img is None:
                 return self._template_classify(screenshot_path)
             # For now, we don't have XML from screenshot, so return embedding with image stats as fallback
             # In real implementation, OCR or layout parser would go here
             h, w = img.shape[:2]
-            embedding = [float(w), float(h), float(w*h)/1000000.0]
-            return ScreenEmbedding(name="screenshot", score=0.5, matched_elements=1, embedding=embedding, metadata={"type": "screenshot"})
+            embedding = [float(w), float(h), float(w * h) / 1000000.0]
+            return ScreenEmbedding(
+                name="screenshot",
+                score=0.5,
+                matched_elements=1,
+                embedding=embedding,
+                metadata={"type": "screenshot"},
+            )
         except Exception:
             return self._template_classify(screenshot_path)
 
-    def find_with_cv(self, driver: AndroidDriver, template_path: str) -> Optional[UIElement]:
+    def find_with_cv(
+        self, driver: AndroidDriver, template_path: str
+    ) -> Optional[UIElement]:
         """Enhanced CV-based element finding with embedding similarity."""
         try:
             ctx = driver.dump_ui()
@@ -274,7 +322,9 @@ class AIScreenClassifier:
         except Exception:
             return None
 
-    def _select_best_match(self, candidates: List[UIElement], parser: UIAutomatorParser) -> Optional[UIElement]:
+    def _select_best_match(
+        self, candidates: List[UIElement], parser: UIAutomatorParser
+    ) -> Optional[UIElement]:
         """Select best match using enhanced similarity scoring."""
         if not candidates:
             return None
@@ -312,7 +362,16 @@ class AIScreenClassifier:
         if element.resource_id and element.resource_id in self._positioning_hints:
             bonus += 0.1
         # bonus for text that looks like actionable button
-        actionable = ["login", "sign", "search", "buy", "sell", "вход", "поиск", "купить"]
+        actionable = [
+            "login",
+            "sign",
+            "search",
+            "buy",
+            "sell",
+            "вход",
+            "поиск",
+            "купить",
+        ]
         txt = (element.text or "").lower()
         if any(k in txt for k in actionable):
             bonus += 0.05
@@ -330,7 +389,7 @@ class AIScreenClassifier:
             # fallback to bounds center
             try:
                 x1, y1, x2, y2 = element.bounds
-                return (x1 + x2)//2, (y1 + y2)//2
+                return (x1 + x2) // 2, (y1 + y2) // 2
             except Exception:
                 return 540, 960
 
@@ -342,12 +401,14 @@ class AIScreenClassifier:
         """Automated test case generation from user flows (M7)."""
         cases = []
         for idx, flow in enumerate(flows):
-            cases.append({
-                "id": f"flow_{idx}_{int(time.time())}",
-                "steps": flow,
-                "expected_embeddings": len(flow),
-                "generated_at": time.time()
-            })
+            cases.append(
+                {
+                    "id": f"flow_{idx}_{int(time.time())}",
+                    "steps": flow,
+                    "expected_embeddings": len(flow),
+                    "generated_at": time.time(),
+                }
+            )
         return cases
 
 

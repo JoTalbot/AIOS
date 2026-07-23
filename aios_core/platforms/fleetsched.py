@@ -45,17 +45,16 @@ class FleetScheduler:
         self._now = now
 
     def _last_run(self, platform: str, profile: str) -> float:
-        return float(
-            self.pool.limit(f"{LastRunKey}{platform}:{profile}", 0) or 0
-        )
+        return float(self.pool.limit(f"{LastRunKey}{platform}:{profile}", 0) or 0)
 
     def due_jobs(self, jobs: List[Dict]) -> List[Dict]:
         """Джобы, интервал которых истёк (или не запускались)."""
         now = self._now()
         return [
-            job for job in jobs
-            if now - self._last_run(job["platform"], job["profile"]) >=
-            float(job.get("every_s", 900))
+            job
+            for job in jobs
+            if now - self._last_run(job["platform"], job["profile"])
+            >= float(job.get("every_s", 900))
         ]
 
     def run_due(
@@ -83,19 +82,22 @@ class FleetScheduler:
             lease_key = f"{platform}:{profile}"
             lease = self.pool.lease(lease_key)
             if lease is None:
-                results.append({
-                    "job": lease_key, "status": "skipped-busy",
-                })
+                results.append(
+                    {
+                        "job": lease_key,
+                        "status": "skipped-busy",
+                    }
+                )
                 continue
             serial = lease["serial"]
-            entry: Dict[str, object] = {"job": lease_key,
-                                        "serial": serial}
+            entry: Dict[str, object] = {"job": lease_key, "serial": serial}
             try:
                 if runner is not None:
                     report = runner(platform, profile, serial=serial)
                 else:
                     report = autowatch_cycle(
-                        platform, profile_name=profile,
+                        platform,
+                        profile_name=profile,
                         queries=job.get("queries") or None,
                         collect=bool(job.get("queries")),
                     )
@@ -104,11 +106,15 @@ class FleetScheduler:
                     entry["report_keys"] = sorted(report)
                     if report.get("marker_status") == "drift":
                         entry["drift"] = True
-                        self.notifier.send("marker-drift", {
-                            "platform": platform, "profile": profile,
-                            "hint": "recalibrate: calibrate --write && "
-                                    "codegen --force",
-                        })
+                        self.notifier.send(
+                            "marker-drift",
+                            {
+                                "platform": platform,
+                                "profile": profile,
+                                "hint": "recalibrate: calibrate --write && "
+                                "codegen --force",
+                            },
+                        )
             except Exception as exc:  # noqa: BLE001 — изолируем джоб
                 entry["status"] = "error"
                 entry["error"] = str(exc)[:200]
@@ -122,9 +128,7 @@ class FleetScheduler:
 
         return {
             "ran": sum(1 for r in results if r["status"] == "ran"),
-            "skipped_busy": sum(
-                1 for r in results if r["status"] == "skipped-busy"
-            ),
+            "skipped_busy": sum(1 for r in results if r["status"] == "skipped-busy"),
             "errors": sum(1 for r in results if r["status"] == "error"),
             "drifts": sum(1 for r in results if r.get("drift")),
             "results": results,

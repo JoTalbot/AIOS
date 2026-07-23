@@ -17,11 +17,15 @@ class DigitalTwin:
         self.state.update(new_state)
 
     def simulate(self, action: str) -> Dict:
-        return {"twin_id": self.twin_id, "action": action, "predicted_outcome": "success"}
+        return {
+            "twin_id": self.twin_id,
+            "action": action,
+            "predicted_outcome": "success",
+        }
 
     def stats(self) -> dict:
         return {
             "id": self.twin_id,
             "entity": self.real_entity,
-            "history_length": len(self.history)
+            "history_length": len(self.history),
         }

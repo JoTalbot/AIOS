@@ -21,6 +21,7 @@ from .policy_loader import PolicyLoader
 @dataclass
 class ValidationResult:
     """Detailed result of a single validation check."""
+
     valid: bool
     category: str  # e.g. "field", "principle", "policy", "constitution"
     code: str  # machine-readable code e.g. "missing_goal"
@@ -33,6 +34,7 @@ class ValidationResult:
 @dataclass
 class ValidationReport:
     """Complete validation report for an action."""
+
     valid: bool
     errors: list[ValidationResult] = field(default_factory=list)
     warnings: list[ValidationResult] = field(default_factory=list)
@@ -118,13 +120,15 @@ class ConstitutionValidator:
         for field_name, message in field_checks.items():
             value = action.get(field_name)
             if not value:
-                results.append(ValidationResult(
-                    valid=False,
-                    category="field",
-                    code=f"missing_{field_name}",
-                    message=f"Missing required field: {field_name}. {message}",
-                    severity="error",
-                ))
+                results.append(
+                    ValidationResult(
+                        valid=False,
+                        category="field",
+                        code=f"missing_{field_name}",
+                        message=f"Missing required field: {field_name}. {message}",
+                        severity="error",
+                    )
+                )
 
         return results
 
@@ -136,24 +140,28 @@ class ConstitutionValidator:
         if risk:
             valid_levels = {"low", "medium", "high", "critical"}
             if risk.lower() not in valid_levels:
-                results.append(ValidationResult(
-                    valid=False,
-                    category="risk",
-                    code="invalid_risk_level",
-                    message=f"Invalid risk level '{risk}'. "
-                           f"Must be one of: {valid_levels}",
-                    severity="error",
-                ))
+                results.append(
+                    ValidationResult(
+                        valid=False,
+                        category="risk",
+                        code="invalid_risk_level",
+                        message=f"Invalid risk level '{risk}'. "
+                        f"Must be one of: {valid_levels}",
+                        severity="error",
+                    )
+                )
 
             # High/critical risk without authority justification
             if risk.lower() in ("high", "critical") and not action.get("authority"):
-                results.append(ValidationResult(
-                    valid=True,
-                    category="risk",
-                    code="high_risk_no_authority",
-                    message=f"Risk level '{risk}' specified but no authority field provided",
-                    severity="warning",
-                ))
+                results.append(
+                    ValidationResult(
+                        valid=True,
+                        category="risk",
+                        code="high_risk_no_authority",
+                        message=f"Risk level '{risk}' specified but no authority field provided",
+                        severity="warning",
+                    )
+                )
 
         return results
 
@@ -164,72 +172,89 @@ class ConstitutionValidator:
         # Principle 2: Minimal Force
         # If alternatives exist, verify the least disruptive is chosen
         if action.get("alternatives") and not action.get("minimal_force_justified"):
-            results.append(ValidationResult(
-                valid=True,
-                category="principle",
-                code="minimal_force",
-                message="Alternatives exist but minimal force justification is missing "
-                       "(Principle 2: Minimal Force)",
-                severity="warning",
-            ))
+            results.append(
+                ValidationResult(
+                    valid=True,
+                    category="principle",
+                    code="minimal_force",
+                    message="Alternatives exist but minimal force justification is missing "
+                    "(Principle 2: Minimal Force)",
+                    severity="warning",
+                )
+            )
 
         # Principle 3: Memory Separation
         if action.get("memory_type") == "personal" and action.get("share"):
-            results.append(ValidationResult(
-                valid=False,
-                category="principle",
-                code="memory_separation_violation",
-                message="Personal memory MUST NOT be shared "
-                       "(Principle 3: Memory Separation)",
-                severity="error",
-            ))
+            results.append(
+                ValidationResult(
+                    valid=False,
+                    category="principle",
+                    code="memory_separation_violation",
+                    message="Personal memory MUST NOT be shared "
+                    "(Principle 3: Memory Separation)",
+                    severity="error",
+                )
+            )
 
-        if action.get("memory_type") not in (None, "personal", "operational", "constitutional"):
-            results.append(ValidationResult(
-                valid=True,
-                category="principle",
-                code="unknown_memory_type",
-                message=f"Unknown memory type '{action.get('memory_type')}'. "
-                       f"Valid types: personal, operational, constitutional",
-                severity="warning",
-            ))
+        if action.get("memory_type") not in (
+            None,
+            "personal",
+            "operational",
+            "constitutional",
+        ):
+            results.append(
+                ValidationResult(
+                    valid=True,
+                    category="principle",
+                    code="unknown_memory_type",
+                    message=f"Unknown memory type '{action.get('memory_type')}'. "
+                    f"Valid types: personal, operational, constitutional",
+                    severity="warning",
+                )
+            )
 
         # Principle 4: Federated Operation
         if action.get("action_type") in ("federate", "sync", "state_exchange"):
             if not action.get("offline_log"):
-                results.append(ValidationResult(
-                    valid=True,
-                    category="principle",
-                    code="federation_logging",
-                    message="Federation actions should enable offline logging "
-                           "(Principle 4: Federated Operation)",
-                    severity="warning",
-                ))
+                results.append(
+                    ValidationResult(
+                        valid=True,
+                        category="principle",
+                        code="federation_logging",
+                        message="Federation actions should enable offline logging "
+                        "(Principle 4: Federated Operation)",
+                        severity="warning",
+                    )
+                )
 
         # Principle 5: Controlled Evolution
         if action.get("action_type", "").startswith("evolution"):
             evo_stages = self.policies.get_evolution_stages()
             stage = action.get("evolution_stage")
             if stage and evo_stages and stage not in evo_stages:
-                results.append(ValidationResult(
-                    valid=False,
-                    category="principle",
-                    code="invalid_evolution_stage",
-                    message=f"Invalid evolution stage '{stage}'. "
-                           f"Valid stages: {evo_stages}",
-                    severity="error",
-                ))
+                results.append(
+                    ValidationResult(
+                        valid=False,
+                        category="principle",
+                        code="invalid_evolution_stage",
+                        message=f"Invalid evolution stage '{stage}'. "
+                        f"Valid stages: {evo_stages}",
+                        severity="error",
+                    )
+                )
 
         # Principle 6: Uncertainty Handling
         if action.get("uncertainty_detected") and not action.get("reversible"):
-            results.append(ValidationResult(
-                valid=True,
-                category="principle",
-                code="uncertainty_reversibility",
-                message="Uncertainty detected but action is not marked as reversible "
-                       "(Principle 6: Uncertainty Handling)",
-                severity="warning",
-            ))
+            results.append(
+                ValidationResult(
+                    valid=True,
+                    category="principle",
+                    code="uncertainty_reversibility",
+                    message="Uncertainty detected but action is not marked as reversible "
+                    "(Principle 6: Uncertainty Handling)",
+                    severity="warning",
+                )
+            )
 
         return results
 
@@ -243,39 +268,45 @@ class ConstitutionValidator:
             for req in sec.requirements:
                 if req.name == "access_control" and req.value:
                     if not action.get("agent_id"):
-                        results.append(ValidationResult(
-                            valid=True,
-                            category="policy",
-                            code="security_access_control",
-                            message="Security policy requires access control — "
-                                   "agent_id field is missing",
-                            severity="warning",
-                            policy_name="security_policy",
-                        ))
+                        results.append(
+                            ValidationResult(
+                                valid=True,
+                                category="policy",
+                                code="security_access_control",
+                                message="Security policy requires access control — "
+                                "agent_id field is missing",
+                                severity="warning",
+                                policy_name="security_policy",
+                            )
+                        )
 
                 if req.name == "audit_logging" and req.value:
                     if not action.get("audit_log"):
-                        results.append(ValidationResult(
-                            valid=False,
-                            category="policy",
-                            code="security_audit_logging",
-                            message="Security policy mandates audit logging",
-                            severity="error",
-                            policy_name="security_policy",
-                        ))
+                        results.append(
+                            ValidationResult(
+                                valid=False,
+                                category="policy",
+                                code="security_audit_logging",
+                                message="Security policy mandates audit logging",
+                                severity="error",
+                                policy_name="security_policy",
+                            )
+                        )
 
             for rule in sec.rules:
                 if rule.name == "least_privilege" and rule.enabled:
                     if action.get("authority") == "unlimited":
-                        results.append(ValidationResult(
-                            valid=False,
-                            category="policy",
-                            code="security_least_privilege",
-                            message="Security policy: least privilege rule "
-                                   "forbids unlimited authority",
-                            severity="error",
-                            policy_name="security_policy",
-                        ))
+                        results.append(
+                            ValidationResult(
+                                valid=False,
+                                category="policy",
+                                code="security_least_privilege",
+                                message="Security policy: least privilege rule "
+                                "forbids unlimited authority",
+                                severity="error",
+                                policy_name="security_policy",
+                            )
+                        )
 
         # Evolution policy requirements
         if action.get("action_type", "").startswith("evolution"):
@@ -284,53 +315,63 @@ class ConstitutionValidator:
                 for req in evo.requirements:
                     if req.name == "testing_before_deployment" and req.value:
                         if not action.get("testing_completed"):
-                            results.append(ValidationResult(
-                                valid=True,
-                                category="policy",
-                                code="evolution_testing",
-                                message="Evolution policy requires testing before deployment",
-                                severity="warning",
-                                policy_name="evolution_policy",
-                            ))
+                            results.append(
+                                ValidationResult(
+                                    valid=True,
+                                    category="policy",
+                                    code="evolution_testing",
+                                    message="Evolution policy requires testing before deployment",
+                                    severity="warning",
+                                    policy_name="evolution_policy",
+                                )
+                            )
 
                     if req.name == "constitutional_validation" and req.value:
                         if not action.get("constitutional_check"):
-                            results.append(ValidationResult(
-                                valid=True,
-                                category="policy",
-                                code="evolution_constitutional_check",
-                                message="Evolution policy requires constitutional validation",
-                                severity="warning",
-                                policy_name="evolution_policy",
-                            ))
+                            results.append(
+                                ValidationResult(
+                                    valid=True,
+                                    category="policy",
+                                    code="evolution_constitutional_check",
+                                    message="Evolution policy requires constitutional validation",
+                                    severity="warning",
+                                    policy_name="evolution_policy",
+                                )
+                            )
 
                 # Check restrictions
                 restrictions = self.policies.get_evolution_restrictions()
                 for rname, rvalue in restrictions.items():
                     if rvalue in ("prohibited", "blocked"):
                         # Flag as warning — actual enforcement is in ConstitutionEngine
-                        results.append(ValidationResult(
-                            valid=True,
-                            category="policy",
-                            code=f"evolution_restriction_{rname}",
-                            message=f"Evolution policy: {rname} is {rvalue}",
-                            severity="warning",
-                            policy_name="evolution_policy",
-                        ))
+                        results.append(
+                            ValidationResult(
+                                valid=True,
+                                category="policy",
+                                code=f"evolution_restriction_{rname}",
+                                message=f"Evolution policy: {rname} is {rvalue}",
+                                severity="warning",
+                                policy_name="evolution_policy",
+                            )
+                        )
 
         # Federation policy
         fed = self.policies.get_federation_policy()
         if fed and action.get("action_type") in ("federate", "sync"):
-            if self.policies.is_rule_enabled("federation_policy", "verified_nodes_only"):
+            if self.policies.is_rule_enabled(
+                "federation_policy", "verified_nodes_only"
+            ):
                 if not action.get("node_verified"):
-                    results.append(ValidationResult(
-                        valid=True,
-                        category="policy",
-                        code="federation_verified_nodes",
-                        message="Federation policy requires verified nodes",
-                        severity="warning",
-                        policy_name="federation_policy",
-                    ))
+                    results.append(
+                        ValidationResult(
+                            valid=True,
+                            category="policy",
+                            code="federation_verified_nodes",
+                            message="Federation policy requires verified nodes",
+                            severity="warning",
+                            policy_name="federation_policy",
+                        )
+                    )
 
         return results
 
@@ -342,15 +383,17 @@ class ConstitutionValidator:
 
         for rule_info in relevant_rules:
             if rule_info["type"] == "prohibition":
-                results.append(ValidationResult(
-                    valid=True,
-                    category="constitution",
-                    code=f"constitution_prohibition_{rule_info['article']}",
-                    message=f"Relevant constitutional prohibition "
-                           f"({rule_info['article']}): {rule_info['rule'][:100]}",
-                    severity="warning",
-                    article_id=rule_info["article"],
-                ))
+                results.append(
+                    ValidationResult(
+                        valid=True,
+                        category="constitution",
+                        code=f"constitution_prohibition_{rule_info['article']}",
+                        message=f"Relevant constitutional prohibition "
+                        f"({rule_info['article']}): {rule_info['rule'][:100]}",
+                        severity="warning",
+                        article_id=rule_info["article"],
+                    )
+                )
 
         return results
 

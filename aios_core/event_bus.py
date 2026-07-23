@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Event Types
 # ---------------------------------------------------------------------------
 
+
 class EventType:
     """Predefined event type constants for the AIOS event bus.
 
@@ -82,6 +83,7 @@ class EventType:
 # Event dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Event:
     """Represents a single event on the bus.
@@ -117,6 +119,7 @@ class Event:
 # ---------------------------------------------------------------------------
 # Event Bus
 # ---------------------------------------------------------------------------
+
 
 class EventBus:
     """Pub/sub event bus for inter-module communication.
@@ -159,23 +162,19 @@ class EventBus:
         """Create the ``events`` table and indexes if they don't exist."""
         if self.db is None:
             return
-        self.db.execute(
-            """CREATE TABLE IF NOT EXISTS events (
+        self.db.execute("""CREATE TABLE IF NOT EXISTS events (
                    id          TEXT PRIMARY KEY,
                    event_type  TEXT NOT NULL,
                    source      TEXT NOT NULL,
                    data        TEXT NOT NULL,
                    timestamp   TEXT NOT NULL,
                    metadata    TEXT
-               )"""
+               )""")
+        self.db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_type " "ON events(event_type)"
         )
         self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_events_type "
-            "ON events(event_type)"
-        )
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_events_timestamp "
-            "ON events(timestamp)"
+            "CREATE INDEX IF NOT EXISTS idx_events_timestamp " "ON events(timestamp)"
         )
 
     # ------------------------------------------------------------------
@@ -193,9 +192,7 @@ class EventBus:
             A subscription ID that can be passed to :meth:`unsubscribe`.
         """
         sub_id = Database.new_id()
-        self._exact_handlers.setdefault(event_type, []).append(
-            (sub_id, handler)
-        )
+        self._exact_handlers.setdefault(event_type, []).append((sub_id, handler))
         self._subscriptions[sub_id] = {
             "type": event_type,
             "handler": handler,
@@ -476,9 +473,7 @@ class EventBus:
                 "SELECT event_type, COUNT(*) AS cnt FROM events "
                 "GROUP BY event_type ORDER BY cnt DESC"
             )
-            result["by_type"] = {
-                r["event_type"]: r["cnt"] for r in type_rows
-            }
+            result["by_type"] = {r["event_type"]: r["cnt"] for r in type_rows}
 
         return result
 
@@ -486,6 +481,7 @@ class EventBus:
 # ---------------------------------------------------------------------------
 # Helpers (module-level for easy reuse)
 # ---------------------------------------------------------------------------
+
 
 def _row_to_dict(row: dict) -> dict:
     """Convert a raw database row to a fully-deserialized event dict."""
@@ -496,8 +492,6 @@ def _row_to_dict(row: dict) -> dict:
         "data": Database.from_json(row["data"]),
         "timestamp": row["timestamp"],
         "metadata": (
-            Database.from_json(row["metadata"])
-            if row.get("metadata")
-            else {}
+            Database.from_json(row["metadata"]) if row.get("metadata") else {}
         ),
     }

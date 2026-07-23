@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 @dataclass
 class ReasoningStep:
     """A single step in a reasoning chain."""
+
     step_type: str  # premise, inference, conclusion, evidence, contradiction
     content: str
     confidence: float = 0.8
@@ -30,12 +31,15 @@ class ReasoningStep:
 @dataclass
 class ReasoningChain:
     """A complete reasoning trace with multiple steps."""
+
     id: str = ""
     question: str = ""
     steps: list[ReasoningStep] = field(default_factory=list)
     conclusion: str = ""
     overall_confidence: float = 0.0
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
 
 
 class ReasoningEngine:
@@ -85,12 +89,14 @@ class ReasoningEngine:
         premise_content = f"Question: {question}"
         if context:
             premise_content += f"\nContext: {context}"
-        chain.steps.append(ReasoningStep(
-            step_type="premise",
-            content=premise_content,
-            confidence=1.0,
-            sources=["user_input"],
-        ))
+        chain.steps.append(
+            ReasoningStep(
+                step_type="premise",
+                content=premise_content,
+                confidence=1.0,
+                sources=["user_input"],
+            )
+        )
 
         # Step 2: Evidence gathering
         evidence_sources: list[str] = []
@@ -100,13 +106,15 @@ class ReasoningEngine:
             if memories:
                 for m in memories[:3]:
                     evidence_sources.append(f"memory:{m['id']}")
-                chain.steps.append(ReasoningStep(
-                    step_type="evidence",
-                    content=f"Found {len(memories)} relevant memories",
-                    confidence=0.7,
-                    sources=list(evidence_sources),
-                    metadata={"memory_count": len(memories)},
-                ))
+                chain.steps.append(
+                    ReasoningStep(
+                        step_type="evidence",
+                        content=f"Found {len(memories)} relevant memories",
+                        confidence=0.7,
+                        sources=list(evidence_sources),
+                        metadata={"memory_count": len(memories)},
+                    )
+                )
 
         if use_knowledge and self.knowledge:
             # Extract all meaningful words from the question and search for each
@@ -125,33 +133,39 @@ class ReasoningEngine:
             if unique_nodes:
                 for n in unique_nodes[:3]:
                     evidence_sources.append(f"knowledge:{n['id']}")
-                chain.steps.append(ReasoningStep(
-                    step_type="evidence",
-                    content=f"Found {len(unique_nodes)} related knowledge nodes",
-                    confidence=0.7,
-                    sources=[f"knowledge:{n['id']}" for n in unique_nodes[:3]],
-                    metadata={"node_count": len(unique_nodes)},
-                ))
+                chain.steps.append(
+                    ReasoningStep(
+                        step_type="evidence",
+                        content=f"Found {len(unique_nodes)} related knowledge nodes",
+                        confidence=0.7,
+                        sources=[f"knowledge:{n['id']}" for n in unique_nodes[:3]],
+                        metadata={"node_count": len(unique_nodes)},
+                    )
+                )
 
         # Step 3: Inference
         has_evidence = any(s.step_type == "evidence" for s in chain.steps)
         inference_conf = 0.6 + (0.2 if has_evidence else 0.0)
-        chain.steps.append(ReasoningStep(
-            step_type="inference",
-            content=f"Based on {'evidence and ' if has_evidence else ''}premises, reasoning proceeds with {len(chain.steps)} contextual inputs",
-            confidence=inference_conf,
-            sources=list(evidence_sources),
-        ))
+        chain.steps.append(
+            ReasoningStep(
+                step_type="inference",
+                content=f"Based on {'evidence and ' if has_evidence else ''}premises, reasoning proceeds with {len(chain.steps)} contextual inputs",
+                confidence=inference_conf,
+                sources=list(evidence_sources),
+            )
+        )
 
         # Step 4: Conclusion
         chain.overall_confidence = self._calculate_chain_confidence(chain.steps)
         chain.conclusion = f"Reasoning complete. Confidence: {chain.overall_confidence:.2f} based on {len(chain.steps)} steps."
-        chain.steps.append(ReasoningStep(
-            step_type="conclusion",
-            content=chain.conclusion,
-            confidence=chain.overall_confidence,
-            sources=list(evidence_sources),
-        ))
+        chain.steps.append(
+            ReasoningStep(
+                step_type="conclusion",
+                content=chain.conclusion,
+                confidence=chain.overall_confidence,
+                sources=list(evidence_sources),
+            )
+        )
 
         # Persist
         self._chains.append(chain)
@@ -161,7 +175,11 @@ class ReasoningEngine:
                     "type": "reasoning_chain",
                     "question": question,
                     "steps": [
-                        {"type": s.step_type, "content": s.content, "confidence": s.confidence}
+                        {
+                            "type": s.step_type,
+                            "content": s.content,
+                            "confidence": s.confidence,
+                        }
                         for s in chain.steps
                     ],
                     "conclusion": chain.conclusion,
@@ -249,7 +267,8 @@ class ReasoningEngine:
 
         chain = ReasoningChain(
             id=chain_id,
-            question="forward_chain from " + "; ".join(f["fact"][:40] for f in facts[:3]),
+            question="forward_chain from "
+            + "; ".join(f["fact"][:40] for f in facts[:3]),
         )
 
         # Seed with the provided facts as premises
@@ -262,12 +281,14 @@ class ReasoningEngine:
                 sources=[f.get("source", "unknown")],
             )
             chain.steps.append(step)
-            working_facts.append({
-                "fact": f["fact"],
-                "confidence": f.get("confidence", 0.8),
-                "source": f.get("source", "unknown"),
-                "depth": 0,
-            })
+            working_facts.append(
+                {
+                    "fact": f["fact"],
+                    "confidence": f.get("confidence", 0.8),
+                    "source": f.get("source", "unknown"),
+                    "depth": 0,
+                }
+            )
 
         # Iteratively derive new facts
         derived_set: set[str] = set()  # track derived fact strings to avoid loops
@@ -290,7 +311,8 @@ class ReasoningEngine:
                 if self.knowledge:
                     try:
                         related_nodes = self.knowledge.find_nodes(
-                            label=wf["fact"][:60], limit=5,
+                            label=wf["fact"][:60],
+                            limit=5,
                         )
                     except Exception:
                         related_nodes = []
@@ -317,13 +339,11 @@ class ReasoningEngine:
 
                         # Derivation: confidence decays with depth and relation strength
                         rel_strength = rel.get("weight", rel.get("confidence", 0.7))
-                        new_conf = wf["confidence"] * rel_strength * (0.9 ** iteration)
+                        new_conf = wf["confidence"] * rel_strength * (0.9**iteration)
                         if new_conf < 0.3:
                             continue
 
-                        derived_content = (
-                            f"{wf['fact']} {rel_type} {target_label}"
-                        )
+                        derived_content = f"{wf['fact']} {rel_type} {target_label}"
                         derived_set.add(derived_content)
 
                         step = ReasoningStep(
@@ -343,12 +363,14 @@ class ReasoningEngine:
                             },
                         )
                         chain.steps.append(step)
-                        next_facts.append({
-                            "fact": target_label,
-                            "confidence": round(new_conf, 3),
-                            "source": f"inference:{node['id']}",
-                            "depth": iteration,
-                        })
+                        next_facts.append(
+                            {
+                                "fact": target_label,
+                                "confidence": round(new_conf, 3),
+                                "source": f"inference:{node['id']}",
+                                "depth": iteration,
+                            }
+                        )
                         made_progress = True
 
             working_facts.extend(next_facts)
@@ -367,12 +389,14 @@ class ReasoningEngine:
                 "Forward chaining completed with no new derivations. "
                 f"Confidence: {chain.overall_confidence:.2f}."
             )
-        chain.steps.append(ReasoningStep(
-            step_type="conclusion",
-            content=chain.conclusion,
-            confidence=chain.overall_confidence,
-            sources=[f["source"] for f in facts],
-        ))
+        chain.steps.append(
+            ReasoningStep(
+                step_type="conclusion",
+                content=chain.conclusion,
+                confidence=chain.overall_confidence,
+                sources=[f["source"] for f in facts],
+            )
+        )
 
         # Persist
         result = self._chain_to_dict(chain)
@@ -402,12 +426,14 @@ class ReasoningEngine:
         premise_content = f"Question: {question}"
         if context:
             premise_content += f"\nContext: {context}"
-        chain.steps.append(ReasoningStep(
-            step_type="premise",
-            content=premise_content,
-            confidence=1.0,
-            sources=["user_input"],
-        ))
+        chain.steps.append(
+            ReasoningStep(
+                step_type="premise",
+                content=premise_content,
+                confidence=1.0,
+                sources=["user_input"],
+            )
+        )
 
         # Extract ALL meaningful words
         words = [w for w in question.split() if len(w) > 2]
@@ -429,17 +455,22 @@ class ReasoningEngine:
             if all_nodes:
                 for n in all_nodes[:5]:
                     evidence_sources.append(f"knowledge:{n['id']}")
-                chain.steps.append(ReasoningStep(
-                    step_type="evidence",
-                    content=(
-                        f"Found {len(all_nodes)} knowledge nodes for "
-                        f"{len(words)} search terms: "
-                        + ", ".join(n.get("label", n["id"]) for n in all_nodes[:5])
-                    ),
-                    confidence=0.75,
-                    sources=evidence_sources[:5],
-                    metadata={"node_count": len(all_nodes), "terms_searched": len(words)},
-                ))
+                chain.steps.append(
+                    ReasoningStep(
+                        step_type="evidence",
+                        content=(
+                            f"Found {len(all_nodes)} knowledge nodes for "
+                            f"{len(words)} search terms: "
+                            + ", ".join(n.get("label", n["id"]) for n in all_nodes[:5])
+                        ),
+                        confidence=0.75,
+                        sources=evidence_sources[:5],
+                        metadata={
+                            "node_count": len(all_nodes),
+                            "terms_searched": len(words),
+                        },
+                    )
+                )
 
                 # Find paths between discovered nodes
                 paths_found: list[dict] = []
@@ -447,7 +478,8 @@ class ReasoningEngine:
                     for tgt_node in all_nodes[i + 1 : 5]:
                         try:
                             path = self.knowledge.find_path(
-                                src_node["id"], tgt_node["id"],
+                                src_node["id"],
+                                tgt_node["id"],
                             )
                             if path:
                                 paths_found.append(path)
@@ -459,40 +491,50 @@ class ReasoningEngine:
                     for p in paths_found[:3]:
                         path_desc = " -> ".join(
                             step.get("label", step.get("id", "?"))
-                            for step in p.get("nodes", p if isinstance(p, list) else [p])
+                            for step in p.get(
+                                "nodes", p if isinstance(p, list) else [p]
+                            )
                         )
                         path_descriptions.append(path_desc)
 
-                    chain.steps.append(ReasoningStep(
-                        step_type="evidence",
-                        content=(
-                            f"Found {len(paths_found)} paths between nodes: "
-                            + "; ".join(path_descriptions)
-                        ),
-                        confidence=0.7,
-                        sources=evidence_sources[:5],
-                        metadata={"path_count": len(paths_found)},
-                    ))
+                    chain.steps.append(
+                        ReasoningStep(
+                            step_type="evidence",
+                            content=(
+                                f"Found {len(paths_found)} paths between nodes: "
+                                + "; ".join(path_descriptions)
+                            ),
+                            confidence=0.7,
+                            sources=evidence_sources[:5],
+                            metadata={"path_count": len(paths_found)},
+                        )
+                    )
 
                     # Build inferences from paths
                     for p in paths_found[:2]:
                         nodes_in_path = p.get("nodes", p if isinstance(p, list) else [])
                         if len(nodes_in_path) >= 2:
-                            first_label = nodes_in_path[0].get("label", nodes_in_path[0].get("id", "?"))
-                            last_label = nodes_in_path[-1].get("label", nodes_in_path[-1].get("id", "?"))
-                            chain.steps.append(ReasoningStep(
-                                step_type="inference",
-                                content=(
-                                    f"Path from '{first_label}' to '{last_label}' "
-                                    f"indicates a relationship relevant to the question"
-                                ),
-                                confidence=0.65,
-                                sources=[
-                                    f"knowledge:{nodes_in_path[0].get('id', '')}",
-                                    f"knowledge:{nodes_in_path[-1].get('id', '')}",
-                                ],
-                                metadata={"path_length": len(nodes_in_path)},
-                            ))
+                            first_label = nodes_in_path[0].get(
+                                "label", nodes_in_path[0].get("id", "?")
+                            )
+                            last_label = nodes_in_path[-1].get(
+                                "label", nodes_in_path[-1].get("id", "?")
+                            )
+                            chain.steps.append(
+                                ReasoningStep(
+                                    step_type="inference",
+                                    content=(
+                                        f"Path from '{first_label}' to '{last_label}' "
+                                        f"indicates a relationship relevant to the question"
+                                    ),
+                                    confidence=0.65,
+                                    sources=[
+                                        f"knowledge:{nodes_in_path[0].get('id', '')}",
+                                        f"knowledge:{nodes_in_path[-1].get('id', '')}",
+                                    ],
+                                    metadata={"path_length": len(nodes_in_path)},
+                                )
+                            )
 
         # Build conclusion that references actual KG nodes found
         chain.overall_confidence = self._calculate_chain_confidence(chain.steps)
@@ -508,12 +550,14 @@ class ReasoningEngine:
                 "No relevant knowledge graph nodes found for the question. "
                 f"Confidence: {chain.overall_confidence:.2f}."
             )
-        chain.steps.append(ReasoningStep(
-            step_type="conclusion",
-            content=chain.conclusion,
-            confidence=chain.overall_confidence,
-            sources=evidence_sources,
-        ))
+        chain.steps.append(
+            ReasoningStep(
+                step_type="conclusion",
+                content=chain.conclusion,
+                confidence=chain.overall_confidence,
+                sources=evidence_sources,
+            )
+        )
 
         self._chains.append(chain)
         return self._chain_to_dict(chain)
@@ -562,7 +606,9 @@ class ReasoningEngine:
             if self.knowledge:
                 try:
                     ev_nodes = self.knowledge.find_nodes(label=ev_fact[:60], limit=3)
-                    hyp_nodes = self.knowledge.find_nodes(label=hypothesis[:60], limit=3)
+                    hyp_nodes = self.knowledge.find_nodes(
+                        label=hypothesis[:60], limit=3
+                    )
                 except Exception:
                     ev_nodes = []
                     hyp_nodes = []
@@ -576,7 +622,12 @@ class ReasoningEngine:
                             rels = []
                         for r in rels:
                             rel_type = r.get("type", "")
-                            if rel_type in ("implies", "supports", "confirms", "causes"):
+                            if rel_type in (
+                                "implies",
+                                "supports",
+                                "confirms",
+                                "causes",
+                            ):
                                 weight = r.get("weight", r.get("confidence", 0.7))
                                 support_score += ev_conf * weight
                                 supporting_details.append(
@@ -594,7 +645,9 @@ class ReasoningEngine:
                 hyp_words = set(hypothesis.lower().split())
                 overlap = ev_words & hyp_words
                 if overlap:
-                    support_score += ev_conf * 0.5 * (len(overlap) / max(len(hyp_words), 1))
+                    support_score += (
+                        ev_conf * 0.5 * (len(overlap) / max(len(hyp_words), 1))
+                    )
                     supporting_details.append(f"Keyword overlap: {overlap}")
 
         # Also search KG directly for hypothesis-related relations

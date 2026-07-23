@@ -56,17 +56,14 @@ def _descriptor_from_spec(spec: Dict, source: str) -> PlatformDescriptor:
     adb_factory = None
     if spec.get("adb_class"):
         adb_cls = _import_class(spec["adb_class"])
-        adb_factory = (
-            lambda package, serial=None, _cls=adb_cls: _cls(
-                package=package, serial=serial
-            )
+        adb_factory = lambda package, serial=None, _cls=adb_cls: _cls(
+            package=package, serial=serial
         )
 
     return PlatformDescriptor(
         name=spec["name"],
         android_package=spec["android_package"],
-        agent_module=spec.get("agent_module")
-        or f"aios_core.modules.{spec['name']}",
+        agent_module=spec.get("agent_module") or f"aios_core.modules.{spec['name']}",
         storage_factory=storage_factory,
         adb_factory=adb_factory,
         default_locale=spec.get("default_locale") or "uk-UA",

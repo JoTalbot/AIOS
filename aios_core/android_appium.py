@@ -10,7 +10,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from aios_core.android_driver import AndroidDriver, DriverCapabilities, UIContext
 
@@ -29,6 +29,7 @@ class AppiumAndroidDriver(AndroidDriver):
     def start(self) -> bool:
         try:
             from appium import webdriver
+
             self._driver = webdriver.Remote(
                 command_executor=self.config.server_url,
                 desired_capabilities={
@@ -68,16 +69,25 @@ class AppiumAndroidDriver(AndroidDriver):
     def dump_ui(self) -> UIContext:
         try:
             if self._driver is None:
-                return UIContext(xml="", package=self.config.package, current_activity="")
+                return UIContext(
+                    xml="", package=self.config.package, current_activity=""
+                )
             xml = self._driver.page_source
             current = ""
             try:
                 current = self._driver.current_activity or ""
             except Exception:
                 pass
-            return UIContext(xml=xml, package=self.config.package, current_activity=current)
+            return UIContext(
+                xml=xml, package=self.config.package, current_activity=current
+            )
         except Exception as exc:
-            return UIContext(xml="", package=self.config.package, current_activity="", screenshot_path="")
+            return UIContext(
+                xml="",
+                package=self.config.package,
+                current_activity="",
+                screenshot_path="",
+            )
 
     def tap(self, x: int, y: int) -> None:
         if self._driver is None:
@@ -152,7 +162,12 @@ class AppiumAndroidDriver(AndroidDriver):
             return None
         try:
             from appium.webdriver.common.appiumby import AppiumBy
-            by_map = {"id": AppiumBy.ID, "accessibility_id": AppiumBy.ACCESSIBILITY_ID, "xpath": AppiumBy.XPATH}
+
+            by_map = {
+                "id": AppiumBy.ID,
+                "accessibility_id": AppiumBy.ACCESSIBILITY_ID,
+                "xpath": AppiumBy.XPATH,
+            }
             by_enum = by_map.get(by, AppiumBy.XPATH)
             return self._driver.find_element(by_enum, value)
         except Exception:

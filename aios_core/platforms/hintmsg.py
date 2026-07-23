@@ -67,16 +67,14 @@ class HintsMessenger(OLXMessenger):
             if isinstance(m, dict)
         ]
         markers = tuple(sorted(set(threads or bubbles)))
-        self._chat_parser = (
-            ChatListParser(markers=markers) if markers else None
-        )
+        self._chat_parser = ChatListParser(markers=markers) if markers else None
         self._sender = HintSender(self.adb, self.messenger_hints)
 
     def open_chats(self) -> Dict[str, object]:
         """Открыть инбокс: deep-link или fallback-запуск приложения."""
         if self.deep_link:
             return self.adb.run(
-                f'{self.adb.adb} shell am start '
+                f"{self.adb.adb} shell am start "
                 f'-a android.intent.action.VIEW -d "{self.deep_link}"'
             )
         return self.adb.run(

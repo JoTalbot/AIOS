@@ -84,9 +84,7 @@ def load_secrets_file(
     игнорируются. Возвращает число применённых переменных; отсутствующий
     файл — 0 (не ошибка).
     """
-    target = Path(
-        path or os.environ.get("AIOS_SECRETS_FILE") or DEFAULT_SECRETS_FILE
-    )
+    target = Path(path or os.environ.get("AIOS_SECRETS_FILE") or DEFAULT_SECRETS_FILE)
     if not target.exists():
         return 0
     applied = 0

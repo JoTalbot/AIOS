@@ -19,13 +19,15 @@ class EnhancedAudit:
             "actor": actor,
             "resource": resource,
             "decision": decision,
-            "metadata": metadata
+            "metadata": metadata,
         }
         self.records.append(record)
         with open(self.storage, "a") as f:
             f.write(json.dumps(record) + "\n")
 
-    def query(self, actor: str = None, action: str = None, limit: int = 100) -> List[Dict]:
+    def query(
+        self, actor: str = None, action: str = None, limit: int = 100
+    ) -> List[Dict]:
         results = self.records
         if actor:
             results = [r for r in results if r["actor"] == actor]
@@ -38,10 +40,7 @@ class EnhancedAudit:
         for r in self.records:
             d = r["decision"]
             decisions[d] = decisions.get(d, 0) + 1
-        return {
-            "total_events": len(self.records),
-            "decisions": decisions
-        }
+        return {"total_events": len(self.records), "decisions": decisions}
 
 
 enhanced_audit = EnhancedAudit()

@@ -10,7 +10,9 @@ class MultiAgentSafety:
         self.agent_interactions: List[Dict] = []
         self.conflict_resolutions: List[Dict] = []
 
-    def detect_conflict(self, agent_a: str, agent_b: str, action_a: Dict, action_b: Dict) -> bool:
+    def detect_conflict(
+        self, agent_a: str, agent_b: str, action_a: Dict, action_b: Dict
+    ) -> bool:
         # Detect conflicting goals
         return "harm" in str(action_a) or "harm" in str(action_b)
 

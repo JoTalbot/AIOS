@@ -100,7 +100,14 @@ class PrivacyGuard:
         if self.db:
             self.db.execute(
                 "INSERT INTO audit_events (id, event_type, data, timestamp, agent_id, tags) VALUES (?,?,?,?,?,?)",
-                (self.db.new_id(), "privacy_check", self.db.to_json(result), self.db.now_iso(), agent_id, "privacy")
+                (
+                    self.db.new_id(),
+                    "privacy_check",
+                    self.db.to_json(result),
+                    self.db.now_iso(),
+                    agent_id,
+                    "privacy",
+                ),
             )
         return result
 
@@ -122,13 +129,15 @@ class PrivacyGuard:
                 "reason": f"Unknown classification: {data_classification}",
                 "classification": data_classification,
             }
-            self._access_log.append({
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "agent_id": target,
-                "memory_category": data_classification,
-                "action": "share",
-                **result,
-            })
+            self._access_log.append(
+                {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "agent_id": target,
+                    "memory_category": data_classification,
+                    "action": "share",
+                    **result,
+                }
+            )
             return result
 
         share_allowed = rule.get("share_allowed", False)
@@ -153,13 +162,15 @@ class PrivacyGuard:
                 "classification": data_classification,
             }
 
-        self._access_log.append({
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "agent_id": target,
-            "memory_category": data_classification,
-            "action": "share",
-            **result,
-        })
+        self._access_log.append(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "agent_id": target,
+                "memory_category": data_classification,
+                "action": "share",
+                **result,
+            }
+        )
         return result
 
     def check_request(self, request: dict) -> dict:
@@ -235,7 +246,12 @@ class PrivacyGuard:
         if self.db:
             self.db.execute(
                 "INSERT INTO privacy_rules (id, classification, rule_data, created_at) VALUES (?,?,?,?)",
-                (rule["id"], rule.get("classification", "custom"), self.db.to_json(rule), self.db.now_iso())
+                (
+                    rule["id"],
+                    rule.get("classification", "custom"),
+                    self.db.to_json(rule),
+                    self.db.now_iso(),
+                ),
             )
         return rule
 

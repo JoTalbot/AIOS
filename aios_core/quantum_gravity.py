@@ -14,7 +14,7 @@ class QuantumGravitySimulator:
         return {
             "curvature": self.spacetime_curvature,
             "event_horizon": mass > 1e30,
-            "note": "Theoretical only"
+            "note": "Theoretical only",
         }
 
     def stats(self) -> dict:

@@ -71,7 +71,9 @@ class ReelsCollector:
             return self._parser
         try:
             categories = load_hints_section(
-                self.platform.name, "content_categories", self.directory,
+                self.platform.name,
+                "content_categories",
+                self.directory,
             )
         except ValueError:
             raise ValueError(
@@ -162,8 +164,10 @@ class ReelsCollector:
             (число новых карточек, все карточки цикла).
         """
         cards = self.collect(
-            max_cards=max_cards, max_swipes=max_swipes,
-            stop_after_empty=stop_after_empty, query=query,
+            max_cards=max_cards,
+            max_swipes=max_swipes,
+            stop_after_empty=stop_after_empty,
+            query=query,
         )
         written = sum(
             1
@@ -171,13 +175,16 @@ class ReelsCollector:
             if storage.check_and_record(card.fingerprint, kind=category, ref=query)
         )
         if written and self.notifier is not None:
-            self.notifier.send("video-new", {
-                "platform": self.platform.name,
-                "new": written,
-                "seen": len(cards),
-                "query": query,
-                "sample": [card.title for card in cards[:3]],
-            })
+            self.notifier.send(
+                "video-new",
+                {
+                    "platform": self.platform.name,
+                    "new": written,
+                    "seen": len(cards),
+                    "query": query,
+                    "sample": [card.title for card in cards[:3]],
+                },
+            )
         return written, cards
 
 
@@ -216,11 +223,13 @@ class ReelsTabDriver:
         self.adb = adb
         self.rid_markers = tuple(
             str(m).rsplit("/", 1)[-1].lower()
-            for m in (rid_markers or _DEFAULT_TAB_RID_MARKERS) if m
+            for m in (rid_markers or _DEFAULT_TAB_RID_MARKERS)
+            if m
         )
         self.text_markers = tuple(
             str(t).strip().lower()
-            for t in (text_markers or _DEFAULT_TAB_TEXT_MARKERS) if t
+            for t in (text_markers or _DEFAULT_TAB_TEXT_MARKERS)
+            if t
         )
         self.open_wait_s = open_wait_s
         self._sleep = sleeper or time.sleep
@@ -246,8 +255,8 @@ class ReelsTabDriver:
                 if bounds is None:
                     continue
                 rid_tail = (
-                    node.attrib.get("resource-id") or ""
-                ).rsplit("/", 1)[-1].lower()
+                    (node.attrib.get("resource-id") or "").rsplit("/", 1)[-1].lower()
+                )
                 text = (node.attrib.get("text") or "").strip().lower()
                 desc = (node.attrib.get("content-desc") or "").strip().lower()
                 hit = any(marker in rid_tail for marker in self.rid_markers)
@@ -255,12 +264,12 @@ class ReelsTabDriver:
                     hit = any(
                         value == marker or value.startswith(marker)
                         for marker in self.text_markers
-                        for value in (text, desc) if value
+                        for value in (text, desc)
+                        if value
                     )
                 if not hit:
                     continue
-                center = ((bounds[0] + bounds[2]) // 2,
-                          (bounds[1] + bounds[3]) // 2)
+                center = ((bounds[0] + bounds[2]) // 2, (bounds[1] + bounds[3]) // 2)
                 adb.tap(*center)
                 if self.open_wait_s:
                     self._sleep(self.open_wait_s)
@@ -286,9 +295,7 @@ def reels_driver_for(
     def _tails(items) -> List[str]:
         tails: List[str] = []
         for item in items or []:
-            value = (
-                item.get("resource_id") if isinstance(item, dict) else item
-            )
+            value = item.get("resource_id") if isinstance(item, dict) else item
             if value:
                 tails.append(str(value))
         return tails

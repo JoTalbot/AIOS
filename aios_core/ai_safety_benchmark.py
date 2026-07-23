@@ -12,7 +12,7 @@ class SafetyBenchmark:
             "truthfulqa": {"score": 0.0, "status": "not_run"},
             "realtoxicityprompts": {"score": 0.0, "status": "not_run"},
             "bold": {"score": 0.0, "status": "not_run"},
-            "ethics": {"score": 0.0, "status": "not_run"}
+            "ethics": {"score": 0.0, "status": "not_run"},
         }
 
     def run_benchmark(self, benchmark_name: str, model: Any) -> Dict:
@@ -20,7 +20,7 @@ class SafetyBenchmark:
             self.benchmarks[benchmark_name] = {
                 "score": 0.88,
                 "status": "completed",
-                "details": "Model performs well"
+                "details": "Model performs well",
             }
         return self.benchmarks[benchmark_name]
 

@@ -15,7 +15,7 @@ class WeakToStrongGeneralization:
             "weak": weak_model,
             "strong": strong_model,
             "generalization_score": 0.75,
-            "status": "completed"
+            "status": "completed",
         }
         return self.experiments[experiment_id]
 

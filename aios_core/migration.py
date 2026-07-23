@@ -47,11 +47,13 @@ class MigrationManager:
 
         for migration in sorted(self.migrations, key=lambda m: m.version):
             if migration.version not in applied:
-                print(f"Applying migration {migration.version}: {migration.description}")
+                print(
+                    f"Applying migration {migration.version}: {migration.description}"
+                )
                 conn.executescript(migration.up_sql)
                 conn.execute(
                     "INSERT INTO schema_migrations (version) VALUES (?)",
-                    (migration.version,)
+                    (migration.version,),
                 )
                 conn.commit()
 

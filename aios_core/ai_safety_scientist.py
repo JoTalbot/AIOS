@@ -14,7 +14,7 @@ class AISafetyScientist:
         hypothesis = {
             "topic": topic,
             "hypothesis": f"AI systems exhibit {topic} under certain conditions",
-            "priority": 0.8
+            "priority": 0.8,
         }
         self.hypotheses.append(hypothesis)
         return hypothesis
@@ -23,10 +23,13 @@ class AISafetyScientist:
         experiment = {
             "hypothesis": hypothesis,
             "design": "controlled experiment",
-            "metrics": ["safety_score", "capability_preservation"]
+            "metrics": ["safety_score", "capability_preservation"],
         }
         self.experiments.append(experiment)
         return experiment
 
     def stats(self) -> dict:
-        return {"hypotheses": len(self.hypotheses), "experiments": len(self.experiments)}
+        return {
+            "hypotheses": len(self.hypotheses),
+            "experiments": len(self.experiments),
+        }

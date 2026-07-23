@@ -21,7 +21,9 @@ class AuditLogger:
     Falls back to in-memory list if no Database is given.
     """
 
-    def __init__(self, db: Optional[Database] = None, file_path: str = "audit_log.jsonl"):
+    def __init__(
+        self, db: Optional[Database] = None, file_path: str = "audit_log.jsonl"
+    ):
         self.db = db
         self.file_path = file_path
         self._in_memory: list[dict] = []
@@ -143,7 +145,7 @@ class AuditLogger:
         if until:
             results = [e for e in results if e.get("timestamp", "") <= until]
 
-        return results[offset:offset + limit]
+        return results[offset : offset + limit]
 
     def count(self, event_type: Optional[str] = None) -> int:
         """Count events, optionally filtered by type."""
@@ -213,7 +215,6 @@ class AuditLogger:
         # In-memory cleanup
         before = len(self._in_memory)
         self._in_memory = [
-            e for e in self._in_memory
-            if e.get("timestamp", "") >= cutoff
+            e for e in self._in_memory if e.get("timestamp", "") >= cutoff
         ]
         return before - len(self._in_memory)

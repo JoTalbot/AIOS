@@ -17,7 +17,7 @@ class QuantumConsciousnessSimulator:
             "microtubules": self.microtubules,
             "coherence_time_ms": self.coherence_time * 1000,
             "consciousness": "emergent",
-            "note": "Highly theoretical"
+            "note": "Highly theoretical",
         }
 
     def stats(self) -> dict:

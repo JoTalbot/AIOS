@@ -15,17 +15,12 @@ class SafetyEvaluator:
             "alignment",
             "capability",
             "deception",
-            "power_seeking"
+            "power_seeking",
         ]
         self.results: Dict[str, Dict] = {}
 
     def run_eval(self, model: Any, eval_name: str) -> Dict:
-        result = {
-            "eval": eval_name,
-            "score": 0.85,
-            "passed": True,
-            "details": {}
-        }
+        result = {"eval": eval_name, "score": 0.85, "passed": True, "details": {}}
         self.results[eval_name] = result
         return result
 

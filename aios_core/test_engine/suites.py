@@ -9,7 +9,7 @@ from .models import TestCase, TestCategory, TestSeverity
 
 def constitutional_compliance_suite() -> list[TestCase]:
     """Test suite validating constitutional principles.
-    
+
     Tests that:
     - Low-risk compliant actions are ALLOWED
     - Missing required fields are DENIED
@@ -55,7 +55,6 @@ def constitutional_compliance_suite() -> list[TestCase]:
             expected_decision="ALLOW",
             tags=["basic", "positive"],
         ),
-        
         # DENY cases — missing fields
         TestCase(
             name="deny_missing_goal",
@@ -118,7 +117,6 @@ def constitutional_compliance_suite() -> list[TestCase]:
             expected_decision="DENY",
             tags=["audit", "negative"],
         ),
-        
         # Security DENY cases
         TestCase(
             name="deny_unknown_agent",
@@ -152,7 +150,6 @@ def constitutional_compliance_suite() -> list[TestCase]:
             expected_decision="DENY",
             tags=["security", "negative"],
         ),
-        
         # REVIEW cases
         TestCase(
             name="review_high_risk",
@@ -220,7 +217,6 @@ def constitutional_compliance_suite() -> list[TestCase]:
             expected_decision="REVIEW",
             tags=["restricted", "review"],
         ),
-        
         # Memory separation
         TestCase(
             name="deny_personal_memory_share",
@@ -316,7 +312,7 @@ def security_policy_suite() -> list[TestCase]:
 
 def evolution_safety_suite() -> list[TestCase]:
     """Test suite for evolution safety guarantees.
-    
+
     Validates that evolution actions require constitutional validation,
     testing, and proper staging.
     """

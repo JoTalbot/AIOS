@@ -40,9 +40,7 @@ class PointDrive:
         search_wait_s: float = 5.0,
     ):
         self.adb = adb
-        self.input_classes = [
-            cls.lower() for cls in (input_classes or ["edittext"])
-        ]
+        self.input_classes = [cls.lower() for cls in (input_classes or ["edittext"])]
         self.open_wait_s = open_wait_s
         self.search_wait_s = search_wait_s
 
@@ -51,8 +49,7 @@ class PointDrive:
         opened = self.adb.open_app()
         if opened.get("code") != 0:
             raise ValueError(
-                "adb open_app failed: "
-                f"{(opened.get('stderr') or 'no device')[:160]}"
+                "adb open_app failed: " f"{(opened.get('stderr') or 'no device')[:160]}"
             )
         time.sleep(self.open_wait_s)
         xml = self._dump()
@@ -60,9 +57,7 @@ class PointDrive:
             xml = self.search_in_open_app(query, xml)
         return xml
 
-    def search_in_open_app(
-        self, query: str, xml: Optional[str] = None
-    ) -> str:
+    def search_in_open_app(self, query: str, xml: Optional[str] = None) -> str:
         """Выполняет поиск из уже открытого приложения.
 
         Returns:
@@ -92,8 +87,7 @@ class PointDrive:
             bounds = _parse_bounds(node.attrib.get("bounds"))
             if bounds is None:
                 continue
-            center = ((bounds[0] + bounds[2]) // 2,
-                      (bounds[1] + bounds[3]) // 2)
+            center = ((bounds[0] + bounds[2]) // 2, (bounds[1] + bounds[3]) // 2)
             if any(marker in rid for marker in _SEARCH_RID_MARKERS):
                 return center  # rid-подсказка приоритетнее класса
             if edit_center is None and any(

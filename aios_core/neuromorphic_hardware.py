@@ -12,11 +12,13 @@ class NeuromorphicChip:
         self.energy_per_spike = 0.000001  # pJ
 
     def map_network(self, num_neurons: int) -> Dict:
-        cores_needed = (num_neurons + self.neurons_per_core - 1) // self.neurons_per_core
+        cores_needed = (
+            num_neurons + self.neurons_per_core - 1
+        ) // self.neurons_per_core
         return {
             "cores_used": min(cores_needed, self.cores),
             "neurons_mapped": num_neurons,
-            "power_estimate_w": cores_needed * 0.1
+            "power_estimate_w": cores_needed * 0.1,
         }
 
     def stats(self) -> dict:

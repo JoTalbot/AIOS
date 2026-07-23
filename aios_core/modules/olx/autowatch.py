@@ -69,9 +69,9 @@ class AutoWatch:
                     history = self.storage.price_history(card.fingerprint)
                     if len(history) == 1:
                         new_cards.append(card)
-            report["subscription_alerts"] = SubscriptionManager(
-                self.storage
-            ).check_new(new_cards)
+            report["subscription_alerts"] = SubscriptionManager(self.storage).check_new(
+                new_cards
+            )
             report["favorite_alerts"] = FavoritesWatch(self.storage).price_alerts()
         else:
             report["subscription_alerts"] = []
@@ -99,14 +99,20 @@ class AutoWatch:
 
         suggestions: List[Dict[str, object]] = []
         decisions: List[Dict[str, object]] = []
-        rows = {row["fingerprint"]: row for row in self.storage.own_ads(status="active")}
+        rows = {
+            row["fingerprint"]: row for row in self.storage.own_ads(status="active")
+        }
         for item in stagnant:
             row = rows.get(item["fingerprint"])
             if row is None:
                 continue
             own_ad = OwnAd(
-                title=row["title"], price=row["price"], currency=row["currency"],
-                views=row["last_views"] or 0, url=row["url"], ad_id=row["ad_id"],
+                title=row["title"],
+                price=row["price"],
+                currency=row["currency"],
+                views=row["last_views"] or 0,
+                url=row["url"],
+                ad_id=row["ad_id"],
                 status=row["status"],
             )
             suggestion = improver.improve(own_ad, competitors)
@@ -136,11 +142,16 @@ class AutoWatch:
         if rows:
             from .competitive import CompetitiveWatch
             from .advisor import StrategyAdvisor
+
             own_list = [
                 OwnAd(
-                    title=row["title"], price=row["price"], currency=row["currency"],
-                    views=row["last_views"] or 0, url=row["url"],
-                    ad_id=row["ad_id"], status=row["status"],
+                    title=row["title"],
+                    price=row["price"],
+                    currency=row["currency"],
+                    views=row["last_views"] or 0,
+                    url=row["url"],
+                    ad_id=row["ad_id"],
+                    status=row["status"],
                 )
                 for row in rows.values()
             ]

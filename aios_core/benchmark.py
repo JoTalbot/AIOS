@@ -18,7 +18,7 @@ class Benchmark:
         self.results[name] = {
             "iterations": iterations,
             "total_seconds": round(duration, 4),
-            "ops_per_second": round(iterations / duration, 2)
+            "ops_per_second": round(iterations / duration, 2),
         }
         return self.results[name]
 

@@ -13,13 +13,15 @@ class EventStore:
         self.storage_path = storage_path
         self.events: List[Dict] = []
 
-    def append(self, event_type: str, data: Dict[str, Any], aggregate_id: str = None) -> str:
+    def append(
+        self, event_type: str, data: Dict[str, Any], aggregate_id: str = None
+    ) -> str:
         event = {
             "id": str(uuid.uuid4()),
             "type": event_type,
             "data": data,
             "aggregate_id": aggregate_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         self.events.append(event)
 
@@ -43,7 +45,4 @@ class EventStore:
         return state
 
     def stats(self) -> dict:
-        return {
-            "total_events": len(self.events),
-            "storage": self.storage_path
-        }
+        return {"total_events": len(self.events), "storage": self.storage_path}

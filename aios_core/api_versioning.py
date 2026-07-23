@@ -23,6 +23,7 @@ class APIVersioning:
                 self.versions[version] = {}
             self.versions[version][path] = func
             return func
+
         return decorator
 
 
