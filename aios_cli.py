@@ -18,10 +18,18 @@ DEFAULT_OLX_DB = "olx_ads.sqlite"
 
 
 def _add_olx_parsers(subparsers) -> None:
+    """Register the ``olx`` subcommand tree with all OLX Parser Agent actions.
+
+    Adds collect, stats, recommend, export, history, drops, detail, chats,
+    reply, outbox, own, improve, repost, subscribe, subscriptions, favorite,
+    favorites, autowatch, profile, profile-edit, competitive, competitive-seller,
+    advisor, bootstrap, and doctor subcommands.
+    """
     olx_parser = subparsers.add_parser("olx", help="OLX Parser Agent commands")
     olx_sub = olx_parser.add_subparsers(dest="olx_command")
 
     def with_db(p):
+        """Add ``--db`` and ``--profile`` arguments to an OLX subparser."""
         p.add_argument(
             "--db",
             default=None,
@@ -202,6 +210,10 @@ def _resolve_olx_adb(args):
 
 
 def _run_olx(args) -> bool:
+    """Dispatch an OLX subcommand to the appropriate handler.
+
+    Returns True if the command was recognized and executed, False otherwise.
+    """
     from aios_core.modules.olx import (
         CollectionScheduler,
         CompetitorAnalyzer,
@@ -572,6 +584,11 @@ def _run_olx(args) -> bool:
 
 
 def _run_platforms(args) -> bool:
+    """Dispatch a ``platforms`` subcommand: list, scaffold, from-apk, autowatch,
+    fetch-apk, marker-check, calibrate, codegen, bootup, reels, or doctor.
+
+    Returns True when the command was recognized and executed.
+    """
     from aios_core.platforms import list_platforms, scaffold_platform
 
     cmd = getattr(args, "platforms_command", None) or "list"
@@ -1270,7 +1287,12 @@ def _run_instagram(args) -> bool:
 
 
 def _adb_dump_driver(default_serial=None):
-    """Драйв удалённого дампа для bootup/onboard (open_app+pointdrive)."""
+    """Build a driver callable for remote UI dump (bootup/onboard).
+
+    Returns a function ``driver(package, query=None, serial=None)`` that opens
+    the app (optionally executes a PointDrive search) and returns the UI XML
+    dump as a string.
+    """
     import time
 
     def driver(package, query=None, serial=None):
@@ -1372,6 +1394,10 @@ def _run_msg_platform(args, platform: str) -> bool:
 
 
 def _run_profiles(args) -> bool:
+    """Dispatch a ``profiles`` subcommand: list, add, show, remove, or set-default.
+
+    Returns True when the command was recognized and executed.
+    """
     from aios_core.platforms import Profile, ProfileStore
 
     store = ProfileStore.default()
@@ -1442,6 +1468,12 @@ def _run_profiles(args) -> bool:
 
 
 def _run_devices(args) -> bool:
+    """Dispatch a ``devices`` subcommand: register, list, lease, waitlist,
+    enqueue, cancel-wait, release, heartbeat, reap, ensure, limits, monitor,
+    or fleet-run.
+
+    Returns True when the command was recognized and executed.
+    """
     from aios_core.platforms import DevicePool
 
     with DevicePool() as pool:
@@ -1582,6 +1614,11 @@ def _run_devices(args) -> bool:
 
 
 def _run_shards(args) -> bool:
+    """Dispatch a ``shards`` subcommand: list, add, remove, route, unroute,
+    monitor, jobs, requeue-stale, enqueue, or work.
+
+    Returns True when the command was recognized and executed.
+    """
     from aios_core.platforms import ShardRouter
 
     with ShardRouter() as router:
@@ -1754,6 +1791,11 @@ def _run_cron_plan(args) -> bool:
     webhook = f" --webhook {args.webhook}" if args.webhook else ""
 
     def _profile_line(profile) -> str:
+        """Build one crontab line (or shard-job enqueue) for *profile*.
+
+        Platform type determines whether it uses push-mode (``olx autowatch``),
+        pull-model (``shards enqueue``), or the generic AutoWatch engine.
+        """
         if getattr(args, "via_shards", False):
             # Pull-модель: cron только вешает джобы, исполняют ноды-воркеры:
             kinds = {"instagram": "autopilot"}
@@ -1848,6 +1890,12 @@ def _run_cron_plan(args) -> bool:
 
 
 def main(argv=None):
+    """AIOS CLI entry point.
+
+    Parses command-line arguments and dispatches to the appropriate handler:
+    run, dashboard, demo, stats, platforms, onboard, profiles, shards,
+    cron-plan, devices, olx, instagram, whatsapp, viber, facebook, or admin.
+    """
     parser = argparse.ArgumentParser(description="AIOS CLI")
     subparsers = parser.add_subparsers(dest="command")
 
