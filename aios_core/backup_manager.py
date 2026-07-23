@@ -20,6 +20,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+__all__ = ["BackupMetadata", "BackupManager"]
+
 logger = logging.getLogger(__name__)
 
 

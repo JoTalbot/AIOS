@@ -3,6 +3,8 @@
 import logging
 from typing import Any, Callable, Dict
 
+__all__ = ["HybridQuantumClassical"]
+
 logger = logging.getLogger(__name__)
 
 

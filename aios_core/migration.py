@@ -4,6 +4,8 @@ import logging
 import sqlite3
 from typing import List
 
+__all__ = ["Migration", "MigrationManager"]
+
 logger = logging.getLogger(__name__)
 
 
