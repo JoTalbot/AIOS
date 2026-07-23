@@ -6,25 +6,25 @@ from typing import Dict, Any
 class MetricsExporter:
     """Exports AIOS metrics in Prometheus text format."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.counters: Dict[str, float] = {}
         self.gauges: Dict[str, float] = {}
         self.histograms: Dict[str, list] = {}
         self._labels: Dict[str, Dict[str, str]] = {}
 
-    def inc_counter(self, name: str, value: float = 1.0, labels: Dict[str, str] = None):
+    def inc_counter(self, name: str, value: float = 1.0, labels: Dict[str, str] = None) -> None:
         key = self._make_key(name, labels)
         self.counters[key] = self.counters.get(key, 0) + value
         if labels:
             self._labels[key] = labels
 
-    def set_gauge(self, name: str, value: float, labels: Dict[str, str] = None):
+    def set_gauge(self, name: str, value: float, labels: Dict[str, str] = None) -> None:
         key = self._make_key(name, labels)
         self.gauges[key] = value
         if labels:
             self._labels[key] = labels
 
-    def observe_histogram(self, name: str, value: float, labels: Dict[str, str] = None):
+    def observe_histogram(self, name: str, value: float, labels: Dict[str, str] = None) -> None:
         key = self._make_key(name, labels)
         if key not in self.histograms:
             self.histograms[key] = []

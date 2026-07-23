@@ -11,7 +11,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Dict, List, Optional, Any, Any, Optional
 
 from .constitution_loader import (
     ConstitutionLoader,
@@ -128,7 +128,7 @@ class ConstitutionEngine:
         self,
         constitution_dir: Optional[str] = None,
         policies_dir: Optional[str] = None,
-    ):
+    ) -> None:
         self.version = "3.0.0"
         self.constitution = ConstitutionLoader(constitution_dir)
         self.policies = PolicyLoader(policies_dir)
