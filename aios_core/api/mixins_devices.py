@@ -88,7 +88,7 @@ class DevicesShardsMixin:
         with self._shard_jobs() as jobs:
             return JSONResponse({"jobs": jobs.list(status=request.query_params.get("status"))})
 
-    def _shard_jobs():
+    def _shard_jobs(self):
         from aios_core.platforms.shardexec import ShardJobs
 
         return ShardJobs()
@@ -104,7 +104,6 @@ class DevicesShardsMixin:
     # Shard pull-jobs (очередь джобов для dashboard/worker-нод)          #
     # ------------------------------------------------------------------ #
 
-    @staticmethod
     async def _shards_add(self, request: Request) -> JSONResponse:
         """Register a shard host {host, base_url}."""
         body = await request.json()

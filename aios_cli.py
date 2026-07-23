@@ -106,10 +106,10 @@ def _add_all_subparsers(subparsers):
     ig = subparsers.add_parser("instagram")
     igs = ig.add_subparsers(dest="instagram_command")
     igs.add_parser("doctor")
-    for cmd, args in [("collect", [("--query",None),("--max",100)]),("dm-send",[("--chat",True),("--text",True),("--auto-send",False)]),("dm-flush",[]),("dm-outbox",[]),("login-drive",[("--query",None)]),("own",[("--dump",None)]),("post",[("--image",True),("--text",True),("--confirm",False)]),("reels",[("--max",100),("--open-tab",False),("--webhook",None)]),("autopilot",[("--query",None),("--max",100),("--reels-max",50),("--login",False),("--open-tab",False),("--webhook",None),("--post-image",None),("--own",False),("--promote",False),("--confirm",False)])]:
+    for cmd, args in [("collect", [("--query",None),("--max",100)]),("dm-send",[("--chat",True),("--text",True),("--auto-send",False)]),("dm-flush",[]),("dm-outbox",[]),("login-drive",[("--query",None)]),("own",[("--dump",None)]),("post",[("--image",True),("--text",True),("--confirm",False)]),("reels",[("--max",100),("--open-tab",False),("--webhook",None)]),("autopilot",[("--query",None),("--max",100),("--reels-max",50),("--login",False),("--open-tab",False),("--webhook",None),("--post-image",None),("--post-text",None),("--own",False),("--own-dump",None),("--pace-actions",None),("--pace-jitter",None),("--promote",False),("--promote-budget",None),("--promote-min-age-days",None),("--confirm",False)])]:
         c = igs.add_parser(cmd)
-        for an, av in args: c.add_argument(an, type=int if isinstance(av,int) else None, default=av, dest=f"{an[2:]}_dest" if av is not False else None) if av is not False else c.add_argument(an, action="store_true")
-    for cmd in ["collect","dm-send","dm-flush","dm-outbox","own","autopilot"]:
+        for an, av in args: c.add_argument(an, type=int if isinstance(av, int) and not isinstance(av, bool) else None, default=av) if av is not False else c.add_argument(an, action="store_true")
+    for cmd in ["collect","dm-send","dm-flush","dm-outbox","own","reels","autopilot","post"]:
         igs.choices[cmd].add_argument("--db", default="data/instagram.sqlite") if cmd in igs.choices else None
         if cmd in igs.choices: igs.choices[cmd].add_argument("--serial", default=None); igs.choices[cmd].add_argument("--directory", default="platforms")
 

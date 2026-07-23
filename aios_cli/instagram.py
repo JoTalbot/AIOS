@@ -55,7 +55,7 @@ def _run_instagram(args) -> bool:
             try:
                 written, cards = collector.collect_to_storage(
                     storage,
-                    max_cards=args.max_cards,
+                    max_cards=args.max,
                 )
             finally:
                 storage.close()
@@ -98,8 +98,8 @@ def _run_instagram(args) -> bool:
                 from aios_core.platforms.pacing import Pacer
 
                 pacer = Pacer(
-                    actions_per_hour=args.pace_actions,
-                    jitter_s=(0.4, args.pace_jitter),
+                    actions_per_hour=getattr(args, "pace_actions", None),
+                    jitter_s=(0.4, getattr(args, "pace_jitter", None)),
                 )
             storage = InstagramStorage(args.db)
             steps: dict = {}
@@ -113,7 +113,7 @@ def _run_instagram(args) -> bool:
                 steps["collect"] = cards_collector.collect_to_storage(
                     storage,
                     query=args.query,
-                    max_cards=args.max_cards,
+                    max_cards=args.max,
                 )
                 notifier = WebhookNotifier(url=args.webhook) if args.webhook else None
                 tab_driver = None
@@ -269,7 +269,7 @@ def _run_instagram(args) -> bool:
                 summary = collector.collect_to_storage(
                     storage,
                     query=args.query,
-                    max_cards=args.max_cards,
+                    max_cards=args.max,
                 )
             finally:
                 storage.close()
@@ -294,7 +294,7 @@ def _run_instagram(args) -> bool:
                     result = messenger.send_reply(
                         args.chat,
                         args.text,
-                        interlocutor=args.interlocutor,
+                        interlocutor=getattr(args, "interlocutor", None),
                         auto_send=args.auto_send,
                     )
                 elif cmd == "dm-flush":
@@ -302,7 +302,7 @@ def _run_instagram(args) -> bool:
                 else:
                     result = [
                         {k: item[k] for k in ("id", "chat_key", "interlocutor", "text", "status")}
-                        for item in storage.outbox_list(args.status)
+                        for item in storage.outbox_list(getattr(args, "status", None))
                     ]
             finally:
                 storage.close()
@@ -326,7 +326,7 @@ def _run_instagram(args) -> bool:
                         f"({(pulled.get('stderr') or '')[:120]})"
                     )
                 xml = Path(target).read_text(encoding="utf-8")
-            markers = tuple(args.marker) or None
+            markers = getattr(args, "marker", None) or None
             posts = OwnPostsParser(markers=markers).parse(xml)
             storage = InstagramStorage(args.db)
             try:
