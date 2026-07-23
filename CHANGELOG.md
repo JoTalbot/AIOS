@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [9.3.1] — 2026-07-23 — Code Quality & Documentation Sprint
 
+### Stats
+- 52+ commits, 470+ files, +5,500+ lines
+- 272 test files, 1,600+ test functions
+- 0 bare excepts, 0 unannotated passes, 0 compile errors
+- 106 __all__, 478 -> None, 96.9% docstring coverage
+
 ### Fixed
 - 8 bare `except:` → `except Exception:`
   (`android_predictive`, `hybrid_quantum_classical`, `load_testing`,

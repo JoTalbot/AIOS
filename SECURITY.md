@@ -173,3 +173,10 @@ maintainer privately with a minimal reproduction, affected revision and impact.
 | 2026-07-20 | Internal audit | See SECURITY_AUDIT_REPORT.md |
 | 2026-07-22 | Production simulation | 168 cycles, 0 bans |
 | 2026-07-23 | Documentation update | Secrets rotation checklist added |
+
+## Quality Gates (added 2026-07-23)
+
+Run `python3 tools/quality_check.py` before every push.
+- Zero bare `except:` clauses required
+- Zero unannotated `pass` blocks required
+- All source files must compile clean
