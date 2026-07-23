@@ -1,7 +1,7 @@
 # AIOS
 
-![Version](https://img.shields.io/badge/version-9.2.0--production-blue)
-![Tests](https://img.shields.io/badge/tests-1124%20passing-green)
+![Version](https://img.shields.io/badge/version-9.3.0-blue)
+![Test%20suite](https://img.shields.io/badge/test%20suite-1255%20collected-orange)
 ![API](https://img.shields.io/badge/API-169%20routes-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-12%20workflows-green)
@@ -54,7 +54,7 @@ Key docs:
 # Install
 pip install -r requirements.txt
 
-# Test (1124 tests)
+# Test suite
 python -m pytest -q
 
 # Demo
@@ -181,7 +181,7 @@ open http://localhost:3000
 
 ```bash
 # All tests
-python -m pytest -q                    # 1124 tests
+python -m pytest -q                    # Run the complete suite
 
 # With coverage
 python -m pytest --cov=aios_core
@@ -189,6 +189,15 @@ python -m pytest --cov=aios_core
 # Specific module
 python -m pytest tests/test_webhook_manager.py -v
 ```
+
+## Test status
+
+The suite is executed in CI for supported Python versions. The last local audit
+(2026-07-23, Python 3.13) collected **1255 tests**: **1216 passed** and
+**39 failed**. The failures are tracked by category in
+[`TEST_AUDIT_2026-07-23.md`](TEST_AUDIT_2026-07-23.md). Do not treat a historic
+passing-test count as a current release-quality claim; run the command above
+before deployment.
 
 ## Security
 
@@ -202,8 +211,8 @@ Read [SECURITY.md](SECURITY.md) before deploying. Includes:
 
 | Metric | Value |
 |--------|-------|
-| Version | 9.2.0-production |
-| Tests | 1124 |
+| Version | 9.3.0 |
+| Tests | 1255 collected; see test-status below |
 | API routes | 169 |
 | CLI commands | 35+ |
 | Constitution articles | 67 |
