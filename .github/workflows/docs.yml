@@ -36,4 +36,4 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          mike deploy --push --update-aliases 9.2.0 latest
+          mike deploy --push --update-aliases 9.3.0 latest
