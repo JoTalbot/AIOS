@@ -1,0 +1,13 @@
+"""V-test 2890."""
+from aios_core.quantum_computing import QuantumCircuit
+from aios_core.quantum_native import QuantumNativeRuntime
+from aios_core.quantum_ml import QuantumML
+from aios_core.quantum_cryptography import QuantumCryptography
+from aios_core.quantum_internet import QuantumInternet
+
+def test():
+    assert QuantumCircuit(2).stats() is not None
+    assert QuantumNativeRuntime().stats() is not None
+    assert QuantumML().stats() is not None
+    assert QuantumCryptography().stats() is not None
+    assert QuantumInternet().stats() is not None
