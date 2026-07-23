@@ -206,13 +206,13 @@ def _run_instagram(args) -> bool:
                     stagnant = OwnAdsTracker(
                         storage,
                     ).stagnant(
-                        min_age_days=args.promote_min_age_days,
+                        min_age_days=int(getattr(args, "promote_min_age_days", 7) or 7),
                     )
                 finally:
                     storage.close()
                 plan = promotion_plan(
                     stagnant,
-                    daily_budget=args.promote_budget,
+                    daily_budget=float(getattr(args, "promote_budget", 0) or 0),
                 )
                 promote_notifier = WebhookNotifier(url=args.webhook) if args.webhook else None
                 if promote_notifier is not None and plan["candidates"]:
