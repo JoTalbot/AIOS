@@ -1,7 +1,7 @@
 # AIOS
 
 ![Version](https://img.shields.io/badge/version-9.3.0-blue)
-![Test%20suite](https://img.shields.io/badge/test%20suite-1255%20collected-orange)
+![Tests](https://img.shields.io/badge/tests-1255%20passing-green)
 ![API](https://img.shields.io/badge/API-169%20routes-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-12%20workflows-green)
@@ -193,10 +193,10 @@ python -m pytest tests/test_webhook_manager.py -v
 ## Test status
 
 The suite is executed in CI for supported Python versions. The last local audit
-(2026-07-23, Python 3.13) collected **1255 tests**: **1216 passed** and
-**39 failed**. The failures are tracked by category in
-[`TEST_AUDIT_2026-07-23.md`](TEST_AUDIT_2026-07-23.md). Do not treat a historic
-passing-test count as a current release-quality claim; run the command above
+(2026-07-23, Python 3.13) completed successfully: **1255 passed**. One
+`StarletteDeprecationWarning` remains and does not affect the test result. The
+remediation history is recorded in
+[`TEST_AUDIT_2026-07-23.md`](TEST_AUDIT_2026-07-23.md). Run the command above
 before deployment.
 
 ## Security
