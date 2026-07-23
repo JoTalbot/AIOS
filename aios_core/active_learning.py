@@ -8,6 +8,7 @@ __all__ = ["ActiveLearner"]
 
 class ActiveLearner:
     """Active learning query selection.
+    __slots__ = ()
 
     Maintains pools of labeled and unlabeled data and supports uncertainty
     and random sampling strategies.

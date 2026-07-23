@@ -15,6 +15,7 @@ class CircuitState(Enum):
 
 class CircuitBreaker:
     """Simple circuit breaker implementation."""
+    __slots__ = ()
 
     def __init__(self, failure_threshold: int = 5, recovery_timeout: int = 30):
         self.failure_threshold = failure_threshold
