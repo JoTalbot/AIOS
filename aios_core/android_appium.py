@@ -7,12 +7,15 @@ Keeps raw ADB path untouched and adds a stable cross-platform automation backend
 
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, List, Optional
 
 from aios_core.android_driver import AndroidDriver, DriverCapabilities, UIContext
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -45,7 +48,7 @@ class AppiumAndroidDriver(AndroidDriver):
             )
             return True
         except Exception as exc:
-            print(f"appium_start_failed: {exc}")
+            logger.error("appium_start_failed: %s", exc)
             return False
 
     def quit(self) -> None:
@@ -53,7 +56,7 @@ class AppiumAndroidDriver(AndroidDriver):
             try:
                 self._driver.quit()
             except Exception:
-                pass
+                pass  # Best-effort cleanup — ignore if already disconnected
             self._driver = None
 
     def launch_app(self) -> bool:
@@ -64,7 +67,7 @@ class AppiumAndroidDriver(AndroidDriver):
             time.sleep(2)
             return True
         except Exception:
-            return False
+            return False  # Appium session may be stale
 
     def dump_ui(self) -> UIContext:
         try:
@@ -75,7 +78,7 @@ class AppiumAndroidDriver(AndroidDriver):
             try:
                 current = self._driver.current_activity or ""
             except Exception:
-                pass
+                pass  # current_activity is best-effort metadata
             return UIContext(xml=xml, package=self.config.package, current_activity=current)
         except Exception as exc:
             return UIContext(
@@ -101,7 +104,7 @@ class AppiumAndroidDriver(AndroidDriver):
         try:
             self._driver.press_keycode(keycode)
         except Exception:
-            pass
+            pass  # Key injection can fail on some devices/OS versions
 
     def swipe(self, x1: int, y1: int, x2: int, y2: int, duration: int = 300) -> None:
         if self._driver is None:
@@ -109,7 +112,7 @@ class AppiumAndroidDriver(AndroidDriver):
         try:
             self._driver.swipe(x1, y1, x2, y2, duration)
         except Exception:
-            pass
+            pass  # Swipe is best-effort; geometry may be off-screen
 
     def screenshot(self, path: str) -> bool:
         try:

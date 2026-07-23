@@ -145,13 +145,7 @@ class AIScreenClassifier:
                         if el.resource_id:
                             signature_parts.append(el.resource_id.split("/")[-1][:20])
         except Exception:
-            pass
-
-        return "|".join(signature_parts) if signature_parts else "generic"
-
-    def classify(self, xml: str) -> Optional[ScreenEmbedding]:
-        """Classify screen using enhanced embedding similarity matching."""
-        self.parser = UIAutomatorParser(xml)
+            pass  # Signature extraction is best-effort; return generic on failure
         try:
             if self.parser.parse() is None:
                 return ScreenEmbedding(
@@ -271,7 +265,8 @@ class AIScreenClassifier:
                     metadata={"fallback": "template"},
                 )
         except Exception:
-            pass
+            pass  # Classification is best-effort; return None on any failure
+
         return None
 
     def classify_screenshot(self, screenshot_path: str) -> Optional[ScreenEmbedding]:

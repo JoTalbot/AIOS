@@ -26,7 +26,7 @@ class LoadTester:
                     latency = (time.perf_counter() - start) * 1000
                     self.results.append(latency)
                 except Exception:
-                    pass
+                    pass  # Worker best-effort — ignore individual call failures
 
         threads = [threading.Thread(target=worker) for _ in range(concurrent_users)]
         for t in threads:
