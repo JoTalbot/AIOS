@@ -28,7 +28,7 @@ class ABTest:
                 return variant
         return list(self.variants.keys())[0]
 
-    def record_result(self, variant: str, success: bool):
+    def record_result(self, variant: str, success: bool) -> None:
         """Record a success outcome for *variant*."""
         if success:
             self.results[variant] = self.results.get(variant, 0) + 1

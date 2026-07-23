@@ -17,7 +17,7 @@ class ActiveLearner:
         self.labeled: List[Dict] = []
         self.unlabeled: List[Dict] = []
 
-    def add_unlabeled(self, data: Dict):
+    def add_unlabeled(self, data: Dict) -> None:
         """Add *data* to the unlabeled pool."""
         self.unlabeled.append(data)
 
@@ -32,7 +32,7 @@ class ActiveLearner:
             return random.choice(self.unlabeled)
         return self.unlabeled[0]
 
-    def label(self, data: Dict, label: Any):
+    def label(self, data: Dict, label: Any) -> None:
         """Move *data* from the unlabeled pool to the labeled pool with *label*."""
         self.labeled.append({**data, "label": label})
         if data in self.unlabeled:

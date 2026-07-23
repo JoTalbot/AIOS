@@ -23,7 +23,7 @@ class AdversarialDefense:
             return True
         return False
 
-    def adversarial_training(self, model, clean_data, adversarial_data):
+    def adversarial_training(self, model, clean_data, adversarial_data) -> Dict:
         """Placeholder for adversarial training loop.
 
         Returns a status dict with sample counts.

@@ -4,6 +4,8 @@ from typing import Dict, List
 
 from .agent_architecture import AdvancedAgent
 
+__all__ = ["AgentSwarm"]
+
 
 class AgentSwarm:
     """Swarm of collaborative agents."""
@@ -14,10 +16,10 @@ class AgentSwarm:
         self.shared_memory: Dict = {}
         self.consensus: Dict = {}
 
-    def add_agent(self, agent: AdvancedAgent):
+    def add_agent(self, agent: AdvancedAgent) -> None:
         self.agents.append(agent)
 
-    def broadcast(self, message: Dict):
+    def broadcast(self, message: Dict) -> None:
         for agent in self.agents:
             agent.memory.short_term.append(message)
 
