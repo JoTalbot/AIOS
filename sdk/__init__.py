@@ -11,7 +11,7 @@ Usage::
     stats = await client.stats()
 """
 
-from sdk.aios_sdk import AIOSClient, AIOSSyncClient  # noqa: F401
+from sdk.aios_sdk import AIOSClient, AIOSClientSync  # noqa: F401
 
-__all__ = ["AIOSClient", "AIOSSyncClient"]
+__all__ = ["AIOSClient", "AIOSClientSync"]
 __version__ = "4.2.0"

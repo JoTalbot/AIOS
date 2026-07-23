@@ -43,7 +43,7 @@ def test_container_reset():
     db1 = c.db()
     orch1 = c.orchestrator()
     c.reset()
-    assert c.stats()["db_initialized"] is False
+    assert c.stats()["db_ready"] is False
     db2 = c.db()
     assert db1 is not db2  # new instance after reset
 
@@ -52,10 +52,10 @@ def test_container_stats():
     c = AppContainer(AppConfig(db_path=":memory:"))
     s = c.stats()
     assert s["db_path"] == ":memory:"
-    assert s["db_initialized"] is False
-    assert s["orchestrator_initialized"] is False
+    assert s["db_ready"] is False
+    assert s["orch_ready"] is False
     c.db()
-    assert c.stats()["db_initialized"] is True
+    assert c.stats()["db_ready"] is True
 
 
 def test_container_data_exporters():
