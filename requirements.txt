@@ -30,7 +30,7 @@ pylint>=3.2.0
 mypy>=1.11.0
 
 # Documentation
-sphinx>=7.0.0
+sphinx>=9.0.4
 sphinx-rtd-theme>=2.0.0
 mkdocs>=1.6.0
 mkdocs-material>=9.5.0
