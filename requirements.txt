@@ -21,6 +21,7 @@ opencv-python-headless>=4.8.0
 
 # Code Quality
 black>=22.0.0
+pre-commit>=3.0.0
 flake8>=4.0.0
 pylint>=2.10.0
 
