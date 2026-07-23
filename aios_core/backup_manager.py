@@ -70,7 +70,7 @@ class BackupManager:
     def _save_metadata(self):
         """Save backup metadata to file."""
         data = {
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now().isoformat(),
             "backups": [b.to_dict() for b in self.backups],
         }
         with open(self.metadata_file, "w") as f:
@@ -86,7 +86,7 @@ class BackupManager:
         Returns:
             BackupMetadata for the created backup
         """
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_id = f"backup_{timestamp}_{label}" if label else f"backup_{timestamp}"
 
         # Determine backup file path
@@ -105,7 +105,7 @@ class BackupManager:
 
         metadata = BackupMetadata(
             backup_id=backup_id,
-            created_at=datetime.utcnow().isoformat(),
+            created_at=datetime.now().isoformat(),
             size_bytes=size_bytes,
             checksum=checksum,
             database=self.db_path,
@@ -256,7 +256,7 @@ class BackupManager:
         Returns:
             Number of backups removed
         """
-        threshold = datetime.utcnow() - timedelta(days=self.retention_days)
+        threshold = datetime.now() - timedelta(days=self.retention_days)
         removed = 0
 
         for metadata in list(self.backups):

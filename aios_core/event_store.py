@@ -21,7 +21,7 @@ class EventStore:
             "type": event_type,
             "data": data,
             "aggregate_id": aggregate_id,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now().isoformat(),
         }
         self.events.append(event)
 

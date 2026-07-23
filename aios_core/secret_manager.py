@@ -39,7 +39,7 @@ class APIKey:
             return True
         if not self.expires_at:
             return False
-        return datetime.fromisoformat(self.expires_at) < datetime.utcnow()
+        return datetime.fromisoformat(self.expires_at) < datetime.now()
 
     def is_valid(self) -> bool:
         """Check if key is valid (not expired and not revoked)."""
@@ -94,7 +94,7 @@ class SecretManager:
         raw_key = secrets.token_urlsafe(48)
         key = f"{prefix}_{raw_key}"
 
-        now = datetime.utcnow()
+        now = datetime.now()
         expires_at = None
         if ttl_days is not None:
             expires_at = (now + timedelta(days=ttl_days)).isoformat()
@@ -142,7 +142,7 @@ class SecretManager:
             "key_prefix": key[:12] + "...",
             "subject": self.keys[key].subject,
             "reason": reason,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now().isoformat(),
         })
 
         return True
@@ -181,7 +181,7 @@ class SecretManager:
             "new_key_prefix": new_key.key[:12] + "...",
             "subject": old.subject,
             "reason": reason,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now().isoformat(),
         })
 
         return new_key
@@ -204,7 +204,7 @@ class SecretManager:
             return False, api_key
 
         # Update usage
-        api_key.last_used = datetime.utcnow().isoformat()
+        api_key.last_used = datetime.now().isoformat()
         api_key.usage_count += 1
 
         return True, api_key
@@ -219,7 +219,7 @@ class SecretManager:
 
     def get_expiring_keys(self, within_days: int = 7) -> List[APIKey]:
         """Get keys expiring within specified days."""
-        threshold = datetime.utcnow() + timedelta(days=within_days)
+        threshold = datetime.now() + timedelta(days=within_days)
         return [
             k for k in self.keys.values()
             if k.expires_at and not k.revoked
@@ -235,7 +235,7 @@ class SecretManager:
         Returns:
             Number of keys removed
         """
-        threshold = datetime.utcnow() - timedelta(days=older_than_days)
+        threshold = datetime.now() - timedelta(days=older_than_days)
         to_remove = []
 
         for key, api_key in self.keys.items():
@@ -263,7 +263,7 @@ class SecretManager:
             Number of keys exported
         """
         data = {
-            "exported_at": datetime.utcnow().isoformat(),
+            "exported_at": datetime.now().isoformat(),
             "keys": [k.to_dict() for k in self.keys.values()],
             "rotation_log": self.rotation_log,
         }
@@ -312,7 +312,7 @@ class SecretManager:
             "rotations_last_30d": len([
                 l for l in self.rotation_log
                 if l["action"] == "rotated"
-                and datetime.fromisoformat(l["timestamp"]) > datetime.utcnow() - timedelta(days=30)
+                and datetime.fromisoformat(l["timestamp"]) > datetime.now() - timedelta(days=30)
             ]),
         }
 
