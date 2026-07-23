@@ -6,9 +6,24 @@
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-13%20workflows-green)
 
-Self-evolving distributed operating system for application intelligence,
-automated testing, API generation, skill evolution and collective learning.
-Powered by the **Octopus Runtime**.
+**A**pplication **I**ntelligence **O**perating **S**ystem — a self-evolving
+distributed platform for multi-platform marketplace automation, AI-assisted
+decision pipelines, and collective learning across agents.
+
+Built with the **Octopus Runtime** at its core, AIOS provides:
+
+- **Multi-platform automation** — OLX, Instagram, Facebook, TikTok, WhatsApp,
+  Viber, Prom, Bigl, Shafa and any custom platform via YAML descriptors
+- **Constitution-gated execution** — 67 constitutional articles enforced at
+  runtime through a compliance pipeline before any action
+- **Device pool & shard routing** — lease emulators/physical devices, route
+  profiles across hosts with sticky HRW hashing
+- **Collective intelligence** — agent swarms, evolution engines, MCP Gateway
+  (JSON-RPC 2.0), and federated knowledge graphs
+- **Production autopilot** — pacing, predictive risk scoring, webhook alerts,
+  and full daemon-mode operation
+
+---
 
 ## 📚 Documentation
 
@@ -23,11 +38,58 @@ make docs-pdf
 ```
 
 Key docs:
-- [Quick Start](docs/quickstart.md) — 30-minute onboarding
-- [Production Exploitation](docs/PRODUCTION.md) — compliance, pacing, monitoring
-- [Architecture](docs/architecture.md) — system design
-- [Constitution](docs/constitution/INDEX.md) — 67 articles
-- [Security](SECURITY.md) — deployment & secrets rotation checklist
+| Document | Description |
+|----------|-------------|
+| [Quick Start](docs/quickstart.md) | 30-minute onboarding |
+| [Architecture](ARCHITECTURE.md) | System design & data flow |
+| [Production Exploitation](PRODUCTION_EXPLOITATION.md) | Compliance, pacing, monitoring |
+| [Constitution](docs/constitution/INDEX.md) | 67 articles governing all AI decisions |
+| [Security](SECURITY.md) | Deployment & secrets rotation checklist |
+| [Contributing](CONTRIBUTING.md) | Development workflow & standards |
+| [Changelog](CHANGELOG.md) | Version history |
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    AIOS Runtime                       │
+│  ┌──────────┐ ┌──────────┐ ┌──────────────────┐    │
+│  │ REST API  │ │ MCP GW   │ │ Web Dashboard    │    │
+│  │(Starlette)│ │(JSON-RPC)│ │ (React)          │    │
+│  └────┬──────┘ └────┬─────┘ └───────┬──────────┘    │
+│       │             │               │                │
+│  ┌────┴─────────────┴───────────────┴──────────┐    │
+│  │           Constitution Engine (67 articles)   │    │
+│  │     ┌──────────────────────────────────┐     │    │
+│  │     │  Compliance → Approval → Execute │     │    │
+│  │     └──────────────────────────────────┘     │    │
+│  └────┬─────────────────────────────────────────┘    │
+│       │                                              │
+│  ┌────┴──────────────────────────────────────────┐   │
+│  │            Agent / Platform Layer               │   │
+│  │  ┌────┐ ┌────┐ ┌──────┐ ┌──────┐ ┌─────────┐ │   │
+│  │  │OLX │ │ IG │ │Meta  │ │TikTok│ │ Custom… │ │   │
+│  │  └────┘ └────┘ └──────┘ └──────┘ └─────────┘ │   │
+│  │  ┌────────────────────────────────────────┐   │   │
+│  │  │   Device Pool · Shard Router · Fleet   │   │   │
+│  │  └────────────────────────────────────────┘   │   │
+│  └────┬──────────────────────────────────────────┘   │
+│       │                                              │
+│  ┌────┴──────────────────────────────────────────┐   │
+│  │     Persistence (SQLite)                        │   │
+│  │  Tasks · Memory · Knowledge Graph · Audit      │   │
+│  │  Backups · Export/Import · Migrations          │   │
+│  └────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+```
+
+Every action flows through the Constitution pipeline: the compliance guard
+checks platform-specific flags, the approval manager requires human sign-off
+for sensitive operations, and only then does the executor reach the device.
+
+---
 
 ## Components
 
@@ -48,24 +110,48 @@ Key docs:
 | **Webhook System** | Event notifications (Slack/Teams/custom HTTP) | ✅ |
 | **Web Dashboard** | Real-time monitoring (React) | ✅ |
 
-## Quick start
+---
+
+## 🚀 Quick start
+
+### Prerequisites
+
+- **Python** 3.11 or later
+- **ADB** (Android Debug Bridge) — for device automation
+- **SQLite** 3.35+ — included with Python
+- **Docker** (optional) — for containerised deployment
+
+### Install
 
 ```bash
-# Install
+git clone git@github.com:JoTalbot/AIOS.git
+cd AIOS
 pip install -r requirements.txt
 
-# Test suite
-python -m pytest -q
-
-# Demo
-python demo.py
-
-# REST API
-export AIOS_API_KEYS='{"my-key":{"subject":"dev","roles":["admin"]}}'
-python run_rest_api.py --host 127.0.0.1 --port 8000
+# Optional: install pre-commit hooks
+pre-commit install
 ```
 
-## Docker
+### Verify
+
+```bash
+# Run the test suite (~1255 tests)
+python -m pytest -q
+
+# Run the demo
+python demo.py
+
+# Start REST API
+export AIOS_API_KEYS='{"my-key":{"subject":"dev","roles":["admin"]}}'
+python run_rest_api.py --host 127.0.0.1 --port 8000
+
+# Start Web Dashboard
+python run_dashboard.py --port 8080
+```
+
+---
+
+## 🐳 Docker
 
 ```bash
 # Development
@@ -75,13 +161,15 @@ docker-compose up -d --build
 docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
-## CLI
+---
+
+## 🖥️ CLI
 
 ```bash
 # Core
 aios stats                           # System statistics
-aios platforms list                  # List platforms
-aios platforms scaffold --name prom  # Create platform skeleton
+aios platforms list                  # List registered platforms
+aios platforms scaffold --name prom  # Create a new platform skeleton
 
 # Admin operations
 aios admin export --type all --format json --output ./export
@@ -107,7 +195,9 @@ aios admin webhooks notify --event ban_detected --data '{"profile":"ig_1"}' --se
 aios admin webhooks health
 ```
 
-## API Endpoints (169 routes)
+---
+
+## 📡 API Endpoints (169 routes)
 
 ### Admin API (26 endpoints)
 
@@ -120,7 +210,59 @@ aios admin webhooks health
 
 All admin endpoints require `admin` role.
 
-## Production Exploitation
+---
+
+## 🔧 Development
+
+### Code quality
+
+```bash
+# Run all quality checks
+make quality
+
+# Type checking (incremental adoption)
+make typecheck
+
+# Format code
+black aios_core/
+isort aios_core/
+```
+
+### Project structure
+
+```
+AIOS/
+├── aios_core/            # Core engine — agents, constitution, API, platform logic
+│   ├── api/              # REST API (Starlette)
+│   ├── modules/          # Platform modules (olx, instagram, whatsapp, …)
+│   ├── platforms/        # Platform descriptors, resolvers, device pool
+│   └── test_engine/      # Test runner & suites
+├── platforms/            # YAML descriptors per marketplace platform
+├── tests/                # Test suite (unit, integration, e2e, load, security)
+├── docs/                 # MkDocs documentation source
+├── deploy/               # Deployment scripts
+├── helm/                 # Kubernetes Helm charts
+├── k8s/                  # Raw Kubernetes manifests
+├── scripts/              # Utility & maintenance scripts
+├── tools/                # External tool integrations
+└── web_ui/               # React dashboard frontend
+```
+
+### Adding a new platform
+
+1. Create a YAML descriptor: `platforms/<name>.yaml`
+2. Scaffold from APK: `aios platforms from-apk path/to/app.apk --name my-platform`
+3. Calibrate parser hints: `aios platforms calibrate --platform my-platform --dump dump.xml`
+4. Generate the parser: `aios platforms codegen --platform my-platform`
+5. Run bootup pipeline: `aios platforms bootup --name my-platform --package com.example.app`
+6. Write tests in `tests/test_<platform>.py`
+7. Add compliance flags and update docs
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
+
+---
+
+## 🏭 Production Exploitation
 
 ```bash
 # 2-week GA simulation
@@ -133,7 +275,9 @@ python run_production_autopilot.py --daemon --interval 900
 python run_production_autopilot.py --health
 ```
 
-## Monitoring & Alerts
+---
+
+## 📊 Monitoring & Alerts
 
 ```bash
 # Prometheus metrics
@@ -146,7 +290,9 @@ aios admin webhooks health
 open http://localhost:3000
 ```
 
-## Supported Platforms
+---
+
+## 📱 Supported Platforms
 
 | Platform | Package | Status |
 |----------|---------|--------|
@@ -160,7 +306,9 @@ open http://localhost:3000
 | Bigl.ua | com.bigl.ua | ✅ Scaffold |
 | Shafa.ua | com.shafa.ua | ✅ Scaffold |
 
-## CI/CD (13 workflows)
+---
+
+## 🔄 CI/CD (13 workflows)
 
 | Workflow | Purpose |
 |----------|---------|
@@ -178,20 +326,25 @@ open http://localhost:3000
 | `stale.yml` | Auto-close stale issues |
 | `secrets.yml` | Gitleaks secret scanning |
 
-## Testing
+---
+
+## 🧪 Testing
 
 ```bash
 # All tests
-python -m pytest -q                    # Run the complete suite
+python -m pytest -q
 
 # With coverage
 python -m pytest --cov=aios_core
 
 # Specific module
 python -m pytest tests/test_webhook_manager.py -v
+
+# Skip real-device tests
+python -m pytest -q -k "not real_device"
 ```
 
-## Test status
+### Test status
 
 The suite is executed in CI for supported Python versions. The last local audit
 (2026-07-23, Python 3.13) completed successfully: **1255 passed**. One
@@ -200,29 +353,9 @@ remediation history is recorded in
 [`TEST_AUDIT_2026-07-23.md`](TEST_AUDIT_2026-07-23.md). Run the command above
 before deployment.
 
-## Development quality checks
+---
 
-Install the local quality hooks once after cloning the repository:
-
-```bash
-python -m pip install -r requirements.txt
-pre-commit install
-make quality
-```
-
-Run the separate type-check gate when working on annotated Python code:
-
-```bash
-make typecheck
-```
-
-`make quality` validates formatting, import order, YAML/TOML, merge-conflict
-markers, common debug statements and whitespace before a commit. CI repeats
-the checks, runs the test suite on Python 3.11–3.13, builds distribution
-artifacts and scans for exposed secrets. `make typecheck` runs mypy separately
-while the project’s existing type-annotation debt is reduced incrementally.
-
-## Security
+## 🔒 Security
 
 Read [SECURITY.md](SECURITY.md) before deploying. Includes:
 - Secrets rotation checklist (GitHub, Instagram, API keys, DB, Network)
@@ -230,12 +363,14 @@ Read [SECURITY.md](SECURITY.md) before deploying. Includes:
 - Data isolation per API key subject
 - TLS and reverse proxy requirements
 
-## Project Stats
+---
+
+## 📈 Project Stats
 
 | Metric | Value |
 |--------|-------|
 | Version | 9.3.0 |
-| Tests | 1255 collected; see test-status below |
+| Tests | 1255 collected |
 | API routes | 169 |
 | CLI commands | 35+ |
 | Constitution articles | 67 |
@@ -244,8 +379,12 @@ Read [SECURITY.md](SECURITY.md) before deploying. Includes:
 | Core modules | ~250 |
 | Documentation pages | 162+ |
 
-## Contact
+---
+
+## 👥 Contact
 
 - **Owner:** JoTalbot <jo.talbot@gmail.com>
 - **Repo:** [JoTalbot/AIOS](https://github.com/JoTalbot/AIOS)
 - **Docs:** [GitHub Pages](https://jotalbot.github.io/AIOS/)
+- **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Security:** [SECURITY.md](SECURITY.md)
