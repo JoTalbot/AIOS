@@ -6,7 +6,7 @@ psutil>=6.0.0
 # HTTP API and servers
 starlette>=0.40.0
 uvicorn>=0.32.0
-httpx>=0.28.0
+httpx>=0.28.1
 websockets>=14.0
 grpcio>=1.68.0
 graphql-core>=3.2.0
