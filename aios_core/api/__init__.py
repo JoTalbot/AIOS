@@ -15,26 +15,42 @@ Main exports:
 - MonitoringSystem: Comprehensive monitoring and alerting
 """
 
+# Core API — always available
 from .app import AIOSAPI, create_app
-from .enhanced import EnhancedAIOSAPI, create_enhanced_api
-from .integration import ExternalIntegrationAPI, IntegrationEvent, IntegrationEventType
 from .monitoring import Alert, AlertManager, AlertSeverity, AlertType, MonitoringSystem
-from .protocols import ProtocolConfig, ProtocolManager, ProtocolType
+
+# Optional heavy modules — imported lazily via __getattr__
+_lazy = {}
+
+
+def __getattr__(name: str):
+    if name in _lazy:
+        return _lazy[name]
+
+    if name == "EnhancedAIOSAPI" or name == "create_enhanced_api":
+        from .enhanced import EnhancedAIOSAPI as _E, create_enhanced_api as _C
+        _lazy["EnhancedAIOSAPI"] = _E
+        _lazy["create_enhanced_api"] = _C
+        return _lazy[name]
+    if name in ("ExternalIntegrationAPI", "IntegrationEvent", "IntegrationEventType"):
+        from .integration import ExternalIntegrationAPI as _E, IntegrationEvent as _I, IntegrationEventType as _T
+        _lazy["ExternalIntegrationAPI"] = _E
+        _lazy["IntegrationEvent"] = _I
+        _lazy["IntegrationEventType"] = _T
+        return _lazy[name]
+    if name in ("ProtocolConfig", "ProtocolManager", "ProtocolType"):
+        from .protocols import ProtocolConfig as _C, ProtocolManager as _M, ProtocolType as _T
+        _lazy["ProtocolConfig"] = _C
+        _lazy["ProtocolManager"] = _M
+        _lazy["ProtocolType"] = _T
+        return _lazy[name]
+    raise AttributeError(f"module 'aios_core.api' has no attribute {name!r}")
+
 
 __all__ = [
-    "create_app",
-    "AIOSAPI",
-    "create_enhanced_api",
-    "EnhancedAIOSAPI",
-    "ExternalIntegrationAPI",
-    "IntegrationEvent",
-    "IntegrationEventType",
-    "ProtocolManager",
-    "ProtocolType",
-    "ProtocolConfig",
-    "MonitoringSystem",
-    "AlertManager",
-    "Alert",
-    "AlertSeverity",
-    "AlertType",
+    "create_app", "AIOSAPI",
+    "create_enhanced_api", "EnhancedAIOSAPI",
+    "ExternalIntegrationAPI", "IntegrationEvent", "IntegrationEventType",
+    "ProtocolManager", "ProtocolType", "ProtocolConfig",
+    "MonitoringSystem", "AlertManager", "Alert", "AlertSeverity", "AlertType",
 ]

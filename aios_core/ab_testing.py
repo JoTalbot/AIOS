@@ -8,7 +8,7 @@ __all__ = ["ABTest"]
 
 class ABTest:
     """Simple A/B testing framework.
-    __slots__ = ()
+    __slots__ = ('name', 'variants', 'results')
 
     Splits traffic across weighted variants and records success/failure
     results to determine a statistical winner.

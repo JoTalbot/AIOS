@@ -8,7 +8,7 @@ __all__ = ["Benchmark"]
 
 class Benchmark:
     """Performance benchmarking tool.
-    __slots__ = ()
+    __slots__ = ('results')
 
     Runs callables for a specified number of iterations and reports
     total time and operations-per-second.

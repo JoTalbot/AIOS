@@ -8,7 +8,7 @@ from aios_mcp.gateway import GatewayConfig, MCPGateway  # noqa: F401
 from aios_mcp.tools import ToolRegistry  # noqa: F401
 from aios_mcp.resources import ResourceRegistry  # noqa: F401
 from aios_mcp.prompts import PromptRegistry  # noqa: F401
-from aios_mcp.protocol import MCPProtocol, MCPRequest, MCPResponse  # noqa: F401
+from aios_mcp.protocol import MCPProtocol, JSONRPCRequest, JSONRPCResponse  # noqa: F401
 
 __all__ = [
     "GatewayConfig", "MCPGateway", "MCPProtocol",

@@ -19,8 +19,23 @@ from .android_rpa_bridge import AndroidRPADeviceEmulator, AndroidRPAManager
 from .android_test_generator import AndroidTestGenerator, GeneratedTest
 from .anomaly_detection import AnomalyDetector
 
-# REST API
-from .api import AIOSAPI, create_app
+# NOTE: aios_core.api imports Starlette which pulls in optional networking
+# deps.  To avoid circular / heavy imports, the API module is loaded lazily.
+# Use ``from aios_core.api import AIOSAPI, create_app`` directly when needed.
+
+
+def _lazy_import_api():
+    """Lazy import for the API module (avoids pulling in Starlette at import time)."""
+    from aios_core.api import AIOSAPI as _A, create_app as _C
+    return _A, _C
+
+
+def __getattr__(name: str):
+    if name == "AIOSAPI":
+        return _lazy_import_api()[0]
+    if name == "create_app":
+        return _lazy_import_api()[1]
+    raise AttributeError(f"module 'aios_core' has no attribute {name!r}")
 from .apk_converter import APKFunctionConverter
 from .approval_manager import ApprovalManager
 
@@ -46,28 +61,11 @@ from .learning_engine import LearningEngine
 from .marketplace import CapabilityMarketplace, PlatformPlugin
 
 # MCP Gateway
-from .mcp import (
-    ConstitutionGuard,
-    GatewayConfig,
-    JSONRPCError,
-    JSONRPCNotification,
-    JSONRPCRequest,
-    JSONRPCResponse,
-    MCPGateway,
-    MCPPrompt,
-    MCPPromptResult,
-    MCPProtocol,
-    MCPResource,
-    MCPResourceContent,
-    MCPToolCall,
-    MCPToolResult,
-    PromptDefinition,
-    PromptRegistry,
-    ResourceDefinition,
-    ResourceRegistry,
-    ToolDefinition,
-    ToolRegistry,
-)
+from aios_mcp.gateway import GatewayConfig, MCPGateway
+from aios_mcp.protocol import MCPProtocol, JSONRPCRequest, JSONRPCResponse
+from aios_mcp.tools import ToolRegistry
+from aios_mcp.resources import ResourceRegistry
+from aios_mcp.prompts import PromptRegistry
 from .memory_manager import MemoryManager
 from .model_registry import ModelRegistry
 from .model_serving import ModelServer

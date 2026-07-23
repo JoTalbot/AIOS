@@ -10,7 +10,7 @@ from aios_mcp.gateway import GatewayConfig, MCPGateway
 from aios_mcp.tools import ToolRegistry
 from aios_mcp.resources import ResourceRegistry
 from aios_mcp.prompts import PromptRegistry
-from aios_mcp.protocol import MCPProtocol, MCPRequest, MCPResponse
+from aios_mcp.protocol import MCPProtocol, JSONRPCRequest, JSONRPCResponse
 
 __all__ = [
     "GatewayConfig",
