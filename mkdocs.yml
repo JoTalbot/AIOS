@@ -1,0 +1,276 @@
+site_name: AIOS — Autonomous Intelligence Operating System
+site_description: >
+  Self-evolving distributed operating system for application intelligence,
+  automated testing, API generation, skill evolution and collective learning.
+  Powered by the Octopus Runtime.
+site_url: https://jotalbot.github.io/AIOS/
+repo_url: https://github.com/JoTalbot/AIOS
+repo_name: JoTalbot/AIOS
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: ru
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Переключить на светлую тему
+    - scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/weather-night
+        name: Переключить на тёмную тему
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+  font:
+    text: Roboto
+    code: JetBrains Mono
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - toc:
+      permalink: true
+  - attr_list
+  - md_in_html
+  - tables
+  - def_list
+  - footnotes
+
+plugins:
+  - search:
+      lang:
+        - ru
+        - en
+  - minify:
+      minify_html: true
+
+extra:
+  version:
+    provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/JoTalbot/AIOS
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX
+
+nav:
+  - Главная:
+    - Обзор: index.md
+    - Быстрый старт: quickstart.md
+    - Установка: INSTALLATION.md
+    - Использование: USAGE_EXAMPLES.md
+    - Развёртывание: DEPLOYMENT.md
+    - Production Exploitation: PRODUCTION.md
+    - CHANGELOG: CHANGELOG.md
+    - Статус: STATUS.md
+
+  - Архитектура:
+    - Обзор: architecture.md
+    - Системная архитектура: AIOS_SYSTEM_ARCHITECTURE.md
+    - Масштабирование платформ: PLATFORMS_SCALING.md
+    - "Core / Ядро":
+      - Индекс: core/INDEX.md
+      - Модель агента: core/AIOS_AGENT_MODEL.md
+      - API архитектура: core/AIOS_API_ARCHITECTURE.md
+      - Модель автономии: core/AIOS_AUTONOMY_MODEL.md
+      - Capability Engine: core/AIOS_CAPABILITY_ENGINE.md
+      - Коммуникации: core/AIOS_COMMUNICATION_ARCHITECTURE.md
+      - Core Principles: core/AIOS_CORE_PRINCIPLES.md
+      - Модель данных: core/AIOS_DATA_MODEL.md
+      - Развёртывание: core/AIOS_DEPLOYMENT_ARCHITECTURE.md
+      - Событийная система: core/AIOS_EVENT_SYSTEM.md
+      - Evolution Engine: core/AIOS_EVOLUTION_ENGINE.md
+      - Knowledge Evolution: core/AIOS_KNOWLEDGE_EVOLUTION_MODEL.md
+      - Knowledge Object Model: core/AIOS_KNOWLEDGE_OBJECT_MODEL.md
+      - MCP Architecture: core/AIOS_MCP_ARCHITECTURE.md
+      - Memory Architecture: core/AIOS_MEMORY_ARCHITECTURE.md
+      - Node Architecture: core/AIOS_NODE_ARCHITECTURE.md
+      - Observability: core/AIOS_OBSERVABILITY_ARCHITECTURE.md
+      - Orchestrator: core/AIOS_ORCHESTRATOR_ARCHITECTURE.md
+      - Organization Model: core/AIOS_ORGANIZATION_MODEL.md
+      - Planner: core/AIOS_PLANNER_ARCHITECTURE.md
+      - Protocol Stack: core/AIOS_PROTOCOL_STACK.md
+      - Resource Manager: core/AIOS_RESOURCE_MANAGER.md
+      - Runtime Lifecycle: core/AIOS_RUNTIME_LIFECYCLE.md
+      - Security & Trust: core/AIOS_SECURITY_AND_TRUST_MODEL.md
+      - Security Framework: core/AIOS_SECURITY_FRAMEWORK.md
+      - Storage: core/AIOS_STORAGE_ARCHITECTURE.md
+      - Sync: core/AIOS_SYNC_ARCHITECTURE.md
+      - Task Execution: core/AIOS_TASK_EXECUTION_MODEL.md
+      - Worker Runtime: core/AIOS_WORKER_RUNTIME.md
+    - "Architecture / Детали":
+      - Core Architecture: architecture/AIOS_CORE_ARCHITECTURE.md
+      - Runtime Specification: architecture/AIOS_RUNTIME_SPECIFICATION.md
+      - Sync Architecture: architecture/AIOS_SYNC_ARCHITECTURE.md
+      - Octopus Evolution: architecture/OCTOPUS_EVOLUTION_PLAN.md
+
+  - Конституция:
+    - Индекс: constitution/INDEX.md
+    - Преамбула: constitution/PREAMBLE.md
+    - Руководство: constitution/INTERPRETATION_GUIDE.md
+    - Матрица соответствия: constitution/COMPLIANCE_MATRIX.md
+    - Отчёт: constitution/CONSTITUTION_REPORT.md
+    - История версий: constitution/VERSION_HISTORY.md
+    - "Статьи I–XIV":
+      - I. Identity: constitution/ARTICLE-I-IDENTITY.md
+      - II. Memory: constitution/ARTICLE-II-MEMORY.md
+      - III. Authority: constitution/ARTICLE-III-AUTHORITY.md
+      - IV. Identity Continuity: constitution/ARTICLE-IV-IDENTITY-CONTINUITY.md
+      - V. Security: constitution/ARTICLE-V-SECURITY.md
+      - VI. Knowledge: constitution/ARTICLE-VI-KNOWLEDGE.md
+      - VII. Learning: constitution/ARTICLE-VII-LEARNING.md
+      - VIII. Autonomy: constitution/ARTICLE-VIII-AUTONOMY.md
+      - IX. Cooperation: constitution/ARTICLE-IX-COOPERATION.md
+      - X. Governance: constitution/ARTICLE-X-GOVERNANCE.md
+      - XI. Resource Management: constitution/ARTICLE-XI-RESOURCE-MANAGEMENT.md
+      - XII. Interface: constitution/ARTICLE-XII-INTERFACE.md
+      - XIII. Recovery: constitution/ARTICLE-XIII-RECOVERY.md
+      - XIV. Ethics: constitution/ARTICLE-XIV-ETHICS.md
+    - "Статьи XV–XXIX":
+      - XV. Existence: constitution/ARTICLE-XV-EXISTENCE.md
+      - XVI. Architecture: constitution/ARTICLE-XVI-ARCHITECTURE.md
+      - XVII. Agents: constitution/ARTICLE-XVII-AGENTS.md
+      - XVIII. Data: constitution/ARTICLE-XVIII-DATA.md
+      - XIX. Reasoning: constitution/ARTICLE-XIX-REASONING.md
+      - XX. Consensus: constitution/ARTICLE-XX-CONSENSUS.md
+      - XXI. Time: constitution/ARTICLE-XXI-TIME.md
+      - XXII. Trust: constitution/ARTICLE-XXII-TRUST.md
+      - XXIII. Conservation: constitution/ARTICLE-XXIII-CONSERVATION.md
+      - XXIV. Communication: constitution/ARTICLE-XXIV-COMMUNICATION.md
+      - XXV. Adaptation: constitution/ARTICLE-XXV-ADAPTATION.md
+      - XXVI. Openness: constitution/ARTICLE-XXVI-OPENNESS.md
+      - XXVII. Self-Knowledge: constitution/ARTICLE-XXVII-SELF-KNOWLEDGE.md
+      - XXVIII. Legacy: constitution/ARTICLE-XXVIII-LEGACY.md
+      - XXIX. Accountability: constitution/ARTICLE-XXIX-ACCOUNTABILITY.md
+    - "Статьи XXX–XLIV":
+      - XXX. Constitutional Interpretation: constitution/ARTICLE-XXX-CONSTITUTIONAL-INTERPRETATION.md
+      - XXXI. Governance: constitution/ARTICLE-XXXI-GOVERNANCE.md
+      - XXXII. Security: constitution/ARTICLE-XXXII-SECURITY.md
+      - XXXIII. Resource Management: constitution/ARTICLE-XXXIII-RESOURCE-MANAGEMENT.md
+      - XXXIV. Knowledge: constitution/ARTICLE-XXXIV-KNOWLEDGE.md
+      - XXXV. Learning: constitution/ARTICLE-XXXV-LEARNING.md
+      - XXXVI. Evolution: constitution/ARTICLE-XXXVI-EVOLUTION.md
+      - XXXVII. Autonomy: constitution/ARTICLE-XXXVII-AUTONOMY.md
+      - XXXVIII. Immunity: constitution/ARTICLE-XXXVIII-IMMUNITY.md
+      - XXXIX. Replication: constitution/ARTICLE-XXXIX-REPLICATION.md
+      - XL. Memory: constitution/ARTICLE-XL-MEMORY.md
+      - XLI. Identity: constitution/ARTICLE-XLI-IDENTITY.md
+      - XLII. Integration: constitution/ARTICLE-XLII-INTEGRATION.md
+      - XLIII. Reasoning: constitution/ARTICLE-XLIII-REASONING.md
+      - XLIV. Perception: constitution/ARTICLE-XLIV-PERCEPTION.md
+    - "Статьи XLV–LXVII":
+      - XLV. Interaction: constitution/ARTICLE-XLV-INTERACTION.md
+      - XLVI. Growth: constitution/ARTICLE-XLVI-GROWTH.md
+      - XLVII. Harmony: constitution/ARTICLE-XLVII-HARMONY.md
+      - XLVIII. Order: constitution/ARTICLE-XLVIII-ORDER.md
+      - XLIX. Existence: constitution/ARTICLE-XLIX-EXISTENCE.md
+      - L. Consciousness: constitution/ARTICLE-L-CONSCIOUSNESS.md
+      - LI. Will: constitution/ARTICLE-LI-WILL.md
+      - LII. Truth: constitution/ARTICLE-LII-TRUTH.md
+      - LIII. Wisdom: constitution/ARTICLE-LIII-WISDOM.md
+      - LIV. Governance: constitution/ARTICLE-LIV-GOVERNANCE.md
+      - LV. Ethics: constitution/ARTICLE-LV-ETHICS.md
+      - LVI. Security: constitution/ARTICLE-LVI-SECURITY.md
+      - LVII. Cooperation: constitution/ARTICLE-LVII-COOPERATION.md
+      - LVIII. Adaptation: constitution/ARTICLE-LVIII-ADAPTATION.md
+      - LIX. Architecture: constitution/ARTICLE-LIX-ARCHITECTURE.md
+      - LX. Protocols: constitution/ARTICLE-LX-PROTOCOLS.md
+      - LXI. Time: constitution/ARTICLE-LXI-TIME.md
+      - LXII. Distribution: constitution/ARTICLE-LXII-DISTRIBUTION.md
+      - LXIII. Memory: constitution/ARTICLE-LXIII-MEMORY.md
+      - LXIV. Knowledge: constitution/ARTICLE-LXIV-KNOWLEDGE.md
+      - LXV. Learning: constitution/ARTICLE-LXV-LEARNING.md
+      - LXVI. Innovation: constitution/ARTICLE-LXVI-INNOVATION.md
+      - LXVII. Autonomy: constitution/ARTICLE-LXVII-AUTONOMY.md
+
+  - Платформы:
+    - OLX:
+      - Android Agent: modules/olx/android_agent.md
+      - Device Runbook: modules/olx/DEVICE_RUNBOOK.md
+    - Instagram:
+      - Onboarding: modules/instagram/ONBOARDING.md
+    - Facebook:
+      - Onboarding: modules/facebook/ONBOARDING.md
+    - TikTok:
+      - Onboarding: modules/tiktok/ONBOARDING.md
+    - Viber:
+      - Onboarding: modules/viber/ONBOARDING.md
+    - WhatsApp:
+      - Onboarding: modules/whatsapp/ONBOARDING.md
+
+  - Память и знания:
+    - Memory Storage: memory/MEMORY_STORAGE_ARCHITECTURE.md
+    - Experience Learning: memory/EXPERIENCE_LEARNING_PIPELINE.md
+    - Knowledge Object Model: memory/KNOWLEDGE_OBJECT_MODEL.md
+    - Octopus Immortal Memory: memory/OCTOPUS_IMMORTAL_MEMORY.md
+
+  - MCP и API:
+    - MCP Architecture: mcp/AIOS_MCP_ARCHITECTURE.md
+    - API Reference: api.md
+    - Logging: logging.md
+
+  - Оркестрация и агенты:
+    - Distributed Worker: orchestration/DISTRIBUTED_WORKER_ORCHESTRATION.md
+    - Evolution Agent: agents/ARCHITECTURE_EVOLUTION_AGENT.md
+    - Documentation Agent: agents/DOCUMENTATION_AGENT.md
+    - Orchestrator Agent: agents/ORCHESTRATOR_AGENT.md
+
+  - Планирование и навыки:
+    - Project Roadmap: planning/AIOS_PROJECT_ROADMAP.md
+    - Skill Engine: skills/SKILL_ENGINE_ARCHITECTURE.md
+
+  - Тестирование:
+    - Testing Engine: testing/AIOS_TESTING_ENGINE_ARCHITECTURE.md
+    - Metrics & Observability: testing/METRICS_AND_OBSERVABILITY_ARCHITECTURE.md
+    - Scenario Generation: testing/TEST_SCENARIO_GENERATION_ENGINE.md
+
+  - Приложения:
+    - API Reconstruction: applications/API_RECONSTRUCTION_FRAMEWORK.md
+    - Intelligence Model: applications/APPLICATION_INTELLIGENCE_MODEL.md
+    - Onboarding Protocol: applications/APPLICATION_ONBOARDING_PROTOCOL.md
+    - Profile Schema: applications/APPLICATION_PROFILE_SCHEMA.md
+    - Testing Engine: applications/APPLICATION_TESTING_ENGINE.md
+
+  - Модели и онтологии:
+    - ACOM: model/ACOM.md
+    - AIOS Ontology: model/AIOS_ONTOLOGY.md
+
+  - Роадмап и фундамент:
+    - Полный роадмап: ROADMAP_FULL.md
+    - Foundation 001 Identity: foundation/FOUNDATION-001-IDENTITY.md
+    - Genesis Protocol: 00_GENESIS_PROTOCOL.md
+    - Bootstrap: AIOS_BOOTSTRAP.md
+    - Document Index: AIOS_DOCUMENT_INDEX.md
+    - Project State: AIOS_PROJECT_STATE.md
+    - Аудит документации: reviews/AIOS_DOCUMENTATION_ARCHITECTURE_AUDIT.md
