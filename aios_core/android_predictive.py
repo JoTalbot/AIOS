@@ -109,7 +109,7 @@ class PredictiveMaintenance:
         avg = statistics.mean(values)
         try:
             stdev = statistics.stdev(values) if len(values) > 1 else 0
-        except:
+        except Exception:
             stdev = 0
 
         # simple linear regression slope for last 20 points

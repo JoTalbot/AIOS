@@ -19,7 +19,7 @@ def test_circuit_breaker_opens_on_failures():
     for _ in range(2):
         try:
             cb.call(failing)
-        except:
+        except Exception:
             pass
 
     assert cb.state == CircuitState.OPEN

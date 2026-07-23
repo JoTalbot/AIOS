@@ -1,8 +1,11 @@
 """AIOS Database Migration System"""
 
+import logging
 import os
 import sqlite3
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 
 class Migration:
@@ -39,7 +42,8 @@ class MigrationManager:
         try:
             rows = conn.execute("SELECT version FROM schema_migrations").fetchall()
             return {row[0] for row in rows}
-        except:
+        except Exception:
+            logger.warning("Failed to read schema_migrations table — assuming none applied")
             return set()
 
     def migrate(self):

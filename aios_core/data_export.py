@@ -12,10 +12,13 @@ Formats: JSON, CSV, SQLite dump
 
 import csv
 import json
+import logging
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class DataExporter:
@@ -336,7 +339,7 @@ class DataImporter:
                 )
                 count += 1
             except Exception as e:
-                print(f"Error importing record: {e}")
+                logger.warning("Error importing record: %s", e)
 
         self.conn.commit()
         return count

@@ -1,6 +1,9 @@
 """Hybrid Quantum-Classical Computing for AIOS"""
 
+import logging
 from typing import Any, Callable, Dict
+
+logger = logging.getLogger(__name__)
 
 
 class HybridQuantumClassical:
@@ -19,8 +22,8 @@ class HybridQuantumClassical:
                 q_result = quantum_part(data)
                 c_result = classical_part(q_result)
                 return {"quantum": q_result, "classical": c_result, "hybrid": True}
-        except:
-            pass
+        except Exception as exc:
+            logger.warning("Hybrid execution failed, falling back to classical: %s", exc)
         return {"result": classical_part(data), "hybrid": False, "fallback": True}
 
     def stats(self) -> dict:
