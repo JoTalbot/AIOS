@@ -47,7 +47,7 @@ class BackupManager:
         retention_days: int = 30,
         max_backups: int = 10,
         compress: bool = True,
-    ):
+    ) -> None:
         self.db_path = db_path
         self.backup_dir = Path(backup_dir)
         self.retention_days = retention_days
@@ -58,7 +58,7 @@ class BackupManager:
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         self._load_metadata()
 
-    def _load_metadata(self):
+    def _load_metadata(self) -> None:
         """Load backup metadata from file."""
         if self.metadata_file.exists():
             with open(self.metadata_file, "r") as f:
@@ -67,7 +67,7 @@ class BackupManager:
         else:
             self.backups = []
 
-    def _save_metadata(self):
+    def _save_metadata(self) -> None:
         """Save backup metadata to file."""
         data = {
             "updated_at": datetime.now().isoformat(),
@@ -120,7 +120,7 @@ class BackupManager:
 
         return metadata
 
-    def _sqlite_backup(self, backup_path: Path):
+    def _sqlite_backup(self, backup_path: Path) -> None:
         """Perform SQLite backup using backup API."""
         source = sqlite3.connect(self.db_path)
         
