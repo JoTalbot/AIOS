@@ -14,45 +14,35 @@ authors = [
 ]
 dependencies = [
     "starlette>=1.3.1",
-    "uvicorn>=0.20.0",
+    "uvicorn>=0.32.0",
     "httpx>=0.28.1",
-    "PyYAML>=5.4.0",
-    "python-dateutil>=2.8.0",
+    "PyYAML>=6.0.0",
+    "python-dateutil>=2.9.0",
     "websockets>=16.1.1",
-    "grpcio>=1.60.0",
+    "grpcio>=1.68.0",
     "graphql-core>=3.2.0",
-    "psutil>=5.9.0",
+    "psutil>=6.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-<<<<<<< HEAD
-    "pytest>=7.0.0",
-    "pytest-asyncio>=1.4.0",
-    "pytest-xdist>=3.0.0",
-    "pytest-timeout>=2.1.0",
-    "pytest-cov>=4.0.0",
-=======
     "pytest>=9.1.1",
-    "pytest-asyncio>=0.21.0",
->>>>>>> origin/dependabot/pip/pytest-gte-9.1.1
-    "black>=22.0.0",
-    "isort>=5.0.0",
-    "pre-commit>=3.0.0",
-    "flake8>=6.0.0",
+    "pytest-asyncio>=1.4.0",
+    "pytest-xdist>=3.6.0",
+    "pytest-timeout>=2.4.0",
+    "pytest-cov>=6.0.0",
+    "black>=24.0.0",
+    "isort>=5.13.0",
+    "pre-commit>=3.8.0",
+    "flake8>=7.3.0",
 ]
 docs = [
-    "mkdocs>=1.5.0",
-    "mkdocs-material>=9.0.0",
-    "mkdocs-minify-plugin>=0.7.0",
-    "mike>=2.0.0",
-<<<<<<< HEAD
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocs-minify-plugin>=0.8.0",
+    "mike>=2.1.0",
     "sphinx>=9.0.4",
-    "sphinx-rtd-theme>=1.0.0",
-=======
-    "sphinx>=4.0.0",
     "sphinx-rtd-theme>=3.1.0",
->>>>>>> origin/dependabot/pip/sphinx-rtd-theme-gte-3.1.0
 ]
 
 [project.scripts]
