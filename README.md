@@ -205,15 +205,22 @@ before deployment.
 Install the local quality hooks once after cloning the repository:
 
 ```bash
-python -m pip install pre-commit
+python -m pip install -r requirements.txt
 pre-commit install
-pre-commit run --all-files
+make quality
 ```
 
-The hooks validate formatting, import order, YAML/TOML, merge-conflict markers,
-common debug statements and type hints before a commit. CI repeats the checks,
-runs the test suite on Python 3.11–3.13, builds distribution artifacts and
-scans for exposed secrets.
+Run the separate type-check gate when working on annotated Python code:
+
+```bash
+make typecheck
+```
+
+`make quality` validates formatting, import order, YAML/TOML, merge-conflict
+markers, common debug statements and whitespace before a commit. CI repeats
+the checks, runs the test suite on Python 3.11–3.13, builds distribution
+artifacts and scans for exposed secrets. `make typecheck` runs mypy separately
+while the project’s existing type-annotation debt is reduced incrementally.
 
 ## Security
 
