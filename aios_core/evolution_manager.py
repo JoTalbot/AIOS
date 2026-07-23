@@ -303,7 +303,8 @@ class EvolutionManager:
                     component=pattern.get("component", "unknown"),
                     reason=(
                         f"Pattern success rate {success_rate:.2%} is below 70% "
-                        f"threshold; proposing improvement"
+                        "Note: performance dropped below improvement "
+                        "threshold; proposing improvement"
                     ),
                 )
                 created.append(proposal)

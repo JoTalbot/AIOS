@@ -431,8 +431,13 @@ class MonitoringSystem:
             self.logging_manager.log_alert(alert)
 
         async def console_notification(alert: Alert):
-            """Print alerts to console for development."""
-            print(f"🚨 ALERT: {alert.title} ({alert.severity.value}) - {alert.message}")
+            """Log alerts to console via the logging system."""
+            logger.critical(
+                "ALERT: %s (%s) — %s",
+                alert.title,
+                alert.severity.value,
+                alert.message,
+            )
 
         self.alert_manager.add_notification_handler(log_notification)
         self.alert_manager.add_notification_handler(console_notification)

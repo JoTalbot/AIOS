@@ -449,7 +449,7 @@ async def example_integration_with_aios_core():
             await monitoring_api.alert_manager.check_metric("aios_alerts", 1, time.time())
 
         # Log the event
-        logger.info(f"AIOS event processed", event_type=event["type"])
+        logger.info("AIOS event processed", extra={"event_type": event["type"]})
 
     # Get monitoring metrics
     metrics = await monitoring_api.get_metrics_summary()

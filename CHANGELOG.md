@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [9.3.1] — 2026-07-23
+
+### Fixed
+- Заменены bare `except:` на `except Exception:` в 6 модулях
+  (`android_predictive`, `hybrid_quantum_classical`, `load_testing`,
+  `migration`, `self_healing`, `test_circuit_breaker`).
+- `print()` заменены на `logging` в `backup_manager.py` и
+  `data_export.py`.
+- `console_notification` в `monitoring.py` теперь использует
+  `logger.critical` вместо `print()`.
+
+### Improved
+- `SelfHealing` (`self_healing.py`): добавлены полные docstrings,
+  логирование ошибок восстановления, аннотации `Optional[Dict]`.
+- `HybridQuantumClassical`: fallback на классический режим теперь
+  пишется в лог с информацией об ошибке.
+- `MigrationManager`: ошибка чтения таблицы миграций логируется с
+  поясняющим сообщением.
+- Непродуктивные f-строки без интерполяции убраны в `integration_examples`
+  и `evolution_manager`.
+
+### Documentation
+- `README.md` расширен (≈340 строк): архитектурная диаграмма, описание
+  проекта, prerequisites, структура проекта, пошаговый гайд «Adding a
+  new platform», секция Development.
+- `CONTRIBUTING.md` расширен: процессы Code Review и Release.
+- `aios_cli.py`: 10 docstrings добавлены для ранее недокументированных
+  функций (`_add_olx_parsers`, `_run_olx`, `_run_platforms`,
+  `_run_profiles`, `_run_devices`, `_run_shards`, `main`,
+  `with_db`, `driver`, `_profile_line`).
+
 ## [9.0.0] - 2026-07-21
 
 ### Added
