@@ -1,0 +1,71 @@
+name: Test Coverage Report
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  coverage:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pytest-cov
+
+      - name: Run tests with coverage
+        run: |
+          python -m pytest \
+            --cov=aios_core \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --ignore=test_real_android_app.py \
+            --ignore=tests/test_android_rpa_bridge.py \
+            -k "not real_device" \
+            -q
+        env:
+          AIOS_FAST_TEST: "1"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Coverage Summary
+        if: always()
+        run: |
+          echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('coverage.xml')
+          root = tree.getroot()
+          rate = float(root.attrib.get('line-rate', 0)) * 100
+          print(f'**Line coverage: {rate:.1f}%**')
+          print(f'| Metric | Value |')
+          print(f'|--------|-------|')
+          print(f'| Lines | {root.attrib.get(\"lines-valid\", \"N/A\")} |')
+          print(f'| Covered | {root.attrib.get(\"lines-covered\", \"N/A\")} |')
+          print(f'| Rate | {rate:.1f}% |')
+          " >> $GITHUB_STEP_SUMMARY

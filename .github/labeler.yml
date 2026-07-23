@@ -1,0 +1,92 @@
+# PR Labeler configuration
+# Auto-labels PRs based on changed files
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'docs/**'
+      - '*.md'
+      - 'mkdocs.yml'
+
+android:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'aios_core/android_*'
+      - 'tests/test_android_*'
+      - 'android-*.sh'
+      - 'Dockerfile.android'
+
+core:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'aios_core/*.py'
+      - 'aios_core/modules/**'
+
+tests:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'tests/**'
+
+ci:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/**'
+      - 'Makefile'
+
+docker:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'Dockerfile*'
+      - 'docker-compose*.yml'
+      - 'deploy/**'
+      - 'helm/**'
+      - 'k8s/**'
+
+production:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'aios_core/production_*'
+      - 'run_production_*'
+      - 'PRODUCTION_EXPLOITATION.md'
+      - 'deploy/monitoring/**'
+
+security:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'SECURITY*'
+      - 'aios_core/ai_safety*'
+      - 'aios_core/advanced_security*'
+
+platforms:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'platforms/**'
+      - 'aios_core/modules/**'
+
+sdk:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'sdk/**'
+
+marketplace:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'aios_core/marketplace*'
+
+constitution:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'constitution/**'
+      - 'aios_core/constitution*'
+
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'requirements.txt'
+      - 'pyproject.toml'
+      - 'setup.py'
+
+web-ui:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'web_ui/**'
