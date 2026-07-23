@@ -258,6 +258,8 @@ class Orchestrator:
         except Exception:
             pass  # Event publishing is best-effort — continue task execution
 
+        return task
+
     def add_step(
         self,
         task: Task,

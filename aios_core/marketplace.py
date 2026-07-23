@@ -145,6 +145,8 @@ class CapabilityMarketplace:
             except Exception:
                 pass  # Metadata serialisation failed — skip gracefully
 
+        return item
+
     def search(
         self, query: str = "", tag: str = "", limit: int = 20, kind: str = ""
     ) -> List[MarketplaceCapability]:
