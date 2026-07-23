@@ -76,3 +76,15 @@ hooks:
 
 git-blame-ignore:
 	git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+benchmark:
+	python -m pytest tests/test_benchmarks.py --benchmark-only --benchmark-columns=min,max,mean,median,ops
+
+benchmark-save:
+	python -m pytest tests/test_benchmarks.py --benchmark-only --benchmark-save=aios-bench
+
+benchmark-compare:
+	python -m pytest tests/test_benchmarks.py --benchmark-only --benchmark-compare=001
+
+profile-import:
+	python -X importtime -c "import aios_core" 2>&1 | sort -rn | head -20
