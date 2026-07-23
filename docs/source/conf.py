@@ -1,5 +1,5 @@
 # Configuration file for the Sphinx documentation builder.
-# AIOS Documentation — v9.2.0-production
+# AIOS Documentation — v9.3.0
 
 import os
 import sys
