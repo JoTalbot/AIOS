@@ -9,7 +9,7 @@ class VoiceInterface:
     def __init__(self):
         self.enabled = False
 
-    def enable(self):
+    def enable(self) -> None:
         self.enabled = True
 
     def listen(self) -> str:

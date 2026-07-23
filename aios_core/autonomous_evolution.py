@@ -19,7 +19,7 @@ class AutonomousEvolution:
         self.evolution_history.append(mutation)
         return mutation
 
-    def evaluate_mutation(self, mutation: Dict, success: bool):
+    def evaluate_mutation(self, mutation: Dict, success: bool) -> None:
         if success:
             self.mutation_rate = min(self.mutation_rate * 1.1, 0.5)
         else:

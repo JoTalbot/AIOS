@@ -207,7 +207,7 @@ class CrossAppWorkflowEngine:
                 # simple templating: {{output_key.field}} or {{context.field}}
                 import re
 
-                def repl(match):
+                def repl(match) -> None:
                     path = match.group(1).strip()
                     # support dot notation
                     parts = path.split(".")

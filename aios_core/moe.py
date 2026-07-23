@@ -22,14 +22,14 @@ class MixtureOfExperts:
         self.experts: List[Expert] = []
         self.router_weights: List[float] = [1.0 / num_experts] * num_experts
 
-    def add_expert(self, name: str, func: Callable):
+    def add_expert(self, name: str, func: Callable) -> None:
         self.experts.append(Expert(name, func))
 
     def route(self, input_data: any, top_k: int = 2) -> List[Expert]:
         # Simplified routing
         return random.sample(self.experts, min(top_k, len(self.experts)))
 
-    def forward(self, x):
+    def forward(self, x) -> None:
         experts = self.route(x)
         outputs = [e(x) for e in experts]
         return sum(outputs) / len(outputs) if outputs else x

@@ -10,10 +10,10 @@ class APIGateway:
         self.routes: Dict[str, Callable] = {}
         self.middleware: list = []
 
-    def register(self, path: str, handler: Callable):
+    def register(self, path: str, handler: Callable) -> None:
         self.routes[path] = handler
 
-    def add_middleware(self, middleware: Callable):
+    def add_middleware(self, middleware: Callable) -> None:
         self.middleware.append(middleware)
 
     def handle(self, path: str, request: Dict) -> Dict:

@@ -80,7 +80,7 @@ class UIAutomatorParser:
         self.xml_content = xml_content
         self.root = None
 
-    def parse(self):
+    def parse(self) -> None:
         """Parse XML and extract elements."""
         try:
             import xml.etree.ElementTree as ET
@@ -355,11 +355,11 @@ class RealDeviceExecutor:
                     return None
         return None
 
-    def tap(self, x: int, y: int):
+    def tap(self, x: int, y: int) -> None:
         """Tap at coordinates."""
         return self._adb(f"shell input tap {x} {y}")
 
-    def type_text(self, text: str):
+    def type_text(self, text: str) -> None:
         """Type text using ADBKeyBoard or fallback input method."""
         try:
             return self._adb(
@@ -368,11 +368,11 @@ class RealDeviceExecutor:
         except Exception:
             return self._adb(f"shell input text '{text.replace(' ', '%s')}'")
 
-    def press_key(self, keycode: int):
+    def press_key(self, keycode: int) -> None:
         """Press key by keycode."""
         return self._adb(f"shell input keyevent {keycode}")
 
-    def swipe(self, x1: int, y1: int, x2: int, y2: int, duration: int = 300):
+    def swipe(self, x1: int, y1: int, x2: int, y2: int, duration: int = 300) -> None:
         """Swipe gesture."""
         return self._adb(f"shell input swipe {x1} {y1} {x2} {y2} {duration}")
 

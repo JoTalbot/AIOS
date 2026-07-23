@@ -70,15 +70,15 @@ class ProtocolAdapter:
             ),
         }
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the protocol adapter."""
         raise NotImplementedError
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the protocol adapter."""
         raise NotImplementedError
 
-    async def handle_message(self, message: Any, connection_id: str = None):
+    async def handle_message(self, message: Any, connection_id: str = None) -> None:
         """Handle incoming message."""
         raise NotImplementedError
 
@@ -92,11 +92,11 @@ class WebSocketAdapter(ProtocolAdapter):
         self.clients = {}
         self._running = False
 
-    async def start(self):
+    async def start(self) -> None:
         """Start WebSocket server."""
         self._running = True
 
-        async def websocket_handler(websocket, path):
+        async def websocket_handler(websocket, path) -> None:
             connection_id = str(uuid.uuid4())
             self.clients[connection_id] = websocket
             self.metrics["connections"].add(1)
@@ -127,7 +127,7 @@ class WebSocketAdapter(ProtocolAdapter):
 
         logger.info(f"WebSocket server started on {self.config.host}:{self.config.port}")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop WebSocket server."""
         self._running = False
         if self.server:
@@ -135,7 +135,7 @@ class WebSocketAdapter(ProtocolAdapter):
             await self.server.wait_closed()
         logger.info("WebSocket server stopped")
 
-    async def handle_message(self, message: str, connection_id: str):
+    async def handle_message(self, message: str, connection_id: str) -> None:
         """Handle WebSocket message."""
         try:
             data = json.loads(message)
@@ -178,15 +178,15 @@ class GraphQLAdapter(ProtocolAdapter):
     def _create_schema(self):
         """Create GraphQL schema for AIOS integration."""
 
-        def resolve_integration_events(root, info, **args):
+        def resolve_integration_events(root, info, **args) -> None:
             """Query integration events."""
             return {"events": [], "total": 0}
 
-        def resolve_system_metrics(root, info, **args):
+        def resolve_system_metrics(root, info, **args) -> None:
             """Query system metrics."""
             return {"memory_usage": "45%", "cpu_usage": "23%", "active_tasks": 5}
 
-        def trigger_webhook(root, info, **args):
+        def trigger_webhook(root, info, **args) -> None:
             """Trigger a webhook."""
             endpoint = args.get("endpoint")
             payload = args.get("payload", {})
@@ -228,17 +228,17 @@ class GraphQLAdapter(ProtocolAdapter):
 
         return GraphQLSchema(query=query_type, mutation=mutation_type)
 
-    async def start(self):
+    async def start(self) -> None:
         """Start GraphQL server."""
         logger.info(
             f"GraphQL schema created with endpoints on {self.config.host}:{self.config.port}"
         )
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop GraphQL server."""
         logger.info("GraphQL server stopped")
 
-    async def handle_message(self, message: Any, connection_id: str = None):
+    async def handle_message(self, message: Any, connection_id: str = None) -> None:
         """Handle GraphQL query/mutation."""
         try:
             # GraphQL queries are handled via HTTP, but we can process them here
@@ -258,11 +258,11 @@ class GrpcAdapter(ProtocolAdapter):
         super().__init__(config, integration_manager)
         self.server = None
 
-    async def start(self):
+    async def start(self) -> None:
         """Start gRPC server."""
 
         class IntegrationService(grpc.aio.GenericService):
-            async def ProcessEvent(self, request, context):
+            async def ProcessEvent(self, request, context) -> None:
                 """gRPC RPC for processing events."""
                 try:
                     event_data = json.loads(request.data)
@@ -293,7 +293,7 @@ class GrpcAdapter(ProtocolAdapter):
         await self.server.start()
         logger.info(f"gRPC server started on {listen_addr}")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop gRPC server."""
         await self.server.stop(grace=1.0)
         logger.info("gRPC server stopped")
@@ -307,18 +307,18 @@ class SSEAdapter(ProtocolAdapter):
         self.connections = {}
         self._running = False
 
-    async def start(self):
+    async def start(self) -> None:
         """Start SSE server."""
         self._running = True
         logger.info(f"SSE server started on {self.config.host}:{self.config.port}")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop SSE server."""
         self._running = False
         self.connections.clear()
         logger.info("SSE server stopped")
 
-    async def handle_message(self, message: Any, connection_id: str = None):
+    async def handle_message(self, message: Any, connection_id: str = None) -> None:
         """Handle SSE message (typically client subscriptions)."""
         try:
             data = json.loads(message)
@@ -333,7 +333,7 @@ class SSEAdapter(ProtocolAdapter):
             logger.error(f"SSE error: {e}")
             self.metrics["errors"].add(1)
 
-    async def broadcast_event(self, event: IntegrationEvent):
+    async def broadcast_event(self, event: IntegrationEvent) -> None:
         """Broadcast event to all SSE connections."""
         if not self.connections:
             return
@@ -364,7 +364,7 @@ class MessageQueueAdapter(ProtocolAdapter):
         self.queue_config = config.kwargs
         self.consumer = None
 
-    async def start(self):
+    async def start(self) -> None:
         """Start message queue consumer."""
         logger.info(f"Message queue adapter started for {self.config.endpoint}")
 
@@ -380,7 +380,7 @@ class MessageQueueAdapter(ProtocolAdapter):
         else:
             logger.warning(f"Unsupported queue type: {queue_type}")
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop message queue consumer."""
         if self.consumer:
             await self.consumer.stop()
@@ -401,7 +401,7 @@ class MessageQueueAdapter(ProtocolAdapter):
         # Kafka integration would go here
         pass
 
-    async def handle_message(self, message: Any, connection_id: str = None):
+    async def handle_message(self, message: Any, connection_id: str = None) -> None:
         """Handle message from queue."""
         try:
             if isinstance(message, str):
@@ -431,12 +431,12 @@ class ProtocolManager:
         self.adapters: Dict[str, ProtocolAdapter] = {}
         self._running = False
 
-    def add_adapter(self, name: str, adapter: ProtocolAdapter):
+    def add_adapter(self, name: str, adapter: ProtocolAdapter) -> None:
         """Add a protocol adapter."""
         self.adapters[name] = adapter
         logger.info(f"Added protocol adapter: {name}")
 
-    async def start_all(self):
+    async def start_all(self) -> None:
         """Start all protocol adapters."""
         self._running = True
         for name, adapter in self.adapters.items():
@@ -446,7 +446,7 @@ class ProtocolManager:
             except Exception as e:
                 logger.error(f"Failed to start adapter {name}: {e}")
 
-    async def stop_all(self):
+    async def stop_all(self) -> None:
         """Stop all protocol adapters."""
         self._running = False
         for name, adapter in self.adapters.items():

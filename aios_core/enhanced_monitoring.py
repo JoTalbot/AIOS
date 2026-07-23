@@ -62,23 +62,23 @@ class MonitoringMetrics:
         self.api_response_time = MetricHistogram("api_response_time", "API response time in ms")
         self.system_health = MetricGauge("system_health", "System health score (0-100)")
 
-    def record_alert_triggered(self):
+    def record_alert_triggered(self) -> None:
         """Record alert triggered."""
         self.alerts_triggered.add(1)
 
-    def record_alert_resolved(self):
+    def record_alert_resolved(self) -> None:
         """Record alert resolved."""
         self.alerts_resolved.add(1)
 
-    def record_dashboard_request(self):
+    def record_dashboard_request(self) -> None:
         """Record dashboard request."""
         self.dashboard_requests.add(1)
 
-    def record_response_time(self, duration_ms: float):
+    def record_response_time(self, duration_ms: float) -> None:
         """Record API response time."""
         self.api_response_time.observe(duration_ms)
 
-    def set_system_health(self, health_score: float):
+    def set_system_health(self, health_score: float) -> None:
         """Set system health score."""
         self.system_health.set(max(0, min(100, health_score)))
 
@@ -92,12 +92,12 @@ class AlertManager:
         self.metrics = MonitoringMetrics()
         self.logger = logging.getLogger("aios.alerts")
 
-    def add_rule(self, rule: AlertRule):
+    def add_rule(self, rule: AlertRule) -> None:
         """Add alert rule."""
         self.rules[rule.name] = rule
         self.logger.info(f"Added alert rule: {rule.name}")
 
-    def check_metric(self, metric_name: str, value: float, timestamp: float):
+    def check_metric(self, metric_name: str, value: float, timestamp: float) -> None:
         """Check metric against alert rules."""
         for rule_name, rule in self.rules.items():
             if rule.metric == metric_name:
@@ -143,7 +143,7 @@ class AlertManager:
             # Send notifications
             asyncio.create_task(self._send_notifications(alert))
 
-    def resolve_alert(self, alert_key: str):
+    def resolve_alert(self, alert_key: str) -> None:
         """Resolve alert."""
         if alert_key in self.active_alerts:
             self.active_alerts[alert_key]["resolved_at"] = time.time()
@@ -164,7 +164,7 @@ class DashboardManager:
         self.metrics = MonitoringMetrics()
         self.logger = logging.getLogger("aios.dashboards")
 
-    def add_dashboard(self, config: DashboardConfig):
+    def add_dashboard(self, config: DashboardConfig) -> None:
         """Add dashboard configuration."""
         self.dashboards[config.name] = config
         self.logger.info(f"Added dashboard: {config.name}")
@@ -241,11 +241,11 @@ class MonitoringAPI:
         self.metrics = MonitoringMetrics()
         self.logger = logging.getLogger("aios.monitoring")
 
-    def add_alert_rule(self, rule: AlertRule):
+    def add_alert_rule(self, rule: AlertRule) -> None:
         """Add alert rule."""
         self.alert_manager.add_rule(rule)
 
-    def add_dashboard(self, config: DashboardConfig):
+    def add_dashboard(self, config: DashboardConfig) -> None:
         """Add dashboard."""
         self.dashboard_manager.add_dashboard(config)
 
@@ -342,7 +342,7 @@ def create_monitoring_app(monitoring_api: MonitoringAPI) -> Starlette:
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
 
-    async def websocket_endpoint(websocket: WebSocket):
+    async def websocket_endpoint(websocket: WebSocket) -> None:
         """WebSocket for real-time monitoring."""
         await websocket.accept()
 
@@ -386,7 +386,7 @@ def create_monitoring_app(monitoring_api: MonitoringAPI) -> Starlette:
 
 
 # Example usage
-def setup_monitoring_system():
+def setup_monitoring_system() -> None:
     """Setup monitoring system."""
 
     # Initialize monitoring API

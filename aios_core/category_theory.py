@@ -11,10 +11,10 @@ class Category:
         self.objects: set = set()
         self.morphisms: Dict = {}
 
-    def add_object(self, obj: Any):
+    def add_object(self, obj: Any) -> None:
         self.objects.add(obj)
 
-    def add_morphism(self, source: Any, target: Any, func: Callable):
+    def add_morphism(self, source: Any, target: Any, func: Callable) -> None:
         self.morphisms[(source, target)] = func
 
     def compose(self, f: Callable, g: Callable) -> Callable:

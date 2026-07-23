@@ -10,7 +10,7 @@ class MetaLearner:
         self.task_history: List[Dict] = []
         self.strategies: Dict[str, float] = {}
 
-    def record_task(self, task_type: str, success: bool, duration: float):
+    def record_task(self, task_type: str, success: bool, duration: float) -> None:
         self.task_history.append({"type": task_type, "success": success, "duration": duration})
 
     def recommend_strategy(self, task_type: str) -> str:

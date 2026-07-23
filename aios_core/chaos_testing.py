@@ -11,8 +11,8 @@ class ChaosTester:
         self.failure_probability = failure_probability
         self.latency_ms = latency_ms
 
-    def inject(self, func: Callable):
-        def wrapper(*args, **kwargs):
+    def inject(self, func: Callable) -> None:
+        def wrapper(*args, **kwargs) -> None:
             if random.random() < self.failure_probability:
                 raise Exception("Chaos injection: simulated failure")
             if self.latency_ms > 0:

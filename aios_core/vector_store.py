@@ -12,7 +12,7 @@ class VectorStore:
         self.vectors: Dict[str, np.ndarray] = {}
         self.metadata: Dict[str, Dict] = {}
 
-    def add(self, id: str, vector: List[float], metadata: Dict = None):
+    def add(self, id: str, vector: List[float], metadata: Dict = None) -> None:
         self.vectors[id] = np.array(vector)
         self.metadata[id] = metadata or {}
 

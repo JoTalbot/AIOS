@@ -10,10 +10,10 @@ class Tenant:
         self.config: Dict[str, Any] = {}
         self.usage = {"tasks": 0, "memory": 0}
 
-    def set_config(self, key: str, value: Any):
+    def set_config(self, key: str, value: Any) -> None:
         self.config[key] = value
 
-    def record_usage(self, tasks: int = 0, memory: int = 0):
+    def record_usage(self, tasks: int = 0, memory: int = 0) -> None:
         self.usage["tasks"] += tasks
         self.usage["memory"] += memory
 

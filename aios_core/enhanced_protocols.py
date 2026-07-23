@@ -77,7 +77,7 @@ class ProtocolAdapter(ABC):
         """Handle incoming request."""
         pass
 
-    def add_connection(self, connection: Any):
+    def add_connection(self, connection: Any) -> None:
         """Add active connection."""
         if len(self.active_connections) < self.config.max_connections:
             self.active_connections.append(connection)
@@ -85,7 +85,7 @@ class ProtocolAdapter(ABC):
         else:
             self.logger.warning(f"Connection limit reached: {self.config.max_connections}")
 
-    def remove_connection(self, connection: Any):
+    def remove_connection(self, connection: Any) -> None:
         """Remove active connection."""
         if connection in self.active_connections:
             self.active_connections.remove(connection)
@@ -137,7 +137,7 @@ class GrpcAdapter(ProtocolAdapter):
         # gRPC requests are handled by the server directly
         pass
 
-    def add_service(self, service_name: str, service: Any):
+    def add_service(self, service_name: str, service: Any) -> None:
         """Add gRPC service."""
         self.services[service_name] = service
         self.logger.info(f"Added gRPC service: {service_name}")
@@ -290,7 +290,7 @@ class WebSocketAdapter(ProtocolAdapter):
         except WebSocketDisconnect:
             self.remove_connection(websocket)
 
-    async def handle_message(self, websocket: WebSocket, message: str):
+    async def handle_message(self, websocket: WebSocket, message: str) -> None:
         """Handle WebSocket message."""
         try:
             data = json.loads(message)
@@ -307,7 +307,7 @@ class WebSocketAdapter(ProtocolAdapter):
             self.logger.error(f"Error handling WebSocket message: {str(e)}")
             await websocket.send_text(json.dumps({"error": str(e)}))
 
-    def add_route(self, msg_type: str, handler: Callable):
+    def add_route(self, msg_type: str, handler: Callable) -> None:
         """Add WebSocket route."""
         self.websocket_routes[msg_type] = handler
 
@@ -413,7 +413,7 @@ class ProtocolManager:
         self.adapters: Dict[ProtocolType, ProtocolAdapter] = {}
         self.logger = logging.getLogger("aios.protocol_manager")
 
-    def add_adapter(self, protocol_type: ProtocolType, adapter: ProtocolAdapter):
+    def add_adapter(self, protocol_type: ProtocolType, adapter: ProtocolAdapter) -> None:
         """Add protocol adapter."""
         self.adapters[protocol_type] = adapter
         self.logger.info(f"Added {protocol_type.value} adapter")
@@ -533,7 +533,7 @@ def create_protocol_app(protocol_manager: ProtocolManager) -> Starlette:
 
 
 # Example usage
-def setup_protocol_support():
+def setup_protocol_support() -> None:
     """Setup protocol support system."""
 
     # Initialize protocol manager

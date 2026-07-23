@@ -26,10 +26,10 @@ class MigrationManager:
         self.db_path = db_path
         self.migrations: List[Migration] = []
 
-    def add_migration(self, migration: Migration):
+    def add_migration(self, migration: Migration) -> None:
         self.migrations.append(migration)
 
-    def create_migrations_table(self, conn: sqlite3.Connection):
+    def create_migrations_table(self, conn: sqlite3.Connection) -> None:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -47,7 +47,7 @@ class MigrationManager:
             logger.warning("Failed to read schema_migrations table — assuming none applied")
             return set()
 
-    def migrate(self):
+    def migrate(self) -> None:
         conn = sqlite3.connect(self.db_path)
         self.create_migrations_table(conn)
         applied = self.get_applied_versions(conn)

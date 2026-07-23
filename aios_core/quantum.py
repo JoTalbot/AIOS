@@ -10,7 +10,7 @@ class QuantumInspiredOptimizer:
     def __init__(self, temperature: float = 100.0):
         self.temperature = temperature
 
-    def optimize(self, solution: List, cost_func, iterations: int = 1000):
+    def optimize(self, solution: List, cost_func, iterations: int = 1000) -> None:
         current = solution[:]
         current_cost = cost_func(current)
 

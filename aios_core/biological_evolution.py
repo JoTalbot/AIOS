@@ -25,7 +25,7 @@ class AgentGenome:
         self.fitness_score: float = 0.0
         self.generation: int = 0
 
-    def mutate(self, mutation_rate: float = 0.1, mutation_scale: float = 0.05):
+    def mutate(self, mutation_rate: float = 0.1, mutation_scale: float = 0.05) -> None:
         """Apply Gaussian random mutation to gene sequences."""
         for key in self.genes:
             if random.random() < mutation_rate:

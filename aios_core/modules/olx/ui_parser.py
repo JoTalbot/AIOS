@@ -14,12 +14,12 @@ class UIParser:
         self.xml_file = Path(xml_file)
         self.root = None
 
-    def load(self):
+    def load(self) -> None:
         tree = ET.parse(self.xml_file)
         self.root = tree.getroot()
         return self.root
 
-    def find_by_resource(self, resource_id):
+    def find_by_resource(self, resource_id) -> None:
         result = []
 
         for node in self.root.iter("node"):
@@ -28,7 +28,7 @@ class UIParser:
 
         return result
 
-    def find_text(self):
+    def find_text(self) -> None:
         result = []
 
         for node in self.root.iter("node"):

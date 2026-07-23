@@ -378,7 +378,7 @@ class AIScreenClassifier:
             except Exception:
                 return 540, 960
 
-    def record_positioning_hint(self, resource_id: str, x: int, y: int):
+    def record_positioning_hint(self, resource_id: str, x: int, y: int) -> None:
         """Record successful tap position for future prediction."""
         self._positioning_hints[resource_id] = (x, y)
 

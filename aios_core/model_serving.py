@@ -45,7 +45,7 @@ class ModelServer:
 
         return key
 
-    def set_traffic_split(self, model_id: str, split_dict: Dict[str, float]):
+    def set_traffic_split(self, model_id: str, split_dict: Dict[str, float]) -> None:
         """Define A/B traffic splitting ratio across model versions."""
         total_weight = sum(split_dict.values())
         if total_weight <= 0:

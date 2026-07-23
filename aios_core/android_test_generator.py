@@ -254,7 +254,7 @@ class AndroidTestGenerator:
 
         return tests
 
-    def save_test(self, test: GeneratedTest, format: str = "both"):
+    def save_test(self, test: GeneratedTest, format: str = "both") -> None:
         """Save test to output dir."""
         if format in ("json", "both"):
             json_path = self.output_dir / f"{test.id}.json"

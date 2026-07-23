@@ -12,7 +12,7 @@ class PerformanceProfiler:
         self.measurements: Dict[str, list] = {}
 
     @contextmanager
-    def measure(self, name: str):
+    def measure(self, name: str) -> None:
         start = time.perf_counter()
         try:
             yield

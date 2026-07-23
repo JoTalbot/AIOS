@@ -9,7 +9,7 @@ class ZeroTrust:
     def __init__(self):
         self.policies: Dict[str, Dict] = {}
 
-    def add_policy(self, name: str, rules: Dict):
+    def add_policy(self, name: str, rules: Dict) -> None:
         self.policies[name] = rules
 
     def verify(self, context: Dict) -> bool:

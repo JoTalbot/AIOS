@@ -12,7 +12,7 @@ class DigitalTwin:
         self.state: Dict[str, Any] = {}
         self.history: list = []
 
-    def sync(self, new_state: Dict):
+    def sync(self, new_state: Dict) -> None:
         self.history.append(self.state.copy())
         self.state.update(new_state)
 

@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-async def main():
+async def main() -> None:
     """Main example demonstrating enhanced AIOS API usage."""
 
     # Create enhanced API
@@ -67,7 +67,7 @@ async def main():
         logger.info("Background services stopped")
 
 
-async def create_webhook_integration(api):
+async def create_webhook_integration(api) -> None:
     """Example: Create a webhook integration."""
     logger.info("Creating webhook integration...")
 
@@ -86,7 +86,7 @@ async def create_webhook_integration(api):
     logger.info(f"Webhook integration created: {response}")
 
 
-async def configure_protocols(api):
+async def configure_protocols(api) -> None:
     """Example: Configure communication protocols."""
     logger.info("Configuring protocols...")
 
@@ -114,7 +114,7 @@ async def configure_protocols(api):
     logger.info(f"GraphQL protocol configured: {response}")
 
 
-async def create_monitoring_alerts(api):
+async def create_monitoring_alerts(api) -> None:
     """Example: Create monitoring alerts."""
     logger.info("Creating monitoring alerts...")
 
@@ -145,7 +145,7 @@ async def create_monitoring_alerts(api):
     logger.info(f"Error rate alert created: {response}")
 
 
-async def test_external_connections(api):
+async def test_external_connections(api) -> None:
     """Example: Test external system connections."""
     logger.info("Testing external connections...")
 
@@ -167,7 +167,7 @@ async def test_external_connections(api):
     logger.info(f"External system status: {response}")
 
 
-async def run_data_sync(api):
+async def run_data_sync(api) -> None:
     """Example: Run data synchronization."""
     logger.info("Running data synchronization...")
 
@@ -186,7 +186,7 @@ async def run_data_sync(api):
     logger.info(f"Sync status: {response}")
 
 
-async def run_benchmark(api):
+async def run_benchmark(api) -> None:
     """Example: Run integration benchmark."""
     logger.info("Running integration benchmark...")
 
@@ -197,7 +197,7 @@ async def run_benchmark(api):
     logger.info(f"Benchmark results: {response}")
 
 
-async def simulate_activity(api):
+async def simulate_activity(api) -> None:
     """Simulate system activity for demonstration."""
     logger.info("Simulating system activity...")
 
@@ -236,7 +236,7 @@ async def simulate_activity(api):
 # Example usage functions for different scenarios
 
 
-async def setup_production_environment():
+async def setup_production_environment() -> None:
     """Setup production environment with enhanced API."""
     logger.info("Setting up production environment...")
 
@@ -256,7 +256,7 @@ async def setup_production_environment():
     return api
 
 
-async def configure_production_protocols(api):
+async def configure_production_protocols(api) -> None:
     """Configure protocols for production."""
     logger.info("Configuring production protocols...")
 
@@ -289,7 +289,7 @@ async def configure_production_protocols(api):
     await api._protocols_configure(type(graphql_config).__dict__, graphql_config)
 
 
-async def setup_production_monitoring(api):
+async def setup_production_monitoring(api) -> None:
     """Setup production monitoring."""
     logger.info("Setting up production monitoring...")
 
@@ -316,7 +316,7 @@ async def setup_production_monitoring(api):
     await api._monitoring_alerts_create(type(performance_alert).__dict__, performance_alert)
 
 
-async def demonstrate_error_handling():
+async def demonstrate_error_handling() -> None:
     """Demonstrate error handling in integrations."""
     logger.info("Demonstrating error handling...")
 

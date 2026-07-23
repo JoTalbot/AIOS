@@ -24,7 +24,7 @@ try:
 except ImportError:
 
     class _DummyTracer:
-        def get_current_context(self):
+        def get_current_context(self) -> None:
             return None
 
     tracer = _DummyTracer()
@@ -55,16 +55,16 @@ class CorrelationContext:
         self.user_id: Optional[str] = None
         self.session_id: Optional[str] = None
 
-    def set_correlation_id(self, correlation_id: str):
+    def set_correlation_id(self, correlation_id: str) -> None:
         """Set correlation ID."""
         self.correlation_id = correlation_id
 
-    def set_trace_context(self, trace_id: str, span_id: str):
+    def set_trace_context(self, trace_id: str, span_id: str) -> None:
         """Set trace context."""
         self.trace_id = trace_id
         self.span_id = span_id
 
-    def set_user_context(self, user_id: str, session_id: str):
+    def set_user_context(self, user_id: str, session_id: str) -> None:
         """Set user context."""
         self.user_id = user_id
         self.session_id = session_id
@@ -100,7 +100,7 @@ class PerformanceTracker:
         }
         return operation_id
 
-    def end_operation(self, operation_id: str, success: bool = True, error: Optional[str] = None):
+    def end_operation(self, operation_id: str, success: bool = True, error: Optional[str] = None) -> None:
         """End tracking an operation."""
         if operation_id in self.operations:
             operation = self.operations[operation_id]
@@ -284,20 +284,20 @@ class EnhancedLogger:
         console_handler.setFormatter(formatter)
         self.logger.addHandler(console_handler)
 
-    def set_correlation_id(self, correlation_id: str):
+    def set_correlation_id(self, correlation_id: str) -> None:
         """Set correlation ID for all logs."""
         self.correlation_context.set_correlation_id(correlation_id)
 
-    def set_trace_context(self, trace_id: str, span_id: str):
+    def set_trace_context(self, trace_id: str, span_id: str) -> None:
         """Set trace context for all logs."""
         self.correlation_context.set_trace_context(trace_id, span_id)
 
-    def set_user_context(self, user_id: str, session_id: str):
+    def set_user_context(self, user_id: str, session_id: str) -> None:
         """Set user context for all logs."""
         self.correlation_context.set_user_context(user_id, session_id)
 
     @contextmanager
-    def track_operation(self, operation_name: str, **kwargs):
+    def track_operation(self, operation_name: str, **kwargs) -> None:
         """Track operation performance."""
         operation_id = self.performance_tracker.start_operation(operation_name, **kwargs)
 
@@ -309,7 +309,7 @@ class EnhancedLogger:
         else:
             self.performance_tracker.end_operation(operation_id, success=True)
 
-    def log_with_context(self, level: str, message: str, **kwargs):
+    def log_with_context(self, level: str, message: str, **kwargs) -> None:
         """Log with additional context."""
         extra = kwargs.copy()
         extra.update(self.correlation_context.to_dict())
@@ -317,19 +317,19 @@ class EnhancedLogger:
         log_method = getattr(self.logger, level.lower())
         log_method(message, extra=extra)
 
-    def info(self, message: str, **kwargs):
+    def info(self, message: str, **kwargs) -> None:
         """Log info message."""
         self.log_with_context("info", message, **kwargs)
 
-    def warning(self, message: str, **kwargs):
+    def warning(self, message: str, **kwargs) -> None:
         """Log warning message."""
         self.log_with_context("warning", message, **kwargs)
 
-    def error(self, message: str, **kwargs):
+    def error(self, message: str, **kwargs) -> None:
         """Log error message."""
         self.log_with_context("error", message, **kwargs)
 
-    def debug(self, message: str, **kwargs):
+    def debug(self, message: str, **kwargs) -> None:
         """Log debug message."""
         self.log_with_context("debug", message, **kwargs)
 
@@ -351,7 +351,7 @@ def setup_enhanced_logging(config: LogConfig = None) -> EnhancedLogger:
 
 
 # Example usage
-def main():
+def main() -> None:
     """Example usage of enhanced logging."""
     config = LogConfig(
         level="INFO",

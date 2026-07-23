@@ -56,7 +56,7 @@ class PredictiveMaintenance:
         self._predictions: List[FailurePrediction] = []
         self.version = "8.0.0"
 
-    def record_event(self, device_id: str, action: str, latency_ms: float, success: bool):
+    def record_event(self, device_id: str, action: str, latency_ms: float, success: bool) -> None:
         """Record execution event for trend analysis."""
         ts = time.time()
         self._latency_history[f"{device_id}:{action}"].append(TrendPoint(ts, latency_ms, action))

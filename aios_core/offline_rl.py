@@ -9,7 +9,7 @@ class OfflineRL:
     def __init__(self):
         self.dataset: List[Dict] = []
 
-    def add_transition(self, transition: Dict):
+    def add_transition(self, transition: Dict) -> None:
         self.dataset.append(transition)
 
     def train(self, algorithm: str = "bcq") -> Dict:

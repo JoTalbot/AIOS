@@ -349,7 +349,7 @@ class Database:
             row = self._get_conn().execute(self.translate_query(sql), params).fetchone()
             return dict(row) if row else None
 
-    def close(self):
+    def close(self) -> None:
         """Close the underlying database connection."""
         if self._conn is not None:
             self._conn.close()

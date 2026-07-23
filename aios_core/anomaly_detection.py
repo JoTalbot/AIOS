@@ -25,7 +25,7 @@ class AnomalyDetector:
         self.histories: Dict[str, List[float]] = {}
         self.anomaly_log: List[Dict[str, Any]] = []
 
-    def add_value(self, metric_name: str, value: float):
+    def add_value(self, metric_name: str, value: float) -> None:
         """Record a single metric sample into historical window."""
         if metric_name not in self.histories:
             self.histories[metric_name] = []

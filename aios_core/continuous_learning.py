@@ -10,10 +10,10 @@ class ContinuousLearning:
         self.knowledge_base: List[Dict] = []
         self.performance_history: List[float] = []
 
-    def ingest_experience(self, experience: Dict):
+    def ingest_experience(self, experience: Dict) -> None:
         self.knowledge_base.append(experience)
 
-    def update_model(self, feedback: float):
+    def update_model(self, feedback: float) -> None:
         self.performance_history.append(feedback)
         # In real system: update weights
 

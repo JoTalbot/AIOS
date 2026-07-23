@@ -10,7 +10,7 @@ class HealthCheckRegistry:
     def __init__(self):
         self.checks: Dict[str, Callable] = {}
 
-    def register(self, name: str, check_func: Callable):
+    def register(self, name: str, check_func: Callable) -> None:
         self.checks[name] = check_func
 
     def run_all(self) -> Dict[str, Any]:

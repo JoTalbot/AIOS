@@ -26,7 +26,7 @@ class SimpleMLPredictor:
         # In real usage, this would use trained model
         return 0.75
 
-    def train(self, X, y):
+    def train(self, X, y) -> None:
         if self.model:
             self.model.fit(X, y)
 

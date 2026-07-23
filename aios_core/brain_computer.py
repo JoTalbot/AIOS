@@ -10,7 +10,7 @@ class BCIInterface:
         self.connected = False
         self.signals: List[Dict] = []
 
-    def connect(self):
+    def connect(self) -> None:
         self.connected = True
         return {"status": "connected"}
 

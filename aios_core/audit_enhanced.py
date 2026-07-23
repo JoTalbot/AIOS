@@ -12,7 +12,7 @@ class EnhancedAudit:
         self.storage = storage
         self.records: List[Dict] = []
 
-    def record(self, action: str, actor: str, resource: str, decision: str, **metadata):
+    def record(self, action: str, actor: str, resource: str, decision: str, **metadata) -> None:
         record = {
             "timestamp": datetime.now().isoformat(),
             "action": action,

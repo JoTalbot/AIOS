@@ -66,27 +66,27 @@ class IntegrationMetrics:
             "api_integration_latency", "API integration latency in ms"
         )
 
-    def record_webhook_success(self):
+    def record_webhook_success(self) -> None:
         """Record successful webhook delivery."""
         self.webhook_sent.add(1)
 
-    def record_webhook_failure(self):
+    def record_webhook_failure(self) -> None:
         """Record webhook delivery failure."""
         self.webhook_failed.add(1)
 
-    def record_graphql_request(self):
+    def record_graphql_request(self) -> None:
         """Record GraphQL request."""
         self.graphql_requests.add(1)
 
-    def record_graphql_error(self):
+    def record_graphql_error(self) -> None:
         """Record GraphQL error."""
         self.graphql_errors.add(1)
 
-    def record_message_processed(self):
+    def record_message_processed(self) -> None:
         """Record processed message."""
         self.message_queue_processed.add(1)
 
-    def record_latency(self, duration_ms: float):
+    def record_latency(self, duration_ms: float) -> None:
         """Record API integration latency."""
         self.api_integration_latency.observe(duration_ms)
 
@@ -238,17 +238,17 @@ class ExternalIntegrationAPI:
         self.message_queues: Dict[str, MessageQueueConnector] = {}
         self.logger = logging.getLogger("aios.integration")
 
-    def add_webhook(self, name: str, config: WebhookConfig):
+    def add_webhook(self, name: str, config: WebhookConfig) -> None:
         """Add webhook configuration."""
         self.webhooks[name] = WebhookManager(config)
         self.logger.info(f"Added webhook: {name}")
 
-    def set_graphql(self, config: GraphQLConfig):
+    def set_graphql(self, config: GraphQLConfig) -> None:
         """Set GraphQL configuration."""
         self.graphql = GraphQLAPI(config)
         self.logger.info("GraphQL API configured")
 
-    def add_message_queue(self, name: str, connector: MessageQueueConnector):
+    def add_message_queue(self, name: str, connector: MessageQueueConnector) -> None:
         """Add message queue connector."""
         self.message_queues[name] = connector
         self.logger.info(f"Added message queue: {name}")
@@ -362,7 +362,7 @@ def create_integration_app(integration_api: ExternalIntegrationAPI) -> Starlette
 
 
 # Example usage
-def setup_external_integrations():
+def setup_external_integrations() -> None:
     """Setup external integration system."""
 
     # Initialize integration API

@@ -9,7 +9,7 @@ class MultiModalProcessor:
     def __init__(self):
         self.modalities: Dict[str, Dict] = {}
 
-    def register_modality(self, name: str, processor: Any):
+    def register_modality(self, name: str, processor: Any) -> None:
         self.modalities[name] = {"processor": processor, "status": "active"}
 
     def process(self, modality: str, data: Any) -> Dict:

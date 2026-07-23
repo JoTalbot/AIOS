@@ -21,7 +21,7 @@ class QLearningAgent:
             return random.choice(self.actions)
         return max(self.q_table[state], key=self.q_table[state].get)
 
-    def learn(self, state: str, action: str, reward: float, next_state: str):
+    def learn(self, state: str, action: str, reward: float, next_state: str) -> None:
         if state not in self.q_table:
             self.q_table[state] = {a: 0.0 for a in self.actions}
 

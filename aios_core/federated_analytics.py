@@ -9,7 +9,7 @@ class FederatedAnalytics:
     def __init__(self):
         self.nodes: Dict[str, Dict] = {}
 
-    def register_node(self, node_id: str):
+    def register_node(self, node_id: str) -> None:
         self.nodes[node_id] = {"data_points": 0, "contributions": 0}
 
     def aggregate(self, local_stats: List[Dict]) -> Dict:

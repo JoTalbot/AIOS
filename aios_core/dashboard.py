@@ -20,7 +20,7 @@ class AIOSDashboard:
     def __init__(self, orchestrator: Orchestrator):
         self.orch = orchestrator
 
-    async def index(self, request: Request):
+    async def index(self, request: Request) -> None:
         """Main dashboard page."""
         html = f"""
         <!DOCTYPE html>
@@ -131,10 +131,10 @@ class AIOSDashboard:
         """
         return HTMLResponse(html)
 
-    async def api_stats(self, request: Request):
+    async def api_stats(self, request: Request) -> None:
         return JSONResponse(self.orch.stats())
 
-    async def api_olx(self, request: Request):
+    async def api_olx(self, request: Request) -> None:
         """OLX Parser Agent counters (AIOS_OLX_DB env; unavailable otherwise)."""
         import os
 
@@ -159,7 +159,7 @@ class AIOSDashboard:
             storage.close()
         return JSONResponse(payload)
 
-    def create_app(self):
+    def create_app(self) -> None:
         routes = [
             Route("/", self.index),
             Route("/api/stats", self.api_stats),
@@ -168,7 +168,7 @@ class AIOSDashboard:
         return Starlette(routes=routes)
 
 
-def create_dashboard(orchestrator: Orchestrator):
+def create_dashboard(orchestrator: Orchestrator) -> None:
     """Factory function."""
     dashboard = AIOSDashboard(orchestrator)
     return dashboard.create_app()

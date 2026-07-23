@@ -10,7 +10,7 @@ class BayesianInference:
     def __init__(self):
         self.beliefs: Dict[str, float] = {}
 
-    def update_belief(self, hypothesis: str, evidence: bool, likelihood: float = 0.8):
+    def update_belief(self, hypothesis: str, evidence: bool, likelihood: float = 0.8) -> None:
         prior = self.beliefs.get(hypothesis, 0.5)
         if evidence:
             posterior = (likelihood * prior) / (likelihood * prior + (1 - likelihood) * (1 - prior))

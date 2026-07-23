@@ -9,10 +9,10 @@ class PersonalizationEngine:
     def __init__(self):
         self.profiles: Dict[str, Dict] = {}
 
-    def create_profile(self, entity_id: str, preferences: Dict):
+    def create_profile(self, entity_id: str, preferences: Dict) -> None:
         self.profiles[entity_id] = {"preferences": preferences, "interactions": 0}
 
-    def update(self, entity_id: str, interaction: Dict):
+    def update(self, entity_id: str, interaction: Dict) -> None:
         if entity_id in self.profiles:
             self.profiles[entity_id]["interactions"] += 1
             # Update preferences based on interaction

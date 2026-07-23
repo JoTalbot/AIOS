@@ -73,7 +73,7 @@ class EnhancedAIOSAPI:
         integration_logger = logging.getLogger("aios_enhanced_api")
         integration_logger.setLevel(logging.INFO)
 
-    async def start_background_services(self):
+    async def start_background_services(self) -> None:
         """Start all background services."""
         self._running = True
 
@@ -92,7 +92,7 @@ class EnhancedAIOSAPI:
 
         return [monitoring_task, protocol_task, integration_task]
 
-    async def stop_background_services(self):
+    async def stop_background_services(self) -> None:
         """Stop all background services."""
         self._running = False
 
@@ -264,7 +264,7 @@ class EnhancedAIOSAPI:
                     )
 
                 # Create webhook handler
-                async def webhook_handler(event_data: Dict[str, Any]):
+                async def webhook_handler(event_data: Dict[str, Any]) -> None:
                     import aiohttp
 
                     async with aiohttp.ClientSession() as session:
@@ -902,7 +902,7 @@ class EnhancedAIOSAPI:
     async def _event_stream(self, request: Request) -> StreamingResponse:
         """Real-time event stream for monitoring and debugging."""
 
-        async def event_generator():
+        async def event_generator() -> None:
             while True:
                 if await request.is_disconnected():
                     break
@@ -938,7 +938,7 @@ class EnhancedAIOSAPI:
     async def _webhook_events(self, request: Request) -> StreamingResponse:
         """Stream webhook events for debugging."""
 
-        async def webhook_event_generator():
+        async def webhook_event_generator() -> None:
             while True:
                 if await request.is_disconnected():
                     break
@@ -1021,7 +1021,7 @@ class EnhancedAIOSAPI:
 
     # Middleware
 
-    async def integration_metrics_middleware(self, request: Request, call_next):
+    async def integration_metrics_middleware(self, request: Request, call_next) -> None:
         """Middleware to track API request metrics."""
         start_time = time.time()
 

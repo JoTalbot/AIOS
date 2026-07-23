@@ -12,7 +12,7 @@ class Observability:
         self.traces: list = []
         self.logs: list = []
 
-    def record_metric(self, name: str, value: float, labels: Dict = None):
+    def record_metric(self, name: str, value: float, labels: Dict = None) -> None:
         key = f"{name}_{labels}" if labels else name
         self.metrics[key] = value
 
@@ -28,14 +28,14 @@ class Observability:
         )
         return trace_id
 
-    def end_trace(self, trace_id: str):
+    def end_trace(self, trace_id: str) -> None:
         for trace in self.traces:
             if trace["id"] == trace_id and "end" not in trace:
                 trace["end"] = time.time()
                 trace["duration_ms"] = (trace["end"] - trace["start"]) * 1000
                 break
 
-    def log(self, level: str, message: str, **kwargs):
+    def log(self, level: str, message: str, **kwargs) -> None:
         self.logs.append({"level": level, "message": message, "timestamp": time.time(), **kwargs})
 
     def export_prometheus(self) -> str:

@@ -10,7 +10,7 @@ class SimpleSearchEngine:
     def __init__(self):
         self.documents: Dict[str, str] = {}
 
-    def index(self, doc_id: str, text: str):
+    def index(self, doc_id: str, text: str) -> None:
         self.documents[doc_id] = text.lower()
 
     def search(self, query: str, limit: int = 10) -> List[Dict]:

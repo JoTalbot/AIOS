@@ -10,14 +10,14 @@ class SecretsManager:
     def __init__(self):
         self._secrets = {}
 
-    def set(self, key: str, value: str):
+    def set(self, key: str, value: str) -> None:
         self._secrets[key] = value
 
     def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
         # Priority: env > memory > default
         return os.getenv(key) or self._secrets.get(key, default)
 
-    def delete(self, key: str):
+    def delete(self, key: str) -> None:
         self._secrets.pop(key, None)
 
     def list_keys(self) -> list:

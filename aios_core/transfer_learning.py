@@ -9,7 +9,7 @@ class TransferLearning:
     def __init__(self):
         self.knowledge_base: Dict[str, Dict] = {}
 
-    def store_knowledge(self, domain: str, knowledge: Dict):
+    def store_knowledge(self, domain: str, knowledge: Dict) -> None:
         self.knowledge_base[domain] = knowledge
 
     def transfer(self, source_domain: str, target_domain: str) -> Dict:

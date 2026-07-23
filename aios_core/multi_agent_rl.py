@@ -11,7 +11,7 @@ class MultiAgentRL:
         self.agents: Dict = {}
         self.shared_reward = 0.0
 
-    def register_agent(self, agent_id: str):
+    def register_agent(self, agent_id: str) -> None:
         self.agents[agent_id] = {"policy": None, "reward": 0}
 
     def step(self, actions: Dict) -> Dict:

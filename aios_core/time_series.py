@@ -10,7 +10,7 @@ class TimeSeriesAnalyzer:
     def __init__(self):
         self.series: Dict[str, List[float]] = {}
 
-    def add_data(self, series_name: str, value: float):
+    def add_data(self, series_name: str, value: float) -> None:
         if series_name not in self.series:
             self.series[series_name] = []
         self.series[series_name].append(value)

@@ -19,7 +19,7 @@ class MetricCounter:
         self.description = description
         self.value = 0.0
 
-    def add(self, value: float = 1.0):
+    def add(self, value: float = 1.0) -> None:
         self.value += value
 
 
@@ -31,7 +31,7 @@ class MetricGauge:
         self.description = description
         self.value = 0.0
 
-    def set(self, value: float):
+    def set(self, value: float) -> None:
         self.value = value
 
 
@@ -43,7 +43,7 @@ class MetricHistogram:
         self.description = description
         self.values: List[float] = []
 
-    def observe(self, value: float):
+    def observe(self, value: float) -> None:
         self.values.append(value)
         if len(self.values) > 5000:
             self.values = self.values[-5000:]
@@ -142,7 +142,7 @@ class Telemetry:
         """Return summary statistics for a histogram, or an empty summary."""
         return self.histogram(name).get_summary()
 
-    def record_metric(self, name: str, value: float, tags: Optional[Dict[str, str]] = None):
+    def record_metric(self, name: str, value: float, tags: Optional[Dict[str, str]] = None) -> None:
         """Record a generic metric observation."""
         hist = self.histogram(name)
         hist.observe(value)

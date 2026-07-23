@@ -19,7 +19,7 @@ class TikTokBootstrap:
         self.directory = directory
         self.which = which
 
-    def doctor(self):
+    def doctor(self) -> None:
         return platform_doctor(
             PLATFORM,
             PACKAGE,
