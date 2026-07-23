@@ -259,7 +259,7 @@ class WebhookManager:
     def get_history(
         self,
         event: Optional[str] = None,
-        limit: int = 50,
+        limit: Optional[int] = None,
     ) -> List[Dict]:
         """Get notification history.
 
@@ -270,7 +270,7 @@ class WebhookManager:
         history = self.history
         if event:
             history = [h for h in history if h["event"] == event]
-        return history[-limit:]
+        return history[-limit:] if limit is not None else list(history)
 
     def health_report(self) -> Dict:
         """Generate webhook system health report."""
