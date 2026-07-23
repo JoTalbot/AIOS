@@ -3,8 +3,8 @@
 # ARTICLE XVIII — DATA
 ## Constitutional Law of AIOS Data Management and Information Integrity
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS data structures, databases, storage systems, information flows, and processing mechanisms
 
 ---

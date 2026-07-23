@@ -3,8 +3,8 @@
 # ARTICLE III — AUTHORITY
 ## Constitutional Law of AIOS Authority and Governance
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS components, agents, nodes, operators, and autonomous processes
 
 ---

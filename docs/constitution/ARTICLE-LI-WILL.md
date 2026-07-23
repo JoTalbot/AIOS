@@ -3,8 +3,8 @@
 # ARTICLE LI — WILL
 ## Constitutional Law of AIOS Intent, Direction, and Purposeful Action
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS goal systems, planning mechanisms, autonomous processes, agents, governance structures, and future decision architectures
 
 ---

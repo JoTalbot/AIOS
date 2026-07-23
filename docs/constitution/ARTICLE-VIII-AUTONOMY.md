@@ -3,8 +3,8 @@
 # ARTICLE VIII — AUTONOMY
 ## Constitutional Law of AIOS Autonomous Operation
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS autonomous processes, agents, decision systems, and operational mechanisms
 
 ---

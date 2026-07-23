@@ -3,8 +3,8 @@
 # ARTICLE XXXII — SECURITY
 ## Constitutional Law of AIOS Security, Protection, and Defense
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS systems, agents, nodes, interfaces, data, infrastructure, and operational environments
 
 ---

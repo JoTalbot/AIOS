@@ -30,7 +30,7 @@ export const AgentSwarmView: React.FC = () => {
             </div>
 
             <div style={{ fontSize: '13px', color: '#CBD5E1', marginTop: '8px' }}>Role: <strong>{ag.role}</strong></div>
-            
+
             <div style={{ marginTop: '16px', backgroundColor: '#0F172A', padding: '12px', borderRadius: '8px' }}>
               <div style={{ fontSize: '12px', color: '#94A3B8' }}>Autonomy Level</div>
               <div style={{ fontSize: '15px', fontWeight: 700, color: '#F59E0B' }}>

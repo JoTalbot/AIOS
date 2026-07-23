@@ -3,8 +3,8 @@
 # ARTICLE LVI — SECURITY
 ## Constitutional Law of AIOS Security, Protection, and Defensive Integrity
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS infrastructure, agents, nodes, data, communications, identities, resources, and operational processes
 
 ---

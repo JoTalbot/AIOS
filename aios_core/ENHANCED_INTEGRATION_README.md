@@ -53,8 +53,8 @@ await integration_system.start()
 
 # Send webhook notification
 success = await integration_system.send_webhook(
-    "webhook_name", 
-    "event_type", 
+    "webhook_name",
+    "event_type",
     {"key": "value"}
 )
 
@@ -69,7 +69,7 @@ await integration_system.stop()
 
 ```python
 from aios_core.enhanced_integration_system import (
-    IntegrationConfig, WebhookConfig, GraphQLConfig, 
+    IntegrationConfig, WebhookConfig, GraphQLConfig,
     AlertRule, DashboardConfig, LogConfig, ProtocolConfig, ProtocolType
 )
 
@@ -376,13 +376,13 @@ print(f"Protocol status: {status}")
 2. **Docker Deployment**
    ```dockerfile
    FROM python:3.9-slim
-   
+
    WORKDIR /app
    COPY requirements.txt .
    RUN pip install -r requirements.txt
-   
+
    COPY . .
-   
+
    CMD ["python", "-m", "aios_core.enhanced_integration_system"]
    ```
 

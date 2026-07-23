@@ -3,8 +3,8 @@
 # ARTICLE VI — KNOWLEDGE
 ## Constitutional Law of AIOS Knowledge Formation and Management
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS knowledge systems, learning processes, reasoning engines, agents, and distributed intelligence components
 
 ---

@@ -3,8 +3,8 @@
 # ARTICLE XXXV — LEARNING
 ## Constitutional Law of AIOS Learning, Improvement, and Adaptive Intelligence
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS learning systems, agents, models, optimization processes, knowledge updates, and evolutionary mechanisms
 
 ---

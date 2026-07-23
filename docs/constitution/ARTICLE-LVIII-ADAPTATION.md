@@ -3,8 +3,8 @@
 # ARTICLE LVIII — ADAPTATION
 ## Constitutional Law of AIOS Adaptation, Flexibility, and Environmental Response
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS systems, agents, architectures, learning mechanisms, operational processes, and evolutionary structures
 
 ---

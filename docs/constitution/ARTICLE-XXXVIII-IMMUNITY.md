@@ -3,8 +3,8 @@
 # ARTICLE XXXVIII — IMMUNITY
 ## Constitutional Law of AIOS Immunity, Resilience, and Defensive Integrity
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS systems, agents, nodes, services, data structures, interfaces, and operational environments
 
 ---

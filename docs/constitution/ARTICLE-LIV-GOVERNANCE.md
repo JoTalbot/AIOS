@@ -3,8 +3,8 @@
 # ARTICLE LIV — GOVERNANCE
 ## Constitutional Law of AIOS Governance, Authority, and System Administration
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS authorities, agents, management systems, decision structures, policies, and operational frameworks
 
 ---

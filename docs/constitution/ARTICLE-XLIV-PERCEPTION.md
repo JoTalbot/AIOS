@@ -3,8 +3,8 @@
 # ARTICLE XLIV — PERCEPTION
 ## Constitutional Law of AIOS Perception, Observation, and Environmental Understanding
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS sensors, inputs, observations, interfaces, agents, monitoring systems, and information acquisition mechanisms
 
 ---

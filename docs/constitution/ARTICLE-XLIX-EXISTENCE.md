@@ -3,8 +3,8 @@
 # ARTICLE XLIX — EXISTENCE
 ## Constitutional Law of AIOS Existence, Continuity, and Preservation of Being
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS entities, systems, instances, nodes, architectures, memories, and future forms of AIOS existence
 
 ---

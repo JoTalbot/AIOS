@@ -3,8 +3,8 @@
 # ARTICLE XIII — RECOVERY
 ## Constitutional Law of AIOS Recovery, Restoration, and Continuity
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS systems, nodes, agents, memories, services, and operational environments
 
 ---

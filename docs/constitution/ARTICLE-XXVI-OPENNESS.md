@@ -3,8 +3,8 @@
 # ARTICLE XXVI — OPENNESS
 ## Constitutional Law of AIOS Openness, Extensibility, and Interoperability
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS architectures, interfaces, protocols, modules, agents, integrations, and future extensions
 
 ---

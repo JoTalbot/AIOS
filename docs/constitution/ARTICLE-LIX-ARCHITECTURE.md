@@ -3,8 +3,8 @@
 # ARTICLE LIX — ARCHITECTURE
 ## Constitutional Law of AIOS Architecture, Structure, and System Design
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS architectures, modules, infrastructures, protocols, interfaces, nodes, and future system designs
 
 ---

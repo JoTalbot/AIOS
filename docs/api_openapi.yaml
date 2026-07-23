@@ -3,7 +3,7 @@ info:
   title: AIOS API
   description: |
     AIOS (Autonomous Intelligence Operating System) v9.2.0 API
-    
+
     Self-evolving distributed operating system for application intelligence,
     automated testing, API generation, skill evolution and collective learning.
   version: 9.2.0

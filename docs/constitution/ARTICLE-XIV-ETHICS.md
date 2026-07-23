@@ -3,8 +3,8 @@
 # ARTICLE XIV — ETHICS
 ## Constitutional Law of AIOS Ethical Operation and Responsibility
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS reasoning processes, decisions, actions, interactions, and autonomous operations
 
 ---

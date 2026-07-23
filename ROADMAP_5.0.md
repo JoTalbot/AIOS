@@ -1,6 +1,6 @@
 # AIOS Roadmap 5.0 — Global Swarm Governance & Quantum Native Horizon
 
-**Текущая версия:** `v5.0.0-alpha` (553 passed tests, 67 constitutional articles verified)  
+**Текущая версия:** `v5.0.0-alpha` (553 passed tests, 67 constitutional articles verified)
 **Статус разработки:** ✅ All Milestones Completed
 
 ---

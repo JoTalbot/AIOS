@@ -37,7 +37,7 @@ export const AndroidFleetView: React.FC = () => {
     fetch('/api/v1/android/devices').then(r => r.json()).then(data => {
       if (data && data.devices) setDevices(data.devices);
     }).catch(()=>{});
-    
+
     fetch('/api/v1/shards/stats').then(r => r.json()).then(data => {
       if (data && data.jobs) setWorkflows(data.jobs);
     }).catch(()=>{});

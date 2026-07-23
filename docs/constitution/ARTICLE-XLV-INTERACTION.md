@@ -3,8 +3,8 @@
 # ARTICLE XLV — INTERACTION
 ## Constitutional Law of AIOS Interaction, Cooperation, and Relationship Management
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS agents, users, operators, systems, interfaces, external entities, and communication environments
 
 ---

@@ -121,55 +121,55 @@ async def example_advanced_usage():
                     activeAlerts: [Alert!]
                     integrationMetrics: IntegrationMetrics
                 }
-                
+
                 type Mutation {
                     sendWebhook(event: String!, data: JSON!): Boolean
                     createAlert(name: String!, metric: String!, threshold: Float!): Boolean
                 }
-                
+
                 type SystemHealth {
                     status: String
                     score: Float
                     timestamp: String
                 }
-                
+
                 type Alert {
                     name: String
                     severity: String
                     triggered: Boolean
                     timestamp: String
                 }
-                
+
                 type IntegrationMetrics {
                     webhooks: WebhookMetrics
                     monitoring: MonitoringMetrics
                     protocols: ProtocolMetrics
                 }
-                
+
                 type WebhookMetrics {
                     sent: Int
                     failed: Int
                     successRate: Float
                 }
-                
+
                 type MonitoringMetrics {
                     alerts: Int
                     systemHealth: Float
                     responseTime: Float
                 }
-                
+
                 type ProtocolMetrics {
                     grpc: ProtocolStatus
                     amqp: ProtocolStatus
                     websocket: ProtocolStatus
                     mqtt: ProtocolStatus
                 }
-                
+
                 type ProtocolStatus {
                     available: Boolean
                     connections: Int
                 }
-                
+
                 scalar JSON
             """,
             playground_enabled=True,

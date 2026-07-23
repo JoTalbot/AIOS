@@ -3,8 +3,8 @@
 # ARTICLE IX — COOPERATION
 ## Constitutional Law of AIOS Cooperation and Network Interaction
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS agents, nodes, services, operators, external systems, and collaborative processes
 
 ---

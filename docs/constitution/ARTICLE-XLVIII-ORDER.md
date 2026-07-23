@@ -3,8 +3,8 @@
 # ARTICLE XLVIII — ORDER
 ## Constitutional Law of AIOS Order, Structure, and System Organization
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS architectures, processes, agents, governance structures, resources, knowledge systems, and operational environments
 
 ---

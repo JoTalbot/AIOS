@@ -3,8 +3,8 @@
 # ARTICLE XXII — TRUST
 ## Constitutional Law of AIOS Trust, Reputation, and Reliability
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS entities, agents, nodes, services, operators, data sources, and external integrations
 
 ---

@@ -3,8 +3,8 @@
 # ARTICLE LXIII — MEMORY
 ## Constitutional Law of AIOS Memory, Preservation, and Knowledge Continuity
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS memory systems, storage structures, knowledge repositories, historical records, agents, nodes, and cognitive architectures
 
 ---

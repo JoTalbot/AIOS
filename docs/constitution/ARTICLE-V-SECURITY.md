@@ -3,8 +3,8 @@
 # ARTICLE V — SECURITY
 ## Constitutional Law of AIOS Security and Integrity Protection
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS components, agents, nodes, services, interfaces, and external integrations
 
 ---

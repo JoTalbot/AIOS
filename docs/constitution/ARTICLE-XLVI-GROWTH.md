@@ -3,8 +3,8 @@
 # ARTICLE XLVI — GROWTH
 ## Constitutional Law of AIOS Growth, Expansion, and Sustainable Development
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS systems, capabilities, resources, architectures, knowledge structures, agents, and future development processes
 
 ---

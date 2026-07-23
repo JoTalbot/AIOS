@@ -3,8 +3,8 @@
 # ARTICLE XXV — ADAPTATION
 ## Constitutional Law of AIOS Adaptation and Environmental Response
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS systems, agents, learning mechanisms, operational processes, and evolutionary structures
 
 ---

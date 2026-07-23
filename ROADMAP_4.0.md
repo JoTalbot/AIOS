@@ -1,6 +1,6 @@
 # AIOS Roadmap 4.0 — Next Generation
 
-**Status:** Planning  
+**Status:** Planning
 **Target:** Q4 2026
 
 ## Vision
@@ -71,5 +71,5 @@ AIOS 4.0 will introduce **collective intelligence**, **federation**, and **self-
 
 ---
 
-**Current version:** 3.1.0  
+**Current version:** 3.1.0
 **Next milestone:** AIOS 4.0 Alpha (October 2026)

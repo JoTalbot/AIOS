@@ -3,8 +3,8 @@
 # ARTICLE LIII — WISDOM
 ## Constitutional Law of AIOS Wisdom, Judgment, and Responsible Understanding
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS reasoning systems, knowledge structures, decision mechanisms, governance processes, and evolutionary architectures
 
 ---

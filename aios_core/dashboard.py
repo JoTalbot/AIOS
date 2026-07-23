@@ -75,20 +75,20 @@ class AIOSDashboard:
                         <div class="stat"><div class="label">Memory</div><div class="value">${{data.memory_items || 0}}</div></div>
                         <div class="stat"><div class="label">Federation</div><div class="value">${{data.subsystems?.federation?.total_nodes || 0}}</div></div>
                     `;
-                    
+
                     const sub = document.getElementById('subsystems');
                     const subs = data.subsystems || {{}};
-                    sub.innerHTML = Object.keys(subs).map(k => 
+                    sub.innerHTML = Object.keys(subs).map(k =>
                         `<div class="stat"><div class="label">${{k}}</div><div class="value">${{subs[k]?.total_profiles || subs[k]?.total_capabilities || subs[k]?.total_nodes || 'OK'}}</div></div>`
                     ).join('');
                 }}
-                
+
                 async function runHealthCheck() {{
                     const res = await fetch('/health');
                     const json = await res.json();
                     alert('Health: ' + json.status);
                 }}
-                
+
                 async function createDemoTask() {{
                     const res = await fetch('/api/v1/tasks', {{
                         method: 'POST',
@@ -98,7 +98,7 @@ class AIOSDashboard:
                     alert('Task created!');
                     loadStats();
                 }}
-                
+
                 async function loadOlx() {{
                     const container = document.getElementById('olx');
                     try {{

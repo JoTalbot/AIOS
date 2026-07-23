@@ -44,15 +44,15 @@ import asyncio
 async def main():
     # Create enhanced API
     api = create_enhanced_api(db_path=":memory:")
-    
+
     # Start background services
     background_tasks = await api.start_background_services()
-    
+
     # Create enhanced app
     app = api.create_enhanced_app()
-    
+
     # The app is ready to use with enhanced integration capabilities
-    
+
     # Keep running
     try:
         await asyncio.sleep(3600)  # Run for 1 hour
@@ -191,7 +191,7 @@ async def create_webhook_integration(api):
             "handler_url": "https://example.com/webhook-handler"
         }
     }
-    
+
     response = await api._integrations_create(webhook_data)
     print(f"Webhook created: {response}")
 ```
@@ -205,7 +205,7 @@ async def run_benchmark(api):
         "duration": 60,
         "rate": 10
     }
-    
+
     response = await api._integration_benchmark(benchmark_data)
     print(f"Benchmark results: {response}")
 ```
@@ -217,7 +217,7 @@ async def check_health(api):
     response = await api._monitoring_health()
     health_data = response.json()
     print(f"System health: {health_data['status']}")
-    
+
     if health_data['status'] == 'healthy':
         print("All systems operational")
     else:
@@ -312,13 +312,13 @@ Regular health checks can help identify issues early:
 async def perform_health_checks(api):
     # Check system health
     health_response = await api._monitoring_health()
-    
+
     # Check integration health
     integration_health = await api._integrations_list()
-    
+
     # Check protocol status
     protocol_status = await api._protocols_list()
-    
+
     return {
         "system": health_response.json(),
         "integrations": integration_health.json(),
@@ -346,7 +346,7 @@ async def test_webhook_creation(api):
             "handler_url": "https://example.com/test"
         }
     }
-    
+
     response = await api._integrations_create(webhook_data)
     assert response.status_code == 201
 ```
@@ -363,10 +363,10 @@ async def test_full_integration(api):
             "handler_url": "https://example.com/test"
         }
     }
-    
+
     response = await api._integrations_create(webhook_data)
     assert response.status_code == 201
-    
+
     # Test webhook functionality
     test_data = {
         "test_type": "webhook",
@@ -375,7 +375,7 @@ async def test_full_integration(api):
             "payload": {"test": True}
         }
     }
-    
+
     test_response = await api._integration_test(test_data)
     assert test_response.json()["result"]["success"] is True
 ```

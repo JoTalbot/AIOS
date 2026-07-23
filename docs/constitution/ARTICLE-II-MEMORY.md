@@ -1,8 +1,8 @@
 # ARTICLE II — MEMORY
 ## Constitutional Law of AIOS Memory
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS components, nodes, agents, and memory systems
 
 ---

@@ -3,8 +3,8 @@
 # ARTICLE XXIII — CONSERVATION
 ## Constitutional Law of AIOS Preservation and Protection of Foundations
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS systems, components, memories, knowledge structures, identities, resources, and evolutionary processes
 
 ---

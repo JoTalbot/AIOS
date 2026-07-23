@@ -265,7 +265,7 @@ def create_default_config() -> IntegrationConfig:
                 hello: String
                 systemStatus: String
             }
-            
+
             type Mutation {
                 sendNotification(message: String!): Boolean
             }

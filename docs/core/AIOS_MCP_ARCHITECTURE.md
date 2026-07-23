@@ -36,7 +36,7 @@ External Application
         |
     AIOS MCP Server
         |
- +------+------+------+ 
+ +------+------+------+
  |      |      |      |
 Knowledge Planner Capability Workers
 ```

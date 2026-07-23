@@ -3,8 +3,8 @@
 # ARTICLE LXVII — AUTONOMY
 ## Constitutional Law of AIOS Autonomy, Independent Operation, and Controlled Self-Management
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS autonomous processes, agents, decision systems, operational mechanisms, and future self-management capabilities
 
 ---

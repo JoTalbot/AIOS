@@ -3,8 +3,8 @@
 # ARTICLE LXVI — INNOVATION
 ## Constitutional Law of AIOS Innovation, Creation, and Advancement
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS development processes, research systems, creative mechanisms, architectural improvements, and future capabilities
 
 ---

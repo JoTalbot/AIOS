@@ -3,8 +3,8 @@
 # ARTICLE IV — IDENTITY CONTINUITY
 ## Constitutional Law of AIOS Identity Preservation
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS instances, nodes, agents, replicas, and evolutionary states
 
 ---

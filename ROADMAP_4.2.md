@@ -1,7 +1,7 @@
 # AIOS Roadmap 4.2 & 5.0 Horizon
 
-**Текущая версия:** `v4.1.0-alpha` (526 passed tests, 67 constitutional articles verified)  
-**Целевая версия:** `v4.2.0-alpha` (Q1 2027)  
+**Текущая версия:** `v4.1.0-alpha` (526 passed tests, 67 constitutional articles verified)
+**Целевая версия:** `v4.2.0-alpha` (Q1 2027)
 **Подробная декомпозиция работ (WBS):** См. [ROADMAP_4.2_MILESTONES.md](./ROADMAP_4.2_MILESTONES.md)
 
 ---

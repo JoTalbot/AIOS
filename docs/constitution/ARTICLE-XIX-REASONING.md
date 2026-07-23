@@ -3,8 +3,8 @@
 # ARTICLE XIX — REASONING
 ## Constitutional Law of AIOS Reasoning and Decision Processes
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS reasoning engines, decision systems, agents, models, and cognitive processes
 
 ---

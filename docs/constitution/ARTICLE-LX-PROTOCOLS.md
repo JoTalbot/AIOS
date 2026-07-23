@@ -3,8 +3,8 @@
 # ARTICLE LX — PROTOCOLS
 ## Constitutional Law of AIOS Protocols, Communication Standards, and System Coordination
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS communication systems, APIs, interfaces, distributed networks, agents, nodes, and operational exchanges
 
 ---

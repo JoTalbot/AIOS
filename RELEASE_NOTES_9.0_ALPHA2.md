@@ -1,9 +1,9 @@
 # AIOS Official Release Notes — Version 9.0.0-alpha.2
 
-**Release Tag:** `v9.0.0-alpha.2`  
-**Release Date:** July 21, 2026  
-**Repository:** `JoTalbot/AIOS`  
-**Constitutional Compliance:** 100% (67 Articles Validated via `tula`)  
+**Release Tag:** `v9.0.0-alpha.2`
+**Release Date:** July 21, 2026
+**Repository:** `JoTalbot/AIOS`
+**Constitutional Compliance:** 100% (67 Articles Validated via `tula`)
 **Automated Test Coverage:** 603 / 603 Tests Passing (100% Green)
 
 ---

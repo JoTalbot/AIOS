@@ -3,8 +3,8 @@
 # ARTICLE XX — CONSENSUS
 ## Constitutional Law of AIOS Consensus and Collective Decision Validation
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS distributed systems, nodes, agents, governance mechanisms, and cooperative intelligence structures
 
 ---

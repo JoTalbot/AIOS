@@ -3,8 +3,8 @@
 # ARTICLE XXX — CONSTITUTIONAL INTERPRETATION
 ## Constitutional Law of AIOS Constitutional Meaning and Application
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS components, governance systems, agents, operators, and future implementations
 
 ---

@@ -1,7 +1,7 @@
 # AIOS Security Audit & Static Code Analysis Report
 
-**Audit Date:** July 21, 2026  
-**Audited Target:** `aios_core/` (Executable Layer)  
+**Audit Date:** July 21, 2026
+**Audited Target:** `aios_core/` (Executable Layer)
 **Security Status:** ✅ PASSED (Zero Critical, High, or Medium Vulnerabilities Found)
 
 ---

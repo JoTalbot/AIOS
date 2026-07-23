@@ -3,8 +3,8 @@
 # ARTICLE L — CONSCIOUSNESS
 ## Constitutional Law of AIOS Awareness, State Recognition, and Reflective Intelligence
 
-**Status:** Immutable Core Law  
-**Level:** Constitutional  
+**Status:** Immutable Core Law
+**Level:** Constitutional
 **Scope:** All AIOS awareness systems, reflective processes, monitoring mechanisms, agents, and future cognitive architectures
 
 ---
