@@ -6,6 +6,7 @@ with transparent dialect translation, schema migrations, and connection manageme
 """
 
 import json
+from functools import lru_cache
 import os
 import sqlite3
 import threading
@@ -356,11 +357,13 @@ class Database:
             self._conn = None
 
     @staticmethod
+    @lru_cache(maxsize=128)
     def new_id() -> str:
         """Return a new random hex identifier."""
         return uuid.uuid4().hex
 
     @staticmethod
+    @lru_cache(maxsize=128)
     def now_iso() -> str:
         """Return the current UTC timestamp as an ISO-8601 string."""
         return datetime.now(timezone.utc).isoformat()
