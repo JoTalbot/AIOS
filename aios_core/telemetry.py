@@ -90,15 +90,55 @@ class Telemetry:
             self.counters[name] = MetricCounter(name, description)
         return self.counters[name]
 
+    def create_counter(self, name: str, description: str = "") -> MetricCounter:
+        """Create (or return) a counter.
+
+        This explicit name is retained for compatibility with the original
+        telemetry API; :meth:`counter` is the shorter OpenTelemetry-style API.
+        """
+        return self.counter(name, description)
+
+    def increment_counter(self, name: str, value: float = 1.0) -> None:
+        """Add *value* to a counter, creating it when necessary."""
+        self.counter(name).add(value)
+
+    def get_counter_value(self, name: str) -> float:
+        """Return a counter value, or zero when it has not been recorded."""
+        return self.counters.get(name, MetricCounter(name)).value
+
     def gauge(self, name: str, description: str = "") -> MetricGauge:
         if name not in self.gauges:
             self.gauges[name] = MetricGauge(name, description)
         return self.gauges[name]
 
+    def create_gauge(self, name: str, description: str = "") -> MetricGauge:
+        """Create (or return) a gauge."""
+        return self.gauge(name, description)
+
+    def set_gauge(self, name: str, value: float) -> None:
+        """Set a gauge value, creating the gauge when necessary."""
+        self.gauge(name).set(value)
+
+    def get_gauge_value(self, name: str) -> float:
+        """Return a gauge value, or zero when it has not been recorded."""
+        return self.gauges.get(name, MetricGauge(name)).value
+
     def histogram(self, name: str, description: str = "") -> MetricHistogram:
         if name not in self.histograms:
             self.histograms[name] = MetricHistogram(name, description)
         return self.histograms[name]
+
+    def create_histogram(self, name: str, description: str = "") -> MetricHistogram:
+        """Create (or return) a histogram."""
+        return self.histogram(name, description)
+
+    def observe_histogram(self, name: str, value: float) -> None:
+        """Record a histogram observation, creating it when necessary."""
+        self.histogram(name).observe(value)
+
+    def get_histogram_summary(self, name: str) -> Dict[str, float]:
+        """Return summary statistics for a histogram, or an empty summary."""
+        return self.histogram(name).get_summary()
 
     def record_metric(
         self, name: str, value: float, tags: Optional[Dict[str, str]] = None
@@ -126,13 +166,42 @@ class Telemetry:
         for name, h in self.histograms.items():
             summary = h.get_summary()
             lines.append(f"# HELP {name} {h.description}")
-            lines.append(f"# TYPE {name} summary")
+            lines.append(f"# TYPE {name} histogram")
             lines.append(f'{name}_count {summary["count"]}')
+            lines.append(f"{name}_sum {sum(h.values)}")
             lines.append(f'{name}{{quantile="0.5"}} {summary["p50"]}')
             lines.append(f'{name}{{quantile="0.95"}} {summary["p95"]}')
             lines.append(f'{name}{{quantile="0.99"}} {summary["p99"]}')
 
         return "\n".join(lines)
+
+    def export_prometheus(self) -> str:
+        """Compatibility alias for :meth:`export_prometheus_format`."""
+        return self.export_prometheus_format()
+
+    def get_all_metrics(self) -> Dict[str, Dict[str, Any]]:
+        """Return a serialisable snapshot of all collected metrics."""
+        return {
+            "counters": {
+                name: counter.value for name, counter in self.counters.items()
+            },
+            "gauges": {name: gauge.value for name, gauge in self.gauges.items()},
+            "histograms": {
+                name: histogram.get_summary()
+                for name, histogram in self.histograms.items()
+            },
+        }
+
+    def export_json(self) -> Dict[str, Dict[str, Any]]:
+        """Return the metric snapshot in a JSON-serialisable structure."""
+        return self.get_all_metrics()
+
+    def reset(self) -> None:
+        """Remove all metric values and recorded metric events."""
+        self.counters.clear()
+        self.gauges.clear()
+        self.histograms.clear()
+        self.recorded_events.clear()
 
     def stats(self) -> Dict[str, Any]:
         return {
