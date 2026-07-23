@@ -11,3 +11,9 @@ def pytest_configure(config):
     # pytest-asyncio auto mode: async tests/fixtures are auto-detected
     if hasattr(config.option, "asyncio_mode"):
         config.option.asyncio_mode = "auto"
+
+# pytest markers for test categorization
+def pytest_configure(config):
+    config.addinivalue_line("markers", "slow: marks tests as slow (deselect with -k 'not slow')")
+    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+    config.addinivalue_line("markers", "real_device: marks tests requiring a real Android device")
