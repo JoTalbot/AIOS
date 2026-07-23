@@ -15,15 +15,18 @@ graphql-core>=3.2.0
 pytest>=7.0.0
 pytest-cov>=3.0.0
 pytest-asyncio>=0.21.0
+pytest-timeout>=2.0.0
 
 # Android / Vision (optional but needed for M7 observability)
 opencv-python-headless>=4.8.0
 
 # Code Quality
 black>=22.0.0
+isort>=5.0.0
 pre-commit>=3.0.0
 flake8>=4.0.0
 pylint>=2.10.0
+mypy>=1.0.0
 
 # Documentation
 sphinx>=4.0.0
