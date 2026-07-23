@@ -1,8 +1,11 @@
 """Load Testing Framework for AIOS"""
 
+import logging
 import threading
 import time
 from typing import Callable, Dict
+
+logger = logging.getLogger(__name__)
 
 
 class LoadTester:
@@ -22,7 +25,7 @@ class LoadTester:
                     func()
                     latency = (time.perf_counter() - start) * 1000
                     self.results.append(latency)
-                except:
+                except Exception:
                     pass
 
         threads = [threading.Thread(target=worker) for _ in range(concurrent_users)]

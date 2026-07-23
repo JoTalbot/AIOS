@@ -11,6 +11,7 @@ Provides:
 import gzip
 import hashlib
 import json
+import logging
 import os
 import shutil
 import sqlite3
@@ -18,6 +19,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -245,7 +248,7 @@ class BackupManager:
 
             return True
         except Exception as e:
-            print(f"Restore failed: {e}")
+            logger.error("Restore failed for %s: %s", backup_id, e)
             return False
 
     def list_backups(self) -> List[BackupMetadata]:
