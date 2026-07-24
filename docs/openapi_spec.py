@@ -23,7 +23,7 @@ class OpenAPIGenerator:
     - Version tracking
     """
 
-    def __init__(self, title: str = "AIOS API", version: str = "10.14.0"):
+    def __init__(self, title: str = "AIOS API", version: str = "10.15.0"):
         """Initialize OpenAPIGenerator."""
         self.title = title
         self.version = version

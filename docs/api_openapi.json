@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "AIOS API",
-    "version": "9.3.1",
+    "version": "10.15.0",
     "description": "AIOS — Autonomous Intelligence Operating System. REST API for multi-platform marketplace automation, constitution-gated execution, device pool management, and agent orchestration.",
     "contact": {
       "email": "jo.talbot@gmail.com",

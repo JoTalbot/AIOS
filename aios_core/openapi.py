@@ -1,4 +1,4 @@
-"""OpenAPI Documentation Generator for AIOS v10.9.0.
+"""OpenAPI Documentation Generator for AIOS v10.15.0.
 
 OpenAPI 3.0 spec generation with path registration,
 schema definitions, security schemes, version
@@ -44,7 +44,7 @@ class OpenAPISpec:
     - Validation
     """
 
-    def __init__(self, title: str = "AIOS API", version: str = "10.9.0") -> None:
+    def __init__(self, title: str = "AIOS API", version: str = "10.15.0") -> None:
         self.title = title
         self.version = version
         self._endpoints: list[APIEndpoint] = []
