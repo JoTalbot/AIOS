@@ -10,6 +10,7 @@ class EventStore:
     """Simple in-memory + file-based event store."""
 
     def __init__(self, storage_path: str = "events.jsonl"):
+        """Initialize EventStore."""
         self.storage_path = storage_path
         self.events: List[Dict] = []
 

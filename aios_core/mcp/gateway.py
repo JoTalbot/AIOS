@@ -59,6 +59,7 @@ class ConstitutionGuard:
     """
 
     def __init__(self, runtime_policy: RuntimePolicy):
+        """Initialize ConstitutionGuard."""
         self.policy = runtime_policy
         self._call_log: list[dict] = []
 
@@ -156,6 +157,7 @@ class MCPGateway:
     """
 
     def __init__(self, config: Optional[GatewayConfig] = None, db: Optional[Database] = None):
+        """Initialize MCPGateway."""
         self.config = config or GatewayConfig()
         self.protocol = MCPProtocol()
 

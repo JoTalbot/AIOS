@@ -49,6 +49,7 @@ class ReasoningEngine:
     """
 
     def __init__(self, db: Optional[Database] = None, memory=None, knowledge=None):
+        """Initialize ReasoningEngine."""
         self.db = db
         self.memory = memory  # MemoryManager instance
         self.knowledge = knowledge  # KnowledgeGraph instance

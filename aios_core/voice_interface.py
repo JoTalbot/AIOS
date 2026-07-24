@@ -7,6 +7,7 @@ class VoiceInterface:
     """Voice command interface (simulated)."""
 
     def __init__(self):
+        """Initialize VoiceInterface."""
         self.enabled = False
 
     def enable(self) -> None:

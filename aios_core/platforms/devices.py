@@ -62,6 +62,7 @@ class DevicePool:
     def __init__(self, db_path: "str | None" = None):
         # По умолчанию — постоянный файл data/devices.sqlite, чтобы пул
         # переживал перезапуски CLI-процессов; ":memory:" — для тестов.
+        """Initialize DevicePool."""
         self.db_path = db_path or os.environ.get("AIOS_DEVICES_DB", "data/devices.sqlite")
         if self.db_path != ":memory:":
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)

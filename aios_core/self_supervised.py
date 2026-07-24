@@ -8,6 +8,7 @@ class SelfSupervisedLearner:
     """Self-supervised pretraining."""
 
     def __init__(self):
+        """Initialize SelfSupervisedLearner."""
         self.pretext_tasks: list[str] = [
             "rotation",
             "colorization",

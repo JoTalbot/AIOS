@@ -8,6 +8,7 @@ class UncertaintyQuantifier:
     """Quantifies prediction uncertainty."""
 
     def __init__(self):
+        """Initialize UncertaintyQuantifier."""
         self.predictions: Dict[str, list[float]] = {}
 
     def add_prediction(self, model_id: str, value: float) -> None:

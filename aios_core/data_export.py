@@ -27,6 +27,7 @@ class DataExporter:
     """Export AIOS data to various formats."""
 
     def __init__(self, db_path: str = "aios.sqlite") -> None:
+        """Initialize DataExporter."""
         self.db_path = db_path
         self.conn = None
 
@@ -289,6 +290,7 @@ class DataImporter:
     """Import data into AIOS database."""
 
     def __init__(self, db_path: str = "aios.sqlite") -> None:
+        """Initialize DataImporter."""
         self.db_path = db_path
         self.conn = None
 

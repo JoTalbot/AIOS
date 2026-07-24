@@ -16,6 +16,7 @@ class WorkflowStep:
 
 @dataclass
 class Workflow:
+    """Workflow."""
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     name: str
     steps: List[WorkflowStep] = field(default_factory=list)
@@ -26,6 +27,7 @@ class WorkflowEngine:
     """Simple workflow orchestration engine."""
 
     def __init__(self):
+        """Initialize WorkflowEngine."""
         self.workflows: Dict[str, Workflow] = {}
 
     def create_workflow(self, name: str) -> Workflow:

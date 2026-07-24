@@ -19,6 +19,7 @@ class AnomalyDetector:
         iqr_multiplier: float = 1.5,
         window_size: int = 1000,
     ):
+        """Initialize AnomalyDetector."""
         self.z_threshold = z_threshold
         self.iqr_multiplier = iqr_multiplier
         self.window_size = window_size

@@ -15,6 +15,7 @@ class ModelServer:
     """Production ML Model Serving Engine."""
 
     def __init__(self, registry: Any = None):
+        """Initialize ModelServer."""
         self.registry = registry
         self.models: Dict[str, dict[str, Any]] = {}
         self.traffic_splits: Dict[str, dict[str, float]] = {}  # model_name -> {version: weight}

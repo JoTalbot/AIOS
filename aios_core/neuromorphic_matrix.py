@@ -20,6 +20,7 @@ class LIFNeuron:
         v_rest: float = 0.0,
         tau: float = 10.0,
     ):
+        """Initialize LIFNeuron."""
         self.neuron_id = neuron_id
         self.v_threshold = v_threshold
         self.v_rest = v_rest
@@ -47,6 +48,7 @@ class NeuromorphicMatrixEngine:
     """Spiking Neural Network Matrix Engine with STDP learning."""
 
     def __init__(self, size: int = 16):
+        """Initialize NeuromorphicMatrixEngine."""
         self.size = size
         self.neurons: List[LIFNeuron] = [LIFNeuron(f"sn_{i}") for i in range(size)]
         self.synaptic_weights: Dict[tuple[int, int], float] = {}

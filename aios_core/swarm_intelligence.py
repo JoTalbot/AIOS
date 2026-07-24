@@ -5,7 +5,9 @@ from typing import Dict, List
 
 
 class Particle:
+    """Particle."""
     def __init__(self, position: list[float]):
+        """Initialize Particle."""
         self.position = position
         self.velocity = [random.uniform(-1, 1) for _ in position]
         self.best_position = position[:]
@@ -27,6 +29,7 @@ class ParticleSwarmOptimizer:
     """PSO for optimization problems."""
 
     def __init__(self, num_particles: int = 20, dimensions: int = 5):
+        """Initialize ParticleSwarmOptimizer."""
         self.particles = [
             Particle([random.uniform(-10, 10) for _ in range(dimensions)])
             for _ in range(num_particles)

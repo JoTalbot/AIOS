@@ -13,6 +13,7 @@ class AdversarialDefense:
     """
 
     def __init__(self):
+        """Initialize AdversarialDefense."""
         self.attacks_detected = 0
 
     def detect_adversarial(self, input_data: list[float], threshold: float = 0.3) -> bool:

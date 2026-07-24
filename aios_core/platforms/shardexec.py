@@ -56,6 +56,7 @@ class ShardJobs:
     """
 
     def __init__(self, db_path: str | None = None):
+        """Initialize ShardJobs."""
         self.db_path = db_path or os.environ.get("AIOS_SHARDS_DB", ":memory:")
         if self.db_path != ":memory:":
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -253,6 +254,7 @@ class ShardJobWorker:
         jobs: Optional[ShardJobs] = None,
         handlers: Optional[Dict[str, Callable]] = None,
     ) -> None:
+        """Initialize ShardJobWorker."""
         self.host = host
         self.jobs = jobs or ShardJobs()
         self.handlers = handlers if handlers is not None else default_handlers()

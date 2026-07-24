@@ -15,6 +15,7 @@ class MolecularDNARuntime:
     REVERSE_NUCLEOTIDE_MAP = {v: k for k, v in NUCLEOTIDE_MAP.items()}
 
     def __init__(self):
+        """Initialize MolecularDNARuntime."""
         self.dna_memory_bank: dict[str, str] = {}  # key -> nucleotide sequence
 
     def encode_to_dna(self, text_payload: str) -> str:

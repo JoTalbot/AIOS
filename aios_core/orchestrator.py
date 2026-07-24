@@ -48,6 +48,7 @@ __all__ = ["TaskStatus", "StepStatus", "TaskStep", "Task", "Orchestrator"]
 
 
 class TaskStatus(str, Enum):
+    """TaskStatus."""
     PENDING = "pending"
     PLANNING = "planning"
     RUNNING = "running"
@@ -58,6 +59,7 @@ class TaskStatus(str, Enum):
 
 
 class StepStatus(str, Enum):
+    """StepStatus."""
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -166,6 +168,7 @@ class Orchestrator:
         constitution_dir: str | None = None,
         policies_dir: str | None = None,
     ):
+        """Initialize Orchestrator."""
         self.version = "9.0.0"
         self.config = config or load_config()
 

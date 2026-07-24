@@ -114,6 +114,7 @@ class CompetitiveWatch:
     """Links market ads to own listings and grades competitive position."""
 
     def __init__(self, storage, threshold: float = _SIMILARITY_THRESHOLD):
+        """Initialize CompetitiveWatch."""
         self.storage = storage
         self.threshold = threshold
 

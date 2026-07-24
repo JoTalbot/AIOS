@@ -55,6 +55,7 @@ class BackupManager:
         max_backups: int = 10,
         compress: bool = False,
     ) -> None:
+        """Initialize BackupManager."""
         self.db_path = db_path
         self.backup_dir = Path(backup_dir)
         self.retention_days = retention_days

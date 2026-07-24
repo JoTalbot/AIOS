@@ -16,6 +16,7 @@ class PolicyValidationError(Exception):
     """Raised when a policy file fails schema validation."""
 
     def __init__(self, policy_name: str, message: str):
+        """Initialize PolicyValidationError."""
         self.policy_name = policy_name
         self.message = message
         super().__init__(f"Policy '{policy_name}' validation error: {message}")

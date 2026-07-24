@@ -9,6 +9,7 @@ class AGISafety:
     """Comprehensive AGI safety mechanisms."""
 
     def __init__(self):
+        """Initialize AGISafety."""
         self.safety_checks: list[str] = [
             "value_alignment",
             "corrigibility",

@@ -18,6 +18,7 @@ class SubscriptionManager:
     """
 
     def __init__(self, storage):
+        """Initialize SubscriptionManager."""
         self.storage = storage
 
     def add(
@@ -87,6 +88,7 @@ class FavoritesWatch:
     """Tracks user-favorite ads and surfaces their price drops."""
 
     def __init__(self, storage):
+        """Initialize FavoritesWatch."""
         self.storage = storage
         """Add a fingerprint to the watch list."""
 

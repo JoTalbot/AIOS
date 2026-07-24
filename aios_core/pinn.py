@@ -7,6 +7,7 @@ class PINN:
     """Physics-Informed Neural Network solver."""
 
     def __init__(self, pde: Callable, boundary_conditions: List):
+        """Initialize PINN."""
         self.pde = pde
         self.boundary = boundary_conditions
 

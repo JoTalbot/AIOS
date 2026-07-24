@@ -30,6 +30,7 @@ class AdvancedAgent:
     """
 
     def __init__(self, name: str, system_prompt: str = ""):
+        """Initialize AdvancedAgent."""
         self.id = str(uuid.uuid4())[:8]
         self.name = name
         self.system_prompt = system_prompt
@@ -73,6 +74,7 @@ class AgentOrchestrator:
     """Manages multiple AdvancedAgent instances."""
 
     def __init__(self):
+        """Initialize AgentOrchestrator."""
         self.agents: Dict[str, AdvancedAgent] = {}
 
     def create_agent(self, name: str) -> AdvancedAgent:

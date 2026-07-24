@@ -14,6 +14,7 @@ class FacebookBootstrap:
     """Смотритель готовности facebook (OLX-like платформа полного стека)."""
 
     def __init__(self, adb=None, serial=None, directory: str = "platforms", which=None):
+        """Initialize FacebookBootstrap."""
         self.adb = adb
         self.serial = serial
         self.directory = directory

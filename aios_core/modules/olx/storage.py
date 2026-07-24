@@ -178,6 +178,7 @@ class OLXStorage:
     """Deduplicating SQLite store for OLX ad cards with price tracking."""
 
     def __init__(self, db_path: Union[str, Path] = ":memory:"):
+        """Initialize OLXStorage."""
         self.db_path = str(db_path)
         if self.db_path != ":memory:":
             # Profile-scoped paths like data/olx/<profile>.sqlite may not

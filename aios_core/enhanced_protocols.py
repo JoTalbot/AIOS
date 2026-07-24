@@ -58,6 +58,7 @@ class ProtocolAdapter(ABC):
     """Abstract base class for protocol adapters."""
 
     def __init__(self, config: ProtocolConfig):
+        """Initialize ProtocolAdapter."""
         self.config = config
         self.logger = logging.getLogger(f"aios.protocol.{config.protocol_type.value}")
         self.active_connections: list[Any] = []
@@ -96,6 +97,7 @@ class GrpcAdapter(ProtocolAdapter):
     """gRPC protocol adapter."""
 
     def __init__(self, config: ProtocolConfig):
+        """Initialize GrpcAdapter."""
         super().__init__(config)
         self.server = None
         self.services: dict[str, Any] = {}
@@ -147,6 +149,7 @@ class AmqpAdapter(ProtocolAdapter):
     """AMQP protocol adapter."""
 
     def __init__(self, config: ProtocolConfig):
+        """Initialize AmqpAdapter."""
         super().__init__(config)
         self.connection = None
         self.channel = None
@@ -252,6 +255,7 @@ class WebSocketAdapter(ProtocolAdapter):
     """WebSocket protocol adapter."""
 
     def __init__(self, config: ProtocolConfig):
+        """Initialize WebSocketAdapter."""
         super().__init__(config)
         self.websocket_routes: Dict[str, Callable] = {}
 
@@ -316,6 +320,7 @@ class MqttAdapter(ProtocolAdapter):
     """MQTT protocol adapter."""
 
     def __init__(self, config: ProtocolConfig):
+        """Initialize MqttAdapter."""
         super().__init__(config)
         self.client = None
         self.subscriptions: Dict[str, List[Callable]] = {}
@@ -410,6 +415,7 @@ class ProtocolManager:
     """Manages multiple protocol adapters."""
 
     def __init__(self):
+        """Initialize ProtocolManager."""
         self.adapters: Dict[ProtocolType, ProtocolAdapter] = {}
         self.logger = logging.getLogger("aios.protocol_manager")
 

@@ -7,6 +7,7 @@ class RBAC:
     """Simple RBAC implementation."""
 
     def __init__(self):
+        """Initialize RBAC."""
         self.roles: Dict[str, set[str]] = {}
         self.permissions: Dict[str, set[str]] = {}
 

@@ -112,6 +112,7 @@ class CapabilityEngine:
     """
 
     def __init__(self, db: Optional[Database] = None):
+        """Initialize CapabilityEngine."""
         self.db = db
         self.version = "3.0.0"
         self._handlers: dict[str, Callable] = {}

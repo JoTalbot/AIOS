@@ -12,6 +12,7 @@ from typing import Any, Callable, Optional
 
 
 class TestStatus(str, Enum):
+    """TestStatus."""
     PENDING = "pending"
     RUNNING = "running"
     PASSED = "passed"
@@ -21,6 +22,7 @@ class TestStatus(str, Enum):
 
 
 class TestSeverity(str, Enum):
+    """TestSeverity."""
     CRITICAL = "critical"  # System-breaking if fails
     HIGH = "high"  # Important functionality
     MEDIUM = "medium"  # Normal functionality
@@ -28,6 +30,7 @@ class TestSeverity(str, Enum):
 
 
 class TestCategory(str, Enum):
+    """TestCategory."""
     CONSTITUTIONAL = "constitutional"  # Constitution compliance
     REGRESSION = "regression"  # Prevent behavior regressions
     INTEGRATION = "integration"  # Cross-subsystem integration

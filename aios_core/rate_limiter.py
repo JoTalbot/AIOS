@@ -12,6 +12,7 @@ class RateLimiter:
     __slots__ = ('requests_per_minute', 'requests')
 
     def __init__(self, requests_per_minute: int = 60):
+        """Initialize RateLimiter."""
         self.requests_per_minute = requests_per_minute
         self.requests: Dict[str, list] = defaultdict(list)
 

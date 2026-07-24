@@ -7,6 +7,7 @@ class Curriculum:
     """Progressive difficulty curriculum."""
 
     def __init__(self):
+        """Initialize Curriculum."""
         self.stages: List[Dict] = []
         self.current_stage = 0
 

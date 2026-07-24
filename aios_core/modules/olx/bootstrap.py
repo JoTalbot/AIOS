@@ -51,6 +51,7 @@ def _shell_runner(command: list[str], timeout: int = 600) -> Dict[str, object]:
 
 @dataclass
 class BootstrapStep:
+    """BootstrapStep."""
     name: str
     why: str
     commands: list[str] = field(default_factory=list)
@@ -62,6 +63,7 @@ class BootstrapStep:
 
 @dataclass
 class DoctorCheck:
+    """DoctorCheck."""
     name: str
     ok: bool
     hint: str = ""
@@ -80,6 +82,7 @@ class OLXBootstrap:
         project_root: str = ".",
         workdir: str = "/opt/aios-olx",
     ):
+        """Initialize OLXBootstrap."""
         self.runner = runner or _shell_runner
         self.project_root = Path(project_root)
         self.workdir = workdir

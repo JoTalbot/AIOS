@@ -24,6 +24,7 @@ class AuditLogger:
     """
 
     def __init__(self, db: Optional[Database] = None, file_path: str = "audit_log.jsonl"):
+        """Initialize AuditLogger."""
         self.db = db
         self.file_path = file_path
         self._in_memory: list[dict] = []

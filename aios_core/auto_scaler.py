@@ -7,6 +7,7 @@ class AutoScaler:
     """Simple auto-scaling logic based on metrics."""
 
     def __init__(self, min_replicas: int = 1, max_replicas: int = 10):
+        """Initialize AutoScaler."""
         self.min_replicas = min_replicas
         self.max_replicas = max_replicas
         self.current_replicas = min_replicas

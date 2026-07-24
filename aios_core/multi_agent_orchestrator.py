@@ -36,6 +36,7 @@ class MultiAgentOrchestrator:
         db: Optional[Database] = None,
         base_orchestrator: Optional[Orchestrator] = None,
     ):
+        """Initialize MultiAgentOrchestrator."""
         self.db = db
         self.base = base_orchestrator
         self._teams: Dict[str, AgentTeam] = {}

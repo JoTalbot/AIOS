@@ -8,6 +8,7 @@ class QuantumQLearning:
     """Quantum-enhanced Q-Learning."""
 
     def __init__(self, states: int, actions: int):
+        """Initialize QuantumQLearning."""
         self.q_table: Dict = {}
         self.states = states
         self.actions = actions

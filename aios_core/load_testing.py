@@ -14,6 +14,7 @@ class LoadTester:
     """Simple concurrent load tester."""
 
     def __init__(self):
+        """Initialize LoadTester."""
         self.results = []
 
     def run(self, func: Callable, concurrent_users: int = 10, duration_seconds: int = 30) -> None:

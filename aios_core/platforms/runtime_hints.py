@@ -48,6 +48,7 @@ class HintDetailParser:
     """
 
     def __init__(self, detail_hints: Dict):
+        """Initialize HintDetailParser."""
         hints = detail_hints or {}
         self.price_ids = _rid_set(hints, "price_nodes", nested=True)
         self.seller_ids = _rid_set(hints, "seller_markers")
@@ -128,6 +129,7 @@ class HintSender:
     """
 
     def __init__(self, adb, messenger_hints: Optional[Dict] = None):
+        """Initialize HintSender."""
         self.adb = adb
         hints = messenger_hints or {}
         self.input_classes = [str(cls).lower() for cls in (hints.get("input_classes") or [])] or [

@@ -20,6 +20,7 @@ class APKFunctionConverter:
     """Converts Android APK component signatures into AIOS User API Profiles."""
 
     def __init__(self, capability_engine: Optional[CapabilityEngine] = None):
+        """Initialize APKFunctionConverter."""
         self.capability_engine = capability_engine
         self.converted_profiles: Dict[str, dict[str, Any]] = {}
 

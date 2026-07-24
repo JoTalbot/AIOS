@@ -7,6 +7,7 @@ class ContinualLearner:
     """Prevents catastrophic forgetting."""
 
     def __init__(self):
+        """Initialize ContinualLearner."""
         self.tasks: list[str] = []
         self.importance: dict[str, float] = {}
 

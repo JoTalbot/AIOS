@@ -46,6 +46,7 @@ class AppContainer:
     """
 
     def __init__(self, config=None):
+        """Initialize AppContainer."""
         self._config = config or AppConfig.from_env()
         self._db = self._orch = self._bm = self._abus = None
 

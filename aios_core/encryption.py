@@ -9,6 +9,7 @@ class EncryptionManager:
     """Symmetric encryption using Fernet (AES)."""
 
     def __init__(self, key: Optional[bytes] = None):
+        """Initialize EncryptionManager."""
         self.key = key or Fernet.generate_key()
         self.cipher = Fernet(self.key)
 

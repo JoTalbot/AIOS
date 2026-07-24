@@ -8,6 +8,7 @@ class SecretsManager:
     """Simple secrets manager (env + in-memory)."""
 
     def __init__(self):
+        """Initialize SecretsManager."""
         self._secrets = {}
 
     def set(self, key: str, value: str) -> None:

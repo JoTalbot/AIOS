@@ -7,6 +7,7 @@ class HonestAI:
     """Trains AI systems to be honest by default — collects examples and evaluates truthfulness."""
 
     def __init__(self):
+        """Initialize HonestAI."""
         self.honesty_training_data: List[Dict] = []
         self.violations: List[Dict] = []
 

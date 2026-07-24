@@ -15,6 +15,7 @@ __all__ = ["DriverCapabilities", "UIContext", "AndroidDriver"]
 
 @dataclass
 class DriverCapabilities:
+    """DriverCapabilities."""
     package: str = "ua.slando"
     device_name: str = "emulator"
     platform_version: str = "35"

@@ -27,11 +27,13 @@ import yaml
 
 @dataclass
 class DatabaseConfig:
+    """DatabaseConfig."""
     path: str = "aios.sqlite"
 
 
 @dataclass
 class BackupConfig:
+    """BackupConfig."""
     directory: str = "./backups"
     retention_days: int = 30
     max_backups: int = 10
@@ -40,17 +42,20 @@ class BackupConfig:
 
 @dataclass
 class AuditConfig:
+    """AuditConfig."""
     file_path: str = "audit_log.jsonl"
     retention_days: int = 90
 
 
 @dataclass
 class ConstitutionConfig:
+    """ConstitutionConfig."""
     directory: str = "docs/constitution"
 
 
 @dataclass
 class PoliciesConfig:
+    """PoliciesConfig."""
     directory: str = "policies"
 
 
@@ -80,18 +85,21 @@ class PlatformsConfig:
 
 @dataclass
 class LoggingConfig:
+    """LoggingConfig."""
     level: str = "INFO"
     format: str = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"
 
 
 @dataclass
 class PacingConfig:
+    """PacingConfig."""
     actions_per_hour: int = 60
     jitter_seconds: float = 1.6
 
 
 @dataclass
 class WebhookConfig:
+    """WebhookConfig."""
     url: str = ""
     chat_id: str = ""
 

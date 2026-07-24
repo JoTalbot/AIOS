@@ -9,6 +9,7 @@ class SparseAutoencoder:
     """Sparse autoencoder for feature discovery."""
 
     def __init__(self, input_dim: int, hidden_dim: int, sparsity: float = 0.01):
+        """Initialize SparseAutoencoder."""
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.sparsity = sparsity

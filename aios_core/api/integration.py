@@ -56,6 +56,7 @@ class ExternalIntegrationManager:
     """Manages external system integrations and event processing."""
 
     def __init__(self, api: AIOSAPI):
+        """Initialize ExternalIntegrationManager."""
         self.api = api
         self.webhook_handlers: Dict[str, callable] = {}
         self.event_queue = asyncio.Queue()
@@ -173,6 +174,7 @@ class ExternalIntegrationAPI:
     """Enhanced API with external integration capabilities."""
 
     def __init__(self, api: AIOSAPI):
+        """Initialize ExternalIntegrationAPI."""
         self.api = api
         self.integration_manager = ExternalIntegrationManager(api)
 
@@ -251,6 +253,7 @@ class ExternalIntegrationAPI:
 
             # Create a simple webhook handler that forwards to the URL
             async def webhook_handler(event_data: dict[str, Any]) -> None:
+                """webhook handler."""
                 import aiohttp
 
                 async with aiohttp.ClientSession() as session:
@@ -288,6 +291,7 @@ class ExternalIntegrationAPI:
 
         async def event_generator() -> None:
             # For demo purposes, send periodic system status
+            """event generator."""
             while True:
                 if await request.is_disconnected():
                     break

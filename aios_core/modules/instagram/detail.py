@@ -30,6 +30,7 @@ class InstagramDetailParser:
         detail_hints: Optional[Dict] = None,
         directory: str = "platforms",
     ):
+        """Initialize InstagramDetailParser."""
         if detail_hints is None:
             detail_hints = load_hints_section("instagram", "detail", directory)
         self._parser = HintDetailParser(detail_hints)

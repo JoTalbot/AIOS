@@ -35,6 +35,7 @@ class Pacer:
         sleeper: Optional[Callable[[float], None]] = None,
         now: Optional[Callable[[], float]] = None,
     ) -> None:
+        """Initialize Pacer."""
         self.actions_per_hour = actions_per_hour or None
         self.session_max_s = session_max_s or 0.0
         self.jitter_s = jitter_s

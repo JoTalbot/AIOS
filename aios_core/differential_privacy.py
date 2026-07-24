@@ -8,6 +8,7 @@ class DifferentialPrivacy:
     """Simple differential privacy mechanisms."""
 
     def __init__(self, epsilon: float = 1.0):
+        """Initialize DifferentialPrivacy."""
         self.epsilon = epsilon
 
     def add_noise(self, value: float, sensitivity: float = 1.0) -> float:

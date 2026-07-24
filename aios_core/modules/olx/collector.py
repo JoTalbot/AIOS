@@ -32,6 +32,7 @@ class OLXCollector:
         screen_height: int = 2400,
         pacer=None,
     ):
+        """Initialize OLXCollector."""
         self.adb = adb or ADBController()
         self.parser = parser or CardParser()
         self.max_swipes = max_swipes

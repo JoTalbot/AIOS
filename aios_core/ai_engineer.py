@@ -13,6 +13,7 @@ class AIEngineer:
     """
 
     def __init__(self):
+        """Initialize AIEngineer."""
         self.systems: List[Dict] = []
         self.codebases: List[Dict] = []
 

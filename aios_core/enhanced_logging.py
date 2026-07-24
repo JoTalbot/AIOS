@@ -24,6 +24,7 @@ try:
 except ImportError:
 
     class _DummyTracer:
+        """DummyTracer."""
         def get_current_context(self) -> None:
             """Execute get current context."""
             return None
@@ -50,6 +51,7 @@ class CorrelationContext:
     """Manages correlation context for logging."""
 
     def __init__(self):
+        """Initialize CorrelationContext."""
         self.correlation_id: str | None = None
         self.trace_id: str | None = None
         self.span_id: str | None = None
@@ -85,6 +87,7 @@ class PerformanceTracker:
     """Tracks performance metrics through logging."""
 
     def __init__(self):
+        """Initialize PerformanceTracker."""
         self.operations: Dict[str, dict[str, Any]] = {}
 
     def start_operation(self, operation_name: str, **kwargs) -> str:
@@ -137,6 +140,7 @@ class EnhancedJSONFormatter(logging.Formatter):
     """Enhanced JSON formatter for structured logging."""
 
     def __init__(self, config: LogConfig):
+        """Initialize EnhancedJSONFormatter."""
         super().__init__()
         self.config = config
         self.performance_tracker = PerformanceTracker()
@@ -183,6 +187,7 @@ class LogAggregator:
     """Aggregates and ships logs to external systems."""
 
     def __init__(self, config: LogConfig):
+        """Initialize LogAggregator."""
         self.config = config
         self.logger = logging.getLogger("aios.log_aggregator")
 
@@ -253,6 +258,7 @@ class EnhancedLogger:
     """Enhanced logger with advanced features."""
 
     def __init__(self, config: LogConfig):
+        """Initialize EnhancedLogger."""
         self.config = config
         self.correlation_context = CorrelationContext()
         self.performance_tracker = PerformanceTracker()

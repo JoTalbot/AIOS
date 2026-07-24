@@ -49,7 +49,9 @@ class AndroidAppDescriptor:
 
     """Registry of Android applications known to AIOS."""
 class AndroidAppRegistry:
+    """AndroidAppRegistry."""
     def __init__(self):
+        """Initialize AndroidAppRegistry."""
         self._apps: Dict[str, AndroidAppDescriptor] = {}
 
     def register(self, descriptor: AndroidAppDescriptor) -> None:

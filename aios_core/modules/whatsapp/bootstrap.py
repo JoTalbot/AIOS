@@ -14,6 +14,7 @@ class WhatsAppBootstrap:
     """Смотритель готовности whatsapp (messenger-first платформа)."""
 
     def __init__(self, adb=None, serial=None, directory: str = "platforms", which=None):
+        """Initialize WhatsAppBootstrap."""
         self.adb = adb
         self.serial = serial
         self.directory = directory

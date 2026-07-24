@@ -12,6 +12,7 @@ class ConfigManager:
     """Manages configuration from files and environment variables."""
 
     def __init__(self, config_path: str = "config.yaml"):
+        """Initialize ConfigManager."""
         self.config_path = config_path
         self.config: dict[str, Any] = {}
         self.load()

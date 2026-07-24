@@ -8,6 +8,7 @@ class QuantumKeyDistribution:
     """BBM92 / E91 style QKD simulation."""
 
     def __init__(self):
+        """Initialize QuantumKeyDistribution."""
         self.keys: List[Tuple] = []
 
     def generate_key(self, length: int = 256) -> Tuple[list[int], list[int]]:

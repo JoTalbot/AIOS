@@ -38,6 +38,7 @@ class AutoWatch:
         notifier: Optional[WebhookNotifier] = None,
         max_cards: int = 50,
     ):
+        """Initialize AutoWatch."""
         self.storage = storage
         self.collector = collector
         self.own_provider = own_provider

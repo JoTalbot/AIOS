@@ -166,6 +166,7 @@ class PoolMonitor:
         probe: Callable[[], list[str]] = default_list_devices,
         reap_after_s: float = 900.0,
     ):
+        """Initialize PoolMonitor."""
         self.pool = pool or DevicePool()
         self._owns_pool = pool is None
         self.probe = probe

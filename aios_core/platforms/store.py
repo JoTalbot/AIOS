@@ -42,6 +42,7 @@ class ProfileStore:
     """SQLite-реестр профилей платформы."""
 
     def __init__(self, db_path: str = ":memory:"):
+        """Initialize ProfileStore."""
         self.db_path = db_path
         if db_path != ":memory:":
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)

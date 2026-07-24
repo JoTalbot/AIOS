@@ -21,6 +21,7 @@ class KnowledgeGraph:
     """
 
     def __init__(self, db: Optional[Database] = None):
+        """Initialize KnowledgeGraph."""
         self.db = db
 
     def add_node(

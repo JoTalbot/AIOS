@@ -7,6 +7,7 @@ class QuantumVision:
     """Quantum-enhanced image processing."""
 
     def __init__(self):
+        """Initialize QuantumVision."""
         self.filters: List = []
 
     def quantum_convolution(

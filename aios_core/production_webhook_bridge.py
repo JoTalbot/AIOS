@@ -18,6 +18,7 @@ class ProductionWebhookBridge:
     """Bridges ProductionAutopilot events to WebhookManager."""
 
     def __init__(self, webhook_manager: Optional[WebhookManager] = None):
+        """Initialize ProductionWebhookBridge."""
         self.webhook = webhook_manager or WebhookManager()
         self.enabled = True
 

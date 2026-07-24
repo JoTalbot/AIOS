@@ -31,6 +31,7 @@ class PromptRegistry:
     """
 
     def __init__(self):
+        """Initialize PromptRegistry."""
         self._prompts: dict[str, PromptDefinition] = {}
 
     def register(self, prompt: PromptDefinition) -> None:

@@ -17,6 +17,7 @@ class WebhookNotifier:
     """
 
     def __init__(self, url: str | None = None, poster=None, chat_id: str | None = None):
+        """Initialize WebhookNotifier."""
         self.url = url
         self.chat_id = chat_id
         self._poster = poster or self._urllib_post

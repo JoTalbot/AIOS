@@ -7,6 +7,7 @@ class StateSpaceModel:
     """Simplified Structured State Space Model."""
 
     def __init__(self, state_dim: int = 64, input_dim: int = 1):
+        """Initialize StateSpaceModel."""
         self.state_dim = state_dim
         self.A = [0.99] * state_dim  # state transition
         self.B = [0.1] * state_dim  # input

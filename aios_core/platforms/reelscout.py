@@ -49,6 +49,7 @@ class ReelsCollector:
         screen_height: int = 2400,
         pacer=None,
     ) -> None:
+        """Initialize ReelsCollector."""
         self.platform = platform
         self.adb = adb or ADBController()
         self.store = store  # опционально; квитанции пишутся в storage
@@ -214,6 +215,7 @@ class ReelsTabDriver:
         open_wait_s: float = 1.0,
         sleeper: Optional[Callable[[float], None]] = None,
     ) -> None:
+        """Initialize ReelsTabDriver."""
         self.adb = adb
         self.rid_markers = tuple(
             str(m).rsplit("/", 1)[-1].lower()

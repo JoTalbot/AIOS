@@ -15,6 +15,7 @@ class MetricCounter:
     """Cumulative metric counter."""
 
     def __init__(self, name: str, description: str = ""):
+        """Initialize MetricCounter."""
         self.name = name
         self.description = description
         self.value = 0.0
@@ -28,6 +29,7 @@ class MetricGauge:
     """Instantaneous metric gauge."""
 
     def __init__(self, name: str, description: str = ""):
+        """Initialize MetricGauge."""
         self.name = name
         self.description = description
         self.value = 0.0
@@ -41,6 +43,7 @@ class MetricHistogram:
     """Value distribution histogram with percentile aggregations."""
 
     def __init__(self, name: str, description: str = ""):
+        """Initialize MetricHistogram."""
         self.name = name
         self.description = description
         self.values: list[float] = []
@@ -87,6 +90,7 @@ class Telemetry:
     """OpenTelemetry Metric Exporter and Collector for AIOS."""
 
     def __init__(self):
+        """Initialize Telemetry."""
         self.counters: Dict[str, MetricCounter] = {}
         self.gauges: Dict[str, MetricGauge] = {}
         self.histograms: Dict[str, MetricHistogram] = {}

@@ -10,6 +10,7 @@ class SafetyMonitor:
     """Real-time safety monitoring system."""
 
     def __init__(self):
+        """Initialize SafetyMonitor."""
         self.metrics: Dict[str, list[float]] = {}
         self.alerts: List[Dict] = []
         self.thresholds: dict[str, float] = {

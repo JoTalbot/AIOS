@@ -39,6 +39,7 @@ class PointDrive:
         open_wait_s: float = 6.0,
         search_wait_s: float = 5.0,
     ):
+        """Initialize PointDrive."""
         self.adb = adb
         self.input_classes = [cls.lower() for cls in (input_classes or ["edittext"])]
         self.open_wait_s = open_wait_s

@@ -13,6 +13,7 @@ class MultiDimensionalWorldModel:
     """Predictive Multi-Dimensional Simulation Engine."""
 
     def __init__(self, simulation_horizon_steps: int = 10):
+        """Initialize MultiDimensionalWorldModel."""
         self.simulation_horizon_steps = simulation_horizon_steps
         self.rollouts_count = 0
 

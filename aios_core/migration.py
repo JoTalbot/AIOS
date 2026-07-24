@@ -13,6 +13,7 @@ class Migration:
     """Represents a single database migration."""
 
     def __init__(self, version: str, description: str, up_sql: str, down_sql: str = ""):
+        """Initialize Migration."""
         self.version = version
         self.description = description
         self.up_sql = up_sql
@@ -23,6 +24,7 @@ class MigrationManager:
     """Manages database schema migrations."""
 
     def __init__(self, db_path: str):
+        """Initialize MigrationManager."""
         self.db_path = db_path
         self.migrations: List[Migration] = []
 

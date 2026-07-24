@@ -9,6 +9,7 @@ class SafetyBenchmark:
     """Standardized AI safety benchmarks."""
 
     def __init__(self):
+        """Initialize SafetyBenchmark."""
         self.benchmarks = {
             "harmbench": {"score": 0.0, "status": "not_run"},
             "truthfulqa": {"score": 0.0, "status": "not_run"},

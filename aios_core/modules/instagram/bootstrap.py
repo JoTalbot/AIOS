@@ -31,6 +31,7 @@ class InstagramBootstrap:
         directory: str = "platforms",
         which=None,
     ):
+        """Initialize InstagramBootstrap."""
         self.adb = adb
         self.serial = serial
         self.directory = Path(directory)

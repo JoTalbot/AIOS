@@ -13,6 +13,7 @@ class CosmicSwarmMatrix:
     """Inter-Stellar Cosmic Swarm Matrix with Holographic State Persistence."""
 
     def __init__(self):
+        """Initialize CosmicSwarmMatrix."""
         self.cosmic_nodes: Dict[str, dict[str, Any]] = {}  # node_id -> info
         self.holographic_shards: Dict[str, dict[str, Any]] = {}  # shard_id -> payload
         self.register_cosmic_node("sol_earth_hub", light_delay_seconds=0.0)

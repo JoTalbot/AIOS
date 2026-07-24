@@ -13,6 +13,7 @@ class AgentGenome:
     """Agent Chromosome Gene Sequence encoding cognitive parameters and capabilities."""
 
     def __init__(self, genome_id: str, genes: Optional[dict[str, float]] = None):
+        """Initialize AgentGenome."""
         self.genome_id = genome_id
         # Genes encode weights in range [0.0, 1.0]
         self.genes: dict[str, float] = genes or {
@@ -37,6 +38,7 @@ class BiologicalEvolutionEngine:
     """Genetic Algorithm & Artificial Selection Engine for AIOS Agent Genomes."""
 
     def __init__(self, population_size: int = 10, mutation_rate: float = 0.15):
+        """Initialize BiologicalEvolutionEngine."""
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.generation = 0

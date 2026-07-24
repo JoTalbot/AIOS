@@ -17,6 +17,7 @@ from pathlib import Path
 
 
 class ADBController:
+    """ADBController."""
     def __init__(self, package="ua.slando", serial=None):
         """ADB controller.
 

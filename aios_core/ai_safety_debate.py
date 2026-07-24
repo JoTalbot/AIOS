@@ -9,6 +9,7 @@ class DebateProtocol:
     """Multi-agent debate for truth-seeking."""
 
     def __init__(self):
+        """Initialize DebateProtocol."""
         self.debates: List[Dict] = []
 
     def run_debate(self, question: str, agents: int = 2, rounds: int = 3) -> Dict:

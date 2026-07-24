@@ -68,6 +68,7 @@ class AdImprover:
     """Produces :class:`ImprovementSuggestion` from own ad vs competitors."""
 
     def __init__(self, undercut_ratio: float = 0.97, max_title_len: int = 70):
+        """Initialize AdImprover."""
         self.undercut_ratio = undercut_ratio
         self.max_title_len = max_title_len
 
@@ -164,6 +165,7 @@ class RepostPlanner:
         min_views_per_day: float = 1.0,
         best_hours: tuple = (18, 19, 20, 21),
     ):
+        """Initialize RepostPlanner."""
         self.min_age_days = min_age_days
         self.min_views_per_day = min_views_per_day
         self.best_hours = list(best_hours)
@@ -232,6 +234,7 @@ class Reposter:
     PUBLISH_LABELS = ("Опублікувати", "Додати оголошення")
 
     def __init__(self, adb: Optional[ADBController] = None):
+        """Initialize Reposter."""
         self.adb = adb or ADBController()
 
     def plan_steps(
@@ -303,6 +306,7 @@ class OwnAdEditor:
     EDIT_LABELS = ("Редагувати", "Редактировать")
 
     def __init__(self, adb: Optional[ADBController] = None):
+        """Initialize OwnAdEditor."""
         self.adb = adb or ADBController()
 
     def plan_steps(self, own_ad: OwnAd, suggestion: ImprovementSuggestion) -> list[str]:

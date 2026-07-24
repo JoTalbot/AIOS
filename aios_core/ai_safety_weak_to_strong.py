@@ -9,6 +9,7 @@ class WeakToStrongGeneralization:
     """Trains strong models using weak supervisors."""
 
     def __init__(self):
+        """Initialize WeakToStrongGeneralization."""
         self.experiments: dict[str, dict] = {}
 
     def train(self, weak_model: Any, strong_model: Any, dataset: list) -> Dict:

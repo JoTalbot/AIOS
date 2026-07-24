@@ -9,6 +9,7 @@ class DistributedQueue:
     """File-based distributed task queue (simple implementation)."""
 
     def __init__(self, queue_dir: str = "queue"):
+        """Initialize DistributedQueue."""
         self.queue_dir = queue_dir
         os.makedirs(queue_dir, exist_ok=True)
 

@@ -40,39 +40,46 @@ _DEFAULT_CONFIG = {
 
 @dataclass
 class DatabaseConfig:
+    """DatabaseConfig."""
     path: str = "aios.db"
 
 
 @dataclass
 class AuditConfig:
+    """AuditConfig."""
     file_path: str = "audit_log.jsonl"
     retention_days: int = 90
 
 
 @dataclass
 class ApprovalConfig:
+    """ApprovalConfig."""
     timeout_seconds: int = 86400
     max_pending: int = 100
 
 
 @dataclass
 class ConstitutionConfig:
+    """ConstitutionConfig."""
     dir: str = "docs/constitution"
 
 
 @dataclass
 class PoliciesConfig:
+    """PoliciesConfig."""
     dir: str = "policies"
 
 
 @dataclass
 class LoggingConfig:
+    """LoggingConfig."""
     level: str = "INFO"
     format: str = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"
 
 
 @dataclass
 class AIOSConfig:
+    """AIOSConfig."""
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     audit: AuditConfig = field(default_factory=AuditConfig)
     approval: ApprovalConfig = field(default_factory=ApprovalConfig)

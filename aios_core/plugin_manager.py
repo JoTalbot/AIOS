@@ -13,6 +13,7 @@ class PluginManager:
     """Manages plugins for AIOS."""
 
     def __init__(self):
+        """Initialize PluginManager."""
         self.plugins: dict[str, Any] = {}
         self.hooks: Dict[str, list] = {}
 

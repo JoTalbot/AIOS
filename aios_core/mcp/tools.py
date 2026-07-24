@@ -34,6 +34,7 @@ class ToolRegistry:
     """
 
     def __init__(self):
+        """Initialize ToolRegistry."""
         self._tools: dict[str, ToolDefinition] = {}
 
     def register(self, tool: ToolDefinition) -> None:

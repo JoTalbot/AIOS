@@ -15,6 +15,7 @@ class ActiveLearner:
     """
 
     def __init__(self):
+        """Initialize ActiveLearner."""
         self.labeled: List[Dict] = []
         self.unlabeled: List[Dict] = []
 

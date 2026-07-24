@@ -9,6 +9,7 @@ class AdvancedAIGovernance:
     """Comprehensive AI governance framework."""
 
     def __init__(self):
+        """Initialize AdvancedAIGovernance."""
         self.governance_bodies: List[Dict] = []
         self.policies: dict[str, dict] = {}
         self.compliance_checks: List[Dict] = []

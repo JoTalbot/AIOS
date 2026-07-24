@@ -9,6 +9,7 @@ class ScalableOversight:
     """Techniques for overseeing superhuman AI systems."""
 
     def __init__(self):
+        """Initialize ScalableOversight."""
         self.techniques = [
             "debate",
             "amplification",

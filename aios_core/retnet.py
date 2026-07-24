@@ -7,6 +7,7 @@ class RetNetBlock:
     """Simplified Retentive Network block."""
 
     def __init__(self, dim: int = 512):
+        """Initialize RetNetBlock."""
         self.dim = dim
         self.state = [0.0] * dim
 
@@ -26,6 +27,7 @@ class RetNet:
     """Retentive Network architecture."""
 
     def __init__(self, layers: int = 6, dim: int = 512):
+        """Initialize RetNet."""
         self.blocks = [RetNetBlock(dim) for _ in range(layers)]
 
     def forward(self, x: list[float]) -> list[float]:

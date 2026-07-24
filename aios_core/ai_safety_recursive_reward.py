@@ -9,6 +9,7 @@ class RecursiveRewardModel:
     """Recursively learns reward models."""
 
     def __init__(self):
+        """Initialize RecursiveRewardModel."""
         self.reward_models: Dict[str, Callable] = {}
         self.iterations: dict[str, int] = {}
 

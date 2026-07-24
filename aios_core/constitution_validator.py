@@ -56,6 +56,7 @@ class ConstitutionValidator:
         constitution_dir: str | None = None,
         policies_dir: str | None = None,
     ):
+        """Initialize ConstitutionValidator."""
         self.version = "3.0.0"
         self.constitution = ConstitutionLoader(constitution_dir)
         self.policies = PolicyLoader(policies_dir)

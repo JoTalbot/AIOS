@@ -14,6 +14,7 @@ class AdvancedSecurity:
     """
 
     def __init__(self):
+        """Initialize AdvancedSecurity."""
         self.threats: List[Dict] = []
         self.policies: Dict = {}
 

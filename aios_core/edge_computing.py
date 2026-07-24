@@ -7,6 +7,7 @@ class EdgeNode:
     """Represents an edge computing node."""
 
     def __init__(self, node_id: str, location: str, capacity: int = 100):
+        """Initialize EdgeNode."""
         self.node_id = node_id
         self.location = location
         self.capacity = capacity
@@ -34,6 +35,7 @@ class EdgeOrchestrator:
     """Orchestrates tasks across edge nodes."""
 
     def __init__(self):
+        """Initialize EdgeOrchestrator."""
         self.nodes: Dict[str, EdgeNode] = {}
 
     def register_node(self, node: EdgeNode) -> None:

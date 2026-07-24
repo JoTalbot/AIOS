@@ -9,6 +9,7 @@ class PerformanceProfiler:
     """Simple performance profiler."""
 
     def __init__(self):
+        """Initialize PerformanceProfiler."""
         self.measurements: Dict[str, list] = {}
 
     @contextmanager

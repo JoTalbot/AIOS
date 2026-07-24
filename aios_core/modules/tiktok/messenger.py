@@ -25,6 +25,7 @@ class TikTokMessenger(HintsMessenger):
         screen_width: int = 1080,
         serial=None,
     ):
+        """Initialize TikTokMessenger."""
         super().__init__(
             platform="tiktok",
             package=PACKAGE,

@@ -33,6 +33,7 @@ class EnhancedAIOSAPI:
 
     def __init__(self, db_path: str = ":memory:", **kwargs):
         # Create base API
+        """Initialize EnhancedAIOSAPI."""
         self.base_api = AIOSAPI(db_path=db_path, **kwargs)
 
         # Create integration components
@@ -265,6 +266,7 @@ class EnhancedAIOSAPI:
 
                 # Create webhook handler
                 async def webhook_handler(event_data: dict[str, Any]) -> None:
+                    """webhook handler."""
                     import aiohttp
 
                     async with aiohttp.ClientSession() as session:
@@ -903,6 +905,7 @@ class EnhancedAIOSAPI:
         """Real-time event stream for monitoring and debugging."""
 
         async def event_generator() -> None:
+            """event generator."""
             while True:
                 if await request.is_disconnected():
                     break
@@ -939,6 +942,7 @@ class EnhancedAIOSAPI:
         """Stream webhook events for debugging."""
 
         async def webhook_event_generator() -> None:
+            """webhook event generator."""
             while True:
                 if await request.is_disconnected():
                     break

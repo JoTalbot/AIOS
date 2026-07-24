@@ -10,7 +10,9 @@ from pathlib import Path
 
 class UIParser:
 
+    """UIParser."""
     def __init__(self, xml_file):
+        """Initialize UIParser."""
         self.xml_file = Path(xml_file)
         self.root = None
 

@@ -9,6 +9,7 @@ class AIAlignment:
     """Core AI alignment — checks decisions against alignment goals."""
 
     def __init__(self):
+        """Initialize AIAlignment."""
         self.alignment_goals: list[str] = [
             "human_values",
             "truth_seeking",

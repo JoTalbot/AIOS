@@ -16,6 +16,7 @@ class QuantumCircuitSimulator:
     """State vector simulator for small-scale quantum circuits (1-8 Qubits)."""
 
     def __init__(self, num_qubits: int = 3):
+        """Initialize QuantumCircuitSimulator."""
         self.num_qubits = min(8, max(1, num_qubits))
         self.state_vector_size = 2**self.num_qubits
         self.state_vector = [complex(0.0, 0.0)] * self.state_vector_size
@@ -73,6 +74,7 @@ class QuantumNativeEngine:
     """Quantum Native Computing Interface for AIOS Task Scheduling & Optimization."""
 
     def __init__(self):
+        """Initialize QuantumNativeEngine."""
         self.circuits_executed = 0
 
     def optimize_task_schedule_qaoa(

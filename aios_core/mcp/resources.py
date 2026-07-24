@@ -33,6 +33,7 @@ class ResourceRegistry:
     """
 
     def __init__(self):
+        """Initialize ResourceRegistry."""
         self._resources: dict[str, ResourceDefinition] = {}
 
     def register(self, resource: ResourceDefinition) -> None:

@@ -8,6 +8,7 @@ class QuantumInspiredOptimizer:
     """Quantum-inspired optimization (simulated annealing style)."""
 
     def __init__(self, temperature: float = 100.0):
+        """Initialize QuantumInspiredOptimizer."""
         self.temperature = temperature
 
     def optimize(self, solution: List, cost_func, iterations: int = 1000) -> None:

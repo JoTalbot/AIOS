@@ -22,6 +22,7 @@ __all__ = ["TestStep", "GeneratedTest", "AndroidTestGenerator"]
 
 @dataclass
 class TestStep:
+    """TestStep."""
     action: str  # tap, type, swipe, wait, assert
     target: str | None = None  # resource-id or text hint
     value: str | None = None  # for type
@@ -33,6 +34,7 @@ class TestStep:
 
 @dataclass
 class GeneratedTest:
+    """GeneratedTest."""
     id: str
     name: str
     description: str
@@ -111,6 +113,7 @@ class AndroidTestGenerator:
     """M8 Test generator - creates tests from flows."""
 
     def __init__(self, output_dir: str = "tests/generated"):
+        """Initialize AndroidTestGenerator."""
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self._generated: List[GeneratedTest] = []

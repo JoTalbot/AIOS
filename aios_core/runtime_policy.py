@@ -37,6 +37,7 @@ class RuntimePolicy:
         db: Optional[Database] = None,
         config: Optional[AIOSConfig] = None,
     ):
+        """Initialize RuntimePolicy."""
         self.version = "9.0.0"
         self.config = config or load_config()
 

@@ -13,6 +13,7 @@ class InfiniteConstitutionEngine:
     """Self-Amending Infinite Constitutional Continuity Engine."""
 
     def __init__(self, core_articles_count: int = 67):
+        """Initialize InfiniteConstitutionEngine."""
         self.core_articles_count = core_articles_count
         self.dynamic_amendments: Dict[str, dict[str, Any]] = {}
         self.immutable_axioms = [

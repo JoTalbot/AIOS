@@ -9,6 +9,7 @@ class IteratedAmplification:
     """Amplifies AI capabilities while maintaining alignment."""
 
     def __init__(self):
+        """Initialize IteratedAmplification."""
         self.amplification_levels: Dict[int, Dict] = {}
 
     def amplify(self, base_agent: Callable, level: int = 1) -> Callable:

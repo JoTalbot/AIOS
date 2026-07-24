@@ -7,6 +7,7 @@ class DigitalTwin:
     """Digital twin of an AIOS instance or agent."""
 
     def __init__(self, twin_id: str, real_entity: str):
+        """Initialize DigitalTwin."""
         self.twin_id = twin_id
         self.real_entity = real_entity
         self.state: dict[str, Any] = {}

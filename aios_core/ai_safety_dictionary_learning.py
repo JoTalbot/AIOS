@@ -7,6 +7,7 @@ class DictionaryLearner:
     """Learns interpretable dictionaries from model activations."""
 
     def __init__(self, dict_size: int = 10000):
+        """Initialize DictionaryLearner."""
         self.dict_size = dict_size
         self.dictionary: Dict = {}
 

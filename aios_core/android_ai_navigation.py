@@ -73,7 +73,9 @@ class ScreenMatch:
 
     """AI-based screen classifier using embeddings."""
 class AIScreenClassifier:
+    """AIScreenClassifier."""
     def __init__(self):
+        """Initialize AIScreenClassifier."""
         self.parser = UIAutomatorParser("")
         self._embeddings: Dict[str, ScreenEmbedding] = {}
         self._navigation_history: List[dict[str, Any]] = []
@@ -398,7 +400,9 @@ class AIScreenClassifier:
     """Self-healing UI element locator with fallback strategies."""
 
 class SelfHealingLocator:
+    """SelfHealingLocator."""
     def __init__(self, driver: AndroidDriver):
+        """Initialize SelfHealingLocator."""
         self.driver = driver
         self.parser = UIAutomatorParser("")
         self._failure_counts: dict[str, int] = defaultdict(int)

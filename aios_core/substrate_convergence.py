@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 class SubstrateType:
+    """SubstrateType."""
     SILICON = "silicon_x86_arm"
     PHOTONIC = "photonic_optical"
     NEUROMORPHIC = "neuromorphic_snn"
@@ -20,6 +21,7 @@ class SubstrateConvergenceEngine:
     """Substrate-Agnostic Unified Execution Router."""
 
     def __init__(self):
+        """Initialize SubstrateConvergenceEngine."""
         self.substrates: Dict[str, dict[str, Any]] = {
             SubstrateType.SILICON: {
                 "type": SubstrateType.SILICON,

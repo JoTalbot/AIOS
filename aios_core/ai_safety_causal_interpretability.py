@@ -7,6 +7,7 @@ class CausalInterpretability:
     """Causal analysis of model behaviour using intervention graphs."""
 
     def __init__(self):
+        """Initialize CausalInterpretability."""
         self.causal_graphs: dict[str, dict] = {}
 
     def discover_causal_graph(self, model: Any, variables: list[str]) -> Dict:

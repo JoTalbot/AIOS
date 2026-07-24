@@ -19,6 +19,7 @@ __all__ = ["WorkflowStatus", "WorkflowStep", "WorkflowExecution", "CrossAppWorkf
 
 
 class WorkflowStatus(Enum):
+    """WorkflowStatus."""
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
@@ -41,6 +42,7 @@ class WorkflowStep:
 
 @dataclass
 class WorkflowExecution:
+    """WorkflowExecution."""
     id: str
     name: str
     steps: List[WorkflowStep]
@@ -58,6 +60,7 @@ class CrossAppWorkflowEngine:
     """M8: Cross-app workflow orchestration."""
 
     def __init__(self, driver_factory: Optional[Callable[[str], Any]] = None):
+        """Initialize CrossAppWorkflowEngine."""
         self.driver_factory = driver_factory
         self._executions: Dict[str, WorkflowExecution] = {}
         self.version = "8.0.0"

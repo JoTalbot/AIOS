@@ -7,6 +7,7 @@ class CausalInference:
     """Basic causal discovery and inference."""
 
     def __init__(self):
+        """Initialize CausalInference."""
         self.causal_graph: Dict[str, list[str]] = {}
 
     def add_causal_link(self, cause: str, effect: str) -> None:

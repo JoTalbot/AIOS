@@ -7,6 +7,7 @@ class NeuralODE:
     """Simplified Neural Ordinary Differential Equation solver."""
 
     def __init__(self, dynamics: Callable, solver: str = "euler"):
+        """Initialize NeuralODE."""
         self.dynamics = dynamics
         self.solver = solver
 

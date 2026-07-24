@@ -7,6 +7,7 @@ class TypeSystem:
     """Dependent type system abstraction."""
 
     def __init__(self):
+        """Initialize TypeSystem."""
         self.types: Dict[str, Type] = {}
         self.terms: dict[str, Any] = {}
 

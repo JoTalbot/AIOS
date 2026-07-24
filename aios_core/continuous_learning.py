@@ -7,6 +7,7 @@ class ContinuousLearning:
     """Online/continuous learning system."""
 
     def __init__(self):
+        """Initialize ContinuousLearning."""
         self.knowledge_base: List[Dict] = []
         self.performance_history: list[float] = []
 

@@ -73,6 +73,7 @@ class TemplateRegistry:
     """Registry of response templates per platform."""
 
     def __init__(self):
+        """Initialize TemplateRegistry."""
         self.templates: Dict[str, dict[str, str]] = {
             "olx": {
                 "greeting": "Добрый день! Спасибо за интерес к {item_title}.",
@@ -124,6 +125,7 @@ class AISalesAdvisor:
         knowledge: Optional[KnowledgeGraph] = None,
         constitution: Optional[ConstitutionEngine] = None,
     ):
+        """Initialize AISalesAdvisor."""
         self.memory = memory
         self.knowledge = knowledge
         self.constitution = constitution

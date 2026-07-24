@@ -8,6 +8,7 @@ class QuantumFeatureMap:
     """Quantum feature mapping."""
 
     def __init__(self, qubits: int = 4):
+        """Initialize QuantumFeatureMap."""
         self.qubits = qubits
 
     def encode(self, classical_data: list[float]) -> List[complex]:
@@ -24,6 +25,7 @@ class QuantumML:
     """Quantum-enhanced ML algorithms."""
 
     def __init__(self):
+        """Initialize QuantumML."""
         self.feature_map = QuantumFeatureMap()
 
     def quantum_svm(self, X: List[list[float]], y: list[int]) -> Dict:

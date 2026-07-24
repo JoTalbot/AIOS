@@ -8,6 +8,7 @@ class TTLCache:
     """Time-To-Live cache."""
 
     def __init__(self, default_ttl: int = 300):
+        """Initialize TTLCache."""
         self.default_ttl = default_ttl
         self._store: Dict[str, tuple] = {}  # key -> (value, expiry)
 

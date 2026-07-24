@@ -9,6 +9,7 @@ class MultiAgentSafety:
     """Safety in multi-agent systems."""
 
     def __init__(self):
+        """Initialize MultiAgentSafety."""
         self.agent_interactions: List[Dict] = []
         self.conflict_resolutions: List[Dict] = []
 

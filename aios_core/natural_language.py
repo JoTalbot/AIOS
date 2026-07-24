@@ -7,6 +7,7 @@ class NaturalLanguageInterface:
     """Simple NL to AIOS command translator."""
 
     def __init__(self):
+        """Initialize NaturalLanguageInterface."""
         self.command_map = {
             "create task": "create_task",
             "show stats": "get_stats",

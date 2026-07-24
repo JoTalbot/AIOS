@@ -7,6 +7,7 @@ class MambaBlock:
     """Simplified Mamba (Selective State Space Model)."""
 
     def __init__(self, d_model: int = 512, d_state: int = 16):
+        """Initialize MambaBlock."""
         self.d_model = d_model
         self.d_state = d_state
         self.state = [0.0] * d_state

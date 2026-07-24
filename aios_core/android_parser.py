@@ -12,6 +12,7 @@ __all__ = ["UIElement", "SearchResult", "ItemDetails", "UIAutomatorParser"]
 
 @dataclass
 class UIElement:
+    """UIElement."""
     resource_id: str
     text: str
     class_name: str
@@ -50,6 +51,7 @@ class SearchResult:
 
 @dataclass
 class ItemDetails:
+    """ItemDetails."""
     item_id: str
     title: str
     price: float
@@ -59,7 +61,9 @@ class ItemDetails:
 
 
 class UIAutomatorParser:
+    """UIAutomatorParser."""
     def __init__(self, xml_content: str):
+        """Initialize UIAutomatorParser."""
         self.xml_content = xml_content
         self.root = None
 

@@ -8,6 +8,7 @@ class NeRF:
     """Simplified Neural Radiance Field for 3D scene representation."""
 
     def __init__(self, pos_dim: int = 3, dir_dim: int = 3, hidden: int = 256):
+        """Initialize NeRF."""
         self.pos_dim = pos_dim
         self.dir_dim = dir_dim
         self.hidden = hidden

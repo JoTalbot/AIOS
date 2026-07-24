@@ -7,6 +7,7 @@ class GraphNeuralNetwork:
     """Simplified GNN for knowledge graph reasoning."""
 
     def __init__(self, layers: int = 2):
+        """Initialize GraphNeuralNetwork."""
         self.layers = layers
         self.embeddings: Dict[str, list[float]] = {}
 

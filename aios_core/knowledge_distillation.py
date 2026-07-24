@@ -7,6 +7,7 @@ class KnowledgeDistiller:
     """Distills knowledge from large models to smaller ones."""
 
     def __init__(self):
+        """Initialize KnowledgeDistiller."""
         self.teacher_models: dict[str, dict] = {}
         self.student_models: dict[str, dict] = {}
 
