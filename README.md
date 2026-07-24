@@ -1,10 +1,10 @@
 # AIOS
 
 ![Version](https://img.shields.io/badge/version-10.15.0-blue)
-![Tests](https://img.shields.io/badge/tests-3015%20passing-green)
+![Tests](https://img.shields.io/badge/tests-1255%20passed%20(local%20audit)-green)
 ![API](https://img.shields.io/badge/API-169%20routes-blue)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![CI/CD](https://img.shields.io/badge/CI%2FCD-13%20workflows-green)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-15%20workflows-green)
 
 **A**pplication **I**ntelligence **O**perating **S**ystem — a self-evolving
 distributed platform for multi-platform marketplace automation, AI-assisted
@@ -65,7 +65,7 @@ AIOS/
 ├── aios_cli/             # CLI sub-commands (olx, platforms, instagram, messengers)
 ├── aios_cli.py           # Entry point (281 lines)
 ├── platforms/            # YAML descriptors per platform
-├── tests/                # 446 test files, 1725 test functions
+├── tests/                # 220 test files, 3,688 test functions
 ├── docs/                 # 162+ documentation pages
 ├── deploy/ helm/ k8s/    # Deployment manifests
 └── tools/                # quality_check.py, scripts
@@ -115,7 +115,7 @@ pre-commit install
 ### Verify
 
 ```bash
-# Run the test suite (~1255 tests)
+# Run the test suite (latest local audit: 1255 passed)
 python -m pytest -q
 
 # Run the demo
@@ -349,15 +349,15 @@ Read [SECURITY.md](SECURITY.md) before deploying. Includes:
 
 | Metric | Value |
 |--------|-------|
-| Version | 9.3.0 |
-| Tests | 1255 collected |
+| Version | 10.15.0 |
+| Tests | 1255 passed in the latest local audit |
 | API routes | 169 |
 | CLI commands | 35+ |
 | Constitution articles | 67 |
 | Platforms | 9 |
-| CI/CD workflows | 13 |
+| CI/CD workflows | 15 |
 | Core modules | ~250 |
-| Documentation pages | 162+ |
+| Documentation pages | 168 |
 
 ---
 

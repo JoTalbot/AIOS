@@ -46,3 +46,9 @@ repos:
         args: ['--ignore-missing-imports']
         files: ^aios_core/
         stages: [manual]
+
+  # Scan staged changes locally; CI scans the complete Git history.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks

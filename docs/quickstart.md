@@ -4,7 +4,7 @@
 
 ## Системные требования
 
-- Python 3.10+
+- Python 3.11+
 - Docker & Docker Compose (для контейнерного запуска)
 - 2 GB RAM, 4 GB диск
 - (Опционально) Android SDK для работы с устройствами
@@ -34,12 +34,13 @@ python -m pip install -r requirements.txt
 python -m pytest -q
 ```
 
-Ожидается: **1010 tests passed**.
+Последний воспроизводимый локальный аудит (2026-07-23, Python 3.13): **1255 passed**. Результат может отличаться в зависимости от платформы и выбранных маркеров.
 
 ## 4. Запуск REST API
 
 ```bash
-# Настройте API-ключи (обязательно!)
+# Настройте API-ключи (обязательно!). Не используйте этот пример как реальный ключ.
+# В Docker: cp .env.example .env и замените все значения-заглушки.
 export AIOS_API_KEYS='{
   "my-secret-key": {
     "subject": "developer",

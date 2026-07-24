@@ -32,7 +32,13 @@ class RequestSafetyMiddleware(BaseHTTPMiddleware):
                 )
         try:
             response = await call_next(request)
+            # Security defaults that are safe for API and dashboard responses alike.
+            # Deployments terminating TLS should add HSTS at the reverse proxy.
             response.headers.setdefault("X-Content-Type-Options", "nosniff")
+            response.headers.setdefault("X-Frame-Options", "DENY")
+            response.headers.setdefault("Referrer-Policy", "no-referrer")
+            response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+            response.headers.setdefault("Content-Security-Policy", "frame-ancestors 'none'")
             response.headers.setdefault("Cache-Control", "no-store")
             return response
         except (json.JSONDecodeError, UnicodeDecodeError):

@@ -8,7 +8,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - AIOS_API_KEYS={"prod":{"subject":"prod","roles":["admin"]}}
+      - AIOS_API_KEYS=${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
       - AIOS_PROFILES_DB=/app/data/profiles.sqlite
       - AIOS_DEVICES_DB=/app/data/devices.sqlite
       - AIOS_SHARDS_DB=/app/data/shards.sqlite
@@ -49,7 +49,7 @@ services:
       dockerfile: Dockerfile
     command: ["python", "run_production_autopilot.py", "--config", "default_3_ig", "--cycles-per-day", "24", "--daemon", "--interval", "900"]
     environment:
-      - AIOS_API_KEYS={"prod":{"subject":"prod","roles":["admin"]}}
+      - AIOS_API_KEYS=${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
       - AIOS_PROFILES_DB=/app/data/profiles.sqlite
       - AIOS_DEVICES_DB=/app/data/devices.sqlite
       - AIOS_SHARDS_DB=/app/data/shards.sqlite
@@ -76,7 +76,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - AIOS_API_KEYS={"prod":{"subject":"prod","roles":["admin"]}}
+      - AIOS_API_KEYS=${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
     depends_on:
       aios-api:
         condition: service_healthy
@@ -109,7 +109,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:?Set GRAFANA_PASSWORD in .env}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - ../monitoring/grafana-aios-ops.json:/var/lib/grafana/dashboards/aios-ops.json
