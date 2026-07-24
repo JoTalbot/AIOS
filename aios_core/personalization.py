@@ -186,7 +186,7 @@ class PersonalizationEngine:
         max_len = max(len(a), len(b))
         a_pad = a + [0.0] * (max_len - len(a))
         b_pad = b + [0.0] * (max_len - len(b))
-        dot = sum(x * y for x, y in zip(a_pad, b_pad))
+        dot = sum(x * y for x, y in zip(a_pad, b_pad, strict=False))
         na = math.sqrt(sum(x * x for x in a_pad))
         nb = math.sqrt(sum(y * y for y in b_pad))
         return dot / (na * nb) if na > 0 and nb > 0 else 0.0

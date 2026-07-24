@@ -12,7 +12,7 @@ learn, evolve, approve, custom, plan.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-class PlanStatus(str, Enum):
+class PlanStatus(StrEnum):
     """PlanStatus."""
 
     DRAFT = "draft"
@@ -46,7 +46,7 @@ class PlanStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class StepStatus(str, Enum):
+class StepStatus(StrEnum):
     """StepStatus."""
 
     PENDING = "pending"
@@ -57,7 +57,7 @@ class StepStatus(str, Enum):
     SKIPPED = "skipped"
 
 
-class EdgeCondition(str, Enum):
+class EdgeCondition(StrEnum):
     """EdgeCondition."""
 
     SUCCESS = "success"  # Only proceed if source completed successfully
@@ -468,8 +468,8 @@ class Planner:
 
         # --- Cycle detection (DFS with white/gray/black coloring) ---
         WHITE, GRAY, BLACK = 0, 1, 2
-        color: dict[str, int] = {sid: WHITE for sid in step_ids}
-        parent: dict[str, str | None] = {sid: None for sid in step_ids}
+        color: dict[str, int] = dict.fromkeys(step_ids, WHITE)
+        parent: dict[str, str | None] = dict.fromkeys(step_ids)
 
         def _dfs_cycle(node: str) -> list[str] | None:
             """Return a cycle path if one is found from *node*, else None."""
@@ -911,7 +911,7 @@ class Planner:
     def _has_cycle(self, adj: dict[str, list[str]], nodes: set[str]) -> bool:
         """Return *True* if the graph contains a cycle (DFS 3-coloring)."""
         WHITE, GRAY, BLACK = 0, 1, 2
-        color: dict[str, int] = {n: WHITE for n in nodes}
+        color: dict[str, int] = dict.fromkeys(nodes, WHITE)
 
         def _dfs(node: str) -> bool:
             color[node] = GRAY

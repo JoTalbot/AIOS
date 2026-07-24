@@ -64,23 +64,23 @@ class NeuralODE:
     ) -> list[float]:
         """Single Euler step."""
         dstate = dynamics(state)
-        return [s + dt * d for s, d in zip(state, dstate)]
+        return [s + dt * d for s, d in zip(state, dstate, strict=False)]
 
     def _rk4_step(
         self, state: list[float], dynamics: Callable, dt: float
     ) -> list[float]:
         """Single RK4 step."""
         k1 = dynamics(state)
-        s2 = [s + dt / 2 * k for s, k in zip(state, k1)]
+        s2 = [s + dt / 2 * k for s, k in zip(state, k1, strict=False)]
         k2 = dynamics(s2)
-        s3 = [s + dt / 2 * k for s, k in zip(state, k2)]
+        s3 = [s + dt / 2 * k for s, k in zip(state, k2, strict=False)]
         k3 = dynamics(s3)
-        s4 = [s + dt * k for s, k in zip(state, k3)]
+        s4 = [s + dt * k for s, k in zip(state, k3, strict=False)]
         k4 = dynamics(s4)
 
         return [
             s + dt / 6 * (k1i + 2 * k2i + 2 * k3i + k4i)
-            for s, k1i, k2i, k3i, k4i in zip(state, k1, k2, k3, k4)
+            for s, k1i, k2i, k3i, k4i in zip(state, k1, k2, k3, k4, strict=False)
         ]
 
     def _dopri5_step(
@@ -156,9 +156,10 @@ class NeuralODE:
         dt = (t_span[1] - t_span[0]) / steps
         step_fn = self._get_solver_step()
 
-        for i in range(steps):
+        for _i in range(steps):
             # Reverse dynamics: -dynamics(adjoint_state)
-            rev_dynamics = lambda s: [-d for d in self.dynamics(s)]
+            def rev_dynamics(s):
+                return [-d for d in self.dynamics(s)]
             adjoint_state = step_fn(adjoint_state, rev_dynamics, dt)
             adjoint_trajectory.append(adjoint_state[:])
 
@@ -198,7 +199,8 @@ class NeuralODE:
     ) -> list[float]:
         """CNF inverse: reverse the flow."""
         # Define reverse dynamics
-        reverse_dynamics = lambda s: [-d for d in self.dynamics(s)]
+        def reverse_dynamics(s):
+            return [-d for d in self.dynamics(s)]
         reverse_ode = NeuralODE(reverse_dynamics, solver=self.solver)
         trajectory = reverse_ode.integrate(state, t_span, steps)
         return trajectory[-1]
@@ -232,7 +234,7 @@ class NeuralODE:
             else trajectory[step_idx]
         )
 
-        return [a * (1 - frac) + b * frac for a, b in zip(s0, s1)]
+        return [a * (1 - frac) + b * frac for a, b in zip(s0, s1, strict=False)]
 
     # ── Stats ──────────────────────────────────────────────────────
 

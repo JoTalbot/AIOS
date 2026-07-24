@@ -33,24 +33,24 @@ class RetentionLayer:
 
     def parallel_retention(self, x: list[float]) -> list[float]:
         """Parallel (training) mode: compute full retention matrix."""
-        proj_q = [xi * w for xi, w in zip(x, self._weights_q)]
-        [xi * w for xi, w in zip(x, self._weights_k)]
-        proj_v = [xi * w for xi, w in zip(x, self._weights_v)]
+        proj_q = [xi * w for xi, w in zip(x, self._weights_q, strict=False)]
+        [xi * w for xi, w in zip(x, self._weights_k, strict=False)]
+        proj_v = [xi * w for xi, w in zip(x, self._weights_v, strict=False)]
         # Decay-weighted aggregation
         new_state = [
-            (s * self.gamma + qk * v) for s, qk, v in zip(self.state, proj_q, proj_v)
+            (s * self.gamma + qk * v) for s, qk, v in zip(self.state, proj_q, proj_v, strict=False)
         ]
         self.state = new_state
         return new_state
 
     def recurrent_retention(self, x: list[float]) -> list[float]:
         """Recurrent (inference) mode: update state incrementally."""
-        proj_q = [xi * w for xi, w in zip(x, self._weights_q)]
-        [xi * w for xi, w in zip(x, self._weights_k)]
-        proj_v = [xi * w for xi, w in zip(x, self._weights_v)]
+        proj_q = [xi * w for xi, w in zip(x, self._weights_q, strict=False)]
+        [xi * w for xi, w in zip(x, self._weights_k, strict=False)]
+        proj_v = [xi * w for xi, w in zip(x, self._weights_v, strict=False)]
         # RNN-style: state = gamma * state + q * k^T * v (simplified to element-wise)
         self.state = [
-            s * self.gamma + q * v for s, q, v in zip(self.state, proj_q, proj_v)
+            s * self.gamma + q * v for s, q, v in zip(self.state, proj_q, proj_v, strict=False)
         ]
         return list(self.state)
 
@@ -97,16 +97,13 @@ class RetNetBlock:
     def forward(self, x: list[float], mode: str = "parallel") -> list[float]:
         """Forward pass (backward-compatible: parallel mode default)."""
         # Retention sub-layer
-        if mode == "recurrent":
-            ret = self.retention.recurrent_retention(x)
-        else:
-            ret = self.retention.parallel_retention(x)
+        ret = self.retention.recurrent_retention(x) if mode == "recurrent" else self.retention.parallel_retention(x)
         # Residual + layer norm
-        normed = self._layer_norm([xi + ri for xi, ri in zip(x, ret)])
+        normed = self._layer_norm([xi + ri for xi, ri in zip(x, ret, strict=False)])
         # Simplified FFN: weighted gate
-        ffn = [0.5 * ni * w for ni, w in zip(normed, self._ffn_weights)]
+        ffn = [0.5 * ni * w for ni, w in zip(normed, self._ffn_weights, strict=False)]
         # Residual + layer norm
-        output = self._layer_norm([ni + fi for ni, fi in zip(normed, ffn)])
+        output = self._layer_norm([ni + fi for ni, fi in zip(normed, ffn, strict=False)])
         return output
 
     def stats(self) -> dict[str, Any]:

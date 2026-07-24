@@ -50,13 +50,13 @@ class QuantumFeatureMap:
         if not x1 or not x2:
             return 0.0
         min_len = min(len(x1), len(x2))
-        dot = sum(a * b for a, b in zip(x1[:min_len], x2[:min_len]))
+        dot = sum(a * b for a, b in zip(x1[:min_len], x2[:min_len], strict=False))
         return dot / min_len
 
     def fidelity(self, state1: list[complex], state2: list[complex]) -> float:
         """Compute state fidelity |<ψ1|ψ2>|^2."""
         min_len = min(len(state1), len(state2))
-        overlap = sum(s1 * s2 for s1, s2 in zip(state1[:min_len], state2[:min_len]))
+        overlap = sum(s1 * s2 for s1, s2 in zip(state1[:min_len], state2[:min_len], strict=False))
         return abs(overlap) ** 2
 
     def stats(self) -> dict[str, Any]:
@@ -95,7 +95,7 @@ class VariationalCircuit:
         forward_minus = self.forward([1.0] * self.qubits)
         self.params[idx] = original
         gradient = [
-            (fp - fm) / (2 * delta) for fp, fm in zip(forward_plus, forward_minus)
+            (fp - fm) / (2 * delta) for fp, fm in zip(forward_plus, forward_minus, strict=False)
         ]
         return gradient
 
@@ -130,7 +130,7 @@ class QuantumML:
     ) -> dict[str, Any]:
         """Train QNN with parameter shift gradients."""
         history: list[float] = []
-        for epoch in range(epochs):
+        for _epoch in range(epochs):
             output = self._var_circuit.forward(input_data)
             loss = round(sum((o - 0.5) ** 2 for o in output) / len(output), 4)
             history.append(loss)

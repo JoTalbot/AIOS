@@ -137,7 +137,7 @@ class PredictiveMaintenance:
             n = len(values)
             sum_x = sum(x)
             sum_y = sum(values)
-            sum_xy = sum(a * b for a, b in zip(x, values))
+            sum_xy = sum(a * b for a, b in zip(x, values, strict=False))
             sum_xx = sum(a * a for a in x)
             denom = n * sum_xx - sum_x * sum_x
             slope = (n * sum_xy - sum_x * sum_y) / denom if denom != 0 else 0

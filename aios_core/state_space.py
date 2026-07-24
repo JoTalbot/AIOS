@@ -112,14 +112,14 @@ class StateSpaceModel:
             dA = [math.exp(a * dt) for a in self.A]
             dB = [
                 (math.exp(a * dt) - 1) / a * b if abs(a) > 1e-8 else dt * b
-                for a, b in zip(self.A, self.B)
+                for a, b in zip(self.A, self.B, strict=False)
             ]
             return dA, dB
         elif method == "bilinear":
             # Bilinear (Tustin): dA = (1 + A*dt/2) / (1 - A*dt/2)
             #                    dB = dt * B / (1 - A*dt/2)
             dA = [(1 + a * dt / 2) / (1 - a * dt / 2) for a in self.A]
-            dB = [dt * b / (1 - a * dt / 2) for a, b in zip(self.A, self.B)]
+            dB = [dt * b / (1 - a * dt / 2) for a, b in zip(self.A, self.B, strict=False)]
             return dA, dB
         else:
             # Default ZOH
@@ -131,10 +131,10 @@ class StateSpaceModel:
         """Single step in recurrence mode: state update + output."""
         # State update: s = dA * s + dB * u
         self.state = [
-            da * s + db * u for da, s, db in zip(self.dA, self.state, self.dB)
+            da * s + db * u for da, s, db in zip(self.dA, self.state, self.dB, strict=False)
         ]
         # Output: y = C * s + D * u
-        y = sum(c * s for c, s in zip(self.C, self.state))
+        y = sum(c * s for c, s in zip(self.C, self.state, strict=False))
         y += self.D[0] * u if self.input_dim > 0 else 0.0
         self._step_count += 1
         return y
@@ -149,18 +149,18 @@ class StateSpaceModel:
         """Compute SSM convolution kernel (K_t = C @ dA^t @ dB)."""
         kernel = []
         dA_power = self.dB[:]  # K_0 = C @ dB
-        for t in range(length):
-            k = sum(c * s for c, s in zip(self.C, dA_power))
+        for _t in range(length):
+            k = sum(c * s for c, s in zip(self.C, dA_power, strict=False))
             kernel.append(k)
             # dA_power = dA_power * dA (element-wise for diagonal)
-            dA_power = [da * dp for da, dp in zip(self.dA, dA_power)]
+            dA_power = [da * dp for da, dp in zip(self.dA, dA_power, strict=False)]
         return kernel
 
     def conv_forward(self, sequence: list[float]) -> list[float]:
         """Process sequence using convolution mode (parallel scan)."""
         kernel = self.compute_kernel(len(sequence))
         output = []
-        for t, u in enumerate(sequence):
+        for t, _u in enumerate(sequence):
             # Convolution: y_t = sum_{k=0..t} K_k * u_{t-k}
             y = 0.0
             for k in range(t + 1):

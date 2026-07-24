@@ -96,7 +96,7 @@ class QuantumErrorMitigation:
         # General: weighted average favoring lower noise
         weights = [1.0 / (l + 1) for l in noise_levels]
         total = sum(weights)
-        return sum(w * v for w, v in zip(weights, values)) / total
+        return sum(w * v for w, v in zip(weights, values, strict=False)) / total
 
     def pec_mitigate(self, noisy_result: float) -> float:
         """Probabilistic error cancellation."""

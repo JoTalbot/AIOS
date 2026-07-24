@@ -85,7 +85,7 @@ class DictionaryLearner:
     def encode(self, activation: list[float]) -> list[float]:
         """Sparse encode an activation using the dictionary."""
         codes: list[float] = []
-        for i in range(min(self.dict_size, len(activation) * 10)):
+        for _i in range(min(self.dict_size, len(activation) * 10)):
             if random.random() < self.sparsity:
                 codes.append(random.uniform(0.5, 1.0))
             else:

@@ -111,7 +111,7 @@ class MultiHeadAttention:
 
         # Apply mask if provided
         if mask:
-            scores = [s + m for s, m in zip(scores, mask[: len(scores)])]
+            scores = [s + m for s, m in zip(scores, mask[: len(scores)], strict=False)]
 
         # Softmax → attention weights
         attn = self._softmax(scores[: self.heads])
@@ -152,7 +152,7 @@ class TransformerBlock:
         # Attention sub-layer
         attn = self.attention.forward(x, x, x, mask)
         # Residual + layer norm
-        x_norm = self._layer_norm([xi + ai for xi, ai in zip(x, attn)])
+        x_norm = self._layer_norm([xi + ai for xi, ai in zip(x, attn, strict=False)])
         # FFN sub-layer (simplified: skip full matmul, use weighted average)
         ffn_out = self._relu(
             [

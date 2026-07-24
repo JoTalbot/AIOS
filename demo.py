@@ -384,7 +384,7 @@ def demo_evolution():
     print(f"\n📝 Proposed: {proposal['id'][:8]}... (stage: {proposal['stage']})")
 
     # Advance through stages
-    for i in range(3):
+    for _i in range(3):
         proposal = orch.evolution.advance(proposal["id"])
         print(f"  Advanced to: {proposal['stage']} ({proposal['status']})")
 

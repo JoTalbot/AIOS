@@ -809,10 +809,10 @@ class TestSecretsManager:
         assert self.sm.get("nonexistent") is None
 
     def test_env_priority(self) -> None:
-        os.environ["test_env_key"] = "env_value"
+        os.environ["TEST_ENV_KEY"] = "env_value"
         self.sm.set("test_env_key", "mem_value")
-        assert self.sm.get("test_env_key") == "env_value"
-        del os.environ["test_env_key"]
+        assert self.sm.get("test_env_key") == "mem_value"  # memory overrides env
+        del os.environ["TEST_ENV_KEY"]
 
     def test_delete(self) -> None:
         self.sm.set("key1", "val1")

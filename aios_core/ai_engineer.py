@@ -143,7 +143,7 @@ class AIEngineer:
     def analyze_dependencies(self, components: list[str]) -> dict[str, list[str]]:
         """Analyze inter-component dependencies."""
         deps: dict[str, list[str]] = {}
-        for i, comp in enumerate(components):
+        for _i, comp in enumerate(components):
             dep_count = random.randint(1, min(3, len(components) - 1))
             possible = [c for c in components if c != comp]
             deps[comp] = random.sample(possible, min(dep_count, len(possible)))
@@ -177,7 +177,7 @@ class AIEngineer:
             files=comp_count * 25 + 50,
             tests=comp_count * 40 + 80,
             coverage=0.85 + random.uniform(0, 0.1),
-            languages=list(set(design.tech_stack[:1] + ["python"])),
+            languages=list({*design.tech_stack[:1], "python"}),
             dependencies=design.tech_stack,
             size_kb=comp_count * 120 + 300,
         )

@@ -26,7 +26,7 @@ class TestRateLimiterBounded:
         """After many calls, requests dict stays bounded."""
         rl = RateLimiter(requests_per_minute=10)
         # Call is_allowed 1000 times — should not grow beyond 10 per key
-        for i in range(1000):
+        for _i in range(1000):
             rl.is_allowed("bounded_key")
         # The list for 'bounded_key' should be at most 10 entries
         assert len(rl.requests["bounded_key"]) <= 10

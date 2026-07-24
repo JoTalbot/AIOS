@@ -110,7 +110,7 @@ class KAN:
     ) -> dict[str, Any]:
         """Simulate training."""
         loss = 1.0
-        for epoch in range(epochs):
+        for _epoch in range(epochs):
             # Simulate gradient descent
             loss = max(0.01, loss * 0.99)
             for layer in self.layers:

@@ -7,6 +7,7 @@ configuration, priority ordering, plugin isolation, and uninstall.
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 from collections.abc import Callable
 from typing import Any
@@ -97,10 +98,8 @@ class PluginManager:
         self._config.setdefault(name, {})
         # Call init hook if the plugin has one
         if hasattr(plugin, "on_init"):
-            try:
+            with contextlib.suppress(Exception):
                 plugin.on_init(self._config.get(name, {}))
-            except Exception:
-                pass
         return True
 
     def unregister_plugin(self, name: str) -> bool:
@@ -110,10 +109,8 @@ class PluginManager:
             return False
         # Call teardown hook
         if hasattr(plugin, "on_teardown"):
-            try:
+            with contextlib.suppress(Exception):
                 plugin.on_teardown()
-            except Exception:
-                pass
         self.plugins.pop(name, None)
         self._info.pop(name, None)
         self._config.pop(name, None)
@@ -135,10 +132,8 @@ class PluginManager:
         info.enabled = True
         plugin = self.plugins.get(name)
         if plugin and hasattr(plugin, "on_start"):
-            try:
+            with contextlib.suppress(Exception):
                 plugin.on_start()
-            except Exception:
-                pass
         return True
 
     def disable_plugin(self, name: str) -> bool:
@@ -149,10 +144,8 @@ class PluginManager:
         info.enabled = False
         plugin = self.plugins.get(name)
         if plugin and hasattr(plugin, "on_stop"):
-            try:
+            with contextlib.suppress(Exception):
                 plugin.on_stop()
-            except Exception:
-                pass
         return True
 
     # ------------------------------------------------------------------
@@ -243,7 +236,7 @@ class PluginManager:
         caught per-callback and stored in results as ``("error", exc)``.
         """
         results: list[Any] = []
-        for callback, priority, pname in self.hooks.get(hook_name, []):
+        for callback, _priority, pname in self.hooks.get(hook_name, []):
             # Skip disabled plugins
             if pname and pname in self._info and not self._info[pname].enabled:
                 continue

@@ -132,9 +132,8 @@ class TestDataExporter:
 
     def test_export_invalid_format(self, temp_db, tmp_path):
         output = tmp_path / "tasks.xml"
-        with DataExporter(temp_db) as exporter:
-            with pytest.raises(ValueError, match="Unsupported format"):
-                exporter.export_tasks(str(output), format="xml")
+        with DataExporter(temp_db) as exporter, pytest.raises(ValueError, match="Unsupported format"):
+            exporter.export_tasks(str(output), format="xml")
 
 
 class TestDataImporter:

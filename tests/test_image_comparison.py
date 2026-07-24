@@ -145,7 +145,7 @@ class TestDifferenceHash:
         """Gradient image → dHash detects horizontal differences."""
         # 9×8 gradient
         pixels = []
-        for row in range(8):
+        for _row in range(8):
             for col in range(9):
                 pixels.append(col * 28)  # 0, 28, 56, ... across each row
         h = difference_hash(pixels, 9, 8)

@@ -137,7 +137,7 @@ class SelfSupervisedLearner:
         min_len = min(len(a), len(b))
         a_trunc = a[:min_len]
         b_trunc = b[:min_len]
-        dot = sum(x * y for x, y in zip(a_trunc, b_trunc))
+        dot = sum(x * y for x, y in zip(a_trunc, b_trunc, strict=False))
         na = math.sqrt(sum(x * x for x in a_trunc))
         nb = math.sqrt(sum(y * y for y in b_trunc))
         return dot / (na * nb) if na > 0 and nb > 0 else 0.0

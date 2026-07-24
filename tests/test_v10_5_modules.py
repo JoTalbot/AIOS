@@ -268,6 +268,8 @@ class TestSelfHealing:
 # 3. CIRCUIT BREAKER
 # ═══════════════════════════════════════════════════════════════════════════════
 
+import contextlib
+
 from aios_core.circuit_breaker import (
     CircuitBreaker,
     CircuitMetrics,
@@ -309,48 +311,38 @@ class TestCircuitBreaker:
 
     def test_call_failure_counts(self) -> None:
         cb = CircuitBreaker(failure_threshold=3)
-        for i in range(2):
-            try:
+        for _i in range(2):
+            with contextlib.suppress(RuntimeError):
                 cb.call(lambda: (_ for _ in ()).throw(RuntimeError("fail")))
-            except RuntimeError:
-                pass
         assert cb.failure_count == 2
         assert cb.state == CircuitState.CLOSED
 
     def test_trip_to_open(self) -> None:
         cb = CircuitBreaker(failure_threshold=3, recovery_timeout=1.0)
-        for i in range(3):
-            try:
+        for _i in range(3):
+            with contextlib.suppress(RuntimeError):
                 cb.call(lambda: (_ for _ in ()).throw(RuntimeError("fail")))
-            except RuntimeError:
-                pass
         assert cb.state == CircuitState.OPEN
 
     def test_open_rejects_calls(self) -> None:
         cb = CircuitBreaker(failure_threshold=1, recovery_timeout=10.0)
-        try:
+        with contextlib.suppress(RuntimeError):
             cb.call(lambda: (_ for _ in ()).throw(RuntimeError("fail")))
-        except RuntimeError:
-            pass
         assert cb.state == CircuitState.OPEN
         with pytest.raises(CircuitOpenError):
             cb.call(lambda: 1)
 
     def test_fallback_on_open(self) -> None:
         cb = CircuitBreaker(failure_threshold=1, recovery_timeout=10.0, fallback=lambda *a, **k: "fallback")
-        try:
+        with contextlib.suppress(RuntimeError):
             cb.call(lambda: (_ for _ in ()).throw(RuntimeError("fail")))
-        except RuntimeError:
-            pass
         result = cb.call(lambda: 1)
         assert result == "fallback"
 
     def test_half_open_probing(self) -> None:
         cb = CircuitBreaker(failure_threshold=1, recovery_timeout=0.01, half_open_max_calls=1)
-        try:
+        with contextlib.suppress(RuntimeError):
             cb.call(lambda: (_ for _ in ()).throw(RuntimeError("fail")))
-        except RuntimeError:
-            pass
         assert cb.state == CircuitState.OPEN
         time.sleep(0.05)  # wait for recovery timeout
         result = cb.call(lambda: 42)  # half-open probe → success → close
@@ -361,10 +353,8 @@ class TestCircuitBreaker:
         transitions = []
         cb = CircuitBreaker(failure_threshold=1, recovery_timeout=0.01)
         cb.add_listener(lambda old, new: transitions.append((old.value, new.value)))
-        try:
+        with contextlib.suppress(RuntimeError):
             cb.call(lambda: (_ for _ in ()).throw(RuntimeError("fail")))
-        except RuntimeError:
-            pass
         assert len(transitions) >= 1
         assert transitions[-1][1] == CircuitState.OPEN.value
 
@@ -381,10 +371,8 @@ class TestCircuitBreaker:
 
     def test_reset(self) -> None:
         cb = CircuitBreaker(failure_threshold=1)
-        try:
+        with contextlib.suppress(RuntimeError):
             cb.call(lambda: (_ for _ in ()).throw(RuntimeError("fail")))
-        except RuntimeError:
-            pass
         cb.reset()
         assert cb.failure_count == 0
         assert cb.state == CircuitState.CLOSED
@@ -1056,10 +1044,8 @@ class TestIntegration:
         sh.register_health_check("circuit", lambda: cb.state == CircuitState.CLOSED)
 
         # Trip circuit breaker
-        try:
+        with contextlib.suppress(RuntimeError):
             cb.call(lambda: (_ for _ in ()).throw(RuntimeError("fail")))
-        except RuntimeError:
-            pass
         assert cb.state == CircuitState.OPEN
 
         # Heal → reset circuit breaker

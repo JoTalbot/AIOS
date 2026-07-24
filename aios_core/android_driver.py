@@ -11,6 +11,7 @@ Includes the abstract contract plus concrete implementations:
 
 from __future__ import annotations
 
+import contextlib
 import os
 import subprocess
 import time
@@ -384,10 +385,8 @@ class DriverPool:
             return False
         driver = self._drivers.pop(device_id)
         self._dispatch_counts.pop(device_id, None)
-        try:
+        with contextlib.suppress(Exception):
             driver.close_app()
-        except Exception:
-            pass
         return True
 
     def get_driver(self, device_id: str) -> AndroidDriver | None:

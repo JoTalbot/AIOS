@@ -166,10 +166,10 @@ class AICrossPlatformAdvisor:
 
         # Simple linear regression: price = a * day + b
         prices = [h.get("price") for h in history]
-        days = [i for i in range(len(prices))]
+        days = list(range(len(prices)))
 
         # Filter out None prices
-        valid_points = [(d, p) for d, p in zip(days, prices) if p is not None]
+        valid_points = [(d, p) for d, p in zip(days, prices, strict=False) if p is not None]
         if len(valid_points) < 3:
             return None
 

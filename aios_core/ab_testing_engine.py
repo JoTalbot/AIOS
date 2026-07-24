@@ -515,10 +515,7 @@ class ABTestingEngine:
                 winner = a.name
 
         # Compute lift
-        if val_a > 0:
-            lift = (val_b - val_a) / val_a
-        else:
-            lift = 0.0
+        lift = (val_b - val_a) / val_a if val_a > 0 else 0.0
 
         # Recommendation
         if is_significant:

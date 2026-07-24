@@ -175,7 +175,7 @@ class TestABTestingEngine:
         engine.start_experiment(exp.experiment_id)
 
         # variant_a: low values, variant_b: high values (clear difference)
-        for i in range(50):
+        for _i in range(50):
             engine.record_observation(exp.experiment_id, "variant_a", 100.0 + random.uniform(-5, 5))
             engine.record_observation(exp.experiment_id, "variant_b", 300.0 + random.uniform(-5, 5))
 

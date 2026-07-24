@@ -45,8 +45,8 @@ class ABTest:
         self.name = name
         self.variants = variants
         self.results: dict[str, list[ExperimentResult]] = {v: [] for v in variants}
-        self._total_assignments: dict[str, int] = {v: 0 for v in variants}
-        self._conversions: dict[str, int] = {v: 0 for v in variants}
+        self._total_assignments: dict[str, int] = dict.fromkeys(variants, 0)
+        self._conversions: dict[str, int] = dict.fromkeys(variants, 0)
 
     def assign_variant(self, user_id: str) -> str:
         """Assign user to variant (backward-compatible)."""

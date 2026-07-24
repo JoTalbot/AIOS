@@ -19,7 +19,7 @@ import hashlib
 import logging
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 # ── Enums ────────────────────────────────────────────────────────────────────
 
 
-class FlagState(str, Enum):
+class FlagState(StrEnum):
     """Flag lifecycle state."""
 
     DRAFT = "draft"
@@ -37,7 +37,7 @@ class FlagState(str, Enum):
     ARCHIVED = "archived"
 
 
-class RolloutStrategy(str, Enum):
+class RolloutStrategy(StrEnum):
     """How a flag decides who sees it."""
 
     PERCENTAGE = "percentage"
@@ -411,10 +411,7 @@ class FlagStore:
         self, flag_name: str | None = None, limit: int = 100
     ) -> list[AuditEvent]:
         """Return audit events, optionally filtered by flag name."""
-        if flag_name:
-            events = [e for e in self.audit_log if e.flag_name == flag_name]
-        else:
-            events = self.audit_log
+        events = [e for e in self.audit_log if e.flag_name == flag_name] if flag_name else self.audit_log
         return events[-limit:]
 
     # ── Internal ───────────────────────────────────────────────────

@@ -20,13 +20,13 @@ import threading
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 __all__ = ["WebhookEvent", "WebhookManager", "WebhookPayload", "WebhookTarget"]
 
 
-class WebhookEvent(str, Enum):
+class WebhookEvent(StrEnum):
     """Standard webhook event types."""
 
     BAN_DETECTED = "ban_detected"

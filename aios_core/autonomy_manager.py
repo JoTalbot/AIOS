@@ -282,10 +282,7 @@ class AutonomyManager:
             Dict with approval decision details.
         """
         profile = self._profiles.get(agent_id)
-        if profile is None:
-            level = AutonomyLevel.LEVEL_0_MANUAL
-        else:
-            level = profile.level
+        level = AutonomyLevel.LEVEL_0_MANUAL if profile is None else profile.level
 
         # Normalise risk string
         risk = action_risk.lower().strip() if action_risk else "low"

@@ -112,7 +112,7 @@ class HierarchicalRL:
         reward = 0.0
         terminated = False
 
-        for step in range(steps):
+        for _step in range(steps):
             # Check termination probability
             if random.random() < option.termination:
                 terminated = True

@@ -171,7 +171,7 @@ class NeuromorphicChip:
     def simulate(self, inputs: list[float], timesteps: int = 10) -> dict[str, Any]:
         """Simulate chip execution for multiple timesteps."""
         all_spikes: list[list[int]] = []
-        for t in range(timesteps):
+        for _t in range(timesteps):
             current_input = inputs
             for layer in self.layers:
                 spikes = layer.forward(current_input)

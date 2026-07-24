@@ -156,7 +156,7 @@ class KnowledgeDistiller:
 
         # KL divergence: sum(p_teacher * log(p_teacher / p_student))
         kl = 0.0
-        for pt, ps in zip(teacher_probs, student_probs):
+        for pt, ps in zip(teacher_probs, student_probs, strict=False):
             if pt > 0 and ps > 0:
                 kl += pt * math.log(pt / ps)
             elif pt > 0:
@@ -168,7 +168,7 @@ class KnowledgeDistiller:
         """Compute hard target loss (cross-entropy)."""
         student_probs = self.soft_targets(student_logits, temperature=1.0)
         loss = 0.0
-        for sp, tl in zip(student_probs, true_labels):
+        for sp, tl in zip(student_probs, true_labels, strict=False):
             if tl == 1:
                 loss -= math.log(max(sp, 1e-10))
         return loss

@@ -21,13 +21,13 @@ import secrets
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class ThreatLevel(str, Enum):
+class ThreatLevel(StrEnum):
     """Threat severity."""
 
     INFO = "info"
@@ -144,17 +144,11 @@ class AdvancedSecurity:
 
     def _detect_xss(self, text: str) -> bool:
         """Detect XSS patterns."""
-        for pattern in self._xss_patterns:
-            if re.search(pattern, text, re.IGNORECASE):
-                return True
-        return False
+        return any(re.search(pattern, text, re.IGNORECASE) for pattern in self._xss_patterns)
 
     def _detect_injection(self, text: str) -> bool:
         """Detect SQL injection patterns."""
-        for pattern in self._injection_patterns:
-            if re.search(pattern, text, re.IGNORECASE):
-                return True
-        return False
+        return any(re.search(pattern, text, re.IGNORECASE) for pattern in self._injection_patterns)
 
     # ── Input Sanitization ───────────────────────────────────────
 

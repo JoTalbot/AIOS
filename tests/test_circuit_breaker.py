@@ -1,5 +1,7 @@
 """Tests for Circuit Breaker"""
 
+import contextlib
+
 from aios_core.circuit_breaker import CircuitBreaker, CircuitState
 
 
@@ -17,9 +19,7 @@ def test_circuit_breaker_opens_on_failures():
         raise ValueError("fail")
 
     for _ in range(2):
-        try:
+        with contextlib.suppress(Exception):
             cb.call(failing)
-        except Exception:
-            pass
 
     assert cb.state == CircuitState.OPEN

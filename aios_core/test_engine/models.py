@@ -8,10 +8,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 
 
-class TestStatus(str, Enum):
+class TestStatus(StrEnum):
     """TestStatus."""
 
     PENDING = "pending"
@@ -22,7 +22,7 @@ class TestStatus(str, Enum):
     SKIPPED = "skipped"
 
 
-class TestSeverity(str, Enum):
+class TestSeverity(StrEnum):
     """TestSeverity."""
 
     CRITICAL = "critical"  # System-breaking if fails
@@ -31,7 +31,7 @@ class TestSeverity(str, Enum):
     LOW = "low"  # Edge cases, nice-to-haves
 
 
-class TestCategory(str, Enum):
+class TestCategory(StrEnum):
     """TestCategory."""
 
     CONSTITUTIONAL = "constitutional"  # Constitution compliance

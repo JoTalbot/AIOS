@@ -358,7 +358,7 @@ class TestStressTests:
 
         memory_readings = []
 
-        for batch in range(5):
+        for _batch in range(5):
             # Make 1000 requests
             for _ in range(1000):
                 await client.get("/health")

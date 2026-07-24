@@ -255,10 +255,7 @@ class CausalInference:
             visited.add(node)
             return True
 
-        for node in self.nodes:
-            if node not in visited and not dfs(node):
-                return False
-        return True
+        return all(not (node not in visited and not dfs(node)) for node in self.nodes)
 
     def validate(self) -> dict[str, Any]:
         """Validate the causal graph."""

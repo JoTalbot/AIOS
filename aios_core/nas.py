@@ -128,7 +128,7 @@ class NAS:
             score = self.evaluate(layers)
             pop.append((layers, score))
 
-        for gen in range(generations):
+        for _gen in range(generations):
             # Select top half
             pop.sort(key=lambda x: x[1], reverse=True)
             top = pop[: population // 2]

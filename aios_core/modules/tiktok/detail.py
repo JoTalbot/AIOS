@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass, field
 
 from aios_core.modules.olx.detail import AdDetailParser
@@ -98,16 +99,12 @@ class TikTokDetailParser(AdDetailParser):
         for text in texts:
             m = re.search(r"(\d[\d\s]*)\s*(likes|лайків)", text.lower())
             if m:
-                try:
+                with contextlib.suppress(ValueError):
                     detail.likes = int(m.group(1).replace(" ", ""))
-                except ValueError:
-                    pass
             m = re.search(r"(\d[\d\s]*)\s*(comments|комент)", text.lower())
             if m:
-                try:
+                with contextlib.suppress(ValueError):
                     detail.comments = int(m.group(1).replace(" ", ""))
-                except ValueError:
-                    pass
 
         return detail
 

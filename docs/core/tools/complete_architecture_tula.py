@@ -23,7 +23,7 @@ def scan(directory):
             "ARCHITECTURE_COMPLIANCE_MATRIX.md",
         ]:
             continue
-        content = open(path, "r", encoding="utf-8").read()
+        content = open(path, encoding="utf-8").read()
         modules[entry] = {
             "path": path,
             "content": content,

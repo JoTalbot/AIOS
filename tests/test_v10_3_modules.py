@@ -169,7 +169,7 @@ class TestAgentMemorySystem:
         """Consolidate episodic into long-term."""
         system = AgentMemorySystem(consolidation_interval=0)
         # Record enough episodic memories
-        for i in range(5):
+        for _i in range(5):
             system.record_session("olx", "collect", success=True, latency_ms=500, items=50)
 
         # Force consolidation
@@ -335,7 +335,7 @@ class TestPlatformHealthMonitor:
         monitor = PlatformHealthMonitor()
         monitor.register_platform("olx")
         # Need enough checks to make block_risk >= threshold
-        for i in range(5):
+        for _i in range(5):
             monitor.report_block("olx", block_type="rate_limit")
         health = monitor.get_health("olx")
         assert health.status == HealthStatus.BLOCKED
@@ -344,9 +344,9 @@ class TestPlatformHealthMonitor:
         """Mixed success/failure → DEGRADED status."""
         monitor = PlatformHealthMonitor(health_threshold=70)
         monitor.register_platform("olx")
-        for i in range(5):
+        for _i in range(5):
             monitor.report_success("olx", latency_ms=300)
-        for i in range(3):
+        for _i in range(3):
             monitor.report_failure("olx", error="slow")
         health = monitor.get_health("olx")
         # 5/8 success rate = 62.5% → likely DEGRADED
@@ -378,7 +378,7 @@ class TestPlatformHealthMonitor:
         """Find degraded platforms."""
         monitor = PlatformHealthMonitor()
         monitor.report_success("olx", latency_ms=200)
-        for i in range(5):
+        for _i in range(5):
             monitor.report_failure("rozetka", error="error")
         degraded = monitor.detect_degradation()
         assert "rozetka" in degraded

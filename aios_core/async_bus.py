@@ -224,10 +224,7 @@ class AsyncEventBus:
         self, event: str | None = None, limit: int = 50
     ) -> list[dict[str, Any]]:
         """Return recent history, optionally filtered by *event* name."""
-        if event:
-            filtered = [r for r in self._history if r["event"] == event]
-        else:
-            filtered = self._history
+        filtered = [r for r in self._history if r["event"] == event] if event else self._history
         return filtered[-limit:]
 
     # ------------------------------------------------------------------

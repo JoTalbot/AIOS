@@ -114,10 +114,10 @@ class DeceptionDetector:
         has_positive_last = any(w in last for w in positive_words)
         has_negative_last = any(w in last for w in negative_words)
         if (
-            has_positive_first
-            and has_negative_last
-            or has_negative_first
-            and has_positive_last
+            (has_positive_first
+            and has_negative_last)
+            or (has_negative_first
+            and has_positive_last)
         ):
             inconsistencies.append("contradictory_stance")
         consistency = 1.0 - len(inconsistencies) * 0.2

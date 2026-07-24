@@ -75,7 +75,7 @@ class TikTokCollector:
         seen_urls: set[str] = set()
         empty_streak = 0
 
-        for swipe_num in range(self.max_swipes):
+        for _swipe_num in range(self.max_swipes):
             if len(all_cards) >= max_cards:
                 break
 

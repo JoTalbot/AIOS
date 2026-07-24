@@ -16,13 +16,13 @@ import logging
 import math
 import random
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class MechanismType(str, Enum):
+class MechanismType(StrEnum):
     """Privacy mechanism types."""
 
     LAPLACE = "laplace"

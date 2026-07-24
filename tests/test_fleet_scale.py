@@ -45,7 +45,7 @@ def test_waitlist_served_on_release_and_reap():
         pool.release("olx:a")
         # release обслужил очередь: olx:c (выше приоритет) получил e1.
         assert pool.device_for("olx:c")["serial"] == "e1"
-        served = [w for w in pool.waitlist("served")]
+        served = list(pool.waitlist("served"))
         assert [w["profile_key"] for w in served] == ["olx:c"]
 
         # reap_stale: мёртвое устройство → offline, его аренда освобождается,

@@ -382,7 +382,7 @@ class AutoTuningEngine:
         )
         best_score = self._best_score if self._best_score else 0.0
 
-        for i in range(effective_max):
+        for _i in range(effective_max):
             config = self._generate_config(effective_strategy)
 
             # Evaluate
@@ -565,7 +565,7 @@ class AutoTuningEngine:
         # Generate Cartesian product
         configs = []
         for combo in self._cartesian_product(values):
-            config = dict(zip(names, combo))
+            config = dict(zip(names, combo, strict=False))
             configs.append(config)
 
         return configs
@@ -584,7 +584,7 @@ class AutoTuningEngine:
             new_result = []
             for prefix in result:
                 for item in lst:
-                    new_result.append(prefix + [item])
+                    new_result.append([*prefix, item])
             result = new_result
         return result
 

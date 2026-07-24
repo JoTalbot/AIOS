@@ -226,7 +226,7 @@ class TestSecretsManagement:
         manager = SecretManager(max_keys_per_subject=3)
 
         # Generate max keys
-        for i in range(3):
+        for _i in range(3):
             manager.generate_key("user", ["viewer"])
 
         # Try to generate more

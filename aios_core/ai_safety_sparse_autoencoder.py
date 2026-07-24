@@ -65,7 +65,7 @@ class SparseAutoencoder:
         # MSE between input and reconstruction
         encoded = self._sparse_encode(activation)
         reconstructed = self._decode(encoded)
-        mse = sum((a - r) ** 2 for a, r in zip(activation, reconstructed)) / max(
+        mse = sum((a - r) ** 2 for a, r in zip(activation, reconstructed, strict=False)) / max(
             len(activation), 1
         )
         return round(mse, 4)
@@ -74,7 +74,7 @@ class SparseAutoencoder:
         """Sparse encode: most features zeroed out."""
         codes: list[float] = []
         for weights in self._encoder_weights:
-            dot = sum(w * a for w, a in zip(weights, activation[: len(weights)]))
+            dot = sum(w * a for w, a in zip(weights, activation[: len(weights)], strict=False))
             # ReLU + top-k sparsity
             codes.append(max(0.0, dot))
         # Apply sparsity: keep only top-k%

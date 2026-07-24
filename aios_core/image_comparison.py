@@ -96,7 +96,7 @@ class ColorHistogram:
             s = sum(self_ch) + sum(other_ch)
             if s == 0:
                 continue
-            intersect = sum(min(a, b) for a, b in zip(self_ch, other_ch))
+            intersect = sum(min(a, b) for a, b in zip(self_ch, other_ch, strict=False))
             total_intersect += intersect
             total_sum += s / 2
 

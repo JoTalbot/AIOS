@@ -194,10 +194,7 @@ class AndroidTestGenerator:
                 steps.append(TestStep(action="tap", target=target, description=txt))
             elif "type" in low or "введи" in low or "напиши" in low:
                 # extract value after :
-                if ":" in txt:
-                    val = txt.split(":")[-1].strip()
-                else:
-                    val = "test"
+                val = txt.split(":")[-1].strip() if ":" in txt else "test"
                 steps.append(TestStep(action="type", value=val, description=txt))
             elif "wait" in low or "жди" in low or "подожди" in low:
                 steps.append(

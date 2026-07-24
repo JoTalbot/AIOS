@@ -581,9 +581,9 @@ class FleetScheduler:
                     underloaded = [
                         d
                         for d in self._devices.values()
-                        if d.utilization < 0.3
+                        if (d.utilization < 0.3
                         and d.is_available
-                        and d.device_id != target.device_id
+                        and d.device_id != target.device_id)
                         or (d.device_id == target.device_id and d.utilization < 0.3)
                     ]
 

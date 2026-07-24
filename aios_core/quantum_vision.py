@@ -66,10 +66,7 @@ class QuantumVision:
         for i in range(len(image)):
             row: list[float] = []
             for j in range(len(image[0]) if image else 0):
-                if j > 0:
-                    edge = abs(image[i][j] - image[i][j - 1])
-                else:
-                    edge = 0.0
+                edge = abs(image[i][j] - image[i][j - 1]) if j > 0 else 0.0
                 row.append(round(edge, 3))
             result.append(row)
         return result

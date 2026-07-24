@@ -149,10 +149,7 @@ def _run_advisor_v2(args) -> bool:
         db_path = getattr(args, "db", None) or getattr(args, f"{platform}_db", None)
         if not db_path:
             db_path = ":memory:"
-        if platform == "rozetka":
-            storage = RozetkaStorage(db_path)
-        else:
-            storage = OLXStorage(db_path)
+        storage = RozetkaStorage(db_path) if platform == "rozetka" else OLXStorage(db_path)
         pred = advisor.predict_price(storage, args.fingerprint, horizon_days=args.horizon)
         if pred:
             print(json.dumps(pred.__dict__, ensure_ascii=False, indent=2))
@@ -181,10 +178,7 @@ def _run_search(args) -> bool:
     db_path = getattr(args, "db", None)
     if not db_path:
         db_path = ":memory:"
-    if platform == "rozetka":
-        storage = RozetkaStorage(db_path)
-    else:
-        storage = OLXStorage(db_path)
+    storage = RozetkaStorage(db_path) if platform == "rozetka" else OLXStorage(db_path)
 
     engine = VectorSearchEngine(storage=storage)
     engine.build_index()

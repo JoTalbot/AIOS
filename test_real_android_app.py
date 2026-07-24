@@ -118,7 +118,7 @@ def get_ui_dump(device_id: str) -> str | None:
     if not success:
         return None
     try:
-        with open("/tmp/ui_dump.xml", "r") as f:
+        with open("/tmp/ui_dump.xml") as f:
             return f.read()
     except Exception:
         return None

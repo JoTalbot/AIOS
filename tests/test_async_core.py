@@ -63,7 +63,7 @@ def test_async_db_row_count():
     try:
         count = asyncio.run(db.row_count("nonexistent"))
         assert count in (0, None)
-    except (sqlite3.OperationalError, Exception):
+    except Exception:  # noqa: BLE001
         pass  # table does not exist — OK
 
 

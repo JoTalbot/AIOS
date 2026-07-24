@@ -333,7 +333,7 @@ class ProductionAutopilot:
         failed = 0
         drafts = 0
 
-        for i in range(simulate_actions):
+        for _i in range(simulate_actions):
             if pacer and not pacer.before_action():
                 # pacing limit hit - honest stop, not a ban
                 break
@@ -416,8 +416,8 @@ class ProductionAutopilot:
         )
         all_reports = []
 
-        for day in range(14):
-            for cycle_in_day in range(cycles_per_day):
+        for _day in range(14):
+            for _cycle_in_day in range(cycles_per_day):
                 reports = self.run_all_profiles_cycle()
                 all_reports.extend(reports)
                 # Small delay for realism, accelerated

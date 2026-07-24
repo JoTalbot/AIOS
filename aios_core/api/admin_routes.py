@@ -615,10 +615,7 @@ async def toggle_webhook(request: Request) -> None:
     if not name:
         return JSONResponse({"error": "name required"}, status_code=400)
 
-    if active:
-        success = _webhook_manager.activate(name)
-    else:
-        success = _webhook_manager.deactivate(name)
+    success = _webhook_manager.activate(name) if active else _webhook_manager.deactivate(name)
 
     if success:
         return JSONResponse(

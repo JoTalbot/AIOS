@@ -50,14 +50,16 @@ def _descriptor_from_spec(spec: dict, source: str) -> PlatformDescriptor:
     storage_factory = None
     if spec.get("storage_class"):
         storage_cls = _import_class(spec["storage_class"])
-        storage_factory = lambda db_path, _cls=storage_cls: _cls(db_path)
+        def storage_factory(db_path, _cls=storage_cls):
+            return _cls(db_path)
 
     adb_factory = None
     if spec.get("adb_class"):
         adb_cls = _import_class(spec["adb_class"])
-        adb_factory = lambda package, serial=None, _cls=adb_cls: _cls(
-            package=package, serial=serial
-        )
+        def adb_factory(package, serial=None, _cls=adb_cls):
+            return _cls(
+                    package=package, serial=serial
+                )
 
     return PlatformDescriptor(
         name=spec["name"],
