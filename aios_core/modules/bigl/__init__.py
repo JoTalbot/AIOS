@@ -1,11 +1,15 @@
-"""Bigl marketplace agent — скелет, сгенерированный scaffold.
+"""Bigl.ua full agent — collector, price_tracker, autowatch, favorites."""
 
-Хранилище унаследовано от OLXStorage: схема объявлений, история цен,
-подписки/избранное, outbox, свои объявления, конкурентные связи, kv-профиль.
-Парсеры/коллекторы платформы добавляются сюда по мере калибровки под
-её приложение (ua.bigl).
-"""
-
+from .autowatch import BiglAutoWatch
+from .collector import BiglCollector
+from .favorites import BiglFavorites
+from .price_tracker import BiglPriceTracker
 from .storage import BiglStorage
 
-__all__ = ["BiglStorage"]
+__all__ = [
+    "BiglAutoWatch",
+    "BiglCollector",
+    "BiglFavorites",
+    "BiglPriceTracker",
+    "BiglStorage",
+]

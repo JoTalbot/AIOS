@@ -1,11 +1,13 @@
-"""Prom marketplace agent — скелет, сгенерированный scaffold.
+"""Prom.ua full agent — collector, price_tracker, autowatch, favorites."""
 
-Хранилище унаследовано от OLXStorage: схема объявлений, история цен,
-подписки/избранное, outbox, свои объявления, конкурентные связи, kv-профиль.
-Парсеры/коллекторы платформы добавляются сюда по мере калибровки под
-её приложение (ua.prom).
-"""
-
+from .collector import PromCollector
+from .monitoring import PromPriceTracker, PromAutoWatch, PromFavorites
 from .storage import PromStorage
 
-__all__ = ["PromStorage"]
+__all__ = [
+    "PromAutoWatch",
+    "PromCollector",
+    "PromFavorites",
+    "PromPriceTracker",
+    "PromStorage",
+]
