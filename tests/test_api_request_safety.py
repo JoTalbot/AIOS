@@ -33,3 +33,14 @@ async def test_api_responses_include_baseline_security_headers():
     assert response.headers["x-frame-options"] == "DENY"
     assert response.headers["referrer-policy"] == "no-referrer"
     assert response.headers["content-security-policy"] == "frame-ancestors 'none'"
+
+
+@pytest.mark.asyncio
+async def test_request_id_is_returned_and_safe_client_value_is_preserved():
+    app = create_app(auth_required=False)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/health", headers={"X-Request-ID": "trace-123"})
+        generated = await client.get("/health", headers={"X-Request-ID": "bad\nvalue"})
+    assert response.headers["x-request-id"] == "trace-123"
+    assert generated.headers["x-request-id"] != "bad\nvalue"
+    assert generated.headers["x-request-id"]
