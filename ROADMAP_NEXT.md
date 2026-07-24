@@ -44,13 +44,16 @@
 
 **1327 tests, 0 failures**
 
-## v9.8.0 🚧 (next)
-- 🔲 TikTok full agent (collector, card_parser, detail, reels scout)
-- 🔲 WhatsApp/Viber/Facebook Marketplace full agents (not just scaffold)
-- 🔲 Multi-account fleet scheduler (per-platform 3+ profiles, cron-plan via-shards)
-- 🔲 Production dashboard React v3 (WebSocket, cross-platform charts)
-- 🔲 Mobile SDK (Flutter/React Native wrapper for AIOS REST API)
-- 🔲 httpx2 full async migration (remaining sync tests → 0 sync)
+## v9.8.0 ✅ (2026-07-24)
+- ✅ TikTok Shop full agent (10 modules: collector, card_parser, detail, price_tracker, autowatch, favorites, auto_login)
+- ✅ Facebook Marketplace full agent (10 modules: same pattern)
+- ✅ WhatsApp enhanced messenger (6 modules: contact_manager, broadcast_scheduler, chat_analytics)
+- ✅ Viber enhanced messenger (6 modules: inherits WhatsApp pattern)
+- ✅ CLI tiktok-shop/fb-marketplace/whatsapp-v2/viber-v2 subcommands
+- ✅ 37 new tests (1364 total, 0 failures)
+- ✅ RELEASE_NOTES_9.8.0.md + GitHub Release v9.8.0
+
+**1364 tests, 0 failures**
 
 ## v9.9.0 (planned)
 - Price prediction ML model (linear → polynomial regression → LSTM)
