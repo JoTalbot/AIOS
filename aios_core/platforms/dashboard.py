@@ -94,10 +94,13 @@ _DASHBOARD_HTML = """<!DOCTYPE html>
     <div class="err" id="shards-err" hidden></div>
   </section>
 </div>
-<div class="foot">AIOS Ops · guarded-pull architecture · AIOS 9.0</div>
+<div class="foot">AIOS Ops · guarded-pull architecture · v9.5 · <span id="uptime">—</span></div>
 <script>
 const API = "{api_prefix}";
 const REFRESH_MS = {refresh_ms};
+let startMs = Date.now();
+function uptime() {{ const s = Math.floor((Date.now() - startMs) / 1000); const m = Math.floor(s / 60), h = Math.floor(m / 60); document.getElementById("uptime").textContent = h > 0 ? h + "h " + (m % 60) + "m" : m + "m " + (s % 60) + "s"; }}
+setInterval(uptime, 1000);
 
 async function load(id, path, render) {{
   const box = document.getElementById(id);

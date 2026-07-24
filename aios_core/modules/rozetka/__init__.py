@@ -1,23 +1,29 @@
-"""Rozetka.ua marketplace agent — скелет, сгенерированный scaffold.
-
-Хранилище унаследовано от OLXStorage: схема объявлений (товаров),
-история цен, подписки/избранное, outbox, свои товары, конкурентные
-связи, kv-профиль.
+"""Rozetka.ua marketplace agent — scaffold with collector, card_parser, detail.
 
 Rozetka — крупнейший украинский e-commerce marketplace (электроника,
-бытовая техника, автозапчасти и др.). Парсеры/коллекторы добавляются
-по мере калибровки под UI приложения (com.rozetka).
+бытовая техника, автозапчасти). Full agent with Storage, Messenger,
+Bootstrap, Collector, CardParser, DetailParser.
 
 Quick start::
 
-    from aios_core.modules.rozetka import RozetkaStorage, RozetkaMessenger
+    from aios_core.modules.rozetka import RozetkaCollector, RozetkaStorage
 
+    collector = RozetkaCollector()
     with RozetkaStorage("rozetka.sqlite") as storage:
-        storage.save_ads([ProductCard(title="iPhone 16", price=42999)])
-        products = storage.get_ads()
+        summary = collector.collect_to_storage(storage, query="iPhone 16")
 """
 from .bootstrap import RozetkaBootstrap
+from .card_parser import RozetkaCardParser
+from .collector import RozetkaCollector
+from .detail import RozetkaDetailParser
 from .messenger import RozetkaMessenger
 from .storage import RozetkaStorage
 
-__all__ = ["RozetkaBootstrap", "RozetkaMessenger", "RozetkaStorage"]
+__all__ = [
+    "RozetkaBootstrap",
+    "RozetkaCardParser",
+    "RozetkaCollector",
+    "RozetkaDetailParser",
+    "RozetkaMessenger",
+    "RozetkaStorage",
+]
