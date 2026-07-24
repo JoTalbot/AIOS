@@ -1,5 +1,20 @@
 # AIOS Roadmap — Next Milestones
 
+## v10.6.0 ✅ (2026-07-24)
+- ✅ Task Scheduler (priority, recurring, retry, cancellation, history)
+- ✅ Event Store (in-memory, snapshots, projections, replay, compaction)
+- ✅ Observability (counters/gauges/histograms, span traces, Prometheus export)
+- ✅ Experiment Tracking (lifecycle, tags, artifacts, comparison, best-by-metric)
+- ✅ Data Lake (in-memory, schema validation, aggregation, materialized views)
+- ✅ API Versioning (no Starlette, header/path/query negotiation, deprecation)
+- ✅ Digital Twin (properties, simulation, what-if, rollback, event injection)
+- ✅ Compliance (rule engine, violations, scoring, remediation, audit)
+- ✅ Secrets (encryption, namespaces, versioning, rotation, masking)
+- ✅ 144 new tests (2176 total, 0 failures)
+- ✅ RELEASE_NOTES_10.6.0.md
+
+**2176 tests, 0 failures**
+
 ## v10.5.0 ✅ (2026-07-24)
 - ✅ Zero Trust Security (trust levels, device profiles, policies, network segmentation, audit)
 - ✅ Self-Healing (recovery escalation, health monitor, diagnostics, history)
@@ -232,4 +247,5 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 10.2.0 | 2026-07-24 | 1616 | Credential manager + Price alert system + Scraping templates |
 | 10.3.0 | 2026-07-24 | 1670 | Agent memory + Platform health monitor + Export/import pipeline |
 | 10.4.0 | 2026-07-24 | 1882 | Feature flags + RBAC + Workflow engine (DAG, saga, retry) |
-| 10.5.0 | 2026-07-24 | 2032 | Zero trust + Self-healing + CB enhanced + API gateway + Shutdown + Mesh + Queue + Chaos + Scaler + Health |
+| 10.5.0 | 2026-07-24 | 2032 | Zero trust + Self-healing + CB + Gateway + Shutdown + Mesh + Queue + Chaos + Scaler + Health |
+| 10.6.0 | 2026-07-24 | 2176 | Task scheduler + Event store + Observability + Experiment + Data lake + API versioning + Twin + Compliance + Secrets |
