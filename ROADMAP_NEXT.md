@@ -41,10 +41,15 @@
 
 **3015 tests, 0 failures**
 
-## v10.16.0 (Next)
-- 🔲 Expand 112 modules (100-199 lines) to >200 lines
-- 🔲 Deepen behavioral test coverage for expanded modules
-- 🔲 Security: revoke exposed GitHub PAT
+## v10.17.0 (Next)
+- 🔲 Implement Agent Memory Optimization (Vector compression)
+- 🔲 Introduce Substrate Convergence Dashboard UI
+- 🔲 Datadog / Prometheus comprehensive alert tuning for EKS
+
+## v10.16.0 ✅ (2026-07-24)
+- ✅ Expand 112 modules (100-199 lines) to >200 lines
+- ✅ Deepen behavioral test coverage for expanded modules
+- ✅ Security: revoke exposed GitHub PAT
 
 ## v10.11.0 ✅ (2026-07-24)
 - ✅ 22 AI Safety modules: DictionaryLearning, RecursiveReward, ValueLearning, CausalInterpretability, HonestAI, SafetyInterpretability, Amplification, AdvancedInterpretability, WeakToStrong, Debate, FormalVerification, AdvancedGovernance, Honesty, MultiAgent, SparseAutoencoder, LongTerm, Benchmark, RedTeaming, ScalableOversight, Scientist, Dashboard, Monitoring
