@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIOS Substrate Convergence Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-color: #e2e8f0;
+            --accent: #38bdf8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --quantum: #8b5cf6;
+            --photonic: #ec4899;
+            --neuromorphic: #f43f5e;
+            --bio: #14b8a6;
+            --silicon: #64748b;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        h1 { font-size: 1.8rem; font-weight: 600; display: flex; align-items: center; gap: 12px; }
+        .version { font-size: 0.9rem; background: var(--panel-bg); padding: 4px 8px; border-radius: 4px; color: var(--accent); }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .panel {
+            background: var(--panel-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .panel h2 { font-size: 1.2rem; margin-bottom: 16px; font-weight: 500; color: #94a3b8; }
+        
+        /* Stats */
+        .stat-group { display: flex; flex-direction: column; gap: 16px; }
+        .stat-row { display: flex; justify-content: space-between; align-items: center; }
+        .stat-label { color: #cbd5e1; font-size: 0.95rem; }
+        .stat-value { font-size: 1.5rem; font-weight: 600; }
+        
+        /* Substrate Cards */
+        .substrate-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        
+        .sub-card {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 16px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        
+        .sub-card:hover { transform: translateY(-2px); }
+        
+        .sub-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 4px;
+        }
+        
+        .type-quantum::before { background: var(--quantum); }
+        .type-photonic::before { background: var(--photonic); }
+        .type-neuromorphic::before { background: var(--neuromorphic); }
+        .type-bio::before { background: var(--bio); }
+        .type-silicon::before { background: var(--silicon); }
+        
+        .sub-header { display: flex; justify-content: space-between; margin-bottom: 12px; }
+        .sub-title { font-weight: 600; font-size: 1.1rem; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .status-active { background: var(--success); box-shadow: 0 0 8px var(--success); }
+        .status-offline { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+        
+        .metric { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; }
+        .metric-val { font-family: monospace; }
+        
+        .health-bar {
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+        .health-fill { height: 100%; transition: width 0.5s ease; }
+        
+        /* Logs */
+        .log-container {
+            background: #020617;
+            padding: 12px;
+            border-radius: 6px;
+            height: 250px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #a1a1aa;
+        }
+        
+        .log-entry { margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px; }
+        .log-time { color: var(--accent); }
+        .log-type { padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin: 0 6px; }
+        
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🌌 AIOS Substrate Convergence <span class="version">v10.17.0</span></h1>
+        <div style="color: #94a3b8; font-size: 0.9rem;">Live Workload Router</div>
+    </header>
+
+    <div class="grid">
+        <div class="panel">
+            <h2>System Overview</h2>
+            <div class="stat-group">
+                <div class="stat-row">
+                    <span class="stat-label">Active Dispatches</span>
+                    <span class="stat-value" id="val-dispatches">14,892</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Queued Tasks</span>
+                    <span class="stat-value" id="val-queued">42</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total Energy Cost (Wh)</span>
+                    <span class="stat-value" style="color: var(--warning)" id="val-energy">1.4502</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Failover Events</span>
+                    <span class="stat-value" id="val-failover">3</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel" style="grid-column: span 2;">
+            <h2>Substrate Mesh Health</h2>
+            <div class="substrate-grid" id="substrate-container">
+                <!-- Rendered via JS -->
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Live Dispatch Router</h2>
+        <div class="log-container" id="log-window">
+            <!-- Logs -->
+        </div>
+    </div>
+
+    <script>
+        const substrates = [
+            { id: 'quantum_qpu', name: 'Quantum', colorClass: 'type-quantum', latency: '1.0ms', eff: '2000 GFLOPS/W', health: 1.0, active: true },
+            { id: 'photonic_optical', name: 'Photonic', colorClass: 'type-photonic', latency: '0.05ms', eff: '10000 GFLOPS/W', health: 0.98, active: true },
+            { id: 'neuromorphic_snn', name: 'Neuromorphic', colorClass: 'type-neuromorphic', latency: '0.20ms', eff: '5000 GFLOPS/W', health: 0.85, active: true },
+            { id: 'bio_compute', name: 'Bio-Compute', colorClass: 'type-bio', latency: '50.0ms', eff: '50000 GFLOPS/W', health: 0.99, active: true },
+            { id: 'silicon_x86_arm', name: 'Silicon', colorClass: 'type-silicon', latency: '5.0ms', eff: '100 GFLOPS/W', health: 1.0, active: true }
+        ];
+
+        function renderSubstrates() {
+            const container = document.getElementById('substrate-container');
+            container.innerHTML = substrates.map(s => {
+                const healthColor = s.health > 0.8 ? 'var(--success)' : (s.health > 0.4 ? 'var(--warning)' : 'var(--danger)');
+                return `
+                <div class="sub-card ${s.colorClass}">
+                    <div class="sub-header">
+                        <span class="sub-title">${s.name}</span>
+                        <span class="status-dot status-${s.active ? 'active' : 'offline'}"></span>
+                    </div>
+                    <div class="metric"><span style="color:#94a3b8">Latency</span><span class="metric-val">${s.latency}</span></div>
+                    <div class="metric"><span style="color:#94a3b8">Efficiency</span><span class="metric-val">${s.eff}</span></div>
+                    <div class="metric"><span style="color:#94a3b8">Health</span><span class="metric-val">${(s.health * 100).toFixed(0)}%</span></div>
+                    <div class="health-bar">
+                        <div class="health-fill" style="width: ${s.health * 100}%; background: ${healthColor}"></div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        const taskTypes = ["compute", "parallel", "inference", "optimization", "pattern", "crypto"];
+        let dispatches = 14892;
+        let queued = 42;
+        let energy = 1.4502;
+
+        function addLog() {
+            const logWindow = document.getElementById('log-window');
+            const sub = substrates[Math.floor(Math.random() * substrates.length)];
+            const task = taskTypes[Math.floor(Math.random() * taskTypes.length)];
+            
+            dispatches++;
+            energy += (Math.random() * 0.05);
+            queued = Math.max(0, queued + (Math.random() > 0.7 ? 1 : -1));
+            
+            document.getElementById('val-dispatches').innerText = dispatches.toLocaleString();
+            document.getElementById('val-queued').innerText = queued;
+            document.getElementById('val-energy').innerText = energy.toFixed(4);
+
+            const time = new Date().toISOString().split('T')[1].slice(0, -1);
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `<span class="log-time">[${time}]</span> Routed <span style="color: #e2e8f0">${task}</span> task to <span class="log-type" style="background: var(--${sub.name.toLowerCase().split('-')[0]})">${sub.name}</span> <span style="color:#64748b">cost: ${(Math.random() * 0.01).toFixed(4)}Wh</span>`;
+            
+            logWindow.prepend(logEntry);
+            if (logWindow.children.length > 50) {
+                logWindow.removeChild(logWindow.lastChild);
+            }
+        }
+
+        renderSubstrates();
+        setInterval(addLog, 1200); // Simulate incoming traffic
+        
+        // Randomly adjust health
+        setInterval(() => {
+            substrates.forEach(s => {
+                if (Math.random() > 0.8) {
+                    s.health = Math.max(0.1, Math.min(1.0, s.health + (Math.random() * 0.1 - 0.05)));
+                    if (s.health < 0.2) s.active = false;
+                    else s.active = true;
+                }
+            });
+            renderSubstrates();
+        }, 5000);
+    </script>
+</body>
+</html>
