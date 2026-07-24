@@ -16,6 +16,8 @@ Provides:
 
 from __future__ import annotations
 
+import contextlib
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -308,9 +310,19 @@ class AISalesAdvisor:
                 # Look for similar items
                 mem = self.memory.search(query=str(item_id), limit=5)
                 for entry in mem:
-                    if isinstance(entry, dict) and "price" in str(entry).lower():
-                        # naive extraction
-                        pass  # TODO: structured price extraction from memory
+                    if not isinstance(entry, dict):
+                        continue
+                    # Extract price from content or direct field
+                    content = entry.get("content", entry)
+                    if isinstance(content, str):
+                        price_match = re.search(r"(\d{2,7})\s*(?:грн|uah|₴|$)", content.lower())
+                        if price_match:
+                            market_samples.append(float(price_match.group(1)))
+                    elif isinstance(content, dict):
+                        price_val = content.get("price") or content.get("suggested_price")
+                        if price_val is not None:
+                            with contextlib.suppress(ValueError, TypeError):
+                                market_samples.append(float(price_val))
             except Exception:
                 pass  # Market sample extraction failed — proceed without samples
 
