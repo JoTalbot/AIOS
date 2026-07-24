@@ -13,14 +13,15 @@
 
 from __future__ import annotations
 
+import builtins
 import json
 import os
 import sqlite3
 import subprocess
 import threading
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS shard_jobs (
@@ -44,7 +45,7 @@ CREATE TABLE IF NOT EXISTS shard_heartbeats (
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class ShardJobs:
@@ -66,7 +67,7 @@ class ShardJobs:
         with self._lock, self._conn:
             self._conn.executescript(_SCHEMA)
 
-    def __enter__(self) -> "ShardJobs":
+    def __enter__(self) -> ShardJobs:
         return self
 
     def __exit__(self, *_exc) -> None:
@@ -78,7 +79,7 @@ class ShardJobs:
 
     # -- очередь ------------------------------------------------------
 
-    def enqueue(self, profile_key: str, kind: str, payload: Optional[Dict] = None) -> int:
+    def enqueue(self, profile_key: str, kind: str, payload: dict | None = None) -> int:
         """Повесить джобу на профиль; вернуть id."""
         with self._lock, self._conn:
             cursor = self._conn.execute(
@@ -93,7 +94,7 @@ class ShardJobs:
             )
             return int(cursor.lastrowid)
 
-    def _row(self, row) -> Dict:
+    def _row(self, row) -> dict:
         item = dict(row)
         item["payload"] = json.loads(item["payload"] or "{}")
         if item.get("result") is not None:
@@ -103,7 +104,7 @@ class ShardJobs:
                 pass  # Non-JSON result — keep as-is
         return item
 
-    def list(self, status: str | None = None) -> List[Dict]:
+    def list(self, status: str | None = None) -> builtins.list[dict]:
         """Джобы по статусу (None — все), старые первыми."""
         sql = "SELECT * FROM shard_jobs"
         params: list = []
@@ -126,13 +127,15 @@ class ShardJobs:
             ).fetchone()
         return row["host"] if row else None
 
-    def pending_for(self, host: str) -> List[Dict]:
+    def pending_for(self, host: str) -> builtins.list[dict]:
         """Pending-джобы, маршрут которых указывает на ``host``."""
         return [
-            job for job in self.list(status="pending") if self._host_for(job["profile_key"]) == host
+            job
+            for job in self.list(status="pending")
+            if self._host_for(job["profile_key"]) == host
         ]
 
-    def claim_next(self, host: str) -> Optional[Dict]:
+    def claim_next(self, host: str) -> dict | None:
         """Атомарно забрать следующую джобу ноды (статуc → claimed)."""
         with self._lock, self._conn:
             for job in self.pending_for(host):
@@ -147,11 +150,14 @@ class ShardJobs:
                     return job
         return None
 
-    def complete(self, job_id: int, ok: bool = True, result: Optional[Dict] = None) -> bool:
+    def complete(
+        self, job_id: int, ok: bool = True, result: dict | None = None
+    ) -> bool:
         """Зафиксировать результат джобы (done/failed)."""
         with self._lock, self._conn:
             cursor = self._conn.execute(
-                "UPDATE shard_jobs SET status = ?, finished_at = ?, result = ? " "WHERE id = ?",
+                "UPDATE shard_jobs SET status = ?, finished_at = ?, result = ? "
+                "WHERE id = ?",
                 (
                     "done" if ok else "failed",
                     _now(),
@@ -167,11 +173,13 @@ class ShardJobs:
         """Исполнитель жив: обновляет отметку времени ноды."""
         with self._lock, self._conn:
             self._conn.execute(
-                "INSERT OR REPLACE INTO shard_heartbeats (host, seen_at)" " VALUES (?, ?)",
+                "INSERT OR REPLACE INTO shard_heartbeats (host, seen_at) VALUES (?, ?)",
                 (host, _now()),
             )
 
-    def requeue_stale(self, stale_after_s: float = 600.0, now: str | None = None) -> List[Dict]:
+    def requeue_stale(
+        self, stale_after_s: float = 600.0, now: str | None = None
+    ) -> builtins.list[dict]:
         """Вернуть в pending claimed-джобы, зависшие дольше TTL.
 
         Джоба считается зависшей, если с момента claim прошло больше
@@ -180,8 +188,8 @@ class ShardJobs:
         """
         from datetime import datetime as _dt
 
-        now_dt = _dt.fromisoformat(now) if now else _dt.now(timezone.utc)
-        moved: List[Dict] = []
+        now_dt = _dt.fromisoformat(now) if now else _dt.now(UTC)
+        moved: list[dict] = []
         with self._lock, self._conn:
             for job in self.list(status="claimed"):
                 claimed = job.get("claimed_at")
@@ -201,11 +209,11 @@ class ShardJobs:
                 moved.append(job)
         return moved
 
-    def stats(self, stale_after_s: float = 600.0, now: str | None = None) -> Dict:
+    def stats(self, stale_after_s: float = 600.0, now: str | None = None) -> dict:
         """Глубина очереди и счётчики по статусам (+зависшие claim'ы)."""
         from datetime import datetime as _dt
 
-        now_dt = _dt.fromisoformat(now) if now else _dt.now(timezone.utc)
+        now_dt = _dt.fromisoformat(now) if now else _dt.now(UTC)
         counts: dict[str, int] = {}
         with self._lock:
             for row in self._conn.execute(
@@ -251,15 +259,15 @@ class ShardJobWorker:
     def __init__(
         self,
         host: str,
-        jobs: Optional[ShardJobs] = None,
-        handlers: Optional[Dict[str, Callable]] = None,
+        jobs: ShardJobs | None = None,
+        handlers: dict[str, Callable] | None = None,
     ) -> None:
         """Initialize ShardJobWorker."""
         self.host = host
         self.jobs = jobs or ShardJobs()
         self.handlers = handlers if handlers is not None else default_handlers()
 
-    def work_once(self) -> Optional[Dict]:
+    def work_once(self) -> dict | None:
         """Исполнить одну джобу ноды; None — очередь пуста.
 
         Handler изолирован: исключение → джоба ``failed`` с текстом
@@ -305,7 +313,7 @@ class ShardJobWorker:
             }
 
 
-def default_handlers(cli_path: str | None = None) -> Dict[str, Callable]:
+def default_handlers(cli_path: str | None = None) -> dict[str, Callable]:
     """Встроенные виды джоб: shell-out в aios_cli (guarded сохранён).
 
     ``autopilot`` → ``instagram autopilot --login`` для профиля
@@ -314,7 +322,7 @@ def default_handlers(cli_path: str | None = None) -> Dict[str, Callable]:
     root = Path(cli_path or Path(__file__).resolve().parent.parent.parent)
     cli = str(root / "aios_cli.py")
 
-    def _run_cli(cmd: list[str], extra: List) -> Dict:
+    def _run_cli(cmd: list[str], extra: list) -> dict:
         args = [str(arg) for arg in (extra or [])]
         proc = subprocess.run(
             cmd + args,
@@ -331,11 +339,13 @@ def default_handlers(cli_path: str | None = None) -> Dict[str, Callable]:
     def _profile_db(platform: str, name: str) -> str:
         return str(root / "data" / f"{platform}-{name}.sqlite")
 
-    def autopilot(profile_key: str, payload: Dict) -> Dict:
+    def autopilot(profile_key: str, payload: dict) -> dict:
         """Execute autopilot."""
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
-            raise ValueError(f"autopilot job поддерживает instagram-профили, не {platform!r}")
+            raise ValueError(
+                f"autopilot job поддерживает instagram-профили, не {platform!r}"
+            )
         return _run_cli(
             [
                 "python3",
@@ -349,11 +359,13 @@ def default_handlers(cli_path: str | None = None) -> Dict[str, Callable]:
             payload.get("args"),
         )
 
-    def reels(profile_key: str, payload: Dict) -> Dict:
+    def reels(profile_key: str, payload: dict) -> dict:
         """Execute reels."""
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
-            raise ValueError(f"reels job поддерживает instagram-профили, не {platform!r}")
+            raise ValueError(
+                f"reels job поддерживает instagram-профили, не {platform!r}"
+            )
         return _run_cli(
             [
                 "python3",
@@ -367,11 +379,13 @@ def default_handlers(cli_path: str | None = None) -> Dict[str, Callable]:
             payload.get("args"),
         )
 
-    def dm_flush(profile_key: str, payload: Dict) -> Dict:
+    def dm_flush(profile_key: str, payload: dict) -> dict:
         """Execute dm flush."""
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
-            raise ValueError(f"dm-flush job поддерживает instagram-профили, не {platform!r}")
+            raise ValueError(
+                f"dm-flush job поддерживает instagram-профили, не {platform!r}"
+            )
         return _run_cli(
             [
                 "python3",
@@ -384,7 +398,7 @@ def default_handlers(cli_path: str | None = None) -> Dict[str, Callable]:
             payload.get("args"),
         )
 
-    def marker_check(profile_key: str, payload: Dict) -> Dict:
+    def marker_check(profile_key: str, payload: dict) -> dict:
         """Execute marker check."""
         platform, _, _name = profile_key.partition(":")
         dump = str(root / "data" / f"marker-{platform}.xml")

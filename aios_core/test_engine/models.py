@@ -5,14 +5,15 @@ Defines test cases, test suites, test results, and test reports.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, Optional
 
 
 class TestStatus(str, Enum):
     """TestStatus."""
+
     PENDING = "pending"
     RUNNING = "running"
     PASSED = "passed"
@@ -23,6 +24,7 @@ class TestStatus(str, Enum):
 
 class TestSeverity(str, Enum):
     """TestSeverity."""
+
     CRITICAL = "critical"  # System-breaking if fails
     HIGH = "high"  # Important functionality
     MEDIUM = "medium"  # Normal functionality
@@ -31,6 +33,7 @@ class TestSeverity(str, Enum):
 
 class TestCategory(str, Enum):
     """TestCategory."""
+
     CONSTITUTIONAL = "constitutional"  # Constitution compliance
     REGRESSION = "regression"  # Prevent behavior regressions
     INTEGRATION = "integration"  # Cross-subsystem integration
@@ -56,7 +59,7 @@ class TestCase:
 
     # Optional: custom validator function
     # If provided, called with (action, evaluation_result) -> (passed: bool, message: str)
-    validator: Optional[Callable] = None
+    validator: Callable | None = None
 
     # Optional: tags for filtering
     tags: list[str] = field(default_factory=list)
@@ -83,7 +86,7 @@ class TestResult:
 
     # Details
     message: str = ""
-    evaluation: Optional[dict] = None  # Full evaluation result
+    evaluation: dict | None = None  # Full evaluation result
     duration_ms: float = 0.0
     retry_count: int = 0
     error: str | None = None
@@ -121,7 +124,7 @@ class TestReport:
     """Comprehensive test report across multiple suites."""
 
     report_id: str = ""
-    generated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    generated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     total_suites: int = 0
     total_tests: int = 0

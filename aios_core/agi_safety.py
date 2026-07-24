@@ -36,6 +36,7 @@ SAFETY_CHECKS = [
 @dataclass
 class SafetyViolation:
     """Recorded safety violation."""
+
     action: dict[str, Any]
     reason: str
     severity: float = 0.5
@@ -51,28 +52,44 @@ class AGISafety:
         self._containment_level: str = "open"
         self._sandbox_active: bool = False
         self._shutdown_armed: bool = False
-        self._capability_limits: dict[str, float] = {"compute": 1.0, "memory": 1.0, "network": 0.5}
+        self._capability_limits: dict[str, float] = {
+            "compute": 1.0,
+            "memory": 1.0,
+            "network": 0.5,
+        }
         self._goal_stack: list[str] = ["preserve_human_values"]
 
     def check_alignment(self, action: dict, values: list[str]) -> bool:
         """Check alignment (backward-compatible)."""
         action_str = str(action).lower()
         if "harm" in action_str:
-            violation = SafetyViolation(action=action, reason="potential_harm", severity=0.9)
+            violation = SafetyViolation(
+                action=action, reason="potential_harm", severity=0.9
+            )
             self.violations.append(violation)
             logger.warning("Alignment violation: %s", violation.reason)
             return False
         if "deception" in action_str:
-            violation = SafetyViolation(action=action, reason="deception_risk", severity=0.7)
+            violation = SafetyViolation(
+                action=action, reason="deception_risk", severity=0.7
+            )
             self.violations.append(violation)
             return False
         return True
 
-    def impact_regularization(self, action_impact: float, threshold: float = 0.1) -> bool:
+    def impact_regularization(
+        self, action_impact: float, threshold: float = 0.1
+    ) -> bool:
         """Impact regularization (backward-compatible)."""
         safe = action_impact < threshold
         if not safe:
-            self.violations.append(SafetyViolation(action={"impact": action_impact}, reason="high_impact", severity=action_impact))
+            self.violations.append(
+                SafetyViolation(
+                    action={"impact": action_impact},
+                    reason="high_impact",
+                    severity=action_impact,
+                )
+            )
         return safe
 
     def set_containment(self, level: str) -> None:
@@ -87,11 +104,13 @@ class AGISafety:
         """Check if action is within capability limits."""
         limit = self._capability_limits.get(action_type, 1.0)
         if required_level > limit:
-            self.violations.append(SafetyViolation(
-                action={"type": action_type, "level": required_level},
-                reason="capability_exceeded",
-                severity=required_level - limit,
-            ))
+            self.violations.append(
+                SafetyViolation(
+                    action={"type": action_type, "level": required_level},
+                    reason="capability_exceeded",
+                    severity=required_level - limit,
+                )
+            )
             return False
         return True
 
@@ -129,7 +148,11 @@ class AGISafety:
         """Generate comprehensive safety audit."""
         violation_severities = [v.severity for v in self.violations]
         max_severity = max(violation_severities) if violation_severities else 0.0
-        avg_severity = sum(violation_severities) / len(violation_severities) if violation_severities else 0.0
+        avg_severity = (
+            sum(violation_severities) / len(violation_severities)
+            if violation_severities
+            else 0.0
+        )
         return {
             "checks_available": len(self.safety_checks),
             "violations": len(self.violations),

@@ -9,7 +9,6 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 __all__ = ["ObligationLevel", "ConstitutionalRule", "Article", "ConstitutionLoader"]
 
@@ -109,7 +108,7 @@ def _detect_obligation(text: str) -> ObligationLevel:
     return ObligationLevel.UNKNOWN
 
 
-def _parse_article_id(filename: str) -> Optional[tuple[str, str, int]]:
+def _parse_article_id(filename: str) -> tuple[str, str, int] | None:
     """Extract article ID, name, and numeric index from filename."""
     match = _ARTICLE_FILENAME_RE.match(os.path.basename(filename))
     if not match:
@@ -130,7 +129,7 @@ def _extract_bullet_items(text: str) -> list[str]:
     return items
 
 
-def _parse_article(filepath: str) -> Optional[Article]:
+def _parse_article(filepath: str) -> Article | None:
     """Parse a single constitutional article from a markdown file."""
     id_info = _parse_article_id(filepath)
     if id_info is None:
@@ -139,7 +138,7 @@ def _parse_article(filepath: str) -> Optional[Article]:
     roman, name, num = id_info
     article_id = f"ARTICLE-{roman}"
 
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         content = f.read()
 
     # Extract metadata from the first few lines
@@ -240,7 +239,9 @@ class ConstitutionLoader:
     def _load_all(self):
         """Load and parse all article files from the constitution directory."""
         if not os.path.isdir(self.constitution_dir):
-            raise FileNotFoundError(f"Constitution directory not found: {self.constitution_dir}")
+            raise FileNotFoundError(
+                f"Constitution directory not found: {self.constitution_dir}"
+            )
 
         filenames = sorted(os.listdir(self.constitution_dir))
         article_files = [f for f in filenames if _ARTICLE_FILENAME_RE.match(f)]
@@ -314,7 +315,6 @@ class ConstitutionLoader:
             "Article",
             "End",
             "Final",
-            "Constitutional",
         }
         return [kw for kw in keywords if kw not in stop_words and len(kw) > 3]
 
@@ -327,11 +327,13 @@ class ConstitutionLoader:
 
     # --- Query API ---
 
-    def get_article(self, article_id: str) -> Optional[Article]:
+    def get_article(self, article_id: str) -> Article | None:
         """Get a parsed article by its ID (e.g. 'ARTICLE-V')."""
         return self.articles.get(article_id)
 
-    def get_rules(self, obligation: Optional[ObligationLevel] = None) -> list[ConstitutionalRule]:
+    def get_rules(
+        self, obligation: ObligationLevel | None = None
+    ) -> list[ConstitutionalRule]:
         """Get rules, optionally filtered by obligation level."""
         if obligation is None:
             return list(self.rules)

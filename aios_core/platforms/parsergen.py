@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Dict, Optional, Tuple
 
 from .scaffold import _class_name, _module_name
 
@@ -49,7 +48,7 @@ class {class_name}CardParser(_BaseCardParser):
 '''
 
 
-def extract_markers(hints: Dict) -> Tuple[str, ...]:
+def extract_markers(hints: dict) -> tuple[str, ...]:
     """Извлекает substring-маркеры resource-id из parser_hints.
 
     Берёт top card_markers калибровки, нормализуя resource-id
@@ -71,7 +70,7 @@ def extract_markers(hints: Dict) -> Tuple[str, ...]:
     return tuple(markers)
 
 
-def build_parser(hints: Dict) -> None:
+def build_parser(hints: dict) -> None:
     """Runtime-парсер из parser_hints (без файлов).
 
     Returns:
@@ -93,7 +92,7 @@ def build_parser(hints: Dict) -> None:
 
 def generate_parser_source(
     platform_name: str,
-    hints: Dict,
+    hints: dict,
     android_package: str = "",
 ) -> str:
     """Исходный код ``card_parser.py`` платформы из parser_hints.
@@ -118,7 +117,7 @@ def generate_parser_source(
 
 def write_parser(
     platform_name: str,
-    hints: Dict,
+    hints: dict,
     project_root=".",
     android_package: str = "",
     dry_run: bool = False,
@@ -152,7 +151,7 @@ def write_parser(
 
     if not dry_run and not init_path.exists():
         raise ValueError(
-            f"module not scaffolded: {module_dir} " "(run aios platforms scaffold first)"
+            f"module not scaffolded: {module_dir} (run aios platforms scaffold first)"
         )
     if parser_path.exists() and not overwrite:
         raise ValueError(

@@ -14,8 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -24,9 +23,16 @@ logger = logging.getLogger(__name__)
 class AuditRecord:
     """Single audit event with hash chaining."""
 
-    def __init__(self, action: str, actor: str, resource: str, decision: str,
-                 metadata: dict[str, Any] | None = None, prev_hash: str = "") -> None:
-        self.timestamp = datetime.now(timezone.utc).isoformat()
+    def __init__(
+        self,
+        action: str,
+        actor: str,
+        resource: str,
+        decision: str,
+        metadata: dict[str, Any] | None = None,
+        prev_hash: str = "",
+    ) -> None:
+        self.timestamp = datetime.now(UTC).isoformat()
         self.action = action
         self.actor = actor
         self.resource = resource
@@ -42,7 +48,9 @@ class AuditRecord:
 
     def verify(self, prev_hash: str) -> bool:
         """Verify integrity against previous hash."""
-        expected = hashlib.sha256(f"{self.timestamp}|{self.action}|{self.actor}|{self.resource}|{self.decision}|{prev_hash}".encode()).hexdigest()[:16]
+        expected = hashlib.sha256(
+            f"{self.timestamp}|{self.action}|{self.actor}|{self.resource}|{self.decision}|{prev_hash}".encode()
+        ).hexdigest()[:16]
         return self.hash == expected
 
     def to_dict(self) -> dict[str, Any]:
@@ -68,11 +76,17 @@ class EnhancedAudit:
         self._alert_rules: list[dict[str, Any]] = []
         self._chain_hash: str = ""
 
-    def record(self, action: str, actor: str, resource: str, decision: str, **metadata) -> AuditRecord:
+    def record(
+        self, action: str, actor: str, resource: str, decision: str, **metadata
+    ) -> AuditRecord:
         """Record an audit event (backward-compatible + hash chaining)."""
         audit_record = AuditRecord(
-            action=action, actor=actor, resource=resource,
-            decision=decision, metadata=metadata, prev_hash=self._chain_hash,
+            action=action,
+            actor=actor,
+            resource=resource,
+            decision=decision,
+            metadata=metadata,
+            prev_hash=self._chain_hash,
         )
         self._chain_hash = audit_record.hash
         self.records.append(audit_record)
@@ -95,7 +109,13 @@ class EnhancedAudit:
                 return False
         return True
 
-    def query(self, actor: str | None = None, action: str | None = None, resource: str | None = None, limit: int = 100) -> list[dict]:
+    def query(
+        self,
+        actor: str | None = None,
+        action: str | None = None,
+        resource: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
         """Query audit records (backward-compatible + enhanced)."""
         results = self.records
         if actor:
@@ -122,9 +142,13 @@ class EnhancedAudit:
             "retention_days": self.retention_days,
         }
 
-    def add_alert_rule(self, condition: str, threshold: int = 10, action: str = "notify") -> None:
+    def add_alert_rule(
+        self, condition: str, threshold: int = 10, action: str = "notify"
+    ) -> None:
         """Add an alert rule for audit monitoring."""
-        self._alert_rules.append({"condition": condition, "threshold": threshold, "action": action})
+        self._alert_rules.append(
+            {"condition": condition, "threshold": threshold, "action": action}
+        )
 
     def _check_alerts(self, record: AuditRecord) -> None:
         """Check if a record triggers any alert rules."""
@@ -132,7 +156,11 @@ class EnhancedAudit:
             if rule["condition"] == "denied_decisions":
                 denied_count = sum(1 for r in self.records if r.decision == "denied")
                 if denied_count >= rule["threshold"]:
-                    logger.warning("Alert: %d denied decisions (threshold=%d)", denied_count, rule["threshold"])
+                    logger.warning(
+                        "Alert: %d denied decisions (threshold=%d)",
+                        denied_count,
+                        rule["threshold"],
+                    )
 
     def privacy_export(self, subject: str) -> list[dict[str, Any]]:
         """GDPR-style data export for a specific subject."""

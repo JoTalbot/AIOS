@@ -9,21 +9,23 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from starlette.applications import Starlette
-from starlette.background import BackgroundTask
-from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, StreamingResponse
-from starlette.routing import Mount, Route
+from starlette.routing import Route
 
 from aios_core.api.app import AIOSAPI
-from aios_core.api.integration import ExternalIntegrationAPI, IntegrationEvent, IntegrationEventType
+from aios_core.api.integration import (
+    ExternalIntegrationAPI,
+    IntegrationEvent,
+    IntegrationEventType,
+)
 from aios_core.api.monitoring import Alert, AlertSeverity, AlertType, MonitoringSystem
 from aios_core.api.protocols import ProtocolConfig, ProtocolManager, ProtocolType
-from aios_core.telemetry import MetricCounter, MetricGauge, MetricHistogram
+from aios_core.telemetry import MetricCounter, MetricGauge
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +40,9 @@ class EnhancedAIOSAPI:
 
         # Create integration components
         self.integration_api = ExternalIntegrationAPI(self.base_api)
-        self.protocol_manager = ProtocolManager(self.integration_api.integration_manager)
+        self.protocol_manager = ProtocolManager(
+            self.integration_api.integration_manager
+        )
         self.monitoring_system = MonitoringSystem()
 
         # Setup enhanced logging
@@ -57,7 +61,9 @@ class EnhancedAIOSAPI:
                 "monitoring_alerts_total", "Total monitoring alerts"
             ),
             "active_users": MetricGauge("active_users", "Number of active users"),
-            "system_uptime": MetricGauge("system_uptime_seconds", "System uptime in seconds"),
+            "system_uptime": MetricGauge(
+                "system_uptime_seconds", "System uptime in seconds"
+            ),
         }
 
         self.start_time = time.time()
@@ -144,7 +150,9 @@ class EnhancedAIOSAPI:
             ),
             # Monitoring and alerts
             Route("/api/v1/monitoring/dashboard", self._monitoring_dashboard),
-            Route("/api/v1/monitoring/alerts", self._monitoring_alerts, methods=["GET"]),
+            Route(
+                "/api/v1/monitoring/alerts", self._monitoring_alerts, methods=["GET"]
+            ),
             Route(
                 "/api/v1/monitoring/alerts",
                 self._monitoring_alerts_create,
@@ -158,7 +166,9 @@ class EnhancedAIOSAPI:
             Route("/api/v1/monitoring/metrics", self._monitoring_metrics),
             Route("/api/v1/monitoring/health", self._monitoring_health),
             # External system connections
-            Route("/api/v1/external/systems", self._external_systems_list, methods=["GET"]),
+            Route(
+                "/api/v1/external/systems", self._external_systems_list, methods=["GET"]
+            ),
             Route(
                 "/api/v1/external/systems",
                 self._external_systems_connect,
@@ -179,7 +189,9 @@ class EnhancedAIOSAPI:
             Route("/api/v1/sync/status", self._sync_status, methods=["GET"]),
             Route("/api/v1/sync/history", self._sync_history, methods=["GET"]),
             # Integration testing
-            Route("/api/v1/integrations/test", self._integration_test, methods=["POST"]),
+            Route(
+                "/api/v1/integrations/test", self._integration_test, methods=["POST"]
+            ),
             Route(
                 "/api/v1/integrations/benchmark",
                 self._integration_benchmark,
@@ -224,7 +236,9 @@ class EnhancedAIOSAPI:
         )
 
         # Add integration metrics middleware
-        app.middleware_stack = app.middleware_stack.add(self.integration_metrics_middleware)
+        app.middleware_stack = app.middleware_stack.add(
+            self.integration_metrics_middleware
+        )
 
         return app
 
@@ -232,7 +246,9 @@ class EnhancedAIOSAPI:
 
     async def _integrations_list(self, request: Request) -> JSONResponse:
         """List all registered integrations."""
-        integrations = list(self.integration_api.integration_manager.webhook_handlers.keys())
+        integrations = list(
+            self.integration_api.integration_manager.webhook_handlers.keys()
+        )
         return JSONResponse(
             {
                 "integrations": integrations,
@@ -251,7 +267,9 @@ class EnhancedAIOSAPI:
             config = data.get("config")
 
             if not integration_type or not config:
-                return JSONResponse({"error": "type and config are required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "type and config are required"}, status_code=400
+                )
 
             # Create integration based on type
             if integration_type == "webhook":
@@ -275,7 +293,9 @@ class EnhancedAIOSAPI:
                         except Exception as e:
                             logger.error(f"Webhook delivery failed: {e}")
 
-                self.integration_api.integration_manager.register_webhook(endpoint, webhook_handler)
+                self.integration_api.integration_manager.register_webhook(
+                    endpoint, webhook_handler
+                )
 
                 return JSONResponse(
                     {
@@ -334,7 +354,9 @@ class EnhancedAIOSAPI:
 
         # For demo, remove from webhook handlers
         if integration_id in self.integration_api.integration_manager.webhook_handlers:
-            del self.integration_api.integration_manager.webhook_handlers[integration_id]
+            del self.integration_api.integration_manager.webhook_handlers[
+                integration_id
+            ]
             return JSONResponse({"message": f"Integration {integration_id} deleted"})
         else:
             return JSONResponse({"error": "Integration not found"}, status_code=404)
@@ -360,10 +382,14 @@ class EnhancedAIOSAPI:
             config = data.get("config")
 
             if not protocol_type or not config:
-                return JSONResponse({"error": "type and config are required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "type and config are required"}, status_code=400
+                )
 
             # Configure protocol
-            protocol_config = ProtocolConfig(protocol_type=ProtocolType(protocol_type), **config)
+            protocol_config = ProtocolConfig(
+                protocol_type=ProtocolType(protocol_type), **config
+            )
 
             # Add to protocol manager (for demo)
             logger.info(f"Configuring protocol: {protocol_type}")
@@ -515,7 +541,9 @@ class EnhancedAIOSAPI:
 
             # Check integration health
             integration_health = {
-                "webhook_handlers": len(self.integration_api.integration_manager.webhook_handlers),
+                "webhook_handlers": len(
+                    self.integration_api.integration_manager.webhook_handlers
+                ),
                 "event_queue_size": self.integration_api.integration_manager.event_queue.qsize(),
                 "event_processor_running": self.integration_api.integration_manager._running,
             }
@@ -528,7 +556,9 @@ class EnhancedAIOSAPI:
 
             # Check monitoring health
             monitoring_health = {
-                "active_alerts": len(self.monitoring_system.alert_manager.get_active_alerts()),
+                "active_alerts": len(
+                    self.monitoring_system.alert_manager.get_active_alerts()
+                ),
                 "monitoring_running": self.monitoring_system._running,
             }
 
@@ -586,7 +616,9 @@ class EnhancedAIOSAPI:
             system_config = data.get("config")
 
             if not system_id or not system_config:
-                return JSONResponse({"error": "id and config are required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "id and config are required"}, status_code=400
+                )
 
             # For demo, create mock connection
             logger.info(f"Connecting to external system: {system_id}")
@@ -610,7 +642,9 @@ class EnhancedAIOSAPI:
         # For demo, remove connection
         logger.info(f"Disconnecting from external system: {system_id}")
 
-        return JSONResponse({"message": f"Disconnected from external system {system_id}"})
+        return JSONResponse(
+            {"message": f"Disconnected from external system {system_id}"}
+        )
 
     async def _external_systems_status(self, request: Request) -> JSONResponse:
         """Get external system status."""
@@ -731,7 +765,9 @@ class EnhancedAIOSAPI:
             test_config = data.get("config")
 
             if not test_type or not test_config:
-                return JSONResponse({"error": "test_type and config are required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "test_type and config are required"}, status_code=400
+                )
 
             # Run test based on type
             if test_type == "webhook":
@@ -846,7 +882,9 @@ class EnhancedAIOSAPI:
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=400)
 
-    async def _run_benchmark(self, benchmark_type: str, duration: int, rate: int) -> dict[str, Any]:
+    async def _run_benchmark(
+        self, benchmark_type: str, duration: int, rate: int
+    ) -> dict[str, Any]:
         """Run benchmark and return results."""
         import statistics
 
@@ -887,7 +925,9 @@ class EnhancedAIOSAPI:
 
         # Calculate statistics
         avg_response_time = statistics.mean(request_times) if request_times else 0
-        p95_response_time = statistics.quantiles(request_times, n=20)[18] if request_times else 0
+        p95_response_time = (
+            statistics.quantiles(request_times, n=20)[18] if request_times else 0
+        )
 
         return {
             "total_requests": success_count + error_count,
@@ -921,7 +961,9 @@ class EnhancedAIOSAPI:
                         "memory_usage": metrics.memory_usage,
                         "request_rate": metrics.request_rate,
                         "error_rate": metrics.error_rate,
-                        "active_connections": self.metrics["protocol_connections"].value,
+                        "active_connections": self.metrics[
+                            "protocol_connections"
+                        ].value,
                     },
                 }
 

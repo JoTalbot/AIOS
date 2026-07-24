@@ -12,7 +12,6 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
 import random
 import time
 from dataclasses import dataclass, field
@@ -20,12 +19,22 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-SEARCH_SPACE = ["conv", "attention", "recurrent", "transformer", "pool", "dense", "dropout", "batch_norm"]
+SEARCH_SPACE = [
+    "conv",
+    "attention",
+    "recurrent",
+    "transformer",
+    "pool",
+    "dense",
+    "dropout",
+    "batch_norm",
+]
 
 
 @dataclass
 class Architecture:
     """Candidate neural architecture."""
+
     id: str = ""
     layers: list[str] = field(default_factory=list)
     score: float = 0.0
@@ -108,8 +117,9 @@ class NAS:
             "arch_id": best_arch.id if best_arch else None,
         }
 
-    def evolutionary_search(self, generations: int = 10, population: int = 20,
-                            mutation_rate: float = 0.3) -> dict[str, Any]:
+    def evolutionary_search(
+        self, generations: int = 10, population: int = 20, mutation_rate: float = 0.3
+    ) -> dict[str, Any]:
         """Evolutionary NAS: mutate + select best."""
         # Initialize population
         pop = []
@@ -121,7 +131,7 @@ class NAS:
         for gen in range(generations):
             # Select top half
             pop.sort(key=lambda x: x[1], reverse=True)
-            top = pop[:population // 2]
+            top = pop[: population // 2]
 
             # Mutate to create new population
             new_pop = list(top)
@@ -146,7 +156,11 @@ class NAS:
         best_arch.evaluated = True
         self._best = best_arch
 
-        return {"architecture": best[0], "score": round(best[1], 4), "generations": generations}
+        return {
+            "architecture": best[0],
+            "score": round(best[1], 4),
+            "generations": generations,
+        }
 
     def pareto_front(self) -> list[dict[str, Any]]:
         """Find Pareto-optimal architectures (accuracy vs params)."""
@@ -162,7 +176,14 @@ class NAS:
                 for other in evaluated
             )
             if not dominated:
-                pareto.append({"id": a.id, "layers": a.layers, "score": a.score, "params": a.params})
+                pareto.append(
+                    {
+                        "id": a.id,
+                        "layers": a.layers,
+                        "score": a.score,
+                        "params": a.params,
+                    }
+                )
 
         return pareto
 
@@ -172,8 +193,14 @@ class NAS:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics (backward-compatible)."""
-        avg_score = (sum(a.score for a in self.architectures.values()) /
-                    len(self.architectures)) if self.architectures else 0
+        avg_score = (
+            (
+                sum(a.score for a in self.architectures.values())
+                / len(self.architectures)
+            )
+            if self.architectures
+            else 0
+        )
         return {
             "architectures": len(self.architectures),
             "search_space": len(self.search_space),

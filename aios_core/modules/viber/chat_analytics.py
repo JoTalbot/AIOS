@@ -1,6 +1,6 @@
 """Viber chat analytics — inherits WhatsApp ChatAnalyzer for Viber platform."""
 
-from aios_core.modules.whatsapp.chat_analytics import ChatAnalyzer, ChatAnalytics
+from aios_core.modules.whatsapp.chat_analytics import ChatAnalyzer
 
 
 class ViberChatAnalyzer(ChatAnalyzer):

@@ -7,7 +7,7 @@ execution metrics (latency, memory, error rate, failure count).
 import math
 import statistics
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class AnomalyDetector:
@@ -23,8 +23,8 @@ class AnomalyDetector:
         self.z_threshold = z_threshold
         self.iqr_multiplier = iqr_multiplier
         self.window_size = window_size
-        self.histories: Dict[str, list[float]] = {}
-        self.anomaly_log: List[dict[str, Any]] = []
+        self.histories: dict[str, list[float]] = {}
+        self.anomaly_log: list[dict[str, Any]] = []
 
     def add_value(self, metric_name: str, value: float) -> None:
         """Record a single metric sample into historical window."""

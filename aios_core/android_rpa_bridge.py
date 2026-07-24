@@ -6,12 +6,10 @@ Messaging, Login, Listing Creation) without manual phone screen taps.
 """
 
 import hashlib
-import json
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from .android_execution import RealDeviceExecutor, UIAutomatorParser
-from .apk_converter import APKFunctionConverter
+from .android_execution import RealDeviceExecutor
 
 __all__ = ["AndroidRPADeviceEmulator", "AndroidRPAManager"]
 
@@ -23,9 +21,11 @@ class AndroidRPADeviceEmulator:
         """Initialize AndroidRPADeviceEmulator."""
         self.device_id = device_id
         self.active_package: str | None = None
-        self.authenticated_sessions: Dict[str, dict[str, Any]] = {}
+        self.authenticated_sessions: dict[str, dict[str, Any]] = {}
         self.real_execution = real_execution
-        self.real_executor = RealDeviceExecutor(device_id=device_id) if real_execution else None
+        self.real_executor = (
+            RealDeviceExecutor(device_id=device_id) if real_execution else None
+        )
 
     def launch_app(self, package_name: str) -> bool:
         """Launch target package inside emulator via ADB activity start."""
@@ -44,7 +44,7 @@ class AndroidRPADeviceEmulator:
             or user_credentials.get("email")
             or "user"
         )
-        session_token = f"sess_{hashlib.sha256(f'{package_name}:{username}:{time.time()}'.encode('utf-8')).hexdigest()[:12]}"
+        session_token = f"sess_{hashlib.sha256(f'{package_name}:{username}:{time.time()}'.encode()).hexdigest()[:12]}"
 
         # Security: Never echo back plain password
         session_record = {
@@ -77,7 +77,9 @@ class AndroidRPADeviceEmulator:
                 )
 
         if package_name not in self.authenticated_sessions:
-            self.authenticate_user(package_name, {"login": "auto_user", "password": "pass"})
+            self.authenticate_user(
+                package_name, {"login": "auto_user", "password": "pass"}
+            )
 
         if package_name == "ua.slando":
             app_label = "Slando Ukraine"
@@ -149,7 +151,7 @@ class AndroidRPAManager:
     def __init__(self):
         """Initialize AndroidRPAManager."""
         self.emulator = AndroidRPADeviceEmulator()
-        self.registered_app_apis: Dict[str, dict[str, Any]] = {}
+        self.registered_app_apis: dict[str, dict[str, Any]] = {}
 
     def parse_play_store_url(self, play_url_or_package: str) -> str:
         """Extract Android package ID from Google Play link or raw ID."""

@@ -18,15 +18,17 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class TaskPriority(int, Enum):
     """Task priority levels."""
+
     LOW = 0
     NORMAL = 1
     HIGH = 2
@@ -35,6 +37,7 @@ class TaskPriority(int, Enum):
 
 class TaskStatus(str, Enum):
     """Task lifecycle status."""
+
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -45,9 +48,11 @@ class TaskStatus(str, Enum):
 
 # ── Task ─────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Task:
     """Full task definition."""
+
     id: str = ""
     name: str = ""
     payload: dict[str, Any] = field(default_factory=dict)
@@ -57,14 +62,15 @@ class Task:
     retry_count: int = 0
     worker_id: str = ""
     created_at: float = field(default_factory=time.time)
-    started_at: Optional[float] = None
-    completed_at: Optional[float] = None
-    error: Optional[str] = None
+    started_at: float | None = None
+    completed_at: float | None = None
+    error: str | None = None
     result: Any = None
 
     def __post_init__(self) -> None:
         if not self.id:
             import uuid
+
             self.id = str(uuid.uuid4())[:8]
 
     def duration(self) -> float:
@@ -80,9 +86,11 @@ class Task:
 
 # ── Worker ───────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Worker:
     """Named worker with capacity and assignment tracking."""
+
     id: str
     capacity: int = 10  # max concurrent tasks
     assigned_tasks: list[str] = field(default_factory=list)
@@ -100,6 +108,7 @@ class Worker:
 
 # ── Distributed Queue ────────────────────────────────────────────────────────
 
+
 class DistributedQueue:
     """Enhanced in-memory priority queue with retry, DLQ, workers.
 
@@ -113,7 +122,7 @@ class DistributedQueue:
 
     def __init__(self) -> None:
         self._queue: list[Task] = []
-        self._running: dict[str, Task] = {}   # task_id → Task
+        self._running: dict[str, Task] = {}  # task_id → Task
         self._completed: list[Task] = []
         self._dead_letter: list[Task] = []
         self._workers: dict[str, Worker] = {}
@@ -121,11 +130,17 @@ class DistributedQueue:
 
     # ── Enqueue ──────────────────────────────────────────────────
 
-    def enqueue(self, payload: dict[str, Any], name: str = "",
-                priority: TaskPriority = TaskPriority.NORMAL,
-                max_retries: int = 3) -> Task:
+    def enqueue(
+        self,
+        payload: dict[str, Any],
+        name: str = "",
+        priority: TaskPriority = TaskPriority.NORMAL,
+        max_retries: int = 3,
+    ) -> Task:
         """Enqueue a new task with priority."""
-        task = Task(name=name, payload=payload, priority=priority, max_retries=max_retries)
+        task = Task(
+            name=name, payload=payload, priority=priority, max_retries=max_retries
+        )
         self._queue.append(task)
         self._task_map[task.id] = task
         # Sort queue by priority (highest first)
@@ -170,7 +185,9 @@ class DistributedQueue:
         if task.worker_id:
             worker = self._workers.get(task.worker_id)
             if worker:
-                worker.assigned_tasks = [t for t in worker.assigned_tasks if t != task_id]
+                worker.assigned_tasks = [
+                    t for t in worker.assigned_tasks if t != task_id
+                ]
                 worker.completed_tasks += 1
 
     def fail(self, task_id: str, error: str = "") -> None:
@@ -186,7 +203,9 @@ class DistributedQueue:
         if task.worker_id:
             worker = self._workers.get(task.worker_id)
             if worker:
-                worker.assigned_tasks = [t for t in worker.assigned_tasks if t != task_id]
+                worker.assigned_tasks = [
+                    t for t in worker.assigned_tasks if t != task_id
+                ]
                 worker.failed_tasks += 1
 
         if task.can_retry():

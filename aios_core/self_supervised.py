@@ -16,9 +16,8 @@ from __future__ import annotations
 import logging
 import math
 import random
-import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PretextTask:
     """Pretext task definition."""
+
     name: str
     description: str = ""
     difficulty: float = 0.5  # 0..1
@@ -37,6 +37,7 @@ class PretextTask:
 @dataclass
 class Augmentation:
     """Data augmentation specification."""
+
     name: str
     intensity: float = 0.5  # 0..1
     probability: float = 0.5  # 0..1
@@ -57,7 +58,12 @@ class SelfSupervisedLearner:
     """
 
     def __init__(self, temperature: float = 0.5) -> None:
-        self.pretext_tasks: list[str] = ["rotation", "colorization", "jigsaw", "contrastive"]
+        self.pretext_tasks: list[str] = [
+            "rotation",
+            "colorization",
+            "jigsaw",
+            "contrastive",
+        ]
         self.task_configs: dict[str, PretextTask] = {}
         self.augmentations: list[Augmentation] = []
         self.temperature = temperature
@@ -67,7 +73,9 @@ class SelfSupervisedLearner:
 
         # Initialize pretext task configs
         for name in self.pretext_tasks:
-            self.task_configs[name] = PretextTask(name=name, difficulty=random.uniform(0.3, 0.7))
+            self.task_configs[name] = PretextTask(
+                name=name, difficulty=random.uniform(0.3, 0.7)
+            )
 
     # ── Pseudo-Label Generation ──────────────────────────────────────
 
@@ -83,8 +91,9 @@ class SelfSupervisedLearner:
             return 1  # positive pair label
         return "pseudo_label"
 
-    def generate_batch_pseudo_labels(self, data_list: list[Any],
-                                      task: str = "rotation") -> list[Any]:
+    def generate_batch_pseudo_labels(
+        self, data_list: list[Any], task: str = "rotation"
+    ) -> list[Any]:
         """Generate pseudo labels for a batch of data."""
         return [self.generate_pseudo_label(d, task) for d in data_list]
 
@@ -110,7 +119,10 @@ class SelfSupervisedLearner:
                 denominator = numerator
                 for k in range(n):
                     if k != i:
-                        denominator += math.exp(self._cosine_similarity(embeddings[i], embeddings[k]) / self.temperature)
+                        denominator += math.exp(
+                            self._cosine_similarity(embeddings[i], embeddings[k])
+                            / self.temperature
+                        )
 
                 if denominator > 0:
                     total_loss -= math.log(numerator / denominator)
@@ -132,14 +144,17 @@ class SelfSupervisedLearner:
 
     # ── Augmentation Pipeline ────────────────────────────────────────
 
-    def add_augmentation(self, name: str, intensity: float = 0.5,
-                         probability: float = 0.5) -> Augmentation:
+    def add_augmentation(
+        self, name: str, intensity: float = 0.5, probability: float = 0.5
+    ) -> Augmentation:
         """Add an augmentation to the pipeline."""
         aug = Augmentation(name=name, intensity=intensity, probability=probability)
         self.augmentations.append(aug)
         return aug
 
-    def augment(self, data: list[float], augmentations: list[Augmentation] | None = None) -> list[float]:
+    def augment(
+        self, data: list[float], augmentations: list[Augmentation] | None = None
+    ) -> list[float]:
         """Apply augmentation pipeline to data."""
         augs = augmentations or self.augmentations
         result = data[:]
@@ -150,10 +165,15 @@ class SelfSupervisedLearner:
                 if aug.name == "noise":
                     result = [v + random.gauss(0, aug.intensity * 0.1) for v in result]
                 elif aug.name == "scale":
-                    result = [v * random.uniform(1 - aug.intensity, 1 + aug.intensity) for v in result]
+                    result = [
+                        v * random.uniform(1 - aug.intensity, 1 + aug.intensity)
+                        for v in result
+                    ]
                 elif aug.name == "mask":
                     # Randomly mask some values
-                    result = [v if random.random() > aug.intensity else 0.0 for v in result]
+                    result = [
+                        v if random.random() > aug.intensity else 0.0 for v in result
+                    ]
                 elif aug.name == "crop":
                     # Random crop
                     start = random.randint(0, len(result) // 2)
@@ -167,7 +187,9 @@ class SelfSupervisedLearner:
 
         return result
 
-    def create_augmented_pair(self, data: list[float]) -> tuple[list[float], list[float]]:
+    def create_augmented_pair(
+        self, data: list[float]
+    ) -> tuple[list[float], list[float]]:
         """Create two augmented views of the same data (for contrastive learning)."""
         view1 = self.augment(data)
         view2 = self.augment(data)
@@ -178,18 +200,20 @@ class SelfSupervisedLearner:
     def project(self, embedding: list[float]) -> list[float]:
         """Simulate projection head: map embedding to projection space."""
         if len(embedding) <= self._projection_dim:
-            return embedding[:self._projection_dim]
+            return embedding[: self._projection_dim]
 
         # Simple projection: take every nth element + random mixing
         step = len(embedding) // self._projection_dim
-        projected = embedding[::step][:self._projection_dim]
+        projected = embedding[::step][: self._projection_dim]
         # Add some nonlinearity
         projected = [math.tanh(p) for p in projected]
         return projected
 
     # ── Representation Quality ────────────────────────────────────────
 
-    def representation_quality(self, representations: list[list[float]]) -> dict[str, Any]:
+    def representation_quality(
+        self, representations: list[list[float]]
+    ) -> dict[str, Any]:
         """Evaluate representation quality."""
         if not representations:
             return {"alignment": 0.0, "uniformity": 0.0}
@@ -198,7 +222,9 @@ class SelfSupervisedLearner:
         alignment = 0.0
         if len(representations) >= 2:
             for i in range(len(representations) - 1):
-                alignment += self._cosine_similarity(representations[i], representations[i + 1])
+                alignment += self._cosine_similarity(
+                    representations[i], representations[i + 1]
+                )
             alignment = alignment / (len(representations) - 1)
 
         # Uniformity: average pairwise distance (should be spread out)
@@ -207,7 +233,9 @@ class SelfSupervisedLearner:
             distances = []
             for i in range(len(representations)):
                 for j in range(i + 1, len(representations)):
-                    sim = self._cosine_similarity(representations[i], representations[j])
+                    sim = self._cosine_similarity(
+                        representations[i], representations[j]
+                    )
                     distances.append(1 - sim)
             uniformity = sum(distances) / len(distances) if distances else 0.0
 
@@ -219,8 +247,9 @@ class SelfSupervisedLearner:
 
     # ── Linear Evaluation ────────────────────────────────────────────
 
-    def linear_eval(self, representations: list[list[float]],
-                    labels: list[int]) -> float:
+    def linear_eval(
+        self, representations: list[list[float]], labels: list[int]
+    ) -> float:
         """Simulate linear evaluation accuracy."""
         if not representations or not labels:
             return 0.0
@@ -234,7 +263,11 @@ class SelfSupervisedLearner:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_loss = sum(self._loss_history) / len(self._loss_history) if self._loss_history else 0.0
+        avg_loss = (
+            sum(self._loss_history) / len(self._loss_history)
+            if self._loss_history
+            else 0.0
+        )
         return {
             "pretext_tasks": len(self.pretext_tasks),
             "augmentations": len(self.augmentations),

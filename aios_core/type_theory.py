@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TypeDefinition:
     """Named type definition with constraints."""
+
     name: str
     base_type: type
     constraints: list[Callable] = field(default_factory=list)
@@ -49,12 +51,20 @@ class TypeSystem:
 
     # ── Type Definition ────────────────────────────────────────────
 
-    def define_type(self, name: str, base_type: type,
-                    constraints: list[Callable] | None = None,
-                    description: str = "") -> TypeDefinition:
+    def define_type(
+        self,
+        name: str,
+        base_type: type,
+        constraints: list[Callable] | None = None,
+        description: str = "",
+    ) -> TypeDefinition:
         """Define a new type with base type and optional constraints."""
-        td = TypeDefinition(name=name, base_type=base_type,
-                           constraints=constraints or [], description=description)
+        td = TypeDefinition(
+            name=name,
+            base_type=base_type,
+            constraints=constraints or [],
+            description=description,
+        )
         self.types[name] = td
         return td
 
@@ -153,10 +163,16 @@ class TypeSystem:
         constraints = []
         if td1 and td2:
             constraints = [
-                lambda t: isinstance(t, tuple) and len(t) == 2 and
-                          isinstance(t[0], td1.base_type) and isinstance(t[1], td2.base_type),
+                lambda t: (
+                    isinstance(t, tuple)
+                    and len(t) == 2
+                    and isinstance(t[0], td1.base_type)
+                    and isinstance(t[1], td2.base_type)
+                ),
             ]
-        return self.define_type(name, base, constraints, description=f"Product({type1}, {type2})")
+        return self.define_type(
+            name, base, constraints, description=f"Product({type1}, {type2})"
+        )
 
     def union_type(self, name: str, type1: str, type2: str) -> TypeDefinition:
         """Create a union type from two types."""
@@ -168,17 +184,21 @@ class TypeSystem:
         if td2:
             bases.append(td2.base_type)
         constraints = [lambda t: any(isinstance(t, b) for b in bases)] if bases else []
-        return self.define_type(name, object, constraints, description=f"Union({type1}, {type2})")
+        return self.define_type(
+            name, object, constraints, description=f"Union({type1}, {type2})"
+        )
 
     # ── Proof Simulation ──────────────────────────────────────────
 
     def prove(self, statement: str, premises: list[str] = []) -> dict[str, Any]:
         """Simulate a type-level proof."""
-        self._proof_log.append({
-            "statement": statement,
-            "premises": premises,
-            "timestamp": time.time(),
-        })
+        self._proof_log.append(
+            {
+                "statement": statement,
+                "premises": premises,
+                "timestamp": time.time(),
+            }
+        )
         # Simple: check if all premises are valid terms
         valid_premises = all(p in self.terms for p in premises)
         return {

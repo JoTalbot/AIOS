@@ -7,7 +7,6 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 from statistics import mean, median
-from typing import Dict, List, Optional, Tuple
 
 from .models import AdCard
 
@@ -45,7 +44,6 @@ _STOPWORDS = {
     "из",
     "за",
     "от",
-    "у",
     "буде",
     "стан",
     "новый",
@@ -85,9 +83,9 @@ class CompetitorReport:
     mean_price: float | None
     median_price: float | None
     top_share: float
-    top_cities: List[Tuple[str, int]] = field(default_factory=list)
+    top_cities: list[tuple[str, int]] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
         return {
             "query": self.query,
@@ -105,7 +103,7 @@ class CompetitorReport:
 class CompetitorAnalyzer:
     """Builds :class:`CompetitorReport` statistics from collected cards."""
 
-    def analyze(self, ads: List[AdCard], query: str | None = None) -> CompetitorReport:
+    def analyze(self, ads: list[AdCard], query: str | None = None) -> CompetitorReport:
         """Execute analyze."""
         prices = [ad.price for ad in ads if ad.price is not None]
         cities = Counter(ad.city for ad in ads if ad.city)
@@ -124,7 +122,7 @@ class CompetitorAnalyzer:
             top_cities=cities.most_common(10),
         )
 
-    def price_percentile(self, ads: List[AdCard], price: float) -> float | None:
+    def price_percentile(self, ads: list[AdCard], price: float) -> float | None:
         """Share of priced listings cheaper than or equal to ``price``.
 
         ``0.8`` means your price is cheaper than 80% of the market.
@@ -156,7 +154,9 @@ class Recommendation:
             lines.append(f"- Рекомендована ціна: {self.suggested_price:g}")
         lines.append(f"- Оцінка ціни: {self.verdict}")
         if self.title_keywords:
-            lines.append("- Ключові слова для заголовка: " + ", ".join(self.title_keywords))
+            lines.append(
+                "- Ключові слова для заголовка: " + ", ".join(self.title_keywords)
+            )
         top_verdict = "так" if self.use_top_promotion else "не обов'язково"
         lines.append(f"- TOP-просування: {top_verdict}")
         for note in self.notes:
@@ -169,8 +169,8 @@ class RecommendationEngine:
 
     def recommend(
         self,
-        ads: List[AdCard],
-        my_ad: Optional[AdCard] = None,
+        ads: list[AdCard],
+        my_ad: AdCard | None = None,
         undercut_ratio: float = 0.97,
     ) -> Recommendation:
         """Suggest a price, title keywords and promotion strategy.
@@ -194,7 +194,9 @@ class RecommendationEngine:
             if my_price is not None:
                 if my_price <= market_median * 0.9:
                     verdict = "below_market"
-                    notes.append("Ціна нижча за ринок — можна підняти без втрати інтересу.")
+                    notes.append(
+                        "Ціна нижча за ринок — можна підняти без втрати інтересу."
+                    )
                 elif my_price >= market_median * 1.1:
                     verdict = "above_market"
                     notes.append(
@@ -210,12 +212,11 @@ class RecommendationEngine:
         top_ads = [ad for ad in ads if ad.is_top and ad.price is not None]
         plain_ads = [ad for ad in ads if not ad.is_top and ad.price is not None]
         use_top = False
-        if len(top_ads) >= 3:
-            use_top = True
-        elif (
+        if len(top_ads) >= 3 or (
             top_ads
             and plain_ads
-            and median([a.price for a in top_ads]) >= median([a.price for a in plain_ads])
+            and median([a.price for a in top_ads])
+            >= median([a.price for a in plain_ads])
         ):
             use_top = True
         if use_top:
@@ -238,7 +239,7 @@ class RecommendationEngine:
         )
 
     @staticmethod
-    def _title_keywords(ads: List[AdCard], my_title: str | None) -> list[str]:
+    def _title_keywords(ads: list[AdCard], my_title: str | None) -> list[str]:
         """Frequent tokens from the cheaper half of listings missing in my title."""
         priced = sorted(
             (ad for ad in ads if ad.price is not None and ad.title),
@@ -250,7 +251,9 @@ class RecommendationEngine:
         for ad in priced:
             counter.update(set(_tokenize(ad.title)))
         mine = set(_tokenize(my_title)) if my_title else set()
-        return [word for word, _count in counter.most_common(20) if word not in mine][:10]
+        return [word for word, _count in counter.most_common(20) if word not in mine][
+            :10
+        ]
 
 
 @dataclass
@@ -268,7 +271,7 @@ class PriceChange:
     sightings: int
     last_seen_at: str | None
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
         return {
             "fingerprint": self.fingerprint,
@@ -293,7 +296,7 @@ class PriceTracker:
 
     def price_drops(
         self, query: str | None = None, threshold_pct: float = -0.005
-    ) -> List[PriceChange]:
+    ) -> list[PriceChange]:
         """Ads whose latest sighted price is below the first sighted price.
 
         Args:
@@ -303,10 +306,14 @@ class PriceTracker:
         Returns:
             Changes sorted by relative drop, biggest first.
         """
-        drops: List[PriceChange] = []
+        drops: list[PriceChange] = []
         for ad in self.storage.get_ads(query=query):
             history = self.storage.price_history(ad.fingerprint)
-            prices = [(point["seen_at"], point["price"]) for point in history if point["price"]]
+            prices = [
+                (point["seen_at"], point["price"])
+                for point in history
+                if point["price"]
+            ]
             if len(prices) < 2:
                 continue
             first_price = prices[0][1]
@@ -330,6 +337,6 @@ class PriceTracker:
         drops.sort(key=lambda change: change.change_pct)
         return drops
 
-    def gone_from_feed(self, query: str | None = None) -> List[AdCard]:
+    def gone_from_feed(self, query: str | None = None) -> list[AdCard]:
         """Ads marked inactive (vanished from the feed — sold or removed)."""
         return self.storage.get_ads(query=query, active_only=False)

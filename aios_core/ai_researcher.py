@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Paper:
     """Research paper draft."""
+
     title: str
     abstract: str = ""
     topic: str = ""
@@ -42,6 +43,7 @@ class Paper:
 @dataclass
 class ReviewResult:
     """Peer review outcome."""
+
     paper_title: str
     score: float = 0.0
     feedback: str = ""
@@ -67,7 +69,9 @@ class AIResearcher:
         self._literature: list[dict[str, Any]] = []
         self._hypotheses: list[dict[str, Any]] = []
 
-    def write_paper(self, topic: str, experiments: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    def write_paper(
+        self, topic: str, experiments: list[dict[str, Any]] | None = None
+    ) -> dict[str, Any]:
         """Draft a research paper (backward-compatible)."""
         paper = Paper(
             title=f"Advances in {topic}",
@@ -79,9 +83,12 @@ class AIResearcher:
         )
         self.papers.append(paper)
         return {
-            "title": paper.title, "abstract": paper.abstract,
-            "experiments": paper.experiments, "conclusions": paper.conclusions,
-            "status": paper.status, "citations": paper.citations,
+            "title": paper.title,
+            "abstract": paper.abstract,
+            "experiments": paper.experiments,
+            "conclusions": paper.conclusions,
+            "status": paper.status,
+            "citations": paper.citations,
         }
 
     def peer_review(self, paper: dict[str, Any]) -> dict[str, Any]:
@@ -91,17 +98,27 @@ class AIResearcher:
 
         # Score based on experiment count and methodology clarity
         score = min(10.0, 5.0 + exp_count * 0.5)
-        recommendation = "accept" if score >= 8.0 else "minor_revision" if score >= 6.0 else "revise"
+        recommendation = (
+            "accept" if score >= 8.0 else "minor_revision" if score >= 6.0 else "revise"
+        )
 
-        review = ReviewResult(paper_title=title, score=round(score, 1),
-                             feedback="Strong contribution with clear methodology" if score >= 7.0 else
-                             "Needs additional experiments" if score >= 5.0 else "Major revisions needed",
-                             recommendation=recommendation)
+        review = ReviewResult(
+            paper_title=title,
+            score=round(score, 1),
+            feedback="Strong contribution with clear methodology"
+            if score >= 7.0
+            else "Needs additional experiments"
+            if score >= 5.0
+            else "Major revisions needed",
+            recommendation=recommendation,
+        )
         self._reviews.append(review)
 
         return {
-            "paper": title, "score": review.score,
-            "feedback": review.feedback, "recommendation": review.recommendation,
+            "paper": title,
+            "score": review.score,
+            "feedback": review.feedback,
+            "recommendation": review.recommendation,
         }
 
     def generate_hypothesis(self, domain: str) -> dict[str, Any]:
@@ -136,7 +153,11 @@ class AIResearcher:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics (backward-compatible)."""
-        avg_score = (sum(r.score for r in self._reviews) / len(self._reviews)) if self._reviews else 0.0
+        avg_score = (
+            (sum(r.score for r in self._reviews) / len(self._reviews))
+            if self._reviews
+            else 0.0
+        )
         return {
             "papers": len(self.papers),
             "reviews": len(self._reviews),

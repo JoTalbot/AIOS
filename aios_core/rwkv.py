@@ -12,9 +12,9 @@ Classes:
 
 from __future__ import annotations
 
+import logging
 import math
 import random
-import logging
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,9 @@ class WKVState:
 
     def update(self, k: list[float], v: list[float]) -> list[float]:
         """WKV update: wkv = decay * wkv + bonus * k * v."""
-        self.wkv = [d * self._decay + self._bonus * ki * vi for d, ki, vi in zip(self.wkv, k, v)]
+        self.wkv = [
+            d * self._decay + self._bonus * ki * vi for d, ki, vi in zip(self.wkv, k, v)
+        ]
         return list(self.wkv)
 
     def set_decay(self, decay: float, bonus: float = 0.1) -> None:
@@ -57,7 +59,9 @@ class RWKVBlock:
         self._channel_mix_weights = [random.gauss(0, 0.02) for _ in range(dim)]
         self._receptance = [random.gauss(0, 0.02) for _ in range(dim)]
 
-    def _token_shift(self, x: list[float], prev: list[float], ratio: float = 0.5) -> list[float]:
+    def _token_shift(
+        self, x: list[float], prev: list[float], ratio: float = 0.5
+    ) -> list[float]:
         """Token shift: blend current with previous."""
         return [xi * ratio + pi * (1 - ratio) for xi, pi in zip(x, prev)]
 
@@ -66,18 +70,20 @@ class RWKVBlock:
         chunk_size = max(1, len(x) // groups)
         result: list[float] = []
         for g in range(groups):
-            chunk = x[g * chunk_size:(g + 1) * chunk_size]
+            chunk = x[g * chunk_size : (g + 1) * chunk_size]
             if not chunk:
                 continue
             mean = sum(chunk) / len(chunk)
             var = sum((v - mean) ** 2 for v in chunk) / len(chunk)
             result.extend([(v - mean) / math.sqrt(var + 1e-6) for v in chunk])
-        return result[:len(x)]
+        return result[: len(x)]
 
     def _sigmoid(self, x: list[float]) -> list[float]:
         return [1.0 / (1.0 + math.exp(-max(-10, min(10, v)))) for v in x]
 
-    def time_mixing(self, x: list[float], prev: list[float] | None = None) -> list[float]:
+    def time_mixing(
+        self, x: list[float], prev: list[float] | None = None
+    ) -> list[float]:
         """Time-mixing sub-layer (backward-compatible)."""
         prev = prev or [0.0] * self.dim
         shifted = self._token_shift(x, prev)
@@ -88,12 +94,16 @@ class RWKVBlock:
         r = self._sigmoid([si * w for si, w in zip(shifted, self._receptance)])
         return [ri * wi for ri, wi in zip(r, wkv)]
 
-    def channel_mixing(self, x: list[float], prev: list[float] | None = None) -> list[float]:
+    def channel_mixing(
+        self, x: list[float], prev: list[float] | None = None
+    ) -> list[float]:
         """Channel-mixing sub-layer."""
         prev = prev or [0.0] * self.dim
         shifted = self._token_shift(x, prev, ratio=0.7)
         # Squared ReLU (RWKV channel-mixing activation)
-        mixed = [max(0, si * w) ** 2 for si, w in zip(shifted, self._channel_mix_weights)]
+        mixed = [
+            max(0, si * w) ** 2 for si, w in zip(shifted, self._channel_mix_weights)
+        ]
         r = self._sigmoid([si * w for si, w in zip(shifted, self._receptance)])
         return [ri * mi for ri, mi in zip(r, mixed)]
 

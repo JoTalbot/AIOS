@@ -13,20 +13,21 @@ Classes:
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class TrustLevel(int, Enum):
     """Trust score 0–100 mapped to discrete levels."""
+
     UNTRUSTED = 0
     LOW = 25
     MEDIUM = 50
@@ -36,9 +37,11 @@ class TrustLevel(int, Enum):
 
 # ── Device Profile ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class DeviceProfile:
     """Device identity with trust attributes."""
+
     device_id: str
     user_id: str = ""
     platform: str = ""
@@ -80,9 +83,11 @@ class DeviceProfile:
 
 # ── Trust Policy ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class TrustPolicy:
     """Access rule: resource + required trust level + conditions."""
+
     name: str
     resource: str
     min_trust_level: TrustLevel = TrustLevel.MEDIUM
@@ -117,6 +122,7 @@ class TrustPolicy:
 
 
 # ── Trust Engine ─────────────────────────────────────────────────────────────
+
 
 class TrustEngine:
     """Core trust evaluation engine with device registry and audit."""
@@ -185,7 +191,10 @@ class TrustEngine:
         for policy in self.policies.values():
             if policy.resource == "*" or policy.resource == target_resource:
                 if not policy.evaluate(context):
-                    self._audit("verify_denied", {"policy": policy.name, "resource": target_resource})
+                    self._audit(
+                        "verify_denied",
+                        {"policy": policy.name, "resource": target_resource},
+                    )
                     return False
 
         context["authorized"] = True
@@ -197,6 +206,7 @@ class TrustEngine:
     def check_network_segment(self, ip: str, allowed_segments: list[str]) -> bool:
         """Check if IP belongs to an allowed network segment."""
         import ipaddress
+
         try:
             addr = ipaddress.ip_address(ip)
             for seg in allowed_segments:
@@ -234,6 +244,7 @@ class TrustEngine:
 
 # ── Backward-compatible façade ──────────────────────────────────────────────
 
+
 class ZeroTrust:
     """Backward-compatible façade preserving add_policy/verify/stats API."""
 
@@ -247,8 +258,17 @@ class ZeroTrust:
         # Also register in engine
         resource = rules.get("resource", "*")
         min_trust = TrustLevel(rules.get("min_trust", 50))
-        conditions = {k: v for k, v in rules.items() if k not in ("resource", "min_trust")}
-        self._engine.add_policy(TrustPolicy(name=name, resource=resource, min_trust_level=min_trust, conditions=conditions))
+        conditions = {
+            k: v for k, v in rules.items() if k not in ("resource", "min_trust")
+        }
+        self._engine.add_policy(
+            TrustPolicy(
+                name=name,
+                resource=resource,
+                min_trust_level=min_trust,
+                conditions=conditions,
+            )
+        )
 
     def verify(self, context: dict) -> bool:
         """Verify access (backward-compatible)."""

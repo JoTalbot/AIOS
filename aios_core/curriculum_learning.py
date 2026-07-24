@@ -12,7 +12,6 @@ Classes:
 from __future__ import annotations
 
 import logging
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -22,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CurriculumStage:
     """Stage with difficulty level and tasks."""
+
     name: str
     difficulty: float = 0.0
     tasks: list[Any] = field(default_factory=list)
@@ -42,19 +42,26 @@ class Curriculum:
     - Task sequencing
     """
 
-    def __init__(self, mastery_threshold: int = 5,
-                 schedule_type: str = "linear") -> None:
+    def __init__(
+        self, mastery_threshold: int = 5, schedule_type: str = "linear"
+    ) -> None:
         self.stages: list[CurriculumStage] = []
         self.current_stage: int = 0
         self.mastery_threshold = mastery_threshold
         self.schedule_type = schedule_type
         self._completed_tasks: int = 0
 
-    def add_stage(self, name: str, difficulty: float, tasks: list[Any] | None = None,
-                  mastery_threshold: int | None = None) -> CurriculumStage:
+    def add_stage(
+        self,
+        name: str,
+        difficulty: float,
+        tasks: list[Any] | None = None,
+        mastery_threshold: int | None = None,
+    ) -> CurriculumStage:
         """Add a curriculum stage (backward-compatible)."""
         stage = CurriculumStage(
-            name=name, difficulty=difficulty,
+            name=name,
+            difficulty=difficulty,
             tasks=tasks or [],
             mastery_threshold=mastery_threshold or self.mastery_threshold,
         )
@@ -109,18 +116,27 @@ class Curriculum:
             return 0.0
         return self.current_stage / len(self.stages)
 
-    def generate_schedule(self, num_stages: int = 5,
-                          min_difficulty: float = 0.1,
-                          max_difficulty: float = 1.0) -> list[CurriculumStage]:
+    def generate_schedule(
+        self,
+        num_stages: int = 5,
+        min_difficulty: float = 0.1,
+        max_difficulty: float = 1.0,
+    ) -> list[CurriculumStage]:
         """Auto-generate a difficulty schedule."""
         stages = []
         for i in range(num_stages):
             if self.schedule_type == "linear":
-                difficulty = min_difficulty + (max_difficulty - min_difficulty) * i / num_stages
+                difficulty = (
+                    min_difficulty + (max_difficulty - min_difficulty) * i / num_stages
+                )
             elif self.schedule_type == "exponential":
-                difficulty = min_difficulty * (max_difficulty / min_difficulty) ** (i / num_stages)
+                difficulty = min_difficulty * (max_difficulty / min_difficulty) ** (
+                    i / num_stages
+                )
             else:
-                difficulty = min_difficulty + (max_difficulty - min_difficulty) * i / num_stages
+                difficulty = (
+                    min_difficulty + (max_difficulty - min_difficulty) * i / num_stages
+                )
             stage = CurriculumStage(name=f"stage_{i}", difficulty=round(difficulty, 4))
             stages.append(stage)
         self.stages = stages

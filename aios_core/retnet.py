@@ -12,9 +12,9 @@ Classes:
 
 from __future__ import annotations
 
+import logging
 import math
 import random
-import logging
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,9 @@ class RetentionLayer:
         proj_k = [xi * w for xi, w in zip(x, self._weights_k)]
         proj_v = [xi * w for xi, w in zip(x, self._weights_v)]
         # Decay-weighted aggregation
-        new_state = [(s * self.gamma + qk * v) for s, qk, v in zip(self.state, proj_q, proj_v)]
+        new_state = [
+            (s * self.gamma + qk * v) for s, qk, v in zip(self.state, proj_q, proj_v)
+        ]
         self.state = new_state
         return new_state
 
@@ -47,17 +49,23 @@ class RetentionLayer:
         proj_k = [xi * w for xi, w in zip(x, self._weights_k)]
         proj_v = [xi * w for xi, w in zip(x, self._weights_v)]
         # RNN-style: state = gamma * state + q * k^T * v (simplified to element-wise)
-        self.state = [s * self.gamma + q * v for s, q, v in zip(self.state, proj_q, proj_v)]
+        self.state = [
+            s * self.gamma + q * v for s, q, v in zip(self.state, proj_q, proj_v)
+        ]
         return list(self.state)
 
-    def chunkwise_inference(self, chunks: list[list[float]], chunk_size: int = 8) -> list[float]:
+    def chunkwise_inference(
+        self, chunks: list[list[float]], chunk_size: int = 8
+    ) -> list[float]:
         """Chunk-wise inference: process in chunks for efficiency."""
         all_outputs: list[float] = []
         for chunk in chunks:
             for xi in chunk:
-                out = self.recurrent_retention(xi if isinstance(xi, list) else [xi] * self.dim)
+                out = self.recurrent_retention(
+                    xi if isinstance(xi, list) else [xi] * self.dim
+                )
                 all_outputs.extend(out[:chunk_size])
-        return all_outputs[:self.dim]
+        return all_outputs[: self.dim]
 
     def set_gamma(self, gamma: float) -> None:
         """Update decay factor."""

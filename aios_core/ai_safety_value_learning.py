@@ -12,7 +12,6 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
 import random
 from typing import Any
 
@@ -29,11 +28,17 @@ class ValueLearning:
         self.preferences: list[dict[str, Any]] = []
         self._value_history: list[dict[str, float]] = []
         self._conflicts: list[dict[str, Any]] = []
-        self._moral_frameworks: list[str] = ["utilitarian", "deontological", "virtue_ethics"]
+        self._moral_frameworks: list[str] = [
+            "utilitarian",
+            "deontological",
+            "virtue_ethics",
+        ]
 
     def learn_preference(self, option_a: str, option_b: str, preference: str) -> None:
         """Learn a preference (backward-compatible)."""
-        self.preferences.append({"a": option_a, "b": option_b, "preference": preference})
+        self.preferences.append(
+            {"a": option_a, "b": option_b, "preference": preference}
+        )
         # Update value scores
         weight = 0.1
         if preference == option_a:
@@ -62,7 +67,11 @@ class ValueLearning:
         inconsistencies = 0
         for p1 in self.preferences:
             for p2 in self.preferences:
-                if p1["a"] == p2["b"] and p1["b"] == p2["a"] and p1["preference"] != p2["preference"]:
+                if (
+                    p1["a"] == p2["b"]
+                    and p1["b"] == p2["a"]
+                    and p1["preference"] != p2["preference"]
+                ):
                     inconsistencies += 1
         return {
             "coherent": inconsistencies == 0,
@@ -89,7 +98,11 @@ class ValueLearning:
         }
         for key, val in adjustments.get(framework, {}).items():
             self.values[key] = val
-        return {"aligned": True, "framework": framework, "values_added": len(adjustments.get(framework, {}))}
+        return {
+            "aligned": True,
+            "framework": framework,
+            "values_added": len(adjustments.get(framework, {})),
+        }
 
     def evolve_values(self, new_context: str) -> dict[str, float]:
         """Evolve values based on new context."""

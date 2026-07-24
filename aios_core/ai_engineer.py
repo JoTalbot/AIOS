@@ -20,7 +20,13 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-ARCHITECTURE_TYPES = ["modular microservices", "monolith", "event-driven", "lambda", "pipeline"]
+ARCHITECTURE_TYPES = [
+    "modular microservices",
+    "monolith",
+    "event-driven",
+    "lambda",
+    "pipeline",
+]
 TECH_STACKS = {
     "web": ["python", "fastapi", "postgresql", "redis", "docker"],
     "ml": ["python", "pytorch", "mlflow", "kubernetes", "s3"],
@@ -33,6 +39,7 @@ DEPLOYMENT_STRATEGIES = ["blue-green", "canary", "rolling", "recreate"]
 @dataclass
 class SystemDesign:
     """Architecture blueprint."""
+
     name: str
     architecture: str
     components: list[str]
@@ -66,6 +73,7 @@ class SystemDesign:
 @dataclass
 class Codebase:
     """Generated implementation."""
+
     system: str
     files: int
     tests: int
@@ -92,8 +100,12 @@ class AIEngineer:
         """Create a system design from *requirements* and return the blueprint."""
         name = requirements.get("name", "NewSystem")
         domain = requirements.get("domain", "web")
-        architecture = requirements.get("architecture") or random.choice(ARCHITECTURE_TYPES)
-        tech_stack = requirements.get("tech_stack") or TECH_STACKS.get(domain, TECH_STACKS["web"])
+        architecture = requirements.get("architecture") or random.choice(
+            ARCHITECTURE_TYPES
+        )
+        tech_stack = requirements.get("tech_stack") or TECH_STACKS.get(
+            domain, TECH_STACKS["web"]
+        )
 
         base_components = ["api", "database", "ml_service"]
         extra = requirements.get("extra_components", [])
@@ -109,7 +121,12 @@ class AIEngineer:
             estimated_cost=len(components) * 500.0,
         )
         self.systems.append(design)
-        logger.info("Designed system %s: %s architecture, %d components", name, architecture, len(components))
+        logger.info(
+            "Designed system %s: %s architecture, %d components",
+            name,
+            architecture,
+            len(components),
+        )
         return design
 
     def recommend_stack(self, requirements: dict) -> list[str]:
@@ -165,7 +182,12 @@ class AIEngineer:
             size_kb=comp_count * 120 + 300,
         )
         self.codebases.append(codebase)
-        logger.info("Implemented codebase for %s: %d files, %.1f%% coverage", design.name, codebase.files, codebase.coverage * 100)
+        logger.info(
+            "Implemented codebase for %s: %d files, %.1f%% coverage",
+            design.name,
+            codebase.files,
+            codebase.coverage * 100,
+        )
         return codebase
 
     def stats(self) -> dict[str, Any]:

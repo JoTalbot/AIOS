@@ -18,13 +18,14 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class TrustLevel(str, Enum):
     """Trust levels."""
+
     UNKNOWN = "unknown"
     LOW = "low"
     MEDIUM = "medium"
@@ -35,12 +36,13 @@ class TrustLevel(str, Enum):
 @dataclass
 class Relationship:
     """Dyadic relationship between agents."""
+
     agent_a: str
     agent_b: str
     trust_score: float = 1.0  # 0..5
     cooperation_score: float = 1.0  # 0..5
     interaction_count: int = 0
-    last_interaction: Optional[float] = None
+    last_interaction: float | None = None
     status: str = "neutral"  # neutral, friendly, hostile
 
     def trust_level(self) -> TrustLevel:
@@ -78,6 +80,7 @@ class Relationship:
 @dataclass
 class Interaction:
     """Recorded interaction event."""
+
     from_agent: str
     to_agent: str
     interaction_type: str = "communication"  # communication, cooperation, conflict
@@ -89,6 +92,7 @@ class Interaction:
 @dataclass
 class SocialNorm:
     """Behavioral norm with enforcement."""
+
     name: str
     description: str = ""
     weight: float = 1.0  # importance weight
@@ -121,16 +125,28 @@ class SocialIntelligence:
     def __init__(self) -> None:
         self.relationships: dict[str, Relationship] = {}
         self.interactions: list[Interaction] = []
-        self.norms: list[SocialNorm] = field(default_factory=list) if False else [SocialNorm("cooperation"), SocialNorm("fairness"), SocialNorm("reciprocity")]
+        self.norms: list[SocialNorm] = (
+            field(default_factory=list)
+            if False
+            else [
+                SocialNorm("cooperation"),
+                SocialNorm("fairness"),
+                SocialNorm("reciprocity"),
+            ]
+        )
         self._norms_dict: dict[str, SocialNorm] = {
-            "cooperation": SocialNorm("cooperation", "Work together toward common goals"),
+            "cooperation": SocialNorm(
+                "cooperation", "Work together toward common goals"
+            ),
             "fairness": SocialNorm("fairness", "Treat others equitably"),
             "reciprocity": SocialNorm("reciprocity", "Return favors and kindness"),
         }
 
     # ── Relationship Management ──────────────────────────────────
 
-    def update_relationship(self, agent_a: str, agent_b: str, interaction: dict[str, Any]) -> Relationship:
+    def update_relationship(
+        self, agent_a: str, agent_b: str, interaction: dict[str, Any]
+    ) -> Relationship:
         """Update relationship based on interaction."""
         key = f"{agent_a}_{agent_b}"
         if key not in self.relationships:
@@ -163,14 +179,20 @@ class SocialIntelligence:
 
     # ── Interaction Recording ─────────────────────────────────────
 
-    def record_interaction(self, from_agent: str, to_agent: str,
-                          interaction_type: str = "communication",
-                          outcome: str = "positive",
-                          details: dict[str, Any] | None = None) -> Interaction:
+    def record_interaction(
+        self,
+        from_agent: str,
+        to_agent: str,
+        interaction_type: str = "communication",
+        outcome: str = "positive",
+        details: dict[str, Any] | None = None,
+    ) -> Interaction:
         """Record an interaction event."""
         interaction = Interaction(
-            from_agent=from_agent, to_agent=to_agent,
-            interaction_type=interaction_type, outcome=outcome,
+            from_agent=from_agent,
+            to_agent=to_agent,
+            interaction_type=interaction_type,
+            outcome=outcome,
             details=details or {},
         )
         self.interactions.append(interaction)
@@ -178,7 +200,9 @@ class SocialIntelligence:
         self.update_relationship(from_agent, to_agent, {"outcome": outcome})
         return interaction
 
-    def get_interactions(self, agent: str | None = None, limit: int = 50) -> list[Interaction]:
+    def get_interactions(
+        self, agent: str | None = None, limit: int = 50
+    ) -> list[Interaction]:
         """Return interactions, optionally filtered by agent."""
         result = self.interactions
         if agent:
@@ -205,7 +229,12 @@ class SocialIntelligence:
         recommendations = []
 
         # High trust environment → cooperate
-        trust_avg = sum(r.trust_score for r in self.relationships.values()) / len(self.relationships) if self.relationships else 1.0
+        trust_avg = (
+            sum(r.trust_score for r in self.relationships.values())
+            / len(self.relationships)
+            if self.relationships
+            else 1.0
+        )
         if trust_avg >= 3.0:
             recommendations.extend(["cooperate", "communicate", "share_knowledge"])
         elif trust_avg >= 1.5:
@@ -232,7 +261,12 @@ class SocialIntelligence:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_trust = sum(r.trust_score for r in self.relationships.values()) / len(self.relationships) if self.relationships else 0.0
+        avg_trust = (
+            sum(r.trust_score for r in self.relationships.values())
+            / len(self.relationships)
+            if self.relationships
+            else 0.0
+        )
         return {
             "relationships": len(self.relationships),
             "norms": len(self._norms_dict),

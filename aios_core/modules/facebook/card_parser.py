@@ -5,7 +5,6 @@ from __future__ import annotations
 from aios_core.modules.olx.card_parser import CardParser
 from aios_core.modules.olx.models import AdCard
 
-
 # Facebook-specific parsing markers
 FB_CARD_RESOURCE_IDS = ("marketplace_item", "feed_item", "listing_card")
 FB_TITLE_MARKERS = ("title", "description", "item_name")
@@ -20,8 +19,11 @@ class FacebookCardParser(CardParser):
 
         if xml:
             import re
-            pattern = r'<node[^>]*resource-id="[^"]*({})[^"]*"[^>]*text="([^"]*)"'.format(
-                "|".join(FB_CARD_RESOURCE_IDS)
+
+            pattern = (
+                r'<node[^>]*resource-id="[^"]*({})[^"]*"[^>]*text="([^"]*)"'.format(
+                    "|".join(FB_CARD_RESOURCE_IDS)
+                )
             )
             matches = re.findall(pattern, xml, re.IGNORECASE)
 
@@ -48,7 +50,8 @@ class FacebookCardParser(CardParser):
     def _extract_price(self, text: str) -> float | None:
         """Extract price from Facebook Marketplace text."""
         import re
-        m = re.search(r'(\d[\d\s]+)\s*(грн|uah|\$|₴)', text.lower())
+
+        m = re.search(r"(\d[\d\s]+)\s*(грн|uah|\$|₴)", text.lower())
         if m:
             try:
                 return float(m.group(1).replace(" ", ""))

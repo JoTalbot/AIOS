@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
 
 from .storage import Database
 
@@ -31,10 +30,10 @@ class ProposedArticle:
 class ConstitutionEvolver:
     """Manages self-evolution of the AIOS Constitution."""
 
-    def __init__(self, db: Optional[Database] = None):
+    def __init__(self, db: Database | None = None):
         """Initialize ConstitutionEvolver."""
         self.db = db
-        self._proposals: Dict[str, ProposedArticle] = {}
+        self._proposals: dict[str, ProposedArticle] = {}
         self.version = "4.0.0-alpha"
         self._ensure_table()
 
@@ -97,7 +96,9 @@ class ConstitutionEvolver:
 
         return article
 
-    def review_proposal(self, proposal_id: str, decision: str, reviewer: str = "system") -> dict:
+    def review_proposal(
+        self, proposal_id: str, decision: str, reviewer: str = "system"
+    ) -> dict:
         """Review and accept/reject a proposal."""
         proposal = self._proposals.get(proposal_id)
         if not proposal:
@@ -117,7 +118,9 @@ class ConstitutionEvolver:
             "reviewer": reviewer,
         }
 
-    def generate_article_from_experience(self, experience: dict) -> Optional[ProposedArticle]:
+    def generate_article_from_experience(
+        self, experience: dict
+    ) -> ProposedArticle | None:
         """Automatically generate an article proposal from observed patterns."""
         # Simple heuristic-based generation (placeholder for real ML)
         if "repeated_failure" in experience:
@@ -134,7 +137,7 @@ class ConstitutionEvolver:
             )
         return None
 
-    def list_proposals(self, status: str | None = None) -> List[ProposedArticle]:
+    def list_proposals(self, status: str | None = None) -> list[ProposedArticle]:
         """Execute list proposals."""
         if status:
             return [p for p in self._proposals.values() if p.status == status]

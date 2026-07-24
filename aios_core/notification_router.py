@@ -14,7 +14,7 @@ Supports 4 channels:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 
@@ -83,7 +83,7 @@ class NotificationMessage:
     severity: Severity = Severity.INFO
     platform: str | None = None
     data: dict[str, object] = field(default_factory=dict)
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
@@ -142,15 +142,19 @@ class NotificationRouter:
             except Exception as e:
                 results[channel.value] = {"status": "error", "error": str(e)}
 
-        self._sent.append({
-            "message": message.to_dict(),
-            "channels": [c.value for c in channels],
-            "results": results,
-        })
+        self._sent.append(
+            {
+                "message": message.to_dict(),
+                "channels": [c.value for c in channels],
+                "results": results,
+            }
+        )
 
         return results
 
-    def _dispatch(self, channel: NotificationChannel, message: NotificationMessage) -> dict[str, object]:
+    def _dispatch(
+        self, channel: NotificationChannel, message: NotificationMessage
+    ) -> dict[str, object]:
         """Dispatch a message to a specific channel.
 
         Args:
@@ -200,7 +204,13 @@ class NotificationRouter:
         payload = {
             "text": f"{message.severity.value.upper()}: {message.title}",
             "blocks": [
-                {"type": "section", "text": {"type": "mrkdwn", "text": f"*{message.title}*\n{message.body}"}},
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*{message.title}*\n{message.body}",
+                    },
+                },
             ],
         }
 

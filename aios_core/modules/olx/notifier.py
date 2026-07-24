@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import urllib.request
-from typing import Dict, List, Optional
 
 
 class WebhookNotifier:
@@ -22,7 +21,7 @@ class WebhookNotifier:
         self.chat_id = chat_id
         self._poster = poster or self._urllib_post
 
-    def send(self, event: str, data: Dict[str, object]) -> bool:
+    def send(self, event: str, data: dict[str, object]) -> bool:
         """Send one event. Returns True on HTTP 2xx. Silent no-op without URL."""
         if not self.url:
             return False
@@ -35,7 +34,7 @@ class WebhookNotifier:
         return bool(self._poster(self.url, payload))
 
     @staticmethod
-    def _urllib_post(url: str, payload: Dict[str, object]) -> bool:
+    def _urllib_post(url: str, payload: dict[str, object]) -> bool:
         request = urllib.request.Request(
             url,
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -45,9 +44,11 @@ class WebhookNotifier:
             return 200 <= response.status < 300
 
 
-def collect_price_drop_alerts(tracker, query: str | None = None) -> List[Dict[str, object]]:
+def collect_price_drop_alerts(
+    tracker, query: str | None = None
+) -> list[dict[str, object]]:
     """Turn tracker price drops into notifier-ready alert payloads."""
-    alerts: List[Dict[str, object]] = []
+    alerts: list[dict[str, object]] = []
     for drop in tracker.price_drops(query=query):
         alerts.append(
             {
@@ -65,7 +66,7 @@ def collect_price_drop_alerts(tracker, query: str | None = None) -> List[Dict[st
 
 def notify_price_drops(
     tracker, notifier: WebhookNotifier, query: str | None = None
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """Send one webhook event per new price drop. Returns a summary."""
     alerts = collect_price_drop_alerts(tracker, query=query)
     sent = 0
@@ -76,8 +77,8 @@ def notify_price_drops(
 
 
 def notify_stagnant(
-    stagnant_items: List[Dict[str, object]], notifier: WebhookNotifier
-) -> Dict[str, object]:
+    stagnant_items: list[dict[str, object]], notifier: WebhookNotifier
+) -> dict[str, object]:
     """Notify about own stagnant listings (repost/improve candidates)."""
     sent = 0
     for item in stagnant_items:

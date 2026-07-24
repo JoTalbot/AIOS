@@ -16,7 +16,6 @@ from __future__ import annotations
 import tempfile
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
 
 _SEARCH_RID_MARKERS = ("search", "query", "пошук", "поиск")
 
@@ -50,7 +49,7 @@ class PointDrive:
         opened = self.adb.open_app()
         if opened.get("code") != 0:
             raise ValueError(
-                "adb open_app failed: " f"{(opened.get('stderr') or 'no device')[:160]}"
+                f"adb open_app failed: {(opened.get('stderr') or 'no device')[:160]}"
             )
         time.sleep(self.open_wait_s)
         xml = self._dump()
@@ -91,7 +90,9 @@ class PointDrive:
             center = ((bounds[0] + bounds[2]) // 2, (bounds[1] + bounds[3]) // 2)
             if any(marker in rid for marker in _SEARCH_RID_MARKERS):
                 return center  # rid-подсказка приоритетнее класса
-            if edit_center is None and any(marker in klass for marker in self.input_classes):
+            if edit_center is None and any(
+                marker in klass for marker in self.input_classes
+            ):
                 edit_center = center
         return edit_center
 
@@ -101,6 +102,7 @@ class PointDrive:
             result = self.adb.dump_ui(str(target))
             if result.get("code") != 0 or not target.exists():
                 raise ValueError(
-                    "adb dump_ui failed: " f"{(result.get('stderr') or 'dump unavailable')[:160]}"
+                    "adb dump_ui failed: "
+                    f"{(result.get('stderr') or 'dump unavailable')[:160]}"
                 )
             return target.read_text(encoding="utf-8")

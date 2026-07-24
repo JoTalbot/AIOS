@@ -12,10 +12,8 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
-import statistics
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -24,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LearningState:
     """Model learning state."""
+
     version: int = 0
     last_update: float = 0.0
     drift_detected: bool = False
@@ -65,12 +64,14 @@ class ContinuousLearning:
             older_avg = sum(older) / len(older)
             if abs(recent_avg - older_avg) > self.drift_threshold:
                 self._state.drift_detected = True
-                self._drift_log.append({
-                    "recent_avg": round(recent_avg, 4),
-                    "older_avg": round(older_avg, 4),
-                    "drift": round(abs(recent_avg - older_avg), 4),
-                    "timestamp": time.time(),
-                })
+                self._drift_log.append(
+                    {
+                        "recent_avg": round(recent_avg, 4),
+                        "older_avg": round(older_avg, 4),
+                        "drift": round(abs(recent_avg - older_avg), 4),
+                        "timestamp": time.time(),
+                    }
+                )
             else:
                 self._state.drift_detected = False
 
@@ -110,8 +111,11 @@ class ContinuousLearning:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics (backward-compatible)."""
-        avg_perf = (sum(self.performance_history) / len(self.performance_history)
-                    ) if self.performance_history else 0
+        avg_perf = (
+            (sum(self.performance_history) / len(self.performance_history))
+            if self.performance_history
+            else 0
+        )
         return {
             "experiences": len(self.knowledge_base),
             "avg_performance": round(avg_perf, 4),

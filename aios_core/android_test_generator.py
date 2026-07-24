@@ -15,7 +15,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = ["TestStep", "GeneratedTest", "AndroidTestGenerator"]
 
@@ -23,6 +23,7 @@ __all__ = ["TestStep", "GeneratedTest", "AndroidTestGenerator"]
 @dataclass
 class TestStep:
     """TestStep."""
+
     action: str  # tap, type, swipe, wait, assert
     target: str | None = None  # resource-id or text hint
     value: str | None = None  # for type
@@ -35,11 +36,12 @@ class TestStep:
 @dataclass
 class GeneratedTest:
     """GeneratedTest."""
+
     id: str
     name: str
     description: str
     platform: str
-    steps: List[TestStep]
+    steps: list[TestStep]
     tags: list[str] = field(default_factory=list)
     generated_from: str = "manual"
     confidence: float = 0.8
@@ -60,14 +62,14 @@ class GeneratedTest:
             f'    """{self.description} - Generated from {self.generated_from}"""',
             f"    # Platform: {self.platform} | Confidence: {self.confidence}",
             f"    # Tags: {', '.join(self.tags)}",
-            f"    driver = android_driver",
-            f"    classifier = ai_classifier",
+            "    driver = android_driver",
+            "    classifier = ai_classifier",
             "",
         ]
 
         for idx, step in enumerate(self.steps):
             lines.append(
-                f"    # Step {idx+1}: {step.description or step.action} {step.target or ''}"
+                f"    # Step {idx + 1}: {step.description or step.action} {step.target or ''}"
             )
             if step.action == "tap":
                 hints = f'["{step.target}"]' if step.target else "[]"
@@ -75,9 +77,9 @@ class GeneratedTest:
                     f"    assert classifier.find_with_cv(driver, {hints}) or driver.tap_by_hint({hints})"
                 )
             elif step.action == "type":
-                lines.append(f"    driver.type_text(\"{step.value or ''}\")")
+                lines.append(f'    driver.type_text("{step.value or ""}")')
             elif step.action == "swipe":
-                lines.append(f"    driver.swipe(500, 1500, 500, 500)")
+                lines.append("    driver.swipe(500, 1500, 500, 500)")
             elif step.action == "wait":
                 lines.append(
                     f'    driver.wait_for_screen("{step.expected_screen}", timeout={step.timeout})'
@@ -116,7 +118,7 @@ class AndroidTestGenerator:
         """Initialize AndroidTestGenerator."""
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self._generated: List[GeneratedTest] = []
+        self._generated: list[GeneratedTest] = []
         self.version = "8.0.0"
 
     def from_recording(
@@ -124,13 +126,13 @@ class AndroidTestGenerator:
     ) -> GeneratedTest:
         """Generate test from ScenarioRecorder JSON."""
         try:
-            with open(recording_path, "r") as f:
+            with open(recording_path) as f:
                 data = json.load(f)
             actions = data.get("actions", data) if isinstance(data, dict) else data
         except Exception:
             actions = []
 
-        steps: List[TestStep] = []
+        steps: list[TestStep] = []
         for act in actions:
             if isinstance(act, dict):
                 a_type = act.get("type", act.get("action", "tap"))
@@ -151,7 +153,9 @@ class AndroidTestGenerator:
             steps = [
                 TestStep(action="tap", target="search_field", description="Tap search"),
                 TestStep(action="type", value="iPhone 13", description="Type query"),
-                TestStep(action="tap", target="search_button", description="Submit search"),
+                TestStep(
+                    action="tap", target="search_button", description="Submit search"
+                ),
                 TestStep(
                     action="wait",
                     expected_screen="search_results",
@@ -182,7 +186,7 @@ class AndroidTestGenerator:
         self, flow: list[str], platform: str, name: str, description: str = ""
     ) -> GeneratedTest:
         """Generate test from list of textual steps (user described flow)."""
-        steps: List[TestStep] = []
+        steps: list[TestStep] = []
         for txt in flow:
             low = txt.lower()
             if "tap" in low or "нажми" in low or "клик" in low:
@@ -197,7 +201,9 @@ class AndroidTestGenerator:
                 steps.append(TestStep(action="type", value=val, description=txt))
             elif "wait" in low or "жди" in low or "подожди" in low:
                 steps.append(
-                    TestStep(action="wait", expected_screen=txt, timeout=10, description=txt)
+                    TestStep(
+                        action="wait", expected_screen=txt, timeout=10, description=txt
+                    )
                 )
             elif "assert" in low or "проверь" in low or "убедись" in low:
                 steps.append(TestStep(action="assert", target=txt, description=txt))
@@ -218,14 +224,14 @@ class AndroidTestGenerator:
         return test
 
     def from_navigation_history(
-        self, history: List[dict[str, Any]], platform: str
-    ) -> List[GeneratedTest]:
+        self, history: list[dict[str, Any]], platform: str
+    ) -> list[GeneratedTest]:
         """Generate tests from AIScreenClassifier navigation history."""
         if not history:
             return []
 
         # Group by signature to find common flows
-        flows: Dict[str, List[dict[str, Any]]] = {}
+        flows: dict[str, list[dict[str, Any]]] = {}
         for entry in history:
             sig = entry.get("signature", "unknown")
             flows.setdefault(sig, []).append(entry)
@@ -350,6 +356,6 @@ class AndroidTestGenerator:
             "output_dir": str(self.output_dir),
         }
 
-    def list_generated(self) -> List[GeneratedTest]:
+    def list_generated(self) -> list[GeneratedTest]:
         """Execute list generated."""
         return self._generated

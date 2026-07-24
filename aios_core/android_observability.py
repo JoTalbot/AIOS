@@ -11,11 +11,9 @@ M7 Enhancements:
 
 from __future__ import annotations
 
-import json
-import os
 import time
-from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import asdict, dataclass
+from typing import Any
 
 __all__ = ["AndroidExecutionEvent", "AndroidObservability"]
 
@@ -31,6 +29,7 @@ except ImportError:
 @dataclass
 class AndroidExecutionEvent:
     """Structured event record for Android automation."""
+
     timestamp: float
     package: str
     device_id: str
@@ -40,14 +39,16 @@ class AndroidExecutionEvent:
     success: bool
     meta: dict[str, Any]
 
-
     """Android observability — metrics, failure prediction."""
+
+
 class AndroidObservability:
     """AndroidObservability."""
+
     def __init__(self, device_id: str):
         """Initialize AndroidObservability."""
         self.device_id = device_id
-        self.events: List[AndroidExecutionEvent] = []
+        self.events: list[AndroidExecutionEvent] = []
         self.counters: dict[str, float] = {}
         self.gauges: dict[str, float] = {}
         self._active_android_pid: int | None = None
@@ -74,11 +75,12 @@ class AndroidObservability:
                     continue
         except Exception:
             pass  # psutil unavailable — skip resource anomaly detection
+
     def isolate_process(self) -> None:
         """Isolate the Android test process for reliability."""
         return self._isolate_process()
 
-    def check_heuristic_anomalies(self) -> List[dict[str, Any]]:
+    def check_heuristic_anomalies(self) -> list[dict[str, Any]]:
         """Check for heuristic anomalies in system state."""
         anomalies = []
         if not HAS_PSUTIL:
@@ -120,9 +122,7 @@ class AndroidObservability:
 
         risk_score = 0.0
         for anomaly in anomalies:
-            if anomaly["type"] == "high_memory":
-                risk_score += (anomaly["value"] - 50) / 50
-            elif anomaly["type"] == "high_cpu":
+            if anomaly["type"] == "high_memory" or anomaly["type"] == "high_cpu":
                 risk_score += (anomaly["value"] - 50) / 50
 
         return min(risk_score, 1.0)

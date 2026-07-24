@@ -11,9 +11,7 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Union
 
 from .adb import ADBController
 from .text_utils import normalize_text
@@ -58,7 +56,7 @@ class ProfileInfo:
         """Execute name."""
         return self.fields.get("name")
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
         return {"fields": dict(self.fields)}
 
@@ -69,7 +67,7 @@ class SettingsInfo:
 
     toggles: dict[str, bool] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
         return {"toggles": dict(self.toggles)}
 
@@ -77,7 +75,7 @@ class SettingsInfo:
 class ProfileParser:
     """Parses profile/settings screens into structured data."""
 
-    def parse_profile(self, xml_source: Union[str, Path, ET.Element]) -> ProfileInfo:
+    def parse_profile(self, xml_source: str | Path | ET.Element) -> ProfileInfo:
         """Execute parse profile."""
         texts = self._texts(xml_source)
         return self.profile_from_texts(texts)
@@ -121,7 +119,7 @@ class ProfileParser:
         return SettingsInfo(toggles=toggles)
 
     @staticmethod
-    def _texts(xml_source: Union[str, Path, ET.Element]) -> list[str]:
+    def _texts(xml_source: str | Path | ET.Element) -> list[str]:
         if isinstance(xml_source, ET.Element):
             root = xml_source
         else:
@@ -132,14 +130,16 @@ class ProfileParser:
                 else ET.parse(text_or_path).getroot()
             )
         return [
-            text for node in root.iter("node") if (text := normalize_text(node.attrib.get("text")))
+            text
+            for node in root.iter("node")
+            if (text := normalize_text(node.attrib.get("text")))
         ]
 
 
 class ProfileEditor:
     """Prepares and (on confirmation) executes profile/settings edits."""
 
-    def __init__(self, adb: Optional[ADBController] = None):
+    def __init__(self, adb: ADBController | None = None):
         """Initialize ProfileEditor."""
         self.adb = adb or ADBController()
 
@@ -167,7 +167,7 @@ class ProfileEditor:
         field_key: str,
         new_value: str,
         confirm: bool = False,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """Stage a profile edit in the kv-store; device only on confirm."""
         steps = self.plan_steps(field_key, new_value)
         if not confirm:
@@ -181,7 +181,7 @@ class ProfileEditor:
                 "steps": steps,
                 "executed": False,
             }
-        log: List[Dict[str, object]] = [
+        log: list[dict[str, object]] = [
             {
                 "code": 0,
                 "stdout": "profile edit UI flow (requires per-device calibration)",

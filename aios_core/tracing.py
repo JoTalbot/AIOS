@@ -8,7 +8,7 @@ import threading
 import time
 import uuid
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 _current_trace_context = threading.local()
 
@@ -30,7 +30,7 @@ class Span:
         self.span_id = span_id
         self.parent_id = parent_id
         self.attributes: dict[str, Any] = attributes or {}
-        self.events: List[dict[str, Any]] = []
+        self.events: list[dict[str, Any]] = []
         self.start_time = time.time()
         self.end_time: float | None = None
         self.status = "OK"
@@ -42,7 +42,9 @@ class Span:
 
     def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         """Execute add event."""
-        self.events.append({"name": name, "attributes": attributes or {}, "timestamp": time.time()})
+        self.events.append(
+            {"name": name, "attributes": attributes or {}, "timestamp": time.time()}
+        )
 
     def set_status_error(self, message: str) -> None:
         """Execute set status error."""
@@ -70,8 +72,8 @@ class Tracer:
 
     def __init__(self):
         """Initialize Tracer."""
-        self.active_spans: Dict[str, Span] = {}
-        self.finished_spans: List[Span] = []
+        self.active_spans: dict[str, Span] = {}
+        self.finished_spans: list[Span] = []
 
     def generate_trace_id(self) -> str:
         """Execute generate trace id."""
@@ -81,7 +83,7 @@ class Tracer:
         """Execute generate span id."""
         return uuid.uuid4().hex[:16]
 
-    def parse_w3c_header(self, traceparent: str) -> Tuple[str | None, str | None]:
+    def parse_w3c_header(self, traceparent: str) -> tuple[str | None, str | None]:
         """Parse W3C traceparent header: 00-{trace_id}-{span_id}-{flags}."""
         parts = traceparent.split("-")
         if len(parts) >= 3 and parts[0] == "00":
@@ -101,7 +103,9 @@ class Tracer:
             parent_trace_id, parent_span_id = self.parse_w3c_header(parent_traceparent)
 
         # Retrieve thread local active span if available
-        current_active: Optional[Span] = getattr(_current_trace_context, "active_span", None)
+        current_active: Span | None = getattr(
+            _current_trace_context, "active_span", None
+        )
 
         if parent_trace_id:
             trace_id = parent_trace_id
@@ -139,7 +143,7 @@ class Tracer:
                 self.finished_spans = self.finished_spans[-2000:]
             _current_trace_context.active_span = previous_span
 
-    def get_current_span(self) -> Optional[Span]:
+    def get_current_span(self) -> Span | None:
         """Execute get current span."""
         return getattr(_current_trace_context, "active_span", None)
 
@@ -150,8 +154,6 @@ class Tracer:
             "finished_spans": len(self.finished_spans),
         }
 
-
-from typing import Tuple
 
 __all__ = ["Span", "Tracer"]
 

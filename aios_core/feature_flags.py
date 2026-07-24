@@ -16,21 +16,21 @@ Classes:
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
-import random
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class FlagState(str, Enum):
     """Flag lifecycle state."""
+
     DRAFT = "draft"
     STAGING = "staging"
     PRODUCTION = "production"
@@ -39,6 +39,7 @@ class FlagState(str, Enum):
 
 class RolloutStrategy(str, Enum):
     """How a flag decides who sees it."""
+
     PERCENTAGE = "percentage"
     USER_LIST = "user_list"
     SCHEDULED = "scheduled"
@@ -46,6 +47,7 @@ class RolloutStrategy(str, Enum):
 
 
 # ── Targeting Rule ───────────────────────────────────────────────────────────
+
 
 @dataclass
 class TargetingRule:
@@ -56,6 +58,7 @@ class TargetingRule:
         TargetingRule("region", "in", ["dnipro", "kyiv"])
         TargetingRule("tier", "gte", 2)
     """
+
     attribute: str
     operator: str  # eq, neq, in, not_in, gte, lte, contains
     value: Any
@@ -85,20 +88,22 @@ class TargetingRule:
 
 # ── Feature Flag ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class FeatureFlag:
     """Complete flag definition with rollout strategy and variants."""
+
     name: str
     enabled: bool = False
     state: FlagState = FlagState.DRAFT
-    rollout_strategy: Optional[RolloutStrategy] = None
+    rollout_strategy: RolloutStrategy | None = None
     rollout_percentage: float = 0.0  # 0..100
     rollout_user_list: list[str] = field(default_factory=list)
-    rollout_scheduled_at: Optional[float] = None  # epoch timestamp
+    rollout_scheduled_at: float | None = None  # epoch timestamp
     targeting_rules: list[TargetingRule] = field(default_factory=list)
     variants: dict[str, Any] = field(default_factory=dict)  # variant_name → value
     default_variant: str = "off"
-    parent_flag: Optional[str] = None  # dependency: must be ON too
+    parent_flag: str | None = None  # dependency: must be ON too
     description: str = ""
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
@@ -106,7 +111,7 @@ class FeatureFlag:
     # ── metrics (mutable) ──
     evaluation_count: int = 0
     exposure_count: int = 0
-    last_evaluated_at: Optional[float] = None
+    last_evaluated_at: float | None = None
 
     def touch(self) -> None:
         """Record evaluation timestamp and bump counter."""
@@ -120,9 +125,11 @@ class FeatureFlag:
 
 # ── Audit Event ──────────────────────────────────────────────────────────────
 
+
 @dataclass
 class AuditEvent:
     """Immutable record of a flag change."""
+
     flag_name: str
     action: str  # enable, disable, toggle, update, register, archive
     actor: str = "system"
@@ -131,6 +138,7 @@ class AuditEvent:
 
 
 # ── Flag Store ───────────────────────────────────────────────────────────────
+
 
 class FlagStore:
     """Central flag store: register, evaluate, mutate, audit.
@@ -149,14 +157,14 @@ class FlagStore:
         name: str,
         enabled: bool = False,
         state: FlagState = FlagState.DRAFT,
-        rollout_strategy: Optional[RolloutStrategy] = None,
+        rollout_strategy: RolloutStrategy | None = None,
         rollout_percentage: float = 0.0,
         rollout_user_list: list[str] | None = None,
-        rollout_scheduled_at: Optional[float] = None,
+        rollout_scheduled_at: float | None = None,
         targeting_rules: list[TargetingRule] | None = None,
         variants: dict[str, Any] | None = None,
         default_variant: str = "off",
-        parent_flag: Optional[str] = None,
+        parent_flag: str | None = None,
         description: str = "",
     ) -> FeatureFlag:
         """Register a new flag. Raises ValueError on duplicate name."""
@@ -177,7 +185,9 @@ class FlagStore:
             description=description,
         )
         self.flags[name] = flag
-        self._audit(name, "register", details={"enabled": enabled, "state": state.value})
+        self._audit(
+            name, "register", details={"enabled": enabled, "state": state.value}
+        )
         logger.info("Registered flag '%s' (state=%s)", name, state.value)
         return flag
 
@@ -225,7 +235,7 @@ class FlagStore:
         strategy: RolloutStrategy,
         percentage: float = 0.0,
         user_list: list[str] | None = None,
-        scheduled_at: Optional[float] = None,
+        scheduled_at: float | None = None,
     ) -> None:
         """Configure rollout strategy for a flag."""
         flag = self._get(name)
@@ -243,7 +253,13 @@ class FlagStore:
         flag = self._get(name)
         flag.targeting_rules.append(rule)
         flag.updated_at = time.time()
-        self._audit(name, "update", details={"targeting_rule": f"{rule.attribute} {rule.operator} {rule.value}"})
+        self._audit(
+            name,
+            "update",
+            details={
+                "targeting_rule": f"{rule.attribute} {rule.operator} {rule.value}"
+            },
+        )
 
     def add_variant(self, name: str, variant_name: str, value: Any) -> None:
         """Add or update a variant for A/B-style flag."""
@@ -392,7 +408,9 @@ class FlagStore:
             "audit_events": len(self.audit_log),
         }
 
-    def get_audit_log(self, flag_name: str | None = None, limit: int = 100) -> list[AuditEvent]:
+    def get_audit_log(
+        self, flag_name: str | None = None, limit: int = 100
+    ) -> list[AuditEvent]:
         """Return audit events, optionally filtered by flag name."""
         if flag_name:
             events = [e for e in self.audit_log if e.flag_name == flag_name]
@@ -408,15 +426,23 @@ class FlagStore:
             raise KeyError(f"Flag '{name}' not found")
         return self.flags[name]
 
-    def _audit(self, flag_name: str, action: str, actor: str = "system", details: dict[str, Any] | None = None) -> None:
+    def _audit(
+        self,
+        flag_name: str,
+        action: str,
+        actor: str = "system",
+        details: dict[str, Any] | None = None,
+    ) -> None:
         """Append audit event."""
-        self.audit_log.append(AuditEvent(
-            flag_name=flag_name,
-            action=action,
-            actor=actor,
-            timestamp=time.time(),
-            details=details or {},
-        ))
+        self.audit_log.append(
+            AuditEvent(
+                flag_name=flag_name,
+                action=action,
+                actor=actor,
+                timestamp=time.time(),
+                details=details or {},
+            )
+        )
 
     @staticmethod
     def _hash_percentage(user_id: str, salt: str) -> float:
@@ -432,6 +458,7 @@ class FlagStore:
 
 
 # ── Backward-compatible façade ──────────────────────────────────────────────
+
 
 class FeatureFlags:
     """Backward-compatible simple façade over FlagStore.

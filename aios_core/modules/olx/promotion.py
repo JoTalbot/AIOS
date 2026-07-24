@@ -10,9 +10,8 @@ explicit human confirmation. Execution is DRY-RUN by default and requires
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from statistics import median
-from typing import Dict, List, Optional
 
 from .adb import ADBController
 from .analytics import RecommendationEngine
@@ -33,7 +32,7 @@ class ImprovementSuggestion:
     description_additions: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dictionary."""
         return {
             "title": self.title,
@@ -75,7 +74,7 @@ class AdImprover:
     def improve(
         self,
         own_ad: OwnAd,
-        competitors: List[AdCard],
+        competitors: list[AdCard],
         existing_description: str = "",
     ) -> ImprovementSuggestion:
         """Generate improvement suggestions for an ad."""
@@ -119,7 +118,9 @@ class AdImprover:
             if city.lower() not in lowered_desc:
                 additions.append(f"Місто та можливість огляду: {city}.")
         if keywords:
-            additions.append("Фрази з успішних оголошень: " + ", ".join(keywords[:5]) + ".")
+            additions.append(
+                "Фрази з успішних оголошень: " + ", ".join(keywords[:5]) + "."
+            )
         additions.append("Чіткі фото з кількох ракурсів (мінімум 4-6).")
         additions.append("Контакт для швидкого зв'язку та години відповідей.")
 
@@ -145,7 +146,7 @@ class RepostDecision:
     views_total: int
     best_hours_local: list[int] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dictionary."""
         return {
             "should_repost": self.should_repost,
@@ -175,10 +176,10 @@ class RepostPlanner:
         first_seen_at: str,
         views_total: int,
         messages_total: int = 0,
-        now: Optional[datetime] = None,
+        now: datetime | None = None,
     ) -> RepostDecision:
         """Decide whether to repost based on ad metrics."""
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         age_days = max(
             0.0,
             (now - datetime.fromisoformat(first_seen_at)).total_seconds() / 86400.0,
@@ -233,12 +234,12 @@ class Reposter:
     DELETE_LABELS = ("Видалити", "Видалити оголошення")
     PUBLISH_LABELS = ("Опублікувати", "Додати оголошення")
 
-    def __init__(self, adb: Optional[ADBController] = None):
+    def __init__(self, adb: ADBController | None = None):
         """Initialize Reposter."""
         self.adb = adb or ADBController()
 
     def plan_steps(
-        self, own_ad: OwnAd, suggestion: Optional[ImprovementSuggestion] = None
+        self, own_ad: OwnAd, suggestion: ImprovementSuggestion | None = None
     ) -> list[str]:
         """Plan actionable steps for the repost."""
         title = suggestion.suggested_title if suggestion else own_ad.title
@@ -256,16 +257,18 @@ class Reposter:
         if price is not None:
             steps.append(f"Встановити ціну {price:g} {own_ad.currency or 'грн'}")
         if suggestion and suggestion.description_additions:
-            steps.append("Доповнити опис: " + " | ".join(suggestion.description_additions))
+            steps.append(
+                "Доповнити опис: " + " | ".join(suggestion.description_additions)
+            )
         steps.append("Опублікувати та перевірити появу в «Мої оголошення»")
         return steps
 
     def repost(
         self,
         own_ad: OwnAd,
-        suggestion: Optional[ImprovementSuggestion] = None,
+        suggestion: ImprovementSuggestion | None = None,
         confirm: bool = False,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """Execute or dry-run a repost operation."""
         steps = self.plan_steps(own_ad, suggestion)
         if not confirm:
@@ -275,10 +278,12 @@ class Reposter:
                 "steps": steps,
                 "executed": False,
             }
-        log: List[Dict[str, object]] = []
+        log: list[dict[str, object]] = []
         if own_ad.url:
             log.append(
-                self.adb.run(f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"')
+                self.adb.run(
+                    f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"'
+                )
             )
         log.append(
             {
@@ -305,7 +310,7 @@ class OwnAdEditor:
 
     EDIT_LABELS = ("Редагувати", "Редактировать")
 
-    def __init__(self, adb: Optional[ADBController] = None):
+    def __init__(self, adb: ADBController | None = None):
         """Initialize OwnAdEditor."""
         self.adb = adb or ADBController()
 
@@ -317,7 +322,10 @@ class OwnAdEditor:
         ]
         if suggestion.suggested_title != own_ad.title:
             steps.append(f"Заголовок: «{suggestion.suggested_title}»")
-        if suggestion.suggested_price is not None and suggestion.suggested_price != own_ad.price:
+        if (
+            suggestion.suggested_price is not None
+            and suggestion.suggested_price != own_ad.price
+        ):
             steps.append(
                 f"Ціна: {own_ad.price} → {suggestion.suggested_price:g} ({suggestion.price_verdict})"
             )
@@ -331,15 +339,17 @@ class OwnAdEditor:
         own_ad: OwnAd,
         suggestion: ImprovementSuggestion,
         confirm: bool = False,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """Apply the improvement to the ad on the device."""
         steps = self.plan_steps(own_ad, suggestion)
         if not confirm:
             return {"status": "dry_run", "steps": steps, "executed": False}
-        log: List[Dict[str, object]] = []
+        log: list[dict[str, object]] = []
         if own_ad.url:
             log.append(
-                self.adb.run(f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"')
+                self.adb.run(
+                    f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"'
+                )
             )
         log.append(
             {

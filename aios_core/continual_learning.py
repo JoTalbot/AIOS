@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TaskBoundary:
     """Marks a task transition point with importance weights."""
+
     task_name: str
     timestamp: float = field(default_factory=time.time)
     importance_weights: dict[str, float] = field(default_factory=dict)
@@ -54,8 +55,9 @@ class ContinualLearner:
 
     # ── Task Learning ──────────────────────────────────────────────
 
-    def learn_task(self, task_name: str, importance: float = 1.0,
-                   performance: float = 1.0) -> TaskBoundary:
+    def learn_task(
+        self, task_name: str, importance: float = 1.0, performance: float = 1.0
+    ) -> TaskBoundary:
         """Learn a new task with importance weighting."""
         boundary = TaskBoundary(
             task_name=task_name,
@@ -70,7 +72,9 @@ class ContinualLearner:
 
         # Update EWC penalty for all previous tasks
         for prev_task in self.tasks[:-1]:
-            self._ewc_penalty[prev_task] = self.ewc_lambda * self.importance.get(prev_task, 1.0)
+            self._ewc_penalty[prev_task] = self.ewc_lambda * self.importance.get(
+                prev_task, 1.0
+            )
 
         return boundary
 
@@ -94,9 +98,11 @@ class ContinualLearner:
         self.rehearsal_buffer.append(entry)
         # Maintain buffer size
         if len(self.rehearsal_buffer) > self.rehearsal_size:
-            self.rehearsal_buffer = self.rehearsal_buffer[-self.rehearsal_size:]
+            self.rehearsal_buffer = self.rehearsal_buffer[-self.rehearsal_size :]
 
-    def get_rehearsal(self, task_name: str | None = None, limit: int = 10) -> list[dict[str, Any]]:
+    def get_rehearsal(
+        self, task_name: str | None = None, limit: int = 10
+    ) -> list[dict[str, Any]]:
         """Retrieve rehearsal data, optionally filtered by task."""
         if task_name:
             filtered = [r for r in self.rehearsal_buffer if r["task"] == task_name]
@@ -161,8 +167,11 @@ class ContinualLearner:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_perf = (sum(self.per_task_performance.values()) / len(self.per_task_performance)
-                    if self.per_task_performance else 0.0)
+        avg_perf = (
+            sum(self.per_task_performance.values()) / len(self.per_task_performance)
+            if self.per_task_performance
+            else 0.0
+        )
         return {
             "tasks_learned": len(self.tasks),
             "rehearsal_size": len(self.rehearsal_buffer),

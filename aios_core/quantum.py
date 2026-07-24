@@ -12,10 +12,11 @@ Classes:
 
 from __future__ import annotations
 
+import logging
 import math
 import random
-import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +25,15 @@ class QuantumGate:
     """Single quantum gate operation."""
 
     GATES = {
-        "H": [[1/math.sqrt(2), 1/math.sqrt(2)], [1/math.sqrt(2), -1/math.sqrt(2)]],
+        "H": [
+            [1 / math.sqrt(2), 1 / math.sqrt(2)],
+            [1 / math.sqrt(2), -1 / math.sqrt(2)],
+        ],
         "X": [[0, 1], [1, 0]],
         "Y": [[0, complex(0, -1)], [complex(0, 1), 0]],
         "Z": [[1, 0], [0, -1]],
         "S": [[1, 0], [0, complex(0, 1)]],
-        "T": [[1, 0], [0, complex(math.cos(math.pi/4), math.sin(math.pi/4))]],
+        "T": [[1, 0], [0, complex(math.cos(math.pi / 4), math.sin(math.pi / 4))]],
         "CNOT": "controlled-X",
         "RX": "parametric-rotation-x",
         "RY": "parametric-rotation-y",
@@ -54,11 +58,17 @@ class QuantumGate:
         elif self.name == "RY":
             cos_p = math.cos(self.param / 2)
             sin_p = math.sin(self.param / 2)
-            return [cos_p * state[0] - sin_p * state[1], sin_p * state[0] + cos_p * state[1]]
+            return [
+                cos_p * state[0] - sin_p * state[1],
+                sin_p * state[0] + cos_p * state[1],
+            ]
         elif self.name == "RX":
             cos_p = math.cos(self.param / 2)
             sin_p = math.sin(self.param / 2)
-            return [cos_p * state[0] + complex(0, -sin_p) * state[1], complex(0, -sin_p) * state[0] + cos_p * state[1]]
+            return [
+                cos_p * state[0] + complex(0, -sin_p) * state[1],
+                complex(0, -sin_p) * state[0] + cos_p * state[1],
+            ]
         return state
 
     def stats(self) -> dict[str, Any]:
@@ -92,7 +102,7 @@ class QuantumCircuit:
     def measure(self, shots: int = 1000) -> dict[str, int]:
         """Measure circuit output with sampling."""
         self.simulate()
-        probs = [abs(s)**2 for s in self._state]
+        probs = [abs(s) ** 2 for s in self._state]
         total = sum(probs)
         if total == 0:
             return {"0": shots}
@@ -117,10 +127,15 @@ class QuantumCircuit:
             return False
         # Schmidt decomposition approximation
         state = self._state
-        fidelity = abs(state[0])**2 + abs(state[3])**2
+        fidelity = abs(state[0]) ** 2 + abs(state[3]) ** 2
         return fidelity < 0.99 and fidelity > 0.01
 
-    def qaoa_layer(self, cost_hamiltonian: Callable, mixer_angle: float = 0.5, cost_angle: float = 0.5) -> list[complex]:
+    def qaoa_layer(
+        self,
+        cost_hamiltonian: Callable,
+        mixer_angle: float = 0.5,
+        cost_angle: float = 0.5,
+    ) -> list[complex]:
         """Simulate a QAOA layer."""
         self.add_gate("H", 0)  # Initial superposition
         self.add_gate("RY", 0, cost_angle)  # Cost unitary
@@ -128,7 +143,11 @@ class QuantumCircuit:
         return self.simulate()
 
     def stats(self) -> dict[str, Any]:
-        return {"qubits": self.qubits, "gates": len(self.gates), "state_size": len(self._state)}
+        return {
+            "qubits": self.qubits,
+            "gates": len(self.gates),
+            "state_size": len(self._state),
+        }
 
 
 class QuantumInspiredOptimizer:
@@ -137,7 +156,9 @@ class QuantumInspiredOptimizer:
     def __init__(self, temperature: float = 100.0) -> None:
         self.temperature = temperature
 
-    def optimize(self, solution: list, cost_func: Callable, iterations: int = 1000) -> tuple[list, float]:
+    def optimize(
+        self, solution: list, cost_func: Callable, iterations: int = 1000
+    ) -> tuple[list, float]:
         """Quantum-inspired annealing (backward-compatible, now returns tuple properly)."""
         current = solution[:]
         current_cost = cost_func(current)
@@ -158,7 +179,9 @@ class QuantumInspiredOptimizer:
                 best_cost = new_cost
 
             # Quantum tunneling probability
-            if new_cost < current_cost or random.random() < math.exp(-abs(new_cost - current_cost) / max(self.temperature, 1)):
+            if new_cost < current_cost or random.random() < math.exp(
+                -abs(new_cost - current_cost) / max(self.temperature, 1)
+            ):
                 current = neighbor[:]
                 current_cost = new_cost
 

@@ -6,7 +6,7 @@ and Prometheus/OTLP metric formatting.
 
 import math
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = ["MetricCounter", "MetricGauge", "MetricHistogram", "Telemetry"]
 
@@ -91,10 +91,10 @@ class Telemetry:
 
     def __init__(self):
         """Initialize Telemetry."""
-        self.counters: Dict[str, MetricCounter] = {}
-        self.gauges: Dict[str, MetricGauge] = {}
-        self.histograms: Dict[str, MetricHistogram] = {}
-        self.recorded_events: List[dict[str, Any]] = []
+        self.counters: dict[str, MetricCounter] = {}
+        self.gauges: dict[str, MetricGauge] = {}
+        self.histograms: dict[str, MetricHistogram] = {}
+        self.recorded_events: list[dict[str, Any]] = []
 
     def counter(self, name: str, description: str = "") -> MetricCounter:
         """Execute counter."""
@@ -154,7 +154,9 @@ class Telemetry:
         """Return summary statistics for a histogram, or an empty summary."""
         return self.histogram(name).get_summary()
 
-    def record_metric(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
+    def record_metric(
+        self, name: str, value: float, tags: dict[str, str] | None = None
+    ) -> None:
         """Record a generic metric observation."""
         hist = self.histogram(name)
         hist.observe(value)
@@ -179,7 +181,7 @@ class Telemetry:
             summary = h.get_summary()
             lines.append(f"# HELP {name} {h.description}")
             lines.append(f"# TYPE {name} histogram")
-            lines.append(f'{name}_count {summary["count"]}')
+            lines.append(f"{name}_count {summary['count']}")
             lines.append(f"{name}_sum {sum(h.values)}")
             lines.append(f'{name}{{quantile="0.5"}} {summary["p50"]}')
             lines.append(f'{name}{{quantile="0.95"}} {summary["p95"]}')
@@ -191,17 +193,20 @@ class Telemetry:
         """Compatibility alias for :meth:`export_prometheus_format`."""
         return self.export_prometheus_format()
 
-    def get_all_metrics(self) -> Dict[str, dict[str, Any]]:
+    def get_all_metrics(self) -> dict[str, dict[str, Any]]:
         """Return a serialisable snapshot of all collected metrics."""
         return {
-            "counters": {name: counter.value for name, counter in self.counters.items()},
+            "counters": {
+                name: counter.value for name, counter in self.counters.items()
+            },
             "gauges": {name: gauge.value for name, gauge in self.gauges.items()},
             "histograms": {
-                name: histogram.get_summary() for name, histogram in self.histograms.items()
+                name: histogram.get_summary()
+                for name, histogram in self.histograms.items()
             },
         }
 
-    def export_json(self) -> Dict[str, dict[str, Any]]:
+    def export_json(self) -> dict[str, dict[str, Any]]:
         """Return the metric snapshot in a JSON-serialisable structure."""
         return self.get_all_metrics()
 

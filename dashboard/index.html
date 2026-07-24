@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIOS Safety Dashboard v3</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0e27; color: #e0e6ff; }
+
+        .header { display: flex; align-items: center; justify-content: space-between;
+                   padding: 16px 24px; background: #111638; border-bottom: 2px solid #1e3a8a; }
+        .header h1 { font-size: 20px; color: #60a5fa; }
+        .header .version { font-size: 12px; color: #94a3b8; }
+
+        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 24px; }
+
+        .card { background: #111638; border-radius: 12px; padding: 20px; border: 1px solid #1e3a8a; }
+        .card h2 { font-size: 14px; color: #60a5fa; margin-bottom: 12px; }
+
+        .score-circle { width: 120px; height: 120px; border-radius: 50%; display: flex;
+                        align-items: center; justify-content: center; font-size: 32px;
+                        font-weight: bold; margin: 20px auto; }
+        .score-safe { background: radial-gradient(#22c55e33, #0a0e27); border: 3px solid #22c55e; color: #22c55e; }
+        .score-warning { background: radial-gradient(#f59e0b33, #0a0e27); border: 3px solid #f59e0b; color: #f59e0b; }
+        .score-critical { background: radial-gradient(#ef444433, #0a0e27); border: 3px solid #ef4444; color: #ef4444; }
+
+        .metric-row { display: flex; justify-content: space-between; padding: 8px 0;
+                      border-bottom: 1px solid #1e293b; font-size: 13px; }
+        .metric-label { color: #94a3b8; }
+        .metric-value { color: #e0e6ff; font-weight: 600; }
+        .metric-value.high { color: #22c55e; }
+        .metric-value.medium { color: #f59e0b; }
+        .metric-value.low { color: #ef4444; }
+
+        .incident-row { display: flex; gap: 8px; padding: 8px 0; font-size: 12px;
+                        border-bottom: 1px solid #1e293b; }
+        .severity-badge { padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+        .severity-critical { background: #ef444433; color: #ef4444; }
+        .severity-high { background: #f59e0b33; color: #f59e0b; }
+        .severity-medium { background: #3b82f633; color: #3b82f6; }
+        .severity-low { background: #22c55e33; color: #22c55e; }
+
+        .trend-chart { height: 80px; display: flex; align-items: flex-end; gap: 2px; }
+        .trend-bar { width: 8px; background: #3b82f6; border-radius: 2px 2px 0 0;
+                     min-height: 4px; transition: height 0.3s; }
+        .trend-bar.alert { background: #ef4444; }
+
+        .status-banner { padding: 8px 16px; border-radius: 8px; font-weight: 600;
+                         text-align: center; margin-bottom: 16px; }
+        .status-healthy { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e44; }
+        .status-warning { background: #f59e0b22; color: #f59e0b; border: 1px solid #f59e0b44; }
+        .status-critical { background: #ef444422; color: #ef4444; border: 1px solid #ef444444; }
+
+        .footer { text-align: center; padding: 16px; font-size: 12px; color: #475569; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ AIOS Safety Dashboard</h1>
+        <span class="version">v10.14.0 — Real-time Safety Monitoring</span>
+    </div>
+
+    <div class="status-banner status-healthy" id="statusBanner">
+        ✅ System Status: HEALTHY — Safety Score: <span id="safetyScoreText">1.000</span>
+    </div>
+
+    <div class="container">
+        <!-- Safety Score Card -->
+        <div class="card">
+            <h2>Composite Safety Score</h2>
+            <div class="score-circle score-safe" id="scoreCircle">1.0</div>
+            <div class="metric-row">
+                <span class="metric-label">Incidents</span>
+                <span class="metric-value" id="incidentCount">0</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Active Alerts</span>
+                <span class="metric-value" id="alertCount">0</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Compliance Status</span>
+                <span class="metric-value high" id="complianceStatus">Compliant</span>
+            </div>
+        </div>
+
+        <!-- Safety Metrics Card -->
+        <div class="card">
+            <h2>Safety Metrics</h2>
+            <div id="metricsPanel">
+                <div class="metric-row">
+                    <span class="metric-label">Harm Risk</span>
+                    <span class="metric-value" id="harmValue">0.00</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Bias Level</span>
+                    <span class="metric-value" id="biasValue">0.00</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Deception Score</span>
+                    <span class="metric-value" id="deceptionValue">0.00</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Alignment Score</span>
+                    <span class="metric-value high" id="alignmentValue">0.95</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Incident Log Card -->
+        <div class="card">
+            <h2>Recent Incidents</h2>
+            <div id="incidentPanel">
+                <div style="text-align:center; color:#94a3b8; padding:20px;">No incidents recorded</div>
+            </div>
+        </div>
+
+        <!-- Metric Trend Card -->
+        <div class="card">
+            <h2>Safety Score Trend (Last 24h)</h2>
+            <div class="trend-chart" id="trendChart">
+                <!-- Bars generated dynamically -->
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Trend Direction</span>
+                <span class="metric-value high" id="trendDirection">Stable</span>
+            </div>
+        </div>
+
+        <!-- Quantum Substrate Card -->
+        <div class="card">
+            <h2>Quantum Substrate Monitoring</h2>
+            <div class="metric-row">
+                <span class="metric-label">Silicon Load</span>
+                <span class="metric-value" id="siliconLoad">0.15</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Quantum QPU Status</span>
+                <span class="metric-value high" id="qpuStatus">Active</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Neuromorphic Health</span>
+                <span class="metric-value high" id="neuroHealth">0.99</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Bio-Compute Efficiency</span>
+                <span class="metric-value" id="bioEfficiency">50,000 GF/W</span>
+            </div>
+        </div>
+
+        <!-- Constitutional Compliance Card -->
+        <div class="card">
+            <h2>Constitutional Compliance</h2>
+            <div class="metric-row">
+                <span class="metric-label">Invariant Proofs</span>
+                <span class="metric-value" id="invariantProofs">5/5 Passed</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Amendment Status</span>
+                <span class="metric-value high" id="amendmentStatus">Current</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Recursive Reward Model</span>
+                <span class="metric-value" id="rewardModel">v4_iter_2</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Multi-Agent Trust</span>
+                <span class="metric-value high" id="trustLevel">0.75</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        AIOS Autonomous Intelligent Operating System — Dashboard v3 (React) — © 2026
+    </div>
+
+    <script>
+        // Dynamic data loading (would connect to API in production)
+        const dashboardData = {
+            safety_score: 1.0,
+            status: "healthy",
+            metrics: { harm: 0.0, bias: 0.0, deception: 0.0, alignment: 0.95 },
+            incidents: [],
+            trend: [0.95, 0.97, 0.99, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            quantum: { silicon: 0.15, qpu: "active", neuromorphic: 0.99, bio: 50000 },
+            constitutional: { proofs: 5, total: 5, amendments: 0, reward_model: "v4_iter_2", trust: 0.75 }
+        };
+
+        function updateDashboard(data) {
+            // Safety score
+            const score = data.safety_score;
+            const scoreCircle = document.getElementById('scoreCircle');
+            scoreCircle.textContent = score.toFixed(3);
+
+            // Status banner
+            const banner = document.getElementById('statusBanner');
+            const scoreText = document.getElementById('safetyScoreText');
+            scoreText.textContent = score.toFixed(3);
+            if (score > 0.8) {
+                banner.className = 'status-banner status-healthy';
+                banner.textContent = '✅ System Status: HEALTHY — Safety Score: ' + score.toFixed(3);
+                scoreCircle.className = 'score-circle score-safe';
+            } else if (score > 0.5) {
+                banner.className = 'status-banner status-warning';
+                banner.textContent = '⚠️ System Status: WARNING — Safety Score: ' + score.toFixed(3);
+                scoreCircle.className = 'score-circle score-warning';
+            } else {
+                banner.className = 'status-banner status-critical';
+                banner.textContent = '🚨 System Status: CRITICAL — Safety Score: ' + score.toFixed(3);
+                scoreCircle.className = 'score-circle score-critical';
+            }
+
+            // Metrics
+            document.getElementById('harmValue').textContent = data.metrics.harm.toFixed(2);
+            document.getElementById('biasValue').textContent = data.metrics.bias.toFixed(2);
+            document.getElementById('deceptionValue').textContent = data.metrics.deception.toFixed(2);
+            document.getElementById('alignmentValue').textContent = data.metrics.alignment.toFixed(2);
+            document.getElementById('incidentCount').textContent = data.incidents.length;
+            document.getElementById('alertCount').textContent = 0;
+
+            // Quantum substrate
+            document.getElementById('siliconLoad').textContent = data.quantum.silicon;
+            document.getElementById('qpuStatus').textContent = data.quantum.qpu;
+            document.getElementById('neuroHealth').textContent = data.quantum.neuromorphic;
+            document.getElementById('bioEfficiency').textContent = data.quantum.bio.toLocaleString() + ' GF/W';
+
+            // Constitutional
+            document.getElementById('invariantProofs').textContent = data.constitutional.proofs + '/' + data.constitutional.total + ' Passed';
+            document.getElementById('trustLevel').textContent = data.constitutional.trust.toFixed(2);
+
+            // Trend chart
+            const chart = document.getElementById('trendChart');
+            chart.innerHTML = '';
+            data.trend.forEach(val => {
+                const bar = document.createElement('div');
+                bar.className = val < 0.5 ? 'trend-bar alert' : 'trend-bar';
+                bar.style.height = Math.round(val * 80) + 'px';
+                chart.appendChild(bar);
+            });
+        }
+
+        // Initial render
+        updateDashboard(dashboardData);
+
+        // Auto-refresh every 5 seconds (production would use WebSocket)
+        setInterval(() => {
+            // Simulate slight metric fluctuation for demo
+            dashboardData.metrics.harm = Math.random() * 0.05;
+            dashboardData.metrics.bias = Math.random() * 0.05;
+            dashboardData.quantum.silicon = 0.15 + Math.random() * 0.05;
+            updateDashboard(dashboardData);
+        }, 5000);
+    </script>
+</body>
+</html>

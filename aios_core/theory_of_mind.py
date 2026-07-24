@@ -17,7 +17,7 @@ import logging
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Belief:
     """Agent belief with confidence and source."""
+
     content: str
     confidence: float = 0.8  # 0..1
     source: str = "observation"
@@ -34,6 +35,7 @@ class Belief:
 @dataclass
 class Desire:
     """Agent desire/goal with priority."""
+
     content: str
     priority: float = 0.5  # 0..1 (higher = more important)
     achievable: float = 0.7  # 0..1 (estimated feasibility)
@@ -43,6 +45,7 @@ class Desire:
 @dataclass
 class Intention:
     """Agent intention with commitment level."""
+
     content: str
     commitment: float = 0.8  # 0..1
     desire_source: str = ""  # linked desire
@@ -72,9 +75,13 @@ class TheoryOfMind:
 
     # ── Agent Modeling ──────────────────────────────────────────────
 
-    def model_agent(self, agent_id: str, beliefs: dict[str, Any] | None = None,
-                    desires: list[str] | None = None,
-                    intentions: list[str] | None = None) -> None:
+    def model_agent(
+        self,
+        agent_id: str,
+        beliefs: dict[str, Any] | None = None,
+        desires: list[str] | None = None,
+        intentions: list[str] | None = None,
+    ) -> None:
         """Model an agent's mental state (BDI)."""
         self.models[agent_id] = {
             "beliefs": beliefs or {},
@@ -91,14 +98,17 @@ class TheoryOfMind:
             self.beliefs[agent_id] = {}
 
         self.desires[agent_id] = [
-            Desire(content=d, priority=random.uniform(0.3, 0.9)) for d in (desires or [])
+            Desire(content=d, priority=random.uniform(0.3, 0.9))
+            for d in (desires or [])
         ]
-        self.intentions[agent_id] = [
-            Intention(content=i) for i in (intentions or [])
-        ]
+        self.intentions[agent_id] = [Intention(content=i) for i in (intentions or [])]
 
-    def update_model(self, agent_id: str, new_beliefs: dict[str, Any] | None = None,
-                     new_desires: list[str] | None = None) -> None:
+    def update_model(
+        self,
+        agent_id: str,
+        new_beliefs: dict[str, Any] | None = None,
+        new_desires: list[str] | None = None,
+    ) -> None:
         """Update an agent's mental model."""
         if agent_id not in self.models:
             self.model_agent(agent_id)
@@ -122,8 +132,14 @@ class TheoryOfMind:
 
     # ── Belief Revision ──────────────────────────────────────────────
 
-    def revise_belief(self, agent_id: str, key: str, new_value: str,
-                      confidence: float = 0.8, source: str = "new_observation") -> Belief:
+    def revise_belief(
+        self,
+        agent_id: str,
+        key: str,
+        new_value: str,
+        confidence: float = 0.8,
+        source: str = "new_observation",
+    ) -> Belief:
         """Revise an agent's belief with new information."""
         agent_beliefs = self.beliefs.setdefault(agent_id, {})
         old_belief = agent_beliefs.get(key)
@@ -140,18 +156,27 @@ class TheoryOfMind:
         """Return all beliefs for an agent."""
         return self.beliefs.get(agent_id, {})
 
-    def get_confident_beliefs(self, agent_id: str, min_confidence: float = 0.7) -> list[Belief]:
+    def get_confident_beliefs(
+        self, agent_id: str, min_confidence: float = 0.7
+    ) -> list[Belief]:
         """Return high-confidence beliefs."""
         beliefs = self.beliefs.get(agent_id, {})
         return [b for b in beliefs.values() if b.confidence >= min_confidence]
 
     # ── Desire Management ──────────────────────────────────────────
 
-    def add_desire(self, agent_id: str, content: str, priority: float = 0.5,
-                   achievable: float = 0.7, category: str = "general") -> Desire:
+    def add_desire(
+        self,
+        agent_id: str,
+        content: str,
+        priority: float = 0.5,
+        achievable: float = 0.7,
+        category: str = "general",
+    ) -> Desire:
         """Add a desire/goal for an agent."""
-        desire = Desire(content=content, priority=priority,
-                        achievable=achievable, category=category)
+        desire = Desire(
+            content=content, priority=priority, achievable=achievable, category=category
+        )
         self.desires.setdefault(agent_id, []).append(desire)
         return desire
 
@@ -167,16 +192,23 @@ class TheoryOfMind:
 
     # ── Intention Management ────────────────────────────────────────
 
-    def add_intention(self, agent_id: str, content: str,
-                      desire_source: str = "", commitment: float = 0.8) -> Intention:
+    def add_intention(
+        self,
+        agent_id: str,
+        content: str,
+        desire_source: str = "",
+        commitment: float = 0.8,
+    ) -> Intention:
         """Add an intention for an agent."""
-        intention = Intention(content=content, desire_source=desire_source,
-                              commitment=commitment)
+        intention = Intention(
+            content=content, desire_source=desire_source, commitment=commitment
+        )
         self.intentions.setdefault(agent_id, []).append(intention)
         return intention
 
-    def update_intention_progress(self, agent_id: str, content: str,
-                                  progress: float) -> None:
+    def update_intention_progress(
+        self, agent_id: str, content: str, progress: float
+    ) -> None:
         """Update progress on an intention."""
         for intention in self.intentions.get(agent_id, []):
             if intention.content == content:
@@ -184,8 +216,11 @@ class TheoryOfMind:
 
     def active_intentions(self, agent_id: str) -> list[Intention]:
         """Return active (in-progress) intentions."""
-        return [i for i in self.intentions.get(agent_id, [])
-                if i.commitment > 0.3 and i.progress < 1.0]
+        return [
+            i
+            for i in self.intentions.get(agent_id, [])
+            if i.commitment > 0.3 and i.progress < 1.0
+        ]
 
     # ── Action Prediction ──────────────────────────────────────────
 
@@ -226,7 +261,9 @@ class TheoryOfMind:
 
     # ── Mental State Attribution ────────────────────────────────────
 
-    def attribute_mental_state(self, agent_id: str, observed_action: str) -> dict[str, Any]:
+    def attribute_mental_state(
+        self, agent_id: str, observed_action: str
+    ) -> dict[str, Any]:
         """Attribute mental state based on observed action."""
         if observed_action in ("cooperate", "share", "help"):
             return {

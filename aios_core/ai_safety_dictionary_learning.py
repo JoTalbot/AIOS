@@ -12,9 +12,8 @@ Classes:
 
 from __future__ import annotations
 
-import math
-import random
 import logging
+import random
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -23,7 +22,13 @@ logger = logging.getLogger(__name__)
 class DictionaryEntry:
     """Single learned concept in the dictionary."""
 
-    def __init__(self, index: int, label: str = "", activation_mean: float = 0.0, activation_freq: float = 0.0) -> None:
+    def __init__(
+        self,
+        index: int,
+        label: str = "",
+        activation_mean: float = 0.0,
+        activation_freq: float = 0.0,
+    ) -> None:
         self.index = index
         self.label = label
         self.activation_mean = activation_mean
@@ -35,7 +40,12 @@ class DictionaryEntry:
         self._examples.append(example)
 
     def stats(self) -> dict[str, Any]:
-        return {"index": self.index, "label": self.label, "freq": self.activation_freq, "examples": len(self._examples)}
+        return {
+            "index": self.index,
+            "label": self.label,
+            "freq": self.activation_freq,
+            "examples": len(self._examples),
+        }
 
 
 class DictionaryLearner:
@@ -51,13 +61,19 @@ class DictionaryLearner:
 
     def learn_dictionary(self, activations: list[list[float]]) -> None:
         """Fit a dictionary of *dict_size* concepts to *activations* (backward-compatible)."""
-        self.dictionary = {f"concept_{i}": random.uniform(0.01, 0.5) for i in range(self.dict_size)}
+        self.dictionary = {
+            f"concept_{i}": random.uniform(0.01, 0.5) for i in range(self.dict_size)
+        }
         self._entries = [
-            DictionaryEntry(i, f"Interpretable concept {i}", activation_freq=self.sparsity)
+            DictionaryEntry(
+                i, f"Interpretable concept {i}", activation_freq=self.sparsity
+            )
             for i in range(self.dict_size)
         ]
         # Compute residuals
-        self._residuals = [random.uniform(0.01, 0.1) for _ in range(min(100, len(activations)))]
+        self._residuals = [
+            random.uniform(0.01, 0.1) for _ in range(min(100, len(activations)))
+        ]
         logger.info("Learned dictionary with %d concepts", self.dict_size)
 
     def interpret_feature(self, feature_idx: int) -> str:
@@ -78,8 +94,10 @@ class DictionaryLearner:
 
     def reconstruct(self, codes: list[float]) -> list[float]:
         """Reconstruct activation from sparse codes."""
-        return [codes[i % len(codes)] * self.dictionary.get(f"concept_{i}", 0.0)
-                for i in range(min(len(codes), 64))]
+        return [
+            codes[i % len(codes)] * self.dictionary.get(f"concept_{i}", 0.0)
+            for i in range(min(len(codes), 64))
+        ]
 
     def residual_score(self) -> float:
         """Average reconstruction residual."""
@@ -87,11 +105,15 @@ class DictionaryLearner:
             return 0.0
         return sum(self._residuals) / len(self._residuals)
 
-    def evolve_dictionary(self, new_activations: list[list[float]], merge_ratio: float = 0.1) -> None:
+    def evolve_dictionary(
+        self, new_activations: list[list[float]], merge_ratio: float = 0.1
+    ) -> None:
         """Evolve dictionary with new data."""
-        for key in list(self.dictionary.keys())[:int(self.dict_size * merge_ratio)]:
+        for key in list(self.dictionary.keys())[: int(self.dict_size * merge_ratio)]:
             idx = int(key.split("_")[1])
-            self.dictionary[key] = self.dictionary[key] * 0.9 + random.uniform(0.01, 0.1) * 0.1
+            self.dictionary[key] = (
+                self.dictionary[key] * 0.9 + random.uniform(0.01, 0.1) * 0.1
+            )
 
     def stats(self) -> dict[str, Any]:
         """Return the number of concepts in the dictionary (backward-compatible)."""

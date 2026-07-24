@@ -14,9 +14,8 @@ from __future__ import annotations
 import logging
 import math
 import random
-import time
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ScoreSchedule:
     """Noise level schedule for score-based models."""
+
     sigma_min: float = 0.01
     sigma_max: float = 50.0
     num_levels: int = 10
@@ -42,11 +42,17 @@ class ScoreBasedModel:
     - Multi-scale noise levels
     """
 
-    def __init__(self, dim: int = 64, sigma_min: float = 0.01,
-                 sigma_max: float = 50.0, num_levels: int = 10) -> None:
+    def __init__(
+        self,
+        dim: int = 64,
+        sigma_min: float = 0.01,
+        sigma_max: float = 50.0,
+        num_levels: int = 10,
+    ) -> None:
         self.dim = dim
         self.schedule = ScoreSchedule(
-            sigma_min=sigma_min, sigma_max=sigma_max,
+            sigma_min=sigma_min,
+            sigma_max=sigma_max,
             num_levels=num_levels,
         )
         self.noise_schedule = self._compute_schedule()
@@ -58,18 +64,31 @@ class ScoreBasedModel:
         s = self.schedule
         if s.schedule_type == "geometric":
             ratio = s.sigma_max / s.sigma_min
-            return [s.sigma_min * ratio ** (i / s.num_levels) for i in range(s.num_levels)]
+            return [
+                s.sigma_min * ratio ** (i / s.num_levels) for i in range(s.num_levels)
+            ]
         elif s.schedule_type == "linear":
-            return [s.sigma_min + (s.sigma_max - s.sigma_min) * i / s.num_levels for i in range(s.num_levels)]
+            return [
+                s.sigma_min + (s.sigma_max - s.sigma_min) * i / s.num_levels
+                for i in range(s.num_levels)
+            ]
         elif s.schedule_type == "cosine":
-            return [s.sigma_min + (s.sigma_max - s.sigma_min) * (1 - math.cos(math.pi * i / s.num_levels)) / 2
-                    for i in range(s.num_levels)]
-        return [s.sigma_min + (s.sigma_max - s.sigma_min) * i / s.num_levels for i in range(s.num_levels)]
+            return [
+                s.sigma_min
+                + (s.sigma_max - s.sigma_min)
+                * (1 - math.cos(math.pi * i / s.num_levels))
+                / 2
+                for i in range(s.num_levels)
+            ]
+        return [
+            s.sigma_min + (s.sigma_max - s.sigma_min) * i / s.num_levels
+            for i in range(s.num_levels)
+        ]
 
     def _score_fn(self, x: list[float], sigma: float) -> list[float]:
         """Approximate score function ∇_x log p(x|σ)."""
         # Simplified: score pushes toward zero (prior)
-        return [-xi / (sigma ** 2) for xi in x]
+        return [-xi / (sigma**2) for xi in x]
 
     # ── Training ──────────────────────────────────────────────────
 
@@ -80,8 +99,9 @@ class ScoreBasedModel:
 
     # ── Langevin Dynamics Sampling ─────────────────────────────────
 
-    def langevin_sample(self, num_samples: int = 1, num_steps: int = 100,
-                        step_size: float = 0.01) -> list[list[float]]:
+    def langevin_sample(
+        self, num_samples: int = 1, num_steps: int = 100, step_size: float = 0.01
+    ) -> list[list[float]]:
         """Sample using annealed Langevin dynamics."""
         samples = []
         for _ in range(num_samples):
@@ -91,8 +111,13 @@ class ScoreBasedModel:
             for sigma in self.noise_schedule:
                 for step in range(num_steps // self.schedule.num_levels):
                     score = self._score_fn(x, sigma)
-                    noise = [random.gauss(0, math.sqrt(2 * step_size)) for _ in range(self.dim)]
-                    x = [xi + step_size * si + ni for xi, si, ni in zip(x, score, noise)]
+                    noise = [
+                        random.gauss(0, math.sqrt(2 * step_size))
+                        for _ in range(self.dim)
+                    ]
+                    x = [
+                        xi + step_size * si + ni for xi, si, ni in zip(x, score, noise)
+                    ]
 
             samples.append(x)
         self._sample_count += num_samples
@@ -100,7 +125,9 @@ class ScoreBasedModel:
 
     # ── Probability Flow ODE Sampling ──────────────────────────────
 
-    def ode_sample(self, num_samples: int = 1, num_steps: int = 100) -> list[list[float]]:
+    def ode_sample(
+        self, num_samples: int = 1, num_steps: int = 100
+    ) -> list[list[float]]:
         """Sample using probability flow ODE (deterministic)."""
         samples = []
         for _ in range(num_samples):
@@ -112,7 +139,10 @@ class ScoreBasedModel:
                 sigma = max(self.schedule.sigma_min, sigma - dt)
                 score = self._score_fn(x, sigma)
                 # ODE: dx = -0.5 * sigma^2 * score * dt (no noise)
-                x = [xi - 0.5 * (sigma ** 2) * si * dt / self.schedule.sigma_max for xi, si in zip(x, score)]
+                x = [
+                    xi - 0.5 * (sigma**2) * si * dt / self.schedule.sigma_max
+                    for xi, si in zip(x, score)
+                ]
 
             samples.append(x)
         self._sample_count += num_samples
@@ -120,7 +150,9 @@ class ScoreBasedModel:
 
     # ── Sample ──────────────────────────────────────────────────────
 
-    def sample(self, num_samples: int = 1, method: str = "langevin") -> list[list[float]]:
+    def sample(
+        self, num_samples: int = 1, method: str = "langevin"
+    ) -> list[list[float]]:
         """Generate samples (backward-compatible)."""
         if method == "langevin":
             return self.langevin_sample(num_samples)

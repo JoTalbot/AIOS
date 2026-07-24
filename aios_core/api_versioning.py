@@ -13,14 +13,15 @@ Classes:
 from __future__ import annotations
 
 import logging
-import time
-from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Version Negotiation ─────────────────────────────────────────────────────
+
 
 class VersionNegotiation:
     """Strategy for determining API version from request."""
@@ -72,19 +73,22 @@ class VersionNegotiation:
 
 # ── Version Route ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class VersionRoute:
     """Versioned route definition."""
+
     version: str
     path: str
     handler: Callable
     deprecated: bool = False
     deprecation_message: str = ""
-    sunset_date: Optional[str] = None  # YYYY-MM-DD
+    sunset_date: str | None = None  # YYYY-MM-DD
     description: str = ""
 
 
 # ── API Versioning ──────────────────────────────────────────────────────────
+
 
 class APIVersioning:
     """Full versioning engine with routing, deprecation, and negotiation.
@@ -98,22 +102,35 @@ class APIVersioning:
     """
 
     def __init__(self, default_version: str = "v1") -> None:
-        self.versions: dict[str, dict[str, VersionRoute]] = {}  # version → {path: route}
+        self.versions: dict[
+            str, dict[str, VersionRoute]
+        ] = {}  # version → {path: route}
         self.default_version = default_version
         self._negotiation_priority: list[str] = ["header", "path", "query"]
 
     # ── Registration ────────────────────────────────────────────
 
-    def register(self, version: str, path: str, handler: Callable,
-                 deprecated: bool = False, deprecation_message: str = "",
-                 sunset_date: str | None = None, description: str = "") -> VersionRoute:
+    def register(
+        self,
+        version: str,
+        path: str,
+        handler: Callable,
+        deprecated: bool = False,
+        deprecation_message: str = "",
+        sunset_date: str | None = None,
+        description: str = "",
+    ) -> VersionRoute:
         """Register a versioned route."""
         if version not in self.versions:
             self.versions[version] = {}
         route = VersionRoute(
-            version=version, path=path, handler=handler,
-            deprecated=deprecated, deprecation_message=deprecation_message,
-            sunset_date=sunset_date, description=description,
+            version=version,
+            path=path,
+            handler=handler,
+            deprecated=deprecated,
+            deprecation_message=deprecation_message,
+            sunset_date=sunset_date,
+            description=description,
         )
         self.versions[version][path] = route
         return route
@@ -127,9 +144,11 @@ class APIVersioning:
 
     def route(self, version: str, path: str) -> Callable:
         """Decorator to register a handler for a versioned route."""
+
         def decorator(func: Callable) -> Callable:
             self.register(version, path, func)
             return func
+
         return decorator
 
     def resolve(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -146,7 +165,7 @@ class APIVersioning:
         # Try matching the path after removing version prefix
         clean_path = path
         if path.startswith(f"/{version}"):
-            clean_path = path[len(version) + 1:] or "/"
+            clean_path = path[len(version) + 1 :] or "/"
 
         route = version_routes.get(clean_path) or version_routes.get(path)
         if route:
@@ -156,11 +175,14 @@ class APIVersioning:
             response = result if isinstance(result, dict) else {"data": result}
             if route.deprecated:
                 warnings = response.get("warnings", [])
-                warnings.append({
-                    "type": "deprecation",
-                    "message": route.deprecation_message or f"Version {version} is deprecated",
-                    "sunset": route.sunset_date,
-                })
+                warnings.append(
+                    {
+                        "type": "deprecation",
+                        "message": route.deprecation_message
+                        or f"Version {version} is deprecated",
+                        "sunset": route.sunset_date,
+                    }
+                )
                 response["warnings"] = warnings
 
             return response
@@ -181,7 +203,9 @@ class APIVersioning:
 
     # ── Deprecation ─────────────────────────────────────────────
 
-    def deprecate_version(self, version: str, message: str = "", sunset_date: str | None = None) -> None:
+    def deprecate_version(
+        self, version: str, message: str = "", sunset_date: str | None = None
+    ) -> None:
         """Mark all routes in a version as deprecated."""
         for route in self.versions.get(version, {}).values():
             route.deprecated = True
@@ -221,8 +245,10 @@ class APIVersioning:
         """Return summary statistics."""
         total_routes = sum(len(routes) for routes in self.versions.values())
         deprecated_routes = sum(
-            1 for routes in self.versions.values()
-            for r in routes.values() if r.deprecated
+            1
+            for routes in self.versions.values()
+            for r in routes.values()
+            if r.deprecated
         )
         return {
             "versions": len(self.versions),

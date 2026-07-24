@@ -7,7 +7,7 @@ structured access to policy rules and threat-level escalation actions.
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -201,7 +201,9 @@ class PolicyLoader:
     def _load_all(self):
         """Load and validate all YAML policy files."""
         if not os.path.isdir(self.policies_dir):
-            raise FileNotFoundError(f"Policies directory not found: {self.policies_dir}")
+            raise FileNotFoundError(
+                f"Policies directory not found: {self.policies_dir}"
+            )
 
         for filename in os.listdir(self.policies_dir):
             if not filename.endswith((".yaml", ".yml")):
@@ -214,7 +216,7 @@ class PolicyLoader:
         """Load and validate a single policy file."""
         policy_name = Path(filepath).stem  # e.g. "security_policy"
 
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         if not isinstance(data, dict):
@@ -273,25 +275,27 @@ class PolicyLoader:
         if policy_name == "federation_policy":
             policy.extra_sections["sync_frequency"] = data.get("sync_frequency", {})
             policy.extra_sections["local_autonomy"] = data.get("local_autonomy", False)
-            policy.extra_sections["offline_operation"] = data.get("offline_operation", False)
+            policy.extra_sections["offline_operation"] = data.get(
+                "offline_operation", False
+            )
 
         self.policies[policy_name] = policy
 
     # --- Query API ---
 
-    def get_policy(self, name: str) -> Optional[Policy]:
+    def get_policy(self, name: str) -> Policy | None:
         """Get a loaded policy by name."""
         return self.policies.get(name)
 
-    def get_security_policy(self) -> Optional[Policy]:
+    def get_security_policy(self) -> Policy | None:
         """Get the security policy."""
         return self.get_policy("security_policy")
 
-    def get_federation_policy(self) -> Optional[Policy]:
+    def get_federation_policy(self) -> Policy | None:
         """Get the federation policy."""
         return self.get_policy("federation_policy")
 
-    def get_evolution_policy(self) -> Optional[Policy]:
+    def get_evolution_policy(self) -> Policy | None:
         """Get the evolution policy."""
         return self.get_policy("evolution_policy")
 

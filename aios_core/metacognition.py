@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MonitoringEvent:
     """Recorded monitoring observation."""
+
     task: str
     confidence: float
     actual_performance: float = 0.0
@@ -35,6 +36,7 @@ class MonitoringEvent:
 @dataclass
 class KnowledgeGap:
     """Identified knowledge gap."""
+
     area: str
     severity: float = 0.5  # 0..1
     description: str = ""
@@ -65,12 +67,19 @@ class MetaCognition:
 
     # ── Self-Monitoring ─────────────────────────────────────────────
 
-    def monitor_reasoning(self, task: str, confidence: float,
-                          strategy: str = "", cognitive_load: float = 0.0) -> MonitoringEvent:
+    def monitor_reasoning(
+        self,
+        task: str,
+        confidence: float,
+        strategy: str = "",
+        cognitive_load: float = 0.0,
+    ) -> MonitoringEvent:
         """Monitor a reasoning task with confidence estimate."""
         event = MonitoringEvent(
-            task=task, confidence=confidence,
-            strategy=strategy, cognitive_load=cognitive_load,
+            task=task,
+            confidence=confidence,
+            strategy=strategy,
+            cognitive_load=cognitive_load,
         )
         self.monitoring.append(event)
         self.confidence_estimates[task] = confidence
@@ -100,16 +109,24 @@ class MetaCognition:
         """Check if the system is systematically overconfident."""
         if not self._calibration_data:
             return False
-        avg_predicted = sum(p for p, a in self._calibration_data) / len(self._calibration_data)
-        avg_actual = sum(a for p, a in self._calibration_data) / len(self._calibration_data)
+        avg_predicted = sum(p for p, a in self._calibration_data) / len(
+            self._calibration_data
+        )
+        avg_actual = sum(a for p, a in self._calibration_data) / len(
+            self._calibration_data
+        )
         return avg_predicted > avg_actual + 0.1
 
     def is_underconfident(self) -> bool:
         """Check if the system is systematically underconfident."""
         if not self._calibration_data:
             return False
-        avg_predicted = sum(p for p, a in self._calibration_data) / len(self._calibration_data)
-        avg_actual = sum(a for p, a in self._calibration_data) / len(self._calibration_data)
+        avg_predicted = sum(p for p, a in self._calibration_data) / len(
+            self._calibration_data
+        )
+        avg_actual = sum(a for p, a in self._calibration_data) / len(
+            self._calibration_data
+        )
         return avg_actual > avg_predicted + 0.1
 
     def calibrate_confidence(self, task: str) -> float:
@@ -137,8 +154,11 @@ class MetaCognition:
         calibration = abs(performance - 0.75) < 0.2
 
         # Add to calibration data
-        confidence_avg = (sum(self.confidence_estimates.values()) /
-                         len(self.confidence_estimates)) if self.confidence_estimates else 0.5
+        confidence_avg = (
+            (sum(self.confidence_estimates.values()) / len(self.confidence_estimates))
+            if self.confidence_estimates
+            else 0.5
+        )
         self._calibration_data.append((confidence_avg, performance))
 
         return {
@@ -156,7 +176,8 @@ class MetaCognition:
         """Detect a knowledge gap based on low confidence."""
         severity = 1.0 - confidence
         gap = KnowledgeGap(
-            area=area, severity=severity,
+            area=area,
+            severity=severity,
             description=f"Low confidence ({confidence}) in {area}",
         )
         self.knowledge_gaps.append(gap)
@@ -186,7 +207,9 @@ class MetaCognition:
             return available_strategies[0] if available_strategies else "direct"
         elif confidence > 0.5:
             # Medium confidence: use careful strategy
-            return available_strategies[-1] if len(available_strategies) > 1 else "careful"
+            return (
+                available_strategies[-1] if len(available_strategies) > 1 else "careful"
+            )
         else:
             # Low confidence: seek external help or explore
             return "explore" if "explore" in available_strategies else "ask_for_help"
@@ -195,10 +218,18 @@ class MetaCognition:
 
     def reflect(self) -> dict[str, Any]:
         """Reflect on recent monitoring data."""
-        recent = self.monitoring[-10:] if len(self.monitoring) >= 10 else self.monitoring
-        avg_confidence = (sum(e.confidence for e in recent) / len(recent)) if recent else 0.5
-        avg_performance = (sum(e.actual_performance for e in recent) / len(recent)) if recent else 0.0
-        avg_load = (sum(e.cognitive_load for e in recent) / len(recent)) if recent else 0.0
+        recent = (
+            self.monitoring[-10:] if len(self.monitoring) >= 10 else self.monitoring
+        )
+        avg_confidence = (
+            (sum(e.confidence for e in recent) / len(recent)) if recent else 0.5
+        )
+        avg_performance = (
+            (sum(e.actual_performance for e in recent) / len(recent)) if recent else 0.0
+        )
+        avg_load = (
+            (sum(e.cognitive_load for e in recent) / len(recent)) if recent else 0.0
+        )
 
         return {
             "recent_events": len(recent),

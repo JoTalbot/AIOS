@@ -18,7 +18,7 @@ import math
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ MODALITY_TYPES = {"text", "image", "audio", "video", "structured", "tabular"}
 @dataclass
 class ModalityConfig:
     """Modality configuration."""
+
     name: str
     embedding_dim: int = 512
     processor_fn: Any = None
@@ -39,6 +40,7 @@ class ModalityConfig:
 @dataclass
 class FusionResult:
     """Fusion output with metadata."""
+
     fused_embedding: list[float]
     modalities_used: list[str]
     fusion_strategy: str
@@ -65,12 +67,19 @@ class MultiModalProcessor:
 
     # ── Modality Registration ──────────────────────────────────────
 
-    def register_modality(self, name: str, processor: Any = None,
-                          embedding_dim: int = 512, weight: float = 1.0) -> ModalityConfig:
+    def register_modality(
+        self,
+        name: str,
+        processor: Any = None,
+        embedding_dim: int = 512,
+        weight: float = 1.0,
+    ) -> ModalityConfig:
         """Register a processing modality."""
         config = ModalityConfig(
-            name=name, embedding_dim=embedding_dim,
-            processor_fn=processor, weight=weight,
+            name=name,
+            embedding_dim=embedding_dim,
+            processor_fn=processor,
+            weight=weight,
         )
         self.modalities[name] = config
         return config
@@ -88,13 +97,20 @@ class MultiModalProcessor:
     def process(self, modality: str, data: Any) -> dict[str, Any]:
         """Process data through a registered modality."""
         if modality not in self.modalities:
-            return {"error": "Modality not supported", "supported": list(self.modalities.keys())}
+            return {
+                "error": "Modality not supported",
+                "supported": list(self.modalities.keys()),
+            }
 
         config = self.modalities[modality]
         if config.processor_fn:
             try:
                 result = config.processor_fn(data)
-                embedding = result if isinstance(result, list) else [random.gauss(0, 0.1) for _ in range(config.embedding_dim)]
+                embedding = (
+                    result
+                    if isinstance(result, list)
+                    else [random.gauss(0, 0.1) for _ in range(config.embedding_dim)]
+                )
             except Exception as e:
                 return {"error": str(e), "modality": modality}
         else:
@@ -144,8 +160,10 @@ class MultiModalProcessor:
 
         if not embeddings:
             return FusionResult(
-                fused_embedding=[], modalities_used=[],
-                fusion_strategy=strategy, confidence=0.0,
+                fused_embedding=[],
+                modalities_used=[],
+                fusion_strategy=strategy,
+                confidence=0.0,
             )
 
         fused = self._apply_fusion(embeddings, strategy)
@@ -159,7 +177,9 @@ class MultiModalProcessor:
         self._fusion_history.append(result)
         return result
 
-    def _apply_fusion(self, embeddings: list[list[float]], strategy: str) -> list[float]:
+    def _apply_fusion(
+        self, embeddings: list[list[float]], strategy: str
+    ) -> list[float]:
         """Apply fusion strategy to embeddings."""
         if strategy == "concat":
             # Concatenate all embeddings
@@ -178,7 +198,9 @@ class MultiModalProcessor:
             max_dim = max(len(e) for e in embeddings)
             padded = [e + [0.0] * (max_dim - len(e)) for e in embeddings]
 
-            fused = [sum(w * e[d] for w, e in zip(weights, padded)) for d in range(max_dim)]
+            fused = [
+                sum(w * e[d] for w, e in zip(weights, padded)) for d in range(max_dim)
+            ]
             return fused
 
         elif strategy == "gated":
@@ -188,13 +210,19 @@ class MultiModalProcessor:
             for d in range(min_dim):
                 gate = random.uniform(0.3, 0.7)
                 values = [e[d] for e in embeddings if d < len(e)]
-                fused.append(gate * values[0] + (1 - gate) * values[-1] if len(values) >= 2 else values[0])
+                fused.append(
+                    gate * values[0] + (1 - gate) * values[-1]
+                    if len(values) >= 2
+                    else values[0]
+                )
             return fused
 
         elif strategy == "mean":
             # Average pooling
             min_dim = min(len(e) for e in embeddings)
-            return [sum(e[d] for e in embeddings) / len(embeddings) for d in range(min_dim)]
+            return [
+                sum(e[d] for e in embeddings) / len(embeddings) for d in range(min_dim)
+            ]
 
         else:
             # Default: concat

@@ -6,15 +6,13 @@ with transparent dialect translation, schema migrations, and connection manageme
 """
 
 import json
-from functools import lru_cache
-import os
 import sqlite3
 import threading
 import uuid
+from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Generator, Optional, Union
+from datetime import UTC, datetime
+from typing import Any
 
 from .config import AIOSConfig, load_config
 
@@ -198,7 +196,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_agent ON tasks(agent_id);
 class Database:
     """Enterprise-grade Multi-Backend Database Abstraction for AIOS."""
 
-    def __init__(self, db_path: str | None = None, config: Optional[AIOSConfig] = None):
+    def __init__(self, db_path: str | None = None, config: AIOSConfig | None = None):
         """Initialize Database."""
         if db_path is not None:
             self.db_path = db_path
@@ -208,9 +206,9 @@ class Database:
             config = load_config()
             self.db_path = config.resolve_path(config.database.path)
 
-        self.is_postgres = self.db_path.startswith("postgresql://") or self.db_path.startswith(
-            "postgres://"
-        )
+        self.is_postgres = self.db_path.startswith(
+            "postgresql://"
+        ) or self.db_path.startswith("postgres://")
         self.dialect = "postgresql" if self.is_postgres else "sqlite"
         self._conn: Any = None
         # SQLite connections are shared by the synchronous Database facade.
@@ -246,12 +244,16 @@ class Database:
                         self._conn = psycopg2.connect(self.db_path)
                     except Exception:
                         # In-memory SQLite fallthrough with PostgreSQL dialect flag set for unit testing
-                        self._conn = sqlite3.connect(":memory:", check_same_thread=False)
+                        self._conn = sqlite3.connect(
+                            ":memory:", check_same_thread=False
+                        )
                         self._conn.row_factory = sqlite3.Row
                         self._conn.executescript(_CREATE_TABLES_SQLITE)
                         self._conn.commit()
                 else:
-                    self._conn = sqlite3.connect(self.db_path, check_same_thread=False, timeout=30)
+                    self._conn = sqlite3.connect(
+                        self.db_path, check_same_thread=False, timeout=30
+                    )
                     self._conn.row_factory = sqlite3.Row
                     self._conn.execute("PRAGMA journal_mode=WAL")
                     self._conn.execute("PRAGMA foreign_keys=ON")
@@ -269,16 +271,20 @@ class Database:
             self._migrate(conn, current, _SCHEMA_VERSION)
             conn.execute(
                 "INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?, ?)",
-                (_SCHEMA_VERSION, datetime.now(timezone.utc).isoformat()),
+                (_SCHEMA_VERSION, datetime.now(UTC).isoformat()),
             )
             conn.commit()
 
     def _migrate(self, conn: sqlite3.Connection, from_ver: int, to_ver: int):
         if from_ver < 2:
-            columns = {row["name"] for row in conn.execute("PRAGMA table_info(memory_items)")}
+            columns = {
+                row["name"] for row in conn.execute("PRAGMA table_info(memory_items)")
+            }
             if "owner_id" not in columns:
                 conn.execute("ALTER TABLE memory_items ADD COLUMN owner_id TEXT")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_memory_owner ON memory_items(owner_id)")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_memory_owner ON memory_items(owner_id)"
+            )
 
     @contextmanager
     def transaction(self) -> Generator[Any, None, None]:
@@ -342,10 +348,12 @@ class Database:
     def query(self, sql: str, params: tuple = ()) -> list[dict]:
         """Execute a read query and return rows as a list of dicts."""
         with self._lock:
-            rows = self._get_conn().execute(self.translate_query(sql), params).fetchall()
+            rows = (
+                self._get_conn().execute(self.translate_query(sql), params).fetchall()
+            )
             return [dict(row) for row in rows]
 
-    def query_one(self, sql: str, params: tuple = ()) -> Optional[dict]:
+    def query_one(self, sql: str, params: tuple = ()) -> dict | None:
         """Execute a read query and return the first row as a dict, or ``None``."""
         with self._lock:
             row = self._get_conn().execute(self.translate_query(sql), params).fetchone()
@@ -365,7 +373,7 @@ class Database:
     @staticmethod
     def now_iso() -> str:
         """Return the current UTC timestamp as an ISO-8601 string."""
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
 
     @staticmethod
     def to_json(data: Any) -> str:
@@ -389,7 +397,9 @@ class Database:
                 "SELECT table_name as name FROM information_schema.tables WHERE table_schema='public'"
             )
         else:
-            rows = self.query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+            rows = self.query(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            )
         return [r["name"] for r in rows]
 
     def stats(self) -> dict:

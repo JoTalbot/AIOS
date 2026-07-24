@@ -18,7 +18,7 @@ FleetScheduler запускает джобы (``platform/profile``) по их и
 from __future__ import annotations
 
 import time
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
 
 from aios_core.modules.olx.notifier import WebhookNotifier
 
@@ -37,7 +37,7 @@ class FleetScheduler:
     def __init__(
         self,
         pool,
-        notifier: Optional[WebhookNotifier] = None,
+        notifier: WebhookNotifier | None = None,
         now: Callable[[], float] = time.time,
     ):
         """Initialize FleetScheduler."""
@@ -48,7 +48,7 @@ class FleetScheduler:
     def _last_run(self, platform: str, profile: str) -> float:
         return float(self.pool.limit(f"{LastRunKey}{platform}:{profile}", 0) or 0)
 
-    def due_jobs(self, jobs: List[Dict]) -> List[Dict]:
+    def due_jobs(self, jobs: list[dict]) -> list[dict]:
         """Джобы, интервал которых истёк (или не запускались)."""
         now = self._now()
         return [
@@ -60,9 +60,9 @@ class FleetScheduler:
 
     def run_due(
         self,
-        jobs: List[Dict],
-        runner: Optional[Callable] = None,
-    ) -> Dict[str, object]:
+        jobs: list[dict],
+        runner: Callable | None = None,
+    ) -> dict[str, object]:
         """Исполняет все due-джобы; манифест результатов.
 
         Args:
@@ -76,7 +76,7 @@ class FleetScheduler:
         """
         from aios_core.platforms.autowatch import autowatch_cycle
 
-        results: List[Dict[str, object]] = []
+        results: list[dict[str, object]] = []
         for job in self.due_jobs(jobs):
             platform = job["platform"]
             profile = job["profile"]
@@ -91,7 +91,7 @@ class FleetScheduler:
                 )
                 continue
             serial = lease["serial"]
-            entry: Dict[str, object] = {"job": lease_key, "serial": serial}
+            entry: dict[str, object] = {"job": lease_key, "serial": serial}
             try:
                 if runner is not None:
                     report = runner(platform, profile, serial=serial)
@@ -112,7 +112,8 @@ class FleetScheduler:
                             {
                                 "platform": platform,
                                 "profile": profile,
-                                "hint": "recalibrate: calibrate --write && " "codegen --force",
+                                "hint": "recalibrate: calibrate --write && "
+                                "codegen --force",
                             },
                         )
             except Exception as exc:  # noqa: BLE001 — изолируем джоб

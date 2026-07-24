@@ -25,20 +25,20 @@ from typing import Any
 class MemoryType(Enum):
     """Types of agent memory."""
 
-    SHORT_TERM = "short_term"      # Recent actions (last session)
-    LONG_TERM = "long_term"        # Learned patterns (consolidated)
-    EPISODIC = "episodic"          # Specific session records
-    PROCEDURAL = "procedural"      # Learned procedures/strategies
+    SHORT_TERM = "short_term"  # Recent actions (last session)
+    LONG_TERM = "long_term"  # Learned patterns (consolidated)
+    EPISODIC = "episodic"  # Specific session records
+    PROCEDURAL = "procedural"  # Learned procedures/strategies
 
 
 class MemoryPriority(Enum):
     """Memory importance priority."""
 
-    CRITICAL = "critical"          # Must remember (bans, blocks)
-    HIGH = "high"                  # Important patterns
-    NORMAL = "normal"              # Standard observations
-    LOW = "low"                    # Background info
-    TRIVIAL = "trivial"            # Can decay quickly
+    CRITICAL = "critical"  # Must remember (bans, blocks)
+    HIGH = "high"  # Important patterns
+    NORMAL = "normal"  # Standard observations
+    LOW = "low"  # Background info
+    TRIVIAL = "trivial"  # Can decay quickly
 
 
 @dataclass
@@ -47,16 +47,16 @@ class MemoryEntry:
 
     memory_id: str
     memory_type: MemoryType
-    platform: str                  # "olx", "rozetka", etc.
-    action: str                    # "collect", "parse", "login", etc.
-    result: str                    # "success", "failure", "blocked", "banned"
+    platform: str  # "olx", "rozetka", etc.
+    action: str  # "collect", "parse", "login", etc.
+    result: str  # "success", "failure", "blocked", "banned"
     context: dict[str, Any] = field(default_factory=dict)
     priority: MemoryPriority = MemoryPriority.NORMAL
-    confidence: float = 1.0        # How reliable is this memory
+    confidence: float = 1.0  # How reliable is this memory
     created_at: float = field(default_factory=time.time)
     last_accessed: float = field(default_factory=time.time)
     access_count: int = 0
-    decay_rate: float = 0.01       # Memory strength decay per day
+    decay_rate: float = 0.01  # Memory strength decay per day
     metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -207,15 +207,15 @@ class AgentMemorySystem:
         if memory_type == MemoryType.SHORT_TERM:
             self._short_term.append(entry)
             if len(self._short_term) > self.max_short_term:
-                self._short_term = self._short_term[-self.max_short_term:]
+                self._short_term = self._short_term[-self.max_short_term :]
         elif memory_type == MemoryType.LONG_TERM:
             self._long_term.append(entry)
             if len(self._long_term) > self.max_long_term:
-                self._long_term = self._long_term[-self.max_long_term:]
+                self._long_term = self._long_term[-self.max_long_term :]
         elif memory_type == MemoryType.EPISODIC:
             self._episodic.append(entry)
             if len(self._episodic) > self.max_episodic:
-                self._episodic = self._episodic[-self.max_episodic:]
+                self._episodic = self._episodic[-self.max_episodic :]
 
         return entry
 
@@ -363,10 +363,14 @@ class AgentMemorySystem:
                     "total_sessions": len(entries),
                     "success_count": len(successes),
                     "failure_count": len(failures),
-                    "avg_latency": sum(e.context.get("latency_ms", 0) for e in entries) / len(entries),
-                    "avg_items": sum(e.context.get("items", 0) for e in entries) / len(entries),
+                    "avg_latency": sum(e.context.get("latency_ms", 0) for e in entries)
+                    / len(entries),
+                    "avg_items": sum(e.context.get("items", 0) for e in entries)
+                    / len(entries),
                 },
-                priority=MemoryPriority.HIGH if success_rate > 0.7 else MemoryPriority.NORMAL,
+                priority=MemoryPriority.HIGH
+                if success_rate > 0.7
+                else MemoryPriority.NORMAL,
                 confidence=min(0.95, 0.5 + len(entries) * 0.05),
                 decay_rate=0.001,  # Long-term decays slowly
             )
@@ -378,7 +382,7 @@ class AgentMemorySystem:
         if len(self._long_term) > self.max_long_term:
             # Remove weakest memories
             self._long_term.sort(key=lambda m: -m.strength)
-            self._long_term = self._long_term[:self.max_long_term]
+            self._long_term = self._long_term[: self.max_long_term]
 
         return consolidated
 
@@ -417,12 +421,21 @@ class AgentMemorySystem:
                 pattern_id=f"pattern_{len(self._patterns)}",
                 platform=platform,
                 action=action,
-                success_rate=len(successes) / max(1, len([
-                    e for e in self._episodic
-                    if e.platform == platform and e.action == action
-                ])),
-                avg_latency_ms=sum(e.context.get("latency_ms", 0) for e in successes) / len(successes),
-                avg_items=sum(e.context.get("items", 0) for e in successes) / len(successes),
+                success_rate=len(successes)
+                / max(
+                    1,
+                    len(
+                        [
+                            e
+                            for e in self._episodic
+                            if e.platform == platform and e.action == action
+                        ]
+                    ),
+                ),
+                avg_latency_ms=sum(e.context.get("latency_ms", 0) for e in successes)
+                / len(successes),
+                avg_items=sum(e.context.get("items", 0) for e in successes)
+                / len(successes),
                 best_params=best_entry.context.get("params", {}),
                 sample_size=len(successes),
                 confidence=min(0.9, 0.3 + len(successes) * 0.1),
@@ -448,7 +461,9 @@ class AgentMemorySystem:
             Dict with recommended params, warnings, success_rate.
         """
         # Find relevant long-term memories
-        long_term = self.recall(platform=platform, action=action, memory_type=MemoryType.LONG_TERM, limit=5)
+        long_term = self.recall(
+            platform=platform, action=action, memory_type=MemoryType.LONG_TERM, limit=5
+        )
 
         # Find relevant patterns
         pattern = None
@@ -458,7 +473,9 @@ class AgentMemorySystem:
                 break
 
         # Check for past failures/blocks
-        failures = self.recall(platform=platform, action=action, result="failure", limit=5)
+        failures = self.recall(
+            platform=platform, action=action, result="failure", limit=5
+        )
 
         # Check for past blocks/bans
         blocks = self.recall(platform=platform, result="blocked", limit=5)
@@ -538,8 +555,14 @@ class AgentMemorySystem:
         total_episodic = len(self._episodic)
         total_patterns = len(self._patterns)
 
-        avg_strength_short = sum(m.strength for m in self._short_term) / total_short if total_short else 0
-        avg_strength_long = sum(m.strength for m in self._long_term) / total_long if total_long else 0
+        avg_strength_short = (
+            sum(m.strength for m in self._short_term) / total_short
+            if total_short
+            else 0
+        )
+        avg_strength_long = (
+            sum(m.strength for m in self._long_term) / total_long if total_long else 0
+        )
 
         # Platform distribution
         platform_dist: dict[str, int] = defaultdict(int)

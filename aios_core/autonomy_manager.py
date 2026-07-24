@@ -11,9 +11,9 @@ Persists to autonomy_profiles table in SQLite.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING
 
 __all__ = ["AutonomyLevel", "AgentAutonomyProfile", "AutonomyManager"]
 
@@ -60,10 +60,10 @@ class AutonomyManager:
     risk-based approval gating, and promotion/demotion logic.
     """
 
-    def __init__(self, db: Optional[Database] = None):
+    def __init__(self, db: Database | None = None):
         """Initialize AutonomyManager."""
         self.db = db
-        self._profiles: Dict[str, AgentAutonomyProfile] = {}
+        self._profiles: dict[str, AgentAutonomyProfile] = {}
 
         if self.db:
             self.db.execute(
@@ -196,7 +196,7 @@ class AutonomyManager:
         level: int,
         granted_by: str = "system",
         expires_at: str | None = None,
-        restrictions: Optional[dict] = None,
+        restrictions: dict | None = None,
     ) -> dict:
         """Grant or update autonomy level for an agent.
 
@@ -500,7 +500,7 @@ class AutonomyManager:
             "reason": reason,
         }
 
-    def get_profile(self, agent_id: str) -> Optional[dict]:
+    def get_profile(self, agent_id: str) -> dict | None:
         """Get the autonomy profile for an agent.
 
         Args:

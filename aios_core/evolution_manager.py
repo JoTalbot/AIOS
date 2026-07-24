@@ -8,8 +8,8 @@ Persists to evolution_records table in SQLite.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Optional
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 __all__ = ["EvolutionManager"]
 
@@ -34,7 +34,7 @@ class EvolutionManager:
     v3.0.0: Full 7-stage pipeline with SQLite persistence.
     """
 
-    def __init__(self, db: Optional[Database] = None, version: str = "3.0.0"):
+    def __init__(self, db: Database | None = None, version: str = "3.0.0"):
         """Initialize EvolutionManager."""
         self.version = version
         self.db = db
@@ -57,7 +57,7 @@ class EvolutionManager:
             The proposal dict with id and stage info.
         """
         proposal_id = self.db.new_id() if self.db else "no-db"
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         proposal = {
             "id": proposal_id,
@@ -112,13 +112,17 @@ class EvolutionManager:
             raise ValueError(f"Proposal not found: {proposal_id}")
 
         if proposal.get("status") in {"rejected", "deploying"}:
-            raise ValueError(f"Cannot advance proposal in terminal state: {proposal['status']}")
+            raise ValueError(
+                f"Cannot advance proposal in terminal state: {proposal['status']}"
+            )
 
         current_index = proposal["stage_index"]
         if current_index >= len(self.stages) - 1:
             raise ValueError("Proposal is already at final stage")
         if proposal.get("stage") == "approval" and proposal.get("status") != "approved":
-            raise ValueError("An approval-stage proposal must be approved before deployment")
+            raise ValueError(
+                "An approval-stage proposal must be approved before deployment"
+            )
 
         next_index = current_index + 1
         next_stage = self.stages[next_index]
@@ -168,19 +172,24 @@ class EvolutionManager:
         if proposal is None:
             raise ValueError(f"Proposal not found: {proposal_id}")
 
-        if proposal.get("stage") != "approval" or proposal.get("status") != "pending_approval":
-            raise ValueError("Only proposals pending at the approval stage can be approved")
+        if (
+            proposal.get("stage") != "approval"
+            or proposal.get("status") != "pending_approval"
+        ):
+            raise ValueError(
+                "Only proposals pending at the approval stage can be approved"
+            )
 
         if self.db:
             self.db.execute(
                 """UPDATE evolution_records
                    SET status = 'approved', completed_at = ?
                    WHERE id = ?""",
-                (datetime.now(timezone.utc).isoformat(), proposal_id),
+                (datetime.now(UTC).isoformat(), proposal_id),
             )
 
         proposal["status"] = "approved"
-        proposal["completed_at"] = datetime.now(timezone.utc).isoformat()
+        proposal["completed_at"] = datetime.now(UTC).isoformat()
         return proposal
 
     def reject(self, proposal_id: str, reason: str = "") -> dict:
@@ -197,22 +206,24 @@ class EvolutionManager:
         if proposal is None:
             raise ValueError(f"Proposal not found: {proposal_id}")
         if proposal.get("status") in {"approved", "rejected", "deploying"}:
-            raise ValueError(f"Cannot reject proposal in terminal state: {proposal['status']}")
+            raise ValueError(
+                f"Cannot reject proposal in terminal state: {proposal['status']}"
+            )
 
         if self.db:
             self.db.execute(
                 """UPDATE evolution_records
                    SET status = 'rejected', completed_at = ?
                    WHERE id = ?""",
-                (datetime.now(timezone.utc).isoformat(), proposal_id),
+                (datetime.now(UTC).isoformat(), proposal_id),
             )
 
         proposal["status"] = "rejected"
         proposal["rejection_reason"] = reason
-        proposal["completed_at"] = datetime.now(timezone.utc).isoformat()
+        proposal["completed_at"] = datetime.now(UTC).isoformat()
         return proposal
 
-    def get_proposal(self, proposal_id: str) -> Optional[dict]:
+    def get_proposal(self, proposal_id: str) -> dict | None:
         """Get a proposal by ID.
 
         Returns:
@@ -242,11 +253,14 @@ class EvolutionManager:
 
         if status:
             rows = self.db.query(
-                "SELECT * FROM evolution_records WHERE status = ? " "ORDER BY proposed_at DESC",
+                "SELECT * FROM evolution_records WHERE status = ? "
+                "ORDER BY proposed_at DESC",
                 (status,),
             )
         else:
-            rows = self.db.query("SELECT * FROM evolution_records ORDER BY proposed_at DESC")
+            rows = self.db.query(
+                "SELECT * FROM evolution_records ORDER BY proposed_at DESC"
+            )
 
         return [self._row_to_dict(r) for r in rows]
 
@@ -374,9 +388,9 @@ class EvolutionManager:
         if self.db is None:
             return []
 
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
         cutoff_iso = cutoff.isoformat()
 
         # We need the ``updated_at`` column, but evolution_records only
@@ -391,7 +405,7 @@ class EvolutionManager:
             (cutoff_iso,),
         )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result: list[dict] = []
         for row in rows:
             proposal = self._row_to_dict(row)
@@ -400,7 +414,7 @@ class EvolutionManager:
                 try:
                     proposed_dt = datetime.fromisoformat(proposed_str)
                     if proposed_dt.tzinfo is None:
-                        proposed_dt = proposed_dt.replace(tzinfo=timezone.utc)
+                        proposed_dt = proposed_dt.replace(tzinfo=UTC)
                     age = (now - proposed_dt).total_seconds() / 3600
                     proposal["stuck_hours"] = round(age, 2)
                 except (ValueError, TypeError):

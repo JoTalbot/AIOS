@@ -20,10 +20,14 @@ from __future__ import annotations
 
 import os
 import tempfile
-from typing import Dict, List, Optional
 
 from aios_core.modules.olx.adb import ADBController
-from aios_core.modules.olx.messenger import ChatListParser, ChatThread, Message, OLXMessenger
+from aios_core.modules.olx.messenger import (
+    ChatListParser,
+    ChatThread,
+    Message,
+    OLXMessenger,
+)
 from aios_core.platforms.runtime_hints import HintSender, load_hints_section
 
 PACKAGE = "com.instagram.android"
@@ -43,9 +47,9 @@ class InstagramMessenger(OLXMessenger):
 
     def __init__(
         self,
-        adb: Optional[ADBController] = None,
+        adb: ADBController | None = None,
         storage=None,
-        messenger_hints: Optional[Dict] = None,
+        messenger_hints: dict | None = None,
         directory: str = "platforms",
         screen_width: int = 1080,
         serial: str | None = None,
@@ -66,17 +70,19 @@ class InstagramMessenger(OLXMessenger):
             if isinstance(m, dict)
         ]
         # Маркеры контейнеров строк DM-инбокса (fallback — OLX-маркеры).
-        self._chat_parser = ChatListParser(markers=tuple(sorted(b for b in bubbles if b)))
+        self._chat_parser = ChatListParser(
+            markers=tuple(sorted(b for b in bubbles if b))
+        )
         self._sender = HintSender(self.adb, self.messenger_hints)
 
-    def open_chats(self) -> Dict[str, object]:
+    def open_chats(self) -> dict[str, object]:
         """Открыть Direct inbox (deep-link; установленное приложение ловит)."""
         return self.adb.run(
             f"{self.adb.adb} shell am start "
             f'-a android.intent.action.VIEW -d "{DIRECT_INBOX_URL}"'
         )
 
-    def list_chats(self, dump_path: str = "chats.xml") -> List[ChatThread]:
+    def list_chats(self, dump_path: str = "chats.xml") -> list[ChatThread]:
         """Список диалогов Direct с маркерами калибровки."""
         with tempfile.TemporaryDirectory(prefix="aios_ig_chats_") as tmp:
             path = os.path.join(tmp, dump_path)
@@ -85,10 +91,12 @@ class InstagramMessenger(OLXMessenger):
                 return []
             return self._chat_parser.parse(path)
 
-    def read_chat(self, thread: ChatThread, dump_path: str = "chat.xml") -> List[Message]:
+    def read_chat(
+        self, thread: ChatThread, dump_path: str = "chat.xml"
+    ) -> list[Message]:
         """Открытый диалог: наследуем alignment-парсер OLX (shape-based)."""
         return super().read_chat(thread, dump_path)
 
-    def _type_and_send(self, text: str) -> Dict[str, object]:
+    def _type_and_send(self, text: str) -> dict[str, object]:
         """Hints-driven executor: tap input → ADBKeyBoard → tap send/ENTER."""
         return self._sender.type_and_send(text)

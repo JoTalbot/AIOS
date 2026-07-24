@@ -13,7 +13,7 @@ import json
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     from .storage import Database
@@ -24,6 +24,7 @@ except ImportError:
 @dataclass
 class MarketplaceCapability:
     """MarketplaceCapability."""
+
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     name: str = ""
     description: str = ""
@@ -41,6 +42,7 @@ class MarketplaceCapability:
 @dataclass
 class PlatformPlugin:
     """PlatformPlugin."""
+
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     platform: str = ""  # e.g., olx, instagram, facebook, viber
     descriptor_yaml: str = ""
@@ -57,11 +59,11 @@ class PlatformPlugin:
 class CapabilityMarketplace:
     """Marketplace for capabilities and platform plugins (H3.14)."""
 
-    def __init__(self, db: Optional[Database] = None):
+    def __init__(self, db: Database | None = None):
         """Initialize CapabilityMarketplace."""
         self.db = db
-        self._items: Dict[str, MarketplaceCapability] = {}
-        self._plugins: Dict[str, PlatformPlugin] = {}
+        self._items: dict[str, MarketplaceCapability] = {}
+        self._plugins: dict[str, PlatformPlugin] = {}
         self.version = "9.1.0"
         self._ensure_table()
 
@@ -152,23 +154,25 @@ class CapabilityMarketplace:
 
     def search(
         self, query: str = "", tag: str = "", limit: int = 20, kind: str = ""
-    ) -> List[MarketplaceCapability]:
+    ) -> list[MarketplaceCapability]:
         """Search marketplace for capabilities matching a query."""
         results = list(self._items.values())
         if query:
             q = query.lower()
-            results = [r for r in results if q in r.name.lower() or q in r.description.lower()]
+            results = [
+                r for r in results if q in r.name.lower() or q in r.description.lower()
+            ]
         if tag:
             results = [r for r in results if tag in r.tags]
         if kind:
             results = [r for r in results if r.kind == kind]
         return results[:limit]
 
-    def get(self, item_id: str) -> Optional[MarketplaceCapability]:
+    def get(self, item_id: str) -> MarketplaceCapability | None:
         """Retrieve a capability by ID."""
         return self._items.get(item_id)
 
-    def download(self, item_id: str) -> Optional[dict]:
+    def download(self, item_id: str) -> dict | None:
         """Download a capability package."""
         item = self._items.get(item_id)
         if item:
@@ -232,7 +236,7 @@ class CapabilityMarketplace:
 
     def list_platform_plugins(
         self, platform: str = "", verified_only: bool = False
-    ) -> List[PlatformPlugin]:
+    ) -> list[PlatformPlugin]:
         """List registered platform plugins."""
         results = list(self._plugins.values())
         if platform:
@@ -241,7 +245,7 @@ class CapabilityMarketplace:
             results = [p for p in results if p.verified]
         return sorted(results, key=lambda x: x.created_at, reverse=True)
 
-    def get_platform_plugin(self, plugin_id: str) -> Optional[PlatformPlugin]:
+    def get_platform_plugin(self, plugin_id: str) -> PlatformPlugin | None:
         """Retrieve a platform plugin by ID."""
         return self._plugins.get(plugin_id)
 
@@ -261,7 +265,9 @@ class CapabilityMarketplace:
         p.downloads += 1
         return {"success": True, "plugin": asdict(p), "downloads": p.downloads}
 
-    def install_plugin(self, plugin_id: str, target_dir: str = "platforms") -> dict[str, Any]:
+    def install_plugin(
+        self, plugin_id: str, target_dir: str = "platforms"
+    ) -> dict[str, Any]:
         """Simulated install - writes descriptor yaml to platforms/<platform>.yaml"""
         p = self._plugins.get(plugin_id)
         if not p:

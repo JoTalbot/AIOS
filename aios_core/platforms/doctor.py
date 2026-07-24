@@ -9,8 +9,8 @@
 from __future__ import annotations
 
 import shutil
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
 
 import yaml
 
@@ -21,9 +21,9 @@ from aios_core.platforms.secrets import secret
 def _report_recipe(
     platform: str,
     package: str,
-    checks: Dict[str, Dict[str, object]],
-    hints: Dict[str, object],
-) -> Dict[str, object]:
+    checks: dict[str, dict[str, object]],
+    hints: dict[str, object],
+) -> dict[str, object]:
     """Calibrate-рецепт из чеков doctor'а и фактических parser_hints.
 
     Платформа считается messenger-first, если среди обязательных секций
@@ -53,7 +53,7 @@ def platform_doctor(
     secret_fields: Sequence[str] = (),
     storage_factory=None,
     report_recipe: bool = False,
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """Собирает {ok, checks{name:{ok,detail}}} для платформы.
 
     Args:
@@ -69,7 +69,7 @@ def platform_doctor(
             on-device сценарий закрытия недостающих hints-секций.
     """
     which = which or shutil.which
-    checks: Dict[str, Dict[str, object]] = {}
+    checks: dict[str, dict[str, object]] = {}
 
     adb_bin = which("adb")
     checks["adb_binary"] = {
@@ -83,7 +83,11 @@ def platform_doctor(
         doc = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
     checks["descriptor"] = {
         "ok": bool(doc and doc.get("name") == platform),
-        "detail": (str(yaml_path) if yaml_path.exists() else f"descriptor not found: {yaml_path}"),
+        "detail": (
+            str(yaml_path)
+            if yaml_path.exists()
+            else f"descriptor not found: {yaml_path}"
+        ),
     }
     hints = (doc.get("extras") or {}).get("parser_hints") or {}
     compliance_block = (doc.get("extras") or {}).get("compliance") or {}
@@ -96,7 +100,7 @@ def platform_doctor(
             "detail": (
                 f"parser_hints.{section} откалиброван"
                 if found
-                else f"нет parser_hints.{section} — " f"calibrate --write / onboarding"
+                else f"нет parser_hints.{section} — calibrate --write / onboarding"
             ),
         }
     for field in secret_fields:
@@ -122,7 +126,9 @@ def platform_doctor(
         checks["device"] = {
             "ok": bool(devices.get("code") == 0 and online),
             "detail": (
-                f"{serial} online" if online else f"{serial} не в 'adb devices' (эмулятор запущен?)"
+                f"{serial} online"
+                if online
+                else f"{serial} не в 'adb devices' (эмулятор запущен?)"
             ),
         }
         if online:
@@ -135,11 +141,13 @@ def platform_doctor(
                 ),
             }
     ok = all(check["ok"] for check in checks.values())
-    report: Dict[str, object] = {
+    report: dict[str, object] = {
         "platform": platform,
         "ok": ok,
         "checks": checks,
     }
     if report_recipe:
-        report["calibrate_recipe"] = _report_recipe(platform, package, checks, hints_for_recipe)
+        report["calibrate_recipe"] = _report_recipe(
+            platform, package, checks, hints_for_recipe
+        )
     return report

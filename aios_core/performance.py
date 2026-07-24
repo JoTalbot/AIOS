@@ -14,9 +14,10 @@ from __future__ import annotations
 import logging
 import math
 import time
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from dataclasses import dataclass, field
-from typing import Any, Callable, Generator
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PerformanceAlert:
     """Performance warning."""
+
     name: str
     threshold_ms: float
     actual_ms: float
@@ -62,11 +64,16 @@ class PerformanceProfiler:
 
             # Alert if exceeds threshold
             if duration > self.alert_threshold_ms:
-                self._alerts.append(PerformanceAlert(
-                    name=name, threshold_ms=self.alert_threshold_ms,
-                    actual_ms=round(duration, 2),
-                    severity="critical" if duration > self.alert_threshold_ms * 3 else "warning",
-                ))
+                self._alerts.append(
+                    PerformanceAlert(
+                        name=name,
+                        threshold_ms=self.alert_threshold_ms,
+                        actual_ms=round(duration, 2),
+                        severity="critical"
+                        if duration > self.alert_threshold_ms * 3
+                        else "warning",
+                    )
+                )
 
     def measure_function(self, func: Callable, name: str = "") -> dict[str, Any]:
         """Measure a function execution."""
@@ -81,7 +88,9 @@ class PerformanceProfiler:
 
         return {"name": name, "duration_ms": round(duration, 4), "result": result}
 
-    def benchmark(self, func: Callable, name: str = "", runs: int = 10) -> dict[str, Any]:
+    def benchmark(
+        self, func: Callable, name: str = "", runs: int = 10
+    ) -> dict[str, Any]:
         """Benchmark a function over multiple runs."""
         name = name or func.__name__
         times = []
@@ -96,15 +105,28 @@ class PerformanceProfiler:
             "avg_ms": round(sum(times) / len(times), 2),
             "min_ms": round(min(times), 2),
             "max_ms": round(max(times), 2),
-            "std_ms": round(math.sqrt(sum((t - sum(times)/len(times))**2 for t in times) / len(times)), 2) if len(times) >= 2 else 0,
+            "std_ms": round(
+                math.sqrt(
+                    sum((t - sum(times) / len(times)) ** 2 for t in times) / len(times)
+                ),
+                2,
+            )
+            if len(times) >= 2
+            else 0,
         }
         return self._benchmarks[name]
 
     def get_alerts(self) -> list[dict[str, Any]]:
         """Return all performance alerts."""
-        return [{"name": a.name, "severity": a.severity,
-                 "actual_ms": a.actual_ms, "threshold_ms": a.threshold_ms}
-                for a in self._alerts]
+        return [
+            {
+                "name": a.name,
+                "severity": a.severity,
+                "actual_ms": a.actual_ms,
+                "threshold_ms": a.threshold_ms,
+            }
+            for a in self._alerts
+        ]
 
     def optimization_suggestions(self) -> list[str]:
         """Return optimization suggestions based on measurements."""
@@ -112,9 +134,13 @@ class PerformanceProfiler:
         for name, times in self.measurements.items():
             avg = sum(times) / len(times)
             if avg > 100:
-                suggestions.append(f"{name}: Consider caching or async execution (avg {round(avg, 1)}ms)")
+                suggestions.append(
+                    f"{name}: Consider caching or async execution (avg {round(avg, 1)}ms)"
+                )
             if max(times) > min(times) * 3:
-                suggestions.append(f"{name}: High variance suggests inconsistent performance")
+                suggestions.append(
+                    f"{name}: High variance suggests inconsistent performance"
+                )
         return suggestions
 
     def stats(self) -> dict[str, Any]:

@@ -9,8 +9,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
 
 
 @dataclass
@@ -34,12 +34,12 @@ class PlatformDescriptor:
     name: str
     android_package: str
     agent_module: str
-    storage_factory: Optional[Callable] = None
-    adb_factory: Optional[Callable] = None
+    storage_factory: Callable | None = None
+    adb_factory: Callable | None = None
     default_locale: str = "uk-UA"
     description: str = ""
     legacy_default_db: str | None = None
-    extras: Dict = field(default_factory=dict)
+    extras: dict = field(default_factory=dict)
 
     def make_storage(self, db_path: str) -> None:
         """Создаёт хранилище этой платформы по пути БД."""
@@ -53,7 +53,7 @@ class PlatformDescriptor:
             raise ValueError(f"platform '{self.name}' has no adb factory")
         return self.adb_factory(self.android_package, serial)
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """JSON-представление дескриптора."""
         return {
             "name": self.name,
@@ -77,7 +77,7 @@ def _olx_adb_factory(android_package: str, serial: str | None = None):
     return ADBController(package=android_package, serial=serial)
 
 
-_PLATFORMS: Dict[str, PlatformDescriptor] = {}
+_PLATFORMS: dict[str, PlatformDescriptor] = {}
 
 
 def register_platform(descriptor: PlatformDescriptor) -> None:
@@ -94,7 +94,7 @@ def get_platform(name: str) -> PlatformDescriptor:
         raise ValueError(f"unknown platform '{name}' (registered: {known})") from None
 
 
-def list_platforms() -> List[PlatformDescriptor]:
+def list_platforms() -> list[PlatformDescriptor]:
     """Все зарегистрированные платформы, по имени."""
     return [_PLATFORMS[name] for name in sorted(_PLATFORMS)]
 

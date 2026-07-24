@@ -13,17 +13,20 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Schema ───────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Schema:
     """Field validation schema for ingested events."""
+
     name: str
     required_fields: list[str] = field(default_factory=list)
     field_types: dict[str, type] = field(default_factory=dict)
@@ -36,15 +39,19 @@ class Schema:
                 errors.append(f"Missing required field: '{req}'")
         for fname, expected_type in self.field_types.items():
             if fname in event and not isinstance(event[fname], expected_type):
-                errors.append(f"Field '{fname}' expected {expected_type.__name__}, got {type(event[fname]).__name__}")
+                errors.append(
+                    f"Field '{fname}' expected {expected_type.__name__}, got {type(event[fname]).__name__}"
+                )
         return (len(errors) == 0, errors)
 
 
 # ── Partition ────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Partition:
     """Date-based partition of events."""
+
     date: str  # YYYY-MM-DD
     events: list[dict[str, Any]] = field(default_factory=list)
 
@@ -54,6 +61,7 @@ class Partition:
 
 
 # ── Data Lake ────────────────────────────────────────────────────────────────
+
 
 class DataLake:
     """Full in-memory data lake with partitioning and queries.
@@ -72,7 +80,7 @@ class DataLake:
         self.schemas: dict[str, Schema] = {}
         self.views: dict[str, dict[str, Any]] = {}
         self._all_events: list[dict[str, Any]] = []
-        self._default_schema: Optional[Schema] = None
+        self._default_schema: Schema | None = None
 
     # ── Schema ──────────────────────────────────────────────────
 
@@ -124,8 +132,12 @@ class DataLake:
 
     # ── Query ───────────────────────────────────────────────────
 
-    def query(self, date: str | None = None, filter_fn: Callable[[dict[str, Any]], bool] | None = None,
-              limit: int = 100) -> list[dict[str, Any]]:
+    def query(
+        self,
+        date: str | None = None,
+        filter_fn: Callable[[dict[str, Any]], bool] | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
         """Query events by date and filter function."""
         if date:
             partition = self.partitions.get(date)
@@ -140,20 +152,31 @@ class DataLake:
 
         return events[:limit]
 
-    def query_by_field(self, field: str, value: Any, date: str | None = None) -> list[dict[str, Any]]:
+    def query_by_field(
+        self, field: str, value: Any, date: str | None = None
+    ) -> list[dict[str, Any]]:
         """Query events where field == value."""
         return self.query(date, filter_fn=lambda e: e.get(field) == value)
 
     # ── Aggregation ─────────────────────────────────────────────
 
-    def aggregate(self, field: str, operation: str, date: str | None = None,
-                  filter_fn: Callable[[dict[str, Any]], bool] | None = None) -> Any:
+    def aggregate(
+        self,
+        field: str,
+        operation: str,
+        date: str | None = None,
+        filter_fn: Callable[[dict[str, Any]], bool] | None = None,
+    ) -> Any:
         """Aggregate a field across events.
 
         Operations: count, sum, avg, min, max.
         """
         events = self.query(date, filter_fn, limit=10000)
-        values = [e.get(field) for e in events if field in e and isinstance(e[field], (int, float))]
+        values = [
+            e.get(field)
+            for e in events
+            if field in e and isinstance(e[field], (int, float))
+        ]
 
         if not values:
             return None
@@ -171,9 +194,13 @@ class DataLake:
 
     # ── Views ───────────────────────────────────────────────────
 
-    def create_view(self, name: str, date: str | None = None,
-                    filter_fn: Callable[[dict[str, Any]], bool] | None = None,
-                    aggregations: dict[str, tuple[str, str]] | None = None) -> dict[str, Any]:
+    def create_view(
+        self,
+        name: str,
+        date: str | None = None,
+        filter_fn: Callable[[dict[str, Any]], bool] | None = None,
+        aggregations: dict[str, tuple[str, str]] | None = None,
+    ) -> dict[str, Any]:
         """Create a materialized view with pre-computed aggregations.
 
         aggregations: {result_name: (field, operation)}
@@ -185,7 +212,9 @@ class DataLake:
         }
         if aggregations:
             for result_name, (field, operation) in aggregations.items():
-                view_data[result_name] = self.aggregate(field, operation, date, filter_fn)
+                view_data[result_name] = self.aggregate(
+                    field, operation, date, filter_fn
+                )
         self.views[name] = view_data
         return view_data
 

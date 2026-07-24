@@ -13,7 +13,8 @@ Classes:
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -91,13 +92,23 @@ class Category:
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict (backward-compatible)."""
-        return {"objects": len(self.objects), "morphisms": len(self.morphisms), "name": self.name}
+        return {
+            "objects": len(self.objects),
+            "morphisms": len(self.morphisms),
+            "name": self.name,
+        }
 
 
 class Functor:
     """Functor between categories."""
 
-    def __init__(self, source: Category, target: Category, obj_mapping: dict[Any, Any] | None = None, mor_mapping: Callable | None = None) -> None:
+    def __init__(
+        self,
+        source: Category,
+        target: Category,
+        obj_mapping: dict[Any, Any] | None = None,
+        mor_mapping: Callable | None = None,
+    ) -> None:
         self.source = source
         self.target = target
         self._obj_mapping: dict[Any, Any] = obj_mapping or {}
@@ -130,13 +141,22 @@ class Functor:
         return True  # Simplified: always assume structure preservation
 
     def stats(self) -> dict[str, Any]:
-        return {"source": self.source.name, "target": self.target.name, "mapped_objects": len(self._obj_mapping)}
+        return {
+            "source": self.source.name,
+            "target": self.target.name,
+            "mapped_objects": len(self._obj_mapping),
+        }
 
 
 class NaturalTransform:
     """Natural transformation between functors."""
 
-    def __init__(self, functor_f: Functor, functor_g: Functor, components: dict[Any, Callable] | None = None) -> None:
+    def __init__(
+        self,
+        functor_f: Functor,
+        functor_g: Functor,
+        components: dict[Any, Callable] | None = None,
+    ) -> None:
         self.functor_f = functor_f
         self.functor_g = functor_g
         self._components: dict[Any, Callable] = components or {}
@@ -150,4 +170,8 @@ class NaturalTransform:
         self._components[obj] = morphism
 
     def stats(self) -> dict[str, Any]:
-        return {"components": len(self._components), "source_functor": self.functor_f.stats(), "target_functor": self.functor_g.stats()}
+        return {
+            "components": len(self._components),
+            "source_functor": self.functor_f.stats(),
+            "target_functor": self.functor_g.stats(),
+        }

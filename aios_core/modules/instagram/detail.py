@@ -9,8 +9,6 @@ CTA приходят из секции ``extras.parser_hints.detail`` дескр
 
 from __future__ import annotations
 
-from typing import Dict, Optional
-
 from aios_core.platforms.runtime_hints import HintDetailParser, load_hints_section
 
 PACKAGE = "com.instagram.android"
@@ -27,7 +25,7 @@ class InstagramDetailParser:
 
     def __init__(
         self,
-        detail_hints: Optional[Dict] = None,
+        detail_hints: dict | None = None,
         directory: str = "platforms",
     ):
         """Initialize InstagramDetailParser."""
@@ -40,6 +38,6 @@ class InstagramDetailParser:
         """True, если секция detail откалибрована (есть маркеры)."""
         return self._parser.configured
 
-    def parse(self, xml_source) -> Dict[str, object]:
+    def parse(self, xml_source) -> dict[str, object]:
         """{title, price, currency, seller, description, cta_texts, texts_seen}."""
         return self._parser.parse(xml_source)

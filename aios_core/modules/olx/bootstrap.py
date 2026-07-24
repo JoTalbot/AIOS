@@ -14,15 +14,17 @@ and readiness check: ``aios olx doctor``.
 
 from __future__ import annotations
 
-import os
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
 
-PLATFORM_TOOLS_URL = "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
+PLATFORM_TOOLS_URL = (
+    "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
+)
 CMDLINE_TOOLS_URL = (
-    "https://dl.google.com/android/repository/" "commandlinetools-linux-11076708_latest.zip"
+    "https://dl.google.com/android/repository/"
+    "commandlinetools-linux-11076708_latest.zip"
 )
 ADBKEYBOARD_URL = "https://github.com/senzhk/ADBKeyBoard/raw/master/ADBKeyboard.apk"
 SDK_ROOT = "/opt/android-sdk"
@@ -30,7 +32,7 @@ SYSTEM_IMAGE = "system-images;android-34;google_apis;x86_64"
 AVD_NAME = "aios-olx"
 
 
-def _shell_runner(command: list[str], timeout: int = 600) -> Dict[str, object]:
+def _shell_runner(command: list[str], timeout: int = 600) -> dict[str, object]:
     try:
         result = subprocess.run(
             command,
@@ -52,11 +54,12 @@ def _shell_runner(command: list[str], timeout: int = 600) -> Dict[str, object]:
 @dataclass
 class BootstrapStep:
     """BootstrapStep."""
+
     name: str
     why: str
     commands: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
         return {"name": self.name, "why": self.why, "commands": list(self.commands)}
 
@@ -64,11 +67,12 @@ class BootstrapStep:
 @dataclass
 class DoctorCheck:
     """DoctorCheck."""
+
     name: str
     ok: bool
     hint: str = ""
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
         return {"name": self.name, "ok": self.ok, "hint": self.hint}
 
@@ -78,7 +82,7 @@ class OLXBootstrap:
 
     def __init__(
         self,
-        runner: Optional[Callable[[list[str]], Dict[str, object]]] = None,
+        runner: Callable[[list[str]], dict[str, object]] | None = None,
         project_root: str = ".",
         workdir: str = "/opt/aios-olx",
     ):
@@ -94,9 +98,9 @@ class OLXBootstrap:
         emulator: bool = True,
         apt: bool = True,
         olx_apk: str | None = None,
-    ) -> List[BootstrapStep]:
+    ) -> list[BootstrapStep]:
         """Ordered setup plan for a fresh Linux server."""
-        steps: List[BootstrapStep] = []
+        steps: list[BootstrapStep] = []
 
         if apt:
             steps.append(
@@ -199,7 +203,9 @@ class OLXBootstrap:
                     + (
                         [f"adb install -r {olx_apk}"]
                         if olx_apk
-                        else ["# Встановіть OLX: adb install -r olx.apk (або з Play Store вручну)"]
+                        else [
+                            "# Встановіть OLX: adb install -r olx.apk (або з Play Store вручну)"
+                        ]
                     )
                     + [
                         "adb shell ime set com.android.adbkeyboard/.AdbIME",
@@ -226,9 +232,9 @@ class OLXBootstrap:
             lines.extend(f"   $ {command}" for command in step.commands)
         return "\n".join(lines)
 
-    def execute(self, **kwargs) -> List[Dict[str, object]]:
+    def execute(self, **kwargs) -> list[dict[str, object]]:
         """Run the plan step by step. Returns per-command results."""
-        results: List[Dict[str, object]] = []
+        results: list[dict[str, object]] = []
         for step in self.plan(**kwargs):
             for command in step.commands:
                 if command.startswith("#"):
@@ -249,9 +255,9 @@ class OLXBootstrap:
 
     # ---------------- doctor ----------------
 
-    def doctor(self, db_path: str = ":memory:") -> List[DoctorCheck]:
+    def doctor(self, db_path: str = ":memory:") -> list[DoctorCheck]:
         """Readiness checklist; each item carries a fix hint when failing."""
-        checks: List[DoctorCheck] = []
+        checks: list[DoctorCheck] = []
 
         adb = self.runner("adb version")
         adb_ok = adb.get("code") == 0
@@ -259,7 +265,11 @@ class OLXBootstrap:
             DoctorCheck(
                 "adb_installed",
                 adb_ok,
-                ("" if adb_ok else "Встановіть platform-tools (bootstrap: platform-tools)"),
+                (
+                    ""
+                    if adb_ok
+                    else "Встановіть platform-tools (bootstrap: platform-tools)"
+                ),
             )
         )
 
@@ -295,7 +305,11 @@ class OLXBootstrap:
                     DoctorCheck(
                         "adbkeyboard_ime",
                         ime_ok,
-                        ("" if ime_ok else "adb shell ime set com.android.adbkeyboard/.AdbIME"),
+                        (
+                            ""
+                            if ime_ok
+                            else "adb shell ime set com.android.adbkeyboard/.AdbIME"
+                        ),
                     )
                 )
 
@@ -304,7 +318,9 @@ class OLXBootstrap:
 
             checks.append(DoctorCheck("python_module", True))
         except Exception as exc:
-            checks.append(DoctorCheck("python_module", False, f"pip install -e . ({exc})"))
+            checks.append(
+                DoctorCheck("python_module", False, f"pip install -e . ({exc})")
+            )
 
         try:
             from .storage import OLXStorage
@@ -317,7 +333,7 @@ class OLXBootstrap:
 
         return checks
 
-    def doctor_report(self, db_path: str = ":memory:") -> Dict[str, object]:
+    def doctor_report(self, db_path: str = ":memory:") -> dict[str, object]:
         """Execute doctor report."""
         checks = self.doctor(db_path=db_path)
         ok = all(check.ok for check in checks)

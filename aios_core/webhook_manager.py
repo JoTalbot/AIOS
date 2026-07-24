@@ -17,11 +17,11 @@ import hashlib
 import hmac
 import json
 import threading
-import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 __all__ = ["WebhookEvent", "WebhookTarget", "WebhookPayload", "WebhookManager"]
 
@@ -67,7 +67,7 @@ class WebhookTarget:
         """Check if this target should receive the event."""
         return self.active and event in self.events
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Serialize to dict."""
         return asdict(self)
 
@@ -82,7 +82,7 @@ class WebhookPayload:
     data: dict[str, Any]
     severity: str = "info"  # info, warning, critical
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Serialize to dict."""
         return asdict(self)
 
@@ -97,11 +97,11 @@ class WebhookManager:
 
     def __init__(self) -> None:
         """Initialize WebhookManager."""
-        self.targets: Dict[str, WebhookTarget] = {}
-        self.history: List[Dict] = []
+        self.targets: dict[str, WebhookTarget] = {}
+        self.history: list[dict] = []
         self.max_history = 1000
         self.lock = threading.Lock()
-        self._event_handlers: Dict[str, List[Callable]] = {}
+        self._event_handlers: dict[str, list[Callable]] = {}
 
     def register(
         self,
@@ -262,7 +262,7 @@ class WebhookManager:
             self._event_handlers[event] = []
         self._event_handlers[event].append(handler)
 
-    def list_targets(self) -> List[Dict]:
+    def list_targets(self) -> list[dict]:
         """List all webhook targets."""
         return [t.to_dict() for t in self.targets.values()]
 
@@ -270,7 +270,7 @@ class WebhookManager:
         self,
         event: str | None = None,
         limit: int | None = None,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Get notification history.
 
         Args:
@@ -282,7 +282,7 @@ class WebhookManager:
             history = [h for h in history if h["event"] == event]
         return history[-limit:] if limit is not None else list(history)
 
-    def health_report(self) -> Dict:
+    def health_report(self) -> dict:
         """Generate webhook system health report."""
         active = len([t for t in self.targets.values() if t.active])
         total_triggers = sum(t.trigger_count for t in self.targets.values())
@@ -295,10 +295,12 @@ class WebhookManager:
             "total_triggers": total_triggers,
             "total_errors": total_errors,
             "history_size": len(self.history),
-            "last_notification": self.history[-1]["timestamp"] if self.history else None,
+            "last_notification": self.history[-1]["timestamp"]
+            if self.history
+            else None,
         }
 
-    def test_webhook(self, name: str) -> Dict:
+    def test_webhook(self, name: str) -> dict:
         """Send a test notification to a specific webhook.
 
         Args:
@@ -336,7 +338,7 @@ class WebhookManager:
 
     def import_config(self, path: str) -> int:
         """Import webhook configuration from file."""
-        with open(path, "r") as f:
+        with open(path) as f:
             config = json.load(f)
 
         count = 0
@@ -351,7 +353,7 @@ class WebhookManager:
 
 # Convenience functions for common events
 def notify_ban_detected(
-    profile: str, reason: str, manager: Optional[WebhookManager] = None
+    profile: str, reason: str, manager: WebhookManager | None = None
 ) -> None:
     """Send ban detection notification."""
     mgr = manager or WebhookManager()
@@ -363,7 +365,7 @@ def notify_ban_detected(
 
 
 def notify_backup_completed(
-    backup_id: str, size_mb: float, manager: Optional[WebhookManager] = None
+    backup_id: str, size_mb: float, manager: WebhookManager | None = None
 ) -> None:
     """Send backup completed notification."""
     mgr = manager or WebhookManager()
@@ -375,7 +377,7 @@ def notify_backup_completed(
 
 
 def notify_low_success_rate(
-    profile: str, rate: float, threshold: float, manager: Optional[WebhookManager] = None
+    profile: str, rate: float, threshold: float, manager: WebhookManager | None = None
 ) -> None:
     """Send low success rate notification."""
     mgr = manager or WebhookManager()

@@ -15,7 +15,7 @@ import logging
 import math
 import random
 import time
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +35,20 @@ class AutoMLPipeline:
 
     def __init__(self) -> None:
         self.pipelines: dict[str, dict[str, Any]] = {}
-        self.algorithms: list[str] = ["logistic", "random_forest", "neural_net", "svm", "gradient_boosting", "knn"]
+        self.algorithms: list[str] = [
+            "logistic",
+            "random_forest",
+            "neural_net",
+            "svm",
+            "gradient_boosting",
+            "knn",
+        ]
         self._results: list[PipelineResult] = []
-        self._feature_selection_methods: list[str] = ["variance_threshold", "correlation_filter", "mutual_info"]
+        self._feature_selection_methods: list[str] = [
+            "variance_threshold",
+            "correlation_filter",
+            "mutual_info",
+        ]
 
     def create_pipeline(self, name: str, dataset: str, target: str) -> str:
         """Create pipeline (backward-compatible)."""
@@ -85,7 +96,9 @@ class AutoMLPipeline:
             "all_scores": all_scores,
         }
 
-    def feature_selection(self, features: list[str], method: str = "variance_threshold") -> list[str]:
+    def feature_selection(
+        self, features: list[str], method: str = "variance_threshold"
+    ) -> list[str]:
         """Select best features."""
         importance = {f: round(random.uniform(0.01, 1.0), 2) for f in features}
         sorted_features = sorted(importance.items(), key=lambda x: x[1], reverse=True)
@@ -101,17 +114,30 @@ class AutoMLPipeline:
             "folds": folds,
             "scores": scores,
             "mean": round(sum(scores) / len(scores), 4),
-            "std": round(math.sqrt(sum((s - sum(scores)/len(scores))**2 for s in scores) / len(scores)), 4),
+            "std": round(
+                math.sqrt(
+                    sum((s - sum(scores) / len(scores)) ** 2 for s in scores)
+                    / len(scores)
+                ),
+                4,
+            ),
         }
 
-    def hyperparameter_search(self, algorithm: str, param_grid: dict[str, list[Any]]) -> dict[str, Any]:
+    def hyperparameter_search(
+        self, algorithm: str, param_grid: dict[str, list[Any]]
+    ) -> dict[str, Any]:
         """Grid search over hyperparameters."""
         total_combos = 1
         for v in param_grid.values():
             total_combos *= len(v)
         best_params = {k: v[0] for k, v in param_grid.items()}
         best_score = round(random.uniform(0.8, 0.95), 4)
-        return {"algorithm": algorithm, "best_params": best_params, "best_score": best_score, "combinations": total_combos}
+        return {
+            "algorithm": algorithm,
+            "best_params": best_params,
+            "best_score": best_score,
+            "combinations": total_combos,
+        }
 
     def build_ensemble(self, top_k: int = 3) -> dict[str, Any]:
         """Build ensemble from top models."""
@@ -119,12 +145,22 @@ class AutoMLPipeline:
         return {
             "ensemble_size": len(top_results),
             "algorithms": [r.algorithm for r in top_results],
-            "estimated_score": round(sum(r.score for r in top_results) / max(len(top_results), 1), 4),
+            "estimated_score": round(
+                sum(r.score for r in top_results) / max(len(top_results), 1), 4
+            ),
         }
 
     def model_comparison(self) -> list[dict[str, Any]]:
         """Compare all pipeline results."""
-        return [{"pipeline": r.pipeline_id, "algorithm": r.algorithm, "score": r.score, "time": r.training_time} for r in self._results]
+        return [
+            {
+                "pipeline": r.pipeline_id,
+                "algorithm": r.algorithm,
+                "score": r.score,
+                "time": r.training_time,
+            }
+            for r in self._results
+        ]
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict (backward-compatible)."""

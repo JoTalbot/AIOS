@@ -6,7 +6,6 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Union
 
 from .text_utils import normalize_text, parse_price, parse_published
 
@@ -38,7 +37,7 @@ class AdDetail:
     url: str | None = None
     raw_texts: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize ad detail to dictionary."""
         return {
             "title": self.title,
@@ -62,7 +61,7 @@ class AdDetailParser:
     """Parses the open ad screen into an :class:`AdDetail`."""
 
     def parse(
-        self, xml_source: Union[str, Path, ET.Element], url: str | None = None
+        self, xml_source: str | Path | ET.Element, url: str | None = None
     ) -> AdDetail:
         """Parse an ad detail XML dump into structured data."""
         if isinstance(xml_source, ET.Element):
@@ -154,7 +153,10 @@ class AdDetailParser:
             param = _PARAM_RE.match(raw)
             if param and len(raw) < 80:
                 key = normalize_text(param.group(1))
-                if key.lower() not in {"стан", "состояние"} or "стан" not in detail.params:
+                if (
+                    key.lower() not in {"стан", "состояние"}
+                    or "стан" not in detail.params
+                ):
                     detail.params[key] = normalize_text(param.group(2))
                 continue
             leftovers.append(raw)

@@ -14,17 +14,20 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class ViolationSeverity(str, Enum):
     """Violation severity levels."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -33,9 +36,11 @@ class ViolationSeverity(str, Enum):
 
 # ── Compliance Rule ──────────────────────────────────────────────────────────
 
+
 @dataclass
 class ComplianceRule:
     """Single compliance rule with check function and remediation."""
+
     name: str
     policy: str  # which policy this belongs to
     check_fn: Callable[[dict[str, Any]], bool]  # returns True if compliant
@@ -46,9 +51,11 @@ class ComplianceRule:
 
 # ── Violation ────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Violation:
     """Recorded violation with severity and remediation."""
+
     rule_name: str
     policy: str
     severity: ViolationSeverity
@@ -56,7 +63,7 @@ class Violation:
     remediation: str = ""
     detected_at: float = field(default_factory=time.time)
     resolved: bool = False
-    resolved_at: Optional[float] = None
+    resolved_at: float | None = None
 
     def resolve(self) -> None:
         """Mark violation as resolved."""
@@ -66,9 +73,11 @@ class Violation:
 
 # ── Compliance Score ────────────────────────────────────────────────────────
 
+
 @dataclass
 class ComplianceScore:
     """Aggregate compliance score per policy."""
+
     policy: str
     total_rules: int = 0
     compliant_rules: int = 0
@@ -86,6 +95,7 @@ class ComplianceScore:
 
 
 # ── Compliance Framework ────────────────────────────────────────────────────
+
 
 class ComplianceFramework:
     """Enhanced compliance framework with rules, violations, remediation.
@@ -148,7 +158,11 @@ class ComplianceFramework:
                     rule_violations.append(rule.name)
 
         all_missing = missing + rule_violations
-        score_val = ((len(required) - len(all_missing)) / len(required) * 100) if required else 100.0
+        score_val = (
+            ((len(required) - len(all_missing)) / len(required) * 100)
+            if required
+            else 100.0
+        )
 
         # Record violations
         for missing_item in all_missing:
@@ -156,12 +170,21 @@ class ComplianceFramework:
             severity = rule.severity if rule else ViolationSeverity.MEDIUM
             remediation = rule.remediation if rule else "Implement requirement"
             violation = Violation(
-                rule_name=missing_item, policy=policy,
-                severity=severity, remediation=remediation,
+                rule_name=missing_item,
+                policy=policy,
+                severity=severity,
+                remediation=remediation,
             )
             self.violations.append(violation)
 
-        self._audit("check_compliance", {"policy": policy, "compliant": len(all_missing) == 0, "missing": all_missing})
+        self._audit(
+            "check_compliance",
+            {
+                "policy": policy,
+                "compliant": len(all_missing) == 0,
+                "missing": all_missing,
+            },
+        )
 
         # Update score
         self.scores[policy] = ComplianceScore(
@@ -178,7 +201,9 @@ class ComplianceFramework:
             "score": score_val,
         }
 
-    def check_rules(self, context: dict[str, Any], policy: str | None = None) -> list[Violation]:
+    def check_rules(
+        self, context: dict[str, Any], policy: str | None = None
+    ) -> list[Violation]:
         """Check all registered rules against context."""
         new_violations: list[Violation] = []
         for rule in self.rules.values():
@@ -186,14 +211,19 @@ class ComplianceFramework:
                 continue
             if not rule.check_fn(context):
                 violation = Violation(
-                    rule_name=rule.name, policy=rule.policy,
-                    severity=rule.severity, description=rule.description,
+                    rule_name=rule.name,
+                    policy=rule.policy,
+                    severity=rule.severity,
+                    description=rule.description,
                     remediation=rule.remediation,
                 )
                 self.violations.append(violation)
                 new_violations.append(violation)
 
-        self._audit("check_rules", {"policy": policy or "all", "violations_found": len(new_violations)})
+        self._audit(
+            "check_rules",
+            {"policy": policy or "all", "violations_found": len(new_violations)},
+        )
         return new_violations
 
     # ── Violation Management ────────────────────────────────────
@@ -207,7 +237,9 @@ class ComplianceFramework:
                 return True
         return False
 
-    def get_violations(self, policy: str | None = None, unresolved_only: bool = False) -> list[Violation]:
+    def get_violations(
+        self, policy: str | None = None, unresolved_only: bool = False
+    ) -> list[Violation]:
         """Return violations, optionally filtered."""
         result = self.violations
         if policy:

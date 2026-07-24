@@ -5,10 +5,15 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import List, Optional, Union
 
 from .models import AdCard
-from .text_utils import is_no_price_label, is_top_text, normalize_text, parse_price, parse_published
+from .text_utils import (
+    is_no_price_label,
+    is_top_text,
+    normalize_text,
+    parse_price,
+    parse_published,
+)
 
 # Jetpack Compose leaves most cards without resource-ids; known markers are
 # matched as substrings so both "ua.slando:id/adListing_adGridCard" and short
@@ -32,9 +37,9 @@ class CardParser:
 
     def parse(
         self,
-        xml_source: Union[str, Path, ET.Element],
+        xml_source: str | Path | ET.Element,
         query: str | None = None,
-    ) -> List[AdCard]:
+    ) -> list[AdCard]:
         """Parse every listing card found in a UI dump.
 
         Args:
@@ -53,7 +58,7 @@ class CardParser:
             else:
                 root = ET.parse(text_or_path).getroot()
 
-        cards: List[AdCard] = []
+        cards: list[AdCard] = []
         for node in root.iter("node"):
             resource_id = (node.attrib.get("resource-id") or "").lower()
             if any(marker in resource_id for marker in self.CARD_RESOURCE_MARKERS):

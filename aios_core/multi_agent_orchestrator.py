@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING
 
 from .storage import Database
 
 if TYPE_CHECKING:
-    from .orchestrator import Orchestrator, Task, TaskStatus
+    from .orchestrator import Orchestrator, Task
 
 
 @dataclass
@@ -33,16 +33,18 @@ class MultiAgentOrchestrator:
 
     def __init__(
         self,
-        db: Optional[Database] = None,
-        base_orchestrator: Optional[Orchestrator] = None,
+        db: Database | None = None,
+        base_orchestrator: Orchestrator | None = None,
     ):
         """Initialize MultiAgentOrchestrator."""
         self.db = db
         self.base = base_orchestrator
-        self._teams: Dict[str, AgentTeam] = {}
+        self._teams: dict[str, AgentTeam] = {}
         self.version = "4.0.0-alpha"
 
-    def form_team(self, goal: str, agents: list[str], leader: str | None = None) -> AgentTeam:
+    def form_team(
+        self, goal: str, agents: list[str], leader: str | None = None
+    ) -> AgentTeam:
         """Form a new agent team."""
         if leader is None and agents:
             leader = agents[0]
@@ -53,7 +55,7 @@ class MultiAgentOrchestrator:
 
     def create_team_task(
         self, team_id: str, task_name: str, description: str = ""
-    ) -> Optional["Task"]:
+    ) -> Task | None:
         """Create a coordinated task for the entire team."""
         team = self._teams.get(team_id)
         if not team or not self.base:
@@ -67,7 +69,9 @@ class MultiAgentOrchestrator:
         )
 
         # Add coordination step
-        self.base.add_step(task, "plan", params={"mode": "team_coordination", "team_id": team_id})
+        self.base.add_step(
+            task, "plan", params={"mode": "team_coordination", "team_id": team_id}
+        )
 
         # Add individual agent steps
         for agent in team.agents:
@@ -94,7 +98,7 @@ class MultiAgentOrchestrator:
             "leader": team.leader,
         }
 
-    def get_team_status(self, team_id: str) -> Optional[dict]:
+    def get_team_status(self, team_id: str) -> dict | None:
         """Execute get team status."""
         team = self._teams.get(team_id)
         if not team:
@@ -113,5 +117,7 @@ class MultiAgentOrchestrator:
         return {
             "version": self.version,
             "total_teams": len(self._teams),
-            "active_teams": len([t for t in self._teams.values() if t.status == "active"]),
+            "active_teams": len(
+                [t for t in self._teams.values() if t.status == "active"]
+            ),
         }

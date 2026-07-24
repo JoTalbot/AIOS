@@ -23,23 +23,23 @@ from typing import Any
 class StrategyKind(Enum):
     """Types of scraping strategies."""
 
-    COLLECTOR = "collector"         # Gather listings/items
-    MONITOR = "monitor"            # Watch for changes
+    COLLECTOR = "collector"  # Gather listings/items
+    MONITOR = "monitor"  # Watch for changes
     PRICE_TRACKER = "price_tracker"  # Track price changes
-    MESSENGER = "messenger"         # Send/receive messages
-    AUTOWATCH = "autowatch"         # Automatic watch cycle
-    FULL_AGENT = "full_agent"       # Complete scraping agent
-    HYBRID = "hybrid"              # Combination of multiple strategies
+    MESSENGER = "messenger"  # Send/receive messages
+    AUTOWATCH = "autowatch"  # Automatic watch cycle
+    FULL_AGENT = "full_agent"  # Complete scraping agent
+    HYBRID = "hybrid"  # Combination of multiple strategies
 
 
 class PlatformCategory(Enum):
     """Platform categories for template matching."""
 
-    MARKETPLACE = "marketplace"     # OLX, Bigl, Prom, Shafa
-    ECOMMERCE = "ecommerce"         # Rozetka
-    SOCIAL_SHOP = "social_shop"     # TikTok Shop, Facebook Marketplace
-    MESSENGER = "messenger"         # WhatsApp, Viber, Telegram
-    SOCIAL_MEDIA = "social_media"   # Instagram
+    MARKETPLACE = "marketplace"  # OLX, Bigl, Prom, Shafa
+    ECOMMERCE = "ecommerce"  # Rozetka
+    SOCIAL_SHOP = "social_shop"  # TikTok Shop, Facebook Marketplace
+    MESSENGER = "messenger"  # WhatsApp, Viber, Telegram
+    SOCIAL_MEDIA = "social_media"  # Instagram
 
 
 @dataclass
@@ -49,7 +49,7 @@ class StrategyTemplate:
     template_id: str
     name: str
     kind: StrategyKind = StrategyKind.COLLECTOR
-    platform: str = ""               # Target platform
+    platform: str = ""  # Target platform
     platform_category: PlatformCategory = PlatformCategory.MARKETPLACE
     description: str = ""
     params: dict[str, Any] = field(default_factory=dict)

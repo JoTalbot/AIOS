@@ -15,15 +15,17 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class TaskStatus(str, Enum):
     """Task lifecycle."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -34,21 +36,23 @@ class TaskStatus(str, Enum):
 @dataclass
 class DistributedTask:
     """Full task definition."""
+
     task_id: str = ""
-    func: Optional[Callable] = None
+    func: Callable | None = None
     args: tuple = ()
     kwargs: dict[str, Any] = field(default_factory=dict)
     status: TaskStatus = TaskStatus.PENDING
     result: Any = None
-    error: Optional[str] = None
-    assigned_worker: Optional[str] = None
+    error: str | None = None
+    assigned_worker: str | None = None
     created_at: float = field(default_factory=time.time)
-    completed_at: Optional[float] = None
+    completed_at: float | None = None
     required_capability: str = ""
 
     def __post_init__(self) -> None:
         if not self.task_id:
             import uuid
+
             self.task_id = str(uuid.uuid4())[:8]
 
     def duration(self) -> float:
@@ -61,6 +65,7 @@ class DistributedTask:
 @dataclass
 class WorkerNode:
     """Worker with capabilities and status."""
+
     worker_id: str = ""
     capabilities: list[str] = field(default_factory=list)
     status: str = "idle"  # idle, busy, offline
@@ -100,10 +105,18 @@ class DistributedComputing:
 
     # ── Worker Management ────────────────────────────────────────
 
-    def register_worker(self, worker_id: str, capabilities: list[str] | None = None,
-                       max_concurrent: int = 5) -> WorkerNode:
+    def register_worker(
+        self,
+        worker_id: str,
+        capabilities: list[str] | None = None,
+        max_concurrent: int = 5,
+    ) -> WorkerNode:
         """Register a worker node."""
-        worker = WorkerNode(worker_id=worker_id, capabilities=capabilities or [], max_concurrent=max_concurrent)
+        worker = WorkerNode(
+            worker_id=worker_id,
+            capabilities=capabilities or [],
+            max_concurrent=max_concurrent,
+        )
         self.workers[worker_id] = worker
         return worker
 
@@ -125,9 +138,13 @@ class DistributedComputing:
         self.tasks[task.task_id] = task
         return task.task_id
 
-    def submit_with_capability(self, func: Callable, capability: str, *args: Any, **kwargs: Any) -> str:
+    def submit_with_capability(
+        self, func: Callable, capability: str, *args: Any, **kwargs: Any
+    ) -> str:
         """Submit a task requiring a specific capability."""
-        task = DistributedTask(func=func, args=args, kwargs=kwargs, required_capability=capability)
+        task = DistributedTask(
+            func=func, args=args, kwargs=kwargs, required_capability=capability
+        )
         self.tasks[task.task_id] = task
         return task.task_id
 
@@ -140,8 +157,11 @@ class DistributedComputing:
             return None
 
         # Find suitable worker (least-loaded)
-        candidates = [w for w in self.workers.values()
-                      if w.is_available() and w.has_capability(task.required_capability)]
+        candidates = [
+            w
+            for w in self.workers.values()
+            if w.is_available() and w.has_capability(task.required_capability)
+        ]
         if not candidates:
             return None
 
@@ -173,7 +193,9 @@ class DistributedComputing:
             if task.assigned_worker:
                 worker = self.workers.get(task.assigned_worker)
                 if worker:
-                    worker.active_tasks = [t for t in worker.active_tasks if t != task_id]
+                    worker.active_tasks = [
+                        t for t in worker.active_tasks if t != task_id
+                    ]
                     worker.completed_count += 1
             return result
         except Exception as e:
@@ -183,7 +205,9 @@ class DistributedComputing:
             if task.assigned_worker:
                 worker = self.workers.get(task.assigned_worker)
                 if worker:
-                    worker.active_tasks = [t for t in worker.active_tasks if t != task_id]
+                    worker.active_tasks = [
+                        t for t in worker.active_tasks if t != task_id
+                    ]
                     worker.failed_count += 1
             raise
 
@@ -219,11 +243,13 @@ class DistributedComputing:
 
     # ── Sharding ─────────────────────────────────────────────────
 
-    def shard_task(self, func: Callable, data: list[Any], shard_size: int = 10) -> list[str]:
+    def shard_task(
+        self, func: Callable, data: list[Any], shard_size: int = 10
+    ) -> list[str]:
         """Split data into shards and submit as separate tasks."""
         task_ids = []
         for i in range(0, len(data), shard_size):
-            shard = data[i:i + shard_size]
+            shard = data[i : i + shard_size]
             tid = self.submit(func, shard)
             task_ids.append(tid)
         return task_ids
@@ -240,5 +266,7 @@ class DistributedComputing:
             "workers": len(self.workers),
             "tasks": len(self.tasks),
             "by_status": by_status,
-            "available_workers": sum(1 for w in self.workers.values() if w.is_available()),
+            "available_workers": sum(
+                1 for w in self.workers.values() if w.is_available()
+            ),
         }

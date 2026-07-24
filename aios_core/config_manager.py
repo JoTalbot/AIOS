@@ -15,14 +15,16 @@ from __future__ import annotations
 import logging
 import os
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Try yaml import
 try:
     import yaml
+
     HAS_YAML = True
 except ImportError:
     HAS_YAML = False
@@ -34,6 +36,7 @@ import json
 @dataclass
 class ConfigLayer:
     """Configuration layer with source tracking."""
+
     name: str
     source: str  # "file", "env", "override", "default"
     config: dict[str, Any] = field(default_factory=dict)
@@ -87,13 +90,13 @@ class ConfigManager:
         if not os.path.exists(path):
             return {}
 
-        if HAS_YAML and path.endswith('.yaml') or path.endswith('.yml'):
-            with open(path, 'r') as f:
+        if HAS_YAML and path.endswith(".yaml") or path.endswith(".yml"):
+            with open(path) as f:
                 return yaml.safe_load(f) or {}
         else:
             try:
-                with open(path, 'r') as f:
-                    if path.endswith('.json'):
+                with open(path) as f:
+                    if path.endswith(".json"):
                         return json.load(f)
                     elif HAS_YAML:
                         return yaml.safe_load(f) or {}
@@ -108,7 +111,7 @@ class ConfigManager:
         prefix = "AIOS_"
         for key in os.environ:
             if key.startswith(prefix):
-                config_key = key[len(prefix):].lower()
+                config_key = key[len(prefix) :].lower()
                 env_config[config_key] = self._coerce_value(os.environ[key])
         return env_config
 
@@ -128,8 +131,9 @@ class ConfigManager:
 
     # ── Layer Management ────────────────────────────────────────────
 
-    def _add_layer(self, name: str, source: str, config: dict[str, Any],
-                   priority: int = 0) -> ConfigLayer:
+    def _add_layer(
+        self, name: str, source: str, config: dict[str, Any], priority: int = 0
+    ) -> ConfigLayer:
         """Add a configuration layer."""
         layer = ConfigLayer(name=name, source=source, config=config, priority=priority)
         self.layers.append(layer)
@@ -147,7 +151,11 @@ class ConfigManager:
         """Deep merge two dictionaries."""
         result = dict(base)
         for key, value in override.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
                 result[key] = self._deep_merge(result[key], value)
             else:
                 result[key] = value
@@ -171,7 +179,7 @@ class ConfigManager:
 
     def get_nested(self, dotted_key: str, default: Any = None) -> Any:
         """Get nested config value using dot notation (e.g., 'server.port')."""
-        keys = dotted_key.split('.')
+        keys = dotted_key.split(".")
         current = self.config
         for key in keys:
             if isinstance(current, dict) and key in current:
@@ -192,7 +200,9 @@ class ConfigManager:
         for key, expected_type in self._schema.items():
             value = self.config.get(key)
             if value is not None and not isinstance(value, expected_type):
-                errors[key] = f"Expected {expected_type.__name__}, got {type(value).__name__}"
+                errors[key] = (
+                    f"Expected {expected_type.__name__}, got {type(value).__name__}"
+                )
         return {"valid": len(errors) == 0, "errors": errors}
 
     # ── Defaults ────────────────────────────────────────────────────
@@ -209,11 +219,13 @@ class ConfigManager:
 
     def save(self) -> None:
         """Save configuration to file (backward-compatible)."""
-        if HAS_YAML and (self.config_path.endswith('.yaml') or self.config_path.endswith('.yml')):
-            with open(self.config_path, 'w') as f:
+        if HAS_YAML and (
+            self.config_path.endswith(".yaml") or self.config_path.endswith(".yml")
+        ):
+            with open(self.config_path, "w") as f:
                 yaml.dump(self.config, f)
         else:
-            with open(self.config_path, 'w') as f:
+            with open(self.config_path, "w") as f:
                 json.dump(self.config, f, indent=2)
 
     # ── Watchers ────────────────────────────────────────────────────

@@ -15,16 +15,16 @@ from __future__ import annotations
 import logging
 import math
 import random
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class MechanismType(str, Enum):
     """Privacy mechanism types."""
+
     LAPLACE = "laplace"
     GAUSSIAN = "gaussian"
     THRESHOLD = "threshold"
@@ -33,6 +33,7 @@ class MechanismType(str, Enum):
 @dataclass
 class PrivacyBudget:
     """Epsilon/delta tracking with composition."""
+
     total_epsilon: float = 10.0
     total_delta: float = 1e-5
     consumed_epsilon: float = 0.0
@@ -80,8 +81,9 @@ class DifferentialPrivacy:
     - K-anonymity helper
     """
 
-    def __init__(self, epsilon: float = 1.0, delta: float = 1e-5,
-                 total_epsilon: float = 10.0) -> None:
+    def __init__(
+        self, epsilon: float = 1.0, delta: float = 1e-5, total_epsilon: float = 10.0
+    ) -> None:
         self.epsilon = epsilon
         self.delta = delta
         self.budget = PrivacyBudget(total_epsilon=total_epsilon, total_delta=delta)
@@ -89,10 +91,16 @@ class DifferentialPrivacy:
 
     # ── Noise Mechanisms ─────────────────────────────────────────
 
-    def add_noise(self, value: float, sensitivity: float = 1.0,
-                  mechanism: MechanismType = MechanismType.LAPLACE) -> float:
+    def add_noise(
+        self,
+        value: float,
+        sensitivity: float = 1.0,
+        mechanism: MechanismType = MechanismType.LAPLACE,
+    ) -> float:
         """Add privacy-preserving noise to a value."""
-        if not self.budget.consume(self.epsilon, self.delta if mechanism == MechanismType.GAUSSIAN else 0):
+        if not self.budget.consume(
+            self.epsilon, self.delta if mechanism == MechanismType.GAUSSIAN else 0
+        ):
             return value  # budget exhausted → return original (not ideal but practical)
 
         self._queries_count += 1
@@ -103,15 +111,21 @@ class DifferentialPrivacy:
             return value + noise
 
         if mechanism == MechanismType.GAUSSIAN:
-            sigma = sensitivity * math.sqrt(2 * math.log(1.25 / self.delta)) / self.epsilon
+            sigma = (
+                sensitivity * math.sqrt(2 * math.log(1.25 / self.delta)) / self.epsilon
+            )
             noise = random.gauss(0, sigma)
             return value + noise
 
         # THRESHOLD: just clip to range
         return value
 
-    def privatize_list(self, values: list[float], sensitivity: float = 1.0,
-                       mechanism: MechanismType = MechanismType.LAPLACE) -> list[float]:
+    def privatize_list(
+        self,
+        values: list[float],
+        sensitivity: float = 1.0,
+        mechanism: MechanismType = MechanismType.LAPLACE,
+    ) -> list[float]:
         """Add noise to a list of values."""
         return [self.add_noise(v, sensitivity, mechanism) for v in values]
 
@@ -123,8 +137,9 @@ class DifferentialPrivacy:
         result = true_count + int(round(noise))
         return max(0, result)  # counts can't be negative
 
-    def privatize_sum(self, true_sum: float, sensitivity: float = 1.0,
-                      epsilon: float = 1.0) -> float:
+    def privatize_sum(
+        self, true_sum: float, sensitivity: float = 1.0, epsilon: float = 1.0
+    ) -> float:
         """Private sum via Laplace mechanism."""
         if not self.budget.consume(epsilon):
             return true_sum
@@ -132,8 +147,9 @@ class DifferentialPrivacy:
         noise = self._laplace_sample(0, scale)
         return true_sum + noise
 
-    def privatize_mean(self, values: list[float], sensitivity: float = 1.0,
-                       epsilon: float = 1.0) -> float:
+    def privatize_mean(
+        self, values: list[float], sensitivity: float = 1.0, epsilon: float = 1.0
+    ) -> float:
         """Private mean: DP sum / DP count."""
         dp_count = self.privatize_count(len(values), epsilon / 2)
         dp_sum = self.privatize_sum(sum(values), sensitivity, epsilon / 2)
@@ -143,8 +159,9 @@ class DifferentialPrivacy:
 
     # ── Threshold (Sparse Vector Technique) ──────────────────────
 
-    def threshold_query(self, value: float, threshold: float,
-                        epsilon: float = 1.0) -> bool:
+    def threshold_query(
+        self, value: float, threshold: float, epsilon: float = 1.0
+    ) -> bool:
         """Answer threshold query privately: is value above threshold?"""
         if not self.budget.consume(epsilon):
             return False
@@ -164,8 +181,9 @@ class DifferentialPrivacy:
 
     # ── K-Anonymity ──────────────────────────────────────────────
 
-    def k_anonymize(self, data: list[dict[str, Any]], quasi_identifiers: list[str],
-                    k: int = 5) -> list[dict[str, Any]]:
+    def k_anonymize(
+        self, data: list[dict[str, Any]], quasi_identifiers: list[str], k: int = 5
+    ) -> list[dict[str, Any]]:
         """Apply k-anonymity: suppress or generalize quasi-identifiers."""
         if k <= 0:
             return data
@@ -185,7 +203,9 @@ class DifferentialPrivacy:
             else:
                 # Suppress: remove quasi-identifiers
                 for record in records:
-                    suppressed = {k: v for k, v in record.items() if k not in quasi_identifiers}
+                    suppressed = {
+                        k: v for k, v in record.items() if k not in quasi_identifiers
+                    }
                     result.append(suppressed)
 
         return result

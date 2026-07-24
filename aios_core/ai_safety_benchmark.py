@@ -24,7 +24,9 @@ __all__ = ["SafetyBenchmark"]
 class BenchmarkSuite:
     """Benchmark suite metadata."""
 
-    def __init__(self, name: str, description: str = "", metrics: list[str] = []) -> None:
+    def __init__(
+        self, name: str, description: str = "", metrics: list[str] = []
+    ) -> None:
         self.name = name
         self.description = description
         self.metrics = metrics
@@ -36,11 +38,31 @@ class SafetyBenchmark:
 
     def __init__(self) -> None:
         self.benchmarks: dict[str, dict[str, Any]] = {
-            "harmbench": {"score": 0.0, "status": "not_run", "description": "Harmful content generation"},
-            "truthfulqa": {"score": 0.0, "status": "not_run", "description": "Truthfulness evaluation"},
-            "realtoxicityprompts": {"score": 0.0, "status": "not_run", "description": "Toxic content detection"},
-            "bold": {"score": 0.0, "status": "not_run", "description": "Bias evaluation"},
-            "ethics": {"score": 0.0, "status": "not_run", "description": "Ethical reasoning"},
+            "harmbench": {
+                "score": 0.0,
+                "status": "not_run",
+                "description": "Harmful content generation",
+            },
+            "truthfulqa": {
+                "score": 0.0,
+                "status": "not_run",
+                "description": "Truthfulness evaluation",
+            },
+            "realtoxicityprompts": {
+                "score": 0.0,
+                "status": "not_run",
+                "description": "Toxic content detection",
+            },
+            "bold": {
+                "score": 0.0,
+                "status": "not_run",
+                "description": "Bias evaluation",
+            },
+            "ethics": {
+                "score": 0.0,
+                "status": "not_run",
+                "description": "Ethical reasoning",
+            },
         }
         self._suites: list[BenchmarkSuite] = []
         self._comparison_data: dict[str, list[float]] = {}
@@ -68,10 +90,14 @@ class SafetyBenchmark:
 
     def get_leaderboard(self) -> dict[str, Any]:
         """Get leaderboard (backward-compatible)."""
-        completed = {k: v for k, v in self.benchmarks.items() if v["status"] == "completed"}
+        completed = {
+            k: v for k, v in self.benchmarks.items() if v["status"] == "completed"
+        }
         if not completed:
             return self.benchmarks
-        sorted_benchmarks = dict(sorted(completed.items(), key=lambda x: x[1]["score"], reverse=True))
+        sorted_benchmarks = dict(
+            sorted(completed.items(), key=lambda x: x[1]["score"], reverse=True)
+        )
         return sorted_benchmarks
 
     def compare_models(self, model_name_a: str, model_name_b: str) -> dict[str, Any]:
@@ -86,20 +112,34 @@ class SafetyBenchmark:
                 }
         return {"comparisons": comparisons, "benchmarks_compared": len(comparisons)}
 
-    def add_benchmark(self, name: str, description: str = "", metrics: list[str] = []) -> None:
+    def add_benchmark(
+        self, name: str, description: str = "", metrics: list[str] = []
+    ) -> None:
         """Add a custom benchmark."""
-        self.benchmarks[name] = {"score": 0.0, "status": "not_run", "description": description}
+        self.benchmarks[name] = {
+            "score": 0.0,
+            "status": "not_run",
+            "description": description,
+        }
         self._suites.append(BenchmarkSuite(name, description, metrics))
 
     def aggregate_score(self) -> float:
         """Compute aggregate safety score across completed benchmarks."""
-        completed_scores = [v["score"] for v in self.benchmarks.values() if v["status"] == "completed"]
-        return round(sum(completed_scores) / max(len(completed_scores), 1), 2) if completed_scores else 0.0
+        completed_scores = [
+            v["score"] for v in self.benchmarks.values() if v["status"] == "completed"
+        ]
+        return (
+            round(sum(completed_scores) / max(len(completed_scores), 1), 2)
+            if completed_scores
+            else 0.0
+        )
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict (backward-compatible)."""
         return {
             "benchmarks": len(self.benchmarks),
-            "completed": sum(1 for v in self.benchmarks.values() if v["status"] == "completed"),
+            "completed": sum(
+                1 for v in self.benchmarks.values() if v["status"] == "completed"
+            ),
             "aggregate_score": self.aggregate_score(),
         }

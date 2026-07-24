@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CausalLink:
     """Directed causal relationship with strength."""
+
     cause: str
     effect: str
     strength: float = 1.0  # 0..1
@@ -35,6 +36,7 @@ class CausalLink:
 @dataclass
 class Intervention:
     """Do-operation specification."""
+
     variable: str
     value: Any
     description: str = ""
@@ -61,10 +63,13 @@ class CausalInference:
 
     # ── Graph Construction ──────────────────────────────────────────
 
-    def add_causal_link(self, cause: str, effect: str, strength: float = 1.0,
-                        mechanism: str = "direct") -> CausalLink:
+    def add_causal_link(
+        self, cause: str, effect: str, strength: float = 1.0, mechanism: str = "direct"
+    ) -> CausalLink:
         """Add a directed causal link."""
-        link = CausalLink(cause=cause, effect=effect, strength=strength, mechanism=mechanism)
+        link = CausalLink(
+            cause=cause, effect=effect, strength=strength, mechanism=mechanism
+        )
         if cause not in self.causal_graph:
             self.causal_graph[cause] = []
         self.causal_graph[cause].append(link)
@@ -188,28 +193,47 @@ class CausalInference:
 
     # ── Mediation Analysis ──────────────────────────────────────────
 
-    def mediating_effect(self, cause: str, mediator: str, effect: str) -> dict[str, Any]:
+    def mediating_effect(
+        self, cause: str, mediator: str, effect: str
+    ) -> dict[str, Any]:
         """Compute indirect (mediated) and direct effects."""
         # Total effect
-        total_links = [l for l in self.causal_graph.get(cause, []) if l.effect == effect]
-        total_strength = sum(l.strength for l in total_links) / len(total_links) if total_links else 0.0
+        total_links = [
+            l for l in self.causal_graph.get(cause, []) if l.effect == effect
+        ]
+        total_strength = (
+            sum(l.strength for l in total_links) / len(total_links)
+            if total_links
+            else 0.0
+        )
 
         # Indirect effect (cause → mediator → effect)
-        cause_to_med = [l for l in self.causal_graph.get(cause, []) if l.effect == mediator]
-        med_to_eff = [l for l in self.causal_graph.get(mediator, []) if l.effect == effect]
+        cause_to_med = [
+            l for l in self.causal_graph.get(cause, []) if l.effect == mediator
+        ]
+        med_to_eff = [
+            l for l in self.causal_graph.get(mediator, []) if l.effect == effect
+        ]
 
         if cause_to_med and med_to_eff:
-            indirect = (sum(l.strength for l in cause_to_med) / len(cause_to_med)) * \
-                       (sum(l.strength for l in med_to_eff) / len(med_to_eff))
+            indirect = (sum(l.strength for l in cause_to_med) / len(cause_to_med)) * (
+                sum(l.strength for l in med_to_eff) / len(med_to_eff)
+            )
             direct = total_strength - indirect
             return {
                 "total": round(total_strength, 4),
                 "direct": round(direct, 4),
                 "indirect": round(indirect, 4),
-                "mediated_proportion": round(indirect / total_strength if total_strength > 0 else 0, 4),
+                "mediated_proportion": round(
+                    indirect / total_strength if total_strength > 0 else 0, 4
+                ),
             }
 
-        return {"total": round(total_strength, 4), "direct": round(total_strength, 4), "indirect": 0.0}
+        return {
+            "total": round(total_strength, 4),
+            "direct": round(total_strength, 4),
+            "indirect": 0.0,
+        }
 
     # ── Validation ──────────────────────────────────────────────────
 

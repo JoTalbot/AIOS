@@ -15,7 +15,7 @@ import logging
 import math
 import random
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BCISession:
     """BCI session state."""
+
     connected: bool = False
     started_at: float = 0.0
     signals_read: int = 0
@@ -117,7 +118,9 @@ class BCIInterface:
         """Map decoded intent to system command."""
         return self._command_map.get(intent, "unknown")
 
-    def filter_signal(self, signal: dict[str, Any], cutoff: float = 0.05) -> dict[str, Any]:
+    def filter_signal(
+        self, signal: dict[str, Any], cutoff: float = 0.05
+    ) -> dict[str, Any]:
         """Apply adaptive filter to signal."""
         sample = signal.get("sample", [])
         # Low-pass filter: remove high-frequency noise

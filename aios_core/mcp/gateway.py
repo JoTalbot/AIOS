@@ -17,18 +17,17 @@ Every tools/call passes through ConstitutionGuard (7-phase evaluation).
 
 from __future__ import annotations
 
-import json
 import os
 import sys
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
 
 # Ensure AIOS core is importable
-_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_project_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from aios_core.config import AIOSConfig, load_config
 from aios_core.runtime_policy import RuntimePolicy
 from aios_core.storage import Database
 
@@ -40,15 +39,15 @@ from .protocol import (
     JSONRPCRequest,
     JSONRPCResponse,
     MCPProtocol,
-    MCPResourceContent,
     MCPToolCall,
-    MCPToolResult,
 )
 from .resources import ResourceDefinition, ResourceRegistry
 from .tools import ToolDefinition, ToolRegistry
 
 # Default constitution/policy dirs relative to project root
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 
 
 class ConstitutionGuard:
@@ -63,7 +62,9 @@ class ConstitutionGuard:
         self.policy = runtime_policy
         self._call_log: list[dict] = []
 
-    def check(self, tool_call: MCPToolCall, tool_def: ToolDefinition | None = None) -> dict:
+    def check(
+        self, tool_call: MCPToolCall, tool_def: ToolDefinition | None = None
+    ) -> dict:
         """Evaluate a tool call against the constitution.
 
         Args:
@@ -109,11 +110,11 @@ class ConstitutionGuard:
             "reason": result.get("reason", ""),
         }
 
-    def approve(self, approval_id: str) -> Optional[dict]:
+    def approve(self, approval_id: str) -> dict | None:
         """Approve a pending action."""
         return self.policy.approve(approval_id)
 
-    def deny(self, approval_id: str) -> Optional[dict]:
+    def deny(self, approval_id: str) -> dict | None:
         """Deny a pending action."""
         return self.policy.deny(approval_id)
 
@@ -156,7 +157,7 @@ class MCPGateway:
         )
     """
 
-    def __init__(self, config: Optional[GatewayConfig] = None, db: Optional[Database] = None):
+    def __init__(self, config: GatewayConfig | None = None, db: Database | None = None):
         """Initialize MCPGateway."""
         self.config = config or GatewayConfig()
         self.protocol = MCPProtocol()
@@ -168,7 +169,8 @@ class MCPGateway:
         self.runtime = RuntimePolicy(
             constitution_dir=self.config.constitution_dir
             or os.path.join(_PROJECT_ROOT, "docs/constitution"),
-            policies_dir=self.config.policies_dir or os.path.join(_PROJECT_ROOT, "policies"),
+            policies_dir=self.config.policies_dir
+            or os.path.join(_PROJECT_ROOT, "policies"),
             db=db,
         )
 
@@ -376,7 +378,7 @@ class MCPGateway:
 
         self._register_olx_tools()
 
-    def _olx_store(self, profile: "str | None" = None):
+    def _olx_store(self, profile: str | None = None):
         """OLX Parser Agent storage, optionally profile-scoped.
 
         Без ``profile`` — общее хранилище (AIOS_OLX_DB env). С ``profile``
@@ -840,7 +842,9 @@ class MCPGateway:
             )
 
         # Constitution check
-        tool_call = MCPToolCall(name=name, arguments=arguments, request_id=str(request.id))
+        tool_call = MCPToolCall(
+            name=name, arguments=arguments, request_id=str(request.id)
+        )
         guard_result = self.guard.check(tool_call, tool_def)
 
         if not guard_result["allowed"]:
@@ -881,7 +885,9 @@ class MCPGateway:
 
     def _handle_resources_list(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle resources/list."""
-        return JSONRPCResponse(id=request.id, result={"resources": self.resources.list_resources()})
+        return JSONRPCResponse(
+            id=request.id, result={"resources": self.resources.list_resources()}
+        )
 
     def _handle_resources_read(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle resources/read."""
@@ -911,7 +917,9 @@ class MCPGateway:
 
     def _handle_prompts_list(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle prompts/list."""
-        return JSONRPCResponse(id=request.id, result={"prompts": self.prompts.list_prompts()})
+        return JSONRPCResponse(
+            id=request.id, result={"prompts": self.prompts.list_prompts()}
+        )
 
     def _handle_prompts_get(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle prompts/get."""
@@ -951,7 +959,9 @@ class MCPGateway:
     def _handle_aios_approvals(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle aios/approvals."""
         pending = self.runtime.get_pending_approvals()
-        return JSONRPCResponse(id=request.id, result={"approvals": pending, "count": len(pending)})
+        return JSONRPCResponse(
+            id=request.id, result={"approvals": pending, "count": len(pending)}
+        )
 
     def _handle_aios_stats(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle aios/stats."""

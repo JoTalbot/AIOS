@@ -14,9 +14,8 @@ from __future__ import annotations
 import logging
 import math
 import random
-import time
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SSMConfig:
     """State space model configuration."""
+
     state_dim: int = 64
     input_dim: int = 1
     discretization: str = "zoh"  # zoh, bilinear
@@ -44,14 +44,24 @@ class StateSpaceModel:
     - Latency measurement
     """
 
-    def __init__(self, state_dim: int = 64, input_dim: int = 1,
-                 discretization: str = "zoh", init_method: str = "hippo",
-                 dt: float = 0.01) -> None:
+    def __init__(
+        self,
+        state_dim: int = 64,
+        input_dim: int = 1,
+        discretization: str = "zoh",
+        init_method: str = "hippo",
+        dt: float = 0.01,
+    ) -> None:
         self.state_dim = state_dim
         self.input_dim = input_dim
         self.discretization = discretization
-        self.config = SSMConfig(state_dim=state_dim, input_dim=input_dim,
-                                discretization=discretization, init_method=init_method, dt=dt)
+        self.config = SSMConfig(
+            state_dim=state_dim,
+            input_dim=input_dim,
+            discretization=discretization,
+            init_method=init_method,
+            dt=dt,
+        )
 
         # Initialize matrices
         self.A = self._init_A(init_method)
@@ -100,8 +110,10 @@ class StateSpaceModel:
         if method == "zoh":
             # Zero-Order Hold: dA = exp(A*dt), dB = (exp(A*dt) - 1) / A * B
             dA = [math.exp(a * dt) for a in self.A]
-            dB = [(math.exp(a * dt) - 1) / a * b if abs(a) > 1e-8 else dt * b
-                  for a, b in zip(self.A, self.B)]
+            dB = [
+                (math.exp(a * dt) - 1) / a * b if abs(a) > 1e-8 else dt * b
+                for a, b in zip(self.A, self.B)
+            ]
             return dA, dB
         elif method == "bilinear":
             # Bilinear (Tustin): dA = (1 + A*dt/2) / (1 - A*dt/2)
@@ -118,7 +130,9 @@ class StateSpaceModel:
     def step(self, u: float) -> float:
         """Single step in recurrence mode: state update + output."""
         # State update: s = dA * s + dB * u
-        self.state = [da * s + db * u for da, s, db in zip(self.dA, self.state, self.dB)]
+        self.state = [
+            da * s + db * u for da, s, db in zip(self.dA, self.state, self.dB)
+        ]
         # Output: y = C * s + D * u
         y = sum(c * s for c, s in zip(self.C, self.state))
         y += self.D[0] * u if self.input_dim > 0 else 0.0
@@ -167,7 +181,7 @@ class StateSpaceModel:
 
     def set_state(self, new_state: list[float]) -> None:
         """Set the state manually."""
-        self.state = new_state[:self.state_dim]
+        self.state = new_state[: self.state_dim]
 
     # ── Stats ──────────────────────────────────────────────────────
 

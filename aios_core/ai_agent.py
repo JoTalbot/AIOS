@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AgentGoal:
     """Agent goal with progress tracking."""
+
     name: str
     progress: float = 0.0
     priority: float = 1.0
@@ -55,13 +56,21 @@ class AIAgent:
 
         # Check autonomy level
         if self.autonomy_level == 1:
-            return {"agent_id": self.id, "goal": goal, "status": "requires_approval",
-                    "result": f"Agent {self.name} needs approval for: {goal}"}
+            return {
+                "agent_id": self.id,
+                "goal": goal,
+                "status": "requires_approval",
+                "result": f"Agent {self.name} needs approval for: {goal}",
+            }
 
         # Check capability
         if goal not in self.capabilities and self.capabilities:
-            return {"agent_id": self.id, "goal": goal, "status": "unsupported",
-                    "result": f"Agent {self.name} lacks capability for: {goal}"}
+            return {
+                "agent_id": self.id,
+                "goal": goal,
+                "status": "unsupported",
+                "result": f"Agent {self.name} lacks capability for: {goal}",
+            }
 
         # Execute based on autonomy level
         status = "executed" if self.autonomy_level >= 2 else "pending"
@@ -90,9 +99,15 @@ class AIAgent:
 
     def get_goals(self) -> list[dict[str, Any]]:
         """Return all goals with progress."""
-        return [{"name": g.name, "progress": round(g.progress, 4),
-                 "priority": g.priority, "completed": g.completed}
-                for g in self._goals]
+        return [
+            {
+                "name": g.name,
+                "progress": round(g.progress, 4),
+                "priority": g.priority,
+                "completed": g.completed,
+            }
+            for g in self._goals
+        ]
 
     def can_do(self, task: str) -> bool:
         """Check if agent can perform a task."""
@@ -100,8 +115,12 @@ class AIAgent:
 
     def communicate(self, message: str, target: str = "") -> dict[str, Any]:
         """Send a message to another agent."""
-        return {"from": self.id, "to": target, "message": message,
-                "timestamp": time.time()}
+        return {
+            "from": self.id,
+            "to": target,
+            "message": message,
+            "timestamp": time.time(),
+        }
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics (backward-compatible)."""

@@ -21,17 +21,20 @@ from __future__ import annotations
 import logging
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class StepStatus(str, Enum):
     """Step execution status."""
+
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"
@@ -42,6 +45,7 @@ class StepStatus(str, Enum):
 
 class WorkflowStatus(str, Enum):
     """Workflow-level status."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -51,6 +55,7 @@ class WorkflowStatus(str, Enum):
 
 class BackoffStrategy(str, Enum):
     """Retry backoff types."""
+
     CONSTANT = "constant"
     LINEAR = "linear"
     EXPONENTIAL = "exponential"
@@ -58,14 +63,18 @@ class BackoffStrategy(str, Enum):
 
 # ── RetryPolicy ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class RetryPolicy:
     """Retry configuration for a workflow step."""
+
     max_retries: int = 3
     backoff: BackoffStrategy = BackoffStrategy.EXPONENTIAL
     initial_delay: float = 1.0  # seconds
     max_delay: float = 60.0
-    retryable_exceptions: list[str] = field(default_factory=list)  # exception class names
+    retryable_exceptions: list[str] = field(
+        default_factory=list
+    )  # exception class names
 
     def compute_delay(self, attempt: int) -> float:
         """Compute delay before next retry based on attempt number."""
@@ -86,9 +95,11 @@ class RetryPolicy:
 
 # ── TimeoutPolicy ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class TimeoutPolicy:
     """Per-step timeout configuration."""
+
     timeout_seconds: float = 30.0
     grace_period: float = 5.0  # extra time before hard kill
 
@@ -99,9 +110,11 @@ class TimeoutPolicy:
 
 # ── CompensationAction ──────────────────────────────────────────────────────
 
+
 @dataclass
 class CompensationAction:
     """Undo/rollback action executed when a step fails."""
+
     name: str
     action: Callable
     params: dict[str, Any] = field(default_factory=dict)
@@ -117,6 +130,7 @@ class CompensationAction:
 
 # ── ConditionGate ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class ConditionGate:
     """If/else branching within a workflow.
@@ -125,6 +139,7 @@ class ConditionGate:
     - If condition_fn(context) returns True → run 'then_steps'
     - Otherwise → run 'else_steps'
     """
+
     name: str
     condition_fn: Callable[[dict[str, Any]], bool]
     then_steps: list[str] = field(default_factory=list)  # step names
@@ -133,29 +148,32 @@ class ConditionGate:
 
 # ── WorkflowStep ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class WorkflowStep:
     """Single step in a DAG workflow."""
+
     id: str = ""
     name: str = ""
-    action: Optional[Callable] = None
+    action: Callable | None = None
     params: dict[str, Any] = field(default_factory=dict)
     depends_on: list[str] = field(default_factory=list)  # step IDs this must wait for
-    retry_policy: Optional[RetryPolicy] = None
-    timeout_policy: Optional[TimeoutPolicy] = None
-    compensation: Optional[CompensationAction] = None
-    condition_gate: Optional[ConditionGate] = None
+    retry_policy: RetryPolicy | None = None
+    timeout_policy: TimeoutPolicy | None = None
+    compensation: CompensationAction | None = None
+    condition_gate: ConditionGate | None = None
     status: StepStatus = StepStatus.PENDING
     result: Any = None
-    error: Optional[str] = None
-    started_at: Optional[float] = None
-    finished_at: Optional[float] = None
+    error: str | None = None
+    started_at: float | None = None
+    finished_at: float | None = None
     retry_count: int = 0
 
     def __post_init__(self) -> None:
         """Generate ID if not provided."""
         if not self.id:
             import uuid
+
             self.id = str(uuid.uuid4())[:8]
 
     def duration(self) -> float:
@@ -167,19 +185,23 @@ class WorkflowStep:
 
 # ── WorkflowResult ──────────────────────────────────────────────────────────
 
+
 @dataclass
 class WorkflowResult:
     """Detailed execution trace for a completed workflow."""
+
     workflow_id: str
     status: WorkflowStatus
     step_results: dict[str, Any] = field(default_factory=dict)  # step_id → result
-    step_errors: dict[str, str] = field(default_factory=dict)    # step_id → error
+    step_errors: dict[str, str] = field(default_factory=dict)  # step_id → error
     step_durations: dict[str, float] = field(default_factory=dict)  # step_id → seconds
-    step_statuses: dict[str, StepStatus] = field(default_factory=dict)  # step_id → status
+    step_statuses: dict[str, StepStatus] = field(
+        default_factory=dict
+    )  # step_id → status
     compensation_results: dict[str, Any] = field(default_factory=dict)
     total_duration: float = 0.0
-    started_at: Optional[float] = None
-    finished_at: Optional[float] = None
+    started_at: float | None = None
+    finished_at: float | None = None
 
     def summary(self) -> dict[str, Any]:
         """Return human-readable summary dict."""
@@ -187,30 +209,39 @@ class WorkflowResult:
             "workflow_id": self.workflow_id,
             "status": self.status.value,
             "total_duration": self.total_duration,
-            "steps_completed": sum(1 for s in self.step_statuses.values() if s == StepStatus.SUCCESS),
-            "steps_failed": sum(1 for s in self.step_statuses.values() if s == StepStatus.FAILED),
-            "steps_skipped": sum(1 for s in self.step_statuses.values() if s == StepStatus.SKIPPED),
+            "steps_completed": sum(
+                1 for s in self.step_statuses.values() if s == StepStatus.SUCCESS
+            ),
+            "steps_failed": sum(
+                1 for s in self.step_statuses.values() if s == StepStatus.FAILED
+            ),
+            "steps_skipped": sum(
+                1 for s in self.step_statuses.values() if s == StepStatus.SKIPPED
+            ),
             "total_steps": len(self.step_statuses),
         }
 
 
 # ── Workflow ────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Workflow:
     """DAG workflow definition."""
+
     id: str = ""
     name: str = ""
     steps: dict[str, WorkflowStep] = field(default_factory=dict)  # step_id → step
     status: WorkflowStatus = WorkflowStatus.PENDING
     context: dict[str, Any] = field(default_factory=dict)  # shared data between steps
-    result: Optional[WorkflowResult] = None
+    result: WorkflowResult | None = None
     created_at: float = field(default_factory=time.time)
 
     def __post_init__(self) -> None:
         """Generate ID if not provided."""
         if not self.id:
             import uuid
+
             self.id = str(uuid.uuid4())[:8]
 
     def add_step(self, step: WorkflowStep) -> None:
@@ -227,15 +258,19 @@ class Workflow:
 
 # ── WorkflowTemplate ────────────────────────────────────────────────────────
 
+
 @dataclass
 class WorkflowTemplate:
     """Reusable workflow blueprint — create workflows from templates."""
+
     name: str
     step_definitions: list[dict[str, Any]] = field(default_factory=list)
     description: str = ""
     version: str = "1.0"
 
-    def create_workflow(self, name: str, actions: dict[str, Callable] | None = None) -> Workflow:
+    def create_workflow(
+        self, name: str, actions: dict[str, Callable] | None = None
+    ) -> Workflow:
         """Instantiate a workflow from this template.
 
         actions maps step_name → callable for execution.
@@ -257,6 +292,7 @@ class WorkflowTemplate:
 
 # ── DAGExecutor ─────────────────────────────────────────────────────────────
 
+
 class DAGExecutor:
     """Execute DAG workflows respecting dependencies.
 
@@ -265,7 +301,9 @@ class DAGExecutor:
 
     def __init__(self) -> None:
         self._compensation_queue: list[CompensationAction] = []
-        self._completed_compensations: list[CompensationAction] = []  # compensations of successful steps
+        self._completed_compensations: list[
+            CompensationAction
+        ] = []  # compensations of successful steps
 
     def compute_layers(self, steps: dict[str, WorkflowStep]) -> list[list[str]]:
         """Compute execution layers via topological sort.
@@ -330,7 +368,9 @@ class DAGExecutor:
                 step.started_at = time.time()
                 result.step_statuses[step_id] = StepStatus.RUNNING
 
-                max_attempts = 1 + (step.retry_policy.max_retries if step.retry_policy else 0)
+                max_attempts = 1 + (
+                    step.retry_policy.max_retries if step.retry_policy else 0
+                )
                 attempt = 0
 
                 while attempt < max_attempts:
@@ -363,12 +403,22 @@ class DAGExecutor:
                         exc_name = type(e).__name__
                         step.error = str(e)
 
-                        if step.retry_policy and step.retry_policy.should_retry(exc_name) and attempt < max_attempts:
+                        if (
+                            step.retry_policy
+                            and step.retry_policy.should_retry(exc_name)
+                            and attempt < max_attempts
+                        ):
                             step.status = StepStatus.RETRYING
                             result.step_statuses[step_id] = StepStatus.RETRYING
                             delay = step.retry_policy.compute_delay(attempt)
-                            logger.info("Step '%s' retry %d/%d (delay=%.1fs): %s",
-                                        step.name, attempt, max_attempts, delay, exc_name)
+                            logger.info(
+                                "Step '%s' retry %d/%d (delay=%.1fs): %s",
+                                step.name,
+                                attempt,
+                                max_attempts,
+                                delay,
+                                exc_name,
+                            )
                             time.sleep(delay)
                             continue
                         else:
@@ -386,10 +436,14 @@ class DAGExecutor:
                             # Fail the entire workflow
                             result.status = WorkflowStatus.FAILED
                             result.finished_at = time.time()
-                            result.total_duration = result.finished_at - result.started_at
+                            result.total_duration = (
+                                result.finished_at - result.started_at
+                            )
 
                             # Saga rollback: compensate all successful steps + failed step, in reverse order
-                            all_compensations = self._completed_compensations + self._compensation_queue
+                            all_compensations = (
+                                self._completed_compensations + self._compensation_queue
+                            )
                             self._run_compensations(result, all_compensations)
 
                             return result
@@ -403,7 +457,11 @@ class DAGExecutor:
 
         return result
 
-    def _run_compensations(self, result: WorkflowResult, compensations: list[CompensationAction] | None = None) -> None:
+    def _run_compensations(
+        self,
+        result: WorkflowResult,
+        compensations: list[CompensationAction] | None = None,
+    ) -> None:
         """Execute all compensation actions in reverse order (saga rollback)."""
         compensations = compensations or self._compensation_queue
         for comp in reversed(compensations):
@@ -412,6 +470,7 @@ class DAGExecutor:
 
 
 # ── WorkflowEngine ──────────────────────────────────────────────────────────
+
 
 class WorkflowEngine:
     """Central workflow engine: create, execute, query, stats.
@@ -437,7 +496,9 @@ class WorkflowEngine:
         """Register a workflow template for reuse."""
         self.templates[template.name] = template
 
-    def create_from_template(self, template_name: str, name: str, actions: dict[str, Callable] | None = None) -> Workflow:
+    def create_from_template(
+        self, template_name: str, name: str, actions: dict[str, Callable] | None = None
+    ) -> Workflow:
         """Instantiate a workflow from a template."""
         template = self.templates.get(template_name)
         if template is None:
@@ -497,7 +558,9 @@ class WorkflowEngine:
 
     # ── Execute ────────────────────────────────────────────────────
 
-    def execute(self, workflow_id: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def execute(
+        self, workflow_id: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute a workflow and return result summary.
 
         Backward-compatible: returns dict with status + results.

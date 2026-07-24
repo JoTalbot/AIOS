@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CacheEntry:
     """Cached entry with metadata."""
+
     key: str
     value: Any
     expiry: float
@@ -60,8 +62,9 @@ class TTLCache:
 
     # ── Core Operations ─────────────────────────────────────────────
 
-    def set(self, key: str, value: Any, ttl: int | None = None,
-            namespace: str = "default") -> None:
+    def set(
+        self, key: str, value: Any, ttl: int | None = None, namespace: str = "default"
+    ) -> None:
         """Set a cache entry with optional TTL and namespace."""
         expiry = time.time() + (ttl or self.default_ttl)
 
@@ -69,8 +72,11 @@ class TTLCache:
         size = len(str(value)) if value else 0
 
         entry = CacheEntry(
-            key=key, value=value, expiry=expiry,
-            namespace=namespace, size_bytes=size,
+            key=key,
+            value=value,
+            expiry=expiry,
+            namespace=namespace,
+            size_bytes=size,
         )
         self._store[key] = entry
 
@@ -167,8 +173,9 @@ class TTLCache:
 
     # ── Bulk Operations ──────────────────────────────────────────────
 
-    def set_many(self, items: dict[str, Any], ttl: int | None = None,
-                namespace: str = "default") -> None:
+    def set_many(
+        self, items: dict[str, Any], ttl: int | None = None, namespace: str = "default"
+    ) -> None:
         """Set multiple cache entries."""
         for key, value in items.items():
             self.set(key, value, ttl, namespace)

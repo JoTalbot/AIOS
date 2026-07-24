@@ -15,7 +15,8 @@ from __future__ import annotations
 import logging
 import random
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,9 @@ __all__ = ["IteratedAmplification"]
 class AmplificationLevel:
     """Single amplification step."""
 
-    def __init__(self, level: int, quality: float = 0.8, alignment: float = 0.9) -> None:
+    def __init__(
+        self, level: int, quality: float = 0.8, alignment: float = 0.9
+    ) -> None:
         self.level = level
         self.quality = quality
         self.alignment = alignment
@@ -47,7 +50,11 @@ class IteratedAmplification:
         alignment = max(0.7, 1.0 - 0.03 * level)  # Alignment may degrade slightly
         amp_level = AmplificationLevel(level, quality, alignment)
         self._level_history.append(amp_level)
-        self.amplification_levels[level] = {"quality": quality, "alignment": alignment, "decompositions": level}
+        self.amplification_levels[level] = {
+            "quality": quality,
+            "alignment": alignment,
+            "decompositions": level,
+        }
 
         def amplified_agent(query) -> str:
             """Amplified agent with decomposition."""
@@ -64,7 +71,9 @@ class IteratedAmplification:
         """Decompose a query into sub-problems."""
         return [f"sub_{i}_{query}" for i in range(level)]
 
-    def distill(self, amplified_agent: Callable, target_size: int = 100) -> dict[str, Any]:
+    def distill(
+        self, amplified_agent: Callable, target_size: int = 100
+    ) -> dict[str, Any]:
         """Distill amplified agent into smaller model."""
         result = {
             "original_levels": len(self._level_history),
@@ -97,5 +106,7 @@ class IteratedAmplification:
         return {
             "levels": len(self.amplification_levels),
             "distillations": len(self._distillation_results),
-            "max_level": max(self.amplification_levels.keys()) if self.amplification_levels else 0,
+            "max_level": max(self.amplification_levels.keys())
+            if self.amplification_levels
+            else 0,
         }

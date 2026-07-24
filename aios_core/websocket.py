@@ -7,13 +7,11 @@ reconnection helpers, and rate-limited broadcast.
 
 from __future__ import annotations
 
-import asyncio
-import json
 import time
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any
 
-from starlette.websockets import WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocket
 
 __all__ = ["WebSocketManager", "ws_manager"]
 
@@ -29,7 +27,7 @@ class ConnectionInfo:
     def __init__(self, ws: WebSocket, client_id: str = ""):
         self.ws = ws
         self.connected_at = time.time()
-        self.topics: Set[str] = set()
+        self.topics: set[str] = set()
         self.last_ping: float = time.time()
         self.client_id = client_id or str(id(ws))
 
@@ -51,9 +49,9 @@ class WebSocketManager:
         heartbeat_interval: float = 30.0,
     ):
         """Initialize WebSocketManager."""
-        self._connections: Dict[str, ConnectionInfo] = {}
-        self._topic_subscribers: Dict[str, Set[str]] = defaultdict(set)
-        self._rate_limits: Dict[str, list[float]] = {}
+        self._connections: dict[str, ConnectionInfo] = {}
+        self._topic_subscribers: dict[str, set[str]] = defaultdict(set)
+        self._rate_limits: dict[str, list[float]] = {}
         self._max_msgs_per_sec = max_messages_per_second
         self._heartbeat_interval = heartbeat_interval
         self._message_count: int = 0
@@ -64,7 +62,7 @@ class WebSocketManager:
     # ------------------------------------------------------------------
 
     async def connect(
-        self, websocket: WebSocket, client_id: str = "", topics: List[str] = []
+        self, websocket: WebSocket, client_id: str = "", topics: list[str] = []
     ) -> str:
         """Accept *websocket* and register it with optional *topics*."""
         await websocket.accept()
@@ -78,12 +76,15 @@ class WebSocketManager:
             self.subscribe(conn_id, topic)
 
         # Send welcome message
-        await self._safe_send(conn_id, {
-            "type": "connected",
-            "client_id": conn_id,
-            "heartbeat_interval": self._heartbeat_interval,
-            "available_topics": list(self._topic_subscribers.keys()),
-        })
+        await self._safe_send(
+            conn_id,
+            {
+                "type": "connected",
+                "client_id": conn_id,
+                "heartbeat_interval": self._heartbeat_interval,
+                "available_topics": list(self._topic_subscribers.keys()),
+            },
+        )
         return conn_id
 
     def disconnect(self, websocket: WebSocket) -> None:
@@ -132,9 +133,7 @@ class WebSocketManager:
     # Messaging
     # ------------------------------------------------------------------
 
-    async def broadcast(
-        self, message: dict[str, Any], topic: str | None = None
-    ) -> int:
+    async def broadcast(self, message: dict[str, Any], topic: str | None = None) -> int:
         """Send *message* to all clients (or only those subscribed to *topic*).
 
         Returns the number of clients that received the message.
@@ -149,7 +148,7 @@ class WebSocketManager:
             targets = list(self._connections.keys())
 
         sent = 0
-        disconnected: List[str] = []
+        disconnected: list[str] = []
 
         for conn_id in targets:
             if self._check_rate(conn_id):
@@ -177,7 +176,9 @@ class WebSocketManager:
         self._message_count += 1
         return success
 
-    async def send_event(self, event_type: str, data: Any, topic: str | None = None) -> int:
+    async def send_event(
+        self, event_type: str, data: Any, topic: str | None = None
+    ) -> int:
         """Send a typed event to all or topic-filtered clients."""
         msg = {
             "type": event_type,
@@ -190,10 +191,10 @@ class WebSocketManager:
     # Heartbeat / health
     # ------------------------------------------------------------------
 
-    async def ping_all(self) -> Dict[str, bool]:
+    async def ping_all(self) -> dict[str, bool]:
         """Send ping to all connections; return map of conn_id → alive."""
-        results: Dict[str, bool] = {}
-        dead: List[str] = []
+        results: dict[str, bool] = {}
+        dead: list[str] = []
         for conn_id, info in self._connections.items():
             alive = await self._safe_send(conn_id, {"type": "ping"})
             results[conn_id] = alive
@@ -205,7 +206,7 @@ class WebSocketManager:
             self.disconnect_by_id(cid)
         return results
 
-    def get_stale_connections(self, timeout: float = 60.0) -> List[str]:
+    def get_stale_connections(self, timeout: float = 60.0) -> list[str]:
         """Return conn_ids that haven't responded to ping within *timeout* seconds."""
         now = time.time()
         stale = []

@@ -30,14 +30,13 @@ Guarded-перевод флагов на действия агента:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Optional
 
 import yaml
 
 ACTIONS = ("autopost", "collect", "send", "auto_send")
 
 
-def compliance_block(platform: str, directory: str = "platforms") -> Dict[str, object]:
+def compliance_block(platform: str, directory: str = "platforms") -> dict[str, object]:
     """Читает ``extras.compliance`` дескриптора ({} при отсутствии)."""
     yaml_path = Path(directory) / f"{platform}.yaml"
     if not yaml_path.exists():
@@ -51,7 +50,7 @@ def compliance_guard(
     platform: str,
     action: str,
     directory: str = "platforms",
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """Проверяет, разрешено ли ``action`` политикой платформы.
 
     Args:
@@ -67,7 +66,7 @@ def compliance_guard(
     """
     if action not in ACTIONS:
         raise ValueError(
-            f"unknown compliance action '{action}': " f"expected one of {list(ACTIONS)}"
+            f"unknown compliance action '{action}': expected one of {list(ACTIONS)}"
         )
     block = compliance_block(platform, directory)
     policy_declared = bool(block)

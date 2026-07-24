@@ -10,10 +10,14 @@ from __future__ import annotations
 
 import os
 import tempfile
-from typing import Dict, List, Optional
 
 from aios_core.modules.olx.adb import ADBController
-from aios_core.modules.olx.messenger import ChatListParser, ChatThread, Message, OLXMessenger
+from aios_core.modules.olx.messenger import (
+    ChatListParser,
+    ChatThread,
+    Message,
+    OLXMessenger,
+)
 from aios_core.platforms.runtime_hints import HintSender, load_hints_section
 
 
@@ -33,9 +37,9 @@ class HintsMessenger(OLXMessenger):
         platform: str,
         package: str,
         deep_link: str | None,
-        adb: Optional[ADBController] = None,
+        adb: ADBController | None = None,
         storage=None,
-        messenger_hints: Optional[Dict] = None,
+        messenger_hints: dict | None = None,
         directory: str = "platforms",
         screen_width: int = 1080,
         serial: str | None = None,
@@ -66,7 +70,7 @@ class HintsMessenger(OLXMessenger):
         self._chat_parser = ChatListParser(markers=markers) if markers else None
         self._sender = HintSender(self.adb, self.messenger_hints)
 
-    def open_chats(self) -> Dict[str, object]:
+    def open_chats(self) -> dict[str, object]:
         """Открыть инбокс: deep-link или fallback-запуск приложения."""
         if self.deep_link:
             return self.adb.run(
@@ -78,7 +82,7 @@ class HintsMessenger(OLXMessenger):
             f"-c android.intent.category.LAUNCHER 1"
         )
 
-    def list_chats(self, dump_path: str = "chats.xml") -> List[ChatThread]:
+    def list_chats(self, dump_path: str = "chats.xml") -> list[ChatThread]:
         """Список диалогов; без калиброванных маркеров — честный []."""
         if self._chat_parser is None:
             return []
@@ -89,10 +93,12 @@ class HintsMessenger(OLXMessenger):
                 return []
             return self._chat_parser.parse(path)
 
-    def read_chat(self, thread: ChatThread, dump_path: str = "chat.xml") -> List[Message]:
+    def read_chat(
+        self, thread: ChatThread, dump_path: str = "chat.xml"
+    ) -> list[Message]:
         """Открытый диалог: alignment-парсер OLX (shape-based)."""
         return super().read_chat(thread, dump_path)
 
-    def _type_and_send(self, text: str) -> Dict[str, object]:
+    def _type_and_send(self, text: str) -> dict[str, object]:
         """Hints-driven: tap input → ADBKeyBoard → tap send/ENTER."""
         return self._sender.type_and_send(text)

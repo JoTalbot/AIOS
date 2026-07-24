@@ -7,7 +7,7 @@ operations for messenger-first platforms (WhatsApp, Viber).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 @dataclass
@@ -61,12 +61,16 @@ class ContactManager:
         Returns:
             True if added/updated successfully.
         """
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self.storage._lock, self.storage._conn:
             self.storage._conn.execute(
                 """INSERT OR REPLACE INTO olx_profile_kv (key, value, updated_at)
                 VALUES (?, ?, ?)""",
-                (f"contact:{contact.jid or contact.phone}", contact.to_dict().__repr__(), now),
+                (
+                    f"contact:{contact.jid or contact.phone}",
+                    contact.to_dict().__repr__(),
+                    now,
+                ),
             )
         return True
 
@@ -103,6 +107,7 @@ class ContactManager:
             # Parse stored contact data
             try:
                 import ast
+
                 data = ast.literal_eval(row["value"])
                 contact = Contact(
                     name=data.get("name", ""),

@@ -22,6 +22,7 @@ from starlette.responses import JSONResponse, Response
 @dataclass(frozen=True)
 class Principal:
     """Principal."""
+
     subject: str
     roles: frozenset[str]
 
@@ -69,7 +70,9 @@ def required_roles(path: str, method: str) -> set[str]:
 class APIKeyAuthMiddleware(BaseHTTPMiddleware):
     """Authenticate bearer API keys and enforce a small role policy."""
 
-    def __init__(self, app, *, enabled: bool = True, api_keys: dict[str, Principal] | None = None):
+    def __init__(
+        self, app, *, enabled: bool = True, api_keys: dict[str, Principal] | None = None
+    ):
         """Initialize APIKeyAuthMiddleware."""
         super().__init__(app)
         self.enabled = enabled
@@ -94,18 +97,28 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
             request.state.principal = Principal("development", frozenset({"admin"}))
             return await call_next(request)
         if not self.api_keys:
-            return JSONResponse({"error": "API authentication is not configured"}, status_code=503)
+            return JSONResponse(
+                {"error": "API authentication is not configured"}, status_code=503
+            )
         header = request.headers.get("authorization", "")
         if not header.startswith("Bearer "):
-            return JSONResponse({"error": "Bearer authentication required"}, status_code=401)
+            return JSONResponse(
+                {"error": "Bearer authentication required"}, status_code=401
+            )
         supplied = header[7:]
         principal = next(
-            (p for key, p in self.api_keys.items() if hmac.compare_digest(key, supplied)),
+            (
+                p
+                for key, p in self.api_keys.items()
+                if hmac.compare_digest(key, supplied)
+            ),
             None,
         )
         if principal is None:
             return JSONResponse({"error": "Invalid API key"}, status_code=401)
-        if not principal.roles.intersection(required_roles(request.url.path, request.method)):
+        if not principal.roles.intersection(
+            required_roles(request.url.path, request.method)
+        ):
             return JSONResponse({"error": "Insufficient role"}, status_code=403)
         request.state.principal = principal
         return await call_next(request)

@@ -15,13 +15,14 @@ Features:
 
 import time
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
 __all__ = ["SubstrateType", "SubstrateConvergenceEngine"]
 
 
 class SubstrateType:
     """Substrate type constants."""
+
     SILICON = "silicon_x86_arm"
     PHOTONIC = "photonic_optical"
     NEUROMORPHIC = "neuromorphic_snn"
@@ -46,7 +47,7 @@ class SubstrateConvergenceEngine:
 
     def __init__(self):
         """Initialize SubstrateConvergenceEngine."""
-        self.substrates: Dict[str, dict[str, Any]] = {
+        self.substrates: dict[str, dict[str, Any]] = {
             SubstrateType.SILICON: {
                 "type": SubstrateType.SILICON,
                 "latency_base_ms": 5.0,
@@ -103,10 +104,10 @@ class SubstrateConvergenceEngine:
                 "task_affinity": ["evolve", "self_repair", "pattern"],
             },
         }
-        self.dispatch_history: List[dict[str, Any]] = []
-        self._task_queue: List[dict[str, Any]] = []
-        self._energy_account: Dict[str, float] = defaultdict(float)
-        self._substrate_failover_count: Dict[str, int] = defaultdict(int)
+        self.dispatch_history: list[dict[str, Any]] = []
+        self._task_queue: list[dict[str, Any]] = []
+        self._energy_account: dict[str, float] = defaultdict(float)
+        self._substrate_failover_count: dict[str, int] = defaultdict(int)
 
     # ------------------------------------------------------------------
     # Substrate management
@@ -119,7 +120,7 @@ class SubstrateConvergenceEngine:
         efficiency_gflops_per_watt: float = 100.0,
         energy_cost_per_unit: float = 0.1,
         capacity: int = 500,
-        task_affinity: List[str] = [],
+        task_affinity: list[str] = [],
     ) -> dict[str, Any]:
         """Register a new compute substrate."""
         record = {
@@ -144,9 +145,7 @@ class SubstrateConvergenceEngine:
         sub["active"] = active
         return True
 
-    def update_substrate_health(
-        self, substrate_type: str, health: float
-    ) -> bool:
+    def update_substrate_health(self, substrate_type: str, health: float) -> bool:
         """Update health score (0.0–1.0) for a substrate."""
         sub = self.substrates.get(substrate_type)
         if sub is None:
@@ -179,7 +178,7 @@ class SubstrateConvergenceEngine:
                 return req_type
 
         # Check affinity match
-        best_affinity: Optional[Tuple[float, str]] = None
+        best_affinity: tuple[float, str] | None = None
         for sub in self.substrates.values():
             if not sub["active"] or sub["health"] < 0.5:
                 continue
@@ -199,7 +198,9 @@ class SubstrateConvergenceEngine:
             return best_affinity[1]
 
         # Fallback: highest efficiency active substrate
-        active = [s for s in self.substrates.values() if s["active"] and s["health"] > 0.5]
+        active = [
+            s for s in self.substrates.values() if s["active"] and s["health"] > 0.5
+        ]
         if not active:
             # Emergency: use any substrate regardless of health
             active = list(self.substrates.values())
@@ -266,18 +267,16 @@ class SubstrateConvergenceEngine:
         self.dispatch_history.append(dispatch_record)
         return dispatch_record
 
-    def process_queue(self, max_tasks: int = 10) -> List[dict[str, Any]]:
+    def process_queue(self, max_tasks: int = 10) -> list[dict[str, Any]]:
         """Process tasks from the priority queue."""
-        results: List[dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for task_record in self._task_queue[:max_tasks]:
             result = self.execute_substrate_task(task_record["task"])
             task_record["status"] = "completed"
             task_record["result"] = result
             results.append(result)
         # Remove completed tasks from queue
-        self._task_queue = [
-            t for t in self._task_queue if t["status"] == "queued"
-        ]
+        self._task_queue = [t for t in self._task_queue if t["status"] == "queued"]
         return results
 
     # ------------------------------------------------------------------
@@ -311,7 +310,7 @@ class SubstrateConvergenceEngine:
     # Energy accounting
     # ------------------------------------------------------------------
 
-    def get_energy_report(self) -> Dict[str, Any]:
+    def get_energy_report(self) -> dict[str, Any]:
         """Return total energy costs per substrate."""
         total_energy = sum(self._energy_account.values())
         return {
@@ -330,16 +329,18 @@ class SubstrateConvergenceEngine:
 
     def benchmark_substrates(
         self, test_task: dict[str, Any] = {}, trials: int = 5
-    ) -> Dict[str, dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """Run simple benchmark across all active substrates."""
-        results: Dict[str, dict[str, Any]] = {}
+        results: dict[str, dict[str, Any]] = {}
         for stype, sub_info in self.substrates.items():
             if not sub_info["active"]:
                 continue
-            latencies: List[float] = []
+            latencies: list[float] = []
             for _ in range(trials):
                 start = time.time()
-                result = self.execute_substrate_task(test_task or {"id": "bench", "category": "general"})
+                result = self.execute_substrate_task(
+                    test_task or {"id": "bench", "category": "general"}
+                )
                 latencies.append(result["execution_time_ms"])
 
             avg_latency = sum(latencies) / len(latencies) if latencies else 0
@@ -356,7 +357,7 @@ class SubstrateConvergenceEngine:
     # Load balancing
     # ------------------------------------------------------------------
 
-    def rebalance_loads(self) -> Dict[str, int]:
+    def rebalance_loads(self) -> dict[str, int]:
         """Redistribute queued tasks across substrates for balanced load."""
         active = [s for s in self.substrates.values() if s["active"]]
         if not active or not self._task_queue:
@@ -365,7 +366,7 @@ class SubstrateConvergenceEngine:
         # Sort substrates by available capacity
         active.sort(key=lambda s: s["capacity"] - s["current_load"], reverse=True)
 
-        assignments: Dict[str, int] = defaultdict(int)
+        assignments: dict[str, int] = defaultdict(int)
         for i, task_record in enumerate(self._task_queue):
             # Assign to substrate with most available capacity
             substrate = active[i % len(active)]
@@ -389,11 +390,11 @@ class SubstrateConvergenceEngine:
             "total_dispatches": len(self.dispatch_history),
             "queued_tasks": len(self._task_queue),
             "substrate_counts": {
-                st: sum(1 for d in self.dispatch_history if d["selected_substrate"] == st)
+                st: sum(
+                    1 for d in self.dispatch_history if d["selected_substrate"] == st
+                )
                 for st in self.substrates
             },
-            "total_energy_cost": round(
-                sum(self._energy_account.values()), 4
-            ),
+            "total_energy_cost": round(sum(self._energy_account.values()), 4),
             "failover_events": dict(self._substrate_failover_count),
         }

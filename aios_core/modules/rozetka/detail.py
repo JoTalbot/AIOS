@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from aios_core.modules.olx.detail import AdDetail, AdDetailParser
+from aios_core.modules.olx.detail import AdDetailParser
 
 
 class RozetkaDetailParser(AdDetailParser):

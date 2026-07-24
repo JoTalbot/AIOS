@@ -11,7 +11,7 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
 
 from aios_core.android_driver import AndroidDriver, DriverCapabilities, UIContext
 
@@ -23,14 +23,17 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AppiumDriverConfig(DriverCapabilities):
     """Appium driver configuration parameters."""
+
     server_url: str = "http://localhost:4723/wd/hub"
     automation_name: str = "UiAutomator2"
 
-
     """Appium-based Android automation driver."""
+
+
 class AppiumAndroidDriver(AndroidDriver):
     """AppiumAndroidDriver."""
-    def __init__(self, config: Optional[AppiumDriverConfig] = None):
+
+    def __init__(self, config: AppiumDriverConfig | None = None):
         """Initialize AppiumAndroidDriver."""
         self.config = config or AppiumDriverConfig()
         self._driver = None
@@ -82,15 +85,19 @@ class AppiumAndroidDriver(AndroidDriver):
         """Execute dump ui."""
         try:
             if self._driver is None:
-                return UIContext(xml="", package=self.config.package, current_activity="")
+                return UIContext(
+                    xml="", package=self.config.package, current_activity=""
+                )
             xml = self._driver.page_source
             current = ""
             try:
                 current = self._driver.current_activity or ""
             except Exception:
                 pass  # current_activity is best-effort metadata
-            return UIContext(xml=xml, package=self.config.package, current_activity=current)
-        except Exception as exc:
+            return UIContext(
+                xml=xml, package=self.config.package, current_activity=current
+            )
+        except Exception:
             return UIContext(
                 xml="",
                 package=self.config.package,
@@ -157,7 +164,7 @@ class AppiumAndroidDriver(AndroidDriver):
         except Exception:
             return self.config.package
 
-    def find_element_by_xpath(self, xpath: str) -> Optional[Any]:
+    def find_element_by_xpath(self, xpath: str) -> Any | None:
         """Execute find element by xpath."""
         if self._driver is None:
             return None
@@ -175,7 +182,7 @@ class AppiumAndroidDriver(AndroidDriver):
         except Exception:
             return []
 
-    def find_element(self, by: str, value: str) -> Optional[Any]:
+    def find_element(self, by: str, value: str) -> Any | None:
         """Execute find element."""
         if self._driver is None:
             return None

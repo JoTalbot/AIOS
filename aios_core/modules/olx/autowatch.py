@@ -17,7 +17,7 @@ their own latches (outbox approval, ``confirm=True``) — AutoWatch only
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
 
 from .collector import OLXCollector
 from .notifier import WebhookNotifier, notify_stagnant
@@ -33,9 +33,9 @@ class AutoWatch:
     def __init__(
         self,
         storage,
-        collector: Optional[OLXCollector] = None,
-        own_provider: Optional[Callable[[], List[OwnAd]]] = None,
-        notifier: Optional[WebhookNotifier] = None,
+        collector: OLXCollector | None = None,
+        own_provider: Callable[[], list[OwnAd]] | None = None,
+        notifier: WebhookNotifier | None = None,
         max_cards: int = 50,
     ):
         """Initialize AutoWatch."""
@@ -51,14 +51,16 @@ class AutoWatch:
         collect: bool = True,
         min_age_days: float = 3.0,
         min_views_per_day: float = 1.0,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """Run one full AutoWatch cycle — collect, alert, advise."""
-        report: Dict[str, object] = {}
+        report: dict[str, object] = {}
 
         # 1. Collection + subscription alerts
-        new_cards: List = []
+        new_cards: list = []
         if collect and queries and self.collector is not None:
-            scheduler = CollectionScheduler(collector=self.collector, storage=self.storage)
+            scheduler = CollectionScheduler(
+                collector=self.collector, storage=self.storage
+            )
             collection = scheduler.run_once(queries, max_cards=self.max_cards)
             report["collection"] = collection
 
@@ -69,7 +71,9 @@ class AutoWatch:
                     history = self.storage.price_history(card.fingerprint)
                     if len(history) == 1:
                         new_cards.append(card)
-            report["subscription_alerts"] = SubscriptionManager(self.storage).check_new(new_cards)
+            report["subscription_alerts"] = SubscriptionManager(self.storage).check_new(
+                new_cards
+            )
             report["favorite_alerts"] = FavoritesWatch(self.storage).price_alerts()
         else:
             report["subscription_alerts"] = []
@@ -84,16 +88,22 @@ class AutoWatch:
             report["own_snapshot"] = None
 
         # 3–4. Stagnant detection + improvement & repost planning
-        stagnant = tracker.stagnant(min_age_days=min_age_days, min_views_per_day=min_views_per_day)
+        stagnant = tracker.stagnant(
+            min_age_days=min_age_days, min_views_per_day=min_views_per_day
+        )
         report["stagnant"] = stagnant
 
         improver = AdImprover()
-        planner = RepostPlanner(min_age_days=min_age_days, min_views_per_day=min_views_per_day)
+        planner = RepostPlanner(
+            min_age_days=min_age_days, min_views_per_day=min_views_per_day
+        )
         competitors = self.storage.get_ads()
 
-        suggestions: List[Dict[str, object]] = []
-        decisions: List[Dict[str, object]] = []
-        rows = {row["fingerprint"]: row for row in self.storage.own_ads(status="active")}
+        suggestions: list[dict[str, object]] = []
+        decisions: list[dict[str, object]] = []
+        rows = {
+            row["fingerprint"]: row for row in self.storage.own_ads(status="active")
+        }
         for item in stagnant:
             row = rows.get(item["fingerprint"])
             if row is None:
@@ -113,7 +123,11 @@ class AutoWatch:
                 views_total=row["last_views"] or 0,
                 messages_total=row["last_messages"] or 0,
             )
-            plan = Reposter().plan_steps(own_ad, suggestion) if decision.should_repost else []
+            plan = (
+                Reposter().plan_steps(own_ad, suggestion)
+                if decision.should_repost
+                else []
+            )
             suggestions.append(suggestion.to_dict())
             decisions.append(
                 {
@@ -145,7 +159,8 @@ class AutoWatch:
             ]
             report["competitive"] = CompetitiveWatch(self.storage).refresh(own_list)
             report["advisor"] = [
-                item.to_dict() for item in StrategyAdvisor(self.storage).advise_actions()
+                item.to_dict()
+                for item in StrategyAdvisor(self.storage).advise_actions()
             ]
         else:
             report["competitive"] = None

@@ -14,9 +14,8 @@ from __future__ import annotations
 import logging
 import math
 import random
-import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DataPoint:
     """Data point with features, label, and uncertainty."""
+
     id: int
     features: dict[str, Any] = field(default_factory=dict)
     label: Any = None
@@ -55,7 +55,9 @@ class ActiveLearner:
 
     # ── Data Management ──────────────────────────────────────────────
 
-    def add_unlabeled(self, data: dict[str, Any], uncertainty: float = 0.0) -> DataPoint:
+    def add_unlabeled(
+        self, data: dict[str, Any], uncertainty: float = 0.0
+    ) -> DataPoint:
         """Add data to the unlabeled pool."""
         self._id_counter += 1
         point = DataPoint(id=self._id_counter, features=data, uncertainty=uncertainty)
@@ -94,12 +96,17 @@ class ActiveLearner:
 
         elif strategy == "margin":
             # Margin sampling: smallest margin between top-2 predictions
-            sorted_by_unc = sorted(self.unlabeled, key=lambda p: p.uncertainty, reverse=True)
+            sorted_by_unc = sorted(
+                self.unlabeled, key=lambda p: p.uncertainty, reverse=True
+            )
             return sorted_by_unc[0] if sorted_by_unc else None
 
         elif strategy == "entropy":
             # Entropy-based: highest entropy (approximated by uncertainty)
-            return max(self.unlabeled, key=lambda p: p.uncertainty * math.log(p.uncertainty + 0.01))
+            return max(
+                self.unlabeled,
+                key=lambda p: p.uncertainty * math.log(p.uncertainty + 0.01),
+            )
 
         elif strategy == "diversity":
             # Diversity: select point most different from labeled pool
@@ -109,8 +116,7 @@ class ActiveLearner:
 
         elif strategy == "density_weighted":
             # Density-weighted: high uncertainty AND high density
-            return max(self.unlabeled,
-                       key=lambda p: p.uncertainty * (p.density + 0.1))
+            return max(self.unlabeled, key=lambda p: p.uncertainty * (p.density + 0.1))
 
         elif strategy == "random":
             return random.choice(self.unlabeled)
@@ -233,8 +239,11 @@ class ActiveLearner:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_uncertainty = (sum(p.uncertainty for p in self.unlabeled) /
-                          len(self.unlabeled)) if self.unlabeled else 0.0
+        avg_uncertainty = (
+            (sum(p.uncertainty for p in self.unlabeled) / len(self.unlabeled))
+            if self.unlabeled
+            else 0.0
+        )
         return {
             "labeled": len(self.labeled),
             "unlabeled": len(self.unlabeled),

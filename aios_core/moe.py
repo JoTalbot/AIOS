@@ -12,10 +12,11 @@ Classes:
 
 from __future__ import annotations
 
-import math
 import logging
+import math
 import random
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,9 @@ logger = logging.getLogger(__name__)
 class Expert:
     """Individual expert with usage tracking."""
 
-    def __init__(self, name: str, func: Callable, specialization: str = "general") -> None:
+    def __init__(
+        self, name: str, func: Callable, specialization: str = "general"
+    ) -> None:
         self.name = name
         self.func = func
         self.specialization = specialization
@@ -36,17 +39,25 @@ class Expert:
         return result
 
     def stats(self) -> dict[str, Any]:
-        return {"name": self.name, "specialization": self.specialization, "usage": self.usage}
+        return {
+            "name": self.name,
+            "specialization": self.specialization,
+            "usage": self.usage,
+        }
 
 
 class Router:
     """Softmax top-k gating router."""
 
-    def __init__(self, num_experts: int = 8, top_k: int = 2, capacity_factor: float = 1.25) -> None:
+    def __init__(
+        self, num_experts: int = 8, top_k: int = 2, capacity_factor: float = 1.25
+    ) -> None:
         self.num_experts = num_experts
         self.top_k = top_k
         self.capacity_factor = capacity_factor
-        self._gate_weights: list[list[float]] = [[random.gauss(0, 0.1) for _ in range(num_experts)]]
+        self._gate_weights: list[list[float]] = [
+            [random.gauss(0, 0.1) for _ in range(num_experts)]
+        ]
 
     def _softmax(self, x: list[float]) -> list[float]:
         max_x = max(x) if x else 0
@@ -57,13 +68,23 @@ class Router:
     def route(self, input_scores: list[float]) -> list[tuple[int, float]]:
         """Route input to top-k experts, returning (expert_idx, gate_weight)."""
         weights = self._gate_weights[0]
-        scores = [w * s for w, s in zip(weights, input_scores[:self.num_experts] if len(input_scores) >= self.num_experts else input_scores + [0.0] * (self.num_experts - len(input_scores)))]
+        scores = [
+            w * s
+            for w, s in zip(
+                weights,
+                input_scores[: self.num_experts]
+                if len(input_scores) >= self.num_experts
+                else input_scores + [0.0] * (self.num_experts - len(input_scores)),
+            )
+        ]
         probs = self._softmax(scores)
         # Select top-k
         indexed = sorted(enumerate(probs), key=lambda x: x[1], reverse=True)
-        return indexed[:self.top_k]
+        return indexed[: self.top_k]
 
-    def auxiliary_loss(self, expert_usage: list[int], gate_weights: list[float]) -> float:
+    def auxiliary_loss(
+        self, expert_usage: list[int], gate_weights: list[float]
+    ) -> float:
         """Compute load-balancing auxiliary loss."""
         n = len(expert_usage)
         if n == 0:
@@ -75,18 +96,26 @@ class Router:
         return round(loss, 4)
 
     def stats(self) -> dict[str, Any]:
-        return {"num_experts": self.num_experts, "top_k": self.top_k, "capacity_factor": self.capacity_factor}
+        return {
+            "num_experts": self.num_experts,
+            "top_k": self.top_k,
+            "capacity_factor": self.capacity_factor,
+        }
 
 
 class MixtureOfExperts:
     """Dynamic Mixture of Experts routing."""
 
-    def __init__(self, num_experts: int = 8, top_k: int = 2, capacity_factor: float = 1.25) -> None:
+    def __init__(
+        self, num_experts: int = 8, top_k: int = 2, capacity_factor: float = 1.25
+    ) -> None:
         self.experts: list[Expert] = []
         self.router = Router(num_experts, top_k, capacity_factor)
         self.router_weights: list[float] = [1.0 / num_experts] * num_experts
 
-    def add_expert(self, name: str, func: Callable, specialization: str = "general") -> None:
+    def add_expert(
+        self, name: str, func: Callable, specialization: str = "general"
+    ) -> None:
         """Add an expert (backward-compatible)."""
         self.experts.append(Expert(name, func, specialization))
 

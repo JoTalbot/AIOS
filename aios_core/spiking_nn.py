@@ -13,9 +13,8 @@ Classes:
 
 from __future__ import annotations
 
-import math
-import random
 import logging
+import random
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -24,7 +23,9 @@ logger = logging.getLogger(__name__)
 class SpikingNeuron:
     """Leaky Integrate-and-Fire neuron."""
 
-    def __init__(self, threshold: float = 1.0, decay: float = 0.9, resting: float = 0.0) -> None:
+    def __init__(
+        self, threshold: float = 1.0, decay: float = 0.9, resting: float = 0.0
+    ) -> None:
         self.threshold = threshold
         self.decay = decay
         self.resting = resting
@@ -55,13 +56,19 @@ class SpikingNeuron:
         self._spike_history.clear()
 
     def stats(self) -> dict[str, Any]:
-        return {"threshold": self.threshold, "decay": self.decay, "total_spikes": self.spikes}
+        return {
+            "threshold": self.threshold,
+            "decay": self.decay,
+            "total_spikes": self.spikes,
+        }
 
 
 class Synapse:
     """Weighted connection with STDP plasticity."""
 
-    def __init__(self, weight: float = 0.5, max_weight: float = 1.0, min_weight: float = 0.0) -> None:
+    def __init__(
+        self, weight: float = 0.5, max_weight: float = 1.0, min_weight: float = 0.0
+    ) -> None:
         self.weight = weight
         self.max_weight = max_weight
         self.min_weight = min_weight
@@ -72,7 +79,9 @@ class Synapse:
         """Transmit signal through synapse."""
         return self.weight * spike
 
-    def stdp_update(self, pre_spiked: bool, post_spiked: bool, learning_rate: float = 0.01) -> None:
+    def stdp_update(
+        self, pre_spiked: bool, post_spiked: bool, learning_rate: float = 0.01
+    ) -> None:
         """STDP weight update: strengthen if pre→post, weaken if post→pre."""
         if pre_spiked and post_spiked:
             self.weight = min(self.max_weight, self.weight + learning_rate)
@@ -80,13 +89,22 @@ class Synapse:
             self.weight = max(self.min_weight, self.weight - learning_rate * 0.5)
 
     def stats(self) -> dict[str, Any]:
-        return {"weight": round(self.weight, 4), "range": f"{self.min_weight}-{self.max_weight}"}
+        return {
+            "weight": round(self.weight, 4),
+            "range": f"{self.min_weight}-{self.max_weight}",
+        }
 
 
 class SpikingLayer:
     """Spiking neural layer with lateral inhibition."""
 
-    def __init__(self, size: int, threshold: float = 1.0, decay: float = 0.9, inhibition: float = 0.1) -> None:
+    def __init__(
+        self,
+        size: int,
+        threshold: float = 1.0,
+        decay: float = 0.9,
+        inhibition: float = 0.1,
+    ) -> None:
         self.neurons = [SpikingNeuron(threshold, decay) for _ in range(size)]
         self.inhibition = inhibition
 
@@ -97,7 +115,11 @@ class SpikingLayer:
             for i, neuron in enumerate(self.neurons):
                 inp = inputs[i % len(inputs)] if inputs else 0
                 # Lateral inhibition: subtract activity of neighbors
-                lateral = sum(n.membrane for j, n in enumerate(self.neurons) if j != i) * self.inhibition / max(len(self.neurons) - 1, 1)
+                lateral = (
+                    sum(n.membrane for j, n in enumerate(self.neurons) if j != i)
+                    * self.inhibition
+                    / max(len(self.neurons) - 1, 1)
+                )
                 spike = neuron.step(inp - lateral)
                 outputs[i] += spike
         return outputs
@@ -122,14 +144,18 @@ class SpikingNetwork:
         self.layers = [SpikingLayer(size) for size in layer_sizes]
         self._synapses: list[list[Synapse]] = []
 
-    def connect_layers(self, idx_from: int, idx_to: int, initial_weight: float = 0.5) -> None:
+    def connect_layers(
+        self, idx_from: int, idx_to: int, initial_weight: float = 0.5
+    ) -> None:
         """Create all-to-all synaptic connections between layers."""
         from_size = len(self.layers[idx_from].neurons)
         to_size = len(self.layers[idx_to].neurons)
         syn_matrix = [Synapse(initial_weight) for _ in range(from_size * to_size)]
         self._synapses.append(syn_matrix)
 
-    def poisson_encode(self, values: list[float], duration: int = 10) -> list[list[int]]:
+    def poisson_encode(
+        self, values: list[float], duration: int = 10
+    ) -> list[list[int]]:
         """Encode values as Poisson spike trains."""
         spike_trains: list[list[int]] = []
         for v in values:

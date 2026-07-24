@@ -9,7 +9,7 @@ proposals, and by the Orchestrator for continuous self-validation.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..storage import Database
@@ -63,7 +63,7 @@ class TestEngine:
         self,
         constitution_dir: str,
         policies_dir: str,
-        db: Optional[Database] = None,
+        db: Database | None = None,
     ):
         """Initialize TestEngine."""
         self.runner = TestRunner(constitution_dir, policies_dir, db)
@@ -73,7 +73,6 @@ class TestEngine:
 
     def run_case(self, case: TestCase) -> dict:
         """Run a single custom test case."""
-        from .models import TestStatus
 
         result = self.runner.run_case(case)
         return {
@@ -148,7 +147,7 @@ class TestEngine:
         """Generate failures-only text."""
         return self.reporter.failures_text(report)
 
-    def last_report(self) -> Optional[TestReport]:
+    def last_report(self) -> TestReport | None:
         """Get the most recent report."""
         return self._reports[-1] if self._reports else None
 

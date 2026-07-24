@@ -8,7 +8,7 @@ next_commands, а не silently-заглушку.
 
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
 
 from aios_core.platforms.bootup import bootup_platform
 
@@ -24,11 +24,11 @@ def onboard_package(
     query: str | None = None,
     serial: str | None = None,
     pool=None,
-    driver: Optional[Callable] = None,
+    driver: Callable | None = None,
     runner=None,
     apk_runner=None,
     dry_run: bool = False,
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """Единый вход подключения платформы.
 
     Args:

@@ -76,13 +76,15 @@ class TikTokDetailParser(AdDetailParser):
         detail.price = self._extract_price(xml)
 
         # Extract hashtags
-        hashtag_pattern = r'#(\w+)'
+        hashtag_pattern = r"#(\w+)"
         for text in texts:
             tags = re.findall(hashtag_pattern, text)
             detail.hashtags.extend(tags)
 
         # Extract product tags
-        product_pattern = r'<node[^>]*resource-id="[^"]*product[^"]*"[^>]*text="([^"]*)"'
+        product_pattern = (
+            r'<node[^>]*resource-id="[^"]*product[^"]*"[^>]*text="([^"]*)"'
+        )
         product_texts = re.findall(product_pattern, xml, re.IGNORECASE)
         detail.product_tags = product_texts
 
@@ -94,13 +96,13 @@ class TikTokDetailParser(AdDetailParser):
 
         # Extract engagement numbers
         for text in texts:
-            m = re.search(r'(\d[\d\s]*)\s*(likes|лайків)', text.lower())
+            m = re.search(r"(\d[\d\s]*)\s*(likes|лайків)", text.lower())
             if m:
                 try:
                     detail.likes = int(m.group(1).replace(" ", ""))
                 except ValueError:
                     pass
-            m = re.search(r'(\d[\d\s]*)\s*(comments|комент)', text.lower())
+            m = re.search(r"(\d[\d\s]*)\s*(comments|комент)", text.lower())
             if m:
                 try:
                     detail.comments = int(m.group(1).replace(" ", ""))
@@ -113,7 +115,7 @@ class TikTokDetailParser(AdDetailParser):
         """Extract price from TikTok detail page."""
         import re
 
-        price_pattern = r'(\d[\d\s]+)\s*(грн|uah|\$|₴)'
+        price_pattern = r"(\d[\d\s]+)\s*(грн|uah|\$|₴)"
         m = re.search(price_pattern, xml.lower())
         if m:
             try:

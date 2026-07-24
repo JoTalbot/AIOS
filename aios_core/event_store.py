@@ -15,21 +15,24 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Event ────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Event:
     """Individual event in the event stream."""
+
     id: str = ""
     event_type: str = ""
     data: dict[str, Any] = field(default_factory=dict)
-    aggregate_id: Optional[str] = None
+    aggregate_id: str | None = None
     version: int = 1
     timestamp: float = field(default_factory=time.time)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -41,9 +44,11 @@ class Event:
 
 # ── Snapshot ────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Snapshot:
     """Point-in-time state capture for fast replay."""
+
     aggregate_id: str
     state: dict[str, Any]
     version: int  # event version at snapshot time
@@ -52,15 +57,18 @@ class Snapshot:
 
 # ── Projection ──────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Projection:
     """Derived view from event stream (e.g., count, sum)."""
+
     name: str
     handler: Callable[[Event, dict[str, Any]], dict[str, Any]]
     state: dict[str, Any] = field(default_factory=dict)
 
 
 # ── Event Store ─────────────────────────────────────────────────────────────
+
 
 class EventStore:
     """Enhanced in-memory event store with snapshots and projections.
@@ -82,8 +90,13 @@ class EventStore:
 
     # ── Append ──────────────────────────────────────────────────
 
-    def append(self, event_type: str, data: dict[str, Any], aggregate_id: str | None = None,
-               metadata: dict[str, Any] | None = None) -> Event:
+    def append(
+        self,
+        event_type: str,
+        data: dict[str, Any],
+        aggregate_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> Event:
         """Append an event to the store."""
         # Auto-assign version
         version = 1
@@ -108,8 +121,13 @@ class EventStore:
 
     # ── Query ───────────────────────────────────────────────────
 
-    def get_events(self, aggregate_id: str | None = None, event_type: str | None = None,
-                   since_version: int = 0, limit: int = 100) -> list[Event]:
+    def get_events(
+        self,
+        aggregate_id: str | None = None,
+        event_type: str | None = None,
+        since_version: int = 0,
+        limit: int = 100,
+    ) -> list[Event]:
         """Query events by aggregate, type, version."""
         results = []
         for event in self.events:
@@ -191,7 +209,9 @@ class EventStore:
 
     # ── Projections ─────────────────────────────────────────────
 
-    def register_projection(self, name: str, handler: Callable[[Event, dict[str, Any]], dict[str, Any]]) -> Projection:
+    def register_projection(
+        self, name: str, handler: Callable[[Event, dict[str, Any]], dict[str, Any]]
+    ) -> Projection:
         """Register a projection handler."""
         proj = Projection(name=name, handler=handler)
         self.projections[name] = proj

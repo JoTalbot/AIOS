@@ -5,11 +5,10 @@ Quantum Approximate Optimization Algorithm (QAOA) for multi-agent DAG task sched
 optimization, and hybrid quantum-classical scheduling.
 """
 
-import cmath
 import math
 import random
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class QuantumCircuitSimulator:
@@ -78,7 +77,7 @@ class QuantumNativeEngine:
         self.circuits_executed = 0
 
     def optimize_task_schedule_qaoa(
-        self, tasks: List[dict[str, Any]], num_agents: int = 2
+        self, tasks: list[dict[str, Any]], num_agents: int = 2
     ) -> dict[str, Any]:
         """Use Quantum Approximate Optimization Algorithm (QAOA) simulation to solve task assignment."""
         start_time = time.time()

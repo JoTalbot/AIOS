@@ -73,36 +73,37 @@ Endpoints:
   POST /rpc                             — Forward to MCP Gateway
 """
 
-import json
 import os
 import sys
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
-from starlette.routing import Mount, Route, WebSocketRoute
+from starlette.responses import JSONResponse
+
 from aios_core.api.routes import register_routes
 
-from aios_core.rate_limiter import rate_limiter
-
 from .errors import RequestSafetyMiddleware
-from .security import APIKeyAuthMiddleware, Principal, load_api_keys
+from .security import APIKeyAuthMiddleware, load_api_keys
 
 # Ensure project root is importable
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 
-
-from aios_core.api.mixins_olx import OLXHandlersMixin
-from aios_core.api.mixins_devices import DevicesShardsMixin
-from aios_core.api.mixins_platforms import PlatformsModulesMixin
 from aios_core.api.mixins_core import CoreHandlersMixin
-class AIOSAPI(OLXHandlersMixin, DevicesShardsMixin, PlatformsModulesMixin, CoreHandlersMixin):
+from aios_core.api.mixins_devices import DevicesShardsMixin
+from aios_core.api.mixins_olx import OLXHandlersMixin
+from aios_core.api.mixins_platforms import PlatformsModulesMixin
+
+
+class AIOSAPI(
+    OLXHandlersMixin, DevicesShardsMixin, PlatformsModulesMixin, CoreHandlersMixin
+):
     """Central API state holder.
 
     Holds references to all AIOS subsystems and provides
@@ -133,9 +134,13 @@ class AIOSAPI(OLXHandlersMixin, DevicesShardsMixin, PlatformsModulesMixin, CoreH
 
         self.db = Database(db_path=db_path)
         self.auth_required = auth_required
-        self.api_keys = load_api_keys(api_keys) if isinstance(api_keys, str) else api_keys
+        self.api_keys = (
+            load_api_keys(api_keys) if isinstance(api_keys, str) else api_keys
+        )
 
-        _const_dir = constitution_dir or os.path.join(_PROJECT_ROOT, "docs/constitution")
+        _const_dir = constitution_dir or os.path.join(
+            _PROJECT_ROOT, "docs/constitution"
+        )
         _pol_dir = policies_dir or os.path.join(_PROJECT_ROOT, "policies")
 
         self.orchestrator = Orchestrator(
@@ -196,7 +201,9 @@ class AIOSAPI(OLXHandlersMixin, DevicesShardsMixin, PlatformsModulesMixin, CoreH
         # data/devices.sqlite — set the env to share it).
         from aios_core.platforms import DevicePool
 
-        self.device_pool = device_pool or DevicePool(os.environ.get("AIOS_DEVICES_DB", ":memory:"))
+        self.device_pool = device_pool or DevicePool(
+            os.environ.get("AIOS_DEVICES_DB", ":memory:")
+        )
 
         # Shard router: profile → host sticky routing across servers.
         # AIOS_SHARDS_DB points at the shared routes store; without it the

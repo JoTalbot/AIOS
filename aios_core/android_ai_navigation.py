@@ -16,7 +16,7 @@ import hashlib
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from aios_core.android_driver import AndroidDriver
 from aios_core.android_parser import UIAutomatorParser, UIElement
@@ -66,22 +66,25 @@ class ScreenEmbedding:
 @dataclass
 class ScreenMatch:
     """Screen classification match result."""
+
     screen_name: str
     score: float
     matched_elements: int
 
-
     """AI-based screen classifier using embeddings."""
+
+
 class AIScreenClassifier:
     """AIScreenClassifier."""
+
     def __init__(self):
         """Initialize AIScreenClassifier."""
         self.parser = UIAutomatorParser("")
-        self._embeddings: Dict[str, ScreenEmbedding] = {}
-        self._navigation_history: List[dict[str, Any]] = []
+        self._embeddings: dict[str, ScreenEmbedding] = {}
+        self._navigation_history: list[dict[str, Any]] = []
         # Fixed: store actual vectors, not flat floats
-        self._pattern_cache: Dict[str, List[list[float]]] = defaultdict(list)
-        self._positioning_hints: Dict[str, tuple[int, int]] = {}
+        self._pattern_cache: dict[str, list[list[float]]] = defaultdict(list)
+        self._positioning_hints: dict[str, tuple[int, int]] = {}
 
     def _calculate_embedding(self, parser: UIAutomatorParser) -> list[float]:
         """Calculate embedding vector for current screen."""
@@ -171,13 +174,17 @@ class AIScreenClassifier:
 
         embedding = self._calculate_embedding(parser)
         screen_signature = self._generate_screen_signature(xml)
-        pattern_score = self._calculate_similarity_with_cache(embedding, screen_signature)
+        pattern_score = self._calculate_similarity_with_cache(
+            embedding, screen_signature
+        )
 
         best_match = None
         highest_similarity = pattern_score
 
         for name, stored_embedding in self._embeddings.items():
-            similarity = self._calculate_similarity(embedding, stored_embedding.embedding)
+            similarity = self._calculate_similarity(
+                embedding, stored_embedding.embedding
+            )
             if similarity > highest_similarity:
                 highest_similarity = similarity
                 best_match = name
@@ -199,7 +206,9 @@ class AIScreenClassifier:
         )
 
         # Store if novel and confident enough
-        if screen_name == "unknown" or (score > 0.5 and screen_name not in self._embeddings):
+        if screen_name == "unknown" or (
+            score > 0.5 and screen_name not in self._embeddings
+        ):
             if len(embedding) > 0:
                 self._embeddings[screen_signature or screen_name] = embedding_record
             self._navigation_history.append(
@@ -215,7 +224,9 @@ class AIScreenClassifier:
 
         return embedding_record
 
-    def _calculate_similarity_with_cache(self, vec: list[float], cache_key: str) -> float:
+    def _calculate_similarity_with_cache(
+        self, vec: list[float], cache_key: str
+    ) -> float:
         """Calculate similarity with cached patterns."""
         if cache_key not in self._pattern_cache:
             return 0.0
@@ -241,7 +252,9 @@ class AIScreenClassifier:
             return
         # store copy of vector truncated to 16 dims for cache efficiency
         self._pattern_cache[key].append(
-            embedding[:16].copy() if hasattr(embedding, "copy") else list(embedding[:16])
+            embedding[:16].copy()
+            if hasattr(embedding, "copy")
+            else list(embedding[:16])
         )
         # limit cache size to avoid memory bloat
         if len(self._pattern_cache[key]) > 20:
@@ -253,7 +266,7 @@ class AIScreenClassifier:
 
         importlib.import_module("cv2")
 
-    def _template_classify(self, screenshot_path: str) -> Optional[ScreenEmbedding]:
+    def _template_classify(self, screenshot_path: str) -> ScreenEmbedding | None:
         """Fallback template classification when cv2 unavailable."""
         # heuristic fallback: if path exists, return unknown with low confidence
         try:
@@ -272,7 +285,7 @@ class AIScreenClassifier:
 
         return None
 
-    def classify_screenshot(self, screenshot_path: str) -> Optional[ScreenEmbedding]:
+    def classify_screenshot(self, screenshot_path: str) -> ScreenEmbedding | None:
         """Classify screenshot using enhanced embedding matching."""
         try:
             self._ensure_cv()
@@ -295,7 +308,9 @@ class AIScreenClassifier:
         except Exception:
             return self._template_classify(screenshot_path)
 
-    def find_with_cv(self, driver: AndroidDriver, template_path: str) -> Optional[UIElement]:
+    def find_with_cv(
+        self, driver: AndroidDriver, template_path: str
+    ) -> UIElement | None:
         """Enhanced CV-based element finding with embedding similarity."""
         try:
             ctx = driver.dump_ui()
@@ -310,7 +325,7 @@ class AIScreenClassifier:
 
     def _select_best_match(
         self, candidates: list[UIElement], parser: UIAutomatorParser
-    ) -> Optional[UIElement]:
+    ) -> UIElement | None:
         """Select best match using enhanced similarity scoring."""
         if not candidates:
             return None
@@ -383,7 +398,7 @@ class AIScreenClassifier:
         """Record successful tap position for future prediction."""
         self._positioning_hints[resource_id] = (x, y)
 
-    def generate_test_cases(self, flows: List[list[str]]) -> List[dict[str, Any]]:
+    def generate_test_cases(self, flows: list[list[str]]) -> list[dict[str, Any]]:
         """Automated test case generation from user flows (M7)."""
         cases = []
         for idx, flow in enumerate(flows):
@@ -399,15 +414,17 @@ class AIScreenClassifier:
 
     """Self-healing UI element locator with fallback strategies."""
 
+
 class SelfHealingLocator:
     """SelfHealingLocator."""
+
     def __init__(self, driver: AndroidDriver):
         """Initialize SelfHealingLocator."""
         self.driver = driver
         self.parser = UIAutomatorParser("")
         self._failure_counts: dict[str, int] = defaultdict(int)
 
-    def find(self, hints: list[str]) -> Optional[UIElement]:
+    def find(self, hints: list[str]) -> UIElement | None:
         """Execute find."""
         ctx = self.driver.dump_ui()
         self.parser = UIAutomatorParser(ctx.xml)

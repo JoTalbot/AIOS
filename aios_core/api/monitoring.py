@@ -6,19 +6,16 @@ Includes real-time metrics, performance monitoring, and automated alerting.
 """
 
 import asyncio
-import json
 import logging
-import threading
 import time
 from collections import defaultdict, deque
-from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
-from aios_core.logging_config import JSONFormatter, setup_logging
+from aios_core.logging_config import JSONFormatter
 from aios_core.telemetry import MetricCounter, MetricGauge, MetricHistogram
-from aios_core.tracing import tracer
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +78,10 @@ class AlertManager:
 
     def __init__(self):
         """Initialize AlertManager."""
-        self.alerts: Dict[str, Alert] = {}
+        self.alerts: dict[str, Alert] = {}
         self.alert_history: deque = deque(maxlen=1000)
-        self.alert_rules: List[Callable] = []
-        self.notification_handlers: List[Callable] = []
+        self.alert_rules: list[Callable] = []
+        self.notification_handlers: list[Callable] = []
         self._running = False
 
     def add_alert_rule(self, rule: Callable) -> None:
@@ -132,11 +129,11 @@ class AlertManager:
             alert.resolved_at = time.time()
             logger.info(f"Alert resolved: {alert.title}")
 
-    def get_active_alerts(self) -> List[Alert]:
+    def get_active_alerts(self) -> list[Alert]:
         """Get all active (unresolved) alerts."""
         return [alert for alert in self.alerts.values() if not alert.resolved]
 
-    def get_alert_history(self, limit: int = 100) -> List[Alert]:
+    def get_alert_history(self, limit: int = 100) -> list[Alert]:
         """Get alert history."""
         return list(self.alert_history)[-limit:]
 
@@ -147,12 +144,20 @@ class PerformanceMonitor:
     def __init__(self):
         """Initialize PerformanceMonitor."""
         self.metrics = {
-            "request_count": MetricCounter("requests_total", "Total number of requests"),
+            "request_count": MetricCounter(
+                "requests_total", "Total number of requests"
+            ),
             "error_count": MetricCounter("errors_total", "Total number of errors"),
-            "response_time": MetricHistogram("response_time_seconds", "Response time distribution"),
-            "active_connections": MetricGauge("active_connections", "Number of active connections"),
+            "response_time": MetricHistogram(
+                "response_time_seconds", "Response time distribution"
+            ),
+            "active_connections": MetricGauge(
+                "active_connections", "Number of active connections"
+            ),
             "cpu_usage": MetricGauge("cpu_usage_percent", "CPU usage percentage"),
-            "memory_usage": MetricGauge("memory_usage_percent", "Memory usage percentage"),
+            "memory_usage": MetricGauge(
+                "memory_usage_percent", "Memory usage percentage"
+            ),
         }
 
         self.request_times = deque(maxlen=1000)
@@ -236,7 +241,9 @@ class IntegrationMonitor:
     def _create_integration_metrics(self) -> dict[str, Any]:
         """Factory for per-integration metric objects (name set on first use)."""
         return {
-            "requests": MetricCounter("integration_requests", "Requests for integration"),
+            "requests": MetricCounter(
+                "integration_requests", "Requests for integration"
+            ),
             "errors": MetricCounter("integration_errors", "Errors for integration"),
             "response_time": MetricHistogram(
                 "integration_response_time", "Response time for integration"
@@ -263,7 +270,7 @@ class IntegrationMonitor:
         if not success:
             metrics["errors"].add(1)
 
-    async def run_health_checks(self) -> Dict[str, dict[str, Any]]:
+    async def run_health_checks(self) -> dict[str, dict[str, Any]]:
         """Run health checks for all registered integrations."""
         results = {}
 
@@ -382,7 +389,7 @@ class MonitoringSystem:
     def _setup_default_alert_rules(self):
         """Setup default alert evaluation rules."""
 
-        async def high_cpu_rule(metrics: MetricSnapshot) -> List[Alert]:
+        async def high_cpu_rule(metrics: MetricSnapshot) -> list[Alert]:
             """high cpu rule."""
             if metrics.cpu_usage > 80:
                 return [
@@ -397,7 +404,7 @@ class MonitoringSystem:
                 ]
             return []
 
-        async def high_error_rate_rule(metrics: MetricSnapshot) -> List[Alert]:
+        async def high_error_rate_rule(metrics: MetricSnapshot) -> list[Alert]:
             """high error rate rule."""
             if metrics.error_rate > 0.05:
                 return [
@@ -412,7 +419,7 @@ class MonitoringSystem:
                 ]
             return []
 
-        async def integration_failure_rule(metrics: MetricSnapshot) -> List[Alert]:
+        async def integration_failure_rule(metrics: MetricSnapshot) -> list[Alert]:
             """integration failure rule."""
             if metrics.integration_events_failed > 10:
                 return [

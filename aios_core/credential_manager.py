@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import math
 import os
 import time
 from dataclasses import dataclass, field
@@ -33,7 +32,7 @@ class CredentialType(Enum):
     TOKEN = "token"
     COOKIE = "cookie"
     SSH_KEY = "ssh_key"
-    PAT = "pat"              # Personal Access Token
+    PAT = "pat"  # Personal Access Token
     OAUTH = "oauth"
     TWO_FA_SECRET = "2fa_secret"
 
@@ -41,10 +40,10 @@ class CredentialType(Enum):
 class RotationPolicy(Enum):
     """Credential rotation policies."""
 
-    NEVER = "never"          # No automatic rotation
-    DAILY = "daily"          # Rotate every 24 hours
-    WEEKLY = "weekly"        # Rotate every 7 days
-    MONTHLY = "monthly"      # Rotate every 30 days
+    NEVER = "never"  # No automatic rotation
+    DAILY = "daily"  # Rotate every 24 hours
+    WEEKLY = "weekly"  # Rotate every 7 days
+    MONTHLY = "monthly"  # Rotate every 30 days
     ON_EXPIRY = "on_expiry"  # Rotate when credential expires
     ON_COMPROMISE = "on_compromise"  # Rotate immediately on suspected compromise
 
@@ -54,11 +53,11 @@ class CredentialEntry:
     """A stored credential entry."""
 
     credential_id: str
-    platform: str                # "olx", "rozetka", "tiktok", etc.
+    platform: str  # "olx", "rozetka", "tiktok", etc.
     credential_type: CredentialType
-    username: str = ""           # Associated username/email
-    value_encrypted: bytes = b"" # Encrypted credential value
-    value_hash: str = ""         # SHA-256 hash for integrity check
+    username: str = ""  # Associated username/email
+    value_encrypted: bytes = b""  # Encrypted credential value
+    value_hash: str = ""  # SHA-256 hash for integrity check
     created_at: float = field(default_factory=time.time)
     expires_at: float | None = None
     last_rotated_at: float | None = None
@@ -127,7 +126,7 @@ class CredentialDisplay:
     platform: str
     credential_type: str
     username: str
-    masked_value: str          # e.g. "****abcd"
+    masked_value: str  # e.g. "****abcd"
     is_active: bool
     age_days: float
     needs_rotation: bool
@@ -383,7 +382,9 @@ class CredentialManager:
         Returns:
             Updated CredentialEntry, or None.
         """
-        return self.rotate(credential_id, new_value, reason="compromise", rotated_by=rotated_by)
+        return self.rotate(
+            credential_id, new_value, reason="compromise", rotated_by=rotated_by
+        )
 
     def deactivate(self, credential_id: str) -> CredentialEntry | None:
         """Deactivate a credential.
@@ -454,7 +455,9 @@ class CredentialManager:
                     is_active=entry.is_active,
                     age_days=round(entry.age_days, 1),
                     needs_rotation=entry.needs_rotation,
-                    days_until_expiry=round(entry.days_until_expiry, 1) if entry.days_until_expiry else None,
+                    days_until_expiry=round(entry.days_until_expiry, 1)
+                    if entry.days_until_expiry
+                    else None,
                 )
             )
 

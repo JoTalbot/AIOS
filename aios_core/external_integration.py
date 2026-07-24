@@ -8,26 +8,33 @@ Provides advanced integration capabilities with external systems including:
 """
 
 import asyncio
-import json
 import logging
 import time
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, StreamingResponse
-from starlette.routing import Mount, Route
-from starlette.websockets import WebSocket
+from starlette.responses import JSONResponse
+from starlette.routing import Route
 
 from .logging_config import setup_logging
-from .telemetry import MetricCounter, MetricGauge, MetricHistogram
-from .tracing import tracer
+from .telemetry import MetricCounter, MetricHistogram
 
-__all__ = ["WebhookConfig", "GraphQLConfig", "IntegrationMetrics", "WebhookManager", "GraphQLAPI", "MessageQueueConnector", "KafkaConnector", "ExternalIntegrationAPI"]
+__all__ = [
+    "WebhookConfig",
+    "GraphQLConfig",
+    "IntegrationMetrics",
+    "WebhookManager",
+    "GraphQLAPI",
+    "MessageQueueConnector",
+    "KafkaConnector",
+    "ExternalIntegrationAPI",
+]
 
 
 @dataclass
@@ -56,9 +63,13 @@ class IntegrationMetrics:
 
     def __init__(self):
         """Initialize IntegrationMetrics."""
-        self.webhook_sent = MetricCounter("webhook_sent", "Total webhook notifications sent")
+        self.webhook_sent = MetricCounter(
+            "webhook_sent", "Total webhook notifications sent"
+        )
         self.webhook_failed = MetricCounter("webhook_failed", "Total webhook failures")
-        self.graphql_requests = MetricCounter("graphql_requests", "Total GraphQL requests")
+        self.graphql_requests = MetricCounter(
+            "graphql_requests", "Total GraphQL requests"
+        )
         self.graphql_errors = MetricCounter("graphql_errors", "Total GraphQL errors")
         self.message_queue_processed = MetricCounter(
             "message_queue_processed", "Total messages processed"
@@ -112,7 +123,9 @@ class WebhookManager:
         payload = {"event": event, "timestamp": time.time(), "data": data}
 
         headers = self.config.headers or {}
-        headers.update({"Content-Type": "application/json", "User-Agent": "AIOS-Integration/1.0"})
+        headers.update(
+            {"Content-Type": "application/json", "User-Agent": "AIOS-Integration/1.0"}
+        )
 
         for attempt in range(self.config.retry_count):
             try:
@@ -238,9 +251,9 @@ class ExternalIntegrationAPI:
     def __init__(self):
         """Initialize ExternalIntegrationAPI."""
         self.metrics = IntegrationMetrics()
-        self.webhooks: Dict[str, WebhookManager] = {}
+        self.webhooks: dict[str, WebhookManager] = {}
         self.graphql = None
-        self.message_queues: Dict[str, MessageQueueConnector] = {}
+        self.message_queues: dict[str, MessageQueueConnector] = {}
         self.logger = logging.getLogger("aios.integration")
 
     def add_webhook(self, name: str, config: WebhookConfig) -> None:
@@ -258,7 +271,9 @@ class ExternalIntegrationAPI:
         self.message_queues[name] = connector
         self.logger.info(f"Added message queue: {name}")
 
-    async def send_webhook(self, webhook_name: str, event: str, data: dict[str, Any]) -> bool:
+    async def send_webhook(
+        self, webhook_name: str, event: str, data: dict[str, Any]
+    ) -> bool:
         """Send webhook notification."""
         if webhook_name not in self.webhooks:
             self.logger.error(f"Webhook {webhook_name} not found")
@@ -314,7 +329,9 @@ def create_integration_app(integration_api: ExternalIntegrationAPI) -> Starlette
                 return JSONResponse({"error": "Webhook not found"}, status_code=404)
 
             # Process webhook
-            success = await integration_api.send_webhook(webhook_name, data.get("event", ""), data)
+            success = await integration_api.send_webhook(
+                webhook_name, data.get("event", ""), data
+            )
 
             return JSONResponse({"success": success})
 
@@ -332,7 +349,9 @@ def create_integration_app(integration_api: ExternalIntegrationAPI) -> Starlette
             variables = data.get("variables", {})
 
             if not integration_api.graphql:
-                return JSONResponse({"error": "GraphQL not configured"}, status_code=503)
+                return JSONResponse(
+                    {"error": "GraphQL not configured"}, status_code=503
+                )
 
             result = integration_api.graphql.execute_query(query, variables)
 

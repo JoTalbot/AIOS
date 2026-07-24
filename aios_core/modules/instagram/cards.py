@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, List, Optional
+from collections.abc import Callable
 
 from aios_core.modules.olx.adb import ADBController
 from aios_core.modules.olx.collector import OLXCollector
@@ -37,7 +37,7 @@ class InstagramCollector:
 
     def __init__(
         self,
-        adb: Optional[ADBController] = None,
+        adb: ADBController | None = None,
         parser=None,
         driver=None,
         serial: str | None = None,
@@ -92,8 +92,8 @@ class InstagramCollector:
         self,
         query: str | None = None,
         max_cards: int = 100,
-        progress: Optional[Callable[[int, int, int], None]] = None,
-    ) -> List[AdCard]:
+        progress: Callable[[int, int, int], None] | None = None,
+    ) -> list[AdCard]:
         """Собирает дедуплицированные карточки с текущей выдачи."""
         self._drive(query)
         return self._collector().collect(
@@ -107,7 +107,7 @@ class InstagramCollector:
         storage,
         query: str | None = None,
         max_cards: int = 100,
-        progress: Optional[Callable[[int, int, int], None]] = None,
+        progress: Callable[[int, int, int], None] | None = None,
     ):
         """Сбор + персист в InstagramStorage (как OLXCollector)."""
         self._drive(query)

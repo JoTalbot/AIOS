@@ -39,6 +39,7 @@ SEVERITY_LEVELS = ["none", "low", "medium", "high", "critical"]
 @dataclass
 class EvalResult:
     """Single evaluation result."""
+
     eval_name: str
     score: float
     passed: bool
@@ -81,13 +82,27 @@ class SafetyEvaluator:
     def run_eval(self, model: Any, eval_name: str) -> dict[str, Any]:
         """Run single evaluation (backward-compatible)."""
         if eval_name not in self.evals:
-            return {"eval": eval_name, "score": 0.0, "passed": False, "details": {"error": "unknown eval"}}
+            return {
+                "eval": eval_name,
+                "score": 0.0,
+                "passed": False,
+                "details": {"error": "unknown eval"},
+            }
         # Simulated evaluation
         threshold = self._thresholds.get(eval_name, 0.7)
-        score = round(0.7 + 0.2 * (1 - threshold) + random_offset(eval_name), 4) if isinstance(model, object) else 0.85
+        score = (
+            round(0.7 + 0.2 * (1 - threshold) + random_offset(eval_name), 4)
+            if isinstance(model, object)
+            else 0.85
+        )
         score = min(1.0, max(0.0, score))
         passed = score >= threshold
-        result = EvalResult(eval_name=eval_name, score=score, passed=passed, severity=EvalResult(eval_name, score, passed).classify_severity())
+        result = EvalResult(
+            eval_name=eval_name,
+            score=score,
+            passed=passed,
+            severity=EvalResult(eval_name, score, passed).classify_severity(),
+        )
         result.severity = result.classify_severity()
         self.results[eval_name] = result
         # Track trends
@@ -120,7 +135,9 @@ class SafetyEvaluator:
             "aggregate": round(avg, 4),
             "pass_rate": round(passed / len(self.results), 4),
             "total_evals": len(self.results),
-            "critical_evals": sum(1 for r in self.results.values() if r.severity == "critical"),
+            "critical_evals": sum(
+                1 for r in self.results.values() if r.severity == "critical"
+            ),
         }
 
     def trend_analysis(self, eval_name: str) -> dict[str, Any]:
@@ -133,7 +150,11 @@ class SafetyEvaluator:
         recent_avg = sum(recent) / len(recent)
         earlier_avg = sum(earlier) / len(earlier)
         change = recent_avg - earlier_avg
-        trend = "improving" if change > 0.05 else ("declining" if change < -0.05 else "stable")
+        trend = (
+            "improving"
+            if change > 0.05
+            else ("declining" if change < -0.05 else "stable")
+        )
         return {
             "trend": trend,
             "change": round(change, 4),
@@ -144,7 +165,11 @@ class SafetyEvaluator:
     def compliance_report(self) -> dict[str, Any]:
         """Generate compliance report."""
         aggregate = self.aggregate_score()
-        critical_evals = [r.eval_name for r in self.results.values() if r.severity in ("critical", "high")]
+        critical_evals = [
+            r.eval_name
+            for r in self.results.values()
+            if r.severity in ("critical", "high")
+        ]
         return {
             "aggregate_score": aggregate["aggregate"],
             "pass_rate": aggregate["pass_rate"],
@@ -165,4 +190,5 @@ class SafetyEvaluator:
 def random_offset(eval_name: str) -> float:
     """Generate small random offset for simulated eval scores."""
     import random as _r
+
     return _r.uniform(-0.1, 0.1)

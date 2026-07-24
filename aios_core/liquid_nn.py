@@ -12,9 +12,8 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -23,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LiquidNeuron:
     """Liquid Time-Constant neuron with adaptive dynamics."""
+
     id: str = ""
     tau: float = 1.0  # time constant
     state: float = 0.0  # membrane potential
@@ -54,7 +54,9 @@ class LiquidNeuralNetwork:
     """
 
     def __init__(self, size: int = 64) -> None:
-        self.neurons: list[LiquidNeuron] = [LiquidNeuron(id=f"n{i}") for i in range(size)]
+        self.neurons: list[LiquidNeuron] = [
+            LiquidNeuron(id=f"n{i}") for i in range(size)
+        ]
         self.size = size
         self._connections: dict[str, list[tuple[str, float]]] = {}
         self._output_weights: list[float] = [0.1] * size
@@ -75,7 +77,7 @@ class LiquidNeuralNetwork:
                 # Add connection inputs
                 if neuron.id in self._connections:
                     for src_id, weight in self._connections[neuron.id]:
-                        src_idx = int(src_id[1:]) if src_id.startswith('n') else 0
+                        src_idx = int(src_id[1:]) if src_id.startswith("n") else 0
                         if src_idx < len(self.neurons):
                             inp += self.neurons[src_idx].state * weight
                 neuron.step(inp)
@@ -89,7 +91,7 @@ class LiquidNeuralNetwork:
 
     def set_weights(self, weights: list[float]) -> None:
         """Set output weights."""
-        self._output_weights = weights[:self.size]
+        self._output_weights = weights[: self.size]
 
     def reset(self) -> None:
         """Reset all neuron states."""

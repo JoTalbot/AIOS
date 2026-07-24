@@ -23,7 +23,12 @@ from .calibrate import (
 from .catalog import load_catalog, load_catalog_file
 from .compliance import compliance_block, compliance_guard, rate_limit_hours
 from .dashboard import dashboard_html
-from .descriptor import PlatformDescriptor, get_platform, list_platforms, register_platform
+from .descriptor import (
+    PlatformDescriptor,
+    get_platform,
+    list_platforms,
+    register_platform,
+)
 from .devices import DevicePool
 from .fleet import PoolMonitor, ensure_device
 from .fleetsched import FleetScheduler

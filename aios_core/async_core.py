@@ -17,7 +17,8 @@ Usage::
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Awaitable, Callable, Dict, List, Sequence
+from collections.abc import Awaitable, Callable, Sequence
+from typing import Any
 
 __all__ = [
     "AsyncRunner",
@@ -40,14 +41,12 @@ class AsyncRunner:
         method = getattr(self._sync, method_name)
         return await asyncio.to_thread(method, *args, **kwargs)
 
-    async def _run_many(self, calls: Sequence[tuple]) -> List[Any]:
+    async def _run_many(self, calls: Sequence[tuple]) -> list[Any]:
         """Execute multiple sync method calls concurrently.
 
         Each item in *calls* is ``(method_name, args, kwargs)``.
         """
-        coros = [
-            self._run(name, *a, **kw) for name, a, kw in calls
-        ]
+        coros = [self._run(name, *a, **kw) for name, a, kw in calls]
         return list(await asyncio.gather(*coros, return_exceptions=True))
 
 
@@ -94,7 +93,7 @@ class AsyncDatabase(AsyncRunner):
 
     async def batch_query(
         self, queries: Sequence[tuple[str, tuple]]
-    ) -> List[list[dict]]:
+    ) -> list[list[dict]]:
         """Execute multiple queries concurrently.
 
         Each item is ``(sql, params)``.
@@ -103,9 +102,7 @@ class AsyncDatabase(AsyncRunner):
         results = await self._run_many(calls)
         return results
 
-    async def batch_execute(
-        self, statements: Sequence[tuple[str, tuple]]
-    ) -> List[Any]:
+    async def batch_execute(self, statements: Sequence[tuple[str, tuple]]) -> list[Any]:
         """Execute multiple write statements concurrently."""
         calls = [("execute", (sql, params), {}) for sql, params in statements]
         results = await self._run_many(calls)
@@ -141,9 +138,7 @@ class AsyncKnowledgeGraph(AsyncRunner):
         """Find shortest path between nodes."""
         return await self._run("shortest_path", source, target)
 
-    async def batch_add_nodes(
-        self, nodes: Sequence[tuple[str, dict]]
-    ) -> List[dict]:
+    async def batch_add_nodes(self, nodes: Sequence[tuple[str, dict]]) -> list[dict]:
         """Add multiple nodes concurrently."""
         calls = [("add_node", (nid, props), {}) for nid, props in nodes]
         results = await self._run_many(calls)
@@ -205,7 +200,7 @@ class AsyncEventBusWrapper(AsyncRunner):
 
 async def async_batch(
     func: Callable, args_list: Sequence[tuple], kwargs_list: Sequence[dict] = ()
-) -> List[Any]:
+) -> list[Any]:
     """Run *func* for each ``(args, kwargs)`` pair concurrently via to_thread.
 
     Useful for any synchronous function that needs to be called many
@@ -221,7 +216,7 @@ async def async_batch(
 async def async_parallel(
     coros: Sequence[Awaitable],
     max_concurrent: int = 10,
-) -> List[Any]:
+) -> list[Any]:
     """Execute async coroutines with a concurrency limit.
 
     Uses a semaphore to cap concurrent execution, preventing
@@ -233,6 +228,6 @@ async def async_parallel(
         async with semaphore:
             return await c
 
-    return list(await asyncio.gather(
-        *(_guarded(c) for c in coros), return_exceptions=True
-    ))
+    return list(
+        await asyncio.gather(*(_guarded(c) for c in coros), return_exceptions=True)
+    )

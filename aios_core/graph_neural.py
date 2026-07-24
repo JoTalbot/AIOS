@@ -14,9 +14,8 @@ from __future__ import annotations
 import logging
 import math
 import random
-import time
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GNNLayer:
     """Single GNN message-passing layer configuration."""
+
     name: str
     aggregation: str = "mean"  # mean, sum, max
     activation: str = "relu"  # relu, sigmoid, tanh, none
@@ -56,11 +56,13 @@ class GraphNeuralNetwork:
 
         # Initialize default layers
         for i in range(layers):
-            self._gnn_layers.append(GNNLayer(
-                name=f"layer_{i}",
-                aggregation="mean",
-                activation="relu" if i < layers - 1 else "none",
-            ))
+            self._gnn_layers.append(
+                GNNLayer(
+                    name=f"layer_{i}",
+                    aggregation="mean",
+                    activation="relu" if i < layers - 1 else "none",
+                )
+            )
 
     # ── Node Management ──────────────────────────────────────────────
 
@@ -88,7 +90,11 @@ class GraphNeuralNetwork:
         if features:
             self.edge_features[(src, dst)] = features
 
-    def add_edges(self, edge_list: list[tuple[str, str]], features: list[list[float]] | None = None) -> None:
+    def add_edges(
+        self,
+        edge_list: list[tuple[str, str]],
+        features: list[list[float]] | None = None,
+    ) -> None:
         """Add multiple edges."""
         for i, (src, dst) in enumerate(edge_list):
             self.edges.append((src, dst))
@@ -107,7 +113,9 @@ class GraphNeuralNetwork:
 
     # ── Message Passing ──────────────────────────────────────────────
 
-    def _aggregate(self, messages: list[list[float]], method: str = "mean") -> list[float]:
+    def _aggregate(
+        self, messages: list[list[float]], method: str = "mean"
+    ) -> list[float]:
         """Aggregate messages from neighbors."""
         if not messages:
             return [0.0] * self.hidden_dim
@@ -137,14 +145,19 @@ class GraphNeuralNetwork:
             return values
         return [v / norm for v in values]
 
-    def message_passing(self, edges: list[tuple[str, str]] | None = None,
-                        num_layers: int | None = None) -> dict[str, list[float]]:
+    def message_passing(
+        self, edges: list[tuple[str, str]] | None = None, num_layers: int | None = None
+    ) -> dict[str, list[float]]:
         """Run message passing across layers."""
         edge_set = edges if edges is not None else self.edges
         n_layers = num_layers or len(self._gnn_layers)
 
         for layer_idx in range(n_layers):
-            layer = self._gnn_layers[layer_idx] if layer_idx < len(self._gnn_layers) else GNNLayer(name=f"l{layer_idx}")
+            layer = (
+                self._gnn_layers[layer_idx]
+                if layer_idx < len(self._gnn_layers)
+                else GNNLayer(name=f"l{layer_idx}")
+            )
             new_embeddings = {}
 
             for node_id, current_emb in self.embeddings.items():
@@ -178,7 +191,9 @@ class GraphNeuralNetwork:
 
                 # Dropout (simplified: zero out random elements)
                 if layer.dropout > 0:
-                    activated = [v if random.random() > layer.dropout else 0.0 for v in activated]
+                    activated = [
+                        v if random.random() > layer.dropout else 0.0 for v in activated
+                    ]
 
                 new_embeddings[node_id] = activated
 

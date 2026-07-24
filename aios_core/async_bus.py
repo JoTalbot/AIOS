@@ -17,7 +17,8 @@ import asyncio
 import fnmatch
 import time
 from collections import defaultdict
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from aios_core.event_bus import EventBus
 
@@ -35,7 +36,7 @@ class AsyncMiddleware:
 
     async def before_emit(
         self, event: str, payload: dict[str, Any]
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Transform *payload* before emission.  Return ``None`` to suppress."""
         return payload
 
@@ -55,7 +56,7 @@ class _PriorityEntry:
         self.priority = priority
         self.name = name or handler.__qualname__
 
-    def __lt__(self, other: "_PriorityEntry") -> bool:
+    def __lt__(self, other: _PriorityEntry) -> bool:
         return self.priority < other.priority
 
 
@@ -82,10 +83,10 @@ class AsyncEventBus:
     ) -> None:
         """Initialize AsyncEventBus."""
         self._sync = sync_bus or EventBus()
-        self._handlers: Dict[str, List[_PriorityEntry]] = defaultdict(list)
-        self._wildcards: List[tuple[str, _PriorityEntry]] = []
-        self._middleware: List[AsyncMiddleware] = []
-        self._history: List[dict[str, Any]] = []
+        self._handlers: dict[str, list[_PriorityEntry]] = defaultdict(list)
+        self._wildcards: list[tuple[str, _PriorityEntry]] = []
+        self._middleware: list[AsyncMiddleware] = []
+        self._history: list[dict[str, Any]] = []
         self._history_size = history_size
         self._max_concurrent = max_concurrent
         self._semaphore = asyncio.Semaphore(max_concurrent)
@@ -169,15 +170,14 @@ class AsyncEventBus:
         self._sync.emit(event, "async_bus", payload)
 
         # Collect async handlers: exact match + wildcards
-        handlers: List[Handler] = [
-            e.handler for e in self._handlers.get(event, [])
-        ]
+        handlers: list[Handler] = [e.handler for e in self._handlers.get(event, [])]
         for pattern, entry in self._wildcards:
             if fnmatch.fnmatch(event, pattern):
                 handlers.append(entry.handler)
 
         # Dispatch with concurrency control
         if handlers:
+
             async def _safe_call(h: Handler) -> None:
                 async with self._semaphore:
                     try:
@@ -204,7 +204,7 @@ class AsyncEventBus:
             {"event": event, "payload": payload, "elapsed_ms": round(elapsed, 3)}
         )
         if len(self._history) > self._history_size:
-            self._history = self._history[-self._history_size:]
+            self._history = self._history[-self._history_size :]
 
     # ------------------------------------------------------------------
     # Replay / inspection
@@ -222,7 +222,7 @@ class AsyncEventBus:
 
     def get_history(
         self, event: str | None = None, limit: int = 50
-    ) -> List[dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Return recent history, optionally filtered by *event* name."""
         if event:
             filtered = [r for r in self._history if r["event"] == event]
@@ -238,9 +238,7 @@ class AsyncEventBus:
         """Return combined statistics."""
         return {
             **self._sync.stats(),
-            "async_handlers": sum(
-                len(v) for v in self._handlers.values()
-            ),
+            "async_handlers": sum(len(v) for v in self._handlers.values()),
             "wildcard_patterns": len(self._wildcards),
             "middleware_count": len(self._middleware),
             "async_events": list(self._handlers.keys()),

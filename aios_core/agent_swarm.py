@@ -17,13 +17,14 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class AgentRole(str, Enum):
     """Agent role in swarm."""
+
     LEADER = "leader"
     WORKER = "worker"
     OBSERVER = "observer"
@@ -33,24 +34,27 @@ class AgentRole(str, Enum):
 @dataclass
 class SwarmAgent:
     """Individual agent in the swarm."""
+
     id: str = ""
     name: str = ""
     role: AgentRole = AgentRole.WORKER
     capabilities: list[str] = field(default_factory=list)
     reputation: float = 1.0  # 0..5
     memory: dict[str, Any] = field(default_factory=dict)
-    current_task: Optional[str] = None
+    current_task: str | None = None
     active: bool = True
 
     def __post_init__(self) -> None:
         if not self.id:
             import uuid
+
             self.id = str(uuid.uuid4())[:8]
 
 
 @dataclass
 class SwarmMessage:
     """Inter-agent communication message."""
+
     from_id: str
     to_id: str | None = None  # None = broadcast
     content: dict[str, Any] = field(default_factory=dict)
@@ -60,6 +64,7 @@ class SwarmMessage:
 @dataclass
 class SwarmDecision:
     """Collective decision with voting results."""
+
     topic: str
     decision: str = "pending"
     votes: dict[str, str] = field(default_factory=dict)  # agent_id → vote
@@ -87,7 +92,7 @@ class AgentSwarm:
         self.shared_memory: dict[str, Any] = {}
         self.messages: list[SwarmMessage] = []
         self.decisions: list[SwarmDecision] = []
-        self._leader_id: Optional[str] = None
+        self._leader_id: str | None = None
 
     # ── Agent Management ────────────────────────────────────────
 
@@ -107,7 +112,9 @@ class AgentSwarm:
 
     # ── Messaging ────────────────────────────────────────────────
 
-    def send_message(self, from_id: str, to_id: str | None, content: dict[str, Any]) -> SwarmMessage:
+    def send_message(
+        self, from_id: str, to_id: str | None, content: dict[str, Any]
+    ) -> SwarmMessage:
         """Send message (direct or broadcast)."""
         msg = SwarmMessage(from_id=from_id, to_id=to_id, content=content)
         self.messages.append(msg)
@@ -125,15 +132,21 @@ class AgentSwarm:
         """Broadcast a message to all agents."""
         self.send_message("system", None, message)
 
-    def get_messages(self, agent_id: str | None = None, limit: int = 50) -> list[SwarmMessage]:
+    def get_messages(
+        self, agent_id: str | None = None, limit: int = 50
+    ) -> list[SwarmMessage]:
         """Get messages for an agent or all."""
         if agent_id:
-            return [m for m in self.messages if m.to_id == agent_id or m.to_id is None][-limit:]
+            return [m for m in self.messages if m.to_id == agent_id or m.to_id is None][
+                -limit:
+            ]
         return self.messages[-limit:]
 
     # ── Collective Decisions ─────────────────────────────────────
 
-    def collective_decision(self, topic: str, options: list[str] | None = None) -> SwarmDecision:
+    def collective_decision(
+        self, topic: str, options: list[str] | None = None
+    ) -> SwarmDecision:
         """Make a collective decision via voting."""
         options = options or ["approve", "reject"]
         decision = SwarmDecision(topic=topic)
@@ -155,7 +168,9 @@ class AgentSwarm:
         if vote_counts:
             decision.majority = max(vote_counts, key=vote_counts.get)
             total = sum(vote_counts.values())
-            decision.confidence = vote_counts[decision.majority] / total if total > 0 else 0.0
+            decision.confidence = (
+                vote_counts[decision.majority] / total if total > 0 else 0.0
+            )
 
         decision.decision = decision.majority
         self.decisions.append(decision)
@@ -169,7 +184,11 @@ class AgentSwarm:
             vote_counts[v] = vote_counts.get(v, 0) + 1
         if vote_counts:
             decision.majority = max(vote_counts, key=vote_counts.get)
-            decision.confidence = vote_counts[decision.majority] / len(agent_votes) if agent_votes else 0.0
+            decision.confidence = (
+                vote_counts[decision.majority] / len(agent_votes)
+                if agent_votes
+                else 0.0
+            )
         decision.decision = decision.majority
         self.decisions.append(decision)
         return decision
@@ -198,11 +217,16 @@ class AgentSwarm:
 
     # ── Task Assignment ──────────────────────────────────────────
 
-    def assign_task(self, task_name: str, required_capability: str) -> SwarmAgent | None:
+    def assign_task(
+        self, task_name: str, required_capability: str
+    ) -> SwarmAgent | None:
         """Assign task to best-fit agent by capability."""
         candidates = [
-            a for a in self.agents.values()
-            if a.active and a.current_task is None and required_capability in a.capabilities
+            a
+            for a in self.agents.values()
+            if a.active
+            and a.current_task is None
+            and required_capability in a.capabilities
         ]
         if not candidates:
             return None

@@ -14,13 +14,14 @@ import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 __all__ = ["PredictiveMaintenance", "FailureTrend"]
 
 
 class RiskLevel(Enum):
     """RiskLevel."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -30,6 +31,7 @@ class RiskLevel(Enum):
 @dataclass
 class FailurePrediction:
     """Predicted failure with risk level and confidence."""
+
     device_id: str
     risk_level: RiskLevel
     risk_score: float  # 0.0 - 1.0
@@ -43,6 +45,7 @@ class FailurePrediction:
 @dataclass
 class TrendPoint:
     """TrendPoint."""
+
     timestamp: float
     value: float
     label: str = ""
@@ -54,23 +57,33 @@ class PredictiveMaintenance:
     def __init__(self, window_size: int = 100):
         """Initialize PredictiveMaintenance."""
         self.window_size = window_size
-        self._failure_history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=window_size))
-        self._latency_history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=window_size))
-        self._success_history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=window_size))
-        self._predictions: List[FailurePrediction] = []
+        self._failure_history: dict[str, deque] = defaultdict(
+            lambda: deque(maxlen=window_size)
+        )
+        self._latency_history: dict[str, deque] = defaultdict(
+            lambda: deque(maxlen=window_size)
+        )
+        self._success_history: dict[str, deque] = defaultdict(
+            lambda: deque(maxlen=window_size)
+        )
+        self._predictions: list[FailurePrediction] = []
         self.version = "8.0.0"
 
-    def record_event(self, device_id: str, action: str, latency_ms: float, success: bool) -> None:
+    def record_event(
+        self, device_id: str, action: str, latency_ms: float, success: bool
+    ) -> None:
         """Record execution event for trend analysis."""
         ts = time.time()
-        self._latency_history[f"{device_id}:{action}"].append(TrendPoint(ts, latency_ms, action))
+        self._latency_history[f"{device_id}:{action}"].append(
+            TrendPoint(ts, latency_ms, action)
+        )
         self._success_history[f"{device_id}:{action}"].append(
             TrendPoint(ts, 1.0 if success else 0.0, action)
         )
         if not success:
             self._failure_history[device_id].append(TrendPoint(ts, 1.0, action))
 
-    def _calculate_failure_rate_trend(self, device_id: str) -> Tuple[float, float, str]:
+    def _calculate_failure_rate_trend(self, device_id: str) -> tuple[float, float, str]:
         """Returns (current_rate, trend_slope, description)."""
         failures = list(self._failure_history.get(device_id, []))
         if len(failures) < 3:
@@ -96,7 +109,7 @@ class PredictiveMaintenance:
 
     def _calculate_latency_trend(
         self, device_id: str, action: str = ""
-    ) -> Tuple[float, float, str]:
+    ) -> tuple[float, float, str]:
         """Latency trend analysis."""
         key = f"{device_id}:{action}" if action else device_id
         # gather all latencies for device
@@ -142,8 +155,12 @@ class PredictiveMaintenance:
 
     def predict(self, device_id: str) -> FailurePrediction:
         """Generate failure prediction for device."""
-        failure_rate, failure_trend, failure_desc = self._calculate_failure_rate_trend(device_id)
-        latency_avg, latency_trend, latency_desc = self._calculate_latency_trend(device_id)
+        failure_rate, failure_trend, failure_desc = self._calculate_failure_rate_trend(
+            device_id
+        )
+        latency_avg, latency_trend, latency_desc = self._calculate_latency_trend(
+            device_id
+        )
 
         reasons = []
         recommendations = []
@@ -168,7 +185,9 @@ class PredictiveMaintenance:
         if latency_avg > 8000:
             reasons.append(f"Критическая задержка: {latency_desc}")
             risk_score += 0.3
-            recommendations.append("Эмулятор перегружен — уменьшить параллелизм, освободить RAM")
+            recommendations.append(
+                "Эмулятор перегружен — уменьшить параллелизм, освободить RAM"
+            )
         elif latency_avg > 3000:
             reasons.append(f"Высокая задержка: {latency_desc}")
             risk_score += 0.15
@@ -176,7 +195,9 @@ class PredictiveMaintenance:
         if latency_trend > 100:
             reasons.append(f"Деградация производительности: {latency_desc}")
             risk_score += 0.15
-            recommendations.append("Профилировать tap/type операции, включить кэширование UI dump")
+            recommendations.append(
+                "Профилировать tap/type операции, включить кэширование UI dump"
+            )
 
         # Success rate check
         success_points = []
@@ -186,11 +207,13 @@ class PredictiveMaintenance:
         if success_points:
             success_rate = sum(p.value for p in success_points) / len(success_points)
             if success_rate < 0.5:
-                reasons.append(f"Низкий success rate: {success_rate*100:.0f}%")
+                reasons.append(f"Низкий success rate: {success_rate * 100:.0f}%")
                 risk_score += 0.3
-                recommendations.append("Проверить селекторы, обновить hints в platforms/*.yaml")
+                recommendations.append(
+                    "Проверить селекторы, обновить hints в platforms/*.yaml"
+                )
             elif success_rate < 0.8:
-                reasons.append(f"Средний success rate: {success_rate*100:.0f}%")
+                reasons.append(f"Средний success rate: {success_rate * 100:.0f}%")
                 risk_score += 0.1
 
         # Determine risk level
@@ -233,10 +256,12 @@ class PredictiveMaintenance:
             self._predictions = self._predictions[-1000:]
         return pred
 
-    def predict_all_devices(self) -> List[FailurePrediction]:
+    def predict_all_devices(self) -> list[FailurePrediction]:
         """Predict for all known devices."""
         devices = set()
-        for k in list(self._latency_history.keys()) + list(self._failure_history.keys()):
+        for k in list(self._latency_history.keys()) + list(
+            self._failure_history.keys()
+        ):
             if ":" in k:
                 devices.add(k.split(":")[0])
             else:

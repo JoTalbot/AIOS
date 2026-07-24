@@ -13,9 +13,9 @@ UI element mapping from calibration.
 
 from __future__ import annotations
 
-from enum import Enum
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from enum import Enum
 
 from aios_core.modules.olx.adb import ADBController
 
@@ -39,7 +39,7 @@ class LoginResult:
 
     state: LoginState = LoginState.NOT_STARTED
     message: str = ""
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     session_id: str | None = None
     retry_count: int = 0
 
@@ -136,6 +136,7 @@ class RozetkaAutoLogin:
         if xml_dump is None:
             self.adb.dump_ui("login_screen.xml")
             from pathlib import Path
+
             xml_path = Path("login_screen.xml")
             xml_dump = xml_path.read_text(encoding="utf-8") if xml_path.exists() else ""
 
@@ -168,7 +169,9 @@ class RozetkaAutoLogin:
         # Fill credentials (scaffold — actual ADB input commands require calibration)
         if email and password:
             result.state = LoginState.CREDENTIALS_ENTERED
-            result.message = "Credentials entered (scaffold — full input requires calibration)"
+            result.message = (
+                "Credentials entered (scaffold — full input requires calibration)"
+            )
         else:
             result.message = "No credentials provided"
 
@@ -182,6 +185,7 @@ class RozetkaAutoLogin:
         """
         self.adb.dump_ui("session_check.xml")
         from pathlib import Path
+
         xml_path = Path("session_check.xml")
         xml_dump = xml_path.read_text(encoding="utf-8") if xml_path.exists() else ""
 
@@ -190,6 +194,6 @@ class RozetkaAutoLogin:
         return {
             "platform": "rozetka",
             "login_state": state.value,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "package": self.package,
         }

@@ -12,9 +12,8 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -23,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class StartupMetrics:
     """Startup KPI tracker."""
+
     users: int = 0
     revenue: float = 0.0
     monthly_growth: float = 0.1
@@ -59,10 +59,13 @@ class AIStartup:
     def raise_funding(self, amount: float, round_name: str = "") -> None:
         """Raise a funding round (backward-compatible)."""
         self.funding += amount
-        self._funding_rounds.append({
-            "amount": amount, "round": round_name or f"round_{len(self._funding_rounds) + 1}",
-            "timestamp": time.time(),
-        })
+        self._funding_rounds.append(
+            {
+                "amount": amount,
+                "round": round_name or f"round_{len(self._funding_rounds) + 1}",
+                "timestamp": time.time(),
+            }
+        )
 
     def launch_product(self, product: dict[str, Any]) -> None:
         """Launch a product (backward-compatible)."""
@@ -73,7 +76,7 @@ class AIStartup:
     def runway_months(self) -> float:
         """Calculate runway in months."""
         if self.metrics.burn_rate <= 0:
-            return float('inf')
+            return float("inf")
         return round(self.funding / self.metrics.burn_rate, 2)
 
     def valuation(self) -> float:
@@ -92,7 +95,7 @@ class AIStartup:
         for _ in range(months):
             users = int(users * (1 + self.metrics.monthly_growth))
             users = int(users * (1 - self.metrics.churn_rate))
-            revenue *= (1 + self.metrics.monthly_growth)
+            revenue *= 1 + self.metrics.monthly_growth
 
         return {
             "projected_users": users,
@@ -102,7 +105,9 @@ class AIStartup:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics (backward-compatible)."""
-        avg_skill = (sum(m["skill"] for m in self.team) / len(self.team)) if self.team else 0
+        avg_skill = (
+            (sum(m["skill"] for m in self.team) / len(self.team)) if self.team else 0
+        )
         return {
             "name": self.name,
             "team_size": len(self.team),

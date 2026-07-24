@@ -5,13 +5,11 @@ converting them into registered AIOS Capability instances, RBAC User API profile
 and REST execution routes.
 """
 
-import json
 import time
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from .autonomy_manager import AutonomyLevel
-from .capability_engine import Capability, CapabilityEngine
+from .capability_engine import CapabilityEngine
 
 __all__ = ["APKFunctionConverter"]
 
@@ -19,21 +17,21 @@ __all__ = ["APKFunctionConverter"]
 class APKFunctionConverter:
     """Converts Android APK component signatures into AIOS User API Profiles."""
 
-    def __init__(self, capability_engine: Optional[CapabilityEngine] = None):
+    def __init__(self, capability_engine: CapabilityEngine | None = None):
         """Initialize APKFunctionConverter."""
         self.capability_engine = capability_engine
-        self.converted_profiles: Dict[str, dict[str, Any]] = {}
+        self.converted_profiles: dict[str, dict[str, Any]] = {}
 
     def convert_apk_functions_to_api_profile(
         self,
         apk_name: str,
         package_name: str,
-        exported_components: List[dict[str, Any]],
+        exported_components: list[dict[str, Any]],
         target_user_id: str = "default_user",
     ) -> dict[str, Any]:
         """Convert APK components (Activities, Services, Receivers) into AIOS User API Capabilities and Profile."""
         start_time = time.time()
-        converted_capabilities: List[dict[str, Any]] = []
+        converted_capabilities: list[dict[str, Any]] = []
 
         for comp in exported_components:
             comp_name = comp.get("name", "UnknownComponent")
@@ -92,7 +90,7 @@ class APKFunctionConverter:
         self.converted_profiles[profile_id] = user_api_profile
         return user_api_profile
 
-    def get_user_profiles(self, user_id: str) -> List[dict[str, Any]]:
+    def get_user_profiles(self, user_id: str) -> list[dict[str, Any]]:
         """Retrieve all converted APK API profiles for a specific user."""
         return [p for p in self.converted_profiles.values() if p["user_id"] == user_id]
 

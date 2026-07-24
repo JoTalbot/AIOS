@@ -14,7 +14,6 @@ No external monitoring services — uses internal metrics and observations.
 
 from __future__ import annotations
 
-import math
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -25,22 +24,22 @@ from typing import Any
 class HealthStatus(Enum):
     """Platform health status."""
 
-    HEALTHY = "healthy"        # Fully operational
-    DEGRADED = "degraded"      # Partially operational
-    UNSTABLE = "unstable"      # Frequent failures
-    BLOCKED = "blocked"        # Platform blocking agent
-    DOWN = "down"              # Platform unreachable
-    UNKNOWN = "unknown"        # No recent data
+    HEALTHY = "healthy"  # Fully operational
+    DEGRADED = "degraded"  # Partially operational
+    UNSTABLE = "unstable"  # Frequent failures
+    BLOCKED = "blocked"  # Platform blocking agent
+    DOWN = "down"  # Platform unreachable
+    UNKNOWN = "unknown"  # No recent data
 
 
 class CheckType(Enum):
     """Types of health checks."""
 
-    PING = "ping"              # Basic connectivity
-    SCRAPE = "scrape"          # Actual scraping test
-    LOGIN = "login"            # Login attempt
+    PING = "ping"  # Basic connectivity
+    SCRAPE = "scrape"  # Actual scraping test
+    LOGIN = "login"  # Login attempt
     RATE_LIMIT = "rate_limit"  # Rate limit check
-    BLOCK = "block"            # Block detection
+    BLOCK = "block"  # Block detection
 
 
 @dataclass
@@ -77,11 +76,11 @@ class PlatformHealth:
 
     platform: str
     status: HealthStatus = HealthStatus.UNKNOWN
-    health_score: float = 100.0     # 0-100 composite score
-    latency_ms: float = 0.0         # Average recent latency
-    success_rate: float = 1.0       # Recent success rate
-    error_rate: float = 0.0         # Recent error rate
-    block_risk: float = 0.0         # Block detection probability
+    health_score: float = 100.0  # 0-100 composite score
+    latency_ms: float = 0.0  # Average recent latency
+    success_rate: float = 1.0  # Recent success rate
+    error_rate: float = 0.0  # Recent error rate
+    block_risk: float = 0.0  # Block detection probability
     rate_limit_remaining: int = -1  # -1 = unknown
     last_check: float | None = None
     last_success: float | None = None
@@ -245,7 +244,11 @@ class PlatformHealthMonitor:
         health = self._platforms.get(platform)
         consecutive = health.consecutive_failures if health else 0
 
-        status = HealthStatus.UNSTABLE if consecutive < self.max_consecutive_failures else HealthStatus.DOWN
+        status = (
+            HealthStatus.UNSTABLE
+            if consecutive < self.max_consecutive_failures
+            else HealthStatus.DOWN
+        )
 
         check = HealthCheck(
             check_id=self._next_id(),
@@ -382,7 +385,9 @@ class PlatformHealthMonitor:
         # Failure penalty
         failure_penalty = health.consecutive_failures * 5
 
-        total = success_score + latency_score + block_score + consec_score - failure_penalty
+        total = (
+            success_score + latency_score + block_score + consec_score - failure_penalty
+        )
         return max(0, min(100, total))
 
     def get_health(self, platform: str) -> PlatformHealth | None:
@@ -427,10 +432,7 @@ class PlatformHealthMonitor:
             List of platform names with degraded health.
         """
         threshold = min_score or self.health_threshold
-        return [
-            p for p, h in self._platforms.items()
-            if h.health_score < threshold
-        ]
+        return [p for p, h in self._platforms.items() if h.health_score < threshold]
 
     def best_platform(self, platforms: list[str] | None = None) -> str | None:
         """Find the platform with best current health.
@@ -447,7 +449,9 @@ class PlatformHealthMonitor:
 
         best = max(
             candidates,
-            key=lambda p: self._platforms.get(p, PlatformHealth(platform=p)).health_score,
+            key=lambda p: (
+                self._platforms.get(p, PlatformHealth(platform=p)).health_score
+            ),
         )
         health = self._platforms.get(best)
         if health and health.is_available:
@@ -461,13 +465,25 @@ class PlatformHealthMonitor:
             Dict with platform counts, average health, etc.
         """
         total = len(self._platforms)
-        healthy = sum(1 for h in self._platforms.values() if h.status == HealthStatus.HEALTHY)
-        degraded = sum(1 for h in self._platforms.values() if h.status == HealthStatus.DEGRADED)
-        blocked = sum(1 for h in self._platforms.values() if h.status == HealthStatus.BLOCKED)
+        healthy = sum(
+            1 for h in self._platforms.values() if h.status == HealthStatus.HEALTHY
+        )
+        degraded = sum(
+            1 for h in self._platforms.values() if h.status == HealthStatus.DEGRADED
+        )
+        blocked = sum(
+            1 for h in self._platforms.values() if h.status == HealthStatus.BLOCKED
+        )
         down = sum(1 for h in self._platforms.values() if h.status == HealthStatus.DOWN)
 
-        avg_score = sum(h.health_score for h in self._platforms.values()) / total if total else 0
-        avg_latency = sum(h.latency_ms for h in self._platforms.values()) / total if total else 0
+        avg_score = (
+            sum(h.health_score for h in self._platforms.values()) / total
+            if total
+            else 0
+        )
+        avg_latency = (
+            sum(h.latency_ms for h in self._platforms.values()) / total if total else 0
+        )
 
         return {
             "monitored_platforms": total,

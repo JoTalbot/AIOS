@@ -17,24 +17,30 @@ Architecture:
 
 from __future__ import annotations
 
-import json
 import os
 import random
 import time
-from collections import defaultdict, deque
+from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from .android_predictive import PredictiveMaintenance
-from .platforms.compliance import compliance_guard, rate_limit_hours
+from .platforms.compliance import compliance_guard
 from .platforms.pacing import Pacer
 
-__all__ = ["ProductionProfile", "ProductionConfig", "CycleReport", "DailyReport", "ProductionAutopilot"]
+__all__ = [
+    "ProductionProfile",
+    "ProductionConfig",
+    "CycleReport",
+    "DailyReport",
+    "ProductionAutopilot",
+]
 
 
 @dataclass
 class ProductionProfile:
     """ProductionProfile."""
+
     platform: str
     name: str  # unique profile name e.g., ig_shop_1
     device_serial: str | None = None
@@ -64,7 +70,8 @@ class ProductionProfile:
 @dataclass
 class ProductionConfig:
     """ProductionConfig."""
-    profiles: List[ProductionProfile] = field(default_factory=list)
+
+    profiles: list[ProductionProfile] = field(default_factory=list)
     device_pool_size: int = 3
     shard_hosts: list[str] = field(default_factory=lambda: ["shard-1"])
     cycle_interval_s: int = 900  # 15 min per profile check
@@ -75,7 +82,7 @@ class ProductionConfig:
     simulation_speed: float = 1.0  # 1.0 real, >1.0 accelerated
 
     @classmethod
-    def from_env(cls) -> "ProductionConfig":
+    def from_env(cls) -> ProductionConfig:
         """Load from env vars - secrets only in env per roadmap."""
         webhook = os.getenv("AIOS_WEBHOOK_URL")
         profiles_env = os.getenv(
@@ -99,7 +106,9 @@ class ProductionConfig:
                     name=name,
                     actions_per_hour=int(os.getenv(f"AIOS_{name.upper()}_APH", aph)),
                     queries=(
-                        ["iPhone", "Samsung", "Nike"] if plat == "olx" else ["fashion", "shoes"]
+                        ["iPhone", "Samsung", "Nike"]
+                        if plat == "olx"
+                        else ["fashion", "shoes"]
                     ),
                     webhook_url=webhook,
                 )
@@ -112,7 +121,7 @@ class ProductionConfig:
         )
 
     @classmethod
-    def default_3_instagram(cls) -> "ProductionConfig":
+    def default_3_instagram(cls) -> ProductionConfig:
         """Default 3 Instagram profiles for GA criteria."""
         return cls(
             profiles=[
@@ -146,6 +155,7 @@ class ProductionConfig:
 @dataclass
 class CycleReport:
     """CycleReport."""
+
     profile_key: str
     started_at: float
     finished_at: float
@@ -154,7 +164,7 @@ class CycleReport:
     success: int
     failed: int
     pacing_stats: dict[str, Any]
-    compliance_checks: List[dict[str, Any]]
+    compliance_checks: list[dict[str, Any]]
     predictive_risk: float
     duration_ms: float
     drift_detected: bool = False
@@ -182,11 +192,12 @@ class CycleReport:
 @dataclass
 class DailyReport:
     """DailyReport."""
+
     date: str
     total_cycles: int
     total_actions: int
     avg_success_rate: float
-    profiles: Dict[str, dict[str, Any]]
+    profiles: dict[str, dict[str, Any]]
     bans: int
     drifts: int
     predictive_alerts: int
@@ -213,9 +224,9 @@ class ProductionAutopilot:
     def __init__(
         self,
         config: ProductionConfig,
-        device_pool: Optional[Any] = None,
-        memory: Optional[Any] = None,
-        knowledge: Optional[Any] = None,
+        device_pool: Any | None = None,
+        memory: Any | None = None,
+        knowledge: Any | None = None,
         fast_mode: bool = False,
     ) -> None:
         """Initialize ProductionAutopilot."""
@@ -223,14 +234,16 @@ class ProductionAutopilot:
         self.device_pool = device_pool
         self.memory = memory
         self.knowledge = knowledge
-        self._pacers: Dict[str, Pacer] = {}
+        self._pacers: dict[str, Pacer] = {}
         self._predictive = PredictiveMaintenance()
-        self._cycle_history: List[CycleReport] = []
-        self._daily_reports: List[DailyReport] = []
+        self._cycle_history: list[CycleReport] = []
+        self._daily_reports: list[DailyReport] = []
         self._ban_count = 0
         self.version = "9.1.0-production"
         self.fast_mode = (
-            fast_mode or config.simulation_speed > 5 or os.getenv("AIOS_FAST_TEST", "") == "1"
+            fast_mode
+            or config.simulation_speed > 5
+            or os.getenv("AIOS_FAST_TEST", "") == "1"
         )
 
         # init pacers
@@ -245,7 +258,9 @@ class ProductionAutopilot:
             )
             self._pacers[key] = pacer
 
-    def _check_compliance(self, profile: ProductionProfile, action: str) -> dict[str, Any]:
+    def _check_compliance(
+        self, profile: ProductionProfile, action: str
+    ) -> dict[str, Any]:
         """Check compliance for action."""
         try:
             result = compliance_guard(profile.platform, action)
@@ -276,7 +291,7 @@ class ProductionAutopilot:
                 "policy": {},
             }
 
-    def _get_pacer(self, profile_key: str) -> Optional[Pacer]:
+    def _get_pacer(self, profile_key: str) -> Pacer | None:
         return self._pacers.get(profile_key)
 
     def run_single_cycle(
@@ -294,9 +309,9 @@ class ProductionAutopilot:
             compliance_checks.append(check)
 
         # If compliance blocks collect, skip cycle guarded
-        collect_allowed = next((c for c in compliance_checks if c["action"] == "collect"), {}).get(
-            "allowed", True
-        )
+        collect_allowed = next(
+            (c for c in compliance_checks if c["action"] == "collect"), {}
+        ).get("allowed", True)
         if not collect_allowed and self.config.compliance_strict:
             return CycleReport(
                 profile_key=profile_key,
@@ -376,7 +391,7 @@ class ProductionAutopilot:
 
         return report
 
-    def run_all_profiles_cycle(self) -> List[CycleReport]:
+    def run_all_profiles_cycle(self) -> list[CycleReport]:
         """Run cycle for all enabled profiles."""
         reports = []
         for prof in self.config.profiles:
@@ -398,7 +413,7 @@ class ProductionAutopilot:
             pacer.jitter_s = None
 
         print(
-            f"🎬 Simulating 14 days x {cycles_per_day} cycles/day x {len(self.config.profiles)} profiles = {14*cycles_per_day*len(self.config.profiles)} cycles"
+            f"🎬 Simulating 14 days x {cycles_per_day} cycles/day x {len(self.config.profiles)} profiles = {14 * cycles_per_day * len(self.config.profiles)} cycles"
         )
         all_reports = []
 
@@ -414,7 +429,9 @@ class ProductionAutopilot:
         daily = defaultdict(list)
         for r in all_reports:
             day_idx = (
-                int((r.started_at - all_reports[0].started_at) / (24 * 3600)) if all_reports else 0
+                int((r.started_at - all_reports[0].started_at) / (24 * 3600))
+                if all_reports
+                else 0
             )
             daily[day_idx].append(r)
 
@@ -436,7 +453,7 @@ class ProductionAutopilot:
                 profiles_stats[r.profile_key]["cycles"] += 1
 
             dar = DailyReport(
-                date=f"Day {day_idx+1}",
+                date=f"Day {day_idx + 1}",
                 total_cycles=len(reps),
                 total_actions=total_actions,
                 avg_success_rate=avg_success,
@@ -444,7 +461,9 @@ class ProductionAutopilot:
                 bans=sum(1 for r in reps if r.failed / max(r.actions, 1) > 0.5),
                 drifts=sum(1 for r in reps if r.drift_detected),
                 predictive_alerts=sum(1 for r in reps if r.predictive_risk > 0.5),
-                compliance_blocks=sum(1 for r in reps if r.status == "blocked-compliance"),
+                compliance_blocks=sum(
+                    1 for r in reps if r.status == "blocked-compliance"
+                ),
             )
             daily_reports.append(dar)
             self._daily_reports.append(dar)
@@ -472,7 +491,9 @@ class ProductionAutopilot:
             },
             "profiles": {p.name: p.to_dict() for p in self.config.profiles},
             "daily_reports": [d.to_dict() for d in daily_reports],
-            "pacing_metrics": {key: pacer.stats() for key, pacer in self._pacers.items()},
+            "pacing_metrics": {
+                key: pacer.stats() for key, pacer in self._pacers.items()
+            },
             "health": self._predictive.health_report(),
             "timestamp": time.time(),
             "version": self.version,
@@ -536,8 +557,8 @@ class ProductionAutopilot:
             safe_key = profile_key.replace(":", "_").replace("-", "_")
             lines += [
                 f'# HELP aios_pacer_actions{{profile="{profile_key}"}} Actions per pacer',
-                f"# TYPE aios_pacer_actions gauge",
-                f"aios_pacer_actions{{profile=\"{profile_key}\"}} {pacing.get('actions', 0)}",
+                "# TYPE aios_pacer_actions gauge",
+                f'aios_pacer_actions{{profile="{profile_key}"}} {pacing.get("actions", 0)}',
             ]
 
         return "\n".join(lines)

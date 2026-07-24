@@ -1,8 +1,8 @@
 """Prom.ua price tracker, autowatch, favorites — inherit Rozetka pattern."""
 
-from aios_core.modules.rozetka.price_tracker import RozetkaPriceTracker
 from aios_core.modules.rozetka.autowatch import RozetkaAutoWatch
 from aios_core.modules.rozetka.favorites import RozetkaFavorites
+from aios_core.modules.rozetka.price_tracker import RozetkaPriceTracker
 
 
 class PromPriceTracker(RozetkaPriceTracker):

@@ -19,9 +19,8 @@ import io
 import json
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union
 
 from .models import AdCard
 
@@ -177,7 +176,7 @@ _EXPORT_FIELDS = [
 class OLXStorage:
     """Deduplicating SQLite store for OLX ad cards with price tracking."""
 
-    def __init__(self, db_path: Union[str, Path] = ":memory:"):
+    def __init__(self, db_path: str | Path = ":memory:"):
         """Initialize OLXStorage."""
         self.db_path = str(db_path)
         if self.db_path != ":memory:":
@@ -195,31 +194,34 @@ class OLXStorage:
     def _migrate_v1(self) -> None:
         """Add v2 columns to databases created before sightings existed."""
         with self._lock, self._conn:
-            existing = {row[1] for row in self._conn.execute("PRAGMA table_info(olx_ads)")}
+            existing = {
+                row[1] for row in self._conn.execute("PRAGMA table_info(olx_ads)")
+            }
             for column, ddl in _V1_MIGRATION_COLUMNS.items():
                 if column not in existing:
                     self._conn.execute(f"ALTER TABLE olx_ads ADD COLUMN {column} {ddl}")
             # Backfill presence timestamps for pre-v2 rows.
             self._conn.execute(
-                "UPDATE olx_ads SET first_seen_at = collected_at " "WHERE first_seen_at IS NULL"
+                "UPDATE olx_ads SET first_seen_at = collected_at "
+                "WHERE first_seen_at IS NULL"
             )
             self._conn.execute(
-                "UPDATE olx_ads SET last_seen_at = collected_at " "WHERE last_seen_at IS NULL"
+                "UPDATE olx_ads SET last_seen_at = collected_at "
+                "WHERE last_seen_at IS NULL"
             )
 
     def save_ads_with_new(
-        self, cards: List[AdCard], seen_at: str | None = None
-    ) -> "tuple[int, list[str]]":
+        self, cards: list[AdCard], seen_at: str | None = None
+    ) -> tuple[int, list[str]]:
         """Like :meth:`save_ads`, but also returns the *new* fingerprints."""
-        now = seen_at or datetime.now(timezone.utc).isoformat()
+        now = seen_at or datetime.now(UTC).isoformat()
         new_fingerprints: list[str] = []
         inserted = 0
-        with self._lock:
-            with self._conn:
-                for card in cards:
-                    row = card.to_dict()
-                    cursor = self._conn.execute(
-                        """
+        with self._lock, self._conn:
+            for card in cards:
+                row = card.to_dict()
+                cursor = self._conn.execute(
+                    """
                         INSERT OR IGNORE INTO olx_ads (
                             fingerprint, title, price, currency, city,
                             published_text, published_at, is_top, ad_id, url,
@@ -227,29 +229,29 @@ class OLXStorage:
                             first_seen_at, last_seen_at, sightings_count, is_active
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
                         """,
-                        (
-                            row["fingerprint"],
-                            row["title"],
-                            row["price"],
-                            row["currency"],
-                            row["city"],
-                            row["published_text"],
-                            row["published_at"],
-                            int(row["is_top"]),
-                            row["ad_id"],
-                            row["url"],
-                            row["query"],
-                            now,
-                            json.dumps(row["raw_texts"], ensure_ascii=False),
-                            now,
-                            now,
-                        ),
-                    )
-                    if cursor.rowcount:
-                        new_fingerprints.append(row["fingerprint"])
-                    if not cursor.rowcount:
-                        self._conn.execute(
-                            """
+                    (
+                        row["fingerprint"],
+                        row["title"],
+                        row["price"],
+                        row["currency"],
+                        row["city"],
+                        row["published_text"],
+                        row["published_at"],
+                        int(row["is_top"]),
+                        row["ad_id"],
+                        row["url"],
+                        row["query"],
+                        now,
+                        json.dumps(row["raw_texts"], ensure_ascii=False),
+                        now,
+                        now,
+                    ),
+                )
+                if cursor.rowcount:
+                    new_fingerprints.append(row["fingerprint"])
+                if not cursor.rowcount:
+                    self._conn.execute(
+                        """
                             UPDATE olx_ads SET
                                 last_seen_at = ?,
                                 sightings_count = sightings_count + 1,
@@ -263,26 +265,26 @@ class OLXStorage:
                                 ad_id = COALESCE(?, ad_id)
                             WHERE fingerprint = ?
                             """,
-                            (
-                                now,
-                                row["price"],
-                                row["currency"],
-                                int(row["is_top"]),
-                                row["title"],
-                                row["city"],
-                                row["url"],
-                                row["ad_id"],
-                                row["fingerprint"],
-                            ),
-                        )
-                    inserted += cursor.rowcount
-                    self._conn.execute(
-                        """
+                        (
+                            now,
+                            row["price"],
+                            row["currency"],
+                            int(row["is_top"]),
+                            row["title"],
+                            row["city"],
+                            row["url"],
+                            row["ad_id"],
+                            row["fingerprint"],
+                        ),
+                    )
+                inserted += cursor.rowcount
+                self._conn.execute(
+                    """
                         INSERT INTO olx_sightings (fingerprint, seen_at, price, is_top)
                         VALUES (?, ?, ?, ?)
                         """,
-                        (row["fingerprint"], now, row["price"], int(row["is_top"])),
-                    )
+                    (row["fingerprint"], now, row["price"], int(row["is_top"])),
+                )
         return inserted, new_fingerprints
 
     def sync_activity(self, query: str, seen_fingerprints: list[str]) -> int:
@@ -307,7 +309,7 @@ class OLXStorage:
                     changed += 1
         return changed
 
-    def price_history(self, fingerprint: str) -> List[Dict[str, object]]:
+    def price_history(self, fingerprint: str) -> list[dict[str, object]]:
         """Chronological price log for one ad (earliest first)."""
         with self._lock:
             rows = self._conn.execute(
@@ -326,7 +328,7 @@ class OLXStorage:
             for row in rows
         ]
 
-    def save_ads(self, cards: List[AdCard], seen_at: str | None = None) -> int:
+    def save_ads(self, cards: list[AdCard], seen_at: str | None = None) -> int:
         """Store cards and record a sighting for each one.
 
         New fingerprints are inserted; known fingerprints get their presence
@@ -356,7 +358,7 @@ class OLXStorage:
         query: str | None = None,
         limit: int | None = None,
         active_only: bool | None = None,
-    ) -> List[AdCard]:
+    ) -> list[AdCard]:
         """Fetch stored cards with optional query/activity filters."""
         sql = "SELECT * FROM olx_ads"
         conditions: list[str] = []
@@ -417,7 +419,7 @@ class OLXStorage:
         """
         if not fingerprint:
             return False
-        now = seen_at or datetime.now(timezone.utc).isoformat()
+        now = seen_at or datetime.now(UTC).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 "INSERT OR IGNORE INTO olx_seen (fingerprint, kind, ref, first_seen_at) "
@@ -455,15 +457,17 @@ class OLXStorage:
         Returns:
             id вставленной строки.
         """
-        stamp = at or datetime.now(timezone.utc).isoformat()
+        stamp = at or datetime.now(UTC).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
-                "INSERT INTO olx_audit (at, action, detail, ref) " "VALUES (?, ?, ?, ?)",
+                "INSERT INTO olx_audit (at, action, detail, ref) VALUES (?, ?, ?, ?)",
                 (stamp, action, detail, ref),
             )
             return cursor.lastrowid
 
-    def audit_list(self, limit: int = 100, action: str | None = None) -> List[Dict[str, object]]:
+    def audit_list(
+        self, limit: int = 100, action: str | None = None
+    ) -> list[dict[str, object]]:
         """Последние записи audit-log (новые первыми)."""
         sql = "SELECT * FROM olx_audit"
         params: list = []
@@ -476,9 +480,11 @@ class OLXStorage:
             rows = self._conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
 
-    def enqueue_outbox(self, chat_key: str, text: str, interlocutor: str | None = None) -> int:
+    def enqueue_outbox(
+        self, chat_key: str, text: str, interlocutor: str | None = None
+    ) -> int:
         """Queue a reply draft; returns the outbox row id."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 """
@@ -494,11 +500,11 @@ class OLXStorage:
         )
         return cursor.lastrowid
 
-    def outbox_pending(self) -> List[Dict[str, object]]:
+    def outbox_pending(self) -> list[dict[str, object]]:
         """All drafts waiting for approval/sending, oldest first."""
         return self.outbox_list(status="pending")
 
-    def outbox_list(self, status: str | None = None) -> List[Dict[str, object]]:
+    def outbox_list(self, status: str | None = None) -> list[dict[str, object]]:
         """Execute outbox list."""
         sql = "SELECT * FROM olx_outbox"
         params: list = []
@@ -510,9 +516,11 @@ class OLXStorage:
             rows = self._conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
 
-    def outbox_mark(self, outbox_id: int, status: str, result: str | None = None) -> bool:
+    def outbox_mark(
+        self, outbox_id: int, status: str, result: str | None = None
+    ) -> bool:
         """Transition an outbox row (pending → sent/failed/cancelled)."""
-        sent_at = datetime.now(timezone.utc).isoformat() if status == "sent" else None
+        sent_at = datetime.now(UTC).isoformat() if status == "sent" else None
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 "UPDATE olx_outbox SET status = ?, sent_at = COALESCE(?, sent_at), "
@@ -535,7 +543,7 @@ class OLXStorage:
         ``ad`` is an OwnAd-like object with title/price/currency/url/ad_id/
         status/views/*/fingerprint. Returns True when the ad is new.
         """
-        now = seen_at or datetime.now(timezone.utc).isoformat()
+        now = seen_at or datetime.now(UTC).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 """
@@ -597,7 +605,7 @@ class OLXStorage:
             )
             return cursor.rowcount > 0
 
-    def own_ads(self, status: str | None = None) -> List[Dict[str, object]]:
+    def own_ads(self, status: str | None = None) -> list[dict[str, object]]:
         """Execute own ads."""
         sql = "SELECT * FROM own_ads"
         params: list = []
@@ -609,7 +617,7 @@ class OLXStorage:
             rows = self._conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
 
-    def own_ad_history(self, fingerprint: str) -> List[Dict[str, object]]:
+    def own_ad_history(self, fingerprint: str) -> list[dict[str, object]]:
         """Chronological stats log for one own ad (earliest first)."""
         with self._lock:
             rows = self._conn.execute(
@@ -632,7 +640,7 @@ class OLXStorage:
         city: str | None = None,
     ) -> int:
         """Save a named search subscription (filters for new-ad alerts)."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 """
@@ -644,10 +652,12 @@ class OLXStorage:
             )
             return cursor.lastrowid
 
-    def subscriptions_list(self) -> List[Dict[str, object]]:
+    def subscriptions_list(self) -> list[dict[str, object]]:
         """Execute subscriptions list."""
         with self._lock:
-            rows = self._conn.execute("SELECT * FROM olx_subscriptions ORDER BY id").fetchall()
+            rows = self._conn.execute(
+                "SELECT * FROM olx_subscriptions ORDER BY id"
+            ).fetchall()
         return [dict(row) for row in rows]
 
     def subscription_remove(self, subscription_id: int) -> bool:
@@ -660,7 +670,7 @@ class OLXStorage:
 
     def subscription_touch(self, subscription_id: int) -> None:
         """Execute subscription touch."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self._lock, self._conn:
             self._conn.execute(
                 "UPDATE olx_subscriptions SET last_checked_at = ? WHERE id = ?",
@@ -669,7 +679,7 @@ class OLXStorage:
 
     def favorite_add(self, fingerprint: str) -> bool:
         """Execute favorite add."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 "INSERT OR IGNORE INTO olx_favorites (fingerprint, added_at) VALUES (?, ?)",
@@ -703,7 +713,7 @@ class OLXStorage:
         seen_at: str | None = None,
     ) -> bool:
         """Record/refresh an own↔competitor relation. True when it is new."""
-        now = seen_at or datetime.now(timezone.utc).isoformat()
+        now = seen_at or datetime.now(UTC).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 """
@@ -725,7 +735,7 @@ class OLXStorage:
                 )
             return bool(cursor.rowcount)
 
-    def competitor_links(self, own_fingerprint: str) -> List[Dict[str, object]]:
+    def competitor_links(self, own_fingerprint: str) -> list[dict[str, object]]:
         """Execute competitor links."""
         with self._lock:
             rows = self._conn.execute(
@@ -742,7 +752,7 @@ class OLXStorage:
 
     def profile_set(self, key: str, value: str | None) -> None:
         """Execute profile set."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self._lock, self._conn:
             self._conn.execute(
                 """
@@ -754,26 +764,29 @@ class OLXStorage:
                 (key, value, now),
             )
 
-    def profile_all(self) -> Dict[str, Dict[str, str | None]]:
+    def profile_all(self) -> dict[str, dict[str, str | None]]:
         """All stored profile fields with their update timestamps."""
         with self._lock:
-            rows = self._conn.execute("SELECT * FROM olx_profile_kv ORDER BY key").fetchall()
+            rows = self._conn.execute(
+                "SELECT * FROM olx_profile_kv ORDER BY key"
+            ).fetchall()
         return {
-            row["key"]: {"value": row["value"], "updated_at": row["updated_at"]} for row in rows
+            row["key"]: {"value": row["value"], "updated_at": row["updated_at"]}
+            for row in rows
         }
 
     # ---- Export ----
 
-    def _export_rows(self, query: str | None) -> List[Dict[str, object]]:
+    def _export_rows(self, query: str | None) -> list[dict[str, object]]:
         ads = self.get_ads(query=query)
-        extra: Dict[str, Dict[str, object]] = {}
+        extra: dict[str, dict[str, object]] = {}
         with self._lock:
             for row in self._conn.execute(
                 "SELECT fingerprint, first_seen_at, last_seen_at, "
                 "sightings_count, is_active FROM olx_ads"
             ):
                 extra[row["fingerprint"]] = dict(row)
-        items: List[Dict[str, object]] = []
+        items: list[dict[str, object]] = []
         for ad in ads:
             data = ad.to_dict()
             data.update(extra.get(data["fingerprint"], {}))
@@ -797,7 +810,7 @@ class OLXStorage:
         """Clean up resources."""
         self._conn.close()
 
-    def __enter__(self) -> "OLXStorage":
+    def __enter__(self) -> OLXStorage:
         return self
 
     def __exit__(self, *_exc) -> None:

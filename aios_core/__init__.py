@@ -11,7 +11,11 @@ __version__ = "9.3.0"
 __author__ = "AIOS Development"
 
 from .ai_advisor import AdvisorDraft, AISalesAdvisor, InboxSummary, PriceAdvice
-from .android_ai_navigation import AIScreenClassifier, ScreenEmbedding, SelfHealingLocator
+from .android_ai_navigation import (
+    AIScreenClassifier,
+    ScreenEmbedding,
+    SelfHealingLocator,
+)
 from .android_cross_app import CrossAppWorkflowEngine, WorkflowStatus, WorkflowStep
 from .android_observability import AndroidObservability
 from .android_predictive import FailurePrediction, PredictiveMaintenance, RiskLevel
@@ -26,7 +30,9 @@ from .anomaly_detection import AnomalyDetector
 
 def _lazy_import_api():
     """Lazy import for the API module (avoids pulling in Starlette at import time)."""
-    from aios_core.api import AIOSAPI as _A, create_app as _C
+    from aios_core.api import AIOSAPI as _A
+    from aios_core.api import create_app as _C
+
     return _A, _C
 
 
@@ -36,6 +42,15 @@ def __getattr__(name: str):
     if name == "create_app":
         return _lazy_import_api()[1]
     raise AttributeError(f"module 'aios_core' has no attribute {name!r}")
+
+
+# MCP Gateway
+from aios_mcp.gateway import GatewayConfig, MCPGateway
+from aios_mcp.prompts import PromptRegistry
+from aios_mcp.protocol import JSONRPCRequest, JSONRPCResponse, MCPProtocol
+from aios_mcp.resources import ResourceRegistry
+from aios_mcp.tools import ToolRegistry
+
 from .apk_converter import APKFunctionConverter
 from .approval_manager import ApprovalManager
 
@@ -59,13 +74,6 @@ from .infinite_constitution import InfiniteConstitutionEngine
 from .knowledge_graph import KnowledgeGraph
 from .learning_engine import LearningEngine
 from .marketplace import CapabilityMarketplace, PlatformPlugin
-
-# MCP Gateway
-from aios_mcp.gateway import GatewayConfig, MCPGateway
-from aios_mcp.protocol import MCPProtocol, JSONRPCRequest, JSONRPCResponse
-from aios_mcp.tools import ToolRegistry
-from aios_mcp.resources import ResourceRegistry
-from aios_mcp.prompts import PromptRegistry
 from .memory_manager import MemoryManager
 from .model_registry import ModelRegistry
 from .model_serving import ModelServer

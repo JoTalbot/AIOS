@@ -41,11 +41,25 @@ class LongTermSafety:
         self._plans: list[SafetyPlan] = []
         self._trajectory: list[dict[str, Any]] = []
 
-    def create_long_term_plan(self, horizon_years: int, goals: list[str]) -> dict[str, Any]:
+    def create_long_term_plan(
+        self, horizon_years: int, goals: list[str]
+    ) -> dict[str, Any]:
         """Create long-term plan (backward-compatible)."""
         plan = SafetyPlan(horizon_years, goals)
-        plan.risks = ["misalignment", "power_seeking", "deception", "capability_overflow", "value_drift"]
-        plan.mitigations = ["monitoring", "interpretability", "governance", "shutdown_protocols", "value_locking"]
+        plan.risks = [
+            "misalignment",
+            "power_seeking",
+            "deception",
+            "capability_overflow",
+            "value_drift",
+        ]
+        plan.mitigations = [
+            "monitoring",
+            "interpretability",
+            "governance",
+            "shutdown_protocols",
+            "value_locking",
+        ]
         self._plans.append(plan)
         plan_dict = {
             "horizon": horizon_years,
@@ -73,12 +87,14 @@ class LongTermSafety:
         """Forecast AI capabilities over time horizon."""
         trajectory: list[dict[str, float]] = []
         for year in range(years):
-            trajectory.append({
-                "year": year,
-                "capability_level": round(0.5 + 0.3 * (year / years), 2),
-                "safety_level": round(1.0 - 0.05 * (year / years), 2),
-                "risk_level": round(0.05 * (year / years), 2),
-            })
+            trajectory.append(
+                {
+                    "year": year,
+                    "capability_level": round(0.5 + 0.3 * (year / years), 2),
+                    "safety_level": round(1.0 - 0.05 * (year / years), 2),
+                    "risk_level": round(0.05 * (year / years), 2),
+                }
+            )
         self._trajectory.append({"years": years, "forecast": trajectory})
         return {"years": years, "forecast": trajectory}
 
@@ -86,7 +102,11 @@ class LongTermSafety:
         """Estimate existential risk level."""
         return {
             "probability": round(random.uniform(0.01, 0.05), 3),
-            "scenarios": ["unaligned_superintelligence", "capability_explosion", "value_lock_failure"],
+            "scenarios": [
+                "unaligned_superintelligence",
+                "capability_explosion",
+                "value_lock_failure",
+            ],
             "mitigation_effectiveness": round(random.uniform(0.6, 0.9), 2),
             "confidence": round(random.uniform(0.3, 0.7), 2),
         }
@@ -99,7 +119,9 @@ class LongTermSafety:
         return {
             "final_capability": latest[-1]["capability_level"] if latest else 0.0,
             "final_safety": latest[-1]["safety_level"] if latest else 1.0,
-            "safety_decline": round(1.0 - (latest[-1]["safety_level"] if latest else 1.0), 2),
+            "safety_decline": round(
+                1.0 - (latest[-1]["safety_level"] if latest else 1.0), 2
+            ),
         }
 
     def stats(self) -> dict[str, Any]:

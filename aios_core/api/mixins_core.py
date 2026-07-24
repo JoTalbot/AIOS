@@ -3,13 +3,15 @@
 All remaining route handlers extracted from ``aios_core.api.app.AIOSAPI``.
 This brings ``app.py`` under 300 lines — just the class skeleton + lifecycle.
 """
+
 from __future__ import annotations
 
 import json
 
-from aios_core.rate_limiter import rate_limiter
 from starlette.requests import Request
-from starlette.responses import JSONResponse, HTMLResponse, PlainTextResponse
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
+
+from aios_core.rate_limiter import rate_limiter
 
 
 class CoreHandlersMixin:
@@ -34,7 +36,9 @@ class CoreHandlersMixin:
 
         from aios_core.websocket import ws_manager
 
-        websocket = WebSocket(scope=request.scope, receive=request.receive, send=request.send)
+        websocket = WebSocket(
+            scope=request.scope, receive=request.receive, send=request.send
+        )
         await ws_manager.connect(websocket)
         try:
             while True:
@@ -54,7 +58,9 @@ class CoreHandlersMixin:
             event_type=request.query_params.get("event_type"),
             agent_id=request.query_params.get("agent_id"),
             decision=request.query_params.get("decision"),
-            limit=self._bounded_int(request.query_params.get("limit"), default=100, maximum=100),
+            limit=self._bounded_int(
+                request.query_params.get("limit"), default=100, maximum=100
+            ),
             offset=self._bounded_int(
                 request.query_params.get("offset"), default=0, maximum=10_000, minimum=0
             ),
@@ -155,7 +161,9 @@ class CoreHandlersMixin:
 
     async def _approvals_deny(self, request: Request) -> JSONResponse:
         approval_id = request.path_params["approval_id"]
-        result = self.approvals.deny(approval_id, resolved_by=request.state.principal.subject)
+        result = self.approvals.deny(
+            approval_id, resolved_by=request.state.principal.subject
+        )
         if result is None:
             return JSONResponse({"error": "Approval not found"}, status_code=404)
         return JSONResponse(result)
@@ -164,7 +172,9 @@ class CoreHandlersMixin:
 
     async def _approvals_approve(self, request: Request) -> JSONResponse:
         approval_id = request.path_params["approval_id"]
-        result = self.approvals.approve(approval_id, resolved_by=request.state.principal.subject)
+        result = self.approvals.approve(
+            approval_id, resolved_by=request.state.principal.subject
+        )
         if result is None:
             return JSONResponse({"error": "Approval not found"}, status_code=404)
         return JSONResponse(result)
@@ -193,7 +203,9 @@ class CoreHandlersMixin:
         neighbors = self.knowledge.neighbors(
             node_id=node_id,
             relation=request.query_params.get("relation"),
-            depth=self._bounded_int(request.query_params.get("depth"), default=1, maximum=5),
+            depth=self._bounded_int(
+                request.query_params.get("depth"), default=1, maximum=5
+            ),
         )
         return JSONResponse({"neighbors": neighbors, "count": len(neighbors)})
 
@@ -219,7 +231,9 @@ class CoreHandlersMixin:
         nodes = self.knowledge.find_nodes(
             label=request.query_params.get("label"),
             node_type=request.query_params.get("node_type"),
-            limit=self._bounded_int(request.query_params.get("limit"), default=100, maximum=100),
+            limit=self._bounded_int(
+                request.query_params.get("limit"), default=100, maximum=100
+            ),
         )
         return JSONResponse({"nodes": nodes, "count": len(nodes)})
 
@@ -256,7 +270,9 @@ class CoreHandlersMixin:
             is_admin=is_admin,
         )
         if result is None:
-            return JSONResponse({"error": "Memory item not found or immutable"}, status_code=404)
+            return JSONResponse(
+                {"error": "Memory item not found or immutable"}, status_code=404
+            )
         return JSONResponse(result)
 
     async def _memory_get(self, request: Request) -> JSONResponse:
@@ -286,7 +302,9 @@ class CoreHandlersMixin:
             query=request.query_params.get("query", ""),
             category=request.query_params.get("category"),
             tag=request.query_params.get("tag"),
-            limit=self._bounded_int(request.query_params.get("limit"), default=100, maximum=100),
+            limit=self._bounded_int(
+                request.query_params.get("limit"), default=100, maximum=100
+            ),
             requester_id=subject,
             is_admin=is_admin,
         )
@@ -347,7 +365,9 @@ class CoreHandlersMixin:
         tasks = self.orchestrator.list_tasks(status=status)
         principal: Principal = request.state.principal
         if "admin" not in principal.roles:
-            tasks = [task for task in tasks if task.get("agent_id") == principal.subject]
+            tasks = [
+                task for task in tasks if task.get("agent_id") == principal.subject
+            ]
         return JSONResponse({"tasks": tasks, "count": len(tasks)})
 
     async def _constitution_stats(self, request: Request) -> JSONResponse:
@@ -398,7 +418,9 @@ class CoreHandlersMixin:
             user_id = body.get("user_id", "default_user")
 
             rpa_mgr = AndroidRPAManager()
-            api_profile = rpa_mgr.convert_app_to_working_api(play_url, credentials, user_id=user_id)
+            api_profile = rpa_mgr.convert_app_to_working_api(
+                play_url, credentials, user_id=user_id
+            )
             return JSONResponse(api_profile)
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
@@ -642,19 +664,19 @@ class CoreHandlersMixin:
             lines += [
                 "# HELP aios_constitution_articles Total constitution articles",
                 "# TYPE aios_constitution_articles gauge",
-                f'aios_constitution_articles {stats.get("constitution_articles", 0)}',
+                f"aios_constitution_articles {stats.get('constitution_articles', 0)}",
                 "",
                 "# HELP aios_memory_items Total memory items",
                 "# TYPE aios_memory_items gauge",
-                f'aios_memory_items {stats.get("memory_items", 0)}',
+                f"aios_memory_items {stats.get('memory_items', 0)}",
                 "",
                 "# HELP aios_active_tasks Active tasks count",
                 "# TYPE aios_active_tasks gauge",
-                f'aios_active_tasks {stats.get("active_tasks", 0)}',
+                f"aios_active_tasks {stats.get('active_tasks', 0)}",
                 "",
                 "# HELP aios_evolution_proposals Evolution proposals",
                 "# TYPE aios_evolution_proposals gauge",
-                f'aios_evolution_proposals {stats.get("evolution_proposals", 0)}',
+                f"aios_evolution_proposals {stats.get('evolution_proposals', 0)}",
             ]
         except Exception:
             lines.append("# AIOS core metrics unavailable from worker thread")
@@ -666,7 +688,9 @@ class CoreHandlersMixin:
             lines.append("# AIOS fleet metrics unavailable")
         return PlainTextResponse("\n".join(lines))
 
-    def _bounded_int(self, value, *, default: int, maximum: int, minimum: int = 1) -> int:
+    def _bounded_int(
+        self, value, *, default: int, maximum: int, minimum: int = 1
+    ) -> int:
         try:
             parsed = int(value) if value is not None else default
         except (TypeError, ValueError):
@@ -702,7 +726,10 @@ class CoreHandlersMixin:
 
     async def _production_simulate(self, request: Request) -> JSONResponse:
         try:
-            from aios_core.production_autopilot import ProductionAutopilot, ProductionConfig
+            from aios_core.production_autopilot import (
+                ProductionAutopilot,
+                ProductionConfig,
+            )
 
             body = (
                 await request.json()
@@ -719,7 +746,10 @@ class CoreHandlersMixin:
 
     async def _production_health(self, request: Request) -> JSONResponse:
         try:
-            from aios_core.production_autopilot import ProductionAutopilot, ProductionConfig
+            from aios_core.production_autopilot import (
+                ProductionAutopilot,
+                ProductionConfig,
+            )
 
             config = ProductionConfig.default_3_instagram()
             autopilot = ProductionAutopilot(config)
@@ -735,7 +765,9 @@ class CoreHandlersMixin:
 
             advisor = AISalesAdvisor()
             drafts = advisor.list_drafts()
-            return JSONResponse({"drafts": [d.__dict__ for d in drafts], "count": len(drafts)})
+            return JSONResponse(
+                {"drafts": [d.__dict__ for d in drafts], "count": len(drafts)}
+            )
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -798,7 +830,11 @@ class CoreHandlersMixin:
             from aios_core.marketplace import CapabilityMarketplace
 
             plugin_id = request.path_params["plugin_id"]
-            body = await request.json() if request.headers.get("content-length") != "0" else {}
+            body = (
+                await request.json()
+                if request.headers.get("content-length") != "0"
+                else {}
+            )
             target_dir = body.get("target_dir", "platforms")
             mp = CapabilityMarketplace()
             # try to find plugin, if not exists simulate success
@@ -871,7 +907,9 @@ class CoreHandlersMixin:
             mp = CapabilityMarketplace()
             query = request.query_params.get("query", "")
             tag = request.query_params.get("tag", "")
-            limit = self._bounded_int(request.query_params.get("limit"), default=20, maximum=100)
+            limit = self._bounded_int(
+                request.query_params.get("limit"), default=20, maximum=100
+            )
             results = mp.search(query=query, tag=tag, limit=limit)
             # seed with examples if empty
             if not results:
@@ -928,7 +966,11 @@ class CoreHandlersMixin:
             from aios_core.android_cross_app import CrossAppWorkflowEngine
 
             wf_id = request.path_params["workflow_id"]
-            body = await request.json() if request.headers.get("content-length") != "0" else {}
+            body = (
+                await request.json()
+                if request.headers.get("content-length") != "0"
+                else {}
+            )
             context = body.get("context", {})
             engine = CrossAppWorkflowEngine()
             # For demo, create a simple workflow if not exists
@@ -1064,4 +1106,3 @@ class CoreHandlersMixin:
         return HTMLResponse(dashboard_html(refresh_s=max(1, refresh)))
 
     # --- Android M8 / Marketplace / Advisor (v9.1.0) ---
-

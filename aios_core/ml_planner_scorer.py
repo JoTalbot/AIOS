@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import math
 import time
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from .planner import Plan, Planner
 from .storage import Database
@@ -31,14 +32,14 @@ class MLPlannerScorer:
     - Score history and regression detection
     """
 
-    def __init__(self, db: Optional[Database] = None):
+    def __init__(self, db: Database | None = None):
         """Initialize MLPlannerScorer."""
         self.db = db
         self.version = "4.0.0"
         self._model_loaded = False
-        self._score_history: List[dict[str, Any]] = []
-        self._training_data: List[dict[str, Any]] = []
-        self._feature_importance: Dict[str, float] = {
+        self._score_history: list[dict[str, Any]] = []
+        self._training_data: list[dict[str, Any]] = []
+        self._feature_importance: dict[str, float] = {
             "parallelism": 0.25,
             "avg_dependencies": 0.20,
             "step_diversity": 0.15,
@@ -74,12 +75,14 @@ class MLPlannerScorer:
 
         # Archive to history and training data
         self._score_history.append(result)
-        self._training_data.append({
-            "features": ml_features,
-            "base_score": base_score["score"],
-            "ml_score": final_score,
-            "adjustment": ml_adjustment,
-        })
+        self._training_data.append(
+            {
+                "features": ml_features,
+                "base_score": base_score["score"],
+                "ml_score": final_score,
+                "adjustment": ml_adjustment,
+            }
+        )
 
         return result
 
@@ -89,10 +92,7 @@ class MLPlannerScorer:
         total_steps = len(plan.steps)
 
         # Goal coverage: how many steps address goals
-        goal_steps = sum(
-            1 for s in plan.steps
-            if hasattr(s, "goal") and s.goal
-        )
+        goal_steps = sum(1 for s in plan.steps if hasattr(s, "goal") and s.goal)
         goal_coverage = goal_steps / max(1, total_steps)
 
         # Novelty: fraction of unique step types
@@ -100,7 +100,8 @@ class MLPlannerScorer:
 
         return {
             "parallelism": len(layers) / max(1, total_steps),
-            "avg_dependencies": sum(len(s.dependencies) for s in plan.steps) / max(1, total_steps),
+            "avg_dependencies": sum(len(s.dependencies) for s in plan.steps)
+            / max(1, total_steps),
             "step_diversity": unique_types / 10.0,
             "has_evolution": any(s.step_type == "evolve" for s in plan.steps),
             "has_memory": any(s.step_type == "memory" for s in plan.steps),
@@ -133,15 +134,15 @@ class MLPlannerScorer:
     # Feature importance
     # ------------------------------------------------------------------
 
-    def get_feature_importance(self) -> Dict[str, float]:
+    def get_feature_importance(self) -> dict[str, float]:
         """Return current feature importance rankings."""
         return dict(self._feature_importance)
 
-    def set_feature_importance(self, importance: Dict[str, float]) -> None:
+    def set_feature_importance(self, importance: dict[str, float]) -> None:
         """Override feature importance weights."""
         self._feature_importance.update(importance)
 
-    def rank_features(self) -> List[tuple[str, float]]:
+    def rank_features(self) -> list[tuple[str, float]]:
         """Return features sorted by importance (descending)."""
         return sorted(
             self._feature_importance.items(),
@@ -162,8 +163,8 @@ class MLPlannerScorer:
 
         Returns mean, std, and individual scores.
         """
-        scores: List[float] = []
-        individual: List[dict[str, Any]] = []
+        scores: list[float] = []
+        individual: list[dict[str, Any]] = []
 
         for planner in planners:
             result = self.score_plan(plan, planner)
@@ -195,9 +196,9 @@ class MLPlannerScorer:
         self,
         plans: Sequence[Plan],
         planner: Planner,
-    ) -> List[dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Score multiple plans efficiently."""
-        results: List[dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for plan in plans:
             result = self.score_plan(plan, planner)
             results.append(result)
@@ -207,7 +208,7 @@ class MLPlannerScorer:
         self,
         plans: Sequence[Plan],
         planner: Planner,
-    ) -> List[tuple[Plan, float]]:
+    ) -> list[tuple[Plan, float]]:
         """Rank plans by ML score (descending)."""
         scores = self.batch_score(plans, planner)
         ranked = sorted(
@@ -243,13 +244,19 @@ class MLPlannerScorer:
             "relative_improvement": round(delta / max(0.001, abs(ml_b)) * 100, 2),
             "feature_comparison": {
                 "parallelism_delta": round(
-                    score_a["ml_features"]["parallelism"] - score_b["ml_features"]["parallelism"], 3
+                    score_a["ml_features"]["parallelism"]
+                    - score_b["ml_features"]["parallelism"],
+                    3,
                 ),
                 "diversity_delta": round(
-                    score_a["ml_features"]["step_diversity"] - score_b["ml_features"]["step_diversity"], 3
+                    score_a["ml_features"]["step_diversity"]
+                    - score_b["ml_features"]["step_diversity"],
+                    3,
                 ),
                 "goal_coverage_delta": round(
-                    score_a["ml_features"]["goal_coverage"] - score_b["ml_features"]["goal_coverage"], 3
+                    score_a["ml_features"]["goal_coverage"]
+                    - score_b["ml_features"]["goal_coverage"],
+                    3,
                 ),
             },
         }
@@ -262,7 +269,7 @@ class MLPlannerScorer:
         """Suggest optimizations for the plan."""
         score_result = self.score_plan(plan, planner)
 
-        suggestions: List[str] = []
+        suggestions: list[str] = []
 
         features = score_result["ml_features"]
 
@@ -275,7 +282,9 @@ class MLPlannerScorer:
         if not features["has_memory"]:
             suggestions.append("Add memory step for persistent state")
         if features["goal_coverage"] < 0.5:
-            suggestions.append("Increase goal coverage — more steps should address stated goals")
+            suggestions.append(
+                "Increase goal coverage — more steps should address stated goals"
+            )
         if features["novelty"] < 0.2:
             suggestions.append("Add diverse step types for novelty")
         if features["plan_length"] > 0.8:
@@ -293,7 +302,7 @@ class MLPlannerScorer:
     # Training data
     # ------------------------------------------------------------------
 
-    def collect_training_data(self) -> List[dict[str, Any]]:
+    def collect_training_data(self) -> list[dict[str, Any]]:
         """Return accumulated training data for future model training."""
         return list(self._training_data)
 
@@ -307,7 +316,7 @@ class MLPlannerScorer:
     # Score history
     # ------------------------------------------------------------------
 
-    def get_score_history(self, limit: int = 50) -> List[dict[str, Any]]:
+    def get_score_history(self, limit: int = 50) -> list[dict[str, Any]]:
         """Return recent score history."""
         return self._score_history[-limit:]
 
@@ -323,7 +332,7 @@ class MLPlannerScorer:
             return {"regression_detected": False, "reason": "Insufficient history"}
 
         recent = self._score_history[-window:]
-        older = self._score_history[-2 * window:-window]
+        older = self._score_history[-2 * window : -window]
 
         avg_recent = sum(r["ml_score"] for r in recent) / window
         avg_older = sum(r["ml_score"] for r in older) / window

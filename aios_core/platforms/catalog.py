@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import importlib
 from pathlib import Path
-from typing import Dict, List, Optional, Union
 
 import yaml
 
@@ -42,7 +41,7 @@ def _import_class(dotted: str):
     return getattr(module, attr)
 
 
-def _descriptor_from_spec(spec: Dict, source: str) -> PlatformDescriptor:
+def _descriptor_from_spec(spec: dict, source: str) -> PlatformDescriptor:
     """Строит дескриптор из YAML-спеки."""
     for field in _REQUIRED_FIELDS:
         if not spec.get(field):
@@ -73,7 +72,7 @@ def _descriptor_from_spec(spec: Dict, source: str) -> PlatformDescriptor:
     )
 
 
-def load_catalog_file(path: Union[str, Path]) -> List[PlatformDescriptor]:
+def load_catalog_file(path: str | Path) -> list[PlatformDescriptor]:
     """Регистрирует платформы из одного YAML-файла.
 
     Файл содержит либо одну спеку, либо словарь с ключом ``platforms``
@@ -99,11 +98,11 @@ def load_catalog_file(path: Union[str, Path]) -> List[PlatformDescriptor]:
 
 
 def load_catalog(
-    directory: Union[str, Path] = "platforms",
-) -> List[PlatformDescriptor]:
+    directory: str | Path = "platforms",
+) -> list[PlatformDescriptor]:
     """Регистрирует все платформы каталога (``*.yaml``/``*.yml``, sorted)."""
     directory = Path(directory)
-    loaded: List[PlatformDescriptor] = []
+    loaded: list[PlatformDescriptor] = []
     if not directory.is_dir():
         return loaded
     for path in sorted(directory.glob("*.yaml")) + sorted(directory.glob("*.yml")):

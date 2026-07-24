@@ -5,7 +5,7 @@ resource demand, and agent history, dynamically scaling autonomy levels.
 """
 
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from .autonomy_manager import AutonomyLevel
 
@@ -13,17 +13,19 @@ from .autonomy_manager import AutonomyLevel
 class PredictiveAutonomyRegulator:
     """Predictive Autonomy Regulator that dynamically bounds agent execution scope."""
 
-    def __init__(self, high_risk_threshold: float = 0.6, critical_risk_threshold: float = 0.85):
+    def __init__(
+        self, high_risk_threshold: float = 0.6, critical_risk_threshold: float = 0.85
+    ):
         """Initialize PredictiveAutonomyRegulator."""
         self.high_risk_threshold = high_risk_threshold
         self.critical_risk_threshold = critical_risk_threshold
-        self.history: List[dict[str, Any]] = []
+        self.history: list[dict[str, Any]] = []
 
     def assess_risk(
         self,
         agent_id: str,
         plan_step: dict[str, Any],
-        agent_history_stats: Optional[dict[str, float]] = None,
+        agent_history_stats: dict[str, float] | None = None,
     ) -> float:
         """Calculate normalized failure risk score [0.0, 1.0]."""
         risk_score = 0.1  # baseline minimal risk
@@ -36,7 +38,8 @@ class PredictiveAutonomyRegulator:
         ):
             risk_score += 0.5
         elif any(
-            keyword in action_type for keyword in ["write", "modify", "deploy", "update", "exec"]
+            keyword in action_type
+            for keyword in ["write", "modify", "deploy", "update", "exec"]
         ):
             risk_score += 0.2
 
@@ -58,14 +61,12 @@ class PredictiveAutonomyRegulator:
         agent_id: str,
         current_level: AutonomyLevel,
         plan_step: dict[str, Any],
-        agent_history_stats: Optional[dict[str, float]] = None,
-    ) -> Tuple[AutonomyLevel, str]:
+        agent_history_stats: dict[str, float] | None = None,
+    ) -> tuple[AutonomyLevel, str]:
         """Dynamically regulate autonomy level based on predicted task risk."""
         risk = self.assess_risk(agent_id, plan_step, agent_history_stats)
         effective_level = current_level
-        reason = (
-            f"Risk evaluated at {risk:.2f} — autonomy maintained at Level {current_level.value}"
-        )
+        reason = f"Risk evaluated at {risk:.2f} — autonomy maintained at Level {current_level.value}"
 
         if risk >= self.critical_risk_threshold:
             # Drop to Level 1 (Human-assisted approval required)

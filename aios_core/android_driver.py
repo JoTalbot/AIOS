@@ -11,20 +11,27 @@ Includes the abstract contract plus concrete implementations:
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any
 
-__all__ = ["DriverCapabilities", "UIContext", "AndroidDriver", "ADBDriver", "AppiumDriverWrapper", "DriverPool"]
+__all__ = [
+    "DriverCapabilities",
+    "UIContext",
+    "AndroidDriver",
+    "ADBDriver",
+    "AppiumDriverWrapper",
+    "DriverPool",
+]
 
 
 @dataclass
 class DriverCapabilities:
     """Driver capabilities descriptor."""
+
     package: str = "ua.slando"
     device_name: str = "emulator"
     platform_version: str = "35"
@@ -37,6 +44,7 @@ class DriverCapabilities:
 @dataclass
 class UIContext:
     """Snapshot of the current UI state."""
+
     xml: str
     package: str
     current_activity: str
@@ -150,9 +158,7 @@ class ADBDriver(AndroidDriver):
             cmd.extend(["-s", self.device_id])
         cmd.extend(args)
         try:
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=15
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
             return result.stdout.strip()
         except Exception:
             return ""
@@ -213,13 +219,17 @@ class ADBDriver(AndroidDriver):
         """Press a key event via adb."""
         self._adb("shell", "input", "keyevent", str(keycode))
 
-    def swipe(
-        self, x1: int, y1: int, x2: int, y2: int, duration: int = 300
-    ) -> None:
+    def swipe(self, x1: int, y1: int, x2: int, y2: int, duration: int = 300) -> None:
         """Swipe via ``adb shell input swipe``."""
         self._adb(
-            "shell", "input", "swipe",
-            str(x1), str(y1), str(x2), str(y2), str(duration),
+            "shell",
+            "input",
+            "swipe",
+            str(x1),
+            str(y1),
+            str(x2),
+            str(y2),
+            str(duration),
         )
 
     # ---- Info ----
@@ -239,7 +249,7 @@ class ADBDriver(AndroidDriver):
                         return part.split("/")[0]
         return ""
 
-    def list_devices(self) -> List[str]:
+    def list_devices(self) -> list[str]:
         """Return list of connected ADB device serials."""
         output = self._adb("devices")
         lines = [l for l in output.split("\n") if l.strip() and "List" not in l]
@@ -270,7 +280,9 @@ class AppiumDriverWrapper(AndroidDriver):
     def _require_appium(self) -> Any:
         """Raise if no Appium driver is bound."""
         if self._appium is None:
-            raise RuntimeError("No Appium driver attached — provide one or use ADBDriver")
+            raise RuntimeError(
+                "No Appium driver attached — provide one or use ADBDriver"
+            )
         return self._appium
 
     # ---- Lifecycle ----
@@ -299,7 +311,9 @@ class AppiumDriverWrapper(AndroidDriver):
         """Get UI context via Appium page source."""
         driver = self._require_appium()
         xml = driver.page_source
-        return UIContext(xml=xml, package=self.capabilities.package, current_activity="")
+        return UIContext(
+            xml=xml, package=self.capabilities.package, current_activity=""
+        )
 
     def screenshot(self, path: str) -> bool:
         """Screenshot via Appium."""
@@ -356,8 +370,8 @@ class DriverPool:
 
     def __init__(self):
         """Initialize DriverPool."""
-        self._drivers: Dict[str, AndroidDriver] = {}
-        self._dispatch_counts: Dict[str, int] = {}
+        self._drivers: dict[str, AndroidDriver] = {}
+        self._dispatch_counts: dict[str, int] = {}
 
     def add_driver(self, device_id: str, driver: AndroidDriver) -> None:
         """Register a driver under *device_id*."""
@@ -376,18 +390,16 @@ class DriverPool:
             pass
         return True
 
-    def get_driver(self, device_id: str) -> Optional[AndroidDriver]:
+    def get_driver(self, device_id: str) -> AndroidDriver | None:
         """Retrieve a specific driver."""
         return self._drivers.get(device_id)
 
-    def dispatch(self, strategy: str = "round_robin") -> Optional[AndroidDriver]:
+    def dispatch(self, strategy: str = "round_robin") -> AndroidDriver | None:
         """Select a driver using *strategy* ('round_robin' or 'least_used')."""
         if not self._drivers:
             return None
         if strategy == "round_robin":
-            device_id = min(
-                self._dispatch_counts, key=self._dispatch_counts.get
-            )
+            device_id = min(self._dispatch_counts, key=self._dispatch_counts.get)
         elif strategy == "least_used":
             device_id = min(
                 self._dispatch_counts, key=lambda k: self._dispatch_counts[k]
@@ -398,7 +410,7 @@ class DriverPool:
         self._dispatch_counts[device_id] += 1
         return self._drivers[device_id]
 
-    def all_launch(self) -> Dict[str, bool]:
+    def all_launch(self) -> dict[str, bool]:
         """Launch apps on all pooled drivers."""
         results = {}
         for device_id, driver in self._drivers.items():
@@ -408,7 +420,7 @@ class DriverPool:
                 results[device_id] = False
         return results
 
-    def all_close(self) -> Dict[str, bool]:
+    def all_close(self) -> dict[str, bool]:
         """Close apps on all pooled drivers."""
         results = {}
         for device_id, driver in self._drivers.items():
@@ -418,7 +430,7 @@ class DriverPool:
                 results[device_id] = False
         return results
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return pool statistics."""
         return {
             "pool_size": len(self._drivers),

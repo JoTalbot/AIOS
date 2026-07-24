@@ -14,10 +14,8 @@ Onboarding-пакет платформы (whatsapp/viber/tiktok/instagram/...) �
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-
 # Экраны, которые нужно снять для каждой секции hints.
-_SCREENS: Dict[str, dict[str, str]] = {
+_SCREENS: dict[str, dict[str, str]] = {
     "cards": {
         "dump": "cards.xml",
         "hint": (
@@ -45,7 +43,8 @@ _SCREENS: Dict[str, dict[str, str]] = {
     "navigation": {
         "dump": "navigation.xml",
         "hint": (
-            "вернитесь на главный экран приложения (tab-bar с иконками " "ленты/reels/профиля)"
+            "вернитесь на главный экран приложения (tab-bar с иконками "
+            "ленты/reels/профиля)"
         ),
         "cli_flag": "--navigation",
     },
@@ -61,7 +60,7 @@ _KIND_HINTS = {
 _ALL_SECTIONS = ("cards", "detail", "messenger", "navigation")
 
 
-def _has_hints(hints: Dict[str, object], section: str) -> bool:
+def _has_hints(hints: dict[str, object], section: str) -> bool:
     value = hints.get(section)
     if not value:
         return False
@@ -75,10 +74,10 @@ def calibration_recipe(
     package: str,
     *,
     kind: str = "marketplace",
-    have_hints: Optional[Dict[str, object]] = None,
+    have_hints: dict[str, object] | None = None,
     serial: str | None = None,
     directory: str = "platforms",
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """Строит пошаговый on-device calibrate-рецепт для платформы.
 
     Args:
@@ -98,7 +97,7 @@ def calibration_recipe(
     """
     if kind not in _KIND_HINTS:
         raise ValueError(
-            f"unknown platform kind '{kind}': " f"expected one of {sorted(_KIND_HINTS)}"
+            f"unknown platform kind '{kind}': expected one of {sorted(_KIND_HINTS)}"
         )
     have_hints = have_hints or {}
     needed: list[str] = list(_KIND_HINTS[kind])
@@ -108,7 +107,7 @@ def calibration_recipe(
     missing = [section for section in needed if not _has_hints(have_hints, section)]
 
     serial_part = f"-s {serial} " if serial else ""
-    steps: List[dict[str, str]] = [
+    steps: list[dict[str, str]] = [
         {
             "action": "preflight",
             "title": "Подключить устройство и убедиться, что пакет установлен",

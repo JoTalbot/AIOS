@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 import threading
-from typing import Callable, Dict, List, Optional
+from collections.abc import Callable
 
 from .shards import ShardRouter
 
@@ -34,14 +34,16 @@ class ShardGateway:
 
     def __init__(
         self,
-        router: Optional[ShardRouter] = None,
+        router: ShardRouter | None = None,
         host_id: str | None = None,
-        client_factory: Optional[Callable] = None,
+        client_factory: Callable | None = None,
     ):
         """Initialize ShardGateway."""
         self.router = router or ShardRouter()
         self._owns_router = router is None
-        self.host_id = host_id if host_id is not None else os.environ.get("AIOS_HOST_ID", "local")
+        self.host_id = (
+            host_id if host_id is not None else os.environ.get("AIOS_HOST_ID", "local")
+        )
         self._client_factory = client_factory or _default_client_factory
 
     def close(self) -> None:
@@ -49,7 +51,7 @@ class ShardGateway:
         if self._owns_router:
             self.router.close()
 
-    def resolve(self, profile_key: str) -> Optional[Dict]:
+    def resolve(self, profile_key: str) -> dict | None:
         """Маршрут профиля + флаг local (без изменения состояния)."""
         route = self.router.route_for(profile_key)
         if route is None:
@@ -63,9 +65,9 @@ class ShardGateway:
         profile_key: str,
         method: str,
         path: str,
-        params: Optional[Dict] = None,
-        json_body: Optional[Dict] = None,
-    ) -> Dict:
+        params: dict | None = None,
+        json_body: dict | None = None,
+    ) -> dict:
         """Проксирует вызов на хост профиля.
 
         Returns:
@@ -106,12 +108,14 @@ class ShardGateway:
 # --------------------------------------------------------------------------- #
 
 
-def default_health_probe(host: Dict) -> bool:
+def default_health_probe(host: dict) -> bool:
     """GET <base_url>/health → 2xx = здоров."""
     import httpx
 
     try:
-        response = httpx.get(host["base_url"].rstrip("/") + "/health", timeout=DEFAULT_TIMEOUT_S)
+        response = httpx.get(
+            host["base_url"].rstrip("/") + "/health", timeout=DEFAULT_TIMEOUT_S
+        )
         return response.status_code < 500
     except Exception:
         return False
@@ -122,14 +126,14 @@ class ShardHealthMonitor:
 
     def __init__(
         self,
-        router: Optional[ShardRouter] = None,
-        probe: Optional[Callable[[Dict], bool]] = None,
+        router: ShardRouter | None = None,
+        probe: Callable[[dict], bool] | None = None,
     ):
         """Initialize ShardHealthMonitor."""
         self.router = router or ShardRouter()
         self._owns_router = router is None
         self.probe = probe or default_health_probe
-        self._thread: Optional[threading.Thread] = None
+        self._thread: threading.Thread | None = None
         self._stopped = threading.Event()
 
     def close(self) -> None:
@@ -138,7 +142,7 @@ class ShardHealthMonitor:
         if self._owns_router:
             self.router.close()
 
-    def run_once(self) -> Dict[str, object]:
+    def run_once(self) -> dict[str, object]:
         """Один цикл: probe → set_healthy; больные теряют маршруты."""
         report: dict[str, bool] = {}
         for host in self.router.hosts():

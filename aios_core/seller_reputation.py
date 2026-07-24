@@ -13,7 +13,6 @@ Produces a composite score (0-100) with detailed breakdown.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 
 from aios_core.modules.olx.storage import OLXStorage
 
@@ -125,10 +124,10 @@ class SellerReputationScorer:
 
         # Weighted composite
         composite = (
-            activity_score * 0.40 +
-            price_score * 0.30 +
-            quality_score * 0.20 +
-            response_score * 0.10
+            activity_score * 0.40
+            + price_score * 0.30
+            + quality_score * 0.20
+            + response_score * 0.10
         )
 
         # Grade
@@ -144,7 +143,10 @@ class SellerReputationScorer:
             grade=grade,
             details={
                 "total_ads": len(ad_list),
-                "avg_price": sum(a.price for a in ad_list if a.price) / len([a for a in ad_list if a.price]) if any(a.price for a in ad_list) else None,
+                "avg_price": sum(a.price for a in ad_list if a.price)
+                / len([a for a in ad_list if a.price])
+                if any(a.price for a in ad_list)
+                else None,
             },
         )
 
@@ -192,7 +194,7 @@ class SellerReputationScorer:
 
         # Calculate relative std deviation
         variance = sum((p - avg) ** 2 for p in prices) / len(prices)
-        std = variance ** 0.5
+        std = variance**0.5
         rel_std = std / avg
 
         # Low rel_std (stable prices) = high score

@@ -11,7 +11,7 @@ Provides chat analytics for messenger-first platforms:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 
 from aios_core.modules.olx.storage import OLXStorage
 
@@ -107,8 +107,24 @@ class ChatAnalyzer:
         Returns:
             Dict with positive/neutral/negative counts.
         """
-        positive_kw = ["спасибо", "добрый", "понял", "буду", "куплю", "отлично", "подходит"]
-        negative_kw = ["не", "нет", "проблема", "жаль", "слишком", "дорого", "не подходит"]
+        positive_kw = [
+            "спасибо",
+            "добрый",
+            "понял",
+            "буду",
+            "куплю",
+            "отлично",
+            "подходит",
+        ]
+        negative_kw = [
+            "не",
+            "нет",
+            "проблема",
+            "жаль",
+            "слишком",
+            "дорого",
+            "не подходит",
+        ]
 
         outbox = self.storage.outbox_list()
         positive = 0

@@ -12,8 +12,6 @@ Classes:
 
 from __future__ import annotations
 
-import math
-import random
 import logging
 from typing import Any
 
@@ -23,7 +21,9 @@ logger = logging.getLogger(__name__)
 class ZNEConfig:
     """ZNE configuration."""
 
-    def __init__(self, noise_levels: list[int] = [1, 3, 5], extrapolation: str = "richardson") -> None:
+    def __init__(
+        self, noise_levels: list[int] = [1, 3, 5], extrapolation: str = "richardson"
+    ) -> None:
         self.noise_levels = noise_levels
         self.extrapolation = extrapolation
 
@@ -35,7 +35,13 @@ class QuantumErrorMitigation:
     """Zero-noise extrapolation and other mitigation techniques."""
 
     def __init__(self) -> None:
-        self.techniques: list[str] = ["zne", "pec", "readout_mitigation", "clifford_data_regression", "virtual_distillation"]
+        self.techniques: list[str] = [
+            "zne",
+            "pec",
+            "readout_mitigation",
+            "clifford_data_regression",
+            "virtual_distillation",
+        ]
         self._zne_config = ZNEConfig()
         self._results: dict[str, Any] = {}
 
@@ -68,7 +74,9 @@ class QuantumErrorMitigation:
             return round(extrapolated, 4)
         return noisy_result * 0.95  # Fallback
 
-    def _richardson_extrapolate(self, values: list[float], noise_levels: list[int]) -> float:
+    def _richardson_extrapolate(
+        self, values: list[float], noise_levels: list[int]
+    ) -> float:
         """Richardson extrapolation for ZNE."""
         n = len(values)
         if n == 2:
@@ -78,7 +86,11 @@ class QuantumErrorMitigation:
             return y1 - (y2 - y1) * x1 / (x2 - x1)
         elif n == 3:
             # Quadratic extrapolation (simplified)
-            return values[0] - 2 * (values[1] - values[0]) + (values[2] - 2 * values[1] + values[0])
+            return (
+                values[0]
+                - 2 * (values[1] - values[0])
+                + (values[2] - 2 * values[1] + values[0])
+            )
         # General: weighted average favoring lower noise
         weights = [1.0 / (l + 1) for l in noise_levels]
         total = sum(weights)
@@ -107,10 +119,12 @@ class QuantumErrorMitigation:
         """Virtual distillation."""
         # Use M copies of state to suppress noise (simplified)
         suppression = 2  # M=2 copies
-        corrected = noisy_result ** suppression
+        corrected = noisy_result**suppression
         return round(corrected, 4)
 
-    def batch_mitigate(self, results: list[float], technique: str = "zne") -> list[float]:
+    def batch_mitigate(
+        self, results: list[float], technique: str = "zne"
+    ) -> list[float]:
         """Apply mitigation to a batch of results."""
         return [self.mitigate(r, technique) for r in results]
 

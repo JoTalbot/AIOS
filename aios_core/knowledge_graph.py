@@ -14,7 +14,6 @@ Suitable for offline/embedded deployment on Android devices.
 
 from __future__ import annotations
 
-import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
@@ -24,16 +23,16 @@ from typing import Any
 class RelationType(Enum):
     """Types of relationships in the knowledge graph."""
 
-    SOLD_BY = "sold_by"              # Product → Seller
-    LISTED_ON = "listed_on"          # Product → Platform
-    SAME_PRODUCT = "same_product"    # Product ↔ Product (cross-platform)
+    SOLD_BY = "sold_by"  # Product → Seller
+    LISTED_ON = "listed_on"  # Product → Platform
+    SAME_PRODUCT = "same_product"  # Product ↔ Product (cross-platform)
     COMPETES_WITH = "competes_with"  # Seller ↔ Seller
-    PRICE_OF = "price_of"            # Price → Product
-    CATEGORY_OF = "category_of"      # Category → Product
-    BRAND_OF = "brand_of"            # Brand → Product
-    LOCATED_IN = "located_in"        # Seller → City
+    PRICE_OF = "price_of"  # Price → Product
+    CATEGORY_OF = "category_of"  # Category → Product
+    BRAND_OF = "brand_of"  # Brand → Product
+    LOCATED_IN = "located_in"  # Seller → City
     PREFERRED_OVER = "preferred_over"  # Product → Product (user preference)
-    INFERRED = "inferred"            # Auto-inferred relationship
+    INFERRED = "inferred"  # Auto-inferred relationship
 
 
 @dataclass
@@ -43,9 +42,9 @@ class Triple:
     subject: str
     predicate: str
     object: str
-    weight: float = 1.0        # Confidence/weight (0.0 to 1.0)
+    weight: float = 1.0  # Confidence/weight (0.0 to 1.0)
     metadata: dict[str, Any] = field(default_factory=dict)
-    source: str = "manual"     # Where this triple came from
+    source: str = "manual"  # Where this triple came from
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize triple to dict."""
@@ -63,10 +62,10 @@ class EntityInfo:
     """Information about an entity in the graph."""
 
     entity_id: str
-    type: str = "unknown"       # "product", "seller", "platform", "category", "city"
+    type: str = "unknown"  # "product", "seller", "platform", "category", "city"
     properties: dict[str, Any] = field(default_factory=dict)
-    outgoing_count: int = 0     # Number of outgoing relations
-    incoming_count: int = 0     # Number of incoming relations
+    outgoing_count: int = 0  # Number of outgoing relations
+    incoming_count: int = 0  # Number of incoming relations
 
     @property
     def popularity(self) -> int:
@@ -80,11 +79,11 @@ class PathResult:
 
     start: str
     end: str
-    path: list[str]             # Sequence of entity IDs
-    relations: list[str]        # Sequence of predicates
-    length: int                 # Number of hops
-    total_weight: float         # Sum of weights along path
-    confidence: float           # Product of weights along path
+    path: list[str]  # Sequence of entity IDs
+    relations: list[str]  # Sequence of predicates
+    length: int  # Number of hops
+    total_weight: float  # Sum of weights along path
+    confidence: float  # Product of weights along path
 
 
 class KnowledgeGraph:
@@ -107,7 +106,7 @@ class KnowledgeGraph:
         self._db = db  # Stored for compatibility, but in-memory only for now
         self._triples: list[Triple] = []
         self._outgoing: dict[str, list[Triple]] = defaultdict(list)  # subject → triples
-        self._incoming: dict[str, list[Triple]] = defaultdict(list)   # object → triples
+        self._incoming: dict[str, list[Triple]] = defaultdict(list)  # object → triples
         self._entities: dict[str, EntityInfo] = {}
         self._inferred: set[str] = set()  # Set of inferred triple IDs
 
@@ -123,8 +122,9 @@ class KnowledgeGraph:
         """
         tid = self._triple_id(triple)
         # Check for duplicates
-        existing = [t for t in self._outgoing[triple.subject]
-                    if self._triple_id(t) == tid]
+        existing = [
+            t for t in self._outgoing[triple.subject] if self._triple_id(t) == tid
+        ]
         if existing:
             # Update weight if duplicate
             existing[0].weight = max(existing[0].weight, triple.weight)
@@ -310,12 +310,14 @@ class KnowledgeGraph:
         triples = self.find_related(entity_id, relation, "both", 100)
         results = []
         for t in triples:
-            results.append({
-                "source": t.subject,
-                "target": t.object,
-                "relation": t.predicate,
-                "weight": t.weight,
-            })
+            results.append(
+                {
+                    "source": t.subject,
+                    "target": t.object,
+                    "relation": t.predicate,
+                    "weight": t.weight,
+                }
+            )
         return results
 
     def neighbors(
@@ -351,7 +353,11 @@ class KnowledgeGraph:
                             next_frontier.append(nn)
                 frontier = next_frontier
             # Exclude the original node
-            return [self.get_node(nid) for nid in visited if nid != node_id and self.get_node(nid)]
+            return [
+                self.get_node(nid)
+                for nid in visited
+                if nid != node_id and self.get_node(nid)
+            ]
 
     def path(self, source: str, target: str) -> list[dict[str, Any]]:
         """Find path between two nodes — API-compatible method.
@@ -368,12 +374,16 @@ class KnowledgeGraph:
             # Convert path to list of edge dicts
             edges = []
             for i in range(len(result.path) - 1):
-                edges.append({
-                    "source": result.path[i],
-                    "target": result.path[i + 1],
-                    "relation": result.relations[i] if i < len(result.relations) else "",
-                    "weight": 1.0,
-                })
+                edges.append(
+                    {
+                        "source": result.path[i],
+                        "target": result.path[i + 1],
+                        "relation": result.relations[i]
+                        if i < len(result.relations)
+                        else "",
+                        "weight": 1.0,
+                    }
+                )
             return edges
         return []
 
@@ -524,11 +534,15 @@ class KnowledgeGraph:
             if len(path) > max_depth:
                 continue
 
-            for triple in self._outgoing.get(current, []) + self._incoming.get(current, []):
+            for triple in self._outgoing.get(current, []) + self._incoming.get(
+                current, []
+            ):
                 if predicate and triple.predicate != predicate:
                     continue
 
-                neighbor = triple.object if triple.subject == current else triple.subject
+                neighbor = (
+                    triple.object if triple.subject == current else triple.subject
+                )
                 if neighbor in visited:
                     continue
 
@@ -634,8 +648,16 @@ class KnowledgeGraph:
         n_triples = len(self._triples)
         n_inferred = len(self._inferred)
 
-        avg_out = sum(e.outgoing_count for e in self._entities.values()) / n_entities if n_entities else 0
-        avg_in = sum(e.incoming_count for e in self._entities.values()) / n_entities if n_entities else 0
+        avg_out = (
+            sum(e.outgoing_count for e in self._entities.values()) / n_entities
+            if n_entities
+            else 0
+        )
+        avg_in = (
+            sum(e.incoming_count for e in self._entities.values()) / n_entities
+            if n_entities
+            else 0
+        )
 
         max_possible = n_entities * (n_entities - 1) if n_entities > 1 else 0
         density = n_triples / max_possible if max_possible > 0 else 0.0
@@ -650,8 +672,8 @@ class KnowledgeGraph:
 
         return {
             "entities": n_entities,
-            "nodes": n_entities,           # Alias for API compatibility
-            "edges": n_triples,            # Alias for API compatibility
+            "nodes": n_entities,  # Alias for API compatibility
+            "edges": n_triples,  # Alias for API compatibility
             "triples": n_triples,
             "inferred_triples": n_inferred,
             "density": round(density, 6),

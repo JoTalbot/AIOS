@@ -21,7 +21,6 @@ import re
 import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
 from aios_core.modules.olx.text_utils import parse_price
 
@@ -34,7 +33,7 @@ _STORY_RID_MARKERS = ("story", "highlight")
 class CalibrationAdvisor:
     """Ищет маркеры карточек/цен в UI-дампе новой платформы."""
 
-    def analyze(self, xml_source: Union[str, Path, ET.Element]) -> Dict[str, object]:
+    def analyze(self, xml_source: str | Path | ET.Element) -> dict[str, object]:
         """Разбирает дамп и возвращает parser_hints.
 
         Returns:
@@ -69,14 +68,16 @@ class CalibrationAdvisor:
         # Считаем по каждому resource-id: сколько контейнеров выглядят
         # карточками (потомок-цена + потомок-заголовок).
         occurrences: Counter = Counter()
-        samples: Dict[str, list[str]] = defaultdict(list)
+        samples: dict[str, list[str]] = defaultdict(list)
         titles_seen = 0
 
         for node in root.iter("node"):
             resource_id = node.attrib.get("resource-id") or ""
             if not resource_id:
                 continue
-            texts = [(child.attrib.get("text") or "").strip() for child in node.iter("node")]
+            texts = [
+                (child.attrib.get("text") or "").strip() for child in node.iter("node")
+            ]
             texts = [t for t in texts if t]
             if not texts:
                 continue
@@ -126,12 +127,13 @@ class CalibrationAdvisor:
             "hint": (
                 "маркеры найдены — запишите в extras.parser_hints"
                 if card_markers
-                else "карточки не обнаружены: нужен дамп поисковой выдачи " "с хотя бы одной ценой"
+                else "карточки не обнаружены: нужен дамп поисковой выдачи "
+                "с хотя бы одной ценой"
             ),
         }
 
     @staticmethod
-    def _root(xml_source: Union[str, Path, ET.Element]) -> ET.Element:
+    def _root(xml_source: str | Path | ET.Element) -> ET.Element:
         if isinstance(xml_source, ET.Element):
             return xml_source
         text_or_path = str(xml_source)
@@ -140,7 +142,7 @@ class CalibrationAdvisor:
         return ET.parse(text_or_path).getroot()
 
 
-def hints_to_yaml_doc(platform_name: str, hints: Dict[str, object]) -> str:
+def hints_to_yaml_doc(platform_name: str, hints: dict[str, object]) -> str:
     """Фрагмент YAML с parser_hints для ручной вставки в дескриптор."""
     import yaml
 
@@ -154,8 +156,8 @@ def hints_to_yaml_doc(platform_name: str, hints: Dict[str, object]) -> str:
 
 def write_hints_to_descriptor(
     platform_name: str,
-    hints: Dict[str, object],
-    directory: Union[str, Path] = "platforms",
+    hints: dict[str, object],
+    directory: str | Path = "platforms",
 ) -> str:
     """Записывает parser_hints в ``extras`` YAML-дескриптора платформы.
 
@@ -209,7 +211,7 @@ class DetailCalibrationAdvisor:
     продавцом/CTA и диалог с полем ввода/кнопкой отправки/пузырями.
     """
 
-    def analyze_detail(self, xml_source: Union[str, Path, ET.Element]) -> Dict[str, object]:
+    def analyze_detail(self, xml_source: str | Path | ET.Element) -> dict[str, object]:
         """Разбирает дамп детального экрана.
 
         Returns:
@@ -219,7 +221,7 @@ class DetailCalibrationAdvisor:
         root = CalibrationAdvisor._root(xml_source)
         price_nodes: Counter = Counter()
         seller_markers: Counter = Counter()
-        cta_markers: List[dict[str, str]] = []
+        cta_markers: list[dict[str, str]] = []
         description_nodes = 0
 
         for node in root.iter("node"):
@@ -230,7 +232,9 @@ class DetailCalibrationAdvisor:
 
             if text and parse_price(text) is not None and resource_id:
                 price_nodes[resource_id] += 1
-            if resource_id and any(marker in resource_id for marker in _SELLER_ID_MARKERS):
+            if resource_id and any(
+                marker in resource_id for marker in _SELLER_ID_MARKERS
+            ):
                 seller_markers[resource_id] += 1
             if len(text) >= _MIN_DESCRIPTION_LEN:
                 description_nodes += 1
@@ -262,7 +266,9 @@ class DetailCalibrationAdvisor:
             ),
         }
 
-    def analyze_messenger(self, xml_source: Union[str, Path, ET.Element]) -> Dict[str, object]:
+    def analyze_messenger(
+        self, xml_source: str | Path | ET.Element
+    ) -> dict[str, object]:
         """Разбирает дамп диалога мессенджера.
 
         Returns:
@@ -270,7 +276,7 @@ class DetailCalibrationAdvisor:
         """
         root = CalibrationAdvisor._root(xml_source)
         input_classes: Counter = Counter()
-        send_markers: List[dict[str, str]] = []
+        send_markers: list[dict[str, str]] = []
         bubbles: Counter = Counter()
 
         for node in root.iter("node"):
@@ -310,7 +316,8 @@ class DetailCalibrationAdvisor:
             "hint": (
                 "messenger-маркеры найдены"
                 if found
-                else "диалог не распознан: нужен дамп переписки (поле " "ввода/кнопка отправки)"
+                else "диалог не распознан: нужен дамп переписки (поле "
+                "ввода/кнопка отправки)"
             ),
         }
 
@@ -321,7 +328,7 @@ class DetailCalibrationAdvisor:
     def analyze_navigation(
         self,
         xml_source,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """Извлекает navigation-подсказки из дампа домашнего экрана.
 
         Ищет нижний tab-bar (resource-id ``tab_bar``/``bottom_nav``/...),
@@ -340,9 +347,9 @@ class DetailCalibrationAdvisor:
              (честный сигнал оператору — дефолты ReelsTabDriver).
         """
         root = CalibrationAdvisor._root(xml_source)
-        tab_bar_markers: List[Dict[str, object]] = []
-        tabs: List[Dict[str, object]] = []
-        reels_rid: List[Dict[str, object]] = []
+        tab_bar_markers: list[dict[str, object]] = []
+        tabs: list[dict[str, object]] = []
+        reels_rid: list[dict[str, object]] = []
         reels_texts: list[str] = []
         reels_bounds: str | None = None
 
@@ -355,9 +362,9 @@ class DetailCalibrationAdvisor:
             if any(m in rid_tail for m in self._TAB_BAR_MARKERS):
                 if not any(m["resource_id"] == resource_id for m in tab_bar_markers):
                     tab_bar_markers.append({"resource_id": resource_id})
-            is_tab = (bool(rid_tail) and any(m in rid_tail for m in self._TAB_NODE_MARKERS)) or (
-                desc.lower() in ("home", "search", "reels", "clips", "video")
-            )
+            is_tab = (
+                bool(rid_tail) and any(m in rid_tail for m in self._TAB_NODE_MARKERS)
+            ) or (desc.lower() in ("home", "search", "reels", "clips", "video"))
             if not is_tab or bounds is None:
                 continue
             label = desc or text
@@ -370,14 +377,16 @@ class DetailCalibrationAdvisor:
             )
             combined = f"{rid_tail} {text.lower()} {desc.lower()}"
             if any(m in combined for m in self._REELS_MARKERS):
-                if resource_id and not any(m["resource_id"] == resource_id for m in reels_rid):
+                if resource_id and not any(
+                    m["resource_id"] == resource_id for m in reels_rid
+                ):
                     reels_rid.append({"resource_id": resource_id})
                 if label and label.lower() not in (t.lower() for t in reels_texts):
                     reels_texts.append(label)
                 if reels_bounds is None:
                     reels_bounds = bounds
 
-        reels_tab: Dict[str, object] = {}
+        reels_tab: dict[str, object] = {}
         if reels_rid:
             reels_tab["rid_markers"] = reels_rid
         if reels_texts:
@@ -401,12 +410,12 @@ class DetailCalibrationAdvisor:
 
 
 def merge_hints(
-    card_hints: Dict[str, object],
-    detail: Optional[Dict[str, object]] = None,
-    messenger: Optional[Dict[str, object]] = None,
-    navigation: Optional[Dict[str, object]] = None,
-    content_categories: Optional[Dict[str, object]] = None,
-) -> Dict[str, object]:
+    card_hints: dict[str, object],
+    detail: dict[str, object] | None = None,
+    messenger: dict[str, object] | None = None,
+    navigation: dict[str, object] | None = None,
+    content_categories: dict[str, object] | None = None,
+) -> dict[str, object]:
     """Объединяет подсказки калибровки всех экранов в один документ.
 
     Итог (ключи ``detail``/``messenger``/``navigation`` добавляются

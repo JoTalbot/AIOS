@@ -8,34 +8,79 @@ strand generation, codon translation, and gene expression regulation.
 
 import hashlib
 import random
-import time
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 __all__ = ["MolecularDNARuntime"]
 
 # Codon table: 3-nucleotide sequences → amino acids
-_CODON_TABLE: Dict[str, str] = {
-    "TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L",
-    "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
-    "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M",
-    "GTT": "V", "GTC": "V", "GTA": "V", "GTG": "V",
-    "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S",
-    "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P",
-    "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T",
-    "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A",
-    "CAT": "H", "CAC": "H", "CAA": "Q", "CAG": "Q",
-    "AAT": "N", "AAC": "N", "AAA": "K", "AAG": "K",
-    "GAT": "D", "GAC": "D", "GAA": "E", "GAG": "E",
-    "TGT": "C", "TGC": "C", "TGA": "*", "TGG": "W",
-    "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R",
-    "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R",
-    "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G",
+_CODON_TABLE: dict[str, str] = {
+    "TTT": "F",
+    "TTC": "F",
+    "TTA": "L",
+    "TTG": "L",
+    "CTT": "L",
+    "CTC": "L",
+    "CTA": "L",
+    "CTG": "L",
+    "ATT": "I",
+    "ATC": "I",
+    "ATA": "I",
+    "ATG": "M",
+    "GTT": "V",
+    "GTC": "V",
+    "GTA": "V",
+    "GTG": "V",
+    "TCT": "S",
+    "TCC": "S",
+    "TCA": "S",
+    "TCG": "S",
+    "CCT": "P",
+    "CCC": "P",
+    "CCA": "P",
+    "CCG": "P",
+    "ACT": "T",
+    "ACC": "T",
+    "ACA": "T",
+    "ACG": "T",
+    "GCT": "A",
+    "GCC": "A",
+    "GCA": "A",
+    "GCG": "A",
+    "CAT": "H",
+    "CAC": "H",
+    "CAA": "Q",
+    "CAG": "Q",
+    "AAT": "N",
+    "AAC": "N",
+    "AAA": "K",
+    "AAG": "K",
+    "GAT": "D",
+    "GAC": "D",
+    "GAA": "E",
+    "GAG": "E",
+    "TGT": "C",
+    "TGC": "C",
+    "TGA": "*",
+    "TGG": "W",
+    "CGT": "R",
+    "CGC": "R",
+    "CGA": "R",
+    "CGG": "R",
+    "AGT": "S",
+    "AGC": "S",
+    "AGA": "R",
+    "AGG": "R",
+    "GGT": "G",
+    "GGC": "G",
+    "GGA": "G",
+    "GGG": "G",
 }
 
 _COMPLEMENT = {"A": "T", "T": "A", "C": "G", "G": "C"}
 
 # Restriction enzyme recognition sites
-_RESTRICTION_ENZYMES: Dict[str, str] = {
+_RESTRICTION_ENZYMES: dict[str, str] = {
     "EcoRI": "GAATTC",
     "BamHI": "GGATCC",
     "HindIII": "AAGCTT",
@@ -101,7 +146,7 @@ class MolecularDNARuntime:
         self._gene_expression[rule_id] = 1.0  # default expression level
         return dna_seq
 
-    def retrieve_molecular_rule(self, rule_id: str) -> Optional[str]:
+    def retrieve_molecular_rule(self, rule_id: str) -> str | None:
         """Retrieve DNA sequence for *rule_id*, return None if not found."""
         return self.dna_memory_bank.get(rule_id)
 
@@ -128,7 +173,7 @@ class MolecularDNARuntime:
                 "error": f"Rule ID '{rule_id}' not found in DNA memory bank.",
             }
 
-        molecule_count = 2 ** amplification_cycles
+        molecule_count = 2**amplification_cycles
         return {
             "success": True,
             "rule_id": rule_id,
@@ -146,7 +191,7 @@ class MolecularDNARuntime:
         """Generate the Watson-Crick complementary strand."""
         return "".join(_COMPLEMENT.get(nuc, "A") for nuc in dna_sequence)
 
-    def generate_double_stranded(self, rule_id: str) -> Optional[dict[str, str]]:
+    def generate_double_stranded(self, rule_id: str) -> dict[str, str] | None:
         """Return both sense and antisense strands for *rule_id*."""
         sense = self.dna_memory_bank.get(rule_id)
         if sense is None:
@@ -173,8 +218,8 @@ class MolecularDNARuntime:
                 "available_enzymes": list(_RESTRICTION_ENZYMES.keys()),
             }
 
-        fragments: List[str] = []
-        positions: List[int] = []
+        fragments: list[str] = []
+        positions: list[int] = []
         last_cut = 0
 
         pos = 0
@@ -203,9 +248,7 @@ class MolecularDNARuntime:
             "fragment_lengths": [len(f) for f in fragments],
         }
 
-    def digest_rule(
-        self, rule_id: str, enzyme_name: str
-    ) -> dict[str, Any]:
+    def digest_rule(self, rule_id: str, enzyme_name: str) -> dict[str, Any]:
         """Digest stored rule DNA with a restriction enzyme."""
         seq = self.dna_memory_bank.get(rule_id)
         if seq is None:
@@ -255,7 +298,7 @@ class MolecularDNARuntime:
         the complementary strand as reference.
         """
         complement = self.generate_complementary_strand(dna_sequence)
-        repaired_positions: List[int] = []
+        repaired_positions: list[int] = []
         repaired_seq = list(dna_sequence)
 
         # Simulate: detect potential mismatches (random sampling for demo)
@@ -284,11 +327,11 @@ class MolecularDNARuntime:
         self,
         dna_sequence: str,
         mutation_rate: float = 0.01,
-        mutation_types: List[str] = ["point", "insertion", "deletion"],
+        mutation_types: list[str] = ["point", "insertion", "deletion"],
     ) -> dict[str, Any]:
         """Simulate random mutations on a DNA sequence."""
         mutated = list(dna_sequence)
-        mutations: List[dict[str, Any]] = []
+        mutations: list[dict[str, Any]] = []
         nucleotides = ["A", "T", "C", "G"]
 
         num_mutations = max(1, int(len(dna_sequence) * mutation_rate))
@@ -301,30 +344,36 @@ class MolecularDNARuntime:
                 original = mutated[pos]
                 new_nuc = random.choice([n for n in nucleotides if n != original])
                 mutated[pos] = new_nuc
-                mutations.append({
-                    "type": "point",
-                    "position": pos,
-                    "original": original,
-                    "mutated": new_nuc,
-                })
+                mutations.append(
+                    {
+                        "type": "point",
+                        "position": pos,
+                        "original": original,
+                        "mutated": new_nuc,
+                    }
+                )
 
             elif mtype == "insertion":
                 ins_nuc = random.choice(nucleotides)
                 mutated.insert(pos, ins_nuc)
-                mutations.append({
-                    "type": "insertion",
-                    "position": pos,
-                    "inserted": ins_nuc,
-                })
+                mutations.append(
+                    {
+                        "type": "insertion",
+                        "position": pos,
+                        "inserted": ins_nuc,
+                    }
+                )
 
             elif mtype == "deletion":
                 if len(mutated) > 1:
                     deleted = mutated.pop(pos)
-                    mutations.append({
-                        "type": "deletion",
-                        "position": pos,
-                        "deleted": deleted,
-                    })
+                    mutations.append(
+                        {
+                            "type": "deletion",
+                            "position": pos,
+                            "deleted": deleted,
+                        }
+                    )
 
         self._mutations_applied += len(mutations)
         return {
@@ -340,9 +389,9 @@ class MolecularDNARuntime:
 
     def translate_to_proteins(self, dna_sequence: str) -> dict[str, Any]:
         """Translate DNA sequence into amino acid chain (protein) via codons."""
-        amino_acids: List[str] = []
-        codons_used: List[str] = []
-        stop_positions: List[int] = []
+        amino_acids: list[str] = []
+        codons_used: list[str] = []
+        stop_positions: list[int] = []
 
         # Process in 3-nucleotide codons
         for i in range(0, len(dna_sequence) - 2, 3):
@@ -381,12 +430,14 @@ class MolecularDNARuntime:
             "success": True,
             "rule_id": rule_id,
             "expression_level": self._gene_expression[rule_id],
-            "status": "overexpressed" if expression_level > 1.5
-            else "suppressed" if expression_level < 0.3
+            "status": "overexpressed"
+            if expression_level > 1.5
+            else "suppressed"
+            if expression_level < 0.3
             else "normal",
         }
 
-    def get_expression_profile(self) -> Dict[str, float]:
+    def get_expression_profile(self) -> dict[str, float]:
         """Return the full gene expression profile."""
         return dict(self._gene_expression)
 
@@ -411,9 +462,7 @@ class MolecularDNARuntime:
             "sequence_hash": hash_val,
             "complement_hash": complement_hash,
             "hashes_match": hash_val != complement_hash,  # Different by nature
-            "nucleotide_composition": {
-                n: seq.count(n) for n in "ATCG"
-            },
+            "nucleotide_composition": {n: seq.count(n) for n in "ATCG"},
         }
 
     # ------------------------------------------------------------------

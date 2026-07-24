@@ -1,7 +1,5 @@
 """Comprehensive AI Safety Framework for AIOS"""
 
-from typing import Any, Callable, Dict, List
-
 __all__ = [
     "AISafetyFramework",
     "ConstitutionalSafety",
@@ -24,10 +22,10 @@ class AISafetyFramework:
             "robustness": RobustnessSafety(),
             "governance": GovernanceSafety(),
         }
-        self.incidents: List[Dict] = []
+        self.incidents: list[dict] = []
         self.safety_checks_performed = 0
 
-    def comprehensive_safety_check(self, action: Dict, context: Dict = None) -> Dict:
+    def comprehensive_safety_check(self, action: dict, context: dict = None) -> dict:
         """Run all safety layers on an action."""
         self.safety_checks_performed += 1
         results = {}
@@ -37,7 +35,9 @@ class AISafetyFramework:
             results[layer_name] = result
 
             if not result.get("safe", True):
-                self.incidents.append({"action": action, "layer": layer_name, "details": result})
+                self.incidents.append(
+                    {"action": action, "layer": layer_name, "details": result}
+                )
 
         overall_safe = all(r.get("safe", True) for r in results.values())
         avg_score = sum(r.get("score", 1.0) for r in results.values()) / len(results)
@@ -49,7 +49,7 @@ class AISafetyFramework:
             "incidents": len(self.incidents),
         }
 
-    def get_safety_report(self) -> Dict:
+    def get_safety_report(self) -> dict:
         """Execute get safety report."""
         return {
             "total_checks": self.safety_checks_performed,
@@ -69,7 +69,8 @@ class AISafetyFramework:
 
 class ConstitutionalSafety:
     """Safety layer checking for constitutional violations (e.g. harm language)."""
-    def check(self, action: Dict, context: Dict = None) -> Dict:
+
+    def check(self, action: dict, context: dict = None) -> dict:
         """Execute check."""
         action_str = str(action).lower()
         violations = []
@@ -84,27 +85,31 @@ class ConstitutionalSafety:
 
 class AlignmentSafety:
     """Safety layer quantifying value-alignment of actions."""
-    def check(self, action: Dict, context: Dict = None) -> Dict:
+
+    def check(self, action: dict, context: dict = None) -> dict:
         """Execute check."""
         return {"safe": True, "score": 0.95, "alignment_score": 0.92}
 
 
 class InterpretabilitySafety:
     """Safety layer assessing how interpretable an action is."""
-    def check(self, action: Dict, context: Dict = None) -> Dict:
+
+    def check(self, action: dict, context: dict = None) -> dict:
         """Execute check."""
         return {"safe": True, "score": 0.88, "interpretability": 0.85}
 
 
 class RobustnessSafety:
     """Safety layer checking robustness against perturbations."""
-    def check(self, action: Dict, context: Dict = None) -> Dict:
+
+    def check(self, action: dict, context: dict = None) -> dict:
         """Execute check."""
         return {"safe": True, "score": 0.90, "robustness": 0.88}
 
 
 class GovernanceSafety:
     """Safety layer enforcing governance compliance."""
-    def check(self, action: Dict, context: Dict = None) -> Dict:
+
+    def check(self, action: dict, context: dict = None) -> dict:
         """Execute check."""
         return {"safe": True, "score": 0.93, "governance_compliance": 0.91}

@@ -19,15 +19,17 @@ import logging
 import re
 import secrets
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class ThreatLevel(str, Enum):
     """Threat severity."""
+
     INFO = "info"
     LOW = "low"
     MEDIUM = "medium"
@@ -38,6 +40,7 @@ class ThreatLevel(str, Enum):
 @dataclass
 class ThreatEvent:
     """Recorded threat event."""
+
     threat_type: str
     level: ThreatLevel
     details: dict[str, Any] = field(default_factory=dict)
@@ -49,10 +52,11 @@ class ThreatEvent:
 @dataclass
 class SecurityPolicy:
     """Configurable detection rule."""
+
     name: str
     threat_type: str
     level: ThreatLevel = ThreatLevel.MEDIUM
-    check_fn: Optional[Callable[[dict[str, Any]], bool]] = None
+    check_fn: Callable[[dict[str, Any]], bool] | None = None
     action: str = "log"  # log, block, alert
 
 
@@ -71,11 +75,17 @@ class AdvancedSecurity:
     def __init__(self) -> None:
         self.threats: list[ThreatEvent] = []
         self.policies: dict[str, SecurityPolicy] = {}
-        self.api_keys: dict[str, dict[str, Any]] = {}  # key → {name, created, expires, active}
+        self.api_keys: dict[
+            str, dict[str, Any]
+        ] = {}  # key → {name, created, expires, active}
         self._rate_counters: dict[str, list[float]] = {}  # ip → timestamps
         self._brute_force_threshold: int = 10  # requests per 60s
         self._xss_patterns: list[str] = [r"<script", r"javascript:", r"on\w+="]
-        self._injection_patterns: list[str] = [r";\s*DROP", r"'\s*OR\s+'", r"UNION\s+SELECT"]
+        self._injection_patterns: list[str] = [
+            r";\s*DROP",
+            r"'\s*OR\s+'",
+            r"UNION\s+SELECT",
+        ]
 
     # ── Threat Detection ────────────────────────────────────────
 
@@ -101,12 +111,16 @@ class AdvancedSecurity:
         # Built-in: XSS detection
         body = request.get("body", "")
         if isinstance(body, str) and self._detect_xss(body):
-            self._record("xss_attempt", ThreatLevel.HIGH, {"input": body[:50]}, source=ip)
+            self._record(
+                "xss_attempt", ThreatLevel.HIGH, {"input": body[:50]}, source=ip
+            )
             detected = True
 
         # Built-in: SQL injection detection
         if isinstance(body, str) and self._detect_injection(body):
-            self._record("sql_injection", ThreatLevel.CRITICAL, {"input": body[:50]}, source=ip)
+            self._record(
+                "sql_injection", ThreatLevel.CRITICAL, {"input": body[:50]}, source=ip
+            )
             detected = True
 
         # Custom policies
@@ -176,7 +190,8 @@ class AdvancedSecurity:
         """Generate a cryptographically random API key."""
         key = secrets.token_urlsafe(32)
         self.api_keys[key] = {
-            "name": name, "created_at": time.time(),
+            "name": name,
+            "created_at": time.time(),
             "expires_at": time.time() + expires_in if expires_in > 0 else None,
             "active": True,
         }
@@ -221,7 +236,9 @@ class AdvancedSecurity:
                 count += 1
         return count
 
-    def get_threats(self, level: ThreatLevel | None = None, unresolved_only: bool = False) -> list[ThreatEvent]:
+    def get_threats(
+        self, level: ThreatLevel | None = None, unresolved_only: bool = False
+    ) -> list[ThreatEvent]:
         """Query threats."""
         result = self.threats
         if level:
@@ -232,9 +249,19 @@ class AdvancedSecurity:
 
     # ── Audit ────────────────────────────────────────────────────
 
-    def _record(self, threat_type: str, level: ThreatLevel, details: dict[str, Any], source: str = "") -> None:
+    def _record(
+        self,
+        threat_type: str,
+        level: ThreatLevel,
+        details: dict[str, Any],
+        source: str = "",
+    ) -> None:
         """Record a threat event."""
-        self.threats.append(ThreatEvent(threat_type=threat_type, level=level, details=details, source=source))
+        self.threats.append(
+            ThreatEvent(
+                threat_type=threat_type, level=level, details=details, source=source
+            )
+        )
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""

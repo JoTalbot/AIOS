@@ -8,14 +8,12 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Optional
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 __all__ = ["ReasoningStep", "ReasoningChain", "ReasoningEngine"]
 
 if TYPE_CHECKING:
-    from .knowledge_graph import KnowledgeGraph
-    from .memory_manager import MemoryManager
     from .storage import Database
 
 
@@ -39,7 +37,7 @@ class ReasoningChain:
     steps: list[ReasoningStep] = field(default_factory=list)
     conclusion: str = ""
     overall_confidence: float = 0.0
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class ReasoningEngine:
@@ -48,7 +46,7 @@ class ReasoningEngine:
     v3.0.0: Multi-step chains with memory/knowledge integration.
     """
 
-    def __init__(self, db: Optional[Database] = None, memory=None, knowledge=None):
+    def __init__(self, db: Database | None = None, memory=None, knowledge=None):
         """Initialize ReasoningEngine."""
         self.db = db
         self.memory = memory  # MemoryManager instance
@@ -65,7 +63,7 @@ class ReasoningEngine:
     def build_chain(
         self,
         question: str,
-        context: Optional[dict] = None,
+        context: dict | None = None,
         use_memory: bool = False,
         use_knowledge: bool = False,
     ) -> dict:
@@ -270,7 +268,8 @@ class ReasoningEngine:
 
         chain = ReasoningChain(
             id=chain_id,
-            question="forward_chain from " + "; ".join(f["fact"][:40] for f in facts[:3]),
+            question="forward_chain from "
+            + "; ".join(f["fact"][:40] for f in facts[:3]),
         )
 
         # Seed with the provided facts as premises
@@ -489,7 +488,9 @@ class ReasoningEngine:
                     for p in paths_found[:3]:
                         path_desc = " -> ".join(
                             step.get("label", step.get("id", "?"))
-                            for step in p.get("nodes", p if isinstance(p, list) else [p])
+                            for step in p.get(
+                                "nodes", p if isinstance(p, list) else [p]
+                            )
                         )
                         path_descriptions.append(path_desc)
 
@@ -602,7 +603,9 @@ class ReasoningEngine:
             if self.knowledge:
                 try:
                     ev_nodes = self.knowledge.find_nodes(label=ev_fact[:60], limit=3)
-                    hyp_nodes = self.knowledge.find_nodes(label=hypothesis[:60], limit=3)
+                    hyp_nodes = self.knowledge.find_nodes(
+                        label=hypothesis[:60], limit=3
+                    )
                 except Exception:
                     ev_nodes = []
                     hyp_nodes = []
@@ -639,7 +642,9 @@ class ReasoningEngine:
                 hyp_words = set(hypothesis.lower().split())
                 overlap = ev_words & hyp_words
                 if overlap:
-                    support_score += ev_conf * 0.5 * (len(overlap) / max(len(hyp_words), 1))
+                    support_score += (
+                        ev_conf * 0.5 * (len(overlap) / max(len(hyp_words), 1))
+                    )
                     supporting_details.append(f"Keyword overlap: {overlap}")
 
         # Also search KG directly for hypothesis-related relations

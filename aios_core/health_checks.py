@@ -13,48 +13,55 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class CheckKind(str, Enum):
     """Health check types (Kubernetes-inspired)."""
-    LIVENESS = "liveness"    # is the process alive?
+
+    LIVENESS = "liveness"  # is the process alive?
     READINESS = "readiness"  # is it ready to serve traffic?
-    STARTUP = "startup"      # has it finished initializing?
+    STARTUP = "startup"  # has it finished initializing?
 
 
 # ── Health Result ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class HealthResult:
     """Single health check result."""
+
     name: str
     kind: CheckKind
     status: str = "healthy"  # healthy, unhealthy, degraded, error
     duration_ms: float = 0.0
     details: dict[str, Any] = field(default_factory=dict)
     timestamp: float = field(default_factory=time.time)
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # ── Health Check Entry ──────────────────────────────────────────────────────
 
+
 @dataclass
 class _HealthCheckEntry:
     """Internal: registered check with metadata."""
+
     name: str
     check_fn: Callable
     kind: CheckKind
     interval: float = 30.0
     ttl: float = 30.0
     last_run: float = 0.0
-    cached_result: Optional[HealthResult] = None
+    cached_result: HealthResult | None = None
     dependencies: list[str] = field(default_factory=list)
 
     def is_stale(self) -> bool:
@@ -63,6 +70,7 @@ class _HealthCheckEntry:
 
 
 # ── Health Check Registry ───────────────────────────────────────────────────
+
 
 class HealthCheckRegistry:
     """Enhanced health check registry with kinds, TTL, aggregate status.
@@ -80,12 +88,22 @@ class HealthCheckRegistry:
 
     # ── Registration ─────────────────────────────────────────────
 
-    def register(self, name: str, check_fn: Callable, kind: CheckKind = CheckKind.READINESS,
-                 interval: float = 30.0, ttl: float = 30.0, dependencies: list[str] | None = None) -> None:
+    def register(
+        self,
+        name: str,
+        check_fn: Callable,
+        kind: CheckKind = CheckKind.READINESS,
+        interval: float = 30.0,
+        ttl: float = 30.0,
+        dependencies: list[str] | None = None,
+    ) -> None:
         """Register a health check with kind and dependencies."""
         self.checks[name] = _HealthCheckEntry(
-            name=name, check_fn=check_fn, kind=kind,
-            interval=interval, ttl=ttl,
+            name=name,
+            check_fn=check_fn,
+            kind=kind,
+            interval=interval,
+            ttl=ttl,
             dependencies=dependencies or [],
         )
 
@@ -110,7 +128,8 @@ class HealthCheckRegistry:
             dep_entry = self.checks.get(dep_name)
             if dep_entry and not self._is_healthy(dep_name):
                 result = HealthResult(
-                    name=name, kind=entry.kind,
+                    name=name,
+                    kind=entry.kind,
                     status="degraded",
                     details={"dependency": dep_name, "dependency_status": "unhealthy"},
                 )
@@ -135,14 +154,20 @@ class HealthCheckRegistry:
                 details = {"value": check_result}
 
             result = HealthResult(
-                name=name, kind=entry.kind, status=status,
-                duration_ms=round(duration, 2), details=details,
+                name=name,
+                kind=entry.kind,
+                status=status,
+                duration_ms=round(duration, 2),
+                details=details,
             )
         except Exception as e:
             duration = (time.time() - start) * 1000
             result = HealthResult(
-                name=name, kind=entry.kind, status="error",
-                duration_ms=round(duration, 2), error=str(e),
+                name=name,
+                kind=entry.kind,
+                status="error",
+                duration_ms=round(duration, 2),
+                error=str(e),
             )
 
         entry.last_run = time.time()
@@ -223,8 +248,14 @@ class HealthCheckRegistry:
             "liveness": self.liveness_status(),
             "readiness": self.readiness_status(),
             "startup": self.startup_status(),
-            "checks": {name: {"status": r.status, "kind": r.kind.value, "duration_ms": r.duration_ms}
-                       for name, r in results.items()},
+            "checks": {
+                name: {
+                    "status": r.status,
+                    "kind": r.kind.value,
+                    "duration_ms": r.duration_ms,
+                }
+                for name, r in results.items()
+            },
         }
 
     # ── Stats ────────────────────────────────────────────────────

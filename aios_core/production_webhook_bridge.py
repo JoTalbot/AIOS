@@ -9,7 +9,7 @@ Sends webhook notifications for critical production events:
 - Daily report summary
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .webhook_manager import WebhookEvent, WebhookManager
 
@@ -17,12 +17,14 @@ from .webhook_manager import WebhookEvent, WebhookManager
 class ProductionWebhookBridge:
     """Bridges ProductionAutopilot events to WebhookManager."""
 
-    def __init__(self, webhook_manager: Optional[WebhookManager] = None):
+    def __init__(self, webhook_manager: WebhookManager | None = None):
         """Initialize ProductionWebhookBridge."""
         self.webhook = webhook_manager or WebhookManager()
         self.enabled = True
 
-    def on_ban_detected(self, profile: str, reason: str, details: Optional[Dict] = None) -> None:
+    def on_ban_detected(
+        self, profile: str, reason: str, details: dict | None = None
+    ) -> None:
         """Notify when a ban is detected."""
         if not self.enabled:
             return
@@ -40,7 +42,9 @@ class ProductionWebhookBridge:
             severity="critical",
         )
 
-    def on_low_success_rate(self, profile: str, rate: float, threshold: float = 0.8) -> None:
+    def on_low_success_rate(
+        self, profile: str, rate: float, threshold: float = 0.8
+    ) -> None:
         """Notify when success rate drops below threshold."""
         if not self.enabled:
             return
@@ -145,17 +149,23 @@ class ProductionWebhookBridge:
                 "days": summary.get("simulation", {}).get("days", 14),
                 "profiles": summary.get("simulation", {}).get("profiles", 0),
                 "total_cycles": summary.get("simulation", {}).get("total_cycles", 0),
-                "avg_success_rate": summary.get("simulation", {}).get("avg_success_rate", 0),
+                "avg_success_rate": summary.get("simulation", {}).get(
+                    "avg_success_rate", 0
+                ),
                 "bans": summary.get("simulation", {}).get("bans", 0),
                 "ban_free": summary.get("simulation", {}).get("ban_free", False),
-                "ga_criteria_met": summary.get("simulation", {}).get("ga_criteria_met", False),
+                "ga_criteria_met": summary.get("simulation", {}).get(
+                    "ga_criteria_met", False
+                ),
                 "source": "production_autopilot",
             },
             source="production_autopilot",
             severity="info",
         )
 
-    def on_key_rotated(self, subject: str, old_key_prefix: str, new_key_prefix: str) -> None:
+    def on_key_rotated(
+        self, subject: str, old_key_prefix: str, new_key_prefix: str
+    ) -> None:
         """Notify when an API key is rotated."""
         if not self.enabled:
             return
@@ -189,11 +199,11 @@ class ProductionWebhookBridge:
 
 
 # Singleton for convenience
-_production_bridge: Optional[ProductionWebhookBridge] = None
+_production_bridge: ProductionWebhookBridge | None = None
 
 
 def get_production_bridge(
-    webhook_manager: Optional[WebhookManager] = None,
+    webhook_manager: WebhookManager | None = None,
 ) -> ProductionWebhookBridge:
     """Get or create the singleton production webhook bridge."""
     global _production_bridge

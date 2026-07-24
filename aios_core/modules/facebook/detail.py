@@ -26,7 +26,7 @@ class FacebookDetailParser(AdDetailParser):
 
         # Extract price
         for text in texts:
-            m = re.search(r'(\d[\d\s]+)\s*(грн|uah|\$|₴)', text.lower())
+            m = re.search(r"(\d[\d\s]+)\s*(грн|uah|\$|₴)", text.lower())
             if m:
                 try:
                     result["price"] = float(m.group(1).replace(" ", ""))

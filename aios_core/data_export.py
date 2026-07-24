@@ -14,9 +14,8 @@ import csv
 import json
 import logging
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
 
 __all__ = ["DataExporter", "DataImporter"]
 
@@ -258,7 +257,7 @@ class DataExporter:
 
         return counts
 
-    def _write_json(self, path: str, data: List[Dict]) -> None:
+    def _write_json(self, path: str, data: list[dict]) -> None:
         """Write data as JSON."""
         with open(path, "w", encoding="utf-8") as f:
             json.dump(
@@ -272,7 +271,7 @@ class DataExporter:
                 default=str,
             )
 
-    def _write_csv(self, path: str, data: List[Dict]) -> None:
+    def _write_csv(self, path: str, data: list[dict]) -> None:
         """Write data as CSV."""
         if not data:
             with open(path, "w") as f:
@@ -348,7 +347,7 @@ class DataImporter:
         self.conn.commit()
         return count
 
-    def _read_json(self, path: str) -> List[Dict]:
+    def _read_json(self, path: str) -> list[dict]:
         """Read a JSON file or the task export from an ``export_all`` directory."""
         source = Path(path)
         if source.is_dir():
@@ -356,13 +355,13 @@ class DataImporter:
             if not candidates:
                 return []
             source = candidates[0]
-        with open(source, "r", encoding="utf-8") as f:
+        with open(source, encoding="utf-8") as f:
             data = json.load(f)
             return data.get("data", data) if isinstance(data, dict) else data
 
-    def _read_csv(self, path: str) -> List[Dict]:
+    def _read_csv(self, path: str) -> list[dict]:
         """Read CSV file."""
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             reader = csv.DictReader(f)
             return list(reader)
 
@@ -372,10 +371,16 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="AIOS Data Export/Import")
-    parser.add_argument("action", choices=["export", "import"], help="Action to perform")
+    parser.add_argument(
+        "action", choices=["export", "import"], help="Action to perform"
+    )
     parser.add_argument("--db", default="aios.sqlite", help="Database path")
-    parser.add_argument("--format", choices=["json", "csv"], default="json", help="Export format")
-    parser.add_argument("--output", "-o", default="./export", help="Output directory/file")
+    parser.add_argument(
+        "--format", choices=["json", "csv"], default="json", help="Export format"
+    )
+    parser.add_argument(
+        "--output", "-o", default="./export", help="Output directory/file"
+    )
     parser.add_argument("--since", help="Export data since date (ISO format)")
     parser.add_argument("--limit", type=int, help="Maximum records to export")
     parser.add_argument(
@@ -400,7 +405,9 @@ if __name__ == "__main__":
                 count = exporter.export_memory(args.output, args.format, args.limit)
                 print(f"Exported {count} memory records")
             elif args.type == "audit":
-                count = exporter.export_audit_log(args.output, args.format, since=args.since)
+                count = exporter.export_audit_log(
+                    args.output, args.format, since=args.since
+                )
                 print(f"Exported {count} audit records")
             elif args.type == "knowledge":
                 count = exporter.export_knowledge_graph(args.output, args.format)

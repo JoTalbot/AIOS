@@ -11,9 +11,8 @@ Classes:
 
 from __future__ import annotations
 
-import math
-import random
 import logging
+import math
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -22,7 +21,9 @@ logger = logging.getLogger(__name__)
 class CodeDescriptor:
     """QECC metadata."""
 
-    def __init__(self, name: str, physical_qubits: int, logical_qubits: int, distance: int) -> None:
+    def __init__(
+        self, name: str, physical_qubits: int, logical_qubits: int, distance: int
+    ) -> None:
         self.name = name
         self.physical_qubits = physical_qubits
         self.logical_qubits = logical_qubits
@@ -33,7 +34,12 @@ class CodeDescriptor:
         return self.logical_qubits / self.physical_qubits
 
     def stats(self) -> dict[str, Any]:
-        return {"name": self.name, "n": self.physical_qubits, "k": self.logical_qubits, "d": self.distance}
+        return {
+            "name": self.name,
+            "n": self.physical_qubits,
+            "k": self.logical_qubits,
+            "d": self.distance,
+        }
 
 
 class QuantumErrorCorrection:
@@ -54,7 +60,15 @@ class QuantumErrorCorrection:
             return [logical_qubit] * desc.physical_qubits
         elif code == "steane":
             # Steane [[7,1,3]]: simplified encoding pattern
-            return [logical_qubit, logical_qubit ^ 1, logical_qubit, logical_qubit ^ 1, logical_qubit, logical_qubit, logical_qubit]
+            return [
+                logical_qubit,
+                logical_qubit ^ 1,
+                logical_qubit,
+                logical_qubit ^ 1,
+                logical_qubit,
+                logical_qubit,
+                logical_qubit,
+            ]
         elif code == "surface":
             # Surface code pattern
             return [logical_qubit] * desc.physical_qubits
@@ -67,7 +81,9 @@ class QuantumErrorCorrection:
         """Decode via majority vote (backward-compatible)."""
         return 1 if sum(physical_qubits) > len(physical_qubits) // 2 else 0
 
-    def syndrome_decode(self, physical_qubits: list[int], code: str = "repetition") -> dict[str, Any]:
+    def syndrome_decode(
+        self, physical_qubits: list[int], code: str = "repetition"
+    ) -> dict[str, Any]:
         """Decode syndrome to identify errors."""
         if code == "repetition":
             # Check pairwise parity
@@ -79,10 +95,16 @@ class QuantumErrorCorrection:
                 if s == 1:
                     error_pos = i
                     break
-            return {"syndromes": syndromes, "error_position": error_pos, "correctable": sum(syndromes) <= 1}
+            return {
+                "syndromes": syndromes,
+                "error_position": error_pos,
+                "correctable": sum(syndromes) <= 1,
+            }
         return {"syndromes": [], "error_position": -1, "correctable": False}
 
-    def correct(self, physical_qubits: list[int], code: str = "repetition") -> list[int]:
+    def correct(
+        self, physical_qubits: list[int], code: str = "repetition"
+    ) -> list[int]:
         """Apply error correction."""
         syndrome = self.syndome_decode(physical_qubits, code)
         corrected = list(physical_qubits)
@@ -91,7 +113,9 @@ class QuantumErrorCorrection:
             corrected[error_pos] = 1 - corrected[error_pos]  # Flip the erroneous qubit
         return corrected
 
-    def logical_error_rate(self, physical_error_rate: float, code: str = "repetition") -> float:
+    def logical_error_rate(
+        self, physical_error_rate: float, code: str = "repetition"
+    ) -> float:
         """Estimate logical error rate given physical error rate."""
         desc = self.codes.get(code, self.codes["repetition"])
         n = desc.physical_qubits
@@ -99,9 +123,14 @@ class QuantumErrorCorrection:
         # Simplified: logical error rate ~ p^(d/2) for small p
         threshold_errors = (d - 1) // 2
         if physical_error_rate < 0.01:
-            return round(physical_error_rate ** threshold_errors, 6)
+            return round(physical_error_rate**threshold_errors, 6)
         # For larger p, use binomial approximation
-        logical_rate = sum(math.comb(n, k) * physical_error_rate**k * (1-physical_error_rate)**(n-k) for k in range(threshold_errors + 1, n + 1))
+        logical_rate = sum(
+            math.comb(n, k)
+            * physical_error_rate**k
+            * (1 - physical_error_rate) ** (n - k)
+            for k in range(threshold_errors + 1, n + 1)
+        )
         return round(logical_rate, 6)
 
     def fault_tolerance_threshold(self, code: str = "surface") -> float:

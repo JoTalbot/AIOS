@@ -12,9 +12,7 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
 import statistics
-import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -33,16 +31,20 @@ class TimeSeriesAnalyzer:
             self.series[series_name] = []
         self.series[series_name].append(value)
         if len(self.series[series_name]) > self.max_length:
-            self.series[series_name] = self.series[series_name][-self.max_length:]
+            self.series[series_name] = self.series[series_name][-self.max_length :]
 
     def moving_average(self, series_name: str, window: int = 5) -> list[float]:
         """Simple moving average (backward-compatible)."""
         data = self.series.get(series_name, [])
         if len(data) < window:
             return data
-        return [sum(data[i:i + window]) / window for i in range(len(data) - window + 1)]
+        return [
+            sum(data[i : i + window]) / window for i in range(len(data) - window + 1)
+        ]
 
-    def exponential_moving_average(self, series_name: str, alpha: float = 0.3) -> list[float]:
+    def exponential_moving_average(
+        self, series_name: str, alpha: float = 0.3
+    ) -> list[float]:
         """Exponential moving average."""
         data = self.series.get(series_name, [])
         if not data:
@@ -64,7 +66,9 @@ class TimeSeriesAnalyzer:
             return "decreasing"
         return "stable"
 
-    def seasonal_decomposition(self, series_name: str, period: int = 7) -> dict[str, Any]:
+    def seasonal_decomposition(
+        self, series_name: str, period: int = 7
+    ) -> dict[str, Any]:
         """Simple seasonal decomposition: trend + seasonal + residual."""
         data = self.series.get(series_name, [])
         if len(data) < period * 2:
@@ -74,7 +78,10 @@ class TimeSeriesAnalyzer:
         # Seasonal: average deviation from trend per period position
         seasonal: list[float] = []
         for i in range(period):
-            deviations = [data[j + period + i] - trend[j + i] for j in range(min(len(trend) - period, len(data) - 2 * period))]
+            deviations = [
+                data[j + period + i] - trend[j + i]
+                for j in range(min(len(trend) - period, len(data) - 2 * period))
+            ]
             seasonal.append(sum(deviations) / len(deviations) if deviations else 0.0)
         # Residual
         residual: list[float] = []
@@ -100,7 +107,9 @@ class TimeSeriesAnalyzer:
                 anomalies.append(i)
         return anomalies
 
-    def forecast_arima(self, series_name: str, steps: int = 5, ar_order: int = 2) -> list[float]:
+    def forecast_arima(
+        self, series_name: str, steps: int = 5, ar_order: int = 2
+    ) -> list[float]:
         """Simple AR-style forecasting."""
         data = self.series.get(series_name, [])
         if len(data) < ar_order + 1:
@@ -111,7 +120,9 @@ class TimeSeriesAnalyzer:
         for _ in range(steps):
             # AR(p) prediction: weighted sum of recent values minus mean
             coeffs = [0.5 / (i + 1) for i in range(ar_order)]
-            next_val = mean + sum(c * (forecast[-(i + 1)] - mean) for i, c in enumerate(coeffs))
+            next_val = mean + sum(
+                c * (forecast[-(i + 1)] - mean) for i, c in enumerate(coeffs)
+            )
             forecast.append(round(next_val, 4))
         return forecast[-steps:]
 
@@ -126,11 +137,16 @@ class TimeSeriesAnalyzer:
             return [0.0] * max_lag
         result: list[float] = []
         for lag in range(1, max_lag + 1):
-            acf = sum((data[i] - mean) * (data[i + lag] - mean) for i in range(len(data) - lag)) / (var * (len(data) - lag))
+            acf = sum(
+                (data[i] - mean) * (data[i + lag] - mean)
+                for i in range(len(data) - lag)
+            ) / (var * (len(data) - lag))
             result.append(round(acf, 4))
         return result
 
-    def detect_change_point(self, series_name: str, sensitivity: float = 1.5) -> list[int]:
+    def detect_change_point(
+        self, series_name: str, sensitivity: float = 1.5
+    ) -> list[int]:
         """Detect change points using mean-shift detection."""
         data = self.series.get(series_name, [])
         if len(data) < 10:
@@ -138,8 +154,8 @@ class TimeSeriesAnalyzer:
         window = min(10, len(data) // 3)
         points: list[int] = []
         for i in range(window, len(data) - window):
-            before_mean = statistics.mean(data[i - window:i])
-            after_mean = statistics.mean(data[i:i + window])
+            before_mean = statistics.mean(data[i - window : i])
+            after_mean = statistics.mean(data[i : i + window])
             diff = abs(after_mean - before_mean)
             global_std = statistics.stdev(data) if len(data) >= 2 else 1.0
             if diff > sensitivity * global_std:

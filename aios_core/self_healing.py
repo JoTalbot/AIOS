@@ -15,17 +15,20 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class RecoveryLevel(str, Enum):
     """Recovery escalation severity."""
+
     LIGHT = "light"
     MODERATE = "moderate"
     SEVERE = "severe"
@@ -34,9 +37,11 @@ class RecoveryLevel(str, Enum):
 
 # ── Recovery Record ──────────────────────────────────────────────────────────
 
+
 @dataclass
 class RecoveryRecord:
     """Audit entry for a recovery attempt."""
+
     error_type: str
     strategy_name: str
     level: RecoveryLevel
@@ -48,9 +53,11 @@ class RecoveryRecord:
 
 # ── Health Monitor ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class HealthCheck:
     """Named health check function with TTL cache."""
+
     name: str
     check_fn: Callable[[], bool]
     interval: float = 30.0  # seconds between checks
@@ -84,7 +91,9 @@ class HealthMonitor:
     def __init__(self) -> None:
         self.checks: dict[str, HealthCheck] = {}
 
-    def register(self, name: str, check_fn: Callable[[], bool], interval: float = 30.0) -> None:
+    def register(
+        self, name: str, check_fn: Callable[[], bool], interval: float = 30.0
+    ) -> None:
         """Register a health check."""
         self.checks[name] = HealthCheck(name=name, check_fn=check_fn, interval=interval)
 
@@ -101,10 +110,13 @@ class HealthMonitor:
 
     def unhealthy_services(self) -> list[str]:
         """Return names of services currently unhealthy."""
-        return [name for name, check in self.checks.items() if not check.cached_result()]
+        return [
+            name for name, check in self.checks.items() if not check.cached_result()
+        ]
 
 
 # ── Self-Healing ─────────────────────────────────────────────────────────────
+
 
 class SelfHealing:
     """Enhanced recovery engine with escalation, diagnostics, and history.
@@ -114,7 +126,9 @@ class SelfHealing:
     diagnostic analysis, and recovery history tracking.
     """
 
-    def __init__(self, max_recovery_attempts: int = 3, escalation_threshold: int = 2) -> None:
+    def __init__(
+        self, max_recovery_attempts: int = 3, escalation_threshold: int = 2
+    ) -> None:
         """Initialize SelfHealing.
 
         Args:
@@ -129,12 +143,19 @@ class SelfHealing:
         self.max_recovery_attempts = max_recovery_attempts
         self.escalation_threshold = escalation_threshold
 
-    def register_strategy(self, error_type: str, strategy: Callable, level: RecoveryLevel = RecoveryLevel.LIGHT) -> None:
+    def register_strategy(
+        self,
+        error_type: str,
+        strategy: Callable,
+        level: RecoveryLevel = RecoveryLevel.LIGHT,
+    ) -> None:
         """Register a recovery strategy for a given error type name."""
         self.recovery_strategies[error_type] = strategy
         self.strategy_levels[error_type] = level
 
-    def register_health_check(self, name: str, check_fn: Callable[[], bool], interval: float = 30.0) -> None:
+    def register_health_check(
+        self, name: str, check_fn: Callable[[], bool], interval: float = 30.0
+    ) -> None:
         """Register a health check for monitoring."""
         self.health_monitor.register(name, check_fn, interval)
 
@@ -161,7 +182,11 @@ class SelfHealing:
 
         # Check max attempts
         if attempts > self.max_recovery_attempts:
-            logger.error("Max recovery attempts (%d) exceeded for '%s'", self.max_recovery_attempts, error_type)
+            logger.error(
+                "Max recovery attempts (%d) exceeded for '%s'",
+                self.max_recovery_attempts,
+                error_type,
+            )
             return False
 
         # Execute strategy
@@ -169,29 +194,43 @@ class SelfHealing:
         try:
             self.recovery_strategies[error_type](context)
             duration = time.time() - start
-            self.recovery_history.append(RecoveryRecord(
-                error_type=error_type,
-                strategy_name=error_type,
-                level=level,
-                success=True,
-                duration=duration,
-                context=context,
-            ))
+            self.recovery_history.append(
+                RecoveryRecord(
+                    error_type=error_type,
+                    strategy_name=error_type,
+                    level=level,
+                    success=True,
+                    duration=duration,
+                    context=context,
+                )
+            )
             # Reset attempt count on success
             self._attempt_counts[error_type] = 0
-            logger.info("Successfully recovered from '%s' (level=%s, attempt=%d)", error_type, level.value, attempts)
+            logger.info(
+                "Successfully recovered from '%s' (level=%s, attempt=%d)",
+                error_type,
+                level.value,
+                attempts,
+            )
             return True
         except Exception as exc:
             duration = time.time() - start
-            self.recovery_history.append(RecoveryRecord(
-                error_type=error_type,
-                strategy_name=error_type,
-                level=level,
-                success=False,
-                duration=duration,
-                context=context,
-            ))
-            logger.error("Recovery strategy for '%s' failed: %s (level=%s)", error_type, exc, level.value)
+            self.recovery_history.append(
+                RecoveryRecord(
+                    error_type=error_type,
+                    strategy_name=error_type,
+                    level=level,
+                    success=False,
+                    duration=duration,
+                    context=context,
+                )
+            )
+            logger.error(
+                "Recovery strategy for '%s' failed: %s (level=%s)",
+                error_type,
+                exc,
+                level.value,
+            )
             return False
 
     def diagnose(self, context: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -204,14 +243,22 @@ class SelfHealing:
             "healthy": health,
             "overall_healthy": self.health_monitor.overall_healthy(),
             "unhealthy_services": self.health_monitor.unhealthy_services(),
-            "recent_recoveries": [{"error": r.error_type, "success": r.success, "level": r.level.value} for r in recent],
+            "recent_recoveries": [
+                {"error": r.error_type, "success": r.success, "level": r.level.value}
+                for r in recent
+            ],
             "recurring_errors": list(set(failed_types)),
             "strategies_registered": len(self.recovery_strategies),
         }
 
     def _escalate(self, base_level: RecoveryLevel, attempts: int) -> RecoveryLevel:
         """Escalate recovery level based on attempt count."""
-        levels = [RecoveryLevel.LIGHT, RecoveryLevel.MODERATE, RecoveryLevel.SEVERE, RecoveryLevel.CRITICAL]
+        levels = [
+            RecoveryLevel.LIGHT,
+            RecoveryLevel.MODERATE,
+            RecoveryLevel.SEVERE,
+            RecoveryLevel.CRITICAL,
+        ]
         base_idx = levels.index(base_level)
         extra = (attempts - 1) // self.escalation_threshold
         new_idx = min(base_idx + extra, len(levels) - 1)
@@ -231,6 +278,8 @@ class SelfHealing:
             "strategies": len(self.recovery_strategies),
             "recovery_attempts": len(self.recovery_history),
             "successful_recoveries": success_count,
-            "success_rate": success_count / len(self.recovery_history) if self.recovery_history else 0.0,
+            "success_rate": success_count / len(self.recovery_history)
+            if self.recovery_history
+            else 0.0,
             "health_checks": len(self.health_monitor.checks),
         }

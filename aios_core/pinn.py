@@ -13,11 +13,11 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
 import random
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BoundaryCondition:
     """Boundary constraint specification."""
+
     name: str
     condition_type: str = "dirichlet"  # dirichlet, neumann, robin
     location: list[float] = field(default_factory=list)
@@ -35,6 +36,7 @@ class BoundaryCondition:
 @dataclass
 class TrainingResult:
     """PINN training outcome."""
+
     epochs: int
     final_loss: float
     pde_loss: float
@@ -58,8 +60,12 @@ class PINN:
     - Prediction with boundary correction
     """
 
-    def __init__(self, pde: Callable, boundary_conditions: list[BoundaryCondition] | None = None,
-                 domain: tuple[float, float] = (0.0, 1.0)) -> None:
+    def __init__(
+        self,
+        pde: Callable,
+        boundary_conditions: list[BoundaryCondition] | None = None,
+        domain: tuple[float, float] = (0.0, 1.0),
+    ) -> None:
         self.pde = pde
         self.boundary = boundary_conditions or []
         self.domain = domain
@@ -80,8 +86,9 @@ class PINN:
         self.collocation_points = points
         return points
 
-    def adaptive_collocation(self, residual_threshold: float = 0.1,
-                              max_points: int = 500) -> list[list[float]]:
+    def adaptive_collocation(
+        self, residual_threshold: float = 0.1, max_points: int = 500
+    ) -> list[list[float]]:
         """Adaptive collocation: add points where residual is high."""
         new_points = []
         d_min, d_max = self.domain
@@ -119,13 +126,21 @@ class PINN:
 
     # ── Boundary Conditions ─────────────────────────────────────────
 
-    def add_boundary(self, name: str, condition_type: str = "dirichlet",
-                     location: list[float] | None = None, value: float = 0.0,
-                     weight: float = 1.0) -> BoundaryCondition:
+    def add_boundary(
+        self,
+        name: str,
+        condition_type: str = "dirichlet",
+        location: list[float] | None = None,
+        value: float = 0.0,
+        weight: float = 1.0,
+    ) -> BoundaryCondition:
         """Add a boundary condition."""
         bc = BoundaryCondition(
-            name=name, condition_type=condition_type,
-            location=location or [], value=value, weight=weight,
+            name=name,
+            condition_type=condition_type,
+            location=location or [],
+            value=value,
+            weight=weight,
         )
         self.boundary.append(bc)
         return bc
@@ -145,16 +160,24 @@ class PINN:
                 # du/dx(x_boundary) = value
                 # Approximate derivative
                 eps = 0.001
-                predicted_plus = self.predict([bc.location[0] + eps] if bc.location else [0.001])
-                predicted_minus = self.predict([bc.location[0] - eps] if bc.location else [-0.001])
+                predicted_plus = self.predict(
+                    [bc.location[0] + eps] if bc.location else [0.001]
+                )
+                predicted_minus = self.predict(
+                    [bc.location[0] - eps] if bc.location else [-0.001]
+                )
                 derivative = (predicted_plus - predicted_minus) / (2 * eps)
                 total_loss += bc.weight * (derivative - bc.value) ** 2
             elif bc.condition_type == "robin":
                 # a*u(x) + b*du/dx(x) = value
                 predicted = self.predict(bc.location)
                 eps = 0.001
-                predicted_plus = self.predict([bc.location[0] + eps] if bc.location else [0.001])
-                predicted_minus = self.predict([bc.location[0] - eps] if bc.location else [-0.001])
+                predicted_plus = self.predict(
+                    [bc.location[0] + eps] if bc.location else [0.001]
+                )
+                predicted_minus = self.predict(
+                    [bc.location[0] - eps] if bc.location else [-0.001]
+                )
                 derivative = (predicted_plus - predicted_minus) / (2 * eps)
                 total_loss += bc.weight * (predicted + derivative - bc.value) ** 2
 
@@ -162,13 +185,14 @@ class PINN:
 
     # ── Training ────────────────────────────────────────────────────
 
-    def train(self, epochs: int = 1000, pde_weight: float = 1.0,
-              boundary_weight: float = 10.0) -> TrainingResult:
+    def train(
+        self, epochs: int = 1000, pde_weight: float = 1.0, boundary_weight: float = 10.0
+    ) -> TrainingResult:
         """Train the PINN with loss balancing."""
         if not self.collocation_points:
             self.generate_collocation()
 
-        best_loss = float('inf')
+        best_loss = float("inf")
         converged = False
 
         for epoch in range(epochs):

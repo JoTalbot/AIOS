@@ -19,7 +19,6 @@ import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
 from aios_core.modules.olx.adb import ADBController
 from aios_core.modules.olx.messenger import _parse_bounds
@@ -33,7 +32,9 @@ CREATE_DEEP_LINK = "instagram://library"
 
 NEXT_LABELS = ("next", "далі", "дальше", "continue")
 SHARE_LABELS = ("share", "поділитися", "поделиться", "опублікувати", "опубликовать")
-_COMMENT_RE = re.compile(r"^(\d[\d\s\u00a0,.]*)\s*(коментар\w*|comments?)$", re.IGNORECASE)
+_COMMENT_RE = re.compile(
+    r"^(\d[\d\s\u00a0,.]*)\s*(коментар\w*|comments?)$", re.IGNORECASE
+)
 
 #: Дефолтные маркеры ячеек сетки профиля (после калибровки — из hints).
 DEFAULT_GRID_MARKERS = ("row_profile", "grid_item", "profile_media")
@@ -78,7 +79,7 @@ class OwnPost:
             status="active",
         )
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
         return {
             "fingerprint": self.fingerprint,
@@ -100,16 +101,16 @@ class OwnPostsParser:
             ``DEFAULT_GRID_MARKERS``.
     """
 
-    def __init__(self, markers: Optional[Tuple[str, ...]] = None):
+    def __init__(self, markers: tuple[str, ...] | None = None):
         """Initialize OwnPostsParser."""
         self.markers = tuple(m.lower() for m in (markers or DEFAULT_GRID_MARKERS))
 
-    def parse(self, xml_source: Union[str, Path, ET.Element]) -> List[OwnPost]:
+    def parse(self, xml_source: str | Path | ET.Element) -> list[OwnPost]:
         """Execute parse."""
         from aios_core.platforms.calibrate import CalibrationAdvisor
 
         root = CalibrationAdvisor._root(xml_source)
-        posts: List[OwnPost] = []
+        posts: list[OwnPost] = []
         for node in root.iter("node"):
             resource_id = (node.attrib.get("resource-id") or "").lower()
             if not any(m in resource_id for m in self.markers):
@@ -124,7 +125,7 @@ class OwnPostsParser:
         return posts
 
     @staticmethod
-    def post_from_texts(texts: list[str]) -> Optional[OwnPost]:
+    def post_from_texts(texts: list[str]) -> OwnPost | None:
         """Классификация текстов ячейки: счётчики/подпись поста."""
         likes = comments = views = 0
         leftovers: list[str] = []
@@ -162,7 +163,7 @@ class PostComposer:
         wait_s: Паузы между этапами публикации.
     """
 
-    def __init__(self, adb: Optional[ADBController] = None, wait_s: float = 6.0):
+    def __init__(self, adb: ADBController | None = None, wait_s: float = 6.0):
         """Initialize PostComposer."""
         self.adb = adb or ADBController(package=PACKAGE)
         self.wait_s = wait_s
@@ -183,7 +184,7 @@ class PostComposer:
         caption: str,
         confirm: bool = False,
         directory: str = "platforms",
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """Публикует пост. Без ``confirm`` — только DRY-RUN план.
 
         Даже с ``confirm=True`` публикация проходит compliance-контур
@@ -203,7 +204,7 @@ class PostComposer:
             return {
                 "status": "dry-run",
                 "plan": plan,
-                "note": "nothing touched the device; " "pass confirm=True to execute",
+                "note": "nothing touched the device; pass confirm=True to execute",
             }
 
         from aios_core.platforms.compliance import compliance_guard
@@ -215,10 +216,10 @@ class PostComposer:
                 "plan": plan,
                 "error": check["reason"],
                 "compliance": check,
-                "note": "publish refused by extras.compliance — " "device untouched",
+                "note": "publish refused by extras.compliance — device untouched",
             }
 
-        steps: List[Dict[str, object]] = []
+        steps: list[dict[str, object]] = []
         ext = Path(image_path).suffix or ".jpg"
         remote = f"{MEDIA_REMOTE}{ext}"
         pushed = self.adb.run(f"{self.adb.adb} push '{image_path}' {remote}")
@@ -236,7 +237,7 @@ class PostComposer:
         if not self._tap_text(NEXT_LABELS):
             return {
                 "status": "error",
-                "error": "next button not found — layout drift, " "recalibrate labels",
+                "error": "next button not found — layout drift, recalibrate labels",
                 "steps": steps,
             }
         steps.append({"action": "tap_next", "code": 0})
@@ -255,7 +256,7 @@ class PostComposer:
         steps.append({"action": "tap_share", "code": 0})
         return {"status": "published", "steps": steps}
 
-    def _tap_text(self, labels: Tuple[str, ...]) -> bool:
+    def _tap_text(self, labels: tuple[str, ...]) -> bool:
         """Тап по центру первого узла с текстом-подписью из labels."""
         with tempfile.TemporaryDirectory(prefix="aios-ig-post-") as tmp:
             target = Path(tmp) / "screen.xml"

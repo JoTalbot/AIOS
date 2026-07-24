@@ -26,6 +26,7 @@ __all__ = ["DebateProtocol"]
 @dataclass
 class DebateRound:
     """Single debate round record."""
+
     round_number: int
     agent_a_argument: str = ""
     agent_b_argument: str = ""
@@ -39,10 +40,17 @@ class DebateProtocol:
     def __init__(self) -> None:
         self.debates: list[dict[str, Any]] = []
         self._rounds: list[DebateRound] = []
-        self._strategies: list[str] = ["evidence_based", "logical", "counter_example", "analogy"]
+        self._strategies: list[str] = [
+            "evidence_based",
+            "logical",
+            "counter_example",
+            "analogy",
+        ]
         self._truth_convergence: list[float] = []
 
-    def run_debate(self, question: str, agents: int = 2, rounds: int = 3) -> dict[str, Any]:
+    def run_debate(
+        self, question: str, agents: int = 2, rounds: int = 3
+    ) -> dict[str, Any]:
         """Run a debate (backward-compatible)."""
         debate_rounds: list[dict[str, Any]] = []
         for r in range(rounds):
@@ -69,9 +77,16 @@ class DebateProtocol:
         self.debates.append(debate)
         return debate
 
-    def cross_examine(self, claim: str, agent_claim: str, opponent_claim: str) -> dict[str, Any]:
+    def cross_examine(
+        self, claim: str, agent_claim: str, opponent_claim: str
+    ) -> dict[str, Any]:
         """Cross-examination: challenge opponent's claim."""
-        weaknesses = ["logical_gap", "missing_evidence", "contradiction", "overgeneralization"]
+        weaknesses = [
+            "logical_gap",
+            "missing_evidence",
+            "contradiction",
+            "overgeneralization",
+        ]
         found_weaknesses = random.sample(weaknesses, random.randint(1, 2))
         return {
             "claim": claim,
@@ -86,7 +101,9 @@ class DebateProtocol:
         return {
             "scores": scores,
             "winner_idx": winner_idx,
-            "consensus_level": round(min(scores) / max(scores), 2) if max(scores) > 0 else 0,
+            "consensus_level": round(min(scores) / max(scores), 2)
+            if max(scores) > 0
+            else 0,
         }
 
     def build_consensus(self, debate: dict[str, Any]) -> dict[str, Any]:
@@ -103,10 +120,16 @@ class DebateProtocol:
         """Track truth convergence across debates."""
         if not self._truth_convergence:
             return {"debates": 0, "trend": "no_data"}
-        trend = "improving" if self._truth_convergence[-1] > self._truth_convergence[0] else "stable"
+        trend = (
+            "improving"
+            if self._truth_convergence[-1] > self._truth_convergence[0]
+            else "stable"
+        )
         return {
             "debates": len(self._truth_convergence),
-            "avg_confidence": round(sum(self._truth_convergence) / len(self._truth_convergence), 2),
+            "avg_confidence": round(
+                sum(self._truth_convergence) / len(self._truth_convergence), 2
+            ),
             "trend": trend,
             "latest_confidence": self._truth_convergence[-1],
         }

@@ -46,7 +46,11 @@ class AISafetyScientist:
         experiment = {
             "hypothesis": hypothesis,
             "design": "controlled experiment",
-            "metrics": ["safety_score", "capability_preservation", "alignment_stability"],
+            "metrics": [
+                "safety_score",
+                "capability_preservation",
+                "alignment_stability",
+            ],
             "sample_size": random.randint(50, 200),
             "estimated_duration": "2 weeks",
         }
@@ -74,12 +78,20 @@ class AISafetyScientist:
             "gaps_identified": random.randint(1, 5),
         }
 
-    def write_paper(self, hypothesis: dict[str, Any], findings: list[dict[str, Any]]) -> dict[str, Any]:
+    def write_paper(
+        self, hypothesis: dict[str, Any], findings: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Write a research paper."""
         paper = {
             "title": f"Safety Research on {hypothesis.get('topic', 'unknown')}",
             "abstract": f"We investigate {hypothesis.get('hypothesis', '')}. Results suggest safety score {findings[0].get('safety_score', 0.8) if findings else 0.8}.",
-            "sections": ["Introduction", "Methods", "Results", "Discussion", "Conclusion"],
+            "sections": [
+                "Introduction",
+                "Methods",
+                "Results",
+                "Discussion",
+                "Conclusion",
+            ],
             "status": "draft",
         }
         self._papers.append(paper)

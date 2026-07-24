@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from sklearn.linear_model import LogisticRegression
+
     HAS_SKLEARN = True
 except ImportError:
     HAS_SKLEARN = False
@@ -31,6 +32,7 @@ except ImportError:
 @dataclass
 class EvalMetrics:
     """Standard evaluation metrics."""
+
     accuracy: float = 0.0
     precision: float = 0.0
     recall: float = 0.0
@@ -41,6 +43,7 @@ class EvalMetrics:
 @dataclass
 class MLPipeline:
     """Training + inference pipeline."""
+
     name: str = "default"
     model_type: str = "heuristic"
     features: list[str] = field(default_factory=list)
@@ -68,11 +71,15 @@ class SimpleMLPredictor:
         """Predict probability of task success (0.0 – 1.0)."""
         if not self.model:
             risk = features.get("risk_level", "medium")
-            base = {"low": 0.9, "medium": 0.7, "high": 0.4, "critical": 0.2}.get(risk, 0.6)
+            base = {"low": 0.9, "medium": 0.7, "high": 0.4, "critical": 0.2}.get(
+                risk, 0.6
+            )
             # Adjust by experience and confidence
             experience = features.get("experience", 0.5)
             confidence = features.get("confidence", 0.5)
-            return round(min(1.0, base * (1 + experience * 0.2) * (1 + confidence * 0.1)), 2)
+            return round(
+                min(1.0, base * (1 + experience * 0.2) * (1 + confidence * 0.1)), 2
+            )
         return 0.75
 
     def train(self, X, y) -> None:
@@ -89,7 +96,9 @@ class SimpleMLPredictor:
             acc = correct / total if total > 0 else 0.0
             return EvalMetrics(accuracy=round(acc, 4), f1=round(acc, 4))
         # Heuristic evaluation
-        return EvalMetrics(accuracy=0.75, precision=0.78, recall=0.72, f1=0.75, auc=0.82)
+        return EvalMetrics(
+            accuracy=0.75, precision=0.78, recall=0.72, f1=0.75, auc=0.82
+        )
 
     def feature_engineering(self, raw_features: dict[str, Any]) -> dict[str, float]:
         """Engineer features from raw input."""
@@ -114,7 +123,13 @@ class SimpleMLPredictor:
             "folds": folds,
             "scores": scores,
             "mean": round(sum(scores) / len(scores), 4),
-            "std": round(math.sqrt(sum((s - sum(scores)/len(scores))**2 for s in scores) / len(scores)), 4),
+            "std": round(
+                math.sqrt(
+                    sum((s - sum(scores) / len(scores)) ** 2 for s in scores)
+                    / len(scores)
+                ),
+                4,
+            ),
         }
 
     def hyperparameter_search(self, param_grid: dict[str, list]) -> dict[str, Any]:

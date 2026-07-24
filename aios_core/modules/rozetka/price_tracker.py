@@ -6,9 +6,7 @@ Uses RozetkaStorage for persistence and RozetkaCollector for data gathering.
 
 from __future__ import annotations
 
-import math
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from aios_core.modules.rozetka.storage import RozetkaStorage
 
@@ -92,7 +90,9 @@ class RozetkaPriceTracker:
 
             # Find the most recent sighting and the highest prior price
             latest = history[-1]
-            prior_prices = [h["price"] for h in history[:-1] if h.get("price") is not None]
+            prior_prices = [
+                h["price"] for h in history[:-1] if h.get("price") is not None
+            ]
 
             if not prior_prices or latest.get("price") is None:
                 continue
@@ -118,7 +118,7 @@ class RozetkaPriceTracker:
                         new_price=new_price,
                         url=ad.url,
                         drop_pct=drop_pct,
-                        seen_at=latest.get("seen_at", datetime.now(timezone.utc).isoformat()),
+                        seen_at=latest.get("seen_at", datetime.now(UTC).isoformat()),
                     )
                 )
 

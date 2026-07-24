@@ -21,30 +21,41 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-PRODUCT_STAGES = ["ideation", "validation", "development", "launch", "growth", "maturity"]
+PRODUCT_STAGES = [
+    "ideation",
+    "validation",
+    "development",
+    "launch",
+    "growth",
+    "maturity",
+]
 
 
 @dataclass
 class Feature:
     """Prioritized feature item with RICE scoring."""
+
     name: str
     description: str = ""
-    reach: int = 1000          # users affected
-    impact: float = 2.0        # 0.25×, 0.5×, 1×, 2×, 3×
-    confidence: float = 0.8    # 0–1
-    effort: float = 2.0        # person-weeks
-    priority: float = 0.0      # computed RICE score
+    reach: int = 1000  # users affected
+    impact: float = 2.0  # 0.25×, 0.5×, 1×, 2×, 3×
+    confidence: float = 0.8  # 0–1
+    effort: float = 2.0  # person-weeks
+    priority: float = 0.0  # computed RICE score
     status: str = "planned"
 
     def compute_rice(self) -> float:
         """Compute RICE priority score."""
-        self.priority = (self.reach * self.impact * self.confidence) / max(self.effort, 0.5)
+        self.priority = (self.reach * self.impact * self.confidence) / max(
+            self.effort, 0.5
+        )
         return self.priority
 
 
 @dataclass
 class Product:
     """Product lifecycle tracker."""
+
     name: str
     vision: str
     status: str = "ideation"
@@ -73,6 +84,7 @@ class Product:
 @dataclass
 class Roadmap:
     """Quarterly milestone plan."""
+
     product: str
     quarters: int
     milestones: list[str]
@@ -90,18 +102,27 @@ class AIProductManager:
 
     def create_product(self, name: str, vision: str) -> Product:
         """Create a product in ideation stage with *name* and *vision*."""
-        product = Product(name=name, vision=vision, status="ideation", metrics={"awareness": 0.0})
+        product = Product(
+            name=name, vision=vision, status="ideation", metrics={"awareness": 0.0}
+        )
         self.products.append(product)
         logger.info("Created product %s", name)
         return product
 
     def create_roadmap(self, product: Product, quarters: int = 4) -> Roadmap:
         """Generate a quarterly roadmap for *product*."""
-        milestones = [f"Q{i+1}: Core feature {i+1}" for i in range(quarters)]
+        milestones = [f"Q{i + 1}: Core feature {i + 1}" for i in range(quarters)]
         fpq: dict[str, list[str]] = {}
         for i in range(quarters):
-            fpq[f"Q{i+1}"] = [f.name for f in product.features[i*2:(i+1)*2]] or [f"Feature {i+1}"]
-        roadmap = Roadmap(product=product.name, quarters=quarters, milestones=milestones, features_per_quarter=fpq)
+            fpq[f"Q{i + 1}"] = [
+                f.name for f in product.features[i * 2 : (i + 1) * 2]
+            ] or [f"Feature {i + 1}"]
+        roadmap = Roadmap(
+            product=product.name,
+            quarters=quarters,
+            milestones=milestones,
+            features_per_quarter=fpq,
+        )
         self.roadmaps.append(roadmap)
         return roadmap
 

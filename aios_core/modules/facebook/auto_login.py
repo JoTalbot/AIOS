@@ -2,7 +2,6 @@
 
 from aios_core.modules.rozetka.auto_login import RozetkaAutoLogin
 
-
 PACKAGE = "com.facebook.katana"
 
 # Facebook login-specific markers

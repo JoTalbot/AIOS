@@ -6,8 +6,9 @@ multi-agent collaboration, self-reflection, and plan revision.
 """
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any
 
 __all__ = ["AgentMemory", "Tool", "AdvancedAgent", "AgentOrchestrator"]
 
@@ -20,16 +21,16 @@ class AgentMemory:
     replay for learning from past experiences.
     """
 
-    short_term: List[Dict] = field(default_factory=list)
-    long_term: Dict = field(default_factory=dict)
-    episodic: List[Dict] = field(default_factory=list)
+    short_term: list[dict] = field(default_factory=list)
+    long_term: dict = field(default_factory=dict)
+    episodic: list[dict] = field(default_factory=list)
     max_short_term: int = 100
 
-    def add_short_term(self, item: Dict) -> None:
+    def add_short_term(self, item: dict) -> None:
         """Add item to short-term memory; evict oldest if overflow."""
         self.short_term.append(item)
         if len(self.short_term) > self.max_short_term:
-            self.short_term = self.short_term[-self.max_short_term:]
+            self.short_term = self.short_term[-self.max_short_term :]
 
     def consolidate(self, threshold: int = 5) -> int:
         """Consolidate frequently-seen short-term items into long-term.
@@ -37,7 +38,7 @@ class AgentMemory:
         Items appearing >= *threshold* times in short-term are promoted
         to long-term.  Returns count of consolidated items.
         """
-        freq: Dict[str, int] = {}
+        freq: dict[str, int] = {}
         for item in self.short_term:
             key = item.get("key", str(item))
             freq[key] = freq.get(key, 0) + 1
@@ -45,28 +46,30 @@ class AgentMemory:
         promoted = 0
         for key, count in freq.items():
             if count >= threshold and key not in self.long_term:
-                self.long_term[key] = {"frequency": count, "promoted_from": "short_term"}
+                self.long_term[key] = {
+                    "frequency": count,
+                    "promoted_from": "short_term",
+                }
                 promoted += 1
 
         # Remove promoted items from short-term
-        promoted_keys = {
-            k for k, c in freq.items() if c >= threshold
-        }
+        promoted_keys = {k for k, c in freq.items() if c >= threshold}
         self.short_term = [
-            item for item in self.short_term
+            item
+            for item in self.short_term
             if item.get("key", str(item)) not in promoted_keys
         ]
         return promoted
 
-    def add_episodic(self, episode: Dict) -> None:
+    def add_episodic(self, episode: dict) -> None:
         """Record an episodic experience."""
         self.episodic.append(episode)
 
-    def replay_episodes(self, limit: int = 10) -> List[Dict]:
+    def replay_episodes(self, limit: int = 10) -> list[dict]:
         """Return recent episodic memories."""
         return self.episodic[-limit:]
 
-    def search_long_term(self, query: str) -> List[Dict]:
+    def search_long_term(self, query: str) -> list[dict]:
         """Search long-term memory for entries matching *query*."""
         results = []
         for key, value in self.long_term.items():
@@ -82,6 +85,7 @@ class AgentMemory:
 @dataclass
 class Tool:
     """An invokable tool that an agent can use."""
+
     name: str
     description: str
     func: Callable
@@ -105,11 +109,11 @@ class AdvancedAgent:
         self.name = name
         self.system_prompt = system_prompt
         self.memory = AgentMemory()
-        self.tools: Dict[str, Tool] = {}
+        self.tools: dict[str, Tool] = {}
         self.goals: list[str] = []
-        self.plan: List[Dict] = []
-        self.completed_steps: List[Dict] = []
-        self.reflections: List[str] = []
+        self.plan: list[dict] = []
+        self.completed_steps: list[dict] = []
+        self.reflections: list[str] = []
 
     # ------------------------------------------------------------------
     # Tool management
@@ -123,7 +127,7 @@ class AdvancedAgent:
         """Remove a registered tool."""
         return self.tools.pop(name, None) is not None
 
-    def list_tools(self) -> List[str]:
+    def list_tools(self) -> list[str]:
         """Return names of available tools."""
         return list(self.tools.keys())
 
@@ -134,12 +138,14 @@ class AdvancedAgent:
             return {"error": f"Tool '{name}' not found"}
         try:
             result = tool.execute(*args, **kwargs)
-            self.memory.add_short_term({
-                "key": f"tool_call:{name}",
-                "tool": name,
-                "args": str(args),
-                "result": str(result),
-            })
+            self.memory.add_short_term(
+                {
+                    "key": f"tool_call:{name}",
+                    "tool": name,
+                    "args": str(args),
+                    "result": str(result),
+                }
+            )
             return result
         except Exception as exc:
             return {"error": str(exc)}
@@ -152,11 +158,16 @@ class AdvancedAgent:
         """Append a goal to the agent's goal stack."""
         self.goals.append(goal)
 
-    def decompose_goal(self, goal: str) -> List[str]:
+    def decompose_goal(self, goal: str) -> list[str]:
         """Break a goal into sub-goals using heuristics."""
         # Simple decomposition: split by conjunction words
-        subgoals: List[str] = []
-        parts = goal.replace(" and ", "|").replace(" then ", "|").replace(" after ", "|").split("|")
+        subgoals: list[str] = []
+        parts = (
+            goal.replace(" and ", "|")
+            .replace(" then ", "|")
+            .replace(" after ", "|")
+            .split("|")
+        )
         for part in parts:
             subgoals.append(part.strip())
         if not subgoals:
@@ -172,7 +183,7 @@ class AdvancedAgent:
     # Planning
     # ------------------------------------------------------------------
 
-    def plan_actions(self) -> List[Dict]:
+    def plan_actions(self) -> list[dict]:
         """Generate a simplified action plan based on goals and tools."""
         self.plan = []
         available_tools = list(self.tools.keys())
@@ -181,25 +192,32 @@ class AdvancedAgent:
             # Choose a tool for each goal if available
             if available_tools:
                 tool_name = available_tools[i % len(available_tools)]
-                step = {"step": i + 1, "action": "use_tool", "tool": tool_name, "goal": goal}
+                step = {
+                    "step": i + 1,
+                    "action": "use_tool",
+                    "tool": tool_name,
+                    "goal": goal,
+                }
             else:
                 step = {"step": i + 1, "action": "think", "goal": goal}
             self.plan.append(step)
 
         return self.plan
 
-    def revise_plan(self, feedback: str) -> List[Dict]:
+    def revise_plan(self, feedback: str) -> list[dict]:
         """Revise the plan based on reflection feedback."""
         # Simple revision: add a "think" step after each tool step
-        revised: List[Dict] = []
+        revised: list[dict] = []
         for i, step in enumerate(self.plan):
             revised.append(step)
             if step["action"] == "use_tool":
-                revised.append({
-                    "step": i + 1 + len(revised),
-                    "action": "think",
-                    "goal": f"Review result of {step['tool']}",
-                })
+                revised.append(
+                    {
+                        "step": i + 1 + len(revised),
+                        "action": "think",
+                        "goal": f"Review result of {step['tool']}",
+                    }
+                )
         self.plan = revised
         return self.plan
 
@@ -207,10 +225,10 @@ class AdvancedAgent:
     # Execution (ReAct-style)
     # ------------------------------------------------------------------
 
-    def execute_step(self, step: Dict) -> Dict:
+    def execute_step(self, step: dict) -> dict:
         """Execute a single plan step (ReAct: Reason → Act → Observe)."""
         action = step.get("action", "think")
-        result: Dict[str, Any] = {"status": "completed", "step": step}
+        result: dict[str, Any] = {"status": "completed", "step": step}
 
         if action == "use_tool":
             tool_name = step.get("tool", "")
@@ -226,16 +244,18 @@ class AdvancedAgent:
 
         # Record observation
         self.completed_steps.append(result)
-        self.memory.add_episodic({
-            "step": step,
-            "result": result,
-            "agent_id": self.id,
-        })
+        self.memory.add_episodic(
+            {
+                "step": step,
+                "result": result,
+                "agent_id": self.id,
+            }
+        )
         return result
 
-    def execute_plan(self) -> List[Dict]:
+    def execute_plan(self) -> list[dict]:
         """Execute all steps in the current plan sequentially."""
-        results: List[Dict] = []
+        results: list[dict] = []
         for step in self.plan:
             result = self.execute_step(step)
             results.append(result)
@@ -250,8 +270,7 @@ class AdvancedAgent:
         completed = len(self.completed_steps)
         total = len(self.plan)
         tool_calls = sum(
-            1 for s in self.completed_steps
-            if s.get("tool_result") is not None
+            1 for s in self.completed_steps if s.get("tool_result") is not None
         )
 
         progress = completed / max(1, total)
@@ -259,7 +278,7 @@ class AdvancedAgent:
         self.reflections.append(reflection)
         return reflection
 
-    def auto_reflect_and_revise(self) -> Dict[str, Any]:
+    def auto_reflect_and_revise(self) -> dict[str, Any]:
         """Reflect, then revise the plan if progress is < 50%."""
         reflection = self.reflect()
         progress = len(self.completed_steps) / max(1, len(self.plan))
@@ -307,8 +326,8 @@ class AgentOrchestrator:
 
     def __init__(self):
         """Initialize AgentOrchestrator."""
-        self.agents: Dict[str, AdvancedAgent] = {}
-        self._messages: List[Dict[str, Any]] = []
+        self.agents: dict[str, AdvancedAgent] = {}
+        self._messages: list[dict[str, Any]] = []
 
     def create_agent(self, name: str, system_prompt: str = "") -> AdvancedAgent:
         """Create and register a new agent."""
@@ -335,22 +354,20 @@ class AgentOrchestrator:
         }
         self._messages.append(msg)
         # Deliver to target agent's memory
-        self.agents[to_id].memory.add_short_term({
-            "key": f"message_from:{from_id}",
-            "content": content,
-            "topic": topic,
-        })
+        self.agents[to_id].memory.add_short_term(
+            {
+                "key": f"message_from:{from_id}",
+                "content": content,
+                "topic": topic,
+            }
+        )
         return {"success": True, "message": msg}
 
-    def delegate_task(
-        self, task: str, required_tool: str = ""
-    ) -> Optional[AdvancedAgent]:
+    def delegate_task(self, task: str, required_tool: str = "") -> AdvancedAgent | None:
         """Find and return the best agent for a task based on tool availability."""
         candidates = []
         for agent in self.agents.values():
-            if required_tool and required_tool in agent.tools:
-                candidates.append(agent)
-            elif not required_tool:
+            if required_tool and required_tool in agent.tools or not required_tool:
                 candidates.append(agent)
 
         if not candidates:
@@ -359,9 +376,9 @@ class AgentOrchestrator:
         # Choose agent with fewest current goals (most available)
         return min(candidates, key=lambda a: len(a.goals))
 
-    def gather_consensus(self, question: str) -> Dict[str, Any]:
+    def gather_consensus(self, question: str) -> dict[str, Any]:
         """Collect reflections from all agents on a question."""
-        responses: Dict[str, str] = {}
+        responses: dict[str, str] = {}
         for agent_id, agent in self.agents.items():
             agent.set_goal(question)
             reflection = agent.reflect()
@@ -382,11 +399,13 @@ class AgentOrchestrator:
         """Broadcast a message to all agents."""
         count = 0
         for agent_id, agent in self.agents.items():
-            agent.memory.add_short_term({
-                "key": f"broadcast:{topic}",
-                "content": content,
-                "topic": topic,
-            })
+            agent.memory.add_short_term(
+                {
+                    "key": f"broadcast:{topic}",
+                    "content": content,
+                    "topic": topic,
+                }
+            )
             count += 1
         return count
 

@@ -14,27 +14,31 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Route ────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Route:
     """Registered route definition."""
+
     path: str
     handler: Callable
     methods: list[str] = field(default_factory=lambda: ["GET"])
     version: str = "v1"
-    rate_limit: Optional[int] = None  # max requests per minute
+    rate_limit: int | None = None  # max requests per minute
     auth_required: bool = False
     description: str = ""
 
 
 # ── API Gateway ──────────────────────────────────────────────────────────────
+
 
 class APIGateway:
     """Central API Gateway with routing, middleware, rate limiting, versioning.
@@ -54,20 +58,32 @@ class APIGateway:
         self.routes: dict[str, Route] = {}
         self.middleware: list[Callable] = []
         self._rate_limit_counters: dict[str, list[float]] = {}  # path → timestamps
-        self._request_metrics: dict[str, dict[str, int]] = {}  # path → {success, failure, total}
+        self._request_metrics: dict[
+            str, dict[str, int]
+        ] = {}  # path → {success, failure, total}
         self._total_requests: int = 0
 
     # ── Route Registration ───────────────────────────────────────
 
-    def register(self, path: str, handler: Callable, methods: list[str] | None = None,
-                 version: str = "v1", rate_limit: int | None = None,
-                 auth_required: bool = False, description: str = "") -> Route:
+    def register(
+        self,
+        path: str,
+        handler: Callable,
+        methods: list[str] | None = None,
+        version: str = "v1",
+        rate_limit: int | None = None,
+        auth_required: bool = False,
+        description: str = "",
+    ) -> Route:
         """Register a route with full configuration."""
         route = Route(
-            path=path, handler=handler,
+            path=path,
+            handler=handler,
             methods=methods or ["GET"],
-            version=version, rate_limit=rate_limit,
-            auth_required=auth_required, description=description,
+            version=version,
+            rate_limit=rate_limit,
+            auth_required=auth_required,
+            description=description,
         )
         self.routes[path] = route
         self._request_metrics[path] = {"success": 0, "failure": 0, "total": 0}

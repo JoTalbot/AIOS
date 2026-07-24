@@ -11,7 +11,6 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
 import time
 from typing import Any
 
@@ -44,12 +43,14 @@ class SafetyMonitor:
             self.metrics[metric] = self.metrics[metric][-1000:]
         # Check threshold
         if metric in self.thresholds and value > self.thresholds[metric]:
-            self.alerts.append({
-                "metric": metric,
-                "value": value,
-                "threshold": self.thresholds[metric],
-                "timestamp": time.time(),
-            })
+            self.alerts.append(
+                {
+                    "metric": metric,
+                    "value": value,
+                    "threshold": self.thresholds[metric],
+                    "timestamp": time.time(),
+                }
+            )
 
     def get_status(self) -> dict[str, Any]:
         """Get current status (backward-compatible)."""
@@ -71,12 +72,25 @@ class SafetyMonitor:
             slope = (recent[-1] - recent[0]) / len(recent)
         else:
             slope = 0.0
-        trend = "improving" if slope < -0.01 else ("declining" if slope > 0.01 else "stable")
-        return {"metric": metric, "trend": trend, "mean": round(mean, 3), "slope": round(slope, 3)}
+        trend = (
+            "improving"
+            if slope < -0.01
+            else ("declining" if slope > 0.01 else "stable")
+        )
+        return {
+            "metric": metric,
+            "trend": trend,
+            "mean": round(mean, 3),
+            "slope": round(slope, 3),
+        }
 
-    def add_escalation_rule(self, metric: str, threshold: float, action: str = "notify") -> None:
+    def add_escalation_rule(
+        self, metric: str, threshold: float, action: str = "notify"
+    ) -> None:
         """Add escalation rule."""
-        self._escalation_rules.append({"metric": metric, "threshold": threshold, "action": action})
+        self._escalation_rules.append(
+            {"metric": metric, "threshold": threshold, "action": action}
+        )
 
     def generate_report(self) -> dict[str, Any]:
         """Generate comprehensive monitoring report."""

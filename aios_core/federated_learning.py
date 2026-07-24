@@ -17,13 +17,14 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class NodeStatus(str, Enum):
     """Node participation status."""
+
     ACTIVE = "active"
     OFFLINE = "offline"
     TRAINING = "training"
@@ -32,6 +33,7 @@ class NodeStatus(str, Enum):
 @dataclass
 class FederatedNode:
     """Participant node with model version."""
+
     node_id: str = ""
     capabilities: list[str] = field(default_factory=list)
     status: NodeStatus = NodeStatus.ACTIVE
@@ -48,6 +50,7 @@ class FederatedNode:
 @dataclass
 class AggregationResult:
     """Round aggregation outcome."""
+
     round: int = 0
     participants: int = 0
     global_accuracy: float = 0.0
@@ -59,6 +62,7 @@ class AggregationResult:
 @dataclass
 class GlobalModel:
     """Global aggregated model state."""
+
     version: int = 0
     parameters: dict[str, Any] = field(default_factory=dict)
     accuracy: float = 0.0
@@ -87,7 +91,9 @@ class FederatedLearning:
 
     # ── Node Management ─────────────────────────────────────────
 
-    def register_node(self, node_id: str, capabilities: list[str] | None = None) -> FederatedNode:
+    def register_node(
+        self, node_id: str, capabilities: list[str] | None = None
+    ) -> FederatedNode:
         """Register a participating node."""
         node = FederatedNode(node_id=node_id, capabilities=capabilities or [])
         self.nodes[node_id] = node
@@ -118,8 +124,13 @@ class FederatedLearning:
         self.rounds.append(result)
         return result
 
-    def submit_update(self, node_id: str, local_accuracy: float, samples_count: int,
-                      parameters: dict[str, Any] | None = None) -> None:
+    def submit_update(
+        self,
+        node_id: str,
+        local_accuracy: float,
+        samples_count: int,
+        parameters: dict[str, Any] | None = None,
+    ) -> None:
         """Submit local model update from a node."""
         node = self.nodes.get(node_id)
         if node is None:
@@ -135,7 +146,9 @@ class FederatedLearning:
         epsilon_per_round = 1.0
         self._epsilon_consumed += epsilon_per_round
 
-    def aggregate(self, local_updates: list[dict[str, Any]] | None = None) -> GlobalModel:
+    def aggregate(
+        self, local_updates: list[dict[str, Any]] | None = None
+    ) -> GlobalModel:
         """Aggregate model updates using FedAvg (weighted average)."""
         # Use node data for aggregation
         active_nodes = [n for n in self.nodes.values() if n.last_update > 0]
@@ -145,9 +158,10 @@ class FederatedLearning:
             return self.global_model
 
         # Weighted average of accuracies
-        weighted_accuracy = sum(
-            n.local_accuracy * n.samples_count for n in active_nodes
-        ) / total_samples
+        weighted_accuracy = (
+            sum(n.local_accuracy * n.samples_count for n in active_nodes)
+            / total_samples
+        )
 
         # Weighted average of weights
         weights = {n.node_id: n.samples_count / total_samples for n in active_nodes}

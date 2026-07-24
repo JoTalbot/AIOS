@@ -13,14 +13,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .storage import Database
 
 from .storage import Database
 
-__all__ = ["PlanStatus", "StepStatus", "EdgeCondition", "PlanStep", "PlanEdge", "Plan", "Planner"]
+__all__ = [
+    "PlanStatus",
+    "StepStatus",
+    "EdgeCondition",
+    "PlanStep",
+    "PlanEdge",
+    "Plan",
+    "Planner",
+]
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -29,6 +37,7 @@ __all__ = ["PlanStatus", "StepStatus", "EdgeCondition", "PlanStep", "PlanEdge", 
 
 class PlanStatus(str, Enum):
     """PlanStatus."""
+
     DRAFT = "draft"
     PLANNED = "planned"
     EXECUTING = "executing"
@@ -39,6 +48,7 @@ class PlanStatus(str, Enum):
 
 class StepStatus(str, Enum):
     """StepStatus."""
+
     PENDING = "pending"
     READY = "ready"
     RUNNING = "running"
@@ -49,6 +59,7 @@ class StepStatus(str, Enum):
 
 class EdgeCondition(str, Enum):
     """EdgeCondition."""
+
     SUCCESS = "success"  # Only proceed if source completed successfully
     COMPLETION = "completion"  # Proceed if source completed (even with failure)
     ALWAYS = "always"  # Always proceed, regardless of source outcome
@@ -145,7 +156,7 @@ class Planner:
         plan = planner.save_plan(plan)
     """
 
-    def __init__(self, db: Optional[Database] = None):
+    def __init__(self, db: Database | None = None):
         """Initialize Planner."""
         self.db = db
         self._ensure_table()
@@ -175,7 +186,9 @@ class Planner:
         """
         )
         self.db.execute("CREATE INDEX IF NOT EXISTS idx_plans_status ON plans(status)")
-        self.db.execute("CREATE INDEX IF NOT EXISTS idx_plans_created ON plans(created_at)")
+        self.db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_plans_created ON plans(created_at)"
+        )
 
     # ------------------------------------------------------------------
     # Plan CRUD
@@ -186,7 +199,7 @@ class Planner:
         name: str,
         description: str = "",
         goal: str = "",
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> Plan:
         """Create a new plan with status *draft*.
 
@@ -255,7 +268,7 @@ class Planner:
             )
         return plan
 
-    def get_plan(self, plan_id: str) -> Optional[Plan]:
+    def get_plan(self, plan_id: str) -> Plan | None:
         """Retrieve a plan by ID.  Returns *None* if not found."""
         if self.db is None:
             return None
@@ -290,8 +303,12 @@ class Planner:
                 "description": r["description"],
                 "goal": r["goal"],
                 "status": r["status"],
-                "step_count": (len(Database.from_json(r["steps_data"])) if r["steps_data"] else 0),
-                "edge_count": (len(Database.from_json(r["edges_data"])) if r["edges_data"] else 0),
+                "step_count": (
+                    len(Database.from_json(r["steps_data"])) if r["steps_data"] else 0
+                ),
+                "edge_count": (
+                    len(Database.from_json(r["edges_data"])) if r["edges_data"] else 0
+                ),
                 "created_at": r["created_at"],
                 "updated_at": r["updated_at"],
             }
@@ -313,9 +330,9 @@ class Planner:
         self,
         plan: Plan,
         step_type: str,
-        params: Optional[dict] = None,
+        params: dict | None = None,
         name: str = "",
-        dependencies: Optional[list[str]] = None,
+        dependencies: list[str] | None = None,
     ) -> PlanStep:
         """Add a step to a plan.
 
@@ -343,7 +360,9 @@ class Planner:
         # Auto-create edges for declared dependencies
         for dep_id in step.dependencies:
             # Avoid duplicate edges
-            already = any(e.source_id == dep_id and e.target_id == step.id for e in plan.edges)
+            already = any(
+                e.source_id == dep_id and e.target_id == step.id for e in plan.edges
+            )
             if not already:
                 plan.edges.append(
                     PlanEdge(
@@ -434,7 +453,8 @@ class Planner:
             for dep_id in step.dependencies:
                 if dep_id not in step_ids:
                     errors.append(
-                        f"Step '{step.name}' ({step.id}) depends on " f"unknown step '{dep_id}'"
+                        f"Step '{step.name}' ({step.id}) depends on "
+                        f"unknown step '{dep_id}'"
                     )
 
         # --- Build adjacency list (only from valid edges) ---
@@ -451,7 +471,7 @@ class Planner:
         color: dict[str, int] = {sid: WHITE for sid in step_ids}
         parent: dict[str, str | None] = {sid: None for sid in step_ids}
 
-        def _dfs_cycle(node: str) -> Optional[list[str]]:
+        def _dfs_cycle(node: str) -> list[str] | None:
             """Return a cycle path if one is found from *node*, else None."""
             color[node] = GRAY
             for neighbor in adj.get(node, []):
@@ -474,7 +494,7 @@ class Planner:
             color[node] = BLACK
             return None
 
-        cycle_found: Optional[list[str]] = None
+        cycle_found: list[str] | None = None
         for sid in step_ids:
             if color[sid] == WHITE:
                 result = _dfs_cycle(sid)
@@ -499,7 +519,8 @@ class Planner:
                 for did in sorted(disconnected):
                     label = self._step_label(plan, did)
                     errors.append(
-                        f"Disconnected step '{label}' ({did}): " f"no path from any root step"
+                        f"Disconnected step '{label}' ({did}): "
+                        f"no path from any root step"
                     )
 
         # --- Execution layers ---
@@ -610,7 +631,7 @@ class Planner:
 
     def mark_step_completed(
         self, plan: Plan, step_id: str, result: Any = None
-    ) -> Optional[PlanStep]:
+    ) -> PlanStep | None:
         """Mark a step as completed and update dependent step statuses.
 
         Returns the updated step, or *None* if not found.
@@ -631,7 +652,9 @@ class Planner:
 
         return step
 
-    def mark_step_failed(self, plan: Plan, step_id: str, error: str = "") -> Optional[PlanStep]:
+    def mark_step_failed(
+        self, plan: Plan, step_id: str, error: str = ""
+    ) -> PlanStep | None:
         """Mark a step as failed and propagate failure to dependents.
 
         For edges with condition "success", dependent steps are skipped.
@@ -659,7 +682,7 @@ class Planner:
 
         return step
 
-    def mark_step_running(self, plan: Plan, step_id: str) -> Optional[PlanStep]:
+    def mark_step_running(self, plan: Plan, step_id: str) -> PlanStep | None:
         """Mark a step as running.  Returns the step or *None*."""
         step = self._find_step(plan, step_id)
         if step is None:
@@ -774,7 +797,9 @@ class Planner:
             return {"score": 0.0, "reason": "empty plan"}
 
         layers = self.get_execution_layers(plan)
-        parallelism = len(layers) / max(1, len(plan.steps))  # lower is better parallelism
+        parallelism = len(layers) / max(
+            1, len(plan.steps)
+        )  # lower is better parallelism
 
         # Dependency density
         dep_count = sum(len(s.dependencies) for s in plan.steps)
@@ -786,7 +811,9 @@ class Planner:
 
         # Weighted score
         score = round(
-            (1 - parallelism) * 0.4 + (1 - min(dep_density, 1.0)) * 0.35 + diversity * 0.25,
+            (1 - parallelism) * 0.4
+            + (1 - min(dep_density, 1.0)) * 0.35
+            + diversity * 0.25,
             3,
         )
 
@@ -846,7 +873,7 @@ class Planner:
     # Internal helpers
     # ==================================================================
 
-    def _find_step(self, plan: Plan, step_id: str) -> Optional[PlanStep]:
+    def _find_step(self, plan: Plan, step_id: str) -> PlanStep | None:
         """Look up a step by ID within a plan."""
         for s in plan.steps:
             if s.id == step_id:
@@ -867,7 +894,9 @@ class Planner:
                 return e.condition
         return "success"
 
-    def _dfs_reachable(self, node: str, adj: dict[str, list[str]], visited: set[str]) -> None:
+    def _dfs_reachable(
+        self, node: str, adj: dict[str, list[str]], visited: set[str]
+    ) -> None:
         """Mark all nodes reachable from *node*."""
         stack = [node]
         while stack:
@@ -996,7 +1025,9 @@ class Planner:
                 "name": s.name,
                 "step_type": s.step_type,
                 "params": s.params,
-                "status": (s.status.value if isinstance(s.status, StepStatus) else s.status),
+                "status": (
+                    s.status.value if isinstance(s.status, StepStatus) else s.status
+                ),
                 "dependencies": s.dependencies,
             }
             if s.result is not None:

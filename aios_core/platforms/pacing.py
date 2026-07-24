@@ -10,8 +10,7 @@ from __future__ import annotations
 
 import random
 import time
-from datetime import datetime, timezone
-from typing import Callable, Optional, Tuple
+from collections.abc import Callable
 
 
 class Pacer:
@@ -30,10 +29,10 @@ class Pacer:
         self,
         actions_per_hour: int | None = None,
         session_max_s: float | None = None,
-        jitter_s: Optional[Tuple[float, float]] = (0.4, 1.6),
-        rng: Optional[random.Random] = None,
-        sleeper: Optional[Callable[[float], None]] = None,
-        now: Optional[Callable[[], float]] = None,
+        jitter_s: tuple[float, float] | None = (0.4, 1.6),
+        rng: random.Random | None = None,
+        sleeper: Callable[[float], None] | None = None,
+        now: Callable[[], float] | None = None,
     ) -> None:
         """Initialize Pacer."""
         self.actions_per_hour = actions_per_hour or None
@@ -53,7 +52,10 @@ class Pacer:
         if now - self._window_started >= 3600.0:
             self._window_started = now
             self._window_actions = 0
-        if self.actions_per_hour is not None and self._window_actions >= self.actions_per_hour:
+        if (
+            self.actions_per_hour is not None
+            and self._window_actions >= self.actions_per_hour
+        ):
             return False
         if self.session_max_s and now - self._started >= self.session_max_s:
             return False
@@ -77,7 +79,7 @@ class Pacer:
 def pacer_from_limits(
     prefix: str,
     limits,
-    jitter_s: Optional[Tuple[float, float]] = (0.4, 1.6),
+    jitter_s: tuple[float, float] | None = (0.4, 1.6),
     **kwargs,
 ) -> Pacer:
     """Pacer из kv-лимитов DevicePool (``pacing:<profile>:...`` ключи).

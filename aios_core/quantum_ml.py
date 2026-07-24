@@ -12,9 +12,9 @@ Classes:
 
 from __future__ import annotations
 
+import logging
 import math
 import random
-import logging
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -29,14 +29,18 @@ class QuantumFeatureMap:
 
     def encode(self, classical_data: list[float]) -> list[complex]:
         """Encode classical data into quantum amplitudes."""
-        padded = classical_data[:self.qubits] + [0.0] * max(0, self.qubits - len(classical_data))
+        padded = classical_data[: self.qubits] + [0.0] * max(
+            0, self.qubits - len(classical_data)
+        )
         # Angle encoding: data → rotation angles
         amplitudes: list[complex] = []
         for d in padded:
             angle = d * math.pi / max(max(abs(v) for v in padded) if padded else 1, 1)
-            amplitudes.append(complex(math.cos(angle), math.sin(angle) * random.gauss(0, 0.05)))
+            amplitudes.append(
+                complex(math.cos(angle), math.sin(angle) * random.gauss(0, 0.05))
+            )
         # Normalize
-        norm = math.sqrt(sum(abs(a)**2 for a in amplitudes))
+        norm = math.sqrt(sum(abs(a) ** 2 for a in amplitudes))
         if norm > 0:
             amplitudes = [a / norm for a in amplitudes]
         return amplitudes
@@ -53,7 +57,7 @@ class QuantumFeatureMap:
         """Compute state fidelity |<ψ1|ψ2>|^2."""
         min_len = min(len(state1), len(state2))
         overlap = sum(s1 * s2 for s1, s2 in zip(state1[:min_len], state2[:min_len]))
-        return abs(overlap)**2
+        return abs(overlap) ** 2
 
     def stats(self) -> dict[str, Any]:
         return {"qubits": self.qubits, "repetitions": self.repetitions}
@@ -65,7 +69,9 @@ class VariationalCircuit:
     def __init__(self, qubits: int = 4, layers: int = 3) -> None:
         self.qubits = qubits
         self.layers = layers
-        self.params: list[float] = [random.gauss(0, 0.1) for _ in range(qubits * layers * 2)]
+        self.params: list[float] = [
+            random.gauss(0, 0.1) for _ in range(qubits * layers * 2)
+        ]
 
     def forward(self, input_data: list[float]) -> list[float]:
         """Forward pass: parameterized rotations + entangling."""
@@ -88,11 +94,17 @@ class VariationalCircuit:
         self.params[idx] = original - delta
         forward_minus = self.forward([1.0] * self.qubits)
         self.params[idx] = original
-        gradient = [(fp - fm) / (2 * delta) for fp, fm in zip(forward_plus, forward_minus)]
+        gradient = [
+            (fp - fm) / (2 * delta) for fp, fm in zip(forward_plus, forward_minus)
+        ]
         return gradient
 
     def stats(self) -> dict[str, Any]:
-        return {"qubits": self.qubits, "layers": self.layers, "params": len(self.params)}
+        return {
+            "qubits": self.qubits,
+            "layers": self.layers,
+            "params": len(self.params),
+        }
 
 
 class QuantumML:
@@ -113,12 +125,14 @@ class QuantumML:
             "accuracy": round(random.uniform(0.85, 0.95), 4),
         }
 
-    def quantum_neural_network(self, input_data: list[float], epochs: int = 10) -> dict[str, Any]:
+    def quantum_neural_network(
+        self, input_data: list[float], epochs: int = 10
+    ) -> dict[str, Any]:
         """Train QNN with parameter shift gradients."""
         history: list[float] = []
         for epoch in range(epochs):
             output = self._var_circuit.forward(input_data)
-            loss = round(sum((o - 0.5)**2 for o in output) / len(output), 4)
+            loss = round(sum((o - 0.5) ** 2 for o in output) / len(output), 4)
             history.append(loss)
             # Simplified gradient step
             for i in range(min(3, len(self._var_circuit.params))):

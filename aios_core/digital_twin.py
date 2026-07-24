@@ -13,23 +13,26 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Twin Property ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class TwinProperty:
     """Named property with value and metadata."""
+
     name: str
     value: Any
     type: str = ""
     unit: str = ""
-    min_value: Optional[float] = None
-    max_value: Optional[float] = None
+    min_value: float | None = None
+    max_value: float | None = None
 
     def validate(self, new_value: Any) -> bool:
         """Validate new value against bounds."""
@@ -44,9 +47,11 @@ class TwinProperty:
 
 # ── Simulation Outcome ──────────────────────────────────────────────────────
 
+
 @dataclass
 class SimulationOutcome:
     """Result of a simulation action."""
+
     action: str
     predicted_outcome: str = "success"  # success, failure, degraded
     confidence: float = 0.8
@@ -57,6 +62,7 @@ class SimulationOutcome:
 
 
 # ── Digital Twin ─────────────────────────────────────────────────────────────
+
 
 class DigitalTwin:
     """Enhanced digital twin with simulation, what-if analysis, and rollback.
@@ -81,12 +87,24 @@ class DigitalTwin:
 
     # ── Property Management ─────────────────────────────────────
 
-    def add_property(self, name: str, value: Any, type: str = "",
-                     unit: str = "", min_value: float | None = None,
-                     max_value: float | None = None) -> TwinProperty:
+    def add_property(
+        self,
+        name: str,
+        value: Any,
+        type: str = "",
+        unit: str = "",
+        min_value: float | None = None,
+        max_value: float | None = None,
+    ) -> TwinProperty:
         """Add a property to the twin."""
-        prop = TwinProperty(name=name, value=value, type=type, unit=unit,
-                           min_value=min_value, max_value=max_value)
+        prop = TwinProperty(
+            name=name,
+            value=value,
+            type=type,
+            unit=unit,
+            min_value=min_value,
+            max_value=max_value,
+        )
         self.properties[name] = prop
         self.state[name] = value
         return prop
@@ -114,7 +132,9 @@ class DigitalTwin:
     def sync(self, new_state: dict[str, Any]) -> dict[str, Any]:
         """Sync twin state with new data. Returns diff."""
         diff = self._compute_diff(self.state, new_state)
-        self.history.append({"state": self.state.copy(), "diff": diff, "timestamp": time.time()})
+        self.history.append(
+            {"state": self.state.copy(), "diff": diff, "timestamp": time.time()}
+        )
         self.state.update(new_state)
         # Update properties
         for name, value in new_state.items():
@@ -152,7 +172,9 @@ class DigitalTwin:
 
     # ── Simulation ──────────────────────────────────────────────
 
-    def register_action(self, name: str, handler: Callable[[dict[str, Any]], SimulationOutcome]) -> None:
+    def register_action(
+        self, name: str, handler: Callable[[dict[str, Any]], SimulationOutcome]
+    ) -> None:
         """Register a simulation action handler."""
         self._action_handlers[name] = handler
 
@@ -174,7 +196,9 @@ class DigitalTwin:
         self._simulations.append(outcome)
         return outcome
 
-    def what_if(self, action: str, assumed_changes: dict[str, Any] | None = None) -> SimulationOutcome:
+    def what_if(
+        self, action: str, assumed_changes: dict[str, Any] | None = None
+    ) -> SimulationOutcome:
         """What-if analysis: simulate without committing changes.
 
         Temporarily applies assumed_changes, runs simulation, then restores.
@@ -203,7 +227,9 @@ class DigitalTwin:
             return self.sync(outcome.effects) is not None
         return True
 
-    def inject_event(self, event_type: str, event_data: dict[str, Any]) -> SimulationOutcome:
+    def inject_event(
+        self, event_type: str, event_data: dict[str, Any]
+    ) -> SimulationOutcome:
         """Inject an event for testing (e.g., failure, recovery)."""
         outcome = SimulationOutcome(
             action=f"inject_{event_type}",

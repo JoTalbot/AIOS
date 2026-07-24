@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import tempfile
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
 
 from aios_core.modules.olx.adb import ADBController
 from aios_core.platforms.descriptor import PlatformDescriptor
@@ -39,11 +39,11 @@ class ReelsCollector:
     def __init__(
         self,
         platform: PlatformDescriptor,
-        adb: Optional[ADBController] = None,
+        adb: ADBController | None = None,
         store=None,
         directory: str = "platforms",
-        parser: Optional[HintVideoParser] = None,
-        driver: Optional[Callable[[ADBController], bool]] = None,
+        parser: HintVideoParser | None = None,
+        driver: Callable[[ADBController], bool] | None = None,
         notifier=None,
         screen_width: int = 1080,
         screen_height: int = 2400,
@@ -91,7 +91,7 @@ class ReelsCollector:
         max_swipes: int | None = None,
         stop_after_empty: int = 1,
         query: str | None = None,
-    ) -> List[VideoCard]:
+    ) -> list[VideoCard]:
         """Скролл-цикл по видео-ленте: дамп → новые карточки → свайп.
 
         Args:
@@ -105,9 +105,11 @@ class ReelsCollector:
         """
         parser = self.resolve_parser()
         if self.driver is not None and not self.driver(self.adb):
-            raise RuntimeError(f"driver не смог открыть видео-ленту «{self.platform.name}»")
+            raise RuntimeError(
+                f"driver не смог открыть видео-ленту «{self.platform.name}»"
+            )
         swipe_limit = max_swipes if max_swipes is not None else max_cards
-        cards: List[VideoCard] = []
+        cards: list[VideoCard] = []
         seen = set()
         swipes = 0
         empties = 0
@@ -119,7 +121,7 @@ class ReelsCollector:
                     break
                 if not dump_path.exists():
                     break
-                fresh: List[VideoCard] = []
+                fresh: list[VideoCard] = []
                 for card in parser.parse(dump_path, query=query):
                     if card.fingerprint and card.fingerprint not in seen:
                         seen.add(card.fingerprint)
@@ -129,7 +131,11 @@ class ReelsCollector:
                             break
                 dump_path.unlink(missing_ok=True)
                 empties = 0 if fresh else empties + 1
-                if empties >= stop_after_empty or len(cards) >= max_cards or swipes >= swipe_limit:
+                if (
+                    empties >= stop_after_empty
+                    or len(cards) >= max_cards
+                    or swipes >= swipe_limit
+                ):
                     break
                 if self.pacer is not None and not self.pacer.before_action():
                     break  # pacing-лимит — честный стоп цикла
@@ -152,7 +158,7 @@ class ReelsCollector:
         stop_after_empty: int = 1,
         query: str | None = None,
         category: str = "video",
-    ) -> Tuple[int, List[VideoCard]]:
+    ) -> tuple[int, list[VideoCard]]:
         """Цикл + квитанции в storage (дедуп между циклами).
 
         Returns:
@@ -209,11 +215,11 @@ class ReelsTabDriver:
 
     def __init__(
         self,
-        adb: Optional[ADBController] = None,
+        adb: ADBController | None = None,
         rid_markers: list[str] | None = None,
         text_markers: list[str] | None = None,
         open_wait_s: float = 1.0,
-        sleeper: Optional[Callable[[float], None]] = None,
+        sleeper: Callable[[float], None] | None = None,
     ) -> None:
         """Initialize ReelsTabDriver."""
         self.adb = adb
@@ -223,12 +229,14 @@ class ReelsTabDriver:
             if m
         )
         self.text_markers = tuple(
-            str(t).strip().lower() for t in (text_markers or _DEFAULT_TAB_TEXT_MARKERS) if t
+            str(t).strip().lower()
+            for t in (text_markers or _DEFAULT_TAB_TEXT_MARKERS)
+            if t
         )
         self.open_wait_s = open_wait_s
         self._sleep = sleeper or time.sleep
 
-    def drive(self, adb: Optional[ADBController] = None) -> bool:
+    def drive(self, adb: ADBController | None = None) -> bool:
         """Дамп → поиск узла вкладки → тап по центру. True — вкладка тапнута."""
         from aios_core.modules.olx.messenger import _parse_bounds
         from aios_core.platforms.calibrate import CalibrationAdvisor
@@ -248,7 +256,9 @@ class ReelsTabDriver:
                 bounds = _parse_bounds(node.attrib.get("bounds"))
                 if bounds is None:
                     continue
-                rid_tail = (node.attrib.get("resource-id") or "").rsplit("/", 1)[-1].lower()
+                rid_tail = (
+                    (node.attrib.get("resource-id") or "").rsplit("/", 1)[-1].lower()
+                )
                 text = (node.attrib.get("text") or "").strip().lower()
                 desc = (node.attrib.get("content-desc") or "").strip().lower()
                 hit = any(marker in rid_tail for marker in self.rid_markers)
@@ -271,10 +281,10 @@ class ReelsTabDriver:
 
 def reels_driver_for(
     platform_name: str,
-    adb: Optional[ADBController] = None,
+    adb: ADBController | None = None,
     directory: str = "platforms",
     open_wait_s: float = 1.0,
-    sleeper: Optional[Callable[[float], None]] = None,
+    sleeper: Callable[[float], None] | None = None,
 ) -> ReelsTabDriver:
     """ReelsTabDriver из секции ``navigation.reels_tab`` YAML-дескриптора.
 

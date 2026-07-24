@@ -10,8 +10,8 @@ All data persisted to SQLite with search, tagging, and TTL.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from .storage import Database
 
@@ -27,7 +27,7 @@ class MemoryManager:
     as required by Core Principle 3 (Memory Separation).
     """
 
-    def __init__(self, db: Optional[Database] = None):
+    def __init__(self, db: Database | None = None):
         """Initialize MemoryManager."""
         self.db = db
 
@@ -35,11 +35,11 @@ class MemoryManager:
         self,
         content: dict,
         category: str = "operational",
-        tags: Optional[list[str]] = None,
+        tags: list[str] | None = None,
         source: str | None = None,
         confidence: float = 1.0,
         ttl_seconds: int | None = None,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         owner_id: str | None = None,
     ) -> dict:
         """Store a memory item.
@@ -65,7 +65,9 @@ class MemoryManager:
         if ttl_seconds is not None:
             from datetime import timedelta
 
-            expires_at = (datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)).isoformat()
+            expires_at = (
+                datetime.now(UTC) + timedelta(seconds=ttl_seconds)
+            ).isoformat()
 
         if self.db:
             self.db.execute(
@@ -101,7 +103,7 @@ class MemoryManager:
 
     def retrieve(
         self, item_id: str, requester_id: str | None = None, is_admin: bool = False
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """Retrieve an item, enforcing ownership when a requester is supplied."""
         if self.db is None:
             return None
@@ -176,12 +178,12 @@ class MemoryManager:
     def update(
         self,
         item_id: str,
-        content: Optional[dict] = None,
-        tags: Optional[list[str]] = None,
+        content: dict | None = None,
+        tags: list[str] | None = None,
         confidence: float | None = None,
         requester_id: str | None = None,
         is_admin: bool = False,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """Update an existing memory item."""
         if self.db is None:
             return None

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 import math
-import random
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -24,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExperimentResult:
     """Recorded experiment outcome."""
+
     variant: str
     success: bool
     timestamp: float = field(default_factory=time.time)
@@ -62,9 +62,13 @@ class ABTest:
         self._total_assignments[variant] += 1
         return variant
 
-    def record_result(self, variant: str, success: bool, metadata: dict[str, Any] | None = None) -> None:
+    def record_result(
+        self, variant: str, success: bool, metadata: dict[str, Any] | None = None
+    ) -> None:
         """Record experiment outcome (backward-compatible)."""
-        result = ExperimentResult(variant=variant, success=success, metadata=metadata or {})
+        result = ExperimentResult(
+            variant=variant, success=success, metadata=metadata or {}
+        )
         self.results[variant].append(result)
         if success:
             self._conversions[variant] += 1
@@ -95,15 +99,23 @@ class ABTest:
         second_n = self._total_assignments.get(second, 0)
 
         if best_n < 30 or second_n < 30:
-            return {"significant": False, "p_value": 1.0, "note": "Need at least 30 samples per variant"}
+            return {
+                "significant": False,
+                "p_value": 1.0,
+                "note": "Need at least 30 samples per variant",
+            }
 
         # Simplified chi-squared approximation
         diff = abs(rates[best] - rates[second])
-        pooled_rate = (self._conversions[best] + self._conversions[second]) / (best_n + second_n)
+        pooled_rate = (self._conversions[best] + self._conversions[second]) / (
+            best_n + second_n
+        )
         if pooled_rate == 0:
             return {"significant": False, "p_value": 1.0}
 
-        z = diff / math.sqrt(pooled_rate * (1 - pooled_rate) * (1/best_n + 1/second_n))
+        z = diff / math.sqrt(
+            pooled_rate * (1 - pooled_rate) * (1 / best_n + 1 / second_n)
+        )
         # Approximate p-value from z-score
         p_value = max(0.001, 2 * (1 - min(1.0, 0.5 * (1 + math.erf(z / math.sqrt(2))))))
 

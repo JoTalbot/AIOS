@@ -11,14 +11,12 @@ Usage::
     print(cfg.database.path)
 """
 
-
 import os
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml
-
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -28,12 +26,14 @@ import yaml
 @dataclass
 class DatabaseConfig:
     """DatabaseConfig."""
+
     path: str = "aios.sqlite"
 
 
 @dataclass
 class BackupConfig:
     """BackupConfig."""
+
     directory: str = "./backups"
     retention_days: int = 30
     max_backups: int = 10
@@ -43,6 +43,7 @@ class BackupConfig:
 @dataclass
 class AuditConfig:
     """AuditConfig."""
+
     file_path: str = "audit_log.jsonl"
     retention_days: int = 90
 
@@ -50,12 +51,14 @@ class AuditConfig:
 @dataclass
 class ConstitutionConfig:
     """ConstitutionConfig."""
+
     directory: str = "docs/constitution"
 
 
 @dataclass
 class PoliciesConfig:
     """PoliciesConfig."""
+
     directory: str = "policies"
 
 
@@ -63,7 +66,7 @@ class PoliciesConfig:
 class APIKeysConfig:
     """API key definitions.  In YAML this is a dict of subject→config."""
 
-    keys: Dict[str, dict[str, Any]] = field(default_factory=dict)
+    keys: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -73,19 +76,20 @@ class PlatformConfig:
     name: str = ""
     package: str = ""
     enabled: bool = True
-    profiles: Dict[str, dict[str, Any]] = field(default_factory=dict)
+    profiles: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
 class PlatformsConfig:
     """All registered platform configurations."""
 
-    platforms: Dict[str, dict] = field(default_factory=dict)
+    platforms: dict[str, dict] = field(default_factory=dict)
 
 
 @dataclass
 class LoggingConfig:
     """LoggingConfig."""
+
     level: str = "INFO"
     format: str = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"
 
@@ -93,6 +97,7 @@ class LoggingConfig:
 @dataclass
 class PacingConfig:
     """PacingConfig."""
+
     actions_per_hour: int = 60
     jitter_seconds: float = 1.6
 
@@ -100,6 +105,7 @@ class PacingConfig:
 @dataclass
 class WebhookConfig:
     """WebhookConfig."""
+
     url: str = ""
     chat_id: str = ""
 
@@ -125,7 +131,7 @@ class AIOSConfig:
 # ---------------------------------------------------------------------------
 
 # Map of YAML top-level keys → dataclass field names and classes
-_SECTION_MAP: Dict[str, tuple] = {
+_SECTION_MAP: dict[str, tuple] = {
     "database": ("database", DatabaseConfig),
     "backup": ("backup", BackupConfig),
     "audit": ("audit", AuditConfig),
@@ -139,7 +145,7 @@ _SECTION_MAP: Dict[str, tuple] = {
 }
 
 # Map of env vars → dataclass.field_path for overrides
-_ENV_OVERRIDES: Dict[str, tuple] = {
+_ENV_OVERRIDES: dict[str, tuple] = {
     "AIOS_DB_PATH": ("database", "path"),
     "AIOS_BACKUP_DIR": ("backup", "directory"),
     "AIOS_BACKUP_RETENTION_DAYS": ("backup", "retention_days"),

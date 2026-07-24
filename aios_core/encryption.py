@@ -17,15 +17,16 @@ import hmac
 import logging
 import os
 import time
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Try cryptography package for Fernet
 try:
     from cryptography.fernet import Fernet
-    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
     from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
     HAS_CRYPTO = True
 except ImportError:
     HAS_CRYPTO = False
@@ -34,8 +35,13 @@ except ImportError:
 class KeyInfo:
     """Key metadata with rotation tracking."""
 
-    def __init__(self, key_id: str, key_bytes: bytes,
-                 purpose: str = "encryption", rotation_interval: int = 86400) -> None:
+    def __init__(
+        self,
+        key_id: str,
+        key_bytes: bytes,
+        purpose: str = "encryption",
+        rotation_interval: int = 86400,
+    ) -> None:
         self.key_id = key_id
         self.key_bytes = key_bytes
         self.purpose = purpose
@@ -67,7 +73,7 @@ class EncryptionManager:
     - Backward-compatible API
     """
 
-    def __init__(self, key: Optional[bytes] = None) -> None:
+    def __init__(self, key: bytes | None = None) -> None:
         self._keys: dict[str, KeyInfo] = {}
         self._active_key_id: str = "default"
         self._rotation_history: list[dict[str, Any]] = []
@@ -85,8 +91,9 @@ class EncryptionManager:
         self.key = self._keys["default"].key_bytes
         self._fernet = Fernet(self.key) if HAS_CRYPTO and len(self.key) == 44 else None
 
-    def _register_key(self, key_id: str, key_bytes: bytes,
-                      purpose: str = "encryption") -> KeyInfo:
+    def _register_key(
+        self, key_id: str, key_bytes: bytes, purpose: str = "encryption"
+    ) -> KeyInfo:
         """Register a new key."""
         info = KeyInfo(key_id=key_id, key_bytes=key_bytes, purpose=purpose)
         self._keys[key_id] = info
@@ -137,12 +144,14 @@ class EncryptionManager:
         new_key_bytes = Fernet.generate_key() if HAS_CRYPTO else os.urandom(32)
         new_info = self._register_key(target, new_key_bytes)
 
-        self._rotation_history.append({
-            "key_id": target,
-            "old_fingerprint": old_info.fingerprint(),
-            "new_fingerprint": new_info.fingerprint(),
-            "timestamp": time.time(),
-        })
+        self._rotation_history.append(
+            {
+                "key_id": target,
+                "old_fingerprint": old_info.fingerprint(),
+                "new_fingerprint": new_info.fingerprint(),
+                "timestamp": time.time(),
+            }
+        )
 
         # Update active references
         self.key = new_info.key_bytes
@@ -197,8 +206,9 @@ class EncryptionManager:
 
     # ── Key Derivation ──────────────────────────────────────────────
 
-    def derive_key(self, password: str, salt: bytes | None = None,
-                   iterations: int = 100000) -> bytes:
+    def derive_key(
+        self, password: str, salt: bytes | None = None, iterations: int = 100000
+    ) -> bytes:
         """Derive a key from password using PBKDF2."""
         salt = salt or os.urandom(16)
         if HAS_CRYPTO:
@@ -210,7 +220,9 @@ class EncryptionManager:
             )
             return kdf.derive(password.encode())
         # Fallback: hashlib-based PBKDF2
-        return hashlib.pbkdf2_hmac('sha256', password.encode(), salt, iterations, dklen=32)
+        return hashlib.pbkdf2_hmac(
+            "sha256", password.encode(), salt, iterations, dklen=32
+        )
 
     # ── Stats ──────────────────────────────────────────────────────
 

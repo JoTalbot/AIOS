@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from aios_core.android_appium import AppiumAndroidDriver, AppiumDriverConfig
 from aios_core.android_driver import AndroidDriver, DriverCapabilities
@@ -28,7 +28,7 @@ __all__ = ["AndroidAppDescriptor", "AndroidAppRegistry", "AndroidSession"]
 
 
 # Action routing table: which package supports which actions
-_ACTION_ROUTING: Dict[str, set[str]] = {
+_ACTION_ROUTING: dict[str, set[str]] = {
     "ua.slando": {"search", "get_item_details", "send_message", "list_items"},
     "com.facebook.katana": {"search", "send_message", "get_profile"},
     "com.instagram.android": {"search", "get_item_details", "share"},
@@ -44,10 +44,10 @@ class AndroidAppDescriptor:
     name: str
     package: str
     backend: str = "adb"
-    capabilities: Optional[DriverCapabilities] = None
+    capabilities: DriverCapabilities | None = None
     version: str = ""
     description: str = ""
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
     def build_driver(self, device_id: str | None = None) -> AndroidDriver:
         """Construct an appropriate driver instance."""
@@ -69,7 +69,7 @@ class AndroidAppDescriptor:
         """Return all supported actions for this package."""
         return set(_ACTION_ROUTING.get(self.package, set()))
 
-    def match_tags(self, query_tags: List[str]) -> bool:
+    def match_tags(self, query_tags: list[str]) -> bool:
         """Check whether any of *query_tags* match this descriptor's tags."""
         return any(tag in self.tags for tag in query_tags)
 
@@ -81,7 +81,7 @@ class AndroidSession:
     session_id: str
     package: str
     device_id: str
-    driver: Optional[AndroidDriver] = None
+    driver: AndroidDriver | None = None
     started_at: float = 0.0
     status: str = "active"
 
@@ -114,9 +114,9 @@ class AndroidAppRegistry:
 
     def __init__(self):
         """Initialize AndroidAppRegistry."""
-        self._apps: Dict[str, AndroidAppDescriptor] = {}
-        self._sessions: Dict[str, AndroidSession] = {}
-        self._driver_pool: Dict[str, AndroidDriver] = {}
+        self._apps: dict[str, AndroidAppDescriptor] = {}
+        self._sessions: dict[str, AndroidSession] = {}
+        self._driver_pool: dict[str, AndroidDriver] = {}
         self._session_counter: int = 0
 
     # ------------------------------------------------------------------
@@ -131,23 +131,17 @@ class AndroidAppRegistry:
         """Remove an app from the registry."""
         return self._apps.pop(package, None) is not None
 
-    def get(self, package: str) -> Optional[AndroidAppDescriptor]:
+    def get(self, package: str) -> AndroidAppDescriptor | None:
         """Retrieve descriptor by package name."""
         return self._apps.get(package)
 
-    def find_by_action(self, action: str) -> List[AndroidAppDescriptor]:
+    def find_by_action(self, action: str) -> list[AndroidAppDescriptor]:
         """Find all descriptors that support *action*."""
-        return [
-            desc for desc in self._apps.values()
-            if desc.supports(action)
-        ]
+        return [desc for desc in self._apps.values() if desc.supports(action)]
 
-    def find_by_tags(self, tags: List[str]) -> List[AndroidAppDescriptor]:
+    def find_by_tags(self, tags: list[str]) -> list[AndroidAppDescriptor]:
         """Find descriptors matching any of *tags*."""
-        return [
-            desc for desc in self._apps.values()
-            if desc.match_tags(tags)
-        ]
+        return [desc for desc in self._apps.values() if desc.match_tags(tags)]
 
     # ------------------------------------------------------------------
     # Driver management
@@ -155,7 +149,7 @@ class AndroidAppRegistry:
 
     def driver_for(
         self, package: str, device_id: str | None = None
-    ) -> Optional[AndroidDriver]:
+    ) -> AndroidDriver | None:
         """Create or retrieve a cached driver for *package*."""
         desc = self.get(package)
         if desc is None:
@@ -222,16 +216,13 @@ class AndroidAppRegistry:
         self._sessions.pop(session_id, None)
         return True
 
-    def get_session(self, session_id: str) -> Optional[AndroidSession]:
+    def get_session(self, session_id: str) -> AndroidSession | None:
         """Retrieve a session by ID."""
         return self._sessions.get(session_id)
 
-    def active_sessions(self) -> List[AndroidSession]:
+    def active_sessions(self) -> list[AndroidSession]:
         """Return all active sessions."""
-        return [
-            s for s in self._sessions.values()
-            if s.status == "active"
-        ]
+        return [s for s in self._sessions.values() if s.status == "active"]
 
     # ------------------------------------------------------------------
     # Health monitoring
@@ -250,9 +241,9 @@ class AndroidAppRegistry:
         except Exception as exc:
             return {"healthy": False, "error": str(exc)}
 
-    def health_report(self) -> Dict[str, dict[str, Any]]:
+    def health_report(self) -> dict[str, dict[str, Any]]:
         """Generate health status for all pooled drivers."""
-        report: Dict[str, dict[str, Any]] = {}
+        report: dict[str, dict[str, Any]] = {}
         for pool_key, driver in self._driver_pool.items():
             package = pool_key.split(":")[0]
             try:
@@ -292,7 +283,7 @@ class AndroidAppRegistry:
         """Return all registered package names."""
         return list(self._apps.keys())
 
-    def all_apps(self) -> List[AndroidAppDescriptor]:
+    def all_apps(self) -> list[AndroidAppDescriptor]:
         """Return all registered descriptors."""
         return list(self._apps.values())
 

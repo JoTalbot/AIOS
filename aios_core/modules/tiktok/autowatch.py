@@ -12,7 +12,9 @@ class TikTokAutoWatch(RozetkaAutoWatch):
     - Creator/seller tracking
     """
 
-    def run_cycle(self, queries: list[str] | None = None, collect: bool = True) -> dict[str, object]:
+    def run_cycle(
+        self, queries: list[str] | None = None, collect: bool = True
+    ) -> dict[str, object]:
         """Run one full AutoWatch cycle for TikTok.
 
         Adds TikTok-specific 'video_trending' section to the report.
@@ -26,16 +28,17 @@ class TikTokAutoWatch(RozetkaAutoWatch):
         for ad in ads:
             if ad.raw_texts:
                 import re
+
                 for text in ad.raw_texts:
-                    tags = re.findall(r'#(\w+)', text)
+                    tags = re.findall(r"#(\w+)", text)
                     trending_tags.extend(tags)
 
         # Count tag frequency
         from collections import Counter
+
         tag_counts = Counter(trending_tags)
         report["trending_hashtags"] = [
-            {"tag": tag, "count": count}
-            for tag, count in tag_counts.most_common(10)
+            {"tag": tag, "count": count} for tag, count in tag_counts.most_common(10)
         ]
 
         return report
