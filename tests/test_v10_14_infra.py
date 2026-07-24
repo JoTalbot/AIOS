@@ -14,7 +14,7 @@ class TestOpenAPIGenerator:
     def test_init_defaults(self):
         gen = OpenAPIGenerator()
         assert gen.title == "AIOS API"
-        assert gen.version == "10.14.0"
+        assert gen.version == "10.15.0"
 
     def test_init_custom(self):
         gen = OpenAPIGenerator(title="My API", version="2.0.0")
@@ -60,7 +60,7 @@ class TestOpenAPIGenerator:
         spec = gen.generate_spec()
         assert spec["openapi"] == "3.0.3"
         assert spec["info"]["title"] == "AIOS API"
-        assert spec["info"]["version"] == "10.14.0"
+        assert spec["info"]["version"] == "10.15.0"
         assert "/health" in spec["paths"]
 
     def test_generate_json(self):
