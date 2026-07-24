@@ -5,7 +5,6 @@ Autonomous memory system for AIOS. Without Octopus integration (~/agents/).
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
 
 
 @dataclass

@@ -7,7 +7,7 @@ and AIOS module metadata. Provides Swagger UI integration helpers.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List
+from typing import Any
 
 __all__ = ["OpenAPIGenerator"]
 
