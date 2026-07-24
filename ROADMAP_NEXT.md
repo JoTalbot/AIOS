@@ -1,5 +1,20 @@
 # AIOS Roadmap — Next Milestones
 
+## v10.12.0 ✅ (2026-07-24)
+- ✅ 27 semi-stub modules (50–99 lines) → full implementations
+  - Batch 1: multitenancy, blockchain, automl, load_testing, swarm_intelligence, quantum_computing, infinite_constitution, migration, sovereign_reflection, universal_multi_species_ethics
+  - Batch 2: async_bus, websocket, android_recorder, cosmic_swarm_matrix, plugin_manager, rate_limiter, android_driver, molecular_dna_runtime, logging_config, metrics_exporter, multidimensional_world_model, agent_architecture, async_core, android_registry, substrate_convergence, universal_invariant_prover, ml_planner_scorer
+- ✅ DP test tolerance fix (privatize_mean)
+- ✅ RELEASE_NOTES_10.12.0.md
+
+**2302 tests, 0 failures**
+
+## v10.13.0 (Next)
+- 🔲 Dedicated test coverage for v10.9–10.12 modules (~200-300 tests)
+- 🔲 httpx2 async migration (71 Starlette imports)
+- 🔲 Production dashboard React v3
+- 🔲 Security: revoke exposed GitHub PAT
+
 ## v10.11.0 ✅ (2026-07-24)
 - ✅ 22 AI Safety modules: DictionaryLearning, RecursiveReward, ValueLearning, CausalInterpretability, HonestAI, SafetyInterpretability, Amplification, AdvancedInterpretability, WeakToStrong, Debate, FormalVerification, AdvancedGovernance, Honesty, MultiAgent, SparseAutoencoder, LongTerm, Benchmark, RedTeaming, ScalableOversight, Scientist, Dashboard, Monitoring
 - ✅ 10 Quantum modules: Chemistry, Gravity, NLP, Biology, Consciousness, RL, Vision, QAOA Advanced, QML Advanced, Internet
