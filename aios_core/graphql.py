@@ -73,8 +73,8 @@ class GraphQLSchema:
         """Register a type definition."""
         self.types[type_def.name] = type_def
         # Also register all field resolvers
-        for field in type_def.fields.values():
-            self.resolvers[field.name] = field.resolver
+        for fld in type_def.fields.values():
+            self.resolvers[fld.name] = fld.resolver
 
     def register_mutation(self, name: str, resolver: Callable) -> None:
         """Register a mutation resolver."""

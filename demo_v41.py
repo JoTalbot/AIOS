@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 AIOS v4.1 Demo Script
 =====================

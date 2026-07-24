@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 AIOS Constitutional Verification and Maintenance Tool ('tula')
 Provides autonomous constitution scanning, structure validation, report generation,

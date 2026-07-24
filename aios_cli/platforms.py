@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """AIOS CLI — platforms, profiles, devices, shards, cron-plan."""
 
 import json

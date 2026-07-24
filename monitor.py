@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 AIOS Monitoring & Health Check Script
 =====================================

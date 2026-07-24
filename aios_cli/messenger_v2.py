@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """AIOS CLI — WhatsApp/Viber messenger commands."""
 
 import json

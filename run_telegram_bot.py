@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 AIOS Telegram Bot — управление агентами через Telegram.
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """AIOS CLI — Cross-platform comparison commands."""
 
 import json
