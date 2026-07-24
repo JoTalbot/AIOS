@@ -5,7 +5,7 @@ Without Octopus integration (~/agents/).
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 @dataclass
@@ -41,7 +41,7 @@ class AIOS_EvolutionEngine:
                 action=action,
                 result=result,
                 metrics=metrics,
-                timestamp=datetime.now(),
+                timestamp=datetime.now(UTC),
             )
         )
 
