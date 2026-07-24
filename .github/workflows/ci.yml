@@ -22,7 +22,7 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -r requirements.txt pytest-xdist
       - name: Run core tests (parallel)
-        run: python -m pytest tests/ -n 4 --dist loadfile -q --ignore=tests/test_android_rpa_bridge.py -k "not real_device and not bench" --timeout=30
+        run: python -m pytest tests/ -n 4 --dist loadfile -q --ignore=tests/test_android_rpa_bridge.py --ignore=tests/test_benchmarks.py -k "not real_device" --timeout=30
       - run: python -m compileall -q aios_core
 
   quality:
@@ -88,6 +88,23 @@ assert (t2-t0) < 5.0, 'Import too slow'
       - run: python -m pip install --upgrade pip pip-audit
       - run: python -m pip install -r requirements.txt
       - run: pip-audit --disable-pip || true
+
+  benchmarks:
+    name: Performance benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip}
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements.txt pytest-benchmark
+      - name: Run benchmarks with thresholds
+        run: |
+          python -m pytest tests/test_benchmarks.py --benchmark-only \
+            --benchmark-min-rounds=3 --benchmark-max-time=2.0 \
+            --timeout=20 -v \
+            --benchmark-disable-gc \
+            || echo "::warning::Benchmarks exceeded thresholds — non-blocking"
 
   e2e-smoke:
     name: E2E smoke (OLX pipeline, no device)
