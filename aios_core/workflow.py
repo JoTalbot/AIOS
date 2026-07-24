@@ -161,6 +161,8 @@ class WorkflowStep:
     retry_policy: RetryPolicy | None = None
     timeout_policy: TimeoutPolicy | None = None
     compensation: CompensationAction | None = None
+    is_self_healing: bool = False
+    healing_action: Callable[..., Any] | None = None
     condition_gate: ConditionGate | None = None
     status: StepStatus = StepStatus.PENDING
     result: Any = None
@@ -208,6 +210,7 @@ class WorkflowResult:
         return {
             "workflow_id": self.workflow_id,
             "status": self.status.value,
+            "step_results": self.step_results,
             "total_duration": self.total_duration,
             "steps_completed": sum(
                 1 for s in self.step_statuses.values() if s == StepStatus.SUCCESS
@@ -422,6 +425,25 @@ class DAGExecutor:
                             time.sleep(delay)
                             continue
                         else:
+                            # Try Self-Healing DAG mechanism
+                            if getattr(step, 'is_self_healing', False) and getattr(step, 'healing_action', None):
+                                logger.info(f"Self-healing triggered for step '{step.name}'")
+                                try:
+                                    step.result = step.healing_action(error=str(e), **merged_params)
+                                    step.status = StepStatus.SUCCESS
+                                    step.finished_at = time.time()
+                                    result.step_results[step_id] = step.result
+                                    result.step_statuses[step_id] = StepStatus.SUCCESS
+                                    result.step_durations[step_id] = step.duration()
+                                    step_context[step_id] = step.result
+                                    if step.compensation:
+                                        self._completed_compensations.append(step.compensation)
+                                    # Healing succeeded, continue DAG execution
+                                    break
+                                except Exception as heal_e:
+                                    logger.error(f"Self-healing for step '{step.name}' failed: {heal_e}")
+                                    # If healing fails, fall through to final failure
+                            
                             # Final failure
                             step.status = StepStatus.FAILED
                             step.finished_at = time.time()
