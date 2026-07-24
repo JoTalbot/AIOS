@@ -254,6 +254,22 @@ def main(argv=None):
         try: handled = _run_rozetka(args)
         except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
         if not handled: parser.parse_args(["rozetka", "--help"])
+    elif args.command == "cross-platform":
+        try: handled = _run_cross_platform(args)
+        except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
+        if not handled: parser.parse_args(["cross-platform", "--help"])
+    elif args.command == "advisor-v2":
+        try: handled = _run_advisor_v2(args)
+        except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
+        if not handled: parser.parse_args(["advisor-v2", "--help"])
+    elif args.command == "search":
+        try: handled = _run_search(args)
+        except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
+        if not handled: parser.parse_args(["search", "--help"])
+    elif args.command == "benchmarks":
+        try: handled = _run_benchmarks(args)
+        except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
+        if not handled: parser.parse_args(["benchmarks", "--help"])
     elif args.command == "admin":
         from aios_cli_admin import (
             run_backup_cleanup, run_backup_create, run_backup_health,
