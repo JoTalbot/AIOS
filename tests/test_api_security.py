@@ -141,6 +141,7 @@ async def test_task_rate_limit_is_scoped_to_authenticated_subject(monkeypatch):
             assert blocked.headers["retry-after"] == str(rate_limiter.window_seconds)
             assert (await client.post("/api/v1/tasks", json={"name": "bob"}, headers=bob)).status_code == 200
     finally:
+        rate_limiter.clear_tier("alice")
         rate_limiter.reset()
 
 
@@ -246,4 +247,5 @@ async def test_sensitive_admin_operations_have_principal_scoped_rate_limit():
         assert blocked.status_code == 429
         assert blocked.headers["retry-after"] == str(rate_limiter.window_seconds)
     finally:
+        rate_limiter.clear_tier(f"sensitive:admin:{path}")
         rate_limiter.reset()
