@@ -6,8 +6,6 @@ All Starlette Route objects defined here.  Handler methods live on the
 Extracted to keep ``app.py`` under 500 lines.
 """
 
-import json
-
 from starlette.responses import HTMLResponse, JSONResponse
 from starlette.routing import Route, WebSocketRoute
 
