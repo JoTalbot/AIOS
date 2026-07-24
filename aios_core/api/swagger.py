@@ -69,5 +69,37 @@ def openapi_json() -> str:
 
 
 def openapi_spec_dict() -> dict:
-    """Return the OpenAPI spec as a parsed dict."""
+    """Return the static OpenAPI spec as a parsed dictionary."""
     return json.loads(openapi_json())
+
+
+def openapi_spec_for_routes(routes) -> dict:
+    """Return the published spec reconciled with registered Starlette routes.
+
+    The repository keeps detailed schemas for curated endpoints in the static
+    specification.  This function adds every runtime route so documentation
+    cannot silently omit a newly registered API surface.  Generated entries
+    deliberately use conservative generic responses until a dedicated schema
+    is authored.
+    """
+    spec = openapi_spec_dict()
+    paths = spec.setdefault("paths", {})
+    public_paths = {"/health", "/docs", "/openapi.json"}
+    for route in routes:
+        path = getattr(route, "path", None)
+        methods = getattr(route, "methods", None)
+        if not path or not methods:
+            continue  # WebSocket routes are outside OpenAPI HTTP paths.
+        path_item = paths.setdefault(path, {})
+        for method in methods:
+            method = method.lower()
+            if method in {"head", "options"} or method in path_item:
+                continue
+            operation = {
+                "summary": f"{method.upper()} {path}",
+                "responses": {"200": {"description": "Success"}},
+            }
+            if path not in public_paths:
+                operation["security"] = [{"ApiKeyAuth": []}]
+            path_item[method] = operation
+    return spec

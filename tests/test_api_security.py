@@ -142,3 +142,15 @@ async def test_task_rate_limit_is_scoped_to_authenticated_subject(monkeypatch):
             assert (await client.post("/api/v1/tasks", json={"name": "bob"}, headers=bob)).status_code == 200
     finally:
         rate_limiter.reset()
+
+
+@pytest.mark.asyncio
+async def test_openapi_includes_every_registered_http_route():
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        spec = (await client.get("/openapi.json")).json()
+    documented = set(spec["paths"])
+    runtime = {route.path for route in app.routes if getattr(route, "methods", None)}
+    assert runtime <= documented
+    assert "security" not in spec["paths"]["/health"]["get"]
+    assert spec["paths"]["/api/v1/tasks"]["post"]["security"] == [{"ApiKeyAuth": []}]
