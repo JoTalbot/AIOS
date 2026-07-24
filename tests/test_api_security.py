@@ -177,3 +177,16 @@ def test_bearer_lookup_uses_configured_principal():
     keys = {"correct-token": Principal("operator", frozenset({"viewer"}))}
     assert find_principal(keys, "correct-token").subject == "operator"
     assert find_principal(keys, "wrong-token") is None
+
+
+@pytest.mark.asyncio
+async def test_admin_internal_errors_do_not_expose_server_details():
+    app = create_app(api_keys={"admin-key": {"subject": "admin", "roles": ["admin"]}})
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/admin/import",
+            json={"input": "/definitely/not/a/real/import.json"},
+            headers={"Authorization": "Bearer admin-key"},
+        )
+    assert response.status_code == 500
+    assert response.json() == {"error": "Internal server error"}

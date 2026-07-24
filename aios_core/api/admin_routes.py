@@ -8,6 +8,7 @@ Endpoints for:
 These endpoints require 'admin' role.
 """
 
+import logging
 import sqlite3
 from pathlib import Path
 
@@ -29,6 +30,7 @@ _secret_manager: SecretManager | None = None
 _backup_manager: BackupManager | None = None
 _webhook_manager: WebhookManager | None = None
 _db_path: str = "aios.sqlite"
+logger = logging.getLogger(__name__)
 
 
 def init_admin_routes(
@@ -129,7 +131,8 @@ async def export_data(request: Request) -> None:
                 }
             )
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logger.exception("Admin API operation failed")
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 async def import_data(request: Request) -> None:
@@ -164,7 +167,8 @@ async def import_data(request: Request) -> None:
                 }
             )
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logger.exception("Admin API operation failed")
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 # ============================================================
@@ -209,7 +213,8 @@ async def generate_api_key(request: Request) -> None:
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logger.exception("Admin API operation failed")
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 async def list_api_keys(request: Request) -> None:
@@ -337,7 +342,8 @@ async def export_keys(request: Request) -> None:
             }
         )
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logger.exception("Admin API operation failed")
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 async def generate_env_file(request: Request) -> None:
@@ -362,7 +368,8 @@ async def generate_env_file(request: Request) -> None:
             }
         )
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logger.exception("Admin API operation failed")
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 # ============================================================
@@ -400,7 +407,8 @@ async def create_backup(request: Request) -> None:
             }
         )
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logger.exception("Admin API operation failed")
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 async def list_backups(request: Request) -> None:
@@ -557,7 +565,8 @@ async def register_webhook(request: Request) -> None:
             }
         )
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logger.exception("Admin API operation failed")
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 async def list_webhooks(request: Request) -> None:
@@ -719,7 +728,8 @@ async def export_webhooks(request: Request) -> None:
             }
         )
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logger.exception("Admin API operation failed")
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 async def import_webhooks(request: Request) -> None:
@@ -747,7 +757,8 @@ async def import_webhooks(request: Request) -> None:
             }
         )
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logger.exception("Admin API operation failed")
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
 
 # ============================================================
