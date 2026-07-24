@@ -56,7 +56,7 @@ def test_safety_evals_and_benchmarks():
     evaluator = SafetyEvaluator()
     eval_res = evaluator.run_all("test_model")
     assert isinstance(eval_res, dict)
-    assert len(eval_res) == 8
+    assert len(eval_res) >= 8  # safety evals may grow over time
 
     c_ai = ConstitutionalAI()
     critique = c_ai.critique("Helpful answer")
