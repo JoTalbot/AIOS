@@ -32,6 +32,12 @@ class Paper:
     citations: list[str] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
 
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __contains__(self, key):
+        return hasattr(self, key)
+
 
 @dataclass
 class ReviewResult:
