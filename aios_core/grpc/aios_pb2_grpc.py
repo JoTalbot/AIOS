@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from . import aios_pb2 as aios__pb2
+import aios_pb2 as aios__pb2
 
 GRPC_GENERATED_VERSION = '1.83.0'
 GRPC_VERSION = grpc.__version__
@@ -49,6 +49,11 @@ class AiosCoreStub:
                 request_serializer=aios__pb2.StatsRequest.SerializeToString,
                 response_deserializer=aios__pb2.StatsResponse.FromString,
                 _registered_method=True)
+        self.StreamAgentEvents = channel.stream_stream(
+                '/aios.AiosCore/StreamAgentEvents',
+                request_serializer=aios__pb2.AgentEvent.SerializeToString,
+                response_deserializer=aios__pb2.AgentEvent.FromString,
+                _registered_method=True)
 
 
 class AiosCoreServicer:
@@ -74,6 +79,13 @@ class AiosCoreServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def StreamAgentEvents(self, request_iterator, context):
+        """Real-time Bidirectional Agent Events Streaming
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_AiosCoreServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -91,6 +103,11 @@ def add_AiosCoreServicer_to_server(servicer, server):
                     servicer.GetStats,
                     request_deserializer=aios__pb2.StatsRequest.FromString,
                     response_serializer=aios__pb2.StatsResponse.SerializeToString,
+            ),
+            'StreamAgentEvents': grpc.stream_stream_rpc_method_handler(
+                    servicer.StreamAgentEvents,
+                    request_deserializer=aios__pb2.AgentEvent.FromString,
+                    response_serializer=aios__pb2.AgentEvent.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -174,6 +191,33 @@ class AiosCore:
             '/aios.AiosCore/GetStats',
             aios__pb2.StatsRequest.SerializeToString,
             aios__pb2.StatsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def StreamAgentEvents(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_stream(
+            request_iterator,
+            target,
+            '/aios.AiosCore/StreamAgentEvents',
+            aios__pb2.AgentEvent.SerializeToString,
+            aios__pb2.AgentEvent.FromString,
             options,
             channel_credentials,
             insecure,
