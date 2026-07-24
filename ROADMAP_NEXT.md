@@ -33,20 +33,31 @@
 
 **1291 tests, 0 failures**
 
-## v9.7.0 🚧 (next)
-- 🔲 Multi-market cross-platform comparator (OLX ↔ Rozetka ↔ Prom price comparison)
-- 🔲 AI advisor v2: cross-platform recommendation engine + price prediction
-- 🔲 Vector search / semantic product matching (embeddings + similarity)
-- 🔲 Real-time WebSocket dashboard updates (live price alerts stream)
-- 🔲 Benchmarks CI thresholds (blocking regression gate)
+## v9.7.0 ✅ (2026-07-24)
+- ✅ Cross-platform comparator (OLX ↔ Rozetka ↔ Prom ↔ Shafa price comparison + arbitrage)
+- ✅ AI advisor v2 (cross-platform recommendations + price prediction + full analysis)
+- ✅ Vector search engine (TF-IDF product matching — no external dependencies)
+- ✅ WebSocket dashboard (real-time price alert streaming event bus)
+- ✅ Benchmarks CI thresholds (blocking regression gate — 10 thresholds)
+- ✅ CLI cross-platform/advisor-v2/search/benchmarks subcommands
+- ✅ 47 new tests (1327 total, 0 failures)
+
+**1327 tests, 0 failures**
+
+## v9.8.0 🚧 (next)
+- 🔲 TikTok full agent (collector, card_parser, detail, reels scout)
+- 🔲 WhatsApp/Viber/Facebook Marketplace full agents (not just scaffold)
+- 🔲 Multi-account fleet scheduler (per-platform 3+ profiles, cron-plan via-shards)
+- 🔲 Production dashboard React v3 (WebSocket, cross-platform charts)
+- 🔲 Mobile SDK (Flutter/React Native wrapper for AIOS REST API)
 - 🔲 httpx2 full async migration (remaining sync tests → 0 sync)
 
-## v9.8.0 (planned)
-- TikTok full agent (collector, card_parser, detail, reels scout)
-- WhatsApp/Viber/Facebook Marketplace full agents (not just scaffold)
-- Multi-account fleet scheduler (per-platform 3+ profiles, cron-plan via-shards)
-- Production dashboard React v3 (WebSocket, cross-platform charts)
-- Mobile SDK (Flutter/React Native wrapper for AIOS REST API)
+## v9.9.0 (planned)
+- Price prediction ML model (linear → polynomial regression → LSTM)
+- Smart notification routing (email, Telegram, Slack, Push)
+- Product image comparison (CV-based similarity)
+- Seller reputation scoring
+- Geospatial price heatmap (city-level pricing analysis)
 
 ## v10.0.0 (long-term)
 - Sovereign AGI reflection engine → metacognitive goal audit
@@ -65,7 +76,6 @@ aios_core/
 ├── platforms/          # Platform registry, descriptor, catalog
 │   ├── descriptor.py   # _PLATFORMS registry + snapshot/restore
 │   ├── recipe.py       # Calibration recipes (messenger, collector, marketplace, ecommerce)
-│   ├── calibrate.py    # Device calibration engine
 │   └── ...
 ├── modules/
 │   ├── olx/            # Full OLX agent (21 files)
@@ -88,13 +98,19 @@ aios_core/
 │   ├── bigl/           # Bigl scaffold
 │   ├── prom/           # Prom scaffold
 │   └── shafa/          # Shafa scaffold
+├── cross_platform_comparator.py  # OLX ↔ Rozetka ↔ Prom ↔ Shafa
+├── ai_advisor.py       # AI Advisor v1 (draft replies, price advice)
+├── ai_advisor_v2.py    # AI Advisor v2 (cross-platform recommendations, prediction)
+├── vector_search.py    # TF-IDF vector search engine
+├── ws_dashboard.py     # WebSocket real-time event streaming
+├── benchmarks_thresholds.py  # CI regression gate
 ├── rate_limiter.py     # Bounded sliding-window rate limiter
 ├── storage.py          # Database (no @lru_cache)
 ├── orchestrator.py     # Orchestrator (returns task)
 └── ...
 ```
 
-## Platform Scaffold Template (v9.6.0+)
+## Platform Scaffold Template (v9.7.0+)
 
 Each new marketplace follows this pattern:
 
@@ -116,9 +132,15 @@ Each new marketplace follows this pattern:
 11. `favorites.py` — favorites with price-change awareness
 12. `auto_login.py` — auto-login scaffold (captcha/2FA handling)
 
+### Cross-Platform (v9.7+)
+13. Cross-platform comparator (OLX ↔ Rozetka ↔ Prom ↔ Shafa)
+14. AI advisor v2 (cross-platform recommendations + price prediction)
+15. Vector search (TF-IDF semantic product matching)
+16. WebSocket dashboard (real-time price alert streaming)
+
 ### CLI & Tests
-13. `aios_cli/<name>.py` — CLI subcommands (stats, dm-send, dm-outbox, doctor, price-tracker, autowatch, favorites, auto-login)
-14. `tests/test_<name>_*.py` — agent, cli, recipe, price_tracker, autowatch, favorites, auto_login
+17. `aios_cli/<name>.py` — CLI subcommands (stats, dm-send, dm-outbox, doctor, price-tracker, autowatch, favorites, auto-login)
+18. `tests/test_<name>_*.py` — agent, cli, recipe, price_tracker, autowatch, favorites, auto_login
 
 ---
 
@@ -126,16 +148,9 @@ Each new marketplace follows this pattern:
 
 ### Docker (GHCR)
 ```bash
-git tag v9.7.0
-git push origin v9.7.0
-# → CI builds multi-arch image, pushes to ghcr.io/JoTalbot/AIOS:v9.7.0
-```
-
-### SDK (PyPI)
-```bash
-git tag sdk-v4.2.0
-git push origin sdk-v4.2.0
-# → CI builds sdk/ and publishes aios-client to PyPI
+git tag v9.8.0
+git push origin v9.8.0
+# → CI builds multi-arch image, pushes to ghcr.io/JoTalbot/AIOS:v9.8.0
 ```
 
 ### Full Production Deploy
@@ -157,3 +172,4 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 9.4.0 | 2026-07-24 | 1227 | 10 critical fixes + httpx migration + 462 docstrings |
 | 9.5.0 | 2026-07-24 | 1254 | Rozetka.ua scaffold + agent + RateLimiter leak fix |
 | 9.6.0 | 2026-07-24 | 1291 | Rozetka price tracker + AutoWatch + favorites + auto-login |
+| 9.7.0 | 2026-07-24 | 1327 | Cross-platform comparator + AI v2 + vector search + WebSocket + benchmarks thresholds |
