@@ -5,7 +5,6 @@ from aios_core.async_bus import AsyncEventBus
 from aios_core.async_core import AsyncDatabase
 from aios_core.container import AppConfig, AppContainer
 
-
 def test_async_bus_emit_and_handler():
     """Async handlers receive events."""
     bus = AsyncEventBus()
@@ -45,26 +44,38 @@ def test_async_bus_stats():
 
 
 def test_async_db_stats():
-    """AsyncDatabase wraps sync Database via to_thread."""
+    """AsyncDatabase uses native async."""
     db = AsyncDatabase(db_path=":memory:")
-    stats = asyncio.run(db.stats())
+    async def run():
+        s = await db.stats()
+        await db.close()
+        return s
+    stats = asyncio.run(run())
     assert stats["dialect"] == "sqlite"
 
 
 def test_async_db_tables():
     db = AsyncDatabase(db_path=":memory:")
-    tables = asyncio.run(db.tables())
+    async def run():
+        t = await db.tables()
+        await db.close()
+        return t
+    tables = asyncio.run(run())
     assert isinstance(tables, list)
 
 
 def test_async_db_row_count():
-    import sqlite3
     db = AsyncDatabase(db_path=":memory:")
-    try:
-        count = asyncio.run(db.row_count("nonexistent"))
-        assert count in (0, None)
-    except Exception:  # noqa: BLE001
-        pass  # table does not exist — OK
+    async def run():
+        try:
+            count = await db.row_count("nonexistent")
+        except Exception:
+            count = 0
+        finally:
+            await db.close()
+        return count
+    count = asyncio.run(run())
+    assert count in (0, None)
 
 
 def test_container_async_services():

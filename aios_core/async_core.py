@@ -50,57 +50,133 @@ class AsyncRunner:
         return list(await asyncio.gather(*coros, return_exceptions=True))
 
 
-class AsyncDatabase(AsyncRunner):
-    """Async wrapper around ``aios_core.storage.Database``."""
+class AsyncDatabase:
+    """True asynchronous database connection using aiosqlite and asyncpg."""
 
     def __init__(self, db_path: str = "aios.sqlite") -> None:
         """Initialize AsyncDatabase."""
-        from aios_core.storage import Database
-
-        self._sync = Database(db_path=db_path)
-
-    # --- Explicitly-typed async shorthands ----------------------------------
+        self.db_path = db_path
+        self.is_postgres = self.db_path.startswith("postgresql://") or self.db_path.startswith("postgres://")
+        self._conn = None
+        
+    async def _get_conn(self):
+        """Establish or return existing native async connection."""
+        if self._conn is None:
+            if self.is_postgres:
+                import asyncpg
+                # Strip dialect for asyncpg if needed
+                dsn = self.db_path.replace("postgresql://", "postgres://")
+                self._conn = await asyncpg.connect(dsn)
+            else:
+                import aiosqlite
+                path = ":memory:" if self.db_path == ":memory:" else self.db_path
+                self._conn = await aiosqlite.connect(path)
+                self._conn.row_factory = aiosqlite.Row
+                # Enable WAL for concurrency
+                try:
+                    await self._conn.execute("PRAGMA journal_mode=WAL;")
+                    await self._conn.execute("PRAGMA synchronous=NORMAL;")
+                except Exception:
+                    pass
+        return self._conn
+        
+    def _translate_query(self, sql: str) -> str:
+        """Translate SQLite ? to PostgreSQL %s or $1 depending on driver."""
+        if not self.is_postgres:
+            return sql
+        
+        # Simple translation for asyncpg $1, $2, etc.
+        parts = sql.split('?')
+        if len(parts) == 1:
+            return sql
+            
+        translated = parts[0]
+        for i, part in enumerate(parts[1:], 1):
+            translated += f"${i}{part}"
+            
+        return translated
 
     async def stats(self) -> dict:
         """Return database statistics."""
-        return await self._run("stats")
+        return {
+            "tables": len(await self.tables()),
+            "type": "postgresql" if self.is_postgres else "sqlite",
+            "dialect": "postgresql" if self.is_postgres else "sqlite",
+            "driver": "asyncpg" if self.is_postgres else "aiosqlite"
+        }
 
     async def tables(self) -> list[str]:
         """Return list of table names."""
-        return await self._run("tables")
+        if self.is_postgres:
+            sql = "SELECT tablename as name FROM pg_tables WHERE schemaname='public'"
+        else:
+            sql = "SELECT name FROM sqlite_master WHERE type='table'"
+        rows = await self.query(sql)
+        return [r["name"] for r in rows]
 
     async def row_count(self, table: str) -> int:
         """Return row count for *table*."""
-        return await self._run("row_count", table)
+        row = await self.query_one(f"SELECT COUNT(*) as cnt FROM {table}")
+        return dict(row)["cnt"] if row else 0
 
     async def query(self, sql: str, params: tuple = ()) -> list[dict]:
         """Execute a read query."""
-        return await self._run("query", sql, params)
+        conn = await self._get_conn()
+        trans_sql = self._translate_query(sql)
+        
+        if self.is_postgres:
+            rows = await conn.fetch(trans_sql, *params)
+            return [dict(r) for r in rows]
+        else:
+            async with conn.execute(trans_sql, params) as cursor:
+                rows = await cursor.fetchall()
+                return [dict(r) for r in rows]
 
     async def query_one(self, sql: str, params: tuple = ()) -> dict | None:
         """Execute a read query returning one row."""
-        return await self._run("query_one", sql, params)
+        conn = await self._get_conn()
+        trans_sql = self._translate_query(sql)
+        
+        if self.is_postgres:
+            row = await conn.fetchrow(trans_sql, *params)
+            return dict(row) if row else None
+        else:
+            async with conn.execute(trans_sql, params) as cursor:
+                row = await cursor.fetchone()
+                return dict(row) if row else None
 
     async def execute(self, sql: str, params: tuple = ()) -> Any:
         """Execute a write statement."""
-        return await self._run("execute", sql, params)
+        conn = await self._get_conn()
+        trans_sql = self._translate_query(sql)
+        
+        if self.is_postgres:
+            res = await conn.execute(trans_sql, *params)
+            return res
+        else:
+            res = await conn.execute(trans_sql, params)
+            await conn.commit()
+            return res
 
     async def close(self) -> None:
         """Close the database connection."""
-        await self._run("close")
+        if self._conn:
+            await self._conn.close()
+            self._conn = None
 
     # --- Batch helpers ------------------------------------------------------
 
     async def batch_query(
         self, queries: Sequence[tuple[str, tuple]]
     ) -> list[list[dict]]:
-        """Execute multiple queries concurrently.
+        """Execute multiple queries concurrently."""
+        coros = [self.query(sql, params) for sql, params in queries]
+        return list(await asyncio.gather(*coros, return_exceptions=True))
 
-        Each item is ``(sql, params)``.
-        """
-        calls = [("query", (sql, params), {}) for sql, params in queries]
-        results = await self._run_many(calls)
-        return results
+    async def batch_execute(self, statements: Sequence[tuple[str, tuple]]) -> list[Any]:
+        """Execute multiple write statements concurrently."""
+        coros = [self.execute(sql, params) for sql, params in statements]
+        return list(await asyncio.gather(*coros, return_exceptions=True))
 
     async def batch_execute(self, statements: Sequence[tuple[str, tuple]]) -> list[Any]:
         """Execute multiple write statements concurrently."""
