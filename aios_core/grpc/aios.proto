@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package aios;
+
+service AiosCore {
+    // Task Orchestration
+    rpc SubmitTask (TaskRequest) returns (TaskResponse);
+    rpc GetTaskStatus (TaskStatusRequest) returns (TaskStatusResponse);
+    
+    // Core Health & Stats
+    rpc GetStats (StatsRequest) returns (StatsResponse);
+}
+
+message TaskRequest {
+    string name = 1;
+    string description = 2;
+    string agent_id = 3;
+    string risk_level = 4;
+    string tenant_id = 5;
+    string steps_json = 6;
+}
+
+message TaskResponse {
+    string task_id = 1;
+    string status = 2;
+}
+
+message TaskStatusRequest {
+    string task_id = 1;
+}
+
+message TaskStatusResponse {
+    string task_id = 1;
+    string status = 2;
+    string result_json = 3;
+    string error = 4;
+}
+
+message StatsRequest {}
+
+message StatsResponse {
+    string stats_json = 1;
+}
