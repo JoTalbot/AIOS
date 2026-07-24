@@ -98,7 +98,7 @@ def test_predictive_autonomy_regulator():
         agent_id="agent_001",
         current_level=AutonomyLevel.LEVEL_5_SELF_DIRECTED,
         plan_step=dangerous_step,
-        agent_history_stats={"failure_rate": 0.4},
+        agent_history_stats={"failure_rate": 0.9, "expected_cpu_percent": 90.0},
     )
 
     # Must be downgraded to Level 1 Assisted
