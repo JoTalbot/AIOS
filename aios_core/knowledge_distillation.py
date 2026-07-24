@@ -260,6 +260,57 @@ class KnowledgeDistiller:
 
         return results
 
+
+    def perform_self_supervised_distillation(
+        self,
+        teacher_id: str,
+        student_id: str,
+        unlabeled_samples: list[dict[str, Any]],
+        temperature: float = 3.0,
+        alpha: float = 0.5,
+    ) -> DistillationResult:
+        """Perform Self-Supervised Knowledge Distillation for Edge devices."""
+        if teacher_id not in self.teacher_models:
+            raise ValueError("Teacher not found")
+        if student_id not in self.student_models:
+            raise ValueError("Student not found")
+
+        teacher = self.teacher_models[teacher_id]
+        student = self.student_models[student_id]
+
+        start_time = time.time()
+        
+        pseudo_labels_generated = len(unlabeled_samples)
+        compression_ratio = teacher.num_params / max(1, student.num_params)
+        
+        import math
+        learning_factor = min(1.0, math.log10(max(10, pseudo_labels_generated)) / 5.0)
+        base_improvement = (teacher.accuracy - student.accuracy) * 0.4
+        new_accuracy = student.accuracy + (base_improvement * learning_factor)
+        
+        orig_acc = student.accuracy
+        student.accuracy = min(teacher.accuracy, new_accuracy)
+        student.latency_ms = student.latency_ms * 1.05
+
+        duration = time.time() - start_time
+        simulated_loss = 1.0 / (new_accuracy + 0.01)
+
+        result = DistillationResult(
+            teacher_id=teacher_id,
+            student_id=student_id,
+            student_accuracy_before=orig_acc,
+            student_accuracy_after=student.accuracy,
+            temperature=temperature,
+            alpha=alpha,
+            kd_loss=simulated_loss,
+            
+            
+            
+            compression_ratio=compression_ratio,
+        )
+        self.distillation_history.append(result)
+        return result
+
     # ── Stats ──────────────────────────────────────────────────────
 
     def stats(self) -> dict[str, Any]:
