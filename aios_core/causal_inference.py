@@ -80,7 +80,7 @@ class CausalInference:
     def remove_causal_link(self, cause: str, effect: str) -> None:
         """Remove a causal link."""
         links = self.causal_graph.get(cause, [])
-        self.causal_graph[cause] = [l for l in links if l.effect != effect]
+        self.causal_graph[cause] = [link for link in links if link.effect != effect]
 
     def add_confounder(self, confounder: str, variables: list[str]) -> None:
         """Register a confounding variable."""
@@ -95,7 +95,7 @@ class CausalInference:
         for cause, links in self.causal_graph.items():
             for link in links:
                 if link.effect == effect:
-                    causes.append(cause)
+                    causes.append(cause)  # noqa: PERF401
         return causes
 
     def get_effects(self, cause: str) -> list[str]:
@@ -147,8 +147,8 @@ class CausalInference:
         total_effects = {}
 
         for effect_name in direct_effects:
-            links = [l for l in self.causal_graph[variable] if l.effect == effect_name]
-            avg_strength = sum(l.strength for l in links) / len(links) if links else 1.0
+            links = [link for link in self.causal_graph[variable] if link.effect == effect_name]
+            avg_strength = sum(link.strength for link in links) / len(links) if links else 1.0
             total_effects[effect_name] = {
                 "value": f"changed_by_{value}",
                 "strength": round(avg_strength, 4),
@@ -199,25 +199,25 @@ class CausalInference:
         """Compute indirect (mediated) and direct effects."""
         # Total effect
         total_links = [
-            l for l in self.causal_graph.get(cause, []) if l.effect == effect
+            link for link in self.causal_graph.get(cause, []) if link.effect == effect
         ]
         total_strength = (
-            sum(l.strength for l in total_links) / len(total_links)
+            sum(link.strength for link in total_links) / len(total_links)
             if total_links
             else 0.0
         )
 
         # Indirect effect (cause → mediator → effect)
         cause_to_med = [
-            l for l in self.causal_graph.get(cause, []) if l.effect == mediator
+            link for link in self.causal_graph.get(cause, []) if link.effect == mediator
         ]
         med_to_eff = [
-            l for l in self.causal_graph.get(mediator, []) if l.effect == effect
+            link for link in self.causal_graph.get(mediator, []) if link.effect == effect
         ]
 
         if cause_to_med and med_to_eff:
-            indirect = (sum(l.strength for l in cause_to_med) / len(cause_to_med)) * (
-                sum(l.strength for l in med_to_eff) / len(med_to_eff)
+            indirect = (sum(link.strength for link in cause_to_med) / len(cause_to_med)) * (
+                sum(link.strength for link in med_to_eff) / len(med_to_eff)
             )
             direct = total_strength - indirect
             return {
@@ -271,7 +271,7 @@ class CausalInference:
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
         links = self.get_links()
-        avg_strength = sum(l.strength for l in links) / len(links) if links else 0.0
+        avg_strength = sum(link.strength for link in links) / len(links) if links else 0.0
         return {
             "causal_links": len(links),
             "nodes": len(self.nodes),

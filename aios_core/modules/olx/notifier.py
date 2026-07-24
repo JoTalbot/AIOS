@@ -50,7 +50,7 @@ def collect_price_drop_alerts(
     """Turn tracker price drops into notifier-ready alert payloads."""
     alerts: list[dict[str, object]] = []
     for drop in tracker.price_drops(query=query):
-        alerts.append(
+        alerts.append(  # noqa: PERF401
             {
                 "type": "price_drop",
                 "title": drop.title,

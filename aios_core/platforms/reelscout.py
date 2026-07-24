@@ -76,12 +76,12 @@ class ReelsCollector:
                 "content_categories",
                 self.directory,
             )
-        except ValueError:
+        except ValueError as err:
             raise ValueError(
                 f"дескриптор «{self.platform.name}» не найден в «{self.directory}» — "
                 f"выполните `aios platforms bootup/calibrate --write` "
                 f"или передайте parser=..."
-            )
+            ) from err
         self._parser = HintVideoParser(categories.get("video_markers") or None)
         return self._parser
 

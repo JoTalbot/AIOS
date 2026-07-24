@@ -358,10 +358,7 @@ class ConstitutionLoader:
     def search_rules(self, keyword: str) -> list[ConstitutionalRule]:
         """Search rules by keyword in text."""
         keyword_upper = keyword.upper()
-        results = []
-        for rule in self.rules:
-            if keyword_upper in rule.text.upper():
-                results.append(rule)
+        results = [rule for rule in self.rules if keyword_upper in rule.text.upper()]
         return results
 
     def rules_for_topic(self, topic: str) -> list[ConstitutionalRule]:
@@ -452,7 +449,7 @@ class ConstitutionLoader:
         # Check MUST NOT rules for potential violations
         for rule in self.get_must_not_rules():
             if self._is_relevant(action_text, rule.text):
-                results.append(
+                results.append(  # noqa: PERF401
                     {
                         "type": "prohibition",
                         "article": rule.article_id,
@@ -465,7 +462,7 @@ class ConstitutionLoader:
         # Check MUST rules for unmet requirements
         for rule in self.get_must_rules():
             if self._is_relevant(action_text, rule.text):
-                results.append(
+                results.append(  # noqa: PERF401
                     {
                         "type": "requirement",
                         "article": rule.article_id,

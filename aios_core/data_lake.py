@@ -34,9 +34,7 @@ class Schema:
     def validate(self, event: dict[str, Any]) -> tuple[bool, list[str]]:
         """Validate event against schema. Returns (valid, errors)."""
         errors: list[str] = []
-        for req in self.required_fields:
-            if req not in event:
-                errors.append(f"Missing required field: '{req}'")
+        errors = [f"Missing required field: '{req}'" for req in self.required_fields if req not in event]
         for fname, expected_type in self.field_types.items():
             if fname in event and not isinstance(event[fname], expected_type):
                 errors.append(

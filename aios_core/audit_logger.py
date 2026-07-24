@@ -42,11 +42,7 @@ class AuditLogger:
         decision = event.get("decision")
 
         # Tags from matched articles/policies
-        tags = []
-        for article in event.get("matched_articles", []):
-            tags.append(f"article:{article}")
-        for policy in event.get("matched_policies", []):
-            tags.append(f"policy:{policy}")
+        tags = [f"policy:{policy}" for policy in event.get("matched_policies", [])]
 
         if self.db:
             self.db.execute(

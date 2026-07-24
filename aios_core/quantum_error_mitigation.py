@@ -94,7 +94,7 @@ class QuantumErrorMitigation:
                 + (values[2] - 2 * values[1] + values[0])
             )
         # General: weighted average favoring lower noise
-        weights = [1.0 / (l + 1) for l in noise_levels]
+        weights = [1.0 / (level + 1) for level in noise_levels]
         total = sum(weights)
         return sum(w * v for w, v in zip(weights, values, strict=False)) / total
 

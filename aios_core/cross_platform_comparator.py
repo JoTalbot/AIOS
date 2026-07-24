@@ -165,7 +165,7 @@ class CrossPlatformComparator:
         for platform_name, storage in self.storages.items():
             ads = storage.get_ads(query=query)
             for ad in ads:
-                all_products.append(
+                all_products.append(  # noqa: PERF401
                     CrossPlatformProduct(
                         platform=platform_name,
                         fingerprint=ad.fingerprint,

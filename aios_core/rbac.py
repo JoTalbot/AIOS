@@ -456,9 +456,7 @@ class RBACEngine:
     def get_user_roles(self, user_id: str) -> list[str]:
         """Return active role names for a user (expired assignments excluded)."""
         active: list[str] = []
-        for a in self.assignments:
-            if a.user_id == user_id and a.active and not a.is_expired():
-                active.append(a.role_name)
+        active = [a.role_name for a in self.assignments if a.user_id == user_id and a.active and not a.is_expired()]
         return active
 
     def get_user_permissions(self, user_id: str) -> set[Permission]:

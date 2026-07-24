@@ -88,8 +88,7 @@ class QuantumErrorCorrection:
         if code == "repetition":
             # Check pairwise parity
             syndromes: list[int] = []
-            for i in range(len(physical_qubits) - 1):
-                syndromes.append(physical_qubits[i] ^ physical_qubits[i + 1])
+            syndromes = [physical_qubits[i] ^ physical_qubits[i + 1] for i in range(len(physical_qubits) - 1)]
             error_pos = -1
             for i, s in enumerate(syndromes):
                 if s == 1:

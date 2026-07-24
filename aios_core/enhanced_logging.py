@@ -191,7 +191,7 @@ class EnhancedJSONFormatter(logging.Formatter):
         # Add custom fields
         for key, value in record.__dict__.items():
             if not key.startswith("_") and key not in ("args", "exc_info"):
-                log_data[key] = value
+                log_data[key] = value  # noqa: PERF403
 
         # Add exception info
         if record.exc_info:

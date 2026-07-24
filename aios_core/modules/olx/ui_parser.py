@@ -28,7 +28,7 @@ class UIParser:
 
         for node in self.root.iter("node"):
             if node.attrib.get("resource-id") == resource_id:
-                result.append(node.attrib)
+                result.append(node.attrib)  # noqa: PERF401
 
         return result
 

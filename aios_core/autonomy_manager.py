@@ -131,7 +131,7 @@ class AutonomyManager:
             "reviews_triggered": 0,
         }
         if row.get("track_record"):
-            try:
+            try:  # noqa: SIM105
                 track_record = DB.from_json(row["track_record"])
             except Exception:
                 pass  # Corrupt track_record JSON — reset to defaults

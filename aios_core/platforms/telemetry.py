@@ -213,8 +213,7 @@ def fleet_snapshot(
     platforms: list[str] = []
     catalog = Path(catalog_dir)
     if catalog.is_dir():
-        for yaml_file in sorted(catalog.glob("*.yaml")):
-            platforms.append(yaml_file.stem)
+        platforms = [yaml_file.stem for yaml_file in sorted(catalog.glob("*.yaml"))]
 
     return {
         "jobs": {

@@ -2,6 +2,7 @@ aios_cli
 aios_core
 aios_mcp
 constitution
+dashboard
 deploy
 doc
 docs

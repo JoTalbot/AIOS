@@ -378,7 +378,7 @@ class ConstitutionValidator:
 
         for rule_info in relevant_rules:
             if rule_info["type"] == "prohibition":
-                results.append(
+                results.append(  # noqa: PERF401
                     ValidationResult(
                         valid=True,
                         category="constitution",

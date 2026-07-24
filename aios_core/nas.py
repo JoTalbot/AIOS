@@ -135,7 +135,7 @@ class NAS:
 
             # Mutate to create new population
             new_pop = list(top)
-            for layers, score in top:
+            for layers, _score in top:
                 mutated = list(layers)
                 for i in range(len(mutated)):
                     if random.random() < mutation_rate:

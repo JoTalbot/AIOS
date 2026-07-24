@@ -64,7 +64,7 @@ class AppiumAndroidDriver(AndroidDriver):
     def quit(self) -> None:
         """Execute quit."""
         if self._driver is not None:
-            try:
+            try:  # noqa: SIM105
                 self._driver.quit()
             except Exception:
                 pass  # Best-effort cleanup — ignore if already disconnected
@@ -90,7 +90,7 @@ class AppiumAndroidDriver(AndroidDriver):
                 )
             xml = self._driver.page_source
             current = ""
-            try:
+            try:  # noqa: SIM105
                 current = self._driver.current_activity or ""
             except Exception:
                 pass  # current_activity is best-effort metadata
@@ -121,7 +121,7 @@ class AppiumAndroidDriver(AndroidDriver):
         """Execute press key."""
         if self._driver is None:
             return
-        try:
+        try:  # noqa: SIM105
             self._driver.press_keycode(keycode)
         except Exception:
             pass  # Key injection can fail on some devices/OS versions
@@ -130,7 +130,7 @@ class AppiumAndroidDriver(AndroidDriver):
         """Execute swipe."""
         if self._driver is None:
             return
-        try:
+        try:  # noqa: SIM105
             self._driver.swipe(x1, y1, x2, y2, duration)
         except Exception:
             pass  # Swipe is best-effort; geometry may be off-screen

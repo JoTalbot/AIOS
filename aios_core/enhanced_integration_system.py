@@ -120,7 +120,7 @@ class EnhancedIntegrationSystem:
 
             # Setup protocol manager
             self.protocol_manager = ProtocolManager()
-            for name, protocol_config in self.config.protocol_configs.items():
+            for _name, protocol_config in self.config.protocol_configs.items():  # noqa: PERF102
                 if protocol_config.protocol_type == ProtocolType.GRPC:
                     adapter = GrpcAdapter(protocol_config)
                 elif protocol_config.protocol_type == ProtocolType.AMQP:

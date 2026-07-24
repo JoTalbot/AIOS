@@ -217,7 +217,7 @@ class GraphQLAdapter(ProtocolAdapter):
                     timestamp=asyncio.get_event_loop().time(),
                     data={"endpoint": endpoint, "payload": payload},
                 )
-                asyncio.create_task(self.integration_manager.event_queue.put(event))
+                asyncio.create_task(self.integration_manager.event_queue.put(event))  # noqa: RUF006
                 return {"success": True, "message": f"Webhook {endpoint} triggered"}
             else:
                 return {"success": False, "error": "Endpoint required"}

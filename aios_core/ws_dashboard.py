@@ -81,7 +81,7 @@ class DashboardEventBus:
             self._clients.append(websocket)
             # Replay recent events
             for msg in self._buffer:
-                try:
+                try:  # noqa: SIM105
                     await websocket.send_text(msg.to_json())
                 except Exception:
                     pass  # Client disconnected during replay

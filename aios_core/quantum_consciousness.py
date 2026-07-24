@@ -116,7 +116,7 @@ class QuantumConsciousnessSimulator:
         """Simulate Global Workspace theory consciousness broadcasting."""
         modules = []
         for i in range(num_modules):
-            modules.append(
+            modules.append(  # noqa: PERF401
                 {
                     "module_id": i,
                     "activation": round(random.uniform(0.1, 1.0), 2),

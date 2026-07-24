@@ -1066,7 +1066,7 @@ class CoreHandlersMixin:
             # enrich with observability if available
             enriched = []
             for d in devices:
-                enriched.append(
+                enriched.append(  # noqa: PERF401
                     {
                         **d,
                         "metrics": {

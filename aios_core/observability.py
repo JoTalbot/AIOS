@@ -315,9 +315,9 @@ class Observability:
         """Query logs by level or trace."""
         result = self.logs
         if level:
-            result = [l for l in result if l.level == level]
+            result = [entry for entry in result if entry.level == level]
         if trace_id:
-            result = [l for l in result if l.trace_id == trace_id]
+            result = [entry for entry in result if entry.trace_id == trace_id]
         return result[-limit:]
 
     # ── Prometheus Export ────────────────────────────────────────

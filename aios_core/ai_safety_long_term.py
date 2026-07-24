@@ -87,7 +87,7 @@ class LongTermSafety:
         """Forecast AI capabilities over time horizon."""
         trajectory: list[dict[str, float]] = []
         for year in range(years):
-            trajectory.append(
+            trajectory.append(  # noqa: PERF401
                 {
                     "year": year,
                     "capability_level": round(0.5 + 0.3 * (year / years), 2),

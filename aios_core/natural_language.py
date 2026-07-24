@@ -132,7 +132,7 @@ class NaturalLanguageInterface:
         # Extract key-value pairs
         pairs = re.findall(r"(\w+)\s*[:=]\s*(\w+)", text)
         for key, value in pairs:
-            entities[key] = value
+            entities[key] = value  # noqa: PERF403
 
         return entities
 

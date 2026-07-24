@@ -48,7 +48,7 @@ class BB84Protocol:
         self._bob_bases = [random.choice(bases) for _ in range(len(self._alice_bits))]
         self._bob_bits: list[int] = []
         for i in range(len(self._alice_bits)):
-            if self._bob_bases[i] == self._alice_bases[i]:
+            if self._bob_bases[i] == self._alice_bases[i]:  # noqa: SIM108
                 # Same basis: deterministic
                 bit = self._alice_bits[i]
             else:

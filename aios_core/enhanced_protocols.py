@@ -395,7 +395,7 @@ class MqttAdapter(ProtocolAdapter):
             await self.client.subscribe(topic)
 
             # Start message handling
-            asyncio.create_task(self._handle_messages())
+            asyncio.create_task(self._handle_messages())  # noqa: RUF006
 
             return True
 

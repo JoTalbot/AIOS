@@ -130,7 +130,7 @@ class CapabilityMarketplace:
         )
         self._items[item.id] = item
         if self.db:
-            try:
+            try:  # noqa: SIM105
                 self.db.execute(
                     "INSERT OR REPLACE INTO marketplace (id, name, description, author, version, tags, downloads, rating, code_snippet, kind, metadata) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                     (
@@ -214,7 +214,7 @@ class CapabilityMarketplace:
             metadata={"plugin_id": plugin.id, "platform": platform},
         )
         if self.db:
-            try:
+            try:  # noqa: SIM105
                 self.db.execute(
                     "INSERT OR REPLACE INTO platform_plugins (id, platform, descriptor_yaml, hints, drivers, version, author, verified, downloads, readme, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                     (

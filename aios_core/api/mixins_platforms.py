@@ -23,7 +23,7 @@ class PlatformsModulesMixin:
             body = await request.json()
             ads = []
             for raw in body.get("ads") or []:
-                ads.append(
+                ads.append(  # noqa: PERF401
                     OwnAd(
                         title=raw.get("title") or "",
                         price=raw.get("price"),
@@ -229,7 +229,7 @@ class PlatformsModulesMixin:
             body = await request.json()
             cards = []
             for raw in body.get("ads") or []:
-                cards.append(
+                cards.append(  # noqa: PERF401
                     AdCard(
                         title=raw.get("title") or "",
                         price=raw.get("price"),

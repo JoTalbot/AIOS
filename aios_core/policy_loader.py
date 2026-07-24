@@ -93,7 +93,7 @@ def _validate_policy_structure(name: str, data: dict) -> list[str]:
 
     for key in schema["required_keys"]:
         if key not in data:
-            errors.append(f"Missing required key: '{key}'")
+            errors.append(f"Missing required key: '{key}'")  # noqa: PERF401
 
     if "requirements" in data and not isinstance(data["requirements"], dict):
         errors.append("'requirements' must be a mapping")

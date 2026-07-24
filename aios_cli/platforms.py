@@ -832,7 +832,7 @@ def _run_cron_plan(args) -> bool:
             "свежего дампа выдачи (data/marker-<platform>.xml)"
         )
         for platform in platforms:
-            lines.append(
+            lines.append(  # noqa: PERF401
                 f"# 0 */6 * * * cd {root} && "
                 f"python3 aios_cli.py platforms marker-check "
                 f"--platform {platform} "

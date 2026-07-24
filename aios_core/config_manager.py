@@ -137,13 +137,13 @@ class ConfigManager:
         """Add a configuration layer."""
         layer = ConfigLayer(name=name, source=source, config=config, priority=priority)
         self.layers.append(layer)
-        self.layers.sort(key=lambda l: l.priority, reverse=True)
+        self.layers.sort(key=lambda layer: layer.priority, reverse=True)
         return layer
 
     def _merge_layers(self) -> None:
         """Deep merge all layers (highest priority wins)."""
         merged = {}
-        for layer in sorted(self.layers, key=lambda l: l.priority):
+        for layer in sorted(self.layers, key=lambda layer: layer.priority):
             merged = self._deep_merge(merged, layer.config)
         self.config = merged
 

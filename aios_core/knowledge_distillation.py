@@ -125,7 +125,7 @@ class KnowledgeDistiller:
 
         softmax(z/T) where T is temperature.
         """
-        scaled = [l / temperature for l in logits]
+        scaled = [logit / temperature for logit in logits]
         # Softmax
         max_val = max(scaled)
         exp_vals = [math.exp(s - max_val) for s in scaled]

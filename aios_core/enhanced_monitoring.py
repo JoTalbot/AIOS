@@ -122,7 +122,7 @@ class AlertManager:
         """Evaluate alert condition."""
         try:
             # Simple condition evaluation (in production, use proper expression parser)
-            if condition == "value > threshold":
+            if condition == "value > threshold":  # noqa: SIM116
                 return value > threshold
             elif condition == "value < threshold":
                 return value < threshold
@@ -157,7 +157,7 @@ class AlertManager:
             )
 
             # Send notifications
-            asyncio.create_task(self._send_notifications(alert))
+            asyncio.create_task(self._send_notifications(alert))  # noqa: RUF006
 
     def resolve_alert(self, alert_key: str) -> None:
         """Resolve alert."""

@@ -244,7 +244,7 @@ class WebhookManager:
 
         # Call registered event handlers
         for handler in self._event_handlers.get(event, []):
-            try:
+            try:  # noqa: SIM105
                 handler(payload)
             except Exception:
                 pass  # Event handler failure is isolated — continue dispatching

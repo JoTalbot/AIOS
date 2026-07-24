@@ -99,7 +99,7 @@ class ShardJobs:
         item = dict(row)
         item["payload"] = json.loads(item["payload"] or "{}")
         if item.get("result") is not None:
-            try:
+            try:  # noqa: SIM105
                 item["result"] = json.loads(item["result"])
             except (TypeError, ValueError):
                 pass  # Non-JSON result — keep as-is

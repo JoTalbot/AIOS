@@ -134,9 +134,9 @@ class TestEngine:
         """List all available suites (built-in + custom)."""
         result = []
         for name in _BUILTIN_SUITES:
-            result.append({"name": name, "type": "builtin"})
+            result.append({"name": name, "type": "builtin"})  # noqa: PERF401
         for name in self._custom_suites:
-            result.append({"name": name, "type": "custom"})
+            result.append({"name": name, "type": "custom"})  # noqa: PERF401
         return result
 
     def report_text(self, report: TestReport) -> str:
