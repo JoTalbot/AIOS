@@ -189,7 +189,7 @@ class Orchestrator:
             config=self.config,
         )
         self.memory = MemoryManager(db=self.db)
-        self.knowledge = KnowledgeGraph(db=self.db)
+        self.knowledge = KnowledgeGraph()
         self.reasoning = ReasoningEngine(db=self.db, memory=self.memory, knowledge=self.knowledge)
         self.learning = LearningEngine(db=self.db, memory=self.memory)
         self.evolution = EvolutionManager(db=self.db)

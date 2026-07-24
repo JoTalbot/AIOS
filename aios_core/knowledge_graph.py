@@ -1,331 +1,678 @@
-"""AIOS Knowledge Graph v3.0.0
+"""Knowledge graph — product/seller relationship storage and querying.
 
-Persistent knowledge graph using SQLite. Supports nodes, typed edges,
-bidirectional traversal, and basic graph queries.
+Provides:
+- Triple storage (subject → predicate → object)
+- Product → Seller → Platform relationships
+- Price history → Product connections
+- Neighborhood queries (find related products)
+- Path queries (find connection paths between entities)
+- Inference rules (infer new relationships from existing ones)
+
+Lightweight in-memory graph — no external database required.
+Suitable for offline/embedded deployment on Android devices.
 """
 
 from __future__ import annotations
 
-from typing import Any, Optional
+import math
+from collections import defaultdict
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
 
-from .storage import Database
 
-__all__ = ["KnowledgeGraph"]
+class RelationType(Enum):
+    """Types of relationships in the knowledge graph."""
+
+    SOLD_BY = "sold_by"              # Product → Seller
+    LISTED_ON = "listed_on"          # Product → Platform
+    SAME_PRODUCT = "same_product"    # Product ↔ Product (cross-platform)
+    COMPETES_WITH = "competes_with"  # Seller ↔ Seller
+    PRICE_OF = "price_of"            # Price → Product
+    CATEGORY_OF = "category_of"      # Category → Product
+    BRAND_OF = "brand_of"            # Brand → Product
+    LOCATED_IN = "located_in"        # Seller → City
+    PREFERRED_OVER = "preferred_over"  # Product → Product (user preference)
+    INFERRED = "inferred"            # Auto-inferred relationship
+
+
+@dataclass
+class Triple:
+    """A knowledge graph triple (subject → predicate → object)."""
+
+    subject: str
+    predicate: str
+    object: str
+    weight: float = 1.0        # Confidence/weight (0.0 to 1.0)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    source: str = "manual"     # Where this triple came from
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize triple to dict."""
+        return {
+            "subject": self.subject,
+            "predicate": self.predicate,
+            "object": self.object,
+            "weight": round(self.weight, 4),
+            "source": self.source,
+        }
+
+
+@dataclass
+class EntityInfo:
+    """Information about an entity in the graph."""
+
+    entity_id: str
+    type: str = "unknown"       # "product", "seller", "platform", "category", "city"
+    properties: dict[str, Any] = field(default_factory=dict)
+    outgoing_count: int = 0     # Number of outgoing relations
+    incoming_count: int = 0     # Number of incoming relations
+
+    @property
+    def popularity(self) -> int:
+        """Popularity score (total connections)."""
+        return self.outgoing_count + self.incoming_count
+
+
+@dataclass
+class PathResult:
+    """Result of a path query between two entities."""
+
+    start: str
+    end: str
+    path: list[str]             # Sequence of entity IDs
+    relations: list[str]        # Sequence of predicates
+    length: int                 # Number of hops
+    total_weight: float         # Sum of weights along path
+    confidence: float           # Product of weights along path
 
 
 class KnowledgeGraph:
-    """Manages a knowledge graph of concepts, rules, and relationships.
+    """In-memory knowledge graph for product/seller relationships.
 
-    Nodes and edges are stored in SQLite with indexes for
-    efficient traversal and lookup.
+    Provides:
+    - add_triple() / remove_triple() — graph mutation
+    - find_related() — neighborhood query (find entities connected to a given entity)
+    - find_path() — shortest path between two entities
+    - infer() — apply inference rules to derive new relationships
+    - stats() — graph statistics (entity count, triple count, density)
     """
 
-    def __init__(self, db: Optional[Database] = None):
-        """Initialize KnowledgeGraph."""
-        self.db = db
+    def __init__(self, db: Any | None = None) -> None:
+        """Initialize KnowledgeGraph.
+
+        Args:
+            db: Optional Database instance (kept for compatibility, not used in memory-only mode).
+        """
+        self._db = db  # Stored for compatibility, but in-memory only for now
+        self._triples: list[Triple] = []
+        self._outgoing: dict[str, list[Triple]] = defaultdict(list)  # subject → triples
+        self._incoming: dict[str, list[Triple]] = defaultdict(list)   # object → triples
+        self._entities: dict[str, EntityInfo] = {}
+        self._inferred: set[str] = set()  # Set of inferred triple IDs
+
+    def _triple_id(self, triple: Triple) -> str:
+        """Generate unique ID for a triple."""
+        return f"{triple.subject}|{triple.predicate}|{triple.object}"
+
+    def add_triple(self, triple: Triple) -> None:
+        """Add a triple to the knowledge graph.
+
+        Args:
+            triple: Triple to add.
+        """
+        tid = self._triple_id(triple)
+        # Check for duplicates
+        existing = [t for t in self._outgoing[triple.subject]
+                    if self._triple_id(t) == tid]
+        if existing:
+            # Update weight if duplicate
+            existing[0].weight = max(existing[0].weight, triple.weight)
+            existing[0].metadata.update(triple.metadata)
+            return
+
+        self._triples.append(triple)
+        self._outgoing[triple.subject].append(triple)
+        self._incoming[triple.object].append(triple)
+
+        # Register entities
+        for entity_id in (triple.subject, triple.object):
+            if entity_id not in self._entities:
+                self._entities[entity_id] = EntityInfo(entity_id=entity_id)
+
+        # Update counts
+        self._entities[triple.subject].outgoing_count += 1
+        self._entities[triple.object].incoming_count += 1
 
     def add_node(
         self,
-        label: str,
+        label: str = "",
         node_type: str = "concept",
-        properties: Optional[dict] = None,
+        properties: dict[str, Any] | None = None,
         node_id: str | None = None,
-    ) -> dict:
-        """Add a node to the graph.
+    ) -> dict[str, Any]:
+        """Add a node (entity) to the graph — API-compatible method.
 
         Args:
-            label: Human-readable label.
-            node_type: Type of node (concept, rule, agent, article, etc.).
-            properties: Arbitrary properties dict.
-            node_id: Optional specific ID. If None, auto-generated.
+            label: Node label (used as display name and as entity ID if node_id not set).
+            node_type: Node type ("concept", "product", "seller", etc.).
+            properties: Optional properties dict.
+            node_id: Explicit node ID (overrides label-based ID).
 
         Returns:
-            The created node dict.
+            Dict with node info.
         """
-        nid = node_id or Database.new_id()
-        now = Database.now_iso()
+        nid = node_id or label or f"node_{len(self._entities)}"
+        self.set_entity_type(nid, node_type)
+        # Always update label property on upsert
+        self.set_entity_property(nid, "label", label)
+        if properties:
+            for k, v in properties.items():
+                self.set_entity_property(nid, k, v)
+        entity = self._entities.get(nid)
+        if entity:
+            return {
+                "id": nid,
+                "label": label,
+                "type": node_type,
+                "properties": properties or entity.properties,
+                "created": True,
+            }
+        return {"id": nid, "label": label, "type": node_type, "created": True}
 
-        if self.db:
-            # Upsert: if node exists, update label and properties
-            existing = self.get_node(nid)
-            if existing:
-                self.db.execute(
-                    """UPDATE kg_nodes
-                       SET label = ?, node_type = ?, properties = ?, updated_at = ?
-                       WHERE id = ?""",
-                    (
-                        label,
-                        node_type,
-                        Database.to_json(properties) if properties else None,
-                        now,
-                        nid,
-                    ),
-                )
-            else:
-                self.db.execute(
-                    """INSERT INTO kg_nodes (id, node_type, label, properties, created_at, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?)""",
-                    (
-                        nid,
-                        node_type,
-                        label,
-                        Database.to_json(properties) if properties else None,
-                        now,
-                        now,
-                    ),
-                )
+    def add_relation(
+        self,
+        source_id: str = "",
+        target_id: str = "",
+        relation: str = "",
+        properties: dict[str, Any] | None = None,
+        weight: float = 1.0,
+        subject: str | None = None,
+        predicate: str | None = None,
+        object: str | None = None,
+        source: str = "manual",
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Add a relation (edge) between two nodes — API-compatible method.
 
+        Supports both API-style (source_id, target_id, relation) and
+        graph-style (subject, predicate, object) parameters.
+
+        Args:
+            source_id: Source node (used as subject if subject not provided).
+            target_id: Target node (used as object if object not provided).
+            relation: Relation type (used as predicate if predicate not provided).
+            properties: Optional edge properties (stored in metadata).
+            weight: Edge weight/confidence.
+            subject: Direct subject (overrides source_id).
+            predicate: Direct predicate (overrides relation).
+            object: Direct object (overrides target_id).
+            source: Source of this relation.
+            metadata: Optional metadata.
+
+        Returns:
+            Dict with edge info.
+        """
+        s = subject or source_id
+        p = predicate or relation
+        o = object or target_id
+
+        meta = metadata or properties or {}
+        triple = Triple(
+            subject=s,
+            predicate=p,
+            object=o,
+            weight=weight,
+            source=source,
+            metadata=meta,
+        )
+        self.add_triple(triple)
+        result = triple.to_dict()
+        # Add API-compatible aliases
+        result["source_id"] = s
+        result["source"] = s
+        result["target_id"] = o
+        result["target"] = o
+        result["relation"] = p
+        return result
+
+    def get_node(self, node_id: str) -> dict[str, Any] | None:
+        """Get a node (entity) by ID — API-compatible method.
+
+        Args:
+            node_id: Entity ID to retrieve.
+
+        Returns:
+            Dict with node info, or None if not found.
+        """
+        entity = self._entities.get(node_id)
+        if not entity:
+            return None
         return {
-            "id": nid,
-            "label": label,
-            "type": node_type,
-            "properties": properties or {},
-            "created_at": now,
+            "id": entity.entity_id,
+            "label": entity.properties.get("label", entity.entity_id),
+            "type": entity.type,
+            "properties": entity.properties,
+            "outgoing": entity.outgoing_count,
+            "incoming": entity.incoming_count,
+            "popularity": entity.popularity,
         }
-
-    def get_node(self, node_id: str) -> Optional[dict]:
-        """Get a node by ID."""
-        if self.db is None:
-            return None
-        row = self.db.query_one("SELECT * FROM kg_nodes WHERE id = ?", (node_id,))
-        if row is None:
-            return None
-        return self._node_row_to_dict(row)
 
     def find_nodes(
         self,
         label: str | None = None,
         node_type: str | None = None,
         limit: int = 100,
-    ) -> list[dict]:
-        """Find nodes by label (partial match) and/or type."""
-        if self.db is None:
-            return []
+    ) -> list[dict[str, Any]]:
+        """Find nodes matching criteria — API-compatible method.
 
-        conditions = []
-        params: list[Any] = []
+        Args:
+            label: Filter by label (partial match).
+            node_type: Filter by type.
+            limit: Maximum results.
 
-        if label:
-            conditions.append("label LIKE ?")
-            params.append(f"%{label}%")
-        if node_type:
-            conditions.append("node_type = ?")
-            params.append(node_type)
-
-        where = "WHERE " + " AND ".join(conditions) if conditions else ""
-        sql = f"SELECT * FROM kg_nodes {where} LIMIT ?"
-        params.append(limit)
-
-        rows = self.db.query(sql, tuple(params))
-        return [self._node_row_to_dict(r) for r in rows]
-
-    def add_relation(
-        self,
-        source_id: str,
-        target_id: str,
-        relation: str,
-        properties: Optional[dict] = None,
-        weight: float = 1.0,
-        edge_id: str | None = None,
-    ) -> dict:
-        """Add a directed edge (relation) between two nodes.
-
-        Auto-creates nodes if they don't exist.
+        Returns:
+            List of node dicts.
         """
-        # Auto-create nodes if needed
-        if self.db:
-            if not self.get_node(source_id):
-                self.add_node(source_id, node_type="auto", node_id=source_id)
-            if not self.get_node(target_id):
-                self.add_node(target_id, node_type="auto", node_id=target_id)
+        results = []
+        for entity in self._entities.values():
+            if node_type and entity.type != node_type:
+                continue
+            if label and label not in entity.entity_id:
+                continue
+            results.append(self.get_node(entity.entity_id))
+            if len(results) >= limit:
+                break
+        return results
 
-        eid = edge_id or Database.new_id()
-        now = Database.now_iso()
+    def count_nodes(self) -> int:
+        """Count total number of nodes in the graph.
 
-        if self.db:
-            self.db.execute(
-                """INSERT INTO kg_edges (id, source_id, target_id, relation, properties, weight, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    eid,
-                    source_id,
-                    target_id,
-                    relation,
-                    Database.to_json(properties) if properties else None,
-                    weight,
-                    now,
-                ),
-            )
-
-        return {
-            "id": eid,
-            "source": source_id,
-            "target": target_id,
-            "relation": relation,
-            "properties": properties or {},
-            "weight": weight,
-            "created_at": now,
-        }
+        Returns:
+            Number of nodes/entities.
+        """
+        return len(self._entities)
 
     def related(
         self,
-        node_id: str,
+        entity_id: str,
         relation: str | None = None,
-        direction: str = "both",
-        limit: int = 100,
-    ) -> list[dict]:
-        """Find edges connected to a node.
+    ) -> list[dict[str, Any]]:
+        """Get related entities as edge dicts — API-compatible method.
 
         Args:
-            node_id: The node to find relations for.
-            relation: Filter by relation type.
-            direction: 'outgoing', 'incoming', or 'both'.
+            entity_id: Central entity.
+            relation: Optional relation filter.
+
+        Returns:
+            List of dicts with source, target, relation, weight keys.
         """
-        if self.db is None:
-            return []
-
-        where_parts: list[str] = []
-        params: list[Any] = []
-
-        if direction == "outgoing":
-            where_parts.append("source_id = ?")
-            params.append(node_id)
-        elif direction == "incoming":
-            where_parts.append("target_id = ?")
-            params.append(node_id)
-        else:  # both
-            where_parts.append("(source_id = ? OR target_id = ?)")
-            params.extend([node_id, node_id])
-
-        if relation:
-            where_parts.append("relation = ?")
-            params.append(relation)
-
-        where = "WHERE " + " AND ".join(where_parts)
-        sql = f"SELECT * FROM kg_edges {where} LIMIT ?"
-        params.append(limit)
-
-        rows = self.db.query(sql, tuple(params))
-        return [self._edge_row_to_dict(r) for r in rows]
+        triples = self.find_related(entity_id, relation, "both", 100)
+        results = []
+        for t in triples:
+            results.append({
+                "source": t.subject,
+                "target": t.object,
+                "relation": t.predicate,
+                "weight": t.weight,
+            })
+        return results
 
     def neighbors(
         self,
-        node_id: str,
+        node_id: str = "",
         relation: str | None = None,
         depth: int = 1,
-    ) -> list[dict]:
-        """Find neighboring nodes (BFS traversal up to depth)."""
-        if self.db is None or depth < 1:
-            return []
+    ) -> list[dict[str, Any]]:
+        """Get neighbors of a node — API-compatible method.
 
-        visited = {node_id}
-        current_level = [node_id]
-        result_nodes = []
+        Args:
+            node_id: Central entity.
+            relation: Filter by relation type.
+            depth: Search depth (1 = direct, 2 = 2 hops, etc.).
 
-        for _ in range(depth):
-            next_level = []
-            for nid in current_level:
-                edges = self.related(nid, relation=relation, direction="both")
-                for edge in edges:
-                    other = edge["target"] if edge["source"] == nid else edge["source"]
-                    if other not in visited:
-                        visited.add(other)
-                        next_level.append(other)
-                        node = self.get_node(other)
-                        if node:
-                            result_nodes.append(node)
-            current_level = next_level
-            if not current_level:
-                break
+        Returns:
+            List of neighbor dicts.
+        """
+        if depth == 1:
+            neighbor_ids = self.find_neighbors(node_id, relation, "both", 100)
+            return [self.get_node(nid) for nid in neighbor_ids if self.get_node(nid)]
+        else:
+            # Multi-hop: BFS
+            visited = {node_id}
+            frontier = [node_id]
+            for d in range(depth):
+                next_frontier = []
+                for nid in frontier:
+                    new_neighbors = self.find_neighbors(nid, relation, "both", 100)
+                    for nn in new_neighbors:
+                        if nn not in visited:
+                            visited.add(nn)
+                            next_frontier.append(nn)
+                frontier = next_frontier
+            # Exclude the original node
+            return [self.get_node(nid) for nid in visited if nid != node_id and self.get_node(nid)]
 
-        return result_nodes
+    def path(self, source: str, target: str) -> list[dict[str, Any]]:
+        """Find path between two nodes — API-compatible method.
 
-    def path(self, source_id: str, target_id: str) -> list[dict]:
-        """Find a shortest path between two nodes using BFS. Returns edge list."""
-        if self.db is None:
-            return []
+        Args:
+            source: Source entity.
+            target: Target entity.
 
-        if source_id == target_id:
-            return []
+        Returns:
+            List of edge dicts with source, target, relation keys, or empty list.
+        """
+        result = self.find_path(source, target)
+        if result and result.path and len(result.path) > 1:
+            # Convert path to list of edge dicts
+            edges = []
+            for i in range(len(result.path) - 1):
+                edges.append({
+                    "source": result.path[i],
+                    "target": result.path[i + 1],
+                    "relation": result.relations[i] if i < len(result.relations) else "",
+                    "weight": 1.0,
+                })
+            return edges
+        return []
 
-        visited = {source_id}
-        # Queue items: (current_node, path_of_edges)
-        from collections import deque
+    def set_entity_type(self, entity_id: str, type: str) -> None:
+        """Set the type of an entity.
 
-        queue: deque[tuple[str, list[dict]]] = deque()
+        Args:
+            entity_id: Entity ID.
+            type: Entity type ("product", "seller", "platform", etc.).
+        """
+        if entity_id in self._entities:
+            self._entities[entity_id].type = type
+        else:
+            self._entities[entity_id] = EntityInfo(entity_id=entity_id, type=type)
 
-        # Start: get all edges from source
-        start_edges = self.related(source_id, direction="outgoing")
-        for edge in start_edges:
-            neighbor = edge["target"]
-            if neighbor == target_id:
-                return [edge]
-            if neighbor not in visited:
-                visited.add(neighbor)
-                queue.append((neighbor, [edge]))
+    def set_entity_property(self, entity_id: str, key: str, value: Any) -> None:
+        """Set a property on an entity.
+
+        Args:
+            entity_id: Entity ID.
+            key: Property key.
+            value: Property value.
+        """
+        if entity_id not in self._entities:
+            self._entities[entity_id] = EntityInfo(entity_id=entity_id)
+        self._entities[entity_id].properties[key] = value
+
+    def remove_triple(self, subject: str, predicate: str, object: str) -> bool:
+        """Remove a triple from the graph.
+
+        Args:
+            subject: Subject entity.
+            predicate: Predicate.
+            object: Object entity.
+
+        Returns:
+            True if triple was found and removed.
+        """
+        tid = f"{subject}|{predicate}|{object}"
+
+        new_outgoing = [t for t in self._outgoing[subject] if self._triple_id(t) != tid]
+        removed = len(self._outgoing[subject]) - len(new_outgoing)
+        self._outgoing[subject] = new_outgoing
+
+        new_incoming = [t for t in self._incoming[object] if self._triple_id(t) != tid]
+        self._incoming[object] = new_incoming
+
+        self._triples = [t for t in self._triples if self._triple_id(t) != tid]
+
+        if subject in self._entities:
+            self._entities[subject].outgoing_count -= removed
+        if object in self._entities:
+            self._entities[object].incoming_count -= removed
+
+        return removed > 0
+
+    def find_related(
+        self,
+        entity_id: str,
+        predicate: str | None = None,
+        direction: str = "both",
+        limit: int = 20,
+    ) -> list[Triple]:
+        """Find entities related to a given entity.
+
+        Args:
+            entity_id: Central entity.
+            predicate: Filter by predicate type (None = all).
+            direction: "outgoing", "incoming", or "both".
+            limit: Maximum results.
+
+        Returns:
+            List of related Triple instances.
+        """
+        results: list[Triple] = []
+
+        if direction in ("outgoing", "both"):
+            for triple in self._outgoing.get(entity_id, []):
+                if predicate and triple.predicate != predicate:
+                    continue
+                results.append(triple)
+
+        if direction in ("incoming", "both"):
+            for triple in self._incoming.get(entity_id, []):
+                if predicate and triple.predicate != predicate:
+                    continue
+                results.append(triple)
+
+        results.sort(key=lambda t: -t.weight)
+        return results[:limit]
+
+    def find_neighbors(
+        self,
+        entity_id: str,
+        predicate: str | None = None,
+        direction: str = "both",
+        limit: int = 20,
+    ) -> list[str]:
+        """Find neighboring entities (IDs only).
+
+        Args:
+            entity_id: Central entity.
+            predicate: Filter by predicate.
+            direction: "outgoing", "incoming", or "both".
+            limit: Maximum neighbors.
+
+        Returns:
+            List of neighboring entity IDs.
+        """
+        triples = self.find_related(entity_id, predicate, direction, limit)
+        neighbors: list[str] = []
+        for t in triples:
+            if t.subject != entity_id and t.subject not in neighbors:
+                neighbors.append(t.subject)
+            if t.object != entity_id and t.object not in neighbors:
+                neighbors.append(t.object)
+        return neighbors[:limit]
+
+    def find_path(
+        self,
+        start: str,
+        end: str,
+        max_depth: int = 6,
+        predicate: str | None = None,
+    ) -> PathResult | None:
+        """Find shortest path between two entities (BFS).
+
+        Args:
+            start: Starting entity.
+            end: Target entity.
+            max_depth: Maximum search depth.
+            predicate: Filter edges by predicate.
+
+        Returns:
+            PathResult or None if no path found.
+        """
+        if start not in self._entities or end not in self._entities:
+            return None
+
+        visited: set[str] = {start}
+        queue: list[tuple[str, list[str], list[str], float, float]] = [
+            (start, [start], [], 0.0, 1.0)
+        ]
 
         while queue:
-            current, path = queue.popleft()
-            edges = self.related(current, direction="outgoing")
-            for edge in edges:
-                neighbor = edge["target"]
+            current, path, relations, total_weight, confidence = queue.pop(0)
+
+            if len(path) > max_depth:
+                continue
+
+            for triple in self._outgoing.get(current, []) + self._incoming.get(current, []):
+                if predicate and triple.predicate != predicate:
+                    continue
+
+                neighbor = triple.object if triple.subject == current else triple.subject
                 if neighbor in visited:
                     continue
-                new_path = path + [edge]
-                if neighbor == target_id:
-                    return new_path
+
                 visited.add(neighbor)
-                queue.append((neighbor, new_path))
+                new_path = path + [neighbor]
+                new_relations = relations + [triple.predicate]
+                new_total = total_weight + triple.weight
+                new_conf = confidence * triple.weight
 
-        return []  # No path found
+                if neighbor == end:
+                    return PathResult(
+                        start=start,
+                        end=end,
+                        path=new_path,
+                        relations=new_relations,
+                        length=len(new_path) - 1,
+                        total_weight=round(new_total, 4),
+                        confidence=round(new_conf, 4),
+                    )
 
-    def count_nodes(self) -> int:
-        """Execute count nodes."""
-        if self.db is None:
-            return 0
-        return self.db.query_one("SELECT COUNT(*) as cnt FROM kg_nodes")["cnt"]
+                queue.append((neighbor, new_path, new_relations, new_total, new_conf))
 
-    def count_edges(self) -> int:
-        """Execute count edges."""
-        if self.db is None:
-            return 0
-        return self.db.query_one("SELECT COUNT(*) as cnt FROM kg_edges")["cnt"]
+        return None
 
-    def stats(self) -> dict:
-        """Return statistics dict."""
-        if self.db is None:
-            return {"nodes": 0, "edges": 0, "storage": "none"}
+    def infer(self, rules: list[tuple[str, str, str, str]] | None = None) -> int:
+        """Apply inference rules to derive new relationships.
 
-        type_rows = self.db.query(
-            "SELECT node_type, COUNT(*) as cnt FROM kg_nodes GROUP BY node_type"
-        )
-        rel_rows = self.db.query("SELECT relation, COUNT(*) as cnt FROM kg_edges GROUP BY relation")
+        Args:
+            rules: Custom inference rules as (pred1, pred2, inferred_pred, direction) tuples.
+
+        Returns:
+            Number of new inferred triples.
+        """
+        if rules is None:
+            rules = [
+                ("sold_by", "located_in", "located_in", "chain"),
+                ("same_product", "listed_on", "listed_on", "chain"),
+                ("same_product", "sold_by", "sold_by", "chain"),
+                ("same_product", "price_of", "price_of", "chain"),
+                ("same_product", "category_of", "category_of", "chain"),
+            ]
+
+        inferred_count = 0
+
+        for pred1, pred2, inferred_pred, direction in rules:
+            for t1 in self._triples:
+                if t1.predicate != pred1:
+                    continue
+                for t2 in self._outgoing.get(t1.object, []):
+                    if t2.predicate != pred2:
+                        continue
+                    inferred_triple = Triple(
+                        subject=t1.subject,
+                        predicate=inferred_pred,
+                        object=t2.object,
+                        weight=t1.weight * t2.weight,
+                        source="inferred",
+                        metadata={
+                            "inferred_from": [
+                                t1.to_dict(),
+                                t2.to_dict(),
+                            ],
+                        },
+                    )
+
+                    tid = self._triple_id(inferred_triple)
+                    if tid not in self._inferred:
+                        self._inferred.add(tid)
+                        self.add_triple(inferred_triple)
+                        inferred_count += 1
+
+        return inferred_count
+
+    def get_entity(self, entity_id: str) -> EntityInfo | None:
+        """Get entity information.
+
+        Args:
+            entity_id: Entity ID.
+
+        Returns:
+            EntityInfo or None.
+        """
+        return self._entities.get(entity_id)
+
+    def get_entities_by_type(self, type: str) -> list[EntityInfo]:
+        """Get all entities of a given type.
+
+        Args:
+            type: Entity type.
+
+        Returns:
+            List of EntityInfo with matching type.
+        """
+        return [e for e in self._entities.values() if e.type == type]
+
+    def stats(self) -> dict[str, Any]:
+        """Compute graph statistics.
+
+        Returns:
+            Dict with entity_count, triple_count, density, avg_degree.
+        """
+        n_entities = len(self._entities)
+        n_triples = len(self._triples)
+        n_inferred = len(self._inferred)
+
+        avg_out = sum(e.outgoing_count for e in self._entities.values()) / n_entities if n_entities else 0
+        avg_in = sum(e.incoming_count for e in self._entities.values()) / n_entities if n_entities else 0
+
+        max_possible = n_entities * (n_entities - 1) if n_entities > 1 else 0
+        density = n_triples / max_possible if max_possible > 0 else 0.0
+
+        pred_counts: dict[str, int] = defaultdict(int)
+        for t in self._triples:
+            pred_counts[t.predicate] += 1
+
+        type_counts: dict[str, int] = defaultdict(int)
+        for e in self._entities.values():
+            type_counts[e.type] += 1
 
         return {
-            "nodes": self.count_nodes(),
-            "edges": self.count_edges(),
-            "by_node_type": {r["node_type"]: r["cnt"] for r in type_rows},
-            "by_relation": {r["relation"]: r["cnt"] for r in rel_rows},
-            "storage": "sqlite",
+            "entities": n_entities,
+            "nodes": n_entities,           # Alias for API compatibility
+            "edges": n_triples,            # Alias for API compatibility
+            "triples": n_triples,
+            "inferred_triples": n_inferred,
+            "density": round(density, 6),
+            "avg_outgoing_degree": round(avg_out, 2),
+            "avg_incoming_degree": round(avg_in, 2),
+            "predicate_distribution": dict(pred_counts),
+            "type_distribution": dict(type_counts),
         }
 
-    def _node_row_to_dict(self, row: dict) -> dict:
-        return {
-            "id": row["id"],
-            "label": row["label"],
-            "type": row["node_type"],
-            "properties": (Database.from_json(row["properties"]) if row["properties"] else {}),
-            "created_at": row["created_at"],
-            "updated_at": row["updated_at"],
-        }
+    def export_triples(self) -> list[dict[str, Any]]:
+        """Export all triples as dicts.
 
-    def _edge_row_to_dict(self, row: dict) -> dict:
-        return {
-            "id": row["id"],
-            "source": row["source_id"],
-            "target": row["target_id"],
-            "relation": row["relation"],
-            "properties": (Database.from_json(row["properties"]) if row["properties"] else {}),
-            "weight": row["weight"],
-            "created_at": row["created_at"],
-        }
+        Returns:
+            List of triple dicts.
+        """
+        return [t.to_dict() for t in self._triples]
+
+    def clear(self) -> None:
+        """Clear the entire graph."""
+        self._triples.clear()
+        self._outgoing.clear()
+        self._incoming.clear()
+        self._entities.clear()
+        self._inferred.clear()
