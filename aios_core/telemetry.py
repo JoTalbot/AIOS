@@ -110,6 +110,10 @@ class Telemetry:
         """
         return self.counter(name, description)
 
+    def export(self) -> str:
+        """Compatibility alias for :meth:`export_prometheus_format`."""
+        return self.export_prometheus_format()
+        
     def increment_counter(self, name: str, value: float = 1.0) -> None:
         """Add *value* to a counter, creating it when necessary."""
         self.counter(name).add(value)
