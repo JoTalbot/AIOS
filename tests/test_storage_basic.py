@@ -92,7 +92,7 @@ class TestStorageAdvanced:
         db = Database(str(db_path))
 
         # Access connection
-        conn = db._conn
+        conn = db._get_conn()
         conn.execute("SELECT 1")
 
     def test_storage_transaction_rollback(self, tmp_path):
