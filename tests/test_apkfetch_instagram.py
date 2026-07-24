@@ -12,9 +12,6 @@ from aios_core.platforms import (
     DevicePool,
     bootup_platform,
     check_platform_markers,
-)
-from aios_core.platforms import descriptor as descriptor_mod
-from aios_core.platforms import (
     diff_markers,
     fetch_apk,
     load_secrets_file,
@@ -25,6 +22,7 @@ from aios_core.platforms import (
     secret,
     write_hints_to_descriptor,
 )
+from aios_core.platforms import descriptor as descriptor_mod
 from aios_core.platforms.calibrate import CalibrationAdvisor
 from aios_core.platforms.secrets import env_name
 

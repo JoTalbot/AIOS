@@ -12,8 +12,6 @@ Usage:
 """
 
 import json
-import sys
-from pathlib import Path
 
 
 def run_export(args):

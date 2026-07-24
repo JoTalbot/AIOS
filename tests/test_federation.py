@@ -1,6 +1,5 @@
 """Tests for FederationManager v4.0-alpha"""
 
-import pytest
 
 from aios_core.federation_manager import Database, FederationManager, NodeStatus
 

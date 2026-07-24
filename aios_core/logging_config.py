@@ -27,10 +27,10 @@ from .tracing import tracer
 __all__ = [
     "JSONFormatter",
     "LogMiddleware",
-    "setup_logging",
+    "clear_log_context",
     "logger",
     "set_log_context",
-    "clear_log_context",
+    "setup_logging",
 ]
 
 # Context variables for dynamic injection

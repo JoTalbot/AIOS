@@ -1,6 +1,5 @@
 """Tests for Rate Limiter"""
 
-import time
 
 from aios_core.rate_limiter import RateLimiter
 

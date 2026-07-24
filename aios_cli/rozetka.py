@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """AIOS CLI — Rozetka.ua marketplace commands."""
 
-import argparse
 import json
 
 
@@ -89,7 +88,7 @@ def _add_rozetka_parsers(subparsers) -> None:
 
 def _resolve_rozetka_db(args) -> str:
     """Resolve DB path for rozetka command."""
-    from aios_core.platforms import Profile, resolve_profile
+    from aios_core.platforms import resolve_profile
 
     if getattr(args, "db", None):
         return args.db

@@ -54,7 +54,7 @@ class JSONRPCResponse:
     jsonrpc: str = "2.0"
     id: str | int | None = None
     result: Any = None
-    error: Optional[dict] = None  # {"code": int, "message": str, "data": any}
+    error: dict | None = None  # {"code": int, "message": str, "data": any}
 
 
 @dataclass

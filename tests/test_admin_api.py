@@ -1,22 +1,14 @@
 """Tests for AIOS admin API routes."""
 
-import json
 import sqlite3
-import tempfile
-from pathlib import Path
 
 import httpx
 import pytest
 import pytest_asyncio
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.routing import Route
 
 from aios_core.api.admin_routes import (
-    _backup_manager,
-    _secret_manager,
-    _webhook_manager,
     get_admin_routes,
     init_admin_routes,
 )

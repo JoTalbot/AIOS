@@ -82,7 +82,7 @@ def main():
     constitution_dir = args.constitution_dir or os.path.join(project_root, "docs/constitution")
     policies_dir = args.policies_dir or os.path.join(project_root, "policies")
 
-    print(f"Starting AIOS MCP Gateway...")
+    print("Starting AIOS MCP Gateway...")
     print(f"  Constitution: {constitution_dir}")
     print(f"  Policies: {policies_dir}")
     print(f"  Database: {args.db}")

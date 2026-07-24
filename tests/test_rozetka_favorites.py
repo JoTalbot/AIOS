@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from aios_core.modules.rozetka.storage import RozetkaStorage
+from aios_core.modules.olx.models import AdCard
 from aios_core.modules.rozetka.favorites import RozetkaFavorites
 from aios_core.modules.rozetka.price_tracker import RozetkaPriceTracker
-from aios_core.modules.olx.models import AdCard
+from aios_core.modules.rozetka.storage import RozetkaStorage
 
 
 def _card(title: str, price: float, ad_id: str = "") -> AdCard:

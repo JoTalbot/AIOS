@@ -5,9 +5,17 @@ import sys
 
 import pytest
 
-from aios_core.platforms import DevicePool, PoolMonitor, Profile, ProfileStore
+from aios_core.platforms import (
+    DevicePool,
+    PoolMonitor,
+    Profile,
+    ProfileStore,
+    ensure_device,
+    get_platform,
+    load_catalog_file,
+    scaffold_platform,
+)
 from aios_core.platforms import descriptor as descriptor_mod
-from aios_core.platforms import ensure_device, get_platform, load_catalog_file, scaffold_platform
 
 # ---------------------------------------------------------------------------
 # scaffold_platform
@@ -113,7 +121,7 @@ def test_ensure_device_prefers_pool_lease():
             create_avd=lambda name: calls.append(("create", name)) or True,
             start_emulator=lambda name: calls.append(("start", name)),
             wait_serial=lambda known: calls.append(("wait", known)) or "emulator-9999",
-            list_devices=lambda: [],
+            list_devices=list,
         )
         assert record["serial"] == "emulator-5556"
         assert record["profile_key"] == "olx:work"
@@ -150,7 +158,7 @@ def test_ensure_device_failure_paths():
                 create_avd=lambda n: False,
                 start_emulator=lambda n: None,
                 wait_serial=lambda k: "emulator-1",
-                list_devices=lambda: [],
+                list_devices=list,
             )
             is None
         )
@@ -163,7 +171,7 @@ def test_ensure_device_failure_paths():
                 create_avd=lambda n: True,
                 start_emulator=lambda n: None,
                 wait_serial=lambda k: None,
-                list_devices=lambda: [],
+                list_devices=list,
             )
             is None
         )
@@ -174,7 +182,7 @@ def test_ensure_device_syncs_profile_store(tmp_path):
         store.add(Profile(platform="olx", name="work"))
         with DevicePool(":memory:") as pool:
             pool.register("emulator-5556")
-            ensure_device("olx:work", pool=pool, profile_store=store, list_devices=lambda: [])
+            ensure_device("olx:work", pool=pool, profile_store=store, list_devices=list)
             assert store.get("olx", "work").device_serial == "emulator-5556"
 
 

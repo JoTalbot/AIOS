@@ -82,7 +82,7 @@ def main():
     config = load_config(args.config)
 
     if args.verbose:
-        print(f"🌐 AIOS Production Autopilot v9.1.0")
+        print("🌐 AIOS Production Autopilot v9.1.0")
         print(f"   Config: {args.config}")
         print(f"   Profiles: {len(config.profiles)} ({', '.join(p.name for p in config.profiles)})")
         print(f"   Device pool: {config.device_pool_size}")

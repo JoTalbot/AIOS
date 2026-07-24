@@ -4,16 +4,16 @@ Run with:  python -m pytest tests/test_benchmarks.py --benchmark-only
 """
 
 import pytest
+
 from aios_core.ab_testing import ABTest
 from aios_core.active_learning import ActiveLearner
-from aios_core.rate_limiter import RateLimiter
-from aios_core.circuit_breaker import CircuitBreaker
-from aios_core.self_healing import SelfHealing
-from aios_core.benchmark import Benchmark
-from aios_core.diffusion import DiffusionModel
 from aios_core.advanced_security import AdvancedSecurity
+from aios_core.benchmark import Benchmark
+from aios_core.circuit_breaker import CircuitBreaker
+from aios_core.diffusion import DiffusionModel
+from aios_core.rate_limiter import RateLimiter
+from aios_core.self_healing import SelfHealing
 from aios_core.storage import Database
-
 
 # -- Core module init -----------------------------------------------------------------
 

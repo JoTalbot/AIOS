@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
 from aios_core.image_comparison import (
     ColorHistogram,
-    ComparisonResult,
     HashAlgorithm,
     ImageComparisonEngine,
     ImageHash,
@@ -15,7 +12,6 @@ from aios_core.image_comparison import (
     difference_hash,
     perceptual_hash,
 )
-
 
 # ─── Test helpers ───
 

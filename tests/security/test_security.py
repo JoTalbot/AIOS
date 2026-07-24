@@ -1,14 +1,9 @@
 """Security tests for AIOS system."""
 
-import secrets
 
 import httpx
 import pytest
-import pytest_asyncio
 from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.routing import Route
 
 
 class TestSQLInjection:
@@ -209,7 +204,7 @@ class TestSecretsManagement:
         """Test expired keys are rejected."""
         from datetime import datetime, timedelta
 
-        from aios_core.secret_manager import APIKey, SecretManager
+        from aios_core.secret_manager import APIKey
 
         # Create expired key
         expired_at = (datetime.now() - timedelta(days=1)).isoformat()

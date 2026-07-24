@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from aios_core.modules.rozetka.auto_login import (
-    RozetkaAutoLogin,
-    LoginState,
     LoginResult,
+    LoginState,
+    RozetkaAutoLogin,
 )
 
 

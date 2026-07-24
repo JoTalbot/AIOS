@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from aios_core.seller_reputation import (
-    SellerReputationScorer, SellerScore, SellerProfile,
-)
-from aios_core.modules.olx.storage import OLXStorage
 from aios_core.modules.olx.models import AdCard
+from aios_core.modules.olx.storage import OLXStorage
+from aios_core.seller_reputation import (
+    SellerProfile,
+    SellerReputationScorer,
+    SellerScore,
+)
 
 
 def _card(title: str, price: float, ad_id: str = "", city: str = "Kyiv") -> AdCard:

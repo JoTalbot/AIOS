@@ -299,7 +299,7 @@ class ShardJobWorker:
                 "status": "done",
                 "result": result,
             }
-        except Exception as exc:  # noqa: BLE001 — изолируем джобу
+        except Exception as exc:
             self.jobs.complete(
                 job["id"],
                 ok=False,

@@ -6,7 +6,7 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
-__all__ = ["UIElement", "SearchResult", "ItemDetails", "UIAutomatorParser"]
+__all__ = ["ItemDetails", "SearchResult", "UIAutomatorParser", "UIElement"]
 
 
 @dataclass

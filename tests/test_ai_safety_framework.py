@@ -1,6 +1,5 @@
 """Tests for AI Safety and Ethics Frameworks."""
 
-import pytest
 
 from aios_core.ai_ethics import AIEthicsFramework
 from aios_core.ai_safety import AISafetyFramework

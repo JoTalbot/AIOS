@@ -8,9 +8,14 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from aios_core.platforms import DevicePool, PlatformDescriptor, Profile, ProfileStore
+from aios_core.platforms import (
+    DevicePool,
+    PlatformDescriptor,
+    Profile,
+    ProfileStore,
+    register_platform,
+)
 from aios_core.platforms import descriptor as descriptor_mod
-from aios_core.platforms import register_platform
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -142,7 +147,6 @@ async def test_generic_module_profile_isolation(client, tmp_path):
     assert default_view.json()["total"] == 2
 
     # Второй профиль — собственное пустое хранилище (изоляция).
-    from aios_core.platforms import Profile as _Profile
 
     # регистрируем через REST, чтобы проверить и его:
     created = await client.post(
@@ -199,7 +203,7 @@ def test_ensure_device_respects_max_avds_quota():
             create_avd=lambda n: calls.append(n) or True,
             start_emulator=lambda n: None,
             wait_serial=lambda k: "emulator-1",
-            list_devices=lambda: [],
+            list_devices=list,
         )
         assert record is None
         assert calls == []  # до создания AVD дело не дошло

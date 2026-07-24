@@ -2,9 +2,7 @@
 
 import logging
 
-import pytest
-
-from aios_core.logging_config import JSONFormatter, setup_logging
+from aios_core.logging_config import JSONFormatter
 from aios_core.telemetry import Telemetry
 from aios_core.tracing import Tracer
 

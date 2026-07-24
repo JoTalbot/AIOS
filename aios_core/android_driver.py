@@ -19,12 +19,12 @@ from dataclasses import dataclass
 from typing import Any
 
 __all__ = [
-    "DriverCapabilities",
-    "UIContext",
-    "AndroidDriver",
     "ADBDriver",
+    "AndroidDriver",
     "AppiumDriverWrapper",
+    "DriverCapabilities",
     "DriverPool",
+    "UIContext",
 ]
 
 

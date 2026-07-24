@@ -1,8 +1,5 @@
 """Tests for AIOS secret manager."""
 
-import json
-import tempfile
-from pathlib import Path
 
 import pytest
 

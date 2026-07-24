@@ -20,7 +20,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from typing import Any
 
-__all__ = ["SafetyInvariant", "ViolationSeverity", "UniversalInvariantProver"]
+__all__ = ["SafetyInvariant", "UniversalInvariantProver", "ViolationSeverity"]
 
 
 class ViolationSeverity:
@@ -36,7 +36,7 @@ class ViolationSeverity:
 class SafetyInvariant:
     """Symbolic Invariant Condition with severity classification."""
 
-    __slots__ = ("inv_id", "description", "assertion_expr", "severity", "category")
+    __slots__ = ("assertion_expr", "category", "description", "inv_id", "severity")
 
     def __init__(
         self,

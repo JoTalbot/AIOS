@@ -3,27 +3,22 @@
 from __future__ import annotations
 
 import json
-import sys
 
-from aios_core.price_prediction_ml import (
-    PricePredictionEngine,
-    PricePoint,
-    PredictionModel,
-    TrendDirection,
+from aios_core.fleet_scheduler import (
+    FleetDevice,
+    FleetScheduler,
+    SchedulingPolicy,
+    TaskPriority,
 )
 from aios_core.image_comparison import (
     HashAlgorithm,
     ImageComparisonEngine,
 )
-from aios_core.fleet_scheduler import (
-    DeviceStatus,
-    FleetDevice,
-    FleetScheduler,
-    SchedulingPolicy,
-    TaskPriority,
-    TaskStatus,
+from aios_core.price_prediction_ml import (
+    PredictionModel,
+    PricePoint,
+    PricePredictionEngine,
 )
-
 
 # ─── Price Prediction ───
 
@@ -162,7 +157,11 @@ def _run_image_compare(args) -> bool:
     }
 
     if cmd == "hash":
-        from aios_core.image_comparison import average_hash, difference_hash, perceptual_hash
+        from aios_core.image_comparison import (
+            average_hash,
+            difference_hash,
+            perceptual_hash,
+        )
         pixels = getattr(args, "pixels", [])
         w = getattr(args, "width", 8)
         h = getattr(args, "height", 8)

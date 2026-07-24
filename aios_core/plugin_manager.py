@@ -11,21 +11,21 @@ import importlib
 from collections.abc import Callable
 from typing import Any
 
-__all__ = ["PluginManager", "PluginInfo", "plugin_manager"]
+__all__ = ["PluginInfo", "PluginManager", "plugin_manager"]
 
 
 class PluginInfo:
     """Metadata container for a registered plugin."""
 
     __slots__ = (
-        "name",
-        "version",
-        "description",
         "author",
         "dependencies",
-        "priority",
+        "description",
         "enabled",
         "module_path",
+        "name",
+        "priority",
+        "version",
     )
 
     def __init__(

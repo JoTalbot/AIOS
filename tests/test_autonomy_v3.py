@@ -1,9 +1,7 @@
 """Advanced Autonomy Manager v3.0 tests (auto-adjustment)"""
 
-import pytest
 
 from aios_core import Database, Orchestrator
-from aios_core.autonomy_manager import AutonomyLevel
 
 
 def test_automatic_promotion():

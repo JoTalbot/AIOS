@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import json
-import subprocess
-import sys
 
-from aios_cli.rozetka import _add_rozetka_parsers, _run_rozetka
+from aios_cli.rozetka import _add_rozetka_parsers
 
 
 def _make_args(**kwargs) -> argparse.Namespace:
@@ -24,8 +21,8 @@ def _make_args(**kwargs) -> argparse.Namespace:
 
 def test_rozetka_price_tracker_drops():
     """CLI price-tracker drops detects price drops."""
-    from aios_core.modules.rozetka import RozetkaStorage
     from aios_core.modules.olx.models import AdCard
+    from aios_core.modules.rozetka import RozetkaStorage
 
     storage = RozetkaStorage(":memory:")
     card1 = AdCard(title="Phone", price=30000.0, currency="UAH", city="Kyiv",
@@ -56,8 +53,8 @@ def test_rozetka_price_tracker_drops():
 
 def test_rozetka_price_tracker_track():
     """CLI price-tracker track returns stats for a product."""
-    from aios_core.modules.rozetka import RozetkaStorage, RozetkaPriceTracker
     from aios_core.modules.olx.models import AdCard
+    from aios_core.modules.rozetka import RozetkaPriceTracker, RozetkaStorage
 
     storage = RozetkaStorage(":memory:")
     card = AdCard(title="Phone", price=30000.0, currency="UAH", city="Kyiv",
@@ -72,7 +69,7 @@ def test_rozetka_price_tracker_track():
 
 def test_rozetka_autowatch_no_collect():
     """CLI autowatch --no-collect runs analysis only."""
-    from aios_core.modules.rozetka import RozetkaStorage, RozetkaAutoWatch
+    from aios_core.modules.rozetka import RozetkaAutoWatch, RozetkaStorage
 
     storage = RozetkaStorage(":memory:")
     watcher = RozetkaAutoWatch(storage)
@@ -83,7 +80,7 @@ def test_rozetka_autowatch_no_collect():
 
 def test_rozetka_favorites_add_remove():
     """CLI favorites add/remove works."""
-    from aios_core.modules.rozetka import RozetkaStorage, RozetkaFavorites
+    from aios_core.modules.rozetka import RozetkaFavorites, RozetkaStorage
 
     storage = RozetkaStorage(":memory:")
     fav = RozetkaFavorites(storage)
@@ -96,7 +93,7 @@ def test_rozetka_favorites_add_remove():
 
 def test_rozetka_favorites_list():
     """CLI favorites list returns all favorites."""
-    from aios_core.modules.rozetka import RozetkaStorage, RozetkaFavorites
+    from aios_core.modules.rozetka import RozetkaFavorites, RozetkaStorage
 
     storage = RozetkaStorage(":memory:")
     fav = RozetkaFavorites(storage)

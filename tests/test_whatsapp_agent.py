@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from aios_core.modules.whatsapp import (
-    WhatsAppStorage, ContactManager, Contact,
-    BroadcastScheduler, BroadcastMessage, BroadcastStatus,
-    ChatAnalyzer, ChatAnalytics,
+    BroadcastScheduler,
+    BroadcastStatus,
+    ChatAnalyzer,
+    Contact,
+    ContactManager,
+    WhatsAppStorage,
 )
 
 

@@ -1,6 +1,5 @@
 """Tests for Advanced ML Intelligence Layer (Milestone 4.2.1)."""
 
-import pytest
 
 from aios_core.anomaly_detection import AnomalyDetector
 from aios_core.autonomy_manager import AutonomyLevel

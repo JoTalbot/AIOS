@@ -11,13 +11,13 @@ from pathlib import Path
 import yaml
 
 __all__ = [
-    "DatabaseConfig",
-    "AuditConfig",
-    "ApprovalConfig",
-    "ConstitutionConfig",
-    "PoliciesConfig",
-    "LoggingConfig",
     "AIOSConfig",
+    "ApprovalConfig",
+    "AuditConfig",
+    "ConstitutionConfig",
+    "DatabaseConfig",
+    "LoggingConfig",
+    "PoliciesConfig",
 ]
 
 _DEFAULT_CONFIG = {

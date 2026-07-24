@@ -1,6 +1,5 @@
 """Integration tests for Evolution + Autonomy subsystems"""
 
-import pytest
 
 from aios_core import Database, Orchestrator
 

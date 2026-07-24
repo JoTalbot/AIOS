@@ -2,13 +2,10 @@
 advisor and the fresh-server bootstrap/doctor tooling."""
 
 import json
-from datetime import datetime, timezone
-
-import pytest
+from datetime import datetime, timezone, UTC
 
 from aios_core.modules.olx import (
     ACTION_EDIT_PRICE,
-    ACTION_KEEP,
     ACTION_REPOST,
     AdCard,
     CompetitiveWatch,
@@ -22,7 +19,7 @@ from aios_core.modules.olx import (
     title_similarity,
 )
 
-NOW = datetime(2026, 7, 21, 15, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 7, 21, 15, 0, 0, tzinfo=UTC)
 
 PROFILE_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <hierarchy rotation="0">
@@ -291,7 +288,7 @@ def test_doctor_ready_in_emulator_and_hints_when_bare():
 # Seller portfolio crawl (detail page "other ads by this seller")
 # ---------------------------------------------------------------------------
 
-from aios_core.modules.olx import parse_seller_ads  # noqa: E402
+from aios_core.modules.olx import parse_seller_ads
 
 SELLER_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <hierarchy rotation="0">

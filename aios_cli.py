@@ -14,29 +14,40 @@ import json
 
 import uvicorn
 
-from aios_core import Database, Orchestrator
-from aios_core.dashboard import create_dashboard
-from aios_cli.olx import _add_olx_parsers, _run_olx
-from aios_cli.rozetka import _add_rozetka_parsers, _run_rozetka
-from aios_cli.platforms import (
-    _run_platforms, _run_profiles, _run_devices, _run_shards, _run_cron_plan,
-)
-from aios_cli.instagram import _run_instagram, _adb_dump_driver
-from aios_cli.messengers import _run_msg_platform
 from aios_cli.cross_platform import (
-    _add_cross_platform_parsers, _run_cross_platform, _run_advisor_v2,
-    _run_search, _run_benchmarks,
-)
-from aios_cli.tiktok import _add_tiktok_parsers, _run_tiktok
-from aios_cli.v10 import (
-    _add_price_prediction_parsers, _run_price_predict,
-    _add_image_comparison_parsers, _run_image_compare,
-    _add_fleet_parsers, _run_fleet,
+    _add_cross_platform_parsers,
+    _run_advisor_v2,
+    _run_benchmarks,
+    _run_cross_platform,
+    _run_search,
 )
 from aios_cli.facebook import _add_facebook_parsers, _run_facebook
+from aios_cli.instagram import _adb_dump_driver, _run_instagram
 from aios_cli.messenger_v2 import (
-    _add_messenger_v2_parsers, _run_whatsapp_v2, _run_viber_v2,
+    _add_messenger_v2_parsers,
+    _run_viber_v2,
+    _run_whatsapp_v2,
 )
+from aios_cli.messengers import _run_msg_platform
+from aios_cli.olx import _add_olx_parsers, _run_olx
+from aios_cli.platforms import (
+    _run_cron_plan,
+    _run_devices,
+    _run_platforms,
+    _run_profiles,
+    _run_shards,
+)
+from aios_cli.rozetka import _add_rozetka_parsers, _run_rozetka
+from aios_cli.tiktok import _add_tiktok_parsers, _run_tiktok
+from aios_cli.v10 import (
+    _add_fleet_parsers,
+    _add_image_comparison_parsers,
+    _add_price_prediction_parsers,
+    _run_fleet,
+    _run_image_compare,
+    _run_price_predict,
+)
+from aios_core.dashboard import create_dashboard
 
 DEFAULT_OLX_DB = "olx_ads.sqlite"
 
@@ -327,12 +338,24 @@ def main(argv=None):
         if not handled: parser.parse_args(["fleet", "--help"])
     elif args.command == "admin":
         from aios_cli_admin import (
-            run_backup_cleanup, run_backup_create, run_backup_health,
-            run_backup_list, run_backup_restore, run_backup_verify,
-            run_export, run_import, run_keys_generate, run_keys_health,
-            run_keys_list, run_keys_revoke, run_keys_rotate,
-            run_webhooks_health, run_webhooks_list, run_webhooks_notify,
-            run_webhooks_register, run_webhooks_test,
+            run_backup_cleanup,
+            run_backup_create,
+            run_backup_health,
+            run_backup_list,
+            run_backup_restore,
+            run_backup_verify,
+            run_export,
+            run_import,
+            run_keys_generate,
+            run_keys_health,
+            run_keys_list,
+            run_keys_revoke,
+            run_keys_rotate,
+            run_webhooks_health,
+            run_webhooks_list,
+            run_webhooks_notify,
+            run_webhooks_register,
+            run_webhooks_test,
         )
         cmd_map = {
             "export": run_export, "import": run_import,

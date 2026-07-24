@@ -1,6 +1,5 @@
 """Tests for Rozetka.ua platform scaffold."""
 
-import json
 import pytest
 
 from aios_core.platforms import descriptor as descriptor_mod
@@ -54,8 +53,8 @@ def test_rozetka_bootstrap_package():
 
 def test_rozetka_storage_inherits_olx():
     """Rozetka storage inherits OLXStorage schema."""
-    from aios_core.modules.rozetka import RozetkaStorage
     from aios_core.modules.olx import AdCard
+    from aios_core.modules.rozetka import RozetkaStorage
 
     with RozetkaStorage(":memory:") as storage:
         storage.save_ads([AdCard(title="iPhone 16", url="https://r.ua/1")])

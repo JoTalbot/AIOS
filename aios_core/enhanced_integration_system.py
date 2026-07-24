@@ -39,7 +39,7 @@ from .external_integration import (
     create_integration_app,
 )
 
-__all__ = ["IntegrationConfig", "EnhancedIntegrationSystem"]
+__all__ = ["EnhancedIntegrationSystem", "IntegrationConfig"]
 
 
 @dataclass
@@ -141,9 +141,9 @@ class EnhancedIntegrationSystem:
 
         except Exception as e:
             if self.logger:
-                self.logger.error(f"Failed to initialize integration system: {str(e)}")
+                self.logger.error(f"Failed to initialize integration system: {e!s}")
             else:
-                print(f"Failed to initialize integration system: {str(e)}")
+                print(f"Failed to initialize integration system: {e!s}")
             return False
 
     async def start(self) -> None:
@@ -165,9 +165,9 @@ class EnhancedIntegrationSystem:
 
         except Exception as e:
             if self.logger:
-                self.logger.error(f"Failed to start integration system: {str(e)}")
+                self.logger.error(f"Failed to start integration system: {e!s}")
             else:
-                print(f"Failed to start integration system: {str(e)}")
+                print(f"Failed to start integration system: {e!s}")
             return False
 
     async def stop(self) -> None:
@@ -182,9 +182,9 @@ class EnhancedIntegrationSystem:
 
         except Exception as e:
             if self.logger:
-                self.logger.error(f"Failed to stop integration system: {str(e)}")
+                self.logger.error(f"Failed to stop integration system: {e!s}")
             else:
-                print(f"Failed to stop integration system: {str(e)}")
+                print(f"Failed to stop integration system: {e!s}")
             return False
 
     async def send_webhook(

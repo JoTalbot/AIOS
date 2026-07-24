@@ -1,10 +1,11 @@
 """Full stack integration — all major components."""
-from aios_core.storage import Database
-from aios_core.orchestrator import Orchestrator
-from aios_core.knowledge_graph import KnowledgeGraph
 from aios_core.event_bus import EventBus
+from aios_core.knowledge_graph import KnowledgeGraph
 from aios_core.memory_manager import MemoryManager
+from aios_core.orchestrator import Orchestrator
 from aios_core.rate_limiter import RateLimiter
+from aios_core.storage import Database
+
 
 def test_full_stack():
     db = Database(":memory:")

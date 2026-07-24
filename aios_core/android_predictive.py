@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-__all__ = ["PredictiveMaintenance", "FailureTrend"]
+__all__ = ["FailureTrend", "PredictiveMaintenance"]
 
 
 class RiskLevel(Enum):

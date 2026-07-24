@@ -7,11 +7,10 @@ from aios_core.ai_advisor_v2 import (
     CrossPlatformRecommendation,
     PricePrediction,
 )
-from aios_core.ai_advisor import AISalesAdvisor
 from aios_core.cross_platform_comparator import CrossPlatformComparator
+from aios_core.modules.olx.models import AdCard
 from aios_core.modules.olx.storage import OLXStorage
 from aios_core.modules.rozetka.storage import RozetkaStorage
-from aios_core.modules.olx.models import AdCard
 
 
 def _card(title: str, price: float, ad_id: str = "", query: str = "test") -> AdCard:

@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from .constitution_loader import ConstitutionLoader
 from .policy_loader import PolicyLoader
 
-__all__ = ["ValidationResult", "ValidationReport", "ConstitutionValidator"]
+__all__ = ["ConstitutionValidator", "ValidationReport", "ValidationResult"]
 
 
 @dataclass

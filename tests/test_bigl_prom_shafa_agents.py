@@ -2,10 +2,28 @@
 
 from __future__ import annotations
 
-from aios_core.modules.bigl import BiglCollector, BiglPriceTracker, BiglAutoWatch, BiglFavorites, BiglStorage
-from aios_core.modules.prom import PromCollector, PromPriceTracker, PromAutoWatch, PromFavorites, PromStorage
-from aios_core.modules.shafa import ShafaCollector, ShafaPriceTracker, ShafaAutoWatch, ShafaFavorites, ShafaStorage
+from aios_core.modules.bigl import (
+    BiglAutoWatch,
+    BiglCollector,
+    BiglFavorites,
+    BiglPriceTracker,
+    BiglStorage,
+)
 from aios_core.modules.olx.models import AdCard
+from aios_core.modules.prom import (
+    PromAutoWatch,
+    PromCollector,
+    PromFavorites,
+    PromPriceTracker,
+    PromStorage,
+)
+from aios_core.modules.shafa import (
+    ShafaAutoWatch,
+    ShafaCollector,
+    ShafaFavorites,
+    ShafaPriceTracker,
+    ShafaStorage,
+)
 
 
 def _card(title: str, price: float, ad_id: str = "") -> AdCard:

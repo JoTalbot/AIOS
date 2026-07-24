@@ -23,7 +23,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-__all__ = ["WebhookEvent", "WebhookTarget", "WebhookPayload", "WebhookManager"]
+__all__ = ["WebhookEvent", "WebhookManager", "WebhookPayload", "WebhookTarget"]
 
 
 class WebhookEvent(str, Enum):

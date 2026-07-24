@@ -2,7 +2,10 @@
 
 import pytest
 
-from aios_core.production_webhook_bridge import ProductionWebhookBridge, get_production_bridge
+from aios_core.production_webhook_bridge import (
+    ProductionWebhookBridge,
+    get_production_bridge,
+)
 from aios_core.webhook_manager import WebhookEvent, WebhookManager
 
 

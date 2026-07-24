@@ -241,4 +241,3 @@ class CircuitBreaker:
 class CircuitOpenError(Exception):
     """Raised when circuit breaker is OPEN and no fallback is provided."""
 
-    pass

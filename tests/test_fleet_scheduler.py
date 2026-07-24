@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 import time
 
 from aios_core.fleet_scheduler import (
@@ -14,7 +13,6 @@ from aios_core.fleet_scheduler import (
     TaskPriority,
     TaskStatus,
 )
-
 
 # ─── FleetDevice ───
 

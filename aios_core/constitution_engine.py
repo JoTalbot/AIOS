@@ -15,7 +15,7 @@ from enum import Enum
 from .constitution_loader import ConstitutionLoader
 from .policy_loader import PolicyLoader
 
-__all__ = ["DecisionOutcome", "EvaluationContext", "Decision", "ConstitutionEngine"]
+__all__ = ["ConstitutionEngine", "Decision", "DecisionOutcome", "EvaluationContext"]
 
 
 class DecisionOutcome(Enum):

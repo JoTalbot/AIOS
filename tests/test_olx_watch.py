@@ -1,9 +1,7 @@
 """Tests for OLX subscriptions, favorites watch, AutoWatch and the ad editor."""
 
 import json
-from datetime import datetime, timezone
-
-import pytest
+from datetime import datetime, timezone, UTC
 
 from aios_core.modules.olx import (
     AdCard,
@@ -22,7 +20,7 @@ from aios_core.modules.olx import (
 from tests.test_olx_actions import OWN_XML, _competitors
 from tests.test_olx_agent import SAMPLE_XML, FakeADB
 
-NOW = datetime(2026, 7, 21, 15, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 7, 21, 15, 0, 0, tzinfo=UTC)
 EMPTY_XML = "<hierarchy rotation='0'/>"
 
 

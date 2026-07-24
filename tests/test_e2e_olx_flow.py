@@ -2,6 +2,7 @@
 from aios_core.modules.olx.models import AdCard
 from aios_core.modules.olx.storage import OLXStorage
 
+
 def test_ad_card_creation():
     card = AdCard(title="iPhone", price=15000, currency="UAH", query="iphone")
     assert card.title == "iPhone"

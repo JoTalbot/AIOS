@@ -21,11 +21,11 @@ from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 
 __all__ = [
-    "AsyncRunner",
     "AsyncDatabase",
+    "AsyncEventBusWrapper",
     "AsyncKnowledgeGraph",
     "AsyncOrchestrator",
-    "AsyncEventBusWrapper",
+    "AsyncRunner",
     "async_batch",
     "async_parallel",
 ]

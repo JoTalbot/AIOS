@@ -1,6 +1,5 @@
 """Smoke-тесты сгенерированного модуля платформы bigl."""
 
-import pytest
 
 from aios_core.modules.bigl import BiglStorage
 from aios_core.platforms import get_platform

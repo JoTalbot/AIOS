@@ -69,7 +69,7 @@ def _platform_db_metrics(data_dir: str) -> dict[str, dict[str, int]]:
                         pass  # Telemetry read from foreign DB — skip
             finally:
                 conn.close()
-        except Exception:  # noqa: BLE001 — чужая/битая база не ломает /metrics
+        except Exception:
             continue
         if any(entry.values()):
             per_platform[platform] = entry

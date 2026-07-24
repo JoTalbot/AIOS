@@ -1,6 +1,5 @@
 """Performance tests for AIOS API endpoints."""
 
-import asyncio
 import statistics
 import time
 
@@ -63,12 +62,12 @@ test_gauge 42.5
 
         # Warm up
         for _ in range(10):
-            await await client.get("/health")
+            await client.get("/health")
 
         # Measure
         for _ in range(100):
             start = time.perf_counter()
-            response = await await client.get("/health")
+            response = await client.get("/health")
             latency = (time.perf_counter() - start) * 1000  # ms
             latencies.append(latency)
             assert response.status_code == 200

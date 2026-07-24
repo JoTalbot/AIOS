@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-__all__ = ["ReasoningStep", "ReasoningChain", "ReasoningEngine"]
+__all__ = ["ReasoningChain", "ReasoningEngine", "ReasoningStep"]
 
 if TYPE_CHECKING:
     from .storage import Database

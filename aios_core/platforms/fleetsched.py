@@ -116,7 +116,7 @@ class FleetScheduler:
                                 "codegen --force",
                             },
                         )
-            except Exception as exc:  # noqa: BLE001 — изолируем джоб
+            except Exception as exc:
                 entry["status"] = "error"
                 entry["error"] = str(exc)[:200]
             finally:

@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
-__all__ = ["AutonomyLevel", "AgentAutonomyProfile", "AutonomyManager"]
+__all__ = ["AgentAutonomyProfile", "AutonomyLevel", "AutonomyManager"]
 
 if TYPE_CHECKING:
     from .storage import Database
@@ -139,7 +139,7 @@ class AutonomyManager:
             try:
                 metadata = DB.from_json(row["metadata"])
             except Exception:
-                pass  # Corrupt metadata JSON
+                # Corrupt metadata JSON
                 metadata = {}
 
         return AgentAutonomyProfile(

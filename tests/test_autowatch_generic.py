@@ -10,9 +10,14 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from aios_core.platforms import DevicePool, PlatformDescriptor, Profile, ProfileStore
+from aios_core.platforms import (
+    DevicePool,
+    PlatformDescriptor,
+    Profile,
+    ProfileStore,
+    register_platform,
+)
 from aios_core.platforms import descriptor as descriptor_mod
-from aios_core.platforms import register_platform
 from aios_core.platforms.autowatch import autowatch_cycle, resolve_card_parser
 from aios_core.platforms.calibrate import CalibrationAdvisor
 

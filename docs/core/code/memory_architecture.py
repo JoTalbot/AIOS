@@ -13,13 +13,13 @@ class MemoryObservation:
     observation_id: str
     timestamp: datetime
     content: str
-    source_agent_id: Optional[str] = None
+    source_agent_id: str | None = None
 
 
 @dataclass
 class Experience:
     experience_id: str
-    observations: List[MemoryObservation]
+    observations: list[MemoryObservation]
     formed_at: datetime
     context: str = ""
 
@@ -29,7 +29,7 @@ class KnowledgeObject:
     knowledge_id: str
     title: str
     content: str
-    source_experience_ids: List[str]
+    source_experience_ids: list[str]
     validity_score: float = 1.0
     version: str = "1.0"
 
@@ -37,16 +37,16 @@ class KnowledgeObject:
 @dataclass
 class AIOSMemory:
     # Memory layers (per AIOS_MEMORY_ARCHITECTURE.md)
-    short_term_memory: List[str] = field(default_factory=list)  # Minutes → Hours
-    operational_memory: List[str] = field(default_factory=list)  # Running processes
-    long_term_knowledge: Dict[str, KnowledgeObject] = field(default_factory=dict)
-    experience_ledger: List[Experience] = field(default_factory=list)
+    short_term_memory: list[str] = field(default_factory=list)  # Minutes → Hours
+    operational_memory: list[str] = field(default_factory=list)  # Running processes
+    long_term_knowledge: dict[str, KnowledgeObject] = field(default_factory=dict)
+    experience_ledger: list[Experience] = field(default_factory=list)
 
     def observe(self, observation: MemoryObservation) -> None:
         # Nothing changes silently (per AIOS_EVENT_SYSTEM.md principle)
         self.short_term_memory.append(observation.content)
 
-    def form_memory(self, observations: List[MemoryObservation], context: str = "") -> Experience:
+    def form_memory(self, observations: list[MemoryObservation], context: str = "") -> Experience:
         experience = Experience(
             experience_id=f"exp_{len(self.experience_ledger)}",
             observations=observations,

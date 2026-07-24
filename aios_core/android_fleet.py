@@ -11,7 +11,7 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 
-__all__ = ["DeviceRecord", "WaitlistEntry", "DevicePool"]
+__all__ = ["DevicePool", "DeviceRecord", "WaitlistEntry"]
 
 
 @dataclass

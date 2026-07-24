@@ -9,16 +9,15 @@ import pytest
 import yaml
 
 from aios_core.modules.instagram import InstagramStorage
-from aios_core.modules.olx.adb import ADBController
 from aios_core.platforms import (
     DevicePool,
     FleetScheduler,
     HintVideoParser,
     PlatformDescriptor,
     ReelsCollector,
+    load_catalog_file,
 )
 from aios_core.platforms import descriptor as descriptor_mod
-from aios_core.platforms import get_platform, load_catalog_file
 
 # ---------------------------------------------------------------------------
 # Fixtures

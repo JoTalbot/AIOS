@@ -1,6 +1,7 @@
 """Tests for Rozetka calibration recipe."""
 
 import pytest
+
 from aios_core.platforms import calibration_recipe
 
 

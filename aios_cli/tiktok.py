@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """AIOS CLI — TikTok platform commands."""
 
-import argparse
 import json
 
 

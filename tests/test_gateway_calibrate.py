@@ -8,9 +8,16 @@ import pytest_asyncio
 import yaml
 from httpx import ASGITransport, AsyncClient
 
-from aios_core.platforms import CalibrationAdvisor, ShardGateway, ShardHealthMonitor, ShardRouter
+from aios_core.platforms import (
+    CalibrationAdvisor,
+    ShardGateway,
+    ShardHealthMonitor,
+    ShardRouter,
+    get_platform,
+    hints_to_yaml_doc,
+    load_catalog_file,
+)
 from aios_core.platforms import descriptor as descriptor_mod
-from aios_core.platforms import get_platform, hints_to_yaml_doc, load_catalog_file
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

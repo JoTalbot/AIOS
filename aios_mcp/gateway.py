@@ -17,18 +17,16 @@ Every tools/call passes through ConstitutionGuard (7-phase evaluation).
 
 from __future__ import annotations
 
-import json
 import os
 import sys
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Optional
 
 # Ensure AIOS core is importable
 _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from aios_core.config import AIOSConfig, load_config
 from aios_core.runtime_policy import RuntimePolicy
 from aios_core.storage import Database
 
@@ -40,9 +38,7 @@ from .protocol import (
     JSONRPCRequest,
     JSONRPCResponse,
     MCPProtocol,
-    MCPResourceContent,
     MCPToolCall,
-    MCPToolResult,
 )
 from .resources import ResourceDefinition, ResourceRegistry
 from .tools import ToolDefinition, ToolRegistry
@@ -108,11 +104,11 @@ class ConstitutionGuard:
             "reason": result.get("reason", ""),
         }
 
-    def approve(self, approval_id: str) -> Optional[dict]:
+    def approve(self, approval_id: str) -> dict | None:
         """Approve a pending action."""
         return self.policy.approve(approval_id)
 
-    def deny(self, approval_id: str) -> Optional[dict]:
+    def deny(self, approval_id: str) -> dict | None:
         """Deny a pending action."""
         return self.policy.deny(approval_id)
 
@@ -155,7 +151,7 @@ class MCPGateway:
         )
     """
 
-    def __init__(self, config: Optional[GatewayConfig] = None, db: Optional[Database] = None):
+    def __init__(self, config: GatewayConfig | None = None, db: Database | None = None):
         self.config = config or GatewayConfig()
         self.protocol = MCPProtocol()
 
@@ -676,7 +672,7 @@ class MCPGateway:
     # Request handling
     # ------------------------------------------------------------------
 
-    def handle_request(self, raw: str) -> Optional[str]:
+    def handle_request(self, raw: str) -> str | None:
         """Handle a single JSON-RPC 2.0 request string.
 
         Args:

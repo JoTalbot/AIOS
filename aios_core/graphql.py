@@ -122,7 +122,7 @@ class GraphQLSchema:
                     result = resolver(context=context)
                 data[field_name] = result
             except Exception as e:
-                errors.append(f"Error resolving '{field_name}': {str(e)}")
+                errors.append(f"Error resolving '{field_name}': {e!s}")
 
         result: dict[str, Any] = {"data": data}
         if errors:

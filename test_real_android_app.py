@@ -97,7 +97,7 @@ def launch_app(package_name: str, device_id: str) -> bool:
     return success
 
 
-def get_current_activity(device_id: str) -> Optional[str]:
+def get_current_activity(device_id: str) -> str | None:
     success, output = run_adb_command(
         "shell dumpsys window | grep mCurrentFocus", device_id=device_id
     )
@@ -110,7 +110,7 @@ def get_current_activity(device_id: str) -> Optional[str]:
     return None
 
 
-def get_ui_dump(device_id: str) -> Optional[str]:
+def get_ui_dump(device_id: str) -> str | None:
     success, _ = run_adb_command("shell uiautomator dump /sdcard/ui_dump.xml", device_id=device_id)
     if not success:
         return None
@@ -131,7 +131,7 @@ def take_screenshot(device_id: str, output_path: str = "/tmp/screenshot.png") ->
     return False
 
 
-def search_on_olx(device_id: str, query: str, category: str = "all") -> Dict[str, Any]:
+def search_on_olx(device_id: str, query: str, category: str = "all") -> dict[str, Any]:
     start_time = time.time()
 
     if not check_app_installed("ua.slando", device_id) and not check_app_installed(
@@ -159,7 +159,7 @@ def search_on_olx(device_id: str, query: str, category: str = "all") -> Dict[str
             device_id=device_id,
         )
         if success and output:
-            run_adb_command(f"shell input tap 160 100", device_id=device_id)
+            run_adb_command("shell input tap 160 100", device_id=device_id)
             search_found = True
             break
 
@@ -206,7 +206,7 @@ def search_on_olx(device_id: str, query: str, category: str = "all") -> Dict[str
 
 def real_device_interaction(package_name: str, device_id: str):
     """Manual helper: Test real device interaction."""
-    print(f"\n=== Testing Real Device Interaction ===")
+    print("\n=== Testing Real Device Interaction ===")
     print(f"Package: {package_name}")
     print(f"Device: {device_id}")
 
@@ -215,17 +215,17 @@ def real_device_interaction(package_name: str, device_id: str):
         return False
 
     print(f"✅ App {package_name} is installed")
-    print(f"🚀 Launching app...")
+    print("🚀 Launching app...")
     if launch_app(package_name, device_id):
-        print(f"✅ App launched successfully")
+        print("✅ App launched successfully")
     else:
-        print(f"❌ Failed to launch app")
+        print("❌ Failed to launch app")
         return False
 
     current_activity = get_current_activity(device_id)
     print(f"📱 Current activity: {current_activity}")
 
-    print(f"📸 Getting UI hierarchy...")
+    print("📸 Getting UI hierarchy...")
     ui_dump = get_ui_dump(device_id)
     if ui_dump:
         print(f"✅ UI dump captured ({len(ui_dump)} bytes)")
@@ -233,15 +233,15 @@ def real_device_interaction(package_name: str, device_id: str):
             f.write(ui_dump)
         print(f"💾 Saved to /tmp/ui_dump_real_{package_name.replace('.', '_')}.xml")
     else:
-        print(f"⚠️  Could not capture UI dump")
+        print("⚠️  Could not capture UI dump")
 
-    print(f"📸 Taking screenshot...")
+    print("📸 Taking screenshot...")
     if take_screenshot(device_id):
-        print(f"✅ Screenshot saved to /tmp/screenshot.png")
+        print("✅ Screenshot saved to /tmp/screenshot.png")
     else:
-        print(f"⚠️  Could not take screenshot")
+        print("⚠️  Could not take screenshot")
 
-    print(f"🔍 Testing search on real device...")
+    print("🔍 Testing search on real device...")
     search_result = search_on_olx(device_id, "iPhone 13", "electronics")
     print(json.dumps(search_result, indent=2))
 
@@ -250,28 +250,31 @@ def real_device_interaction(package_name: str, device_id: str):
 
 def aios_integration_real(package_name: str):
     """Manual helper: Test AIOS integration with real app on emulator."""
-    print(f"\n=== Testing AIOS Integration (Real Device Mode) ===")
+    print("\n=== Testing AIOS Integration (Real Device Mode) ===")
 
     try:
-        from aios_core.android_rpa_bridge import AndroidRPADeviceEmulator, AndroidRPAManager
+        from aios_core.android_rpa_bridge import (
+            AndroidRPADeviceEmulator,
+            AndroidRPAManager,
+        )
 
         manager = AndroidRPAManager()
         url = f"https://play.google.com/store/apps/details?id={package_name}"
         parsed = manager.parse_play_store_url(url)
         print(f"🔗 Parsed package: {parsed}")
 
-        print(f"🔄 Converting app to API...")
+        print("🔄 Converting app to API...")
         profile = manager.convert_app_to_working_api(
             url, {"login": "test_user", "password": "password123"}, user_id="real_device_test"
         )
 
-        print(f"✅ App converted to API:")
+        print("✅ App converted to API:")
         print(f"   Package: {profile['app_package']}")
         print(f"   Status: {profile['automation_status']}")
         print(f"   User ID: {profile['user_id']}")
         print(f"   Endpoints: {len(profile['available_api_endpoints'])}")
 
-        print(f"\n🔍 Testing search on real emulator...")
+        print("\n🔍 Testing search on real emulator...")
         device_id = "emulator-5554"
         if device_id:
             real_emulator = AndroidRPADeviceEmulator(device_id=device_id)
@@ -338,7 +341,7 @@ def aios_integration_real(package_name: str):
         return True
 
     except Exception as e:
-        print(f"❌ Error testing AIOS integration: {str(e)}")
+        print(f"❌ Error testing AIOS integration: {e!s}")
         import traceback
 
         traceback.print_exc()
@@ -369,7 +372,7 @@ def main():
     args = parser.parse_args()
     package = args.package
 
-    print(f"🤖 AIOS Android RPA Bridge - Real App Testing")
+    print("🤖 AIOS Android RPA Bridge - Real App Testing")
     print(f"📦 Package: {package}")
 
     if not check_adb_available():
@@ -393,9 +396,9 @@ def main():
     success = aios_integration_real(package)
 
     if success:
-        print(f"\n🎉 All tests completed successfully!")
+        print("\n🎉 All tests completed successfully!")
     else:
-        print(f"\n❌ Some tests failed")
+        print("\n❌ Some tests failed")
         sys.exit(1)
 
 

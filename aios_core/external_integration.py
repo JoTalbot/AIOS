@@ -26,14 +26,14 @@ from .logging_config import setup_logging
 from .telemetry import MetricCounter, MetricHistogram
 
 __all__ = [
-    "WebhookConfig",
+    "ExternalIntegrationAPI",
+    "GraphQLAPI",
     "GraphQLConfig",
     "IntegrationMetrics",
-    "WebhookManager",
-    "GraphQLAPI",
-    "MessageQueueConnector",
     "KafkaConnector",
-    "ExternalIntegrationAPI",
+    "MessageQueueConnector",
+    "WebhookConfig",
+    "WebhookManager",
 ]
 
 
@@ -145,7 +145,7 @@ class WebhookManager:
                             )
 
             except Exception as e:
-                self.logger.error(f"Webhook attempt {attempt + 1} failed: {str(e)}")
+                self.logger.error(f"Webhook attempt {attempt + 1} failed: {e!s}")
 
             if attempt < self.config.retry_count - 1:
                 await asyncio.sleep(2**attempt)  # Exponential backoff
@@ -194,17 +194,14 @@ class MessageQueueConnector(ABC):
     @abstractmethod
     async def connect(self) -> bool:
         """Connect to message queue."""
-        pass
 
     @abstractmethod
     async def publish(self, topic: str, message: dict[str, Any]) -> bool:
         """Publish message to topic."""
-        pass
 
     @abstractmethod
     async def subscribe(self, topic: str, callback: Callable) -> None:
         """Subscribe to topic messages."""
-        pass
 
 
 class KafkaConnector(MessageQueueConnector):
@@ -223,7 +220,7 @@ class KafkaConnector(MessageQueueConnector):
             self.logger.info(f"Connected to Kafka: {self.bootstrap_servers}")
             return True
         except Exception as e:
-            self.logger.error(f"Failed to connect to Kafka: {str(e)}")
+            self.logger.error(f"Failed to connect to Kafka: {e!s}")
             return False
 
     async def publish(self, topic: str, message: dict[str, Any]) -> bool:
@@ -233,7 +230,7 @@ class KafkaConnector(MessageQueueConnector):
             self.logger.info(f"Published to {topic}: {message}")
             return True
         except Exception as e:
-            self.logger.error(f"Failed to publish to {topic}: {str(e)}")
+            self.logger.error(f"Failed to publish to {topic}: {e!s}")
             return False
 
     async def subscribe(self, topic: str, callback: Callable) -> None:
@@ -242,7 +239,7 @@ class KafkaConnector(MessageQueueConnector):
             # Implementation would use kafka-python or aiokafka
             self.logger.info(f"Subscribed to {topic}")
         except Exception as e:
-            self.logger.error(f"Failed to subscribe to {topic}: {str(e)}")
+            self.logger.error(f"Failed to subscribe to {topic}: {e!s}")
 
 
 class ExternalIntegrationAPI:

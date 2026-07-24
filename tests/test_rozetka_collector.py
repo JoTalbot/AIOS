@@ -1,15 +1,13 @@
 """Tests for Rozetka collector, card_parser, and detail scaffold."""
 
-import pytest
 from pathlib import Path
 
 from aios_core.modules.rozetka import (
-    RozetkaCollector,
     RozetkaCardParser,
+    RozetkaCollector,
     RozetkaDetailParser,
     RozetkaStorage,
 )
-
 
 # Use OLX-style card markers since RozetkaCardParser inherits CardParser
 # with rozetka-specific markers that will be set after calibration

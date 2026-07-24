@@ -7,18 +7,20 @@ Secrets Manager.
 from __future__ import annotations
 
 import os
-import time
-import pytest
+from datetime import datetime, timedelta
 
+import pytest
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. TASK SCHEDULER
 # ═══════════════════════════════════════════════════════════════════════════════
-
 from aios_core.task_scheduler import (
-    TaskPriority, TaskScheduleStatus, ScheduledTask, TaskScheduler, scheduler,
+    ScheduledTask,
+    TaskPriority,
+    TaskScheduler,
+    TaskScheduleStatus,
+    scheduler,
 )
-from datetime import datetime, timedelta
 
 
 class TestScheduledTask:
@@ -138,7 +140,7 @@ class TestTaskScheduler:
 # 2. EVENT STORE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from aios_core.event_store import Event, Snapshot, Projection, EventStore
+from aios_core.event_store import Event, EventStore
 
 
 class TestEventStore:
@@ -238,7 +240,10 @@ class TestEventStore:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from aios_core.observability import (
-    MetricKind, MetricEntry, Span, SpanEvent, LogEntry, Observability, observability,
+    MetricKind,
+    Observability,
+    Span,
+    observability,
 )
 
 
@@ -325,7 +330,7 @@ class TestObservability:
 # 4. EXPERIMENT TRACKING
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from aios_core.experiment_tracking import ExperimentStatus, Experiment, ExperimentTracker
+from aios_core.experiment_tracking import ExperimentStatus, ExperimentTracker
 
 
 class TestExperimentTracker:
@@ -440,7 +445,7 @@ class TestExperimentTracker:
 # 5. DATA LAKE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from aios_core.data_lake import Schema, Partition, DataLake
+from aios_core.data_lake import DataLake, Schema
 
 
 class TestSchema:
@@ -536,7 +541,7 @@ class TestDataLake:
 # 6. API VERSIONING
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from aios_core.api_versioning import VersionNegotiation, VersionRoute, APIVersioning, api_versioning
+from aios_core.api_versioning import APIVersioning, VersionNegotiation, api_versioning
 
 
 class TestVersionNegotiation:
@@ -627,7 +632,7 @@ class TestAPIVersioning:
 # 7. DIGITAL TWIN
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from aios_core.digital_twin import TwinProperty, SimulationOutcome, DigitalTwin
+from aios_core.digital_twin import DigitalTwin, SimulationOutcome
 
 
 class TestDigitalTwin:
@@ -701,7 +706,10 @@ class TestDigitalTwin:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from aios_core.compliance import (
-    ViolationSeverity, ComplianceRule, Violation, ComplianceScore, ComplianceFramework,
+    ComplianceFramework,
+    ComplianceRule,
+    Violation,
+    ViolationSeverity,
 )
 
 
@@ -783,7 +791,7 @@ class TestComplianceFramework:
 # 9. SECRETS MANAGER
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from aios_core.secrets import SecretVersion, RotationPolicy, SecretsManager, secrets
+from aios_core.secrets import SecretsManager, secrets
 
 
 class TestSecretsManager:

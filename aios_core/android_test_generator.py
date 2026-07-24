@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-__all__ = ["TestStep", "GeneratedTest", "AndroidTestGenerator"]
+__all__ = ["AndroidTestGenerator", "GeneratedTest", "TestStep"]
 
 
 @dataclass

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """AIOS CLI — Cross-platform comparison commands."""
 
-import argparse
 import json
 
 
@@ -175,9 +174,9 @@ def _run_advisor_v2(args) -> bool:
 
 def _run_search(args) -> bool:
     """Dispatch a vector search subcommand."""
-    from aios_core.vector_search import VectorSearchEngine
     from aios_core.modules.olx.storage import OLXStorage
     from aios_core.modules.rozetka.storage import RozetkaStorage
+    from aios_core.vector_search import VectorSearchEngine
 
     platform = args.platform
     db_path = getattr(args, "db", None)
@@ -205,7 +204,7 @@ def _run_search(args) -> bool:
 
 def _run_benchmarks(args) -> bool:
     """Dispatch a benchmarks subcommand."""
-    from aios_core.benchmarks_thresholds import get_threshold, check_threshold, all_thresholds
+    from aios_core.benchmarks_thresholds import all_thresholds, check_threshold
 
     if args.benchmarks_command == "list":
         configs = all_thresholds()

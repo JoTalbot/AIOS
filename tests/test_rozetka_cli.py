@@ -1,6 +1,7 @@
 """Tests for Rozetka CLI subcommand integration."""
 
 import json
+
 import pytest
 
 from aios_core.platforms import descriptor as descriptor_mod

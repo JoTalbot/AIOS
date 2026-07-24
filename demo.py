@@ -24,19 +24,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from aios_core import (
     AIOSAPI,
-    ConstitutionEngine,
-    ConstitutionLoader,
-    Database,
-    EvolutionManager,
-    KnowledgeGraph,
-    LearningEngine,
-    MemoryManager,
     Orchestrator,
-    ReasoningEngine,
-    StepStatus,
-    TaskStatus,
     TestEngine,
-    create_app,
 )
 
 
@@ -245,7 +234,7 @@ def demo_task_orchestration():
 
     # Show final stats
     stats = orch.stats()
-    print(f"\nSystem stats:")
+    print("\nSystem stats:")
     print(f"  Memory: {stats['subsystems']['memory']['total']} items")
     print(f"  Knowledge: {stats['subsystems']['knowledge']['nodes']} nodes")
     print(f"  Learning: {stats['subsystems']['learning']['total_experiences']} experiences")
@@ -457,7 +446,7 @@ def demo_mcp_gateway():
     }"""
     resp = gateway.handle_request(eval_req)
     data = json.loads(resp)
-    print(f"\nTool call result:")
+    print("\nTool call result:")
     print(f"  {json.dumps(data['result'], indent=2)[:300]}...")
 
     # Get stats

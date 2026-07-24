@@ -1,15 +1,11 @@
 """Dedicated tests for v10.12 semi-stub module conversions (27 modules)."""
 
-import asyncio
-import json
-import math
-import os
-import time
-import tempfile
 import logging
+import os
+import tempfile
+import time
 
 import pytest
-
 
 # ======================================================================
 # multitenancy
@@ -282,7 +278,7 @@ class TestInfiniteConstitution:
 
 class TestMigrationManager:
     def setup_method(self):
-        from aios_core.migration import MigrationManager, Migration
+        from aios_core.migration import MigrationManager
         self.mgr = MigrationManager(db_path="/tmp/test_aios_migration.db")
 
     def test_add_migration(self):
@@ -466,7 +462,7 @@ class TestAsyncEventBus:
 
 class TestWebSocketManager:
     def setup_method(self):
-        from aios_core.websocket import WebSocketManager, ConnectionInfo
+        from aios_core.websocket import WebSocketManager
         self.mgr = WebSocketManager()
 
     def test_stats_initial(self):
@@ -503,7 +499,7 @@ class TestWebSocketManager:
 
 class TestScenarioRecorder:
     def setup_method(self):
-        from aios_core.android_recorder import ScenarioRecorder, RecordedStep
+        from aios_core.android_recorder import ScenarioRecorder
         self.rec = ScenarioRecorder(package="ua.slando", device_id="emulator")
 
     def test_record_step(self):
@@ -618,7 +614,7 @@ class TestCosmicSwarmMatrix:
 
 class TestPluginManager:
     def setup_method(self):
-        from aios_core.plugin_manager import PluginManager, PluginInfo
+        from aios_core.plugin_manager import PluginManager
         self.pm = PluginManager()
 
     def test_register_plugin(self):
@@ -743,21 +739,21 @@ class TestAndroidDriver:
         assert isinstance(devices, list)
 
     def test_driver_pool(self):
-        from aios_core.android_driver import DriverPool, ADBDriver, DriverCapabilities
+        from aios_core.android_driver import ADBDriver, DriverCapabilities, DriverPool
         pool = DriverPool()
         driver = ADBDriver(capabilities=DriverCapabilities())
         pool.add_driver("device1", driver)
         assert pool.get_driver("device1") is not None
 
     def test_driver_pool_dispatch(self):
-        from aios_core.android_driver import DriverPool, ADBDriver
+        from aios_core.android_driver import ADBDriver, DriverPool
         pool = DriverPool()
         pool.add_driver("d1", ADBDriver())
         d = pool.dispatch("round_robin")
         assert d is not None
 
     def test_driver_pool_stats(self):
-        from aios_core.android_driver import DriverPool, ADBDriver
+        from aios_core.android_driver import ADBDriver, DriverPool
         pool = DriverPool()
         pool.add_driver("d1", ADBDriver())
         s = pool.stats()
@@ -769,7 +765,7 @@ class TestAndroidDriver:
         assert wrapper.capabilities is not None
 
     def test_remove_driver_from_pool(self):
-        from aios_core.android_driver import DriverPool, ADBDriver
+        from aios_core.android_driver import ADBDriver, DriverPool
         pool = DriverPool()
         pool.add_driver("d1", ADBDriver())
         assert pool.remove_driver("d1") is True
@@ -865,12 +861,12 @@ class TestLoggingConfig:
         assert isinstance(output, str)
 
     def test_set_log_context(self):
-        from aios_core.logging_config import set_log_context, _ctx_agent_id
+        from aios_core.logging_config import _ctx_agent_id, set_log_context
         set_log_context(agent_id="agent42")
         assert _ctx_agent_id.get() == "agent42"
 
     def test_clear_log_context(self):
-        from aios_core.logging_config import clear_log_context, _ctx_agent_id
+        from aios_core.logging_config import _ctx_agent_id, clear_log_context
         clear_log_context()
         assert _ctx_agent_id.get() == "system"
 
@@ -1128,7 +1124,7 @@ class TestAsyncCore:
 
 class TestAndroidRegistry:
     def setup_method(self):
-        from aios_core.android_registry import AndroidAppRegistry, AndroidAppDescriptor
+        from aios_core.android_registry import AndroidAppDescriptor, AndroidAppRegistry
         self.reg = AndroidAppRegistry()
         self.Desc = AndroidAppDescriptor
 
@@ -1175,7 +1171,7 @@ class TestAndroidRegistry:
 
 class TestSubstrateConvergence:
     def setup_method(self):
-        from aios_core.substrate_convergence import SubstrateConvergenceEngine, SubstrateType
+        from aios_core.substrate_convergence import SubstrateConvergenceEngine
         self.engine = SubstrateConvergenceEngine()
 
     def test_select_optimal_substrate(self):
@@ -1236,7 +1232,7 @@ class TestSubstrateConvergence:
 
 class TestUniversalInvariantProver:
     def setup_method(self):
-        from aios_core.universal_invariant_prover import UniversalInvariantProver, SafetyInvariant
+        from aios_core.universal_invariant_prover import UniversalInvariantProver
         self.prover = UniversalInvariantProver()
 
     def test_prove_safe_transition(self):
@@ -1297,7 +1293,6 @@ class TestUniversalInvariantProver:
 class TestMLPlannerScorer:
     def setup_method(self):
         from aios_core.ml_planner_scorer import MLPlannerScorer
-        from aios_core.planner import Plan, PlanStep, Planner
         self.scorer = MLPlannerScorer()
 
     def _make_plan(self):

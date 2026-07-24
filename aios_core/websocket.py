@@ -22,7 +22,7 @@ _STARLETTE_AVAILABLE = True
 class ConnectionInfo:
     """Metadata tracked per connected WebSocket client."""
 
-    __slots__ = ("ws", "connected_at", "topics", "last_ping", "client_id")
+    __slots__ = ("client_id", "connected_at", "last_ping", "topics", "ws")
 
     def __init__(self, ws: WebSocket, client_id: str = ""):
         self.ws = ws

@@ -314,7 +314,7 @@ class OLXBootstrap:
                 )
 
         try:
-            import aios_core.modules.olx  # noqa: F401
+            import aios_core.modules.olx
 
             checks.append(DoctorCheck("python_module", True))
         except Exception as exc:

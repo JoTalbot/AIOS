@@ -1,7 +1,8 @@
 """AIOS CLI sub-commands — backward-compat re-exports."""
 
 # Import from the sibling aios_cli.py file at project root
-import sys, os, importlib.util
+import importlib.util
+import os
 
 # The main CLI module is at PROJECT_ROOT/aios_cli.py (not inside this package)
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

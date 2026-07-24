@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """AIOS CLI — WhatsApp/Viber messenger commands."""
 
-import argparse
 import json
 
 
@@ -61,7 +60,12 @@ def _add_messenger_v2_parsers(subparsers) -> None:
 
 def _run_whatsapp_v2(args) -> bool:
     """Dispatch WhatsApp v2 subcommand."""
-    from aios_core.modules.whatsapp import WhatsAppStorage, ContactManager, BroadcastScheduler, ChatAnalyzer
+    from aios_core.modules.whatsapp import (
+        BroadcastScheduler,
+        ChatAnalyzer,
+        ContactManager,
+        WhatsAppStorage,
+    )
 
     db = getattr(args, "db", None) or ":memory:"
     storage = WhatsAppStorage(db)
@@ -93,7 +97,9 @@ def _run_whatsapp_v2(args) -> bool:
         elif args.broadcast_command == "list":
             status = None
             if args.status:
-                from aios_core.modules.whatsapp.broadcast_scheduler import BroadcastStatus
+                from aios_core.modules.whatsapp.broadcast_scheduler import (
+                    BroadcastStatus,
+                )
                 status = BroadcastStatus(args.status)
             broadcasts = scheduler.list_broadcasts(status=status)
             print(json.dumps([b.to_dict() for b in broadcasts], indent=2))
@@ -111,7 +117,11 @@ def _run_whatsapp_v2(args) -> bool:
 
 def _run_viber_v2(args) -> bool:
     """Dispatch Viber v2 subcommand."""
-    from aios_core.modules.viber import ViberStorage, ViberContactManager, ViberChatAnalyzer
+    from aios_core.modules.viber import (
+        ViberChatAnalyzer,
+        ViberContactManager,
+        ViberStorage,
+    )
 
     db = getattr(args, "db", None) or ":memory:"
     storage = ViberStorage(db)

@@ -1,6 +1,5 @@
 """Tests for RateLimiter memory leak fix and bounded cleanup."""
 
-import pytest
 from aios_core.rate_limiter import RateLimiter
 
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """AIOS CLI — Instagram agent commands."""
 
-import argparse
 import json
-import os
 from pathlib import Path
+
+
 def _lazy_import(module_path: str, attr: str = None):
     """Import module on first use and cache result."""
     key = (module_path, attr)
@@ -353,7 +353,10 @@ def _run_instagram(args) -> bool:
             return True
 
         if cmd == "login-drive":
-            from aios_core.modules.instagram import InstagramLoginDriver, login_screen_detected
+            from aios_core.modules.instagram import (
+                InstagramLoginDriver,
+                login_screen_detected,
+            )
             from aios_core.modules.olx.adb import ADBController
             from aios_core.platforms import parser_for
             from aios_core.platforms.pointdrive import PointDrive

@@ -14,12 +14,12 @@ from dataclasses import dataclass
 from typing import Any
 
 __all__ = [
-    "UIElement",
-    "SearchResult",
     "ItemDetails",
-    "UIAutomatorParser",
     "RealDeviceExecutor",
+    "SearchResult",
     "SlandoScreenClassifier",
+    "UIAutomatorParser",
+    "UIElement",
 ]
 
 
