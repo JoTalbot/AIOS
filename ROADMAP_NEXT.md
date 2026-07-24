@@ -55,12 +55,15 @@
 
 **1364 tests, 0 failures**
 
-## v9.9.0 (planned)
-- Price prediction ML model (linear → polynomial regression → LSTM)
-- Smart notification routing (email, Telegram, Slack, Push)
-- Product image comparison (CV-based similarity)
-- Seller reputation scoring
-- Geospatial price heatmap (city-level pricing analysis)
+## v9.9.0 ✅ (2026-07-24)
+- ✅ Smart notification routing (email, Telegram, Slack, Push, webhook) with severity-based filtering
+- ✅ Seller reputation scoring (activity 40%, price consistency 30%, quality 20%, response 10%, A-F grades)
+- ✅ Geospatial price heatmap (city-level pricing analysis + arbitrage detection)
+- ✅ Bigl/Prom/Shafa upgrade from scaffold → full agents (collector, price_tracker, autowatch, favorites)
+- ✅ 40 new tests (1404 total, 0 failures)
+- ✅ RELEASE_NOTES_9.9.0.md + GitHub Release v9.9.0
+
+**1404 tests, 0 failures**
 
 ## v10.0.0 (long-term)
 - Sovereign AGI reflection engine → metacognitive goal audit
