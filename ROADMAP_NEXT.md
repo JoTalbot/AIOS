@@ -1,6 +1,15 @@
 # AIOS Roadmap — Next Milestones
 
-## v10.1.0 ✅ (2026-07-24)
+## v10.4.0 ✅ (2026-07-24)
+- ✅ Feature Flags System (rollout strategies, targeting rules, variants, dependencies, lifecycle, metrics, audit)
+- ✅ RBAC System (role hierarchy, resource permissions, policies, constraints, audit trail)
+- ✅ Workflow Engine (DAG execution, parallel steps, condition gates, retry policies, compensation/saga, templates)
+- ✅ 212 new tests (1882 total, 0 failures)
+- ✅ RELEASE_NOTES_10.4.0.md
+
+**1882 tests, 0 failures**
+
+## v10.3.0 ✅ (2026-07-24)
 - ✅ A/B Testing Engine (experiment lifecycle, chi-square/t-test, auto-completion)
 - ✅ Knowledge Graph (triples, path finding, inference, API-compatible methods)
 - ✅ Auto-Tuning Engine (grid/random/hill-climbing/adaptive optimization)
@@ -200,3 +209,10 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 9.5.0 | 2026-07-24 | 1254 | Rozetka.ua scaffold + agent + RateLimiter leak fix |
 | 9.6.0 | 2026-07-24 | 1291 | Rozetka price tracker + AutoWatch + favorites + auto-login |
 | 9.7.0 | 2026-07-24 | 1327 | Cross-platform comparator + AI v2 + vector search + WebSocket + benchmarks thresholds |
+| 9.8.0 | 2026-07-24 | 1364 | TikTok Shop + Facebook Marketplace + WhatsApp/Viber enhanced |
+| 9.9.0 | 2026-07-24 | 1404 | Notification router + Seller reputation + Geospatial heatmap + Bigl/Prom/Shafa |
+| 10.0.0 | 2026-07-24 | 1514 | Price prediction ML + Image comparison + Fleet scheduler |
+| 10.1.0 | 2026-07-24 | 1558 | AB testing + Knowledge graph + Auto-tuning + async fixes |
+| 10.2.0 | 2026-07-24 | 1616 | Credential manager + Price alert system + Scraping templates |
+| 10.3.0 | 2026-07-24 | 1670 | Agent memory + Platform health monitor + Export/import pipeline |
+| 10.4.0 | 2026-07-24 | 1882 | Feature flags + RBAC + Workflow engine (DAG, saga, retry) |
