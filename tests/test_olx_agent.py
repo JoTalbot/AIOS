@@ -5,7 +5,7 @@ artifacts are git-ignored in this repository as OLX debug files.
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 
 from aios_core.modules.olx import (
     AdCard,

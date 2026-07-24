@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import json
 import os
-import sqlite3
 
-import pytest
-
-from aios_core.orchestrator import Orchestrator, Task, TaskStep, TaskStatus
-from aios_core.planner import Plan, PlanEdge, PlanStep, PlanStatus, Planner, StepStatus
+from aios_core.orchestrator import Orchestrator, TaskStatus
+from aios_core.planner import Planner, PlanStatus, StepStatus
 from aios_core.storage import Database
 
 
@@ -417,8 +414,8 @@ class TestDashboardIntegration:
 
     def test_dashboard_route_in_api(self):
         """Test /dashboard route is registered in main API routes."""
-        from aios_core.api.routes import register_routes
         from aios_core.api.app import AIOSAPI
+        from aios_core.api.routes import register_routes
 
         api = AIOSAPI(db_path=":memory:", auth_required=False)
         routes = register_routes(api)
@@ -427,10 +424,9 @@ class TestDashboardIntegration:
 
     def test_dashboard_index_serves_react(self):
         """Test that AIOSDashboard.index serves the React v3 HTML."""
+
         from aios_core.dashboard import AIOSDashboard
         from aios_core.orchestrator import Orchestrator
-        from pathlib import Path
-        import asyncio
 
         orch = Orchestrator()
         dash = AIOSDashboard(orch)

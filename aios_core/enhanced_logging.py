@@ -14,7 +14,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 __all__ = [
@@ -165,7 +165,7 @@ class EnhancedJSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON."""
         log_data = {
-            "timestamp": datetime.fromtimestamp(record.created).isoformat(),
+            "timestamp": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -218,7 +218,7 @@ class LogAggregator:
 
             payload = {
                 "logs": logs,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "source": "aios",
             }
 
@@ -249,7 +249,7 @@ class LogAggregator:
 
             payload = {
                 "logs": logs,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "source": "aios",
             }
 

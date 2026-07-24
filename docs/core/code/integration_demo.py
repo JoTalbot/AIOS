@@ -24,7 +24,7 @@ from orchestrator_architecture import (
 def run_autonomous_cycle(goal: str = "observe_application"):
     # 1. Initialize agent
     agent = Agent(
-        identity=AgentIdentity("agent_demo_01", "autonomous_agent", datetime.datetime.now()),
+        identity=AgentIdentity("agent_demo_01", "autonomous_agent", datetime.datetime.datetime.now(datetime.timezone.utc)),
         goals=[goal, "learn_from_experience"],
         capabilities=[
             Capability("cap_obs_01", "application_observation", "observe app behavior"),
@@ -44,7 +44,7 @@ def run_autonomous_cycle(goal: str = "observe_application"):
     memory = AIOSMemory()
     obs = MemoryObservation(
         observation_id="obs_demo_01",
-        timestamp=datetime.datetime.now(),
+        timestamp=datetime.datetime.datetime.now(datetime.timezone.utc),
         content=observation_content,
         source_agent_id=agent.identity.agent_id,
     )

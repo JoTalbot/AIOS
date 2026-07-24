@@ -8,10 +8,8 @@ Extracted to keep ``app.py`` under 500 lines.
 
 import json
 
-from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from starlette.responses import HTMLResponse, JSONResponse
 from starlette.routing import Route, WebSocketRoute
-
-from aios_core.dashboard import AIOSDashboard
 
 
 def _dashboard_html(api) -> str:

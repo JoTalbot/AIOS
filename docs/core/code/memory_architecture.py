@@ -4,7 +4,7 @@ Autonomous memory system for AIOS. Without Octopus integration (~/agents/).
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 @dataclass
@@ -49,7 +49,7 @@ class AIOSMemory:
         experience = Experience(
             experience_id=f"exp_{len(self.experience_ledger)}",
             observations=observations,
-            formed_at=datetime.now(),
+            formed_at=datetime.now(UTC),
             context=context,
         )
         self.experience_ledger.append(experience)
