@@ -1,5 +1,6 @@
 """Performance tests for AIOS API endpoints."""
 
+import asyncio
 import statistics
 import time
 
@@ -14,6 +15,8 @@ from starlette.routing import Route
 
 class TestAPIPerformance:
     """Performance benchmarks for critical API endpoints."""
+
+    pytestmark = pytest.mark.asyncio
 
     @pytest.fixture
     def simple_app(self):
@@ -132,25 +135,18 @@ test_gauge 42.5
         assert p95 < 200, f"P95 latency {p95:.2f}ms > 200ms"
 
     async def test_concurrent_requests(self, client):
-        """Test handling of concurrent requests."""
-        import concurrent.futures
+        """Test handling of concurrent asynchronous requests."""
 
-        def make_request():
+        async def make_request() -> float:
             start = time.perf_counter()
-            await client.get("/health")
-            latency = (time.perf_counter() - start) * 1000
-            return latency
+            response = await client.get("/health")
+            assert response.status_code == 200
+            return (time.perf_counter() - start) * 1000
 
-        # Make 50 concurrent requests
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(make_request) for _ in range(50)]
-            latencies = [f.result() for f in futures]
-
-        # Analyze
+        latencies = await asyncio.gather(*(make_request() for _ in range(50)))
         avg_latency = statistics.mean(latencies)
         p95 = sorted(latencies)[int(len(latencies) * 0.95)]
 
-        # Should handle concurrent load
         assert avg_latency < 200, f"Average latency under load {avg_latency:.2f}ms > 200ms"
         assert p95 < 500, f"P95 latency under load {p95:.2f}ms > 500ms"
 
@@ -246,7 +242,7 @@ class TestDatabasePerformance:
         conn.close()
         return str(db_path)
 
-    async def test_query_performance_with_index(self, large_db, tmp_path):
+    def test_query_performance_with_index(self, large_db, tmp_path):
         """Test query performance with indexed data."""
         import sqlite3
 
@@ -267,7 +263,7 @@ class TestDatabasePerformance:
 
         conn.close()
 
-    async def test_insert_performance(self, tmp_path):
+    def test_insert_performance(self, tmp_path):
         """Test bulk insert performance."""
         import sqlite3
 
