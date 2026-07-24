@@ -15,9 +15,11 @@ class WebSocketManager:
     """Manages WebSocket connections for real-time updates."""
 
     def __init__(self):
+        """Initialize WebSocketManager."""
         self.active_connections: Set[WebSocket] = set()
 
     async def connect(self, websocket: WebSocket) -> None:
+        """connect."""
         await websocket.accept()
         self.active_connections.add(websocket)
 
@@ -38,6 +40,7 @@ class WebSocketManager:
             self.active_connections.discard(conn)
 
     async def send_event(self, event_type: str, data: Any) -> None:
+        """send event."""
         await self.broadcast(
             {
                 "type": event_type,

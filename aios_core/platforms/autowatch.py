@@ -64,6 +64,7 @@ class _DrivenCollector:
     """Обёртка движка OLXCollector с pre-drive навигацией на запрос."""
 
     def __init__(self, adb, parser, driver=None, package: str = "", max_swipes: int = 40):
+        """Initialize _DrivenCollector."""
         self._adb = adb
         self._parser = parser
         self._driver = driver

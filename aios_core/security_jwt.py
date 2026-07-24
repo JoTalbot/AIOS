@@ -10,6 +10,7 @@ class JWTManager:
     """Simple JWT token manager."""
 
     def __init__(self, secret: str = "aios-secret-key", algorithm: str = "HS256"):
+        """Initialize JWTManager."""
         self.secret = secret
         self.algorithm = algorithm
 

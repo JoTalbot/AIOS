@@ -140,6 +140,7 @@ class ProfileEditor:
     """Prepares and (on confirmation) executes profile/settings edits."""
 
     def __init__(self, adb: Optional[ADBController] = None):
+        """Initialize ProfileEditor."""
         self.adb = adb or ADBController()
 
     @staticmethod

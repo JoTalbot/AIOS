@@ -7,6 +7,7 @@ class Category:
     """Abstract category with objects and morphisms."""
 
     def __init__(self, name: str):
+        """Initialize Category."""
         self.name = name
         self.objects: set = set()
         self.morphisms: Dict = {}
@@ -32,6 +33,7 @@ class Functor:
     """Functor between categories."""
 
     def __init__(self, source: Category, target: Category, mapping: Callable):
+        """Initialize Functor."""
         self.source = source
         self.target = target
         self.mapping = mapping

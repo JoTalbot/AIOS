@@ -56,6 +56,7 @@ class MonitoringMetrics:
     """Enhanced metrics for monitoring system."""
 
     def __init__(self):
+        """Initialize MonitoringMetrics."""
         self.alerts_triggered = MetricCounter("alerts_triggered", "Total alerts triggered")
         self.alerts_resolved = MetricCounter("alerts_resolved", "Total alerts resolved")
         self.dashboard_requests = MetricCounter("dashboard_requests", "Total dashboard requests")
@@ -87,6 +88,7 @@ class AlertManager:
     """Manages alerting system."""
 
     def __init__(self):
+        """Initialize AlertManager."""
         self.rules: Dict[str, AlertRule] = {}
         self.active_alerts: Dict[str, dict[str, Any]] = {}
         self.metrics = MonitoringMetrics()
@@ -160,6 +162,7 @@ class DashboardManager:
     """Manages dashboards and real-time data."""
 
     def __init__(self):
+        """Initialize DashboardManager."""
         self.dashboards: Dict[str, DashboardConfig] = {}
         self.metrics = MonitoringMetrics()
         self.logger = logging.getLogger("aios.dashboards")
@@ -236,6 +239,7 @@ class MonitoringAPI:
     """Main API for monitoring and observability."""
 
     def __init__(self):
+        """Initialize MonitoringAPI."""
         self.alert_manager = AlertManager()
         self.dashboard_manager = DashboardManager()
         self.metrics = MonitoringMetrics()

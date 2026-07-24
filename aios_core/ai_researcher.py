@@ -9,6 +9,7 @@ class AIResearcher:
     """Automated research paper writing and peer-review agent."""
 
     def __init__(self):
+        """Initialize AIResearcher."""
         self.papers: List[Dict] = []
 
     def write_paper(self, topic: str, experiments: List[Dict]) -> Dict:

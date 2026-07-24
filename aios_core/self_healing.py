@@ -16,6 +16,7 @@ class SelfHealing:
     """
 
     def __init__(self):
+        """Initialize SelfHealing."""
         self.recovery_strategies: Dict[str, Callable] = {}
 
     def register_strategy(self, error_type: str, strategy: Callable) -> None:

@@ -7,6 +7,7 @@ class QuantumConsciousnessSimulator:
     """Theoretical quantum consciousness model (Penrose-Hameroff style)."""
 
     def __init__(self):
+        """Initialize QuantumConsciousnessSimulator."""
         self.microtubules: int = 0
         self.coherence_time: float = 0.0
 

@@ -7,6 +7,7 @@ class QuantumErrorCorrection:
     """Basic quantum error correction codes."""
 
     def __init__(self):
+        """Initialize QuantumErrorCorrection."""
         self.codes = {"repetition": 3, "surface": 9}
 
     def encode(self, logical_qubit: int, code: str = "repetition") -> list[int]:

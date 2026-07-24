@@ -8,6 +8,7 @@ class QuantumNeuralNetwork:
     """Variational Quantum Neural Network."""
 
     def __init__(self, qubits: int = 4, layers: int = 3):
+        """Initialize QuantumNeuralNetwork."""
         self.qubits = qubits
         self.layers = layers
         self.params = [random.uniform(0, 2 * 3.14) for _ in range(qubits * layers)]

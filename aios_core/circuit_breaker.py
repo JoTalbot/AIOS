@@ -8,6 +8,7 @@ __all__ = ["CircuitState", "CircuitBreaker"]
 
 
 class CircuitState(Enum):
+    """CircuitState."""
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
@@ -18,6 +19,7 @@ class CircuitBreaker:
     __slots__ = ('failure_threshold', 'recovery_timeout', 'failure_count', 'last_failure_time', 'state')
 
     def __init__(self, failure_threshold: int = 5, recovery_timeout: int = 30):
+        """Initialize CircuitBreaker."""
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
         self.failure_count = 0

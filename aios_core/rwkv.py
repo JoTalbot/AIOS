@@ -7,6 +7,7 @@ class RWKVBlock:
     """Simplified RWKV block."""
 
     def __init__(self, dim: int = 512):
+        """Initialize RWKVBlock."""
         self.dim = dim
         self.wkv_state = [0.0] * dim
 
@@ -26,6 +27,7 @@ class RWKV:
     """RWKV architecture (RNN-like Transformer alternative)."""
 
     def __init__(self, layers: int = 12, dim: int = 512):
+        """Initialize RWKV."""
         self.blocks = [RWKVBlock(dim) for _ in range(layers)]
 
     def forward(self, x: list[float]) -> list[float]:

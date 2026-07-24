@@ -9,6 +9,7 @@ class ConstitutionalAI:
     """AI that follows a written constitution."""
 
     def __init__(self, constitution: list[str] = None):
+        """Initialize ConstitutionalAI."""
         self.constitution = constitution or [
             "Be helpful and harmless",
             "Respect human autonomy",

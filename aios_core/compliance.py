@@ -7,6 +7,7 @@ class ComplianceFramework:
     """Basic compliance checker (GDPR, SOC2, etc.)."""
 
     def __init__(self):
+        """Initialize ComplianceFramework."""
         self.policies: Dict[str, list[str]] = {
             "gdpr": ["data_minimization", "consent", "right_to_be_forgotten"],
             "soc2": ["security", "availability", "confidentiality"],

@@ -34,6 +34,7 @@ __all__ = ["ProductionProfile", "ProductionConfig", "CycleReport", "DailyReport"
 
 @dataclass
 class ProductionProfile:
+    """ProductionProfile."""
     platform: str
     name: str  # unique profile name e.g., ig_shop_1
     device_serial: str | None = None
@@ -62,6 +63,7 @@ class ProductionProfile:
 
 @dataclass
 class ProductionConfig:
+    """ProductionConfig."""
     profiles: List[ProductionProfile] = field(default_factory=list)
     device_pool_size: int = 3
     shard_hosts: list[str] = field(default_factory=lambda: ["shard-1"])
@@ -143,6 +145,7 @@ class ProductionConfig:
 
 @dataclass
 class CycleReport:
+    """CycleReport."""
     profile_key: str
     started_at: float
     finished_at: float
@@ -178,6 +181,7 @@ class CycleReport:
 
 @dataclass
 class DailyReport:
+    """DailyReport."""
     date: str
     total_cycles: int
     total_actions: int
@@ -214,6 +218,7 @@ class ProductionAutopilot:
         knowledge: Optional[Any] = None,
         fast_mode: bool = False,
     ) -> None:
+        """Initialize ProductionAutopilot."""
         self.config = config
         self.device_pool = device_pool
         self.memory = memory

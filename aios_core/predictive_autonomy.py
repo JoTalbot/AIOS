@@ -14,6 +14,7 @@ class PredictiveAutonomyRegulator:
     """Predictive Autonomy Regulator that dynamically bounds agent execution scope."""
 
     def __init__(self, high_risk_threshold: float = 0.6, critical_risk_threshold: float = 0.85):
+        """Initialize PredictiveAutonomyRegulator."""
         self.high_risk_threshold = high_risk_threshold
         self.critical_risk_threshold = critical_risk_threshold
         self.history: List[dict[str, Any]] = []

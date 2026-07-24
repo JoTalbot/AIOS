@@ -8,6 +8,7 @@ class TimeSeriesAnalyzer:
     """Basic time series analysis and forecasting."""
 
     def __init__(self):
+        """Initialize TimeSeriesAnalyzer."""
         self.series: Dict[str, list[float]] = {}
 
     def add_data(self, series_name: str, value: float) -> None:

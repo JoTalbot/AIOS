@@ -20,6 +20,7 @@ class AndroidRPADeviceEmulator:
     """Simulated or Live ADB/UIAutomator Bridge for Android Emulator."""
 
     def __init__(self, device_id: str = "emulator-5554", real_execution: bool = False):
+        """Initialize AndroidRPADeviceEmulator."""
         self.device_id = device_id
         self.active_package: str | None = None
         self.authenticated_sessions: Dict[str, dict[str, Any]] = {}
@@ -146,6 +147,7 @@ class AndroidRPAManager:
     """Main Orchestrator converting Google Play App links into full API profiles."""
 
     def __init__(self):
+        """Initialize AndroidRPAManager."""
         self.emulator = AndroidRPADeviceEmulator()
         self.registered_app_apis: Dict[str, dict[str, Any]] = {}
 

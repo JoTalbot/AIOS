@@ -7,6 +7,7 @@ class RAGSystem:
     """Retrieval-Augmented Generation pipeline."""
 
     def __init__(self, vector_store):
+        """Initialize RAGSystem."""
         self.vector_store = vector_store
         self.documents: List[Dict] = []
 

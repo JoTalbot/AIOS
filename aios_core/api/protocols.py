@@ -57,6 +57,7 @@ class ProtocolAdapter:
     """Base adapter for different communication protocols."""
 
     def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
+        """Initialize ProtocolAdapter."""
         self.config = config
         self.integration_manager = integration_manager
         self.metrics = {
@@ -87,6 +88,7 @@ class WebSocketAdapter(ProtocolAdapter):
     """WebSocket protocol adapter."""
 
     def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
+        """Initialize WebSocketAdapter."""
         super().__init__(config, integration_manager)
         self.server = None
         self.clients = {}
@@ -97,6 +99,7 @@ class WebSocketAdapter(ProtocolAdapter):
         self._running = True
 
         async def websocket_handler(websocket, path) -> None:
+            """websocket handler."""
             connection_id = str(uuid.uuid4())
             self.clients[connection_id] = websocket
             self.metrics["connections"].add(1)
@@ -172,6 +175,7 @@ class GraphQLAdapter(ProtocolAdapter):
     """GraphQL protocol adapter."""
 
     def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
+        """Initialize GraphQLAdapter."""
         super().__init__(config, integration_manager)
         self.schema = self._create_schema()
 
@@ -255,6 +259,7 @@ class GrpcAdapter(ProtocolAdapter):
     """gRPC protocol adapter."""
 
     def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
+        """Initialize GrpcAdapter."""
         super().__init__(config, integration_manager)
         self.server = None
 
@@ -262,6 +267,7 @@ class GrpcAdapter(ProtocolAdapter):
         """Start gRPC server."""
 
         class IntegrationService(grpc.aio.GenericService):
+            """IntegrationService."""
             async def ProcessEvent(self, request, context) -> None:
                 """gRPC RPC for processing events."""
                 try:
@@ -303,6 +309,7 @@ class SSEAdapter(ProtocolAdapter):
     """Server-Sent Events adapter."""
 
     def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
+        """Initialize SSEAdapter."""
         super().__init__(config, integration_manager)
         self.connections = {}
         self._running = False
@@ -360,6 +367,7 @@ class MessageQueueAdapter(ProtocolAdapter):
     """Message Queue adapter (RabbitMQ, Kafka, etc.)."""
 
     def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
+        """Initialize MessageQueueAdapter."""
         super().__init__(config, integration_manager)
         self.queue_config = config.kwargs
         self.consumer = None
@@ -427,6 +435,7 @@ class ProtocolManager:
     """Manages multiple protocol adapters."""
 
     def __init__(self, integration_manager: ExternalIntegrationManager):
+        """Initialize ProtocolManager."""
         self.integration_manager = integration_manager
         self.adapters: Dict[str, ProtocolAdapter] = {}
         self._running = False

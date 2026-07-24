@@ -4,7 +4,9 @@ from typing import Any, Dict
 
 
 class Tenant:
+    """Tenant."""
     def __init__(self, tenant_id: str, name: str):
+        """Initialize Tenant."""
         self.tenant_id = tenant_id
         self.name = name
         self.config: dict[str, Any] = {}
@@ -24,6 +26,7 @@ class MultiTenantManager:
     """Manages multiple tenants in one AIOS instance."""
 
     def __init__(self):
+        """Initialize MultiTenantManager."""
         self.tenants: Dict[str, Tenant] = {}
 
     def create_tenant(self, tenant_id: str, name: str) -> Tenant:

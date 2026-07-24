@@ -9,6 +9,7 @@ class VectorStore:
     """Simple in-memory vector store with cosine similarity."""
 
     def __init__(self):
+        """Initialize VectorStore."""
         self.vectors: Dict[str, np.ndarray] = {}
         self.metadata: dict[str, dict] = {}
 

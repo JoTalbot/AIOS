@@ -7,6 +7,7 @@ class TopologicalAnalyzer:
     """Persistent homology and topological features."""
 
     def __init__(self):
+        """Initialize TopologicalAnalyzer."""
         self.filtrations: List = []
 
     def compute_persistence(self, point_cloud: List[list[float]]) -> Dict:

@@ -17,6 +17,7 @@ class PlanetaryMeshNode:
         location_type: str = "terrestrial",
         latency_to_earth_ms: float = 5.0,
     ):
+        """Initialize PlanetaryMeshNode."""
         self.node_id = node_id
         self.location_type = (
             location_type  # "terrestrial", "orbital_leo", "lunar_edge", "deep_space"
@@ -34,6 +35,7 @@ class PlanetaryMeshOrchestrator:
     """Planetary Mesh Orchestration Engine with Delay-Tolerant Routing."""
 
     def __init__(self):
+        """Initialize PlanetaryMeshOrchestrator."""
         self.nodes: Dict[str, PlanetaryMeshNode] = {}
         self.routed_tasks: List[dict[str, Any]] = []
 

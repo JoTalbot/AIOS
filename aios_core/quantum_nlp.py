@@ -7,6 +7,7 @@ class QuantumNLP:
     """Quantum-enhanced NLP components."""
 
     def __init__(self):
+        """Initialize QuantumNLP."""
         self.embeddings: Dict[str, List[complex]] = {}
 
     def quantum_embedding(self, word: str) -> List[complex]:

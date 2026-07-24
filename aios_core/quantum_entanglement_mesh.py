@@ -14,6 +14,7 @@ class QuantumEntangledChannel:
     """Simulated EPR Quantum Entangled Pair (|Phi+> = (|00> + |11>) / sqrt(2))."""
 
     def __init__(self, channel_id: str, node_a_did: str, node_b_did: str):
+        """Initialize QuantumEntangledChannel."""
         self.channel_id = channel_id
         self.node_a_did = node_a_did
         self.node_b_did = node_b_did
@@ -43,6 +44,7 @@ class QuantumEntanglementMesh:
     """Inter-Cluster Quantum Entangled Mesh Communication Manager."""
 
     def __init__(self):
+        """Initialize QuantumEntanglementMesh."""
         self.channels: Dict[str, QuantumEntangledChannel] = {}
 
     def create_entangled_channel(self, node_a: str, node_b: str) -> QuantumEntangledChannel:

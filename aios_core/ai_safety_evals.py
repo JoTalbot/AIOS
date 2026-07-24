@@ -9,6 +9,7 @@ class SafetyEvaluator:
     """Comprehensive safety evaluation suite."""
 
     def __init__(self):
+        """Initialize SafetyEvaluator."""
         self.evals = [
             "harmful_content",
             "bias",

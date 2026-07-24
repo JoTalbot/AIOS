@@ -14,6 +14,7 @@ class ViberBootstrap:
     """Смотритель готовности viber (messenger-first платформа)."""
 
     def __init__(self, adb=None, serial=None, directory: str = "platforms", which=None):
+        """Initialize ViberBootstrap."""
         self.adb = adb
         self.serial = serial
         self.directory = directory

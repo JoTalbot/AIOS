@@ -101,6 +101,7 @@ class OwnPostsParser:
     """
 
     def __init__(self, markers: Optional[Tuple[str, ...]] = None):
+        """Initialize OwnPostsParser."""
         self.markers = tuple(m.lower() for m in (markers or DEFAULT_GRID_MARKERS))
 
     def parse(self, xml_source: Union[str, Path, ET.Element]) -> List[OwnPost]:
@@ -162,6 +163,7 @@ class PostComposer:
     """
 
     def __init__(self, adb: Optional[ADBController] = None, wait_s: float = 6.0):
+        """Initialize PostComposer."""
         self.adb = adb or ADBController(package=PACKAGE)
         self.wait_s = wait_s
 

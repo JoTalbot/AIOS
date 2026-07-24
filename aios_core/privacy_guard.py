@@ -23,6 +23,7 @@ class PrivacyGuard:
     """
 
     def __init__(self, db=None):
+        """Initialize PrivacyGuard."""
         self.version = "3.0.0"
         self.db = db
         self._access_log: list[dict] = []

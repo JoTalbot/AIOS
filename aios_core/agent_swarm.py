@@ -11,6 +11,7 @@ class AgentSwarm:
     """Swarm of collaborative agents."""
 
     def __init__(self, name: str):
+        """Initialize AgentSwarm."""
         self.name = name
         self.agents: List[AdvancedAgent] = []
         self.shared_memory: Dict = {}

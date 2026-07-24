@@ -8,6 +8,7 @@ class ChaosMonkey:
     """Simple chaos engineering toolkit."""
 
     def __init__(self, failure_rate: float = 0.1):
+        """Initialize ChaosMonkey."""
         self.failure_rate = failure_rate
 
     def maybe_fail(self) -> None:

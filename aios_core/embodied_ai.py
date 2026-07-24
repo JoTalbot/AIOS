@@ -7,6 +7,7 @@ class RobotInterface:
     """Interface to physical or simulated robots."""
 
     def __init__(self, robot_id: str):
+        """Initialize RobotInterface."""
         self.robot_id = robot_id
         self.sensors: Dict = {}
         self.actuators: Dict = {}
@@ -28,6 +29,7 @@ class EmbodiedAI:
     """Embodied intelligence system."""
 
     def __init__(self):
+        """Initialize EmbodiedAI."""
         self.robots: Dict[str, RobotInterface] = {}
 
     def register_robot(self, robot_id: str) -> RobotInterface:

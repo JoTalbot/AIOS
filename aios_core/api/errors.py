@@ -13,10 +13,12 @@ class RequestSafetyMiddleware(BaseHTTPMiddleware):
     """Reject oversized bodies and convert common parse errors to safe 400s."""
 
     def __init__(self, app, *, max_body_bytes: int = 1_048_576):
+        """Initialize RequestSafetyMiddleware."""
         super().__init__(app)
         self.max_body_bytes = max_body_bytes
 
     async def dispatch(self, request: Request, call_next) -> Response:
+        """dispatch."""
         content_length = request.headers.get("content-length")
         if content_length:
             try:

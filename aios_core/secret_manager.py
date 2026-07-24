@@ -60,6 +60,7 @@ class SecretManager:
     """Manages API keys and secrets for AIOS."""
 
     def __init__(self, max_keys_per_subject: int = 5, default_ttl_days: int = 90) -> None:
+        """Initialize SecretManager."""
         self.keys: Dict[str, APIKey] = {}
         self.max_keys_per_subject = max_keys_per_subject
         self.default_ttl_days = default_ttl_days

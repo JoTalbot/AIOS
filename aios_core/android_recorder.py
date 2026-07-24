@@ -23,12 +23,14 @@ class RecordedStep:
 
     """Records and replays automation scenarios."""
 class ScenarioRecorder:
+    """ScenarioRecorder."""
     def __init__(
         self,
         package: str,
         device_id: str,
         path: str = "/tmp/aios_android_scenario.json",
     ):
+        """Initialize ScenarioRecorder."""
         self.package = package
         self.device_id = device_id
         self.path = path

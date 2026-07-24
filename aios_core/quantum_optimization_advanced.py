@@ -9,6 +9,7 @@ class QuantumApproximateOptimization:
     """QAOA-style optimization."""
 
     def __init__(self, layers: int = 2):
+        """Initialize QuantumApproximateOptimization."""
         self.layers = layers
 
     def optimize(self, cost_func: Callable, num_params: int = 4, shots: int = 1000) -> Dict:

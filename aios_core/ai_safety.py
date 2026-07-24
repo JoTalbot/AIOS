@@ -16,6 +16,7 @@ class AISafetyFramework:
     """State-of-the-art AI safety framework with multiple layers of protection."""
 
     def __init__(self):
+        """Initialize AISafetyFramework."""
         self.safety_layers = {
             "constitutional": ConstitutionalSafety(),
             "alignment": AlignmentSafety(),

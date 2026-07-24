@@ -8,6 +8,7 @@ class QLearningAgent:
     """Simple Q-Learning agent."""
 
     def __init__(self, actions: list[str], learning_rate: float = 0.1, discount: float = 0.9):
+        """Initialize QLearningAgent."""
         self.actions = actions
         self.q_table: Dict[str, dict[str, float]] = {}
         self.lr = learning_rate

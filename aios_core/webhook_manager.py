@@ -96,6 +96,7 @@ class WebhookManager:
     """Manages webhook notifications."""
 
     def __init__(self) -> None:
+        """Initialize WebhookManager."""
         self.targets: Dict[str, WebhookTarget] = {}
         self.history: List[Dict] = []
         self.max_history = 1000

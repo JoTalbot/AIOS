@@ -40,6 +40,7 @@ class FleetScheduler:
         notifier: Optional[WebhookNotifier] = None,
         now: Callable[[], float] = time.time,
     ):
+        """Initialize FleetScheduler."""
         self.pool = pool
         self.notifier = notifier or WebhookNotifier(url=None)
         self._now = now

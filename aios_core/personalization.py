@@ -7,6 +7,7 @@ class PersonalizationEngine:
     """User/agent personalization system."""
 
     def __init__(self):
+        """Initialize PersonalizationEngine."""
         self.profiles: dict[str, dict] = {}
 
     def create_profile(self, entity_id: str, preferences: Dict) -> None:

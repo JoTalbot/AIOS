@@ -5,7 +5,9 @@ from typing import List
 
 
 class MultiHeadAttention:
+    """MultiHeadAttention."""
     def __init__(self, dim: int = 512, heads: int = 8):
+        """Initialize MultiHeadAttention."""
         self.dim = dim
         self.heads = heads
 
@@ -16,7 +18,9 @@ class MultiHeadAttention:
 
 
 class TransformerBlock:
+    """TransformerBlock."""
     def __init__(self, dim: int = 512):
+        """Initialize TransformerBlock."""
         self.attention = MultiHeadAttention(dim)
         self.dim = dim
 
@@ -30,6 +34,7 @@ class Transformer:
     """Simplified Transformer model."""
 
     def __init__(self, layers: int = 6, dim: int = 512):
+        """Initialize Transformer."""
         self.layers = [TransformerBlock(dim) for _ in range(layers)]
         self.dim = dim
 

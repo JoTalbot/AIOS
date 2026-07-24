@@ -27,6 +27,7 @@ class AsyncEventBus:
     """
 
     def __init__(self, sync_bus: EventBus | None = None) -> None:
+        """Initialize AsyncEventBus."""
         self._sync = sync_bus or EventBus()
         self._async_handlers: Dict[str, List[Handler]] = {}
 

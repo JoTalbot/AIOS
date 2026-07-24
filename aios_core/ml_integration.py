@@ -12,6 +12,7 @@ class SimpleMLPredictor:
     """Placeholder ML predictor for task success probability."""
 
     def __init__(self):
+        """Initialize SimpleMLPredictor."""
         self.model = None
         if HAS_SKLEARN:
             self.model = LogisticRegression()

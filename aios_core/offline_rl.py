@@ -7,6 +7,7 @@ class OfflineRL:
     """Offline RL from fixed datasets."""
 
     def __init__(self):
+        """Initialize OfflineRL."""
         self.dataset: List[Dict] = []
 
     def add_transition(self, transition: Dict) -> None:

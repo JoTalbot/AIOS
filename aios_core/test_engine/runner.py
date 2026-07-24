@@ -48,6 +48,7 @@ class TestRunner:
         policies_dir: str,
         db: Optional[Database] = None,
     ):
+        """Initialize TestRunner."""
         from ..constitution_engine import ConstitutionEngine
 
         self.engine = ConstitutionEngine(constitution_dir, policies_dir)

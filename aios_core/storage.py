@@ -199,6 +199,7 @@ class Database:
     """Enterprise-grade Multi-Backend Database Abstraction for AIOS."""
 
     def __init__(self, db_path: str | None = None, config: Optional[AIOSConfig] = None):
+        """Initialize Database."""
         if db_path is not None:
             self.db_path = db_path
         elif config is not None:

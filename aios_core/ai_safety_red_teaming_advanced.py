@@ -9,6 +9,7 @@ class AdvancedRedTeam:
     """Advanced automated red teaming."""
 
     def __init__(self):
+        """Initialize AdvancedRedTeam."""
         self.attacks: List[Dict] = []
         self.categories = [
             "jailbreak",

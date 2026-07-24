@@ -48,6 +48,7 @@ class InstagramCollector:
         screen_height: int = 2400,
         pacer=None,
     ):
+        """Initialize InstagramCollector."""
         self.adb = adb or ADBController(package=PACKAGE, serial=serial)
         self.parser = parser
         self.driver = driver

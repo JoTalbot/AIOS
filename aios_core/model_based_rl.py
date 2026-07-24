@@ -7,6 +7,7 @@ class DynamicsModel:
     """Learned environment dynamics model."""
 
     def __init__(self):
+        """Initialize DynamicsModel."""
         self.model: Callable = lambda s, a: s
 
     def predict(self, state: Dict, action: Any) -> Dict:
@@ -22,6 +23,7 @@ class ModelBasedRL:
     """Model-based RL with planning."""
 
     def __init__(self):
+        """Initialize ModelBasedRL."""
         self.dynamics = DynamicsModel()
         self.planner = None
 

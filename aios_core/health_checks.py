@@ -8,6 +8,7 @@ class HealthCheckRegistry:
     """Registry of health checks."""
 
     def __init__(self):
+        """Initialize HealthCheckRegistry."""
         self.checks: Dict[str, Callable] = {}
 
     def register(self, name: str, check_func: Callable) -> None:

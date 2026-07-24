@@ -28,6 +28,7 @@ class WhatsAppMessenger(HintsMessenger):
         screen_width: int = 1080,
         serial=None,
     ):
+        """Initialize WhatsAppMessenger."""
         super().__init__(
             platform="whatsapp",
             package=PACKAGE,

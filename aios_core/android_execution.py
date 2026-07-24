@@ -77,6 +77,7 @@ class UIAutomatorParser:
     """Parser for uiautomator XML dumps from ua.slando."""
 
     def __init__(self, xml_content: str):
+        """Initialize UIAutomatorParser."""
         self.xml_content = xml_content
         self.root = None
 
@@ -319,6 +320,7 @@ class RealDeviceExecutor:
     """Executes real ADB commands on ua.slando."""
 
     def __init__(self, device_id: str = "emulator-5554"):
+        """Initialize RealDeviceExecutor."""
         self.device_id = device_id
         self.parser = UIAutomatorParser("")
 
@@ -514,6 +516,7 @@ class SlandoScreenClassifier:
     SCREEN_UNKNOWN = "unknown"
 
     def __init__(self):
+        """Initialize SlandoScreenClassifier."""
         self.parser = UIAutomatorParser("")
 
     def classify(self, ui_xml: str) -> str:

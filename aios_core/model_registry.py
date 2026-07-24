@@ -16,6 +16,7 @@ class ModelRegistry:
     """Enterprise ML Model Registry with strict stage management and verification."""
 
     def __init__(self):
+        """Initialize ModelRegistry."""
         self.models: Dict[str, dict[str, Any]] = {}  # key: "name:version"
         self.stage_routes: Dict[str, dict[str, str]] = {}  # name -> stage -> version
 

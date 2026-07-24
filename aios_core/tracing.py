@@ -24,6 +24,7 @@ class Span:
         parent_id: str | None = None,
         attributes: dict[str, Any] | None = None,
     ):
+        """Initialize Span."""
         self.name = name
         self.trace_id = trace_id
         self.span_id = span_id
@@ -68,6 +69,7 @@ class Tracer:
     """Thread-safe Distributed Tracer with W3C propagation."""
 
     def __init__(self):
+        """Initialize Tracer."""
         self.active_spans: Dict[str, Span] = {}
         self.finished_spans: List[Span] = []
 

@@ -8,6 +8,7 @@ class CreativityEngine:
     """Generates novel ideas and solutions."""
 
     def __init__(self):
+        """Initialize CreativityEngine."""
         self.ideas: List[Dict] = []
         self.divergence: float = 0.7
 

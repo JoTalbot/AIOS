@@ -61,6 +61,7 @@ class AutonomyManager:
     """
 
     def __init__(self, db: Optional[Database] = None):
+        """Initialize AutonomyManager."""
         self.db = db
         self._profiles: Dict[str, AgentAutonomyProfile] = {}
 

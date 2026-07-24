@@ -9,6 +9,7 @@ class AIGovernance:
     """AI governance and oversight — policies, audits, compliance tracking."""
 
     def __init__(self):
+        """Initialize AIGovernance."""
         self.policies: dict[str, dict] = {}
         self.audits: List[Dict] = []
 

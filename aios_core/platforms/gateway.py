@@ -38,6 +38,7 @@ class ShardGateway:
         host_id: str | None = None,
         client_factory: Optional[Callable] = None,
     ):
+        """Initialize ShardGateway."""
         self.router = router or ShardRouter()
         self._owns_router = router is None
         self.host_id = host_id if host_id is not None else os.environ.get("AIOS_HOST_ID", "local")
@@ -124,6 +125,7 @@ class ShardHealthMonitor:
         router: Optional[ShardRouter] = None,
         probe: Optional[Callable[[Dict], bool]] = None,
     ):
+        """Initialize ShardHealthMonitor."""
         self.router = router or ShardRouter()
         self._owns_router = router is None
         self.probe = probe or default_health_probe

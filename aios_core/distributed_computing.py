@@ -4,7 +4,9 @@ from typing import Any, Callable, Dict, List
 
 
 class DistributedTask:
+    """DistributedTask."""
     def __init__(self, task_id: str, func: Callable, args: tuple = (), kwargs: dict = None):
+        """Initialize DistributedTask."""
         self.task_id = task_id
         self.func = func
         self.args = args
@@ -17,6 +19,7 @@ class DistributedComputing:
     """Simple distributed task execution."""
 
     def __init__(self):
+        """Initialize DistributedComputing."""
         self.workers: dict[str, dict] = {}
         self.tasks: Dict[str, DistributedTask] = {}
 

@@ -90,6 +90,7 @@ class InstagramLoginDriver:
         login_wait_s: float = 15.0,
         search_drive=None,
     ):
+        """Initialize InstagramLoginDriver."""
         self.adb = adb or ADBController(package=package, serial=serial)
         self.profile = profile
         self.platform = "instagram"

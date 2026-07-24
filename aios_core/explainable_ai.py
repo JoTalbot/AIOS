@@ -7,6 +7,7 @@ class ExplainableAI:
     """Provides explanations for AI decisions."""
 
     def __init__(self):
+        """Initialize ExplainableAI."""
         self.explanations: Dict[str, list[str]] = {}
 
     def explain(self, decision_id: str, factors: list[str]) -> str:

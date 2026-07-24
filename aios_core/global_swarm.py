@@ -46,6 +46,7 @@ class GlobalSwarmGovernance:
     """Federated Inter-Cluster Swarm Governance with W3C DID & Bayesian Consensus."""
 
     def __init__(self, primary_node_id: str = "cluster_alpha"):
+        """Initialize GlobalSwarmGovernance."""
         self.primary_node_id = primary_node_id
         self.primary_did = f"did:aios:{primary_node_id}"
         self.registered_nodes: Dict[str, dict[str, Any]] = {}  # DID -> info

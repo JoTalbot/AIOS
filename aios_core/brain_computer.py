@@ -7,6 +7,7 @@ class BCIInterface:
     """Abstract Brain-Computer Interface."""
 
     def __init__(self):
+        """Initialize BCIInterface."""
         self.connected = False
         self.signals: List[Dict] = []
 

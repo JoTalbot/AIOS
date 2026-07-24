@@ -9,6 +9,7 @@ class AIStartup:
     """Simulates AI startup operations."""
 
     def __init__(self, name: str):
+        """Initialize AIStartup."""
         self.name = name
         self.team: List[Dict] = []
         self.funding: float = 0.0

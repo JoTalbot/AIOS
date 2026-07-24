@@ -21,6 +21,7 @@ from starlette.responses import JSONResponse, Response
 
 @dataclass(frozen=True)
 class Principal:
+    """Principal."""
     subject: str
     roles: frozenset[str]
 
@@ -69,6 +70,7 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
     """Authenticate bearer API keys and enforce a small role policy."""
 
     def __init__(self, app, *, enabled: bool = True, api_keys: dict[str, Principal] | None = None):
+        """Initialize APIKeyAuthMiddleware."""
         super().__init__(app)
         self.enabled = enabled
         if api_keys is None:
@@ -87,6 +89,7 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
             }
 
     async def dispatch(self, request: Request, call_next) -> Response:
+        """dispatch."""
         if request.url.path == "/health" or not self.enabled:
             request.state.principal = Principal("development", frozenset({"admin"}))
             return await call_next(request)

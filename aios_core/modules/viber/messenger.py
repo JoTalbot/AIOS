@@ -28,6 +28,7 @@ class ViberMessenger(HintsMessenger):
         screen_width: int = 1080,
         serial=None,
     ):
+        """Initialize ViberMessenger."""
         super().__init__(
             platform="viber",
             package=PACKAGE,

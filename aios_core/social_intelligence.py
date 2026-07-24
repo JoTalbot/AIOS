@@ -7,6 +7,7 @@ class SocialIntelligence:
     """Social reasoning and interaction."""
 
     def __init__(self):
+        """Initialize SocialIntelligence."""
         self.relationships: dict[str, dict] = {}
         self.norms: list[str] = ["cooperation", "fairness", "reciprocity"]
 

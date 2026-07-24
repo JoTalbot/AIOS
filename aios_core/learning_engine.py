@@ -25,6 +25,7 @@ class LearningEngine:
     """
 
     def __init__(self, db: Optional[Database] = None, memory=None):
+        """Initialize LearningEngine."""
         self.db = db
         if memory is not None:
             self.memory = memory

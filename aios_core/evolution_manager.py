@@ -35,6 +35,7 @@ class EvolutionManager:
     """
 
     def __init__(self, db: Optional[Database] = None, version: str = "3.0.0"):
+        """Initialize EvolutionManager."""
         self.version = version
         self.db = db
         self.stages = list(_EVOLUTION_STAGES)

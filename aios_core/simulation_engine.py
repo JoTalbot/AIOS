@@ -8,6 +8,7 @@ class SimulationEngine:
     """Runs simulations of AIOS behavior."""
 
     def __init__(self):
+        """Initialize SimulationEngine."""
         self.scenarios: Dict[str, Callable] = {}
 
     def register_scenario(self, name: str, scenario_func: Callable) -> None:

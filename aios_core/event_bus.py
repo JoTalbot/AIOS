@@ -141,6 +141,7 @@ class EventBus:
     """
 
     def __init__(self, db: Optional[Database] = None):
+        """Initialize EventBus."""
         self.db = db
 
         # Dispatch structures ------------------------------------------------

@@ -31,6 +31,7 @@ class JSONRPCParseError(Exception):
     """Raised when a JSON-RPC message cannot be parsed."""
 
     def __init__(self, code: int, message: str, data: Any = None):
+        """Initialize JSONRPCParseError."""
         self.code = code
         self.message = message
         self.data = data

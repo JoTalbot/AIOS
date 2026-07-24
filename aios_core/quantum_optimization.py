@@ -9,6 +9,7 @@ class QuantumAnnealingOptimizer:
     """Simulated quantum annealing."""
 
     def __init__(self, initial_temp: float = 1000.0, cooling_rate: float = 0.95):
+        """Initialize QuantumAnnealingOptimizer."""
         self.temp = initial_temp
         self.cooling = cooling_rate
 

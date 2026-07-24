@@ -7,6 +7,7 @@ class FederatedLearning:
     """Basic federated learning coordinator."""
 
     def __init__(self):
+        """Initialize FederatedLearning."""
         self.nodes: dict[str, dict] = {}
         self.global_model: Dict = {}
 

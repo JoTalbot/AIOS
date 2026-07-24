@@ -288,6 +288,7 @@ class PriceTracker:
     """Analyses sighting history: price drops and ads that left the feed."""
 
     def __init__(self, storage):
+        """Initialize PriceTracker."""
         self.storage = storage
 
     def price_drops(

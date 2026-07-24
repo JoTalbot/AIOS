@@ -9,6 +9,7 @@ class AIEthicsFramework:
     """State-of-the-art AI ethics and responsible AI framework."""
 
     def __init__(self):
+        """Initialize AIEthicsFramework."""
         self.principles = {
             "beneficence": "Act for the benefit of humanity",
             "non_maleficence": "Do no harm",

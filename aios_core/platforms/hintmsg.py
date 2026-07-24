@@ -40,6 +40,7 @@ class HintsMessenger(OLXMessenger):
         screen_width: int = 1080,
         serial: str | None = None,
     ) -> None:
+        """Initialize HintsMessenger."""
         super().__init__(
             adb=adb or ADBController(package=package, serial=serial),
             storage=storage,

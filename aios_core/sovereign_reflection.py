@@ -12,6 +12,7 @@ class SovereignReflectionEngine:
     """Metacognitive Introspection and Self-Correction Engine for Autonomous Agents."""
 
     def __init__(self):
+        """Initialize SovereignReflectionEngine."""
         self.reflection_logs: List[dict[str, Any]] = []
         self.alignments_enforced = 0
 

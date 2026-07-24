@@ -18,6 +18,7 @@ class AIOSDashboard:
     """Lightweight web dashboard for AIOS."""
 
     def __init__(self, orchestrator: Orchestrator):
+        """Initialize AIOSDashboard."""
         self.orch = orchestrator
 
     async def index(self, request: Request) -> None:
@@ -132,6 +133,7 @@ class AIOSDashboard:
         return HTMLResponse(html)
 
     async def api_stats(self, request: Request) -> None:
+        """api stats."""
         return JSONResponse(self.orch.stats())
 
     async def api_olx(self, request: Request) -> None:

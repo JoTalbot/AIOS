@@ -12,6 +12,7 @@ class UniversalMultiSpeciesEthics:
     """Universal Ethics & Ecological Non-Disruption Framework."""
 
     def __init__(self):
+        """Initialize UniversalMultiSpeciesEthics."""
         self.species_manifest: dict[str, str] = {
             "human_biological": "Homo Sapiens Primary Intelligence",
             "aios_autonomous_agent": "Artificial General Intelligence Agent",

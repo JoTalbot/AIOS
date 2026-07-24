@@ -9,6 +9,7 @@ class LongTermSafety:
     """Long-term safety planning and monitoring."""
 
     def __init__(self):
+        """Initialize LongTermSafety."""
         self.long_term_plans: List[Dict] = []
         self.risk_assessments: List[Dict] = []
 

@@ -43,7 +43,9 @@ class AndroidExecutionEvent:
 
     """Android observability — metrics, failure prediction."""
 class AndroidObservability:
+    """AndroidObservability."""
     def __init__(self, device_id: str):
+        """Initialize AndroidObservability."""
         self.device_id = device_id
         self.events: List[AndroidExecutionEvent] = []
         self.counters: dict[str, float] = {}

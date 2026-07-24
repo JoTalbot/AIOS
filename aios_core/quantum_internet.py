@@ -4,7 +4,9 @@ from typing import Dict, List
 
 
 class QuantumNetworkNode:
+    """QuantumNetworkNode."""
     def __init__(self, node_id: str):
+        """Initialize QuantumNetworkNode."""
         self.node_id = node_id
         self.entangled_pairs: Dict = {}
         self.quantum_memory = {}
@@ -22,6 +24,7 @@ class QuantumInternet:
     """Quantum network infrastructure."""
 
     def __init__(self):
+        """Initialize QuantumInternet."""
         self.nodes: Dict[str, QuantumNetworkNode] = {}
         self.links: List = []
 

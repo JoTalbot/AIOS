@@ -18,6 +18,7 @@ __all__ = ["DeviceRecord", "WaitlistEntry", "DevicePool"]
 
 @dataclass
 class DeviceRecord:
+    """DeviceRecord."""
     serial: str
     avd_name: str
     status: str = "idle"
@@ -35,7 +36,9 @@ class WaitlistEntry:
 
 
 class DevicePool:
+    """DevicePool."""
     def __init__(self, emulator_bin: str = "/opt/android-sdk/emulator/emulator"):
+        """Initialize DevicePool."""
         self.devices: Dict[str, DeviceRecord] = {}
         self.waitlist: List[WaitlistEntry] = []
         self.emulator_bin = emulator_bin

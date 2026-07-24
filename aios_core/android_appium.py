@@ -29,7 +29,9 @@ class AppiumDriverConfig(DriverCapabilities):
 
     """Appium-based Android automation driver."""
 class AppiumAndroidDriver(AndroidDriver):
+    """AppiumAndroidDriver."""
     def __init__(self, config: Optional[AppiumDriverConfig] = None):
+        """Initialize AppiumAndroidDriver."""
         self.config = config or AppiumDriverConfig()
         self._driver = None
 

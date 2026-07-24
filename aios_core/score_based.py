@@ -8,6 +8,7 @@ class ScoreBasedModel:
     """Simplified score-based diffusion model."""
 
     def __init__(self, dim: int = 64):
+        """Initialize ScoreBasedModel."""
         self.dim = dim
         self.noise_schedule = [0.1 * i for i in range(10)]
 

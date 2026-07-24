@@ -7,6 +7,7 @@ class AutonomousEvolution:
     """Fully autonomous self-modification system."""
 
     def __init__(self):
+        """Initialize AutonomousEvolution."""
         self.evolution_history: List[Dict] = []
         self.mutation_rate = 0.1
 

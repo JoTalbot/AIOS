@@ -7,6 +7,7 @@ class NeuromorphicChip:
     """Abstract neuromorphic hardware interface."""
 
     def __init__(self, cores: int = 128, neurons_per_core: int = 256):
+        """Initialize NeuromorphicChip."""
         self.cores = cores
         self.neurons_per_core = neurons_per_core
         self.energy_per_spike = 0.000001  # pJ

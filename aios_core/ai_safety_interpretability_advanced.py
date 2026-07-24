@@ -9,6 +9,7 @@ class AdvancedInterpretability:
     """State-of-the-art interpretability techniques."""
 
     def __init__(self):
+        """Initialize AdvancedInterpretability."""
         self.techniques = [
             "activation_patching",
             "causal_tracing",

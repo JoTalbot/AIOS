@@ -8,6 +8,7 @@ class NAS:
     """Neural Architecture Search engine."""
 
     def __init__(self):
+        """Initialize NAS."""
         self.architectures: dict[str, dict] = {}
         self.search_space = ["conv", "attention", "recurrent", "transformer"]
 

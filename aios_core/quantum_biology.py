@@ -7,6 +7,7 @@ class QuantumBiologySimulator:
     """Simulates quantum effects in biological systems."""
 
     def __init__(self):
+        """Initialize QuantumBiologySimulator."""
         self.systems: Dict = {}
 
     def simulate_photosynthesis(self, efficiency: float = 0.95) -> Dict:

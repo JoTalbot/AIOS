@@ -7,6 +7,7 @@ class WorldModel:
     """Learns and simulates environment dynamics."""
 
     def __init__(self):
+        """Initialize WorldModel."""
         self.dynamics_model: Dict = {}
         self.observations: List[Dict] = []
 

@@ -112,6 +112,7 @@ class ChatListParser:
     """
 
     def __init__(self, markers: Tuple[str, ...] = _CHAT_MARKERS):
+        """Initialize ChatListParser."""
         self.markers = tuple(m.lower() for m in markers) or _CHAT_MARKERS
 
     def parse(self, xml_source: Union[str, Path, ET.Element]) -> List[ChatThread]:
@@ -176,6 +177,7 @@ class ChatViewParser:
     """Parses an open conversation; direction is inferred from alignment."""
 
     def __init__(self, screen_width: int = 1080, me_side_ratio: float = 0.6):
+        """Initialize ChatViewParser."""
         self.screen_width = screen_width
         self.me_side_ratio = me_side_ratio
 
@@ -225,6 +227,7 @@ class ReplySuggester:
     """Rule-based reply drafts for common buyer intents (uk locale)."""
 
     def __init__(self, min_price_ratio: float = 0.85):
+        """Initialize ReplySuggester."""
         self.min_price_ratio = min_price_ratio
 
     def suggest(
@@ -295,6 +298,7 @@ class OLXMessenger:
         suggester: Optional[ReplySuggester] = None,
         screen_width: int = 1080,
     ):
+        """Initialize OLXMessenger."""
         self.adb = adb or ADBController()
         self.storage = storage
         self.suggester = suggester or ReplySuggester()

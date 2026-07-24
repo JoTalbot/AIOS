@@ -5,7 +5,9 @@ from typing import Callable, Dict, List
 
 
 class Expert:
+    """Expert."""
     def __init__(self, name: str, func: Callable):
+        """Initialize Expert."""
         self.name = name
         self.func = func
         self.usage = 0
@@ -19,6 +21,7 @@ class MixtureOfExperts:
     """Dynamic Mixture of Experts routing."""
 
     def __init__(self, num_experts: int = 8):
+        """Initialize MixtureOfExperts."""
         self.experts: List[Expert] = []
         self.router_weights: list[float] = [1.0 / num_experts] * num_experts
 

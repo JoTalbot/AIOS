@@ -32,6 +32,7 @@ class AsyncDatabase(AsyncRunner):
     """Async wrapper around ``aios_core.storage.Database``."""
 
     def __init__(self, db_path: str = "aios.sqlite") -> None:
+        """Initialize AsyncDatabase."""
         from aios_core.storage import Database
 
         self._sync = Database(db_path=db_path)
@@ -71,15 +72,19 @@ class AsyncKnowledgeGraph(AsyncRunner):
     """Async wrapper around ``aios_core.knowledge_graph.KnowledgeGraph``."""
 
     def __init__(self) -> None:
+        """Initialize AsyncKnowledgeGraph."""
         from aios_core.knowledge_graph import KnowledgeGraph
 
         self._sync = KnowledgeGraph()
 
     async def stats(self) -> dict:
+        """stats."""
         return await self._run("stats")
 
     async def add_node(self, node_id: str, properties: dict) -> dict:
+        """add node."""
         return await self._run("add_node", node_id, properties)
 
     async def add_edge(self, source: str, target: str, rel_type: str) -> dict | None:
+        """add edge."""
         return await self._run("add_edge", source, target, rel_type)

@@ -19,6 +19,7 @@ from .storage import Database
 
 
 class NodeStatus(str, Enum):
+    """NodeStatus."""
     ONLINE = "online"
     OFFLINE = "offline"
     DEGRADED = "degraded"
@@ -44,6 +45,7 @@ class FederationManager:
     """Manages a network of federated AIOS nodes."""
 
     def __init__(self, db: Optional[Database] = None, local_node_id: str | None = None):
+        """Initialize FederationManager."""
         self.db = db
         self.local_node_id = local_node_id or f"node_{uuid.uuid4().hex[:8]}"
         self._nodes: Dict[str, FederatedNode] = {}

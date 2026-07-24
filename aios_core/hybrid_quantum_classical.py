@@ -12,6 +12,7 @@ class HybridQuantumClassical:
     """Interface between quantum and classical computation."""
 
     def __init__(self):
+        """Initialize HybridQuantumClassical."""
         self.quantum_backend = None
         self.classical_fallback = True
 

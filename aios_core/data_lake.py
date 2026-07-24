@@ -9,6 +9,7 @@ class DataLake:
     """Simple data lake for storing analytics events."""
 
     def __init__(self, path: str = "data_lake"):
+        """Initialize DataLake."""
         self.path = path
         os.makedirs(path, exist_ok=True)
 

@@ -7,6 +7,7 @@ class MetaCognition:
     """Thinking about thinking."""
 
     def __init__(self):
+        """Initialize MetaCognition."""
         self.knowledge_about_knowledge: Dict = {}
         self.confidence_estimates: Dict = {}
         self.monitoring: List[Dict] = []

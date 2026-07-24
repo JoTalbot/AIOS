@@ -24,6 +24,7 @@ class CollectionScheduler:
         storage: Optional[OLXStorage] = None,
         interval_s: float = 3600.0,
     ):
+        """Initialize CollectionScheduler."""
         self.collector = collector or OLXCollector()
         self.storage = storage or OLXStorage()
         self.interval_s = float(interval_s)

@@ -79,6 +79,7 @@ class StrategyAdvisor:
     """Combines competitive position + stagnation into portfolio advice."""
 
     def __init__(self, storage, undercut_alert: int = 2):
+        """Initialize StrategyAdvisor."""
         self.storage = storage
         self.watch = CompetitiveWatch(storage)
         self.undercut_alert = undercut_alert

@@ -7,6 +7,7 @@ class MultiAgentRL:
     """Multi-agent reinforcement learning environment."""
 
     def __init__(self, num_agents: int = 2):
+        """Initialize MultiAgentRL."""
         self.num_agents = num_agents
         self.agents: Dict = {}
         self.shared_reward = 0.0

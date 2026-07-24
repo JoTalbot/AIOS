@@ -55,6 +55,7 @@ class IntegrationMetrics:
     """Enhanced metrics for external integrations."""
 
     def __init__(self):
+        """Initialize IntegrationMetrics."""
         self.webhook_sent = MetricCounter("webhook_sent", "Total webhook notifications sent")
         self.webhook_failed = MetricCounter("webhook_failed", "Total webhook failures")
         self.graphql_requests = MetricCounter("graphql_requests", "Total GraphQL requests")
@@ -95,6 +96,7 @@ class WebhookManager:
     """Manages webhook notifications to external systems."""
 
     def __init__(self, config: WebhookConfig):
+        """Initialize WebhookManager."""
         self.config = config
         self.metrics = IntegrationMetrics()
         self.logger = logging.getLogger("aios.webhooks")
@@ -143,6 +145,7 @@ class GraphQLAPI:
     """GraphQL API gateway for AIOS."""
 
     def __init__(self, config: GraphQLConfig):
+        """Initialize GraphQLAPI."""
         self.config = config
         self.metrics = IntegrationMetrics()
         self.logger = logging.getLogger("aios.graphql")
@@ -195,6 +198,7 @@ class KafkaConnector(MessageQueueConnector):
     """Kafka message queue connector."""
 
     def __init__(self, bootstrap_servers: str):
+        """Initialize KafkaConnector."""
         self.bootstrap_servers = bootstrap_servers
         self.consumer = None
         self.producer = None
@@ -232,6 +236,7 @@ class ExternalIntegrationAPI:
     """Main API for external integrations."""
 
     def __init__(self):
+        """Initialize ExternalIntegrationAPI."""
         self.metrics = IntegrationMetrics()
         self.webhooks: Dict[str, WebhookManager] = {}
         self.graphql = None

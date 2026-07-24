@@ -9,6 +9,7 @@ class SafetyInterpretability:
     """Uses interpretability for safety verification."""
 
     def __init__(self):
+        """Initialize SafetyInterpretability."""
         self.circuits: Dict[str, list[str]] = {}
 
     def find_safety_circuit(self, model: Any, behavior: str) -> list[str]:

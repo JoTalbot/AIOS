@@ -139,6 +139,7 @@ class OwnAdsTracker:
     """Records snapshots of own-ad counters and finds stagnant listings."""
 
     def __init__(self, storage):
+        """Initialize OwnAdsTracker."""
         self.storage = storage
 
     def record_snapshot(self, ads: List[OwnAd], seen_at: str | None = None) -> Dict[str, object]:

@@ -7,6 +7,7 @@ class SustainabilityTracker:
     """Tracks carbon footprint and energy usage."""
 
     def __init__(self):
+        """Initialize SustainabilityTracker."""
         self.energy_kwh = 0.0
         self.co2_kg = 0.0
         self.tasks_optimized = 0

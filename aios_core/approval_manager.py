@@ -25,6 +25,7 @@ class ApprovalManager:
         timeout_seconds: int = 86400,
         max_pending: int = 100,
     ):
+        """Initialize ApprovalManager."""
         self.db = db
         self.timeout_seconds = timeout_seconds
         self.max_pending = max_pending

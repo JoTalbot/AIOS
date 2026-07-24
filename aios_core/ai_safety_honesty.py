@@ -9,6 +9,7 @@ class HonestyFramework:
     """Ensures AI systems are honest and truthful."""
 
     def __init__(self):
+        """Initialize HonestyFramework."""
         self.honesty_violations: List[Dict] = []
 
     def check_honesty(self, statement: str, ground_truth: str = None) -> Dict:

@@ -36,6 +36,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
     }
 
     def __init__(self, allowed_imports: Optional[set[str]] = None):
+        """Initialize ForbiddenASTVisitor."""
         self.allowed_imports = allowed_imports or set()
         self.violations: list[str] = []
         self.has_unbounded_loops = False
@@ -107,6 +108,7 @@ class FormalCodeVerifier:
     """Formal Code Verification and Invariant Engine."""
 
     def __init__(self, allowed_imports: Optional[set[str]] = None):
+        """Initialize FormalCodeVerifier."""
         self.allowed_imports = allowed_imports or {
             "math",
             "json",

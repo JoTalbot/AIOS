@@ -51,6 +51,7 @@ class InstagramMessenger(OLXMessenger):
         serial: str | None = None,
         package: str = PACKAGE,
     ):
+        """Initialize InstagramMessenger."""
         super().__init__(
             adb=adb or ADBController(package=package, serial=serial),
             storage=storage,

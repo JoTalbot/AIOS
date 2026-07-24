@@ -11,6 +11,7 @@ class DiffusionModel:
     __slots__ = ('timesteps', 'betas')
 
     def __init__(self, timesteps: int = 1000):
+        """Initialize DiffusionModel."""
         self.timesteps = timesteps
         self.betas = [0.0001 + i * 0.00001 for i in range(timesteps)]
 

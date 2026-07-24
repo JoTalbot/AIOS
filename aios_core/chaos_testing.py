@@ -8,6 +8,7 @@ class ChaosTester:
     """Injects failures and latency for resilience testing."""
 
     def __init__(self, failure_probability: float = 0.1, latency_ms: int = 0):
+        """Initialize ChaosTester."""
         self.failure_probability = failure_probability
         self.latency_ms = latency_ms
 

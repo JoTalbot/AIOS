@@ -23,6 +23,7 @@ except ImportError:
 
 @dataclass
 class MarketplaceCapability:
+    """MarketplaceCapability."""
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     name: str = ""
     description: str = ""
@@ -39,6 +40,7 @@ class MarketplaceCapability:
 
 @dataclass
 class PlatformPlugin:
+    """PlatformPlugin."""
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     platform: str = ""  # e.g., olx, instagram, facebook, viber
     descriptor_yaml: str = ""
@@ -56,6 +58,7 @@ class CapabilityMarketplace:
     """Marketplace for capabilities and platform plugins (H3.14)."""
 
     def __init__(self, db: Optional[Database] = None):
+        """Initialize CapabilityMarketplace."""
         self.db = db
         self._items: Dict[str, MarketplaceCapability] = {}
         self._plugins: Dict[str, PlatformPlugin] = {}

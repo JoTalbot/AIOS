@@ -78,6 +78,7 @@ class EnhancedIntegrationSystem:
     """Main integration system that combines all enhanced features."""
 
     def __init__(self, config: IntegrationConfig):
+        """Initialize EnhancedIntegrationSystem."""
         self.config = config
         self.logger = None
         self.integration_api = None
@@ -226,6 +227,7 @@ class EnhancedIntegrationSystem:
         # Add main status endpoint
         @app.route("/status")
         async def status_endpoint(request) -> None:
+            """status endpoint."""
             return json.dumps(await self.get_system_status())
 
         return app

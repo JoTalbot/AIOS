@@ -82,6 +82,7 @@ class HintVideoParser:
     """
 
     def __init__(self, video_markers: list[str] | None = None):
+        """Initialize HintVideoParser."""
         markers = video_markers or list(_DEFAULT_MARKERS)
         self.markers = (
             tuple(str(m).rsplit("/", 1)[-1].lower() for m in markers if m) or _DEFAULT_MARKERS

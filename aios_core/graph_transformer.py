@@ -7,6 +7,7 @@ class GraphTransformer:
     """Simplified Graph Transformer layer."""
 
     def __init__(self, dim: int = 64, heads: int = 4):
+        """Initialize GraphTransformer."""
         self.dim = dim
         self.heads = heads
 

@@ -7,6 +7,7 @@ class GraphQLSchema:
     """Very basic GraphQL-like query executor."""
 
     def __init__(self):
+        """Initialize GraphQLSchema."""
         self.resolvers = {}
 
     def register(self, field: str, resolver) -> None:

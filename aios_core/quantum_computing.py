@@ -8,6 +8,7 @@ class Qubit:
     """Simplified qubit representation."""
 
     def __init__(self):
+        """Initialize Qubit."""
         self.state = complex(1, 0)  # |0>
 
     def apply_hadamard(self) -> None:
@@ -24,6 +25,7 @@ class QuantumCircuit:
     """Simplified quantum circuit simulator."""
 
     def __init__(self, num_qubits: int):
+        """Initialize QuantumCircuit."""
         self.qubits = [Qubit() for _ in range(num_qubits)]
         self.gates: List = []
 
@@ -45,6 +47,7 @@ class QuantumProcessor:
     """Quantum co-processor interface."""
 
     def __init__(self):
+        """Initialize QuantumProcessor."""
         self.circuits: Dict[str, QuantumCircuit] = {}
 
     def create_circuit(self, name: str, qubits: int) -> QuantumCircuit:

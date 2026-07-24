@@ -65,6 +65,7 @@ class TestEngine:
         policies_dir: str,
         db: Optional[Database] = None,
     ):
+        """Initialize TestEngine."""
         self.runner = TestRunner(constitution_dir, policies_dir, db)
         self.reporter = TestReporter()
         self._custom_suites: dict[str, list[TestCase]] = {}

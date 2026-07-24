@@ -7,6 +7,7 @@ class FormalVerifier:
     """Formal verification of AI safety properties via registered checkers."""
 
     def __init__(self):
+        """Initialize FormalVerifier."""
         self.properties: Dict[str, Callable] = {}
 
     def add_property(self, name: str, verifier: Callable[[Any], bool]) -> None:

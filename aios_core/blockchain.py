@@ -6,7 +6,9 @@ from typing import Dict, List
 
 
 class Block:
+    """Block."""
     def __init__(self, index: int, data: Dict, previous_hash: str):
+        """Initialize Block."""
         self.index = index
         self.timestamp = time.time()
         self.data = data
@@ -23,6 +25,7 @@ class Blockchain:
     """Simple blockchain for audit and provenance."""
 
     def __init__(self):
+        """Initialize Blockchain."""
         self.chain: List[Block] = []
         self.create_genesis_block()
 

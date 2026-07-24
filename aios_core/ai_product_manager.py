@@ -9,6 +9,7 @@ class AIProductManager:
     """Automated product management and roadmap planning agent."""
 
     def __init__(self):
+        """Initialize AIProductManager."""
         self.products: List[Dict] = []
         self.roadmaps: List[Dict] = []
 

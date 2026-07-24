@@ -9,6 +9,7 @@ class AIScientist:
     """Automated scientific research system."""
 
     def __init__(self):
+        """Initialize AIScientist."""
         self.hypotheses: List[Dict] = []
         self.experiments: List[Dict] = []
         self.discoveries: List[Dict] = []

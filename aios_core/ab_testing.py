@@ -15,6 +15,7 @@ class ABTest:
     """
 
     def __init__(self, name: str, variants: dict[str, float]):
+        """Initialize ABTest."""
         self.name = name
         self.variants = variants  # variant_name -> weight
         self.results: dict[str, int] = {v: 0 for v in variants}

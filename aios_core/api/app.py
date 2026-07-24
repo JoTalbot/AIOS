@@ -125,6 +125,7 @@ class AIOSAPI(OLXHandlersMixin, DevicesShardsMixin, PlatformsModulesMixin, CoreH
         shard_router=None,
         shard_gateway=None,
     ):
+        """Initialize AIOSAPI."""
         from aios_core.mcp.gateway import GatewayConfig, MCPGateway
         from aios_core.orchestrator import Orchestrator
         from aios_core.storage import Database

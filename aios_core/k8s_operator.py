@@ -7,6 +7,7 @@ class AIOSOperator:
     """Basic Kubernetes operator logic for AIOS."""
 
     def __init__(self):
+        """Initialize AIOSOperator."""
         self.crds: dict[str, dict] = {}
         self.deployments: dict[str, dict] = {}
 

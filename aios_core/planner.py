@@ -28,6 +28,7 @@ __all__ = ["PlanStatus", "StepStatus", "EdgeCondition", "PlanStep", "PlanEdge", 
 
 
 class PlanStatus(str, Enum):
+    """PlanStatus."""
     DRAFT = "draft"
     PLANNED = "planned"
     EXECUTING = "executing"
@@ -37,6 +38,7 @@ class PlanStatus(str, Enum):
 
 
 class StepStatus(str, Enum):
+    """StepStatus."""
     PENDING = "pending"
     READY = "ready"
     RUNNING = "running"
@@ -46,6 +48,7 @@ class StepStatus(str, Enum):
 
 
 class EdgeCondition(str, Enum):
+    """EdgeCondition."""
     SUCCESS = "success"  # Only proceed if source completed successfully
     COMPLETION = "completion"  # Proceed if source completed (even with failure)
     ALWAYS = "always"  # Always proceed, regardless of source outcome
@@ -143,6 +146,7 @@ class Planner:
     """
 
     def __init__(self, db: Optional[Database] = None):
+        """Initialize Planner."""
         self.db = db
         self._ensure_table()
 

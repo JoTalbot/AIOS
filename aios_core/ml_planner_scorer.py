@@ -19,6 +19,7 @@ class MLPlannerScorer:
     """
 
     def __init__(self, db: Optional[Database] = None):
+        """Initialize MLPlannerScorer."""
         self.db = db
         self.version = "4.0.0-alpha"
         self._model_loaded = False  # Placeholder for real ML model

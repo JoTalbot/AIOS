@@ -15,6 +15,7 @@ class GracefulShutdown:
     """Handles graceful shutdown of AIOS services."""
 
     def __init__(self):
+        """Initialize GracefulShutdown."""
         self.shutdown_handlers: List[Callable] = []
         self._shutdown_event = asyncio.Event()
 
@@ -38,6 +39,7 @@ class GracefulShutdown:
         signal.signal(signal.SIGTERM, self._signal_handler)
 
     async def wait_for_shutdown(self) -> None:
+        """wait for shutdown."""
         await self._shutdown_event.wait()
 
 

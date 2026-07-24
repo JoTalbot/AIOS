@@ -7,6 +7,7 @@ class SpikingNeuron:
     """Leaky Integrate-and-Fire neuron."""
 
     def __init__(self, threshold: float = 1.0, decay: float = 0.9):
+        """Initialize SpikingNeuron."""
         self.threshold = threshold
         self.decay = decay
         self.membrane = 0.0
@@ -26,6 +27,7 @@ class SpikingLayer:
     """Spiking neural layer."""
 
     def __init__(self, size: int):
+        """Initialize SpikingLayer."""
         self.neurons = [SpikingNeuron() for _ in range(size)]
 
     def forward(self, inputs: list[float], timesteps: int = 10) -> list[int]:

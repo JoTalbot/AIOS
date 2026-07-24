@@ -28,6 +28,7 @@ class FacebookMessenger(HintsMessenger):
         screen_width: int = 1080,
         serial=None,
     ):
+        """Initialize FacebookMessenger."""
         super().__init__(
             platform="facebook",
             package=PACKAGE,

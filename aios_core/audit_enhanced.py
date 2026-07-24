@@ -9,6 +9,7 @@ class EnhancedAudit:
     """Compliance-grade audit logging."""
 
     def __init__(self, storage: str = "audit.log"):
+        """Initialize EnhancedAudit."""
         self.storage = storage
         self.records: List[Dict] = []
 

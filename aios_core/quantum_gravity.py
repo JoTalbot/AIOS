@@ -7,6 +7,7 @@ class QuantumGravitySimulator:
     """Highly theoretical quantum gravity simulator."""
 
     def __init__(self):
+        """Initialize QuantumGravitySimulator."""
         self.spacetime_curvature = 0.0
 
     def simulate(self, mass: float, energy: float) -> Dict:

@@ -40,6 +40,7 @@ class ShardRouter:
     """Роутер профилей по хостам-шардам."""
 
     def __init__(self, db_path: "str | None" = None):
+        """Initialize ShardRouter."""
         self.db_path = db_path or os.environ.get("AIOS_SHARDS_DB", ":memory:")
         if self.db_path != ":memory:":
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)

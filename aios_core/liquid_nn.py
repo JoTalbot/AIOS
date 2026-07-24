@@ -7,6 +7,7 @@ class LiquidNeuron:
     """Simplified Liquid Time-Constant neuron."""
 
     def __init__(self, tau: float = 1.0):
+        """Initialize LiquidNeuron."""
         self.tau = tau
         self.state = 0.0
 
@@ -20,6 +21,7 @@ class LiquidNeuralNetwork:
     """Liquid Neural Network (LTC)."""
 
     def __init__(self, size: int = 64):
+        """Initialize LiquidNeuralNetwork."""
         self.neurons = [LiquidNeuron() for _ in range(size)]
 
     def forward(self, inputs: list[float], steps: int = 10) -> list[float]:

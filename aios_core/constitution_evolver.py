@@ -32,6 +32,7 @@ class ConstitutionEvolver:
     """Manages self-evolution of the AIOS Constitution."""
 
     def __init__(self, db: Optional[Database] = None):
+        """Initialize ConstitutionEvolver."""
         self.db = db
         self._proposals: Dict[str, ProposedArticle] = {}
         self.version = "4.0.0-alpha"

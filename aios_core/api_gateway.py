@@ -7,6 +7,7 @@ class APIGateway:
     """Central API Gateway with routing and middleware."""
 
     def __init__(self):
+        """Initialize APIGateway."""
         self.routes: Dict[str, Callable] = {}
         self.middleware: list = []
 

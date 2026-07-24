@@ -7,6 +7,7 @@ class MetricsExporter:
     """Exports AIOS metrics in Prometheus text format."""
 
     def __init__(self) -> None:
+        """Initialize MetricsExporter."""
         self.counters: dict[str, float] = {}
         self.gauges: dict[str, float] = {}
         self.histograms: Dict[str, list] = {}

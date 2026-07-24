@@ -8,6 +8,7 @@ class SimpleSearchEngine:
     """Lightweight full-text search engine."""
 
     def __init__(self):
+        """Initialize SimpleSearchEngine."""
         self.documents: dict[str, str] = {}
 
     def index(self, doc_id: str, text: str) -> None:

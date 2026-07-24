@@ -7,6 +7,7 @@ class SpikingNeuron:
     """Simple spiking neuron model."""
 
     def __init__(self, threshold: float = 1.0):
+        """Initialize SpikingNeuron."""
         self.threshold = threshold
         self.potential = 0.0
         self.spikes = 0
@@ -28,6 +29,7 @@ class NeuromorphicLayer:
     """Simple neuromorphic layer."""
 
     def __init__(self, size: int):
+        """Initialize NeuromorphicLayer."""
         self.neurons = [SpikingNeuron() for _ in range(size)]
 
     def forward(self, inputs: list[float]) -> list[int]:

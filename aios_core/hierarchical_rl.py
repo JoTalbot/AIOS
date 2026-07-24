@@ -7,6 +7,7 @@ class Option:
     """Temporal abstraction (option) in HRL."""
 
     def __init__(self, name: str, initiation_set: List, policy, termination: float = 0.1):
+        """Initialize Option."""
         self.name = name
         self.initiation_set = initiation_set
         self.policy = policy
@@ -17,6 +18,7 @@ class HierarchicalRL:
     """Hierarchical Reinforcement Learning framework."""
 
     def __init__(self):
+        """Initialize HierarchicalRL."""
         self.options: Dict[str, Option] = {}
         self.high_level_policy = {}
 

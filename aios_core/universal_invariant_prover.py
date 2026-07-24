@@ -13,6 +13,7 @@ class SafetyInvariant:
     """Symbolic Invariant Condition."""
 
     def __init__(self, inv_id: str, description: str, assertion_expr: str):
+        """Initialize SafetyInvariant."""
         self.inv_id = inv_id
         self.description = description
         self.assertion_expr = assertion_expr
@@ -22,6 +23,7 @@ class UniversalInvariantProver:
     """Symbolic Theorem Prover for AIOS State Transitions."""
 
     def __init__(self):
+        """Initialize UniversalInvariantProver."""
         self.invariants: List[SafetyInvariant] = [
             SafetyInvariant("INV_01", "Identity Uniqueness", "agent_id IS_NOT_NULL AND unique"),
             SafetyInvariant("INV_02", "Memory Isolation", "memory_owner_id == request_owner_id"),

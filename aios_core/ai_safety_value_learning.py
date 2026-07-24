@@ -9,6 +9,7 @@ class ValueLearning:
     """Learns and represents human values."""
 
     def __init__(self):
+        """Initialize ValueLearning."""
         self.values: dict[str, float] = {}
         self.preferences: List[Dict] = []
 

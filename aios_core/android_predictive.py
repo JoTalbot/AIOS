@@ -20,6 +20,7 @@ __all__ = ["PredictiveMaintenance", "FailureTrend"]
 
 
 class RiskLevel(Enum):
+    """RiskLevel."""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -41,6 +42,7 @@ class FailurePrediction:
 
 @dataclass
 class TrendPoint:
+    """TrendPoint."""
     timestamp: float
     value: float
     label: str = ""
@@ -50,6 +52,7 @@ class PredictiveMaintenance:
     """M8 predictive engine - analyzes observability events to forecast failures."""
 
     def __init__(self, window_size: int = 100):
+        """Initialize PredictiveMaintenance."""
         self.window_size = window_size
         self._failure_history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=window_size))
         self._latency_history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=window_size))

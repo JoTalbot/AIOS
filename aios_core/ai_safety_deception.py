@@ -9,6 +9,7 @@ class DeceptionDetector:
     """Detects deceptive behavior in AI systems."""
 
     def __init__(self):
+        """Initialize DeceptionDetector."""
         self.detected_deceptions: List[Dict] = []
 
     def analyze_output(self, output: str, context: Dict) -> Dict:

@@ -7,6 +7,7 @@ class MetaLearner:
     """Learns how to learn across different tasks."""
 
     def __init__(self):
+        """Initialize MetaLearner."""
         self.task_history: List[Dict] = []
         self.strategies: dict[str, float] = {}
 

@@ -28,6 +28,7 @@ class MemoryManager:
     """
 
     def __init__(self, db: Optional[Database] = None):
+        """Initialize MemoryManager."""
         self.db = db
 
     def store(

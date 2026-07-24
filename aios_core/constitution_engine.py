@@ -123,6 +123,7 @@ class ConstitutionEngine:
         constitution_dir: str | None = None,
         policies_dir: str | None = None,
     ) -> None:
+        """Initialize ConstitutionEngine."""
         self.version = "3.0.0"
         self.constitution = ConstitutionLoader(constitution_dir)
         self.policies = PolicyLoader(policies_dir)

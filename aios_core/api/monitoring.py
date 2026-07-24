@@ -80,6 +80,7 @@ class AlertManager:
     """Manages monitoring alerts and notifications."""
 
     def __init__(self):
+        """Initialize AlertManager."""
         self.alerts: Dict[str, Alert] = {}
         self.alert_history: deque = deque(maxlen=1000)
         self.alert_rules: List[Callable] = []
@@ -144,6 +145,7 @@ class PerformanceMonitor:
     """Monitors system performance and metrics."""
 
     def __init__(self):
+        """Initialize PerformanceMonitor."""
         self.metrics = {
             "request_count": MetricCounter("requests_total", "Total number of requests"),
             "error_count": MetricCounter("errors_total", "Total number of errors"),
@@ -225,6 +227,7 @@ class IntegrationMonitor:
     """Monitors external integration performance and health."""
 
     def __init__(self):
+        """Initialize IntegrationMonitor."""
         self.integration_metrics = defaultdict(self._create_integration_metrics)
 
         self.health_checks = {}
@@ -286,6 +289,7 @@ class EnhancedLoggingManager:
     """Enhanced logging manager with structured logging and log aggregation."""
 
     def __init__(self):
+        """Initialize EnhancedLoggingManager."""
         self.loggers = {}
         self.log_aggregators = []
         self._setup_loggers()
@@ -361,6 +365,7 @@ class MonitoringSystem:
     """Main monitoring system that coordinates all monitoring components."""
 
     def __init__(self):
+        """Initialize MonitoringSystem."""
         self.alert_manager = AlertManager()
         self.performance_monitor = PerformanceMonitor()
         self.integration_monitor = IntegrationMonitor()
@@ -378,6 +383,7 @@ class MonitoringSystem:
         """Setup default alert evaluation rules."""
 
         async def high_cpu_rule(metrics: MetricSnapshot) -> List[Alert]:
+            """high cpu rule."""
             if metrics.cpu_usage > 80:
                 return [
                     Alert(
@@ -392,6 +398,7 @@ class MonitoringSystem:
             return []
 
         async def high_error_rate_rule(metrics: MetricSnapshot) -> List[Alert]:
+            """high error rate rule."""
             if metrics.error_rate > 0.05:
                 return [
                     Alert(
@@ -406,6 +413,7 @@ class MonitoringSystem:
             return []
 
         async def integration_failure_rule(metrics: MetricSnapshot) -> List[Alert]:
+            """integration failure rule."""
             if metrics.integration_events_failed > 10:
                 return [
                     Alert(

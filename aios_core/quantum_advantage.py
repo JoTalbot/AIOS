@@ -7,6 +7,7 @@ class QuantumAdvantageAnalyzer:
     """Analyzes when quantum algorithms provide advantage."""
 
     def __init__(self):
+        """Initialize QuantumAdvantageAnalyzer."""
         self.benchmarks: dict[str, dict] = {}
 
     def compare(self, classical_time: float, quantum_time: float, problem_size: int) -> Dict:
