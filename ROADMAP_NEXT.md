@@ -4,27 +4,34 @@
 - 1227 tests passing, 0 failures (xdist parallel, 26s)
 - 232 files: type-hints migration (Dict→dict, List→list, Optional→|None)
 - 10 critical bug fixes (lru_cache, missing returns, @staticmethod+self, imports)
-- CI/CD: pytest-xdist, loadfile distribution, pyproject.toml config
-- Prometheus alerts: 5 new rules (shard workers, queue, stale claims, fleet, outbox)
-- SECURITY_FIX.md: credential rotation checklist
+- Starlette → httpx async migration (8 test files, 0 DeprecationWarnings)
+- _PLATFORMS race condition fix (snapshot/restore fixture)
+- 462 docstrings → 100% coverage
+- CI/CD: pytest-xdist, benchmarks job, pyproject.toml config
+- Prometheus alerts: 5 new rules
+- 15 stale branches deleted
 - Docker: multi-arch support (amd64+arm64)
-- argparse: fixed dest generation, added promote-budget, post-text args
 
-## v9.5.0 (planned)
-- 100% docstring coverage for public methods
-- Performance benchmarks CI integration
-- Starlette httpx2 migration (async test rewrite)
-- Dependabot PR batch merge
-- Rozetka.ua platform scaffold
+## v9.5.0 🚧 (in progress)
+- Rozetka.ua platform scaffold (Storage, Messenger, Bootstrap, CLI)
+- RateLimiter memory leak fix
+- httpx2 full async migration (all remaining sync tests)
+- Rozetka calibration recipe (cards, detail, messenger)
 - Full production dashboard React v2
+
+## v9.6.0 (planned)
+- Rozetka.ua full agent (collector, card_parser, detail, competitive)
+- Rozetka.ua price tracker + price drop notifications
+- Rozetka.ua autowatch + favorites
+- Auto-login scaffold (Rozetka, OLX, Instagram)
 
 ## Release Instructions
 
 ### Docker (GHCR)
 ```bash
-git tag v9.4.0
-git push origin v9.4.0
-# → CI builds multi-arch image, pushes to ghcr.io/JoTalbot/AIOS:v9.4.0
+git tag v9.5.0
+git push origin v9.5.0
+# → CI builds multi-arch image, pushes to ghcr.io/JoTalbot/AIOS:v9.5.0
 ```
 
 ### SDK (PyPI)
