@@ -97,7 +97,7 @@ class Tenant:
 
 
 class MultiTenantManager:
-    """Manages multiple tenants (backward-compatible)."""
+    """Manages multiple tenants (backward-compatible) with strict data bounds."""
 
     def __init__(self) -> None:
         self.tenants: dict[str, Tenant] = {}
@@ -106,6 +106,34 @@ class MultiTenantManager:
             "memory": 1024,
             "api_calls": 50000,
         }
+        self.active_contexts: dict[str, str] = {}  # execution_id -> tenant_id
+
+    def set_execution_context(self, execution_id: str, tenant_id: str) -> None:
+        """Lock an execution context to a specific tenant."""
+        if tenant_id not in self.tenants:
+            raise ValueError(f"Tenant {tenant_id} not found.")
+        self.active_contexts[execution_id] = tenant_id
+
+    def get_execution_context(self, execution_id: str) -> str | None:
+        """Get the bound tenant_id for a context."""
+        return self.active_contexts.get(execution_id)
+        
+    def clear_execution_context(self, execution_id: str) -> None:
+        """Clear execution context bindings."""
+        self.active_contexts.pop(execution_id, None)
+
+    def enforce_data_bound(self, execution_id: str, resource_tenant_id: str) -> bool:
+        """Strictly enforce that a context can only access its own tenant's data."""
+        active_tenant = self.get_execution_context(execution_id)
+        if active_tenant is None:
+            return True
+            
+        if active_tenant != resource_tenant_id:
+            raise PermissionError(
+                f"Data Isolation Breach: Context bound to tenant '{active_tenant}' "
+                f"attempted to access resources of tenant '{resource_tenant_id}'."
+            )
+        return True
 
     def create_tenant(self, tenant_id: str, name: str) -> Tenant:
         """Create tenant (backward-compatible)."""
