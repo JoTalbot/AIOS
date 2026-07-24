@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aios"
-version = "10.8.0"
+version = "10.9.0"
 description = "Self-evolving Distributed Operating System - Production Exploitation GA"
 readme = "README.md"
 requires-python = ">=3.11"

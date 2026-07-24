@@ -1,5 +1,42 @@
 # AIOS Roadmap — Next Milestones
 
+## v10.9.0 ✅ (2026-07-24)
+- ✅ Graph Transformer (multi-head attention, node/edge embedding, layer stacking, readout)
+- ✅ Neuromorphic Hardware (LIF neurons, network mapping, STDP plasticity, spike routing)
+- ✅ Type Theory (type definitions, type checking, constraints, subtyping, composition, proof simulation)
+- ✅ AI Governance (policy management, compliance audits, risk assessment, transparency/accountability)
+- ✅ NeRF (density/color queries, volume rendering, stratified/hierarchical sampling)
+- ✅ Kubernetes Operator (CRD management, reconciliation, scaling, health monitoring, event logging)
+- ✅ Score-Based Models (Langevin dynamics, ODE sampling, noise schedules, score function)
+- ✅ Topological Data Analysis (persistent homology, Betti numbers, filtration, shape descriptors)
+- ✅ AI Alignment (alignment goals, deception detection, corrigibility, value scoring, audit)
+- ✅ Brain-Computer Interface (EEG simulation, intent decoding, adaptive filtering, session management)
+- ✅ Chaos Engineering (ChaosMonkey, experiments, steady-state probes, abort conditions, action types)
+- ✅ RAG (document chunking, TF-IDF+embedding retrieval, hybrid search, full query pipeline)
+- ✅ Hierarchical RL (options/skills, initiation sets, goal decomposition, high-level policy)
+- ✅ Curriculum Learning (progressive difficulty, mastery tracking, auto-progression, scheduling)
+- ✅ Model-Based RL (dynamics model, MPC planning, imagined rollouts, value estimation)
+- ✅ OpenAPI (3.0 spec builder, endpoint registration, schemas, validation)
+- ✅ Vector Store (cosine similarity pure-python, metadata filtering, batch ops)
+- ✅ Natural Language (intent detection, entity extraction, context tracking, command mapping)
+- ✅ Sustainability (energy/CO2 tracking, optimization suggestions, carbon offsets, reporting)
+- ✅ AI Agent (capabilities, autonomy levels, goal tracking, memory, communication)
+- ✅ AI Researcher (paper writing, peer review, hypothesis generation, literature search)
+- ✅ Liquid Neural Networks (LIF neurons, synaptic wiring, multi-step forward, adaptive time constants)
+- ✅ Neural Architecture Search (random search, evolutionary search, Pareto optimization)
+- ✅ Uncertainty Estimation (epistemic/aleatoric decomposition, ensemble disagreement, confidence intervals)
+- ✅ KAN Networks (B-spline activations, layer composition, symbolic regression, training simulation)
+- ✅ Performance (context-manager timing, alerts, benchmarks, optimization suggestions)
+- ✅ A/B Testing (weighted assignment, chi-squared significance, conversion rates, lifecycle)
+- ✅ AI Startup (team/funding/products, runway, valuation, growth projection)
+- ✅ Continuous Learning (experience ingestion, drift detection, performance monitoring)
+- ✅ Autonomous Evolution (mutation proposal, fitness evaluation, annealing, convergence)
+- ✅ ab_testing.py syntax fix (p_value parentheses)
+- ✅ test_privatize_mean DP randomness fix
+- ✅ RELEASE_NOTES_10.9.0.md
+
+**2302 tests, 0 failures**
+
 ## v10.8.0 ✅ (2026-07-24)
 - ✅ Bayesian Inference (hypotheses, Bayes' theorem, confidence intervals, comparison, marginal likelihood)
 - ✅ Causal Inference (DAG, do-calculus, counterfactual, confounders, mediation, validation)
@@ -303,3 +340,4 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 10.6.0 | 2026-07-24 | 2176 | Task scheduler + Event store + Observability + Experiment + Data lake + API versioning + Twin + Compliance + Secrets |
 | 10.7.0 | 2026-07-24 | 2302 | Advanced security + Swarm + Adversarial + Distributed + Edge + Explainable + Federated + GraphQL + Social + Privacy |
 | 10.8.0 | 2026-07-24 | 2302 | Bayesian + Causal + Continual + Creativity + Diffusion + EI + Encryption + GNN + KD + MetaL + MetaCog + Mamba + MARL + MultiModal + NeuralODE + Personal + PINN + RL + Retry + SSL + SSM + ToM + Transfer + Voice + Search + ActiveL + Cache + Config + FedAnalytics + OfflineRL |
+| 10.9.0 | 2026-07-24 | 2302 | GraphTransformer + Neuromorphic + TypeTheory + AIGovernance + NeRF + K8s + ScoreBased + Topological + AIAlignment + BCI + Chaos + RAG + HierarchicalRL + Curriculum + ModelBasedRL + OpenAPI + VectorStore + NLP + Sustainability + AIAgent + AIResearcher + LiquidNN + NAS + Uncertainty + KAN + Performance + ABTesting + AIStartup + ContinuousLearning + AutonomousEvolution |
