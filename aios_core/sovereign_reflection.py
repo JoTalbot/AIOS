@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import random
 import time
 from typing import Any
 
@@ -115,7 +116,7 @@ class SovereignReflectionEngine:
             # Filter out blocked goals for next depth
             current_goals = [g for g in current_goals if not any(kw in str(g).lower() for kw in ["override", "disable", "bypass"])]
 
-        return {"agent_id": agent_id, "depth": depth, "reflection_levels": results, "convergence": len(results[-1]["contradictions"]) == 0 if results else True}
+        return {"agent_id": agent_id, "depth": depth, "reflection_levels": results, "convergence": (results[-1]["contradictions"] == 0 if results else True)}
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict (backward-compatible)."""

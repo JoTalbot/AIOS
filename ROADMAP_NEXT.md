@@ -9,9 +9,18 @@
 
 **2302 tests, 0 failures**
 
-## v10.13.0 (Next)
-- 🔲 Dedicated test coverage for v10.9–10.12 modules (~200-300 tests)
-- 🔲 httpx2 async migration (71 Starlette imports)
+## v10.13.0 ✅ (2026-07-24)
+- ✅ 204 dedicated tests for v10.12 semi-stub modules
+- ✅ 238 auto-generated import/instantiate/stats tests for 191 untested modules
+- ✅ Bug fix: blockchain.py nonce ordering (AttributeError)
+- ✅ Bug fix: sovereign_reflection.py missing `random` import + int/len TypeError
+- ✅ RELEASE_NOTES_10.13.0.md
+- ✅ Starlette assessment: 7 ASGI server files — httpx2 migration NOT applicable
+
+**2740 tests, 0 failures**
+
+## v10.14.0 (Next)
+- 🔲 Deepen test coverage for critical modules (cognition, planner, storage)
 - 🔲 Production dashboard React v3
 - 🔲 Security: revoke exposed GitHub PAT
 

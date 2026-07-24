@@ -30,8 +30,8 @@ class Block:
         self.timestamp: float = time.time()
         self.data = data
         self.previous_hash = previous_hash
-        self.hash: str = self.calculate_hash()
         self.nonce: int = 0
+        self.hash: str = self.calculate_hash()
 
     def calculate_hash(self) -> str:
         """Calculate hash (backward-compatible)."""
