@@ -226,6 +226,7 @@ class Orchestrator:
         description: str = "",
         agent_id: str = "orchestrator",
         authority: str = "system",
+        tenant_id: str | None = None,
         risk_level: str = "medium",
         metadata: dict | None = None,
         task_id: str | None = None,
@@ -244,6 +245,8 @@ class Orchestrator:
             risk_level=risk_level,
             metadata=metadata or {},
         )
+        if tenant_id:
+            task.metadata["tenant_id"] = tenant_id
         self._tasks[task.id] = task
         self.events.emit(
             "task_created",
@@ -304,7 +307,13 @@ class Orchestrator:
         Returns a summary dict with task_id, status, step results, etc.
         Each step goes through constitutional evaluation before execution.
         """
+        tenant_id = task.metadata.get("tenant_id")
+        if tenant_id and hasattr(self, "tenant_manager") and self.tenant_manager:
+            self.tenant_manager.set_execution_context(task.id, tenant_id)
+            
         if task.status in (TaskStatus.COMPLETED, TaskStatus.RUNNING):
+            if hasattr(self, "tenant_manager") and self.tenant_manager:
+                self.tenant_manager.clear_execution_context(task.id)
             return self._task_summary(task)
 
         task.status = TaskStatus.RUNNING
