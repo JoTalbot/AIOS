@@ -10,9 +10,10 @@ import json
 import os
 
 from starlette.requests import Request
+from starlette.websockets import WebSocket
 from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
-from aios_core.api.security import Principal
+from aios_core.api.security import Principal, find_principal, required_roles
 from aios_core.rate_limiter import rate_limiter
 
 
@@ -33,15 +34,32 @@ class CoreHandlersMixin:
             media_type="application/json",
         )
 
-    async def _websocket_endpoint(self, request: Request):
-        from starlette.websockets import WebSocket
+    async def _websocket_endpoint(self, websocket: WebSocket):
+        """Accept authenticated real-time connections only.
+
+        HTTP middleware does not run for WebSocket upgrades, therefore the
+        bearer credential is checked explicitly before accepting the socket.
+        """
+        principal = Principal("development", frozenset({"admin"}))
+        if self.auth_required:
+            if not self.api_keys:
+                await websocket.close(code=4403, reason="API authentication is not configured")
+                return
+            header = websocket.headers.get("authorization", "")
+            if not header.startswith("Bearer "):
+                await websocket.close(code=4401, reason="Bearer authentication required")
+                return
+            principal = find_principal(self.api_keys, header[7:])
+            if principal is None:
+                await websocket.close(code=4401, reason="Invalid API key")
+                return
+            if not principal.roles.intersection(required_roles("/ws", "GET")):
+                await websocket.close(code=4403, reason="Insufficient role")
+                return
 
         from aios_core.websocket import ws_manager
 
-        websocket = WebSocket(
-            scope=request.scope, receive=request.receive, send=request.send
-        )
-        await ws_manager.connect(websocket)
+        await ws_manager.connect(websocket, client_id=principal.subject)
         try:
             while True:
                 await websocket.receive_text()
