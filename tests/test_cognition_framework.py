@@ -39,7 +39,8 @@ def test_metacognition():
 
 def test_social_intelligence():
     si = SocialIntelligence()
-    si.update_relationship("agent_1", "agent_2", {"affinity": 0.9})
+    for _ in range(20):
+        si.update_relationship("agent_1", "agent_2", {"outcome": "positive"})
     actions = si.social_reasoning({"context": "group_work"})
     assert "cooperate" in actions
 
