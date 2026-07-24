@@ -154,3 +154,10 @@ async def test_openapi_includes_every_registered_http_route():
     assert runtime <= documented
     assert "security" not in spec["paths"]["/health"]["get"]
     assert spec["paths"]["/api/v1/tasks"]["post"]["security"] == [{"ApiKeyAuth": []}]
+
+
+def test_admin_route_policy_requires_admin_role():
+    from aios_core.api.security import required_roles
+
+    assert required_roles("/api/v1/admin/keys", "GET") == {"admin"}
+    assert required_roles("/api/v1/admin/keys/generate", "POST") == {"admin"}
