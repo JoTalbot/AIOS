@@ -90,7 +90,7 @@ assert (t2-t0) < 5.0, 'Import too slow'
       - run: pip-audit --disable-pip || true
 
   benchmarks:
-    name: Performance benchmarks
+    name: Performance benchmarks (blocking)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -98,13 +98,64 @@ assert (t2-t0) < 5.0, 'Import too slow'
         with: {python-version: "3.12", cache: pip}
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -r requirements.txt pytest-benchmark
-      - name: Run benchmarks with thresholds
+      - name: Run benchmarks with blocking thresholds
+        run: |
+          python -c "
+          from aios_core.benchmarks_thresholds import THRESHOLDS, check_threshold
+          import json, time
+
+          results = []
+          all_pass = True
+          for t in THRESHOLDS:
+              print(f'Checking threshold: {t.name} (max {t.max_ms}ms)')
+
+          # Core import
+          t0 = time.perf_counter()
+          import aios_core
+          t1 = time.perf_counter()
+          r = check_threshold('core_import', (t1-t0)*1000)
+          results.append(r)
+          if r['status'] == 'fail': all_pass = False
+
+          # Storage save_ads
+          from aios_core.modules.olx.storage import OLXStorage
+          from aios_core.modules.olx.models import AdCard
+          storage = OLXStorage(':memory:')
+          cards = [AdCard(title=f'Product {i}', price=i*100, currency='UAH', city='Kyiv',
+                        published_text='today', is_top=False, url=f'https://p{i}.ua',
+                        ad_id=f'id-{i}', query='test', raw_texts=[f'Product {i}'])
+                  for i in range(100)]
+          t0 = time.perf_counter()
+          storage.save_ads(cards)
+          t1 = time.perf_counter()
+          r = check_threshold('storage_save_ads_100', (t1-t0)*1000)
+          results.append(r)
+          if r['status'] == 'fail': all_pass = False
+
+          # Rate limiter
+          from aios_core.rate_limiter import RateLimiter
+          rl = RateLimiter(max_requests=100, window_seconds=60)
+          t0 = time.perf_counter()
+          for _ in range(100): rl.is_allowed('test-key')
+          t1 = time.perf_counter()
+          r = check_threshold('rate_limiter_is_allowed', ((t1-t0)*1000)/100)
+          results.append(r)
+          if r['status'] == 'fail': all_pass = False
+
+          print(json.dumps(results, indent=2))
+          if not all_pass:
+              print('::error::Benchmarks FAILED thresholds — blocking')
+              raise SystemExit(1)
+          else:
+              print('✅ All benchmarks passed thresholds')
+          "
+      - name: Run pytest benchmarks
         run: |
           python -m pytest tests/test_benchmarks.py --benchmark-only \
             --benchmark-min-rounds=3 --benchmark-max-time=2.0 \
             --timeout=20 -v \
             --benchmark-disable-gc \
-            || echo "::warning::Benchmarks exceeded thresholds — non-blocking"
+            || echo "::warning::Pytest benchmarks exceeded thresholds — non-blocking"
 
   e2e-smoke:
     name: E2E smoke (OLX pipeline, no device)
