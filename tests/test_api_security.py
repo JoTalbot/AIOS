@@ -99,3 +99,46 @@ async def test_approver_role_is_required_for_approval_actions():
             headers={"Authorization": "Bearer approver-key"},
         )
         assert result.status_code == 404
+
+
+def test_api_key_configuration_rejects_empty_or_non_string_roles():
+    from aios_core.api.security import load_api_keys
+
+    with pytest.raises(ValueError, match="non-empty list of role strings"):
+        load_api_keys('{"key":{"subject":"operator","roles":[]}}')
+    with pytest.raises(ValueError, match="non-empty list of role strings"):
+        load_api_keys('{"key":{"subject":"operator","roles":[1]}}')
+
+
+@pytest.mark.asyncio
+async def test_health_and_api_documentation_are_public_but_api_remains_closed():
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        assert (await client.get("/health")).status_code == 200
+        assert (await client.get("/docs")).status_code == 200
+        assert (await client.get("/openapi.json")).status_code == 200
+        assert (await client.get("/api/v1/stats")).status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_task_rate_limit_is_scoped_to_authenticated_subject(monkeypatch):
+    from aios_core.api.mixins_core import rate_limiter
+
+    rate_limiter.reset()
+    rate_limiter.set_tier("alice", 1)
+    try:
+        keys = {
+            "alice-key": {"subject": "alice", "roles": ["writer"]},
+            "bob-key": {"subject": "bob", "roles": ["writer"]},
+        }
+        app = create_app(api_keys=keys)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            alice = {"Authorization": "Bearer alice-key"}
+            bob = {"Authorization": "Bearer bob-key"}
+            assert (await client.post("/api/v1/tasks", json={"name": "one"}, headers=alice)).status_code == 200
+            blocked = await client.post("/api/v1/tasks", json={"name": "two"}, headers=alice)
+            assert blocked.status_code == 429
+            assert blocked.headers["retry-after"] == str(rate_limiter.window_seconds)
+            assert (await client.post("/api/v1/tasks", json={"name": "bob"}, headers=bob)).status_code == 200
+    finally:
+        rate_limiter.reset()
