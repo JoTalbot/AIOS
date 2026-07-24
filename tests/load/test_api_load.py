@@ -90,14 +90,14 @@ class TestAPILoadTests:
         assert p99 < 500
 
     @pytest.mark.asyncio
-    async def test_sustained_load_30_seconds(self, client):
-        """Test sustained load over 30 seconds."""
+    async def test_sustained_load_5_seconds(self, client):
+        """Test sustained load over five seconds within the global test timeout."""
         latencies = []
         start_time = time.time()
         request_count = 0
 
-        # Run for 30 seconds
-        while time.time() - start_time < 30:
+        # Keep this below the suite-wide 30-second timeout.
+        while time.time() - start_time < 5:
             start = time.perf_counter()
             response = await client.get("/health")
             latency = (time.perf_counter() - start) * 1000
