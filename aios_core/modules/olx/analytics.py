@@ -160,7 +160,7 @@ class Recommendation:
         top_verdict = "так" if self.use_top_promotion else "не обов'язково"
         lines.append(f"- TOP-просування: {top_verdict}")
         for note in self.notes:
-            lines.append(f"- {note}")
+            lines.append(f"- {note}")  # noqa: PERF401
         return "\n".join(lines)
 
 

@@ -160,9 +160,7 @@ class ScoreBasedModel:
             return self.ode_sample(num_samples)
         else:
             # Simple: random from prior
-            samples = []
-            for _ in range(num_samples):
-                samples.append([random.gauss(0, 1) for _ in range(self.dim)])
+            samples = [[random.gauss(0, 1) for _ in range(self.dim)] for _ in range(num_samples)]
             return samples
 
     # ── Stats ──────────────────────────────────────────────────────

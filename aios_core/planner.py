@@ -450,12 +450,7 @@ class Planner:
 
         # Also check step-level dependency references
         for step in plan.steps:
-            for dep_id in step.dependencies:
-                if dep_id not in step_ids:
-                    errors.append(
-                        f"Step '{step.name}' ({step.id}) depends on "
-                        f"unknown step '{dep_id}'"
-                    )
+            errors = [f"Step '{step.name}' ({step.id}) depends on " f"unknown step '{dep_id}'" for dep_id in step.dependencies if dep_id not in step_ids]
 
         # --- Build adjacency list (only from valid edges) ---
         adj: dict[str, list[str]] = {s.id: [] for s in plan.steps}
@@ -904,9 +899,7 @@ class Planner:
             if cur in visited:
                 continue
             visited.add(cur)
-            for neighbor in adj.get(cur, []):
-                if neighbor not in visited:
-                    stack.append(neighbor)
+            stack = [neighbor for neighbor in adj.get(cur, []) if neighbor not in visited]
 
     def _has_cycle(self, adj: dict[str, list[str]], nodes: set[str]) -> bool:
         """Return *True* if the graph contains a cycle (DFS 3-coloring)."""
@@ -983,9 +976,7 @@ class Planner:
         """Skip dependents whose dependency edge requires success."""
         # Find all steps that directly depend on the failed step
         dependents: list[PlanStep] = []
-        for step in plan.steps:
-            if failed_step_id in step.dependencies:
-                dependents.append(step)
+        dependents = [step for step in plan.steps if failed_step_id in step.dependencies]
 
         for dep_step in dependents:
             edge_cond = self._get_edge_condition(plan, failed_step_id, dep_step.id)

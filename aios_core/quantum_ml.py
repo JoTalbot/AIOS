@@ -78,8 +78,8 @@ class VariationalCircuit:
         output: list[float] = []
         for q in range(self.qubits):
             val = input_data[q % len(input_data)] if input_data else 0.0
-            for l in range(self.layers):
-                idx = q * self.layers * 2 + l * 2
+            for layer_idx in range(self.layers):
+                idx = q * self.layers * 2 + layer_idx * 2
                 angle1 = self.params[idx] if idx < len(self.params) else 0.0
                 angle2 = self.params[idx + 1] if idx + 1 < len(self.params) else 0.0
                 val = math.cos(angle1 + val) * math.sin(angle2 + val)
@@ -148,8 +148,7 @@ class QuantumML:
         matrix: list[list[float]] = []
         for i in range(n):
             row: list[float] = []
-            for j in range(n):
-                row.append(round(self.feature_map.kernel(X[i], X[j]), 4))
+            row = [round(self.feature_map.kernel(X[i], X[j]), 4) for j in range(n)]
             matrix.append(row)
         return matrix
 

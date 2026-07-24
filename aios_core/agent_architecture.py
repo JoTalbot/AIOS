@@ -168,8 +168,7 @@ class AdvancedAgent:
             .replace(" after ", "|")
             .split("|")
         )
-        for part in parts:
-            subgoals.append(part.strip())
+        subgoals = [part.strip() for part in parts]
         if not subgoals:
             subgoals = [goal]
         self.goals.extend(subgoals)
@@ -365,10 +364,7 @@ class AgentOrchestrator:
 
     def delegate_task(self, task: str, required_tool: str = "") -> AdvancedAgent | None:
         """Find and return the best agent for a task based on tool availability."""
-        candidates = []
-        for agent in self.agents.values():
-            if (required_tool and required_tool in agent.tools) or not required_tool:
-                candidates.append(agent)
+        candidates = [agent for agent in self.agents.values() if (required_tool and required_tool in agent.tools) or not required_tool]
 
         if not candidates:
             return None

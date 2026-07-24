@@ -494,7 +494,7 @@ class ABTestingEngine:
 
         # Run statistical test
         if exp.metric_type == MetricType.RATE:
-            stat, p_value = self._chi_square_test(a, b)
+            _stat, p_value = self._chi_square_test(a, b)
             val_a = a.rate
             val_b = b.rate
         else:

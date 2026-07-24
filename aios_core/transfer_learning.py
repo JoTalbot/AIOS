@@ -249,9 +249,7 @@ class TransferLearning:
         # Negative transfer indicators
         if similarity < 0.2:
             return True  # Very dissimilar domains
-        if src_task != tgt_task and similarity < 0.4:
-            return True  # Different task types with low similarity
-        return False
+        return src_task != tgt_task and similarity < 0.4  # Different task types with low similarity
 
     # ── Stats ──────────────────────────────────────────────────────
 

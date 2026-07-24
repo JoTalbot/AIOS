@@ -256,7 +256,7 @@ class Orchestrator:
 
             try:
                 asyncio.get_running_loop()
-                asyncio.create_task(
+                asyncio.create_task(  # noqa: RUF006
                     ws_manager.send_event(
                         "task_created", {"task_id": task.id, "name": task.name}
                     )

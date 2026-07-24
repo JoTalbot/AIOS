@@ -116,7 +116,7 @@ class UIAutomatorParser:
                 node.attrib.get("clickable") == "true"
                 and node.attrib.get("enabled") == "true"
             ):
-                result.append(self._to_element(node))
+                result.append(self._to_element(node))  # noqa: PERF401
         return result
 
     def find_search_field(self) -> None:

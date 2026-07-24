@@ -328,10 +328,10 @@ class SecretManager:
             "subjects": len({k.subject for k in self.keys.values()}),
             "rotations_last_30d": len(
                 [
-                    l
-                    for l in self.rotation_log
-                    if l["action"] == "rotated"
-                    and datetime.fromisoformat(l["timestamp"])
+                    log_entry
+                    for log_entry in self.rotation_log
+                    if log_entry["action"] == "rotated"
+                    and datetime.fromisoformat(log_entry["timestamp"])
                     > datetime.now(UTC) - timedelta(days=30)
                 ]
             ),

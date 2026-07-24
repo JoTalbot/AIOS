@@ -140,9 +140,7 @@ class AGISafety:
     def corrigibility_check(self, correction: dict) -> bool:
         """Check if system accepts correction (corrigibility)."""
         # Corrigible system should accept human corrections
-        if self._containment_level == "locked_down":
-            return False  # System is locked down, but should still be corrigible
-        return True
+        return self._containment_level != "locked_down"  # Corrigible unless locked down
 
     def safety_audit(self) -> dict[str, Any]:
         """Generate comprehensive safety audit."""

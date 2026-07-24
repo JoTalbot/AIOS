@@ -65,7 +65,7 @@ class APKFunctionConverter:
 
             # Register into capability engine if connected
             if self.capability_engine:
-                try:
+                try:  # noqa: SIM105
                     self.capability_engine.register_capability(
                         name=cap_entry["name"],
                         capability_type=f"apk_{comp_type}",

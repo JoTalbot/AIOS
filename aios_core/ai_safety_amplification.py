@@ -88,7 +88,7 @@ class IteratedAmplification:
         """Verify alignment is maintained through amplification."""
         if not self._level_history:
             return {"preserved": True, "alignment_scores": []}
-        alignments = [l.alignment for l in self._level_history]
+        alignments = [entry.alignment for entry in self._level_history]
         min_alignment = min(alignments)
         return {
             "preserved": min_alignment >= 0.7,
@@ -99,7 +99,7 @@ class IteratedAmplification:
 
     def quality_trajectory(self) -> list[float]:
         """Return quality scores across amplification levels."""
-        return [l.quality for l in self._level_history]
+        return [entry.quality for entry in self._level_history]
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict (backward-compatible)."""

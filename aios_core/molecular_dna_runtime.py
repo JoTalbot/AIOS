@@ -124,9 +124,7 @@ class MolecularDNARuntime:
 
     def decode_from_dna(self, dna_sequence: str) -> str:
         """Decode synthetic DNA sequence back into original text."""
-        binary_bits = []
-        for nuc in dna_sequence:
-            binary_bits.append(self.REVERSE_NUCLEOTIDE_MAP.get(nuc, "00"))
+        binary_bits = [self.REVERSE_NUCLEOTIDE_MAP.get(nuc, "00") for nuc in dna_sequence]
         full_binary = "".join(binary_bits)
         chars = []
         for i in range(0, len(full_binary), 8):

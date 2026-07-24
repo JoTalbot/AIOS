@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
+from datetime import UTC, datetime
 from typing import Any
 
 from starlette.websockets import WebSocket
@@ -185,7 +186,7 @@ class WebSocketManager:
         msg = {
             "type": event_type,
             "data": data,
-            "timestamp": __import__("datetime").datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         return await self.broadcast(msg, topic)
 

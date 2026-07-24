@@ -90,7 +90,7 @@ class Category:
             initial = "initial"
             self.add_object(initial)
             for obj in self.objects:
-                self.add_morphism(initial, obj, lambda x: obj)
+                self.add_morphism(initial, obj, lambda x: obj)  # noqa: B023
             return initial
         return None
 

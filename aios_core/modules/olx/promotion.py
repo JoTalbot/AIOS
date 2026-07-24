@@ -57,9 +57,9 @@ class ImprovementSuggestion:
         if self.keywords_to_add:
             lines.append("- Ключові слова: " + ", ".join(self.keywords_to_add))
         for item in self.description_additions:
-            lines.append(f"- Додати в опис: {item}")
+            lines.append(f"- Додати в опис: {item}")  # noqa: PERF401
         for note in self.notes:
-            lines.append(f"- {note}")
+            lines.append(f"- {note}")  # noqa: PERF401
         return "\n".join(lines)
 
 
@@ -330,7 +330,7 @@ class OwnAdEditor:
                 f"Ціна: {own_ad.price} → {suggestion.suggested_price:g} ({suggestion.price_verdict})"
             )
         for addition in suggestion.description_additions:
-            steps.append(f"Доповнити опис: {addition}")
+            steps.append(f"Доповнити опис: {addition}")  # noqa: PERF401
         steps.append("Зберегти зміни та перевірити публічну сторінку")
         return steps
 

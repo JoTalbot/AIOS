@@ -150,9 +150,9 @@ class DigitalTwin:
                 diff["added"][key] = value
             elif old[key] != value:
                 diff["changed"][key] = {"old": old[key], "new": value}
-        for key in old:
+        for key, old_val in old.items():
             if key not in new:
-                diff["removed"][key] = old[key]
+                diff["removed"][key] = old_val
         return diff
 
     def rollback(self) -> dict[str, Any]:

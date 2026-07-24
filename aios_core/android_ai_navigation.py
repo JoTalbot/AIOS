@@ -151,7 +151,7 @@ class AIScreenClassifier:
                     signature_parts.append(f"clickable_{min(len(clickables), 10)}")
                     for el in clickables[:3]:
                         if el.resource_id:
-                            signature_parts.append(el.resource_id.split("/")[-1][:20])
+                            signature_parts.append(el.resource_id.split("/")[-1][:20])  # noqa: PERF401
         except Exception:
             pass  # Signature extraction is best-effort; return generic on failure
         return "|".join(signature_parts) or "unknown"

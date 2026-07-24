@@ -66,7 +66,7 @@ class QuantumBiologySimulator:
         """Simulate FMO complex exciton dynamics across chromophore sites."""
         sites = []
         for i in range(num_sites):
-            sites.append(
+            sites.append(  # noqa: PERF401
                 {
                     "site_id": i + 1,
                     "energy_level_eV": round(random.uniform(2.0, 3.0), 3),

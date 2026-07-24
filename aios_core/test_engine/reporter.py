@@ -85,7 +85,7 @@ class TestReporter:
         if report.failures:
             lines.append(f"\n{len(report.failures)} FAILURES:")
             for f in report.failures[:10]:
-                lines.append(f"  - {f['suite']}::{f['test']}: {f['message']}")
+                lines.append(f"  - {f['suite']}::{f['test']}: {f['message']}")  # noqa: PERF401
 
         return "\n".join(lines)
 

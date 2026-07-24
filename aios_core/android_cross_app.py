@@ -80,7 +80,7 @@ class CrossAppWorkflowEngine:
         """Create workflow from dict definitions."""
         workflow_steps = []
         for s in steps:
-            workflow_steps.append(
+            workflow_steps.append(  # noqa: PERF401
                 WorkflowStep(
                     app_package=s.get("app_package", s.get("package", "")),
                     action=s.get("action", ""),

@@ -308,16 +308,7 @@ class KnowledgeGraph:
             List of dicts with source, target, relation, weight keys.
         """
         triples = self.find_related(entity_id, relation, "both", 100)
-        results = []
-        for t in triples:
-            results.append(
-                {
-                    "source": t.subject,
-                    "target": t.object,
-                    "relation": t.predicate,
-                    "weight": t.weight,
-                }
-            )
+        results = [{ "source": t.subject, "target": t.object, "relation": t.predicate, "weight": t.weight, } for t in triples]
         return results
 
     def neighbors(
@@ -374,7 +365,7 @@ class KnowledgeGraph:
             # Convert path to list of edge dicts
             edges = []
             for i in range(len(result.path) - 1):
-                edges.append(
+                edges.append(  # noqa: PERF401
                     {
                         "source": result.path[i],
                         "target": result.path[i + 1],

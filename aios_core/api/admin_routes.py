@@ -61,8 +61,8 @@ def _require_admin(request: Request):
         principal = request.state.principal
         if not principal or "admin" not in principal.roles:
             raise HTTPException(403, "Admin role required")
-    except AttributeError:
-        raise HTTPException(401, "Authentication required")
+    except AttributeError as err:
+        raise HTTPException(401, "Authentication required") from err
 
 
 # ============================================================

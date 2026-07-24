@@ -182,6 +182,6 @@ class SpikingNetwork:
     def stats(self) -> dict[str, Any]:
         return {
             "layers": len(self.layers),
-            "layer_sizes": [l.stats()["neurons"] for l in self.layers],
+            "layer_sizes": [layer.stats()["neurons"] for layer in self.layers],
             "synapse_groups": len(self._synapses),
         }

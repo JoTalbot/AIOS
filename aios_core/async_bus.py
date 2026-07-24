@@ -194,7 +194,7 @@ class AsyncEventBus:
 
         # Middleware — after
         for mw in self._middleware:
-            try:
+            try:  # noqa: SIM105
                 await mw.after_emit(event, payload, elapsed)
             except Exception:
                 pass  # middleware after-hooks must not break emission

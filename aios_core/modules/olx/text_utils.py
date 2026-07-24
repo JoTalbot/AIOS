@@ -148,7 +148,7 @@ def parse_published(text: str | None, now: datetime | None = None) -> str | None
         month = _MONTHS.get(match.group(2).lower())
         year = int(match.group(3))
         if month:
-            return datetime(year, month, day).isoformat()
+            return datetime(year, month, day).isoformat()  # noqa: DTZ001
     return None
 
 

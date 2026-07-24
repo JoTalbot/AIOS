@@ -198,7 +198,7 @@ class PoolMonitor:
 
         def _loop():
             while not self._stopped.wait(interval_s):
-                try:
+                try:  # noqa: SIM105
                     self.run_once()
                 except Exception:
                     pass  # монитор не должен падать из-за разового сбоя adb

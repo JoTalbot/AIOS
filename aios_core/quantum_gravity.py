@@ -190,7 +190,7 @@ class QuantumGravitySimulator:
         cells = []
         for i in range(resolution):
             for j in range(resolution):
-                cells.append(
+                cells.append(  # noqa: PERF401
                     {
                         "x": i * self.PLANCK_LENGTH,
                         "y": j * self.PLANCK_LENGTH,

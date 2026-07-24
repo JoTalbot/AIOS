@@ -163,7 +163,7 @@ class ShardHealthMonitor:
 
         def _loop():
             while not self._stopped.wait(interval_s):
-                try:
+                try:  # noqa: SIM105
                     self.run_once()
                 except Exception:
                     pass  # Single health-check probe failed — continue loop

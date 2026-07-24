@@ -122,13 +122,13 @@ class TopologicalAnalyzer:
             else sorted_dists
         )
         for d in merge_distances:
-            diagrams.append(PersistenceDiagram(birth=0.0, death=d, dimension=0))
+            diagrams.append(PersistenceDiagram(birth=0.0, death=d, dimension=0))  # noqa: PERF401
 
         # Betti-1 points: loops appear
         if betti_1 > 0 and len(sorted_dists) > n:
             loop_births = sorted_dists[n : n + betti_1]
             for bd in loop_births:
-                diagrams.append(
+                diagrams.append(  # noqa: PERF401
                     PersistenceDiagram(birth=bd, death=bd + self.epsilon, dimension=1)
                 )
 

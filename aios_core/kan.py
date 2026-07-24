@@ -141,6 +141,6 @@ class KAN:
         return {
             "layers": len(self.layers),
             "layer_sizes": self.layer_sizes,
-            "total_edges": sum(l.in_dim * l.out_dim for l in self.layers),
+            "total_edges": sum(layer.in_dim * layer.out_dim for layer in self.layers),
             "trained": self._trained,
         }

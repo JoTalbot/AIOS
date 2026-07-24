@@ -185,5 +185,5 @@ class MambaStacked:
         """Return summary statistics."""
         return {
             "layers": self.num_layers,
-            "total_steps": sum(l._step_count for l in self.layers),
+            "total_steps": sum(layer._step_count for layer in self.layers),
         }

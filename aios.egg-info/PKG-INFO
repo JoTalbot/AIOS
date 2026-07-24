@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: aios
-Version: 9.5.0
+Version: 10.15.0
 Summary: Self-evolving Distributed Operating System - Production Exploitation GA
 Author-email: JoTalbot <jo.talbot@gmail.com>
 License-Expression: MIT
@@ -35,8 +35,8 @@ Requires-Dist: sphinx-rtd-theme>=3.1.0; extra == "docs"
 
 # AIOS
 
-![Version](https://img.shields.io/badge/version-9.4.0-blue)
-![Tests](https://img.shields.io/badge/tests-1255%20passing-green)
+![Version](https://img.shields.io/badge/version-10.15.0-blue)
+![Tests](https://img.shields.io/badge/tests-3015%20passing-green)
 ![API](https://img.shields.io/badge/API-169%20routes-blue)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-13%20workflows-green)

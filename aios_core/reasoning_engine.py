@@ -104,7 +104,7 @@ class ReasoningEngine:
             memories = self.memory.search(query=question, limit=5)
             if memories:
                 for m in memories[:3]:
-                    evidence_sources.append(f"memory:{m['id']}")
+                    evidence_sources.append(f"memory:{m['id']}")  # noqa: PERF401
                 chain.steps.append(
                     ReasoningStep(
                         step_type="evidence",
@@ -131,7 +131,7 @@ class ReasoningEngine:
                     unique_nodes.append(n)
             if unique_nodes:
                 for n in unique_nodes[:3]:
-                    evidence_sources.append(f"knowledge:{n['id']}")
+                    evidence_sources.append(f"knowledge:{n['id']}")  # noqa: PERF401
                 chain.steps.append(
                     ReasoningStep(
                         step_type="evidence",
@@ -453,7 +453,7 @@ class ReasoningEngine:
                 except Exception:
                     pass  # Knowledge graph node parsing is best-effort
                 for n in all_nodes[:5]:
-                    evidence_sources.append(f"knowledge:{n['id']}")
+                    evidence_sources.append(f"knowledge:{n['id']}")  # noqa: PERF401
                 chain.steps.append(
                     ReasoningStep(
                         step_type="evidence",
@@ -612,7 +612,7 @@ class ReasoningEngine:
 
                 # Check for supporting relations (implies, supports, confirms)
                 for en in ev_nodes:
-                    for hn in hyp_nodes:
+                    for _hn in hyp_nodes:
                         try:
                             rels = self.knowledge.get_relations(node_id=en["id"])
                         except Exception:

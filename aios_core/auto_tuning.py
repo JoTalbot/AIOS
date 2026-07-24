@@ -584,7 +584,7 @@ class AutoTuningEngine:
             new_result = []
             for prefix in result:
                 for item in lst:
-                    new_result.append([*prefix, item])
+                    new_result.append([*prefix, item])  # noqa: PERF401
             result = new_result
         return result
 

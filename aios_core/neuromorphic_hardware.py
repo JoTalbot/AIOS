@@ -125,7 +125,7 @@ class NeuromorphicChip:
 
         # Apply STDP for connections where both pre and post fired
         for src in spike_events:
-            for dst, weight in self.connections.get(src, []):
+            for dst, _weight in self.connections.get(src, []):
                 dst_neuron = self.neurons.get(dst)
                 if dst_neuron and dst_neuron.spikes > 0:
                     # STDP: strengthen if pre before post

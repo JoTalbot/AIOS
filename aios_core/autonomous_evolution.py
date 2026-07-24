@@ -134,7 +134,7 @@ class AutonomousEvolution:
             parent_idx = random.choice(top_indices)
             child = dict(population[parent_idx])
             # Mutate parameters
-            for key in child:
+            for key in child:  # noqa: PLC0206
                 if isinstance(child[key], (int, float)):
                     child[key] += random.gauss(0, self.mutation_rate)
             offspring.append(child)
@@ -170,7 +170,7 @@ class AutonomousEvolution:
         for _ in range(iterations):
             # Propose new state
             new_state = dict(current_state)
-            for key in new_state:
+            for key in new_state:  # noqa: PLC0206
                 if isinstance(new_state[key], float):
                     new_state[key] += random.gauss(0, temp * 0.1)
 

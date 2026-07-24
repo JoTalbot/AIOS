@@ -228,16 +228,10 @@ class ScenarioRecorder:
             issues.append("Scenario has no recorded steps")
 
         # Check monotonic timestamps
-        for i in range(1, len(self.steps)):
-            if self.steps[i].ts < self.steps[i - 1].ts:
-                issues.append(f"Step {i} has earlier timestamp than step {i - 1}")
+        issues = [f"Step {i} has earlier timestamp than step {i - 1}" for i in range(1, len(self.steps)) if self.steps[i].ts < self.steps[i - 1].ts]
 
         # Check assertions reference valid indices
-        for assertion in self.assertions:
-            if assertion.step_index >= len(self.steps) or assertion.step_index < 0:
-                issues.append(
-                    f"Assertion references invalid step_index {assertion.step_index}"
-                )
+        issues = [f"Assertion references invalid step_index {assertion.step_index}" for assertion in self.assertions if assertion.step_index >= len(self.steps) or assertion.step_index < 0]
 
         return {
             "valid": len(issues) == 0,

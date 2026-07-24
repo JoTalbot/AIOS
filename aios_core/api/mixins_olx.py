@@ -550,7 +550,7 @@ class OLXHandlersMixin:
             body = await request.json()
             ads = []
             for raw in body.get("ads") or []:
-                ads.append(
+                ads.append(  # noqa: PERF401
                     OwnAd(
                         title=raw.get("title") or "",
                         price=raw.get("price"),

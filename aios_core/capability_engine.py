@@ -316,7 +316,7 @@ class CapabilityEngine:
         """Write an audit event (best-effort, same table as audit_logger)."""
         if self.db is None:
             return
-        try:
+        try:  # noqa: SIM105
             self.db.execute(
                 """INSERT INTO audit_events
                        (id, event_type, data, timestamp)
@@ -1008,7 +1008,7 @@ class CapabilityEngine:
         }
         for missing in ["reasoning", "memory", "knowledge", "evolution"]:
             if missing not in existing_types:
-                suggestions.append(
+                suggestions.append(  # noqa: PERF401
                     {
                         "name": f"core_{missing}",
                         "description": f"Core {missing} capability (auto-suggested)",

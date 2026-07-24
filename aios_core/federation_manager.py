@@ -185,10 +185,7 @@ class FederationManager:
     def broadcast_message(self, message_type: str, payload: dict) -> dict:
         """Broadcast a message to all online nodes."""
         online = [n for n in self._nodes.values() if n.status == NodeStatus.ONLINE]
-        results = []
-        for node in online:
-            if node.node_id != self.local_node_id:
-                results.append({"node_id": node.node_id, "status": "sent"})
+        results = [{"node_id": node.node_id, "status": "sent"} for node in online if node.node_id != self.local_node_id]
         return {
             "success": True,
             "recipients": len(results),

@@ -253,8 +253,8 @@ class ADBDriver(AndroidDriver):
     def list_devices(self) -> list[str]:
         """Return list of connected ADB device serials."""
         output = self._adb("devices")
-        lines = [l for l in output.split("\n") if l.strip() and "List" not in l]
-        return [l.split()[0] for l in lines if "device" in l]
+        lines = [line for line in output.split("\n") if line.strip() and "List" not in line]
+        return [line.split()[0] for line in lines if "device" in line]
 
     def install_apk(self, apk_path: str) -> bool:
         """Install an APK onto the device."""

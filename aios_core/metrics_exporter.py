@@ -324,13 +324,13 @@ class MetricsExporter:
         keys_to_remove = []
         for key in list(self.counters.keys()):
             if key.split("{")[0] == name:
-                keys_to_remove.append(("counter", key))
+                keys_to_remove.append(("counter", key))  # noqa: PERF401
         for key in list(self.gauges.keys()):
             if key.split("{")[0] == name:
-                keys_to_remove.append(("gauge", key))
+                keys_to_remove.append(("gauge", key))  # noqa: PERF401
         for key in list(self.histograms.keys()):
             if key.split("{")[0] == name:
-                keys_to_remove.append(("histogram", key))
+                keys_to_remove.append(("histogram", key))  # noqa: PERF401
 
         for typ, key in keys_to_remove:
             if typ == "counter":

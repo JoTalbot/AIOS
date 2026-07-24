@@ -170,8 +170,7 @@ class ExplainableAI:
             return f"{exp.decision} (confidence={exp.confidence:.1%}): {exp.reasoning}"
         # FULL level
         lines = [f"Decision: {exp.decision}", f"Confidence: {exp.confidence:.1%}"]
-        for f in exp.factors:
-            lines.append(f"  Factor: {f.describe()}, value={f.value}")
+        lines = [f" Factor: {f.describe()}, value={f.value}" for f in exp.factors]
         lines.append(f"Reasoning: {exp.reasoning}")
         return "\n".join(lines)
 
@@ -223,10 +222,7 @@ class ExplainableAI:
 
     def search_by_factor(self, factor_name: str) -> list[Explanation]:
         """Find all decisions involving a specific factor."""
-        results = []
-        for exp in self.explanations.values():
-            if any(f.name == factor_name for f in exp.factors):
-                results.append(exp)
+        results = [exp for exp in self.explanations.values() if any(f.name == factor_name for f in exp.factors)]
         return results
 
     # ── Internal ─────────────────────────────────────────────────
