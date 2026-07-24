@@ -41,7 +41,12 @@
 
 **3015 tests, 0 failures**
 
-## v10.17.0 (Next)
+## v10.18.0 (Next)
+- 🔲 Migrate remaining synchronous storage operations to true Asyncpg/Aiosqlite
+- 🔲 Implement Federated Learning coordination for distributed edge nodes
+- 🔲 Add WebAssembly (Wasm) execution runtime for safe plugin isolation
+
+## v10.17.0 ✅
 - 🔲 Implement Agent Memory Optimization (Vector compression)
 - 🔲 Introduce Substrate Convergence Dashboard UI
 - ✅ Datadog / Prometheus comprehensive alert tuning for EKS
