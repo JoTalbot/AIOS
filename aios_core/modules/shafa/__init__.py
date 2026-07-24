@@ -1,11 +1,15 @@
-"""Shafa marketplace agent — скелет, сгенерированный scaffold.
+"""Shafa.ua full agent — collector, price_tracker, autowatch, favorites.""" 
 
-Хранилище унаследовано от OLXStorage: схема объявлений, история цен,
-подписки/избранное, outbox, свои объявления, конкурентные связи, kv-профиль.
-Парсеры/коллекторы платформы добавляются сюда по мере калибровки под
-её приложение (com.shafa).
-"""
-
+from .autowatch import ShafaAutoWatch
+from .collector import ShafaCollector
+from .favorites import ShafaFavorites
+from .price_tracker import ShafaPriceTracker
 from .storage import ShafaStorage
 
-__all__ = ["ShafaStorage"]
+__all__ = [
+    "ShafaAutoWatch",
+    "ShafaCollector",
+    "ShafaFavorites",
+    "ShafaPriceTracker",
+    "ShafaStorage",
+]
