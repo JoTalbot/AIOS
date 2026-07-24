@@ -28,3 +28,10 @@ def test_rate_limiter_independent_keys():
     assert limiter.is_allowed("key_a") is True
     assert limiter.is_allowed("key_a") is False
     assert limiter.is_allowed("key_b") is True  # different key — not blocked
+
+
+def test_clear_tier_restores_default_limit():
+    limiter = RateLimiter(requests_per_minute=10)
+    limiter.set_tier("operator", 1)
+    limiter.clear_tier("operator")
+    assert limiter.get_tier("operator") == 10

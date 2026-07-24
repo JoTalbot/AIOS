@@ -82,6 +82,10 @@ class RateLimiter:
         """Return effective RPM for *key* (default if no tier set)."""
         return self._tiers.get(key, self.requests_per_minute)
 
+    def clear_tier(self, key: str) -> None:
+        """Remove a per-key rate override and restore the default limit."""
+        self._tiers.pop(key, None)
+
     def set_quota(self, key: str, quota_limit: float) -> None:
         """Set a total-usage quota limit for *key* (e.g. 10000 requests/month)."""
         self._quota_limits[key] = quota_limit
