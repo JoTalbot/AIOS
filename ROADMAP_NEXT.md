@@ -22,22 +22,39 @@
 
 **1254 tests, 0 failures**
 
-## v9.6.0 🚧 (in progress)
+## v9.6.0 ✅ (2026-07-24)
 - ✅ Rozetka.ua price tracker (PriceDropAlert, detect_drops, track_product)
 - ✅ Rozetka.ua AutoWatch cycle (collect → price alerts → stagnant → favorites)
 - ✅ Rozetka.ua favorites (add/remove/list/details/check_drops)
 - ✅ Rozetka.ua auto-login scaffold (LoginState, detect_login_screen, attempt_login, captcha/2FA)
-- 🔲 Benchmarks CI thresholds (blocking)
-- 🔲 httpx2 full async migration (remaining sync tests)
-- 🔲 Production dashboard React v2
+- ✅ Rozetka CLI price-tracker/autowatch/favorites/auto-login subcommands
+- ✅ 37 new tests (1291 total, 0 failures)
+- ✅ RELEASE_NOTES_9.6.0.md + GitHub Release v9.6.0
 
-**1283 tests, 0 failures**
+**1291 tests, 0 failures**
 
-## v9.7.0 (planned)
-- Multi-market cross-platform (OLX ↔ Rozetka price comparison)
-- AI advisor: cross-platform recommendation engine
-- Vector search / semantic product matching
-- Real-time WebSocket dashboard updates
+## v9.7.0 🚧 (next)
+- 🔲 Multi-market cross-platform comparator (OLX ↔ Rozetka ↔ Prom price comparison)
+- 🔲 AI advisor v2: cross-platform recommendation engine + price prediction
+- 🔲 Vector search / semantic product matching (embeddings + similarity)
+- 🔲 Real-time WebSocket dashboard updates (live price alerts stream)
+- 🔲 Benchmarks CI thresholds (blocking regression gate)
+- 🔲 httpx2 full async migration (remaining sync tests → 0 sync)
+
+## v9.8.0 (planned)
+- TikTok full agent (collector, card_parser, detail, reels scout)
+- WhatsApp/Viber/Facebook Marketplace full agents (not just scaffold)
+- Multi-account fleet scheduler (per-platform 3+ profiles, cron-plan via-shards)
+- Production dashboard React v3 (WebSocket, cross-platform charts)
+- Mobile SDK (Flutter/React Native wrapper for AIOS REST API)
+
+## v10.0.0 (long-term)
+- Sovereign AGI reflection engine → metacognitive goal audit
+- Universal invariant prover → symbolic theorem proving
+- Multi-dimensional world model → counterfactual simulation rollouts
+- Quantum-native QAOA task scheduling
+- Neuromorphic LIF spiking engine → STDP unsupervised plasticity
+- Substrate convergence (Silicon ↔ Photonic ↔ Neuromorphic ↔ Quantum ↔ Bio-compute)
 
 ---
 
@@ -52,7 +69,7 @@ aios_core/
 │   └── ...
 ├── modules/
 │   ├── olx/            # Full OLX agent (21 files)
-│   ├── rozetka/        # Rozetka full agent (9 files)
+│   ├── rozetka/        # Rozetka full agent (10 files)
 │   │   ├── storage.py       # RozetkaStorage (inherits OLXStorage)
 │   │   ├── messenger.py     # Approval-gated outbox
 │   │   ├── bootstrap.py     # Doctor/preflight/calibration
@@ -77,20 +94,31 @@ aios_core/
 └── ...
 ```
 
-## Platform Scaffold Template
+## Platform Scaffold Template (v9.6.0+)
 
 Each new marketplace follows this pattern:
+
+### Core (v9.3+)
 1. `platforms/<name>.yaml` — descriptor with compliance config
 2. `aios_core/modules/<name>/` — module package
 3. `storage.py` — inherits OLXStorage (ads, price-history, outbox, own_ads, competitive)
 4. `messenger.py` — approval-gated outbox (PACKAGE, DEEP_LINK)
 5. `bootstrap.py` — doctor/preflight/calibration (inherits OLXBootstrap)
-6. `price_tracker.py` — price drop detection (min_drop_pct, min_absolute_drop)
-7. `autowatch.py` — full AutoWatch cycle (collect, alerts, stagnant, favorites)
-8. `favorites.py` — favorites with price-change awareness
-9. `auto_login.py` — auto-login scaffold (captcha/2FA handling)
-10. `aios_cli/<name>.py` — CLI subcommands (stats, dm-send, dm-outbox, doctor)
-11. `tests/test_<name>_*.py` — agent, cli, recipe, price_tracker, autowatch, favorites, auto_login
+
+### Agent (v9.5+)
+6. `collector.py` — ADB-driven scrolling card collection
+7. `card_parser.py` — platform-specific card parsing
+8. `detail.py` — product detail extraction
+
+### Monitoring (v9.6+)
+9. `price_tracker.py` — price drop detection (min_drop_pct, min_absolute_drop)
+10. `autowatch.py` — full AutoWatch cycle (collect, alerts, stagnant, favorites)
+11. `favorites.py` — favorites with price-change awareness
+12. `auto_login.py` — auto-login scaffold (captcha/2FA handling)
+
+### CLI & Tests
+13. `aios_cli/<name>.py` — CLI subcommands (stats, dm-send, dm-outbox, doctor, price-tracker, autowatch, favorites, auto-login)
+14. `tests/test_<name>_*.py` — agent, cli, recipe, price_tracker, autowatch, favorites, auto_login
 
 ---
 
@@ -98,9 +126,9 @@ Each new marketplace follows this pattern:
 
 ### Docker (GHCR)
 ```bash
-git tag v9.6.0
-git push origin v9.6.0
-# → CI builds multi-arch image, pushes to ghcr.io/JoTalbot/AIOS:v9.6.0
+git tag v9.7.0
+git push origin v9.7.0
+# → CI builds multi-arch image, pushes to ghcr.io/JoTalbot/AIOS:v9.7.0
 ```
 
 ### SDK (PyPI)
@@ -115,3 +143,17 @@ git push origin sdk-v4.2.0
 docker-compose -f docker-compose.prod.yml up -d
 docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 ```
+
+---
+
+## Version History
+
+| Версия | Дата | Тесты | Главное |
+|--------|------|-------|---------|
+| 9.0.0 | 2026-07-21 | 939 | Compliance + telemetry + audit-log + FB Marketplace |
+| 9.1.0 | 2026-07-22 | 1000 | Android M7/M8 + AI Advisor + SDK v4.2 + Marketplace v2 |
+| 9.2.0 | 2026-07-22 | 1010 | Production Autopilot 3 IG 2w ban-free sim 93.3% |
+| 9.3.0 | 2026-07-22 | 1040 | Bug fixes + async fixtures + type hints start |
+| 9.4.0 | 2026-07-24 | 1227 | 10 critical fixes + httpx migration + 462 docstrings |
+| 9.5.0 | 2026-07-24 | 1254 | Rozetka.ua scaffold + agent + RateLimiter leak fix |
+| 9.6.0 | 2026-07-24 | 1291 | Rozetka price tracker + AutoWatch + favorites + auto-login |
