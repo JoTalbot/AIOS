@@ -24,10 +24,12 @@ class SpacetimeRegion:
 
     def __init__(
         self,
-        coordinates: list[float] = [0.0, 0.0, 0.0, 0.0],
+        coordinates: list[float] | None = None,
         curvature: float = 0.0,
     ):
         """Initialize SpacetimeRegion."""
+        if coordinates is None:
+            coordinates = [0.0, 0.0, 0.0, 0.0]
         self.coordinates = coordinates
         self.curvature = curvature
         self.metric_tensor: list[list[float]] = []
@@ -107,8 +109,10 @@ class QuantumGravitySimulator:
             "evaporation_time_estimate": round(mass**3 * 8e-17, 2),
         }
 
-    def loop_quantum_gravity(self, spins: list[int] = [1, 2, 3]) -> dict[str, Any]:
+    def loop_quantum_gravity(self, spins: list[int] | None = None) -> dict[str, Any]:
         """Simulate LQG spin network geometry."""
+        if spins is None:
+            spins = [1, 2, 3]
         edges = []
         for spin in spins:
             round(

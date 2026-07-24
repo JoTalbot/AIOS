@@ -267,7 +267,7 @@ def setup_logging(
     max_bytes: int = 10 * 1024 * 1024,
     backup_count: int = 5,
     buffer_size: int = 0,
-    module_levels: dict[str, str] = {},
+    module_levels: dict[str, str] | None = None,
 ) -> logging.Logger:
     """Configure structured logging for AIOS.
 
@@ -280,6 +280,8 @@ def setup_logging(
         buffer_size: If >0, use a BufferedHandler wrapping the file handler.
         module_levels: Per-module log level overrides (e.g. {"aios_core.storage": "DEBUG"}).
     """
+    if module_levels is None:
+        module_levels = {}
     logger = logging.getLogger("aios")
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
     logger.handlers.clear()

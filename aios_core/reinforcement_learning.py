@@ -15,9 +15,9 @@ import logging
 import math
 import random
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
-from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 

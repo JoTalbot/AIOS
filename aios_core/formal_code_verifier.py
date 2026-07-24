@@ -171,7 +171,7 @@ class FormalCodeVerifier:
 
         # 3. Precondition & Variable Assertion Verification
         if preconditions:
-            for var_name in preconditions.keys():
+            for var_name in preconditions:
                 # Verify code references expected variables securely
                 var_referenced = any(
                     isinstance(node, ast.Name) and node.id == var_name

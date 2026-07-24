@@ -14,6 +14,7 @@ import sqlite3
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Self
 
 from .profile import Profile
 
@@ -74,7 +75,7 @@ class ProfileStore:
             _DEFAULT_STORE.close()
         _DEFAULT_STORE = None
 
-    def __enter__(self) -> ProfileStore:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_exc) -> None:

@@ -158,8 +158,10 @@ class AsyncOrchestrator(AsyncRunner):
         """Return orchestrator statistics."""
         return await self._run("stats")
 
-    async def create_task(self, name: str, steps: list = []) -> dict:
+    async def create_task(self, name: str, steps: list | None = None) -> dict:
         """Create a new task."""
+        if steps is None:
+            steps = []
         return await self._run("create_task", name, steps)
 
     async def run_task(self, task_id: str) -> dict:

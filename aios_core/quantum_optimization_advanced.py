@@ -71,8 +71,7 @@ class QuantumApproximateOptimization:
             betas.append(beta)
             params = gammas + betas
             cost = cost_func(params)
-            if cost < best_cost:
-                best_cost = cost
+            best_cost = min(best_cost, cost)
         return {
             "layers": p_layers,
             "gammas": [round(g, 4) for g in gammas],
@@ -114,9 +113,11 @@ class QuantumApproximateOptimization:
         }
 
     def constrained_qaoa(
-        self, cost_func: Callable, constraints: list[Callable] = [], num_qubits: int = 4
+        self, cost_func: Callable, constraints: list[Callable] | None = None, num_qubits: int = 4
     ) -> dict[str, Any]:
         """QAOA with constraint penalty terms."""
+        if constraints is None:
+            constraints = []
         best_cost = round(random.uniform(0.1, 2.0), 3)
         penalty = (
             sum(round(random.uniform(0.01, 0.5), 3) for _ in constraints)

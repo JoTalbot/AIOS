@@ -66,7 +66,7 @@ class ModelServer:
 
         if explicit_version:
             key = f"{model_id}:{explicit_version}"
-        elif model_id in self.traffic_splits and self.traffic_splits[model_id]:
+        elif self.traffic_splits.get(model_id):
             # A/B Traffic Routing
             versions = list(self.traffic_splits[model_id].keys())
             weights = list(self.traffic_splits[model_id].values())

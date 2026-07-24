@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
-from typing import Any
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse

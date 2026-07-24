@@ -4,7 +4,7 @@ own-promote DRY-RUN, and human-like pacing.
 
 import json
 import random
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest

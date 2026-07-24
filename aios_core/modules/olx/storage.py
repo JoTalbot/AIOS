@@ -21,6 +21,7 @@ import sqlite3
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Self
 
 from .models import AdCard
 
@@ -810,7 +811,7 @@ class OLXStorage:
         """Clean up resources."""
         self._conn.close()
 
-    def __enter__(self) -> OLXStorage:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_exc) -> None:

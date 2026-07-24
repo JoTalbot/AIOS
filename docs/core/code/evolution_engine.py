@@ -6,7 +6,6 @@ Without Octopus integration (~/agents/).
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List
 
 
 @dataclass

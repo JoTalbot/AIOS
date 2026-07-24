@@ -5,9 +5,8 @@ Registration and rendering of MCP prompt templates.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
 from collections.abc import Callable
+from dataclasses import dataclass, field
 
 from .protocol import MCPPromptResult
 

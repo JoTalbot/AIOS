@@ -54,7 +54,7 @@ class ImageHash:
         Returns:
             Number of differing bits (0 = identical, 64 = completely different).
         """
-        return bin(self.hash_value ^ other.hash_value).count("1")
+        return (self.hash_value ^ other.hash_value).bit_count()
 
     def similarity(self, other: ImageHash) -> float:
         """Similarity score (0.0 to 1.0) based on Hamming distance.

@@ -62,9 +62,11 @@ class WebSocketManager:
     # ------------------------------------------------------------------
 
     async def connect(
-        self, websocket: WebSocket, client_id: str = "", topics: list[str] = []
+        self, websocket: WebSocket, client_id: str = "", topics: list[str] | None = None
     ) -> str:
         """Accept *websocket* and register it with optional *topics*."""
+        if topics is None:
+            topics = []
         await websocket.accept()
         info = ConnectionInfo(websocket, client_id)
         conn_id = info.client_id
@@ -270,9 +272,9 @@ class WebSocketManager:
             "total_broadcasts": self._broadcast_count,
             "max_messages_per_second": self._max_msgs_per_sec,
             "heartbeat_interval": self._heartbeat_interval,
-            "topics": dict(
-                (t, len(subs)) for t, subs in self._topic_subscribers.items()
-            ),
+            "topics": {
+                t: len(subs) for t, subs in self._topic_subscribers.items()
+            },
         }
 
 

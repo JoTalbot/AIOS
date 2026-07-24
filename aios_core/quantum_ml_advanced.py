@@ -60,8 +60,7 @@ class QuantumNeuralNetwork:
             avg_loss = round(epoch_loss / max(len(X), 1), 4)
             losses.append(avg_loss)
             self._training_history.append(avg_loss)
-            if avg_loss < self._best_loss:
-                self._best_loss = avg_loss
+            self._best_loss = min(self._best_loss, avg_loss)
         return {
             "loss": round(losses[-1], 4),
             "epochs": epochs,

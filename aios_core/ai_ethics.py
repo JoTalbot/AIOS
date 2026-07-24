@@ -32,7 +32,7 @@ class AIEthicsFramework:
 
         action_str = str(action).lower()
 
-        for principle in self.principles.keys():
+        for principle in self.principles:
             score = 1.0
 
             if principle == "non_maleficence" and any(

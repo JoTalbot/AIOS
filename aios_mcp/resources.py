@@ -6,9 +6,8 @@ Resources are read-only data sources that agents can read.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from .protocol import MCPResourceContent
 

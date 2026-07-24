@@ -23,7 +23,7 @@ import os
 import subprocess
 import sys
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Prevent pytest from collecting this file as tests
 __test__ = False
