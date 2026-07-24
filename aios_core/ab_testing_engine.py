@@ -444,9 +444,9 @@ class ABTestingEngine:
         df_num = (se_a + se_b) ** 2
         df_den = se_a**2 / (n_a - 1) + se_b**2 / (n_b - 1)
         if df_den == 0:
-            df = n_a + n_b - 2
+            n_a + n_b - 2
         else:
-            df = df_num / df_den
+            df_num / df_den
 
         # p-value from t-distribution approximation
         p_value = 2 * (1 - self._normal_cdf(abs(t_stat)))
@@ -498,7 +498,7 @@ class ABTestingEngine:
             val_a = a.rate
             val_b = b.rate
         else:
-            stat, p_value = self._t_test(a, b)
+            _stat, p_value = self._t_test(a, b)
             val_a = a.mean
             val_b = b.mean
 

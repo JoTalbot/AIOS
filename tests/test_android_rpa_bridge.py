@@ -127,7 +127,7 @@ class TestAndroidRPABridge:
         """Test auto-authentication when not authenticated."""
         emulator = AndroidRPADeviceEmulator()
 
-        result = emulator.execute_ui_action(
+        emulator.execute_ui_action(
             package_name="ua.slando", action_name="search", params={"query": "test"}
         )
 
@@ -230,7 +230,7 @@ class TestAndroidRPABridge:
         credentials1 = {"login": "user1", "password": "pass1"}
         credentials2 = {"login": "user2", "password": "pass2"}
 
-        profile1 = manager.convert_app_to_working_api("ua.slando", credentials1, user_id="user1")
+        manager.convert_app_to_working_api("ua.slando", credentials1, user_id="user1")
         profile2 = manager.convert_app_to_working_api("ua.slando", credentials2, user_id="user2")
 
         # Session store is per-package; manager tracks latest session for that package

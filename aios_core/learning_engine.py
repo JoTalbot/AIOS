@@ -328,7 +328,7 @@ class LearningEngine:
         self._last_correlations = results
         return results
 
-    def predict_success(self, task_name: str, params: dict = None) -> dict:
+    def predict_success(self, task_name: str, params: dict | None = None) -> dict:
         """Predict the likelihood of success for a given task.
 
         Uses historical success rate, temporal patterns, and parameter

@@ -34,7 +34,7 @@ class RetentionLayer:
     def parallel_retention(self, x: list[float]) -> list[float]:
         """Parallel (training) mode: compute full retention matrix."""
         proj_q = [xi * w for xi, w in zip(x, self._weights_q)]
-        proj_k = [xi * w for xi, w in zip(x, self._weights_k)]
+        [xi * w for xi, w in zip(x, self._weights_k)]
         proj_v = [xi * w for xi, w in zip(x, self._weights_v)]
         # Decay-weighted aggregation
         new_state = [
@@ -46,7 +46,7 @@ class RetentionLayer:
     def recurrent_retention(self, x: list[float]) -> list[float]:
         """Recurrent (inference) mode: update state incrementally."""
         proj_q = [xi * w for xi, w in zip(x, self._weights_q)]
-        proj_k = [xi * w for xi, w in zip(x, self._weights_k)]
+        [xi * w for xi, w in zip(x, self._weights_k)]
         proj_v = [xi * w for xi, w in zip(x, self._weights_v)]
         # RNN-style: state = gamma * state + q * k^T * v (simplified to element-wise)
         self.state = [

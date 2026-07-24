@@ -79,7 +79,7 @@ class BCIInterface:
         sample = [random.gauss(0, 0.1) for _ in range(self.channels)]
         # Add alpha wave (8-12 Hz) component
         alpha_freq = random.uniform(8, 12)
-        t = time.time() * self.sample_rate
+        time.time() * self.sample_rate
         for i in range(self.channels):
             sample[i] += 0.3 * math.sin(2 * math.pi * alpha_freq * i / self.channels)
 

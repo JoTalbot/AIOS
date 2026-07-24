@@ -72,7 +72,7 @@ class NeuromorphicLayer:
         outputs: list[int] = []
         for i, neuron in enumerate(self.neurons):
             inp = inputs[i % len(inputs)] if inputs else 0
-            spike = neuron.step(inp)
+            neuron.step(inp)
             outputs.append(neuron.spikes)
         return outputs
 

@@ -416,7 +416,7 @@ class PlatformHealthMonitor:
             List of platform health dicts, sorted by health_score descending.
         """
         results = []
-        for platform, health in self._platforms.items():
+        for health in self._platforms.values():
             results.append(health.to_dict())
 
         results.sort(key=lambda r: -r.get("health_score", 0))

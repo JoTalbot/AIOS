@@ -88,7 +88,7 @@ class BroadcastScheduler:
         Returns:
             BroadcastMessage in DRAFT status (requires approval).
         """
-        now = datetime.now(UTC).isoformat()
+        datetime.now(UTC).isoformat()
         self._counter += 1
         msg_id = f"broadcast_{self._counter}"
         broadcast = BroadcastMessage(

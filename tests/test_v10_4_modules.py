@@ -1178,7 +1178,7 @@ class TestWorkflowEngine:
     def test_execute_workflow_with_result(self) -> None:
         wf = self.engine.create_workflow("result_wf")
         s1 = self.engine.add_step(wf.id, "calc", action=lambda: 42)
-        result = self.engine.execute(wf.id)
+        self.engine.execute(wf.id)
         # Check step result stored
         wf_result = self.engine.get_result(wf.id)
         assert wf_result is not None
@@ -1239,7 +1239,7 @@ class TestWorkflowEngine:
         )
         s1 = self.engine.add_step(wf.id, "step1", action=lambda: 1)
         s1.condition_gate = gate  # price not in context → False → skipped
-        result = self.engine.execute(wf.id)
+        self.engine.execute(wf.id)
         wf_result = self.engine.get_result(wf.id)
         assert wf_result.step_statuses[s1.id] == StepStatus.SKIPPED
 
@@ -1251,7 +1251,7 @@ class TestWorkflowEngine:
         )
         s1 = self.engine.add_step(wf.id, "step1", action=lambda: 1)
         s1.condition_gate = gate
-        result = self.engine.execute(wf.id, context={"price": 200})
+        self.engine.execute(wf.id, context={"price": 200})
         wf_result = self.engine.get_result(wf.id)
         assert wf_result.step_statuses[s1.id] == StepStatus.SUCCESS
 
@@ -1556,7 +1556,7 @@ class TestWorkflowEdgeCases:
         engine = WorkflowEngine()
         wf = engine.create_workflow("duration_wf")
         s1 = engine.add_step(wf.id, "fast_step", action=lambda: 1)
-        result = engine.execute(wf.id)
+        engine.execute(wf.id)
         wf_result = engine.get_result(wf.id)
         assert wf_result.step_durations[s1.id] > 0  # some duration recorded
 
@@ -1631,7 +1631,7 @@ class TestWorkflowEdgeCases:
 
         # step_b depends on step_a → step_a succeeds first, then step_b fails
         s_a = engine.add_step(wf.id, "step_a", action=action_a, compensation=comp_a)
-        s_b = engine.add_step(wf.id, "step_b", action=action_b, compensation=comp_b, depends_on=[s_a.id])
+        engine.add_step(wf.id, "step_b", action=action_b, compensation=comp_b, depends_on=[s_a.id])
         result = engine.execute(wf.id)
         assert result["status"] == "failed"
         # Compensations run in reverse order: b first, then a

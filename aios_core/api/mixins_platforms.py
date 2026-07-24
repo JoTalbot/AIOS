@@ -98,7 +98,7 @@ class PlatformsModulesMixin:
 
     async def _module_outbox(self, request: Request) -> JSONResponse:
         """Guarded outbox entries of any platform (?status, ?profile)."""
-        messenger, storage, error = self._module_messenger_or_404(request)
+        _messenger, storage, error = self._module_messenger_or_404(request)
         if error is not None:
             return error
         return JSONResponse(
@@ -243,7 +243,7 @@ class PlatformsModulesMixin:
                     )
                 )
             storage = self._platform_storage(platform, request)
-            inserted, new_fps = storage.save_ads_with_new(
+            _inserted, new_fps = storage.save_ads_with_new(
                 cards, seen_at=body.get("seen_at")
             )
             return JSONResponse(

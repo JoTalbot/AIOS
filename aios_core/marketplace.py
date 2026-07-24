@@ -297,7 +297,7 @@ class CapabilityMarketplace:
             "total_downloads": sum(i.downloads for i in self._items.values())
             + sum(p.downloads for p in self._plugins.values()),
             "verified_plugins": sum(1 for p in self._plugins.values() if p.verified),
-            "platforms": list(set(p.platform for p in self._plugins.values())),
+            "platforms": list({p.platform for p in self._plugins.values()}),
         }
 
     # --- Export for API ---

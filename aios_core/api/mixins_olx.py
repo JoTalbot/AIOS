@@ -216,7 +216,7 @@ class OLXHandlersMixin:
         try:
             from aios_core.modules.olx import CompetitiveWatch, OwnAd
 
-            body = (
+            (
                 await request.json()
                 if (request.headers.get("content-length") or "0") != "0"
                 else {}

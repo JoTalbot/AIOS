@@ -87,7 +87,7 @@ class PromptRegistry:
             for p in self._prompts.values()
         ]
 
-    def render(self, name: str, arguments: dict = None) -> MCPPromptResult | None:
+    def render(self, name: str, arguments: dict | None = None) -> MCPPromptResult | None:
         """Render a prompt template with given arguments.
 
         If the prompt has a custom renderer callable, that is used.

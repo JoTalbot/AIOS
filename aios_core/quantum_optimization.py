@@ -75,7 +75,7 @@ class QuantumAnnealingOptimizer:
             -sum(1 for u, v in edges if p[u] != p[v])
         )  # Maximize cuts = minimize negative
 
-        best, best_cost = self.optimize(partition, cost_func, iterations)
+        best, _best_cost = self.optimize(partition, cost_func, iterations)
         # Convert back to binary partition
         partition = [1 if v > 0.5 else 0 for v in best]
         cut_value = sum(1 for u, v in edges if partition[u] != partition[v])
@@ -104,7 +104,7 @@ class QuantumAnnealingOptimizer:
             )
         )
 
-        best, best_cost = self.optimize(initial, cost_func, iterations)
+        best, _best_cost = self.optimize(initial, cost_func, iterations)
         # Normalize weights to sum to budget
         total = sum(abs(v) for v in best)
         weights = [abs(v) / max(total, 0.01) * budget for v in best]

@@ -161,7 +161,7 @@ def test_reply_suggester_bargain_accept_and_counter():
         [Message(author="them", text="А віддасте за 4000?")], my_price=7000.0
     )
     assert "За 4000 грн, на жаль" in counter
-    assert str(int(round(7000 * 0.95))) in counter
+    assert str(round(7000 * 0.95)) in counter
 
 
 def test_reply_suggester_meeting_and_greeting_and_no_reply_needed():
@@ -366,7 +366,7 @@ def test_notifier_webhook_and_telegram_payload():
     notifier = WebhookNotifier(url="https://hooks.example.com/x", poster=poster)
     summary = notify_price_drops(PriceTracker(storage), notifier, query="q")
     assert summary == {"alerts": 1, "sent": 1}
-    url, payload = captured[0]
+    _url, payload = captured[0]
     assert payload["event"] == "olx_price_drop"
     assert payload["data"]["last_price"] == 6500.0
 

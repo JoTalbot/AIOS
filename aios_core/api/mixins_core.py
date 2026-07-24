@@ -7,10 +7,14 @@ This brings ``app.py`` under 300 lines — just the class skeleton + lifecycle.
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
+from typing import Any
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
+from aios_core.api.security import Principal
 from aios_core.rate_limiter import rate_limiter
 
 
@@ -597,7 +601,10 @@ class CoreHandlersMixin:
 
             _const_dir = getattr(
                 self.orchestrator.policy.engine, "constitution_dir", None
-            ) or os.path.join(_PROJECT_ROOT, "docs/constitution")
+            ) or os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                "docs", "constitution"
+            )
             articles = scan_constitution(Path(_const_dir))
             summaries = []
             for num in range(1, 68):

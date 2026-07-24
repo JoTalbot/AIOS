@@ -100,7 +100,7 @@ class TopologicalAnalyzer:
                     if ci != cj:
                         clusters[ci] = cj
 
-        unique_clusters = len(set(find(i) for i in range(n)))
+        unique_clusters = len({find(i) for i in range(n)})
         betti_0 = unique_clusters
 
         # Betti-1: estimate loops from average connectivity

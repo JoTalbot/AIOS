@@ -293,9 +293,9 @@ def demo_memory_knowledge():
     print("\n🕸️ Knowledge Graph:")
     n1 = orch.knowledge.add_node("User", "entity", {"type": "actor"})
     n2 = orch.knowledge.add_node("Memory", "entity", {"type": "store"})
-    n3 = orch.knowledge.add_node("owns", "relation", {})
+    orch.knowledge.add_node("owns", "relation", {})
 
-    e1 = orch.knowledge.add_relation(n1["id"], n2["id"], "owns", weight=1.0)
+    orch.knowledge.add_relation(n1["id"], n2["id"], "owns", weight=1.0)
     print(f"  Nodes: {orch.knowledge.count_nodes()} | Edges: {orch.knowledge.count_edges()}")
 
     neighbors = orch.knowledge.neighbors(n1["id"])

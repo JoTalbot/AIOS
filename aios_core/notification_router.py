@@ -226,7 +226,6 @@ class NotificationRouter:
             return {"status": "skipped", "reason": "no email_to configured"}
 
         subject = f"[AIOS] {message.severity.value.upper()}: {message.title}"
-        body = f"{message.body}\n\nPlatform: {message.platform or 'N/A'}\nTime: {message.timestamp}"
 
         return {
             "status": "sent",

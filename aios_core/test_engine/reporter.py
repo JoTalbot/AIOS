@@ -64,12 +64,12 @@ class TestReporter:
             f"AIOS Test Report: {report.report_id}",
             f"{'=' * 50}",
             f"Overall: {report.overall_status.upper()}",
-            f"Suites: {report.total_suites}  "
+            (f"Suites: {report.total_suites}  "
             f"Tests: {report.total_tests}  "
             f"Passed: {report.total_passed}  "
             f"Failed: {report.total_failed}  "
             f"Errors: {report.total_errors}  "
-            f"Skipped: {report.total_skipped}",
+            f"Skipped: {report.total_skipped}"),
             f"Duration: {report.duration_ms:.1f}ms",
             "",
         ]

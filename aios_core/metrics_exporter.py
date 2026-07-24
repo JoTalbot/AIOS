@@ -17,7 +17,7 @@ class HistogramConfig:
 
     __slots__ = ("buckets", "metric_name")
 
-    def __init__(self, metric_name: str, buckets: Sequence[float] = None):
+    def __init__(self, metric_name: str, buckets: Sequence[float] | None = None):
         self.metric_name = metric_name
         # Default Prometheus-style exponential buckets if not provided
         if buckets is None:

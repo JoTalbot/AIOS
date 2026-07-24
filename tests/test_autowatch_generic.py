@@ -168,7 +168,6 @@ def test_autowatch_cycle_collects_alerts_and_reports(watch_platform):
         drives.append({"package": package, "query": query})
 
     adb = _ADB([FEED_XML, EMPTY_XML, EMPTY_XML])
-    storage_profile_db = None
     report = autowatch_cycle(
         "watch-demo",
         profile_name="main",

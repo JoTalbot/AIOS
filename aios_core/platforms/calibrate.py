@@ -288,18 +288,17 @@ class DetailCalibrationAdvisor:
 
             if "edittext" in klass.lower():
                 input_classes[klass] += 1
-            if any(marker in combined for marker in _SEND_MARKERS):
-                if (
-                    resource_id
-                    and len(send_markers) < 5
-                    and all(m["resource_id"] != resource_id for m in send_markers)
-                ):
-                    send_markers.append(
-                        {
-                            "resource_id": resource_id,
-                            "hint_text": (desc or text)[:60],
-                        }
-                    )
+            if any(marker in combined for marker in _SEND_MARKERS) and (
+                resource_id
+                and len(send_markers) < 5
+                and all(m["resource_id"] != resource_id for m in send_markers)
+            ):
+                send_markers.append(
+                    {
+                        "resource_id": resource_id,
+                        "hint_text": (desc or text)[:60],
+                    }
+                )
             if resource_id and text:
                 bubbles[resource_id] += 1
 

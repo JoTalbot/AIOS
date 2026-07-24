@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import time
+from typing import Any
 
 from aios_core.agent_memory_system import (
     AgentMemorySystem,
@@ -158,7 +159,7 @@ class TestAgentMemorySystem:
     def test_recall_min_strength(self) -> None:
         """Filter by minimum strength."""
         system = AgentMemorySystem()
-        entry = system.record("olx", "collect", "success", confidence=0.01)
+        system.record("olx", "collect", "success", confidence=0.01)
         # Very low confidence → low strength
         results = system.recall(min_strength=0.5)
         # Should not return very weak memories
@@ -224,7 +225,7 @@ class TestAgentMemorySystem:
         entry.created_at = time.time() - 365 * 86400  # 1 year old
         entry.decay_rate = 0.1  # Fast decay
 
-        removed = system.decay(min_strength=0.05)
+        system.decay(min_strength=0.05)
         # Weak memories should be removed
 
     def test_clear_short_term(self) -> None:

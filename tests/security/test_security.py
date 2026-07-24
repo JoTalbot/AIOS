@@ -150,7 +150,7 @@ class TestInputValidation:
         malicious_label = "../../../etc/passwd"
 
         try:
-            metadata = manager.create_backup(label=malicious_label)
+            manager.create_backup(label=malicious_label)
             # Should sanitize or reject malicious label
         except Exception:
             # Should handle gracefully

@@ -148,7 +148,7 @@ class TypeSystem:
     def type_hierarchy(self, type_name: str) -> list[str]:
         """Return supertype chain for a type."""
         chain = [type_name]
-        for other_name, td in self.types.items():
+        for other_name in self.types.keys():
             if other_name != type_name and self.is_subtype(type_name, other_name):
                 chain.append(other_name)
         return chain

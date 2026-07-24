@@ -170,7 +170,7 @@ class SocialIntelligence:
     def get_trusted_agents(self, agent: str, min_trust: float = 3.0) -> list[str]:
         """Return agents trusted by the given agent."""
         trusted = []
-        for key, rel in self.relationships.items():
+        for rel in self.relationships.values():
             if rel.agent_a == agent and rel.trust_score >= min_trust:
                 trusted.append(rel.agent_b)
             elif rel.agent_b == agent and rel.trust_score >= min_trust:

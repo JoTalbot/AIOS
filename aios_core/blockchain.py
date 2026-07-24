@@ -73,12 +73,7 @@ class SmartContract:
         """Execute contract conditions."""
         self.executed += 1
         # Check conditions
-        if (
-            self.conditions.get("min_amount")
-            and transaction.amount < self.conditions["min_amount"]
-        ):
-            return False
-        return True
+        return not (self.conditions.get("min_amount") and transaction.amount < self.conditions["min_amount"])
 
 
 class Blockchain:

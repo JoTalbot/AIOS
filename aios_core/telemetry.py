@@ -72,7 +72,7 @@ class MetricHistogram:
 
         def percentile(p: float) -> float:
             """Execute percentile."""
-            idx = int(math.ceil((p / 100.0) * count)) - 1
+            idx = math.ceil((p / 100.0) * count) - 1
             return s_vals[max(0, min(count - 1, idx))]
 
         return {

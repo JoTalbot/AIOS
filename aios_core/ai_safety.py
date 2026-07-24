@@ -25,7 +25,7 @@ class AISafetyFramework:
         self.incidents: list[dict] = []
         self.safety_checks_performed = 0
 
-    def comprehensive_safety_check(self, action: dict, context: dict = None) -> dict:
+    def comprehensive_safety_check(self, action: dict, context: dict | None = None) -> dict:
         """Run all safety layers on an action."""
         self.safety_checks_performed += 1
         results = {}
@@ -70,7 +70,7 @@ class AISafetyFramework:
 class ConstitutionalSafety:
     """Safety layer checking for constitutional violations (e.g. harm language)."""
 
-    def check(self, action: dict, context: dict = None) -> dict:
+    def check(self, action: dict, context: dict | None = None) -> dict:
         """Execute check."""
         action_str = str(action).lower()
         violations = []
@@ -86,7 +86,7 @@ class ConstitutionalSafety:
 class AlignmentSafety:
     """Safety layer quantifying value-alignment of actions."""
 
-    def check(self, action: dict, context: dict = None) -> dict:
+    def check(self, action: dict, context: dict | None = None) -> dict:
         """Execute check."""
         return {"safe": True, "score": 0.95, "alignment_score": 0.92}
 
@@ -94,7 +94,7 @@ class AlignmentSafety:
 class InterpretabilitySafety:
     """Safety layer assessing how interpretable an action is."""
 
-    def check(self, action: dict, context: dict = None) -> dict:
+    def check(self, action: dict, context: dict | None = None) -> dict:
         """Execute check."""
         return {"safe": True, "score": 0.88, "interpretability": 0.85}
 
@@ -102,7 +102,7 @@ class InterpretabilitySafety:
 class RobustnessSafety:
     """Safety layer checking robustness against perturbations."""
 
-    def check(self, action: dict, context: dict = None) -> dict:
+    def check(self, action: dict, context: dict | None = None) -> dict:
         """Execute check."""
         return {"safe": True, "score": 0.90, "robustness": 0.88}
 
@@ -110,6 +110,6 @@ class RobustnessSafety:
 class GovernanceSafety:
     """Safety layer enforcing governance compliance."""
 
-    def check(self, action: dict, context: dict = None) -> dict:
+    def check(self, action: dict, context: dict | None = None) -> dict:
         """Execute check."""
         return {"safe": True, "score": 0.93, "governance_compliance": 0.91}

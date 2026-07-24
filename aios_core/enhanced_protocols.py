@@ -117,7 +117,7 @@ class GrpcAdapter(ProtocolAdapter):
             self.server = aio_grpc.server()
 
             # Add services
-            for service_name, service in self.services.items():
+            for service in self.services.values():
                 service.add_to_server(self.server)
 
             # Add port
@@ -212,7 +212,7 @@ class AmqpAdapter(ProtocolAdapter):
             if not self.channel:
                 return False
 
-            queue = await self.channel.declare_queue(queue_name, durable=True)
+            await self.channel.declare_queue(queue_name, durable=True)
             await self.channel.default_exchange.publish(
                 aio_pika.Message(
                     body=json.dumps(message).encode(),

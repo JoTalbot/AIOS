@@ -226,12 +226,12 @@ class TheoryOfMind:
 
     def predict_action(self, agent_id: str, situation: dict[str, Any]) -> str:
         """Predict an agent's action based on their mental model."""
-        model = self.models.get(agent_id, {})
+        self.models.get(agent_id, {})
 
         # Check if agent has harmful beliefs or desires
         beliefs = self.beliefs.get(agent_id, {})
         desires = self.desires.get(agent_id, [])
-        intentions = self.intentions.get(agent_id, [])
+        self.intentions.get(agent_id, [])
 
         # Check for harm-related beliefs/desires
         if "harm" in str(situation) or "harm" in str(beliefs):

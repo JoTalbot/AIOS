@@ -82,7 +82,7 @@ class CosmicSwarmMatrix:
         if node_id not in self.cosmic_nodes:
             return False
         # Remove from all other nodes' connection lists
-        for other_id, other in self.cosmic_nodes.items():
+        for other in self.cosmic_nodes.values():
             if node_id in other.get("connections", []):
                 other["connections"].remove(node_id)
         self.cosmic_nodes.pop(node_id)
@@ -321,7 +321,7 @@ class CosmicSwarmMatrix:
         healed_shards = 0
 
         # Attempt to restore degraded nodes
-        for node_id, info in self.cosmic_nodes.items():
+        for info in self.cosmic_nodes.values():
             if info["status"] != "active" and info["health"] > 0.5:
                 info["status"] = "active"
                 info["holographic_sync_status"] = "syncing"
@@ -330,7 +330,7 @@ class CosmicSwarmMatrix:
             self._healing_attempts += 1
 
         # Re-replicate under-replicated shards
-        for shard_id, shard in self.holographic_shards.items():
+        for shard in self.holographic_shards.values():
             active_replicas = [
                 n
                 for n in shard["replicated_nodes"]

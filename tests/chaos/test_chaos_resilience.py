@@ -39,7 +39,7 @@ class TestDatabaseChaos:
         try:
             new_db = Database(str(db_path))
             # Should either recover or fail gracefully
-            cursor = new_db.execute("SELECT COUNT(*) FROM test_data")
+            new_db.execute("SELECT COUNT(*) FROM test_data")
         except Exception as e:
             # Should raise appropriate error
             assert "database" in str(e).lower() or "disk" in str(e).lower()

@@ -129,7 +129,7 @@ class QuantumCircuit:
         return {
             "qubits": len(self.qubits),
             "gates": len(self.gates),
-            "gate_types": list(set(g[0] for g in self.gates)),
+            "gate_types": list({g[0] for g in self.gates}),
         }
 
 

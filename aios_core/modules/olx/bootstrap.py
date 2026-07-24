@@ -151,11 +151,11 @@ class OLXBootstrap:
                     "Android SDK cmdline-tools — керування образами й AVD",
                     [
                         f"wget -q {CMDLINE_TOOLS_URL} -O {self.workdir}/cmdline-tools.zip",
-                        f"sudo mkdir -p {SDK_ROOT}/cmdline-tools && "
-                        f"unzip -o -q {self.workdir}/cmdline-tools.zip -d {self.workdir}/cmdline-tools",
-                        f"sudo mkdir -p {SDK_ROOT}/cmdline-tools/latest && "
+                        (f"sudo mkdir -p {SDK_ROOT}/cmdline-tools && "
+                        f"unzip -o -q {self.workdir}/cmdline-tools.zip -d {self.workdir}/cmdline-tools"),
+                        (f"sudo mkdir -p {SDK_ROOT}/cmdline-tools/latest && "
                         f"sudo cp -r {self.workdir}/cmdline-tools/cmdline-tools/* "
-                        f"{SDK_ROOT}/cmdline-tools/latest/",
+                        f"{SDK_ROOT}/cmdline-tools/latest/"),
                     ],
                 )
             )
@@ -165,8 +165,8 @@ class OLXBootstrap:
                     "Емулятор + системний образ Android 34 (x86_64)",
                     [
                         f"yes | {SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --licenses",
-                        f"{SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager "
-                        f"'platform-tools' 'emulator' '{SYSTEM_IMAGE}'",
+                        (f"{SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager "
+                        f"'platform-tools' 'emulator' '{SYSTEM_IMAGE}'"),
                     ],
                 )
             )
@@ -175,8 +175,8 @@ class OLXBootstrap:
                     "create-avd",
                     f"Створити headless-AVD «{AVD_NAME}»",
                     [
-                        f"echo no | {SDK_ROOT}/cmdline-tools/latest/bin/avdmanager "
-                        f"create avd -n {AVD_NAME} -k '{SYSTEM_IMAGE}' --device 'pixel_6'"
+                        (f"echo no | {SDK_ROOT}/cmdline-tools/latest/bin/avdmanager "
+                        f"create avd -n {AVD_NAME} -k '{SYSTEM_IMAGE}' --device 'pixel_6'")
                     ],
                 )
             )
@@ -185,11 +185,11 @@ class OLXBootstrap:
                     "start-emulator",
                     "Запуск емулятора у фоні (headless) й очікування завантаження",
                     [
-                        f"nohup {SDK_ROOT}/emulator/emulator -avd {AVD_NAME} "
-                        f"-no-window -no-audio -no-snapshot-save &",
+                        (f"nohup {SDK_ROOT}/emulator/emulator -avd {AVD_NAME} "
+                        f"-no-window -no-audio -no-snapshot-save &"),
                         "adb wait-for-device",
-                        "adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do "
-                        "sleep 2; done'",
+                        ("adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do "
+                        "sleep 2; done'"),
                     ],
                 )
             )

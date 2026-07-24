@@ -337,7 +337,7 @@ class SubstrateConvergenceEngine:
                 continue
             latencies: list[float] = []
             for _ in range(trials):
-                start = time.time()
+                time.time()
                 result = self.execute_substrate_task(
                     test_task or {"id": "bench", "category": "general"}
                 )

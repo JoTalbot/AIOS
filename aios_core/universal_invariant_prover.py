@@ -459,6 +459,6 @@ class UniversalInvariantProver:
             "violation_stats": dict(self._violation_stats),
             "invariant_categories": {
                 cat: len(self.invariants_by_category(cat))
-                for cat in set(inv.category for inv in self.invariants)
+                for cat in {inv.category for inv in self.invariants}
             },
         }

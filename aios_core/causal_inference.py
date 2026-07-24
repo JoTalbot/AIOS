@@ -256,9 +256,8 @@ class CausalInference:
             return True
 
         for node in self.nodes:
-            if node not in visited:
-                if not dfs(node):
-                    return False
+            if node not in visited and not dfs(node):
+                return False
         return True
 
     def validate(self) -> dict[str, Any]:

@@ -238,7 +238,7 @@ def main(argv=None):
         run_main()
     elif args.command == "dashboard":
         from aios_core.container import container as _c
-        db = _c.db()
+        _c.db()
         orch = _c.orchestrator()
         app = create_dashboard(orch)
         print(f"Starting Dashboard on http://127.0.0.1:{args.port}")
@@ -247,7 +247,7 @@ def main(argv=None):
         from demo_v41 import main as demo_main
         demo_main()
     elif args.command == "stats":
-        db = _c.db()
+        _c.db()
         orch = _c.orchestrator()
         print(json.dumps(orch.stats(), indent=2))
     elif args.command == "platforms":
@@ -363,19 +363,19 @@ def main(argv=None):
                 "generate": run_keys_generate, "list": run_keys_list,
                 "revoke": run_keys_revoke, "rotate": run_keys_rotate,
                 "health": run_keys_health,
-            }.get(getattr(a, "keys_command", ""), lambda x: adm.parse_args(["keys", "--help"]))(a),
+            }.get(getattr(a, "keys_command", ""), lambda x: parser.parse_args(["admin", "keys", "--help"]))(a),
             "backup": lambda a: {
                 "create": run_backup_create, "list": run_backup_list,
                 "verify": run_backup_verify, "restore": run_backup_restore,
                 "cleanup": run_backup_cleanup, "health": run_backup_health,
-            }.get(getattr(a, "backup_command", ""), lambda x: adm.parse_args(["backup", "--help"]))(a),
+            }.get(getattr(a, "backup_command", ""), lambda x: parser.parse_args(["admin", "backup", "--help"]))(a),
             "webhooks": lambda a: {
                 "register": run_webhooks_register, "list": run_webhooks_list,
                 "test": run_webhooks_test, "notify": run_webhooks_notify,
                 "health": run_webhooks_health,
-            }.get(getattr(a, "webhooks_command", ""), lambda x: adm.parse_args(["webhooks", "--help"]))(a),
+            }.get(getattr(a, "webhooks_command", ""), lambda x: parser.parse_args(["admin", "webhooks", "--help"]))(a),
         }
-        cmd_map.get(args.admin_command, lambda x: adm.parse_args(["--help"]))(args)
+        cmd_map.get(args.admin_command, lambda x: parser.parse_args(["admin", "--help"]))(args)
     else:
         parser.print_help()
 

@@ -1,11 +1,12 @@
 """AIOS Route Registration.
-import json
 
 All Starlette Route objects defined here.  Handler methods live on the
 ``AIOSAPI`` class in ``aios_core.api.app``.
 
 Extracted to keep ``app.py`` under 500 lines.
 """
+
+import json
 
 from starlette.responses import HTMLResponse, JSONResponse
 from starlette.routing import Route, WebSocketRoute

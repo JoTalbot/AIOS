@@ -297,9 +297,8 @@ class FlagStore:
             return False
 
         # Parent dependency
-        if flag.parent_flag:
-            if not self.is_enabled(flag.parent_flag, context):
-                return False
+        if flag.parent_flag and not self.is_enabled(flag.parent_flag, context):
+            return False
 
         # Hard off
         if not flag.enabled:

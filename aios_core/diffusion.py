@@ -135,7 +135,7 @@ class DiffusionModel:
         self, x_t: list[float], t: int, predicted_noise: list[float]
     ) -> list[float]:
         """Single reverse step: x_{t-1} from x_t and predicted noise."""
-        alpha = self.schedule.alphas[t]
+        self.schedule.alphas[t]
         alpha_bar = self.schedule.get_alpha_bar(t)
         beta = self.betas[t]
 

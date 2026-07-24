@@ -205,10 +205,10 @@ class TestAdversarialDefense:
         score = self.ad.robustness_score([0.9, 0.95], [0.85, 0.90])
         assert score >= 0.0
     def test_validate_input(self):
-        valid, errors = self.ad.validate_input([1.0, 2.0])
+        valid, _errors = self.ad.validate_input([1.0, 2.0])
         assert valid is True
     def test_validate_input_bounds(self):
-        valid, errors = self.ad.validate_input([1.0, 200.0], max_val=100)
+        valid, _errors = self.ad.validate_input([1.0, 200.0], max_val=100)
         assert valid is False
     def test_stats(self):
         self.ad.detect_adversarial([0.0, 100.0])
@@ -660,7 +660,7 @@ class TestIntegration:
     def test_swarm_with_security(self):
         """Swarm agents validate API keys for secure communication."""
         sec = AdvancedSecurity()
-        swarm = AgentSwarm("secure_swarm")
+        AgentSwarm("secure_swarm")
         key = sec.generate_api_key("swarm_api")
         assert sec.validate_api_key(key) is True
 
@@ -668,7 +668,7 @@ class TestIntegration:
         """Explain adversarial detection decisions."""
         ad = AdversarialDefense()
         xai = ExplainableAI()
-        detected = ad.detect_adversarial([0.0, 100.0])
+        ad.detect_adversarial([0.0, 100.0])
         xai.explain("adversarial_check", factors=["variance_high", "outlier"],
                     weights=[0.7, 0.3], decision="block_input", confidence=0.85)
         text = xai.get_explanation("adversarial_check")

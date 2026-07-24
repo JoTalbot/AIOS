@@ -148,7 +148,7 @@ class TestBackupManager:
         assert len(manager.backups) == 5
 
         # Cleanup should enforce max
-        removed = manager.cleanup_old_backups()
+        manager.cleanup_old_backups()
         assert len(manager.backups) <= 3
 
     def test_health_report(self, backup_manager):

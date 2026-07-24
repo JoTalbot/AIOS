@@ -91,7 +91,7 @@ class Router:
             return 0.0
         total_usage = sum(expert_usage)
         frac_usage = [u / max(total_usage, 1) for u in expert_usage]
-        avg_gate = sum(gate_weights) / n if n > 0 else 0
+        sum(gate_weights) / n if n > 0 else 0
         loss = n * sum(fu * gw for fu, gw in zip(frac_usage, gate_weights[:n]))
         return round(loss, 4)
 

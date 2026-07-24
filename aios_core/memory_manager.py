@@ -145,10 +145,9 @@ class MemoryManager:
             conditions.append("content LIKE ?")
             params.append(f"%{query}%")
 
-        if category:
-            if category in _VALID_CATEGORIES:
-                conditions.append("category = ?")
-                params.append(category)
+        if category and category in _VALID_CATEGORIES:
+            conditions.append("category = ?")
+            params.append(category)
 
         # Personal records are private whenever a caller identity is supplied.
         # Legacy owner-less personal records are visible only to administrators.

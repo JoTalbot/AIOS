@@ -24,11 +24,11 @@ async def main() -> None:
     api = create_enhanced_api(db_path=":memory:")
 
     # Start background services
-    background_tasks = await api.start_background_services()
+    await api.start_background_services()
 
     try:
         # Create enhanced app
-        app = api.create_enhanced_app()
+        api.create_enhanced_app()
 
         logger.info("Enhanced AIOS API created and started")
 

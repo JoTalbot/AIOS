@@ -31,7 +31,7 @@ class OpenAPIGenerator:
         self._schemas: dict[str, dict[str, Any]] = {}
         self._tags: list[dict[str, Any]] = []
 
-    def add_path(self, path: str, method: str, summary: str = "", responses: dict[int, dict] = None) -> None:
+    def add_path(self, path: str, method: str, summary: str = "", responses: dict[int, dict] | None = None) -> None:
         """Register an API endpoint."""
         if path not in self._paths:
             self._paths[path] = {}

@@ -202,7 +202,7 @@ class StrategyAdvisor:
                 continue  # niche already covered by the portfolio
             prices = [ad.price for ad in ads if ad.price is not None]
             keywords = RecommendationEngine._title_keywords(ads, None)
-            recency = sum(1 for ad in ads if ad.published_at and "T" in ad.published_at)
+            sum(1 for ad in ads if ad.published_at and "T" in ad.published_at)
             priority = 1 if len(ads) >= 10 else (2 if len(ads) >= 5 else 3)
             suggestions.append(
                 NewListingSuggestion(

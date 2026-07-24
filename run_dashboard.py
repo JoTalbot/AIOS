@@ -8,7 +8,7 @@ from aios_core.dashboard import create_dashboard
 
 
 def main():
-    db = container.db()
+    container.db()
     orch = container.orchestrator()
 
     app = create_dashboard(orch)
@@ -21,7 +21,7 @@ _app = None
 def _get_app():
     global _app
     if _app is None:
-        db = container.db()
+        container.db()
         orch = container.orchestrator()
         _app = create_dashboard(orch)
     return _app
