@@ -1,5 +1,16 @@
 # AIOS Roadmap — Next Milestones
 
+## v10.1.0 ✅ (2026-07-24)
+- ✅ A/B Testing Engine (experiment lifecycle, chi-square/t-test, auto-completion)
+- ✅ Knowledge Graph (triples, path finding, inference, API-compatible methods)
+- ✅ Auto-Tuning Engine (grid/random/hill-climbing/adaptive optimization)
+- ✅ 16 async test methods fixed (@pytest.mark.asyncio in test_admin_api.py)
+- ✅ KnowledgeGraph API compatibility (add_node, related, count_nodes, path dicts)
+- ✅ 44 new tests (1558 total, 0 failures)
+- ✅ RELEASE_NOTES_10.1.0.md + GitHub Release v10.1.0
+
+**1558 tests, 0 failures**
+
 ## v10.0.0 ✅ (2026-07-24)
 - ✅ Price Prediction ML Engine (Polynomial regression 1/2/3, SMA/WMA/EMA, Ensemble, Trend detection)
 - ✅ Product Image Comparison (aHash/dHash/pHash, Color histogram, Composite scoring, Duplicate detection)
