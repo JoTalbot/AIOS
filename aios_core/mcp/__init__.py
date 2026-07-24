@@ -12,10 +12,10 @@ from aios_mcp.tools import ToolRegistry
 
 __all__ = [
     "GatewayConfig",
-    "MCPGateway",
-    "MCPProtocol",
     "JSONRPCRequest",
     "JSONRPCResponse",
+    "MCPGateway",
+    "MCPProtocol",
     "PromptRegistry",
     "ResourceRegistry",
     "ToolRegistry",
