@@ -28,6 +28,11 @@ from aios_cli.cross_platform import (
     _run_search, _run_benchmarks,
 )
 from aios_cli.tiktok import _add_tiktok_parsers, _run_tiktok
+from aios_cli.v10 import (
+    _add_price_prediction_parsers, _run_price_predict,
+    _add_image_comparison_parsers, _run_image_compare,
+    _add_fleet_parsers, _run_fleet,
+)
 from aios_cli.facebook import _add_facebook_parsers, _run_facebook
 from aios_cli.messenger_v2 import (
     _add_messenger_v2_parsers, _run_whatsapp_v2, _run_viber_v2,
@@ -198,6 +203,11 @@ def _add_all_subparsers(subparsers):
     # v9.7.0 — Cross-platform, Advisor v2, Vector search, Benchmarks
     _add_cross_platform_parsers(subparsers)
 
+    # v10.0.0 — Price prediction ML, Image comparison, Fleet scheduler
+    _add_price_prediction_parsers(subparsers)
+    _add_image_comparison_parsers(subparsers)
+    _add_fleet_parsers(subparsers)
+
     # v9.8.0 — TikTok, Facebook, WhatsApp/Viber v2
     _add_tiktok_parsers(subparsers)
     _add_facebook_parsers(subparsers)
@@ -303,6 +313,18 @@ def main(argv=None):
         try: handled = _run_viber_v2(args)
         except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
         if not handled: parser.parse_args(["viber-v2", "--help"])
+    elif args.command == "price-predict":
+        try: handled = _run_price_predict(args)
+        except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
+        if not handled: parser.parse_args(["price-predict", "--help"])
+    elif args.command == "image-compare":
+        try: handled = _run_image_compare(args)
+        except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
+        if not handled: parser.parse_args(["image-compare", "--help"])
+    elif args.command == "fleet":
+        try: handled = _run_fleet(args)
+        except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
+        if not handled: parser.parse_args(["fleet", "--help"])
     elif args.command == "admin":
         from aios_cli_admin import (
             run_backup_cleanup, run_backup_create, run_backup_health,
