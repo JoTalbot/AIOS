@@ -1,0 +1,10 @@
+[allowlist]
+description = "Ignore known test tokens and example keys"
+paths = [
+  '''\.venv/.*''',
+  '''tests/.*''',
+  '''PRODUCTION_EXPLOITATION\.md''',
+  '''RELEASE_NOTES_.*\.md''',
+  '''SECURITY.*\.md''',
+  '''docs/SECURITY\.md'''
+]
