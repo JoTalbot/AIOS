@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIOS DAG Workflow Visualizer</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-color: #e2e8f0;
+            --accent: #38bdf8;
+            --success: #10b981;
+            --running: #f59e0b;
+            --failed: #ef4444;
+            --grid-color: rgba(255,255,255,0.05);
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        header {
+            padding: 20px;
+            background: var(--panel-bg);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        h1 { font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 12px; }
+        .version { font-size: 0.8rem; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; color: var(--accent); }
+        
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background-image: linear-gradient(var(--grid-color) 1px, transparent 1px),
+                              linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .node {
+            position: absolute;
+            background: var(--panel-bg);
+            border: 2px solid #334155;
+            border-radius: 8px;
+            padding: 12px 16px;
+            width: 160px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            z-index: 2;
+        }
+
+        .node.success { border-color: var(--success); box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+        .node.running { border-color: var(--running); box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); animation: pulse 1.5s infinite; }
+        .node.failed { border-color: var(--failed); box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
+
+        .node-title { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
+        .node-type { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+        .node-status { font-size: 0.8rem; margin-top: 8px; font-weight: bold; }
+
+        .success .node-status { color: var(--success); }
+        .running .node-status { color: var(--running); }
+        .failed .node-status { color: var(--failed); }
+
+        svg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        path {
+            fill: none;
+            stroke: #475569;
+            stroke-width: 2;
+            transition: stroke 0.3s ease;
+        }
+
+        path.active { stroke: var(--success); stroke-width: 3; }
+        path.error { stroke: var(--failed); stroke-dasharray: 4; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .controls { display: flex; gap: 10px; }
+        button {
+            background: #334155; color: white; border: none; padding: 8px 16px;
+            border-radius: 4px; cursor: pointer; font-weight: 600; transition: background 0.2s;
+        }
+        button:hover { background: #475569; }
+        button.primary { background: var(--accent); color: #0f172a; }
+        button.primary:hover { background: #0ea5e9; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>⚙️ AIOS DAG Workflow Visualizer <span class="version">v10.20.0</span></h1>
+        <div class="controls">
+            <button onclick="resetDAG()">Reset Workflow</button>
+            <button class="primary" onclick="simulateExecution()">Simulate Execution</button>
+        </div>
+    </header>
+
+    <div id="canvas-container">
+        <svg id="edges"></svg>
+        <div id="nodes"></div>
+    </div>
+
+    <script>
+        const dagData = [
+            { id: 'start', name: 'Extract Data', type: 'Scraping', x: 50, y: 200, status: 'pending', deps: [] },
+            { id: 'transform', name: 'Clean & Parse', type: 'Processing', x: 300, y: 100, status: 'pending', deps: ['start'] },
+            { id: 'vision', name: 'Run OCR Model', type: 'CV RPA', x: 300, y: 300, status: 'pending', deps: ['start'] },
+            { id: 'agg', name: 'Aggregate', type: 'Data Lake', x: 550, y: 200, status: 'pending', deps: ['transform', 'vision'] },
+            { id: 'heal', name: 'Self-Healing', type: 'Fallback', x: 550, y: 400, status: 'pending', deps: ['vision'] },
+            { id: 'end', name: 'Store Database', type: 'Storage', x: 800, y: 200, status: 'pending', deps: ['agg'] }
+        ];
+
+        function renderDAG() {
+            const nodesContainer = document.getElementById('nodes');
+            const svg = document.getElementById('edges');
+            
+            nodesContainer.innerHTML = '';
+            svg.innerHTML = '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" /></marker><marker id="arrow-success" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--success)" /></marker><marker id="arrow-error" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--failed)" /></marker></defs>';
+
+            // Draw Edges
+            dagData.forEach(target => {
+                target.deps.forEach(depId => {
+                    const source = dagData.find(n => n.id === depId);
+                    if(!source) return;
+
+                    const sx = source.x + 160; 
+                    const sy = source.y + 35;
+                    const tx = target.x;
+                    const ty = target.y + 35;
+
+                    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    path.setAttribute("d", `M ${sx} ${sy} C ${sx + 50} ${sy}, ${tx - 50} ${ty}, ${tx} ${ty}`);
+                    
+                    let strokeClass = '';
+                    let marker = 'url(#arrow)';
+                    
+                    if (source.status === 'success' && (target.status === 'success' || target.status === 'running')) {
+                        strokeClass = 'active'; marker = 'url(#arrow-success)';
+                    } else if (source.status === 'failed') {
+                        strokeClass = 'error'; marker = 'url(#arrow-error)';
+                    }
+
+                    if(strokeClass) path.setAttribute("class", strokeClass);
+                    path.setAttribute("marker-end", marker);
+                    svg.appendChild(path);
+                });
+            });
+
+            // Draw Nodes
+            dagData.forEach(node => {
+                const el = document.createElement('div');
+                el.className = `node ${node.status}`;
+                el.style.left = node.x + 'px';
+                el.style.top = node.y + 'px';
+                
+                el.innerHTML = `
+                    <div class="node-title">${node.name}</div>
+                    <div class="node-type">${node.type}</div>
+                    <div class="node-status">${node.status.toUpperCase()}</div>
+                `;
+                nodesContainer.appendChild(el);
+            });
+        }
+
+        function resetDAG() {
+            dagData.forEach(n => n.status = 'pending');
+            renderDAG();
+        }
+
+        async function simulateExecution() {
+            resetDAG();
+            const delay = ms => new Promise(res => setTimeout(res, ms));
+            
+            const updateNode = async (id, status, time) => {
+                const node = dagData.find(n => n.id === id);
+                node.status = 'running'; renderDAG();
+                await delay(time);
+                node.status = status; renderDAG();
+            };
+
+            await updateNode('start', 'success', 1000);
+            
+            // Parallel execution
+            const p1 = updateNode('transform', 'success', 1500);
+            const p2 = updateNode('vision', 'failed', 2000); // Simulate error
+            await Promise.all([p1, p2]);
+
+            // Self-healing triggers
+            await updateNode('heal', 'success', 1200);
+            
+            // Continue DAG
+            await updateNode('agg', 'success', 800);
+            await updateNode('end', 'success', 1000);
+        }
+
+        window.onload = renderDAG;
+    </script>
+</body>
+</html>
