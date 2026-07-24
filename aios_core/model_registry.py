@@ -69,7 +69,7 @@ class ModelRegistry:
         if key not in self.models:
             return False
 
-        old_stage = self.models[key]["stage"]
+        self.models[key]["stage"]
         self.models[key]["stage"] = stage
         self.models[key]["updated_at"] = time.time()
 

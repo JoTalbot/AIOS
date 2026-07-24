@@ -148,7 +148,7 @@ class ContinualLearner:
     def forward_transfer(self, source_task: str, target_task: str) -> float:
         """Estimate forward transfer from source to target."""
         source_perf = self.per_task_performance.get(source_task, 0.0)
-        target_perf = self.per_task_performance.get(target_task, 0.0)
+        self.per_task_performance.get(target_task, 0.0)
         source_imp = self.importance.get(source_task, 0.5)
         return min(1.0, source_perf * source_imp * 0.3)
 
@@ -158,7 +158,7 @@ class ContinualLearner:
             return 0.0
         total_impact = 0.0
         for old_task in self.tasks[:-1]:
-            old_perf = self.per_task_performance.get(old_task, 0.0)
+            self.per_task_performance.get(old_task, 0.0)
             forgetting = self.measure_forgetting(old_task)
             total_impact -= forgetting
         return total_impact / (len(self.tasks) - 1) if len(self.tasks) > 1 else 0.0

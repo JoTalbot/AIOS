@@ -1061,7 +1061,7 @@ class TestAgentArchitecture:
         mem = AgentMemory()
         for _ in range(5):
             mem.add_short_term({"key": "frequent", "value": 1})
-        count = mem.consolidate(threshold=5)
+        mem.consolidate(threshold=5)
         assert "frequent" in mem.long_term
 
     def test_orchestrator(self):

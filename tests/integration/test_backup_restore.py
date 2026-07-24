@@ -203,7 +203,7 @@ class TestBackupRestoreIntegration:
         assert len(manager.backups) == 5
 
         # Cleanup should enforce max_backups
-        removed = manager.cleanup_old_backups()
+        manager.cleanup_old_backups()
 
         # Should keep only max_backups
         assert len(manager.backups) <= 3

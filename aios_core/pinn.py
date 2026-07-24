@@ -214,7 +214,7 @@ class PINN:
 
             # Simulated learning: loss decreases over time
             # (In real implementation, this would update neural net weights)
-            improvement_factor = 1.0 / (epoch + 10)
+            1.0 / (epoch + 10)
 
             best_loss = min(best_loss, total_loss)
 

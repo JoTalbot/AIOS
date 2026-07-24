@@ -248,7 +248,7 @@ class TestOrchestrator(unittest.TestCase):
         task = self.orch.create_task("t1", "Task", risk_level="low")
         self.orch.add_step(task, "tool", params={"x": 1})
         self.orch.execute_task(task)
-        pending = self.orch.list_tasks(status=TaskStatus.PENDING)
+        self.orch.list_tasks(status=TaskStatus.PENDING)
         completed = self.orch.list_tasks(status=TaskStatus.COMPLETED)
         self.assertEqual(len(completed), 1)
 
@@ -372,7 +372,7 @@ class TestReasoningEngine(unittest.TestCase):
         self.assertLessEqual(conf, 1.0)
 
     def test_chain_persistence(self):
-        result = self.engine.build_chain("Persistence test")
+        self.engine.build_chain("Persistence test")
         # Should have stored in memory
         memories = self.memory.search(tag="reasoning")
         self.assertGreater(len(memories), 0)

@@ -146,7 +146,7 @@ class NeuralODE:
         """
         # Forward pass: compute final state
         forward_trajectory = self.integrate(initial_state, t_span, steps)
-        final_state = forward_trajectory[-1]
+        forward_trajectory[-1]
 
         # Backward pass: solve adjoint ODE
         # a(t) = -dL/dz(t) - a(t) * df/dz

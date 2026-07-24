@@ -74,7 +74,7 @@ class AutonomousEvolution:
         ]
         mutation = {
             "type": random.choice(mutation_types),
-            "target": list(current_state.keys())[0] if current_state else "default",
+            "target": next(iter(current_state.keys())) if current_state else "default",
             "change": f"+{round(self.mutation_rate * 100, 1)}%"
             if random.random() > 0.5
             else f"-{round(self.mutation_rate * 50, 1)}%",

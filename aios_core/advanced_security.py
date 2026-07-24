@@ -204,9 +204,7 @@ class AdvancedSecurity:
             return False
         if not info["active"]:
             return False
-        if info["expires_at"] and time.time() > info["expires_at"]:
-            return False
-        return True
+        return not (info["expires_at"] and time.time() > info["expires_at"])
 
     def revoke_api_key(self, key: str) -> None:
         """Revoke an API key."""

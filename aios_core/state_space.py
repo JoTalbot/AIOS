@@ -83,7 +83,7 @@ class StateSpaceModel:
             # HiPPO-LegT initialization: A[n,m] = sqrt((2n+1)(2m+1)) * (-1 if n>m else 1)
             A = []
             for n in range(self.state_dim):
-                row_val = math.sqrt(2 * n + 1) * (2 * n + 1)
+                math.sqrt(2 * n + 1) * (2 * n + 1)
                 # Diagonal: negative for stability
                 val = -(n + 0.5)  # simplified diagonal
                 A.append(val)

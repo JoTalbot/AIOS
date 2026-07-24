@@ -398,7 +398,7 @@ class AgentOrchestrator:
     def broadcast(self, content: str, topic: str = "") -> int:
         """Broadcast a message to all agents."""
         count = 0
-        for agent_id, agent in self.agents.items():
+        for agent in self.agents.values():
             agent.memory.add_short_term(
                 {
                     "key": f"broadcast:{topic}",

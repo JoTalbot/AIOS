@@ -146,10 +146,9 @@ class APIGateway:
                 return {"error": "Rate limit exceeded", "status": 429}
 
         # ── Auth check ──
-        if route.auth_required:
-            if not processed.get("authenticated", False):
-                self._track(path, "failure")
-                return {"error": "Authentication required", "status": 401}
+        if route.auth_required and not processed.get("authenticated", False):
+            self._track(path, "failure")
+            return {"error": "Authentication required", "status": 401}
 
         # ── Execute handler ──
         try:

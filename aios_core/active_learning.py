@@ -150,8 +150,8 @@ class ActiveLearner:
         distances = []
         for labeled_point in self.labeled:
             # Jaccard distance between feature sets
-            set_a = set(str(v) for v in point.features.values())
-            set_b = set(str(v) for v in labeled_point.features.values())
+            set_a = {str(v) for v in point.features.values()}
+            set_b = {str(v) for v in labeled_point.features.values()}
             intersection = len(set_a & set_b)
             union = len(set_a | set_b)
             jaccard_sim = intersection / union if union > 0 else 0.0

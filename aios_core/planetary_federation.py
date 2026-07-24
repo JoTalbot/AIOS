@@ -76,7 +76,7 @@ class PlanetaryMeshOrchestrator:
             )
 
         selected_node = (
-            eligible_nodes[0] if eligible_nodes else list(self.nodes.values())[0]
+            eligible_nodes[0] if eligible_nodes else next(iter(self.nodes.values()))
         )
         selected_node.active_tasks.append(task_id)
 

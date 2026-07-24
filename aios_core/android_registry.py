@@ -245,7 +245,7 @@ class AndroidAppRegistry:
         """Generate health status for all pooled drivers."""
         report: dict[str, dict[str, Any]] = {}
         for pool_key, driver in self._driver_pool.items():
-            package = pool_key.split(":")[0]
+            pool_key.split(":")[0]
             try:
                 installed = driver.is_app_installed()
                 report[pool_key] = {"healthy": installed, "app_installed": installed}

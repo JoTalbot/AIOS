@@ -134,7 +134,7 @@ class DifferentialPrivacy:
         if not self.budget.consume(epsilon):
             return true_count
         noise = self._laplace_sample(0, 1.0 / epsilon)
-        result = true_count + int(round(noise))
+        result = true_count + round(noise)
         return max(0, result)  # counts can't be negative
 
     def privatize_sum(
@@ -197,7 +197,7 @@ class DifferentialPrivacy:
 
         # Only keep groups with size >= k
         result = []
-        for group_key, records in groups.items():
+        for records in groups.values():
             if len(records) >= k:
                 result.extend(records)
             else:

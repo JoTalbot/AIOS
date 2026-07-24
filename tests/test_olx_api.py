@@ -429,7 +429,7 @@ class TestOLXNotify:
         # No webhook reachable in tests → summary reports zero sent, no crash.
 
         # Use an unroutable port quickly failing connection.
-        _app, storage, _adb = deps
+        _app, _storage, _adb = deps
         try:
             resp = await client.post(
                 "/api/v1/modules/olx/notify",

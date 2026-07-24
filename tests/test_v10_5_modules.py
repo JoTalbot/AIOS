@@ -612,7 +612,7 @@ class TestServiceMesh:
     def test_traffic_route(self) -> None:
         self.mesh.register_service("api-v1", "v1:8000")
         self.mesh.register_service("api-v2", "v2:8000")
-        rule = self.mesh.add_route("api", {"api-v1": 80, "api-v2": 20})
+        self.mesh.add_route("api", {"api-v1": 80, "api-v2": 20})
         target = self.mesh.route_request("api")
         assert target in ["api-v1", "api-v2"]
 
@@ -1095,7 +1095,7 @@ class TestIntegration:
         q = DistributedQueue()
         q.register_worker("w1")
 
-        task = q.enqueue({"action": "scrape"}, max_retries=0)
+        q.enqueue({"action": "scrape"}, max_retries=0)
         t = q.dequeue()
 
         # Chaos-injected handler

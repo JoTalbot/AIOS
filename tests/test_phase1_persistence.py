@@ -339,9 +339,9 @@ class TestMemoryManager(unittest.TestCase):
         self.assertEqual(item["category"], "operational")
 
     def test_three_categories(self):
-        p = self.mm.store({"data": "personal"}, category="personal")
-        o = self.mm.store({"data": "operational"}, category="operational")
-        c = self.mm.store({"data": "constitutional"}, category="constitutional")
+        self.mm.store({"data": "personal"}, category="personal")
+        self.mm.store({"data": "operational"}, category="operational")
+        self.mm.store({"data": "constitutional"}, category="constitutional")
 
         self.assertEqual(self.mm.count("personal"), 1)
         self.assertEqual(self.mm.count("operational"), 1)
@@ -512,7 +512,7 @@ class TestKnowledgeGraph(unittest.TestCase):
         self.assertEqual(path, [])
 
     def test_auto_creates_nodes(self):
-        edge = self.kg.add_relation("node-x", "node-y", "test")
+        self.kg.add_relation("node-x", "node-y", "test")
         self.assertIsNotNone(self.kg.get_node("node-x"))
         self.assertIsNotNone(self.kg.get_node("node-y"))
 

@@ -153,7 +153,7 @@ class MCPProtocol:
         )
 
     @staticmethod
-    def encode_request(id: str | int, method: str, params: dict = None) -> str:
+    def encode_request(id: str | int, method: str, params: dict | None = None) -> str:
         """Encode a JSON-RPC 2.0 request.
 
         Args:
@@ -174,7 +174,7 @@ class MCPProtocol:
         return json.dumps(msg, ensure_ascii=False)
 
     @staticmethod
-    def encode_response(id: str | int, result: Any = None, error: dict = None) -> str:
+    def encode_response(id: str | int, result: Any = None, error: dict | None = None) -> str:
         """Encode a JSON-RPC 2.0 response.
 
         Args:
@@ -196,7 +196,7 @@ class MCPProtocol:
         return json.dumps(msg, ensure_ascii=False)
 
     @staticmethod
-    def encode_notification(method: str, params: dict = None) -> str:
+    def encode_notification(method: str, params: dict | None = None) -> str:
         """Encode a JSON-RPC 2.0 notification (no id, no response).
 
         Args:

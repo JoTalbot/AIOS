@@ -111,7 +111,7 @@ class QuantumGravitySimulator:
         """Simulate LQG spin network geometry."""
         edges = []
         for spin in spins:
-            area = round(
+            round(
                 spin
                 * self.PLANCK_LENGTH**2
                 * 8

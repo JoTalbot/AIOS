@@ -247,7 +247,7 @@ class TestABTestingEngine:
         """List and filter experiments."""
         engine = ABTestingEngine()
         exp1 = engine.create_experiment("exp1")
-        exp2 = engine.create_experiment("exp2")
+        engine.create_experiment("exp2")
         engine.start_experiment(exp1.experiment_id)
 
         all_exps = engine.list_experiments()

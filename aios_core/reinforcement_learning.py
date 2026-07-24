@@ -17,6 +17,7 @@ import random
 import time
 from dataclasses import dataclass, field
 from typing import Any
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -221,7 +222,7 @@ class QLearningAgent:
         state: str,
         next_state: str,
         base_reward: float,
-        potential_fn: Callable = None,
+        potential_fn: Callable | None = None,
     ) -> float:
         """Apply reward shaping: F(s,s',r) = r + gamma*Phi(s') - Phi(s)."""
         if potential_fn:

@@ -29,7 +29,7 @@ from typing import Any, Dict, Optional
 __test__ = False
 
 
-def run_adb_command(command: str, timeout: int = 30, device_id: str = None) -> tuple[bool, str]:
+def run_adb_command(command: str, timeout: int = 30, device_id: str | None = None) -> tuple[bool, str]:
     """Run ADB command and return success status and output."""
     device_prefix = f"-s {device_id} " if device_id else ""
     try:
@@ -126,9 +126,7 @@ def get_ui_dump(device_id: str) -> str | None:
 
 def take_screenshot(device_id: str, output_path: str = "/tmp/screenshot.png") -> bool:
     success, _ = run_adb_command("exec-out screencap -p > /tmp/screenshot.png", device_id=device_id)
-    if success and os.path.exists("/tmp/screenshot.png"):
-        return True
-    return False
+    return bool(success and os.path.exists("/tmp/screenshot.png"))
 
 
 def search_on_olx(device_id: str, query: str, category: str = "all") -> dict[str, Any]:

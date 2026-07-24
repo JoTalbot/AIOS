@@ -201,7 +201,7 @@ class MetaLearner:
     ) -> list[tuple[str, float]]:
         """Find tasks similar to the given type based on strategy overlap."""
         similarities = []
-        for other_type in set(t.task_type for t in self.task_history):
+        for other_type in {t.task_type for t in self.task_history}:
             if other_type == task_type:
                 continue
             transfer = self.estimate_transfer(task_type, other_type)

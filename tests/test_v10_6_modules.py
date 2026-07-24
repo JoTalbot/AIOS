@@ -83,7 +83,7 @@ class TestTaskScheduler:
         order = []
         self.ts.schedule("low", lambda: order.append("low"), datetime.now() - timedelta(seconds=1), priority=TaskPriority.LOW)
         self.ts.schedule("crit", lambda: order.append("crit"), datetime.now() - timedelta(seconds=1), priority=TaskPriority.CRITICAL)
-        executed = self.ts.tick()
+        self.ts.tick()
         # Both should execute, CRITICAL first
         if len(order) >= 2:
             assert order[0] == "crit"
@@ -379,7 +379,7 @@ class TestExperimentTracker:
 
     def test_nested_runs(self) -> None:
         parent = self.tracker.start_experiment("parent", {})
-        child = self.tracker.start_experiment("child", {}, parent_id=parent.id)
+        self.tracker.start_experiment("child", {}, parent_id=parent.id)
         nested = self.tracker.get_nested_runs(parent.id)
         assert len(nested) == 1
 
@@ -457,12 +457,12 @@ class TestSchema:
 
     def test_validate_fail_missing(self) -> None:
         s = Schema("test", required_fields=["name"])
-        valid, errors = s.validate({"age": 30})
+        valid, _errors = s.validate({"age": 30})
         assert valid is False
 
     def test_validate_fail_type(self) -> None:
         s = Schema("test", field_types={"age": int})
-        valid, errors = s.validate({"age": "30"})
+        valid, _errors = s.validate({"age": "30"})
         assert valid is False
 
 

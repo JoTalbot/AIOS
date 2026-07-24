@@ -311,7 +311,7 @@ class TestImageComparisonEngine:
         engine = ImageComparisonEngine(duplicate_threshold=0.9)
         grad = _gradient_pixels(64)
         flat = _uniform_pixels(128, 64)
-        checker = _checker_pixels()
+        _checker_pixels()
 
         catalog = {
             "fp_grad": (grad, 8, 8),

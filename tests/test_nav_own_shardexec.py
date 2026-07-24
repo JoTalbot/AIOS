@@ -474,7 +474,7 @@ def test_shard_jobs_complete_failed_and_listing(tmp_path):
         jobs.enqueue("ghost:noop", "weird")
         assert len(jobs.list()) == 2
         assert len(jobs.list(status="pending")) == 2
-        bad = [j for j in jobs.list(status="pending") if j["profile_key"] == "ghost:noop"][0]
+        bad = next(j for j in jobs.list(status="pending") if j["profile_key"] == "ghost:noop")
         jobs.complete(bad["id"], ok=False, result={"error": "boom"})
         failed = jobs.list(status="failed")
         assert failed[0]["result"]["error"] == "boom"

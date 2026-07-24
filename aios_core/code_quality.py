@@ -103,7 +103,6 @@ class CodeQualityChecker:
         total_functions = 0
         documented_functions = 0
         total_classes = 0
-        documented_classes = 0
         modules_analyzed = 0
 
         for py_file in self.target_dir.glob("*.py"):

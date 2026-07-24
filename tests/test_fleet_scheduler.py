@@ -210,7 +210,7 @@ class TestFleetScheduler:
         """Higher priority tasks scheduled first."""
         scheduler = self._make_scheduler(1)
         t_high = scheduler.schedule("olx", "collect", TaskPriority.HIGH)
-        t_low = scheduler.schedule("olx", "collect", TaskPriority.LOW)
+        scheduler.schedule("olx", "collect", TaskPriority.LOW)
         assert t_high is not None
         # Second task queued since device max_concurrent=2
         # But first device takes priority task

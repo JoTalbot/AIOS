@@ -46,7 +46,7 @@ class QuantumAdvantageAnalyzer:
         """Compare classical vs quantum (backward-compatible)."""
         speedup = classical_time / quantum_time if quantum_time > 0 else float("inf")
         advantage = speedup > 1 and problem_size > 20
-        entry = BenchmarkEntry("comparison", classical_time, quantum_time, problem_size)
+        BenchmarkEntry("comparison", classical_time, quantum_time, problem_size)
         self.benchmarks[f"bench_{len(self.benchmarks)}"] = {
             "classical_time": classical_time,
             "quantum_time": quantum_time,
@@ -135,7 +135,7 @@ class QuantumAdvantageAnalyzer:
         """Estimate quantum resource requirements."""
         qubits_needed = {
             "shor": int(problem_size * 2),
-            "grover": int(math.ceil(math.sqrt(problem_size))),
+            "grover": math.ceil(math.sqrt(problem_size)),
             "vqe": int(problem_size),
             "qaoa": int(problem_size),
         }

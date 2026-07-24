@@ -111,7 +111,7 @@ class AlertManager:
 
     def check_metric(self, metric_name: str, value: float, timestamp: float) -> None:
         """Check metric against alert rules."""
-        for rule_name, rule in self.rules.items():
+        for rule in self.rules.values():
             if rule.metric == metric_name:
                 if self._evaluate_condition(rule.condition, value, rule.threshold):
                     self._trigger_alert(rule, value, timestamp)
@@ -284,7 +284,7 @@ class MonitoringAPI:
         """Get alerts."""
         alerts = []
 
-        for alert_key, alert in self.alert_manager.active_alerts.items():
+        for alert in self.alert_manager.active_alerts.values():
             if active_only and alert["resolved_at"]:
                 continue
             alerts.append(alert)

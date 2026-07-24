@@ -94,7 +94,7 @@ def test_predictive_autonomy_regulator():
 
     # Critical risk step (destructive action)
     dangerous_step = {"action": "delete_all_database_records", "complexity": 10.0}
-    regulated_level, reason = regulator.regulate_autonomy(
+    regulated_level, _reason = regulator.regulate_autonomy(
         agent_id="agent_001",
         current_level=AutonomyLevel.LEVEL_5_SELF_DIRECTED,
         plan_step=dangerous_step,

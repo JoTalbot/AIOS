@@ -92,7 +92,7 @@ class HierarchicalRL:
                 eligible.append(name)
 
         if not eligible:
-            return list(self.options.keys())[0] if self.options else "default"
+            return next(iter(self.options.keys())) if self.options else "default"
 
         # Use high-level policy weights
         policy = self.high_level_policy.get(state_str, {})

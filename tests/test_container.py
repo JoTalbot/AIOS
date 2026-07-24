@@ -42,7 +42,7 @@ def test_container_configure():
 def test_container_reset():
     c = AppContainer(AppConfig(db_path=":memory:"))
     db1 = c.db()
-    orch1 = c.orchestrator()
+    c.orchestrator()
     c.reset()
     assert c.stats()["db_ready"] is False
     db2 = c.db()

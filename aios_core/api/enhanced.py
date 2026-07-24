@@ -387,7 +387,7 @@ class EnhancedAIOSAPI:
                 )
 
             # Configure protocol
-            protocol_config = ProtocolConfig(
+            ProtocolConfig(
                 protocol_type=ProtocolType(protocol_type), **config
             )
 

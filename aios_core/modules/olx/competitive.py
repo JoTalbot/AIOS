@@ -51,9 +51,8 @@ def link_score(own: OwnAd, candidate: AdCard) -> float:
         ratio = min(own.price, candidate.price) / max(own.price, candidate.price)
         score += 0.15 * ratio
         # Competing means roughly the same market segment, not identical price.
-    if own.price and candidate.price:
-        if ratio >= 0.5:
-            score += 0.10
+    if own.price and candidate.price and ratio >= 0.5:
+        score += 0.10
     if candidate.city:
         score += 0.05
     return min(score, 1.0)

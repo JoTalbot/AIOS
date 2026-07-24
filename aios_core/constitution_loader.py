@@ -135,7 +135,7 @@ def _parse_article(filepath: str) -> Article | None:
     if id_info is None:
         return None
 
-    roman, name, num = id_info
+    roman, name, _num = id_info
     article_id = f"ARTICLE-{roman}"
 
     with open(filepath, encoding="utf-8") as f:

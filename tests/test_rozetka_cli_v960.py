@@ -34,7 +34,7 @@ def test_rozetka_price_tracker_drops():
                    ad_id="r-phone", query="test", raw_texts=["Phone"])
     storage.save_ads([card2])
 
-    args = _make_args(
+    _make_args(
         rozetka_command="price-tracker",
         price_command="drops",
         min_drop_pct=5.0,

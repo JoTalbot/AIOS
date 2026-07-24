@@ -88,7 +88,7 @@ class ProtocolAdapter:
         """Stop the protocol adapter."""
         raise NotImplementedError
 
-    async def handle_message(self, message: Any, connection_id: str = None) -> None:
+    async def handle_message(self, message: Any, connection_id: str | None = None) -> None:
         """Handle incoming message."""
         raise NotImplementedError
 
@@ -259,7 +259,7 @@ class GraphQLAdapter(ProtocolAdapter):
         """Stop GraphQL server."""
         logger.info("GraphQL server stopped")
 
-    async def handle_message(self, message: Any, connection_id: str = None) -> None:
+    async def handle_message(self, message: Any, connection_id: str | None = None) -> None:
         """Handle GraphQL query/mutation."""
         try:
             # GraphQL queries are handled via HTTP, but we can process them here
@@ -347,7 +347,7 @@ class SSEAdapter(ProtocolAdapter):
         self.connections.clear()
         logger.info("SSE server stopped")
 
-    async def handle_message(self, message: Any, connection_id: str = None) -> None:
+    async def handle_message(self, message: Any, connection_id: str | None = None) -> None:
         """Handle SSE message (typically client subscriptions)."""
         try:
             data = json.loads(message)
@@ -367,18 +367,9 @@ class SSEAdapter(ProtocolAdapter):
         if not self.connections:
             return
 
-        event_data = {
-            "type": "event",
-            "data": {
-                "event_type": event.event_type.value,
-                "source": event.source,
-                "timestamp": event.timestamp,
-                "data": event.data,
-            },
-        }
 
         # Broadcast to all connections
-        for connection_id, subscriptions in self.connections.items():
+        for subscriptions in self.connections.values():
             # Check if connection wants this type of event
             if "*" in subscriptions or event.event_type.value in subscriptions:
                 # Send SSE event
@@ -430,7 +421,7 @@ class MessageQueueAdapter(ProtocolAdapter):
         """Start Kafka consumer."""
         # Kafka integration would go here
 
-    async def handle_message(self, message: Any, connection_id: str = None) -> None:
+    async def handle_message(self, message: Any, connection_id: str | None = None) -> None:
         """Handle message from queue."""
         try:
             if isinstance(message, str):
@@ -487,7 +478,7 @@ class ProtocolManager:
                 logger.error(f"Failed to stop adapter {name}: {e}")
 
     async def handle_protocol_message(
-        self, protocol_name: str, message: Any, connection_id: str = None
+        self, protocol_name: str, message: Any, connection_id: str | None = None
     ):
         """Handle message from specific protocol."""
         if protocol_name in self.adapters:

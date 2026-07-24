@@ -5,8 +5,10 @@ import json
 import os
 from pathlib import Path
 
+_import_cache: dict = {}
 
-def _lazy_import(module_path: str, attr: str = None):
+
+def _lazy_import(module_path: str, attr: str | None = None):
     """Import module on first use and cache result."""
     key = (module_path, attr)
     if key not in _import_cache:

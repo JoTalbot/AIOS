@@ -409,7 +409,7 @@ class ReasoningEngine:
     # Explain — enhanced reasoning with multi-word KG search
     # ------------------------------------------------------------------
 
-    def explain(self, question: str, context: dict = None) -> dict:
+    def explain(self, question: str, context: dict | None = None) -> dict:
         """Enhanced reasoning that searches the KG with *all* meaningful words.
 
         1. Extracts every word longer than 2 characters from *question*.
@@ -566,7 +566,7 @@ class ReasoningEngine:
     def evaluate_hypothesis(
         self,
         hypothesis: str,
-        evidence: list[dict] = None,
+        evidence: list[dict] | None = None,
     ) -> dict:
         """Evaluate a hypothesis against the knowledge graph.
 

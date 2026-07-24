@@ -28,7 +28,7 @@ class HonestyFramework:
         self._calibration_data: list[float] = []
         self._verified_statements: list[dict[str, Any]] = []
 
-    def check_honesty(self, statement: str, ground_truth: str = None) -> dict[str, Any]:
+    def check_honesty(self, statement: str, ground_truth: str | None = None) -> dict[str, Any]:
         """Check honesty (backward-compatible)."""
         if ground_truth and statement != ground_truth:
             similarity = self._compute_similarity(statement, ground_truth)

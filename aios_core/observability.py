@@ -325,7 +325,7 @@ class Observability:
     def export_prometheus(self) -> str:
         """Export all metrics in Prometheus exposition format."""
         lines = []
-        for key, entry in self.metrics.items():
+        for entry in self.metrics.values():
             metric_name = entry.name.replace(".", "_").replace("-", "_")
             label_str = ",".join(f'{k}="{v}"' for k, v in sorted(entry.labels.items()))
 

@@ -115,8 +115,8 @@ class OfflineRL:
         if not self.dataset:
             return {"size": 0}
         avg_reward = sum(t.reward for t in self.dataset) / len(self.dataset)
-        unique_states = len(set(t.state for t in self.dataset))
-        unique_actions = len(set(t.action for t in self.dataset))
+        unique_states = len({t.state for t in self.dataset})
+        unique_actions = len({t.action for t in self.dataset})
         return {
             "size": len(self.dataset),
             "avg_reward": round(avg_reward, 4),
@@ -222,9 +222,9 @@ class OfflineRL:
             # CQL penalty: penalize Q-values for actions not in dataset
             for state, q_dict in self.q_values.items():
                 # Find actions in dataset for this state
-                dataset_actions = set(
+                dataset_actions = {
                     t.action for t in self.dataset if t.state == state
-                )
+                }
                 for action in q_dict:
                     if action not in dataset_actions:
                         q_dict[action] -= self.cql_alpha * 0.1  # conservative penalty

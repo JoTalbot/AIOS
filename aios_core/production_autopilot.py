@@ -334,10 +334,9 @@ class ProductionAutopilot:
         drafts = 0
 
         for i in range(simulate_actions):
-            if pacer:
-                if not pacer.before_action():
-                    # pacing limit hit - honest stop, not a ban
-                    break
+            if pacer and not pacer.before_action():
+                # pacing limit hit - honest stop, not a ban
+                break
 
             # Simulate action success/failure (95% success for healthy)
             is_success = random.random() > 0.05
@@ -554,7 +553,7 @@ class ProductionAutopilot:
         ]
 
         for profile_key, pacing in health.get("pacing", {}).items():
-            safe_key = profile_key.replace(":", "_").replace("-", "_")
+            profile_key.replace(":", "_").replace("-", "_")
             lines += [
                 f'# HELP aios_pacer_actions{{profile="{profile_key}"}} Actions per pacer',
                 "# TYPE aios_pacer_actions gauge",

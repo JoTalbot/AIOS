@@ -60,7 +60,7 @@ class IteratedAmplification:
             """Amplified agent with decomposition."""
             sub_queries = [f"sub_{i}_{query}" for i in range(level)]
             try:
-                results = [base_agent(q) for q in sub_queries]
+                [base_agent(q) for q in sub_queries]
                 return f"Amplified result from {level} levels"
             except Exception:
                 return "Amplification fallback"

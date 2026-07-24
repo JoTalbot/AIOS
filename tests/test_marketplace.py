@@ -8,7 +8,7 @@ def test_publish_and_search():
     orch = Orchestrator(db=db)
 
     mp = orch.marketplace
-    item = mp.publish(
+    mp.publish(
         name="advanced_reasoner",
         description="Better reasoning capability",
         author="community",

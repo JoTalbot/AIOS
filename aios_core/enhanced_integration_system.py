@@ -393,7 +393,7 @@ async def main() -> None:
         print("Enhanced integration system started successfully")
 
         # Create and run the application
-        app = integration_system.create_app()
+        integration_system.create_app()
 
         # Print available endpoints
         print("\nAvailable endpoints:")

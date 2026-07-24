@@ -107,7 +107,7 @@ class TestExportImportE2E:
         assert export_path.exists()
 
         # Verify CSV format
-        content = export_path.read_text()
+        export_path.read_text()
         # Should have headers and data
 
 

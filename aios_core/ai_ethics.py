@@ -25,14 +25,14 @@ class AIEthicsFramework:
         self.assessments: list[dict] = []
         self.violations: list[dict] = []
 
-    def evaluate_action(self, action: dict[str, Any], context: dict = None) -> dict:
+    def evaluate_action(self, action: dict[str, Any], context: dict | None = None) -> dict:
         """Comprehensive ethical evaluation of an action."""
         scores = {}
         violated = []
 
         action_str = str(action).lower()
 
-        for principle, description in self.principles.items():
+        for principle in self.principles.keys():
             score = 1.0
 
             if principle == "non_maleficence" and any(

@@ -109,7 +109,7 @@ def _production_metrics() -> dict[str, object]:
                 pass
             # daily reports for drift
             for daily in content.get("daily_reports", []):
-                for pkey, pstats in daily.get("profiles", {}).items():
+                for pkey in daily.get("profiles", {}).keys():
                     plat = pkey.split(":")[0] if ":" in pkey else pkey
                     data["drift_events"][plat] = data["drift_events"].get(
                         plat, 0
@@ -322,8 +322,8 @@ def prometheus_metrics(
                     f'aios_seen_receipts{{platform="{platform}",kind="{kind}"}} {count}'
                 )
     lines += [
-        "# HELP aios_outbox_pending Guarded outbox drafts awaiting "
-        "approval per platform",
+        ("# HELP aios_outbox_pending Guarded outbox drafts awaiting "
+        "approval per platform"),
         "# TYPE aios_outbox_pending gauge",
     ]
     for platform, entry in sorted(platform_db.items()):

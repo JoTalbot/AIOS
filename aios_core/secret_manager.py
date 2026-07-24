@@ -322,7 +322,7 @@ class SecretManager:
             "expired_keys": expired,
             "expiring_soon": expiring,
             "revoked_keys": revoked,
-            "subjects": len(set(k.subject for k in self.keys.values())),
+            "subjects": len({k.subject for k in self.keys.values()}),
             "rotations_last_30d": len(
                 [
                     l

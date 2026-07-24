@@ -74,7 +74,7 @@ test_gauge 42.5
 
         # Analyze
         avg_latency = statistics.mean(latencies)
-        p50 = statistics.median(latencies)
+        statistics.median(latencies)
         p95 = sorted(latencies)[int(len(latencies) * 0.95)]
         p99 = sorted(latencies)[int(len(latencies) * 0.99)]
 
@@ -137,7 +137,7 @@ test_gauge 42.5
 
         def make_request():
             start = time.perf_counter()
-            response = await client.get("/health")
+            await client.get("/health")
             latency = (time.perf_counter() - start) * 1000
             return latency
 
@@ -176,7 +176,7 @@ test_gauge 42.5
 
         # Analyze
         avg_latency = statistics.mean(latencies)
-        p95 = sorted(latencies)[int(len(latencies) * 0.95)]
+        sorted(latencies)[int(len(latencies) * 0.95)]
 
         # Should maintain performance under sustained load
         assert avg_latency < 100, f"Average latency under sustained load {avg_latency:.2f}ms"

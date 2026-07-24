@@ -99,7 +99,7 @@ class QuantumNLP:
         self, tokens: list[str] = ["hello", "world"]
     ) -> dict[str, Any]:
         """Generate quantum-enhanced token embeddings."""
-        embeddings = {
+        {
             t: [round(random.uniform(-1, 1), 3) for _ in range(8)] for t in tokens
         }
         return {
@@ -120,7 +120,7 @@ class QuantumNLP:
 
     def quantum_attention(self, sequence_length: int = 10) -> dict[str, Any]:
         """Quantum attention mechanism for sequence processing."""
-        weights = [
+        [
             [round(random.uniform(0, 1), 3) for _ in range(sequence_length)]
             for _ in range(sequence_length)
         ]

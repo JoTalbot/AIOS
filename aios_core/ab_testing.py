@@ -58,7 +58,7 @@ class ABTest:
             if hash_val <= cumulative:
                 self._total_assignments[variant] += 1
                 return variant
-        variant = list(self.variants.keys())[0]
+        variant = next(iter(self.variants.keys()))
         self._total_assignments[variant] += 1
         return variant
 

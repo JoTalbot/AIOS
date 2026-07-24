@@ -461,7 +461,7 @@ class AgentMemorySystem:
             Dict with recommended params, warnings, success_rate.
         """
         # Find relevant long-term memories
-        long_term = self.recall(
+        self.recall(
             platform=platform, action=action, memory_type=MemoryType.LONG_TERM, limit=5
         )
 

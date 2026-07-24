@@ -355,18 +355,17 @@ class ConstitutionEngine:
         # Federation policy checks
         if action.get("action_type", "") in ("federate", "sync", "state_exchange"):
             fed = self.policies.get_federation_policy()
-            if fed:
-                if self.policies.is_rule_enabled(
-                    "federation_policy", "verified_nodes_only"
-                ) and not action.get("node_verified"):
-                    violations.append(
-                        {
-                            "type": "policy_violation",
-                            "policy": "federation_policy",
-                            "rule": "verified_nodes_only",
-                            "reason": "Federation requires verified nodes",
-                        }
-                    )
+            if fed and self.policies.is_rule_enabled(
+                "federation_policy", "verified_nodes_only"
+            ) and not action.get("node_verified"):
+                violations.append(
+                    {
+                        "type": "policy_violation",
+                        "policy": "federation_policy",
+                        "rule": "verified_nodes_only",
+                        "reason": "Federation requires verified nodes",
+                    }
+                )
 
         return violations
 
@@ -557,8 +556,8 @@ class ConstitutionEngine:
             return (
                 DecisionOutcome.REVIEW,
                 "risk_review",
-                f"Risk level '{risk_level}' requires review. "
-                f"Policy action: {threat_action}, escalation: {threat_escalation}",
+                (f"Risk level '{risk_level}' requires review. "
+                f"Policy action: {threat_action}, escalation: {threat_escalation}"),
             )
 
         # All checks passed → ALLOW

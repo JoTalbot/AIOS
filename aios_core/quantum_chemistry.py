@@ -118,7 +118,7 @@ class QuantumChemistrySimulator:
     def density_matrix(self, formula: str = "H2") -> dict[str, Any]:
         """Compute simplified density matrix."""
         size = 4
-        matrix = [
+        [
             [round(random.uniform(0, 1), 3) for _ in range(size)] for _ in range(size)
         ]
         return {

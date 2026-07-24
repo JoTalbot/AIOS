@@ -356,18 +356,17 @@ class ConstitutionValidator:
         if fed and action.get("action_type") in ("federate", "sync"):
             if self.policies.is_rule_enabled(
                 "federation_policy", "verified_nodes_only"
-            ):
-                if not action.get("node_verified"):
-                    results.append(
-                        ValidationResult(
-                            valid=True,
-                            category="policy",
-                            code="federation_verified_nodes",
-                            message="Federation policy requires verified nodes",
-                            severity="warning",
-                            policy_name="federation_policy",
-                        )
+            ) and not action.get("node_verified"):
+                results.append(
+                    ValidationResult(
+                        valid=True,
+                        category="policy",
+                        code="federation_verified_nodes",
+                        message="Federation policy requires verified nodes",
+                        severity="warning",
+                        policy_name="federation_policy",
                     )
+                )
 
         return results
 

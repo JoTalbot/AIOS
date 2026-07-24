@@ -110,7 +110,7 @@ class DictionaryLearner:
     ) -> None:
         """Evolve dictionary with new data."""
         for key in list(self.dictionary.keys())[: int(self.dict_size * merge_ratio)]:
-            idx = int(key.split("_")[1])
+            int(key.split("_")[1])
             self.dictionary[key] = (
                 self.dictionary[key] * 0.9 + random.uniform(0.01, 0.1) * 0.1
             )
