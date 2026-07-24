@@ -133,8 +133,11 @@ class DataExporter:
 
         query += " ORDER BY created_at DESC"
 
-        if limit:
-            query += f" LIMIT {limit}"
+        if limit is not None:
+            # Parameter binding is required here: this method is also exposed
+            # through the admin API and must not interpolate SQL fragments.
+            query += " LIMIT ?"
+            params.append(int(limit))
 
         cursor = self.conn.execute(query, params)
         rows = [dict(row) for row in cursor.fetchall()]
