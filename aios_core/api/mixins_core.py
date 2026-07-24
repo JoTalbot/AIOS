@@ -331,9 +331,15 @@ class CoreHandlersMixin:
 
     async def _tasks_create(self, request: Request) -> JSONResponse:
         # Rate limiting
-        client_ip = request.client.host if request.client else "unknown"
-        if not rate_limiter.is_allowed(client_ip):
-            return JSONResponse({"error": "Rate limit exceeded"}, status_code=429)
+        # Limit authenticated principals rather than source IPs. This avoids one
+        # tenant exhausting a shared NAT/proxy address for every other tenant.
+        subject = request.state.principal.subject
+        if not rate_limiter.is_allowed(subject):
+            return JSONResponse(
+                {"error": "Rate limit exceeded"},
+                status_code=429,
+                headers={"Retry-After": str(rate_limiter.window_seconds)},
+            )
 
         body = await request.json()
         task = self.orchestrator.create_task(

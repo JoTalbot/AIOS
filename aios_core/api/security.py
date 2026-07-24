@@ -46,9 +46,15 @@ def load_api_keys(raw: str | None = None) -> dict[str, Principal]:
             raise ValueError("Each API key must map to an object")
         subject = value.get("subject")
         roles = value.get("roles", [])
-        if not isinstance(subject, str) or not subject or not isinstance(roles, list):
-            raise ValueError("API key entries require subject and roles")
-        result[key] = Principal(subject=subject, roles=frozenset(map(str, roles)))
+        if (
+            not isinstance(subject, str)
+            or not subject
+            or not isinstance(roles, list)
+            or not roles
+            or any(not isinstance(role, str) or not role for role in roles)
+        ):
+            raise ValueError("API key entries require a subject and a non-empty list of role strings")
+        result[key] = Principal(subject=subject, roles=frozenset(roles))
     return result
 
 
@@ -93,7 +99,9 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         """dispatch."""
-        if request.url.path == "/health" or not self.enabled:
+        # These endpoints contain only public operational metadata and make
+        # discovery/documentation possible before credentials are provisioned.
+        if request.url.path in {"/health", "/docs", "/openapi.json"} or not self.enabled:
             request.state.principal = Principal("development", frozenset({"admin"}))
             return await call_next(request)
         if not self.api_keys:
