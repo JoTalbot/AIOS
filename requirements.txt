@@ -36,3 +36,5 @@ mkdocs-material>=9.5.0
 mkdocs-minify-plugin>=0.8.0
 mike>=2.1.0
 pytest-benchmark>=5.0.0
+aiosqlite>=0.19.0
+asyncpg>=0.29.0
