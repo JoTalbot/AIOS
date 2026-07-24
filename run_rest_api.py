@@ -23,7 +23,7 @@ def main():
     parser = argparse.ArgumentParser(description="AIOS REST API Server")
     parser.add_argument("--host", default="127.0.0.1", help="Host to bind to")
     parser.add_argument("--port", default=8000, type=int, help="Port to bind to")
-    parser.add_argument("--db", default=":memory:", help="Database path (default: :memory:)")
+    parser.add_argument("--db", default="aios.sqlite", help="Database path (default: aios.sqlite)")
     parser.add_argument("--constitution-dir", default=None, help="Constitution directory")
     parser.add_argument("--policies-dir", default=None, help="Policies directory")
     args = parser.parse_args()
@@ -37,7 +37,7 @@ def main():
     print(f"  Policies: {policies_dir}")
     print(f"  Database: {args.db}")
     print(f"  Server: http://{args.host}:{args.port}")
-    print(f"  API docs: http://{args.host}:{args.port}/api/v1/")
+    print(f"  API docs: http://{args.host}:{args.port}/docs")
     print()
 
     app = create_app(
@@ -55,6 +55,8 @@ def main():
 # Gunicorn-compatible entry point
 # Usage: gunicorn run_rest_api:app --bind 0.0.0.0:8000 --workers 4 -k uvicorn.workers.UvicornWorker
 _app = None
+
+
 def _get_app():
     """Create or return the cached Starlette application."""
     global _app
@@ -72,5 +74,7 @@ def _get_app():
     return _app
 # Exported app for gunicorn/uvicorn discovery
 app = _get_app()
+
+
 if __name__ == "__main__":
     main()
