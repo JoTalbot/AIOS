@@ -1,5 +1,21 @@
 # AIOS Roadmap — Next Milestones
 
+## v10.7.0 ✅ (2026-07-24)
+- ✅ Advanced Security (threat detection, XSS/injection sanitization, HMAC, API key management, security policy)
+- ✅ Agent Swarm (voting/consensus, leader election, capability-based task assignment, swarm messaging)
+- ✅ Adversarial Defense (anomaly detection, perturbation generation, defense strategies, event tracking)
+- ✅ Distributed Computing (worker pools, capability-based assignment, sharding, aggregation, fault tolerance)
+- ✅ Edge Computing (location scheduling, latency-based assignment, offloading, health monitoring)
+- ✅ Explainable AI (counterfactual explanations, contribution analysis, SHAP-like attribution, caching)
+- ✅ Federated Learning (FedAvg aggregation, privacy budgets, convergence detection, round-based training)
+- ✅ GraphQL (query parsing, multi-field resolution, mutations, introspection, type system)
+- ✅ Social Intelligence (dyadic relationships, trust levels, norm enforcement, reasoning, partner recommendation)
+- ✅ Differential Privacy (Laplace/Gaussian/Threshold mechanisms, k-anonymity, privacy budgets)
+- ✅ 126 new v10.7 tests + 1 cognition fix (2302 total, 0 failures)
+- ✅ RELEASE_NOTES_10.7.0.md
+
+**2302 tests, 0 failures**
+
 ## v10.6.0 ✅ (2026-07-24)
 - ✅ Task Scheduler (priority, recurring, retry, cancellation, history)
 - ✅ Event Store (in-memory, snapshots, projections, replay, compaction)
@@ -249,3 +265,4 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 10.4.0 | 2026-07-24 | 1882 | Feature flags + RBAC + Workflow engine (DAG, saga, retry) |
 | 10.5.0 | 2026-07-24 | 2032 | Zero trust + Self-healing + CB + Gateway + Shutdown + Mesh + Queue + Chaos + Scaler + Health |
 | 10.6.0 | 2026-07-24 | 2176 | Task scheduler + Event store + Observability + Experiment + Data lake + API versioning + Twin + Compliance + Secrets |
+| 10.7.0 | 2026-07-24 | 2302 | Advanced security + Swarm + Adversarial + Distributed + Edge + Explainable + Federated + GraphQL + Social + Privacy |
