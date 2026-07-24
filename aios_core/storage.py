@@ -211,6 +211,7 @@ class Database:
         ) or self.db_path.startswith("postgres://")
         self.dialect = "postgresql" if self.is_postgres else "sqlite"
         self._conn: Any = None
+        self._legacy_conn: Any = None
         # SQLite connections are shared by the synchronous Database facade.
         # Serialise access and keep an explicit transaction lock so a BEGIN /
         # COMMIT sequence cannot be interleaved by another worker thread.
@@ -228,37 +229,39 @@ class Database:
 
     def _get_conn(self) -> Any:
         """Get or establish database connection.
-
-        The SQLite handle is intentionally shared by this facade.  Disabling
-        SQLite's same-thread guard is safe here because all access is protected
-        by ``_lock``; it avoids creating independent connections that would
-        otherwise contend for a write lock under concurrent workloads.
+        Thread-safe SQLite connection using WAL mode.
         """
-        with self._lock:
-            if self._conn is None:
-                if self.is_postgres:
-                    # Stub connection mock if psycopg/asyncpg not installed locally
-                    try:
-                        import psycopg2
-
-                        self._conn = psycopg2.connect(self.db_path)
-                    except Exception:
-                        # In-memory SQLite fallthrough with PostgreSQL dialect flag set for unit testing
-                        self._conn = sqlite3.connect(
-                            ":memory:", check_same_thread=False
-                        )
-                        self._conn.row_factory = sqlite3.Row
-                        self._conn.executescript(_CREATE_TABLES_SQLITE)
-                        self._conn.commit()
-                else:
-                    self._conn = sqlite3.connect(
-                        self.db_path, check_same_thread=False, timeout=30
-                    )
-                    self._conn.row_factory = sqlite3.Row
-                    self._conn.execute("PRAGMA journal_mode=WAL")
-                    self._conn.execute("PRAGMA foreign_keys=ON")
-
-            return self._conn
+        if getattr(self, '_legacy_conn', None) is not None:
+            return self._legacy_conn
+            
+        if not hasattr(self._transaction_state, 'conn') or self._transaction_state.conn is None:
+            if self.is_postgres:
+                try:
+                    import psycopg2
+                    self._transaction_state.conn = psycopg2.connect(self.db_path)
+                except Exception:
+                    self._transaction_state.conn = sqlite3.connect(":memory:", check_same_thread=False)
+                    self._transaction_state.conn.row_factory = sqlite3.Row
+            else:
+                self._transaction_state.conn = sqlite3.connect(
+                    self.db_path,
+                    timeout=30.0,
+                    isolation_level=None
+                )
+                self._transaction_state.conn.row_factory = sqlite3.Row
+                try:
+                    self._transaction_state.conn.execute("PRAGMA journal_mode=WAL;")
+                    self._transaction_state.conn.execute("PRAGMA synchronous=NORMAL;")
+                except Exception:
+                    pass
+                
+                # Ensure tables exist in this connection context
+                try:
+                    self._transaction_state.conn.executescript(_CREATE_TABLES_SQLITE)
+                except Exception:
+                    pass
+                    
+        return self._transaction_state.conn
 
     def _check_migration(self, conn: sqlite3.Connection):
         """Check and apply schema migrations."""
