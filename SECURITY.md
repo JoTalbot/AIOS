@@ -61,6 +61,8 @@ reviewed and assigned an owner before production use.
   origin allowlist at your reverse proxy if browser access is needed.
 - Use a persistent database path in production. The `:memory:` mode is only for
   tests and ephemeral demos.
+- Set `AIOS_ADMIN_DATA_DIR` in production to confine Admin API import/export
+  file operations to a dedicated directory.
 - An approval is a governance record, not an automatic execution trigger. A
   production executor should bind an approved request to an immutable payload,
   authenticated reviewer and one-time execution token.

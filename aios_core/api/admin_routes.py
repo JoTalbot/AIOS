@@ -118,6 +118,13 @@ async def export_data(request: Request) -> None:
         return JSONResponse({"error": str(exc)}, status_code=400)
     since = body.get("since")
     limit = body.get("limit")
+    if limit is not None:
+        try:
+            limit = int(limit)
+            if not 1 <= limit <= 100_000:
+                raise ValueError
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "limit must be an integer between 1 and 100000"}, status_code=400)
 
     try:
         with DataExporter(_db_path) as exporter:

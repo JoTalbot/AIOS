@@ -214,3 +214,16 @@ async def test_admin_import_rejects_unsupported_type_before_processing(tmp_path)
         )
     assert response.status_code == 400
     assert response.json()["error"] == "Only tasks import is supported"
+
+
+@pytest.mark.asyncio
+async def test_admin_export_rejects_non_numeric_limit():
+    app = create_app(api_keys={"admin-key": {"subject": "admin", "roles": ["admin"]}})
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/admin/export",
+            json={"type": "memory", "limit": "1; DROP TABLE personal_memory"},
+            headers={"Authorization": "Bearer admin-key"},
+        )
+    assert response.status_code == 400
+    assert response.json()["error"] == "limit must be an integer between 1 and 100000"
