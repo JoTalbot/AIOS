@@ -9,6 +9,7 @@ These endpoints require 'admin' role.
 """
 
 import logging
+import os
 import sqlite3
 from pathlib import Path
 
@@ -57,6 +58,28 @@ def init_admin_routes(
     _webhook_manager = WebhookManager()
 
 
+def _validated_data_path(raw_path: object, *, must_exist: bool = False) -> str:
+    """Validate an admin import/export path against optional operator root.
+
+    Set ``AIOS_ADMIN_DATA_DIR`` in production to confine file operations to a
+    dedicated directory. Leaving it unset preserves local development and
+    existing CLI behaviour while still rejecting invalid path values.
+    """
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        raise ValueError("A non-empty file path is required")
+    path = Path(raw_path).expanduser()
+    try:
+        resolved = path.resolve(strict=must_exist)
+    except OSError as exc:
+        raise ValueError("File path does not exist or is not accessible") from exc
+    base_dir = os.environ.get("AIOS_ADMIN_DATA_DIR")
+    if base_dir:
+        base = Path(base_dir).expanduser().resolve(strict=False)
+        if not resolved.is_relative_to(base):
+            raise ValueError("Path must be inside AIOS_ADMIN_DATA_DIR")
+    return str(resolved)
+
+
 def _require_admin(request: Request):
     """Check if user has admin role."""
     try:
@@ -89,7 +112,10 @@ async def export_data(request: Request) -> None:
 
     export_type = body.get("type", "all")
     format_type = body.get("format", "json")
-    output_path = body.get("output", "./export")
+    try:
+        output_path = _validated_data_path(body.get("output", "./export"))
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
     since = body.get("since")
     limit = body.get("limit")
 
@@ -152,8 +178,14 @@ async def import_data(request: Request) -> None:
     format_type = body.get("format", "json")
     input_path = body.get("input")
 
-    if not input_path:
-        return JSONResponse({"error": "input path required"}, status_code=400)
+    try:
+        input_path = _validated_data_path(input_path, must_exist=True)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    if import_type != "tasks":
+        return JSONResponse({"error": "Only tasks import is supported"}, status_code=400)
+    if format_type not in {"json", "csv"}:
+        return JSONResponse({"error": "Unsupported format"}, status_code=400)
 
     try:
         with DataImporter(_db_path) as importer:

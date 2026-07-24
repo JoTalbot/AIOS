@@ -188,5 +188,29 @@ async def test_admin_internal_errors_do_not_expose_server_details():
             json={"input": "/definitely/not/a/real/import.json"},
             headers={"Authorization": "Bearer admin-key"},
         )
-    assert response.status_code == 500
-    assert response.json() == {"error": "Internal server error"}
+    assert response.status_code == 400
+    assert response.json() == {"error": "File path does not exist or is not accessible"}
+
+
+def test_admin_data_path_is_confined_when_operator_root_is_configured(monkeypatch, tmp_path):
+    from aios_core.api.admin_routes import _validated_data_path
+
+    monkeypatch.setenv("AIOS_ADMIN_DATA_DIR", str(tmp_path))
+    assert _validated_data_path(str(tmp_path / "export.json")).startswith(str(tmp_path))
+    with pytest.raises(ValueError, match="AIOS_ADMIN_DATA_DIR"):
+        _validated_data_path("/tmp/outside.json")
+
+
+@pytest.mark.asyncio
+async def test_admin_import_rejects_unsupported_type_before_processing(tmp_path):
+    source = tmp_path / "input.json"
+    source.write_text("[]")
+    app = create_app(api_keys={"admin-key": {"subject": "admin", "roles": ["admin"]}})
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/admin/import",
+            json={"type": "memory", "input": str(source)},
+            headers={"Authorization": "Bearer admin-key"},
+        )
+    assert response.status_code == 400
+    assert response.json()["error"] == "Only tasks import is supported"
