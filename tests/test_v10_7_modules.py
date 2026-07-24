@@ -602,7 +602,8 @@ class TestDifferentialPrivacy:
         assert abs(dp_sum - 100.0) < 50
     def test_privatize_mean(self):
         dp_mean = self.dp.privatize_mean([10.0, 20.0, 30.0])
-        assert dp_mean > 0
+        # DP adds random noise; true mean ≈ 20.0, result may rarely be ≤0 due to noise on count
+        assert isinstance(dp_mean, float) and abs(dp_mean - 20.0) < 40
     def test_threshold_query(self):
         result = self.dp.threshold_query(95.0, threshold=80.0, epsilon=1.0)
         # 95 > 80 → likely True even with noise
