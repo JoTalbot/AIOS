@@ -12,7 +12,12 @@ aios_config.yaml
 
 # Secrets and downloaded APKs (never committed)
 *.env
+!.env.example
 secrets.env
+*.pem
+*.key
+*.p12
+*.pfx
 apks/
 
 # local databases

@@ -6,7 +6,7 @@ services:
       - "8000:8000"
       - "8080:8080"
     environment:
-      - AIOS_API_KEYS={"local-dev":{"subject":"dev","roles":["admin"]}}
+      - AIOS_API_KEYS=${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
     volumes:
@@ -30,7 +30,7 @@ services:
     ports:
       - "8471:8471"
     environment:
-      - AIOS_API_KEYS={"local-dev":{"subject":"dev","roles":["admin"]}}
+      - AIOS_API_KEYS=${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
       - PYTHONUNBUFFERED=1
     volumes:
       - ./aios.sqlite:/app/aios.sqlite
@@ -49,7 +49,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - AIOS_API_KEYS={"local-dev":{"subject":"dev","roles":["admin"]}}
+      - AIOS_API_KEYS=${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
     volumes:
       - ./aios.sqlite:/app/aios.sqlite
     depends_on:

@@ -1,13 +1,13 @@
-"""AIOS Core Executable Layer v9.2.0-production (GA Criteria Met)
+"""AIOS Core Executable Layer v10.15.0
 
 Autonomous Intelligence Operating System - Production Exploitation
-- 1010+ tests green
+- 1255 tests passed in the latest local audit (2026-07-23)
 - Android M1-M8: cross-app, predictive, test-generator
 - AI Advisor H3.11, SDK H3.12, K8s H3.13, Marketplace H3.14
 - Production Autopilot: 3 IG profiles ≥2 weeks ban-free (simulated + prod-ready)
 """
 
-__version__ = "9.3.0"
+__version__ = "10.15.0"
 __author__ = "AIOS Development"
 
 from .ai_advisor import AdvisorDraft, AISalesAdvisor, InboxSummary, PriceAdvice

@@ -241,7 +241,7 @@ class AIOSAPI(
                 Middleware(
                     CORSMiddleware,
                     allow_origins=[],
-                    allow_methods=["GET", "POST", "PUT", "DELETE"],
+                    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
                     allow_headers=["Authorization", "Content-Type"],
                 ),
             ],

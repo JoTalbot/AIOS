@@ -21,3 +21,15 @@ async def test_memory_limits_are_bounded():
         response = await client.get("/api/v1/memory?limit=-1")
     assert response.status_code == 200
     assert response.json()["count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_api_responses_include_baseline_security_headers():
+    app = create_app(auth_required=False)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/health")
+    assert response.status_code == 200
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["content-security-policy"] == "frame-ancestors 'none'"

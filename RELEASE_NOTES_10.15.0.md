@@ -34,7 +34,7 @@ Deep behavioral tests for Planner, Storage, Orchestrator, and API integrations:
 - `test_v10_6_modules.py`: Fixed `test_env_priority` — memory has priority over env in SecretsManager
 
 ### 🛡️ Security Note
-⚠️ **GitHub PAT `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` is still active** — needs manual revocation via GitHub Settings → Developer Settings → Personal Access Tokens
+⚠️ **GitHub PAT `[REDACTED — revoke this token immediately]` is still active** — needs manual revocation via GitHub Settings → Developer Settings → Personal Access Tokens
 
 ## Test Results
 - **3015 tests passed**, 0 failures
