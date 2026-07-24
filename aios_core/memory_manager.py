@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from .storage import Database
+from .vector_store import VectorStore
 
 __all__ = ["MemoryManager"]
 
@@ -30,6 +31,7 @@ class MemoryManager:
     def __init__(self, db: Database | None = None):
         """Initialize MemoryManager."""
         self.db = db
+        self.vector_store = VectorStore(use_compression=True)
 
     def store(
         self,
@@ -87,6 +89,14 @@ class MemoryManager:
                     Database.to_json(metadata) if metadata else None,
                     owner_id,
                 ),
+            )
+
+        # If vector embedding provided in metadata, store in compressed vector index
+        if metadata and "embedding" in metadata:
+            self.vector_store.add(
+                id=item_id, 
+                vector=metadata["embedding"],
+                metadata={"category": category, "owner_id": owner_id}
             )
 
         return {
@@ -173,6 +183,34 @@ class MemoryManager:
 
         rows = self.db.query(sql, tuple(params))
         return [self._row_to_dict(r) for r in rows]
+
+    def semantic_search(
+        self,
+        query_vector: list[float],
+        category: str | None = None,
+        top_k: int = 5,
+        requester_id: str | None = None
+    ) -> list[dict]:
+        """Search memories using compressed vector embeddings."""
+        meta_filter = {}
+        if category:
+            meta_filter["category"] = category
+        if requester_id:
+            meta_filter["owner_id"] = requester_id
+            
+        vector_results = self.vector_store.search(
+            query_vector=query_vector,
+            top_k=top_k,
+            metadata_filter=meta_filter if meta_filter else None
+        )
+        
+        results = []
+        for v_res in vector_results:
+            mem = self.retrieve(v_res["id"], requester_id=requester_id)
+            if mem:
+                mem["similarity_score"] = v_res["score"]
+                results.append(mem)
+        return results
 
     def update(
         self,
