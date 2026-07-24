@@ -1,5 +1,15 @@
 # AIOS Roadmap — Next Milestones
 
+## v10.0.0 ✅ (2026-07-24)
+- ✅ Price Prediction ML Engine (Polynomial regression 1/2/3, SMA/WMA/EMA, Ensemble, Trend detection)
+- ✅ Product Image Comparison (aHash/dHash/pHash, Color histogram, Composite scoring, Duplicate detection)
+- ✅ Fleet Scheduler (Multi-device orchestration, 4 scheduling policies, Retry/cooldown, Load balancing)
+- ✅ CLI subcommands: price-predict, image-compare, fleet
+- ✅ 110 new tests (1514 total, 0 failures)
+- ✅ RELEASE_NOTES_10.0.0.md + GitHub Release v10.0.0
+
+**1514 tests, 0 failures**
+
 ## v9.4.0 ✅ (2026-07-24)
 - 1227 tests, 0 failures, 0 warnings, 100% docstrings
 - 10 critical bug fixes (lru_cache, missing returns, @staticmethod+self, imports)
