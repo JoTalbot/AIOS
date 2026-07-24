@@ -6,7 +6,7 @@ latency profiling, and automatic fallback handling.
 
 import random
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 __all__ = ["ModelServer"]
 
@@ -17,9 +17,11 @@ class ModelServer:
     def __init__(self, registry: Any = None):
         """Initialize ModelServer."""
         self.registry = registry
-        self.models: Dict[str, dict[str, Any]] = {}
-        self.traffic_splits: Dict[str, dict[str, float]] = {}  # model_name -> {version: weight}
-        self.performance_stats: Dict[str, dict[str, float]] = {}
+        self.models: dict[str, dict[str, Any]] = {}
+        self.traffic_splits: dict[
+            str, dict[str, float]
+        ] = {}  # model_name -> {version: weight}
+        self.performance_stats: dict[str, dict[str, float]] = {}
 
     def deploy(
         self,
@@ -113,7 +115,7 @@ class ModelServer:
                 "success": False,
             }
 
-    def predict_batch(self, model_id: str, items: list[Any]) -> List[dict[str, Any]]:
+    def predict_batch(self, model_id: str, items: list[Any]) -> list[dict[str, Any]]:
         """Process a batch of predictions concurrently or sequentially."""
         return [self.predict(model_id, item) for item in items]
 

@@ -5,9 +5,9 @@ Supports labeled metrics, histogram bucketing, summary quantiles,
 metric metadata, reset/snapshot, and HTTP exposition endpoint helpers.
 """
 
-import math
 import time
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 __all__ = ["MetricsExporter", "HistogramConfig", "metrics_exporter"]
 
@@ -22,8 +22,17 @@ class HistogramConfig:
         # Default Prometheus-style exponential buckets if not provided
         if buckets is None:
             self.buckets = [
-                0.005, 0.01, 0.025, 0.05, 0.1, 0.25,
-                0.5, 1.0, 2.5, 5.0, 10.0,
+                0.005,
+                0.01,
+                0.025,
+                0.05,
+                0.1,
+                0.25,
+                0.5,
+                1.0,
+                2.5,
+                5.0,
+                10.0,
             ]
         else:
             self.buckets = list(buckets)
@@ -47,11 +56,11 @@ class MetricsExporter:
         """Initialize MetricsExporter."""
         self.counters: dict[str, float] = {}
         self.gauges: dict[str, float] = {}
-        self.histograms: Dict[str, list] = {}
-        self._labels: Dict[str, dict[str, str]] = {}
-        self._metadata: Dict[str, Dict[str, str]] = {}  # name → {help, unit, type}
-        self._hist_configs: Dict[str, HistogramConfig] = {}
-        self._creation_time: Dict[str, float] = {}  # name → timestamp
+        self.histograms: dict[str, list] = {}
+        self._labels: dict[str, dict[str, str]] = {}
+        self._metadata: dict[str, dict[str, str]] = {}  # name → {help, unit, type}
+        self._hist_configs: dict[str, HistogramConfig] = {}
+        self._creation_time: dict[str, float] = {}  # name → timestamp
 
     # ------------------------------------------------------------------
     # Metadata
@@ -162,20 +171,28 @@ class MetricsExporter:
 
     def get_histogram_stats(
         self, name: str, labels: dict[str, str] | None = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Compute histogram statistics: count, sum, buckets, min, max, mean."""
         key = self._make_key(name, labels)
         values = self.histograms.get(key, [])
         if not values:
             return {
-                "count": 0, "sum": 0, "min": 0, "max": 0,
-                "mean": 0, "buckets": {},
+                "count": 0,
+                "sum": 0,
+                "min": 0,
+                "max": 0,
+                "mean": 0,
+                "buckets": {},
             }
 
         config = self._hist_configs.get(name)
-        buckets = config.buckets if config else [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+        buckets = (
+            config.buckets
+            if config
+            else [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+        )
 
-        bucket_counts: Dict[str, int] = {}
+        bucket_counts: dict[str, int] = {}
         for boundary in buckets:
             count = sum(1 for v in values if v <= boundary)
             bucket_counts[f"le={boundary}"] = count
@@ -196,15 +213,18 @@ class MetricsExporter:
     # ------------------------------------------------------------------
 
     def compute_summary(
-        self, name: str, labels: dict[str, str] | None = None, quantiles: List[float] = [0.5, 0.9, 0.95, 0.99]
-    ) -> Dict[str, float]:
+        self,
+        name: str,
+        labels: dict[str, str] | None = None,
+        quantiles: list[float] = [0.5, 0.9, 0.95, 0.99],
+    ) -> dict[str, float]:
         """Compute summary quantiles for a histogram metric."""
         key = self._make_key(name, labels)
         values = sorted(self.histograms.get(key, []))
         if not values:
             return {f"quantile_{q}": 0.0 for q in quantiles}
 
-        result: Dict[str, float] = {}
+        result: dict[str, float] = {}
         for q in quantiles:
             idx = max(0, min(len(values) - 1, int(q * len(values))))
             result[f"quantile_{q}"] = round(values[idx], 4)
@@ -227,7 +247,7 @@ class MetricsExporter:
 
     def export(self) -> str:
         """Export all metrics in Prometheus exposition text format."""
-        lines: List[str] = []
+        lines: list[str] = []
 
         # Counters
         seen_counter_names = set()
@@ -261,7 +281,11 @@ class MetricsExporter:
         for key, values in self.histograms.items():
             name = key.split("{")[0]
             config = self._hist_configs.get(name)
-            buckets = config.buckets if config else [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+            buckets = (
+                config.buckets
+                if config
+                else [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+            )
 
             if name not in seen_hist_names:
                 meta = self._metadata.get(name, {})
@@ -278,12 +302,12 @@ class MetricsExporter:
                     cumulative += count
                     label_part = key.split("{")[1] if "{" in key else ""
                     if label_part:
-                        label_part = label_part.rstrip("}") + f",le=\"{boundary}\""
+                        label_part = label_part.rstrip("}") + f',le="{boundary}"'
                         lines.append(f"{name}{{{label_part}}} {cumulative}")
                     else:
-                        lines.append(f"{name}_bucket{{le=\"{boundary}\"}} {cumulative}")
+                        lines.append(f'{name}_bucket{{le="{boundary}"}} {cumulative}')
                 # +Inf
-                lines.append(f"{name}_bucket{{le=\"+Inf\"}} {len(values)}")
+                lines.append(f'{name}_bucket{{le="+Inf"}} {len(values)}')
                 lines.append(f"{key}_count {len(values)}")
                 lines.append(f"{key}_sum {sum(values):.4f}")
 
@@ -325,7 +349,7 @@ class MetricsExporter:
         self._labels.clear()
         self._creation_time.clear()
 
-    def snapshot(self) -> Dict[str, Any]:
+    def snapshot(self) -> dict[str, Any]:
         """Capture a point-in-time snapshot of all metric values."""
         return {
             "timestamp": time.time(),

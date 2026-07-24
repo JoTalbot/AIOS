@@ -8,11 +8,8 @@ Endpoints for:
 These endpoints require 'admin' role.
 """
 
-import json
-import os
 import sqlite3
 from pathlib import Path
-from typing import Optional
 
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -28,13 +25,15 @@ from aios_core.storage import Database
 from aios_core.webhook_manager import WebhookManager
 
 # Global instances (initialized in create_routes)
-_secret_manager: Optional[SecretManager] = None
-_backup_manager: Optional[BackupManager] = None
-_webhook_manager: Optional[WebhookManager] = None
+_secret_manager: SecretManager | None = None
+_backup_manager: BackupManager | None = None
+_webhook_manager: WebhookManager | None = None
 _db_path: str = "aios.sqlite"
 
 
-def init_admin_routes(db_path: str = "aios.sqlite", backup_dir: str = "./backups") -> None:
+def init_admin_routes(
+    db_path: str = "aios.sqlite", backup_dir: str = "./backups"
+) -> None:
     """Initialize admin route handlers with database path."""
     global _db_path, _secret_manager, _backup_manager, _webhook_manager
     _db_path = db_path
@@ -44,7 +43,9 @@ def init_admin_routes(db_path: str = "aios.sqlite", backup_dir: str = "./backups
     if not needs_schema:
         with sqlite3.connect(db_path) as conn:
             needs_schema = (
-                conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1").fetchone()
+                conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1"
+                ).fetchone()
                 is None
             )
     if needs_schema:
@@ -104,7 +105,9 @@ async def export_data(request: Request) -> None:
                     }
                 )
             elif export_type == "tasks":
-                count = exporter.export_tasks(output_path, format_type, limit, since=since)
+                count = exporter.export_tasks(
+                    output_path, format_type, limit, since=since
+                )
             elif export_type == "memory":
                 count = exporter.export_memory(output_path, format_type, limit)
             elif export_type == "audit":
@@ -112,7 +115,9 @@ async def export_data(request: Request) -> None:
             elif export_type == "knowledge":
                 count = exporter.export_knowledge_graph(output_path, format_type)
             else:
-                return JSONResponse({"error": f"Unknown type: {export_type}"}, status_code=400)
+                return JSONResponse(
+                    {"error": f"Unknown type: {export_type}"}, status_code=400
+                )
 
             return JSONResponse(
                 {
@@ -587,7 +592,9 @@ async def unregister_webhook(request: Request) -> None:
 
     success = _webhook_manager.unregister(name)
     if success:
-        return JSONResponse({"status": "success", "message": f"Webhook '{name}' removed"})
+        return JSONResponse(
+            {"status": "success", "message": f"Webhook '{name}' removed"}
+        )
     return JSONResponse({"error": "Webhook not found"}, status_code=404)
 
 

@@ -14,9 +14,9 @@ Classes:
 
 from __future__ import annotations
 
+import logging
 import math
 import random
-import logging
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -46,9 +46,12 @@ class PositionalEncoding:
         if position < len(self._table):
             return self._table[position]
         # Fallback for positions beyond max_len
-        return [math.sin(position / (10000 ** ((2 * (i // 2)) / self.dim)))
-                if i % 2 == 0 else math.cos(position / (10000 ** ((2 * (i // 2)) / self.dim)))
-                for i in range(self.dim)]
+        return [
+            math.sin(position / (10000 ** ((2 * (i // 2)) / self.dim)))
+            if i % 2 == 0
+            else math.cos(position / (10000 ** ((2 * (i // 2)) / self.dim)))
+            for i in range(self.dim)
+        ]
 
     def stats(self) -> dict[str, Any]:
         return {"dim": self.dim, "max_len": self.max_len, "computed": len(self._table)}
@@ -86,7 +89,13 @@ class MultiHeadAttention:
         total = sum(exps)
         return [e / total for e in exps] if total > 0 else [1.0 / len(x)] * len(x)
 
-    def forward(self, q: list[float], k: list[float], v: list[float], mask: list[float] | None = None) -> list[float]:
+    def forward(
+        self,
+        q: list[float],
+        k: list[float],
+        v: list[float],
+        mask: list[float] | None = None,
+    ) -> list[float]:
         """Scaled dot-product attention (backward-compatible)."""
         # Linear projections
         proj_q = self._matmul(q, self._weights_q)
@@ -95,14 +104,17 @@ class MultiHeadAttention:
 
         # Scaled dot-product scores
         scale = math.sqrt(self.head_dim)
-        scores = [(proj_q[i] * proj_k[i]) / scale for i in range(min(len(proj_q), len(proj_k)))]
+        scores = [
+            (proj_q[i] * proj_k[i]) / scale
+            for i in range(min(len(proj_q), len(proj_k)))
+        ]
 
         # Apply mask if provided
         if mask:
-            scores = [s + m for s, m in zip(scores, mask[:len(scores)])]
+            scores = [s + m for s, m in zip(scores, mask[: len(scores)])]
 
         # Softmax → attention weights
-        attn = self._softmax(scores[:self.heads])
+        attn = self._softmax(scores[: self.heads])
 
         # Weighted sum of values
         result = [proj_v[i] * attn[i % len(attn)] for i in range(len(proj_v))]
@@ -116,8 +128,12 @@ class TransformerBlock:
         self.attention = MultiHeadAttention(dim, heads)
         self.dim = dim
         self.ffn_dim = ffn_dim
-        self._ffn_w1: list[list[float]] = [[random.gauss(0, 0.02) for _ in range(dim)] for _ in range(ffn_dim)]
-        self._ffn_w2: list[list[float]] = [[random.gauss(0, 0.02) for _ in range(ffn_dim)] for _ in range(dim)]
+        self._ffn_w1: list[list[float]] = [
+            [random.gauss(0, 0.02) for _ in range(dim)] for _ in range(ffn_dim)
+        ]
+        self._ffn_w2: list[list[float]] = [
+            [random.gauss(0, 0.02) for _ in range(ffn_dim)] for _ in range(dim)
+        ]
 
     def _layer_norm(self, x: list[float]) -> list[float]:
         """Layer normalization."""
@@ -138,10 +154,20 @@ class TransformerBlock:
         # Residual + layer norm
         x_norm = self._layer_norm([xi + ai for xi, ai in zip(x, attn)])
         # FFN sub-layer (simplified: skip full matmul, use weighted average)
-        ffn_out = self._relu([0.5 * sum(x_norm[j] * self._ffn_w1[i][j] for j in range(min(len(x_norm), self.dim)))
-                              for i in range(min(self.ffn_dim, len(x_norm)))])
+        ffn_out = self._relu(
+            [
+                0.5
+                * sum(
+                    x_norm[j] * self._ffn_w1[i][j]
+                    for j in range(min(len(x_norm), self.dim))
+                )
+                for i in range(min(self.ffn_dim, len(x_norm)))
+            ]
+        )
         # Residual + layer norm
-        output = self._layer_norm([x_norm[i] + 0.1 * ffn_out[i % len(ffn_out)] for i in range(len(x_norm))])
+        output = self._layer_norm(
+            [x_norm[i] + 0.1 * ffn_out[i % len(ffn_out)] for i in range(len(x_norm))]
+        )
         return output
 
     def stats(self) -> dict[str, Any]:
@@ -163,7 +189,9 @@ class Transformer:
             x = layer.forward(x, mask)
         return x
 
-    def generate(self, prompt: list[float], max_tokens: int = 10, temperature: float = 1.0) -> list[list[float]]:
+    def generate(
+        self, prompt: list[float], max_tokens: int = 10, temperature: float = 1.0
+    ) -> list[list[float]]:
         """Generate a sequence of token representations."""
         outputs = []
         current = prompt[:]

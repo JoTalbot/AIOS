@@ -10,10 +10,11 @@ Classes:
 
 from __future__ import annotations
 
+import logging
 import math
 import random
-import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +22,17 @@ logger = logging.getLogger(__name__)
 class QuantumAnnealingOptimizer:
     """Simulated quantum annealing with convergence tracking."""
 
-    def __init__(self, initial_temp: float = 1000.0, cooling_rate: float = 0.95) -> None:
+    def __init__(
+        self, initial_temp: float = 1000.0, cooling_rate: float = 0.95
+    ) -> None:
         self.temp = initial_temp
         self.cooling = cooling_rate
         self._convergence_history: list[float] = []
         self._best_history: list[float] = []
 
-    def optimize(self, initial_solution: list, cost_func: Callable, iterations: int = 5000) -> tuple[list, float]:
+    def optimize(
+        self, initial_solution: list, cost_func: Callable, iterations: int = 5000
+    ) -> tuple[list, float]:
         """Simulated quantum annealing (backward-compatible, now returns tuple)."""
         current = initial_solution[:]
         best = current[:]
@@ -60,11 +65,15 @@ class QuantumAnnealingOptimizer:
 
         return best, best_cost
 
-    def maxcut(self, edges: list[tuple[int, int]], nodes: int = 10, iterations: int = 1000) -> dict[str, Any]:
+    def maxcut(
+        self, edges: list[tuple[int, int]], nodes: int = 10, iterations: int = 1000
+    ) -> dict[str, Any]:
         """Solve MaxCut problem via quantum-inspired optimization."""
         # Initialize random partition
         partition = [random.choice([0, 1]) for _ in range(nodes)]
-        cost_func = lambda p: -sum(1 for u, v in edges if p[u] != p[v])  # Maximize cuts = minimize negative
+        cost_func = lambda p: (
+            -sum(1 for u, v in edges if p[u] != p[v])
+        )  # Maximize cuts = minimize negative
 
         best, best_cost = self.optimize(partition, cost_func, iterations)
         # Convert back to binary partition
@@ -77,13 +86,23 @@ class QuantumAnnealingOptimizer:
             "cut_ratio": round(cut_value / max(len(edges), 1), 4),
         }
 
-    def portfolio_optimize(self, returns: list[float], risks: list[float], budget: float = 1.0, iterations: int = 2000) -> dict[str, Any]:
+    def portfolio_optimize(
+        self,
+        returns: list[float],
+        risks: list[float],
+        budget: float = 1.0,
+        iterations: int = 2000,
+    ) -> dict[str, Any]:
         """Portfolio optimization: maximize return / minimize risk."""
         n_assets = len(returns)
         # Initial weights: equal allocation
         initial = [budget / n_assets] * n_assets
-        cost_func = lambda w: -(sum(wi * ri for wi, ri in zip(w, returns)) /
-                                 max(math.sqrt(sum(wi**2 * ri**2 for wi, ri in zip(w, risks))), 0.01))
+        cost_func = lambda w: (
+            -(
+                sum(wi * ri for wi, ri in zip(w, returns))
+                / max(math.sqrt(sum(wi**2 * ri**2 for wi, ri in zip(w, risks))), 0.01)
+            )
+        )
 
         best, best_cost = self.optimize(initial, cost_func, iterations)
         # Normalize weights to sum to budget
@@ -105,8 +124,17 @@ class QuantumAnnealingOptimizer:
         return {
             "iterations": len(self._convergence_history),
             "final_cost": round(self._convergence_history[-1], 4),
-            "best_cost": round(min(self._best_history) if self._best_history else self._convergence_history[-1], 4),
-            "convergence_rate": round(abs(self._convergence_history[-1] - self._convergence_history[0]) / len(self._convergence_history), 4),
+            "best_cost": round(
+                min(self._best_history)
+                if self._best_history
+                else self._convergence_history[-1],
+                4,
+            ),
+            "convergence_rate": round(
+                abs(self._convergence_history[-1] - self._convergence_history[0])
+                / len(self._convergence_history),
+                4,
+            ),
             "final_temperature": round(self.temp, 4),
         }
 

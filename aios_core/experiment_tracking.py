@@ -16,15 +16,17 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class ExperimentStatus(str, Enum):
     """Experiment lifecycle status."""
+
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -33,9 +35,11 @@ class ExperimentStatus(str, Enum):
 
 # ── Experiment ───────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Experiment:
     """Full experiment definition."""
+
     id: str = ""
     name: str = ""
     params: dict[str, Any] = field(default_factory=dict)
@@ -43,9 +47,9 @@ class Experiment:
     tags: list[str] = field(default_factory=list)
     artifacts: dict[str, str] = field(default_factory=dict)  # name → path/description
     status: ExperimentStatus = ExperimentStatus.RUNNING
-    parent_id: Optional[str] = None  # for nested runs
+    parent_id: str | None = None  # for nested runs
     created_at: float = field(default_factory=time.time)
-    ended_at: Optional[float] = None
+    ended_at: float | None = None
     notes: str = ""
 
     def __post_init__(self) -> None:
@@ -60,10 +64,15 @@ class Experiment:
 
     def is_completed(self) -> bool:
         """Check if experiment is finished."""
-        return self.status in (ExperimentStatus.COMPLETED, ExperimentStatus.FAILED, ExperimentStatus.STOPPED)
+        return self.status in (
+            ExperimentStatus.COMPLETED,
+            ExperimentStatus.FAILED,
+            ExperimentStatus.STOPPED,
+        )
 
 
 # ── Experiment Tracker ──────────────────────────────────────────────────────
+
 
 class ExperimentTracker:
     """Enhanced experiment tracker with comparisons and selection.
@@ -83,9 +92,13 @@ class ExperimentTracker:
 
     # ── Lifecycle ──────────────────────────────────────────────
 
-    def start_experiment(self, name: str, params: dict[str, Any],
-                         tags: list[str] | None = None,
-                         parent_id: str | None = None) -> Experiment:
+    def start_experiment(
+        self,
+        name: str,
+        params: dict[str, Any],
+        tags: list[str] | None = None,
+        parent_id: str | None = None,
+    ) -> Experiment:
         """Start a new experiment."""
         exp = Experiment(name=name, params=params, tags=tags or [], parent_id=parent_id)
         self.experiments[exp.id] = exp
@@ -117,7 +130,9 @@ class ExperimentTracker:
         exp = self._get(exp_id)
         exp.notes = note
 
-    def end_experiment(self, exp_id: str, status: ExperimentStatus = ExperimentStatus.COMPLETED) -> None:
+    def end_experiment(
+        self, exp_id: str, status: ExperimentStatus = ExperimentStatus.COMPLETED
+    ) -> None:
         """End an experiment."""
         exp = self._get(exp_id)
         exp.status = status
@@ -133,7 +148,9 @@ class ExperimentTracker:
 
     # ── Comparison ─────────────────────────────────────────────
 
-    def compare(self, exp_ids: list[str], metric: str | None = None) -> dict[str, dict[str, float]]:
+    def compare(
+        self, exp_ids: list[str], metric: str | None = None
+    ) -> dict[str, dict[str, float]]:
         """Compare metrics across experiments."""
         result = {}
         for exp_id in exp_ids:
@@ -151,7 +168,11 @@ class ExperimentTracker:
 
         direction: 'max' → highest metric, 'min' → lowest metric.
         """
-        candidates = [e for e in self.experiments.values() if metric in e.metrics and e.is_completed()]
+        candidates = [
+            e
+            for e in self.experiments.values()
+            if metric in e.metrics and e.is_completed()
+        ]
         if not candidates:
             return None
         if direction == "max":
@@ -160,8 +181,9 @@ class ExperimentTracker:
 
     # ── Filtering ──────────────────────────────────────────────
 
-    def list_experiments(self, status: ExperimentStatus | None = None,
-                         tag: str | None = None) -> list[Experiment]:
+    def list_experiments(
+        self, status: ExperimentStatus | None = None, tag: str | None = None
+    ) -> list[Experiment]:
         """List experiments with optional filtering."""
         result = list(self.experiments.values())
         if status:
@@ -189,7 +211,11 @@ class ExperimentTracker:
         return {
             "experiments": len(self.experiments),
             "by_status": by_status,
-            "completed": sum(1 for e in self.experiments.values() if e.status == ExperimentStatus.COMPLETED),
+            "completed": sum(
+                1
+                for e in self.experiments.values()
+                if e.status == ExperimentStatus.COMPLETED
+            ),
         }
 
     # ── Internal ───────────────────────────────────────────────

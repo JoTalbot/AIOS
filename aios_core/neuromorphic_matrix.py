@@ -7,7 +7,7 @@ sub-millisecond neuromorphic event routing.
 
 import math
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class LIFNeuron:
@@ -32,7 +32,9 @@ class LIFNeuron:
     def integrate_current(self, current: float, dt_ms: float = 1.0) -> bool:
         """Integrate input current into membrane potential with exponential leak decay."""
         decay = math.exp(-dt_ms / self.tau)
-        self.v_membrane = self.v_rest + (self.v_membrane - self.v_rest) * decay + current
+        self.v_membrane = (
+            self.v_rest + (self.v_membrane - self.v_rest) * decay + current
+        )
 
         # Check threshold spike condition
         if self.v_membrane >= self.v_threshold:
@@ -50,8 +52,8 @@ class NeuromorphicMatrixEngine:
     def __init__(self, size: int = 16):
         """Initialize NeuromorphicMatrixEngine."""
         self.size = size
-        self.neurons: List[LIFNeuron] = [LIFNeuron(f"sn_{i}") for i in range(size)]
-        self.synaptic_weights: Dict[tuple[int, int], float] = {}
+        self.neurons: list[LIFNeuron] = [LIFNeuron(f"sn_{i}") for i in range(size)]
+        self.synaptic_weights: dict[tuple[int, int], float] = {}
 
         # Initialize default random or uniform synaptic connections
         for i in range(size):
@@ -59,7 +61,9 @@ class NeuromorphicMatrixEngine:
                 if i != j:
                     self.synaptic_weights[(i, j)] = 0.25
 
-    def step_simulation(self, input_currents: Dict[int, float], dt_ms: float = 1.0) -> list[int]:
+    def step_simulation(
+        self, input_currents: dict[int, float], dt_ms: float = 1.0
+    ) -> list[int]:
         """Simulate one discrete time step dt across all neurons, returning indices of fired neurons."""
         spiked_neurons = []
 
@@ -95,10 +99,14 @@ class NeuromorphicMatrixEngine:
                     delta_t = time.time() - pre_neuron.last_spike_time
                     if delta_t > 0 and delta_t < 0.1:
                         # Potentiation: Pre before Post -> strengthen synapse
-                        self.synaptic_weights[pair] = min(1.0, self.synaptic_weights[pair] + 0.02)
+                        self.synaptic_weights[pair] = min(
+                            1.0, self.synaptic_weights[pair] + 0.02
+                        )
                     elif delta_t < 0:
                         # Depression: Post before Pre -> weaken synapse
-                        self.synaptic_weights[pair] = max(0.01, self.synaptic_weights[pair] - 0.01)
+                        self.synaptic_weights[pair] = max(
+                            0.01, self.synaptic_weights[pair] - 0.01
+                        )
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict."""

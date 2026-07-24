@@ -42,7 +42,10 @@ The Enhanced Integration System provides comprehensive external integration capa
 
 ```python
 import asyncio
-from aios_core.enhanced_integration_system import EnhancedIntegrationSystem, IntegrationConfig
+from aios_core.enhanced_integration_system import (
+    EnhancedIntegrationSystem,
+    IntegrationConfig,
+)
 
 # Create configuration
 config = IntegrationConfig()
@@ -53,9 +56,7 @@ await integration_system.start()
 
 # Send webhook notification
 success = await integration_system.send_webhook(
-    "webhook_name",
-    "event_type",
-    {"key": "value"}
+    "webhook_name", "event_type", {"key": "value"}
 )
 
 # Get system status
@@ -69,8 +70,14 @@ await integration_system.stop()
 
 ```python
 from aios_core.enhanced_integration_system import (
-    IntegrationConfig, WebhookConfig, GraphQLConfig,
-    AlertRule, DashboardConfig, LogConfig, ProtocolConfig, ProtocolType
+    IntegrationConfig,
+    WebhookConfig,
+    GraphQLConfig,
+    AlertRule,
+    DashboardConfig,
+    LogConfig,
+    ProtocolConfig,
+    ProtocolType,
 )
 
 # Create advanced configuration
@@ -81,12 +88,11 @@ config = IntegrationConfig(
             events=["user.created", "task.completed"],
             headers={"Authorization": "Bearer token"},
             timeout=30,
-            retry_count=3
+            retry_count=3,
         )
     ],
     graphql_config=GraphQLConfig(
-        schema="type Query { hello: String }",
-        playground_enabled=True
+        schema="type Query { hello: String }", playground_enabled=True
     ),
     alert_rules=[
         AlertRule(
@@ -96,7 +102,7 @@ config = IntegrationConfig(
             threshold=80,
             duration=300,
             severity="warning",
-            notification_channels=["email", "slack"]
+            notification_channels=["email", "slack"],
         )
     ],
     dashboard_configs=[
@@ -110,9 +116,9 @@ config = IntegrationConfig(
                     "title": "CPU Usage",
                     "type": "metric",
                     "metric": "cpu_usage",
-                    "unit": "%"
+                    "unit": "%",
                 }
-            ]
+            ],
         )
     ],
     log_config=LogConfig(
@@ -120,22 +126,22 @@ config = IntegrationConfig(
         format="json",
         log_file="aios.log",
         enable_correlation=True,
-        enable_performance_tracking=True
+        enable_performance_tracking=True,
     ),
     protocol_configs={
         "grpc": ProtocolConfig(
             protocol_type=ProtocolType.GRPC,
             host="localhost",
             port=50051,
-            max_connections=100
+            max_connections=100,
         ),
         "amqp": ProtocolConfig(
             protocol_type=ProtocolType.AMQP,
             host="localhost",
             port=5672,
-            max_connections=50
-        )
-    }
+            max_connections=50,
+        ),
+    },
 )
 ```
 
@@ -170,11 +176,11 @@ config = IntegrationConfig(
 ```python
 @dataclass
 class WebhookConfig:
-    url: str                    # Webhook URL
-    events: List[str]           # List of events to listen for
+    url: str  # Webhook URL
+    events: List[str]  # List of events to listen for
     headers: Optional[Dict[str, str]]  # Additional headers
-    timeout: int = 30           # Request timeout in seconds
-    retry_count: int = 3        # Number of retry attempts
+    timeout: int = 30  # Request timeout in seconds
+    retry_count: int = 3  # Number of retry attempts
 ```
 
 ### GraphQL Configuration
@@ -182,7 +188,7 @@ class WebhookConfig:
 ```python
 @dataclass
 class GraphQLConfig:
-    schema: str                 # GraphQL schema
+    schema: str  # GraphQL schema
     playground_enabled: bool = True
     introspection_enabled: bool = True
     max_complexity: int = 1000  # Maximum query complexity
@@ -193,12 +199,12 @@ class GraphQLConfig:
 ```python
 @dataclass
 class AlertRule:
-    name: str                   # Alert rule name
-    metric: str                 # Metric to monitor
-    condition: str              # Condition (e.g., "value > 100")
-    threshold: float            # Threshold value
-    duration: int               # Duration in seconds
-    severity: str               # Severity level
+    name: str  # Alert rule name
+    metric: str  # Metric to monitor
+    condition: str  # Condition (e.g., "value > 100")
+    threshold: float  # Threshold value
+    duration: int  # Duration in seconds
+    severity: str  # Severity level
     notification_channels: List[str]  # Notification channels
 ```
 
@@ -207,9 +213,9 @@ class AlertRule:
 ```python
 @dataclass
 class DashboardConfig:
-    name: str                   # Dashboard name
-    title: str                  # Dashboard title
-    refresh_interval: int       # Refresh interval in seconds
+    name: str  # Dashboard name
+    title: str  # Dashboard title
+    refresh_interval: int  # Refresh interval in seconds
     panels: List[Dict[str, Any]]  # Dashboard panels
 ```
 
@@ -219,12 +225,12 @@ class DashboardConfig:
 @dataclass
 class ProtocolConfig:
     protocol_type: ProtocolType  # Protocol type
-    host: str                   # Host address
-    port: int                   # Port number
+    host: str  # Host address
+    port: int  # Port number
     options: Optional[Dict[str, Any]]  # Additional options
     security: Optional[Dict[str, Any]]  # Security settings
     max_connections: int = 1000  # Maximum connections
-    timeout: int = 30           # Timeout in seconds
+    timeout: int = 30  # Timeout in seconds
 ```
 
 ## Examples
@@ -232,7 +238,11 @@ class ProtocolConfig:
 ### Example 1: Basic Webhook Integration
 
 ```python
-from aios_core.enhanced_integration_system import EnhancedIntegrationSystem, IntegrationConfig, WebhookConfig
+from aios_core.enhanced_integration_system import (
+    EnhancedIntegrationSystem,
+    IntegrationConfig,
+    WebhookConfig,
+)
 
 # Create configuration
 config = IntegrationConfig(
@@ -240,7 +250,7 @@ config = IntegrationConfig(
         WebhookConfig(
             url="https://slack.com/webhooks",
             events=["alert.triggered", "task.completed"],
-            headers={"Authorization": "Bearer slack-token"}
+            headers={"Authorization": "Bearer slack-token"},
         )
     ]
 )
@@ -253,7 +263,7 @@ await integration_system.start()
 success = await integration_system.send_webhook(
     "webhook_https://slack.com/webhooks",
     "alert.triggered",
-    {"alert_id": "alert-123", "severity": "warning"}
+    {"alert_id": "alert-123", "severity": "warning"},
 )
 
 print(f"Webhook sent: {success}")
@@ -263,7 +273,10 @@ print(f"Webhook sent: {success}")
 
 ```python
 from aios_core.enhanced_integration_system import (
-    EnhancedIntegrationSystem, IntegrationConfig, AlertRule, DashboardConfig
+    EnhancedIntegrationSystem,
+    IntegrationConfig,
+    AlertRule,
+    DashboardConfig,
 )
 
 # Create configuration with monitoring
@@ -276,7 +289,7 @@ config = IntegrationConfig(
             threshold=80,
             duration=300,
             severity="warning",
-            notification_channels=["console"]
+            notification_channels=["console"],
         )
     ],
     dashboard_configs=[
@@ -290,11 +303,11 @@ config = IntegrationConfig(
                     "title": "CPU Usage",
                     "type": "metric",
                     "metric": "cpu_usage",
-                    "unit": "%"
+                    "unit": "%",
                 }
-            ]
+            ],
         )
-    ]
+    ],
 )
 
 # Create and start system
@@ -310,7 +323,10 @@ print(f"System health: {health}")
 
 ```python
 from aios_core.enhanced_integration_system import (
-    EnhancedIntegrationSystem, IntegrationConfig, ProtocolConfig, ProtocolType
+    EnhancedIntegrationSystem,
+    IntegrationConfig,
+    ProtocolConfig,
+    ProtocolType,
 )
 
 # Create configuration with multiple protocols
@@ -320,20 +336,20 @@ config = IntegrationConfig(
             protocol_type=ProtocolType.GRPC,
             host="localhost",
             port=50051,
-            max_connections=100
+            max_connections=100,
         ),
         "amqp": ProtocolConfig(
             protocol_type=ProtocolType.AMQP,
             host="localhost",
             port=5672,
-            max_connections=50
+            max_connections=50,
         ),
         "websocket": ProtocolConfig(
             protocol_type=ProtocolType.WEBSOCKET,
             host="localhost",
             port=8001,
-            max_connections=200
-        )
+            max_connections=200,
+        ),
     }
 )
 
@@ -360,16 +376,16 @@ print(f"Protocol status: {status}")
            max_file_size=100 * 1024 * 1024,
            backup_count=30,
            ship_to_external=True,
-           external_endpoint="https://logs.example.com/api/logs"
+           external_endpoint="https://logs.example.com/api/logs",
        ),
        protocol_configs={
            "grpc": ProtocolConfig(
                protocol_type=ProtocolType.GRPC,
                host="0.0.0.0",
                port=50051,
-               security={"tls": True}
+               security={"tls": True},
            )
-       }
+       },
    )
    ```
 
@@ -509,11 +525,7 @@ Enable debug logging for troubleshooting:
 
 ```python
 debug_config = IntegrationConfig(
-    log_config=LogConfig(
-        level="DEBUG",
-        format="json",
-        log_file="debug.log"
-    )
+    log_config=LogConfig(level="DEBUG", format="json", log_file="debug.log")
 )
 ```
 

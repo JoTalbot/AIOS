@@ -22,7 +22,9 @@ class DevicesShardsMixin:
         method = body.get("method") or "GET"
         path = body.get("path") or ""
         if not profile_key or not path:
-            return JSONResponse({"error": "'profile' and 'path' are required"}, status_code=400)
+            return JSONResponse(
+                {"error": "'profile' and 'path' are required"}, status_code=400
+            )
         result = self.shard_gateway.proxy(
             profile_key,
             method,
@@ -86,7 +88,9 @@ class DevicesShardsMixin:
     async def _shard_jobs_list(self, request: Request) -> JSONResponse:
         """Очередь джобов (?status=pending|claimed|done|failed)."""
         with self._shard_jobs() as jobs:
-            return JSONResponse({"jobs": jobs.list(status=request.query_params.get("status"))})
+            return JSONResponse(
+                {"jobs": jobs.list(status=request.query_params.get("status"))}
+            )
 
     def _shard_jobs(self):
         from aios_core.platforms.shardexec import ShardJobs
@@ -140,11 +144,15 @@ class DevicesShardsMixin:
         body = await request.json()
         key, value = body.get("key"), body.get("value")
         if not key or value is None:
-            return JSONResponse({"error": "'key' and 'value' are required"}, status_code=400)
+            return JSONResponse(
+                {"error": "'key' and 'value' are required"}, status_code=400
+            )
         try:
             self.device_pool.set_limit(key, int(value))
         except (TypeError, ValueError):
-            return JSONResponse({"error": "'value' must be an integer"}, status_code=400)
+            return JSONResponse(
+                {"error": "'value' must be an integer"}, status_code=400
+            )
         return JSONResponse({"limits": self.device_pool.limits()})
 
     async def _devices_limits_get(self, request: Request) -> JSONResponse:
@@ -153,7 +161,11 @@ class DevicesShardsMixin:
 
     async def _devices_reap(self, request: Request) -> JSONResponse:
         """Mark silent devices offline {max_silence_s?} and free leases."""
-        body = await request.json() if (request.headers.get("content-length") or "0") != "0" else {}
+        body = (
+            await request.json()
+            if (request.headers.get("content-length") or "0") != "0"
+            else {}
+        )
         reaped = self.device_pool.reap_stale(
             self._bounded_int(body.get("max_silence_s"), default=900, maximum=86400)
         )
@@ -209,10 +221,11 @@ class DevicesShardsMixin:
         body = await request.json()
         if not body.get("serial"):
             return JSONResponse({"error": "'serial' is required"}, status_code=400)
-        record = self.device_pool.register(body["serial"], avd_name=body.get("avd_name"))
+        record = self.device_pool.register(
+            body["serial"], avd_name=body.get("avd_name")
+        )
         return JSONResponse(record, status_code=201)
 
     async def _devices_list(self, request: Request) -> JSONResponse:
         """Pool status: all registered devices with lease info."""
         return JSONResponse({"devices": self.device_pool.status()})
-

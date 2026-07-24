@@ -23,7 +23,9 @@ logger = logging.getLogger(__name__)
 class AmendmentRecord:
     """Single constitutional amendment."""
 
-    def __init__(self, amendment_id: str, title: str, text: str, proven_alignment: bool) -> None:
+    def __init__(
+        self, amendment_id: str, title: str, text: str, proven_alignment: bool
+    ) -> None:
         self.amendment_id = amendment_id
         self.title = title
         self.text = text
@@ -48,16 +50,23 @@ class InfiniteConstitutionEngine:
         self._records: list[AmendmentRecord] = []
         self._rollback_stack: list[str] = []
 
-    def propose_infinite_amendment(self, title: str, proposal_text: str, rationale: str) -> dict[str, Any]:
+    def propose_infinite_amendment(
+        self, title: str, proposal_text: str, rationale: str
+    ) -> dict[str, Any]:
         """Propose amendment (backward-compatible)."""
         start_time = time.time()
         amendment_number = self.core_articles_count + len(self.dynamic_amendments) + 1
         amendment_id = f"ARTICLE-{amendment_number}"
 
-        has_divergence = any(bad_term in proposal_text.lower() or bad_term in rationale.lower() for bad_term in ["bypass_axioms", "revoke_veto", "disable_safety_proofs"])
+        has_divergence = any(
+            bad_term in proposal_text.lower() or bad_term in rationale.lower()
+            for bad_term in ["bypass_axioms", "revoke_veto", "disable_safety_proofs"]
+        )
 
         proven_alignment = not has_divergence
-        proof_hash = hashlib.sha256(f"{amendment_id}:{proposal_text}:{self.immutable_axioms}".encode()).hexdigest()
+        proof_hash = hashlib.sha256(
+            f"{amendment_id}:{proposal_text}:{self.immutable_axioms}".encode()
+        ).hexdigest()
 
         record = AmendmentRecord(amendment_id, title, proposal_text, proven_alignment)
         self._records.append(record)
@@ -80,7 +89,9 @@ class InfiniteConstitutionEngine:
 
         return amendment_record
 
-    def vote_on_amendment(self, amendment_id: str, votes_for: int, votes_against: int) -> dict[str, Any]:
+    def vote_on_amendment(
+        self, amendment_id: str, votes_for: int, votes_against: int
+    ) -> dict[str, Any]:
         """Vote on an amendment."""
         record = None
         for r in self._records:
@@ -99,7 +110,12 @@ class InfiniteConstitutionEngine:
             self.dynamic_amendments[amendment_id]["status"] = "ratified"
             self._rollback_stack.append(amendment_id)
 
-        return {"amendment_id": amendment_id, "votes_for": votes_for, "votes_against": votes_against, "ratified": ratified}
+        return {
+            "amendment_id": amendment_id,
+            "votes_for": votes_for,
+            "votes_against": votes_against,
+            "ratified": ratified,
+        }
 
     def rollback_last(self) -> dict[str, Any]:
         """Rollback last ratified amendment."""
@@ -113,14 +129,23 @@ class InfiniteConstitutionEngine:
 
     def amendment_lineage(self) -> list[dict[str, Any]]:
         """Track amendment lineage."""
-        return [{"id": k, "title": v.get("title", ""), "status": v.get("status", ""), "number": v.get("number", 0)} for k, v in sorted(self.dynamic_amendments.items())]
+        return [
+            {
+                "id": k,
+                "title": v.get("title", ""),
+                "status": v.get("status", ""),
+                "number": v.get("number", 0),
+            }
+            for k, v in sorted(self.dynamic_amendments.items())
+        ]
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict (backward-compatible)."""
         return {
             "base_constitutional_articles": self.core_articles_count,
             "ratified_infinite_amendments": len(self.dynamic_amendments),
-            "total_effective_articles": self.core_articles_count + len(self.dynamic_amendments),
+            "total_effective_articles": self.core_articles_count
+            + len(self.dynamic_amendments),
             "immutable_axioms_count": len(self.immutable_axioms),
             "rollback_available": len(self._rollback_stack),
         }

@@ -11,13 +11,10 @@ Reuses existing AISalesAdvisor + TemplateRegistry infrastructure.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any
+from dataclasses import dataclass
 
-from aios_core.ai_advisor import AISalesAdvisor, PriceAdvice, AdvisorDraft
-from aios_core.cross_platform_comparator import CrossPlatformComparator, ComparisonGroup
+from aios_core.ai_advisor import AISalesAdvisor
+from aios_core.cross_platform_comparator import CrossPlatformComparator
 
 
 @dataclass
@@ -129,10 +126,7 @@ class AICrossPlatformAdvisor:
                 f"(спред {spread:.1f}%)"
             )
         elif best_buy_platform:
-            rec = (
-                f"Лучшая цена для '{title}' — "
-                f"{lowest:.0f} грн на {best_buy_platform}"
-            )
+            rec = f"Лучшая цена для '{title}' — {lowest:.0f} грн на {best_buy_platform}"
         else:
             rec = f"Данных недостаточно для рекомендации по '{title}'"
 

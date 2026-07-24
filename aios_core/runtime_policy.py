@@ -7,13 +7,12 @@ persistent AuditLogger and ApprovalManager backed by SQLite.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
 
 from .approval_manager import ApprovalManager
 from .audit_logger import AuditLogger
 from .config import AIOSConfig, load_config
-from .constitution_engine import ConstitutionEngine, DecisionOutcome
+from .constitution_engine import ConstitutionEngine
 from .constitution_validator import ConstitutionValidator
 from .storage import Database
 
@@ -34,8 +33,8 @@ class RuntimePolicy:
         self,
         constitution_dir: str | None = None,
         policies_dir: str | None = None,
-        db: Optional[Database] = None,
-        config: Optional[AIOSConfig] = None,
+        db: Database | None = None,
+        config: AIOSConfig | None = None,
     ):
         """Initialize RuntimePolicy."""
         self.version = "9.0.0"
@@ -83,7 +82,7 @@ class RuntimePolicy:
                 - audit_id: Audit log event ID
                 - approval_id: Approval request ID (if REVIEW)
         """
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
 
         # Step 1: Validate
         validation = self.validator.validate(agent_action)
@@ -132,7 +131,9 @@ class RuntimePolicy:
         execution_result = {
             "allowed": allowed,
             "decision": decision_str,
-            "constitution_version": evaluation.get("constitution_version", self.version),
+            "constitution_version": evaluation.get(
+                "constitution_version", self.version
+            ),
             "details": evaluation.get("details", ""),
             "reason": evaluation.get("reason", ""),
             "validation": validation,
@@ -148,11 +149,11 @@ class RuntimePolicy:
         self.executions.append(execution_result)
         return execution_result
 
-    def approve(self, approval_id: str, resolved_by: str = "human") -> Optional[dict]:
+    def approve(self, approval_id: str, resolved_by: str = "human") -> dict | None:
         """Approve a pending REVIEW action and retain the reviewer identity."""
         return self.approvals.approve(approval_id, resolved_by=resolved_by)
 
-    def deny(self, approval_id: str, resolved_by: str = "human") -> Optional[dict]:
+    def deny(self, approval_id: str, resolved_by: str = "human") -> dict | None:
         """Deny a pending REVIEW action and retain the reviewer identity."""
         return self.approvals.deny(approval_id, resolved_by=resolved_by)
 

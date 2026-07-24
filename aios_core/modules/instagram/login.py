@@ -36,7 +36,6 @@ from __future__ import annotations
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional
 
 from aios_core.modules.olx.adb import ADBController
 from aios_core.platforms.secrets import required_secret
@@ -82,7 +81,7 @@ class InstagramLoginDriver:
 
     def __init__(
         self,
-        adb: Optional[ADBController] = None,
+        adb: ADBController | None = None,
         package: str = PACKAGE,
         serial: str | None = None,
         profile: str | None = None,
@@ -108,7 +107,7 @@ class InstagramLoginDriver:
         opened = self.adb.open_app()
         if opened.get("code") != 0:
             raise ValueError(
-                "adb open_app failed: " f"{(opened.get('stderr') or 'no device')[:160]}"
+                f"adb open_app failed: {(opened.get('stderr') or 'no device')[:160]}"
             )
         time.sleep(self.open_wait_s)
         xml = self._dump()
@@ -149,6 +148,7 @@ class InstagramLoginDriver:
             result = self.adb.dump_ui(str(target))
             if result.get("code") != 0 or not target.exists():
                 raise ValueError(
-                    "adb dump_ui failed: " f"{(result.get('stderr') or 'dump unavailable')[:160]}"
+                    "adb dump_ui failed: "
+                    f"{(result.get('stderr') or 'dump unavailable')[:160]}"
                 )
             return target.read_text(encoding="utf-8")

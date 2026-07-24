@@ -7,10 +7,10 @@ with Rozetka-specific extensions.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from aios_core.modules.rozetka.collector import RozetkaCollector
-from aios_core.modules.rozetka.price_tracker import RozetkaPriceTracker, PriceDropAlert
+from aios_core.modules.rozetka.price_tracker import RozetkaPriceTracker
 from aios_core.modules.rozetka.storage import RozetkaStorage
 
 
@@ -66,7 +66,7 @@ class RozetkaAutoWatch:
         """
         report: dict[str, object] = {
             "platform": "rozetka",
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
         }
 
         # Step 1: Collect
@@ -78,7 +78,9 @@ class RozetkaAutoWatch:
                 )
                 collected = result.get("collected", 0)
                 new = result.get("new", 0)
-                collection_stats["collected"] = collection_stats.get("collected", 0) + collected
+                collection_stats["collected"] = (
+                    collection_stats.get("collected", 0) + collected
+                )
                 collection_stats["new"] = collection_stats.get("new", 0) + new
 
         report["collection"] = collection_stats
@@ -95,12 +97,12 @@ class RozetkaAutoWatch:
         fav_alerts = self._favorite_alerts()
         report["favorite_alerts"] = fav_alerts
 
-        report["completed_at"] = datetime.now(timezone.utc).isoformat()
+        report["completed_at"] = datetime.now(UTC).isoformat()
         return report
 
     def _find_stagnant(self) -> list[dict[str, object]]:
         """Find products not seen for min_age_days or longer."""
-        cutoff = datetime.now(timezone.utc).timestamp() - self.min_age_days * 86400
+        cutoff = datetime.now(UTC).timestamp() - self.min_age_days * 86400
         ads = self.storage.get_ads()
         stagnant: list[dict[str, object]] = []
         for ad in ads:
@@ -109,12 +111,14 @@ class RozetkaAutoWatch:
                 try:
                     ts = datetime.fromisoformat(last_seen).timestamp()
                     if ts < cutoff:
-                        stagnant.append({
-                            "fingerprint": ad.fingerprint,
-                            "title": ad.title,
-                            "last_seen_at": last_seen,
-                            "price": ad.price,
-                        })
+                        stagnant.append(
+                            {
+                                "fingerprint": ad.fingerprint,
+                                "title": ad.title,
+                                "last_seen_at": last_seen,
+                                "price": ad.price,
+                            }
+                        )
                 except (ValueError, TypeError):
                     pass
         return stagnant
@@ -130,10 +134,12 @@ class RozetkaAutoWatch:
                 prev = history[-2].get("price")
                 curr = history[-1].get("price")
                 if prev is not None and curr is not None and curr < prev:
-                    alerts.append({
-                        "fingerprint": fp,
-                        "old_price": prev,
-                        "new_price": curr,
-                        "drop_pct": round(((prev - curr) / prev) * 100, 2),
-                    })
+                    alerts.append(
+                        {
+                            "fingerprint": fp,
+                            "old_price": prev,
+                            "new_price": curr,
+                            "drop_pct": round(((prev - curr) / prev) * 100, 2),
+                        }
+                    )
         return alerts

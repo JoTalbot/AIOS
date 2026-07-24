@@ -18,7 +18,6 @@ from aios_core.modules.olx.adb import ADBController
 from aios_core.modules.olx.card_parser import CardParser
 from aios_core.modules.olx.models import AdCard
 
-
 # TikTok resource-id markers (from calibration)
 CARD_RESOURCE_MARKERS = ("video_card", "product_card", "tiktok_card", "item_card")
 PRODUCT_TAG_MARKERS = ("product_tag", "shop_tag", "buy_now")
@@ -57,7 +56,9 @@ class TikTokCollector:
     def launch_search(self, query: str) -> dict:
         """Open the TikTok app and navigate to search results."""
         self.adb.open_app()
-        self.adb.run(f"am start -a android.intent.action.VIEW -d '{self.search_deep_link(query)}'")
+        self.adb.run(
+            f"am start -a android.intent.action.VIEW -d '{self.search_deep_link(query)}'"
+        )
         return {"code": 0, "action": "search", "query": query}
 
     def collect(
@@ -79,7 +80,11 @@ class TikTokCollector:
                 break
 
             self.adb.dump_ui(filename)
-            xml_text = Path(filename).read_text(encoding="utf-8") if Path(filename).exists() else ""
+            xml_text = (
+                Path(filename).read_text(encoding="utf-8")
+                if Path(filename).exists()
+                else ""
+            )
 
             new_cards = self.parser.parse(xml_text, query=query)
             added = 0
@@ -105,11 +110,14 @@ class TikTokCollector:
             )
             if self.swipe_pause_s > 0:
                 import time
+
                 time.sleep(self.swipe_pause_s)
 
         return all_cards
 
-    def collect_to_storage(self, storage, query: str | None = None, max_cards: int = 50) -> dict:
+    def collect_to_storage(
+        self, storage, query: str | None = None, max_cards: int = 50
+    ) -> dict:
         """Collect cards and save to storage.
 
         Returns a summary dict with count and cards.
@@ -119,5 +127,7 @@ class TikTokCollector:
         return {
             "collected": len(cards),
             "new": len(cards),
-            "cards": [{"title": c.title, "price": c.price, "url": c.url} for c in cards],
+            "cards": [
+                {"title": c.title, "price": c.price, "url": c.url} for c in cards
+            ],
         }

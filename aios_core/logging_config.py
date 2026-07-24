@@ -20,7 +20,7 @@ import sys
 import time
 from contextvars import ContextVar
 from logging.handlers import RotatingFileHandler
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 from .tracing import tracer
 
@@ -35,14 +35,24 @@ __all__ = [
 
 # Context variables for dynamic injection
 _ctx_agent_id: ContextVar[str] = ContextVar("agent_id", default="system")
-_ctx_constitutional_status: ContextVar[str] = ContextVar("constitutional_status", default="VALID")
+_ctx_constitutional_status: ContextVar[str] = ContextVar(
+    "constitutional_status", default="VALID"
+)
 _ctx_task_id: ContextVar[str] = ContextVar("task_id", default="")
 
 # Sensitive field patterns to sanitize
-_SENSITIVE_FIELDS = frozenset({
-    "password", "token", "secret", "api_key", "auth",
-    "credential", "private_key", "access_key",
-})
+_SENSITIVE_FIELDS = frozenset(
+    {
+        "password",
+        "token",
+        "secret",
+        "api_key",
+        "auth",
+        "credential",
+        "private_key",
+        "access_key",
+    }
+)
 
 
 def set_log_context(
@@ -93,7 +103,7 @@ class JSONFormatter(logging.Formatter):
         current_span = tracer.get_current_span()
 
         # Build structured data
-        log_data: Dict[str, Any] = {
+        log_data: dict[str, Any] = {
             "timestamp": time.time(),
             "iso_time": self.formatTime(record, self.datefmt),
             "level": record.levelname,
@@ -102,9 +112,13 @@ class JSONFormatter(logging.Formatter):
             "module": record.module,
             "line": record.lineno,
             "trace_id": (
-                current_span.trace_id if current_span else record.__dict__.get("trace_id")
+                current_span.trace_id
+                if current_span
+                else record.__dict__.get("trace_id")
             ),
-            "span_id": (current_span.span_id if current_span else record.__dict__.get("span_id")),
+            "span_id": (
+                current_span.span_id if current_span else record.__dict__.get("span_id")
+            ),
             "agent_id": _ctx_agent_id.get(),
             "constitutional_status": _ctx_constitutional_status.get(),
             "task_id": _ctx_task_id.get(),
@@ -112,13 +126,33 @@ class JSONFormatter(logging.Formatter):
 
         # Inject extra fields from the record
         extra_fields = {
-            k: v for k, v in record.__dict__.items()
-            if k not in {
-                "name", "msg", "args", "created", "relativeCreated",
-                "exc_info", "exc_text", "stack_info", "lineno", "module",
-                "filename", "funcName", "levelname", "levelno", "msecs",
-                "thread", "threadName", "process", "processName",
-                "trace_id", "span_id", "agent_id", "constitutional_status",
+            k: v
+            for k, v in record.__dict__.items()
+            if k
+            not in {
+                "name",
+                "msg",
+                "args",
+                "created",
+                "relativeCreated",
+                "exc_info",
+                "exc_text",
+                "stack_info",
+                "lineno",
+                "module",
+                "filename",
+                "funcName",
+                "levelname",
+                "levelno",
+                "msecs",
+                "thread",
+                "threadName",
+                "process",
+                "processName",
+                "trace_id",
+                "span_id",
+                "agent_id",
+                "constitutional_status",
                 "task_id",
             }
             and not k.startswith("_")
@@ -192,10 +226,15 @@ class BufferedHandler(logging.Handler):
     Useful for burst-mode collection in high-throughput scenarios.
     """
 
-    def __init__(self, buffer_size: int = 100, flush_interval: float = 5.0, target: logging.Handler | None = None):
+    def __init__(
+        self,
+        buffer_size: int = 100,
+        flush_interval: float = 5.0,
+        target: logging.Handler | None = None,
+    ):
         """Initialize BufferedHandler."""
         super().__init__()
-        self._buffer: List[logging.LogRecord] = []
+        self._buffer: list[logging.LogRecord] = []
         self._buffer_size = buffer_size
         self._flush_interval = flush_interval
         self._target = target
@@ -205,7 +244,10 @@ class BufferedHandler(logging.Handler):
         """Buffer the record; flush when buffer is full or interval elapsed."""
         self._buffer.append(record)
         now = time.time()
-        if len(self._buffer) >= self._buffer_size or (now - self._last_flush) >= self._flush_interval:
+        if (
+            len(self._buffer) >= self._buffer_size
+            or (now - self._last_flush) >= self._flush_interval
+        ):
             self.flush()
 
     def flush(self) -> None:
@@ -225,7 +267,7 @@ def setup_logging(
     max_bytes: int = 10 * 1024 * 1024,
     backup_count: int = 5,
     buffer_size: int = 0,
-    module_levels: Dict[str, str] = {},
+    module_levels: dict[str, str] = {},
 ) -> logging.Logger:
     """Configure structured logging for AIOS.
 
@@ -258,7 +300,9 @@ def setup_logging(
     logger.addHandler(console_handler)
 
     # File Handler (possibly wrapped in BufferedHandler)
-    file_handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
+    file_handler = RotatingFileHandler(
+        log_file, maxBytes=max_bytes, backupCount=backup_count
+    )
     file_handler.setFormatter(formatter)
 
     if buffer_size > 0:

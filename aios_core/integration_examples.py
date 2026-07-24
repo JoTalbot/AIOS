@@ -7,7 +7,6 @@ import asyncio
 import json
 import time
 from dataclasses import asdict
-from typing import Any, Dict, List
 
 from .enhanced_integration_system import (
     AlertRule,
@@ -347,7 +346,9 @@ async def example_advanced_usage() -> None:
         print("Advanced integration system stopped")
 
 
-async def simulate_system_metrics(integration_system: EnhancedIntegrationSystem) -> None:
+async def simulate_system_metrics(
+    integration_system: EnhancedIntegrationSystem,
+) -> None:
     """Simulate system metrics for demonstration."""
 
     print("Simulating system metrics...")
@@ -441,12 +442,16 @@ async def example_integration_with_aios_core() -> None:
 
     for event in aios_events:
         # Send webhook notification
-        success = await integration_api.send_webhook("external_system", event["type"], event)
+        success = await integration_api.send_webhook(
+            "external_system", event["type"], event
+        )
         logger.info(f"Webhook sent for {event['type']}", success=success)
 
         # Check monitoring alerts
         if event["type"] == "system.alert":
-            await monitoring_api.alert_manager.check_metric("aios_alerts", 1, time.time())
+            await monitoring_api.alert_manager.check_metric(
+                "aios_alerts", 1, time.time()
+            )
 
         # Log the event
         logger.info("AIOS event processed", extra={"event_type": event["type"]})

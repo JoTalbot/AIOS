@@ -19,9 +19,8 @@ from __future__ import annotations
 import os
 import sqlite3
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS devices (
@@ -59,11 +58,13 @@ STATUS_OFFLINE = "offline"
 class DevicePool:
     """Пул устройств с арендой под профили платформ."""
 
-    def __init__(self, db_path: "str | None" = None):
+    def __init__(self, db_path: str | None = None):
         # По умолчанию — постоянный файл data/devices.sqlite, чтобы пул
         # переживал перезапуски CLI-процессов; ":memory:" — для тестов.
         """Initialize DevicePool."""
-        self.db_path = db_path or os.environ.get("AIOS_DEVICES_DB", "data/devices.sqlite")
+        self.db_path = db_path or os.environ.get(
+            "AIOS_DEVICES_DB", "data/devices.sqlite"
+        )
         if self.db_path != ":memory:":
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
@@ -72,7 +73,7 @@ class DevicePool:
         with self._lock, self._conn:
             self._conn.executescript(_SCHEMA)
 
-    def __enter__(self) -> "DevicePool":
+    def __enter__(self) -> DevicePool:
         return self
 
     def __exit__(self, *_exc) -> None:
@@ -85,7 +86,7 @@ class DevicePool:
 
     @staticmethod
     def _now() -> str:
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
 
     # ------------------------------------------------------------------ #
     # реестр                                                               #
@@ -121,7 +122,9 @@ class DevicePool:
     def limits(self) -> dict[str, int]:
         """Все установленные квоты."""
         with self._lock:
-            rows = self._conn.execute("SELECT key, value FROM pool_limits ORDER BY key").fetchall()
+            rows = self._conn.execute(
+                "SELECT key, value FROM pool_limits ORDER BY key"
+            ).fetchall()
         return {row["key"]: int(row["value"]) for row in rows}
 
     def count_avds(self) -> int:
@@ -135,7 +138,8 @@ class DevicePool:
     def _busy_platform(self, platform: str) -> int:
         with self._lock:
             row = self._conn.execute(
-                "SELECT COUNT(*) AS c FROM devices " "WHERE status = ? AND profile_key LIKE ?",
+                "SELECT COUNT(*) AS c FROM devices "
+                "WHERE status = ? AND profile_key LIKE ?",
                 (STATUS_BUSY, f"{platform}:%"),
             ).fetchone()
         return int(row["c"])
@@ -154,7 +158,8 @@ class DevicePool:
         now = self._now()
         with self._lock, self._conn:
             existing = self._conn.execute(
-                "SELECT id FROM pool_waitlist " "WHERE profile_key = ? AND status = 'waiting'",
+                "SELECT id FROM pool_waitlist "
+                "WHERE profile_key = ? AND status = 'waiting'",
                 (profile_key,),
             ).fetchone()
             if existing is not None:
@@ -177,7 +182,7 @@ class DevicePool:
             )
             return bool(cursor.rowcount)
 
-    def waitlist(self, status: str | None = "waiting") -> List[Dict]:
+    def waitlist(self, status: str | None = "waiting") -> list[dict]:
         """Очередь ожидания (по умолчанию — активная), приоритет → FIFO."""
         sql = "SELECT * FROM pool_waitlist"
         params: list = []
@@ -189,13 +194,13 @@ class DevicePool:
             rows = self._conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
 
-    def serve_waitlist(self, profile_store=None) -> List[Dict]:
+    def serve_waitlist(self, profile_store=None) -> list[dict]:
         """Обслуживает очередь: арендует устройства ожидающим профилям.
 
         Порядок — приоритет (DESC), затем FIFO. Останавливается, когда
         свободных устройств не осталось или аренда не удалась (квоты).
         """
-        served: List[Dict] = []
+        served: list[dict] = []
         for entry in self.waitlist("waiting"):
             record = self.lease(entry["profile_key"], profile_store=profile_store)
             if record is None:
@@ -210,7 +215,7 @@ class DevicePool:
             served.append(entry)
         return served
 
-    def register(self, serial: str, avd_name: str | None = None) -> Dict:
+    def register(self, serial: str, avd_name: str | None = None) -> dict:
         """Регистрирует устройство (idle) или обновляет avd_name.
 
         Raises:
@@ -223,7 +228,9 @@ class DevicePool:
             ).fetchone()
             max_devices = self.limit("max_devices")
             if existing is None and max_devices is not None:
-                total = self._conn.execute("SELECT COUNT(*) AS c FROM devices").fetchone()["c"]
+                total = self._conn.execute(
+                    "SELECT COUNT(*) AS c FROM devices"
+                ).fetchone()["c"]
                 if total >= max_devices:
                     raise ValueError(f"pool quota reached: max_devices={max_devices}")
             self._conn.execute(
@@ -241,16 +248,20 @@ class DevicePool:
             )
         return self.get(serial)
 
-    def get(self, serial: str) -> Optional[Dict]:
+    def get(self, serial: str) -> dict | None:
         """Запись об устройстве или None."""
         with self._lock:
-            row = self._conn.execute("SELECT * FROM devices WHERE serial = ?", (serial,)).fetchone()
+            row = self._conn.execute(
+                "SELECT * FROM devices WHERE serial = ?", (serial,)
+            ).fetchone()
         return dict(row) if row else None
 
-    def status(self) -> List[Dict]:
+    def status(self) -> list[dict]:
         """Все устройства пула (по serial)."""
         with self._lock:
-            rows = self._conn.execute("SELECT * FROM devices ORDER BY serial").fetchall()
+            rows = self._conn.execute(
+                "SELECT * FROM devices ORDER BY serial"
+            ).fetchall()
         return [dict(row) for row in rows]
 
     def heartbeat(self, serial: str) -> bool:
@@ -272,7 +283,7 @@ class DevicePool:
         profile_key: str,
         serial: str | None = None,
         profile_store=None,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """Закрепляет устройство за профилем.
 
         Args:
@@ -300,7 +311,10 @@ class DevicePool:
                     return None
                 if row["status"] != STATUS_BUSY:
                     busy_cap = self.limit(f"max_busy:{platform}")
-                    if busy_cap is not None and self._busy_platform(platform) >= busy_cap:
+                    if (
+                        busy_cap is not None
+                        and self._busy_platform(platform) >= busy_cap
+                    ):
                         return None
                 chosen = row["serial"]
             else:
@@ -311,7 +325,8 @@ class DevicePool:
                 ).fetchone()
                 if held is not None:
                     self._conn.execute(
-                        "UPDATE devices SET leased_at = ?, last_heartbeat = ? " "WHERE serial = ?",
+                        "UPDATE devices SET leased_at = ?, last_heartbeat = ? "
+                        "WHERE serial = ?",
                         (now, now, held["serial"]),
                     )
                     self._sync_profile_store(held["serial"], profile_key, profile_store)
@@ -352,7 +367,7 @@ class DevicePool:
             if row is None:
                 return None
             self._conn.execute(
-                "UPDATE devices SET status = ?, profile_key = NULL " "WHERE serial = ?",
+                "UPDATE devices SET status = ?, profile_key = NULL WHERE serial = ?",
                 (STATUS_IDLE, row["serial"]),
             )
         serial = row["serial"]
@@ -365,7 +380,7 @@ class DevicePool:
         Returns:
             Список serial-ов, переведённых в offline.
         """
-        cutoff = (datetime.now(timezone.utc) - timedelta(seconds=max_silence_s)).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(seconds=max_silence_s)).isoformat()
         with self._lock, self._conn:
             rows = self._conn.execute(
                 "SELECT serial FROM devices WHERE status != ? AND last_heartbeat < ?",
@@ -381,7 +396,7 @@ class DevicePool:
             self.serve_waitlist()
         return reaped
 
-    def device_for(self, profile_key: str) -> Optional[Dict]:
+    def device_for(self, profile_key: str) -> dict | None:
         """Устройство, арендованное профилем (или None)."""
         with self._lock:
             row = self._conn.execute(

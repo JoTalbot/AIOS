@@ -5,7 +5,7 @@ delay-tolerant task routing (DTN), and planetary mesh fault recovery.
 """
 
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class PlanetaryMeshNode:
@@ -36,14 +36,16 @@ class PlanetaryMeshOrchestrator:
 
     def __init__(self):
         """Initialize PlanetaryMeshOrchestrator."""
-        self.nodes: Dict[str, PlanetaryMeshNode] = {}
-        self.routed_tasks: List[dict[str, Any]] = []
+        self.nodes: dict[str, PlanetaryMeshNode] = {}
+        self.routed_tasks: list[dict[str, Any]] = []
 
         # Default mesh nodes
         self.register_node("earth_eu_1", "terrestrial", latency_to_earth_ms=2.0)
         self.register_node("earth_us_east", "terrestrial", latency_to_earth_ms=12.0)
         self.register_node("starlink_leo_74", "orbital_leo", latency_to_earth_ms=25.0)
-        self.register_node("lunar_gateway_edge", "lunar_edge", latency_to_earth_ms=1300.0)
+        self.register_node(
+            "lunar_gateway_edge", "lunar_edge", latency_to_earth_ms=1300.0
+        )
 
     def register_node(
         self, node_id: str, location_type: str, latency_to_earth_ms: float
@@ -73,7 +75,9 @@ class PlanetaryMeshOrchestrator:
                 key=lambda x: x.latency_to_earth_ms,
             )
 
-        selected_node = eligible_nodes[0] if eligible_nodes else list(self.nodes.values())[0]
+        selected_node = (
+            eligible_nodes[0] if eligible_nodes else list(self.nodes.values())[0]
+        )
         selected_node.active_tasks.append(task_id)
 
         route_record = {

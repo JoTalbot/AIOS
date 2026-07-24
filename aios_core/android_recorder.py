@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 __all__ = ["RecordedStep", "ScenarioAssertion", "ScenarioRecorder"]
 
@@ -26,9 +27,10 @@ class RecordedStep:
     def matches_action(self, pattern: str) -> bool:
         """Check if this step's action matches a wildcard pattern."""
         import fnmatch
+
         return fnmatch.fnmatch(self.action, pattern)
 
-    def elapsed_from(self, earlier_step: "RecordedStep") -> float:
+    def elapsed_from(self, earlier_step: RecordedStep) -> float:
         """Return time elapsed from *earlier_step* to this step."""
         return self.ts - earlier_step.ts
 
@@ -67,8 +69,8 @@ class ScenarioRecorder:
         self.package = package
         self.device_id = device_id
         self.path = path
-        self.steps: List[RecordedStep] = []
-        self.assertions: List[ScenarioAssertion] = []
+        self.steps: list[RecordedStep] = []
+        self.assertions: list[ScenarioAssertion] = []
         self.max_steps = max_steps
         self._metadata: dict[str, Any] = {
             "created_at": time.time(),
@@ -91,7 +93,7 @@ class ScenarioRecorder:
         self.steps.append(step)
         return step
 
-    def record_batch(self, actions: Sequence[str]) -> List[RecordedStep]:
+    def record_batch(self, actions: Sequence[str]) -> list[RecordedStep]:
         """Record a sequence of actions with auto-incrementing timestamps."""
         base_time = time.time()
         result = []
@@ -130,13 +132,17 @@ class ScenarioRecorder:
             raise IndexError(f"Step index {index} out of range")
         return self.steps.pop(index)
 
-    def insert_step(self, index: int, action: str, meta: dict[str, Any] | None = None) -> RecordedStep:
+    def insert_step(
+        self, index: int, action: str, meta: dict[str, Any] | None = None
+    ) -> RecordedStep:
         """Insert a step at *index*."""
         step = RecordedStep(action=action, ts=time.time(), meta=meta or {})
         self.steps.insert(index, step)
         return step
 
-    def replace_step(self, index: int, action: str, meta: dict[str, Any] | None = None) -> RecordedStep:
+    def replace_step(
+        self, index: int, action: str, meta: dict[str, Any] | None = None
+    ) -> RecordedStep:
         """Replace step at *index* with a new action."""
         if index < 0 or index >= len(self.steps):
             raise IndexError(f"Step index {index} out of range")
@@ -148,19 +154,19 @@ class ScenarioRecorder:
     # Filtering / analysis
     # ------------------------------------------------------------------
 
-    def filter_by_action(self, pattern: str) -> List[RecordedStep]:
+    def filter_by_action(self, pattern: str) -> list[RecordedStep]:
         """Return steps whose action matches *pattern* (supports wildcards)."""
         return [s for s in self.steps if s.matches_action(pattern)]
 
     def filter_by_time_range(
         self, start_ts: float, end_ts: float
-    ) -> List[RecordedStep]:
+    ) -> list[RecordedStep]:
         """Return steps within the given time range."""
         return [s for s in self.steps if start_ts <= s.ts <= end_ts]
 
-    def get_action_counts(self) -> Dict[str, int]:
+    def get_action_counts(self) -> dict[str, int]:
         """Return a histogram of action types."""
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         for step in self.steps:
             counts[step.action] = counts.get(step.action, 0) + 1
         return counts
@@ -185,7 +191,7 @@ class ScenarioRecorder:
     # Scenario merging
     # ------------------------------------------------------------------
 
-    def merge(self, other: "ScenarioRecorder", offset: float = 0.0) -> None:
+    def merge(self, other: ScenarioRecorder, offset: float = 0.0) -> None:
         """Merge *other* recorder's steps into this one, with optional time offset."""
         for step in other.steps:
             new_step = RecordedStep(
@@ -207,7 +213,7 @@ class ScenarioRecorder:
     # Validation
     # ------------------------------------------------------------------
 
-    def validate(self) -> Dict[str, Any]:
+    def validate(self) -> dict[str, Any]:
         """Validate scenario completeness and consistency.
 
         Checks:
@@ -216,7 +222,7 @@ class ScenarioRecorder:
         - All assertion step indices are in range
         - No duplicate actions without metadata distinction
         """
-        issues: List[str] = []
+        issues: list[str] = []
 
         if not self.steps:
             issues.append("Scenario has no recorded steps")
@@ -224,9 +230,7 @@ class ScenarioRecorder:
         # Check monotonic timestamps
         for i in range(1, len(self.steps)):
             if self.steps[i].ts < self.steps[i - 1].ts:
-                issues.append(
-                    f"Step {i} has earlier timestamp than step {i - 1}"
-                )
+                issues.append(f"Step {i} has earlier timestamp than step {i - 1}")
 
         # Check assertions reference valid indices
         for assertion in self.assertions:
@@ -261,11 +265,11 @@ class ScenarioRecorder:
     @classmethod
     def load(cls, path: str) -> dict[str, Any]:
         """Load scenario data from JSON file."""
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
 
     @classmethod
-    def from_file(cls, path: str) -> "ScenarioRecorder":
+    def from_file(cls, path: str) -> ScenarioRecorder:
         """Construct a ScenarioRecorder from a saved JSON file."""
         data = cls.load(path)
         recorder = cls(

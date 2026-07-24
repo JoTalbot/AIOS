@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import threading
-from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from datetime import UTC, datetime
 
 from .collector import OLXCollector
 from .storage import OLXStorage
@@ -20,16 +19,16 @@ class CollectionScheduler:
 
     def __init__(
         self,
-        collector: Optional[OLXCollector] = None,
-        storage: Optional[OLXStorage] = None,
+        collector: OLXCollector | None = None,
+        storage: OLXStorage | None = None,
         interval_s: float = 3600.0,
     ):
         """Initialize CollectionScheduler."""
         self.collector = collector or OLXCollector()
         self.storage = storage or OLXStorage()
         self.interval_s = float(interval_s)
-        self.history: List[Dict[str, object]] = []
-        self._thread: Optional[threading.Thread] = None
+        self.history: list[dict[str, object]] = []
+        self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._history_lock = threading.Lock()
 
@@ -38,23 +37,27 @@ class CollectionScheduler:
         """Whether the background loop is currently active."""
         return self._thread is not None and self._thread.is_alive()
 
-    def _record(self, record: Dict[str, object]) -> None:
+    def _record(self, record: dict[str, object]) -> None:
         with self._history_lock:
             self.history.append(record)
 
-    def run_once(self, queries: list[str], max_cards: int = 100) -> Dict[str, Dict[str, object]]:
+    def run_once(
+        self, queries: list[str], max_cards: int = 100
+    ) -> dict[str, dict[str, object]]:
         """Collect every query a single time and persist the results.
 
         Returns:
             Mapping of query → run record (timestamp, parsed/inserted/total).
         """
-        summaries: Dict[str, Dict[str, object]] = {}
+        summaries: dict[str, dict[str, object]] = {}
         for query in queries:
             cards = self.collector.collect(query=query, max_cards=max_cards)
             inserted = self.storage.save_ads(cards)
-            deactivated = self.storage.sync_activity(query, [card.fingerprint for card in cards])
-            record: Dict[str, object] = {
-                "ts": datetime.now(timezone.utc).isoformat(),
+            deactivated = self.storage.sync_activity(
+                query, [card.fingerprint for card in cards]
+            )
+            record: dict[str, object] = {
+                "ts": datetime.now(UTC).isoformat(),
                 "query": query,
                 "parsed": len(cards),
                 "inserted": inserted,
@@ -83,7 +86,9 @@ class CollectionScheduler:
             while not self._stop.wait(self.interval_s):
                 self.run_once(queries, max_cards=max_cards)
 
-        self._thread = threading.Thread(target=_loop, name="aios-olx-scheduler", daemon=True)
+        self._thread = threading.Thread(
+            target=_loop, name="aios-olx-scheduler", daemon=True
+        )
         self._thread.start()
         return True
 
@@ -94,7 +99,7 @@ class CollectionScheduler:
             self._thread.join(timeout=timeout)
             self._thread = None
 
-    def __enter__(self) -> "CollectionScheduler":
+    def __enter__(self) -> CollectionScheduler:
         return self
 
     def __exit__(self, *_exc) -> None:

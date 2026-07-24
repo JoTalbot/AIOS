@@ -16,7 +16,7 @@ import logging
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TaskExperience:
     """Recorded task experience with metadata."""
+
     task_type: str
     success: bool
     duration: float
@@ -37,6 +38,7 @@ class TaskExperience:
 @dataclass
 class AdaptationStep:
     """Single adaptation step result."""
+
     step_number: int
     loss_before: float
     loss_after: float
@@ -78,13 +80,22 @@ class MetaLearner:
 
     # ── Task Recording ──────────────────────────────────────────────
 
-    def record_task(self, task_type: str, success: bool, duration: float,
-                    strategy: str = "", initial_loss: float = 0.0,
-                    final_loss: float = 0.0) -> TaskExperience:
+    def record_task(
+        self,
+        task_type: str,
+        success: bool,
+        duration: float,
+        strategy: str = "",
+        initial_loss: float = 0.0,
+        final_loss: float = 0.0,
+    ) -> TaskExperience:
         """Record a task experience."""
         exp = TaskExperience(
-            task_type=task_type, success=success, duration=duration,
-            strategy_used=strategy, initial_loss=initial_loss,
+            task_type=task_type,
+            success=success,
+            duration=duration,
+            strategy_used=strategy,
+            initial_loss=initial_loss,
             final_loss=final_loss,
         )
         self.task_history.append(exp)
@@ -94,7 +105,9 @@ class MetaLearner:
             score = 1.0 if success else 0.0
             self.strategy_performance[strategy].append(score)
             # Update strategy weight (EMA)
-            avg = sum(self.strategy_performance[strategy]) / len(self.strategy_performance[strategy])
+            avg = sum(self.strategy_performance[strategy]) / len(
+                self.strategy_performance[strategy]
+            )
             self.strategies[strategy] = round(avg, 4)
 
         return exp
@@ -111,7 +124,9 @@ class MetaLearner:
             strategy_counts: dict[str, int] = {}
             for t in task_experiences:
                 if t.success and t.strategy_used:
-                    strategy_counts[t.strategy_used] = strategy_counts.get(t.strategy_used, 0) + 1
+                    strategy_counts[t.strategy_used] = (
+                        strategy_counts.get(t.strategy_used, 0) + 1
+                    )
             if strategy_counts:
                 return max(strategy_counts, key=strategy_counts.get)
 
@@ -126,12 +141,15 @@ class MetaLearner:
         """Update a strategy weight based on reward."""
         if strategy in self.strategies:
             current = self.strategies[strategy]
-            self.strategies[strategy] = round(current + self.outer_lr * (reward - current), 4)
+            self.strategies[strategy] = round(
+                current + self.outer_lr * (reward - current), 4
+            )
 
     # ── MAML-like Inner Loop ────────────────────────────────────────
 
-    def adapt_inner_loop(self, task_type: str, initial_loss: float = 1.0,
-                         num_steps: int = 5) -> list[AdaptationStep]:
+    def adapt_inner_loop(
+        self, task_type: str, initial_loss: float = 1.0, num_steps: int = 5
+    ) -> list[AdaptationStep]:
         """Run inner loop adaptation (few-shot learning on a task)."""
         steps = []
         current_loss = initial_loss
@@ -172,11 +190,15 @@ class MetaLearner:
             return 0.5  # unknown
 
         success_rate = sum(1 for t in source_exps if t.success) / len(source_exps)
-        avg_loss_reduction = sum((t.initial_loss - t.final_loss) for t in source_exps) / len(source_exps)
+        avg_loss_reduction = sum(
+            (t.initial_loss - t.final_loss) for t in source_exps
+        ) / len(source_exps)
         transfer = success_rate * 0.6 + min(avg_loss_reduction, 0.5) * 0.4
         return round(transfer, 4)
 
-    def find_similar_tasks(self, task_type: str, limit: int = 5) -> list[tuple[str, float]]:
+    def find_similar_tasks(
+        self, task_type: str, limit: int = 5
+    ) -> list[tuple[str, float]]:
         """Find tasks similar to the given type based on strategy overlap."""
         similarities = []
         for other_type in set(t.task_type for t in self.task_history):
@@ -192,10 +214,16 @@ class MetaLearner:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        success_rate = (sum(1 for t in self.task_history if t.success) /
-                        len(self.task_history)) if self.task_history else 0.0
-        avg_duration = (sum(t.duration for t in self.task_history) /
-                        len(self.task_history)) if self.task_history else 0.0
+        success_rate = (
+            (sum(1 for t in self.task_history if t.success) / len(self.task_history))
+            if self.task_history
+            else 0.0
+        )
+        avg_duration = (
+            (sum(t.duration for t in self.task_history) / len(self.task_history))
+            if self.task_history
+            else 0.0
+        )
         return {
             "tasks_learned": len(self.task_history),
             "strategies": len(self.strategies),

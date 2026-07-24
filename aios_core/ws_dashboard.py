@@ -41,12 +41,15 @@ class WSMessage:
 
     def to_json(self) -> str:
         """Serialize to JSON string."""
-        return json.dumps({
-            "type": self.type.value,
-            "payload": self.payload,
-            "timestamp": self.timestamp,
-            "source": self.source,
-        }, ensure_ascii=False)
+        return json.dumps(
+            {
+                "type": self.type.value,
+                "payload": self.payload,
+                "timestamp": self.timestamp,
+                "source": self.source,
+            },
+            ensure_ascii=False,
+        )
 
 
 class DashboardEventBus:
@@ -105,7 +108,7 @@ class DashboardEventBus:
         # Add to buffer
         self._buffer.append(message)
         if len(self._buffer) > self._buffer_size:
-            self._buffer = self._buffer[-self._buffer_size:]
+            self._buffer = self._buffer[-self._buffer_size :]
 
         sent = 0
         async with self._lock:
@@ -177,7 +180,9 @@ async def ws_dashboard_handler(websocket) -> None:
             try:
                 msg = json.loads(data)
                 if msg.get("command") == "ping":
-                    await websocket.send_text(json.dumps({"type": "pong", "timestamp": time.time()}))
+                    await websocket.send_text(
+                        json.dumps({"type": "pong", "timestamp": time.time()})
+                    )
             except json.JSONDecodeError:
                 pass  # Ignore non-JSON messages
     except Exception:

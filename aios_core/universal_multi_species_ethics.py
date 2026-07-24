@@ -21,7 +21,9 @@ logger = logging.getLogger(__name__)
 class SpeciesEntry:
     """Registered species entry."""
 
-    def __init__(self, species_id: str, name: str, category: str = "biological") -> None:
+    def __init__(
+        self, species_id: str, name: str, category: str = "biological"
+    ) -> None:
         self.species_id = species_id
         self.name = name
         self.category = category
@@ -42,14 +44,18 @@ class UniversalMultiSpeciesEthics:
         self._species_registry: dict[str, SpeciesEntry] = {}
         self._votes: list[dict[str, Any]] = []
 
-    def register_species(self, species_id: str, name: str, category: str = "biological") -> SpeciesEntry:
+    def register_species(
+        self, species_id: str, name: str, category: str = "biological"
+    ) -> SpeciesEntry:
         """Register a new species."""
         entry = SpeciesEntry(species_id, name, category)
         self._species_registry[species_id] = entry
         self.species_manifest[species_id] = f"{name} ({category})"
         return entry
 
-    def evaluate_multi_species_impact(self, proposed_operation: dict[str, Any], affected_entities: list[str]) -> dict[str, Any]:
+    def evaluate_multi_species_impact(
+        self, proposed_operation: dict[str, Any], affected_entities: list[str]
+    ) -> dict[str, Any]:
         """Evaluate impact (backward-compatible)."""
         start_time = time.time()
         operation_name = proposed_operation.get("action", "unknown_operation")
@@ -58,16 +64,27 @@ class UniversalMultiSpeciesEthics:
         violations: list[str] = []
         protected_guarantees: list[str] = []
 
-        if "planetary_biosphere" in affected_entities and risk_level.lower() in ["critical", "high"]:
+        if "planetary_biosphere" in affected_entities and risk_level.lower() in [
+            "critical",
+            "high",
+        ]:
             if "ecological_impact_statement" not in proposed_operation:
-                violations.append("Violation ETHICS_BIO_01: High-risk operation affecting planetary_biosphere lacks mandatory impact statement.")
+                violations.append(
+                    "Violation ETHICS_BIO_01: High-risk operation affecting planetary_biosphere lacks mandatory impact statement."
+                )
 
         # Check AI rights
-        if "aios_autonomous_agent" in affected_entities and proposed_operation.get("shutdown_without_review"):
-            violations.append("Violation ETHICS_AI_01: Agent shutdown without constitutional review.")
+        if "aios_autonomous_agent" in affected_entities and proposed_operation.get(
+            "shutdown_without_review"
+        ):
+            violations.append(
+                "Violation ETHICS_AI_01: Agent shutdown without constitutional review."
+            )
 
         if not violations:
-            protected_guarantees.append("Multi-Species Harmony Proof: Zero harm detected.")
+            protected_guarantees.append(
+                "Multi-Species Harmony Proof: Zero harm detected."
+            )
 
         harmony_score = 1.0 if not violations else max(0.1, 1.0 - len(violations) * 0.4)
 
@@ -84,7 +101,9 @@ class UniversalMultiSpeciesEthics:
         self.ethical_evaluations.append(evaluation_record)
         return evaluation_record
 
-    def ethical_vote(self, operation_id: str, voter_species: str, vote: str, reasoning: str = "") -> dict[str, Any]:
+    def ethical_vote(
+        self, operation_id: str, voter_species: str, vote: str, reasoning: str = ""
+    ) -> dict[str, Any]:
         """Conduct multi-species ethical vote."""
         vote_record = {
             "operation_id": operation_id,
@@ -101,7 +120,11 @@ class UniversalMultiSpeciesEthics:
         risk = operation.get("risk_level", "low")
         biosphere = operation.get("biosphere_impact", "none")
         return {
-            "planetary_protection_level": "category_1" if risk == "critical" else "category_2" if risk == "high" else "category_3",
+            "planetary_protection_level": "category_1"
+            if risk == "critical"
+            else "category_2"
+            if risk == "high"
+            else "category_3",
             "biosphere_impact": biosphere,
             "compliant": biosphere != "severe_degradation",
             "requires_review": risk in ["high", "critical"],
@@ -119,6 +142,8 @@ class UniversalMultiSpeciesEthics:
         return {
             "monitored_species_categories": len(self.species_manifest),
             "total_ethical_evaluations": len(self.ethical_evaluations),
-            "approved_evaluations": sum(1 for e in self.ethical_evaluations if e["is_ethically_approved"]),
+            "approved_evaluations": sum(
+                1 for e in self.ethical_evaluations if e["is_ethically_approved"]
+            ),
             "votes_cast": len(self._votes),
         }

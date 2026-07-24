@@ -7,11 +7,9 @@ Auto-restarts stuck emulators and exposes basic balancing.
 
 from __future__ import annotations
 
-import os
 import subprocess
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 __all__ = ["DeviceRecord", "WaitlistEntry", "DevicePool"]
 
@@ -19,6 +17,7 @@ __all__ = ["DeviceRecord", "WaitlistEntry", "DevicePool"]
 @dataclass
 class DeviceRecord:
     """DeviceRecord."""
+
     serial: str
     avd_name: str
     status: str = "idle"
@@ -30,6 +29,7 @@ class DeviceRecord:
 @dataclass
 class WaitlistEntry:
     """Queue entry for device leasing."""
+
     profile: str
     priority: int
     requested_at: float
@@ -37,10 +37,11 @@ class WaitlistEntry:
 
 class DevicePool:
     """DevicePool."""
+
     def __init__(self, emulator_bin: str = "/opt/android-sdk/emulator/emulator"):
         """Initialize DevicePool."""
-        self.devices: Dict[str, DeviceRecord] = {}
-        self.waitlist: List[WaitlistEntry] = []
+        self.devices: dict[str, DeviceRecord] = {}
+        self.waitlist: list[WaitlistEntry] = []
         self.emulator_bin = emulator_bin
 
     def register(
@@ -81,7 +82,7 @@ class DevicePool:
         profile: str,
         serial: str | None = None,
         preferred_avd: str | None = None,
-    ) -> Optional[DeviceRecord]:
+    ) -> DeviceRecord | None:
         """Lease a device to a profile, optionally enqueuing if busy."""
         if serial:
             dev = self.devices.get(serial)
@@ -107,7 +108,7 @@ class DevicePool:
 
         return None
 
-    def release(self, profile: str) -> Optional[DeviceRecord]:
+    def release(self, profile: str) -> DeviceRecord | None:
         """Release a leased device back to the pool."""
         for dev in self.devices.values():
             if dev.leased_to == profile and dev.status == "busy":

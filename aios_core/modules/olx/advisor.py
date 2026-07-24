@@ -11,15 +11,13 @@ Two kinds of output:
 
 from __future__ import annotations
 
-from collections import Counter
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from statistics import median
-from typing import Dict, List, Optional
 
 from .analytics import RecommendationEngine
 from .competitive import CompetitiveWatch, derive_query
-from .own_ads import OwnAd, OwnAdsTracker
+from .own_ads import OwnAd
 from .promotion import RepostPlanner
 
 ACTION_KEEP = "KEEP"
@@ -40,7 +38,7 @@ class ActionAdvice:
     suggested_price: float | None = None
     priority: int = 3  # 1 = urgent … 3 = informational
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dictionary."""
         return {
             "fingerprint": self.fingerprint,
@@ -63,7 +61,7 @@ class NewListingSuggestion:
     active_competitors: int
     priority: int = 3
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dictionary."""
         return {
             "query": self.query,
@@ -90,12 +88,14 @@ class StrategyAdvisor:
         self,
         min_age_days: float = 3.0,
         min_views_per_day: float = 1.0,
-        now: Optional[datetime] = None,
-    ) -> List[ActionAdvice]:
+        now: datetime | None = None,
+    ) -> list[ActionAdvice]:
         """Return recommended actions for owned ads."""
-        now = now or datetime.now(timezone.utc)
-        planner = RepostPlanner(min_age_days=min_age_days, min_views_per_day=min_views_per_day)
-        advice: List[ActionAdvice] = []
+        now = now or datetime.now(UTC)
+        planner = RepostPlanner(
+            min_age_days=min_age_days, min_views_per_day=min_views_per_day
+        )
+        advice: list[ActionAdvice] = []
 
         for row in self.storage.own_ads(status="active"):
             own = OwnAd(
@@ -140,7 +140,12 @@ class StrategyAdvisor:
                         priority=2,
                     )
                 )
-            elif cheaper >= 1 and own.price and median_price and own.price > median_price * 1.1:
+            elif (
+                cheaper >= 1
+                and own.price
+                and median_price
+                and own.price > median_price * 1.1
+            ):
                 advice.append(
                     ActionAdvice(
                         row["fingerprint"],
@@ -179,18 +184,18 @@ class StrategyAdvisor:
 
     # ---- New listings ----
 
-    def advise_new_listings(self, top_n: int = 5) -> List[NewListingSuggestion]:
+    def advise_new_listings(self, top_n: int = 5) -> list[NewListingSuggestion]:
         """Active market queries not covered by the current portfolio."""
         own_tokens = set()
         for row in self.storage.own_ads():
             own_tokens.update(derive_query(row["title"]).split())
 
-        by_query: Dict[str, list] = {}
+        by_query: dict[str, list] = {}
         for ad in self.storage.get_ads(active_only=True):
             if ad.query:
                 by_query.setdefault(ad.query, []).append(ad)
 
-        suggestions: List[NewListingSuggestion] = []
+        suggestions: list[NewListingSuggestion] = []
         for query, ads in by_query.items():
             query_tokens = set(query.lower().split())
             if own_tokens & query_tokens:

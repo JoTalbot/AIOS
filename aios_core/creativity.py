@@ -13,11 +13,10 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CreativeDomain:
     """Domain with associated knowledge and constraints."""
+
     name: str
     keywords: list[str] = field(default_factory=list)
     constraints: list[str] = field(default_factory=list)
@@ -34,6 +34,7 @@ class CreativeDomain:
 @dataclass
 class Idea:
     """Generated idea with novelty, usefulness, and surprise metrics."""
+
     id: int
     domain: str
     description: str
@@ -47,8 +48,12 @@ class Idea:
 
     def creativity_score(self) -> float:
         """Combined creativity score (weighted average)."""
-        return (0.4 * self.novelty + 0.3 * self.usefulness +
-                0.2 * self.surprise + 0.1 * self.feasibility)
+        return (
+            0.4 * self.novelty
+            + 0.3 * self.usefulness
+            + 0.2 * self.surprise
+            + 0.1 * self.feasibility
+        )
 
     def risk_score(self) -> float:
         """Risk score (high novelty = higher risk)."""
@@ -84,9 +89,13 @@ class CreativityEngine:
 
     # ── Domain Management ──────────────────────────────────────────
 
-    def register_domain(self, name: str, keywords: list[str] | None = None,
-                        constraints: list[str] | None = None,
-                        base_concepts: list[str] | None = None) -> CreativeDomain:
+    def register_domain(
+        self,
+        name: str,
+        keywords: list[str] | None = None,
+        constraints: list[str] | None = None,
+        base_concepts: list[str] | None = None,
+    ) -> CreativeDomain:
         """Register a creative domain."""
         domain = CreativeDomain(
             name=name,
@@ -110,7 +119,11 @@ class CreativityEngine:
 
         # Build description from domain knowledge
         keywords = domain_obj.keywords if domain_obj.keywords else [domain]
-        base = domain_obj.base_concepts if domain_obj.base_concepts else ["approach", "method", "solution"]
+        base = (
+            domain_obj.base_concepts
+            if domain_obj.base_concepts
+            else ["approach", "method", "solution"]
+        )
         description = f"Novel {random.choice(base)} combining {random.choice(keywords)} and {random.choice(keywords) if len(keywords) > 1 else domain}"
 
         # Compute novelty based on divergence parameter and randomness
@@ -129,17 +142,22 @@ class CreativityEngine:
                 feasibility *= 0.8  # reduce feasibility for unsatisfied constraints
 
         idea = Idea(
-            id=self._next_id, domain=domain, description=description,
-            novelty=round(novelty, 4), usefulness=round(usefulness, 4),
-            surprise=round(surprise, 4), feasibility=round(feasibility, 4),
+            id=self._next_id,
+            domain=domain,
+            description=description,
+            novelty=round(novelty, 4),
+            usefulness=round(usefulness, 4),
+            surprise=round(surprise, 4),
+            feasibility=round(feasibility, 4),
             sources=keywords[:3],
             constraints_satisfied=satisfied,
         )
         self.ideas.append(idea)
         return idea
 
-    def divergent_search(self, domain: str, count: int = 5,
-                         constraints: list[str] | None = None) -> list[Idea]:
+    def divergent_search(
+        self, domain: str, count: int = 5, constraints: list[str] | None = None
+    ) -> list[Idea]:
         """Generate multiple diverse ideas (divergent thinking)."""
         ideas = []
         for _ in range(count):
@@ -163,7 +181,9 @@ class CreativityEngine:
         """Evaluate risk score of an idea."""
         return idea.risk_score()
 
-    def rank_ideas(self, ideas: list[Idea] | None = None, limit: int = 10) -> list[Idea]:
+    def rank_ideas(
+        self, ideas: list[Idea] | None = None, limit: int = 10
+    ) -> list[Idea]:
         """Rank ideas by creativity score."""
         pool = ideas or self.ideas
         ranked = sorted(pool, key=lambda i: i.creativity_score(), reverse=True)
@@ -193,8 +213,10 @@ class CreativityEngine:
             id=self._next_id,
             domain=f"{idea1.domain}_{idea2.domain}",
             description=combined_desc,
-            novelty=round(novelty, 4), usefulness=round(usefulness, 4),
-            surprise=round(surprise, 4), feasibility=round(feasibility, 4),
+            novelty=round(novelty, 4),
+            usefulness=round(usefulness, 4),
+            surprise=round(surprise, 4),
+            feasibility=round(feasibility, 4),
             sources=idea1.sources + idea2.sources,
         )
         self.ideas.append(combined)
@@ -208,7 +230,9 @@ class CreativityEngine:
             return 0.5
 
         avg_novelty = sum(i.novelty for i in reference_ideas) / len(reference_ideas)
-        avg_usefulness = sum(i.usefulness for i in reference_ideas) / len(reference_ideas)
+        avg_usefulness = sum(i.usefulness for i in reference_ideas) / len(
+            reference_ideas
+        )
 
         # Surprise = deviation from average
         novelty_deviation = abs(idea.novelty - avg_novelty)
@@ -220,10 +244,14 @@ class CreativityEngine:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_novelty = (sum(i.novelty for i in self.ideas) / len(self.ideas)
-                       if self.ideas else 0.0)
-        avg_usefulness = (sum(i.usefulness for i in self.ideas) / len(self.ideas)
-                         if self.ideas else 0.0)
+        avg_novelty = (
+            sum(i.novelty for i in self.ideas) / len(self.ideas) if self.ideas else 0.0
+        )
+        avg_usefulness = (
+            sum(i.usefulness for i in self.ideas) / len(self.ideas)
+            if self.ideas
+            else 0.0
+        )
         return {
             "ideas_generated": len(self.ideas),
             "domains": len(self.domains),

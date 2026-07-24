@@ -16,7 +16,7 @@ import math
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Experience:
     """Recorded (s, a, r, s') transition."""
+
     state: str
     action: str
     reward: float
@@ -46,9 +47,15 @@ class QLearningAgent:
     - Double Q-Learning
     """
 
-    def __init__(self, actions: list[str], learning_rate: float = 0.1,
-                 discount: float = 0.9, epsilon: float = 0.1,
-                 epsilon_decay: float = 0.99, epsilon_min: float = 0.01) -> None:
+    def __init__(
+        self,
+        actions: list[str],
+        learning_rate: float = 0.1,
+        discount: float = 0.9,
+        epsilon: float = 0.1,
+        epsilon_decay: float = 0.99,
+        epsilon_min: float = 0.01,
+    ) -> None:
         self.actions = actions
         self.lr = learning_rate
         self.discount = discount
@@ -118,8 +125,9 @@ class QLearningAgent:
         self._step_count += 1
         self._episode_rewards.append(reward)
 
-    def learn_sarsa(self, state: str, action: str, reward: float,
-                    next_state: str, next_action: str) -> None:
+    def learn_sarsa(
+        self, state: str, action: str, reward: float, next_state: str, next_action: str
+    ) -> None:
         """SARSA update: Q(s,a) += lr * (r + discount * Q(s',a') - Q(s,a))."""
         if state not in self.q_table:
             self.q_table[state] = {a: 0.0 for a in self.actions}
@@ -129,8 +137,9 @@ class QLearningAgent:
         new_q = current_q + self.lr * (reward + self.discount * next_q - current_q)
         self.q_table[state][action] = new_q
 
-    def learn_double_q(self, state: str, action: str, reward: float,
-                       next_state: str) -> None:
+    def learn_double_q(
+        self, state: str, action: str, reward: float, next_state: str
+    ) -> None:
         """Double Q-Learning update (reduces overestimation)."""
         # Randomly choose which table to update
         if random.random() < 0.5:
@@ -140,30 +149,43 @@ class QLearningAgent:
             current_q = self.get_q(state, action)
             best_next = self.best_action(next_state)  # from Q_A
             next_q_val = self.get_q_b(next_state, best_next)  # evaluate using Q_B
-            new_q = current_q + self.lr * (reward + self.discount * next_q_val - current_q)
+            new_q = current_q + self.lr * (
+                reward + self.discount * next_q_val - current_q
+            )
             self.q_table[state][action] = new_q
         else:
             # Update Q_B using Q_A for next-state evaluation
             if state not in self.q_table_b:
                 self.q_table_b[state] = {a: 0.0 for a in self.actions}
             current_q = self.get_q_b(state, action)
-            best_next_b = max(self.q_table_b.get(next_state, {}).keys(),
-                             key=lambda a: self.q_table_b.get(next_state, {}).get(a, 0),
-                             default=self.actions[0])
+            best_next_b = max(
+                self.q_table_b.get(next_state, {}).keys(),
+                key=lambda a: self.q_table_b.get(next_state, {}).get(a, 0),
+                default=self.actions[0],
+            )
             next_q_val = self.get_q(next_state, best_next_b)
-            new_q = current_q + self.lr * (reward + self.discount * next_q_val - current_q)
+            new_q = current_q + self.lr * (
+                reward + self.discount * next_q_val - current_q
+            )
             self.q_table_b[state][action] = new_q
 
     # ── Experience Replay ────────────────────────────────────────────
 
-    def add_experience(self, state: str, action: str, reward: float,
-                       next_state: str, done: bool = False) -> Experience:
+    def add_experience(
+        self,
+        state: str,
+        action: str,
+        reward: float,
+        next_state: str,
+        done: bool = False,
+    ) -> Experience:
         """Add an experience to the replay buffer."""
-        exp = Experience(state=state, action=action, reward=reward,
-                        next_state=next_state, done=done)
+        exp = Experience(
+            state=state, action=action, reward=reward, next_state=next_state, done=done
+        )
         self.experience_buffer.append(exp)
         if len(self.experience_buffer) > self.buffer_size:
-            self.experience_buffer = self.experience_buffer[-self.buffer_size:]
+            self.experience_buffer = self.experience_buffer[-self.buffer_size :]
         return exp
 
     def replay(self, batch_size: int = 32) -> None:
@@ -187,15 +209,20 @@ class QLearningAgent:
         """Compute n-step return from a sequence of experiences."""
         total_return = 0.0
         for i, exp in enumerate(experiences[:n]):
-            total_return += (self.discount ** i) * exp.reward
+            total_return += (self.discount**i) * exp.reward
         if len(experiences) > n:
-            total_return += (self.discount ** n) * self.max_q(experiences[n].state)
+            total_return += (self.discount**n) * self.max_q(experiences[n].state)
         return total_return
 
     # ── Reward Shaping ──────────────────────────────────────────────
 
-    def shaped_reward(self, state: str, next_state: str, base_reward: float,
-                      potential_fn: Callable = None) -> float:
+    def shaped_reward(
+        self,
+        state: str,
+        next_state: str,
+        base_reward: float,
+        potential_fn: Callable = None,
+    ) -> float:
         """Apply reward shaping: F(s,s',r) = r + gamma*Phi(s') - Phi(s)."""
         if potential_fn:
             phi_next = potential_fn(next_state)
@@ -222,8 +249,11 @@ class QLearningAgent:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_reward = (sum(self._episode_rewards) / len(self._episode_rewards)
-                     ) if self._episode_rewards else 0.0
+        avg_reward = (
+            (sum(self._episode_rewards) / len(self._episode_rewards))
+            if self._episode_rewards
+            else 0.0
+        )
         return {
             "states": len(self.q_table),
             "actions": len(self.actions),

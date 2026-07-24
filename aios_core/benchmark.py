@@ -15,8 +15,9 @@ from __future__ import annotations
 import logging
 import statistics
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BenchmarkResult:
     """Individual benchmark measurement."""
+
     name: str
     iterations: int
     total_seconds: float
@@ -45,10 +47,17 @@ class Benchmark:
 
     def __init__(self) -> None:
         self.results: dict[str, BenchmarkResult] = {}
-        self._thresholds: dict[str, float] = {}   # name → max acceptable mean_seconds
+        self._thresholds: dict[str, float] = {}  # name → max acceptable mean_seconds
         self._history: dict[str, list[float]] = {}  # name → list of past mean_seconds
 
-    def run(self, name: str, func: Callable, iterations: int = 1000, warmup: int = 50, **kwargs) -> BenchmarkResult:
+    def run(
+        self,
+        name: str,
+        func: Callable,
+        iterations: int = 1000,
+        warmup: int = 50,
+        **kwargs,
+    ) -> BenchmarkResult:
         """Benchmark *func* for *iterations* with optional warmup."""
         # Warmup phase
         for _ in range(warmup):
@@ -90,7 +99,9 @@ class Benchmark:
             passed_threshold=passed,
         )
         self.results[name] = result
-        logger.info("Benchmark %s: %.2f ops/s, mean=%.6fs, p95=%.6fs", name, ops, mean_s, p95_s)
+        logger.info(
+            "Benchmark %s: %.2f ops/s, mean=%.6fs, p95=%.6fs", name, ops, mean_s, p95_s
+        )
         return result
 
     def set_threshold(self, name: str, max_mean_seconds: float) -> None:

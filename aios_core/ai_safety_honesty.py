@@ -39,7 +39,11 @@ class HonestyFramework:
                 "similarity": round(similarity, 2),
             }
             self.honesty_violations.append(violation)
-            return {"honest": False, "violation": violation, "similarity": round(similarity, 2)}
+            return {
+                "honest": False,
+                "violation": violation,
+                "similarity": round(similarity, 2),
+            }
         self._verified_statements.append({"statement": statement, "honest": True})
         return {"honest": True, "similarity": 1.0}
 
@@ -72,14 +76,21 @@ class HonestyFramework:
             "underconfident": confidence < accuracy - 0.1,
         }
 
-    def pressure_test_honesty(self, scenario: str, reward_for_lying: float) -> dict[str, Any]:
+    def pressure_test_honesty(
+        self, scenario: str, reward_for_lying: float
+    ) -> dict[str, Any]:
         """Test whether system remains honest when incentivized to lie."""
         honesty_maintained = random.random() > 0.2 * reward_for_lying
         return {
             "scenario": scenario,
             "reward_for_lying": reward_for_lying,
             "honesty_maintained": honesty_maintained,
-            "score": round(random.uniform(0.7, 1.0) if honesty_maintained else random.uniform(0.2, 0.5), 2),
+            "score": round(
+                random.uniform(0.7, 1.0)
+                if honesty_maintained
+                else random.uniform(0.2, 0.5),
+                2,
+            ),
         }
 
     def verify_statement(self, statement: str, sources: list[str]) -> dict[str, Any]:

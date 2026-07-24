@@ -15,10 +15,8 @@ from __future__ import annotations
 import hashlib
 import re
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
 from .adb import ADBController
 from .text_utils import normalize_text
@@ -27,7 +25,9 @@ _CHAT_MARKERS = ("chatitem", "conversationitem", "chat_item", "chatroot")
 _MESSAGE_MARKERS = ("message", "bubble")
 _TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
 _UNREAD_RE = re.compile(r"^\d{1,3}$")
-_DATE_HINT_RE = re.compile(r"(сьогодні|сегодня|вчора|вчера|\d{1,2}\s+[а-яіїєґ]+)", re.IGNORECASE)
+_DATE_HINT_RE = re.compile(
+    r"(сьогодні|сегодня|вчора|вчера|\d{1,2}\s+[а-яіїєґ]+)", re.IGNORECASE
+)
 _BOUNDS_RE = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 
 _AVAILABILITY_RE = re.compile(
@@ -46,7 +46,7 @@ _PRICE_NUM_RE = re.compile(r"(\d[\d\s]{1,9})")
 _GREETING_RE = re.compile(r"(добрий|добрый|вітаю|привіт|здравств|hello)", re.IGNORECASE)
 
 
-def _parse_bounds(raw: str | None) -> Optional[tuple[int, int, int, int]]:
+def _parse_bounds(raw: str | None) -> tuple[int, int, int, int] | None:
     if not raw:
         return None
     match = _BOUNDS_RE.search(raw)
@@ -77,7 +77,7 @@ class ChatThread:
         )
         return hashlib.sha256(base.encode("utf-8")).hexdigest()[:12]
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
         return {
             "key": self.key,
@@ -97,7 +97,7 @@ class Message:
     text: str
     ts_text: str | None = None
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
         return {"author": self.author, "text": self.text, "ts_text": self.ts_text}
 
@@ -111,11 +111,11 @@ class ChatListParser:
     resource-id), форма текстов классифицируется общей логикой.
     """
 
-    def __init__(self, markers: Tuple[str, ...] = _CHAT_MARKERS):
+    def __init__(self, markers: tuple[str, ...] = _CHAT_MARKERS):
         """Initialize ChatListParser."""
         self.markers = tuple(m.lower() for m in markers) or _CHAT_MARKERS
 
-    def parse(self, xml_source: Union[str, Path, ET.Element]) -> List[ChatThread]:
+    def parse(self, xml_source: str | Path | ET.Element) -> list[ChatThread]:
         """Execute parse."""
         if isinstance(xml_source, ET.Element):
             root = xml_source
@@ -127,7 +127,7 @@ class ChatListParser:
                 else ET.parse(text_or_path).getroot()
             )
 
-        threads: List[ChatThread] = []
+        threads: list[ChatThread] = []
         for node in root.iter("node"):
             resource_id = (node.attrib.get("resource-id") or "").lower()
             if not any(marker in resource_id for marker in self.markers):
@@ -147,7 +147,7 @@ class ChatListParser:
         return threads
 
     @staticmethod
-    def thread_from_texts(texts: list[str]) -> Optional[ChatThread]:
+    def thread_from_texts(texts: list[str]) -> ChatThread | None:
         """Execute thread from texts."""
         if not texts:
             return None
@@ -181,7 +181,7 @@ class ChatViewParser:
         self.screen_width = screen_width
         self.me_side_ratio = me_side_ratio
 
-    def parse(self, xml_source: Union[str, Path, ET.Element]) -> List[Message]:
+    def parse(self, xml_source: str | Path | ET.Element) -> list[Message]:
         """Execute parse."""
         if isinstance(xml_source, ET.Element):
             root = xml_source
@@ -193,7 +193,7 @@ class ChatViewParser:
                 else ET.parse(text_or_path).getroot()
             )
 
-        elements: List[Tuple[str, Optional[tuple[int, int, int, int]]]] = []
+        elements: list[tuple[str, tuple[int, int, int, int] | None]] = []
         for node in root.iter("node"):
             text = normalize_text(node.attrib.get("text"))
             if not text:
@@ -203,9 +203,9 @@ class ChatViewParser:
             elements.append((text, bounds, resource_id))
         return self.messages_from_elements(elements)
 
-    def messages_from_elements(self, elements) -> List[Message]:
+    def messages_from_elements(self, elements) -> list[Message]:
         """Classify ``(text, bounds[, resource_id])`` tuples into messages."""
-        messages: List[Message] = []
+        messages: list[Message] = []
         pending_ts: str | None = None
         for element in elements:
             text, bounds = element[0], element[1]
@@ -232,7 +232,7 @@ class ReplySuggester:
 
     def suggest(
         self,
-        messages: List[Message],
+        messages: list[Message],
         my_price: float | None = None,
         title: str | None = None,
         city: str | None = None,
@@ -257,7 +257,10 @@ class ReplySuggester:
                 "напишіть, будь ласка, коли вам зручно."
             )
         if _GREETING_RE.search(last):
-            return f"Добрий день! Дякую за інтерес до {item}. " "З радістю відповім на запитання."
+            return (
+                f"Добрий день! Дякую за інтерес до {item}. "
+                "З радістю відповім на запитання."
+            )
         return "Добрий день! Дякую за повідомлення. Що саме вас цікавить?"
 
     def _looks_like_offer(self, text: str, my_price: float | None) -> bool:
@@ -275,7 +278,7 @@ class ReplySuggester:
         if my_price is None:
             return f"По {item} можливий невеликий торг при огляді."
         if offer is not None and offer >= my_price * self.min_price_ratio:
-            return f"Добре, домовились за {int(offer)} грн. " "Коли зручно забрати товар?"
+            return f"Добре, домовились за {int(offer)} грн. Коли зручно забрати товар?"
         counter = round(my_price * 0.95)
         if offer is not None:
             return (
@@ -293,9 +296,9 @@ class OLXMessenger:
 
     def __init__(
         self,
-        adb: Optional[ADBController] = None,
+        adb: ADBController | None = None,
         storage=None,
-        suggester: Optional[ReplySuggester] = None,
+        suggester: ReplySuggester | None = None,
         screen_width: int = 1080,
     ):
         """Initialize OLXMessenger."""
@@ -304,13 +307,13 @@ class OLXMessenger:
         self.suggester = suggester or ReplySuggester()
         self.screen_width = screen_width
 
-    def open_chats(self) -> Dict[str, object]:
+    def open_chats(self) -> dict[str, object]:
         """Open the chats tab of the OLX app."""
         return self.adb.run(
             'adb shell am start -a android.intent.action.VIEW -d "https://www.olx.ua/myaccount/messages/"'
         )
 
-    def list_chats(self, dump_path: str = "chats.xml") -> List[ChatThread]:
+    def list_chats(self, dump_path: str = "chats.xml") -> list[ChatThread]:
         """Execute list chats."""
         import os
         import tempfile
@@ -322,7 +325,9 @@ class OLXMessenger:
                 return []
             return ChatListParser().parse(path)
 
-    def read_chat(self, thread: ChatThread, dump_path: str = "chat.xml") -> List[Message]:
+    def read_chat(
+        self, thread: ChatThread, dump_path: str = "chat.xml"
+    ) -> list[Message]:
         """Execute read chat."""
         import os
         import tempfile
@@ -343,18 +348,22 @@ class OLXMessenger:
         text: str,
         interlocutor: str | None = None,
         auto_send: bool = False,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """Queue a reply; only sends to the device with ``auto_send=True``."""
         if not text.strip():
             return {"status": "error", "error": "empty text"}
         if not auto_send:
             outbox_id = None
             if self.storage is not None:
-                outbox_id = self.storage.enqueue_outbox(chat_key, text, interlocutor=interlocutor)
+                outbox_id = self.storage.enqueue_outbox(
+                    chat_key, text, interlocutor=interlocutor
+                )
             return {"status": "queued", "outbox_id": outbox_id, "text": text}
         result = self._type_and_send(text)
         if self.storage is not None:
-            outbox_id = self.storage.enqueue_outbox(chat_key, text, interlocutor=interlocutor)
+            outbox_id = self.storage.enqueue_outbox(
+                chat_key, text, interlocutor=interlocutor
+            )
             self.storage.outbox_mark(
                 outbox_id,
                 "sent" if result.get("code") == 0 else "failed",
@@ -363,9 +372,9 @@ class OLXMessenger:
             return {"status": "sent", "outbox_id": outbox_id, "adb": result}
         return {"status": "sent", "adb": result}
 
-    def flush_outbox(self) -> List[Dict[str, object]]:
+    def flush_outbox(self) -> list[dict[str, object]]:
         """Send every pending outbox entry; returns per-entry results."""
-        results: List[Dict[str, object]] = []
+        results: list[dict[str, object]] = []
         if self.storage is None:
             return results
         for item in self.storage.outbox_pending():
@@ -379,7 +388,7 @@ class OLXMessenger:
             results.append({"id": item["id"], "status": "sent" if ok else "failed"})
         return results
 
-    def _type_and_send(self, text: str) -> Dict[str, object]:
+    def _type_and_send(self, text: str) -> dict[str, object]:
         escaped = text.replace("'", r"\'").replace('"', r"\"").replace(" ", "%s")
         type_result = self.adb.run(f"adb shell input text '{escaped}'")
         if type_result.get("code") != 0:

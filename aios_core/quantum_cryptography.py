@@ -12,9 +12,9 @@ Classes:
 from __future__ import annotations
 
 import hashlib
-import secrets
 import logging
 import random
+import secrets
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,9 @@ class BB84Protocol:
     def alice_prepare(self) -> tuple[list[int], list[str]]:
         """Alice prepares qubits with random bits and bases."""
         bases = ["rectilinear", "diagonal"]
-        self._alice_bits = [secrets.randbelow(2) for _ in range(self.key_length * 2)]  # Oversample
+        self._alice_bits = [
+            secrets.randbelow(2) for _ in range(self.key_length * 2)
+        ]  # Oversample
         self._alice_bases = [random.choice(bases) for _ in range(len(self._alice_bits))]
         return self._alice_bits, self._alice_bases
 
@@ -69,7 +71,9 @@ class BB84Protocol:
     def privacy_amplify(self, key_bits: list[int]) -> str:
         """Privacy amplification: hash to shorter key."""
         key_str = "".join(str(b) for b in key_bits)
-        self._final_key = hashlib.sha256(key_str.encode()).hexdigest()[:self.key_length // 4]
+        self._final_key = hashlib.sha256(key_str.encode()).hexdigest()[
+            : self.key_length // 4
+        ]
         return self._final_key
 
     def full_protocol(self, eavesdropper: bool = False) -> dict[str, Any]:
@@ -117,7 +121,9 @@ class QuantumKeyDistribution:
         self.keys.append((alice_bits, bob_bits))
         return alice_bits, bob_bits
 
-    def check_eavesdropper(self, alice: list[int], bob: list[int], sample: int = 10) -> bool:
+    def check_eavesdropper(
+        self, alice: list[int], bob: list[int], sample: int = 10
+    ) -> bool:
         """Check for eavesdropper (backward-compatible)."""
         errors = sum(a != b for a, b in zip(alice[:sample], bob[:sample]))
         return errors > sample * 0.1

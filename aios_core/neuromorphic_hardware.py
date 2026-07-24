@@ -13,10 +13,9 @@ from __future__ import annotations
 
 import logging
 import math
-import random
 import time
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SpikingNeuron:
     """Leaky Integrate-and-Fire (LIF) neuron."""
+
     id: str
     threshold: float = 1.0
     leak: float = 0.1  # leak factor per timestep
@@ -61,7 +61,9 @@ class NeuromorphicChip:
         self.neurons_per_core = neurons_per_core
         self.energy_per_spike = 0.000001  # pJ per spike
         self.neurons: dict[str, SpikingNeuron] = {}
-        self.connections: dict[str, list[tuple[str, float]]] = {}  # src → [(dst, weight)]
+        self.connections: dict[
+            str, list[tuple[str, float]]
+        ] = {}  # src → [(dst, weight)]
         self._spike_log: list[dict[str, Any]] = []
         self._power_total: float = 0.0
         self._total_spikes: int = 0
@@ -70,7 +72,9 @@ class NeuromorphicChip:
 
     def map_network(self, num_neurons: int) -> dict[str, Any]:
         """Map a network onto available cores."""
-        cores_needed = (num_neurons + self.neurons_per_core - 1) // self.neurons_per_core
+        cores_needed = (
+            num_neurons + self.neurons_per_core - 1
+        ) // self.neurons_per_core
         cores_used = min(cores_needed, self.cores)
         utilization = cores_used / self.cores
 
@@ -83,8 +87,9 @@ class NeuromorphicChip:
             "power_estimate_w": round(cores_used * 0.1, 4),
         }
 
-    def add_neuron(self, neuron_id: str, threshold: float = 1.0,
-                   leak: float = 0.1) -> SpikingNeuron:
+    def add_neuron(
+        self, neuron_id: str, threshold: float = 1.0, leak: float = 0.1
+    ) -> SpikingNeuron:
         """Add a spiking neuron."""
         neuron = SpikingNeuron(id=neuron_id, threshold=threshold, leak=leak)
         self.neurons[neuron_id] = neuron
@@ -98,7 +103,9 @@ class NeuromorphicChip:
 
     # ── Simulation ──────────────────────────────────────────────────
 
-    def simulate_step(self, inputs: dict[str, float], dt: float = 0.001) -> dict[str, Any]:
+    def simulate_step(
+        self, inputs: dict[str, float], dt: float = 0.001
+    ) -> dict[str, Any]:
         """Simulate one timestep across all neurons."""
         spike_events = []
 
@@ -131,11 +138,13 @@ class NeuromorphicChip:
                             for d, w in self.connections[src]
                         ]
 
-        self._spike_log.append({
-            "spikes": spike_events,
-            "propagated": propagated_inputs,
-            "total_power": self._power_total,
-        })
+        self._spike_log.append(
+            {
+                "spikes": spike_events,
+                "propagated": propagated_inputs,
+                "total_power": self._power_total,
+            }
+        )
 
         return {
             "spike_events": spike_events,
@@ -143,8 +152,9 @@ class NeuromorphicChip:
             "total_spikes": self._total_spikes,
         }
 
-    def simulate_sequence(self, input_sequence: list[dict[str, float]],
-                          dt: float = 0.001) -> list[dict[str, Any]]:
+    def simulate_sequence(
+        self, input_sequence: list[dict[str, float]], dt: float = 0.001
+    ) -> list[dict[str, Any]]:
         """Simulate a sequence of input steps."""
         results = []
         # Reset membrane potentials

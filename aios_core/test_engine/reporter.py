@@ -71,7 +71,7 @@ class TestReporter:
             f"Errors: {report.total_errors}  "
             f"Skipped: {report.total_skipped}",
             f"Duration: {report.duration_ms:.1f}ms",
-            f"",
+            "",
         ]
 
         for suite in report.suites:

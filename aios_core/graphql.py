@@ -14,9 +14,9 @@ from __future__ import annotations
 
 import logging
 import re
-import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GraphQLField:
     """Field definition with resolver and arguments."""
+
     name: str
     resolver: Callable
     type: str = "String"
@@ -34,6 +35,7 @@ class GraphQLField:
 @dataclass
 class GraphQLType:
     """Type definition with fields."""
+
     name: str
     fields: dict[str, GraphQLField] = field(default_factory=dict)
 
@@ -80,7 +82,9 @@ class GraphQLSchema:
 
     # ── Query Execution ──────────────────────────────────────────
 
-    def execute(self, query: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def execute(
+        self, query: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute a GraphQL-like query string.
 
         Parses field names from the query and resolves them.
@@ -125,7 +129,9 @@ class GraphQLSchema:
             result["errors"] = errors
         return result
 
-    def execute_mutation(self, mutation: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def execute_mutation(
+        self, mutation: str, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Execute a mutation."""
         context = context or {}
         # Parse mutation name
@@ -147,7 +153,12 @@ class GraphQLSchema:
                 {
                     "name": t.name,
                     "fields": [
-                        {"name": f.name, "type": f.type, "args": f.args, "description": f.description}
+                        {
+                            "name": f.name,
+                            "type": f.type,
+                            "args": f.args,
+                            "description": f.description,
+                        }
                         for f in t.fields.values()
                     ],
                 }

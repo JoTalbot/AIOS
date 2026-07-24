@@ -14,17 +14,20 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class CircuitState(str, Enum):
     """Circuit breaker state."""
+
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
@@ -32,17 +35,19 @@ class CircuitState(str, Enum):
 
 # ── Metrics ──────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class CircuitMetrics:
     """Tracking counters for circuit breaker events."""
+
     success_count: int = 0
     failure_count: int = 0
-    trip_count: int = 0          # number of times circuit opened
-    rejection_count: int = 0     # calls rejected while OPEN
+    trip_count: int = 0  # number of times circuit opened
+    rejection_count: int = 0  # calls rejected while OPEN
     half_open_successes: int = 0
     half_open_failures: int = 0
-    last_failure_time: Optional[float] = None
-    last_success_time: Optional[float] = None
+    last_failure_time: float | None = None
+    last_success_time: float | None = None
     total_call_time: float = 0.0
 
     def record_success(self, duration: float = 0.0) -> None:
@@ -73,6 +78,7 @@ class CircuitMetrics:
 
 
 # ── Circuit Breaker ─────────────────────────────────────────────────────────
+
 
 class CircuitBreaker:
     """Enhanced circuit breaker with metrics, listeners, and fallback.
@@ -107,7 +113,7 @@ class CircuitBreaker:
         self.fallback = fallback
 
         self.failure_count: int = 0
-        self.last_failure_time: Optional[float] = None
+        self.last_failure_time: float | None = None
         self.state: CircuitState = CircuitState.CLOSED
         self._half_open_calls: int = 0
         self._listeners: list[Callable[[CircuitState, CircuitState], None]] = []
@@ -165,7 +171,7 @@ class CircuitBreaker:
                     self.failure_count = 0
                     self._transition(CircuitState.CLOSED)
                 return result
-            except Exception as e:
+            except Exception:
                 self.failure_count += 1
                 self.last_failure_time = time.time()
                 self.metrics.record_failure()
@@ -183,7 +189,7 @@ class CircuitBreaker:
             self.metrics.record_success(time.time() - start)
             self.failure_count = 0
             return result
-        except Exception as e:
+        except Exception:
             self.failure_count += 1
             self.last_failure_time = time.time()
             self.metrics.record_failure()
@@ -192,7 +198,9 @@ class CircuitBreaker:
                 self.metrics.record_trip()
             raise
 
-    def add_listener(self, listener: Callable[[CircuitState, CircuitState], None]) -> None:
+    def add_listener(
+        self, listener: Callable[[CircuitState, CircuitState], None]
+    ) -> None:
         """Add a state change listener."""
         self._listeners.append(listener)
 
@@ -232,4 +240,5 @@ class CircuitBreaker:
 
 class CircuitOpenError(Exception):
     """Raised when circuit breaker is OPEN and no fallback is provided."""
+
     pass

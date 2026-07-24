@@ -10,7 +10,7 @@ import json
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class JSONRPCError(int, Enum):
@@ -55,7 +55,7 @@ class JSONRPCResponse:
     jsonrpc: str = "2.0"
     id: str | int | None = None
     result: Any = None
-    error: Optional[dict] = None  # {"code": int, "message": str, "data": any}
+    error: dict | None = None  # {"code": int, "message": str, "data": any}
 
 
 @dataclass
@@ -216,7 +216,9 @@ class MCPProtocol:
         return json.dumps(msg, ensure_ascii=False)
 
     @staticmethod
-    def encode_error(id: str | int | None, code: int, message: str, data: Any = None) -> str:
+    def encode_error(
+        id: str | int | None, code: int, message: str, data: Any = None
+    ) -> str:
         """Encode a JSON-RPC 2.0 error response.
 
         Args:
@@ -289,7 +291,9 @@ class MCPPrompt:
 
     name: str
     description: str = ""
-    arguments: list[dict] = field(default_factory=list)  # [{"name", "description", "required"}]
+    arguments: list[dict] = field(
+        default_factory=list
+    )  # [{"name", "description", "required"}]
 
 
 @dataclass
@@ -297,4 +301,6 @@ class MCPPromptResult:
     """Result of rendering a prompt template."""
 
     description: str = ""
-    messages: list[dict] = field(default_factory=list)  # [{"role": "user", "content": {...}}]
+    messages: list[dict] = field(
+        default_factory=list
+    )  # [{"role": "user", "content": {...}}]

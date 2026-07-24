@@ -15,9 +15,8 @@ from __future__ import annotations
 import logging
 import math
 import random
-import time
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GraphTransformerLayer:
     """Single Graph Transformer layer config."""
+
     dim: int = 64
     heads: int = 4
     dropout: float = 0.0
@@ -43,8 +43,9 @@ class GraphTransformer:
     - Positional encoding for graph structure
     """
 
-    def __init__(self, dim: int = 64, heads: int = 4, layers: int = 2,
-                 dropout: float = 0.0) -> None:
+    def __init__(
+        self, dim: int = 64, heads: int = 4, layers: int = 2, dropout: float = 0.0
+    ) -> None:
         self.dim = dim
         self.heads = heads
         self.layers = layers
@@ -52,15 +53,17 @@ class GraphTransformer:
         self.nodes: dict[str, list[float]] = {}
         self.edges: list[tuple[str, str]] = []
         self.edge_features: dict[tuple[str, str], list[float]] = {}
-        self._layer_configs = [GraphTransformerLayer(dim=dim, heads=heads, dropout=dropout)
-                               for _ in range(layers)]
+        self._layer_configs = [
+            GraphTransformerLayer(dim=dim, heads=heads, dropout=dropout)
+            for _ in range(layers)
+        ]
 
     # ── Node/Edge Management ────────────────────────────────────────
 
     def add_node(self, node_id: str, embedding: list[float] | None = None) -> None:
         """Add a node with optional embedding."""
         if embedding:
-            self.nodes[node_id] = embedding[:self.dim]
+            self.nodes[node_id] = embedding[: self.dim]
         else:
             self.nodes[node_id] = [random.gauss(0, 0.1) for _ in range(self.dim)]
 
@@ -82,8 +85,12 @@ class GraphTransformer:
 
     # ── Attention Computation ──────────────────────────────────────
 
-    def _compute_attention(self, node_emb: list[float], neighbor_embs: list[list[float]],
-                           edge_feats: list[list[float]] | None = None) -> list[float]:
+    def _compute_attention(
+        self,
+        node_emb: list[float],
+        neighbor_embs: list[list[float]],
+        edge_feats: list[list[float]] | None = None,
+    ) -> list[float]:
         """Compute multi-head attention for a node."""
         if not neighbor_embs:
             return node_emb
@@ -133,8 +140,9 @@ class GraphTransformer:
 
     # ── Forward Pass ────────────────────────────────────────────────
 
-    def forward(self, nodes: list[dict] | None = None,
-                edges: list[tuple] | None = None) -> list[dict]:
+    def forward(
+        self, nodes: list[dict] | None = None, edges: list[tuple] | None = None
+    ) -> list[dict]:
         """Process graph through transformer layers."""
         edges = edges or self.edges
         node_ids = list(self.nodes.keys())
@@ -159,13 +167,20 @@ class GraphTransformer:
                 attended = self._compute_attention(node_emb, neighbor_embs, edge_feats)
 
                 # Residual connection
-                layer_cfg = self._layer_configs[layer_idx] if layer_idx < len(self._layer_configs) else GraphTransformerLayer()
+                layer_cfg = (
+                    self._layer_configs[layer_idx]
+                    if layer_idx < len(self._layer_configs)
+                    else GraphTransformerLayer()
+                )
                 if layer_cfg.residual:
                     attended = [(a + n) / 2 for a, n in zip(attended, node_emb)]
 
                 # Dropout (simplified)
                 if layer_cfg.dropout > 0:
-                    attended = [v if random.random() > layer_cfg.dropout else 0.0 for v in attended]
+                    attended = [
+                        v if random.random() > layer_cfg.dropout else 0.0
+                        for v in attended
+                    ]
 
                 new_embeddings[node_id] = attended
             self.nodes = new_embeddings
@@ -186,7 +201,9 @@ class GraphTransformer:
         elif method == "sum":
             return [sum(e[d] for e in all_embs) for d in range(self.dim)]
         else:  # mean
-            return [sum(e[d] for e in all_embs) / len(all_embs) for d in range(self.dim)]
+            return [
+                sum(e[d] for e in all_embs) / len(all_embs) for d in range(self.dim)
+            ]
 
     # ── Stats ──────────────────────────────────────────────────────
 

@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import logging
 import random
-import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Option:
     """Temporal abstraction (option/skill) in HRL."""
+
     name: str
     initiation_set: list[str] = field(default_factory=list)
     policy: Callable | None = None
@@ -51,16 +52,26 @@ class HierarchicalRL:
         self._execution_log: list[dict[str, Any]] = []
         self._goal_registry: dict[str, list[str]] = {}
 
-    def add_option(self, option: Option | None = None, name: str = "",
-                   initiation_set: list[str] | None = None,
-                   termination: float = 0.1, goal: str = "",
-                   policy: Callable | None = None) -> Option:
+    def add_option(
+        self,
+        option: Option | None = None,
+        name: str = "",
+        initiation_set: list[str] | None = None,
+        termination: float = 0.1,
+        goal: str = "",
+        policy: Callable | None = None,
+    ) -> Option:
         """Add an option/skill (backward-compatible)."""
         if option:
             self.options[option.name] = option
             return option
-        opt = Option(name=name, initiation_set=initiation_set or [],
-                     policy=policy, termination=termination, goal=goal)
+        opt = Option(
+            name=name,
+            initiation_set=initiation_set or [],
+            policy=policy,
+            termination=termination,
+            goal=goal,
+        )
         self.options[name] = opt
         return opt
 
@@ -75,7 +86,9 @@ class HierarchicalRL:
         # Check initiation sets
         eligible = []
         for name, option in self.options.items():
-            if not option.initiation_set or any(s in state_str for s in option.initiation_set):
+            if not option.initiation_set or any(
+                s in state_str for s in option.initiation_set
+            ):
                 eligible.append(name)
 
         if not eligible:
@@ -109,10 +122,14 @@ class HierarchicalRL:
 
         option.reward_total += reward
 
-        self._execution_log.append({
-            "option": option_name, "steps": steps,
-            "terminated": terminated, "reward": round(reward, 4),
-        })
+        self._execution_log.append(
+            {
+                "option": option_name,
+                "steps": steps,
+                "terminated": terminated,
+                "reward": round(reward, 4),
+            }
+        )
 
         return {
             "option": option_name,
@@ -138,14 +155,19 @@ class HierarchicalRL:
         self._goal_registry[goal] = sub_options
         return sub_options
 
-    def set_high_level_policy(self, state: str, option_weights: dict[str, float]) -> None:
+    def set_high_level_policy(
+        self, state: str, option_weights: dict[str, float]
+    ) -> None:
         """Set high-level policy weights for a state."""
         self.high_level_policy[state] = option_weights
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_reward = (sum(o.reward_total for o in self.options.values()) /
-                     len(self.options)) if self.options else 0.0
+        avg_reward = (
+            (sum(o.reward_total for o in self.options.values()) / len(self.options))
+            if self.options
+            else 0.0
+        )
         return {
             "options": len(self.options),
             "executions": len(self._execution_log),

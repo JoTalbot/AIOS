@@ -26,7 +26,11 @@ class Tenant:
         self.name = name
         self.config: dict[str, Any] = {}
         self.usage: dict[str, int] = {"tasks": 0, "memory": 0, "api_calls": 0}
-        self._quotas: dict[str, int] = {"tasks": 10000, "memory": 1024, "api_calls": 50000}
+        self._quotas: dict[str, int] = {
+            "tasks": 10000,
+            "memory": 1024,
+            "api_calls": 50000,
+        }
         self._created_at: float = time.time()
         self._status: str = "active"
         self._parent: str = ""
@@ -97,7 +101,11 @@ class MultiTenantManager:
 
     def __init__(self) -> None:
         self.tenants: dict[str, Tenant] = {}
-        self._default_quotas: dict[str, int] = {"tasks": 10000, "memory": 1024, "api_calls": 50000}
+        self._default_quotas: dict[str, int] = {
+            "tasks": 10000,
+            "memory": 1024,
+            "api_calls": 50000,
+        }
 
     def create_tenant(self, tenant_id: str, name: str) -> Tenant:
         """Create tenant (backward-compatible)."""
@@ -118,7 +126,12 @@ class MultiTenantManager:
 
     def aggregate_usage(self) -> dict[str, int]:
         """Aggregate usage across all tenants."""
-        totals: dict[str, int] = {"tasks": 0, "memory": 0, "api_calls": 0, "tenants": len(self.tenants)}
+        totals: dict[str, int] = {
+            "tasks": 0,
+            "memory": 0,
+            "api_calls": 0,
+            "tenants": len(self.tenants),
+        }
         for t in self.tenants.values():
             totals["tasks"] += t.usage.get("tasks", 0)
             totals["memory"] += t.usage.get("memory", 0)

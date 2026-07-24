@@ -13,7 +13,6 @@ Pure Python — no external optimization libraries required.
 
 from __future__ import annotations
 
-import math
 import random
 import time
 from dataclasses import dataclass, field
@@ -27,7 +26,7 @@ class ParamType(Enum):
     INT = "int"
     FLOAT = "float"
     BOOL = "bool"
-    CHOICE = "choice"    # Enum-like: discrete set of options
+    CHOICE = "choice"  # Enum-like: discrete set of options
 
 
 class TuningStrategy(Enum):
@@ -36,7 +35,7 @@ class TuningStrategy(Enum):
     GRID_SEARCH = "grid_search"
     RANDOM_SEARCH = "random_search"
     HILL_CLIMBING = "hill_climbing"
-    ADAPTIVE = "adaptive"      # Bayesian-style exploration
+    ADAPTIVE = "adaptive"  # Bayesian-style exploration
 
 
 @dataclass
@@ -45,10 +44,10 @@ class TunableParam:
 
     name: str
     param_type: ParamType
-    min_value: float | None = None     # For INT/FLOAT
-    max_value: float | None = None     # For INT/FLOAT
-    step: float | None = None          # Step size for grid search
-    choices: list[str] | None = None   # For CHOICE type
+    min_value: float | None = None  # For INT/FLOAT
+    max_value: float | None = None  # For INT/FLOAT
+    step: float | None = None  # Step size for grid search
+    choices: list[str] | None = None  # For CHOICE type
     default: float | str | bool = 0
     current: float | str | bool | None = None
     best: float | str | bool | None = None
@@ -127,11 +126,11 @@ class TuningResult:
     """Result of a tuning session."""
 
     strategy: TuningStrategy
-    params: dict[str, Any]       # Best parameter configuration found
-    score: float                 # Best score achieved
-    iterations: int              # Number of configurations tested
-    improvement_pct: float       # Improvement over default
-    duration: float              # Time spent tuning (seconds)
+    params: dict[str, Any]  # Best parameter configuration found
+    score: float  # Best score achieved
+    iterations: int  # Number of configurations tested
+    improvement_pct: float  # Improvement over default
+    duration: float  # Time spent tuning (seconds)
     history: list[tuple[dict[str, Any], float]] = field(default_factory=list)
 
 
@@ -139,12 +138,12 @@ class TuningResult:
 class PerformanceFeedback:
     """Performance feedback from a scraping session."""
 
-    params: dict[str, Any]       # Parameters used in this session
-    success_rate: float          # 0.0 to 1.0
-    latency_ms: float            # Average response latency
-    items_collected: int         # Number of items scraped
-    errors: int                  # Number of errors
-    cost: float = 0.0            # Optional cost metric
+    params: dict[str, Any]  # Parameters used in this session
+    success_rate: float  # 0.0 to 1.0
+    latency_ms: float  # Average response latency
+    items_collected: int  # Number of items scraped
+    errors: int  # Number of errors
+    cost: float = 0.0  # Optional cost metric
     timestamp: float = field(default_factory=time.time)
 
 
@@ -257,7 +256,12 @@ class AutoTuningEngine:
         # Error penalty
         error_penalty = min(1.0, feedback.errors / 10.0)
 
-        score = success * 0.5 + latency_score * 0.2 + items_score * 0.3 - error_penalty * 0.1
+        score = (
+            success * 0.5
+            + latency_score * 0.2
+            + items_score * 0.3
+            - error_penalty * 0.1
+        )
         return max(0.0, min(1.0, score))
 
     def get_current_params(self) -> dict[str, Any]:
@@ -301,8 +305,14 @@ class AutoTuningEngine:
                 # Perturb best value
                 best = param.best if param.best is not None else param.default
                 if param.param_type in (ParamType.INT, ParamType.FLOAT):
-                    perturbation = (param.max_value - param.min_value) * 0.1 if param.max_value and param.min_value else 1.0
-                    config[name] = param.clamp(best + random.uniform(-perturbation, perturbation))
+                    perturbation = (
+                        (param.max_value - param.min_value) * 0.1
+                        if param.max_value and param.min_value
+                        else 1.0
+                    )
+                    config[name] = param.clamp(
+                        best + random.uniform(-perturbation, perturbation)
+                    )
                     if param.param_type == ParamType.INT:
                         config[name] = int(config[name])
                 elif param.param_type == ParamType.BOOL:
@@ -328,7 +338,11 @@ class AutoTuningEngine:
         """
         best = param.best if param.best is not None else param.default
         if param.param_type in (ParamType.INT, ParamType.FLOAT):
-            range_size = (param.max_value - param.min_value) if param.max_value and param.min_value else 10.0
+            range_size = (
+                (param.max_value - param.min_value)
+                if param.max_value and param.min_value
+                else 10.0
+            )
             # Decreasing perturbation as we get closer to best
             perturbation = range_size * 0.2 * random.uniform(-1, 1)
             return param.clamp(float(best) + perturbation)
@@ -363,7 +377,9 @@ class AutoTuningEngine:
         if effective_strategy == TuningStrategy.GRID_SEARCH:
             return self.tune_grid(scoring_fn=effective_scoring)
 
-        best_config = dict(self._best_params) if self._best_params else self.get_default_params()
+        best_config = (
+            dict(self._best_params) if self._best_params else self.get_default_params()
+        )
         best_score = self._best_score if self._best_score else 0.0
 
         for i in range(effective_max):
@@ -383,7 +399,11 @@ class AutoTuningEngine:
 
         # Compute improvement
         default_score = self._default_score if self._default_score > 0 else 0.1
-        improvement = ((best_score - default_score) / default_score * 100) if default_score > 0 else 0.0
+        improvement = (
+            ((best_score - default_score) / default_score * 100)
+            if default_score > 0
+            else 0.0
+        )
 
         duration = time.time() - start_time
 
@@ -466,7 +486,9 @@ class AutoTuningEngine:
                 if param.max_value and param.min_value:
                     range_size = param.max_value - param.min_value
                     if range_size > 0:
-                        proximity = 1 - abs(float(val_a or 0) - float(val_b or 0)) / range_size
+                        proximity = (
+                            1 - abs(float(val_a or 0) - float(val_b or 0)) / range_size
+                        )
                         matches += proximity
             # Choice/bool: exact match only
 
@@ -491,7 +513,7 @@ class AutoTuningEngine:
 
         # Generate all combinations (limited by max_iterations)
         configs = self._grid_combinations(param_grids)
-        configs = configs[:self.max_iterations]
+        configs = configs[: self.max_iterations]
 
         history: list[tuple[dict[str, Any], float]] = []
         best_config = self.get_default_params()
@@ -510,7 +532,11 @@ class AutoTuningEngine:
                 self._params[name].best = value
 
         default_score = self._default_score if self._default_score > 0 else 0.1
-        improvement = ((best_score - default_score) / default_score * 100) if default_score > 0 else 0.0
+        improvement = (
+            ((best_score - default_score) / default_score * 100)
+            if default_score > 0
+            else 0.0
+        )
 
         return TuningResult(
             strategy=TuningStrategy.GRID_SEARCH,
@@ -522,9 +548,7 @@ class AutoTuningEngine:
             history=history,
         )
 
-    def _grid_combinations(
-        self, param_grids: dict[str, list]
-    ) -> list[dict[str, Any]]:
+    def _grid_combinations(self, param_grids: dict[str, list]) -> list[dict[str, Any]]:
         """Generate all combinations from parameter grids.
 
         Args:
@@ -614,7 +638,9 @@ class AutoTuningEngine:
             "default_score": round(self._default_score, 4),
             "improvement_pct": round(
                 ((self._best_score - self._default_score) / self._default_score * 100)
-                if self._default_score > 0 else 0.0, 2
+                if self._default_score > 0
+                else 0.0,
+                2,
             ),
             "iterations_run": len(self._tuning_history),
             "best_params": dict(self._best_params),

@@ -6,8 +6,7 @@ Supports UUID-based IDs, timeout expiration, and rich querying.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
 
 from .storage import Database
 
@@ -21,7 +20,7 @@ class ApprovalManager:
 
     def __init__(
         self,
-        db: Optional[Database] = None,
+        db: Database | None = None,
         timeout_seconds: int = 86400,
         max_pending: int = 100,
     ):
@@ -34,8 +33,8 @@ class ApprovalManager:
         self,
         action: dict,
         evaluation_id: str | None = None,
-        validation_data: Optional[dict] = None,
-        metadata: Optional[dict] = None,
+        validation_data: dict | None = None,
+        metadata: dict | None = None,
     ) -> dict:
         """Request approval for an action.
 
@@ -50,7 +49,9 @@ class ApprovalManager:
                 "SELECT COUNT(*) as cnt FROM approvals WHERE status = 'pending'"
             )["cnt"]
             if pending_count >= self.max_pending:
-                raise RuntimeError(f"Max pending approvals ({self.max_pending}) reached")
+                raise RuntimeError(
+                    f"Max pending approvals ({self.max_pending}) reached"
+                )
 
             self.db.execute(
                 """INSERT INTO approvals
@@ -83,15 +84,17 @@ class ApprovalManager:
         }
         return approval
 
-    def approve(self, approval_id: str, resolved_by: str = "human") -> Optional[dict]:
+    def approve(self, approval_id: str, resolved_by: str = "human") -> dict | None:
         """Approve a pending action by its UUID."""
         return self._resolve(approval_id, "approved", resolved_by)
 
-    def deny(self, approval_id: str, resolved_by: str = "human") -> Optional[dict]:
+    def deny(self, approval_id: str, resolved_by: str = "human") -> dict | None:
         """Deny a pending action by its UUID."""
         return self._resolve(approval_id, "denied", resolved_by)
 
-    def _resolve(self, approval_id: str, new_status: str, resolved_by: str) -> Optional[dict]:
+    def _resolve(
+        self, approval_id: str, new_status: str, resolved_by: str
+    ) -> dict | None:
         """Resolve an approval (approve or deny)."""
         if self.db:
             record = self._get_by_id(approval_id)
@@ -111,10 +114,12 @@ class ApprovalManager:
 
         return None  # In-memory not supported for UUID-based access
 
-    def _get_by_id(self, approval_id: str) -> Optional[dict]:
+    def _get_by_id(self, approval_id: str) -> dict | None:
         """Get a single approval by ID."""
         if self.db:
-            row = self.db.query_one("SELECT * FROM approvals WHERE id = ?", (approval_id,))
+            row = self.db.query_one(
+                "SELECT * FROM approvals WHERE id = ?", (approval_id,)
+            )
             if row is None:
                 return None
             return self._row_to_dict(row)
@@ -123,7 +128,11 @@ class ApprovalManager:
     def _row_to_dict(self, row: dict) -> dict:
         """Convert a DB row to a friendly dict."""
         action = Database.from_json(row["action_data"])
-        validation = Database.from_json(row["validation_data"]) if row["validation_data"] else None
+        validation = (
+            Database.from_json(row["validation_data"])
+            if row["validation_data"]
+            else None
+        )
         metadata = Database.from_json(row["metadata"]) if row["metadata"] else None
         return {
             "id": row["id"],
@@ -166,7 +175,8 @@ class ApprovalManager:
                 )
             else:
                 rows = self.db.query(
-                    "SELECT * FROM approvals " "ORDER BY requested_at DESC LIMIT ? OFFSET ?",
+                    "SELECT * FROM approvals "
+                    "ORDER BY requested_at DESC LIMIT ? OFFSET ?",
                     (limit, offset),
                 )
             return [self._row_to_dict(r) for r in rows]
@@ -176,9 +186,11 @@ class ApprovalManager:
         """Mark expired pending approvals as 'expired'."""
         if self.db is None:
             return
-        from datetime import datetime, timedelta, timezone
+        from datetime import timedelta
 
-        cutoff = (datetime.now(timezone.utc) - timedelta(seconds=self.timeout_seconds)).isoformat()
+        cutoff = (
+            datetime.now(UTC) - timedelta(seconds=self.timeout_seconds)
+        ).isoformat()
         now = Database.now_iso()
         self.db.execute(
             """UPDATE approvals
@@ -191,7 +203,9 @@ class ApprovalManager:
         """Return approval statistics."""
         if self.db:
             self._expire_timeouts()
-            rows = self.db.query("SELECT status, COUNT(*) as cnt FROM approvals GROUP BY status")
+            rows = self.db.query(
+                "SELECT status, COUNT(*) as cnt FROM approvals GROUP BY status"
+            )
             return {
                 "by_status": {r["status"]: r["cnt"] for r in rows},
                 "timeout_seconds": self.timeout_seconds,

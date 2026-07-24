@@ -17,15 +17,17 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class ScalingDirection(str, Enum):
     """Scaling direction."""
+
     UP = "up"
     DOWN = "down"
     NONE = "none"
@@ -33,9 +35,11 @@ class ScalingDirection(str, Enum):
 
 # ── Scaling Policy ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class ScalingPolicy:
     """Single threshold rule for a metric."""
+
     name: str
     metric_name: str  # cpu_usage, queue_size, error_rate, latency
     scale_up_threshold: float = 80.0
@@ -46,9 +50,11 @@ class ScalingPolicy:
 
 # ── Scaling Event ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class ScalingEvent:
     """Recorded scaling decision with reasons."""
+
     direction: ScalingDirection
     replicas_before: int
     replicas_after: int
@@ -58,6 +64,7 @@ class ScalingEvent:
 
 
 # ── Auto-Scaler ──────────────────────────────────────────────────────────────
+
 
 class AutoScaler:
     """Full HPA-like auto-scaler with policies, cooldown, prediction.
@@ -135,7 +142,10 @@ class AutoScaler:
 
         # ── Check stabilization window ──
         # Don't scale down if we recently scaled up
-        if self._last_scale_up_time and now - self._last_scale_up_time < self.stabilization_window:
+        if (
+            self._last_scale_up_time
+            and now - self._last_scale_up_time < self.stabilization_window
+        ):
             # Only allow scale UP during stabilization
             pass
 
@@ -150,14 +160,21 @@ class AutoScaler:
             if value > policy.scale_up_threshold:
                 should_scale_up = True
                 should_scale_down = False
-                up_reasons.append(f"{policy.metric_name}={value} > {policy.scale_up_threshold}")
+                up_reasons.append(
+                    f"{policy.metric_name}={value} > {policy.scale_up_threshold}"
+                )
             elif value < policy.scale_down_threshold:
-                down_reasons.append(f"{policy.metric_name}={value} < {policy.scale_down_threshold}")
+                down_reasons.append(
+                    f"{policy.metric_name}={value} < {policy.scale_down_threshold}"
+                )
             else:
                 should_scale_down = False  # at least one metric in normal range
 
         # ── Stabilization override ──
-        if self._last_scale_up_time and now - self._last_scale_up_time < self.stabilization_window:
+        if (
+            self._last_scale_up_time
+            and now - self._last_scale_up_time < self.stabilization_window
+        ):
             should_scale_down = False
 
         if should_scale_up:
@@ -179,9 +196,13 @@ class AutoScaler:
             cpu = self._current_metrics.get("cpu_usage", 0.0)
             queue = self._current_metrics.get("queue_size", 0.0)
             if cpu > 80 or queue > 50:
-                self.current_replicas = min(self.current_replicas + 1, self.max_replicas)
+                self.current_replicas = min(
+                    self.current_replicas + 1, self.max_replicas
+                )
             elif cpu < 30 and queue < 5:
-                self.current_replicas = max(self.current_replicas - 1, self.min_replicas)
+                self.current_replicas = max(
+                    self.current_replicas - 1, self.min_replicas
+                )
             return self.current_replicas
 
         direction = self.evaluate()
@@ -194,7 +215,7 @@ class AutoScaler:
                 direction=ScalingDirection.UP,
                 replicas_before=self.current_replicas,
                 replicas_after=new_replicas,
-                reason=f"Metrics exceeded thresholds",
+                reason="Metrics exceeded thresholds",
                 metrics=self._current_metrics.copy(),
             )
             self.events.append(event)
@@ -208,7 +229,7 @@ class AutoScaler:
                 direction=ScalingDirection.DOWN,
                 replicas_before=self.current_replicas,
                 replicas_after=new_replicas,
-                reason=f"Metrics below thresholds",
+                reason="Metrics below thresholds",
                 metrics=self._current_metrics.copy(),
             )
             self.events.append(event)
@@ -226,7 +247,9 @@ class AutoScaler:
 
     # ── History ──────────────────────────────────────────────────
 
-    def get_events(self, direction: ScalingDirection | None = None, limit: int = 50) -> list[ScalingEvent]:
+    def get_events(
+        self, direction: ScalingDirection | None = None, limit: int = 50
+    ) -> list[ScalingEvent]:
         """Return scaling events, optionally filtered by direction."""
         events = self.events
         if direction:

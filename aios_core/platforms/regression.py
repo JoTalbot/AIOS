@@ -12,7 +12,6 @@ CLI: ``aios platforms marker-check --platform X --dump new_feed.xml``.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Union
 
 import yaml
 
@@ -20,7 +19,7 @@ from .calibrate import CalibrationAdvisor
 from .parsergen import extract_markers
 
 
-def diff_markers(old_hints: Dict, new_hints: Dict) -> Dict[str, list[str]]:
+def diff_markers(old_hints: dict, new_hints: dict) -> dict[str, list[str]]:
     """Сравнивает card-маркеры двух parser_hints.
 
     Returns:
@@ -37,9 +36,9 @@ def diff_markers(old_hints: Dict, new_hints: Dict) -> Dict[str, list[str]]:
 
 def check_platform_markers(
     platform_name: str,
-    xml_source: Union[str, Path],
+    xml_source: str | Path,
     directory="platforms",
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """Проверяет дрейф маркеров платформы по свежему дампу выдачи.
 
     Args:
@@ -76,7 +75,7 @@ def check_platform_markers(
         "platform": platform_name,
         "status": "drift" if diff["removed"] else "ok",
         "hint": (
-            "baseline markers lost — recalibrate: " "calibrate --write && codegen --force"
+            "baseline markers lost — recalibrate: calibrate --write && codegen --force"
             if diff["removed"]
             else "baseline markers intact"
         ),

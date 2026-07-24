@@ -15,17 +15,20 @@ from __future__ import annotations
 import logging
 import random
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Service Instance ─────────────────────────────────────────────────────────
 
+
 @dataclass
 class ServiceInstance:
     """Single service endpoint with health and metadata."""
+
     name: str
     endpoint: str
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -57,9 +60,11 @@ class ServiceInstance:
 
 # ── Traffic Rule ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class TrafficRule:
     """Weight-based traffic splitting between service versions."""
+
     name: str
     source: str
     targets: dict[str, int] = field(default_factory=dict)  # target_name → weight%
@@ -80,6 +85,7 @@ class TrafficRule:
 
 
 # ── Service Mesh ─────────────────────────────────────────────────────────────
+
 
 class ServiceMesh:
     """Full service mesh with discovery, health, traffic splitting, retry.
@@ -102,10 +108,17 @@ class ServiceMesh:
 
     # ── Service Registration ─────────────────────────────────────
 
-    def register_service(self, name: str, endpoint: str, metadata: dict[str, Any] | None = None,
-                         weight: int = 100) -> ServiceInstance:
+    def register_service(
+        self,
+        name: str,
+        endpoint: str,
+        metadata: dict[str, Any] | None = None,
+        weight: int = 100,
+    ) -> ServiceInstance:
         """Register a service instance."""
-        instance = ServiceInstance(name=name, endpoint=endpoint, metadata=metadata or {}, weight=weight)
+        instance = ServiceInstance(
+            name=name, endpoint=endpoint, metadata=metadata or {}, weight=weight
+        )
         self.services[name] = instance
         return instance
 
@@ -145,9 +158,13 @@ class ServiceMesh:
 
     # ── Traffic Routing ──────────────────────────────────────────
 
-    def add_route(self, source: str, targets: dict[str, int], name: str | None = None) -> TrafficRule:
+    def add_route(
+        self, source: str, targets: dict[str, int], name: str | None = None
+    ) -> TrafficRule:
         """Add a traffic splitting rule."""
-        rule = TrafficRule(name=name or f"{source}_route", source=source, targets=targets)
+        rule = TrafficRule(
+            name=name or f"{source}_route", source=source, targets=targets
+        )
         self.routes.append(rule)
         return rule
 

@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,9 @@ logger = logging.getLogger(__name__)
 class VerificationResult:
     """Verification outcome."""
 
-    def __init__(self, property_name: str, verified: bool, counterexample: Any = None) -> None:
+    def __init__(
+        self, property_name: str, verified: bool, counterexample: Any = None
+    ) -> None:
         self.property_name = property_name
         self.verified = verified
         self.counterexample = counterexample
@@ -53,7 +56,11 @@ class FormalVerifier:
             vr = VerificationResult(property_name, verified, counterexample)
             self._results.append(vr)
             self._coverage[property_name] = 1.0 if verified else 0.5
-            return {"verified": verified, "property": property_name, "proof_steps": vr.proof_steps}
+            return {
+                "verified": verified,
+                "property": property_name,
+                "proof_steps": vr.proof_steps,
+            }
         except Exception as e:
             vr = VerificationResult(property_name, False, {"error": str(e)})
             self._results.append(vr)
@@ -70,7 +77,10 @@ class FormalVerifier:
         """Generate a counterexample for a failed property."""
         return {
             "property": property_name,
-            "counterexample": {"input": "boundary_case", "behavior": "violates_property"},
+            "counterexample": {
+                "input": "boundary_case",
+                "behavior": "violates_property",
+            },
             "minimization_steps": random.randint(3, 10),
         }
 

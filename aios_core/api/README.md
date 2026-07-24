@@ -41,6 +41,7 @@ and external system connections.
 from aios_core.api.enhanced import create_enhanced_api
 import asyncio
 
+
 async def main():
     # Create enhanced API
     api = create_enhanced_api(db_path=":memory:")
@@ -58,6 +59,7 @@ async def main():
         await asyncio.sleep(3600)  # Run for 1 hour
     finally:
         await api.stop_background_services()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -123,19 +125,14 @@ websocket_config = {
         "endpoint": "/ws",
         "auth_required": True,
         "tls": False,
-        "rate_limit": 100
-    }
+        "rate_limit": 100,
+    },
 }
 
 # GraphQL configuration
 graphql_config = {
     "type": "graphql",
-    "config": {
-        "host": "localhost",
-        "port": 8766,
-        "endpoint": "/graphql",
-        "tls": True
-    }
+    "config": {"host": "localhost", "port": 8766, "endpoint": "/graphql", "tls": True},
 }
 ```
 
@@ -147,8 +144,8 @@ webhook_config = {
     "type": "webhook",
     "config": {
         "endpoint": "/orders/webhook",
-        "handler_url": "https://example.com/webhook-handler"
-    }
+        "handler_url": "https://example.com/webhook-handler",
+    },
 }
 
 # External system connection
@@ -157,8 +154,8 @@ external_system_config = {
     "config": {
         "base_url": "https://api.example.com",
         "api_key": "your-api-key",
-        "timeout": 30
-    }
+        "timeout": 30,
+    },
 }
 ```
 
@@ -171,10 +168,7 @@ alert_config = {
     "severity": "high",
     "title": "High CPU Usage",
     "message": "CPU usage is above 80%",
-    "metadata": {
-        "cpu_threshold": 80.0,
-        "escalation": "immediate"
-    }
+    "metadata": {"cpu_threshold": 80.0, "escalation": "immediate"},
 }
 ```
 
@@ -188,8 +182,8 @@ async def create_webhook_integration(api):
         "type": "webhook",
         "config": {
             "endpoint": "/orders/webhook",
-            "handler_url": "https://example.com/webhook-handler"
-        }
+            "handler_url": "https://example.com/webhook-handler",
+        },
     }
 
     response = await api._integrations_create(webhook_data)
@@ -200,11 +194,7 @@ async def create_webhook_integration(api):
 
 ```python
 async def run_benchmark(api):
-    benchmark_data = {
-        "type": "webhook",
-        "duration": 60,
-        "rate": 10
-    }
+    benchmark_data = {"type": "webhook", "duration": 60, "rate": 10}
 
     response = await api._integration_benchmark(benchmark_data)
     print(f"Benchmark results: {response}")
@@ -218,12 +208,12 @@ async def check_health(api):
     health_data = response.json()
     print(f"System health: {health_data['status']}")
 
-    if health_data['status'] == 'healthy':
+    if health_data["status"] == "healthy":
         print("All systems operational")
     else:
         print("Issues detected:")
-        for component, status in health_data['components'].items():
-            if status != 'healthy':
+        for component, status in health_data["components"].items():
+            if status != "healthy":
                 print(f"- {component}: {status}")
 ```
 
@@ -298,6 +288,7 @@ Enable debug logging for troubleshooting:
 
 ```python
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
 
 # Create API with debug logging
@@ -322,7 +313,7 @@ async def perform_health_checks(api):
     return {
         "system": health_response.json(),
         "integrations": integration_health.json(),
-        "protocols": protocol_status.json()
+        "protocols": protocol_status.json(),
     }
 ```
 
@@ -334,17 +325,19 @@ async def perform_health_checks(api):
 import pytest
 from aios_core.api.enhanced import create_enhanced_api
 
+
 @pytest.fixture
 def api():
     return create_enhanced_api(db_path=":memory:")
+
 
 async def test_webhook_creation(api):
     webhook_data = {
         "type": "webhook",
         "config": {
             "endpoint": "/test/webhook",
-            "handler_url": "https://example.com/test"
-        }
+            "handler_url": "https://example.com/test",
+        },
     }
 
     response = await api._integrations_create(webhook_data)
@@ -360,8 +353,8 @@ async def test_full_integration(api):
         "type": "webhook",
         "config": {
             "endpoint": "/test/webhook",
-            "handler_url": "https://example.com/test"
-        }
+            "handler_url": "https://example.com/test",
+        },
     }
 
     response = await api._integrations_create(webhook_data)
@@ -370,10 +363,7 @@ async def test_full_integration(api):
     # Test webhook functionality
     test_data = {
         "test_type": "webhook",
-        "config": {
-            "endpoint": "/test/webhook",
-            "payload": {"test": True}
-        }
+        "config": {"endpoint": "/test/webhook", "payload": {"test": True}},
     }
 
     test_response = await api._integration_test(test_data)

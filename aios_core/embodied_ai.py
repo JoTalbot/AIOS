@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SensorReading:
     """Timestamped sensor data."""
+
     sensor_type: str
     value: float
     timestamp: float = field(default_factory=time.time)
@@ -47,7 +48,9 @@ class RobotInterface:
         """Read sensor data (backward-compatible + enhanced)."""
         # Generate simulated sensor reading
         value = random.uniform(0, 100)
-        reading = SensorReading(sensor_type=sensor, value=value, confidence=random.uniform(0.8, 1.0))
+        reading = SensorReading(
+            sensor_type=sensor, value=value, confidence=random.uniform(0.8, 1.0)
+        )
         self.sensors[sensor] = reading
         return reading
 
@@ -74,7 +77,11 @@ class RobotInterface:
     def sense_obstacles(self) -> list[dict[str, float]]:
         """Detect obstacles in environment."""
         self._obstacles = [
-            {"x": random.uniform(-5, 5), "y": random.uniform(-5, 5), "size": random.uniform(0.5, 2.0)}
+            {
+                "x": random.uniform(-5, 5),
+                "y": random.uniform(-5, 5),
+                "size": random.uniform(0.5, 2.0),
+            }
             for _ in range(random.randint(1, 5))
         ]
         return self._obstacles
@@ -83,7 +90,7 @@ class RobotInterface:
         """Compute avoidance action for an obstacle."""
         dx = obstacle["x"] - self._position["x"]
         dy = obstacle["y"] - self._position["y"]
-        dist = math.sqrt(dx ** 2 + dy ** 2)
+        dist = math.sqrt(dx**2 + dy**2)
         if dist < obstacle["size"] * 2:
             # Move away from obstacle
             return {"wheel_left": -dx / dist, "wheel_right": -dy / dist}
@@ -104,7 +111,11 @@ class RobotInterface:
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict (backward-compatible)."""
-        return {"robot": self.robot_id, "sensors": len(self.sensors), "actuators": len(self.actuators)}
+        return {
+            "robot": self.robot_id,
+            "sensors": len(self.sensors),
+            "actuators": len(self.actuators),
+        }
 
 
 class EmbodiedAI:
@@ -137,7 +148,9 @@ class EmbodiedAI:
             "pending_tasks": len(self._task_queue),
         }
 
-    def path_plan(self, robot_id: str, goal: dict[str, float]) -> list[dict[str, float]]:
+    def path_plan(
+        self, robot_id: str, goal: dict[str, float]
+    ) -> list[dict[str, float]]:
         """Simple path planning: straight line waypoints."""
         if robot_id not in self.robots:
             return []

@@ -16,14 +16,14 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
 from aios_core.modules.olx.text_utils import normalize_text
 
 _DURATION_RE = re.compile(r"^\d{1,2}:\d{2}$")
 # «1 234 перегляди» / «56 вподобань» / «12 comments» / «7 likes»
 _COUNT_RE = re.compile(
-    r"^(\d[\d\s\u00a0,.]*)\s*" r"(перегляд\w*|просмотр\w*|views?|вподобан\w*|лайк\w*|likes?)$",
+    r"^(\d[\d\s\u00a0,.]*)\s*"
+    r"(перегляд\w*|просмотр\w*|views?|вподобан\w*|лайк\w*|likes?)$",
     re.IGNORECASE,
 )
 _DEFAULT_MARKERS = ("reel", "video", "clips")
@@ -40,7 +40,7 @@ class VideoCard:
     likes: int | None = None
     marker: str | None = None
     query: str | None = None
-    raw_texts: Tuple[str, ...] = ()
+    raw_texts: tuple[str, ...] = ()
 
     @property
     def fingerprint(self) -> str:
@@ -48,7 +48,7 @@ class VideoCard:
         base = f"video:{(self.title or '').strip().lower()}|{self.duration or ''}"
         return hashlib.sha256(base.encode("utf-8")).hexdigest()[:16]
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
         return {
             "fingerprint": self.fingerprint,
@@ -61,7 +61,7 @@ class VideoCard:
         }
 
 
-def parse_counter_text(text: str) -> Optional[Tuple[str, int]]:
+def parse_counter_text(text: str) -> tuple[str, int] | None:
     """«1 234 перегляди» → ("views", 1234); «56 лайків» → ("likes", 56)."""
     match = _COUNT_RE.match(text.strip())
     if not match:
@@ -85,19 +85,20 @@ class HintVideoParser:
         """Initialize HintVideoParser."""
         markers = video_markers or list(_DEFAULT_MARKERS)
         self.markers = (
-            tuple(str(m).rsplit("/", 1)[-1].lower() for m in markers if m) or _DEFAULT_MARKERS
+            tuple(str(m).rsplit("/", 1)[-1].lower() for m in markers if m)
+            or _DEFAULT_MARKERS
         )
 
     def parse(
         self,
-        xml_source: Union[str, Path, ET.Element],
+        xml_source: str | Path | ET.Element,
         query: str | None = None,
-    ) -> List[VideoCard]:
+    ) -> list[VideoCard]:
         """Разбирает дамп ленты на видео-карточки (хотя бы тайм-код/текст)."""
         from aios_core.platforms.calibrate import CalibrationAdvisor
 
         root = CalibrationAdvisor._root(xml_source)
-        cards: List[VideoCard] = []
+        cards: list[VideoCard] = []
         for node in root.iter("node"):
             resource_id = (node.attrib.get("resource-id") or "").lower()
             if not any(marker in resource_id for marker in self.markers):
@@ -120,7 +121,7 @@ class HintVideoParser:
         texts: list[str],
         marker: str | None = None,
         query: str | None = None,
-    ) -> Optional[VideoCard]:
+    ) -> VideoCard | None:
         """Классификация текстов карточки: тайм-код/счётчики/подпись."""
         duration: str | None = None
         views: int | None = None

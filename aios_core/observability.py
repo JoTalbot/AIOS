@@ -18,15 +18,17 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class MetricKind(str, Enum):
     """Metric types."""
+
     COUNTER = "counter"
     GAUGE = "gauge"
     HISTOGRAM = "histogram"
@@ -34,9 +36,11 @@ class MetricKind(str, Enum):
 
 # ── Metric Entry ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class MetricEntry:
     """Single metric with kind, labels, and accumulated values."""
+
     name: str
     kind: MetricKind
     labels: dict[str, str] = field(default_factory=dict)
@@ -66,9 +70,11 @@ class MetricEntry:
 
 # ── Span ────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class SpanEvent:
     """Event within a trace span."""
+
     name: str
     timestamp: float = field(default_factory=time.time)
     attributes: dict[str, Any] = field(default_factory=dict)
@@ -77,12 +83,13 @@ class SpanEvent:
 @dataclass
 class Span:
     """Trace span with start/end, attributes, and events."""
+
     trace_id: str
     span_id: str = ""
     name: str = ""
-    parent_span_id: Optional[str] = None
+    parent_span_id: str | None = None
     start_time: float = 0.0
-    end_time: Optional[float] = None
+    end_time: float | None = None
     attributes: dict[str, Any] = field(default_factory=dict)
     events: list[SpanEvent] = field(default_factory=list)
     status: str = "ok"  # ok, error
@@ -104,18 +111,21 @@ class Span:
 
 # ── Log Entry ───────────────────────────────────────────────────────────────
 
+
 @dataclass
 class LogEntry:
     """Structured log record."""
+
     level: str
     message: str
     timestamp: float = field(default_factory=time.time)
     attributes: dict[str, Any] = field(default_factory=dict)
-    trace_id: Optional[str] = None
-    span_id: Optional[str] = None
+    trace_id: str | None = None
+    span_id: str | None = None
 
 
 # ── Observability ───────────────────────────────────────────────────────────
+
 
 class Observability:
     """Full observability engine: metrics, traces, logs.
@@ -136,32 +146,56 @@ class Observability:
 
     # ── Metrics ──────────────────────────────────────────────────
 
-    def register_metric(self, name: str, kind: MetricKind, unit: str = "",
-                        description: str = "", labels: dict[str, str] | None = None) -> MetricEntry:
+    def register_metric(
+        self,
+        name: str,
+        kind: MetricKind,
+        unit: str = "",
+        description: str = "",
+        labels: dict[str, str] | None = None,
+    ) -> MetricEntry:
         """Register a metric."""
-        entry = MetricEntry(name=name, kind=kind, unit=unit, description=description, labels=labels or {})
+        entry = MetricEntry(
+            name=name,
+            kind=kind,
+            unit=unit,
+            description=description,
+            labels=labels or {},
+        )
         self.metrics[entry.key()] = entry
         return entry
 
-    def record_metric(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
+    def record_metric(
+        self, name: str, value: float, labels: dict[str, str] | None = None
+    ) -> None:
         """Record a metric value (backward-compatible)."""
         label_str = labels or {}
         entry = MetricEntry(name=name, kind=MetricKind.GAUGE, labels=label_str)
         entry.set_value(value)
         self.metrics[entry.key()] = entry
 
-    def increment(self, name: str, amount: float = 1.0, labels: dict[str, str] | None = None) -> None:
+    def increment(
+        self, name: str, amount: float = 1.0, labels: dict[str, str] | None = None
+    ) -> None:
         """Increment a counter metric."""
         key = MetricEntry(name=name, kind=MetricKind.COUNTER, labels=labels or {}).key()
         if key not in self.metrics:
-            self.metrics[key] = MetricEntry(name=name, kind=MetricKind.COUNTER, labels=labels or {})
+            self.metrics[key] = MetricEntry(
+                name=name, kind=MetricKind.COUNTER, labels=labels or {}
+            )
         self.metrics[key].increment(amount)
 
-    def observe_histogram(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
+    def observe_histogram(
+        self, name: str, value: float, labels: dict[str, str] | None = None
+    ) -> None:
         """Record histogram observation."""
-        key = MetricEntry(name=name, kind=MetricKind.HISTOGRAM, labels=labels or {}).key()
+        key = MetricEntry(
+            name=name, kind=MetricKind.HISTOGRAM, labels=labels or {}
+        ).key()
         if key not in self.metrics:
-            self.metrics[key] = MetricEntry(name=name, kind=MetricKind.HISTOGRAM, labels=labels or {})
+            self.metrics[key] = MetricEntry(
+                name=name, kind=MetricKind.HISTOGRAM, labels=labels or {}
+            )
         self.metrics[key].observe(value)
 
     def get_metric(self, name: str, labels: dict[str, str] | None = None) -> float:
@@ -170,7 +204,9 @@ class Observability:
         entry = self.metrics.get(key)
         return entry.value if entry else 0.0
 
-    def get_metric_entry(self, name: str, labels: dict[str, str] | None = None) -> MetricEntry | None:
+    def get_metric_entry(
+        self, name: str, labels: dict[str, str] | None = None
+    ) -> MetricEntry | None:
         """Get full metric entry."""
         key = MetricEntry(name=name, kind=MetricKind.GAUGE, labels=labels or {}).key()
         return self.metrics.get(key)
@@ -197,8 +233,13 @@ class Observability:
         self.traces[trace_id] = [root_span]
         return trace_id
 
-    def start_span(self, trace_id: str, name: str, parent_span_id: str | None = None,
-                   attributes: dict[str, str] | None = None) -> str:
+    def start_span(
+        self,
+        trace_id: str,
+        name: str,
+        parent_span_id: str | None = None,
+        attributes: dict[str, str] | None = None,
+    ) -> str:
         """Start a nested span within a trace."""
         spans = self.traces.get(trace_id, [])
         span_id = f"span_{self._span_counter}"
@@ -249,15 +290,28 @@ class Observability:
         """Add a structured log entry."""
         self.logs.append(LogEntry(level=level, message=message, attributes=kwargs))
 
-    def log_with_trace(self, level: str, message: str, trace_id: str, span_id: str | None = None, **kwargs: Any) -> None:
+    def log_with_trace(
+        self,
+        level: str,
+        message: str,
+        trace_id: str,
+        span_id: str | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Add a log entry correlated with a trace."""
-        self.logs.append(LogEntry(
-            level=level, message=message,
-            trace_id=trace_id, span_id=span_id,
-            attributes=kwargs,
-        ))
+        self.logs.append(
+            LogEntry(
+                level=level,
+                message=message,
+                trace_id=trace_id,
+                span_id=span_id,
+                attributes=kwargs,
+            )
+        )
 
-    def get_logs(self, level: str | None = None, trace_id: str | None = None, limit: int = 100) -> list[LogEntry]:
+    def get_logs(
+        self, level: str | None = None, trace_id: str | None = None, limit: int = 100
+    ) -> list[LogEntry]:
         """Query logs by level or trace."""
         result = self.logs
         if level:
@@ -290,7 +344,9 @@ class Observability:
 
             # Histogram buckets
             if entry.kind == MetricKind.HISTOGRAM and entry.values:
-                lines.append(f"# Histogram {metric_name}: count={len(entry.values)}, sum={sum(entry.values)}, avg={entry.value}")
+                lines.append(
+                    f"# Histogram {metric_name}: count={len(entry.values)}, sum={sum(entry.values)}, avg={entry.value}"
+                )
 
         return "\n".join(lines)
 

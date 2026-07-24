@@ -8,17 +8,16 @@ and detailed result collection.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..storage import Database
 
+from datetime import UTC
+
 from .models import (
     TestCase,
-    TestCategory,
-    TestReport,
     TestResult,
-    TestSeverity,
     TestStatus,
     TestSuiteResult,
 )
@@ -46,7 +45,7 @@ class TestRunner:
         self,
         constitution_dir: str,
         policies_dir: str,
-        db: Optional[Database] = None,
+        db: Database | None = None,
     ):
         """Initialize TestRunner."""
         from ..constitution_engine import ConstitutionEngine
@@ -174,6 +173,6 @@ class TestRunner:
 
 
 def _now_iso() -> str:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()

@@ -19,9 +19,22 @@
 
 **2740 tests, 0 failures**
 
-## v10.14.0 (Next)
+## v10.14.0 ✅ (2026-07-24)
+- ✅ 13 compact modules expanded to >100 lines (quantum_biology 254, quantum_consciousness 177, quantum_gravity 195, quantum_reinforcement 155, quantum_entanglement_mesh 199, ai_safety_dashboard 169, quantum_ml_advanced 108, quantum_nlp 103, ai_safety_multi_agent 107, quantum_vision 105, quantum_chemistry 110, quantum_optimization_advanced 112, ai_safety_recursive_reward 131)
+- ✅ CI/CD pipeline (.github/workflows/ci.yml) — Python 3.11/3.12/3.13, ruff lint+format, auto-release
+- ✅ OpenAPI 3.0 spec generator (docs/openapi_spec.py) — endpoint auto-registration, Swagger UI, schemas
+- ✅ Code quality checker (aios_core/code_quality.py) — ruff integration, docstring coverage analysis, import cleanup
+- ✅ React Dashboard v3 (dashboard/index.html) — safety circle, metrics, incidents, quantum substrate, constitutional compliance
+- ✅ Ruff lint: 2430 auto-fixes, 359 files reformatted
+- ✅ RELEASE_NOTES_10.14.0.md
+
+**2740 tests, 0 failures**
+
+## v10.15.0 (Next)
 - 🔲 Deepen test coverage for critical modules (cognition, planner, storage)
-- 🔲 Production dashboard React v3
+- 🔲 Integrate OpenAPI spec into Starlette dashboard routes
+- 🔲 Integrate React Dashboard v3 into ASGI app
+- 🔲 Fix remaining 2398 ruff errors (F401 unused imports, SIM rules)
 - 🔲 Security: revoke exposed GitHub PAT
 
 ## v10.11.0 ✅ (2026-07-24)

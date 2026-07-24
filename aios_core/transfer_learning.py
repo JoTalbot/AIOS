@@ -14,11 +14,9 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
-import random
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DomainConfig:
     """Domain configuration with features."""
+
     name: str
     features: list[str] = field(default_factory=list)
     task_type: str = "classification"
@@ -37,6 +36,7 @@ class DomainConfig:
 @dataclass
 class TransferResult:
     """Outcome of a transfer operation."""
+
     source: str
     target: str
     transferred_features: list[str]
@@ -69,14 +69,23 @@ class TransferLearning:
 
     # ── Domain Management ──────────────────────────────────────────
 
-    def register_domain(self, name: str, features: list[str] | None = None,
-                        task_type: str = "classification", data_size: int = 0,
-                        performance: float = 0.0, feature_dim: int = 512) -> DomainConfig:
+    def register_domain(
+        self,
+        name: str,
+        features: list[str] | None = None,
+        task_type: str = "classification",
+        data_size: int = 0,
+        performance: float = 0.0,
+        feature_dim: int = 512,
+    ) -> DomainConfig:
         """Register a domain."""
         config = DomainConfig(
-            name=name, features=features or [],
-            task_type=task_type, data_size=data_size,
-            performance=performance, feature_dim=feature_dim,
+            name=name,
+            features=features or [],
+            task_type=task_type,
+            data_size=data_size,
+            performance=performance,
+            feature_dim=feature_dim,
         )
         self.domains[name] = config
         return config
@@ -126,7 +135,9 @@ class TransferLearning:
         # Combine
         return round(feature_sim * 0.7 + task_sim * 0.3, 4)
 
-    def find_similar_domains(self, target: str, limit: int = 5) -> list[tuple[str, float]]:
+    def find_similar_domains(
+        self, target: str, limit: int = 5
+    ) -> list[tuple[str, float]]:
         """Find domains similar to the target."""
         similarities = []
         for source in self.domains:
@@ -142,8 +153,9 @@ class TransferLearning:
         """Transfer knowledge from source to target (backward-compatible)."""
         source = self.knowledge_base.get(source_domain, {})
         # Simple transfer: copy relevant knowledge
-        transferred = {k: v for k, v in source.items()
-                       if "general" in k or target_domain in k}
+        transferred = {
+            k: v for k, v in source.items() if "general" in k or target_domain in k
+        }
         return {"transferred": transferred, "success": len(transferred) > 0}
 
     def full_transfer(self, source: str, target: str) -> TransferResult:
@@ -169,7 +181,8 @@ class TransferLearning:
         self.knowledge_base[target] = {**source_knowledge}
 
         result = TransferResult(
-            source=source, target=target,
+            source=source,
+            target=target,
             transferred_features=list(source_knowledge.keys()),
             similarity=similarity,
             performance_before=round(tgt_perf, 4),
@@ -181,8 +194,9 @@ class TransferLearning:
         self._transfer_history.append(result)
         return result
 
-    def selective_transfer(self, source: str, target: str,
-                           features: list[str]) -> TransferResult:
+    def selective_transfer(
+        self, source: str, target: str, features: list[str]
+    ) -> TransferResult:
         """Selective transfer: only transfer specified features."""
         src_perf = self.domains.get(source, DomainConfig(name=source)).performance
         tgt_perf = self.domains.get(target, DomainConfig(name=target)).performance
@@ -192,7 +206,13 @@ class TransferLearning:
         transferred = {k: v for k, v in source_knowledge.items() if k in features}
 
         similarity = self.domain_similarity(source, target)
-        improvement = similarity * len(transferred) / max(len(source_knowledge), 1) * (src_perf - tgt_perf) * 0.2
+        improvement = (
+            similarity
+            * len(transferred)
+            / max(len(source_knowledge), 1)
+            * (src_perf - tgt_perf)
+            * 0.2
+        )
         negative = improvement < 0
 
         new_perf = tgt_perf + improvement
@@ -205,7 +225,8 @@ class TransferLearning:
         self.knowledge_base[target] = target_knowledge
 
         result = TransferResult(
-            source=source, target=target,
+            source=source,
+            target=target,
             transferred_features=features,
             similarity=similarity,
             performance_before=round(tgt_perf, 4),
@@ -236,8 +257,14 @@ class TransferLearning:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_improvement = (sum(r.improvement for r in self._transfer_history) /
-                          len(self._transfer_history)) if self._transfer_history else 0.0
+        avg_improvement = (
+            (
+                sum(r.improvement for r in self._transfer_history)
+                / len(self._transfer_history)
+            )
+            if self._transfer_history
+            else 0.0
+        )
         negative_count = sum(1 for r in self._transfer_history if r.negative_transfer)
         return {
             "domains": len(self.domains),

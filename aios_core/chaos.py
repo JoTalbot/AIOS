@@ -16,8 +16,9 @@ from __future__ import annotations
 import logging
 import random
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ChaosAction:
     """Chaos action specification."""
+
     action_type: str = "error"  # error, delay, resource_kill, network_partition
     target: str = ""
     probability: float = 0.1
@@ -35,6 +37,7 @@ class ChaosAction:
 @dataclass
 class ChaosExperiment:
     """Chaos experiment definition."""
+
     name: str
     actions: list[ChaosAction] = field(default_factory=list)
     steady_state: dict[str, Any] = field(default_factory=dict)
@@ -81,12 +84,14 @@ class ChaosMonkey:
 
     def wrap(self, func: Callable, chaos_type: str = "error") -> Callable:
         """Wrap a function with chaos injection (backward-compatible)."""
+
         def wrapper(*args, **kwargs) -> Any:
             if chaos_type == "error":
                 self.maybe_fail()
             elif chaos_type == "delay":
                 self.inject_delay(random.uniform(0.1, 1.0))
             return func(*args, **kwargs)
+
         return wrapper
 
     def run_experiment(self, experiment: ChaosExperiment) -> dict[str, Any]:
@@ -106,9 +111,10 @@ class ChaosMonkey:
                 results["injections"] += 1
                 if action.action_type == "error":
                     results["errors"] += 1
-                elif action.action_type == "delay":
-                    pass
-                elif action.action_type == "resource_kill":
+                elif (
+                    action.action_type == "delay"
+                    or action.action_type == "resource_kill"
+                ):
                     pass
 
         # Check abort conditions
@@ -124,11 +130,16 @@ class ChaosMonkey:
         self._injection_count += results["injections"]
         return results
 
-    def create_experiment(self, name: str, actions: list[ChaosAction] | None = None,
-                          steady_state: dict[str, Any] | None = None) -> ChaosExperiment:
+    def create_experiment(
+        self,
+        name: str,
+        actions: list[ChaosAction] | None = None,
+        steady_state: dict[str, Any] | None = None,
+    ) -> ChaosExperiment:
         """Create a chaos experiment."""
-        return ChaosExperiment(name=name, actions=actions or [],
-                               steady_state=steady_state or {})
+        return ChaosExperiment(
+            name=name, actions=actions or [], steady_state=steady_state or {}
+        )
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""

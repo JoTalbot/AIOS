@@ -10,7 +10,7 @@ Broadcast scheduler for messenger-first platforms:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 
@@ -32,7 +32,7 @@ class BroadcastMessage:
     text: str
     contact_tags: list[str] = field(default_factory=list)
     status: BroadcastStatus = BroadcastStatus.DRAFT
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     sent_count: int = 0
     total_count: int = 0
     jitter_seconds: float = 2.0
@@ -88,7 +88,7 @@ class BroadcastScheduler:
         Returns:
             BroadcastMessage in DRAFT status (requires approval).
         """
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         self._counter += 1
         msg_id = f"broadcast_{self._counter}"
         broadcast = BroadcastMessage(
@@ -115,7 +115,9 @@ class BroadcastScheduler:
             broadcast.status = BroadcastStatus.APPROVED
         return broadcast
 
-    def list_broadcasts(self, status: BroadcastStatus | None = None) -> list[BroadcastMessage]:
+    def list_broadcasts(
+        self, status: BroadcastStatus | None = None
+    ) -> list[BroadcastMessage]:
         """List all broadcasts, optionally filtered by status.
 
         Args:

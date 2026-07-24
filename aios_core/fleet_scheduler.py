@@ -12,7 +12,6 @@ Designed for headless scraping fleets on multiple phones/tablets.
 
 from __future__ import annotations
 
-import math
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -32,11 +31,11 @@ class DeviceStatus(Enum):
 class TaskPriority(Enum):
     """Priority levels for fleet tasks."""
 
-    CRITICAL = 0    # Immediate execution
-    HIGH = 1        # Next available device
-    NORMAL = 2      # Standard queue
-    LOW = 3         # Background / batch
-    MAINTENANCE = 4 # Device maintenance tasks
+    CRITICAL = 0  # Immediate execution
+    HIGH = 1  # Next available device
+    NORMAL = 2  # Standard queue
+    LOW = 3  # Background / batch
+    MAINTENANCE = 4  # Device maintenance tasks
 
 
 class TaskStatus(Enum):
@@ -64,13 +63,13 @@ class FleetDevice:
     """A device in the scraping fleet."""
 
     device_id: str
-    platform: str = ""           # e.g. "olx", "rozetka"
+    platform: str = ""  # e.g. "olx", "rozetka"
     status: DeviceStatus = DeviceStatus.ONLINE
-    max_concurrent: int = 1      # Max simultaneous tasks
-    current_tasks: int = 0       # Currently running tasks
-    success_count: int = 0       # Completed tasks
-    fail_count: int = 0          # Failed tasks
-    last_seen: float = 0.0       # Timestamp of last heartbeat
+    max_concurrent: int = 1  # Max simultaneous tasks
+    current_tasks: int = 0  # Currently running tasks
+    success_count: int = 0  # Completed tasks
+    fail_count: int = 0  # Failed tasks
+    last_seen: float = 0.0  # Timestamp of last heartbeat
     cooldown_until: float = 0.0  # Resume after cooldown
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -79,7 +78,10 @@ class FleetDevice:
         """True if device can accept new tasks."""
         if self.status == DeviceStatus.COOLDOWN:
             return time.time() >= self.cooldown_until
-        return self.status == DeviceStatus.ONLINE and self.current_tasks < self.max_concurrent
+        return (
+            self.status == DeviceStatus.ONLINE
+            and self.current_tasks < self.max_concurrent
+        )
 
     @property
     def utilization(self) -> float:
@@ -102,8 +104,8 @@ class FleetTask:
     """A task to be executed on a fleet device."""
 
     task_id: str
-    platform: str                 # Target platform
-    action: str                   # e.g. "collect", "parse", "monitor"
+    platform: str  # Target platform
+    action: str  # e.g. "collect", "parse", "monitor"
     priority: TaskPriority = TaskPriority.NORMAL
     status: TaskStatus = TaskStatus.PENDING
     assigned_device: str | None = None
@@ -162,9 +164,9 @@ class FleetScheduler:
         self.heartbeat_timeout = heartbeat_timeout
         self._devices: dict[str, FleetDevice] = {}
         self._tasks: dict[str, FleetTask] = {}
-        self._queue: list[str] = []        # Pending task IDs (ordered)
-        self._rr_index: int = 0            # Round-robin index
-        self._counter: int = 0             # Task ID counter
+        self._queue: list[str] = []  # Pending task IDs (ordered)
+        self._rr_index: int = 0  # Round-robin index
+        self._counter: int = 0  # Task ID counter
 
     def _next_task_id(self) -> str:
         """Generate unique task ID."""
@@ -281,6 +283,7 @@ class FleetScheduler:
 
         elif effective_policy == SchedulingPolicy.RANDOM:
             import random
+
             return random.choice(devices)
 
         return devices[0]
@@ -348,7 +351,9 @@ class FleetScheduler:
             List of FleetTask (some may be queued if no devices).
         """
         # Sort by priority (lower value = higher priority)
-        sorted_tasks = sorted(tasks, key=lambda t: t[2].value if isinstance(t[2], TaskPriority) else 2)
+        sorted_tasks = sorted(
+            tasks, key=lambda t: t[2].value if isinstance(t[2], TaskPriority) else 2
+        )
         results = []
         for platform, action, priority in sorted_tasks:
             task = self.schedule(platform, action, priority, policy=policy)
@@ -356,7 +361,9 @@ class FleetScheduler:
                 results.append(task)
         return results
 
-    def complete_task(self, task_id: str, result: dict[str, Any] | None = None) -> FleetTask | None:
+    def complete_task(
+        self, task_id: str, result: dict[str, Any] | None = None
+    ) -> FleetTask | None:
         """Mark a task as completed and release the device.
 
         Args:
@@ -483,19 +490,28 @@ class FleetScheduler:
         """
         total = len(self._devices)
         available = sum(1 for d in self._devices.values() if d.is_available)
-        busy = sum(1 for d in self._devices.values() if d.status == DeviceStatus.BUSY or (d.status == DeviceStatus.ONLINE and d.current_tasks > 0))
+        busy = sum(
+            1
+            for d in self._devices.values()
+            if d.status == DeviceStatus.BUSY
+            or (d.status == DeviceStatus.ONLINE and d.current_tasks > 0)
+        )
 
         avg_utilization = (
             sum(d.utilization for d in self._devices.values()) / total
-            if total > 0 else 0.0
+            if total > 0
+            else 0.0
         )
 
         avg_reliability = (
             sum(d.reliability for d in self._devices.values()) / total
-            if total > 0 else 0.0
+            if total > 0
+            else 0.0
         )
 
-        completed = sum(1 for t in self._tasks.values() if t.status == TaskStatus.COMPLETED)
+        completed = sum(
+            1 for t in self._tasks.values() if t.status == TaskStatus.COMPLETED
+        )
         failed = sum(1 for t in self._tasks.values() if t.status == TaskStatus.FAILED)
         running = sum(1 for t in self._tasks.values() if t.status == TaskStatus.RUNNING)
         pending = len(self._queue)
@@ -504,8 +520,12 @@ class FleetScheduler:
             "total_devices": total,
             "available_devices": available,
             "busy_devices": busy,
-            "offline_devices": sum(1 for d in self._devices.values() if d.status == DeviceStatus.OFFLINE),
-            "cooldown_devices": sum(1 for d in self._devices.values() if d.status == DeviceStatus.COOLDOWN),
+            "offline_devices": sum(
+                1 for d in self._devices.values() if d.status == DeviceStatus.OFFLINE
+            ),
+            "cooldown_devices": sum(
+                1 for d in self._devices.values() if d.status == DeviceStatus.COOLDOWN
+            ),
             "avg_utilization": round(avg_utilization, 3),
             "avg_reliability": round(avg_reliability, 3),
             "queue_size": pending,
@@ -525,7 +545,8 @@ class FleetScheduler:
             List of FleetTask assigned to this device.
         """
         return [
-            t for t in self._tasks.values()
+            t
+            for t in self._tasks.values()
             if t.assigned_device == device_id and t.status == TaskStatus.RUNNING
         ]
 
@@ -539,12 +560,10 @@ class FleetScheduler:
         """
         moved = 0
         overloaded = [
-            d for d in self._devices.values()
-            if d.utilization > 0.8 and d.is_available
+            d for d in self._devices.values() if d.utilization > 0.8 and d.is_available
         ]
         underloaded = [
-            d for d in self._devices.values()
-            if d.utilization < 0.3 and d.is_available
+            d for d in self._devices.values() if d.utilization < 0.3 and d.is_available
         ]
 
         for busy_device in overloaded:
@@ -560,8 +579,12 @@ class FleetScheduler:
 
                     # Refresh underloaded list
                     underloaded = [
-                        d for d in self._devices.values()
-                        if d.utilization < 0.3 and d.is_available and d.device_id != target.device_id or (d.device_id == target.device_id and d.utilization < 0.3)
+                        d
+                        for d in self._devices.values()
+                        if d.utilization < 0.3
+                        and d.is_available
+                        and d.device_id != target.device_id
+                        or (d.device_id == target.device_id and d.utilization < 0.3)
                     ]
 
         return moved

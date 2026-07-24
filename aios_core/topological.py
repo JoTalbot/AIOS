@@ -14,10 +14,8 @@ from __future__ import annotations
 
 import logging
 import math
-import random
-import time
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PersistenceDiagram:
     """Persistence diagram point (birth, death, dimension)."""
+
     birth: float
     death: float
     dimension: int = 0  # 0=connected components, 1=loops, 2=cavities
@@ -87,6 +86,7 @@ class TopologicalAnalyzer:
         # Betti-0: connected components at epsilon threshold
         # Count clusters using union-find logic
         clusters = list(range(n))
+
         def find(x: int) -> int:
             while clusters[x] != x:
                 clusters[x] = clusters[clusters[x]]
@@ -104,7 +104,9 @@ class TopologicalAnalyzer:
         betti_0 = unique_clusters
 
         # Betti-1: estimate loops from average connectivity
-        avg_neighbors = sum(sum(1 for d in dists[i] if d < self.epsilon) for i in range(n)) / n
+        avg_neighbors = (
+            sum(sum(1 for d in dists[i] if d < self.epsilon) for i in range(n)) / n
+        )
         betti_1 = max(0, int(avg_neighbors - 2) // 2) if avg_neighbors > 2 else 0
 
         # Betti-2: estimate cavities (rare in low dimensions)
@@ -114,15 +116,21 @@ class TopologicalAnalyzer:
         diagrams = []
         # Betti-0 points: components merge
         sorted_dists = sorted([dists[i][j] for i in range(n) for j in range(i + 1, n)])
-        merge_distances = sorted_dists[:n - betti_0] if len(sorted_dists) >= n - betti_0 else sorted_dists
+        merge_distances = (
+            sorted_dists[: n - betti_0]
+            if len(sorted_dists) >= n - betti_0
+            else sorted_dists
+        )
         for d in merge_distances:
             diagrams.append(PersistenceDiagram(birth=0.0, death=d, dimension=0))
 
         # Betti-1 points: loops appear
         if betti_1 > 0 and len(sorted_dists) > n:
-            loop_births = sorted_dists[n:n + betti_1]
+            loop_births = sorted_dists[n : n + betti_1]
             for bd in loop_births:
-                diagrams.append(PersistenceDiagram(birth=bd, death=bd + self.epsilon, dimension=1))
+                diagrams.append(
+                    PersistenceDiagram(birth=bd, death=bd + self.epsilon, dimension=1)
+                )
 
         self.filtrations.append(diagrams)
 
@@ -144,8 +152,12 @@ class TopologicalAnalyzer:
         # Compute topological feature vector
         total_persistence_0 = sum(d.persistence for d in diagrams if d.dimension == 0)
         total_persistence_1 = sum(d.persistence for d in diagrams if d.dimension == 1)
-        max_persistence_0 = max((d.persistence for d in diagrams if d.dimension == 0), default=0.0)
-        avg_persistence_0 = total_persistence_0 / max(len([d for d in diagrams if d.dimension == 0]), 1)
+        max_persistence_0 = max(
+            (d.persistence for d in diagrams if d.dimension == 0), default=0.0
+        )
+        avg_persistence_0 = total_persistence_0 / max(
+            len([d for d in diagrams if d.dimension == 0]), 1
+        )
 
         return [
             persistence["betti_0"],

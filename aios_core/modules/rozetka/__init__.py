@@ -15,7 +15,8 @@ Quick start::
         tracker = RozetkaPriceTracker(storage)
         drops = tracker.detect_drops()
 """
-from .auto_login import RozetkaAutoLogin, LoginState, LoginResult
+
+from .auto_login import LoginResult, LoginState, RozetkaAutoLogin
 from .autowatch import RozetkaAutoWatch
 from .bootstrap import RozetkaBootstrap
 from .card_parser import RozetkaCardParser
@@ -23,7 +24,7 @@ from .collector import RozetkaCollector
 from .detail import RozetkaDetailParser
 from .favorites import RozetkaFavorites
 from .messenger import RozetkaMessenger
-from .price_tracker import RozetkaPriceTracker, PriceDropAlert
+from .price_tracker import PriceDropAlert, RozetkaPriceTracker
 from .storage import RozetkaStorage
 
 __all__ = [

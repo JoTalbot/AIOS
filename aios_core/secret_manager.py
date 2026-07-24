@@ -12,13 +12,10 @@ Security best practices:
 - Support for key rollover without downtime
 """
 
-import hashlib
 import json
 import secrets
-import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -46,12 +43,12 @@ class APIKey:
         """Check if key is valid (not expired and not revoked)."""
         return not self.is_expired() and not self.revoked
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "APIKey":
+    def from_dict(cls, data: dict) -> "APIKey":
         """Create from dictionary."""
         return cls(**data)
 
@@ -59,12 +56,14 @@ class APIKey:
 class SecretManager:
     """Manages API keys and secrets for AIOS."""
 
-    def __init__(self, max_keys_per_subject: int = 5, default_ttl_days: int = 90) -> None:
+    def __init__(
+        self, max_keys_per_subject: int = 5, default_ttl_days: int = 90
+    ) -> None:
         """Initialize SecretManager."""
-        self.keys: Dict[str, APIKey] = {}
+        self.keys: dict[str, APIKey] = {}
         self.max_keys_per_subject = max_keys_per_subject
         self.default_ttl_days = default_ttl_days
-        self.rotation_log: List[Dict] = []
+        self.rotation_log: list[dict] = []
 
     def generate_key(
         self,
@@ -85,7 +84,9 @@ class SecretManager:
             New APIKey instance
         """
         # Enforce max keys per subject
-        subject_keys = [k for k in self.keys.values() if k.subject == subject and not k.revoked]
+        subject_keys = [
+            k for k in self.keys.values() if k.subject == subject and not k.revoked
+        ]
         if len(subject_keys) >= self.max_keys_per_subject:
             raise ValueError(
                 f"Subject '{subject}' has reached max keys ({self.max_keys_per_subject}). "
@@ -155,7 +156,7 @@ class SecretManager:
 
     def rotate_key(
         self, old_key: str, ttl_days: int | None = None, reason: str = "rotation"
-    ) -> Optional[APIKey]:
+    ) -> APIKey | None:
         """Rotate an API key (revoke old, create new with same subject/roles).
 
         Args:
@@ -194,7 +195,7 @@ class SecretManager:
 
         return new_key
 
-    def validate_key(self, key: str) -> Tuple[bool, Optional[APIKey]]:
+    def validate_key(self, key: str) -> tuple[bool, APIKey | None]:
         """Validate an API key.
 
         Args:
@@ -217,21 +218,23 @@ class SecretManager:
 
         return True, api_key
 
-    def get_keys_by_subject(self, subject: str) -> List[APIKey]:
+    def get_keys_by_subject(self, subject: str) -> list[APIKey]:
         """Get all keys for a subject."""
         return [k for k in self.keys.values() if k.subject == subject]
 
-    def get_expired_keys(self) -> List[APIKey]:
+    def get_expired_keys(self) -> list[APIKey]:
         """Get all expired keys."""
         return [k for k in self.keys.values() if k.is_expired()]
 
-    def get_expiring_keys(self, within_days: int = 7) -> List[APIKey]:
+    def get_expiring_keys(self, within_days: int = 7) -> list[APIKey]:
         """Get keys expiring within specified days."""
         threshold = datetime.now() + timedelta(days=within_days)
         return [
             k
             for k in self.keys.values()
-            if k.expires_at and not k.revoked and datetime.fromisoformat(k.expires_at) <= threshold
+            if k.expires_at
+            and not k.revoked
+            and datetime.fromisoformat(k.expires_at) <= threshold
         ]
 
     def cleanup_revoked(self, older_than_days: int = 30) -> int:
@@ -250,7 +253,10 @@ class SecretManager:
             if api_key.revoked:
                 # Check if revoked long enough ago
                 for log in reversed(self.rotation_log):
-                    if log["action"] == "revoked" and log["key_prefix"] == key[:12] + "...":
+                    if (
+                        log["action"] == "revoked"
+                        and log["key_prefix"] == key[:12] + "..."
+                    ):
                         revoked_at = datetime.fromisoformat(log["timestamp"])
                         if revoked_at < threshold:
                             to_remove.append(key)
@@ -290,7 +296,7 @@ class SecretManager:
         Returns:
             Number of keys imported
         """
-        with open(path, "r") as f:
+        with open(path) as f:
             data = json.load(f)
 
         count = 0
@@ -302,7 +308,7 @@ class SecretManager:
         self.rotation_log.extend(data.get("rotation_log", []))
         return count
 
-    def health_report(self) -> Dict:
+    def health_report(self) -> dict:
         """Generate health report for key management."""
         total = len(self.keys)
         active = len([k for k in self.keys.values() if k.is_valid()])
@@ -322,7 +328,8 @@ class SecretManager:
                     l
                     for l in self.rotation_log
                     if l["action"] == "rotated"
-                    and datetime.fromisoformat(l["timestamp"]) > datetime.now() - timedelta(days=30)
+                    and datetime.fromisoformat(l["timestamp"])
+                    > datetime.now() - timedelta(days=30)
                 ]
             ),
         }

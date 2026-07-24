@@ -12,12 +12,11 @@ ADB Controller
 """
 
 import subprocess
-from datetime import datetime
-from pathlib import Path
 
 
 class ADBController:
     """ADBController."""
+
     def __init__(self, package="ua.slando", serial=None):
         """ADB controller.
 
@@ -49,7 +48,7 @@ class ADBController:
 
     def swipe(self, x1, y1, x2, y2, duration=500) -> None:
         """Execute swipe."""
-        cmd = f"{self.adb} shell input swipe " f"{x1} {y1} {x2} {y2} {duration}"
+        cmd = f"{self.adb} shell input swipe {x1} {y1} {x2} {y2} {duration}"
 
         return self.run(cmd)
 
@@ -75,7 +74,7 @@ class ADBController:
 
     def open_app(self) -> None:
         """Execute open app."""
-        cmd = f"{self.adb} shell monkey " f"-p {self.package} 1"
+        cmd = f"{self.adb} shell monkey -p {self.package} 1"
 
         return self.run(cmd)
 
@@ -84,7 +83,9 @@ class ADBController:
         from urllib.parse import quote
 
         encoded = quote(text, safe="")
-        return self.run(f"{self.adb} shell am broadcast " f"-a ADB_INPUT_TEXT --es msg '{encoded}'")
+        return self.run(
+            f"{self.adb} shell am broadcast -a ADB_INPUT_TEXT --es msg '{encoded}'"
+        )
 
 
 if __name__ == "__main__":

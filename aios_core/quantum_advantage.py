@@ -12,9 +12,8 @@ Classes:
 
 from __future__ import annotations
 
-import math
-import random
 import logging
+import math
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -23,12 +22,16 @@ logger = logging.getLogger(__name__)
 class BenchmarkEntry:
     """Single benchmark measurement."""
 
-    def __init__(self, name: str, classical_time: float, quantum_time: float, problem_size: int) -> None:
+    def __init__(
+        self, name: str, classical_time: float, quantum_time: float, problem_size: int
+    ) -> None:
         self.name = name
         self.classical_time = classical_time
         self.quantum_time = quantum_time
         self.problem_size = problem_size
-        self.speedup = classical_time / quantum_time if quantum_time > 0 else float("inf")
+        self.speedup = (
+            classical_time / quantum_time if quantum_time > 0 else float("inf")
+        )
 
 
 class QuantumAdvantageAnalyzer:
@@ -37,7 +40,9 @@ class QuantumAdvantageAnalyzer:
     def __init__(self) -> None:
         self.benchmarks: dict[str, dict[str, Any]] = {}
 
-    def compare(self, classical_time: float, quantum_time: float, problem_size: int) -> dict[str, Any]:
+    def compare(
+        self, classical_time: float, quantum_time: float, problem_size: int
+    ) -> dict[str, Any]:
         """Compare classical vs quantum (backward-compatible)."""
         speedup = classical_time / quantum_time if quantum_time > 0 else float("inf")
         advantage = speedup > 1 and problem_size > 20
@@ -57,16 +62,48 @@ class QuantumAdvantageAnalyzer:
     def complexity_class(self, algorithm: str) -> dict[str, Any]:
         """Classify quantum algorithm complexity class."""
         classes = {
-            "grover": {"classical": "O(N)", "quantum": "O(N^0.5)", "speedup": "quadratic"},
-            "shor": {"classical": "O(N^3)", "quantum": "O(log(N)^3)", "speedup": "exponential"},
-            "vqe": {"classical": "O(2^n)", "quantum": "O(n^k)", "speedup": "exponential"},
-            "qaoa": {"classical": "O(2^n)", "quantum": "O(poly(n))", "speedup": "exponential"},
-            "hhl": {"classical": "O(N^3)", "quantum": "O(log(N)^2)", "speedup": "exponential"},
-            "qft": {"classical": "O(N^2)", "quantum": "O(N*log(N))", "speedup": "quadratic"},
+            "grover": {
+                "classical": "O(N)",
+                "quantum": "O(N^0.5)",
+                "speedup": "quadratic",
+            },
+            "shor": {
+                "classical": "O(N^3)",
+                "quantum": "O(log(N)^3)",
+                "speedup": "exponential",
+            },
+            "vqe": {
+                "classical": "O(2^n)",
+                "quantum": "O(n^k)",
+                "speedup": "exponential",
+            },
+            "qaoa": {
+                "classical": "O(2^n)",
+                "quantum": "O(poly(n))",
+                "speedup": "exponential",
+            },
+            "hhl": {
+                "classical": "O(N^3)",
+                "quantum": "O(log(N)^2)",
+                "speedup": "exponential",
+            },
+            "qft": {
+                "classical": "O(N^2)",
+                "quantum": "O(N*log(N))",
+                "speedup": "quadratic",
+            },
         }
-        return classes.get(algorithm, {"classical": "unknown", "quantum": "unknown", "speedup": "unknown"})
+        return classes.get(
+            algorithm,
+            {"classical": "unknown", "quantum": "unknown", "speedup": "unknown"},
+        )
 
-    def estimate_crossover(self, classical_growth: str = "exponential", quantum_growth: str = "polynomial", base_rate: float = 1.0) -> dict[str, Any]:
+    def estimate_crossover(
+        self,
+        classical_growth: str = "exponential",
+        quantum_growth: str = "polynomial",
+        base_rate: float = 1.0,
+    ) -> dict[str, Any]:
         """Estimate crossover point where quantum becomes faster."""
         if classical_growth == "exponential" and quantum_growth == "polynomial":
             crossover = 25  # Typical for exponential vs polynomial
@@ -92,7 +129,9 @@ class QuantumAdvantageAnalyzer:
             "minimum_noise_tolerance": round(1 / (problem_size / 20), 4),
         }
 
-    def resource_requirements(self, algorithm: str, problem_size: int) -> dict[str, Any]:
+    def resource_requirements(
+        self, algorithm: str, problem_size: int
+    ) -> dict[str, Any]:
         """Estimate quantum resource requirements."""
         qubits_needed = {
             "shor": int(problem_size * 2),

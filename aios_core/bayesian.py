@@ -16,7 +16,7 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Hypothesis:
     """Named hypothesis with prior, posterior, and evidence history."""
+
     name: str
     prior: float = 0.5
     posterior: float = 0.5
@@ -31,7 +32,7 @@ class Hypothesis:
     likelihood_true: float = 0.8
     likelihood_false: float = 0.2
     created_at: float = field(default_factory=time.time)
-    last_updated: Optional[float] = None
+    last_updated: float | None = None
 
     def confidence(self) -> float:
         """Return confidence interval width."""
@@ -40,7 +41,7 @@ class Hypothesis:
     def odds_ratio(self) -> float:
         """Return posterior odds ratio."""
         if self.posterior <= 0.0 or self.posterior >= 1.0:
-            return float('inf') if self.posterior >= 1.0 else 0.0
+            return float("inf") if self.posterior >= 1.0 else 0.0
         return self.posterior / (1.0 - self.posterior)
 
 
@@ -63,12 +64,18 @@ class BayesianInference:
 
     # ── Hypothesis Management ──────────────────────────────────────
 
-    def add_hypothesis(self, name: str, prior: float = 0.5,
-                       likelihood_true: float = 0.8,
-                       likelihood_false: float = 0.2) -> Hypothesis:
+    def add_hypothesis(
+        self,
+        name: str,
+        prior: float = 0.5,
+        likelihood_true: float = 0.8,
+        likelihood_false: float = 0.2,
+    ) -> Hypothesis:
         """Register a new hypothesis."""
         h = Hypothesis(
-            name=name, prior=prior, posterior=prior,
+            name=name,
+            prior=prior,
+            posterior=prior,
             likelihood_true=likelihood_true,
             likelihood_false=likelihood_false,
         )
@@ -85,8 +92,9 @@ class BayesianInference:
 
     # ── Belief Updating ────────────────────────────────────────────
 
-    def update_belief(self, hypothesis: str, evidence: bool,
-                      likelihood: float = 0.8) -> float:
+    def update_belief(
+        self, hypothesis: str, evidence: bool, likelihood: float = 0.8
+    ) -> float:
         """Update belief using Bayes' theorem.
 
         P(H|E) = P(E|H) * P(H) / P(E)
@@ -109,13 +117,15 @@ class BayesianInference:
         h.evidence_count += 1
         h.last_updated = time.time()
 
-        self.evidence_log.append({
-            "hypothesis": hypothesis,
-            "evidence": evidence,
-            "prior": prior,
-            "posterior": h.posterior,
-            "likelihood": likelihood,
-        })
+        self.evidence_log.append(
+            {
+                "hypothesis": hypothesis,
+                "evidence": evidence,
+                "prior": prior,
+                "posterior": h.posterior,
+                "likelihood": likelihood,
+            }
+        )
 
         return h.posterior
 
@@ -137,7 +147,9 @@ class BayesianInference:
         """Return all current beliefs."""
         return {name: h.posterior for name, h in self.hypotheses.items()}
 
-    def get_confidence_interval(self, hypothesis: str, width: float = 0.95) -> tuple[float, float]:
+    def get_confidence_interval(
+        self, hypothesis: str, width: float = 0.95
+    ) -> tuple[float, float]:
         """Approximate confidence interval for posterior."""
         h = self.hypotheses.get(hypothesis)
         if h is None:
@@ -157,17 +169,21 @@ class BayesianInference:
         """Compare two hypotheses by their posteriors."""
         b1 = self.get_belief(h1)
         b2 = self.get_belief(h2)
-        ratio = b1 / b2 if b2 > 0 else float('inf')
+        ratio = b1 / b2 if b2 > 0 else float("inf")
         return {
-            "h1": h1, "h2": h2,
-            "belief_h1": b1, "belief_h2": b2,
+            "h1": h1,
+            "h2": h2,
+            "belief_h1": b1,
+            "belief_h2": b2,
             "ratio": round(ratio, 4),
             "winner": h1 if b1 > b2 else h2 if b2 > b1 else "tie",
         }
 
     def rank_hypotheses(self) -> list[tuple[str, float]]:
         """Rank hypotheses by posterior probability."""
-        ranked = sorted(self.hypotheses.items(), key=lambda x: x[1].posterior, reverse=True)
+        ranked = sorted(
+            self.hypotheses.items(), key=lambda x: x[1].posterior, reverse=True
+        )
         return [(name, h.posterior) for name, h in ranked]
 
     def most_probable(self) -> str | None:

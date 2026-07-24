@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import tempfile
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
 from urllib.parse import quote
 
 from .adb import ADBController
@@ -24,8 +24,8 @@ class OLXCollector:
 
     def __init__(
         self,
-        adb: Optional[ADBController] = None,
-        parser: Optional[CardParser] = None,
+        adb: ADBController | None = None,
+        parser: CardParser | None = None,
         max_swipes: int = 50,
         swipe_pause_s: float = 0.0,
         screen_width: int = 1080,
@@ -75,17 +75,19 @@ class OLXCollector:
         min_price: float | None = None,
         max_price: float | None = None,
         sort: str | None = None,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """Open the OLX app on the (optionally filtered) results screen."""
         link = self.search_deep_link(query, min_price, max_price, sort)
-        return self.adb.run(f'adb shell am start -a android.intent.action.VIEW -d "{link}"')
+        return self.adb.run(
+            f'adb shell am start -a android.intent.action.VIEW -d "{link}"'
+        )
 
     def collect(
         self,
         query: str | None = None,
         max_cards: int = 100,
-        progress: Optional[Callable[[int, int, int], None]] = None,
-    ) -> List[AdCard]:
+        progress: Callable[[int, int, int], None] | None = None,
+    ) -> list[AdCard]:
         """Scroll the results feed and collect deduplicated cards.
 
         Args:
@@ -97,7 +99,7 @@ class OLXCollector:
             Deduplicated list of collected cards in discovery order.
         """
         seen = set()
-        collected: List[AdCard] = []
+        collected: list[AdCard] = []
         idle_pages = 0
 
         with tempfile.TemporaryDirectory(prefix="aios_olx_") as tmp_dir:
@@ -140,7 +142,7 @@ class OLXCollector:
         storage,
         query: str | None = None,
         max_cards: int = 100,
-        progress: Optional[Callable[[int, int, int], None]] = None,
+        progress: Callable[[int, int, int], None] | None = None,
     ) -> dict[str, int]:
         """Collect cards, persist them and sync feed activity.
 

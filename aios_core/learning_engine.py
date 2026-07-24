@@ -7,13 +7,12 @@ Supports pattern extraction, recommendations, and task completion recording.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 __all__ = ["LearningEngine"]
 
 if TYPE_CHECKING:
-    from .memory_manager import MemoryManager
     from .storage import Database
 
 
@@ -24,7 +23,7 @@ class LearningEngine:
     pattern extraction, recommendations, and task completion integration.
     """
 
-    def __init__(self, db: Optional[Database] = None, memory=None):
+    def __init__(self, db: Database | None = None, memory=None):
         """Initialize LearningEngine."""
         self.db = db
         if memory is not None:
@@ -41,7 +40,7 @@ class LearningEngine:
     def record(
         self,
         experience: dict,
-        tags: Optional[list[str]] = None,
+        tags: list[str] | None = None,
     ) -> dict:
         """Record a learning experience.
 
@@ -69,7 +68,7 @@ class LearningEngine:
             content={
                 "type": "learning_experience",
                 "experience": experience,
-                "recorded_at": datetime.now(timezone.utc).isoformat(),
+                "recorded_at": datetime.now(UTC).isoformat(),
             },
             category="operational",
             tags=all_tags,
@@ -101,7 +100,9 @@ class LearningEngine:
             for s in task.steps:
                 step_info = {
                     "name": s.name if hasattr(s, "name") else str(s),
-                    "status": (s.status.value if hasattr(s.status, "value") else str(s.status)),
+                    "status": (
+                        s.status.value if hasattr(s.status, "value") else str(s.status)
+                    ),
                 }
                 if hasattr(s, "error") and s.error:
                     step_info["error"] = s.error
@@ -191,7 +192,7 @@ class LearningEngine:
         if self.memory is None:
             return []
 
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
         cutoff_iso = cutoff.isoformat()
 
         memories = self.memory.search(
@@ -240,7 +241,11 @@ class LearningEngine:
             worst_rate = 2.0
             total = 0
             for h, counts in hour_map.items():
-                rate = round(counts["success"] / counts["total"], 4) if counts["total"] else 0.0
+                rate = (
+                    round(counts["success"] / counts["total"], 4)
+                    if counts["total"]
+                    else 0.0
+                )
                 hourly_success_rates[h] = rate
                 total += counts["total"]
                 if rate > best_rate:
@@ -344,7 +349,9 @@ class LearningEngine:
                 "task_name": task_name,
                 "predicted_success_rate": 0.0,
                 "confidence": 0.0,
-                "factors": [{"factor": "no_storage", "impact": "unknown", "value": 0.0}],
+                "factors": [
+                    {"factor": "no_storage", "impact": "unknown", "value": 0.0}
+                ],
                 "recommendation": "No learning data available; cannot predict.",
             }
 
@@ -364,7 +371,9 @@ class LearningEngine:
                 task_hist_total += 1
                 if exp.get("success", False):
                     task_hist_success += 1
-        hist_rate = round(task_hist_success / task_hist_total, 4) if task_hist_total else 0.0
+        hist_rate = (
+            round(task_hist_success / task_hist_total, 4) if task_hist_total else 0.0
+        )
         if task_hist_total > 0:
             factors.append(
                 {
@@ -375,14 +384,19 @@ class LearningEngine:
             )
 
         # --- Factor 2: Time-of-day ---
-        current_hour = datetime.now(timezone.utc).hour
+        current_hour = datetime.now(UTC).hour
         temporal_data = self.analyze_temporal_patterns()
         temporal_rate: float | None = None
         for td in temporal_data:
-            if td["task_name"] == task_name and current_hour in td["hourly_success_rates"]:
+            if (
+                td["task_name"] == task_name
+                and current_hour in td["hourly_success_rates"]
+            ):
                 temporal_rate = td["hourly_success_rates"][current_hour]
                 impact = "positive" if temporal_rate >= hist_rate else "negative"
-                factors.append({"factor": "time_of_day", "impact": impact, "value": temporal_rate})
+                factors.append(
+                    {"factor": "time_of_day", "impact": impact, "value": temporal_rate}
+                )
                 break
 
         # --- Factor 3: Parameter correlations ---
@@ -390,7 +404,9 @@ class LearningEngine:
             for corr in self._last_correlations:
                 if corr["task_name"] == task_name and corr["parameter"] in params:
                     if str(params[corr["parameter"]]) == corr["value"]:
-                        impact = "positive" if corr["success_rate"] >= 0.5 else "negative"
+                        impact = (
+                            "positive" if corr["success_rate"] >= 0.5 else "negative"
+                        )
                         factors.append(
                             {
                                 "factor": f"param_{corr['parameter']}={corr['value']}",
@@ -430,7 +446,9 @@ class LearningEngine:
 
         predicted = round(score / weight_sum, 4) if weight_sum else 0.0
         # Confidence is a function of sample size
-        confidence = min(round(task_hist_total / 20.0, 4), 1.0) if task_hist_total else 0.0
+        confidence = (
+            min(round(task_hist_total / 20.0, 4), 1.0) if task_hist_total else 0.0
+        )
 
         # Recommendation
         if predicted >= 0.8:
@@ -519,7 +537,9 @@ class LearningEngine:
 
             # High temporal variance → stabilisation suggestion
             var = temporal_variance.get(task_name)
-            if var is not None and var > 0.04 and total >= 5:  # variance > 0.04 (std > 0.2)
+            if (
+                var is not None and var > 0.04 and total >= 5
+            ):  # variance > 0.04 (std > 0.2)
                 suggestions.append(
                     {
                         "component": task_name,
@@ -547,7 +567,7 @@ class LearningEngine:
         suggestions.sort(key=lambda s: priority_order.get(s["priority"], 3))
         return suggestions
 
-    def get_recommendations(self, context: Optional[dict] = None) -> list[dict]:
+    def get_recommendations(self, context: dict | None = None) -> list[dict]:
         """Suggest actions based on past learning.
 
         Looks at successful patterns and generates recommendations

@@ -13,7 +13,7 @@ Uses storage data (OLXStorage and subclasses) for geospatial analysis.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from aios_core.modules.olx.storage import OLXStorage
 
@@ -53,7 +53,7 @@ class PriceHeatmap:
     priciest_city: str | None = None
     priciest_avg: float | None = None
     national_avg: float | None = None
-    generated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    generated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
@@ -110,16 +110,18 @@ class GeospatialPriceAnalyzer:
         for city, prices in city_prices.items():
             avg = sum(prices) / len(prices)
             variance = sum((p - avg) ** 2 for p in prices) / len(prices)
-            std = variance ** 0.5
+            std = variance**0.5
 
-            cities.append(CityPriceStats(
-                city=city,
-                count=len(prices),
-                avg_price=avg,
-                min_price=min(prices),
-                max_price=max(prices),
-                std_price=std,
-            ))
+            cities.append(
+                CityPriceStats(
+                    city=city,
+                    count=len(prices),
+                    avg_price=avg,
+                    min_price=min(prices),
+                    max_price=max(prices),
+                    std_price=std,
+                )
+            )
 
         # Sort by avg_price (ascending)
         cities.sort(key=lambda c: c.avg_price)
@@ -145,7 +147,9 @@ class GeospatialPriceAnalyzer:
             national_avg=round(national_avg, 2) if national_avg else None,
         )
 
-    def best_buy_cities(self, query: str | None = None, limit: int = 5) -> list[CityPriceStats]:
+    def best_buy_cities(
+        self, query: str | None = None, limit: int = 5
+    ) -> list[CityPriceStats]:
         """Find cheapest cities for buying a product.
 
         Args:
@@ -158,7 +162,9 @@ class GeospatialPriceAnalyzer:
         heatmap = self.heatmap(query=query)
         return heatmap.cities[:limit]
 
-    def best_sell_cities(self, query: str | None = None, limit: int = 5) -> list[CityPriceStats]:
+    def best_sell_cities(
+        self, query: str | None = None, limit: int = 5
+    ) -> list[CityPriceStats]:
         """Find priciest cities for selling a product.
 
         Args:
@@ -171,7 +177,9 @@ class GeospatialPriceAnalyzer:
         heatmap = self.heatmap(query=query)
         return sorted(heatmap.cities, key=lambda c: -c.avg_price)[:limit]
 
-    def arbitrage_cities(self, query: str | None = None, min_spread_pct: float = 10.0) -> list[dict[str, object]]:
+    def arbitrage_cities(
+        self, query: str | None = None, min_spread_pct: float = 10.0
+    ) -> list[dict[str, object]]:
         """Find city pairs with price arbitrage opportunities.
 
         Args:
@@ -190,15 +198,19 @@ class GeospatialPriceAnalyzer:
             for pricey in heatmap.cities:
                 if cheap.city == pricey.city:
                     continue
-                spread_pct = ((pricey.avg_price - cheap.avg_price) / heatmap.national_avg) * 100
+                spread_pct = (
+                    (pricey.avg_price - cheap.avg_price) / heatmap.national_avg
+                ) * 100
                 if spread_pct >= min_spread_pct:
-                    opportunities.append({
-                        "buy_city": cheap.city,
-                        "buy_avg": round(cheap.avg_price, 2),
-                        "sell_city": pricey.city,
-                        "sell_avg": round(pricey.avg_price, 2),
-                        "spread_pct": round(spread_pct, 2),
-                    })
+                    opportunities.append(
+                        {
+                            "buy_city": cheap.city,
+                            "buy_avg": round(cheap.avg_price, 2),
+                            "sell_city": pricey.city,
+                            "sell_avg": round(pricey.avg_price, 2),
+                            "spread_pct": round(spread_pct, 2),
+                        }
+                    )
 
         opportunities.sort(key=lambda o: -o["spread_pct"])
         return opportunities

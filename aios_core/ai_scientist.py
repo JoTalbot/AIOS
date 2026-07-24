@@ -15,7 +15,6 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
 import random
 import time
 from dataclasses import dataclass, field
@@ -24,14 +23,23 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 RESEARCH_DOMAINS = [
-    "physics", "biology", "chemistry", "materials", "cs",
-    "medicine", "neuroscience", "climate", "astronomy", "genetics",
+    "physics",
+    "biology",
+    "chemistry",
+    "materials",
+    "cs",
+    "medicine",
+    "neuroscience",
+    "climate",
+    "astronomy",
+    "genetics",
 ]
 
 
 @dataclass
 class Hypothesis:
     """Scored research hypothesis."""
+
     domain: str
     hypothesis: str
     novelty: float
@@ -48,12 +56,13 @@ class Hypothesis:
 
     def overall_score(self) -> float:
         """Compute overall hypothesis score."""
-        return (self.novelty * 0.4 + self.testability * 0.3 + self.impact * 0.3)
+        return self.novelty * 0.4 + self.testability * 0.3 + self.impact * 0.3
 
 
 @dataclass
 class Experiment:
     """Designed experimental protocol."""
+
     hypothesis: Hypothesis
     design: str
     predicted_outcome: str
@@ -67,6 +76,7 @@ class Experiment:
 @dataclass
 class Paper:
     """Research paper draft."""
+
     title: str
     domain: str
     abstract: str
@@ -154,8 +164,14 @@ class AIScientist:
             "reproducibility": round(random.uniform(0.5, 0.9), 2),
         }
         overall = sum(scores.values()) / len(scores)
-        recommendation = "accept" if overall > 0.7 else ("revise" if overall > 0.5 else "reject")
-        review = {"scores": scores, "overall": round(overall, 2), "recommendation": recommendation}
+        recommendation = (
+            "accept" if overall > 0.7 else ("revise" if overall > 0.5 else "reject")
+        )
+        review = {
+            "scores": scores,
+            "overall": round(overall, 2),
+            "recommendation": recommendation,
+        }
         paper.peer_reviews.append(review)
         paper.reproducibility_score = scores["reproducibility"]
         return review
@@ -183,5 +199,8 @@ class AIScientist:
             "experiments": len(self.experiments),
             "discoveries": len(self.discoveries),
             "papers": len(self.papers),
-            "avg_novelty": round(sum(h.novelty for h in self.hypotheses) / max(len(self.hypotheses), 1), 2),
+            "avg_novelty": round(
+                sum(h.novelty for h in self.hypotheses) / max(len(self.hypotheses), 1),
+                2,
+            ),
         }

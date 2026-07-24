@@ -12,13 +12,11 @@ import gzip
 import hashlib
 import json
 import logging
-import os
 import shutil
 import sqlite3
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 __all__ = ["BackupMetadata", "BackupManager"]
 
@@ -39,7 +37,7 @@ class BackupMetadata:
     tables: list[str]
     row_counts: dict[str, int]
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Serialize to dict."""
         return asdict(self)
 
@@ -69,7 +67,7 @@ class BackupManager:
     def _load_metadata(self) -> None:
         """Load backup metadata from file."""
         if self.metadata_file.exists():
-            with open(self.metadata_file, "r") as f:
+            with open(self.metadata_file) as f:
                 data = json.load(f)
                 self.backups = [BackupMetadata(**b) for b in data.get("backups", [])]
         else:
@@ -160,7 +158,7 @@ class BackupManager:
                 sha256.update(chunk)
         return sha256.hexdigest()
 
-    def _get_table_info(self) -> Tuple[list[str], dict[str, int]]:
+    def _get_table_info(self) -> tuple[list[str], dict[str, int]]:
         """Get table names and row counts from database."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -204,7 +202,9 @@ class BackupManager:
                 import tempfile
 
                 with gzip.open(backup_path, "rb") as f_in:
-                    with tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False) as f_out:
+                    with tempfile.NamedTemporaryFile(
+                        suffix=".sqlite", delete=False
+                    ) as f_out:
                         shutil.copyfileobj(f_in, f_out)
                         temp_path = f_out.name
 
@@ -255,7 +255,7 @@ class BackupManager:
             logger.error("Restore failed for %s: %s", backup_id, e)
             return False
 
-    def list_backups(self) -> List[BackupMetadata]:
+    def list_backups(self) -> list[BackupMetadata]:
         """List all backups sorted by date (newest first)."""
         return sorted(self.backups, key=lambda b: b.created_at, reverse=True)
 
@@ -295,14 +295,14 @@ class BackupManager:
         self._save_metadata()
         return removed
 
-    def _find_backup(self, backup_id: str) -> Optional[BackupMetadata]:
+    def _find_backup(self, backup_id: str) -> BackupMetadata | None:
         """Find backup by ID."""
         for backup in self.backups:
             if backup.backup_id == backup_id:
                 return backup
         return None
 
-    def health_report(self) -> Dict:
+    def health_report(self) -> dict:
         """Generate backup health report."""
         total_size = sum(b.size_bytes for b in self.backups)
         oldest = min(self.backups, key=lambda b: b.created_at) if self.backups else None
@@ -319,7 +319,7 @@ class BackupManager:
             "compress": self.compress,
         }
 
-    def schedule_info(self) -> Dict:
+    def schedule_info(self) -> dict:
         """Get recommended schedule info."""
         return {
             "recommended_frequency": "every 6 hours",
@@ -381,7 +381,9 @@ if __name__ == "__main__":
         for backup in manager.list_backups():
             status = "✅" if backup.checksum else "❌"
             size_kb = backup.size_bytes / 1024
-            print(f"{status} {backup.backup_id} | {size_kb:.1f} KB | {backup.created_at}")
+            print(
+                f"{status} {backup.backup_id} | {size_kb:.1f} KB | {backup.created_at}"
+            )
 
     elif args.command == "verify":
         if manager.verify_backup(args.id):

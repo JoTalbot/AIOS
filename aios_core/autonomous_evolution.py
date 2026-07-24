@@ -16,8 +16,7 @@ from __future__ import annotations
 import logging
 import math
 import random
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -26,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Mutation:
     """Proposed system mutation."""
+
     type: str = "parameter_adjustment"
     target: str = ""
     change: str = ""
@@ -37,6 +37,7 @@ class Mutation:
 @dataclass
 class EvolutionResult:
     """Evolution outcome."""
+
     generation: int
     best_fitness: float
     avg_fitness: float
@@ -65,12 +66,18 @@ class AutonomousEvolution:
 
     def propose_mutation(self, current_state: dict[str, Any]) -> dict[str, Any]:
         """Propose a mutation (backward-compatible)."""
-        mutation_types = ["parameter_adjustment", "structure_change", "optimization", "feature_toggle"]
+        mutation_types = [
+            "parameter_adjustment",
+            "structure_change",
+            "optimization",
+            "feature_toggle",
+        ]
         mutation = {
             "type": random.choice(mutation_types),
             "target": list(current_state.keys())[0] if current_state else "default",
-            "change": f"+{round(self.mutation_rate * 100, 1)}%" if random.random() > 0.5 else
-                      f"-{round(self.mutation_rate * 50, 1)}%",
+            "change": f"+{round(self.mutation_rate * 100, 1)}%"
+            if random.random() > 0.5
+            else f"-{round(self.mutation_rate * 50, 1)}%",
             "mutation_rate": round(self.mutation_rate, 4),
         }
         return mutation
@@ -84,12 +91,20 @@ class AutonomousEvolution:
             self.mutation_rate = max(self.mutation_rate * 0.8, 0.01)
             self._fitness_log.append(0.0)
 
-        m = Mutation(type=mutation.get("type", ""), target=mutation.get("target", ""),
-                    change=mutation.get("change", ""), applied=success)
+        m = Mutation(
+            type=mutation.get("type", ""),
+            target=mutation.get("target", ""),
+            change=mutation.get("change", ""),
+            applied=success,
+        )
         self.evolution_history.append(m)
 
-    def evolve_generation(self, population: list[dict[str, Any]] | None = None,
-                         fitness_fn: Any = None, num_offspring: int = 5) -> EvolutionResult:
+    def evolve_generation(
+        self,
+        population: list[dict[str, Any]] | None = None,
+        fitness_fn: Any = None,
+        num_offspring: int = 5,
+    ) -> EvolutionResult:
         """Run one evolution generation."""
         self._generation += 1
         population = population or self._population or [{"param": random.random()}]
@@ -112,7 +127,9 @@ class AutonomousEvolution:
 
         # Create offspring through mutation
         offspring = []
-        top_indices = sorted(range(len(fitnesses)), key=lambda i: fitnesses[i], reverse=True)[:3]
+        top_indices = sorted(
+            range(len(fitnesses)), key=lambda i: fitnesses[i], reverse=True
+        )[:3]
         for _ in range(num_offspring):
             parent_idx = random.choice(top_indices)
             child = dict(population[parent_idx])
@@ -137,8 +154,12 @@ class AutonomousEvolution:
             converged=converged,
         )
 
-    def anneal(self, initial_temp: float = 1.0, cooling_rate: float = 0.95,
-               iterations: int = 100) -> dict[str, Any]:
+    def anneal(
+        self,
+        initial_temp: float = 1.0,
+        cooling_rate: float = 0.95,
+        iterations: int = 100,
+    ) -> dict[str, Any]:
         """Simulated annealing optimization."""
         current_state = {"value": random.random()}
         current_energy = random.uniform(0.5, 1.0)
@@ -166,11 +187,19 @@ class AutonomousEvolution:
 
             temp *= cooling_rate
 
-        return {"best_state": best_state, "best_energy": round(best_energy, 4), "iterations": iterations}
+        return {
+            "best_state": best_state,
+            "best_energy": round(best_energy, 4),
+            "iterations": iterations,
+        }
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics (backward-compatible)."""
-        avg_fitness = (sum(self._fitness_log) / len(self._fitness_log)) if self._fitness_log else 0
+        avg_fitness = (
+            (sum(self._fitness_log) / len(self._fitness_log))
+            if self._fitness_log
+            else 0
+        )
         return {
             "mutations": len(self.evolution_history),
             "mutation_rate": round(self.mutation_rate, 3),

@@ -2,6 +2,7 @@
 
 Extracted from ``aios_core.api.app.AIOSAPI``.
 """
+
 from __future__ import annotations
 
 from starlette.requests import Request
@@ -36,7 +37,9 @@ class PlatformsModulesMixin:
                     )
                 )
             storage = self._platform_storage(platform, request)
-            result = OwnAdsTracker(storage).record_snapshot(ads, seen_at=body.get("seen_at"))
+            result = OwnAdsTracker(storage).record_snapshot(
+                ads, seen_at=body.get("seen_at")
+            )
             result["platform"] = platform
             return JSONResponse(result)
         except Exception as exc:
@@ -240,7 +243,9 @@ class PlatformsModulesMixin:
                     )
                 )
             storage = self._platform_storage(platform, request)
-            inserted, new_fps = storage.save_ads_with_new(cards, seen_at=body.get("seen_at"))
+            inserted, new_fps = storage.save_ads_with_new(
+                cards, seen_at=body.get("seen_at")
+            )
             return JSONResponse(
                 {
                     "platform": platform,
@@ -258,7 +263,9 @@ class PlatformsModulesMixin:
             return JSONResponse({"error": "unknown platform"}, status_code=404)
         platform = request.path_params["platform"]
         query = request.query_params.get("query")
-        limit = self._bounded_int(request.query_params.get("limit"), default=100, maximum=1000)
+        limit = self._bounded_int(
+            request.query_params.get("limit"), default=100, maximum=1000
+        )
         storage = self._platform_storage(platform, request)
         ads = storage.get_ads(query=query, limit=limit)
         return JSONResponse(
@@ -298,7 +305,9 @@ class PlatformsModulesMixin:
                 from aios_core.platforms import get_platform, resolve_profile
 
                 descriptor = get_platform(platform)
-                profile = resolve_profile(platform, profile_name or None, store=self.profile_store)
+                profile = resolve_profile(
+                    platform, profile_name or None, store=self.profile_store
+                )
                 storage = descriptor.make_storage(profile.db_path)
             self._module_storages[cache_key] = storage
         return storage
@@ -306,7 +315,9 @@ class PlatformsModulesMixin:
     async def _profiles_set_default(self, request: Request) -> JSONResponse:
         """Mark {name} as the default profile of {platform}."""
         body = await request.json()
-        profile = self.profile_store.set_default(request.path_params["platform"], body.get("name"))
+        profile = self.profile_store.set_default(
+            request.path_params["platform"], body.get("name")
+        )
         if profile is None:
             return JSONResponse({"error": "profile not found"}, status_code=404)
         return JSONResponse(profile.to_dict())
@@ -357,7 +368,9 @@ class PlatformsModulesMixin:
             {
                 "profiles": [
                     p.to_dict()
-                    for p in self.profile_store.list(request.query_params.get("platform"))
+                    for p in self.profile_store.list(
+                        request.query_params.get("platform")
+                    )
                 ]
             }
         )
@@ -405,4 +418,3 @@ class PlatformsModulesMixin:
         from aios_core.platforms import list_platforms
 
         return JSONResponse({"platforms": [d.to_dict() for d in list_platforms()]})
-

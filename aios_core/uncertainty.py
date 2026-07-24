@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class UncertaintyEstimate:
     """Uncertainty estimate for a prediction."""
+
     model_id: str
     prediction: float = 0.0
     epistemic: float = 0.0
@@ -81,7 +82,9 @@ class UncertaintyQuantifier:
 
     def total_uncertainty(self, model_id: str) -> float:
         """Compute total uncertainty (backward-compatible)."""
-        return self.epistemic_uncertainty(model_id) + self.aleatoric_uncertainty(model_id)
+        return self.epistemic_uncertainty(model_id) + self.aleatoric_uncertainty(
+            model_id
+        )
 
     def ensemble_disagreement(self) -> float:
         """Measure disagreement across all models."""
@@ -94,7 +97,9 @@ class UncertaintyQuantifier:
             return 0.0
         return statistics.stdev(means)
 
-    def confidence_interval(self, model_id: str, level: float = 0.95) -> tuple[float, float]:
+    def confidence_interval(
+        self, model_id: str, level: float = 0.95
+    ) -> tuple[float, float]:
         """Compute confidence interval for predictions."""
         preds = self.predictions.get(model_id, [])
         if len(preds) < 2:
@@ -116,9 +121,12 @@ class UncertaintyQuantifier:
         confidence = max(0, min(1, 1.0 - tot * 0.5))
 
         est = UncertaintyEstimate(
-            model_id=model_id, prediction=prediction,
-            epistemic=round(ep, 4), aleatoric=round(al, 4),
-            total=round(tot, 4), confidence=round(confidence, 4),
+            model_id=model_id,
+            prediction=prediction,
+            epistemic=round(ep, 4),
+            aleatoric=round(al, 4),
+            total=round(tot, 4),
+            confidence=round(confidence, 4),
         )
         self._estimates.append(est)
         return est
@@ -137,10 +145,13 @@ class UncertaintyQuantifier:
         std = statistics.stdev(preds) if len(preds) >= 2 else mae
         calibration = std / mae if mae > 0 else 1.0
 
-        self._calibration_log.append({
-            "model_id": model_id, "mae": round(mae, 4),
-            "calibration_ratio": round(calibration, 4),
-        })
+        self._calibration_log.append(
+            {
+                "model_id": model_id,
+                "mae": round(mae, 4),
+                "calibration_ratio": round(calibration, 4),
+            }
+        )
         return round(calibration, 4)
 
     def stats(self) -> dict[str, Any]:

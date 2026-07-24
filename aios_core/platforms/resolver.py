@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from .descriptor import get_platform
 from .profile import Profile
@@ -30,7 +29,7 @@ def _default_db_path(platform: str) -> str:
 def resolve_profile(
     platform: str,
     name: str | None = None,
-    store: Optional[ProfileStore] = None,
+    store: ProfileStore | None = None,
 ) -> Profile:
     """Разрешает профиль платформы по описанному приоритету.
 
@@ -74,14 +73,16 @@ def resolve_profile(
 def _with_db_path(profile: Profile, descriptor) -> Profile:
     """Подставляет дефолтный путь БД, если у профиля он не задан."""
     if not profile.db_path:
-        profile.db_path = os.path.join("data", descriptor.name, f"{profile.name}.sqlite")
+        profile.db_path = os.path.join(
+            "data", descriptor.name, f"{profile.name}.sqlite"
+        )
     return profile
 
 
 def storage_for(
     platform: str,
     name: str | None = None,
-    store: Optional[ProfileStore] = None,
+    store: ProfileStore | None = None,
 ):
     """Хранилище платформы для разрешённого профиля."""
     descriptor = get_platform(platform)
@@ -92,7 +93,7 @@ def storage_for(
 def adb_for(
     platform: str,
     name: str | None = None,
-    store: Optional[ProfileStore] = None,
+    store: ProfileStore | None = None,
 ):
     """ADB-контроллер платформы, привязанный к устройству профиля."""
     descriptor = get_platform(platform)

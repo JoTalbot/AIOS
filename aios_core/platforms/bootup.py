@@ -26,8 +26,8 @@ from __future__ import annotations
 
 import tempfile
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, Optional
 
 from .apkfetch import resolve_apk
 from .calibrate import CalibrationAdvisor, write_hints_to_descriptor
@@ -58,14 +58,17 @@ def _adb_calibrator_drive(
     adb = ADBController(package=package, serial=serial)
     opened = adb.open_app()
     if opened.get("code") != 0:
-        raise ValueError(f"adb open_app failed: {(opened.get('stderr') or 'no device')[:160]}")
+        raise ValueError(
+            f"adb open_app failed: {(opened.get('stderr') or 'no device')[:160]}"
+        )
     time.sleep(8)  # приложению нужно прогрузить ленту
     with tempfile.TemporaryDirectory(prefix="aios-bootup-") as tmp:
         target = Path(tmp) / "screen.xml"
         pulled = adb.dump_ui(str(target))
         if pulled.get("code") != 0 or not target.exists():
             raise ValueError(
-                "adb dump_ui failed: " f"{(pulled.get('stderr') or 'dump unavailable')[:160]}"
+                "adb dump_ui failed: "
+                f"{(pulled.get('stderr') or 'dump unavailable')[:160]}"
             )
         return target.read_text(encoding="utf-8")
 
@@ -94,7 +97,7 @@ def bootup_platform(
     locale: str = "uk-UA",
     dump_path: str | None = None,
     query: str | None = None,
-    driver: Optional[Driver] = None,
+    driver: Driver | None = None,
     runner=None,
     dry_run: bool = False,
     fetch: bool = False,
@@ -102,7 +105,7 @@ def bootup_platform(
     apk_runner=None,
     serial: str | None = None,
     pool=None,
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """E2E-пайплайн подключения платформы.
 
     Args:
@@ -140,7 +143,7 @@ def bootup_platform(
         )
 
     root = Path(project_root)
-    steps: Dict[str, object] = {}
+    steps: dict[str, object] = {}
 
     # -- 0. resolve APK (скачивание по имени пакета) ---------------------- #
     resolved_apk: str | None = None
@@ -245,8 +248,8 @@ def bootup_platform(
 
     # -- 3. calibrate ---------------------------------------------------- #
     xml: str | None = None
-    hints: Optional[Dict[str, object]] = None
-    calibrate_step: Dict[str, object] = {}
+    hints: dict[str, object] | None = None
+    calibrate_step: dict[str, object] = {}
     if dump_path:
         xml = Path(dump_path).read_text(encoding="utf-8")
         calibrate_step["source"] = f"dump:{dump_path}"
@@ -271,7 +274,9 @@ def bootup_platform(
             drive = driver or _adb_calibrator_drive
             try:
                 xml = _call_driver(drive, android_package, query, serial)
-                calibrate_step["source"] = "driver:injected" if driver else "driver:adb-generic"
+                calibrate_step["source"] = (
+                    "driver:injected" if driver else "driver:adb-generic"
+                )
             except Exception as exc:  # noqa: BLE001 — драйв опционален
                 calibrate_step.update(
                     {

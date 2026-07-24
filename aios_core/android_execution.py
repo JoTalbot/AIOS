@@ -7,15 +7,20 @@ Provides stable real-device execution with:
 - Retry logic and error handling
 """
 
-import os
 import re
 import subprocess
 import time
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any
 
-__all__ = ["UIElement", "SearchResult", "ItemDetails", "UIAutomatorParser", "RealDeviceExecutor", "SlandoScreenClassifier"]
+__all__ = [
+    "UIElement",
+    "SearchResult",
+    "ItemDetails",
+    "UIAutomatorParser",
+    "RealDeviceExecutor",
+    "SlandoScreenClassifier",
+]
 
 
 @dataclass
@@ -88,7 +93,7 @@ class UIAutomatorParser:
 
             self.root = ET.fromstring(self.xml_content)
             return True
-        except Exception as e:
+        except Exception:
             return False
 
     def find_elements_by_resource(self, resource_id: str) -> list[UIElement]:
@@ -160,7 +165,10 @@ class UIAutomatorParser:
 
         elements = []
         for node in self.root.iter("node"):
-            if node.attrib.get("clickable") == "true" and node.attrib.get("enabled") == "true":
+            if (
+                node.attrib.get("clickable") == "true"
+                and node.attrib.get("enabled") == "true"
+            ):
                 bounds = self._parse_bounds(node.attrib.get("bounds", "[0,0][0,0]"))
                 elements.append(
                     UIElement(
@@ -175,7 +183,7 @@ class UIAutomatorParser:
                 )
         return elements
 
-    def find_search_field(self) -> Optional[UIElement]:
+    def find_search_field(self) -> UIElement | None:
         """Find search input field in ua.slando."""
         search_resource_ids = [
             "ua.slando:id/search_field",
@@ -205,9 +213,9 @@ class UIAutomatorParser:
 
         return None
 
-    def find_search_results(self) -> List[SearchResult]:
+    def find_search_results(self) -> list[SearchResult]:
         """Find search result cards in ua.slando."""
-        results: List[SearchResult] = []
+        results: list[SearchResult] = []
 
         card_resources = [
             "ua.slando:id/adListing_adGridCard",
@@ -228,13 +236,15 @@ class UIAutomatorParser:
                         child_resource = child.attrib.get("resource-id", "")
 
                         if (
-                            "title" in child_resource.lower() or "name" in child_resource.lower()
+                            "title" in child_resource.lower()
+                            or "name" in child_resource.lower()
                         ) and child_text:
                             title = child_text
                         elif "price" in child_resource.lower() and child_text:
                             price = child_text
                         elif (
-                            "location" in child_resource.lower() or "city" in child_resource.lower()
+                            "location" in child_resource.lower()
+                            or "city" in child_resource.lower()
                         ) and child_text:
                             location = child_text
 
@@ -256,7 +266,7 @@ class UIAutomatorParser:
 
         return results[:20]
 
-    def find_item_details(self) -> Optional[ItemDetails]:
+    def find_item_details(self) -> ItemDetails | None:
         """Find item details on detail page."""
         title = ""
         price = ""
@@ -351,7 +361,7 @@ class RealDeviceExecutor:
             pull_result = self._adb("pull /sdcard/aios_ui.xml /tmp/aios_ui_current.xml")
             if pull_result["code"] == 0:
                 try:
-                    with open("/tmp/aios_ui_current.xml", "r") as f:
+                    with open("/tmp/aios_ui_current.xml") as f:
                         return f.read()
                 except Exception:
                     return None
@@ -380,7 +390,9 @@ class RealDeviceExecutor:
 
     def launch_app(self, package: str) -> bool:
         """Launch app."""
-        result = self._adb(f"shell monkey -p {package} -c android.intent.category.LAUNCHER 1")
+        result = self._adb(
+            f"shell monkey -p {package} -c android.intent.category.LAUNCHER 1"
+        )
         if result["code"] == 0:
             time.sleep(2)
             return True
@@ -430,7 +442,9 @@ class RealDeviceExecutor:
         self.parser = UIAutomatorParser(ui_xml)
         self.parser.parse()
 
-        results = self.parser.find_search_results() or self._fallback_search_results(ui_xml)
+        results = self.parser.find_search_results() or self._fallback_search_results(
+            ui_xml
+        )
 
         return {
             "status": "success",
@@ -445,15 +459,17 @@ class RealDeviceExecutor:
             "real_adb": True,
         }
 
-    def _fallback_search_results(self, ui_xml: str) -> List[SearchResult]:
+    def _fallback_search_results(self, ui_xml: str) -> list[SearchResult]:
         parser = UIAutomatorParser(ui_xml)
         parser.parse()
         clickable = parser.find_clickable_elements()
-        results: List[SearchResult] = []
+        results: list[SearchResult] = []
         for el in clickable:
             txt = (el.text or "").strip()
             if txt and "UAH" in (el.content_desc or ""):
-                results.append(SearchResult(f"fallback_{len(results)}", txt, "", "", el.bounds))
+                results.append(
+                    SearchResult(f"fallback_{len(results)}", txt, "", "", el.bounds)
+                )
         return results[:10]
 
     def get_item_details(self, item_id: str) -> dict[str, Any]:
@@ -543,7 +559,9 @@ class SlandoScreenClassifier:
             return self.SCREEN_CHAT
 
         # Check for profile
-        profile_elements = self.parser.find_elements_by_resource("ua.slando:id/profile_container")
+        profile_elements = self.parser.find_elements_by_resource(
+            "ua.slando:id/profile_container"
+        )
         if profile_elements:
             return self.SCREEN_PROFILE
 
@@ -563,7 +581,9 @@ class SlandoScreenClassifier:
         if ui_xml:
             self.parser = UIAutomatorParser(ui_xml)
             if self.parser.parse():
-                info["clickable_elements_count"] = len(self.parser.find_clickable_elements())
+                info["clickable_elements_count"] = len(
+                    self.parser.find_clickable_elements()
+                )
                 info["has_search"] = self.parser.find_search_field() is not None
                 info["has_results"] = len(self.parser.find_search_results()) > 0
 

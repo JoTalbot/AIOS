@@ -21,8 +21,8 @@ class ThresholdConfig:
     """Performance threshold for a named benchmark."""
 
     name: str
-    max_ms: float           # Maximum allowed time in milliseconds
-    min_rounds: int = 5     # Minimum benchmark rounds
+    max_ms: float  # Maximum allowed time in milliseconds
+    min_rounds: int = 5  # Minimum benchmark rounds
     description: str = ""
 
     def to_dict(self) -> dict[str, object]:
@@ -117,7 +117,12 @@ def check_threshold(name: str, actual_ms: float) -> dict[str, object]:
     """
     threshold = get_threshold(name)
     if threshold is None:
-        return {"name": name, "status": "unknown", "actual_ms": actual_ms, "threshold_ms": None}
+        return {
+            "name": name,
+            "status": "unknown",
+            "actual_ms": actual_ms,
+            "threshold_ms": None,
+        }
 
     passed = actual_ms <= threshold.max_ms
     return {
@@ -125,7 +130,9 @@ def check_threshold(name: str, actual_ms: float) -> dict[str, object]:
         "status": "pass" if passed else "fail",
         "actual_ms": round(actual_ms, 2),
         "threshold_ms": threshold.max_ms,
-        "over_pct": round(((actual_ms - threshold.max_ms) / threshold.max_ms) * 100, 2) if not passed else 0,
+        "over_pct": round(((actual_ms - threshold.max_ms) / threshold.max_ms) * 100, 2)
+        if not passed
+        else 0,
         "description": threshold.description,
     }
 

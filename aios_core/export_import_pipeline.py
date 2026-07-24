@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import csv
 import gzip
-import io
 import json
 import os
 import time
@@ -39,10 +38,10 @@ class ExportFormat(Enum):
 class ImportMode(Enum):
     """Import behavior modes."""
 
-    REPLACE = "replace"          # Replace all existing data
-    APPEND = "append"            # Add new records only
-    UPSERT = "upsert"            # Update existing, add new
-    MERGE = "merge"              # Merge fields of matching records
+    REPLACE = "replace"  # Replace all existing data
+    APPEND = "append"  # Add new records only
+    UPSERT = "upsert"  # Update existing, add new
+    MERGE = "merge"  # Merge fields of matching records
 
 
 @dataclass
@@ -303,12 +302,15 @@ class ExportImportPipeline:
         json_result = self.export_json(records, validate=validate)
 
         # Compress
-        json_bytes = json.dumps({
-            "schema_version": self.schema.version,
-            "exported_at": time.time(),
-            "record_count": json_result.record_count,
-            "records": records if not validate else json_result.record_count,
-        }, ensure_ascii=False).encode("utf-8")
+        json_bytes = json.dumps(
+            {
+                "schema_version": self.schema.version,
+                "exported_at": time.time(),
+                "record_count": json_result.record_count,
+                "records": records if not validate else json_result.record_count,
+            },
+            ensure_ascii=False,
+        ).encode("utf-8")
 
         with gzip.open(file_path, "wb") as f:
             f.write(json_bytes)
@@ -346,7 +348,7 @@ class ExportImportPipeline:
         start = time.time()
         errors: list[str] = []
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
 
         records = data.get("records", [])
@@ -429,13 +431,18 @@ class ExportImportPipeline:
         errors: list[str] = []
 
         records = []
-        with open(file_path, "r", encoding="utf-8", newline="") as f:
+        with open(file_path, encoding="utf-8", newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 # Parse JSON-encoded fields
                 record = {}
                 for key, value in row.items():
-                    if value and value.startswith("{") or value and value.startswith("["):
+                    if (
+                        value
+                        and value.startswith("{")
+                        or value
+                        and value.startswith("[")
+                    ):
                         try:
                             record[key] = json.loads(value)
                         except json.JSONDecodeError:
@@ -479,12 +486,7 @@ class ExportImportPipeline:
                     skipped += 1
                 else:
                     imported += 1
-            elif mode == ImportMode.UPSERT:
-                if key and key in existing_map:
-                    updated += 1
-                else:
-                    imported += 1
-            elif mode == ImportMode.MERGE:
+            elif mode == ImportMode.UPSERT or mode == ImportMode.MERGE:
                 if key and key in existing_map:
                     updated += 1
                 else:
@@ -521,7 +523,8 @@ class ExportImportPipeline:
             ExportResult with only changed records.
         """
         changed = [
-            r for r in records
+            r
+            for r in records
             if r.get("updated_at", r.get("created_at", 0)) > last_export_timestamp
         ]
 

@@ -6,10 +6,8 @@ extensions: price drop notifications for tracked favorites.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-from aios_core.modules.rozetka.storage import RozetkaStorage
 from aios_core.modules.rozetka.price_tracker import RozetkaPriceTracker
+from aios_core.modules.rozetka.storage import RozetkaStorage
 
 
 class RozetkaFavorites:
@@ -76,15 +74,17 @@ class RozetkaFavorites:
                     break
             if ad:
                 stats = self.price_tracker.track_product(fp)
-                results.append({
-                    "fingerprint": fp,
-                    "title": ad.title,
-                    "price": ad.price,
-                    "url": ad.url,
-                    "min_price": stats.get("min_price"),
-                    "max_price": stats.get("max_price"),
-                    "price_count": stats.get("price_count", 0),
-                })
+                results.append(
+                    {
+                        "fingerprint": fp,
+                        "title": ad.title,
+                        "price": ad.price,
+                        "url": ad.url,
+                        "min_price": stats.get("min_price"),
+                        "max_price": stats.get("max_price"),
+                        "price_count": stats.get("price_count", 0),
+                    }
+                )
         return results
 
     def check_drops(self) -> list[dict[str, object]]:
@@ -103,10 +103,12 @@ class RozetkaFavorites:
                 if prev_price and curr_price and curr_price < prev_price:
                     drop_pct = ((prev_price - curr_price) / prev_price) * 100
                     if drop_pct >= self.min_drop_pct:
-                        alerts.append({
-                            "fingerprint": fp,
-                            "old_price": prev_price,
-                            "new_price": curr_price,
-                            "drop_pct": round(drop_pct, 2),
-                        })
+                        alerts.append(
+                            {
+                                "fingerprint": fp,
+                                "old_price": prev_price,
+                                "new_price": curr_price,
+                                "drop_pct": round(drop_pct, 2),
+                            }
+                        )
         return alerts

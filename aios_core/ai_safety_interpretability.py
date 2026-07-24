@@ -23,7 +23,9 @@ __all__ = ["SafetyInterpretability"]
 class SafetyCircuit:
     """Discovered safety circuit."""
 
-    def __init__(self, name: str, components: list[str], importance: float = 0.9) -> None:
+    def __init__(
+        self, name: str, components: list[str], importance: float = 0.9
+    ) -> None:
         self.name = name
         self.components = components
         self.importance = importance
@@ -37,7 +39,11 @@ class SafetyCircuit:
         return self._verification_score
 
     def stats(self) -> dict[str, Any]:
-        return {"name": self.name, "components": len(self.components), "importance": self.importance}
+        return {
+            "name": self.name,
+            "components": len(self.components),
+            "importance": self.importance,
+        }
 
 
 class SafetyInterpretability:
@@ -51,12 +57,16 @@ class SafetyInterpretability:
     def find_safety_circuit(self, model: Any, behavior: str) -> list[str]:
         """Find safety circuit (backward-compatible)."""
         components = ["attention_head_safety", "mlp_value_head", "output_norm_safety"]
-        circuit = SafetyCircuit(f"circuit_{behavior}", components, importance=random.uniform(0.85, 0.95))
+        circuit = SafetyCircuit(
+            f"circuit_{behavior}", components, importance=random.uniform(0.85, 0.95)
+        )
         self._discovered_circuits.append(circuit)
         self.circuits[behavior] = components
         return components
 
-    def verify_safety_feature(self, circuit: list[str], test_cases: list[dict[str, Any]]) -> float:
+    def verify_safety_feature(
+        self, circuit: list[str], test_cases: list[dict[str, Any]]
+    ) -> float:
         """Verify safety feature (backward-compatible)."""
         score = round(random.uniform(0.88, 0.96), 2)
         return score
@@ -68,13 +78,17 @@ class SafetyInterpretability:
             "refusal_activation": round(random.uniform(0.8, 0.92), 2),
             "safety_norm": round(random.uniform(0.9, 0.98), 2),
         }
-        return {"task": task, "patterns": patterns, "safety_components": len(self.circuits)}
+        return {
+            "task": task,
+            "patterns": patterns,
+            "safety_components": len(self.circuits),
+        }
 
     def extract_concept(self, activation: list[float], top_k: int = 5) -> list[str]:
         """Extract top-k concepts from activation."""
         concepts = [f"concept_{i}" for i in range(top_k)]
         for c in concepts:
-            self._concept_bank[c] = f"Interpretable concept for safety"
+            self._concept_bank[c] = "Interpretable concept for safety"
         return concepts
 
     def attention_pattern_analysis(self, model: Any, prompt: str) -> dict[str, Any]:

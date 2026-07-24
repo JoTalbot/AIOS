@@ -13,11 +13,9 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
 import random
-import time
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TransitionRecord:
     """Recorded environment transition."""
+
     state: dict[str, Any]
     action: Any
     reward: float
@@ -55,15 +54,21 @@ class DynamicsModel:
         best_sim = -1.0
         best_trans = None
         for trans in self.transitions:
-            sim = sum(1 for k in state if k in trans.state and str(state[k]) == str(trans.state[k]))
+            sim = sum(
+                1
+                for k in state
+                if k in trans.state and str(state[k]) == str(trans.state[k])
+            )
             sim /= max(len(state), 1)
             if sim > best_sim:
                 best_sim = sim
                 best_trans = trans
 
         if best_trans:
-            return {k: v * 0.95 + best_trans.next_state.get(k, v) * 0.05
-                    for k, v in state.items()}
+            return {
+                k: v * 0.95 + best_trans.next_state.get(k, v) * 0.05
+                for k, v in state.items()
+            }
         return {k: v * 0.9 for k, v in state.items()}
 
     def predict_reward(self, state: dict[str, Any], action: Any) -> float:
@@ -105,17 +110,27 @@ class ModelBasedRL:
         self._imagined_rollouts: list[list[dict[str, Any]]] = []
         self._plan_count: int = 0
 
-    def collect_experience(self, state: dict[str, Any], action: Any,
-                          reward: float, next_state: dict[str, Any],
-                          done: bool = False) -> None:
+    def collect_experience(
+        self,
+        state: dict[str, Any],
+        action: Any,
+        reward: float,
+        next_state: dict[str, Any],
+        done: bool = False,
+    ) -> None:
         """Collect real environment experience."""
-        trans = TransitionRecord(state=state, action=action, reward=reward,
-                                next_state=next_state, done=done)
+        trans = TransitionRecord(
+            state=state, action=action, reward=reward, next_state=next_state, done=done
+        )
         self._experience.append(trans)
         self.dynamics.transitions.append(trans)
 
-    def plan(self, state: dict[str, Any] | None = None,
-             horizon: int = 10, num_samples: int = 5) -> list[dict[str, Any]]:
+    def plan(
+        self,
+        state: dict[str, Any] | None = None,
+        horizon: int = 10,
+        num_samples: int = 5,
+    ) -> list[dict[str, Any]]:
         """Plan using model-predictive control (backward-compatible)."""
         self._plan_count += 1
         current_state = state or {"x": 0.0}
@@ -131,8 +146,14 @@ class ModelBasedRL:
                 next_state = self.dynamics.predict(s, action)
                 reward = self.dynamics.predict_reward(s, action) + random.gauss(0, 0.1)
                 total_reward += reward
-                trajectory.append({"state": s, "action": action,
-                                  "next_state": next_state, "reward": reward})
+                trajectory.append(
+                    {
+                        "state": s,
+                        "action": action,
+                        "next_state": next_state,
+                        "reward": reward,
+                    }
+                )
                 s = next_state
 
             trajectory.append({"total_reward": round(total_reward, 4)})
@@ -142,8 +163,9 @@ class ModelBasedRL:
         best_plan = max(plans, key=lambda p: p[-1].get("total_reward", 0))
         return best_plan[:horizon]
 
-    def imagine_rollout(self, initial_state: dict[str, Any],
-                       horizon: int = 10) -> list[dict[str, Any]]:
+    def imagine_rollout(
+        self, initial_state: dict[str, Any], horizon: int = 10
+    ) -> list[dict[str, Any]]:
         """Generate an imagined rollout from the dynamics model."""
         trajectory = []
         state = dict(initial_state)
@@ -152,8 +174,14 @@ class ModelBasedRL:
             action = f"policy_action_{step}"
             next_state = self.dynamics.predict(state, action)
             reward = self.dynamics.predict_reward(state, action)
-            trajectory.append({"state": state, "action": action,
-                              "next_state": next_state, "reward": reward})
+            trajectory.append(
+                {
+                    "state": state,
+                    "action": action,
+                    "next_state": next_state,
+                    "reward": reward,
+                }
+            )
             state = next_state
 
         self._imagined_rollouts.append(trajectory)

@@ -5,7 +5,6 @@ from __future__ import annotations
 from aios_core.modules.olx.card_parser import CardParser
 from aios_core.modules.olx.models import AdCard
 
-
 # TikTok-specific parsing markers
 TIKTOK_CARD_RESOURCE_IDS = ("video_card", "product_card", "tiktok_card")
 TIKTOK_TITLE_MARKERS = ("desc", "description", "title", "caption")
@@ -37,8 +36,10 @@ class TikTokCardParser(CardParser):
             import re
 
             # Find video/product card nodes
-            pattern = r'<node[^>]*resource-id="[^"]*({})[^"]*"[^>]*text="([^"]*)"'.format(
-                "|".join(TIKTOK_CARD_RESOURCE_IDS)
+            pattern = (
+                r'<node[^>]*resource-id="[^"]*({})[^"]*"[^>]*text="([^"]*)"'.format(
+                    "|".join(TIKTOK_CARD_RESOURCE_IDS)
+                )
             )
             matches = re.findall(pattern, xml, re.IGNORECASE)
 
@@ -69,14 +70,14 @@ class TikTokCardParser(CardParser):
         import re
 
         # Price patterns: "3000 грн", "3 000 UAH", "$50"
-        m = re.search(r'(\d[\d\s]+)\s*(грн|uah|\$)', text.lower())
+        m = re.search(r"(\d[\d\s]+)\s*(грн|uah|\$)", text.lower())
         if m:
             try:
                 return float(m.group(1).replace(" ", ""))
             except ValueError:
                 pass
 
-        m = re.search(r'\b(\d{3,6})\b', text)
+        m = re.search(r"\b(\d{3,6})\b", text)
         if m:
             try:
                 return float(m.group(1))

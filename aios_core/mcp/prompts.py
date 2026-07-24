@@ -5,10 +5,10 @@ Registration and rendering of MCP prompt templates.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
 
-from .protocol import MCPPrompt, MCPPromptResult
+from .protocol import MCPPromptResult
 
 
 @dataclass
@@ -17,8 +17,10 @@ class PromptDefinition:
 
     name: str
     description: str = ""
-    arguments: list[dict] = field(default_factory=list)  # [{"name", "description", "required"}]
-    renderer: Optional[Callable[[dict], MCPPromptResult]] = None
+    arguments: list[dict] = field(
+        default_factory=list
+    )  # [{"name", "description", "required"}]
+    renderer: Callable[[dict], MCPPromptResult] | None = None
     template: str | None = None  # Simple string template with {var} placeholders
 
 
@@ -61,7 +63,7 @@ class PromptRegistry:
             return True
         return False
 
-    def get(self, name: str) -> Optional[PromptDefinition]:
+    def get(self, name: str) -> PromptDefinition | None:
         """Get a prompt definition by name.
 
         Args:
@@ -87,7 +89,7 @@ class PromptRegistry:
             for p in self._prompts.values()
         ]
 
-    def render(self, name: str, arguments: dict = None) -> Optional[MCPPromptResult]:
+    def render(self, name: str, arguments: dict = None) -> MCPPromptResult | None:
         """Render a prompt template with given arguments.
 
         If the prompt has a custom renderer callable, that is used.

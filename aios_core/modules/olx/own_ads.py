@@ -6,9 +6,8 @@ import hashlib
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union
 
 from .text_utils import normalize_text, parse_price
 
@@ -45,7 +44,7 @@ class OwnAd:
             base = f"own:{(self.title or '').strip().lower()}"
         return hashlib.sha256(base.encode("utf-8")).hexdigest()[:12]
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""
         return {
             "fingerprint": self.fingerprint,
@@ -64,7 +63,7 @@ class OwnAd:
 class OwnAdsParser:
     """Parses the 'My listings' screen into :class:`OwnAd` rows."""
 
-    def parse(self, xml_source: Union[str, Path, ET.Element]) -> List[OwnAd]:
+    def parse(self, xml_source: str | Path | ET.Element) -> list[OwnAd]:
         """Execute parse."""
         if isinstance(xml_source, ET.Element):
             root = xml_source
@@ -76,7 +75,7 @@ class OwnAdsParser:
                 else ET.parse(text_or_path).getroot()
             )
 
-        ads: List[OwnAd] = []
+        ads: list[OwnAd] = []
         for node in root.iter("node"):
             resource_id = (node.attrib.get("resource-id") or "").lower()
             if not any(marker in resource_id for marker in _CARD_MARKERS):
@@ -142,10 +141,12 @@ class OwnAdsTracker:
         """Initialize OwnAdsTracker."""
         self.storage = storage
 
-    def record_snapshot(self, ads: List[OwnAd], seen_at: str | None = None) -> Dict[str, object]:
+    def record_snapshot(
+        self, ads: list[OwnAd], seen_at: str | None = None
+    ) -> dict[str, object]:
         """Persist one snapshot of all own ads; reports counter deltas."""
-        now = seen_at or datetime.now(timezone.utc).isoformat()
-        result: Dict[str, object] = {"recorded": len(ads), "new": 0, "deltas": {}}
+        now = seen_at or datetime.now(UTC).isoformat()
+        result: dict[str, object] = {"recorded": len(ads), "new": 0, "deltas": {}}
         for ad in ads:
             is_new = self.storage.upsert_own_ad(ad, seen_at=now)
             if is_new:
@@ -157,8 +158,10 @@ class OwnAdsTracker:
                 result["deltas"][ad.fingerprint] = {
                     "title": ad.title,
                     "views_delta": (latest["views"] or 0) - (previous["views"] or 0),
-                    "favorites_delta": (latest["favorites"] or 0) - (previous["favorites"] or 0),
-                    "messages_delta": (latest["messages"] or 0) - (previous["messages"] or 0),
+                    "favorites_delta": (latest["favorites"] or 0)
+                    - (previous["favorites"] or 0),
+                    "messages_delta": (latest["messages"] or 0)
+                    - (previous["messages"] or 0),
                 }
         return result
 
@@ -166,16 +169,18 @@ class OwnAdsTracker:
         self,
         min_age_days: float = 3.0,
         min_views_per_day: float = 1.0,
-        now: Optional[datetime] = None,
-    ) -> List[Dict[str, object]]:
+        now: datetime | None = None,
+    ) -> list[dict[str, object]]:
         """Listings old enough to judge but getting too few views per day."""
-        now = now or datetime.now(timezone.utc)
-        report: List[Dict[str, object]] = []
+        now = now or datetime.now(UTC)
+        report: list[dict[str, object]] = []
         for row in self.storage.own_ads(status="active"):
             first_seen = row.get("first_seen_at")
             if not first_seen:
                 continue
-            age_days = (now - datetime.fromisoformat(first_seen)).total_seconds() / 86400.0
+            age_days = (
+                now - datetime.fromisoformat(first_seen)
+            ).total_seconds() / 86400.0
             if age_days < min_age_days:
                 continue
             views_total = row.get("last_views") or 0

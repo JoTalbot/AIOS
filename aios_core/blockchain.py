@@ -14,8 +14,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import math
-import random
 import time
 from typing import Any
 
@@ -35,26 +33,37 @@ class Block:
 
     def calculate_hash(self) -> str:
         """Calculate hash (backward-compatible)."""
-        block_string = f"{self.index}{self.timestamp}{self.data}{self.previous_hash}{self.nonce}"
+        block_string = (
+            f"{self.index}{self.timestamp}{self.data}{self.previous_hash}{self.nonce}"
+        )
         return hashlib.sha256(block_string.encode()).hexdigest()
 
 
 class Transaction:
     """Blockchain transaction."""
 
-    def __init__(self, sender: str, receiver: str, amount: float, tx_type: str = "transfer") -> None:
+    def __init__(
+        self, sender: str, receiver: str, amount: float, tx_type: str = "transfer"
+    ) -> None:
         self.sender = sender
         self.receiver = receiver
         self.amount = amount
         self.tx_type = tx_type
         self.timestamp: float = time.time()
-        self.tx_hash: str = hashlib.sha256(f"{sender}{receiver}{amount}{self.timestamp}".encode()).hexdigest()
+        self.tx_hash: str = hashlib.sha256(
+            f"{sender}{receiver}{amount}{self.timestamp}".encode()
+        ).hexdigest()
 
 
 class SmartContract:
     """Simple smart contract simulation."""
 
-    def __init__(self, contract_id: str, logic: str = "", conditions: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        contract_id: str,
+        logic: str = "",
+        conditions: dict[str, Any] | None = None,
+    ) -> None:
         self.contract_id = contract_id
         self.logic = logic
         self.conditions = conditions or {}
@@ -64,7 +73,10 @@ class SmartContract:
         """Execute contract conditions."""
         self.executed += 1
         # Check conditions
-        if self.conditions.get("min_amount") and transaction.amount < self.conditions["min_amount"]:
+        if (
+            self.conditions.get("min_amount")
+            and transaction.amount < self.conditions["min_amount"]
+        ):
             return False
         return True
 
@@ -94,7 +106,7 @@ class Blockchain:
     def mine_block(self, block: Block) -> None:
         """Proof of work mining."""
         target = "0" * self._difficulty
-        while block.hash[:self._difficulty] != target:
+        while block.hash[: self._difficulty] != target:
             block.nonce += 1
             block.hash = block.calculate_hash()
 
@@ -107,13 +119,20 @@ class Blockchain:
                 return False
         return True
 
-    def add_transaction(self, sender: str, receiver: str, amount: float, tx_type: str = "transfer") -> Transaction:
+    def add_transaction(
+        self, sender: str, receiver: str, amount: float, tx_type: str = "transfer"
+    ) -> Transaction:
         """Add a pending transaction."""
         tx = Transaction(sender, receiver, amount, tx_type)
         self._pending_transactions.append(tx)
         return tx
 
-    def register_contract(self, contract_id: str, logic: str = "", conditions: dict[str, Any] | None = None) -> SmartContract:
+    def register_contract(
+        self,
+        contract_id: str,
+        logic: str = "",
+        conditions: dict[str, Any] | None = None,
+    ) -> SmartContract:
         """Register a smart contract."""
         contract = SmartContract(contract_id, logic, conditions)
         self._contracts[contract_id] = contract
@@ -125,11 +144,22 @@ class Blockchain:
             return {"blocks": 0}
         return {
             "blocks": len(self.chain),
-            "total_transactions": sum(len(b.data) if isinstance(b.data, list) else 1 for b in self.chain),
-            "avg_block_time": round((self.chain[-1].timestamp - self.chain[0].timestamp) / max(len(self.chain) - 1, 1), 2),
+            "total_transactions": sum(
+                len(b.data) if isinstance(b.data, list) else 1 for b in self.chain
+            ),
+            "avg_block_time": round(
+                (self.chain[-1].timestamp - self.chain[0].timestamp)
+                / max(len(self.chain) - 1, 1),
+                2,
+            ),
             "chain_hash": self.chain[-1].hash[:16],
         }
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict (backward-compatible)."""
-        return {"blocks": len(self.chain), "valid": self.is_valid(), "difficulty": self._difficulty, "contracts": len(self._contracts)}
+        return {
+            "blocks": len(self.chain),
+            "valid": self.is_valid(),
+            "difficulty": self._difficulty,
+            "contracts": len(self._contracts),
+        }

@@ -43,7 +43,9 @@ class OLXHandlersMixin:
                     {"error": "interval_s must be at least 10 seconds"},
                     status_code=400,
                 )
-            max_cards = self._bounded_int(body.get("max_cards"), default=50, maximum=500)
+            max_cards = self._bounded_int(
+                body.get("max_cards"), default=50, maximum=500
+            )
             scheduler = self._olx_get_scheduler(interval_s)
             started = scheduler.start(queries, max_cards=max_cards)
             return JSONResponse(
@@ -65,7 +67,9 @@ class OLXHandlersMixin:
             queries = body.get("queries")
             if not isinstance(queries, list) or not queries:
                 queries = [body.get("query") or "olx"]
-            max_cards = self._bounded_int(body.get("max_cards"), default=50, maximum=500)
+            max_cards = self._bounded_int(
+                body.get("max_cards"), default=50, maximum=500
+            )
             scheduler = self._olx_get_scheduler()
             summaries = scheduler.run_once(queries, max_cards=max_cards)
             return JSONResponse({"summaries": summaries})
@@ -109,7 +113,9 @@ class OLXHandlersMixin:
     async def _olx_ads(self, request: Request) -> JSONResponse:
         """List collected OLX ads (`query` filter, bounded `limit`)."""
         query = request.query_params.get("query")
-        limit = self._bounded_int(request.query_params.get("limit"), default=100, maximum=1000)
+        limit = self._bounded_int(
+            request.query_params.get("limit"), default=100, maximum=1000
+        )
         ads = self._olx_db(request).get_ads(query=query, limit=limit)
         return JSONResponse(
             {
@@ -136,15 +142,16 @@ class OLXHandlersMixin:
 
     async def _olx_advisor(self, request: Request) -> JSONResponse:
         """Portfolio advice: actions for own ads + new-listing suggestions."""
-        from typing import Dict
 
         from aios_core.modules.olx import StrategyAdvisor
 
         advisor = StrategyAdvisor(self._olx_db(request))
         actions = [item.to_dict() for item in advisor.advise_actions()]
-        payload: Dict[str, object] = {"actions": actions}
+        payload: dict[str, object] = {"actions": actions}
         if request.query_params.get("new") == "1":
-            payload["new_listings"] = [item.to_dict() for item in advisor.advise_new_listings()]
+            payload["new_listings"] = [
+                item.to_dict() for item in advisor.advise_new_listings()
+            ]
         return JSONResponse(payload)
 
     async def _olx_competitive(self, request: Request) -> JSONResponse:
@@ -176,10 +183,14 @@ class OLXHandlersMixin:
                     status_code=400,
                 )
             rows = [
-                row for row in self._olx_db(request).own_ads() if row["fingerprint"] == fingerprint
+                row
+                for row in self._olx_db(request).own_ads()
+                if row["fingerprint"] == fingerprint
             ]
             if not rows:
-                return JSONResponse({"error": f"own ad '{fingerprint}' not found"}, status_code=404)
+                return JSONResponse(
+                    {"error": f"own ad '{fingerprint}' not found"}, status_code=404
+                )
             row = rows[0]
             own = OwnAd(
                 title=row["title"],
@@ -260,7 +271,9 @@ class OLXHandlersMixin:
             body = await request.json()
             xml_text = body.get("xml")
             if not xml_text:
-                return JSONResponse({"error": "field 'xml' is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "field 'xml' is required"}, status_code=400
+                )
             parser = ProfileParser()
             profile = parser.parse_profile(xml_text)
             for key, value in profile.fields.items():
@@ -294,8 +307,12 @@ class OLXHandlersMixin:
             watch = AutoWatch(
                 storage=self._olx_db(request),
                 collector=self.olx_collector,
-                notifier=WebhookNotifier(url=body.get("webhook_url"), chat_id=body.get("chat_id")),
-                max_cards=self._bounded_int(body.get("max_cards"), default=50, maximum=500),
+                notifier=WebhookNotifier(
+                    url=body.get("webhook_url"), chat_id=body.get("chat_id")
+                ),
+                max_cards=self._bounded_int(
+                    body.get("max_cards"), default=50, maximum=500
+                ),
             )
             report = watch.run_cycle(
                 queries=queries if isinstance(queries, list) else None,
@@ -327,7 +344,9 @@ class OLXHandlersMixin:
             body = await request.json()
             fingerprint = body.get("fingerprint")
             if not fingerprint:
-                return JSONResponse({"error": "field 'fingerprint' is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "field 'fingerprint' is required"}, status_code=400
+                )
             added = FavoritesWatch(self._olx_db(request)).add(fingerprint)
             return JSONResponse({"fingerprint": fingerprint, "added": added})
         except Exception as exc:
@@ -367,7 +386,9 @@ class OLXHandlersMixin:
             body = await request.json()
             query = body.get("query")
             if not query:
-                return JSONResponse({"error": "field 'query' is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "field 'query' is required"}, status_code=400
+                )
             sub_id = SubscriptionManager(self._olx_db(request)).add(
                 name=body.get("name") or query,
                 query=query,
@@ -393,7 +414,9 @@ class OLXHandlersMixin:
             body = await request.json()
             fingerprint = body.get("fingerprint")
             rows = [
-                row for row in self._olx_db(request).own_ads() if row["fingerprint"] == fingerprint
+                row
+                for row in self._olx_db(request).own_ads()
+                if row["fingerprint"] == fingerprint
             ]
             if not rows:
                 return JSONResponse({"error": "own ad not found"}, status_code=404)
@@ -410,7 +433,9 @@ class OLXHandlersMixin:
             competitors = self._olx_db(request).get_ads(query=body.get("query"))
             suggestion = AdImprover().improve(own_ad, competitors)
             editor = OwnAdEditor(adb=self.olx_messenger.adb)
-            result = editor.apply(own_ad, suggestion, confirm=bool(body.get("confirm", False)))
+            result = editor.apply(
+                own_ad, suggestion, confirm=bool(body.get("confirm", False))
+            )
             return JSONResponse(result)
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
@@ -427,9 +452,13 @@ class OLXHandlersMixin:
             )
 
             body = await request.json()
-            notifier = WebhookNotifier(url=body.get("webhook_url"), chat_id=body.get("chat_id"))
+            notifier = WebhookNotifier(
+                url=body.get("webhook_url"), chat_id=body.get("chat_id")
+            )
             if not notifier.url:
-                return JSONResponse({"error": "field 'webhook_url' is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "field 'webhook_url' is required"}, status_code=400
+                )
             tracker = PriceTracker(self._olx_db(request))
             query = body.get("query")
             drops_summary = notify_price_drops(tracker, notifier, query=query)
@@ -447,7 +476,9 @@ class OLXHandlersMixin:
             body = await request.json()
             fingerprint = body.get("fingerprint")
             rows = [
-                row for row in self._olx_db(request).own_ads() if row["fingerprint"] == fingerprint
+                row
+                for row in self._olx_db(request).own_ads()
+                if row["fingerprint"] == fingerprint
             ]
             if not rows:
                 return JSONResponse({"error": "own ad not found"}, status_code=404)
@@ -476,7 +507,9 @@ class OLXHandlersMixin:
             body = await request.json()
             fingerprint = body.get("fingerprint")
             rows = [
-                row for row in self._olx_db(request).own_ads() if row["fingerprint"] == fingerprint
+                row
+                for row in self._olx_db(request).own_ads()
+                if row["fingerprint"] == fingerprint
             ]
             if not rows:
                 return JSONResponse({"error": "own ad not found"}, status_code=404)
@@ -562,7 +595,9 @@ class OLXHandlersMixin:
 
     async def _olx_outbox(self, request: Request) -> JSONResponse:
         """List reply drafts (filterable by `status`)."""
-        items = self._olx_db(request).outbox_list(status=request.query_params.get("status"))
+        items = self._olx_db(request).outbox_list(
+            status=request.query_params.get("status")
+        )
         return JSONResponse({"count": len(items), "items": items})
 
     async def _olx_chat_reply(self, request: Request) -> JSONResponse:
@@ -571,7 +606,9 @@ class OLXHandlersMixin:
             body = await request.json()
             text = body.get("text") or ""
             if not text.strip():
-                return JSONResponse({"error": "field 'text' is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "field 'text' is required"}, status_code=400
+                )
             result = self.olx_messenger.send_reply(
                 chat_key=body.get("chat_key") or "unknown",
                 text=text,
@@ -604,7 +641,9 @@ class OLXHandlersMixin:
             body = await request.json()
             xml_text = body.get("xml")
             if not xml_text:
-                return JSONResponse({"error": "field 'xml' is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "field 'xml' is required"}, status_code=400
+                )
             detail = AdDetailParser().parse(xml_text, url=body.get("url"))
             return JSONResponse(detail.to_dict())
         except Exception as exc:
@@ -636,7 +675,9 @@ class OLXHandlersMixin:
                 status_code=400,
             )
         history = self._olx_db(request).price_history(fingerprint)
-        return JSONResponse({"fingerprint": fingerprint, "count": len(history), "history": history})
+        return JSONResponse(
+            {"fingerprint": fingerprint, "count": len(history), "history": history}
+        )
 
     def _olx_db(self, request: Request):
         """Profile-scoped OLX storage.
@@ -662,4 +703,3 @@ class OLXHandlersMixin:
     # ------------------------------------------------------------------ #
     # Platforms & profiles registry endpoints                             #
     # ------------------------------------------------------------------ #
-

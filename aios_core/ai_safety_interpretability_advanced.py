@@ -51,38 +51,62 @@ class AdvancedInterpretability:
     def analyze_circuit(self, model: Any, task: str) -> dict[str, Any]:
         """Analyze circuit (backward-compatible)."""
         circuits = ["attention_4", "mlp_7", "output_norm_2"]
-        result = InterpretabilityResult("circuit_analysis", task, {
-            "circuits": circuits,
-            "importance": round(random.uniform(0.85, 0.95), 2),
-            "safety_relevant": random.randint(1, 3),
-        })
+        result = InterpretabilityResult(
+            "circuit_analysis",
+            task,
+            {
+                "circuits": circuits,
+                "importance": round(random.uniform(0.85, 0.95), 2),
+                "safety_relevant": random.randint(1, 3),
+            },
+        )
         self._results.append(result)
         return {"task": task, "circuits": circuits, "importance": 0.92}
 
-    def activation_patching(self, model: Any, source_task: str, target_task: str) -> dict[str, Any]:
+    def activation_patching(
+        self, model: Any, source_task: str, target_task: str
+    ) -> dict[str, Any]:
         """Activation patching: transplant activations between tasks."""
-        result = InterpretabilityResult("activation_patching", f"{source_task}->{target_task}", {
-            "patch_layers": random.randint(2, 6),
-            "effect_size": round(random.uniform(0.3, 0.8), 2),
-            "critical_layers": [f"layer_{i}" for i in range(random.randint(2, 4))],
-        })
+        result = InterpretabilityResult(
+            "activation_patching",
+            f"{source_task}->{target_task}",
+            {
+                "patch_layers": random.randint(2, 6),
+                "effect_size": round(random.uniform(0.3, 0.8), 2),
+                "critical_layers": [f"layer_{i}" for i in range(random.randint(2, 4))],
+            },
+        )
         self._results.append(result)
-        return {"technique": "activation_patching", "effect_size": result.findings["effect_size"]}
+        return {
+            "technique": "activation_patching",
+            "effect_size": result.findings["effect_size"],
+        }
 
     def causal_tracing(self, model: Any, behavior: str) -> dict[str, Any]:
         """Causal tracing: identify which components cause a behavior."""
-        result = InterpretabilityResult("causal_tracing", behavior, {
-            "causal_components": random.randint(2, 5),
-            "mediating_layers": [f"layer_{i}" for i in range(random.randint(3, 7))],
-            "confidence": round(random.uniform(0.8, 0.95), 2),
-        })
+        result = InterpretabilityResult(
+            "causal_tracing",
+            behavior,
+            {
+                "causal_components": random.randint(2, 5),
+                "mediating_layers": [f"layer_{i}" for i in range(random.randint(3, 7))],
+                "confidence": round(random.uniform(0.8, 0.95), 2),
+            },
+        )
         self._results.append(result)
-        return {"behavior": behavior, "causal_components": result.findings["causal_components"]}
+        return {
+            "behavior": behavior,
+            "causal_components": result.findings["causal_components"],
+        }
 
     def logit_lens(self, model: Any, prompt: str) -> dict[str, Any]:
         """Logit lens: project intermediate activations to vocabulary."""
         projections = [
-            {"layer": i, "top_tokens": [f"token_{j}" for j in range(3)], "probability": round(random.uniform(0.5, 0.95), 2)}
+            {
+                "layer": i,
+                "top_tokens": [f"token_{j}" for j in range(3)],
+                "probability": round(random.uniform(0.5, 0.95), 2),
+            }
             for i in range(min(6, 12))
         ]
         return {"prompt": prompt, "projections": projections}

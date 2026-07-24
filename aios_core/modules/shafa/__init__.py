@@ -1,4 +1,4 @@
-"""Shafa.ua full agent — collector, price_tracker, autowatch, favorites.""" 
+"""Shafa.ua full agent — collector, price_tracker, autowatch, favorites."""
 
 from .autowatch import ShafaAutoWatch
 from .collector import ShafaCollector

@@ -11,18 +11,15 @@ import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from starlette.applications import Starlette
-from starlette.background import BackgroundTask
-from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, StreamingResponse
-from starlette.routing import Mount, Route
+from starlette.routing import Route
 
 from aios_core.api.app import AIOSAPI
-from aios_core.logging_config import setup_logging
 from aios_core.telemetry import MetricCounter, MetricGauge, MetricHistogram
 from aios_core.tracing import tracer
 
@@ -58,7 +55,7 @@ class ExternalIntegrationManager:
     def __init__(self, api: AIOSAPI):
         """Initialize ExternalIntegrationManager."""
         self.api = api
-        self.webhook_handlers: Dict[str, callable] = {}
+        self.webhook_handlers: dict[str, callable] = {}
         self.event_queue = asyncio.Queue()
         self.metrics = {
             "webhooks_received": MetricCounter(
@@ -160,7 +157,7 @@ class ExternalIntegrationManager:
             try:
                 event = await asyncio.wait_for(self.event_queue.get(), timeout=1.0)
                 await self.process_event(event)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             except Exception as e:
                 logger.error(f"Error in event processor: {e}")
@@ -303,7 +300,9 @@ class ExternalIntegrationAPI:
                     "data": {
                         "memory_usage": "45%",
                         "cpu_usage": "23%",
-                        "active_tasks": self.api.orchestrator.stats().get("active_tasks", 0),
+                        "active_tasks": self.api.orchestrator.stats().get(
+                            "active_tasks", 0
+                        ),
                     },
                 }
 
@@ -319,10 +318,18 @@ class ExternalIntegrationAPI:
     async def _integration_metrics(self, request: Request) -> JSONResponse:
         """Get integration system metrics."""
         metrics_data = {
-            "webhooks_received": self.integration_manager.metrics["webhooks_received"].value,
-            "events_processed": self.integration_manager.metrics["events_processed"].value,
-            "processing_errors": self.integration_manager.metrics["processing_errors"].value,
-            "active_connections": self.integration_manager.metrics["active_connections"].value,
+            "webhooks_received": self.integration_manager.metrics[
+                "webhooks_received"
+            ].value,
+            "events_processed": self.integration_manager.metrics[
+                "events_processed"
+            ].value,
+            "processing_errors": self.integration_manager.metrics[
+                "processing_errors"
+            ].value,
+            "active_connections": self.integration_manager.metrics[
+                "active_connections"
+            ].value,
             "processing_time_summary": self.integration_manager.metrics[
                 "processing_time"
             ].get_summary(),
@@ -353,7 +360,9 @@ class ExternalIntegrationAPI:
             )
 
         except Exception as e:
-            return JSONResponse({"status": "unhealthy", "error": str(e)}, status_code=503)
+            return JSONResponse(
+                {"status": "unhealthy", "error": str(e)}, status_code=503
+            )
 
     async def _external_auth(self, request: Request) -> JSONResponse:
         """Handle external authentication requests."""
@@ -363,7 +372,9 @@ class ExternalIntegrationAPI:
             token = data.get("token")
 
             if not provider or not token:
-                return JSONResponse({"error": "provider and token are required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "provider and token are required"}, status_code=400
+                )
 
             # Here you would integrate with external auth providers
             # For demo, return a mock successful response
@@ -415,7 +426,9 @@ class ExternalIntegrationAPI:
             sync_type = data.get("sync_type")
 
             if not source_system or not sync_type:
-                return JSONResponse({"error": "source and sync_type are required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "source and sync_type are required"}, status_code=400
+                )
 
             # Create sync event
             event = IntegrationEvent(

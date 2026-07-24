@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class VectorEntry:
     """Stored vector with metadata."""
+
     id: str
     vector: list[float] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -47,7 +48,9 @@ class VectorStore:
         self.metadata: dict[str, dict[str, Any]] = {}
         self._entries: list[VectorEntry] = []
 
-    def add(self, id: str, vector: list[float], metadata: dict[str, Any] | None = None) -> None:
+    def add(
+        self, id: str, vector: list[float], metadata: dict[str, Any] | None = None
+    ) -> None:
         """Add a vector with metadata (backward-compatible)."""
         self.vectors[id] = vector
         self.metadata[id] = metadata or {}
@@ -59,8 +62,12 @@ class VectorStore:
         for id, vector, metadata in items:
             self.add(id, vector, metadata)
 
-    def search(self, query_vector: list[float], top_k: int = 5,
-               metadata_filter: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def search(
+        self,
+        query_vector: list[float],
+        top_k: int = 5,
+        metadata_filter: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """Search by cosine similarity (backward-compatible)."""
         # Compute query norm
         q_norm = math.sqrt(sum(v * v for v in query_vector))
@@ -87,7 +94,11 @@ class VectorStore:
 
         sorted_ids = sorted(scores, key=scores.get, reverse=True)[:top_k]
         return [
-            {"id": vid, "score": round(scores[vid], 4), "metadata": self.metadata.get(vid, {})}
+            {
+                "id": vid,
+                "score": round(scores[vid], 4),
+                "metadata": self.metadata.get(vid, {}),
+            }
             for vid in sorted_ids
         ]
 
@@ -101,7 +112,11 @@ class VectorStore:
         """Get a vector by ID."""
         if id not in self.vectors:
             return None
-        return {"id": id, "vector": self.vectors[id], "metadata": self.metadata.get(id, {})}
+        return {
+            "id": id,
+            "vector": self.vectors[id],
+            "metadata": self.metadata.get(id, {}),
+        }
 
     def count(self) -> int:
         """Return number of stored vectors."""
@@ -109,8 +124,11 @@ class VectorStore:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_dim = (sum(len(v) for v in self.vectors.values()) /
-                  len(self.vectors)) if self.vectors else 0
+        avg_dim = (
+            (sum(len(v) for v in self.vectors.values()) / len(self.vectors))
+            if self.vectors
+            else 0
+        )
         return {
             "vectors": len(self.vectors),
             "avg_dimension": round(avg_dim, 2),

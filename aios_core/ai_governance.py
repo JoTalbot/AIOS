@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +24,13 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Policy:
     """Governance policy with rules and severity."""
+
     name: str
     rules: dict[str, Any] = field(default_factory=dict)
     severity: str = "medium"  # low, medium, high, critical
-    category: str = "general"  # data_privacy, safety, ethics, transparency, accountability
+    category: str = (
+        "general"  # data_privacy, safety, ethics, transparency, accountability
+    )
     enabled: bool = True
     created_at: float = field(default_factory=time.time)
     violations: int = 0
@@ -36,6 +39,7 @@ class Policy:
 @dataclass
 class AuditResult:
     """Compliance audit outcome."""
+
     compliant: bool
     violations: list[str] = field(default_factory=list)
     score: float = 1.0
@@ -65,10 +69,17 @@ class AIGovernance:
 
     # ── Policy Management ──────────────────────────────────────────
 
-    def add_policy(self, name: str, rules: dict[str, Any] | None = None,
-                   severity: str = "medium", category: str = "general") -> Policy:
+    def add_policy(
+        self,
+        name: str,
+        rules: dict[str, Any] | None = None,
+        severity: str = "medium",
+        category: str = "general",
+    ) -> Policy:
         """Register a governance policy."""
-        policy = Policy(name=name, rules=rules or {}, severity=severity, category=category)
+        policy = Policy(
+            name=name, rules=rules or {}, severity=severity, category=category
+        )
         self.policies[name] = policy
         return policy
 
@@ -106,9 +117,15 @@ class AIGovernance:
                     if isinstance(rule_value, str) and isinstance(actual, str):
                         if rule_value.lower() not in actual.lower():
                             violations.append(f"{policy_name}:{rule_name}")
-                            score -= 0.1 * (1 if policy.severity == "low" else
-                                            2 if policy.severity == "medium" else
-                                            3 if policy.severity == "high" else 5)
+                            score -= 0.1 * (
+                                1
+                                if policy.severity == "low"
+                                else 2
+                                if policy.severity == "medium"
+                                else 3
+                                if policy.severity == "high"
+                                else 5
+                            )
                             policy.violations += 1
                     elif actual != rule_value:
                         violations.append(f"{policy_name}:{rule_name}")
@@ -123,8 +140,9 @@ class AIGovernance:
         self.audits.append(result)
         return result
 
-    def audit_category(self, system_state: dict[str, Any],
-                       category: str) -> AuditResult:
+    def audit_category(
+        self, system_state: dict[str, Any], category: str
+    ) -> AuditResult:
         """Audit against policies of a specific category."""
         category_violations = []
         score = 1.0
@@ -173,7 +191,15 @@ class AIGovernance:
         violations = self.audit(action).violations
         risk_score += len(violations) * 0.1
 
-        level = "low" if risk_score < 0.3 else "medium" if risk_score < 0.6 else "high" if risk_score < 0.8 else "critical"
+        level = (
+            "low"
+            if risk_score < 0.3
+            else "medium"
+            if risk_score < 0.6
+            else "high"
+            if risk_score < 0.8
+            else "critical"
+        )
 
         return {
             "risk_score": round(risk_score, 4),
@@ -184,35 +210,44 @@ class AIGovernance:
 
     # ── Transparency ──────────────────────────────────────────────
 
-    def record_transparency(self, action: dict[str, Any],
-                            explanation: str = "") -> None:
+    def record_transparency(
+        self, action: dict[str, Any], explanation: str = ""
+    ) -> None:
         """Record a transparency event."""
-        self._transparency_records.append({
-            "action": action,
-            "explanation": explanation,
-            "timestamp": time.time(),
-        })
+        self._transparency_records.append(
+            {
+                "action": action,
+                "explanation": explanation,
+                "timestamp": time.time(),
+            }
+        )
 
     # ── Accountability ────────────────────────────────────────────
 
-    def log_accountability(self, agent_id: str, action: str,
-                           outcome: str, decision_reason: str = "") -> None:
+    def log_accountability(
+        self, agent_id: str, action: str, outcome: str, decision_reason: str = ""
+    ) -> None:
         """Log an accountability event."""
-        self._accountability_log.append({
-            "agent_id": agent_id,
-            "action": action,
-            "outcome": outcome,
-            "reason": decision_reason,
-            "timestamp": time.time(),
-        })
+        self._accountability_log.append(
+            {
+                "agent_id": agent_id,
+                "action": action,
+                "outcome": outcome,
+                "reason": decision_reason,
+                "timestamp": time.time(),
+            }
+        )
 
     # ── Stats ──────────────────────────────────────────────────────
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
         active_policies = sum(1 for p in self.policies.values() if p.enabled)
-        avg_audit_score = (sum(a.score for a in self.audits) / len(self.audits)
-                          ) if self.audits else 1.0
+        avg_audit_score = (
+            (sum(a.score for a in self.audits) / len(self.audits))
+            if self.audits
+            else 1.0
+        )
         return {
             "policies": len(self.policies),
             "active_policies": active_policies,

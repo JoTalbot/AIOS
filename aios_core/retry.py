@@ -15,8 +15,9 @@ from __future__ import annotations
 import logging
 import random
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RetryPolicy:
     """Configurable retry policy."""
+
     max_attempts: int = 3
     base_delay: float = 1.0
     backoff_factor: float = 2.0
@@ -38,6 +40,7 @@ class RetryPolicy:
 @dataclass
 class RetryStats:
     """Retry statistics tracker."""
+
     total_attempts: int = 0
     successful_first_try: int = 0
     retries_needed: int = 0
@@ -49,6 +52,7 @@ class RetryStats:
 @dataclass
 class RetryResult:
     """Outcome of a retry sequence."""
+
     success: bool
     result: Any = None
     attempts: int = 0
@@ -139,7 +143,9 @@ def retry(
         except Exception as e:
             last_exception = e
             exc_name = type(e).__name__
-            _retry_stats.by_exception[exc_name] = _retry_stats.by_exception.get(exc_name, 0) + 1
+            _retry_stats.by_exception[exc_name] = (
+                _retry_stats.by_exception.get(exc_name, 0) + 1
+            )
 
             if not should_retry(e, policy) or attempt == policy.max_attempts:
                 break
@@ -170,23 +176,29 @@ def retry_with_policy(func: Callable, policy: RetryPolicy) -> RetryResult:
         try:
             result = func()
             return RetryResult(
-                success=True, result=result,
-                attempts=attempt, total_delay=total_delay,
+                success=True,
+                result=result,
+                attempts=attempt,
+                total_delay=total_delay,
             )
         except Exception as e:
             last_exception = e
             if not should_retry(e, policy) or attempt == policy.max_attempts:
                 return RetryResult(
-                    success=False, attempts=attempt,
-                    total_delay=total_delay, last_exception=e,
+                    success=False,
+                    attempts=attempt,
+                    total_delay=total_delay,
+                    last_exception=e,
                 )
             delay = compute_delay(attempt, policy)
             total_delay += delay
             time.sleep(delay)
 
     return RetryResult(
-        success=False, attempts=policy.max_attempts,
-        total_delay=total_delay, last_exception=last_exception,
+        success=False,
+        attempts=policy.max_attempts,
+        total_delay=total_delay,
+        last_exception=last_exception,
     )
 
 

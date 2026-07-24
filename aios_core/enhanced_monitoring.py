@@ -11,10 +11,8 @@ import asyncio
 import json
 import logging
 import time
-from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Union
+from dataclasses import dataclass
+from typing import Any
 
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -24,9 +22,15 @@ from starlette.websockets import WebSocket
 
 from .logging_config import setup_logging
 from .telemetry import MetricCounter, MetricGauge, MetricHistogram
-from .tracing import tracer
 
-__all__ = ["AlertRule", "DashboardConfig", "MonitoringMetrics", "AlertManager", "DashboardManager", "MonitoringAPI"]
+__all__ = [
+    "AlertRule",
+    "DashboardConfig",
+    "MonitoringMetrics",
+    "AlertManager",
+    "DashboardManager",
+    "MonitoringAPI",
+]
 
 
 @dataclass
@@ -49,7 +53,7 @@ class DashboardConfig:
     name: str
     title: str
     refresh_interval: int  # seconds
-    panels: List[dict[str, Any]]
+    panels: list[dict[str, Any]]
 
 
 class MonitoringMetrics:
@@ -57,10 +61,16 @@ class MonitoringMetrics:
 
     def __init__(self):
         """Initialize MonitoringMetrics."""
-        self.alerts_triggered = MetricCounter("alerts_triggered", "Total alerts triggered")
+        self.alerts_triggered = MetricCounter(
+            "alerts_triggered", "Total alerts triggered"
+        )
         self.alerts_resolved = MetricCounter("alerts_resolved", "Total alerts resolved")
-        self.dashboard_requests = MetricCounter("dashboard_requests", "Total dashboard requests")
-        self.api_response_time = MetricHistogram("api_response_time", "API response time in ms")
+        self.dashboard_requests = MetricCounter(
+            "dashboard_requests", "Total dashboard requests"
+        )
+        self.api_response_time = MetricHistogram(
+            "api_response_time", "API response time in ms"
+        )
         self.system_health = MetricGauge("system_health", "System health score (0-100)")
 
     def record_alert_triggered(self) -> None:
@@ -89,8 +99,8 @@ class AlertManager:
 
     def __init__(self):
         """Initialize AlertManager."""
-        self.rules: Dict[str, AlertRule] = {}
-        self.active_alerts: Dict[str, dict[str, Any]] = {}
+        self.rules: dict[str, AlertRule] = {}
+        self.active_alerts: dict[str, dict[str, Any]] = {}
         self.metrics = MonitoringMetrics()
         self.logger = logging.getLogger("aios.alerts")
 
@@ -106,7 +116,9 @@ class AlertManager:
                 if self._evaluate_condition(rule.condition, value, rule.threshold):
                     self._trigger_alert(rule, value, timestamp)
 
-    def _evaluate_condition(self, condition: str, value: float, threshold: float) -> bool:
+    def _evaluate_condition(
+        self, condition: str, value: float, threshold: float
+    ) -> bool:
         """Evaluate alert condition."""
         try:
             # Simple condition evaluation (in production, use proper expression parser)
@@ -140,7 +152,9 @@ class AlertManager:
             }
             self.active_alerts[alert_key] = alert
             self.metrics.record_alert_triggered()
-            self.logger.warning(f"Alert triggered: {rule.name} - {value} > {rule.threshold}")
+            self.logger.warning(
+                f"Alert triggered: {rule.name} - {value} > {rule.threshold}"
+            )
 
             # Send notifications
             asyncio.create_task(self._send_notifications(alert))
@@ -163,7 +177,7 @@ class DashboardManager:
 
     def __init__(self):
         """Initialize DashboardManager."""
-        self.dashboards: Dict[str, DashboardConfig] = {}
+        self.dashboards: dict[str, DashboardConfig] = {}
         self.metrics = MonitoringMetrics()
         self.logger = logging.getLogger("aios.dashboards")
 
@@ -229,7 +243,7 @@ class DashboardManager:
         # Implementation would query actual metrics
         return 0.0
 
-    async def _get_chart_data(self, metric_name: str) -> List[dict[str, Any]]:
+    async def _get_chart_data(self, metric_name: str) -> list[dict[str, Any]]:
         """Get chart data for a metric."""
         # Implementation would get historical data
         return [{"timestamp": time.time() - 3600, "value": 10.0}]
@@ -323,7 +337,9 @@ def create_monitoring_app(monitoring_api: MonitoringAPI) -> Starlette:
     async def alerts_endpoint(request: Request) -> JSONResponse:
         """Get alerts."""
         try:
-            active_only = request.query_params.get("active_only", "true").lower() == "true"
+            active_only = (
+                request.query_params.get("active_only", "true").lower() == "true"
+            )
             alerts = await monitoring_api.get_alerts(active_only)
             return JSONResponse(alerts)
         except Exception as e:

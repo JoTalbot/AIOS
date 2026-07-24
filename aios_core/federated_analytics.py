@@ -18,7 +18,7 @@ import math
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AnalyticsNode:
     """Federated analytics node."""
+
     node_id: str
     data_points: int = 0
     contributions: int = 0
@@ -38,6 +39,7 @@ class AnalyticsNode:
 @dataclass
 class AggregationResult:
     """Aggregation outcome."""
+
     total_count: int
     average: float
     noise_added: float
@@ -71,7 +73,8 @@ class FederatedAnalytics:
     def register_node(self, node_id: str, epsilon_budget: float = 1.0) -> AnalyticsNode:
         """Register a federated analytics node."""
         node = AnalyticsNode(
-            node_id=node_id, epsilon_budget=epsilon_budget,
+            node_id=node_id,
+            epsilon_budget=epsilon_budget,
         )
         self.nodes[node_id] = node
         return node
@@ -104,18 +107,26 @@ class FederatedAnalytics:
 
     # ── Aggregation ──────────────────────────────────────────────────
 
-    def aggregate(self, local_stats: list[dict[str, Any]],
-                  epsilon: float = 0.1) -> AggregationResult:
+    def aggregate(
+        self, local_stats: list[dict[str, Any]], epsilon: float = 0.1
+    ) -> AggregationResult:
         """Aggregate local statistics with differential privacy (backward-compatible)."""
         if not local_stats:
             return AggregationResult(
-                total_count=0, average=0, noise_added=0,
-                nodes_contributed=0, epsilon_consumed=0,
+                total_count=0,
+                average=0,
+                noise_added=0,
+                nodes_contributed=0,
+                epsilon_consumed=0,
             )
 
         # Compute aggregate statistics
         total_count = sum(s.get("count", 0) for s in local_stats)
-        raw_avg = sum(s.get("mean", 0) * s.get("count", 1) for s in local_stats) / total_count if total_count > 0 else 0
+        raw_avg = (
+            sum(s.get("mean", 0) * s.get("count", 1) for s in local_stats) / total_count
+            if total_count > 0
+            else 0
+        )
 
         # Add Laplace noise for differential privacy
         # Noise magnitude = sensitivity / epsilon
@@ -125,7 +136,9 @@ class FederatedAnalytics:
         noisy_avg = raw_avg + noise
 
         # Compute confidence interval
-        std = math.sqrt(sum((s.get("variance", 0.1) or 0.1) for s in local_stats) / len(local_stats))
+        std = math.sqrt(
+            sum((s.get("variance", 0.1) or 0.1) for s in local_stats) / len(local_stats)
+        )
         margin = 1.96 * std / math.sqrt(len(local_stats)) + abs(noise)
 
         # Track epsilon usage
@@ -137,21 +150,24 @@ class FederatedAnalytics:
             noise_added=round(abs(noise), 4),
             nodes_contributed=len(local_stats),
             epsilon_consumed=epsilon,
-            confidence_interval=(round(noisy_avg - margin, 4), round(noisy_avg + margin, 4)),
+            confidence_interval=(
+                round(noisy_avg - margin, 4),
+                round(noisy_avg + margin, 4),
+            ),
         )
         self._aggregation_history.append(result)
         return result
 
-    def secure_sum(self, local_values: dict[str, float],
-                   epsilon: float = 0.1) -> float:
+    def secure_sum(self, local_values: dict[str, float], epsilon: float = 0.1) -> float:
         """Secure sum aggregation with DP noise."""
         raw_sum = sum(local_values.values())
         sensitivity = max(local_values.values()) if local_values else 1.0
         noise = random.gauss(0, sensitivity / epsilon) if epsilon > 0 else 0
         return round(raw_sum + noise, 4)
 
-    def secure_mean(self, local_values: dict[str, float],
-                    epsilon: float = 0.1) -> float:
+    def secure_mean(
+        self, local_values: dict[str, float], epsilon: float = 0.1
+    ) -> float:
         """Secure mean aggregation with DP noise."""
         if not local_values:
             return 0.0
@@ -160,8 +176,9 @@ class FederatedAnalytics:
         noise = random.gauss(0, sensitivity / epsilon) if epsilon > 0 else 0
         return round(raw_mean + noise, 4)
 
-    def histogram(self, local_histograms: list[dict[str, int]],
-                  epsilon: float = 0.1) -> dict[str, int]:
+    def histogram(
+        self, local_histograms: list[dict[str, int]], epsilon: float = 0.1
+    ) -> dict[str, int]:
         """Aggregate histograms with DP noise per bin."""
         merged: dict[str, int] = {}
         for hist in local_histograms:

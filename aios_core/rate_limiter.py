@@ -13,7 +13,7 @@ Features:
 
 import time
 from collections import defaultdict
-from typing import Any, Dict, Optional
+from typing import Any
 
 __all__ = ["RateLimiter", "rate_limiter"]
 
@@ -32,9 +32,15 @@ class RateLimiter:
     """
 
     __slots__ = (
-        "requests_per_minute", "requests", "window_seconds",
-        "_burst_size", "_tokens", "_last_refill",
-        "_tiers", "_quota_used", "_quota_limits",
+        "requests_per_minute",
+        "requests",
+        "window_seconds",
+        "_burst_size",
+        "_tokens",
+        "_last_refill",
+        "_tiers",
+        "_quota_used",
+        "_quota_limits",
         "_mode",
     )
 
@@ -59,9 +65,9 @@ class RateLimiter:
         self._burst_size = burst_size
         self._tokens: dict[str, float] = {}
         self._last_refill: dict[str, float] = {}
-        self._tiers: Dict[str, int] = {}  # key → custom RPM
-        self._quota_used: Dict[str, float] = {}  # key → total requests in period
-        self._quota_limits: Dict[str, float] = {}  # key → max quota
+        self._tiers: dict[str, int] = {}  # key → custom RPM
+        self._quota_used: dict[str, float] = {}  # key → total requests in period
+        self._quota_limits: dict[str, float] = {}  # key → max quota
         self._mode = mode
 
     # ------------------------------------------------------------------
@@ -202,7 +208,7 @@ class RateLimiter:
         """Switch between ``sliding_window`` and ``token_bucket`` modes."""
         self._mode = mode
 
-    def all_stats(self) -> Dict[str, Any]:
+    def all_stats(self) -> dict[str, Any]:
         """Return aggregate statistics across all keys."""
         return {
             "total_keys": len(self.requests) + len(self._tokens),

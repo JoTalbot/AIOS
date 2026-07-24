@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -48,9 +48,13 @@ class AdCard:
         same physical ad found via different searches is tracked per query.
         """
         if self.ad_id:
-            base = f"id:{self.ad_id.strip().lower()}|{(self.query or '').strip().lower()}"
+            base = (
+                f"id:{self.ad_id.strip().lower()}|{(self.query or '').strip().lower()}"
+            )
         elif self.url:
-            base = f"url:{self.url.strip().lower()}|{(self.query or '').strip().lower()}"
+            base = (
+                f"url:{self.url.strip().lower()}|{(self.query or '').strip().lower()}"
+            )
         else:
             base = "|".join(
                 [
@@ -79,7 +83,7 @@ class AdCard:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "AdCard":
+    def from_dict(cls, data: dict[str, Any]) -> AdCard:
         """Reconstruct a card from :meth:`to_dict` output."""
         return cls(
             title=data.get("title") or "",

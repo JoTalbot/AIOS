@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,7 @@ COMMAND_INTENTS = {
 @dataclass
 class VoiceCommand:
     """Parsed voice command with intent and parameters."""
+
     raw_text: str
     intent: str = "unknown"
     confidence: float = 0.0
@@ -42,6 +43,7 @@ class VoiceCommand:
 @dataclass
 class ConversationTurn:
     """Single conversation exchange."""
+
     user_input: str
     system_response: str
     intent: str = ""
@@ -85,7 +87,9 @@ class VoiceInterface:
 
     # ── Command Registration ────────────────────────────────────────
 
-    def register_command(self, intent: str, handler: Any, description: str = "") -> None:
+    def register_command(
+        self, intent: str, handler: Any, description: str = ""
+    ) -> None:
         """Register a command handler for an intent."""
         self._commands[intent] = {"handler": handler, "description": description}
 
@@ -138,9 +142,11 @@ class VoiceInterface:
                 pass
 
         command = VoiceCommand(
-            raw_text=text, intent=best_intent,
+            raw_text=text,
+            intent=best_intent,
             confidence=round(best_confidence, 4),
-            parameters=parameters, language=self.language,
+            parameters=parameters,
+            language=self.language,
         )
         return command
 
@@ -160,7 +166,9 @@ class VoiceInterface:
             target = command.parameters.get("to", command.parameters.get("for", "task"))
             response = f"Executing action for {target}."
         elif command.intent == "query":
-            target = command.parameters.get("about", command.parameters.get("for", "information"))
+            target = command.parameters.get(
+                "about", command.parameters.get("for", "information")
+            )
             response = f"Here is the information about {target}."
         elif command.intent == "config":
             response = "Configuration updated successfully."

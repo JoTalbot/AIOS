@@ -8,12 +8,12 @@
 
 from __future__ import annotations
 
+import builtins
 import os
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from .profile import Profile
 
@@ -35,7 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_platform_profiles_default
     ON platform_profiles (platform, is_default);
 """
 
-_DEFAULT_STORE: "Optional[ProfileStore]" = None
+_DEFAULT_STORE: ProfileStore | None = None
 
 
 class ProfileStore:
@@ -57,11 +57,13 @@ class ProfileStore:
     # ------------------------------------------------------------------ #
 
     @classmethod
-    def default(cls) -> "ProfileStore":
+    def default(cls) -> ProfileStore:
         """Process-wide реестр из ``AIOS_PROFILES_DB`` (fallback ``data/profiles.sqlite``)."""
         global _DEFAULT_STORE
         if _DEFAULT_STORE is None:
-            _DEFAULT_STORE = cls(os.environ.get("AIOS_PROFILES_DB", "data/profiles.sqlite"))
+            _DEFAULT_STORE = cls(
+                os.environ.get("AIOS_PROFILES_DB", "data/profiles.sqlite")
+            )
         return _DEFAULT_STORE
 
     @classmethod
@@ -72,7 +74,7 @@ class ProfileStore:
             _DEFAULT_STORE.close()
         _DEFAULT_STORE = None
 
-    def __enter__(self) -> "ProfileStore":
+    def __enter__(self) -> ProfileStore:
         return self
 
     def __exit__(self, *_exc) -> None:
@@ -89,7 +91,7 @@ class ProfileStore:
 
     def add(self, profile: Profile) -> Profile:
         """Создаёт профиль. Ошибка, если ``platform:name`` уже занят."""
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self._lock, self._conn:
             try:
                 self._conn.execute(
@@ -118,7 +120,7 @@ class ProfileStore:
                 self._set_default_locked(profile.platform, profile.name, now)
         return self.get(profile.platform, profile.name)
 
-    def get(self, platform: str, name: str) -> Optional[Profile]:
+    def get(self, platform: str, name: str) -> Profile | None:
         """Профиль по ключу или None."""
         with self._lock:
             row = self._conn.execute(
@@ -127,7 +129,7 @@ class ProfileStore:
             ).fetchone()
         return self._row_to_profile(row) if row else None
 
-    def list(self, platform: str | None = None) -> List[Profile]:
+    def list(self, platform: str | None = None) -> builtins.list[Profile]:
         """Все профили (опционально — одной платформы)."""
         sql = "SELECT * FROM platform_profiles"
         params: list = []
@@ -139,7 +141,7 @@ class ProfileStore:
             rows = self._conn.execute(sql, params).fetchall()
         return [self._row_to_profile(row) for row in rows]
 
-    def update(self, platform: str, name: str, **fields) -> Optional[Profile]:
+    def update(self, platform: str, name: str, **fields) -> Profile | None:
         """Точечное обновление полей профиля."""
         allowed = {
             "device_serial",
@@ -152,9 +154,11 @@ class ProfileStore:
         patch = {k: v for k, v in fields.items() if k in allowed}
         if not patch:
             return self.get(platform, name)
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         assignments = ", ".join(f"{key} = ?" for key in sorted(patch))
-        values = [int(v) if key == "is_default" else v for key, v in sorted(patch.items())]
+        values = [
+            int(v) if key == "is_default" else v for key, v in sorted(patch.items())
+        ]
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 f"UPDATE platform_profiles SET {assignments}, updated_at = ? "
@@ -176,20 +180,20 @@ class ProfileStore:
             )
             return bool(cursor.rowcount)
 
-    def set_default(self, platform: str, name: str) -> Optional[Profile]:
+    def set_default(self, platform: str, name: str) -> Profile | None:
         """Делает профиль дефолтом платформы (снимая флаг с остальных)."""
         if self.get(platform, name) is None:
             return None
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self._lock, self._conn:
             self._set_default_locked(platform, name, now)
         return self.get(platform, name)
 
-    def get_default(self, platform: str) -> Optional[Profile]:
+    def get_default(self, platform: str) -> Profile | None:
         """Профиль по умолчанию платформы или None."""
         with self._lock:
             row = self._conn.execute(
-                "SELECT * FROM platform_profiles " "WHERE platform = ? AND is_default = 1",
+                "SELECT * FROM platform_profiles WHERE platform = ? AND is_default = 1",
                 (platform,),
             ).fetchone()
         return self._row_to_profile(row) if row else None

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 import re
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -21,7 +20,20 @@ logger = logging.getLogger(__name__)
 
 INTENT_MAP = {
     "create": ["create", "make", "add", "new", "build", "generate", "start"],
-    "query": ["show", "get", "list", "find", "search", "tell", "ask", "what", "how", "stats", "status", "check"],
+    "query": [
+        "show",
+        "get",
+        "list",
+        "find",
+        "search",
+        "tell",
+        "ask",
+        "what",
+        "how",
+        "stats",
+        "status",
+        "check",
+    ],
     "update": ["update", "modify", "change", "set", "configure", "edit"],
     "delete": ["delete", "remove", "clear", "drop"],
     "execute": ["run", "execute", "launch", "perform", "do", "start", "begin"],
@@ -32,6 +44,7 @@ INTENT_MAP = {
 @dataclass
 class NLIntent:
     """Parsed intent from natural language text."""
+
     intent: str
     confidence: float = 0.0
     entities: dict[str, Any] = field(default_factory=dict)
@@ -51,9 +64,12 @@ class NaturalLanguageInterface:
 
     def __init__(self) -> None:
         self.command_map: dict[str, str] = {
-            "create task": "create_task", "show stats": "get_stats",
-            "run demo": "run_demo", "check health": "health_check",
-            "delete task": "delete_task", "update config": "update_config",
+            "create task": "create_task",
+            "show stats": "get_stats",
+            "run demo": "run_demo",
+            "check health": "health_check",
+            "delete task": "delete_task",
+            "update config": "update_config",
         }
         self._context: list[dict[str, Any]] = []
         self._query_count: int = 0
@@ -67,9 +83,16 @@ class NaturalLanguageInterface:
         for phrase, cmd in self.command_map.items():
             if phrase in text_lower:
                 entities = self._extract_entities(text)
-                intent = NLIntent(intent=cmd, confidence=0.9, entities=entities, original_text=text)
+                intent = NLIntent(
+                    intent=cmd, confidence=0.9, entities=entities, original_text=text
+                )
                 self._context.append({"text": text, "intent": intent})
-                return {"command": cmd, "original": text, "entities": entities, "confidence": 0.9}
+                return {
+                    "command": cmd,
+                    "original": text,
+                    "entities": entities,
+                    "confidence": 0.9,
+                }
 
         # Intent detection from keywords
         best_intent = "unknown"
@@ -83,7 +106,12 @@ class NaturalLanguageInterface:
                     best_confidence = confidence
 
         entities = self._extract_entities(text)
-        result = {"command": best_intent, "original": text, "entities": entities, "confidence": round(best_confidence, 4)}
+        result = {
+            "command": best_intent,
+            "original": text,
+            "entities": entities,
+            "confidence": round(best_confidence, 4),
+        }
         self._context.append({"text": text, "result": result})
         return result
 
@@ -92,9 +120,9 @@ class NaturalLanguageInterface:
         entities: dict[str, Any] = {}
 
         # Extract numbers
-        numbers = re.findall(r'\b\d+\.?\d*\b', text)
+        numbers = re.findall(r"\b\d+\.?\d*\b", text)
         if numbers:
-            entities["numbers"] = [float(n) if '.' in n else int(n) for n in numbers]
+            entities["numbers"] = [float(n) if "." in n else int(n) for n in numbers]
 
         # Extract quoted strings
         quoted = re.findall(r'"([^"]+)"', text)
@@ -102,7 +130,7 @@ class NaturalLanguageInterface:
             entities["quoted"] = quoted
 
         # Extract key-value pairs
-        pairs = re.findall(r'(\w+)\s*[:=]\s*(\w+)', text)
+        pairs = re.findall(r"(\w+)\s*[:=]\s*(\w+)", text)
         for key, value in pairs:
             entities[key] = value
 
@@ -128,8 +156,10 @@ class NaturalLanguageInterface:
         return {
             "word_count": len(words),
             "char_count": len(text),
-            "avg_word_length": round(sum(len(w) for w in words) / len(words), 2) if words else 0,
-            "has_numbers": any(re.search(r'\d', w) for w in words),
+            "avg_word_length": round(sum(len(w) for w in words) / len(words), 2)
+            if words
+            else 0,
+            "has_numbers": any(re.search(r"\d", w) for w in words),
             "has_special_chars": any(not w.isalnum() for w in words),
         }
 

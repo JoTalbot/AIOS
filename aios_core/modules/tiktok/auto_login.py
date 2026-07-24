@@ -2,7 +2,6 @@
 
 from aios_core.modules.rozetka.auto_login import RozetkaAutoLogin
 
-
 PACKAGE = "com.zhiliaoapp.musically"
 
 # TikTok login-specific markers

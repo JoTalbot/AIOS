@@ -11,7 +11,6 @@ Pure Python — no external ML libraries required.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -42,8 +41,8 @@ class TrendDirection(Enum):
 class PricePoint:
     """A single price observation point."""
 
-    day: float       # Day index (0-based or timestamp)
-    price: float     # Observed price
+    day: float  # Day index (0-based or timestamp)
+    price: float  # Observed price
     volume: float | None = None  # Optional volume/weight for WMA
 
 
@@ -58,10 +57,10 @@ class PredictionResult:
     trend: TrendDirection
     confidence: float
     slope: float = 0.0
-    curvature: float = 0.0          # Second derivative for polynomial
+    curvature: float = 0.0  # Second derivative for polynomial
     history_points: int = 0
     horizon_days: int = 7
-    residuals: float = 0.0          # Mean squared error of fit
+    residuals: float = 0.0  # Mean squared error of fit
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -85,7 +84,7 @@ def _fit_polynomial(points: list[tuple[float, float]], degree: int) -> list[floa
     X: list[list[float]] = []
     y_vec: list[float] = []
     for xi, yi in points:
-        row = [xi ** d for d in range(degree + 1)]
+        row = [xi**d for d in range(degree + 1)]
         X.append(row)
         y_vec.append(yi)
 
@@ -165,7 +164,7 @@ def _eval_poly(coeffs: list[float], x: float) -> float:
     Returns:
         Polynomial value at x.
     """
-    return sum(c * x ** i for i, c in enumerate(coeffs))
+    return sum(c * x**i for i, c in enumerate(coeffs))
 
 
 def _mean_squared_error(
@@ -200,7 +199,9 @@ class SimpleMovingAverage:
         """
         self.window = window
 
-    def predict(self, history: list[PricePoint], horizon_days: int = 7) -> PredictionResult:
+    def predict(
+        self, history: list[PricePoint], horizon_days: int = 7
+    ) -> PredictionResult:
         """Predict future price using SMA.
 
         Args:
@@ -224,7 +225,7 @@ class SimpleMovingAverage:
                 horizon_days=horizon_days,
             )
 
-        recent = history[-self.window:]
+        recent = history[-self.window :]
         avg = sum(p.price for p in recent) / len(recent)
         prices = [p.price for p in history]
 
@@ -258,7 +259,9 @@ class WeightedMovingAverage:
         """
         self.window = window
 
-    def predict(self, history: list[PricePoint], horizon_days: int = 7) -> PredictionResult:
+    def predict(
+        self, history: list[PricePoint], horizon_days: int = 7
+    ) -> PredictionResult:
         """Predict future price using WMA.
 
         Args:
@@ -269,21 +272,23 @@ class WeightedMovingAverage:
             PredictionResult with WMA prediction.
         """
         if len(history) < self.window:
-            recent = history[-len(history):] if history else []
+            recent = history[-len(history) :] if history else []
             if not recent:
                 return PredictionResult(
-                    model=PredictionModel.WMA, fingerprint="",
-                    current_price=0, predicted_price=0,
-                    trend=TrendDirection.STABLE, confidence=0.1,
-                    history_points=0, horizon_days=horizon_days,
+                    model=PredictionModel.WMA,
+                    fingerprint="",
+                    current_price=0,
+                    predicted_price=0,
+                    trend=TrendDirection.STABLE,
+                    confidence=0.1,
+                    history_points=0,
+                    horizon_days=horizon_days,
                 )
             avg = sum(p.price for p in recent) / len(recent)
         else:
-            recent = history[-self.window:]
+            recent = history[-self.window :]
             total_weight = sum(range(1, self.window + 1))
-            weighted_sum = sum(
-                p.price * (i + 1) for i, p in enumerate(recent)
-            )
+            weighted_sum = sum(p.price * (i + 1) for i, p in enumerate(recent))
             avg = weighted_sum / total_weight
 
         prices = [p.price for p in history]
@@ -317,7 +322,9 @@ class ExponentialMovingAverage:
         self.window = window
         self.alpha = 2.0 / (window + 1)
 
-    def predict(self, history: list[PricePoint], horizon_days: int = 7) -> PredictionResult:
+    def predict(
+        self, history: list[PricePoint], horizon_days: int = 7
+    ) -> PredictionResult:
         """Predict future price using EMA.
 
         Args:
@@ -329,10 +336,14 @@ class ExponentialMovingAverage:
         """
         if not history:
             return PredictionResult(
-                model=PredictionModel.EMA, fingerprint="",
-                current_price=0, predicted_price=0,
-                trend=TrendDirection.STABLE, confidence=0.1,
-                history_points=0, horizon_days=horizon_days,
+                model=PredictionModel.EMA,
+                fingerprint="",
+                current_price=0,
+                predicted_price=0,
+                trend=TrendDirection.STABLE,
+                confidence=0.1,
+                history_points=0,
+                horizon_days=horizon_days,
             )
 
         # Compute EMA from start
@@ -377,10 +388,7 @@ def _detect_trend(prices: list[float]) -> TrendDirection:
     if denom == 0:
         return TrendDirection.STABLE
 
-    slope = (
-        n * sum(x * y for x, y in zip(xs, recent))
-        - sum(xs) * sum(recent)
-    ) / denom
+    slope = (n * sum(x * y for x, y in zip(xs, recent)) - sum(xs) * sum(recent)) / denom
 
     # Detect volatility
     if len(recent) >= 3:
@@ -432,8 +440,10 @@ class PolynomialPredictor:
         """
         if len(history) < self.min_points:
             model_type = (
-                PredictionModel.LINEAR if self.degree == 1
-                else PredictionModel.POLYNOMIAL_2 if self.degree == 2
+                PredictionModel.LINEAR
+                if self.degree == 1
+                else PredictionModel.POLYNOMIAL_2
+                if self.degree == 2
                 else PredictionModel.POLYNOMIAL_3
             )
             return PredictionResult(
@@ -452,7 +462,9 @@ class PolynomialPredictor:
 
         if not coeffs:
             return PredictionResult(
-                model=PredictionModel.POLYNOMIAL_2 if self.degree == 2 else PredictionModel.POLYNOMIAL_3,
+                model=PredictionModel.POLYNOMIAL_2
+                if self.degree == 2
+                else PredictionModel.POLYNOMIAL_3,
                 fingerprint=fingerprint,
                 current_price=history[-1].price,
                 predicted_price=history[-1].price,
@@ -473,15 +485,17 @@ class PolynomialPredictor:
         mse = _mean_squared_error(points, coeffs)
         avg_price = sum(p.price for p in history) / len(history)
         # Confidence inversely proportional to relative MSE
-        rel_mse = mse / (avg_price ** 2) if avg_price > 0 else 1.0
+        rel_mse = mse / (avg_price**2) if avg_price > 0 else 1.0
         confidence = max(0.1, min(0.95, 1.0 - rel_mse))
 
         prices = [p.price for p in history]
         trend = _detect_trend(prices)
 
         model_type = (
-            PredictionModel.LINEAR if self.degree == 1
-            else PredictionModel.POLYNOMIAL_2 if self.degree == 2
+            PredictionModel.LINEAR
+            if self.degree == 1
+            else PredictionModel.POLYNOMIAL_2
+            if self.degree == 2
             else PredictionModel.POLYNOMIAL_3
         )
 
@@ -520,8 +534,8 @@ class EnsemblePredictor:
         """
         if predictors is None:
             self.predictors = [
-                PolynomialPredictor(degree=1),     # Linear
-                PolynomialPredictor(degree=2),     # Quadratic
+                PolynomialPredictor(degree=1),  # Linear
+                PolynomialPredictor(degree=2),  # Quadratic
                 SimpleMovingAverage(window=5),
                 ExponentialMovingAverage(window=5),
             ]
@@ -646,9 +660,9 @@ class PricePredictionEngine:
         }
 
         predictor = predictor_map.get(model, self.ensemble)
-        if isinstance(predictor, PolynomialPredictor):
-            return predictor.predict(history, horizon_days, fingerprint)
-        elif isinstance(predictor, EnsemblePredictor):
+        if isinstance(predictor, PolynomialPredictor) or isinstance(
+            predictor, EnsemblePredictor
+        ):
             return predictor.predict(history, horizon_days, fingerprint)
         else:
             r = predictor.predict(history, horizon_days)

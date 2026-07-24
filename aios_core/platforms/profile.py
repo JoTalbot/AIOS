@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 
 @dataclass
@@ -53,7 +52,7 @@ class Profile:
         base = f"profile:{self.key}".lower()
         return hashlib.sha256(base.encode("utf-8")).hexdigest()[:12]
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """JSON-представление профиля."""
         return {
             "platform": self.platform,

@@ -23,7 +23,9 @@ __all__ = ["Migration", "MigrationManager"]
 class Migration:
     """Single database migration (backward-compatible)."""
 
-    def __init__(self, version: str, description: str, up_sql: str, down_sql: str = "") -> None:
+    def __init__(
+        self, version: str, description: str, up_sql: str, down_sql: str = ""
+    ) -> None:
         self.version = version
         self.description = description
         self.up_sql = up_sql
@@ -44,7 +46,9 @@ class MigrationManager:
 
     def create_migrations_table(self, conn: sqlite3.Connection) -> None:
         """Create migrations table (backward-compatible)."""
-        conn.execute("CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+        )
 
     def get_applied_versions(self, conn: sqlite3.Connection) -> set[str]:
         """Get applied versions (backward-compatible)."""
@@ -66,9 +70,16 @@ class MigrationManager:
                 if self._dry_run:
                     logger.info("DRY RUN: Would apply migration %s", migration.version)
                 else:
-                    logger.info("Applying migration %s: %s", migration.version, migration.description)
+                    logger.info(
+                        "Applying migration %s: %s",
+                        migration.version,
+                        migration.description,
+                    )
                     conn.executescript(migration.up_sql)
-                    conn.execute("INSERT INTO schema_migrations (version) VALUES (?)", (migration.version,))
+                    conn.execute(
+                        "INSERT INTO schema_migrations (version) VALUES (?)",
+                        (migration.version,),
+                    )
                     conn.commit()
 
         conn.close()
@@ -89,7 +100,10 @@ class MigrationManager:
                     break
                 if migration.down_sql:
                     conn.executescript(migration.down_sql)
-                    conn.execute("DELETE FROM schema_migrations WHERE version = ?", (migration.version,))
+                    conn.execute(
+                        "DELETE FROM schema_migrations WHERE version = ?",
+                        (migration.version,),
+                    )
                     conn.commit()
                     rolled_back_count += 1
 
@@ -108,7 +122,11 @@ class MigrationManager:
                 errors.append(f"Migration {m.version}: empty up_sql")
             if m.down_sql and not m.down_sql.strip():
                 errors.append(f"Migration {m.version}: empty down_sql")
-        return {"valid": len(errors) == 0, "errors": errors, "migrations": len(self.migrations)}
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "migrations": len(self.migrations),
+        }
 
     def status(self) -> dict[str, Any]:
         """Show migration status."""
@@ -117,4 +135,9 @@ class MigrationManager:
         applied = self.get_applied_versions(conn)
         conn.close()
         pending = [m.version for m in self.migrations if m.version not in applied]
-        return {"applied": len(applied), "pending": len(pending), "total": len(self.migrations), "pending_versions": pending}
+        return {
+            "applied": len(applied),
+            "pending": len(pending),
+            "total": len(self.migrations),
+            "pending_versions": pending,
+        }

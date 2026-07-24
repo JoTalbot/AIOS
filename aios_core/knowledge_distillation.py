@@ -15,10 +15,9 @@ from __future__ import annotations
 
 import logging
 import math
-import random
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ModelConfig:
     """Model configuration descriptor."""
+
     model_id: str
     model_type: str = "teacher"  # teacher or student
     num_params: int = 0
@@ -37,6 +37,7 @@ class ModelConfig:
 @dataclass
 class DistillationResult:
     """Outcome of a distillation run."""
+
     teacher_id: str
     student_id: str
     temperature: float = 2.0
@@ -71,19 +72,39 @@ class KnowledgeDistiller:
 
     # ── Model Registry ──────────────────────────────────────────────
 
-    def register_teacher(self, model_id: str, num_params: int = 1000000,
-                         accuracy: float = 0.95, latency_ms: float = 100.0) -> ModelConfig:
+    def register_teacher(
+        self,
+        model_id: str,
+        num_params: int = 1000000,
+        accuracy: float = 0.95,
+        latency_ms: float = 100.0,
+    ) -> ModelConfig:
         """Register a teacher model."""
-        config = ModelConfig(model_id=model_id, model_type="teacher",
-                             num_params=num_params, accuracy=accuracy, latency_ms=latency_ms)
+        config = ModelConfig(
+            model_id=model_id,
+            model_type="teacher",
+            num_params=num_params,
+            accuracy=accuracy,
+            latency_ms=latency_ms,
+        )
         self.teacher_models[model_id] = config
         return config
 
-    def register_student(self, model_id: str, num_params: int = 100000,
-                         accuracy: float = 0.7, latency_ms: float = 10.0) -> ModelConfig:
+    def register_student(
+        self,
+        model_id: str,
+        num_params: int = 100000,
+        accuracy: float = 0.7,
+        latency_ms: float = 10.0,
+    ) -> ModelConfig:
         """Register a student model."""
-        config = ModelConfig(model_id=model_id, model_type="student",
-                             num_params=num_params, accuracy=accuracy, latency_ms=latency_ms)
+        config = ModelConfig(
+            model_id=model_id,
+            model_type="student",
+            num_params=num_params,
+            accuracy=accuracy,
+            latency_ms=latency_ms,
+        )
         self.student_models[model_id] = config
         return config
 
@@ -97,7 +118,9 @@ class KnowledgeDistiller:
 
     # ── Soft Targets ────────────────────────────────────────────────
 
-    def soft_targets(self, logits: list[float], temperature: float = 2.0) -> list[float]:
+    def soft_targets(
+        self, logits: list[float], temperature: float = 2.0
+    ) -> list[float]:
         """Generate temperature-scaled soft targets from logits.
 
         softmax(z/T) where T is temperature.
@@ -118,8 +141,12 @@ class KnowledgeDistiller:
 
     # ── Loss Computation ────────────────────────────────────────────
 
-    def kd_loss(self, student_logits: list[float], teacher_logits: list[float],
-                temperature: float = 2.0) -> float:
+    def kd_loss(
+        self,
+        student_logits: list[float],
+        teacher_logits: list[float],
+        temperature: float = 2.0,
+    ) -> float:
         """Compute knowledge distillation loss (KL divergence).
 
         L_KD = T^2 * KL(softmax(z_t/T) || softmax(z_s/T))
@@ -135,7 +162,7 @@ class KnowledgeDistiller:
             elif pt > 0:
                 kl += pt * 10  # large penalty for zero student probability
 
-        return temperature ** 2 * kl
+        return temperature**2 * kl
 
     def hard_loss(self, student_logits: list[float], true_labels: list[int]) -> float:
         """Compute hard target loss (cross-entropy)."""
@@ -152,18 +179,27 @@ class KnowledgeDistiller:
 
     # ── Distillation ────────────────────────────────────────────────
 
-    def distill(self, teacher_id: str, student_id: str,
-                temperature: float = 2.0, alpha: float = 0.7,
-                epochs: int = 100) -> DistillationResult:
+    def distill(
+        self,
+        teacher_id: str,
+        student_id: str,
+        temperature: float = 2.0,
+        alpha: float = 0.7,
+        epochs: int = 100,
+    ) -> DistillationResult:
         """Perform knowledge distillation from teacher to student."""
         if teacher_id not in self.teacher_models:
             return DistillationResult(
-                teacher_id=teacher_id, student_id=student_id,
-                temperature=temperature, success=False,
+                teacher_id=teacher_id,
+                student_id=student_id,
+                temperature=temperature,
+                success=False,
             )
 
         teacher = self.teacher_models[teacher_id]
-        student = self.student_models.get(student_id, ModelConfig(model_id=student_id, model_type="student"))
+        student = self.student_models.get(
+            student_id, ModelConfig(model_id=student_id, model_type="student")
+        )
 
         # Simulate distillation
         accuracy_before = student.accuracy
@@ -172,7 +208,9 @@ class KnowledgeDistiller:
         accuracy_after = min(teacher.accuracy, accuracy_before + improvement)
 
         # Compression ratio
-        compression = teacher.num_params / student.num_params if student.num_params > 0 else 0.0
+        compression = (
+            teacher.num_params / student.num_params if student.num_params > 0 else 0.0
+        )
 
         # Simulated losses
         kd_loss_val = max(0.01, 1.0 / (epochs + 1))
@@ -184,22 +222,30 @@ class KnowledgeDistiller:
         self.student_models[student_id] = student
 
         result = DistillationResult(
-            teacher_id=teacher_id, student_id=student_id,
-            temperature=temperature, alpha=alpha,
+            teacher_id=teacher_id,
+            student_id=student_id,
+            temperature=temperature,
+            alpha=alpha,
             student_accuracy_before=round(accuracy_before, 4),
             student_accuracy_after=round(accuracy_after, 4),
             compression_ratio=round(compression, 2),
             kd_loss=round(kd_loss_val, 4),
             hard_loss=round(hard_loss_val, 4),
             total_loss=round(total_loss_val, 4),
-            epochs=epochs, success=True,
+            epochs=epochs,
+            success=True,
         )
         self.distillation_history.append(result)
         return result
 
-    def progressive_distill(self, teacher_id: str, student_id: str,
-                            stages: int = 3, temperature_start: float = 4.0,
-                            temperature_end: float = 1.0) -> list[DistillationResult]:
+    def progressive_distill(
+        self,
+        teacher_id: str,
+        student_id: str,
+        stages: int = 3,
+        temperature_start: float = 4.0,
+        temperature_end: float = 1.0,
+    ) -> list[DistillationResult]:
         """Progressive distillation with decreasing temperature."""
         results = []
         temp_step = (temperature_start - temperature_end) / stages
@@ -207,8 +253,9 @@ class KnowledgeDistiller:
 
         for stage in range(stages):
             temp = temperature_start - stage * temp_step
-            result = self.distill(teacher_id, student_id,
-                                  temperature=temp, epochs=epochs_per_stage)
+            result = self.distill(
+                teacher_id, student_id, temperature=temp, epochs=epochs_per_stage
+            )
             results.append(result)
 
         return results
@@ -217,10 +264,22 @@ class KnowledgeDistiller:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_teacher_accuracy = (sum(t.accuracy for t in self.teacher_models.values()) /
-                                len(self.teacher_models)) if self.teacher_models else 0.0
-        avg_student_accuracy = (sum(s.accuracy for s in self.student_models.values()) /
-                                len(self.student_models)) if self.student_models else 0.0
+        avg_teacher_accuracy = (
+            (
+                sum(t.accuracy for t in self.teacher_models.values())
+                / len(self.teacher_models)
+            )
+            if self.teacher_models
+            else 0.0
+        )
+        avg_student_accuracy = (
+            (
+                sum(s.accuracy for s in self.student_models.values())
+                / len(self.student_models)
+            )
+            if self.student_models
+            else 0.0
+        )
         return {
             "teachers": len(self.teacher_models),
             "students": len(self.student_models),

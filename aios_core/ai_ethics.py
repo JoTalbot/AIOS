@@ -1,6 +1,6 @@
 """Comprehensive AI Ethics Framework for AIOS"""
 
-from typing import Any, Dict, List
+from typing import Any
 
 __all__ = ["AIEthicsFramework"]
 
@@ -22,10 +22,10 @@ class AIEthicsFramework:
             "dignity": "Respect human dignity",
             "solidarity": "Promote social cohesion",
         }
-        self.assessments: List[Dict] = []
-        self.violations: List[Dict] = []
+        self.assessments: list[dict] = []
+        self.violations: list[dict] = []
 
-    def evaluate_action(self, action: dict[str, Any], context: Dict = None) -> Dict:
+    def evaluate_action(self, action: dict[str, Any], context: dict = None) -> dict:
         """Comprehensive ethical evaluation of an action."""
         scores = {}
         violated = []
@@ -72,12 +72,14 @@ class AIEthicsFramework:
 
         return assessment
 
-    def generate_ethics_report(self) -> Dict:
+    def generate_ethics_report(self) -> dict:
         """Generate comprehensive ethics report."""
         if not self.assessments:
             return {"message": "No assessments yet"}
 
-        avg_score = sum(a["overall_score"] for a in self.assessments) / len(self.assessments)
+        avg_score = sum(a["overall_score"] for a in self.assessments) / len(
+            self.assessments
+        )
 
         return {
             "total_assessments": len(self.assessments),
@@ -94,7 +96,11 @@ class AIEthicsFramework:
         for v in self.violations:
             for p in v.get("violated_principles", []):
                 violation_counts[p] = violation_counts.get(p, 0) + 1
-        return max(violation_counts, key=violation_counts.get) if violation_counts else "None"
+        return (
+            max(violation_counts, key=violation_counts.get)
+            if violation_counts
+            else "None"
+        )
 
     def stats(self) -> dict:
         """Return statistics dict."""

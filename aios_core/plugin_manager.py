@@ -8,8 +8,8 @@ configuration, priority ordering, plugin isolation, and uninstall.
 from __future__ import annotations
 
 import importlib
-import sys
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from collections.abc import Callable
+from typing import Any
 
 __all__ = ["PluginManager", "PluginInfo", "plugin_manager"]
 
@@ -18,8 +18,14 @@ class PluginInfo:
     """Metadata container for a registered plugin."""
 
     __slots__ = (
-        "name", "version", "description", "author",
-        "dependencies", "priority", "enabled", "module_path",
+        "name",
+        "version",
+        "description",
+        "author",
+        "dependencies",
+        "priority",
+        "enabled",
+        "module_path",
     )
 
     def __init__(
@@ -28,7 +34,7 @@ class PluginInfo:
         version: str = "0.0.1",
         description: str = "",
         author: str = "",
-        dependencies: List[str] = [],
+        dependencies: list[str] = [],
         priority: int = 0,
         enabled: bool = True,
         module_path: str = "",
@@ -59,12 +65,12 @@ class PluginManager:
 
     def __init__(self):
         """Initialize PluginManager."""
-        self.plugins: Dict[str, Any] = {}
-        self._info: Dict[str, PluginInfo] = {}
-        self.hooks: Dict[str, list] = {}
-        self._config: Dict[str, Dict[str, Any]] = {}
-        self._hook_results: Dict[str, List[Any]] = {}
-        self._load_order: List[str] = []
+        self.plugins: dict[str, Any] = {}
+        self._info: dict[str, PluginInfo] = {}
+        self.hooks: dict[str, list] = {}
+        self._config: dict[str, dict[str, Any]] = {}
+        self._hook_results: dict[str, list[Any]] = {}
+        self._load_order: list[str] = []
 
     # ------------------------------------------------------------------
     # Plugin registration
@@ -171,15 +177,15 @@ class PluginManager:
         except Exception:
             return False
 
-    def resolve_dependencies(self) -> List[str]:
+    def resolve_dependencies(self) -> list[str]:
         """Return a load order that respects declared dependencies.
 
         Plugins with no dependencies load first; plugins that depend on
         others are loaded after their dependencies.  Circular dependencies
         are detected and the involved plugins are skipped.
         """
-        resolved: List[str] = []
-        unresolved: Dict[str, List[str]] = {}
+        resolved: list[str] = []
+        unresolved: dict[str, list[str]] = {}
 
         for name, info in self._info.items():
             deps = [d for d in info.dependencies if d in self._info]
@@ -228,13 +234,13 @@ class PluginManager:
         # Sort by priority
         self.hooks[hook_name].sort(key=lambda x: x[1])
 
-    def run_hook(self, hook_name: str, *args, **kwargs) -> List[Any]:
+    def run_hook(self, hook_name: str, *args, **kwargs) -> list[Any]:
         """Execute all registered callbacks for *hook_name*.
 
         Only callbacks from *enabled* plugins are run.  Errors are
         caught per-callback and stored in results as ``("error", exc)``.
         """
-        results: List[Any] = []
+        results: list[Any] = []
         for callback, priority, pname in self.hooks.get(hook_name, []):
             # Skip disabled plugins
             if pname and pname in self._info and not self._info[pname].enabled:
@@ -247,7 +253,7 @@ class PluginManager:
         self._hook_results[hook_name] = results
         return results
 
-    def get_hook_results(self, hook_name: str) -> List[Any]:
+    def get_hook_results(self, hook_name: str) -> list[Any]:
         """Return cached results from the last ``run_hook`` call."""
         return self._hook_results.get(hook_name, [])
 
@@ -263,7 +269,7 @@ class PluginManager:
         """Retrieve a configuration value."""
         return self._config.get(name, {}).get(key, default)
 
-    def get_all_config(self, name: str) -> Dict[str, Any]:
+    def get_all_config(self, name: str) -> dict[str, Any]:
         """Return the full config dict for *name*."""
         return dict(self._config.get(name, {}))
 
@@ -271,16 +277,15 @@ class PluginManager:
     # Inspection
     # ------------------------------------------------------------------
 
-    def list_plugins(self, enabled_only: bool = False) -> List[str]:
+    def list_plugins(self, enabled_only: bool = False) -> list[str]:
         """Return list of registered plugin names."""
         if enabled_only:
             return [
-                n for n in self._load_order
-                if n in self._info and self._info[n].enabled
+                n for n in self._load_order if n in self._info and self._info[n].enabled
             ]
         return list(self._load_order)
 
-    def get_plugin_info(self, name: str) -> Optional[PluginInfo]:
+    def get_plugin_info(self, name: str) -> PluginInfo | None:
         """Return metadata for plugin *name*."""
         return self._info.get(name)
 

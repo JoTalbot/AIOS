@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 __all__ = ["UIElement", "SearchResult", "ItemDetails", "UIAutomatorParser"]
 
@@ -13,6 +12,7 @@ __all__ = ["UIElement", "SearchResult", "ItemDetails", "UIAutomatorParser"]
 @dataclass
 class UIElement:
     """UIElement."""
+
     resource_id: str
     text: str
     class_name: str
@@ -32,7 +32,11 @@ class UIElement:
         """Execute matches text."""
         if not text:
             return False
-        return text.lower() in self.text.lower() if partial else text.lower() == self.text.lower()
+        return (
+            text.lower() in self.text.lower()
+            if partial
+            else text.lower() == self.text.lower()
+        )
 
     def matches_resource(self, resource_id: str) -> bool:
         """Execute matches resource."""
@@ -42,6 +46,7 @@ class UIElement:
 @dataclass
 class SearchResult:
     """Search result item with title, price, location."""
+
     item_id: str
     title: str
     price: str
@@ -52,6 +57,7 @@ class SearchResult:
 @dataclass
 class ItemDetails:
     """ItemDetails."""
+
     item_id: str
     title: str
     price: float
@@ -62,6 +68,7 @@ class ItemDetails:
 
 class UIAutomatorParser:
     """UIAutomatorParser."""
+
     def __init__(self, xml_content: str):
         """Initialize UIAutomatorParser."""
         self.xml_content = xml_content
@@ -90,9 +97,12 @@ class UIAutomatorParser:
             return result
         for node in self.root.iter("node"):
             node_text = node.attrib.get("text", "")
-            if partial and text.lower() in node_text.lower():
-                result.append(self._to_element(node))
-            elif not partial and text.lower() == node_text.lower():
+            if (
+                partial
+                and text.lower() in node_text.lower()
+                or not partial
+                and text.lower() == node_text.lower()
+            ):
                 result.append(self._to_element(node))
         return result
 
@@ -102,7 +112,10 @@ class UIAutomatorParser:
         if self.root is None:
             return result
         for node in self.root.iter("node"):
-            if node.attrib.get("clickable") == "true" and node.attrib.get("enabled") == "true":
+            if (
+                node.attrib.get("clickable") == "true"
+                and node.attrib.get("enabled") == "true"
+            ):
                 result.append(self._to_element(node))
         return result
 

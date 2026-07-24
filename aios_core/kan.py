@@ -12,9 +12,7 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
 import random
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -24,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class KANLayer:
     """KAN layer with B-spline-like activations."""
+
     in_dim: int = 2
     out_dim: int = 2
     grid_size: int = 5
@@ -32,8 +31,10 @@ class KANLayer:
 
     def __post_init__(self) -> None:
         if not self.coefficients:
-            self.coefficients = [[random.gauss(0, 0.1) for _ in range(self.grid_size)]
-                                for _ in range(self.in_dim * self.out_dim)]
+            self.coefficients = [
+                [random.gauss(0, 0.1) for _ in range(self.grid_size)]
+                for _ in range(self.in_dim * self.out_dim)
+            ]
 
     def _spline_activation(self, x: float, coeffs: list[float]) -> float:
         """Compute B-spline-like activation from coefficients."""
@@ -57,7 +58,9 @@ class KANLayer:
             for in_idx in range(min(self.in_dim, len(x))):
                 coeff_idx = in_idx * self.out_dim + out_idx
                 if coeff_idx < len(self.coefficients):
-                    val += self._spline_activation(x[in_idx], self.coefficients[coeff_idx])
+                    val += self._spline_activation(
+                        x[in_idx], self.coefficients[coeff_idx]
+                    )
                 else:
                     val += x[in_idx] * 0.1
             output[out_idx] = val
@@ -85,8 +88,9 @@ class KAN:
     """
 
     def __init__(self, layers: list[int]) -> None:
-        self.layers: list[KANLayer] = [KANLayer(layers[i], layers[i + 1])
-                                        for i in range(len(layers) - 1)]
+        self.layers: list[KANLayer] = [
+            KANLayer(layers[i], layers[i + 1]) for i in range(len(layers) - 1)
+        ]
         self.layer_sizes = layers
         self._trained: bool = False
 
@@ -97,15 +101,22 @@ class KAN:
             current = layer.forward(current)
         return current
 
-    def train(self, inputs: list[list[float]], targets: list[list[float]],
-              epochs: int = 100, lr: float = 0.01) -> dict[str, Any]:
+    def train(
+        self,
+        inputs: list[list[float]],
+        targets: list[list[float]],
+        epochs: int = 100,
+        lr: float = 0.01,
+    ) -> dict[str, Any]:
         """Simulate training."""
         loss = 1.0
         for epoch in range(epochs):
             # Simulate gradient descent
             loss = max(0.01, loss * 0.99)
             for layer in self.layers:
-                gradients = [random.gauss(0, 0.1) for _ in range(len(layer.coefficients))]
+                gradients = [
+                    random.gauss(0, 0.1) for _ in range(len(layer.coefficients))
+                ]
                 layer.update_coefficients(gradients, lr)
         self._trained = True
         return {"epochs": epochs, "final_loss": round(loss, 4), "trained": True}

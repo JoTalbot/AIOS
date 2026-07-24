@@ -2,8 +2,6 @@
 
 from aios_core.modules.whatsapp.broadcast_scheduler import (
     BroadcastScheduler,
-    BroadcastMessage,
-    BroadcastStatus,
 )
 
 

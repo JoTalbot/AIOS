@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import logging
 import random
-import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -52,7 +51,11 @@ class SpikingNeuron:
         self._last_spike_time = -1.0
 
     def stats(self) -> dict[str, Any]:
-        return {"threshold": self.threshold, "spikes": self.spikes, "energy_pJ": round(self._energy_consumed, 4)}
+        return {
+            "threshold": self.threshold,
+            "spikes": self.spikes,
+            "energy_pJ": round(self._energy_consumed, 4),
+        }
 
 
 class NeuromorphicLayer:
@@ -60,7 +63,9 @@ class NeuromorphicLayer:
 
     def __init__(self, size: int, threshold: float = 1.0) -> None:
         self.neurons = [SpikingNeuron(threshold) for _ in range(size)]
-        self._event_queue: list[tuple[float, int, float]] = []  # (time, neuron_idx, current)
+        self._event_queue: list[
+            tuple[float, int, float]
+        ] = []  # (time, neuron_idx, current)
 
     def forward(self, inputs: list[float]) -> list[int]:
         """Forward pass (backward-compatible)."""
@@ -90,7 +95,10 @@ class NeuromorphicLayer:
         return sum(n._energy_consumed for n in self.neurons)
 
     def stats(self) -> dict[str, Any]:
-        return {"neurons": len(self.neurons), "total_energy_pJ": round(self.total_energy(), 4)}
+        return {
+            "neurons": len(self.neurons),
+            "total_energy_pJ": round(self.total_energy(), 4),
+        }
 
 
 class CrossbarArray:
@@ -100,7 +108,9 @@ class CrossbarArray:
         self.rows = rows
         self.cols = cols
         # Initialize weight matrix (memristor conductances)
-        self.weights: list[list[float]] = [[random.uniform(0.01, 0.99) for _ in range(cols)] for _ in range(rows)]
+        self.weights: list[list[float]] = [
+            [random.uniform(0.01, 0.99) for _ in range(cols)] for _ in range(rows)
+        ]
 
     def read(self, row_idx: int, col_idx: int) -> float:
         """Read conductance at a crossbar point."""
@@ -128,7 +138,11 @@ class CrossbarArray:
         return self.rows * self.cols * 0.01  # ~0.01 µW per memristor
 
     def stats(self) -> dict[str, Any]:
-        return {"rows": self.rows, "cols": self.cols, "power_uW": round(self.estimate_power(), 2)}
+        return {
+            "rows": self.rows,
+            "cols": self.cols,
+            "power_uW": round(self.estimate_power(), 2),
+        }
 
 
 class NeuromorphicChip:
@@ -163,7 +177,9 @@ class NeuromorphicChip:
                 spikes = layer.forward(current_input)
                 all_spikes.append(spikes)
                 current_input = [s * 0.1 for s in spikes]
-        self._latency_ns = timesteps * len(self.layers) * 100  # ~100ns per layer per timestep
+        self._latency_ns = (
+            timesteps * len(self.layers) * 100
+        )  # ~100ns per layer per timestep
         return {
             "spikes": all_spikes,
             "timesteps": timesteps,
@@ -173,8 +189,12 @@ class NeuromorphicChip:
 
     def power_report(self) -> dict[str, Any]:
         """Generate power consumption report."""
-        neuron_power = sum(layer.total_energy() for layer in self.layers) * 1e6  # convert pJ to mW equivalent
-        crossbar_power = sum(cb.estimate_power() for cb in self.crossbars) / 1000  # µW → mW
+        neuron_power = (
+            sum(layer.total_energy() for layer in self.layers) * 1e6
+        )  # convert pJ to mW equivalent
+        crossbar_power = (
+            sum(cb.estimate_power() for cb in self.crossbars) / 1000
+        )  # µW → mW
         return {
             "chip": self.name,
             "neuron_power_mW": round(neuron_power, 2),

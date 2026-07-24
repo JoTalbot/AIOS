@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
 
 _ENV_PREFIX = "AIOS_SECRET__"
 DEFAULT_SECRETS_FILE = "data/secrets.env"
@@ -67,7 +66,8 @@ def required_secret(
         if profile:
             names += f" или {env_name(platform, field)}"
         raise ValueError(
-            f"secret not configured: set {names} " "(values are read from env only, never stored)"
+            f"secret not configured: set {names} "
+            "(values are read from env only, never stored)"
         )
     return value
 

@@ -7,11 +7,18 @@ Environment variables override YAML values.
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
 
 import yaml
 
-__all__ = ["DatabaseConfig", "AuditConfig", "ApprovalConfig", "ConstitutionConfig", "PoliciesConfig", "LoggingConfig", "AIOSConfig"]
+__all__ = [
+    "DatabaseConfig",
+    "AuditConfig",
+    "ApprovalConfig",
+    "ConstitutionConfig",
+    "PoliciesConfig",
+    "LoggingConfig",
+    "AIOSConfig",
+]
 
 _DEFAULT_CONFIG = {
     "database": {
@@ -41,12 +48,14 @@ _DEFAULT_CONFIG = {
 @dataclass
 class DatabaseConfig:
     """DatabaseConfig."""
+
     path: str = "aios.db"
 
 
 @dataclass
 class AuditConfig:
     """AuditConfig."""
+
     file_path: str = "audit_log.jsonl"
     retention_days: int = 90
 
@@ -54,6 +63,7 @@ class AuditConfig:
 @dataclass
 class ApprovalConfig:
     """ApprovalConfig."""
+
     timeout_seconds: int = 86400
     max_pending: int = 100
 
@@ -61,18 +71,21 @@ class ApprovalConfig:
 @dataclass
 class ConstitutionConfig:
     """ConstitutionConfig."""
+
     dir: str = "docs/constitution"
 
 
 @dataclass
 class PoliciesConfig:
     """PoliciesConfig."""
+
     dir: str = "policies"
 
 
 @dataclass
 class LoggingConfig:
     """LoggingConfig."""
+
     level: str = "INFO"
     format: str = "%(asctime)s [%(name)s] %(levelname)s: %(message)s"
 
@@ -80,6 +93,7 @@ class LoggingConfig:
 @dataclass
 class AIOSConfig:
     """AIOSConfig."""
+
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     audit: AuditConfig = field(default_factory=AuditConfig)
     approval: ApprovalConfig = field(default_factory=ApprovalConfig)
@@ -104,13 +118,17 @@ class AIOSConfig:
             ),
             audit=AuditConfig(
                 file_path=audit_data.get("file_path", AuditConfig.file_path),
-                retention_days=int(audit_data.get("retention_days", AuditConfig.retention_days)),
+                retention_days=int(
+                    audit_data.get("retention_days", AuditConfig.retention_days)
+                ),
             ),
             approval=ApprovalConfig(
                 timeout_seconds=int(
                     approval_data.get("timeout_seconds", ApprovalConfig.timeout_seconds)
                 ),
-                max_pending=int(approval_data.get("max_pending", ApprovalConfig.max_pending)),
+                max_pending=int(
+                    approval_data.get("max_pending", ApprovalConfig.max_pending)
+                ),
             ),
             constitution=ConstitutionConfig(
                 dir=const_data.get("dir", ConstitutionConfig.dir),
@@ -202,7 +220,7 @@ def load_config(config_path: str | None = None) -> AIOSConfig:
                 break
 
     if config_path and os.path.isfile(config_path):
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             yaml_data = yaml.safe_load(f) or {}
 
     # Merge: defaults <- yaml <- env

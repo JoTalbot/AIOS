@@ -12,7 +12,6 @@ Classes:
 from __future__ import annotations
 
 import logging
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -22,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class APIEndpoint:
     """Registered API endpoint."""
+
     path: str
     method: str = "get"
     summary: str = ""
@@ -51,11 +51,20 @@ class OpenAPISpec:
         self._schemas: dict[str, dict[str, Any]] = {}
         self._security_schemes: dict[str, dict[str, Any]] = {}
 
-    def add_endpoint(self, path: str, method: str = "get",
-                     summary: str = "", responses: dict[str, str] | None = None) -> None:
+    def add_endpoint(
+        self,
+        path: str,
+        method: str = "get",
+        summary: str = "",
+        responses: dict[str, str] | None = None,
+    ) -> None:
         """Add an API endpoint."""
-        endpoint = APIEndpoint(path=path, method=method, summary=summary,
-                               responses=responses or {"200": "OK"})
+        endpoint = APIEndpoint(
+            path=path,
+            method=method,
+            summary=summary,
+            responses=responses or {"200": "OK"},
+        )
         self._endpoints.append(endpoint)
 
     def add_schema(self, name: str, schema: dict[str, Any]) -> None:
@@ -90,7 +99,8 @@ class OpenAPISpec:
             "paths": paths,
             "components": {
                 "schemas": self._schemas,
-                "securitySchemes": self._security_schemes or {
+                "securitySchemes": self._security_schemes
+                or {
                     "BearerAuth": {"type": "http", "scheme": "bearer"},
                 },
             },
@@ -124,6 +134,8 @@ def generate_openapi_spec() -> dict[str, Any]:
     builder = OpenAPISpec()
     builder.add_endpoint("/health", "get", "Health check", {"200": "OK"})
     builder.add_endpoint("/api/v1/stats", "get", "System statistics", {"200": "Stats"})
-    builder.add_endpoint("/api/v1/tasks", "post", "Create task", {"201": "Task created"})
+    builder.add_endpoint(
+        "/api/v1/tasks", "post", "Create task", {"201": "Task created"}
+    )
     builder.add_security_scheme("BearerAuth", {"type": "http", "scheme": "bearer"})
     return builder.generate_spec()

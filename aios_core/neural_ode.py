@@ -13,10 +13,9 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
-import time
-from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ODESolverConfig:
     """ODE solver configuration."""
+
     method: str = "euler"  # euler, rk4, dopri5
     step_size: float = 0.01
     max_steps: int = 1000
@@ -43,21 +43,32 @@ class NeuralODE:
     - Loss computation for training
     """
 
-    def __init__(self, dynamics: Callable, solver: str = "euler",
-                 step_size: float = 0.01, max_steps: int = 1000) -> None:
+    def __init__(
+        self,
+        dynamics: Callable,
+        solver: str = "euler",
+        step_size: float = 0.01,
+        max_steps: int = 1000,
+    ) -> None:
         self.dynamics = dynamics
         self.solver = solver
-        self.config = ODESolverConfig(method=solver, step_size=step_size, max_steps=max_steps)
+        self.config = ODESolverConfig(
+            method=solver, step_size=step_size, max_steps=max_steps
+        )
         self._trajectory_count = 0
 
     # ── Solver Methods ──────────────────────────────────────────────
 
-    def _euler_step(self, state: list[float], dynamics: Callable, dt: float) -> list[float]:
+    def _euler_step(
+        self, state: list[float], dynamics: Callable, dt: float
+    ) -> list[float]:
         """Single Euler step."""
         dstate = dynamics(state)
         return [s + dt * d for s, d in zip(state, dstate)]
 
-    def _rk4_step(self, state: list[float], dynamics: Callable, dt: float) -> list[float]:
+    def _rk4_step(
+        self, state: list[float], dynamics: Callable, dt: float
+    ) -> list[float]:
         """Single RK4 step."""
         k1 = dynamics(state)
         s2 = [s + dt / 2 * k for s, k in zip(state, k1)]
@@ -67,10 +78,14 @@ class NeuralODE:
         s4 = [s + dt * k for s, k in zip(state, k3)]
         k4 = dynamics(s4)
 
-        return [s + dt / 6 * (k1i + 2 * k2i + 2 * k3i + k4i)
-                for s, k1i, k2i, k3i, k4i in zip(state, k1, k2, k3, k4)]
+        return [
+            s + dt / 6 * (k1i + 2 * k2i + 2 * k3i + k4i)
+            for s, k1i, k2i, k3i, k4i in zip(state, k1, k2, k3, k4)
+        ]
 
-    def _dopri5_step(self, state: list[float], dynamics: Callable, dt: float) -> list[float]:
+    def _dopri5_step(
+        self, state: list[float], dynamics: Callable, dt: float
+    ) -> list[float]:
         """Dormand-Prince 5th order step (simplified)."""
         # Use RK4 as approximation for Dopri5 (full Dopri5 would require more k's)
         return self._rk4_step(state, dynamics, dt)
@@ -87,8 +102,9 @@ class NeuralODE:
 
     # ── Integration ─────────────────────────────────────────────────
 
-    def integrate(self, initial_state: list[float], t_span: tuple[float, float],
-                  steps: int = 100) -> list[list[float]]:
+    def integrate(
+        self, initial_state: list[float], t_span: tuple[float, float], steps: int = 100
+    ) -> list[list[float]]:
         """Integrate the ODE dynamics over t_span with given steps."""
         t0, t1 = t_span
         dt = (t1 - t0) / steps
@@ -106,8 +122,9 @@ class NeuralODE:
         self._trajectory_count += 1
         return trajectory
 
-    def integrate_to(self, initial_state: list[float], t: float,
-                     t_start: float = 0.0) -> list[float]:
+    def integrate_to(
+        self, initial_state: list[float], t: float, t_start: float = 0.0
+    ) -> list[float]:
         """Integrate to a specific time point."""
         steps = max(10, int(abs(t - t_start) / self.config.step_size))
         trajectory = self.integrate(initial_state, (t_start, t), steps)
@@ -115,8 +132,13 @@ class NeuralODE:
 
     # ── Adjoint Method ──────────────────────────────────────────────
 
-    def adjoint(self, initial_state: list[float], t_span: tuple[float, float],
-               loss_grad: list[float], steps: int = 100) -> list[float]:
+    def adjoint(
+        self,
+        initial_state: list[float],
+        t_span: tuple[float, float],
+        loss_grad: list[float],
+        steps: int = 100,
+    ) -> list[float]:
         """Compute gradients using the adjoint method.
 
         Instead of storing the full trajectory, compute gradients
@@ -145,8 +167,12 @@ class NeuralODE:
 
     # ── Continuous Normalizing Flows ────────────────────────────────
 
-    def cnf_forward(self, state: list[float], t_span: tuple[float, float] = (0.0, 1.0),
-                    steps: int = 100) -> tuple[list[float], float]:
+    def cnf_forward(
+        self,
+        state: list[float],
+        t_span: tuple[float, float] = (0.0, 1.0),
+        steps: int = 100,
+    ) -> tuple[list[float], float]:
         """Continuous Normalizing Flow: forward pass with log-det Jacobian."""
         trajectory = self.integrate(state, t_span, steps)
         final_state = trajectory[-1]
@@ -164,8 +190,12 @@ class NeuralODE:
 
         return final_state, round(log_det, 4)
 
-    def cnf_inverse(self, state: list[float], t_span: tuple[float, float] = (1.0, 0.0),
-                    steps: int = 100) -> list[float]:
+    def cnf_inverse(
+        self,
+        state: list[float],
+        t_span: tuple[float, float] = (1.0, 0.0),
+        steps: int = 100,
+    ) -> list[float]:
         """CNF inverse: reverse the flow."""
         # Define reverse dynamics
         reverse_dynamics = lambda s: [-d for d in self.dynamics(s)]
@@ -175,8 +205,12 @@ class NeuralODE:
 
     # ── Trajectory Interpolation ────────────────────────────────────
 
-    def interpolate_trajectory(self, trajectory: list[list[float]],
-                               t_interpolate: float, t_span: tuple[float, float]) -> list[float]:
+    def interpolate_trajectory(
+        self,
+        trajectory: list[list[float]],
+        t_interpolate: float,
+        t_span: tuple[float, float],
+    ) -> list[float]:
         """Interpolate state at an intermediate time point."""
         t0, t1 = t_span
         total_steps = len(trajectory) - 1
@@ -192,7 +226,11 @@ class NeuralODE:
         frac = max(0, min(1, frac))
 
         s0 = trajectory[step_idx]
-        s1 = trajectory[step_idx + 1] if step_idx + 1 < len(trajectory) else trajectory[step_idx]
+        s1 = (
+            trajectory[step_idx + 1]
+            if step_idx + 1 < len(trajectory)
+            else trajectory[step_idx]
+        )
 
         return [a * (1 - frac) + b * frac for a, b in zip(s0, s1)]
 

@@ -33,9 +33,9 @@ class ExperimentStatus(Enum):
 class MetricType(Enum):
     """Types of metrics tracked in experiments."""
 
-    RATE = "rate"           # Proportion (success rate, conversion rate)
-    MEAN = "mean"           # Average (latency, items collected)
-    COUNT = "count"         # Total count (items, errors)
+    RATE = "rate"  # Proportion (success rate, conversion rate)
+    MEAN = "mean"  # Average (latency, items collected)
+    COUNT = "count"  # Total count (items, errors)
     PERCENTILE = "percentile"  # P50, P90, P99
 
 
@@ -43,12 +43,12 @@ class MetricType(Enum):
 class Variant:
     """A variant (strategy) in an A/B experiment."""
 
-    name: str                               # e.g. "strategy_a", "baseline"
-    description: str = ""                   # Human-readable description
+    name: str  # e.g. "strategy_a", "baseline"
+    description: str = ""  # Human-readable description
     config: dict[str, Any] = field(default_factory=dict)  # Strategy configuration
     observations: list[float] = field(default_factory=list)  # Raw metric observations
-    rate_successes: int = 0                 # For rate metrics: successes
-    rate_total: int = 0                     # For rate metrics: total trials
+    rate_successes: int = 0  # For rate metrics: successes
+    rate_total: int = 0  # For rate metrics: total trials
     start_time: float | None = None
     end_time: float | None = None
 
@@ -72,7 +72,9 @@ class Variant:
         if len(self.observations) < 2:
             return 0.0
         m = self.mean
-        return sum((x - m) ** 2 for x in self.observations) / (len(self.observations) - 1)
+        return sum((x - m) ** 2 for x in self.observations) / (
+            len(self.observations) - 1
+        )
 
     @property
     def std_dev(self) -> float:
@@ -110,19 +112,19 @@ class ExperimentResult:
     """Result of analyzing an A/B experiment."""
 
     experiment_id: str
-    winner: str | None             # Name of winning variant
-    confidence: float              # Statistical confidence (0.0 to 1.0)
-    is_significant: bool           # Whether difference is statistically significant
+    winner: str | None  # Name of winning variant
+    confidence: float  # Statistical confidence (0.0 to 1.0)
+    is_significant: bool  # Whether difference is statistically significant
     metric_type: MetricType
     variant_a_name: str
-    variant_a_value: float         # Mean or rate for variant A
+    variant_a_value: float  # Mean or rate for variant A
     variant_b_name: str
-    variant_b_value: float         # Mean or rate for variant B
-    lift: float                    # Relative improvement (B vs A)
-    p_value: float                 # Statistical p-value
+    variant_b_value: float  # Mean or rate for variant B
+    lift: float  # Relative improvement (B vs A)
+    p_value: float  # Statistical p-value
     sample_size_a: int
     sample_size_b: int
-    recommendation: str = ""       # Human-readable recommendation
+    recommendation: str = ""  # Human-readable recommendation
 
 
 class ABTestingEngine:
@@ -196,7 +198,9 @@ class ABTestingEngine:
 
         # If only one variant provided, add a default "baseline"
         if len(variant_objs) == 1:
-            variant_objs.insert(0, Variant(name="baseline", description="Default strategy"))
+            variant_objs.insert(
+                0, Variant(name="baseline", description="Default strategy")
+            )
 
         # If no variants, create default A/B pair
         if not variant_objs:
@@ -266,7 +270,10 @@ class ABTestingEngine:
             value: Observed metric value.
         """
         exp = self._experiments.get(experiment_id)
-        if not exp or exp.status not in (ExperimentStatus.RUNNING, ExperimentStatus.PAUSED):
+        if not exp or exp.status not in (
+            ExperimentStatus.RUNNING,
+            ExperimentStatus.PAUSED,
+        ):
             return
 
         for v in exp.variants:
@@ -291,7 +298,10 @@ class ABTestingEngine:
             success: True if this trial succeeded.
         """
         exp = self._experiments.get(experiment_id)
-        if not exp or exp.status not in (ExperimentStatus.RUNNING, ExperimentStatus.PAUSED):
+        if not exp or exp.status not in (
+            ExperimentStatus.RUNNING,
+            ExperimentStatus.PAUSED,
+        ):
             return
 
         for v in exp.variants:
@@ -364,7 +374,7 @@ class ABTestingEngine:
         # Approximate using Poisson-like terms
         p = 0.0
         for i in range(int(k), 50):
-            term = math.exp(-x) * (x ** i) / math.factorial(i) if i < 20 else 0
+            term = math.exp(-x) * (x**i) / math.factorial(i) if i < 20 else 0
             p += term
         return min(1.0, max(0.0, 1 - p))
 
@@ -432,7 +442,7 @@ class ABTestingEngine:
 
         # Degrees of freedom (Welch-Satterthwaite)
         df_num = (se_a + se_b) ** 2
-        df_den = se_a ** 2 / (n_a - 1) + se_b ** 2 / (n_b - 1)
+        df_den = se_a**2 / (n_a - 1) + se_b**2 / (n_b - 1)
         if df_den == 0:
             df = n_a + n_b - 2
         else:
@@ -468,9 +478,13 @@ class ABTestingEngine:
                 is_significant=False,
                 metric_type=exp.metric_type,
                 variant_a_name=a.name,
-                variant_a_value=a.mean if exp.metric_type != MetricType.RATE else a.rate,
+                variant_a_value=a.mean
+                if exp.metric_type != MetricType.RATE
+                else a.rate,
                 variant_b_name=b.name,
-                variant_b_value=b.mean if exp.metric_type != MetricType.RATE else b.rate,
+                variant_b_value=b.mean
+                if exp.metric_type != MetricType.RATE
+                else b.rate,
                 lift=0.0,
                 p_value=1.0,
                 sample_size_a=a.sample_size,
@@ -610,7 +624,11 @@ class ABTestingEngine:
             Cancelled Experiment or None.
         """
         exp = self._experiments.get(experiment_id)
-        if exp and exp.status in (ExperimentStatus.DRAFT, ExperimentStatus.RUNNING, ExperimentStatus.PAUSED):
+        if exp and exp.status in (
+            ExperimentStatus.DRAFT,
+            ExperimentStatus.RUNNING,
+            ExperimentStatus.PAUSED,
+        ):
             exp.status = ExperimentStatus.CANCELLED
             return exp
         return None

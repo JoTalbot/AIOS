@@ -15,7 +15,6 @@ from __future__ import annotations
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
 from aios_core.modules.olx.text_utils import normalize_text, parse_price
 
@@ -27,7 +26,7 @@ def _rid_tail(resource_id: str) -> str:
     return resource_id.rsplit("/", 1)[-1].lower()
 
 
-def _rid_set(hints_section: Dict, key: str, nested: bool = False) -> set:
+def _rid_set(hints_section: dict, key: str, nested: bool = False) -> set:
     values = set()
     raw = (hints_section or {}).get(key) or []
     if nested:  # [{resource_id, ...}, ...]
@@ -47,7 +46,7 @@ class HintDetailParser:
     длинный текст ≥ 40 символов).
     """
 
-    def __init__(self, detail_hints: Dict):
+    def __init__(self, detail_hints: dict):
         """Initialize HintDetailParser."""
         hints = detail_hints or {}
         self.price_ids = _rid_set(hints, "price_nodes", nested=True)
@@ -55,7 +54,7 @@ class HintDetailParser:
         self.cta_ids = _rid_set(hints, "cta_markers", nested=True)
         self.configured = bool(self.price_ids or self.seller_ids or self.cta_ids)
 
-    def parse(self, xml_source: Union[str, Path, ET.Element]) -> Dict[str, object]:
+    def parse(self, xml_source: str | Path | ET.Element) -> dict[str, object]:
         """Разбирает дамп детального экрана в структурированные поля."""
         from aios_core.platforms.calibrate import CalibrationAdvisor
 
@@ -128,21 +127,21 @@ class HintSender:
     (очередь/подтверждение) живёт выше; здесь честный отчёт о шагах.
     """
 
-    def __init__(self, adb, messenger_hints: Optional[Dict] = None):
+    def __init__(self, adb, messenger_hints: dict | None = None):
         """Initialize HintSender."""
         self.adb = adb
         hints = messenger_hints or {}
-        self.input_classes = [str(cls).lower() for cls in (hints.get("input_classes") or [])] or [
-            "edittext"
-        ]
+        self.input_classes = [
+            str(cls).lower() for cls in (hints.get("input_classes") or [])
+        ] or ["edittext"]
         self.send_ids = _rid_set(hints, "send_markers", nested=True)
         self._send_text_markers = ("send", "надіслати", "отправить")
 
     def type_and_send(
         self,
         text: str,
-        xml_source: Optional[Union[str, Path, ET.Element]] = None,
-    ) -> Dict[str, object]:
+        xml_source: str | Path | ET.Element | None = None,
+    ) -> dict[str, object]:
         """Вводит и отправляет ``text`` в открытом диалоге.
 
         Args:
@@ -154,7 +153,7 @@ class HintSender:
         """
         from aios_core.modules.olx.messenger import _parse_bounds
 
-        steps: List[Dict[str, object]] = []
+        steps: list[dict[str, object]] = []
         if xml_source is None:
             with tempfile.TemporaryDirectory(prefix="aios-send-") as tmp:
                 target = Path(tmp) / "chat.xml"
@@ -178,7 +177,9 @@ class HintSender:
             if bounds is None:
                 continue
             center = ((bounds[0] + bounds[2]) // 2, (bounds[1] + bounds[3]) // 2)
-            if input_center is None and any(marker in klass for marker in self.input_classes):
+            if input_center is None and any(
+                marker in klass for marker in self.input_classes
+            ):
                 input_center = center
             combined = f"{rid} {desc.lower()} {text_attr.lower()}"
             if send_center is None and (
@@ -208,7 +209,7 @@ class HintSender:
         return {"code": result.get("code"), "steps": steps}
 
 
-def load_hints_section(platform_name: str, section: str, directory="platforms") -> Dict:
+def load_hints_section(platform_name: str, section: str, directory="platforms") -> dict:
     """Секция ``extras.parser_hints`` из YAML-дескриптора платформы.
 
     Returns:

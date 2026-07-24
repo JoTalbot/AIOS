@@ -9,8 +9,8 @@ from pathlib import Path
 
 
 class UIParser:
-
     """UIParser."""
+
     def __init__(self, xml_file):
         """Initialize UIParser."""
         self.xml_file = Path(xml_file)
@@ -46,7 +46,6 @@ class UIParser:
 
 
 if __name__ == "__main__":
-
     import sys
 
     xml_file = "olx_ui.xml"

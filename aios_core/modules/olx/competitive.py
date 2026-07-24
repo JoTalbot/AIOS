@@ -8,9 +8,8 @@ ad: who's cheaper, who's new in the niche, and where you rank by price.
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
 from .analytics import _tokenize
 from .card_parser import CardParser
@@ -70,11 +69,11 @@ def _has_seller_section(root: ET.Element) -> bool:
 
 
 def parse_seller_ads(
-    xml_source: Union[str, Path, ET.Element],
+    xml_source: str | Path | ET.Element,
     query: str | None = None,
-    exclude_urls: Tuple[str, ...] = (),
-    exclude_ad_ids: Tuple[str, ...] = (),
-) -> List[AdCard]:
+    exclude_urls: tuple[str, ...] = (),
+    exclude_ad_ids: tuple[str, ...] = (),
+) -> list[AdCard]:
     """Parse the seller's other listings from an ad detail page dump.
 
     The OLX detail screen embeds a horizontal "other ads by this seller"
@@ -107,7 +106,11 @@ def parse_seller_ads(
     cards = CardParser().parse(root, query=query)
     skip_urls = {u for u in exclude_urls if u}
     skip_ids = {i for i in exclude_ad_ids if i}
-    return [card for card in cards if card.url not in skip_urls and card.ad_id not in skip_ids]
+    return [
+        card
+        for card in cards
+        if card.url not in skip_urls and card.ad_id not in skip_ids
+    ]
 
 
 class CompetitiveWatch:
@@ -120,19 +123,19 @@ class CompetitiveWatch:
 
     def refresh(
         self,
-        own_ads: List[OwnAd],
-        candidates: Optional[List[AdCard]] = None,
+        own_ads: list[OwnAd],
+        candidates: list[AdCard] | None = None,
         seen_at: str | None = None,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """(Re)link every own ad against its market candidates.
 
         Returns counts plus per-own-ad summaries with undercut information.
         """
         if candidates is None:
             candidates = self.storage.get_ads(active_only=True)
-        now = seen_at or datetime.now(timezone.utc).isoformat()
+        now = seen_at or datetime.now(UTC).isoformat()
         new_links = 0
-        per_own: Dict[str, Dict[str, object]] = {}
+        per_own: dict[str, dict[str, object]] = {}
 
         for own in own_ads:
             linked = 0
@@ -161,12 +164,12 @@ class CompetitiveWatch:
 
     def observe_seller_ads(
         self,
-        xml_source: Union[str, Path, ET.Element],
+        xml_source: str | Path | ET.Element,
         my_ad: OwnAd,
         seen_at: str | None = None,
         viewed_url: str | None = None,
         viewed_ad_id: str | None = None,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """Crawl a competitor's portfolio from their detail page.
 
         Parses the "other ads by this seller" block, stores every found card
@@ -179,7 +182,7 @@ class CompetitiveWatch:
 
         Returns counts and the parsed portfolio.
         """
-        now = seen_at or datetime.now(timezone.utc).isoformat()
+        now = seen_at or datetime.now(UTC).isoformat()
         query = derive_query(my_ad.title)
         portfolio = parse_seller_ads(
             xml_source,
@@ -214,11 +217,11 @@ class CompetitiveWatch:
             "portfolio": [card.to_dict() for card in portfolio],
         }
 
-    def report(self, own_fingerprint: str) -> Dict[str, object]:
+    def report(self, own_fingerprint: str) -> dict[str, object]:
         """Full competitive picture for one own listing."""
         links = self.storage.competitor_links(own_fingerprint)
         ads = {ad.fingerprint: ad for ad in self.storage.get_ads(limit=1000)}
-        competitors: List[Dict[str, object]] = []
+        competitors: list[dict[str, object]] = []
         for link in links:
             ad = ads.get(link["competitor_fingerprint"])
             entry = dict(link)
@@ -241,8 +244,8 @@ class CompetitiveWatch:
         }
 
     def price_position(
-        self, own: OwnAd, candidates: Optional[List[AdCard]] = None
-    ) -> Dict[str, object]:
+        self, own: OwnAd, candidates: list[AdCard] | None = None
+    ) -> dict[str, object]:
         """Where my price stands among similar ads (1 = cheapest)."""
         if candidates is None:
             candidates = self.storage.get_ads(active_only=True)

@@ -8,8 +8,8 @@ time range, and decision.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from .storage import Database
 
@@ -23,7 +23,7 @@ class AuditLogger:
     Falls back to in-memory list if no Database is given.
     """
 
-    def __init__(self, db: Optional[Database] = None, file_path: str = "audit_log.jsonl"):
+    def __init__(self, db: Database | None = None, file_path: str = "audit_log.jsonl"):
         """Initialize AuditLogger."""
         self.db = db
         self.file_path = file_path
@@ -69,7 +69,7 @@ class AuditLogger:
             try:
                 with open(self.file_path, "a", encoding="utf-8") as f:
                     f.write(json.dumps(event, ensure_ascii=False, default=str) + "\n")
-            except (IOError, OSError):
+            except OSError:
                 pass  # Best-effort audit log — skip if disk is full/unavailable
 
         return event
@@ -203,13 +203,17 @@ class AuditLogger:
 
     def cleanup(self, retention_days: int = 90) -> int:
         """Delete events older than retention_days. Returns deleted count."""
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(days=retention_days)).isoformat()
 
         if self.db:
-            cursor = self.db.execute("DELETE FROM audit_events WHERE timestamp < ?", (cutoff,))
+            cursor = self.db.execute(
+                "DELETE FROM audit_events WHERE timestamp < ?", (cutoff,)
+            )
             return cursor.rowcount
 
         # In-memory cleanup
         before = len(self._in_memory)
-        self._in_memory = [e for e in self._in_memory if e.get("timestamp", "") >= cutoff]
+        self._in_memory = [
+            e for e in self._in_memory if e.get("timestamp", "") >= cutoff
+        ]
         return before - len(self._in_memory)

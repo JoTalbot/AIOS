@@ -14,9 +14,8 @@ from __future__ import annotations
 import logging
 import math
 import random
-import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RaySample:
     """Point sample along a ray."""
+
     position: list[float]
     direction: list[float]
     t: float = 0.0  # distance along ray
@@ -53,8 +53,9 @@ class NeRF:
 
     # ── Scene Management ──────────────────────────────────────────
 
-    def add_scene_point(self, position: list[float], density: float,
-                        color: list[float]) -> None:
+    def add_scene_point(
+        self, position: list[float], density: float, color: list[float]
+    ) -> None:
         """Add a known scene point."""
         key = f"{position[0]:.2f}_{position[1]:.2f}_{position[2]:.2f}"
         self._scene_points[key] = (density, color)
@@ -65,7 +66,9 @@ class NeRF:
 
     # ── Query ──────────────────────────────────────────────────────
 
-    def query(self, position: list[float], direction: list[float]) -> tuple[float, list[float]]:
+    def query(
+        self, position: list[float], direction: list[float]
+    ) -> tuple[float, list[float]]:
         """Query density and color at a point (backward-compatible)."""
         self._query_count += 1
 
@@ -89,9 +92,14 @@ class NeRF:
 
     # ── Ray Sampling ────────────────────────────────────────────────
 
-    def sample_ray(self, origin: list[float], direction: list[float],
-                   t_near: float = 0.0, t_far: float = 5.0,
-                   num_samples: int = 64) -> list[RaySample]:
+    def sample_ray(
+        self,
+        origin: list[float],
+        direction: list[float],
+        t_near: float = 0.0,
+        t_far: float = 5.0,
+        num_samples: int = 64,
+    ) -> list[RaySample]:
         """Generate stratified samples along a ray."""
         samples = []
         step_size = (t_far - t_near) / num_samples
@@ -103,8 +111,11 @@ class NeRF:
             density, color = self.query(position, direction)
 
             sample = RaySample(
-                position=position, direction=direction,
-                t=t, density=density, color=color,
+                position=position,
+                direction=direction,
+                t=t,
+                density=density,
+                color=color,
             )
             samples.append(sample)
 
@@ -113,14 +124,15 @@ class NeRF:
         for sample in samples:
             alpha = 1.0 - math.exp(-sample.density * step_size)
             sample.weight = running_transmittance * alpha
-            running_transmittance *= (1.0 - alpha)
+            running_transmittance *= 1.0 - alpha
 
         return samples
 
     # ── Rendering ──────────────────────────────────────────────────
 
-    def render(self, rays: list[tuple[list[float], list[float]]],
-               num_samples: int = 64) -> list[list[float]]:
+    def render(
+        self, rays: list[tuple[list[float], list[float]]], num_samples: int = 64
+    ) -> list[list[float]]:
         """Render rays through the scene (backward-compatible)."""
         rendered = []
 
@@ -141,8 +153,9 @@ class NeRF:
 
         return rendered
 
-    def render_volume(self, rays: list[tuple[list[float], list[float]]],
-                      num_samples: int = 64) -> list[dict[str, Any]]:
+    def render_volume(
+        self, rays: list[tuple[list[float], list[float]]], num_samples: int = 64
+    ) -> list[dict[str, Any]]:
         """Render rays with full volume information."""
         results = []
         for origin, direction in rays:
@@ -157,11 +170,13 @@ class NeRF:
             if total_weight > 0:
                 pixel_color = [p / total_weight for p in pixel_color]
 
-            results.append({
-                "color": pixel_color,
-                "weight": round(total_weight, 4),
-                "samples": len(samples),
-            })
+            results.append(
+                {
+                    "color": pixel_color,
+                    "weight": round(total_weight, 4),
+                    "samples": len(samples),
+                }
+            )
         return results
 
     # ── Stats ──────────────────────────────────────────────────────

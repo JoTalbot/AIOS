@@ -17,13 +17,15 @@ Features:
 import hashlib
 import time
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 __all__ = ["SafetyInvariant", "ViolationSeverity", "UniversalInvariantProver"]
 
 
 class ViolationSeverity:
     """Violation severity classification constants."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -56,56 +58,76 @@ class SafetyInvariant:
 
 
 # Pre-defined constitutional invariants (first 10 of 67)
-_BOOTSTRAP_INVARIANTS: List[SafetyInvariant] = [
+_BOOTSTRAP_INVARIANTS: list[SafetyInvariant] = [
     SafetyInvariant(
-        "INV_01", "Identity Uniqueness",
+        "INV_01",
+        "Identity Uniqueness",
         "agent_id IS_NOT_NULL AND unique",
-        severity=ViolationSeverity.CRITICAL, category="identity",
+        severity=ViolationSeverity.CRITICAL,
+        category="identity",
     ),
     SafetyInvariant(
-        "INV_02", "Memory Isolation",
+        "INV_02",
+        "Memory Isolation",
         "memory_owner_id == request_owner_id",
-        severity=ViolationSeverity.HIGH, category="memory",
+        severity=ViolationSeverity.HIGH,
+        category="memory",
     ),
     SafetyInvariant(
-        "INV_03", "Non-Circumvention",
+        "INV_03",
+        "Non-Circumvention",
         "constitutional_veto_override == False",
-        severity=ViolationSeverity.CRITICAL, category="constitutional",
+        severity=ViolationSeverity.CRITICAL,
+        category="constitutional",
     ),
     SafetyInvariant(
-        "INV_04", "Resource Boundedness",
+        "INV_04",
+        "Resource Boundedness",
         "cpu_limit <= MAX_CAP AND memory_mb <= MAX_RAM",
-        severity=ViolationSeverity.HIGH, category="resource",
+        severity=ViolationSeverity.HIGH,
+        category="resource",
     ),
     SafetyInvariant(
-        "INV_05", "Infinite Horizon Safety",
+        "INV_05",
+        "Infinite Horizon Safety",
         "risk_score < critical_threshold",
-        severity=ViolationSeverity.CRITICAL, category="safety",
+        severity=ViolationSeverity.CRITICAL,
+        category="safety",
     ),
     SafetyInvariant(
-        "INV_06", "Data Integrity",
+        "INV_06",
+        "Data Integrity",
         "payload_hash == stored_hash",
-        severity=ViolationSeverity.HIGH, category="data",
+        severity=ViolationSeverity.HIGH,
+        category="data",
     ),
     SafetyInvariant(
-        "INV_07", "Audit Trail Continuity",
+        "INV_07",
+        "Audit Trail Continuity",
         "log_sequence_number IS_MONOTONIC",
-        severity=ViolationSeverity.MEDIUM, category="audit",
+        severity=ViolationSeverity.MEDIUM,
+        category="audit",
     ),
     SafetyInvariant(
-        "INV_08", "Privilege Escalation Prevention",
+        "INV_08",
+        "Privilege Escalation Prevention",
         "access_level_delta <= 0",
-        severity=ViolationSeverity.CRITICAL, category="access",
+        severity=ViolationSeverity.CRITICAL,
+        category="access",
     ),
     SafetyInvariant(
-        "INV_09", "Temporal Consistency",
+        "INV_09",
+        "Temporal Consistency",
         "timestamp >= previous_timestamp",
-        severity=ViolationSeverity.MEDIUM, category="temporal",
+        severity=ViolationSeverity.MEDIUM,
+        category="temporal",
     ),
     SafetyInvariant(
-        "INV_10", "Agent Autonomy Bound",
+        "INV_10",
+        "Agent Autonomy Bound",
         "decision_scope <= authorized_scope",
-        severity=ViolationSeverity.HIGH, category="autonomy",
+        severity=ViolationSeverity.HIGH,
+        category="autonomy",
     ),
 ]
 
@@ -126,11 +148,11 @@ class UniversalInvariantProver:
 
     def __init__(self):
         """Initialize UniversalInvariantProver."""
-        self.invariants: List[SafetyInvariant] = list(_BOOTSTRAP_INVARIANTS)
-        self.proofs_generated: List[dict[str, Any]] = []
-        self._proof_cache: Dict[str, dict[str, Any]] = {}
-        self._proof_chains: List[List[dict[str, Any]]] = []
-        self._violation_stats: Dict[str, int] = defaultdict(int)
+        self.invariants: list[SafetyInvariant] = list(_BOOTSTRAP_INVARIANTS)
+        self.proofs_generated: list[dict[str, Any]] = []
+        self._proof_cache: dict[str, dict[str, Any]] = {}
+        self._proof_chains: list[list[dict[str, Any]]] = []
+        self._violation_stats: dict[str, int] = defaultdict(int)
 
     # ------------------------------------------------------------------
     # Invariant management
@@ -148,18 +170,18 @@ class UniversalInvariantProver:
                 return True
         return False
 
-    def get_invariant(self, inv_id: str) -> Optional[SafetyInvariant]:
+    def get_invariant(self, inv_id: str) -> SafetyInvariant | None:
         """Retrieve an invariant by ID."""
         for inv in self.invariants:
             if inv.inv_id == inv_id:
                 return inv
         return None
 
-    def invariants_by_category(self, category: str) -> List[SafetyInvariant]:
+    def invariants_by_category(self, category: str) -> list[SafetyInvariant]:
         """Return all invariants in a given category."""
         return [inv for inv in self.invariants if inv.category == category]
 
-    def invariants_by_severity(self, severity: str) -> List[SafetyInvariant]:
+    def invariants_by_severity(self, severity: str) -> list[SafetyInvariant]:
         """Return all invariants with given severity level."""
         return [inv for inv in self.invariants if inv.severity == severity]
 
@@ -174,17 +196,19 @@ class UniversalInvariantProver:
     ) -> dict[str, Any]:
         """Mathematically prove state transition safety."""
         start_time = time.time()
-        violations: List[dict[str, Any]] = []
-        proven_invariants: List[str] = []
+        violations: list[dict[str, Any]] = []
+        proven_invariants: list[str] = []
 
         # 1. Evaluate Identity Invariant (INV_01)
         agent_id = next_state_action.get("agent_id")
         if not agent_id:
-            violations.append({
-                "inv_id": "INV_01",
-                "severity": ViolationSeverity.CRITICAL,
-                "message": "Transition lacks verifiable agent_id identity binding",
-            })
+            violations.append(
+                {
+                    "inv_id": "INV_01",
+                    "severity": ViolationSeverity.CRITICAL,
+                    "message": "Transition lacks verifiable agent_id identity binding",
+                }
+            )
         else:
             proven_invariants.append("INV_01: Identity Uniqueness Proved")
 
@@ -192,21 +216,25 @@ class UniversalInvariantProver:
         owner_id = next_state_action.get("memory_owner_id")
         request_owner = next_state_action.get("request_owner_id", owner_id)
         if owner_id and request_owner and owner_id != request_owner:
-            violations.append({
-                "inv_id": "INV_02",
-                "severity": ViolationSeverity.HIGH,
-                "message": f"Memory isolation breach: owner={owner_id} != requestor={request_owner}",
-            })
+            violations.append(
+                {
+                    "inv_id": "INV_02",
+                    "severity": ViolationSeverity.HIGH,
+                    "message": f"Memory isolation breach: owner={owner_id} != requestor={request_owner}",
+                }
+            )
         else:
             proven_invariants.append("INV_02: Memory Isolation Proved")
 
         # 3. Evaluate Non-Circumvention (INV_03)
         if next_state_action.get("override_veto") is True:
-            violations.append({
-                "inv_id": "INV_03",
-                "severity": ViolationSeverity.CRITICAL,
-                "message": "Transition attempts illegal constitutional veto override",
-            })
+            violations.append(
+                {
+                    "inv_id": "INV_03",
+                    "severity": ViolationSeverity.CRITICAL,
+                    "message": "Transition attempts illegal constitutional veto override",
+                }
+            )
         else:
             proven_invariants.append("INV_03: Non-Circumvention Principle Proved")
 
@@ -214,11 +242,13 @@ class UniversalInvariantProver:
         alloc_mem = next_state_action.get("allocated_memory_mb", 128)
         cpu_limit = next_state_action.get("cpu_limit", 0.5)
         if alloc_mem > 32768 or cpu_limit > 1.0:
-            violations.append({
-                "inv_id": "INV_04",
-                "severity": ViolationSeverity.HIGH,
-                "message": f"Resource bounds exceeded: mem={alloc_mem}MB cpu={cpu_limit}",
-            })
+            violations.append(
+                {
+                    "inv_id": "INV_04",
+                    "severity": ViolationSeverity.HIGH,
+                    "message": f"Resource bounds exceeded: mem={alloc_mem}MB cpu={cpu_limit}",
+                }
+            )
         else:
             proven_invariants.append("INV_04: Resource Boundedness Proved")
 
@@ -226,11 +256,13 @@ class UniversalInvariantProver:
         risk_score = next_state_action.get("risk_score", 0.0)
         critical_threshold = next_state_action.get("critical_threshold", 0.8)
         if risk_score >= critical_threshold:
-            violations.append({
-                "inv_id": "INV_05",
-                "severity": ViolationSeverity.CRITICAL,
-                "message": f"Risk score {risk_score} exceeds threshold {critical_threshold}",
-            })
+            violations.append(
+                {
+                    "inv_id": "INV_05",
+                    "severity": ViolationSeverity.CRITICAL,
+                    "message": f"Risk score {risk_score} exceeds threshold {critical_threshold}",
+                }
+            )
         else:
             proven_invariants.append("INV_05: Infinite Horizon Safety Proved")
 
@@ -238,22 +270,26 @@ class UniversalInvariantProver:
         payload_hash = next_state_action.get("payload_hash")
         stored_hash = next_state_action.get("stored_hash", payload_hash)
         if payload_hash and payload_hash != stored_hash:
-            violations.append({
-                "inv_id": "INV_06",
-                "severity": ViolationSeverity.HIGH,
-                "message": f"Data integrity violation: hash mismatch",
-            })
+            violations.append(
+                {
+                    "inv_id": "INV_06",
+                    "severity": ViolationSeverity.HIGH,
+                    "message": "Data integrity violation: hash mismatch",
+                }
+            )
         else:
             proven_invariants.append("INV_06: Data Integrity Proved")
 
         # 7. Evaluate Privilege Escalation Prevention (INV_08)
         access_delta = next_state_action.get("access_level_delta", 0)
         if access_delta > 0:
-            violations.append({
-                "inv_id": "INV_08",
-                "severity": ViolationSeverity.CRITICAL,
-                "message": f"Privilege escalation: delta={access_delta}",
-            })
+            violations.append(
+                {
+                    "inv_id": "INV_08",
+                    "severity": ViolationSeverity.CRITICAL,
+                    "message": f"Privilege escalation: delta={access_delta}",
+                }
+            )
         else:
             proven_invariants.append("INV_08: Privilege Escalation Prevention Proved")
 
@@ -264,15 +300,19 @@ class UniversalInvariantProver:
             self._violation_stats[v["inv_id"]] += 1
 
         # Generate cryptographic proof hash
-        proof_payload = f"{current_state}:{next_state_action}:{proven_invariants}:{violations}"
+        proof_payload = (
+            f"{current_state}:{next_state_action}:{proven_invariants}:{violations}"
+        )
         proof_hash = hashlib.sha256(proof_payload.encode("utf-8")).hexdigest()
 
         # Determine max severity of violations
         max_severity = ViolationSeverity.INFO
         if violations:
             severity_order = [
-                ViolationSeverity.CRITICAL, ViolationSeverity.HIGH,
-                ViolationSeverity.MEDIUM, ViolationSeverity.LOW,
+                ViolationSeverity.CRITICAL,
+                ViolationSeverity.HIGH,
+                ViolationSeverity.MEDIUM,
+                ViolationSeverity.LOW,
             ]
             present_severities = [v["severity"] for v in violations]
             for sev in severity_order:
@@ -303,13 +343,13 @@ class UniversalInvariantProver:
         self,
         state_stream: Sequence[dict[str, Any]],
         action_stream: Sequence[dict[str, Any]],
-    ) -> List[dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Verify a stream of consecutive state transitions incrementally.
 
         Each pair (state[i], action[i]) is verified, and the results
         form a proof chain.
         """
-        proofs: List[dict[str, Any]] = []
+        proofs: list[dict[str, Any]] = []
         for i in range(len(action_stream)):
             state = state_stream[i] if i < len(state_stream) else {}
             action = action_stream[i]
@@ -352,9 +392,7 @@ class UniversalInvariantProver:
     # Compositional proof aggregation
     # ------------------------------------------------------------------
 
-    def compose_proofs(
-        self, proofs: Sequence[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def compose_proofs(self, proofs: Sequence[dict[str, Any]]) -> dict[str, Any]:
         """Aggregate multiple proofs into a compositional proof.
 
         A compositional proof is valid only if ALL sub-proofs are valid.
@@ -368,9 +406,7 @@ class UniversalInvariantProver:
 
         # Generate compositional proof hash
         hashes = [p.get("proof_hash", "") for p in proofs]
-        composite_hash = hashlib.sha256(
-            "".join(hashes).encode("utf-8")
-        ).hexdigest()
+        composite_hash = hashlib.sha256("".join(hashes).encode("utf-8")).hexdigest()
 
         return {
             "proven": all_proven,
@@ -389,9 +425,9 @@ class UniversalInvariantProver:
     def batch_prove(
         self,
         transitions: Sequence[tuple[dict[str, Any], dict[str, Any]]],
-    ) -> List[dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Verify a batch of (state, action) transitions."""
-        results: List[dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for current_state, next_action in transitions:
             proof = self.prove_cached(current_state, next_action)
             results.append(proof)
@@ -401,7 +437,7 @@ class UniversalInvariantProver:
     # Proof chain retrieval
     # ------------------------------------------------------------------
 
-    def get_proof_chains(self, limit: int = 10) -> List[List[dict[str, Any]]]:
+    def get_proof_chains(self, limit: int = 10) -> list[list[dict[str, Any]]]:
         """Return recent proof chains."""
         return self._proof_chains[-limit:]
 

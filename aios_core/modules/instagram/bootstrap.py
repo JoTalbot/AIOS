@@ -11,9 +11,8 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import Dict, Optional
 
-from aios_core.platforms.parsergen import build_parser, extract_markers
+from aios_core.platforms.parsergen import extract_markers
 from aios_core.platforms.runtime_hints import load_hints_section
 from aios_core.platforms.secrets import env_name, secret
 
@@ -37,9 +36,9 @@ class InstagramBootstrap:
         self.directory = Path(directory)
         self.which = which or shutil.which
 
-    def doctor(self) -> Dict[str, object]:
+    def doctor(self) -> dict[str, object]:
         """{ok, checks: {name: {ok, detail}}, hints_status}."""
-        checks: Dict[str, Dict[str, object]] = {}
+        checks: dict[str, dict[str, object]] = {}
 
         adb_bin = self.which("adb")
         checks["adb_binary"] = {
@@ -52,7 +51,9 @@ class InstagramBootstrap:
             checks[f"secrets_{field.lower()}"] = {
                 "ok": present,
                 "detail": (
-                    "set via env" if present else f"missing: export {env_name(PLATFORM, field)}"
+                    "set via env"
+                    if present
+                    else f"missing: export {env_name(PLATFORM, field)}"
                 ),
             }
 
@@ -76,14 +77,19 @@ class InstagramBootstrap:
             "detail": (
                 f"markers: {', '.join(markers)}"
                 if markers
-                else "not calibrated: aios platforms bootup " "--apk com.instagram.android --fetch"
+                else "not calibrated: aios platforms bootup "
+                "--apk com.instagram.android --fetch"
             ),
         }
         detail_hints = (
-            load_hints_section(PLATFORM, "detail", self.directory) if yaml_path.exists() else {}
+            load_hints_section(PLATFORM, "detail", self.directory)
+            if yaml_path.exists()
+            else {}
         )
         checks["detail_markers"] = {
-            "ok": bool(detail_hints.get("seller_markers") or detail_hints.get("price_nodes")),
+            "ok": bool(
+                detail_hints.get("seller_markers") or detail_hints.get("price_nodes")
+            ),
             "detail": "calibrate --detail post.xml --write",
         }
 
@@ -109,7 +115,9 @@ class InstagramBootstrap:
                 checks["device"] = {
                     "ok": online,
                     "detail": (
-                        f"{self.serial} online" if online else f"{self.serial} not in adb devices"
+                        f"{self.serial} online"
+                        if online
+                        else f"{self.serial} not in adb devices"
                     ),
                 }
 

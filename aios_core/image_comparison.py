@@ -34,11 +34,11 @@ class HashAlgorithm(Enum):
 class ImageHash:
     """Perceptual hash result with algorithm metadata."""
 
-    hash_value: int           # 64-bit hash as integer
+    hash_value: int  # 64-bit hash as integer
     algorithm: HashAlgorithm
-    width: int = 8            # Source grid width
-    height: int = 8           # Source grid height
-    bit_string: str = ""      # Binary representation for debugging
+    width: int = 8  # Source grid width
+    height: int = 8  # Source grid height
+    bit_string: str = ""  # Binary representation for debugging
 
     def __post_init__(self) -> None:
         """Compute bit_string from hash_value."""
@@ -109,11 +109,11 @@ class ComparisonResult:
 
     source_fingerprint: str
     target_fingerprint: str
-    hash_similarity: float       # 0.0 to 1.0
-    color_similarity: float      # 0.0 to 1.0
+    hash_similarity: float  # 0.0 to 1.0
+    color_similarity: float  # 0.0 to 1.0
     composite_similarity: float  # Weighted combination
-    is_duplicate: bool           # True if similarity >= threshold
-    hash_distance: int           # Hamming distance
+    is_duplicate: bool  # True if similarity >= threshold
+    hash_distance: int  # Hamming distance
     algorithm: HashAlgorithm
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -171,9 +171,7 @@ def _pixels_to_grid(
     return grid
 
 
-def average_hash(
-    pixels: list[int], width: int = 8, height: int = 8
-) -> ImageHash:
+def average_hash(pixels: list[int], width: int = 8, height: int = 8) -> ImageHash:
     """Compute Average Hash (aHash).
 
     1. Reduce image to 8×8 grayscale grid.
@@ -197,7 +195,7 @@ def average_hash(
     hash_bits = 0
     for i, val in enumerate(flat):
         if val >= mean_val:
-            hash_bits |= (1 << (63 - i))
+            hash_bits |= 1 << (63 - i)
 
     return ImageHash(
         hash_value=hash_bits,
@@ -207,9 +205,7 @@ def average_hash(
     )
 
 
-def difference_hash(
-    pixels: list[int], width: int = 9, height: int = 8
-) -> ImageHash:
+def difference_hash(pixels: list[int], width: int = 9, height: int = 8) -> ImageHash:
     """Compute Difference Hash (dHash).
 
     1. Reduce image to 9×8 grayscale grid.
@@ -233,7 +229,7 @@ def difference_hash(
             left = grid[y][x]
             right = grid[y][x + 1] if x + 1 < 9 else grid[y][x]
             if left < right:
-                hash_bits |= (1 << (63 - bit_idx))
+                hash_bits |= 1 << (63 - bit_idx)
             bit_idx += 1
 
     return ImageHash(
@@ -287,9 +283,7 @@ def _dct_2d(grid: list[list[float]]) -> list[list[float]]:
     return col_dct
 
 
-def perceptual_hash(
-    pixels: list[int], width: int = 32, height: int = 32
-) -> ImageHash:
+def perceptual_hash(pixels: list[int], width: int = 32, height: int = 32) -> ImageHash:
     """Compute Perceptual Hash (pHash) using DCT.
 
     1. Reduce image to 32×32 grayscale.
@@ -337,13 +331,13 @@ def perceptual_hash(
     # DC coefficient
     dc = dct[0][0]
     if dc > 0:
-        hash_bits |= (1 << (63 - bit_idx))
+        hash_bits |= 1 << (63 - bit_idx)
     bit_idx += 1
 
     # Low-frequency coefficients
     for val in low_freq:
         if val > median:
-            hash_bits |= (1 << (63 - bit_idx))
+            hash_bits |= 1 << (63 - bit_idx)
         bit_idx += 1
 
     return ImageHash(

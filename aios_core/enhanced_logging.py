@@ -13,11 +13,19 @@ import logging.handlers
 import time
 import uuid
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
-__all__ = ["LogConfig", "CorrelationContext", "PerformanceTracker", "EnhancedJSONFormatter", "LogAggregator", "EnhancedLogger", "_DummyTracer"]
+__all__ = [
+    "LogConfig",
+    "CorrelationContext",
+    "PerformanceTracker",
+    "EnhancedJSONFormatter",
+    "LogAggregator",
+    "EnhancedLogger",
+    "_DummyTracer",
+]
 
 try:
     from .tracing import tracer
@@ -25,6 +33,7 @@ except ImportError:
 
     class _DummyTracer:
         """DummyTracer."""
+
         def get_current_context(self) -> None:
             """Execute get current context."""
             return None
@@ -88,7 +97,7 @@ class PerformanceTracker:
 
     def __init__(self):
         """Initialize PerformanceTracker."""
-        self.operations: Dict[str, dict[str, Any]] = {}
+        self.operations: dict[str, dict[str, Any]] = {}
 
     def start_operation(self, operation_name: str, **kwargs) -> str:
         """Start tracking an operation."""
@@ -104,7 +113,9 @@ class PerformanceTracker:
         }
         return operation_id
 
-    def end_operation(self, operation_id: str, success: bool = True, error: str | None = None) -> None:
+    def end_operation(
+        self, operation_id: str, success: bool = True, error: str | None = None
+    ) -> None:
         """End tracking an operation."""
         if operation_id in self.operations:
             operation = self.operations[operation_id]
@@ -115,7 +126,9 @@ class PerformanceTracker:
 
     def get_operation_stats(self, operation_name: str) -> dict[str, Any]:
         """Get statistics for an operation."""
-        relevant_ops = [op for op in self.operations.values() if op["name"] == operation_name]
+        relevant_ops = [
+            op for op in self.operations.values() if op["name"] == operation_name
+        ]
 
         if not relevant_ops:
             return {"count": 0, "avg_duration": 0, "success_rate": 0}
@@ -128,10 +141,14 @@ class PerformanceTracker:
             "avg_duration": total_duration / len(relevant_ops) if relevant_ops else 0,
             "success_rate": success_count / len(relevant_ops) if relevant_ops else 0,
             "min_duration": (
-                min(op["duration"] for op in relevant_ops if op["duration"]) if relevant_ops else 0
+                min(op["duration"] for op in relevant_ops if op["duration"])
+                if relevant_ops
+                else 0
             ),
             "max_duration": (
-                max(op["duration"] for op in relevant_ops if op["duration"]) if relevant_ops else 0
+                max(op["duration"] for op in relevant_ops if op["duration"])
+                if relevant_ops
+                else 0
             ),
         }
 
@@ -191,7 +208,7 @@ class LogAggregator:
         self.config = config
         self.logger = logging.getLogger("aios.log_aggregator")
 
-    def ship_logs(self, logs: List[dict[str, Any]]) -> bool:
+    def ship_logs(self, logs: list[dict[str, Any]]) -> bool:
         """Ship logs to external system (sync version)."""
         if not self.config.ship_to_external or not self.config.external_endpoint:
             return False
@@ -222,7 +239,7 @@ class LogAggregator:
             self.logger.error(f"Error shipping logs: {str(e)}")
             return False
 
-    async def ship_logs_async(self, logs: List[dict[str, Any]]) -> bool:
+    async def ship_logs_async(self, logs: list[dict[str, Any]]) -> bool:
         """Async version for shipping logs."""
         if not self.config.ship_to_external or not self.config.external_endpoint:
             return False
@@ -236,18 +253,20 @@ class LogAggregator:
                 "source": "aios",
             }
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
+            async with (
+                aiohttp.ClientSession() as session,
+                session.post(
                     self.config.external_endpoint,
                     json=payload,
                     headers={"Content-Type": "application/json"},
-                ) as response:
-                    if response.status == 200:
-                        self.logger.info("Logs shipped successfully")
-                        return True
-                    else:
-                        self.logger.error(f"Failed to ship logs: {response.status}")
-                        return False
+                ) as response,
+            ):
+                if response.status == 200:
+                    self.logger.info("Logs shipped successfully")
+                    return True
+                else:
+                    self.logger.error(f"Failed to ship logs: {response.status}")
+                    return False
 
         except Exception as e:
             self.logger.error(f"Error shipping logs: {str(e)}")
@@ -306,12 +325,16 @@ class EnhancedLogger:
     @contextmanager
     def track_operation(self, operation_name: str, **kwargs) -> None:
         """Track operation performance."""
-        operation_id = self.performance_tracker.start_operation(operation_name, **kwargs)
+        operation_id = self.performance_tracker.start_operation(
+            operation_name, **kwargs
+        )
 
         try:
             yield operation_id
         except Exception as e:
-            self.performance_tracker.end_operation(operation_id, success=False, error=str(e))
+            self.performance_tracker.end_operation(
+                operation_id, success=False, error=str(e)
+            )
             raise
         else:
             self.performance_tracker.end_operation(operation_id, success=True)
@@ -344,7 +367,7 @@ class EnhancedLogger:
         """Get performance statistics for an operation."""
         return self.performance_tracker.get_operation_stats(operation_name)
 
-    def ship_logs(self, logs: List[dict[str, Any]]) -> bool:
+    def ship_logs(self, logs: list[dict[str, Any]]) -> bool:
         """Ship logs to external system."""
         return self.log_aggregator.ship_logs(logs)
 
@@ -395,7 +418,9 @@ def main() -> None:
     logger.info("Performance stats", stats=stats)
 
     # Ship logs
-    logs = [{"timestamp": "2026-07-22T07:45:00Z", "level": "info", "message": "Test log"}]
+    logs = [
+        {"timestamp": "2026-07-22T07:45:00Z", "level": "info", "message": "Test log"}
+    ]
     logger.ship_logs(logs)
 
 

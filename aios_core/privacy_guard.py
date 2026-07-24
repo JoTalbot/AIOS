@@ -11,8 +11,7 @@ Core Principle 3 (Memory Separation) enforcement:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
 
 
 class PrivacyGuard:
@@ -91,7 +90,7 @@ class PrivacyGuard:
         """
         result = self._check_rules(memory_category, action, agent_id)
         log_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "agent_id": agent_id,
             "memory_category": memory_category,
             "action": action,
@@ -132,7 +131,7 @@ class PrivacyGuard:
             }
             self._access_log.append(
                 {
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "agent_id": target,
                     "memory_category": data_classification,
                     "action": "share",
@@ -165,7 +164,7 @@ class PrivacyGuard:
 
         self._access_log.append(
             {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "agent_id": target,
                 "memory_category": data_classification,
                 "action": "share",
@@ -291,7 +290,7 @@ class PrivacyGuard:
             "confidence": round(confidence, 2),
         }
 
-    def _find_rule(self, classification: str) -> Optional[dict]:
+    def _find_rule(self, classification: str) -> dict | None:
         """Find the rule for a classification level."""
         for rule in self._rules:
             if rule.get("classification") == classification:

@@ -8,15 +8,13 @@ Instagram нет — честно сообщаем это, не имитируя
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-
 
 def promotion_plan(
-    stagnant_items: List[Dict],
+    stagnant_items: list[dict],
     daily_budget: float | None = None,
     currency: str = "UAH",
     max_items: int = 5,
-) -> Dict[str, object]:
+) -> dict[str, object]:
     """Собирает DRY-RUN план продвижения по застоявшимся постам.
 
     Args:

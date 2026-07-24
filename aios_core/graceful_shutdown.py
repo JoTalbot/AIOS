@@ -13,17 +13,20 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class ShutdownPhase(str, Enum):
     """Shutdown phases in order."""
+
     DRAIN = "drain"
     CLEANUP = "cleanup"
     FINALIZE = "finalize"
@@ -31,9 +34,11 @@ class ShutdownPhase(str, Enum):
 
 # ── Shutdown Hook ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class ShutdownHook:
     """Named shutdown hook with priority and phase assignment."""
+
     name: str
     handler: Callable
     phase: ShutdownPhase = ShutdownPhase.CLEANUP
@@ -46,14 +51,25 @@ class ShutdownHook:
         try:
             result = self.handler()
             duration = time.time() - start
-            return {"name": self.name, "status": "completed", "duration": duration, "result": result}
+            return {
+                "name": self.name,
+                "status": "completed",
+                "duration": duration,
+                "result": result,
+            }
         except Exception as e:
             duration = time.time() - start
             logger.error("Shutdown hook '%s' failed: %s", self.name, e)
-            return {"name": self.name, "status": "failed", "duration": duration, "error": str(e)}
+            return {
+                "name": self.name,
+                "status": "failed",
+                "duration": duration,
+                "error": str(e),
+            }
 
 
 # ── Graceful Shutdown ───────────────────────────────────────────────────────
+
 
 class GracefulShutdown:
     """Enhanced graceful shutdown with phase-based execution.
@@ -81,12 +97,32 @@ class GracefulShutdown:
 
     def register_handler(self, handler: Callable) -> None:
         """Register a shutdown handler (backward-compatible — assigns to CLEANUP phase)."""
-        self.hooks.append(ShutdownHook(name=f"hook_{len(self.hooks)}", handler=handler, phase=ShutdownPhase.CLEANUP))
+        self.hooks.append(
+            ShutdownHook(
+                name=f"hook_{len(self.hooks)}",
+                handler=handler,
+                phase=ShutdownPhase.CLEANUP,
+            )
+        )
 
-    def register_hook(self, name: str, handler: Callable, phase: ShutdownPhase = ShutdownPhase.CLEANUP,
-                      priority: int = 100, timeout: float = 30.0) -> None:
+    def register_hook(
+        self,
+        name: str,
+        handler: Callable,
+        phase: ShutdownPhase = ShutdownPhase.CLEANUP,
+        priority: int = 100,
+        timeout: float = 30.0,
+    ) -> None:
         """Register a named shutdown hook with phase and priority."""
-        self.hooks.append(ShutdownHook(name=name, handler=handler, phase=phase, priority=priority, timeout=timeout))
+        self.hooks.append(
+            ShutdownHook(
+                name=name,
+                handler=handler,
+                phase=phase,
+                priority=priority,
+                timeout=timeout,
+            )
+        )
 
     def remove_hook(self, name: str) -> None:
         """Remove a hook by name."""
@@ -109,7 +145,11 @@ class GracefulShutdown:
         self._shutdown_started = True
         start_time = time.time()
 
-        for phase in [ShutdownPhase.DRAIN, ShutdownPhase.CLEANUP, ShutdownPhase.FINALIZE]:
+        for phase in [
+            ShutdownPhase.DRAIN,
+            ShutdownPhase.CLEANUP,
+            ShutdownPhase.FINALIZE,
+        ]:
             phase_hooks = sorted(
                 [h for h in self.hooks if h.phase == phase],
                 key=lambda h: h.priority,
@@ -125,7 +165,11 @@ class GracefulShutdown:
             "status": "completed",
             "total_duration": total_duration,
             "phases": {
-                phase.value: [r for r in self._progress if any(h.phase == phase for h in self.hooks if h.name == r["name"])]
+                phase.value: [
+                    r
+                    for r in self._progress
+                    if any(h.phase == phase for h in self.hooks if h.name == r["name"])
+                ]
                 for phase in ShutdownPhase
             },
             "progress": self._progress,

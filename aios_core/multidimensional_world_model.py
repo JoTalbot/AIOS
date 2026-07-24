@@ -8,7 +8,8 @@ branching scenario analysis, confidence intervals, and historical state tracking
 import math
 import random
 import time
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 __all__ = ["MultiDimensionalWorldModel"]
 
@@ -31,8 +32,8 @@ class MultiDimensionalWorldModel:
         self.simulation_horizon_steps = simulation_horizon_steps
         self.num_rollouts = num_rollouts
         self.rollouts_count = 0
-        self._history: List[dict[str, Any]] = []
-        self._branch_cache: Dict[str, List[dict[str, Any]]] = {}
+        self._history: list[dict[str, Any]] = []
+        self._branch_cache: dict[str, list[dict[str, Any]]] = {}
 
     # ------------------------------------------------------------------
     # Core simulation
@@ -56,7 +57,7 @@ class MultiDimensionalWorldModel:
             }
         )
 
-        trajectory: List[dict[str, Any]] = []
+        trajectory: list[dict[str, Any]] = []
         projected_failures = 0
 
         action_complexity = action_plan.get("complexity", 1.0)
@@ -71,8 +72,12 @@ class MultiDimensionalWorldModel:
 
             env_state["cpu_load"] = min(1.0, env_state["cpu_load"] + delta_cpu)
             env_state["memory_mb"] = env_state["memory_mb"] + delta_mem
-            env_state["econ_cost_usd"] = round(env_state["econ_cost_usd"] + delta_cost, 4)
-            env_state["risk_score"] = min(1.0, round(env_state["risk_score"] + delta_risk, 3))
+            env_state["econ_cost_usd"] = round(
+                env_state["econ_cost_usd"] + delta_cost, 4
+            )
+            env_state["risk_score"] = min(
+                1.0, round(env_state["risk_score"] + delta_risk, 3)
+            )
 
             # Check simulated threshold bounds
             if env_state["cpu_load"] >= 0.95 or env_state["memory_mb"] > 16384:
@@ -125,7 +130,7 @@ class MultiDimensionalWorldModel:
         confidence intervals for key metrics.
         """
         n = num_rollouts or self.num_rollouts
-        results: List[dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
 
         for i in range(n):
             result = self.simulate_action_impact(action_plan, initial_state)
@@ -134,15 +139,13 @@ class MultiDimensionalWorldModel:
         # Aggregate statistics
         safe_count = sum(1 for r in results if r["is_safe_trajectory"])
         avg_failures = sum(r["projected_failures"] for r in results) / n
-        avg_cost = sum(
-            r["final_predicted_state"]["econ_cost_usd"] for r in results
-        ) / n
-        avg_health = sum(
-            r["final_predicted_state"]["system_health"] for r in results
-        ) / n
-        avg_risk = sum(
-            r["final_predicted_state"].get("risk_score", 0) for r in results
-        ) / n
+        avg_cost = sum(r["final_predicted_state"]["econ_cost_usd"] for r in results) / n
+        avg_health = (
+            sum(r["final_predicted_state"]["system_health"] for r in results) / n
+        )
+        avg_risk = (
+            sum(r["final_predicted_state"].get("risk_score", 0) for r in results) / n
+        )
 
         # Confidence intervals (bootstrap-style)
         costs = [r["final_predicted_state"]["econ_cost_usd"] for r in results]
@@ -178,7 +181,7 @@ class MultiDimensionalWorldModel:
         to identify divergence points and relative safety.
         """
         base_result = self.simulate_action_impact(base_plan, initial_state)
-        branch_results: List[dict[str, Any]] = []
+        branch_results: list[dict[str, Any]] = []
 
         for i, variation in enumerate(variations):
             branch_result = self.simulate_action_impact(variation, initial_state)
@@ -191,7 +194,10 @@ class MultiDimensionalWorldModel:
         # Rank branches by safety and cost
         ranked = sorted(
             branch_results,
-            key=lambda r: (r["projected_failures"], r["final_predicted_state"]["econ_cost_usd"]),
+            key=lambda r: (
+                r["projected_failures"],
+                r["final_predicted_state"]["econ_cost_usd"],
+            ),
         )
 
         return {
@@ -248,8 +254,10 @@ class MultiDimensionalWorldModel:
             "health_penalty": round(health_penalty, 3),
             "is_acceptable": composite_risk < 0.5,
             "risk_category": (
-                "low" if composite_risk < 0.3
-                else "medium" if composite_risk < 0.6
+                "low"
+                if composite_risk < 0.3
+                else "medium"
+                if composite_risk < 0.6
                 else "high"
             ),
             "simulation_result": result,
@@ -260,8 +268,8 @@ class MultiDimensionalWorldModel:
     # ------------------------------------------------------------------
 
     def _compute_ci(
-        self, values: List[float], confidence: float = 0.95
-    ) -> Tuple[float, float]:
+        self, values: list[float], confidence: float = 0.95
+    ) -> tuple[float, float]:
         """Compute bootstrap confidence interval for *values*."""
         if len(values) < 2:
             return (min(values) if values else 0.0, max(values) if values else 0.0)
@@ -285,7 +293,13 @@ class MultiDimensionalWorldModel:
         branch_final = branch["final_predicted_state"]
 
         diffs = []
-        for key in ["cpu_load", "memory_mb", "econ_cost_usd", "system_health", "risk_score"]:
+        for key in [
+            "cpu_load",
+            "memory_mb",
+            "econ_cost_usd",
+            "system_health",
+            "risk_score",
+        ]:
             if key in base_final and key in branch_final:
                 b_val = base_final[key]
                 br_val = branch_final[key]
@@ -302,7 +316,7 @@ class MultiDimensionalWorldModel:
 
     def get_history(
         self, limit: int = 50, filter_safe: bool | None = None
-    ) -> List[dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Return recent simulation history, optionally filtered."""
         if filter_safe is True:
             filtered = [r for r in self._history if r["is_safe_trajectory"]]

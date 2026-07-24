@@ -17,7 +17,7 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,7 @@ EMOTION_CATEGORIES = {
 @dataclass
 class EmotionSignal:
     """Recognized emotion signal with confidence."""
+
     emotion: str
     confidence: float = 0.0
     source: str = "text"
@@ -50,11 +51,19 @@ class EmotionSignal:
 @dataclass
 class EmotionState:
     """Current emotional state vector."""
-    emotions: dict[str, float] = field(default_factory=lambda: {
-        "joy": 0.0, "sadness": 0.0, "anger": 0.0,
-        "fear": 0.0, "surprise": 0.0, "disgust": 0.0,
-        "trust": 0.0, "anticipation": 0.0,
-    })
+
+    emotions: dict[str, float] = field(
+        default_factory=lambda: {
+            "joy": 0.0,
+            "sadness": 0.0,
+            "anger": 0.0,
+            "fear": 0.0,
+            "surprise": 0.0,
+            "disgust": 0.0,
+            "trust": 0.0,
+            "anticipation": 0.0,
+        }
+    )
     dominant_emotion: str = "neutral"
     valence: float = 0.0
     arousal: float = 0.0
@@ -67,7 +76,11 @@ class EmotionState:
     def valence_score(self) -> float:
         """Overall valence (positive vs negative)."""
         pos = self.emotions.get("joy", 0) + self.emotions.get("trust", 0)
-        neg = self.emotions.get("sadness", 0) + self.emotions.get("anger", 0) + self.emotions.get("fear", 0)
+        neg = (
+            self.emotions.get("sadness", 0)
+            + self.emotions.get("anger", 0)
+            + self.emotions.get("fear", 0)
+        )
         return pos - neg
 
 
@@ -86,8 +99,12 @@ class EmotionalIntelligence:
 
     def __init__(self) -> None:
         self.emotions: dict[str, float] = {
-            "joy": 0.0, "sadness": 0.0, "anger": 0.0,
-            "fear": 0.0, "surprise": 0.0, "disgust": 0.0,
+            "joy": 0.0,
+            "sadness": 0.0,
+            "anger": 0.0,
+            "fear": 0.0,
+            "surprise": 0.0,
+            "disgust": 0.0,
         }
         # Override with emotion intensity values (initially all 0)
         self.emotion_state = EmotionState()
@@ -96,14 +113,78 @@ class EmotionalIntelligence:
         self.regulation_history: list[dict[str, Any]] = []
         self.empathy_models: dict[str, dict[str, float]] = {}
         self._keyword_map: dict[str, list[str]] = {
-            "joy": ["happy", "great", "wonderful", "excited", "love", "awesome", "pleased", "delighted"],
-            "sadness": ["sad", "unhappy", "depressed", "miserable", "grief", "loss", "disappointed"],
-            "anger": ["angry", "furious", "rage", "hate", "annoyed", "irritated", "mad", "frustrated"],
-            "fear": ["scared", "afraid", "terrified", "worried", "anxious", "panic", "nervous"],
-            "surprise": ["surprised", "amazed", "unexpected", "shocked", "astonished", "wow"],
-            "disgust": ["disgusted", "revolted", "repulsed", "gross", "sick", "horrible", "awful"],
-            "trust": ["trust", "reliable", "honest", "faithful", "loyal", "confident", "sure"],
-            "anticipation": ["expect", "anticipate", "await", "hope", "look_forward", "predict"],
+            "joy": [
+                "happy",
+                "great",
+                "wonderful",
+                "excited",
+                "love",
+                "awesome",
+                "pleased",
+                "delighted",
+            ],
+            "sadness": [
+                "sad",
+                "unhappy",
+                "depressed",
+                "miserable",
+                "grief",
+                "loss",
+                "disappointed",
+            ],
+            "anger": [
+                "angry",
+                "furious",
+                "rage",
+                "hate",
+                "annoyed",
+                "irritated",
+                "mad",
+                "frustrated",
+            ],
+            "fear": [
+                "scared",
+                "afraid",
+                "terrified",
+                "worried",
+                "anxious",
+                "panic",
+                "nervous",
+            ],
+            "surprise": [
+                "surprised",
+                "amazed",
+                "unexpected",
+                "shocked",
+                "astonished",
+                "wow",
+            ],
+            "disgust": [
+                "disgusted",
+                "revolted",
+                "repulsed",
+                "gross",
+                "sick",
+                "horrible",
+                "awful",
+            ],
+            "trust": [
+                "trust",
+                "reliable",
+                "honest",
+                "faithful",
+                "loyal",
+                "confident",
+                "sure",
+            ],
+            "anticipation": [
+                "expect",
+                "anticipate",
+                "await",
+                "hope",
+                "look_forward",
+                "predict",
+            ],
         }
 
     # ── Emotion Recognition ─────────────────────────────────────────
@@ -129,11 +210,13 @@ class EmotionalIntelligence:
         arousal = signals.get("arousal", 0.0)
 
         best_emotion = "neutral"
-        best_dist = float('inf')
+        best_dist = float("inf")
         for emotion, coords in EMOTION_CATEGORIES.items():
             if emotion == "neutral":
                 continue
-            dist = math.sqrt((coords["valence"] - valence) ** 2 + (coords["arousal"] - arousal) ** 2)
+            dist = math.sqrt(
+                (coords["valence"] - valence) ** 2 + (coords["arousal"] - arousal) ** 2
+            )
             if dist < best_dist:
                 best_dist = dist
                 best_emotion = emotion
@@ -161,15 +244,20 @@ class EmotionalIntelligence:
         text = signals.get("text", "")
         if isinstance(text, str) and text:
             text_lower = text.lower()
-            keyword_count = sum(1 for kw in self._keyword_map.get(emotion, [])
-                               if kw in text_lower)
+            keyword_count = sum(
+                1 for kw in self._keyword_map.get(emotion, []) if kw in text_lower
+            )
             confidence = min(1.0, 0.3 + keyword_count * 0.2)
 
-        coords = EMOTION_CATEGORIES.get(emotion, {"valence": 0.0, "arousal": 0.0, "dominance": 0.0})
+        coords = EMOTION_CATEGORIES.get(
+            emotion, {"valence": 0.0, "arousal": 0.0, "dominance": 0.0}
+        )
         signal = EmotionSignal(
-            emotion=emotion, confidence=round(confidence, 4),
+            emotion=emotion,
+            confidence=round(confidence, 4),
             source=signals.get("source", "text"),
-            valence=coords["valence"], arousal=coords["arousal"],
+            valence=coords["valence"],
+            arousal=coords["arousal"],
             dominance=coords["dominance"],
         )
         self.signals.append(signal)
@@ -194,10 +282,14 @@ class EmotionalIntelligence:
         # Select regulation strategy
         strategy = self._select_regulation_strategy(emotion, intensity)
 
-        self.regulation_history.append({
-            "emotion": emotion, "intensity": intensity,
-            "strategy": strategy, "timestamp": time.time(),
-        })
+        self.regulation_history.append(
+            {
+                "emotion": emotion,
+                "intensity": intensity,
+                "strategy": strategy,
+                "timestamp": time.time(),
+            }
+        )
 
         return {"regulated": True, "emotion": emotion, "strategy": strategy}
 
@@ -236,8 +328,9 @@ class EmotionalIntelligence:
 
     # ── Empathy ────────────────────────────────────────────────────
 
-    def model_empathy(self, target_id: str, target_emotion: str,
-                      perspective: str = "cognitive") -> dict[str, Any]:
+    def model_empathy(
+        self, target_id: str, target_emotion: str, perspective: str = "cognitive"
+    ) -> dict[str, Any]:
         """Model empathy toward another agent's emotional state."""
         self.empathy_models[target_id] = {
             "emotion": target_emotion,
@@ -256,7 +349,9 @@ class EmotionalIntelligence:
             "target": target_id,
             "emotion": target_emotion,
             "perspective": perspective,
-            "understanding_score": self.empathy_models[target_id]["understanding_score"],
+            "understanding_score": self.empathy_models[target_id][
+                "understanding_score"
+            ],
         }
 
     def _compute_contagion(self, emotion: str) -> float:
@@ -269,14 +364,19 @@ class EmotionalIntelligence:
     def analyze_sentiment(self, text: str) -> dict[str, Any]:
         """Analyze sentiment of text using VAD (Valence-Arousal-Dominance)."""
         emotion = self._recognize_from_text(text)
-        coords = EMOTION_CATEGORIES.get(emotion, {"valence": 0.0, "arousal": 0.0, "dominance": 0.0})
+        coords = EMOTION_CATEGORIES.get(
+            emotion, {"valence": 0.0, "arousal": 0.0, "dominance": 0.0}
+        )
         return {
             "emotion": emotion,
             "valence": coords["valence"],
             "arousal": coords["arousal"],
             "dominance": coords["dominance"],
-            "polarity": "positive" if coords["valence"] > 0.3 else
-                        "negative" if coords["valence"] < -0.3 else "neutral",
+            "polarity": "positive"
+            if coords["valence"] > 0.3
+            else "negative"
+            if coords["valence"] < -0.3
+            else "neutral",
         }
 
     # ── Stats ──────────────────────────────────────────────────────

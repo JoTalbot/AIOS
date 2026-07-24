@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .constitution_engine import ConstitutionEngine
 from .knowledge_graph import KnowledgeGraph
@@ -28,6 +28,7 @@ from .memory_manager import MemoryManager
 @dataclass
 class AdvisorDraft:
     """Structured AI-generated reply draft with metadata."""
+
     id: str
     platform: str
     recipient: str
@@ -46,10 +47,11 @@ class AdvisorDraft:
 @dataclass
 class InboxSummary:
     """Aggregated inbox summary with urgency and sentiment."""
+
     platform: str
     total_messages: int
     unread: int
-    urgent: List[dict[str, Any]]
+    urgent: list[dict[str, Any]]
     by_sender: dict[str, int]
     sentiment_overview: str
     action_items: list[str]
@@ -59,6 +61,7 @@ class InboxSummary:
 @dataclass
 class PriceAdvice:
     """Pricing recommendation with confidence score."""
+
     platform: str
     item_id: str
     current_price: float
@@ -66,7 +69,7 @@ class PriceAdvice:
     reason: str
     confidence: float
     market_data: dict[str, Any] = field(default_factory=dict)
-    history_used: List[dict[str, Any]] = field(default_factory=list)
+    history_used: list[dict[str, Any]] = field(default_factory=list)
 
 
 class TemplateRegistry:
@@ -74,7 +77,7 @@ class TemplateRegistry:
 
     def __init__(self):
         """Initialize TemplateRegistry."""
-        self.templates: Dict[str, dict[str, str]] = {
+        self.templates: dict[str, dict[str, str]] = {
             "olx": {
                 "greeting": "Добрый день! Спасибо за интерес к {item_title}.",
                 "price_negotiation": "Понимаю ваше предложение {buyer_price} грн. Могу предложить {seller_price} грн, учитывая {reason}.",
@@ -121,16 +124,16 @@ class AISalesAdvisor:
 
     def __init__(
         self,
-        memory: Optional[MemoryManager] = None,
-        knowledge: Optional[KnowledgeGraph] = None,
-        constitution: Optional[ConstitutionEngine] = None,
+        memory: MemoryManager | None = None,
+        knowledge: KnowledgeGraph | None = None,
+        constitution: ConstitutionEngine | None = None,
     ):
         """Initialize AISalesAdvisor."""
         self.memory = memory
         self.knowledge = knowledge
         self.constitution = constitution
         self.templates = TemplateRegistry()
-        self._drafts: Dict[str, AdvisorDraft] = {}
+        self._drafts: dict[str, AdvisorDraft] = {}
         self.version = "1.0.0"
 
     def draft_reply(
@@ -139,7 +142,7 @@ class AISalesAdvisor:
         original_message: str,
         recipient: str,
         item_context: dict[str, Any] | None = None,
-        inbox_context: Optional[List[dict[str, Any]]] = None,
+        inbox_context: list[dict[str, Any]] | None = None,
     ) -> AdvisorDraft:
         """Generate draft reply - NEVER auto-sends."""
         item_context = item_context or {}
@@ -175,7 +178,9 @@ class AISalesAdvisor:
             price_reason = advice.reason if advice else "состояние и рыночная цена"
 
         # Render draft
-        context_text = self._build_context_text(item_context, memory_snippets, inbox_context)
+        context_text = self._build_context_text(
+            item_context, memory_snippets, inbox_context
+        )
 
         rendered = self.templates.render(
             platform,
@@ -183,7 +188,9 @@ class AISalesAdvisor:
             item_title=item_context.get("title", "товару"),
             buyer_price=self._extract_price(original_message) or "вашу цену",
             seller_price=(
-                f"{suggested_price:.0f}" if suggested_price else f"{item_context.get('price', '')}"
+                f"{suggested_price:.0f}"
+                if suggested_price
+                else f"{item_context.get('price', '')}"
             ),
             reason=price_reason,
             details=item_context.get("description", "")[:200],
@@ -218,15 +225,17 @@ class AISalesAdvisor:
             except Exception:
                 compliance = "check_failed"
 
-        draft_id = f"draft_{int(time.time()*1000)}_{hash(recipient) % 10000}"
+        draft_id = f"draft_{int(time.time() * 1000)}_{hash(recipient) % 10000}"
         draft = AdvisorDraft(
             id=draft_id,
             platform=platform,
             recipient=recipient,
             original_message=original_message,
             draft_reply=full_reply,
-            confidence=self._estimate_confidence(original_message, item_context, memory_snippets),
-            reasoning=f"Intent={intent}, template={template_name}, context_items={len(context_used)+len(inbox_context)}",
+            confidence=self._estimate_confidence(
+                original_message, item_context, memory_snippets
+            ),
+            reasoning=f"Intent={intent}, template={template_name}, context_items={len(context_used) + len(inbox_context)}",
             requires_approval=True,
             suggested_price=suggested_price,
             context_used=context_used,
@@ -236,7 +245,9 @@ class AISalesAdvisor:
         self._drafts[draft_id] = draft
         return draft
 
-    def summarize_inbox(self, platform: str, messages: List[dict[str, Any]]) -> InboxSummary:
+    def summarize_inbox(
+        self, platform: str, messages: list[dict[str, Any]]
+    ) -> InboxSummary:
         """Summarize inbox - for operator dashboard."""
         total = len(messages)
         unread = sum(1 for m in messages if not m.get("read", True))
@@ -288,8 +299,8 @@ class AISalesAdvisor:
         platform: str,
         item_id: str,
         current_price: float,
-        market_samples: Optional[list[float]] = None,
-    ) -> Optional[PriceAdvice]:
+        market_samples: list[float] | None = None,
+    ) -> PriceAdvice | None:
         """Generate price advice from history and market."""
         market_samples = market_samples or []
         if self.memory:
@@ -314,9 +325,7 @@ class AISalesAdvisor:
                 reason = f"Ваша цена выше рынка ({avg_market:.0f} средн.), рекомендуем снизить к {suggested:.0f}"
             elif current_price < avg_market * 0.85:
                 suggested = avg_market * 0.95
-                reason = (
-                    f"Цена ниже рынка, можно повысить до {suggested:.0f} и сохранить конкурентность"
-                )
+                reason = f"Цена ниже рынка, можно повысить до {suggested:.0f} и сохранить конкурентность"
             else:
                 suggested = current_price * 0.98
                 reason = f"Цена немного выше среднего ({avg_market:.0f}), легкая коррекция к {suggested:.0f} ускорит продажу"
@@ -330,7 +339,9 @@ class AISalesAdvisor:
             reason=reason,
             confidence=confidence,
             market_data={
-                "avg_market": (sum(market_samples) / len(market_samples) if market_samples else 0),
+                "avg_market": (
+                    sum(market_samples) / len(market_samples) if market_samples else 0
+                ),
                 "samples": len(market_samples),
             },
             history_used=[],
@@ -342,7 +353,9 @@ class AISalesAdvisor:
         t = text.lower()
         if any(k in t for k in ["сколько", "цена", "uah", "грн", "$", "торг"]):
             return (
-                "price_negotiation" if any(k in t for k in ["торг", "скидк", "дешевл"]) else "price"
+                "price_negotiation"
+                if any(k in t for k in ["торг", "скидк", "дешевл"])
+                else "price"
             )
         if any(k in t for k in ["есть", "наличии", "доступен"]):
             return "availability"
@@ -367,7 +380,7 @@ class AISalesAdvisor:
         self,
         item_ctx: dict[str, Any],
         memory_snippets: list[Any],
-        inbox_ctx: List[dict[str, Any]],
+        inbox_ctx: list[dict[str, Any]],
     ) -> str:
         parts = []
         if item_ctx.get("title"):
@@ -392,15 +405,15 @@ class AISalesAdvisor:
             score += 0.05
         return min(score, 0.95)
 
-    def list_drafts(self) -> List[AdvisorDraft]:
+    def list_drafts(self) -> list[AdvisorDraft]:
         """Execute list drafts."""
         return list(self._drafts.values())
 
-    def get_draft(self, draft_id: str) -> Optional[AdvisorDraft]:
+    def get_draft(self, draft_id: str) -> AdvisorDraft | None:
         """Execute get draft."""
         return self._drafts.get(draft_id)
 
-    def approve_draft(self, draft_id: str, approved_by: str) -> Optional[AdvisorDraft]:
+    def approve_draft(self, draft_id: str, approved_by: str) -> AdvisorDraft | None:
         """Mark draft as approved - actual sending must be done via outbox/CLI."""
         d = self._drafts.get(draft_id)
         if d:

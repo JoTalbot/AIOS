@@ -65,19 +65,20 @@ class VectorSearchEngine:
         self.storage = storage
         self.min_term_freq = min_term_freq
         self.max_vocab_size = max_vocab_size
-        self._vocab: dict[str, int] = {}      # term → index
-        self._idf: dict[str, float] = {}       # term → IDF weight
+        self._vocab: dict[str, int] = {}  # term → index
+        self._idf: dict[str, float] = {}  # term → IDF weight
         self._vectors: dict[str, list[float]] = {}  # fingerprint → vector
-        self._titles: dict[str, str] = {}       # fingerprint → title
+        self._titles: dict[str, str] = {}  # fingerprint → title
         self._prices: dict[str, float | None] = {}  # fingerprint → price
-        self._urls: dict[str, str | None] = {}      # fingerprint → url
+        self._urls: dict[str, str | None] = {}  # fingerprint → url
         self._indexed = False
 
     def _tokenize(self, text: str) -> list[str]:
         """Tokenize text into normalized lowercase terms."""
         # Simple whitespace + punctuation split
         import re
-        tokens = re.findall(r'\b[a-zа-яієїґ0-9]{2,}\b', text.lower())
+
+        tokens = re.findall(r"\b[a-zа-яієїґ0-9]{2,}\b", text.lower())
         return tokens
 
     def build_index(self) -> int:
@@ -115,7 +116,7 @@ class VectorSearchEngine:
         # Step 2: Build vocabulary (filter by min_term_freq, limit by max_vocab_size)
         filtered = {t: f for t, f in doc_freq.items() if f >= self.min_term_freq}
         sorted_terms = sorted(filtered.items(), key=lambda x: -x[1])
-        top_terms = sorted_terms[:self.max_vocab_size]
+        top_terms = sorted_terms[: self.max_vocab_size]
 
         self._vocab = {t: i for i, (t, _) in enumerate(top_terms)}
         vocab_size = len(self._vocab)

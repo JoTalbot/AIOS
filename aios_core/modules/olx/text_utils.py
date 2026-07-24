@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta
-from typing import Optional, Tuple
 
 # Space-like characters OLX uses inside price strings.
 _SPACE_RE = re.compile(r"[    -   　]+")
@@ -63,8 +62,12 @@ _MONTHS = {
     "декабря": 12,
 }
 
-_TODAY_RE = re.compile(r"(?:сьогодні|сегодня)\s*(?:[воу]\s*)?(\d{1,2}:\d{2})", re.IGNORECASE)
-_YESTERDAY_RE = re.compile(r"(?:вчора|вчера)\s*(?:[воу]\s*)?(\d{1,2}:\d{2})", re.IGNORECASE)
+_TODAY_RE = re.compile(
+    r"(?:сьогодні|сегодня)\s*(?:[воу]\s*)?(\d{1,2}:\d{2})", re.IGNORECASE
+)
+_YESTERDAY_RE = re.compile(
+    r"(?:вчора|вчера)\s*(?:[воу]\s*)?(\d{1,2}:\d{2})", re.IGNORECASE
+)
 _DATE_RE = re.compile(r"(\d{1,2})\s+([а-яіїєґА-ЯІЇЄҐ]+)\s+(\d{4})")
 
 
@@ -75,7 +78,7 @@ def normalize_text(text: str | None) -> str:
     return _SPACE_RE.sub(" ", text).strip()
 
 
-def parse_price(text: str | None) -> Optional[Tuple[float, str]]:
+def parse_price(text: str | None) -> tuple[float, str] | None:
     """Extract ``(amount, currency)`` from an OLX price label.
 
     Handles ``"7 000 грн"``, ``"1 500 $"``, ``"$ 2 000"``, ``"900 €"`` and
@@ -112,7 +115,7 @@ def parse_price(text: str | None) -> Optional[Tuple[float, str]]:
     return amount, currency
 
 
-def parse_published(text: str | None, now: Optional[datetime] = None) -> str | None:
+def parse_published(text: str | None, now: datetime | None = None) -> str | None:
     """Normalise an OLX publication label to an ISO-8601 timestamp.
 
     Supports ``"Сьогодні в 11:26"``, ``"Вчора о 18:02"`` and explicit dates
@@ -127,13 +130,17 @@ def parse_published(text: str | None, now: Optional[datetime] = None) -> str | N
     match = _TODAY_RE.search(raw)
     if match:
         hour, minute = map(int, match.group(1).split(":"))
-        return now.replace(hour=hour, minute=minute, second=0, microsecond=0).isoformat()
+        return now.replace(
+            hour=hour, minute=minute, second=0, microsecond=0
+        ).isoformat()
 
     match = _YESTERDAY_RE.search(raw)
     if match:
         hour, minute = map(int, match.group(1).split(":"))
         yesterday = now - timedelta(days=1)
-        return yesterday.replace(hour=hour, minute=minute, second=0, microsecond=0).isoformat()
+        return yesterday.replace(
+            hour=hour, minute=minute, second=0, microsecond=0
+        ).isoformat()
 
     match = _DATE_RE.search(raw)
     if match:

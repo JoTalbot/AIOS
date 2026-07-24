@@ -63,7 +63,9 @@ class Qubit:
 class QuantumGate:
     """Record of a gate operation."""
 
-    def __init__(self, gate_type: str, targets: list[int], params: dict[str, float] | None = None) -> None:
+    def __init__(
+        self, gate_type: str, targets: list[int], params: dict[str, float] | None = None
+    ) -> None:
         self.gate_type = gate_type
         self.targets = targets
         self.params = params or {}
@@ -124,7 +126,11 @@ class QuantumCircuit:
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict (backward-compatible)."""
-        return {"qubits": len(self.qubits), "gates": len(self.gates), "gate_types": list(set(g[0] for g in self.gates))}
+        return {
+            "qubits": len(self.qubits),
+            "gates": len(self.gates),
+            "gate_types": list(set(g[0] for g in self.gates)),
+        }
 
 
 class QuantumProcessor:

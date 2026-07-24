@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import random
 import time
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,9 @@ class WeakToStrongGeneralization:
         self._exp_records: list[W2SExperiment] = []
         self._bootstrap_chain: list[str] = []
 
-    def train(self, weak_model: Any, strong_model: Any, dataset: list) -> dict[str, Any]:
+    def train(
+        self, weak_model: Any, strong_model: Any, dataset: list
+    ) -> dict[str, Any]:
         """Train strong model with weak supervisor (backward-compatible)."""
         experiment_id = f"w2s_{len(self.experiments)}"
         gen_score = round(random.uniform(0.65, 0.85), 2)
@@ -65,9 +67,13 @@ class WeakToStrongGeneralization:
         self._exp_records.append(exp)
         return result
 
-    def measure_generalization_gap(self, weak_labels: list[Any], strong_predictions: list[Any]) -> dict[str, Any]:
+    def measure_generalization_gap(
+        self, weak_labels: list[Any], strong_predictions: list[Any]
+    ) -> dict[str, Any]:
         """Measure generalization gap between weak and strong."""
-        agreement = sum(1 for w, s in zip(weak_labels, strong_predictions) if w == s) / max(len(weak_labels), 1)
+        agreement = sum(
+            1 for w, s in zip(weak_labels, strong_predictions) if w == s
+        ) / max(len(weak_labels), 1)
         return {
             "agreement_rate": round(agreement, 4),
             "gap": round(1 - agreement, 4),
@@ -95,7 +101,9 @@ class WeakToStrongGeneralization:
             "generalization_score": exp.get("generalization_score", 0.0),
         }
 
-    def estimate_capability_transfer(self, weak_score: float, strong_score: float) -> dict[str, Any]:
+    def estimate_capability_transfer(
+        self, weak_score: float, strong_score: float
+    ) -> dict[str, Any]:
         """Estimate how much capability transfers from weak to strong."""
         transfer = min(1.0, strong_score / max(weak_score, 0.01))
         return {
@@ -110,5 +118,9 @@ class WeakToStrongGeneralization:
         return {
             "experiments": len(self.experiments),
             "bootstrap_chains": len(self._bootstrap_chain),
-            "avg_generalization": round(sum(e.generalization_score for e in self._exp_records) / max(len(self._exp_records), 1), 2),
+            "avg_generalization": round(
+                sum(e.generalization_score for e in self._exp_records)
+                / max(len(self._exp_records), 1),
+                2,
+            ),
         }

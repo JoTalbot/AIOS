@@ -12,7 +12,6 @@ Classes:
 from __future__ import annotations
 
 import logging
-import math
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -26,6 +25,7 @@ CARBON_INTENSITY = 0.4
 @dataclass
 class EnergyRecord:
     """Energy usage record."""
+
     task_id: str = ""
     cpu_seconds: float = 0.0
     energy_kwh: float = 0.0
@@ -54,8 +54,13 @@ class SustainabilityTracker:
         self._records: list[EnergyRecord] = []
         self._optimizations: list[dict[str, Any]] = []
 
-    def record_task(self, cpu_seconds: float, energy_per_second: float = 0.0001,
-                    task_id: str = "", optimized: bool = False) -> dict[str, Any]:
+    def record_task(
+        self,
+        cpu_seconds: float,
+        energy_per_second: float = 0.0001,
+        task_id: str = "",
+        optimized: bool = False,
+    ) -> dict[str, Any]:
         """Record task energy usage (backward-compatible)."""
         energy = cpu_seconds * energy_per_second
         co2 = energy * self._carbon_intensity
@@ -68,11 +73,19 @@ class SustainabilityTracker:
         self.energy_kwh += energy
         self.co2_kg += co2
 
-        record = EnergyRecord(task_id=task_id, cpu_seconds=cpu_seconds,
-                             energy_kwh=round(energy, 8), co2_kg=round(co2, 8),
-                             optimized=optimized)
+        record = EnergyRecord(
+            task_id=task_id,
+            cpu_seconds=cpu_seconds,
+            energy_kwh=round(energy, 8),
+            co2_kg=round(co2, 8),
+            optimized=optimized,
+        )
         self._records.append(record)
-        return {"energy_kwh": round(energy, 8), "co2_kg": round(co2, 8), "optimized": optimized}
+        return {
+            "energy_kwh": round(energy, 8),
+            "co2_kg": round(co2, 8),
+            "optimized": optimized,
+        }
 
     def optimize_suggestion(self) -> str:
         """Return optimization suggestion (backward-compatible)."""

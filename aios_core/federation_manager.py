@@ -10,16 +10,17 @@ Enables multiple AIOS instances to form a federated network:
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
 
 from .storage import Database
 
 
 class NodeStatus(str, Enum):
     """NodeStatus."""
+
     ONLINE = "online"
     OFFLINE = "offline"
     DEGRADED = "degraded"
@@ -44,12 +45,12 @@ class FederatedNode:
 class FederationManager:
     """Manages a network of federated AIOS nodes."""
 
-    def __init__(self, db: Optional[Database] = None, local_node_id: str | None = None):
+    def __init__(self, db: Database | None = None, local_node_id: str | None = None):
         """Initialize FederationManager."""
         self.db = db
         self.local_node_id = local_node_id or f"node_{uuid.uuid4().hex[:8]}"
-        self._nodes: Dict[str, FederatedNode] = {}
-        self._handlers: Dict[str, Callable] = {}
+        self._nodes: dict[str, FederatedNode] = {}
+        self._handlers: dict[str, Callable] = {}
         self._ensure_table()
 
         # Register self
@@ -81,7 +82,7 @@ class FederationManager:
             name=f"AIOS-{self.local_node_id}",
             endpoint="http://localhost:8000",
             status=NodeStatus.ONLINE,
-            last_seen=datetime.now(timezone.utc).isoformat(),
+            last_seen=datetime.now(UTC).isoformat(),
             capabilities=["orchestration", "memory", "evolution", "constitution"],
             version="3.1.0",
         )
@@ -103,7 +104,7 @@ class FederationManager:
             name=name,
             endpoint=endpoint,
             status=NodeStatus.ONLINE,
-            last_seen=datetime.now(timezone.utc).isoformat(),
+            last_seen=datetime.now(UTC).isoformat(),
             capabilities=capabilities or [],
             version=version,
         )
@@ -136,24 +137,24 @@ class FederationManager:
     def heartbeat(self, node_id: str) -> bool:
         """Update last_seen timestamp for a node."""
         if node_id in self._nodes:
-            self._nodes[node_id].last_seen = datetime.now(timezone.utc).isoformat()
+            self._nodes[node_id].last_seen = datetime.now(UTC).isoformat()
             self._nodes[node_id].status = NodeStatus.ONLINE
             self._persist_node(self._nodes[node_id])
             return True
         return False
 
-    def get_node(self, node_id: str) -> Optional[FederatedNode]:
+    def get_node(self, node_id: str) -> FederatedNode | None:
         """Execute get node."""
         return self._nodes.get(node_id)
 
-    def list_nodes(self, status: Optional[NodeStatus] = None) -> List[FederatedNode]:
+    def list_nodes(self, status: NodeStatus | None = None) -> list[FederatedNode]:
         """Execute list nodes."""
         nodes = list(self._nodes.values())
         if status:
             nodes = [n for n in nodes if n.status == status]
         return nodes
 
-    def discover_nodes(self) -> List[FederatedNode]:
+    def discover_nodes(self) -> list[FederatedNode]:
         """Simulate node discovery (in real impl would use mDNS / registry)."""
         return [n for n in self._nodes.values() if n.status == NodeStatus.ONLINE]
 
@@ -216,5 +217,7 @@ class FederationManager:
             "local_node": self.local_node_id,
             "total_nodes": len(self._nodes),
             "by_status": by_status,
-            "online_nodes": len([n for n in self._nodes.values() if n.status == NodeStatus.ONLINE]),
+            "online_nodes": len(
+                [n for n in self._nodes.values() if n.status == NodeStatus.ONLINE]
+            ),
         }

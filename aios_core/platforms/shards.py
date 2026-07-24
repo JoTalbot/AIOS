@@ -17,9 +17,8 @@ import hashlib
 import os
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS shard_hosts (
@@ -39,7 +38,7 @@ CREATE TABLE IF NOT EXISTS shard_routes (
 class ShardRouter:
     """Роутер профилей по хостам-шардам."""
 
-    def __init__(self, db_path: "str | None" = None):
+    def __init__(self, db_path: str | None = None):
         """Initialize ShardRouter."""
         self.db_path = db_path or os.environ.get("AIOS_SHARDS_DB", ":memory:")
         if self.db_path != ":memory:":
@@ -50,7 +49,7 @@ class ShardRouter:
         with self._lock, self._conn:
             self._conn.executescript(_SCHEMA)
 
-    def __enter__(self) -> "ShardRouter":
+    def __enter__(self) -> ShardRouter:
         return self
 
     def __exit__(self, *_exc) -> None:
@@ -63,13 +62,13 @@ class ShardRouter:
 
     @staticmethod
     def _now() -> str:
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
 
     # ------------------------------------------------------------------ #
     # хосты                                                                #
     # ------------------------------------------------------------------ #
 
-    def add_host(self, host: str, base_url: str) -> Dict:
+    def add_host(self, host: str, base_url: str) -> dict:
         """Регистрирует хост-шард (обновляет base_url при повторе)."""
         now = self._now()
         with self._lock, self._conn:
@@ -82,10 +81,12 @@ class ShardRouter:
             )
         return {"host": host, "base_url": base_url, "healthy": True}
 
-    def hosts(self) -> List[Dict]:
+    def hosts(self) -> list[dict]:
         """Все хосты-шарды."""
         with self._lock:
-            rows = self._conn.execute("SELECT * FROM shard_hosts ORDER BY host").fetchall()
+            rows = self._conn.execute(
+                "SELECT * FROM shard_hosts ORDER BY host"
+            ).fetchall()
         return [{**dict(row), "healthy": bool(row["healthy"])} for row in rows]
 
     def set_healthy(self, host: str, healthy: bool) -> bool:
@@ -101,7 +102,9 @@ class ShardRouter:
         """Удаляет хост и все его маршруты. True, если существовал."""
         with self._lock, self._conn:
             self._conn.execute("DELETE FROM shard_routes WHERE host = ?", (host,))
-            cursor = self._conn.execute("DELETE FROM shard_hosts WHERE host = ?", (host,))
+            cursor = self._conn.execute(
+                "DELETE FROM shard_hosts WHERE host = ?", (host,)
+            )
             return bool(cursor.rowcount)
 
     # ------------------------------------------------------------------ #
@@ -109,17 +112,17 @@ class ShardRouter:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def _rendezvous(profile_key: str, hosts: List[Dict]) -> Dict:
+    def _rendezvous(profile_key: str, hosts: list[dict]) -> dict:
         """HRW: хост с максимальным хэшем (стабилен между процессами)."""
 
-        def score(host: Dict) -> str:
+        def score(host: dict) -> str:
             """Execute score."""
-            key = f"{host['host']}|{profile_key}".encode("utf-8")
+            key = f"{host['host']}|{profile_key}".encode()
             return hashlib.sha256(key).hexdigest()
 
         return max(hosts, key=score)
 
-    def route_for(self, profile_key: str) -> Optional[Dict]:
+    def route_for(self, profile_key: str) -> dict | None:
         """Маршрут профиля: {profile_key, host, base_url, url}.
 
         None — нет здоровых хостов. Маршрут липкий: назначенный хост
@@ -164,7 +167,8 @@ class ShardRouter:
             "profile_key": profile_key,
             "host": chosen["host"],
             "base_url": chosen["base_url"],
-            "url": f"{chosen['base_url'].rstrip('/')}/profiles/" f"{profile_key.replace(':', '/')}",
+            "url": f"{chosen['base_url'].rstrip('/')}/profiles/"
+            f"{profile_key.replace(':', '/')}",
         }
 
     def unroute(self, profile_key: str) -> bool:
@@ -179,5 +183,7 @@ class ShardRouter:
     def reassign(self, host: str) -> int:
         """Сбрасывает все маршруты хоста (число освобождённых)."""
         with self._lock, self._conn:
-            cursor = self._conn.execute("DELETE FROM shard_routes WHERE host = ?", (host,))
+            cursor = self._conn.execute(
+                "DELETE FROM shard_routes WHERE host = ?", (host,)
+            )
             return int(cursor.rowcount)

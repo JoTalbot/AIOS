@@ -16,7 +16,7 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class UserProfile:
     """Entity profile with preferences and interaction history."""
+
     entity_id: str
     preferences: dict[str, Any] = field(default_factory=dict)
     interactions: int = 0
@@ -40,7 +41,9 @@ class UserProfile:
 
     def top_preferences(self, limit: int = 5) -> list[tuple[str, float]]:
         """Return top preferences sorted by score."""
-        sorted_prefs = sorted(self.preference_scores.items(), key=lambda x: x[1], reverse=True)
+        sorted_prefs = sorted(
+            self.preference_scores.items(), key=lambda x: x[1], reverse=True
+        )
         return sorted_prefs[:limit]
 
 
@@ -63,7 +66,9 @@ class PersonalizationEngine:
 
     # ── Profile Management ──────────────────────────────────────────
 
-    def create_profile(self, entity_id: str, preferences: dict[str, Any] | None = None) -> UserProfile:
+    def create_profile(
+        self, entity_id: str, preferences: dict[str, Any] | None = None
+    ) -> UserProfile:
         """Create a new user/agent profile."""
         profile = UserProfile(entity_id=entity_id, preferences=preferences or {})
         self.profiles[entity_id] = profile
@@ -113,12 +118,15 @@ class PersonalizationEngine:
             category = interaction.get("category", "")
             if category:
                 cat_score = profile.preferences.get(f"cat_{category}", 0.5)
-                profile.preferences[f"cat_{category}"] = round(cat_score + weight * 0.2, 4)
+                profile.preferences[f"cat_{category}"] = round(
+                    cat_score + weight * 0.2, 4
+                )
 
     # ── Recommendation ──────────────────────────────────────────────
 
-    def recommend(self, entity_id: str, candidates: list[str] | None = None,
-                  limit: int = 10) -> dict[str, Any]:
+    def recommend(
+        self, entity_id: str, candidates: list[str] | None = None, limit: int = 10
+    ) -> dict[str, Any]:
         """Recommend items based on profile preferences."""
         profile = self.profiles.get(entity_id)
         if profile is None:
@@ -139,12 +147,16 @@ class PersonalizationEngine:
         scored_items.sort(key=lambda x: x[1], reverse=True)
         top_items = scored_items[:limit]
 
-        avg_confidence = (sum(s for _, s in top_items) / len(top_items)) if top_items else 0.5
+        avg_confidence = (
+            (sum(s for _, s in top_items) / len(top_items)) if top_items else 0.5
+        )
 
         result = {
             "recommended_action": "personalized",
             "confidence": round(avg_confidence, 4),
-            "items": [{"item": item, "score": round(score, 4)} for item, score in top_items],
+            "items": [
+                {"item": item, "score": round(score, 4)} for item, score in top_items
+            ],
             "profile_interactions": profile.interactions,
         }
         self._recommendation_history.append(result)
@@ -160,7 +172,9 @@ class PersonalizationEngine:
         for other_id, other in self.profiles.items():
             if other_id == entity_id:
                 continue
-            sim = self._cosine_similarity(target.preference_vector(), other.preference_vector())
+            sim = self._cosine_similarity(
+                target.preference_vector(), other.preference_vector()
+            )
             if sim >= self.similarity_threshold:
                 similarities.append((other_id, round(sim, 4)))
 
@@ -179,8 +193,9 @@ class PersonalizationEngine:
 
     # ── Feedback ────────────────────────────────────────────────────
 
-    def add_feedback(self, entity_id: str, item: str, rating: float,
-                     feedback_type: str = "explicit") -> None:
+    def add_feedback(
+        self, entity_id: str, item: str, rating: float, feedback_type: str = "explicit"
+    ) -> None:
         """Add explicit or implicit feedback."""
         profile = self.profiles.get(entity_id)
         if profile is None:
@@ -188,8 +203,10 @@ class PersonalizationEngine:
             self.profiles[entity_id] = profile
 
         feedback_entry = {
-            "item": item, "rating": rating,
-            "type": feedback_type, "timestamp": time.time(),
+            "item": item,
+            "rating": rating,
+            "type": feedback_type,
+            "timestamp": time.time(),
         }
         profile.feedback.append(feedback_entry)
 
@@ -225,8 +242,11 @@ class PersonalizationEngine:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_interactions = (sum(p.interactions for p in self.profiles.values()) /
-                           len(self.profiles)) if self.profiles else 0.0
+        avg_interactions = (
+            (sum(p.interactions for p in self.profiles.values()) / len(self.profiles))
+            if self.profiles
+            else 0.0
+        )
         return {
             "profiles": len(self.profiles),
             "avg_interactions": round(avg_interactions, 2),

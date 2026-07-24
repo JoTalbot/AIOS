@@ -12,7 +12,6 @@ Classes:
 from __future__ import annotations
 
 import logging
-import random
 import time
 from typing import Any
 
@@ -44,10 +43,19 @@ class QuantumNetworkNode:
 
     def store_qubit(self, key: str, state: complex, duration_ms: float = 100) -> None:
         """Store a qubit in quantum memory."""
-        self.quantum_memory[key] = {"state": state, "stored_at": time.time(), "duration_ms": duration_ms}
+        self.quantum_memory[key] = {
+            "state": state,
+            "stored_at": time.time(),
+            "duration_ms": duration_ms,
+        }
 
     def stats(self) -> dict[str, Any]:
-        return {"node": self.node_id, "entangled_pairs": len(self.entangled_pairs), "memory_used": len(self.quantum_memory), "messages_sent": self._messages_sent}
+        return {
+            "node": self.node_id,
+            "entangled_pairs": len(self.entangled_pairs),
+            "memory_used": len(self.quantum_memory),
+            "messages_sent": self._messages_sent,
+        }
 
 
 class QuantumInternet:
@@ -79,7 +87,9 @@ class QuantumInternet:
         path: list[str] = [source]
         current = source
         while current != destination:
-            neighbors = [b for a, b in self.links if a == current and b not in visited] + [a for a, b in self.links if b == current and a not in visited]
+            neighbors = [
+                b for a, b in self.links if a == current and b not in visited
+            ] + [a for a, b in self.links if b == current and a not in visited]
             if not neighbors:
                 return []
             current = neighbors[0]
@@ -93,12 +103,29 @@ class QuantumInternet:
             return 0.0
         return round(sum(self._fidelity_log) / len(self._fidelity_log), 3)
 
-    def quantum_key_distribution(self, node_a: str, node_b: str, key_length: int = 128) -> dict[str, Any]:
+    def quantum_key_distribution(
+        self, node_a: str, node_b: str, key_length: int = 128
+    ) -> dict[str, Any]:
         """Distribute a quantum key between two nodes."""
-        fidelity = self.nodes[node_a].entangled_pairs.get(node_b, 0.0) if node_a in self.nodes else 0.0
+        fidelity = (
+            self.nodes[node_a].entangled_pairs.get(node_b, 0.0)
+            if node_a in self.nodes
+            else 0.0
+        )
         success = fidelity > 0.8
-        return {"source": node_a, "destination": node_b, "key_length": key_length, "fidelity": round(fidelity, 3), "success": success, "error_rate": round(1 - fidelity, 3) if success else 1.0}
+        return {
+            "source": node_a,
+            "destination": node_b,
+            "key_length": key_length,
+            "fidelity": round(fidelity, 3),
+            "success": success,
+            "error_rate": round(1 - fidelity, 3) if success else 1.0,
+        }
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict (backward-compatible)."""
-        return {"nodes": len(self.nodes), "links": len(self.links), "avg_fidelity": self.network_fidelity()}
+        return {
+            "nodes": len(self.nodes),
+            "links": len(self.links),
+            "avg_fidelity": self.network_fidelity(),
+        }

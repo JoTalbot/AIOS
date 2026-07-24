@@ -15,17 +15,20 @@ from __future__ import annotations
 import logging
 import random
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class ChaosAction(str, Enum):
     """Chaos injection types."""
+
     NETWORK_PARTITION = "network_partition"
     LATENCY_INJECTION = "latency_injection"
     ERROR_INJECTION = "error_injection"
@@ -36,15 +39,17 @@ class ChaosAction(str, Enum):
 
 # ── Chaos Scenario ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class ChaosScenario:
     """Named chaos scenario with actions, probes, abort conditions."""
+
     name: str
     actions: list[ChaosAction] = field(default_factory=list)
     duration: float = 60.0  # seconds
     target: str = ""  # which service/system to target
-    probe_fn: Optional[Callable[[], bool]] = None  # steady-state check
-    abort_fn: Optional[Callable[[], bool]] = None  # abort condition
+    probe_fn: Callable[[], bool] | None = None  # steady-state check
+    abort_fn: Callable[[], bool] | None = None  # abort condition
     probability: float = 1.0  # injection probability (0..1)
     latency_ms: int = 100
     error_message: str = "chaos_injected_error"
@@ -53,12 +58,14 @@ class ChaosScenario:
 
 # ── Chaos Result ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class ChaosResult:
     """Result of a chaos scenario execution."""
+
     scenario_name: str
     started_at: float = field(default_factory=time.time)
-    finished_at: Optional[float] = None
+    finished_at: float | None = None
     actions_executed: list[str] = field(default_factory=list)
     probe_results: list[bool] = field(default_factory=list)
     aborted: bool = False
@@ -72,6 +79,7 @@ class ChaosResult:
 
 
 # ── Chaos Tester ─────────────────────────────────────────────────────────────
+
 
 class ChaosTester:
     """Enhanced chaos testing framework with scenarios and validation.
@@ -156,9 +164,13 @@ class ChaosTester:
     def _inject_action(self, action: ChaosAction, scenario: ChaosScenario) -> None:
         """Execute a single chaos action."""
         if action == ChaosAction.LATENCY_INJECTION:
-            logger.info("Injecting %dms latency on '%s'", scenario.latency_ms, scenario.target)
+            logger.info(
+                "Injecting %dms latency on '%s'", scenario.latency_ms, scenario.target
+            )
         elif action == ChaosAction.ERROR_INJECTION:
-            logger.info("Injecting error '%s' on '%s'", scenario.error_message, scenario.target)
+            logger.info(
+                "Injecting error '%s' on '%s'", scenario.error_message, scenario.target
+            )
         elif action == ChaosAction.NETWORK_PARTITION:
             logger.info("Injecting network partition on '%s'", scenario.target)
         elif action == ChaosAction.CPU_STRESS:
@@ -172,12 +184,14 @@ class ChaosTester:
 
     def inject(self, func: Callable) -> Callable:
         """Wrap a function with chaos injection (backward-compatible decorator)."""
+
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             if random.random() < self.failure_probability:
                 raise Exception("Chaos injection: simulated failure")
             if self.latency_ms > 0:
                 time.sleep(self.latency_ms / 1000)
             return func(*args, **kwargs)
+
         return wrapper
 
     # ── Active Actions ──────────────────────────────────────────

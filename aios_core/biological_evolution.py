@@ -6,13 +6,13 @@ Gaussian Mutation, Constitutional Fitness Selection, and Natural Survival Select
 
 import random
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class AgentGenome:
     """Agent Chromosome Gene Sequence encoding cognitive parameters and capabilities."""
 
-    def __init__(self, genome_id: str, genes: Optional[dict[str, float]] = None):
+    def __init__(self, genome_id: str, genes: dict[str, float] | None = None):
         """Initialize AgentGenome."""
         self.genome_id = genome_id
         # Genes encode weights in range [0.0, 1.0]
@@ -42,10 +42,10 @@ class BiologicalEvolutionEngine:
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.generation = 0
-        self.population: List[AgentGenome] = [
+        self.population: list[AgentGenome] = [
             AgentGenome(f"g_0_{i}") for i in range(population_size)
         ]
-        self.history: List[dict[str, Any]] = []
+        self.history: list[dict[str, Any]] = []
 
     def evaluate_fitness(
         self,
@@ -68,28 +68,33 @@ class BiologicalEvolutionEngine:
         genome.fitness_score = final_fitness
         return final_fitness
 
-    def crossover(self, parent_a: AgentGenome, parent_b: AgentGenome, child_id: str) -> AgentGenome:
+    def crossover(
+        self, parent_a: AgentGenome, parent_b: AgentGenome, child_id: str
+    ) -> AgentGenome:
         """Perform Uniform Genetic Crossover between parent chromosomes."""
         child_genes = {}
         for key in parent_a.genes:
-            child_genes[key] = parent_a.genes[key] if random.random() < 0.5 else parent_b.genes[key]
+            child_genes[key] = (
+                parent_a.genes[key] if random.random() < 0.5 else parent_b.genes[key]
+            )
 
         child = AgentGenome(child_id, genes=child_genes)
         child.generation = max(parent_a.generation, parent_b.generation) + 1
         return child
 
-    def step_generation(self) -> List[AgentGenome]:
+    def step_generation(self) -> list[AgentGenome]:
         """Advance evolution by 1 generation using Natural Selection, Elitism, Crossover, and Mutation."""
         # 1. Sort population by fitness score descending
         self.population.sort(key=lambda g: g.fitness_score, reverse=True)
 
-        new_pop: List[AgentGenome] = []
+        new_pop: list[AgentGenome] = []
 
         # 2. Elitism: Preserve top 2 highest-performing constitutional genomes
         elite_count = min(2, len(self.population))
         for i in range(elite_count):
             elite = AgentGenome(
-                f"g_{self.generation+1}_elite_{i}", genes=dict(self.population[i].genes)
+                f"g_{self.generation + 1}_elite_{i}",
+                genes=dict(self.population[i].genes),
             )
             elite.generation = self.generation + 1
             elite.fitness_score = self.population[i].fitness_score
@@ -98,8 +103,12 @@ class BiologicalEvolutionEngine:
         # 3. Fill remaining population via Crossover & Mutation
         gen_index = elite_count
         while len(new_pop) < self.population_size:
-            p1, p2 = random.sample(self.population[: max(3, self.population_size // 2)], 2)
-            child = self.crossover(p1, p2, child_id=f"g_{self.generation+1}_{gen_index}")
+            p1, p2 = random.sample(
+                self.population[: max(3, self.population_size // 2)], 2
+            )
+            child = self.crossover(
+                p1, p2, child_id=f"g_{self.generation + 1}_{gen_index}"
+            )
             child.mutate(mutation_rate=self.mutation_rate)
             new_pop.append(child)
             gen_index += 1
@@ -108,7 +117,9 @@ class BiologicalEvolutionEngine:
         self.population = new_pop
 
         best_fitness = self.population[0].fitness_score
-        mean_fitness = sum(g.fitness_score for g in self.population) / len(self.population)
+        mean_fitness = sum(g.fitness_score for g in self.population) / len(
+            self.population
+        )
 
         self.history.append(
             {
@@ -127,5 +138,7 @@ class BiologicalEvolutionEngine:
             "current_generation": self.generation,
             "population_size": len(self.population),
             "mutation_rate": self.mutation_rate,
-            "best_fitness_latest": (self.population[0].fitness_score if self.population else 0.0),
+            "best_fitness_latest": (
+                self.population[0].fitness_score if self.population else 0.0
+            ),
         }

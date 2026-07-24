@@ -11,23 +11,31 @@ Provides support for various communication protocols including:
 import asyncio
 import json
 import logging
-import time
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
-import grpc
 from grpc import aio as aio_grpc
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, StreamingResponse
-from starlette.routing import Mount, Route
+from starlette.responses import JSONResponse
+from starlette.routing import Route
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
-__all__ = ["ProtocolType", "ProtocolConfig", "ProtocolAdapter", "GrpcAdapter", "AmqpAdapter", "WebSocketAdapter", "MqttAdapter", "ProtocolManager"]
+__all__ = [
+    "ProtocolType",
+    "ProtocolConfig",
+    "ProtocolAdapter",
+    "GrpcAdapter",
+    "AmqpAdapter",
+    "WebSocketAdapter",
+    "MqttAdapter",
+    "ProtocolManager",
+]
 
 
 class ProtocolType(Enum):
@@ -84,13 +92,17 @@ class ProtocolAdapter(ABC):
             self.active_connections.append(connection)
             self.logger.info(f"Connection added. Total: {len(self.active_connections)}")
         else:
-            self.logger.warning(f"Connection limit reached: {self.config.max_connections}")
+            self.logger.warning(
+                f"Connection limit reached: {self.config.max_connections}"
+            )
 
     def remove_connection(self, connection: Any) -> None:
         """Remove active connection."""
         if connection in self.active_connections:
             self.active_connections.remove(connection)
-            self.logger.info(f"Connection removed. Total: {len(self.active_connections)}")
+            self.logger.info(
+                f"Connection removed. Total: {len(self.active_connections)}"
+            )
 
 
 class GrpcAdapter(ProtocolAdapter):
@@ -153,8 +165,8 @@ class AmqpAdapter(ProtocolAdapter):
         super().__init__(config)
         self.connection = None
         self.channel = None
-        self.queues: Dict[str, asyncio.Queue] = {}
-        self.subscribers: Dict[str, List[Callable]] = {}
+        self.queues: dict[str, asyncio.Queue] = {}
+        self.subscribers: dict[str, list[Callable]] = {}
 
     async def start(self) -> bool:
         """Start AMQP connection."""
@@ -257,13 +269,15 @@ class WebSocketAdapter(ProtocolAdapter):
     def __init__(self, config: ProtocolConfig):
         """Initialize WebSocketAdapter."""
         super().__init__(config)
-        self.websocket_routes: Dict[str, Callable] = {}
+        self.websocket_routes: dict[str, Callable] = {}
 
     async def start(self) -> bool:
         """Start WebSocket server."""
         try:
             # WebSocket will be handled by Starlette app
-            self.logger.info(f"WebSocket adapter ready for {self.config.host}:{self.config.port}")
+            self.logger.info(
+                f"WebSocket adapter ready for {self.config.host}:{self.config.port}"
+            )
             return True
         except Exception as e:
             self.logger.error(f"Failed to start WebSocket adapter: {str(e)}")
@@ -323,7 +337,7 @@ class MqttAdapter(ProtocolAdapter):
         """Initialize MqttAdapter."""
         super().__init__(config)
         self.client = None
-        self.subscriptions: Dict[str, List[Callable]] = {}
+        self.subscriptions: dict[str, list[Callable]] = {}
 
     async def start(self) -> bool:
         """Start MQTT client."""
@@ -416,10 +430,12 @@ class ProtocolManager:
 
     def __init__(self):
         """Initialize ProtocolManager."""
-        self.adapters: Dict[ProtocolType, ProtocolAdapter] = {}
+        self.adapters: dict[ProtocolType, ProtocolAdapter] = {}
         self.logger = logging.getLogger("aios.protocol_manager")
 
-    def add_adapter(self, protocol_type: ProtocolType, adapter: ProtocolAdapter) -> None:
+    def add_adapter(
+        self, protocol_type: ProtocolType, adapter: ProtocolAdapter
+    ) -> None:
         """Add protocol adapter."""
         self.adapters[protocol_type] = adapter
         self.logger.info(f"Added {protocol_type.value} adapter")
@@ -456,7 +472,9 @@ def create_protocol_app(protocol_manager: ProtocolManager) -> Starlette:
     async def grpc_status_endpoint(request: Request) -> JSONResponse:
         """Get gRPC adapter status."""
         if ProtocolType.GRPC not in protocol_manager.adapters:
-            return JSONResponse({"error": "gRPC adapter not available"}, status_code=503)
+            return JSONResponse(
+                {"error": "gRPC adapter not available"}, status_code=503
+            )
 
         adapter = protocol_manager.adapters[ProtocolType.GRPC]
         return JSONResponse(
@@ -470,7 +488,9 @@ def create_protocol_app(protocol_manager: ProtocolManager) -> Starlette:
     async def amqp_status_endpoint(request: Request) -> JSONResponse:
         """Get AMQP adapter status."""
         if ProtocolType.AMQP not in protocol_manager.adapters:
-            return JSONResponse({"error": "AMQP adapter not available"}, status_code=503)
+            return JSONResponse(
+                {"error": "AMQP adapter not available"}, status_code=503
+            )
 
         adapter = protocol_manager.adapters[ProtocolType.AMQP]
         return JSONResponse(
@@ -484,7 +504,9 @@ def create_protocol_app(protocol_manager: ProtocolManager) -> Starlette:
     async def websocket_status_endpoint(request: Request) -> JSONResponse:
         """Get WebSocket adapter status."""
         if ProtocolType.WEBSOCKET not in protocol_manager.adapters:
-            return JSONResponse({"error": "WebSocket adapter not available"}, status_code=503)
+            return JSONResponse(
+                {"error": "WebSocket adapter not available"}, status_code=503
+            )
 
         adapter = protocol_manager.adapters[ProtocolType.WEBSOCKET]
         return JSONResponse(
@@ -498,7 +520,9 @@ def create_protocol_app(protocol_manager: ProtocolManager) -> Starlette:
     async def mqtt_status_endpoint(request: Request) -> JSONResponse:
         """Get MQTT adapter status."""
         if ProtocolType.MQTT not in protocol_manager.adapters:
-            return JSONResponse({"error": "MQTT adapter not available"}, status_code=503)
+            return JSONResponse(
+                {"error": "MQTT adapter not available"}, status_code=503
+            )
 
         adapter = protocol_manager.adapters[ProtocolType.MQTT]
         return JSONResponse(

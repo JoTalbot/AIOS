@@ -7,9 +7,10 @@ Supports typed events, wildcard subscriptions, and persistent event history.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .storage import Database
@@ -140,7 +141,7 @@ class EventBus:
         bus.emit(EventType.TASK_CREATED, "orchestrator", {"task_id": "abc"})
     """
 
-    def __init__(self, db: Optional[Database] = None):
+    def __init__(self, db: Database | None = None):
         """Initialize EventBus."""
         self.db = db
 
@@ -175,8 +176,12 @@ class EventBus:
                    metadata    TEXT
                )"""
         )
-        self.db.execute("CREATE INDEX IF NOT EXISTS idx_events_type " "ON events(event_type)")
-        self.db.execute("CREATE INDEX IF NOT EXISTS idx_events_timestamp " "ON events(timestamp)")
+        self.db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type)"
+        )
+        self.db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)"
+        )
 
     # ------------------------------------------------------------------
     # Subscriptions
@@ -249,7 +254,9 @@ class EventBus:
                     del self._exact_handlers[event_type]
         else:
             self._pattern_handlers = [
-                (sid, p, h) for sid, p, h in self._pattern_handlers if sid != subscription_id
+                (sid, p, h)
+                for sid, p, h in self._pattern_handlers
+                if sid != subscription_id
             ]
 
         return True
@@ -263,7 +270,7 @@ class EventBus:
         event_type: str,
         source: str,
         data: dict,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> dict:
         """Emit an event to all matching subscribers.
 
@@ -403,7 +410,7 @@ class EventBus:
         rows = self.db.query(sql, tuple(params))
         return [_row_to_dict(r) for r in rows]
 
-    def get_event(self, event_id: str) -> Optional[dict]:
+    def get_event(self, event_id: str) -> dict | None:
         """Retrieve a single event by its ID.
 
         Args:
@@ -490,5 +497,7 @@ def _row_to_dict(row: dict) -> dict:
         "source": row["source"],
         "data": Database.from_json(row["data"]),
         "timestamp": row["timestamp"],
-        "metadata": (Database.from_json(row["metadata"]) if row.get("metadata") else {}),
+        "metadata": (
+            Database.from_json(row["metadata"]) if row.get("metadata") else {}
+        ),
     }

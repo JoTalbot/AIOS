@@ -15,18 +15,18 @@ Every task goes through constitutional evaluation before execution.
 
 from __future__ import annotations
 
-import os
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
-from .autonomy_manager import AutonomyLevel, AutonomyManager
-from .capability_engine import CapabilityEngine, CapabilityStatus
+from .autonomy_manager import AutonomyManager
+from .capability_engine import CapabilityEngine
 from .config import AIOSConfig, load_config
 from .constitution_evolver import ConstitutionEvolver
-from .event_bus import Event, EventBus, EventType
+from .event_bus import EventBus
 from .evolution_manager import EvolutionManager
 from .federation_manager import FederationManager
 from .knowledge_graph import KnowledgeGraph
@@ -35,11 +35,10 @@ from .marketplace import CapabilityMarketplace
 from .memory_manager import MemoryManager
 from .ml_planner_scorer import MLPlannerScorer
 from .multi_agent_orchestrator import MultiAgentOrchestrator
-from .planner import Plan, Planner, PlanStatus
-from .planner import PlanStep as PlannerStep
+from .planner import Planner
 from .plugin_manager import plugin_manager
 from .privacy_guard import PrivacyGuard
-from .reasoning_engine import ReasoningEngine, ReasoningStep
+from .reasoning_engine import ReasoningEngine
 from .runtime_policy import RuntimePolicy
 from .storage import Database
 from .websocket import ws_manager
@@ -49,6 +48,7 @@ __all__ = ["TaskStatus", "StepStatus", "TaskStep", "Task", "Orchestrator"]
 
 class TaskStatus(str, Enum):
     """TaskStatus."""
+
     PENDING = "pending"
     PLANNING = "planning"
     RUNNING = "running"
@@ -60,6 +60,7 @@ class TaskStatus(str, Enum):
 
 class StepStatus(str, Enum):
     """StepStatus."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -107,7 +108,7 @@ class Task:
     risk_level: str = "medium"
     steps: list[TaskStep] = field(default_factory=list)
     current_step_index: int = -1
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     started_at: str = None
     completed_at: str = None
     error: str = None
@@ -163,8 +164,8 @@ class Orchestrator:
 
     def __init__(
         self,
-        db: Optional[Database] = None,
-        config: Optional[AIOSConfig] = None,
+        db: Database | None = None,
+        config: AIOSConfig | None = None,
         constitution_dir: str | None = None,
         policies_dir: str | None = None,
     ):
@@ -190,7 +191,9 @@ class Orchestrator:
         )
         self.memory = MemoryManager(db=self.db)
         self.knowledge = KnowledgeGraph()
-        self.reasoning = ReasoningEngine(db=self.db, memory=self.memory, knowledge=self.knowledge)
+        self.reasoning = ReasoningEngine(
+            db=self.db, memory=self.memory, knowledge=self.knowledge
+        )
         self.learning = LearningEngine(db=self.db, memory=self.memory)
         self.evolution = EvolutionManager(db=self.db)
         self.privacy = PrivacyGuard()
@@ -224,7 +227,7 @@ class Orchestrator:
         agent_id: str = "orchestrator",
         authority: str = "system",
         risk_level: str = "medium",
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
         task_id: str | None = None,
     ) -> Task:
         """Create a new task without executing it.
@@ -254,7 +257,9 @@ class Orchestrator:
             try:
                 loop = asyncio.get_running_loop()
                 asyncio.create_task(
-                    ws_manager.send_event("task_created", {"task_id": task.id, "name": task.name})
+                    ws_manager.send_event(
+                        "task_created", {"task_id": task.id, "name": task.name}
+                    )
                 )
             except RuntimeError:
                 pass  # No running loop (sync context)
@@ -267,7 +272,7 @@ class Orchestrator:
         self,
         task: Task,
         step_type: str,
-        params: Optional[dict] = None,
+        params: dict | None = None,
         name: str = "",
         description: str = "",
     ) -> TaskStep:
@@ -303,13 +308,15 @@ class Orchestrator:
             return self._task_summary(task)
 
         task.status = TaskStatus.RUNNING
-        self.events.emit("task_started", "orchestrator", {"task_id": task.id, "name": task.name})
-        task.started_at = datetime.now(timezone.utc).isoformat()
+        self.events.emit(
+            "task_started", "orchestrator", {"task_id": task.id, "name": task.name}
+        )
+        task.started_at = datetime.now(UTC).isoformat()
 
         for i, step in enumerate(task.steps):
             task.current_step_index = i
             step.status = StepStatus.RUNNING
-            step.started_at = datetime.now(timezone.utc).isoformat()
+            step.started_at = datetime.now(UTC).isoformat()
 
             try:
                 # Constitutional check for this step
@@ -317,7 +324,9 @@ class Orchestrator:
 
                 if step.constitutional_check.get("decision") == "DENY":
                     step.status = StepStatus.FAILED
-                    step.error = step.constitutional_check.get("details", "Constitution denied")
+                    step.error = step.constitutional_check.get(
+                        "details", "Constitution denied"
+                    )
                     task.status = TaskStatus.FAILED
                     task.error = f"Step '{step.name}' denied by constitution"
                     break
@@ -349,9 +358,7 @@ class Orchestrator:
                         and step.constitutional_check.get("decision") != "REVIEW"
                     ):
                         step.status = StepStatus.FAILED
-                        step.error = (
-                            f"Requires approval (autonomy level {autonomy_result['level']})"
-                        )
+                        step.error = f"Requires approval (autonomy level {autonomy_result['level']})"
                         task.status = TaskStatus.WAITING_APPROVAL
                         task.error = f"Step '{step.name}' requires approval due to autonomy level {autonomy_result['level']}"
                         self.events.emit(
@@ -373,7 +380,9 @@ class Orchestrator:
             except Exception as e:
                 step.status = StepStatus.FAILED
                 step.error = str(e)
-                self.autonomy.record_action(task.agent_id, success=False, triggered_review=True)
+                self.autonomy.record_action(
+                    task.agent_id, success=False, triggered_review=True
+                )
                 task.status = TaskStatus.FAILED
                 task.error = f"Step '{step.name}' failed: {e}"
                 self.events.emit(
@@ -384,12 +393,12 @@ class Orchestrator:
                 break
 
             finally:
-                step.completed_at = datetime.now(timezone.utc).isoformat()
+                step.completed_at = datetime.now(UTC).isoformat()
                 self._log_execution(task, step)
 
         if task.status == TaskStatus.RUNNING:
             task.status = TaskStatus.COMPLETED
-            task.completed_at = datetime.now(timezone.utc).isoformat()
+            task.completed_at = datetime.now(UTC).isoformat()
             self.events.emit(
                 "task_completed",
                 "orchestrator",
@@ -437,7 +446,9 @@ class Orchestrator:
             "name": task.name,
             "status": task.status.value,
             "total_steps": len(task.steps),
-            "completed_steps": sum(1 for s in task.steps if s.status == StepStatus.COMPLETED),
+            "completed_steps": sum(
+                1 for s in task.steps if s.status == StepStatus.COMPLETED
+            ),
             "failed_steps": sum(1 for s in task.steps if s.status == StepStatus.FAILED),
             "error": task.error,
             "steps": [
@@ -482,7 +493,7 @@ class Orchestrator:
                 "step_type": step.step_type,
                 "status": step.status.value,
                 "error": step.error,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
         # Also persist to audit log
@@ -511,7 +522,7 @@ class Orchestrator:
             }
         )
 
-    def get_task(self, task_id: str) -> Optional[Task]:
+    def get_task(self, task_id: str) -> Task | None:
         """Get a task by ID."""
         return self._tasks.get(task_id)
 
@@ -519,7 +530,7 @@ class Orchestrator:
         """Remove an untracked task and return whether it existed."""
         return self._tasks.pop(task_id, None) is not None
 
-    def list_tasks(self, status: Optional[TaskStatus] = None) -> list[dict]:
+    def list_tasks(self, status: TaskStatus | None = None) -> list[dict]:
         """List all tasks, optionally filtered by status."""
         tasks = self._tasks.values()
         if status:
@@ -556,7 +567,8 @@ class Orchestrator:
             "total_tasks": len(self._tasks),
             "tasks_by_status": status_counts,
             "total_steps_executed": len(self._execution_log),
-            "active_tasks": status_counts.get("running", 0) + status_counts.get("pending", 0),
+            "active_tasks": status_counts.get("running", 0)
+            + status_counts.get("pending", 0),
             "constitution_articles": 67,
             "memory_items": mem_stats.get("total_items", 0),
             "evolution_proposals": evo_stats.get("total_proposals", 0),
@@ -714,7 +726,9 @@ def _step_plan(orch: Orchestrator, params: dict) -> dict:
         )
     # Add dependencies if specified
     for dep in params.get("dependencies", []):
-        orch.planner.add_dependency(plan, dep["from"], dep["to"], dep.get("condition", "success"))
+        orch.planner.add_dependency(
+            plan, dep["from"], dep["to"], dep.get("condition", "success")
+        )
     validation = orch.planner.validate_plan(plan)
     return {
         "plan_id": plan.id,

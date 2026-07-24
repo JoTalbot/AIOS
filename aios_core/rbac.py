@@ -22,20 +22,23 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
 
+
 class ConstraintKind(str, Enum):
     """Role constraint types."""
+
     MUTUALLY_EXCLUSIVE = "mutually_exclusive"
     MAX_ROLES_PER_USER = "max_roles_per_user"
 
 
 # ── Permission ───────────────────────────────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class Permission:
@@ -45,6 +48,7 @@ class Permission:
         resource    — what object this permission controls
         action      — what operation is allowed (read, write, delete, admin)
     """
+
     resource: str
     action: str
 
@@ -56,7 +60,9 @@ class Permission:
         """Parse 'resource:action' into Permission."""
         parts = perm_str.split(":")
         if len(parts) != 2:
-            raise ValueError(f"Invalid permission format: '{perm_str}' — expected 'resource:action'")
+            raise ValueError(
+                f"Invalid permission format: '{perm_str}' — expected 'resource:action'"
+            )
         return cls(resource=parts[0], action=parts[1])
 
     def matches(self, other: Permission) -> bool:
@@ -71,9 +77,11 @@ class Permission:
 
 # ── PermissionSet ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class PermissionSet:
     """Named group of permissions for easy assignment."""
+
     name: str
     permissions: set[Permission] = field(default_factory=set)
 
@@ -96,9 +104,11 @@ class PermissionSet:
 
 # ── Role ─────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Role:
     """Role with direct permissions, parent roles, and constraints."""
+
     name: str
     permissions: set[Permission] = field(default_factory=set)
     parent_roles: list[str] = field(default_factory=list)  # names of parent roles
@@ -129,6 +139,7 @@ class Role:
 
 # ── RoleHierarchy ────────────────────────────────────────────────────────────
 
+
 class RoleHierarchy:
     """Resolve inherited permissions from parent roles.
 
@@ -144,7 +155,9 @@ class RoleHierarchy:
         """Register a role in the hierarchy."""
         self.roles[role.name] = role
 
-    def resolve_permissions(self, role_name: str, visited: set[str] | None = None, depth: int = 0) -> set[Permission]:
+    def resolve_permissions(
+        self, role_name: str, visited: set[str] | None = None, depth: int = 0
+    ) -> set[Permission]:
         """Resolve all permissions for a role, including inherited.
 
         Uses DFS up to MAX_DEPTH to prevent circular inheritance.
@@ -166,12 +179,16 @@ class RoleHierarchy:
 
         # Add inherited permissions from each parent
         for parent_name in role.parent_roles:
-            parent_perms = self.resolve_permissions(parent_name, visited.copy(), depth + 1)
+            parent_perms = self.resolve_permissions(
+                parent_name, visited.copy(), depth + 1
+            )
             all_perms |= parent_perms
 
         return all_perms
 
-    def all_ancestors(self, role_name: str, visited: set[str] | None = None) -> list[str]:
+    def all_ancestors(
+        self, role_name: str, visited: set[str] | None = None
+    ) -> list[str]:
         """Return list of all ancestor role names."""
         visited = visited or set()
         if role_name in visited:
@@ -191,6 +208,7 @@ class RoleHierarchy:
 
 # ── AccessPolicy ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class AccessPolicy:
     """Conditional access rule — evaluated at runtime.
@@ -201,6 +219,7 @@ class AccessPolicy:
     - platform attribute
     - custom attributes
     """
+
     name: str
     role_name: str
     permission: Permission
@@ -236,14 +255,16 @@ class AccessPolicy:
 
 # ── UserAssignment ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class UserAssignment:
     """Record of a user ↔ role binding."""
+
     user_id: str
     role_name: str
     assigned_by: str = "system"
     assigned_at: float = field(default_factory=time.time)
-    expires_at: Optional[float] = None  # None = permanent
+    expires_at: float | None = None  # None = permanent
     active: bool = True
 
     def is_expired(self) -> bool:
@@ -254,6 +275,7 @@ class UserAssignment:
 
 
 # ── RBAC Engine ──────────────────────────────────────────────────────────────
+
 
 class RBACEngine:
     """Central RBAC evaluation engine.
@@ -273,13 +295,18 @@ class RBACEngine:
         self.permission_sets: dict[str, PermissionSet] = {}
         self.constraints: dict[ConstraintKind, Any] = {
             ConstraintKind.MUTUALLY_EXCLUSIVE: [],  # list of (role_a, role_b) tuples
-            ConstraintKind.MAX_ROLES_PER_USER: 0,   # 0 = no limit
+            ConstraintKind.MAX_ROLES_PER_USER: 0,  # 0 = no limit
         }
         self.audit_log: list[dict[str, Any]] = []
 
     # ── Role Management ────────────────────────────────────────────
 
-    def create_role(self, name: str, permissions: list[str | Permission] | None = None, description: str = "") -> Role:
+    def create_role(
+        self,
+        name: str,
+        permissions: list[str | Permission] | None = None,
+        description: str = "",
+    ) -> Role:
         """Create a role with permissions (strings or Permission objects)."""
         if name in self.hierarchy.roles:
             raise ValueError(f"Role '{name}' already exists")
@@ -292,7 +319,9 @@ class RBACEngine:
                     perm_set.add(p)
         role = Role(name=name, permissions=perm_set, description=description)
         self.hierarchy.register(role)
-        self._audit("create_role", {"role": name, "permissions": [str(p) for p in perm_set]})
+        self._audit(
+            "create_role", {"role": name, "permissions": [str(p) for p in perm_set]}
+        )
         return role
 
     def delete_role(self, name: str) -> None:
@@ -315,7 +344,9 @@ class RBACEngine:
         role.add_permission(perm)
         self._audit("add_permission", {"role": role_name, "permission": str(perm)})
 
-    def remove_permission_from_role(self, role_name: str, perm: str | Permission) -> None:
+    def remove_permission_from_role(
+        self, role_name: str, perm: str | Permission
+    ) -> None:
         """Remove a permission from a role."""
         role = self._get_role(role_name)
         if isinstance(perm, str):
@@ -339,7 +370,9 @@ class RBACEngine:
 
     # ── Permission Sets ────────────────────────────────────────────
 
-    def create_permission_set(self, name: str, permissions: list[str | Permission] | None = None) -> PermissionSet:
+    def create_permission_set(
+        self, name: str, permissions: list[str | Permission] | None = None
+    ) -> PermissionSet:
         """Create a named permission set."""
         if name in self.permission_sets:
             raise ValueError(f"Permission set '{name}' already exists")
@@ -351,7 +384,10 @@ class RBACEngine:
                 elif isinstance(p, Permission):
                     ps.add(p)
         self.permission_sets[name] = ps
-        self._audit("create_permission_set", {"name": name, "permissions": ps.list_permissions()})
+        self._audit(
+            "create_permission_set",
+            {"name": name, "permissions": ps.list_permissions()},
+        )
         return ps
 
     def assign_permission_set(self, role_name: str, set_name: str) -> None:
@@ -366,17 +402,29 @@ class RBACEngine:
 
     # ── User Assignment ────────────────────────────────────────────
 
-    def assign_role(self, user_id: str, role_name: str, assigned_by: str = "system", expires_at: Optional[float] = None) -> UserAssignment:
+    def assign_role(
+        self,
+        user_id: str,
+        role_name: str,
+        assigned_by: str = "system",
+        expires_at: float | None = None,
+    ) -> UserAssignment:
         """Assign a role to a user. Checks constraints."""
         self._get_role(role_name)
 
         # Check mutually exclusive constraint
         current_roles = self.get_user_roles(user_id)
-        for (role_a, role_b) in self.constraints.get(ConstraintKind.MUTUALLY_EXCLUSIVE, []):
+        for role_a, role_b in self.constraints.get(
+            ConstraintKind.MUTUALLY_EXCLUSIVE, []
+        ):
             if role_name == role_a and role_b in current_roles:
-                raise ValueError(f"Roles '{role_a}' and '{role_b}' are mutually exclusive")
+                raise ValueError(
+                    f"Roles '{role_a}' and '{role_b}' are mutually exclusive"
+                )
             if role_name == role_b and role_a in current_roles:
-                raise ValueError(f"Roles '{role_a}' and '{role_b}' are mutually exclusive")
+                raise ValueError(
+                    f"Roles '{role_a}' and '{role_b}' are mutually exclusive"
+                )
 
         # Check max roles per user constraint
         max_roles = self.constraints.get(ConstraintKind.MAX_ROLES_PER_USER, 0)
@@ -390,13 +438,17 @@ class RBACEngine:
             expires_at=expires_at,
         )
         self.assignments.append(assignment)
-        self._audit("assign_role", {"user": user_id, "role": role_name, "assigned_by": assigned_by})
+        self._audit(
+            "assign_role",
+            {"user": user_id, "role": role_name, "assigned_by": assigned_by},
+        )
         return assignment
 
     def revoke_role(self, user_id: str, role_name: str) -> None:
         """Revoke a role from a user."""
         self.assignments = [
-            a for a in self.assignments
+            a
+            for a in self.assignments
             if not (a.user_id == user_id and a.role_name == role_name)
         ]
         self._audit("revoke_role", {"user": user_id, "role": role_name})
@@ -419,7 +471,12 @@ class RBACEngine:
 
     # ── Access Check ───────────────────────────────────────────────
 
-    def check_access(self, user_id: str, permission: str | Permission, context: dict[str, Any] | None = None) -> bool:
+    def check_access(
+        self,
+        user_id: str,
+        permission: str | Permission,
+        context: dict[str, Any] | None = None,
+    ) -> bool:
         """Check if a user has access to a permission, considering policies.
 
         Resolution:
@@ -438,7 +495,14 @@ class RBACEngine:
         has_match = any(p.matches(permission) for p in user_perms)
 
         if not has_match:
-            self._audit("access_denied", {"user": user_id, "permission": str(permission), "reason": "no_matching_permission"})
+            self._audit(
+                "access_denied",
+                {
+                    "user": user_id,
+                    "permission": str(permission),
+                    "reason": "no_matching_permission",
+                },
+            )
             return False
 
         # Step 2: check policies — any policy for this role must pass
@@ -446,7 +510,15 @@ class RBACEngine:
         for policy in self.policies:
             if policy.role_name in user_roles and policy.permission.matches(permission):
                 if not policy.evaluate(context):
-                    self._audit("access_denied", {"user": user_id, "permission": str(permission), "reason": "policy_blocked", "policy": policy.name})
+                    self._audit(
+                        "access_denied",
+                        {
+                            "user": user_id,
+                            "permission": str(permission),
+                            "reason": "policy_blocked",
+                            "policy": policy.name,
+                        },
+                    )
                     return False
 
         self._audit("access_granted", {"user": user_id, "permission": str(permission)})
@@ -488,7 +560,9 @@ class RBACEngine:
 
     # ── Audit ──────────────────────────────────────────────────────
 
-    def get_audit_log(self, user_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
+    def get_audit_log(
+        self, user_id: str | None = None, limit: int = 100
+    ) -> list[dict[str, Any]]:
         """Return audit events, optionally filtered by user_id."""
         if user_id:
             events = [e for e in self.audit_log if e.get("user") == user_id]
@@ -506,8 +580,12 @@ class RBACEngine:
             "user_assignments": len(self.assignments),
             "policies": len(self.policies),
             "constraints": {
-                "mutually_exclusive_pairs": len(self.constraints.get(ConstraintKind.MUTUALLY_EXCLUSIVE, [])),
-                "max_roles_per_user": self.constraints.get(ConstraintKind.MAX_ROLES_PER_USER, 0),
+                "mutually_exclusive_pairs": len(
+                    self.constraints.get(ConstraintKind.MUTUALLY_EXCLUSIVE, [])
+                ),
+                "max_roles_per_user": self.constraints.get(
+                    ConstraintKind.MAX_ROLES_PER_USER, 0
+                ),
             },
             "audit_events": len(self.audit_log),
         }
@@ -522,14 +600,17 @@ class RBACEngine:
 
     def _audit(self, action: str, details: dict[str, Any]) -> None:
         """Append audit event."""
-        self.audit_log.append({
-            "action": action,
-            "timestamp": time.time(),
-            **details,
-        })
+        self.audit_log.append(
+            {
+                "action": action,
+                "timestamp": time.time(),
+                **details,
+            }
+        )
 
 
 # ── Backward-compatible façade ──────────────────────────────────────────────
+
 
 class RBAC:
     """Backward-compatible simple RBAC façade.
