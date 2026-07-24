@@ -1,5 +1,21 @@
 # AIOS Roadmap — Next Milestones
 
+## v10.5.0 ✅ (2026-07-24)
+- ✅ Zero Trust Security (trust levels, device profiles, policies, network segmentation, audit)
+- ✅ Self-Healing (recovery escalation, health monitor, diagnostics, history)
+- ✅ Circuit Breaker enhanced (half-open probing, fallback, metrics, listeners, CircuitOpenError)
+- ✅ API Gateway (middleware pipeline, rate limiting, auth, versioning, metrics)
+- ✅ Graceful Shutdown (phase-based: drain→cleanup→finalize, priority hooks, progress)
+- ✅ Service Mesh (discovery, traffic splitting, health checks, load balancing)
+- ✅ Distributed Queue (priority ordering, workers, retry, dead letter queue)
+- ✅ Chaos Testing (scenario-based, steady-state probes, abort conditions, 6 action types)
+- ✅ Auto-Scaler (multi-metric policies, cooldown, stabilization window, prediction)
+- ✅ Health Checks (liveness/readiness/startup, TTL caching, dependencies, aggregate)
+- ✅ 150 new tests (2032 total, 0 failures)
+- ✅ RELEASE_NOTES_10.5.0.md
+
+**2032 tests, 0 failures**
+
 ## v10.4.0 ✅ (2026-07-24)
 - ✅ Feature Flags System (rollout strategies, targeting rules, variants, dependencies, lifecycle, metrics, audit)
 - ✅ RBAC System (role hierarchy, resource permissions, policies, constraints, audit trail)
@@ -216,3 +232,4 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 10.2.0 | 2026-07-24 | 1616 | Credential manager + Price alert system + Scraping templates |
 | 10.3.0 | 2026-07-24 | 1670 | Agent memory + Platform health monitor + Export/import pipeline |
 | 10.4.0 | 2026-07-24 | 1882 | Feature flags + RBAC + Workflow engine (DAG, saga, retry) |
+| 10.5.0 | 2026-07-24 | 2032 | Zero trust + Self-healing + CB enhanced + API gateway + Shutdown + Mesh + Queue + Chaos + Scaler + Health |
