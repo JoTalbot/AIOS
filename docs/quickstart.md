@@ -50,6 +50,7 @@ export AIOS_API_KEYS='{
 
 # Запуск
 python run_rest_api.py --host 127.0.0.1 --port 8000 --db ./aios.sqlite
+# Interactive API docs: http://127.0.0.1:8000/docs
 ```
 
 API доступен на `http://127.0.0.1:8000`. Health check не требует аутентификации:

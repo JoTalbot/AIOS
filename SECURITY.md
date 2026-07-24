@@ -1,11 +1,12 @@
 # Security and deployment
 
-**Версия документа:** 9.2.0 | **Дата:** 23 июля 2026
+**Версия документа:** 10.15.0 | **Дата:** 24 июля 2026
 
 ## Supported deployment posture
 
-AIOS defaults to a **fail-closed** HTTP API. All endpoints except `GET /health`
-require a bearer API key. The server returns `503` rather than becoming public
+AIOS defaults to a **fail-closed** HTTP API. All operational endpoints require a bearer API key. `GET /health`, `/docs` and
+`/openapi.json` are public by design; the WebSocket endpoint validates bearer
+credentials during its upgrade because HTTP middleware does not cover WebSockets. The server returns `503` rather than becoming public
 when no keys are configured.
 
 Before starting either HTTP server, configure one or more keys outside source
@@ -23,6 +24,7 @@ export AIOS_API_KEYS='{
   }
 }'
 python run_rest_api.py --host 127.0.0.1 --db /var/lib/aios/aios.sqlite
+# Interactive documentation: http://127.0.0.1:8000/docs
 ```
 
 Use a secret manager, TLS and an authenticating reverse proxy in production.
