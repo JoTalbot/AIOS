@@ -185,7 +185,7 @@ class WebSocketManager:
         msg = {
             "type": event_type,
             "data": data,
-            "timestamp": __import__("datetime").datetime.now().isoformat(),
+            "timestamp": __import__("datetime").datetime.now(UTC).isoformat(),
         }
         return await self.broadcast(msg, topic)
 

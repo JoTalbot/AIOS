@@ -14,7 +14,7 @@ import csv
 import json
 import logging
 import sqlite3
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 __all__ = ["DataExporter", "DataImporter"]
@@ -229,7 +229,7 @@ class DataExporter:
         """
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         counts = {}
 
         counts["tasks"] = self.export_tasks(
@@ -262,7 +262,7 @@ class DataExporter:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(
                 {
-                    "exported_at": datetime.now().isoformat(),
+                    "exported_at": datetime.now(UTC).isoformat(),
                     "count": len(data),
                     "data": data,
                 },

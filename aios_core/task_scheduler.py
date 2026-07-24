@@ -15,7 +15,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -75,7 +75,7 @@ class ScheduledTask:
             return None
         base = self.run_at
         if self.last_run_at:
-            base = datetime.fromtimestamp(self.last_run_at) + self.recurring_interval
+            base = datetime.fromtimestamp(self.last_run_at, tz=UTC) + self.recurring_interval
         return base
 
     def can_retry(self) -> bool:
@@ -116,7 +116,7 @@ class TaskScheduler:
         self, name: str, func: Callable, seconds: int, **kwargs: Any
     ) -> ScheduledTask:
         """Schedule a task N seconds from now."""
-        run_at = datetime.now() + timedelta(seconds=seconds)
+        run_at = datetime.now(UTC) + timedelta(seconds=seconds)
         return self.schedule(name, func, run_at, **kwargs)
 
     def schedule_recurring(
@@ -128,7 +128,7 @@ class TaskScheduler:
         **kwargs: Any,
     ) -> ScheduledTask:
         """Schedule a recurring task with interval."""
-        run_at = start_at or datetime.now() + timedelta(seconds=interval_seconds)
+        run_at = start_at or datetime.now(UTC) + timedelta(seconds=interval_seconds)
         task = ScheduledTask(
             name=name,
             func=func,
@@ -195,7 +195,7 @@ class TaskScheduler:
         Processes tasks in priority order (CRITICAL first).
         Recurring tasks are rescheduled after successful execution.
         """
-        now = datetime.now()
+        now = datetime.now(UTC)
         executed: list[str] = []
 
         # Sort by priority (highest first)

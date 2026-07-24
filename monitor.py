@@ -10,7 +10,7 @@ Checks health, metrics and basic system state.
 
 import argparse
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 
 import httpx
 
@@ -46,12 +46,12 @@ def main():
     parser.add_argument("--once", action="store_true", help="Run once and exit")
     args = parser.parse_args()
 
-    print(f"🔍 AIOS Monitor started — {datetime.now().isoformat()}")
+    print(f"🔍 AIOS Monitor started — {datetime.now(UTC).isoformat()}")
     print(f"   Target: {args.url}")
     print()
 
     while True:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] Checking...")
+        print(f"[{datetime.now(UTC).strftime('%H:%M:%S')}] Checking...")
 
         health = check_health(args.url)
         metrics = check_metrics(args.url)

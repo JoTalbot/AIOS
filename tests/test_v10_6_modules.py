@@ -7,7 +7,7 @@ Secrets Manager.
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -25,21 +25,21 @@ from aios_core.task_scheduler import (
 
 class TestScheduledTask:
     def test_is_recurring_false(self) -> None:
-        t = ScheduledTask(name="one", func=lambda: 1, run_at=datetime.now())
+        t = ScheduledTask(name="one", func=lambda: 1, run_at=datetime.now(UTC))
         assert t.is_recurring() is False
 
     def test_is_recurring_true(self) -> None:
-        t = ScheduledTask(name="rec", func=lambda: 1, run_at=datetime.now(), recurring_interval=timedelta(seconds=60))
+        t = ScheduledTask(name="rec", func=lambda: 1, run_at=datetime.now(UTC), recurring_interval=timedelta(seconds=60))
         assert t.is_recurring() is True
 
     def test_can_retry(self) -> None:
-        t = ScheduledTask(name="r", func=lambda: 1, run_at=datetime.now(), max_retries=3)
+        t = ScheduledTask(name="r", func=lambda: 1, run_at=datetime.now(UTC), max_retries=3)
         assert t.can_retry() is True
         t.retry_count = 3
         assert t.can_retry() is False
 
     def test_next_run_time(self) -> None:
-        t = ScheduledTask(name="r", func=lambda: 1, run_at=datetime.now(), recurring_interval=timedelta(seconds=10))
+        t = ScheduledTask(name="r", func=lambda: 1, run_at=datetime.now(UTC), recurring_interval=timedelta(seconds=10))
         next = t.next_run_time()
         assert next is not None
 
@@ -49,7 +49,7 @@ class TestTaskScheduler:
         self.ts = TaskScheduler()
 
     def test_schedule(self) -> None:
-        t = self.ts.schedule("task1", lambda: 1, datetime.now() + timedelta(seconds=1))
+        t = self.ts.schedule("task1", lambda: 1, datetime.now(UTC) + timedelta(seconds=1))
         assert t.name == "task1"
 
     def test_schedule_in(self) -> None:
@@ -61,48 +61,48 @@ class TestTaskScheduler:
         assert t.is_recurring() is True
 
     def test_schedule_with_priority(self) -> None:
-        t = self.ts.schedule_with_priority("p_task", lambda: 1, datetime.now(), priority=TaskPriority.CRITICAL)
+        t = self.ts.schedule_with_priority("p_task", lambda: 1, datetime.now(UTC), priority=TaskPriority.CRITICAL)
         assert t.priority == TaskPriority.CRITICAL
 
     def test_schedule_with_retry(self) -> None:
-        t = self.ts.schedule_with_retry("r_task", lambda: 1, datetime.now(), max_retries=3)
+        t = self.ts.schedule_with_retry("r_task", lambda: 1, datetime.now(UTC), max_retries=3)
         assert t.max_retries == 3
 
     def test_tick_executes_due(self) -> None:
         results = []
-        self.ts.schedule("now", lambda: results.append("executed"), datetime.now() - timedelta(seconds=1))
+        self.ts.schedule("now", lambda: results.append("executed"), datetime.now(UTC) - timedelta(seconds=1))
         self.ts.tick()
         assert "executed" in results
 
     def test_tick_skips_future(self) -> None:
-        self.ts.schedule("future", lambda: 1, datetime.now() + timedelta(hours=1))
+        self.ts.schedule("future", lambda: 1, datetime.now(UTC) + timedelta(hours=1))
         executed = self.ts.tick()
         assert len(executed) == 0
 
     def test_tick_priority_order(self) -> None:
         order = []
-        self.ts.schedule("low", lambda: order.append("low"), datetime.now() - timedelta(seconds=1), priority=TaskPriority.LOW)
-        self.ts.schedule("crit", lambda: order.append("crit"), datetime.now() - timedelta(seconds=1), priority=TaskPriority.CRITICAL)
+        self.ts.schedule("low", lambda: order.append("low"), datetime.now(UTC) - timedelta(seconds=1), priority=TaskPriority.LOW)
+        self.ts.schedule("crit", lambda: order.append("crit"), datetime.now(UTC) - timedelta(seconds=1), priority=TaskPriority.CRITICAL)
         self.ts.tick()
         # Both should execute, CRITICAL first
         if len(order) >= 2:
             assert order[0] == "crit"
 
     def test_tick_failure(self) -> None:
-        self.ts.schedule("fail", lambda: (_ for _ in ()).throw(ValueError("err")), datetime.now() - timedelta(seconds=1))
+        self.ts.schedule("fail", lambda: (_ for _ in ()).throw(ValueError("err")), datetime.now(UTC) - timedelta(seconds=1))
         self.ts.tick()
         task = self.ts.get_task("fail")
         assert task.status == TaskScheduleStatus.FAILED
 
     def test_tick_recurring_reschedule(self) -> None:
         self.ts.schedule_recurring("rec", lambda: 1, 10)
-        self.ts.tasks["rec"].run_at = datetime.now() - timedelta(seconds=1)
+        self.ts.tasks["rec"].run_at = datetime.now(UTC) - timedelta(seconds=1)
         self.ts.tick()
         task = self.ts.get_task("rec")
         assert task.status == TaskScheduleStatus.SCHEDULED  # rescheduled
 
     def test_cancel(self) -> None:
-        self.ts.schedule("t1", lambda: 1, datetime.now() + timedelta(seconds=10))
+        self.ts.schedule("t1", lambda: 1, datetime.now(UTC) + timedelta(seconds=10))
         self.ts.cancel("t1")
         assert self.ts.get_task("t1").status == TaskScheduleStatus.CANCELLED
 
@@ -111,24 +111,24 @@ class TestTaskScheduler:
             self.ts.cancel("unknown")
 
     def test_cancel_all(self) -> None:
-        self.ts.schedule("t1", lambda: 1, datetime.now())
-        self.ts.schedule("t2", lambda: 1, datetime.now())
+        self.ts.schedule("t1", lambda: 1, datetime.now(UTC))
+        self.ts.schedule("t2", lambda: 1, datetime.now(UTC))
         count = self.ts.cancel_all()
         assert count == 2
 
     def test_get_pending(self) -> None:
-        self.ts.schedule("t1", lambda: 1, datetime.now() + timedelta(seconds=10))
+        self.ts.schedule("t1", lambda: 1, datetime.now(UTC) + timedelta(seconds=10))
         pending = self.ts.get_pending()
         assert len(pending) == 1
 
     def test_get_completed(self) -> None:
-        self.ts.schedule("t1", lambda: 1, datetime.now() - timedelta(seconds=1))
+        self.ts.schedule("t1", lambda: 1, datetime.now(UTC) - timedelta(seconds=1))
         self.ts.tick()
         completed = self.ts.get_completed()
         assert len(completed) >= 1
 
     def test_stats(self) -> None:
-        self.ts.schedule("t1", lambda: 1, datetime.now())
+        self.ts.schedule("t1", lambda: 1, datetime.now(UTC))
         stats = self.ts.stats()
         assert stats["total"] == 1
 
@@ -893,7 +893,7 @@ class TestIntegration:
         ts = TaskScheduler()
         es = EventStore()
         events_log = []
-        ts.schedule("log_event", lambda: events_log.append("done"), datetime.now() - timedelta(seconds=1))
+        ts.schedule("log_event", lambda: events_log.append("done"), datetime.now(UTC) - timedelta(seconds=1))
         es.append("task_executed", {"name": "log_event"})
         ts.tick()
         assert len(events_log) == 1
@@ -927,7 +927,7 @@ class TestIntegration:
         obs = Observability()
         ts = TaskScheduler()
         trace_id = obs.start_trace("scheduler_tick")
-        ts.schedule("task1", lambda: 1, datetime.now() - timedelta(seconds=1))
+        ts.schedule("task1", lambda: 1, datetime.now(UTC) - timedelta(seconds=1))
         ts.tick()
         obs.end_trace(trace_id)
         duration = obs.get_trace_duration(trace_id)

@@ -258,7 +258,7 @@ platforms:
     name: facebook
     package: com.facebook.katana
     enabled: true
-""".format(ts=__import__("datetime").datetime.now().isoformat())
+""".format(ts=__import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat())
 
     Path(path).write_text(yaml_text)
     return yaml_text
