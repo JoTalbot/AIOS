@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 import json
 import os
 
@@ -422,19 +423,19 @@ class TestDashboardIntegration:
         route_paths = [r.path for r in routes]
         assert "/dashboard" in route_paths
 
-    def test_dashboard_index_serves_react(self):
+    @pytest.mark.asyncio
+    async def test_dashboard_index_serves_react(self):
         """Test that AIOSDashboard.index serves the React v3 HTML."""
+        import httpx
 
         from aios_core.dashboard import AIOSDashboard
         from aios_core.orchestrator import Orchestrator
 
-        orch = Orchestrator()
-        dash = AIOSDashboard(orch)
-        from starlette.testclient import TestClient
-
-        app = dash.create_app()
-        client = TestClient(app)
-        response = client.get("/")
+        dash = AIOSDashboard(Orchestrator())
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=dash.create_app()), base_url="http://testserver"
+        ) as client:
+            response = await client.get("/")
         assert response.status_code == 200
         # Should contain React dashboard content or fallback
         assert "AIOS" in response.text

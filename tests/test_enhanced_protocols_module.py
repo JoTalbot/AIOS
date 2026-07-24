@@ -18,13 +18,15 @@ class TestProtocolManager:
         adapter = GrpcAdapter(config=config)
         pm.add_adapter(ProtocolType.GRPC, adapter)
 
-    def test_start_all(self):
+    @pytest.mark.asyncio
+    async def test_start_all(self):
         pm = ProtocolManager()
-        pm.start_all()
+        assert await pm.start_all()
 
-    def test_stop_all(self):
+    @pytest.mark.asyncio
+    async def test_stop_all(self):
         pm = ProtocolManager()
-        pm.stop_all()
+        assert await pm.stop_all()
 
 
 class TestGrpcAdapter:
