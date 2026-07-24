@@ -27,10 +27,10 @@ def _dashboard_html(api) -> str:
 
 def register_routes(api) -> list:
     """Return the full list of Starlette Route objects for *api*."""
-    from aios_core.api.swagger import openapi_json, swagger_html
+    from aios_core.api.swagger import openapi_spec_for_routes, swagger_html
     # NOTE: _swagger_html and _openapi_json are standalone functions, not api methods
 
-    return [
+    routes = [
         Route("/health", api._health),
         Route("/metrics", api._metrics),
         # Stats & Web UI endpoints
@@ -375,7 +375,8 @@ def register_routes(api) -> list:
         WebSocketRoute("/ws", api._websocket_endpoint),
         # Swagger UI (no auth required — documentation is public)
         Route("/docs", lambda r: HTMLResponse(swagger_html())),
-        Route("/openapi.json", lambda r: JSONResponse(json.loads(openapi_json()))),
+        Route("/openapi.json", lambda r: JSONResponse(openapi_spec_for_routes(routes))),
         # Safety Dashboard (React v3)
         Route("/dashboard", lambda r: HTMLResponse(_dashboard_html(api))),
     ]
+    return routes
