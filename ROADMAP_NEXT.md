@@ -1,5 +1,41 @@
 # AIOS Roadmap — Next Milestones
 
+## v10.8.0 ✅ (2026-07-24)
+- ✅ Bayesian Inference (hypotheses, Bayes' theorem, confidence intervals, comparison, marginal likelihood)
+- ✅ Causal Inference (DAG, do-calculus, counterfactual, confounders, mediation, validation)
+- ✅ Continual Learning (EWC, rehearsal buffer, forgetting measurement, transfer estimation)
+- ✅ Creativity Engine (divergent/convergent, domains, constraints, surprise, combination, ranking)
+- ✅ Diffusion Models (linear/cosine schedules, DDPM/DDIM sampling, loss computation)
+- ✅ Emotional Intelligence (keyword recognition, VAD model, regulation strategies, empathy, contagion)
+- ✅ Encryption (Fernet/AES, key rotation, HMAC, PBKDF2, fallback XOR)
+- ✅ GNN (message passing, node classification, graph pooling, edge features)
+- ✅ Knowledge Distillation (soft targets, temperature, KD/hard loss, progressive distillation)
+- ✅ Meta-Learning (MAML inner loop, strategy recommendation, transfer estimation)
+- ✅ Metacognition (self-monitoring, calibration, knowledge gaps, strategy selection, reflection)
+- ✅ Mamba/SSM (selective state space, discretization, parallel scan, recurrence)
+- ✅ Multi-Agent RL (cooperative/competitive, shared reward, communication, episodes)
+- ✅ Multi-Modal (fusion: concat/attention/gated, alignment, augmentation)
+- ✅ Neural ODE (Euler/RK4/Dopri5, adjoint method, CNF, interpolation)
+- ✅ Personalization (profile management, preference learning, recommendation, feedback)
+- ✅ PINN (PDE residual, Dirichlet/Neumann/Robin BCs, adaptive collocation, multi-physics)
+- ✅ Reinforcement Learning (Q-learning, SARSA, double Q, experience replay, n-step, reward shaping)
+- ✅ Retry (RetryPolicy, exponential backoff with jitter, stats tracking, exception filtering)
+- ✅ Self-Supervised (contrastive loss, augmentation pipeline, projection head, representation quality)
+- ✅ State Space (HiPPO init, ZOH/bilinear, recurrence + convolution modes)
+- ✅ Theory of Mind (BDI model, belief revision, desire hierarchy, intention tracking)
+- ✅ Transfer Learning (domain similarity, full/selective transfer, negative transfer detection)
+- ✅ Voice Interface (command parsing, intent detection, conversation history, wake word)
+- ✅ Search Engine (TF-IDF, BM25, faceted search, relevance feedback, snippet generation)
+- ✅ Active Learning (uncertainty/diversity/density-weighted sampling, committee, budget)
+- ✅ Cache (TTL + LRU eviction, namespaces, hit/miss stats, warming, callbacks)
+- ✅ Config Manager (YAML/JSON, env override, layered config, deep merge, validation)
+- ✅ Federated Analytics (secure aggregation, DP noise, privacy budgets, histogram)
+- ✅ Offline RL (CQL, BCQ, behavior policy, importance sampling, OPE)
+- ✅ 3 cognition framework backward-compatibility fixes
+- ✅ RELEASE_NOTES_10.8.0.md
+
+**2302 tests, 0 failures**
+
 ## v10.7.0 ✅ (2026-07-24)
 - ✅ Advanced Security (threat detection, XSS/injection sanitization, HMAC, API key management, security policy)
 - ✅ Agent Swarm (voting/consensus, leader election, capability-based task assignment, swarm messaging)
@@ -266,3 +302,4 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 10.5.0 | 2026-07-24 | 2032 | Zero trust + Self-healing + CB + Gateway + Shutdown + Mesh + Queue + Chaos + Scaler + Health |
 | 10.6.0 | 2026-07-24 | 2176 | Task scheduler + Event store + Observability + Experiment + Data lake + API versioning + Twin + Compliance + Secrets |
 | 10.7.0 | 2026-07-24 | 2302 | Advanced security + Swarm + Adversarial + Distributed + Edge + Explainable + Federated + GraphQL + Social + Privacy |
+| 10.8.0 | 2026-07-24 | 2302 | Bayesian + Causal + Continual + Creativity + Diffusion + EI + Encryption + GNN + KD + MetaL + MetaCog + Mamba + MARL + MultiModal + NeuralODE + Personal + PINN + RL + Retry + SSL + SSM + ToM + Transfer + Voice + Search + ActiveL + Cache + Config + FedAnalytics + OfflineRL |
