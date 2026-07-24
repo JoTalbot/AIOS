@@ -2,9 +2,13 @@
 
 Simple web interface for monitoring and controlling AIOS.
 Built on Starlette (same as the main API).
+Now integrates React Dashboard v3 from dashboard/index.html.
 """
 
 from __future__ import annotations
+
+import os
+from pathlib import Path
 
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -12,6 +16,8 @@ from starlette.responses import HTMLResponse, JSONResponse
 from starlette.routing import Route
 
 from .orchestrator import Orchestrator
+
+_DASHBOARD_HTML_PATH = Path(__file__).parent.parent.parent / "dashboard" / "index.html"
 
 
 class AIOSDashboard:
@@ -22,7 +28,14 @@ class AIOSDashboard:
         self.orch = orchestrator
 
     async def index(self, request: Request) -> None:
-        """Main dashboard page."""
+        """Main dashboard page — serves React v3 dashboard if available."""
+        if _DASHBOARD_HTML_PATH.exists():
+            html = _DASHBOARD_HTML_PATH.read_text(encoding="utf-8")
+            # Inject real version into the dashboard HTML
+            version = self.orch.version
+            html = html.replace("AIOS Safety Dashboard v3", f"AIOS Safety Dashboard v3 ({version})")
+            return HTMLResponse(html)
+        # Fallback: old inline dashboard
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -138,8 +151,6 @@ class AIOSDashboard:
 
     async def api_olx(self, request: Request) -> None:
         """OLX Parser Agent counters (AIOS_OLX_DB env; unavailable otherwise)."""
-        import os
-
         db_path = os.environ.get("AIOS_OLX_DB")
         if not db_path or not os.path.exists(db_path):
             return JSONResponse({"available": False})

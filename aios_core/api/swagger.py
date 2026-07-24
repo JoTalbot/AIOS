@@ -2,9 +2,13 @@
 
 Uses Swagger UI from CDN (unpkg.com) — no additional dependencies.
 The OpenAPI spec is loaded from ``docs/api_openapi.json`` at startup.
+If the static spec file is missing, auto-generates one using OpenAPIGenerator.
 """
 
+import json
 from pathlib import Path
+
+from docs.openapi_spec import OpenAPIGenerator
 
 _SWAGGER_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -50,8 +54,20 @@ def swagger_html() -> str:
 
 
 def openapi_json() -> str:
-    """Return the raw OpenAPI 3.0 specification."""
+    """Return the raw OpenAPI 3.0 specification.
+
+    First tries to load from ``docs/api_openapi.json`` (static file).
+    If missing, auto-generates via OpenAPIGenerator with AIOS endpoints.
+    """
     spec_path = Path(__file__).parent.parent.parent / "docs" / "api_openapi.json"
     if spec_path.exists():
         return spec_path.read_text(encoding="utf-8")
-    return '{"error": "OpenAPI spec not found. Run docs/api_openapi.json generation."}'
+    # Auto-generate spec using OpenAPIGenerator
+    gen = OpenAPIGenerator()
+    gen.register_aios_endpoints()
+    return gen.generate_json()
+
+
+def openapi_spec_dict() -> dict:
+    """Return the OpenAPI spec as a parsed dict."""
+    return json.loads(openapi_json())

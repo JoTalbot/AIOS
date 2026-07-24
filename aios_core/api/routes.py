@@ -8,8 +8,23 @@ Extracted to keep ``app.py`` under 500 lines.
 
 import json
 
-from starlette.responses import HTMLResponse, JSONResponse
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from starlette.routing import Route, WebSocketRoute
+
+from aios_core.dashboard import AIOSDashboard
+
+
+def _dashboard_html(api) -> str:
+    """Serve the React Safety Dashboard v3 HTML."""
+    from pathlib import Path
+
+    dash_path = Path(__file__).parent.parent.parent.parent / "dashboard" / "index.html"
+    if dash_path.exists():
+        html = dash_path.read_text(encoding="utf-8")
+        html = html.replace("AIOS Safety Dashboard v3", f"AIOS Safety Dashboard v3 ({api.orchestrator.version})")
+        return html
+    # Fallback simple dashboard
+    return f"<html><body><h1>AIOS Dashboard v{api.orchestrator.version}</h1><p>Dashboard file not found.</p></body></html>"
 
 
 def register_routes(api) -> list:
@@ -363,4 +378,6 @@ def register_routes(api) -> list:
         # Swagger UI (no auth required — documentation is public)
         Route("/docs", lambda r: HTMLResponse(swagger_html())),
         Route("/openapi.json", lambda r: JSONResponse(json.loads(openapi_json()))),
+        # Safety Dashboard (React v3)
+        Route("/dashboard", lambda r: HTMLResponse(_dashboard_html(api))),
     ]
