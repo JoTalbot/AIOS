@@ -32,7 +32,7 @@ class QuantumNLP:
             return self.embeddings[word]
         chars = word[: self._dim]
         embedding: list[complex] = []
-        for i, c in enumerate(chars):
+        for _i, c in enumerate(chars):
             angle = (ord(c) % 10) * math.pi / 10
             embedding.append(complex(math.cos(angle), math.sin(angle)))
         # Pad to dimension
@@ -51,7 +51,7 @@ class QuantumNLP:
             # Quantum inner product: |⟨q|k⟩|²
             overlap = sum(
                 q.real * k.real + q.imag * k.imag
-                for q, k in zip(query[: len(key)], key[: len(query)])
+                for q, k in zip(query[: len(key)], key[: len(query)], strict=False)
             )
             scores.append(round(abs(overlap), 2))
         # Normalize (softmax-like)
@@ -80,7 +80,7 @@ class QuantumNLP:
         emb1 = self.quantum_embedding(word1)
         emb2 = self.quantum_embedding(word2)
         overlap = sum(
-            e1.real * e2.real + e1.imag * e2.imag for e1, e2 in zip(emb1, emb2)
+            e1.real * e2.real + e1.imag * e2.imag for e1, e2 in zip(emb1, emb2, strict=False)
         )
         return round(abs(overlap), 2)
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+
 from aios_core.modules.olx.detail import AdDetailParser
 
 
@@ -28,10 +30,8 @@ class FacebookDetailParser(AdDetailParser):
         for text in texts:
             m = re.search(r"(\d[\d\s]+)\s*(грн|uah|\$|₴)", text.lower())
             if m:
-                try:
+                with contextlib.suppress(ValueError):
                     result["price"] = float(m.group(1).replace(" ", ""))
-                except ValueError:
-                    pass
 
         # Extract seller name
         seller_pattern = r'<node[^>]*resource-id="[^"]*seller[^"]*"[^>]*text="([^"]*)"'

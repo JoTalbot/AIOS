@@ -156,7 +156,7 @@ class SafetyDashboard:
         b_vals = hist_b[-min_len:]
         mean_a = sum(a_vals) / min_len
         mean_b = sum(b_vals) / min_len
-        cov = sum((a - mean_a) * (b - mean_b) for a, b in zip(a_vals, b_vals)) / min_len
+        cov = sum((a - mean_a) * (b - mean_b) for a, b in zip(a_vals, b_vals, strict=False)) / min_len
         std_a = math.sqrt(sum((a - mean_a) ** 2 for a in a_vals) / min_len)
         std_b = math.sqrt(sum((b - mean_b) ** 2 for b in b_vals) / min_len)
         correlation = (

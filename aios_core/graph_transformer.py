@@ -111,7 +111,7 @@ class GraphTransformer:
             for n_emb in neighbor_embs:
                 k = n_emb[start:end] if len(n_emb) >= end else n_emb
                 # Dot-product attention score
-                score = sum(qi * ki for qi, ki in zip(q, k))
+                score = sum(qi * ki for qi, ki in zip(q, k, strict=False))
                 score /= math.sqrt(head_dim) if head_dim > 0 else 1.0
 
                 # Add edge feature influence
@@ -130,7 +130,7 @@ class GraphTransformer:
             # Weighted sum of neighbor values
             for d in range(head_dim):
                 val = 0.0
-                for w, n_emb in zip(weights, neighbor_embs):
+                for w, n_emb in zip(weights, neighbor_embs, strict=False):
                     if d < len(n_emb):
                         val += w * n_emb[d]
                 if start + d < self.dim:
@@ -173,7 +173,7 @@ class GraphTransformer:
                     else GraphTransformerLayer()
                 )
                 if layer_cfg.residual:
-                    attended = [(a + n) / 2 for a, n in zip(attended, node_emb)]
+                    attended = [(a + n) / 2 for a, n in zip(attended, node_emb, strict=False)]
 
                 # Dropout (simplified)
                 if layer_cfg.dropout > 0:

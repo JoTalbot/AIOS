@@ -129,7 +129,7 @@ class AIScreenClassifier:
         v1 = vec1[:n]
         v2 = vec2[:n]
 
-        dot_product = sum(a * b for a, b in zip(v1, v2))
+        dot_product = sum(a * b for a, b in zip(v1, v2, strict=False))
         norm1 = sum(a * a for a in v1) ** 0.5
         norm2 = sum(b * b for b in v2) ** 0.5
 

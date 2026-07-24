@@ -48,9 +48,9 @@ class QuantumNeuralNetwork:
     ) -> dict[str, Any]:
         """Train QNN (backward-compatible)."""
         losses: list[float] = []
-        for epoch in range(epochs):
+        for _epoch in range(epochs):
             epoch_loss = 0.0
-            for xi, yi in zip(X, y):
+            for xi, yi in zip(X, y, strict=False):
                 pred = self.forward(xi)
                 loss = (pred - yi) ** 2
                 epoch_loss += loss

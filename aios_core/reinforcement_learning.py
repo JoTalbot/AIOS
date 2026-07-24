@@ -83,7 +83,7 @@ class QLearningAgent:
     def set_q(self, state: str, action: str, value: float) -> None:
         """Set Q-value for (state, action)."""
         if state not in self.q_table:
-            self.q_table[state] = {a: 0.0 for a in self.actions}
+            self.q_table[state] = dict.fromkeys(self.actions, 0.0)
         self.q_table[state][action] = value
 
     def max_q(self, state: str) -> float:
@@ -116,7 +116,7 @@ class QLearningAgent:
     def learn(self, state: str, action: str, reward: float, next_state: str) -> None:
         """Q-Learning update: Q(s,a) += lr * (r + discount * max Q(s') - Q(s,a))."""
         if state not in self.q_table:
-            self.q_table[state] = {a: 0.0 for a in self.actions}
+            self.q_table[state] = dict.fromkeys(self.actions, 0.0)
 
         current_q = self.get_q(state, action)
         max_next_q = max(self.q_table.get(next_state, {}).values(), default=0)
@@ -131,7 +131,7 @@ class QLearningAgent:
     ) -> None:
         """SARSA update: Q(s,a) += lr * (r + discount * Q(s',a') - Q(s,a))."""
         if state not in self.q_table:
-            self.q_table[state] = {a: 0.0 for a in self.actions}
+            self.q_table[state] = dict.fromkeys(self.actions, 0.0)
 
         current_q = self.get_q(state, action)
         next_q = self.get_q(next_state, next_action)
@@ -146,7 +146,7 @@ class QLearningAgent:
         if random.random() < 0.5:
             # Update Q_A using Q_B for next-state evaluation
             if state not in self.q_table:
-                self.q_table[state] = {a: 0.0 for a in self.actions}
+                self.q_table[state] = dict.fromkeys(self.actions, 0.0)
             current_q = self.get_q(state, action)
             best_next = self.best_action(next_state)  # from Q_A
             next_q_val = self.get_q_b(next_state, best_next)  # evaluate using Q_B
@@ -157,7 +157,7 @@ class QLearningAgent:
         else:
             # Update Q_B using Q_A for next-state evaluation
             if state not in self.q_table_b:
-                self.q_table_b[state] = {a: 0.0 for a in self.actions}
+                self.q_table_b[state] = dict.fromkeys(self.actions, 0.0)
             current_q = self.get_q_b(state, action)
             best_next_b = max(
                 self.q_table_b.get(next_state, {}).keys(),
@@ -196,10 +196,7 @@ class QLearningAgent:
 
         batch = random.sample(self.experience_buffer, batch_size)
         for exp in batch:
-            if exp.done:
-                target = exp.reward
-            else:
-                target = exp.reward + self.discount * self.max_q(exp.next_state)
+            target = exp.reward if exp.done else exp.reward + self.discount * self.max_q(exp.next_state)
             current_q = self.get_q(exp.state, exp.action)
             new_q = current_q + self.lr * (target - current_q)
             self.set_q(exp.state, exp.action, new_q)

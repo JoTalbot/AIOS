@@ -107,7 +107,7 @@ class NeRF:
         for i in range(num_samples):
             # Stratified sampling: add random jitter within each bin
             t = t_near + (i + random.random()) * step_size
-            position = [o + d * t for o, d in zip(origin, direction)]
+            position = [o + d * t for o, d in zip(origin, direction, strict=False)]
             density, color = self.query(position, direction)
 
             sample = RaySample(

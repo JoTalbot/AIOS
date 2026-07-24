@@ -18,13 +18,13 @@ import random
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class AttackType(str, Enum):
+class AttackType(StrEnum):
     """Types of adversarial attacks."""
 
     FGSM = "fgsm"  # Fast Gradient Sign Method
@@ -99,7 +99,7 @@ class AdversarialDefense:
                 AttackType.STATISTICAL_OUTLIER,
                 input_data,
                 detected=True,
-                severity=min(variance / max(abs(x) for x in input_data + [1.0]), 1.0),
+                severity=min(variance / max(abs(x) for x in [*input_data, 1.0]), 1.0),
             )
         return detected
 
@@ -130,7 +130,7 @@ class AdversarialDefense:
         if attack_type == AttackType.FGSM:
             # Simplified FGSM: add sign of gradient (approximated as random direction)
             signs = [random.choice([-1, 1]) for _ in data]
-            return [x + epsilon * s for x, s in zip(data, signs)]
+            return [x + epsilon * s for x, s in zip(data, signs, strict=False)]
         return data
 
     def generate_adversarial_batch(
@@ -211,7 +211,7 @@ class AdversarialDefense:
             or len(clean_outputs) != len(adversarial_outputs)
         ):
             return 0.0
-        diffs = [abs(c - a) for c, a in zip(clean_outputs, adversarial_outputs)]
+        diffs = [abs(c - a) for c, a in zip(clean_outputs, adversarial_outputs, strict=False)]
         avg_diff = sum(diffs) / len(diffs)
         # Lower avg_diff = higher robustness
         return max(0.0, 1.0 - avg_diff)

@@ -101,7 +101,7 @@ class MambaBlock:
         dA = [math.exp(a * dt) for a in A_log]  # discretized A
         dB = [
             (math.exp(a * dt) - 1) / a * b if abs(a) > 1e-6 else dt * b
-            for a, b in zip(A, B)
+            for a, b in zip(A, B, strict=False)
         ]  # discretized B
         return dA, dB
 
@@ -122,10 +122,10 @@ class MambaBlock:
             dA, dB = self._discretize(dt, self.A_log, B)
 
             # State update: s = dA * s + dB * x
-            self.state = [da * s + db * val for da, s, db in zip(dA, self.state, dB)]
+            self.state = [da * s + db * val for da, s, db in zip(dA, self.state, dB, strict=False)]
 
             # Output: y = C * s + D * x
-            y = sum(c * s for c, s in zip(C, self.state)) + (
+            y = sum(c * s for c, s in zip(C, self.state, strict=False)) + (
                 self.D[min(t, len(self.D) - 1)] * val if t < len(self.D) else 0
             )
             output.append(y)
@@ -138,8 +138,8 @@ class MambaBlock:
         dt, B, C = self._selective_params(x_val, 0)
         dA, dB = self._discretize(dt, self.A_log, B)
 
-        self.state = [da * s + db * x_val for da, s, db in zip(dA, self.state, dB)]
-        y = sum(c * s for c, s in zip(C, self.state))
+        self.state = [da * s + db * x_val for da, s, db in zip(dA, self.state, dB, strict=False)]
+        y = sum(c * s for c, s in zip(C, self.state, strict=False))
         self._step_count += 1
         return y
 

@@ -293,10 +293,7 @@ def _run_fleet(args) -> bool:
     elif cmd == "complete":
         task_id = getattr(args, "task_id", "")
         result = scheduler.complete_task(task_id)
-        if result:
-            out = {"task_id": task_id, "status": result.status.value}
-        else:
-            out = {"error": "Task not found"}
+        out = {"task_id": task_id, "status": result.status.value} if result else {"error": "Task not found"}
         print(json.dumps(out, ensure_ascii=False))
 
     elif cmd == "health":

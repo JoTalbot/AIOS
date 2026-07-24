@@ -101,7 +101,7 @@ class BB84Protocol:
         sample = random.sample(sifted_key, sample_size)
         # Compare Alice's corresponding bits
         errors = 0
-        for bit in sample:
+        for _bit in sample:
             if random.random() < 0.25:  # Simulated error from eavesdropper
                 errors += 1
         return errors / sample_size
@@ -125,7 +125,7 @@ class QuantumKeyDistribution:
         self, alice: list[int], bob: list[int], sample: int = 10
     ) -> bool:
         """Check for eavesdropper (backward-compatible)."""
-        errors = sum(a != b for a, b in zip(alice[:sample], bob[:sample]))
+        errors = sum(a != b for a, b in zip(alice[:sample], bob[:sample], strict=False))
         return errors > sample * 0.1
 
     def secure_exchange(self, length: int = 256) -> dict[str, Any]:

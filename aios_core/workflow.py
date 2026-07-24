@@ -23,7 +23,7 @@ import time
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # ── Enums ────────────────────────────────────────────────────────────────────
 
 
-class StepStatus(str, Enum):
+class StepStatus(StrEnum):
     """Step execution status."""
 
     PENDING = "pending"
@@ -43,7 +43,7 @@ class StepStatus(str, Enum):
     RETRYING = "retrying"
 
 
-class WorkflowStatus(str, Enum):
+class WorkflowStatus(StrEnum):
     """Workflow-level status."""
 
     PENDING = "pending"
@@ -53,7 +53,7 @@ class WorkflowStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class BackoffStrategy(str, Enum):
+class BackoffStrategy(StrEnum):
     """Retry backoff types."""
 
     CONSTANT = "constant"

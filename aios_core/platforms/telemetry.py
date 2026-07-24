@@ -104,7 +104,7 @@ def _production_metrics() -> dict[str, object]:
                 data["cycle_duration"][profile_key] = metrics.get("session_s", 0)
             # drift from health
             health = content.get("health", {})
-            for pred in health.get("predictions", []):
+            for _pred in health.get("predictions", []):
                 # drift not directly, but use reasons with failure
                 pass
             # daily reports for drift

@@ -16,13 +16,13 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class NodeStatus(str, Enum):
+class NodeStatus(StrEnum):
     """Node participation status."""
 
     ACTIVE = "active"

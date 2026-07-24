@@ -71,7 +71,7 @@ class LiquidNeuralNetwork:
     def forward(self, inputs: list[float], steps: int = 10) -> list[float]:
         """Multi-step forward pass (backward-compatible)."""
         outputs = []
-        for step in range(steps):
+        for _step in range(steps):
             for i, neuron in enumerate(self.neurons):
                 inp = inputs[i % len(inputs)] if inputs else 0
                 # Add connection inputs

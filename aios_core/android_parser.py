@@ -98,10 +98,10 @@ class UIAutomatorParser:
         for node in self.root.iter("node"):
             node_text = node.attrib.get("text", "")
             if (
-                partial
-                and text.lower() in node_text.lower()
-                or not partial
-                and text.lower() == node_text.lower()
+                (partial
+                and text.lower() in node_text.lower())
+                or (not partial
+                and text.lower() == node_text.lower())
             ):
                 result.append(self._to_element(node))
         return result

@@ -15,6 +15,7 @@ Features:
 
 from __future__ import annotations
 
+import contextlib
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -93,10 +94,8 @@ class AndroidSession:
         """Mark session as closed and release driver."""
         self.status = "closed"
         if self.driver:
-            try:
+            with contextlib.suppress(Exception):
                 self.driver.close_app()
-            except Exception:
-                pass
         self.driver = None
 
 
@@ -170,10 +169,8 @@ class AndroidAppRegistry:
         driver = self._driver_pool.pop(pool_key, None)
         if driver is None:
             return False
-        try:
+        with contextlib.suppress(Exception):
             driver.close_app()
-        except Exception:
-            pass
         return True
 
     # ------------------------------------------------------------------

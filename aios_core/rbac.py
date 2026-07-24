@@ -21,7 +21,7 @@ import ipaddress
 import logging
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # ── Enums ────────────────────────────────────────────────────────────────────
 
 
-class ConstraintKind(str, Enum):
+class ConstraintKind(StrEnum):
     """Role constraint types."""
 
     MUTUALLY_EXCLUSIVE = "mutually_exclusive"
@@ -564,10 +564,7 @@ class RBACEngine:
         self, user_id: str | None = None, limit: int = 100
     ) -> list[dict[str, Any]]:
         """Return audit events, optionally filtered by user_id."""
-        if user_id:
-            events = [e for e in self.audit_log if e.get("user") == user_id]
-        else:
-            events = self.audit_log
+        events = [e for e in self.audit_log if e.get("user") == user_id] if user_id else self.audit_log
         return events[-limit:]
 
     # ── Stats ──────────────────────────────────────────────────────
@@ -639,10 +636,7 @@ class RBAC:
 
     def check_access(self, roles: list[str], permission: str) -> bool:
         """Check if any of the roles has the permission."""
-        for role in roles:
-            if self.has_permission(role, permission):
-                return True
-        return False
+        return any(self.has_permission(role, permission) for role in roles)
 
     def stats(self) -> dict:
         """Return statistics dict."""

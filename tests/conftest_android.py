@@ -14,7 +14,7 @@ os.environ.setdefault("AIOS_DEVICE_ID", "emulator-5554")
 
 def _adb(command: str, device_id: str) -> int:
     return subprocess.run(
-        ["adb", "-s", device_id] + command.split(),
+        ["adb", "-s", device_id, *command.split()],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     ).returncode

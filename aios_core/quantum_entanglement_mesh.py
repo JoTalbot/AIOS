@@ -131,7 +131,7 @@ class QuantumEntanglementMesh:
             }
         # Swap through intermediate nodes
         fidelity = 0.9999
-        for i in range(len(path) - 1):
+        for _i in range(len(path) - 1):
             fidelity *= round(random.uniform(0.95, 0.999), 3)
         result = {
             "state_id": hashlib.sha256(str(payload).encode()).hexdigest()[:8],
@@ -172,10 +172,10 @@ class QuantumEntanglementMesh:
                     neighbors.append(ch.node_a_did)
             for neighbor in neighbors:
                 if neighbor == end:
-                    return path + [neighbor]
+                    return [*path, neighbor]
                 if neighbor not in visited and neighbor in self._node_registry:
                     visited.add(neighbor)
-                    queue.append((neighbor, path + [neighbor]))
+                    queue.append((neighbor, [*path, neighbor]))
         return None
 
     def mesh_health_report(self) -> dict[str, Any]:

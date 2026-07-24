@@ -270,10 +270,10 @@ class CosmicSwarmMatrix:
             connections = self.cosmic_nodes[current].get("connections", [])
             for neighbor in connections:
                 if neighbor == target:
-                    return path + [neighbor]
+                    return [*path, neighbor]
                 if neighbor not in visited and neighbor in self.cosmic_nodes:
                     visited.add(neighbor)
-                    queue.append((neighbor, path + [neighbor]))
+                    queue.append((neighbor, [*path, neighbor]))
         return None
 
     # ------------------------------------------------------------------

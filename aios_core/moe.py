@@ -74,7 +74,7 @@ class Router:
                 weights,
                 input_scores[: self.num_experts]
                 if len(input_scores) >= self.num_experts
-                else input_scores + [0.0] * (self.num_experts - len(input_scores)),
+                else input_scores + [0.0] * (self.num_experts - len(input_scores)), strict=False,
             )
         ]
         probs = self._softmax(scores)
@@ -92,7 +92,7 @@ class Router:
         total_usage = sum(expert_usage)
         frac_usage = [u / max(total_usage, 1) for u in expert_usage]
         sum(gate_weights) / n if n > 0 else 0
-        loss = n * sum(fu * gw for fu, gw in zip(frac_usage, gate_weights[:n]))
+        loss = n * sum(fu * gw for fu, gw in zip(frac_usage, gate_weights[:n], strict=False))
         return round(loss, 4)
 
     def stats(self) -> dict[str, Any]:
@@ -154,7 +154,7 @@ class MixtureOfExperts:
         if not results:
             return x
         if all(isinstance(r, (int, float)) for r in results):
-            return sum(r * w for r, w in zip(results, weights)) / sum(weights)
+            return sum(r * w for r, w in zip(results, weights, strict=False)) / sum(weights)
         return results[0]
 
     def compute_auxiliary_loss(self) -> float:

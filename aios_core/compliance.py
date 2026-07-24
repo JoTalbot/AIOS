@@ -16,7 +16,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # ── Enums ────────────────────────────────────────────────────────────────────
 
 
-class ViolationSeverity(str, Enum):
+class ViolationSeverity(StrEnum):
     """Violation severity levels."""
 
     LOW = "low"

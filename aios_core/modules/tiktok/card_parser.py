@@ -43,7 +43,7 @@ class TikTokCardParser(CardParser):
             )
             matches = re.findall(pattern, xml, re.IGNORECASE)
 
-            for marker, text in matches:
+            for _marker, text in matches:
                 if text and text.strip():
                     # Extract price if present
                     price = self._extract_price(text)

@@ -199,7 +199,7 @@ class MultiModalProcessor:
             padded = [e + [0.0] * (max_dim - len(e)) for e in embeddings]
 
             fused = [
-                sum(w * e[d] for w, e in zip(weights, padded)) for d in range(max_dim)
+                sum(w * e[d] for w, e in zip(weights, padded, strict=False)) for d in range(max_dim)
             ]
             return fused
 
@@ -238,7 +238,7 @@ class MultiModalProcessor:
         min_dim = min(len(emb1), len(emb2))
         e1 = emb1[:min_dim]
         e2 = emb2[:min_dim]
-        dot = sum(a * b for a, b in zip(e1, e2))
+        dot = sum(a * b for a, b in zip(e1, e2, strict=False))
         n1 = math.sqrt(sum(a * a for a in e1))
         n2 = math.sqrt(sum(b * b for b in e2))
         return dot / (n1 * n2) if n1 > 0 and n2 > 0 else 0.0

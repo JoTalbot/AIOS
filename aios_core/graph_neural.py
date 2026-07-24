@@ -180,7 +180,7 @@ class GraphNeuralNetwork:
 
                 # Aggregate and combine
                 aggregated = self._aggregate(neighbor_messages, layer.aggregation)
-                combined = [(a + b) / 2 for a, b in zip(current_emb, aggregated)]
+                combined = [(a + b) / 2 for a, b in zip(current_emb, aggregated, strict=False)]
 
                 # Activate
                 activated = self._activate(combined, layer.activation)
@@ -237,7 +237,7 @@ class GraphNeuralNetwork:
 
     def _cosine_similarity(self, a: list[float], b: list[float]) -> float:
         """Cosine similarity between two vectors."""
-        dot = sum(x * y for x, y in zip(a, b))
+        dot = sum(x * y for x, y in zip(a, b, strict=False))
         na = math.sqrt(sum(x * x for x in a))
         nb = math.sqrt(sum(x * x for x in b))
         return dot / (na * nb) if na > 0 and nb > 0 else 0.0

@@ -136,12 +136,12 @@ class ModelBasedRL:
         current_state = state or {"x": 0.0}
         plans = []
 
-        for sample in range(num_samples):
+        for _sample in range(num_samples):
             trajectory = []
             s = dict(current_state)
             total_reward = 0.0
 
-            for step in range(horizon):
+            for _step in range(horizon):
                 action = f"action_{random.randint(0, 3)}"
                 next_state = self.dynamics.predict(s, action)
                 reward = self.dynamics.predict_reward(s, action) + random.gauss(0, 0.1)

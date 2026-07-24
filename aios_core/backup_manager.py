@@ -139,9 +139,8 @@ class BackupManager:
             source.close()
 
             # Compress
-            with open(temp_path, "rb") as f_in:
-                with gzip.open(backup_path, "wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with open(temp_path, "rb") as f_in, gzip.open(backup_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
 
             temp_path.unlink()
         else:
@@ -201,12 +200,11 @@ class BackupManager:
             if metadata.compressed:
                 import tempfile
 
-                with gzip.open(backup_path, "rb") as f_in:
-                    with tempfile.NamedTemporaryFile(
-                        suffix=".sqlite", delete=False
-                    ) as f_out:
-                        shutil.copyfileobj(f_in, f_out)
-                        temp_path = f_out.name
+                with gzip.open(backup_path, "rb") as f_in, tempfile.NamedTemporaryFile(
+                    suffix=".sqlite", delete=False
+                ) as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+                    temp_path = f_out.name
 
                 conn = sqlite3.connect(temp_path)
                 conn.execute("SELECT COUNT(*) FROM sqlite_master")
@@ -244,9 +242,8 @@ class BackupManager:
 
         try:
             if metadata.compressed:
-                with gzip.open(backup_path, "rb") as f_in:
-                    with open(target, "wb") as f_out:
-                        shutil.copyfileobj(f_in, f_out)
+                with gzip.open(backup_path, "rb") as f_in, open(target, "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
             else:
                 shutil.copy2(backup_path, target)
 

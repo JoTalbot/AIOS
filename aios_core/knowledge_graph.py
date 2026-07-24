@@ -343,7 +343,7 @@ class KnowledgeGraph:
             # Multi-hop: BFS
             visited = {node_id}
             frontier = [node_id]
-            for d in range(depth):
+            for _d in range(depth):
                 next_frontier = []
                 for nid in frontier:
                     new_neighbors = self.find_neighbors(nid, relation, "both", 100)
@@ -547,8 +547,8 @@ class KnowledgeGraph:
                     continue
 
                 visited.add(neighbor)
-                new_path = path + [neighbor]
-                new_relations = relations + [triple.predicate]
+                new_path = [*path, neighbor]
+                new_relations = [*relations, triple.predicate]
                 new_total = total_weight + triple.weight
                 new_conf = confidence * triple.weight
 
@@ -587,7 +587,7 @@ class KnowledgeGraph:
 
         inferred_count = 0
 
-        for pred1, pred2, inferred_pred, direction in rules:
+        for pred1, pred2, inferred_pred, _direction in rules:
             for t1 in self._triples:
                 if t1.predicate != pred1:
                     continue

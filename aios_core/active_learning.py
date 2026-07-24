@@ -215,7 +215,7 @@ class ActiveLearner:
 
         # Simulated: different models give different predictions
         votes: dict[str, int] = {}
-        for i, model in enumerate(self._committee):
+        for _i, _model in enumerate(self._committee):
             # Each model predicts a random class (simplified)
             pred = f"class_{random.randint(0, 3)}"
             votes[pred] = votes.get(pred, 0) + 1

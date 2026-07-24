@@ -72,7 +72,7 @@ class WeakToStrongGeneralization:
     ) -> dict[str, Any]:
         """Measure generalization gap between weak and strong."""
         agreement = sum(
-            1 for w, s in zip(weak_labels, strong_predictions) if w == s
+            1 for w, s in zip(weak_labels, strong_predictions, strict=False) if w == s
         ) / max(len(weak_labels), 1)
         return {
             "agreement_rate": round(agreement, 4),

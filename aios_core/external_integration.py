@@ -131,18 +131,17 @@ class WebhookManager:
             try:
                 async with aiohttp.ClientSession(
                     timeout=aiohttp.ClientTimeout(total=self.config.timeout)
-                ) as session:
-                    async with session.post(
-                        self.config.url, json=payload, headers=headers
-                    ) as response:
-                        if response.status == 200:
-                            self.metrics.record_webhook_success()
-                            self.logger.info(f"Webhook sent successfully: {event}")
-                            return True
-                        else:
-                            self.logger.error(
-                                f"Webhook failed: {response.status} - {await response.text()}"
-                            )
+                ) as session, session.post(
+                    self.config.url, json=payload, headers=headers
+                ) as response:
+                    if response.status == 200:
+                        self.metrics.record_webhook_success()
+                        self.logger.info(f"Webhook sent successfully: {event}")
+                        return True
+                    else:
+                        self.logger.error(
+                            f"Webhook failed: {response.status} - {await response.text()}"
+                        )
 
             except Exception as e:
                 self.logger.error(f"Webhook attempt {attempt + 1} failed: {e!s}")

@@ -212,7 +212,7 @@ class MLPlannerScorer:
         """Rank plans by ML score (descending)."""
         scores = self.batch_score(plans, planner)
         ranked = sorted(
-            zip(plans, scores),
+            zip(plans, scores, strict=False),
             key=lambda x: x[1]["ml_score"],
             reverse=True,
         )

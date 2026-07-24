@@ -39,7 +39,7 @@ class QuantumAnnealingOptimizer:
         best_cost = cost_func(best)
         current_cost = best_cost
 
-        for i in range(iterations):
+        for _i in range(iterations):
             # Quantum-inspired perturbation with tunneling
             neighbor = current[:]
             for _ in range(random.randint(1, 3)):
@@ -71,9 +71,10 @@ class QuantumAnnealingOptimizer:
         """Solve MaxCut problem via quantum-inspired optimization."""
         # Initialize random partition
         partition = [random.choice([0, 1]) for _ in range(nodes)]
-        cost_func = lambda p: (
-            -sum(1 for u, v in edges if p[u] != p[v])
-        )  # Maximize cuts = minimize negative
+        def cost_func(p):
+            return (
+                    -sum(1 for u, v in edges if p[u] != p[v])
+                )  # Maximize cuts = minimize negative
 
         best, _best_cost = self.optimize(partition, cost_func, iterations)
         # Convert back to binary partition
@@ -97,19 +98,20 @@ class QuantumAnnealingOptimizer:
         n_assets = len(returns)
         # Initial weights: equal allocation
         initial = [budget / n_assets] * n_assets
-        cost_func = lambda w: (
-            -(
-                sum(wi * ri for wi, ri in zip(w, returns))
-                / max(math.sqrt(sum(wi**2 * ri**2 for wi, ri in zip(w, risks))), 0.01)
-            )
-        )
+        def cost_func(w):
+            return (
+                    -(
+                        sum(wi * ri for wi, ri in zip(w, returns, strict=False))
+                        / max(math.sqrt(sum(wi**2 * ri**2 for wi, ri in zip(w, risks, strict=False))), 0.01)
+                    )
+                )
 
         best, _best_cost = self.optimize(initial, cost_func, iterations)
         # Normalize weights to sum to budget
         total = sum(abs(v) for v in best)
         weights = [abs(v) / max(total, 0.01) * budget for v in best]
-        expected_return = sum(w * r for w, r in zip(weights, returns))
-        portfolio_risk = math.sqrt(sum(w**2 * r**2 for w, r in zip(weights, risks)))
+        expected_return = sum(w * r for w, r in zip(weights, returns, strict=False))
+        portfolio_risk = math.sqrt(sum(w**2 * r**2 for w, r in zip(weights, risks, strict=False)))
         return {
             "weights": [round(w, 4) for w in weights],
             "expected_return": round(expected_return, 4),

@@ -1,6 +1,8 @@
 """Basic tests for AIOS Database/Storage layer."""
 
 
+import contextlib
+
 from aios_core.storage import Database
 
 
@@ -106,10 +108,8 @@ class TestStorageAdvanced:
         # Try to insert duplicate key (should fail)
         db.execute("INSERT INTO test_rollback VALUES (1, 'first')")
 
-        try:
+        with contextlib.suppress(Exception):
             db.execute("INSERT INTO test_rollback VALUES (1, 'duplicate')")
-        except Exception:
-            pass
 
         # First insert should still be there
         cursor = db.execute("SELECT COUNT(*) FROM test_rollback")

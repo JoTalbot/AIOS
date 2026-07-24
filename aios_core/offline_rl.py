@@ -167,7 +167,7 @@ class OfflineRL:
     def _train_bcq(self, epochs: int) -> OfflineRLResult:
         """Batch-Constrained Q-learning: only select actions likely under behavior policy."""
         avg_behavior_reward = 0.0
-        for epoch in range(epochs):
+        for _epoch in range(epochs):
             for t in self.dataset:
                 # Only update Q for actions with sufficient behavior probability
                 prob = self.estimate_behavior_prob(t.state, t.action)
@@ -207,7 +207,7 @@ class OfflineRL:
     def _train_cql(self, epochs: int) -> OfflineRLResult:
         """Conservative Q-Learning: penalize actions not in dataset."""
         cql_penalty = 0.0
-        for epoch in range(epochs):
+        for _epoch in range(epochs):
             for t in self.dataset:
                 # Standard Q-learning update
                 current_q = self.q_values.get(t.state, {}).get(t.action, 0.0)
@@ -270,7 +270,7 @@ class OfflineRL:
     ) -> float:
         """Off-Policy Evaluation using importance sampling (IS estimate)."""
         weights = self.importance_weights(target_policy)
-        weighted_rewards = [w * t.reward for w, t in zip(weights, self.dataset)]
+        weighted_rewards = [w * t.reward for w, t in zip(weights, self.dataset, strict=False)]
 
         # Normalized IS estimate (self-normalized)
         total_weights = sum(weights)

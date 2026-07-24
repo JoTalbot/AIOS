@@ -109,14 +109,14 @@ class ScoreBasedModel:
 
             # Annealed Langevin: iterate over noise levels
             for sigma in self.noise_schedule:
-                for step in range(num_steps // self.schedule.num_levels):
+                for _step in range(num_steps // self.schedule.num_levels):
                     score = self._score_fn(x, sigma)
                     noise = [
                         random.gauss(0, math.sqrt(2 * step_size))
                         for _ in range(self.dim)
                     ]
                     x = [
-                        xi + step_size * si + ni for xi, si, ni in zip(x, score, noise)
+                        xi + step_size * si + ni for xi, si, ni in zip(x, score, noise, strict=False)
                     ]
 
             samples.append(x)
@@ -135,13 +135,13 @@ class ScoreBasedModel:
             dt = (self.schedule.sigma_max - self.schedule.sigma_min) / num_steps
 
             sigma = self.schedule.sigma_max
-            for step in range(num_steps):
+            for _step in range(num_steps):
                 sigma = max(self.schedule.sigma_min, sigma - dt)
                 score = self._score_fn(x, sigma)
                 # ODE: dx = -0.5 * sigma^2 * score * dt (no noise)
                 x = [
                     xi - 0.5 * (sigma**2) * si * dt / self.schedule.sigma_max
-                    for xi, si in zip(x, score)
+                    for xi, si in zip(x, score, strict=False)
                 ]
 
             samples.append(x)

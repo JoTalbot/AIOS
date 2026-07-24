@@ -1,7 +1,7 @@
 # AIOS
 
-![Version](https://img.shields.io/badge/version-10.14.0-blue)
-![Tests](https://img.shields.io/badge/tests-2758%20passing-green)
+![Version](https://img.shields.io/badge/version-10.15.0-blue)
+![Tests](https://img.shields.io/badge/tests-3015%20passing-green)
 ![API](https://img.shields.io/badge/API-169%20routes-blue)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-13%20workflows-green)

@@ -100,7 +100,7 @@ class ChaosMonkey:
         results = {"injections": 0, "errors": 0, "steady_state_ok": True}
 
         # Check steady state before
-        for key, expected_value in experiment.steady_state.items():
+        for _key, _expected_value in experiment.steady_state.items():
             # In real system: probe actual state
             # Simulated: assume steady state
             pass

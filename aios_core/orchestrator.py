@@ -19,7 +19,7 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from .autonomy_manager import AutonomyManager
@@ -46,7 +46,7 @@ from .websocket import ws_manager
 __all__ = ["Orchestrator", "StepStatus", "Task", "TaskStatus", "TaskStep"]
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     """TaskStatus."""
 
     PENDING = "pending"
@@ -58,7 +58,7 @@ class TaskStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class StepStatus(str, Enum):
+class StepStatus(StrEnum):
     """StepStatus."""
 
     PENDING = "pending"

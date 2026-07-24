@@ -305,7 +305,7 @@ class CapabilityEngine:
         if self.db is None:
             return name in self._in_memory
         set_parts = [f"{k} = ?" for k in fields]
-        values = list(fields.values()) + [name]
+        values = [*list(fields.values()), name]
         cursor = self.db.execute(
             f"UPDATE capabilities SET {', '.join(set_parts)} WHERE name = ?",
             tuple(values),

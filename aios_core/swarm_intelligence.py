@@ -103,7 +103,7 @@ class ParticleSwarmOptimizer:
         self, fitness_func: Callable, iterations: int = 100
     ) -> tuple[list[float], float]:
         """PSO optimization (backward-compatible)."""
-        for it in range(iterations):
+        for _it in range(iterations):
             for p in self.particles:
                 value = fitness_func(p.position)
                 if value < p.best_value:
@@ -129,7 +129,7 @@ class ParticleSwarmOptimizer:
         best_path: list[int] = []
         best_cost: float = float("inf")
 
-        for it in range(iterations):
+        for _it in range(iterations):
             ants = [Ant(num_nodes) for _ in range(num_ants)]
             for ant in ants:
                 ant.construct_path(pheromone, distance)

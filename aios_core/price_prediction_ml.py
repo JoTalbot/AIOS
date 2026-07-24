@@ -117,7 +117,7 @@ def _gauss_solve(A: list[list[float]], b: list[float], n: int) -> list[float]:
         Solution vector x.
     """
     # Augmented matrix
-    M = [row[:] + [b[i]] for i, row in enumerate(A)]
+    M = [[*row[:], b[i]] for i, row in enumerate(A)]
 
     # Forward elimination with partial pivoting
     for col in range(n):
@@ -388,7 +388,7 @@ def _detect_trend(prices: list[float]) -> TrendDirection:
     if denom == 0:
         return TrendDirection.STABLE
 
-    slope = (n * sum(x * y for x, y in zip(xs, recent)) - sum(xs) * sum(recent)) / denom
+    slope = (n * sum(x * y for x, y in zip(xs, recent, strict=False)) - sum(xs) * sum(recent)) / denom
 
     # Detect volatility
     if len(recent) >= 3:

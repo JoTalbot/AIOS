@@ -76,7 +76,7 @@ class HybridQuantumClassical:
         """VQE hybrid optimization loop."""
         params = [0.1] * 4  # Initial parameters
         energy_history: list[float] = []
-        for iteration in range(max_iter):
+        for _iteration in range(max_iter):
             # Quantum: evaluate ansatz energy
             if self.quantum_backend:
                 energy = ansatz(params, hamiltonian)
@@ -101,7 +101,7 @@ class HybridQuantumClassical:
         """QAOA hybrid optimization."""
         best_solution: list[float] = [random.uniform(0, 1) for _ in range(8)]
         best_cost = cost_func(best_solution)
-        for iteration in range(max_iter):
+        for _iteration in range(max_iter):
             # Quantum: evaluate QAOA circuit
             if self.quantum_backend:
                 candidate = [random.uniform(0, 1) for _ in range(8)]

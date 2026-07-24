@@ -438,10 +438,10 @@ class ExportImportPipeline:
                 record = {}
                 for key, value in row.items():
                     if (
-                        value
-                        and value.startswith("{")
-                        or value
-                        and value.startswith("[")
+                        (value
+                        and value.startswith("{"))
+                        or (value
+                        and value.startswith("["))
                     ):
                         try:
                             record[key] = json.loads(value)

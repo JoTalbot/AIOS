@@ -132,7 +132,7 @@ class MultiDimensionalWorldModel:
         n = num_rollouts or self.num_rollouts
         results: list[dict[str, Any]] = []
 
-        for i in range(n):
+        for _i in range(n):
             result = self.simulate_action_impact(action_plan, initial_state)
             results.append(result)
 

@@ -68,10 +68,7 @@ class SafetyMonitor:
             return {"metric": metric, "trend": "insufficient_data", "points": len(data)}
         recent = data[-window:]
         mean = sum(recent) / len(recent)
-        if len(recent) >= 2:
-            slope = (recent[-1] - recent[0]) / len(recent)
-        else:
-            slope = 0.0
+        slope = (recent[-1] - recent[0]) / len(recent) if len(recent) >= 2 else 0.0
         trend = (
             "improving"
             if slope < -0.01

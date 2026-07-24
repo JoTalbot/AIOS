@@ -292,7 +292,7 @@ class SimpleSearchEngine:
         # Add expansion terms (not already in query)
         query_terms = set(re.findall(r"\b\w+\b", query.lower()))
         expansion = []
-        for term, score in top_terms:
+        for term, _score in top_terms:
             if term not in query_terms and len(expansion) < num_expansion_terms:
                 expansion.append(term)
 

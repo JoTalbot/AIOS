@@ -117,7 +117,7 @@ class DiffusionModel:
         sqrt_alpha_bar = math.sqrt(alpha_bar)
         sqrt_one_minus_alpha_bar = math.sqrt(1 - alpha_bar)
         return [
-            sqrt_alpha_bar * a + sqrt_one_minus_alpha_bar * n for a, n in zip(x, noise)
+            sqrt_alpha_bar * a + sqrt_one_minus_alpha_bar * n for a, n in zip(x, noise, strict=False)
         ]
 
     def forward_trajectory(self, x: list[float]) -> list[list[float]]:
@@ -144,7 +144,7 @@ class DiffusionModel:
         sqrt_one_minus_alpha_bar = math.sqrt(1 - alpha_bar)
         predicted_x0 = [
             (xt - sqrt_one_minus_alpha_bar * pn) / sqrt_alpha_bar
-            for xt, pn in zip(x_t, predicted_noise)
+            for xt, pn in zip(x_t, predicted_noise, strict=False)
         ]
 
         # Direction to x_t
@@ -166,7 +166,7 @@ class DiffusionModel:
         sigma = math.sqrt(beta)
         noise = [random.gauss(0, sigma) for _ in x_t] if t > 0 else [0.0] * len(x_t)
 
-        x_prev = [p + d + n for p, d, n in zip(predicted_x0, direction_to_xt, noise)]
+        x_prev = [p + d + n for p, d, n in zip(predicted_x0, direction_to_xt, noise, strict=False)]
 
         # Apply conditioning if available
         if self.condition_fn:
@@ -224,11 +224,11 @@ class DiffusionModel:
 
             predicted_x0 = [
                 (xt - sqrt_one_minus_alpha_bar * pn) / sqrt_alpha_bar
-                for xt, pn in zip(x, predicted_noise)
+                for xt, pn in zip(x, predicted_noise, strict=False)
             ]
             x = [
                 sqrt_alpha_bar_prev * p + sqrt_one_minus_alpha_bar_prev * pn
-                for p, pn in zip(predicted_x0, predicted_noise)
+                for p, pn in zip(predicted_x0, predicted_noise, strict=False)
             ]
 
         return x
@@ -255,11 +255,11 @@ class DiffusionModel:
         # Actual noise (approximated from forward process)
         actual_noise = [
             (xt - sqrt_alpha_bar * x0) / sqrt_one_minus_alpha_bar
-            for xt, x0 in zip(self.forward_process(x_0, t), x_0)
+            for xt, x0 in zip(self.forward_process(x_0, t), x_0, strict=False)
         ]
 
         # MSE
-        mse = sum((a - p) ** 2 for a, p in zip(actual_noise, predicted_noise)) / len(
+        mse = sum((a - p) ** 2 for a, p in zip(actual_noise, predicted_noise, strict=False)) / len(
             actual_noise
         )
 

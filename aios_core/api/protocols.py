@@ -424,10 +424,7 @@ class MessageQueueAdapter(ProtocolAdapter):
     async def handle_message(self, message: Any, connection_id: str | None = None) -> None:
         """Handle message from queue."""
         try:
-            if isinstance(message, str):
-                data = json.loads(message)
-            else:
-                data = message
+            data = json.loads(message) if isinstance(message, str) else message
 
             event = IntegrationEvent(
                 event_type=IntegrationEventType.SYSTEM_EVENT,

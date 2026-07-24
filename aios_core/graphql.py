@@ -12,6 +12,7 @@ Classes:
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import re
 from collections.abc import Callable
@@ -116,10 +117,7 @@ class GraphQLSchema:
             try:
                 # Extract arguments from query
                 args = self._parse_args(query, field_name)
-                if args:
-                    result = resolver(context=context, **args)
-                else:
-                    result = resolver(context=context)
+                result = resolver(context=context, **args) if args else resolver(context=context)
                 data[field_name] = result
             except Exception as e:
                 errors.append(f"Error resolving '{field_name}': {e!s}")
@@ -198,10 +196,8 @@ class GraphQLSchema:
                 try:
                     value = int(value)
                 except ValueError:
-                    try:
+                    with contextlib.suppress(ValueError):
                         value = float(value)
-                    except ValueError:
-                        pass
                 args[key] = value
         return args
 

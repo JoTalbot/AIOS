@@ -91,7 +91,7 @@ class SimpleMLPredictor:
         """Evaluate model performance (pure-python fallback)."""
         if self.model and HAS_SKLEARN:
             preds = self.model.predict(X)
-            correct = sum(1 for p, t in zip(preds, y) if p == t)
+            correct = sum(1 for p, t in zip(preds, y, strict=False) if p == t)
             total = len(y)
             acc = correct / total if total > 0 else 0.0
             return EvalMetrics(accuracy=round(acc, 4), f1=round(acc, 4))

@@ -158,7 +158,7 @@ class TestPlannerAddSteps:
         planner = _make_planner()
         plan = planner.create_plan(name="Progress", goal="G")
         s1 = planner.add_step(plan, name="S1", step_type="tool")
-        s2 = planner.add_step(plan, name="S2", step_type="tool")
+        planner.add_step(plan, name="S2", step_type="tool")
         planner.mark_step_completed(plan, s1.id)
         progress = planner.get_plan_progress(plan)
         assert progress["completed"] == 1

@@ -12,11 +12,12 @@ Classes:
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 # ── Enums ────────────────────────────────────────────────────────────────────
 
 
-class CircuitState(str, Enum):
+class CircuitState(StrEnum):
     """Circuit breaker state."""
 
     CLOSED = "closed"
@@ -127,10 +128,8 @@ class CircuitBreaker:
         self.state = new_state
         logger.info("Circuit breaker transition: %s → %s", old.value, new_state.value)
         for listener in self._listeners:
-            try:
+            with contextlib.suppress(Exception):
                 listener(old, new_state)
-            except Exception:
-                pass
 
     def _should_try_half_open(self) -> bool:
         """Check if enough time has passed to attempt HALF_OPEN."""

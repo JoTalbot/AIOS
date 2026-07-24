@@ -367,7 +367,7 @@ class AgentOrchestrator:
         """Find and return the best agent for a task based on tool availability."""
         candidates = []
         for agent in self.agents.values():
-            if required_tool and required_tool in agent.tools or not required_tool:
+            if (required_tool and required_tool in agent.tools) or not required_tool:
                 candidates.append(agent)
 
         if not candidates:

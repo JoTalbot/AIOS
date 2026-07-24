@@ -90,7 +90,7 @@ class ConfigManager:
         if not os.path.exists(path):
             return {}
 
-        if HAS_YAML and path.endswith(".yaml") or path.endswith(".yml"):
+        if (HAS_YAML and path.endswith(".yaml")) or path.endswith(".yml"):
             with open(path) as f:
                 return yaml.safe_load(f) or {}
         else:

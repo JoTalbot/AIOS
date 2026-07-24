@@ -164,7 +164,8 @@ class TestParticleSwarmOptimizer:
         self.pso = ParticleSwarmOptimizer(num_particles=10, dimensions=3)
 
     def test_optimize(self):
-        fitness = lambda pos: sum(x**2 for x in pos)
+        def fitness(pos):
+            return sum(x**2 for x in pos)
         best_pos, best_fit = self.pso.optimize(fitness, iterations=20)
         assert len(best_pos) == 3
         assert isinstance(best_fit, float)
@@ -174,7 +175,8 @@ class TestParticleSwarmOptimizer:
         assert "best_path" in result
 
     def test_convergence_report(self):
-        fitness = lambda pos: sum(x**2 for x in pos)
+        def fitness(pos):
+            return sum(x**2 for x in pos)
         self.pso.optimize(fitness, iterations=5)
         report = self.pso.convergence_report()
         assert isinstance(report, dict)
@@ -703,7 +705,7 @@ class TestRateLimiter:
 
     def test_quota_limit(self):
         self.rl.set_quota("quota_user", 10)
-        for i in range(10):
+        for _i in range(10):
             assert self.rl.is_allowed("quota_user") is True
         assert self.rl.is_allowed("quota_user") is False
 

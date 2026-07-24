@@ -165,7 +165,7 @@ class QuantumInspiredOptimizer:
         best = current[:]
         best_cost = current_cost
 
-        for i in range(iterations):
+        for _i in range(iterations):
             # Quantum-inspired perturbation
             neighbor = current[:]
             for _ in range(random.randint(1, 3)):

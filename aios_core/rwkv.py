@@ -32,7 +32,7 @@ class WKVState:
     def update(self, k: list[float], v: list[float]) -> list[float]:
         """WKV update: wkv = decay * wkv + bonus * k * v."""
         self.wkv = [
-            d * self._decay + self._bonus * ki * vi for d, ki, vi in zip(self.wkv, k, v)
+            d * self._decay + self._bonus * ki * vi for d, ki, vi in zip(self.wkv, k, v, strict=False)
         ]
         return list(self.wkv)
 
@@ -63,7 +63,7 @@ class RWKVBlock:
         self, x: list[float], prev: list[float], ratio: float = 0.5
     ) -> list[float]:
         """Token shift: blend current with previous."""
-        return [xi * ratio + pi * (1 - ratio) for xi, pi in zip(x, prev)]
+        return [xi * ratio + pi * (1 - ratio) for xi, pi in zip(x, prev, strict=False)]
 
     def _group_norm(self, x: list[float], groups: int = 4) -> list[float]:
         """Group normalization."""
@@ -87,12 +87,12 @@ class RWKVBlock:
         """Time-mixing sub-layer (backward-compatible)."""
         prev = prev or [0.0] * self.dim
         shifted = self._token_shift(x, prev)
-        k = [si * w for si, w in zip(shifted, self._time_mix_weights)]
-        v = [si * w for si, w in zip(shifted, self._time_mix_weights)]
+        k = [si * w for si, w in zip(shifted, self._time_mix_weights, strict=False)]
+        v = [si * w for si, w in zip(shifted, self._time_mix_weights, strict=False)]
         wkv = self.wkv_state.update(k, v)
         # Receptance gate
-        r = self._sigmoid([si * w for si, w in zip(shifted, self._receptance)])
-        return [ri * wi for ri, wi in zip(r, wkv)]
+        r = self._sigmoid([si * w for si, w in zip(shifted, self._receptance, strict=False)])
+        return [ri * wi for ri, wi in zip(r, wkv, strict=False)]
 
     def channel_mixing(
         self, x: list[float], prev: list[float] | None = None
@@ -102,10 +102,10 @@ class RWKVBlock:
         shifted = self._token_shift(x, prev, ratio=0.7)
         # Squared ReLU (RWKV channel-mixing activation)
         mixed = [
-            max(0, si * w) ** 2 for si, w in zip(shifted, self._channel_mix_weights)
+            max(0, si * w) ** 2 for si, w in zip(shifted, self._channel_mix_weights, strict=False)
         ]
-        r = self._sigmoid([si * w for si, w in zip(shifted, self._receptance)])
-        return [ri * mi for ri, mi in zip(r, mixed)]
+        r = self._sigmoid([si * w for si, w in zip(shifted, self._receptance, strict=False)])
+        return [ri * mi for ri, mi in zip(r, mixed, strict=False)]
 
     def forward(self, x: list[float]) -> list[float]:
         """Full block forward (backward-compatible)."""

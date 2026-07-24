@@ -93,13 +93,10 @@ class WorldModel:
         if not self._state_keys:
             state = {"x": 0.0}
         else:
-            state = {
-                k: v
-                for k, v in zip(
-                    self._state_keys, self._latent_state[: len(self._state_keys)]
-                )
-            }
-        for step in range(horizon):
+            state = dict(zip(
+                    self._state_keys, self._latent_state[: len(self._state_keys)], strict=False
+                ))
+        for _step in range(horizon):
             action = random.choice(["forward", "backward", "noop"])
             next_state = self.predict(state, action)
             reward = self.predict_reward(state, action)
@@ -115,7 +112,7 @@ class WorldModel:
         """Dreamer-style imagination rollout with value estimation."""
         state = (
             start_state
-            or dict(zip(self._state_keys, self._latent_state[: len(self._state_keys)]))
+            or dict(zip(self._state_keys, self._latent_state[: len(self._state_keys)], strict=False))
             or {"x": 0.0}
         )
         total_reward = 0.0
@@ -152,12 +149,12 @@ class WorldModel:
     ) -> list[dict[str, Any]]:
         """MPC-style planning toward a goal state."""
         current = (
-            dict(zip(self._state_keys, self._latent_state[: len(self._state_keys)]))
+            dict(zip(self._state_keys, self._latent_state[: len(self._state_keys)], strict=False))
             if self._state_keys
             else {"x": 0.0}
         )
         plan: list[dict[str, Any]] = []
-        for step in range(horizon):
+        for _step in range(horizon):
             # Choose action that moves closest to goal
             best_action = "noop"
             best_dist = 1e9

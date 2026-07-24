@@ -16,7 +16,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class TaskPriority(int, Enum):
     CRITICAL = 3
 
 
-class TaskScheduleStatus(str, Enum):
+class TaskScheduleStatus(StrEnum):
     """Task lifecycle status."""
 
     SCHEDULED = "scheduled"

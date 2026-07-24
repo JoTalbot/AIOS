@@ -13,12 +13,12 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 
 from .storage import Database
 
 
-class NodeStatus(str, Enum):
+class NodeStatus(StrEnum):
     """NodeStatus."""
 
     ONLINE = "online"

@@ -44,7 +44,7 @@ class QuantumApproximateOptimization:
         best_cost = cost_func(best_params)
         self._best_params = best_params
 
-        for shot in range(min(shots, 100)):
+        for _shot in range(min(shots, 100)):
             params = [p + random.gauss(0, 0.1) for p in best_params]
             cost = cost_func(params)
             if cost < best_cost:
@@ -64,7 +64,7 @@ class QuantumApproximateOptimization:
         gammas: list[float] = []
         betas: list[float] = []
         best_cost = float("inf")
-        for layer in range(p_layers):
+        for _layer in range(p_layers):
             gamma = random.uniform(0, 2 * math.pi)
             beta = random.uniform(0, math.pi)
             gammas.append(gamma)

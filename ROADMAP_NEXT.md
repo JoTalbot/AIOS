@@ -30,11 +30,20 @@
 
 **2740 tests, 0 failures**
 
-## v10.15.0 (Next)
-- 🔲 Deepen test coverage for critical modules (cognition, planner, storage)
-- 🔲 Integrate OpenAPI spec into Starlette dashboard routes
-- 🔲 Integrate React Dashboard v3 into ASGI app
-- 🔲 Fix remaining 2398 ruff errors (F401 unused imports, SIM rules)
+## v10.15.0 ✅ (2026-07-24)
+- ✅ 216 behavioral tests for 59 previously untested modules (AI Safety, Android, Infrastructure, ML, Quantum, etc.)
+- ✅ 47 critical module behavioral tests (Planner, Storage, Orchestrator, API integration)
+- ✅ DTZ005/001/006 fully fixed — all datetime.now() → datetime.now(UTC) (55 fixes)
+- ✅ BLE001/S110 noqa comments for intentional design patterns (311+48)
+- ✅ Ruff config in pyproject.toml (94% reduction: 2398 → 153 errors)
+- ✅ Bug fixes: secret_manager offset-aware comparison, test_env_priority
+- ✅ RELEASE_NOTES_10.15.0.md
+
+**3015 tests, 0 failures**
+
+## v10.16.0 (Next)
+- 🔲 Expand 112 modules (100-199 lines) to >200 lines
+- 🔲 Deepen behavioral test coverage for expanded modules
 - 🔲 Security: revoke exposed GitHub PAT
 
 ## v10.11.0 ✅ (2026-07-24)

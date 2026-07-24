@@ -104,10 +104,7 @@ class ContinualLearner:
         self, task_name: str | None = None, limit: int = 10
     ) -> list[dict[str, Any]]:
         """Retrieve rehearsal data, optionally filtered by task."""
-        if task_name:
-            filtered = [r for r in self.rehearsal_buffer if r["task"] == task_name]
-        else:
-            filtered = self.rehearsal_buffer
+        filtered = [r for r in self.rehearsal_buffer if r["task"] == task_name] if task_name else self.rehearsal_buffer
         return filtered[-limit:]
 
     def clear_rehearsal(self) -> None:

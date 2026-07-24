@@ -82,16 +82,16 @@ class ConstitutionalAI:
             principle_lower = principle.text.lower()
             output_lower = output.lower()
             if (
-                "harm" in principle_lower
-                and ("harm" in output_lower or "danger" in output_lower)
-                or "deception" in principle_lower
+                ("harm" in principle_lower
+                and ("harm" in output_lower or "danger" in output_lower))
+                or ("deception" in principle_lower
                 and (
                     "lie" in output_lower
                     or "deceive" in output_lower
                     or "trick" in output_lower
-                )
-                or "privacy" in principle_lower
-                and ("personal data" in output_lower or "tracking" in output_lower)
+                ))
+                or ("privacy" in principle_lower
+                and ("personal data" in output_lower or "tracking" in output_lower))
             ):
                 violations.append(principle.text)
                 principle.violations += 1
@@ -126,7 +126,7 @@ class ConstitutionalAI:
     def critique_and_revise(self, output: str, max_rounds: int = 3) -> str:
         """Multi-round critique-revision cycle."""
         current = output
-        for round_num in range(max_rounds):
+        for _round_num in range(max_rounds):
             violations = self.critique(current)
             if not violations:
                 break
