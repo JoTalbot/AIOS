@@ -1,0 +1,62 @@
+name: Deploy AWS Infrastructure & Services
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform:
+    name: Provision AWS Infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-aios-role
+          aws-region: eu-central-1
+          
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+          
+      - name: Terraform Init & Apply
+        working-directory: ./terraform/aws
+        run: |
+          terraform init
+          terraform apply -auto-approve
+
+  deploy-helm:
+    name: Deploy Helm Chart to EKS
+    needs: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-aios-role
+          aws-region: eu-central-1
+          
+      - name: Update Kubeconfig
+        run: aws eks update-kubeconfig --region eu-central-1 --name aios-prod-cluster
+        
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.15.0'
+          
+      - name: Deploy AIOS via Helm
+        run: |
+          helm upgrade --install aios-prod ./helm/aios \
+            --namespace production --create-namespace \
+            --set image.repository=123456789012.dkr.ecr.eu-central-1.amazonaws.com/aios \
+            --set image.tag=${{ github.sha }}
