@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
+import random
 import time
 from typing import Any
 
@@ -53,12 +55,16 @@ class JWTManager:
 
     def __init__(
         self,
-        secret: str = "aios-secret-key",
+        secret: str | None = None,
         algorithm: str = "HS256",
         access_token_expiry: int = 3600,
         refresh_token_expiry: int = 86400,
     ) -> None:
-        self.secret = secret
+        self.secret = secret or os.environ.get("AIOS_JWT_SECRET")
+        if not self.secret:
+            raise ValueError("JWT secret must be supplied explicitly or via AIOS_JWT_SECRET")
+        if len(self.secret) < 32:
+            raise ValueError("JWT secret must be at least 32 characters")
         self.algorithm = algorithm
         self.access_token_expiry = access_token_expiry
         self.refresh_token_expiry = refresh_token_expiry
@@ -188,6 +194,3 @@ class JWTManager:
             "audit_entries": len(self._audit_log),
             "rate_limited_subjects": len(self._rate_limit),
         }
-
-
-import random
