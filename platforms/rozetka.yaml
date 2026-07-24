@@ -1,0 +1,22 @@
+# Rozetka.ua platform descriptor.
+# Rozetka — крупнейший украинский e-commerce marketplace (электроника, бытовая
+# техника, автозапчасти и др.). Android-приложение: com.rozetka.
+# Агентский модуль scaffold — storage наследует OLXStorage, парсеры/коллекторы
+# добавляются по мере калибровки под UI приложения.
+name: rozetka
+android_package: com.rozetka
+agent_module: aios_core.modules.rozetka
+storage_class: aios_core.modules.rozetka.storage.RozetkaStorage
+default_locale: uk-UA
+description: >-
+  Rozetka.ua marketplace agent: коллекция товаров, сравнение цен,
+  отзывы, мессенджер продавца, автозапчасти и электроника.
+legacy_default_db: rozetka_products.sqlite
+extras:
+  compliance:
+    autopost_allowed: false
+    messenger: approval-only
+    collector: true
+    actions_per_hour: 60
+    note: "Rozetka UA: сбор read-only; отзывы/чаты через approval-outbox; автозапчасти поиск"
+  parser_hints: {}
