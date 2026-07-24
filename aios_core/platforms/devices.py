@@ -21,6 +21,7 @@ import sqlite3
 import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Self
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS devices (
@@ -73,7 +74,7 @@ class DevicePool:
         with self._lock, self._conn:
             self._conn.executescript(_SCHEMA)
 
-    def __enter__(self) -> DevicePool:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_exc) -> None:

@@ -39,7 +39,7 @@ class TestEncryption:
     def test_xor_encrypt_decrypt_roundtrip(self) -> None:
         """Encrypt then decrypt → same value."""
         key = _derive_key("test_pass", b"salt123")
-        data = "my_secret_password".encode("utf-8")
+        data = b"my_secret_password"
         encrypted = _xor_encrypt(data, key)
         decrypted = _xor_decrypt(encrypted, key)
         assert decrypted == data
@@ -53,7 +53,7 @@ class TestEncryption:
         """Different keys → different encrypted output."""
         key1 = _derive_key("pass1", b"salt1")
         key2 = _derive_key("pass2", b"salt2")
-        data = "hello".encode("utf-8")
+        data = b"hello"
         e1 = _xor_encrypt(data, key1)
         e2 = _xor_encrypt(data, key2)
         assert e1 != e2

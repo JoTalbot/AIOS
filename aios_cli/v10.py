@@ -248,7 +248,7 @@ def _run_fleet(args) -> bool:
     scheduler = getattr(args, "_fleet_scheduler", None)
     if scheduler is None:
         scheduler = FleetScheduler(policy=SchedulingPolicy.LEAST_BUSY)
-        setattr(args, "_fleet_scheduler", scheduler)
+        args._fleet_scheduler = scheduler
 
     if cmd == "stats":
         stats = scheduler.stats()

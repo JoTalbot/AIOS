@@ -327,9 +327,11 @@ class MolecularDNARuntime:
         self,
         dna_sequence: str,
         mutation_rate: float = 0.01,
-        mutation_types: list[str] = ["point", "insertion", "deletion"],
+        mutation_types: list[str] | None = None,
     ) -> dict[str, Any]:
         """Simulate random mutations on a DNA sequence."""
+        if mutation_types is None:
+            mutation_types = ["point", "insertion", "deletion"]
         mutated = list(dna_sequence)
         mutations: list[dict[str, Any]] = []
         nucleotides = ["A", "T", "C", "G"]

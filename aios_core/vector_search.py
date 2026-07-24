@@ -131,7 +131,7 @@ class VectorSearchEngine:
         for fp, tokens in doc_tokens.items():
             tf: Counter = Counter(tokens)
             vector = [0.0] * vocab_size
-            for t in tf.keys():
+            for t in tf:
                 if t in self._vocab:
                     idx = self._vocab[t]
                     vector[idx] = tf[t] * self._idf.get(t, 1.0)
@@ -165,7 +165,7 @@ class VectorSearchEngine:
         vocab_size = len(self._vocab)
         tf: Counter = Counter(tokens)
         q_vector = [0.0] * vocab_size
-        for t in tf.keys():
+        for t in tf:
             if t in self._vocab:
                 idx = self._vocab[t]
                 q_vector[idx] = tf[t] * self._idf.get(t, 1.0)

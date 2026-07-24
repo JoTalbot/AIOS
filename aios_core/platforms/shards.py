@@ -19,6 +19,7 @@ import sqlite3
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Self
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS shard_hosts (
@@ -49,7 +50,7 @@ class ShardRouter:
         with self._lock, self._conn:
             self._conn.executescript(_SCHEMA)
 
-    def __enter__(self) -> ShardRouter:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_exc) -> None:

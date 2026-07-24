@@ -20,7 +20,6 @@ from __future__ import annotations
 import os
 import sys
 from dataclasses import dataclass
-from typing import Optional
 
 # Ensure AIOS core is importable
 _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -370,7 +369,7 @@ class MCPGateway:
 
         self._register_olx_tools()
 
-    def _olx_store(self, profile: "str | None" = None):
+    def _olx_store(self, profile: str | None = None):
         """OLX Parser Agent storage, optionally profile-scoped.
 
         Без ``profile`` — общее хранилище (AIOS_OLX_DB env). С ``profile``

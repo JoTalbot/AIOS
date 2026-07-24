@@ -120,9 +120,11 @@ class SubstrateConvergenceEngine:
         efficiency_gflops_per_watt: float = 100.0,
         energy_cost_per_unit: float = 0.1,
         capacity: int = 500,
-        task_affinity: list[str] = [],
+        task_affinity: list[str] | None = None,
     ) -> dict[str, Any]:
         """Register a new compute substrate."""
+        if task_affinity is None:
+            task_affinity = []
         record = {
             "type": substrate_type,
             "latency_base_ms": latency_base_ms,
@@ -328,9 +330,11 @@ class SubstrateConvergenceEngine:
     # ------------------------------------------------------------------
 
     def benchmark_substrates(
-        self, test_task: dict[str, Any] = {}, trials: int = 5
+        self, test_task: dict[str, Any] | None = None, trials: int = 5
     ) -> dict[str, dict[str, Any]]:
         """Run simple benchmark across all active substrates."""
+        if test_task is None:
+            test_task = {}
         results: dict[str, dict[str, Any]] = {}
         for stype, sub_info in self.substrates.items():
             if not sub_info["active"]:

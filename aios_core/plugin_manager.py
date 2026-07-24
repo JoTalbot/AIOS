@@ -34,11 +34,13 @@ class PluginInfo:
         version: str = "0.0.1",
         description: str = "",
         author: str = "",
-        dependencies: list[str] = [],
+        dependencies: list[str] | None = None,
         priority: int = 0,
         enabled: bool = True,
         module_path: str = "",
     ):
+        if dependencies is None:
+            dependencies = []
         self.name = name
         self.version = version
         self.description = description

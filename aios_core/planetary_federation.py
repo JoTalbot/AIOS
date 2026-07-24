@@ -100,6 +100,6 @@ class PlanetaryMeshOrchestrator:
             "total_routed_tasks": len(self.routed_tasks),
             "node_distribution": {
                 loc: sum(1 for n in self.nodes.values() if n.location_type == loc)
-                for loc in {"terrestrial", "orbital_leo", "lunar_edge", "deep_space"}
+                for loc in ("terrestrial", "orbital_leo", "lunar_edge", "deep_space")
             },
         }

@@ -1,7 +1,7 @@
 """Tests for OLX subscriptions, favorites watch, AutoWatch and the ad editor."""
 
 import json
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 
 from aios_core.modules.olx import (
     AdCard,

@@ -71,8 +71,7 @@ def generate_index(directory):
         f.write("# Указатель архитектуры AIOS (`docs/core/`)\n\n")
         f.write("Всего модулей: 27. Без привязки к Octopus.\n\n")
         f.write("## Полный список\n\n")
-        for m in modules:
-            f.write(f"- `{m}`\n")
+        f.writelines(f"- `{m}`\n" for m in modules)
     print(f"📄 Указатель архитектуры: {index_path}")
 
 

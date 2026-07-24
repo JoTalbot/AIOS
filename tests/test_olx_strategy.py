@@ -2,7 +2,7 @@
 advisor and the fresh-server bootstrap/doctor tooling."""
 
 import json
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 
 from aios_core.modules.olx import (
     ACTION_EDIT_PRICE,

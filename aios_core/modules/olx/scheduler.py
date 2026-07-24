@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 from datetime import UTC, datetime
+from typing import Self
 
 from .collector import OLXCollector
 from .storage import OLXStorage
@@ -99,7 +100,7 @@ class CollectionScheduler:
             self._thread.join(timeout=timeout)
             self._thread = None
 
-    def __enter__(self) -> CollectionScheduler:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_exc) -> None:

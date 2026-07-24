@@ -22,8 +22,10 @@ class ZNEConfig:
     """ZNE configuration."""
 
     def __init__(
-        self, noise_levels: list[int] = [1, 3, 5], extrapolation: str = "richardson"
+        self, noise_levels: list[int] | None = None, extrapolation: str = "richardson"
     ) -> None:
+        if noise_levels is None:
+            noise_levels = [1, 3, 5]
         self.noise_levels = noise_levels
         self.extrapolation = extrapolation
 

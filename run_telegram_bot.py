@@ -26,7 +26,6 @@ import os
 import sys
 import time
 import urllib.request
-from typing import List
 
 # ---------------------------------------------------------------------------
 # Telegram API helpers (zero-dependency)

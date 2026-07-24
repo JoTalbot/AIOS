@@ -22,6 +22,7 @@ import threading
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Self
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS shard_jobs (
@@ -67,7 +68,7 @@ class ShardJobs:
         with self._lock, self._conn:
             self._conn.executescript(_SCHEMA)
 
-    def __enter__(self) -> ShardJobs:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_exc) -> None:

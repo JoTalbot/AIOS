@@ -109,7 +109,7 @@ def _production_metrics() -> dict[str, object]:
                 pass
             # daily reports for drift
             for daily in content.get("daily_reports", []):
-                for pkey in daily.get("profiles", {}).keys():
+                for pkey in daily.get("profiles", {}):
                     plat = pkey.split(":")[0] if ":" in pkey else pkey
                     data["drift_events"][plat] = data["drift_events"].get(
                         plat, 0

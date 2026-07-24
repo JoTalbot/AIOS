@@ -17,7 +17,7 @@ def test_stats_returns_db_info():
 def test_platforms_returns_list():
     text = cmd_platforms()
     assert isinstance(text, str)
-    assert "Платформ" in text or "Ошибка" in text or "⚠️" not in text or True
+    assert True
 
 
 def test_help_returns_commands():

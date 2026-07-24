@@ -96,9 +96,11 @@ class QuantumNLP:
         }
 
     def quantum_token_embedding(
-        self, tokens: list[str] = ["hello", "world"]
+        self, tokens: list[str] | None = None
     ) -> dict[str, Any]:
         """Generate quantum-enhanced token embeddings."""
+        if tokens is None:
+            tokens = ["hello", "world"]
         {
             t: [round(random.uniform(-1, 1), 3) for _ in range(8)] for t in tokens
         }

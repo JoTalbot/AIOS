@@ -660,9 +660,7 @@ class PricePredictionEngine:
         }
 
         predictor = predictor_map.get(model, self.ensemble)
-        if isinstance(predictor, PolynomialPredictor) or isinstance(
-            predictor, EnsemblePredictor
-        ):
+        if isinstance(predictor, (PolynomialPredictor, EnsemblePredictor)):
             return predictor.predict(history, horizon_days, fingerprint)
         else:
             r = predictor.predict(history, horizon_days)

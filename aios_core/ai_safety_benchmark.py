@@ -25,8 +25,10 @@ class BenchmarkSuite:
     """Benchmark suite metadata."""
 
     def __init__(
-        self, name: str, description: str = "", metrics: list[str] = []
+        self, name: str, description: str = "", metrics: list[str] | None = None
     ) -> None:
+        if metrics is None:
+            metrics = []
         self.name = name
         self.description = description
         self.metrics = metrics
@@ -113,9 +115,11 @@ class SafetyBenchmark:
         return {"comparisons": comparisons, "benchmarks_compared": len(comparisons)}
 
     def add_benchmark(
-        self, name: str, description: str = "", metrics: list[str] = []
+        self, name: str, description: str = "", metrics: list[str] | None = None
     ) -> None:
         """Add a custom benchmark."""
+        if metrics is None:
+            metrics = []
         self.benchmarks[name] = {
             "score": 0.0,
             "status": "not_run",

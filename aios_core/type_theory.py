@@ -148,7 +148,7 @@ class TypeSystem:
     def type_hierarchy(self, type_name: str) -> list[str]:
         """Return supertype chain for a type."""
         chain = [type_name]
-        for other_name in self.types.keys():
+        for other_name in self.types:
             if other_name != type_name and self.is_subtype(type_name, other_name):
                 chain.append(other_name)
         return chain
@@ -190,8 +190,10 @@ class TypeSystem:
 
     # ── Proof Simulation ──────────────────────────────────────────
 
-    def prove(self, statement: str, premises: list[str] = []) -> dict[str, Any]:
+    def prove(self, statement: str, premises: list[str] | None = None) -> dict[str, Any]:
         """Simulate a type-level proof."""
+        if premises is None:
+            premises = []
         self._proof_log.append(
             {
                 "statement": statement,

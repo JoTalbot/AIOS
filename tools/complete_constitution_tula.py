@@ -492,8 +492,7 @@ def fix_malformed_filenames(constitution_dir: Path) -> list:
             continue
 
         clean_name = entry
-        if clean_name.startswith("# "):
-            clean_name = clean_name[2:]
+        clean_name = clean_name.removeprefix("# ")
         if clean_name.startswith("RTICLE-"):
             clean_name = "A" + clean_name
 

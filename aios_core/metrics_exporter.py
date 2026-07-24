@@ -216,9 +216,11 @@ class MetricsExporter:
         self,
         name: str,
         labels: dict[str, str] | None = None,
-        quantiles: list[float] = [0.5, 0.9, 0.95, 0.99],
+        quantiles: list[float] | None = None,
     ) -> dict[str, float]:
         """Compute summary quantiles for a histogram metric."""
+        if quantiles is None:
+            quantiles = [0.5, 0.9, 0.95, 0.99]
         key = self._make_key(name, labels)
         values = sorted(self.histograms.get(key, []))
         if not values:

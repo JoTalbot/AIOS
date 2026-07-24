@@ -439,8 +439,7 @@ class AutoTuningEngine:
                 similarity = self._params_similarity(config, fb.params)
                 score = self._compute_score(fb)
                 weighted = similarity * score
-                if weighted > best_match:
-                    best_match = weighted
+                best_match = max(best_match, weighted)
             return best_match
 
         # No feedback — use heuristic based on params values

@@ -36,7 +36,7 @@ except ImportError:
 
         def get_current_context(self) -> None:
             """Execute get current context."""
-            return None
+            return
 
     tracer = _DummyTracer()
 

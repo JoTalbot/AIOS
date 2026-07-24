@@ -140,7 +140,9 @@ class SpikingLayer:
 class SpikingNetwork:
     """Multi-layer spiking neural network."""
 
-    def __init__(self, layer_sizes: list[int] = [64, 32, 16]) -> None:
+    def __init__(self, layer_sizes: list[int] | None = None) -> None:
+        if layer_sizes is None:
+            layer_sizes = [64, 32, 16]
         self.layers = [SpikingLayer(size) for size in layer_sizes]
         self._synapses: list[list[Synapse]] = []
 

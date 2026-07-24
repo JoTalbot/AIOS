@@ -5,7 +5,6 @@ Without Octopus agent integration (~/agents/).
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List
 
 
 @dataclass

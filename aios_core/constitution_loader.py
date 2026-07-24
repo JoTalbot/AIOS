@@ -124,7 +124,7 @@ def _extract_bullet_items(text: str) -> list[str]:
     items = []
     for line in text.split("\n"):
         stripped = line.strip()
-        if stripped.startswith("- ") or stripped.startswith("* "):
+        if stripped.startswith(("- ", "* ")):
             items.append(stripped[2:].strip())
     return items
 
@@ -178,7 +178,7 @@ def _parse_article(filepath: str) -> Article | None:
 
         # Extract rules from lines with obligation keywords
         stripped = line.strip()
-        if not stripped or stripped.startswith("#") or stripped.startswith("---"):
+        if not stripped or stripped.startswith(("#", "---")):
             continue
 
         obligation = _detect_obligation(stripped)

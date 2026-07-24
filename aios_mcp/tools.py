@@ -6,9 +6,9 @@ Every tool call passes through the Constitution Guard before execution.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Optional
 from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 from .protocol import MCPToolCall, MCPToolResult
 
