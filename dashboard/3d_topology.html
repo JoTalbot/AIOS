@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIOS 3D Planetary Swarm Topology</title>
+    <style>
+        body { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; }
+        #overlay {
+            position: absolute; top: 20px; left: 20px; color: white;
+            background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1); pointer-events: none;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 1.5rem; color: #38bdf8; }
+        .stats { font-size: 0.9rem; color: #cbd5e1; line-height: 1.6; }
+        .legend { margin-top: 15px; font-size: 0.8rem; }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot-earth { background: #38bdf8; box-shadow: 0 0 8px #38bdf8; }
+        .dot-leo { background: #10b981; box-shadow: 0 0 8px #10b981; }
+        .dot-moon { background: #a78bfa; box-shadow: 0 0 8px #a78bfa; }
+    </style>
+    <!-- Use Three.js via CDN for the dashboard rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="overlay">
+        <h1>🌍 3D Planetary Swarm Topology</h1>
+        <div class="stats">
+            <div>Active Swarms: <span id="val-swarms">42</span></div>
+            <div>Global Tasks Routed: <span id="val-tasks">14,291</span></div>
+            <div>Avg Constellation Latency: <span id="val-lat">45ms</span></div>
+        </div>
+        <div class="legend">
+            <div class="legend-item"><div class="dot dot-earth"></div> Terrestrial Datacenters</div>
+            <div class="legend-item"><div class="dot dot-leo"></div> LEO Satellites (Starlink/Kessler)</div>
+            <div class="legend-item"><div class="dot dot-moon"></div> Deep Space (Lunar Gateway)</div>
+        </div>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <script>
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.002);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+        camera.position.set(0, 200, 400);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.0;
+
+        // Earth Sphere (Wireframe/Holographic)
+        const earthGeo = new THREE.SphereGeometry(100, 32, 32);
+        const earthMat = new THREE.MeshBasicMaterial({ color: 0x0f172a, wireframe: true, transparent: true, opacity: 0.3 });
+        const earth = new THREE.Mesh(earthGeo, earthMat);
+        scene.add(earth);
+
+        // Core Solid
+        const coreMat = new THREE.MeshPhongMaterial({ color: 0x020617, emissive: 0x000000, transparent: true, opacity: 0.8 });
+        const core = new THREE.Mesh(new THREE.SphereGeometry(98, 32, 32), coreMat);
+        scene.add(core);
+
+        const nodes = [];
+        const edges = [];
+
+        function createNode(lat, lon, altitude, color, size) {
+            const phi = (90 - lat) * (Math.PI / 180);
+            const theta = (lon + 180) * (Math.PI / 180);
+
+            const x = -(altitude * Math.sin(phi) * Math.cos(theta));
+            const y = altitude * Math.cos(phi);
+            const z = altitude * Math.sin(phi) * Math.sin(theta);
+
+            const geo = new THREE.SphereGeometry(size, 8, 8);
+            const mat = new THREE.MeshBasicMaterial({ color: color });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, y, z);
+            scene.add(mesh);
+            nodes.push(mesh);
+            return mesh;
+        }
+
+        // Terrestrial
+        for(let i=0; i<15; i++) {
+            createNode(Math.random()*140-70, Math.random()*360-180, 100, 0x38bdf8, 2.5);
+        }
+        
+        // LEO
+        const leoGroup = new THREE.Group();
+        for(let i=0; i<25; i++) {
+            const node = createNode(Math.random()*160-80, Math.random()*360-180, 120, 0x10b981, 1.5);
+            leoGroup.add(node);
+        }
+        scene.add(leoGroup);
+
+        // Deep Space (Lunar)
+        const lunarGroup = new THREE.Group();
+        const lunar = createNode(20, 45, 250, 0xa78bfa, 3);
+        lunarGroup.add(lunar);
+        scene.add(lunarGroup);
+
+        // Edges (Connections)
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.15 });
+        for(let i=0; i<nodes.length; i++) {
+            for(let j=i+1; j<nodes.length; j++) {
+                if (Math.random() > 0.92) {
+                    const points = [nodes[i].position, nodes[j].position];
+                    const geo = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(geo, lineMat);
+                    scene.add(line);
+                    edges.push({line, n1: nodes[i], n2: nodes[j]});
+                }
+            }
+        }
+
+        // Lighting
+        const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambient);
+        const point = new THREE.PointLight(0xffffff, 1);
+        point.position.set(200, 200, 200);
+        scene.add(point);
+
+        // Simulation
+        let tasks = 14291;
+        setInterval(() => {
+            tasks += Math.floor(Math.random() * 5);
+            document.getElementById('val-tasks').innerText = tasks.toLocaleString();
+            
+            // Randomly flash lines
+            edges.forEach(e => {
+                if(Math.random() > 0.95) {
+                    e.line.material.opacity = 0.8;
+                    e.line.material.color.setHex(0xffffff);
+                    setTimeout(() => {
+                        e.line.material.opacity = 0.15;
+                        e.line.material.color.setHex(0x38bdf8);
+                    }, 200);
+                }
+            });
+        }, 800);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            leoGroup.rotation.y += 0.001;
+            leoGroup.rotation.z += 0.0005;
+            
+            lunarGroup.rotation.y += 0.0005;
+            
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
