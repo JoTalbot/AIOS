@@ -169,3 +169,11 @@ async def test_admin_routes_are_registered_and_require_admin_role():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         assert (await client.get("/api/v1/admin/keys", headers={"Authorization": "Bearer writer-key"})).status_code == 403
         assert (await client.get("/api/v1/admin/keys", headers={"Authorization": "Bearer admin-key"})).status_code == 200
+
+
+def test_bearer_lookup_uses_configured_principal():
+    from aios_core.api.security import Principal, find_principal
+
+    keys = {"correct-token": Principal("operator", frozenset({"viewer"}))}
+    assert find_principal(keys, "correct-token").subject == "operator"
+    assert find_principal(keys, "wrong-token") is None

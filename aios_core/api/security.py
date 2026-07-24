@@ -58,6 +58,14 @@ def load_api_keys(raw: str | None = None) -> dict[str, Principal]:
     return result
 
 
+def find_principal(api_keys: dict[str, Principal], supplied_key: str) -> Principal | None:
+    """Return the principal for a bearer token using constant-time comparison."""
+    return next(
+        (principal for key, principal in api_keys.items() if hmac.compare_digest(key, supplied_key)),
+        None,
+    )
+
+
 def required_roles(path: str, method: str) -> set[str]:
     """Return any role that may access an API route."""
     # Administrative endpoints can rotate credentials, restore backups and
@@ -116,14 +124,7 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
                 {"error": "Bearer authentication required"}, status_code=401
             )
         supplied = header[7:]
-        principal = next(
-            (
-                p
-                for key, p in self.api_keys.items()
-                if hmac.compare_digest(key, supplied)
-            ),
-            None,
-        )
+        principal = find_principal(self.api_keys, supplied)
         if principal is None:
             return JSONResponse({"error": "Invalid API key"}, status_code=401)
         if not principal.roles.intersection(
