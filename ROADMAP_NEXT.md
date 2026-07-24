@@ -44,7 +44,7 @@
 ## v10.17.0 (Next)
 - 🔲 Implement Agent Memory Optimization (Vector compression)
 - 🔲 Introduce Substrate Convergence Dashboard UI
-- 🔲 Datadog / Prometheus comprehensive alert tuning for EKS
+- ✅ Datadog / Prometheus comprehensive alert tuning for EKS
 
 ## v10.16.0 ✅ (2026-07-24)
 - ✅ Expand 112 modules (100-199 lines) to >200 lines

@@ -130,3 +130,50 @@ groups:
         annotations:
           summary: "📊 Low card collection rate"
           description: "Collecting {{ $value | humanize }}/hr cards. Platform: {{ $labels.platform }}. Check search queries, app state, or increase max_cards."
+
+  - name: aios-infrastructure-alerts
+    interval: 60s
+    rules:
+      # AWS EKS Node CPU High
+      - alert: EKSHighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "⚠️ High CPU usage on EKS node {{ $labels.instance }}"
+          description: "CPU usage has exceeded 85% for 10 minutes. Consider scaling EKS node group."
+
+      # AWS RDS PostgreSQL High Connections
+      - alert: RDSHighConnections
+        expr: pg_stat_activity_count > 400
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "⚠️ High DB Connections"
+          description: "PostgreSQL active connections > 400. Check API connection pooling or potential connection leaks."
+
+      # AWS ElastiCache Redis High Memory
+      - alert: RedisHighMemory
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "⚠️ High Redis Memory Usage"
+          description: "Redis memory utilization > 85%. Eiction policies might start dropping important task queues."
+
+      # AIOS API Pod Crash Loop
+      - alert: APIPodCrashLoop
+        expr: rate(kube_pod_container_status_restarts_total{container="aios"}[15m]) > 0.2
+        for: 10m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "🚨 AIOS API Pod CrashLoopBackOff"
+          description: "API pods are restarting frequently. Check pod logs immediately."
