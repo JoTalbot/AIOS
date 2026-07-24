@@ -55,6 +55,7 @@ _KIND_HINTS = {
     "messenger": ["messenger"],
     "collector": ["cards"],
     "marketplace": ["cards", "detail", "messenger"],
+    "ecommerce": ["cards", "detail", "messenger", "navigation"],
 }
 
 _ALL_SECTIONS = ("cards", "detail", "messenger", "navigation")

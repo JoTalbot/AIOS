@@ -17,6 +17,7 @@ import uvicorn
 from aios_core import Database, Orchestrator
 from aios_core.dashboard import create_dashboard
 from aios_cli.olx import _add_olx_parsers, _run_olx
+from aios_cli.rozetka import _add_rozetka_parsers, _run_rozetka
 from aios_cli.platforms import (
     _run_platforms, _run_profiles, _run_devices, _run_shards, _run_cron_plan,
 )
@@ -182,6 +183,9 @@ def _add_all_subparsers(subparsers):
     # OLX
     _add_olx_parsers(subparsers)
 
+    # Rozetka
+    _add_rozetka_parsers(subparsers)
+
 
 def main(argv=None):
     """AIOS CLI entry point — parse args and dispatch to sub-command handlers."""
@@ -246,6 +250,10 @@ def main(argv=None):
         try: handled = _run_olx(args)
         except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
         if not handled: parser.parse_args(["olx", "--help"])
+    elif args.command == "rozetka":
+        try: handled = _run_rozetka(args)
+        except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
+        if not handled: parser.parse_args(["rozetka", "--help"])
     elif args.command == "admin":
         from aios_cli_admin import (
             run_backup_cleanup, run_backup_create, run_backup_health,
