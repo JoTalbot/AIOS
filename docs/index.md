@@ -43,7 +43,9 @@ curl http://localhost:8000/health
 ## Docker (рекомендуется)
 
 ```bash
-docker-compose up -d --build
+cp .env.example .env
+# Replace all placeholders in .env before deployment.
+docker compose up -d --build
 curl http://localhost:8000/health
 curl http://localhost:8000/metrics
 ```
@@ -58,7 +60,7 @@ python run_production_autopilot.py --simulate-2weeks --cycles-per-day 24 --verbo
 python run_production_autopilot.py --daemon --interval 900
 
 # Docker production
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ## Текущий статус

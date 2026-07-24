@@ -135,10 +135,14 @@ python run_dashboard.py --port 8080
 
 ```bash
 # Development
-docker-compose up -d --build
+cp .env.example .env
+# Replace every placeholder in .env before starting containers.
+docker compose up -d --build
 
 # Production (API + autopilot + Prometheus + Grafana)
-docker-compose -f docker-compose.prod.yml up -d --build
+cp .env.example .env
+# Set AIOS_API_KEYS and GRAFANA_PASSWORD to unique secrets in .env.
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ---

@@ -85,14 +85,16 @@ python run_dashboard.py
 ### Development
 
 ```bash
-docker-compose up -d --build
+cp .env.example .env
+# Replace all placeholders in .env; Compose refuses insecure defaults.
+docker compose up -d --build
 curl http://localhost:8000/health
 ```
 
 ### Production
 
 ```bash
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 Production-сте включает:

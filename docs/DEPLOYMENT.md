@@ -5,7 +5,9 @@
 ### Quick start with Docker Compose
 
 ```bash
-docker-compose up -d --build
+cp .env.example .env
+# Replace all placeholders in .env before deployment.
+docker compose up -d --build
 ```
 
 This starts:
