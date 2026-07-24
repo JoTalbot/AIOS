@@ -16,7 +16,7 @@ def test_ttl_cache_namespaces_eviction_expiry_callbacks_and_bulk():
     assert cache.get("a", "one") == 1
     assert cache.get("a", "two") is None
     cache.set_many({"b": 2, "c": 3})
-    assert evicted and cache.count if False else True  # exercise eviction callback
+    assert evicted  # LRU eviction invokes the callback
     cache.set("short", "x", ttl=-1)
     assert cache.get("short") is None and expired
     cache.warm({"x": 1, "y": 2})
