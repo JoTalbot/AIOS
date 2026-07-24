@@ -1,6 +1,6 @@
 # Production Exploitation Guide
 
-**Версия документа:** 9.2.0-production | **Дата:** 23 июля 2026
+**Версия документа:** 10.15.0 | **Дата:** 24 июля 2026
 
 Полное руководство по промышленной эксплуатации AIOS с акцентом на Instagram-профили,
 compliance, pacing и мониторинг.
@@ -193,7 +193,7 @@ curl http://localhost:8000/metrics | grep aios_production
 - [ ] Клонировать репозиторий
 - [ ] Установить зависимости: `pip install -r requirements.txt`
 - [ ] Настроить API-ключи: `export AIOS_API_KEYS=...`
-- [ ] Запустить тесты: `python -m pytest -q` (1010 passing)
+- [ ] Запустить тесты: `python -m pytest -q` (проверяйте актуальный результат CI)
 - [ ] Создать платформу: `aios platforms scaffold --platform <name>`
 - [ ] Калибровочный рецепт: `aios platforms doctor --calibrate-recipe`
 - [ ] На устройстве: `aios platforms calibrate --dump /tmp/ui.xml --write`
@@ -255,8 +255,8 @@ aios platforms bootup --verify
 
 ```bash
 # Tag GA release
-git tag v9.2.0
-git push origin v9.2.0
+git tag v10.15.0
+git push origin v10.15.0
 ```
 
 ## API Reference
@@ -273,4 +273,4 @@ git push origin v9.2.0
 | `/api/v1/devices/list` | GET | List devices |
 | `/dashboard` | GET | Web dashboard (read-only) |
 
-Полный список: **143 маршрута** — см. [API Reference](api.md).
+Полный список: runtime OpenAPI (`/openapi.json`) — см. [API Reference](api.md).
