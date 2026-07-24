@@ -1,83 +1,88 @@
-# AIOS v9.4.0 Release Notes — Test & Core Quality Sprint
+# AIOS v9.4.0 Release Notes — Test Quality & Architecture Sprint
 
-**Date:** 2026-07-24 | **Branch:** `fix/test-fails-and-v9.4-upgrades`
+**Date:** 2026-07-24
 
 ---
 
-## 🧪 Test Suite Improvements
+## 🧪 Test Suite: 0 Failures
 
 | Metric | v9.3.1 | v9.4.0 | Change |
 |--------|--------|--------|--------|
-| Tests passing | ~1100 | **1214** | +114 |
-| Test regressions fixed | 0 | **15+** | ✅ |
+| Tests passing | ~1100 | **1227** | +127 |
+| Test failures | 104+ | **0** | ✅ |
 | async fixture errors | 115 | **0** | ✅ |
-| StarletteDeprecationWarning | 1 | 1 (non-blocking) | — |
+| StarletteDeprecationWarning | 10 files | **0** | ✅ |
+| Race condition (_PLATFORMS) | random 2-9 fails | **0** | ✅ |
+| Docstring coverage | 73.9% | **100.0%** | ✅ |
 
-### Critical Bug Fixes
+### Critical Bug Fixes (10)
 
-1. **`storage.py`: removed `@lru_cache` from `new_id()` and `now_iso()`**
-   - Both were returning identical values on every call, causing UNIQUE constraint
-     failures in memory items and TTL expiry never happening.
-   - Root cause: `@lru_cache(maxsize=128)` made uuid4 deterministic.
-
-2. **`orchestrator.py`: added `return task` in `create_task()`**
-   - Method was silently returning None, breaking all orchestrator tests.
-
-3. **`marketplace.py`: added `return item` in `publish()`**
-   - Method was silently returning None.
-
-4. **`api/mixins_core.py`: 3 missing imports fixed**
-   - `PlainTextResponse` → NameError in `/metrics`
-   - `json` → NameError in `/rpc` endpoints
-   - `rate_limiter` → NameError in task creation
-
-5. **`api/mixins_core.py`: broken `@staticmethod` on `_bounded_int` and `_memory_actor`**
-   - Both used `@staticmethod` but referenced `self`, causing TypeError via middleware → 400.
-
-6. **`api/mixins_devices.py`: broken `@staticmethod` on `_shard_jobs` and `_shards_add`**
-   - Same pattern — `@staticmethod` with `self` parameter.
-
-7. **`android_ai_navigation.py`: split `_generate_screen_signature` into proper methods**
-   - Old code had the classify logic embedded inside a signature generator,
-     returning `ScreenEmbedding` from a method that should return `str`.
-   - Added proper `classify(xml)` → `ScreenEmbedding` method.
-
-8. **`aios_cli.py`: argparse dest generation & missing subcommand args**
-   - Removed broken `_dest` suffix generation.
-   - Added `--promote-budget`, `--promote-min-age-days`, `--post-text`,
-     `--own-dump`, `--pace-actions`, `--pace-jitter` to autopilot.
-   - Added `--db/--serial/--directory` to `reels` and `post` subcommands.
-   - Fixed `type=int` bug for `bool(True)` args (Python: `isinstance(True, int)`).
-
-9. **`aios_cli/messengers.py`: `args.interlocutor` → `getattr(args, "interlocutor", None)`**
-
-10. **`deploy/monitoring/aios-alerts.yml`: added 5 missing Prometheus alert rules**
-    - AIOSShardWorkersDown, AIOSQueueBacklog, AIOSStaleClaims,
-      AIOSFleetExhausted, AIOSOutboxApprovalLag.
+1. `storage.py`: removed `@lru_cache` from `new_id()` and `now_iso()` — deterministic uuid/timestamp
+2. `orchestrator.py`: added `return task` in `create_task()` — was silently returning None
+3. `marketplace.py`: added `return item` in `publish()` — was silently returning None
+4. `api/mixins_core.py`: 3 missing imports (`PlainTextResponse`, `json`, `rate_limiter`)
+5. `api/mixins_core.py` + `mixins_devices.py`: broken `@staticmethod` + `self` — TypeError via middleware
+6. `android_ai_navigation.py`: split `_generate_screen_signature` → proper `classify()` + `_generate_screen_signature()`
+7. `aios_cli.py`: argparse dest generation, missing subcommand args, bool type bug
+8. `aios_cli/messengers.py`: `getattr()` fallbacks for missing Namespace attributes
+9. `deploy/monitoring/aios-alerts.yml`: added 5 Prometheus alert rules + severity fix
+10. `event_bus.py` + tests: `eb.on()` → `eb.subscribe()`, `eb.emit()` 3-arg API
 
 ---
 
-## 🔧 CI/CD Improvements
+## 🔄 Starlette → httpx Migration
 
-- **`pyproject.toml`: version bump to 9.4.0**
-- Added `[tool.pytest.ini_options]` with asyncio_mode=strict, timeout=30
-- Added `pytest-xdist`, `pytest-timeout`, `pytest-cov` to dev dependencies
-- Added `[tool.black]` and `[tool.isort]` config sections
-- `__init__.py` added to all test subdirectories (chaos, e2e, integration, etc.)
+All 8 test files migrated from sync `starlette.testclient.TestClient` to `async httpx.AsyncClient` with `ASGITransport`. Eliminates `StarletteDeprecationWarning` across the entire suite. `concurrent.futures.ThreadPoolExecutor` → `asyncio.gather` in load tests.
+
+Files: `test_admin_api.py`, `test_h2_batch.py`, `test_onboard_messengers.py`, `chaos/test_chaos_resilience.py`, `e2e/test_admin_api_e2e.py`, `load/test_api_load.py`, `performance/test_api_performance.py`, `security/test_security.py`
 
 ---
 
-## 🔒 Security Documentation
+## 🏎️ Race Condition Fix (_PLATFORMS)
 
-- **`SECURITY_FIX.md`**: credential rotation checklist, data isolation docs,
-  API key management, rate limiting details.
+Root cause: global mutable `_PLATFORMS` dict modified by tests in parallel (xdist). Fix: `snapshot_registry()` / `restore_registry()` + autouse `_isolate_platform_registry` fixture in `conftest.py`. Also made constitution/phase1 tests self-contained (no dependency on prior test execution order).
+
+**Result:** 1227/1227 pass with `--dist loadgroup` (was random 2-9 failures).
 
 ---
 
-## 📋 Known Remaining Issues (Non-blocking)
+## 📝 Type-Hints Migration (232 files)
 
-- 13 test failures in `test_platforms_profiles.py` — race condition with
-  shared `_PLATFORMS` global dict between tests. Individual runs pass.
-- `StarletteDeprecationWarning` on `httpx` with `starlette.testclient` —
-  migration to `httpx2` requires rewriting sync tests to async (deferred).
-- Dependabot PRs (11 open) — will merge in next sprint.
+`Dict[str, Any]` → `dict[str, Any]`, `List[str]` → `list[str]`, `Optional[str]` → `str | None`, `Tuple[int, int]` → `tuple[int, int]`, `Set[str]` → `set[str]`. Unused `typing` imports cleaned up.
+
+---
+
+## 📝 100% Docstring Coverage
+
+462 docstrings added via safe AST-based script (no multiline-def corruption). Coverage: 73.9% → 84.9% → **100.0%**.
+
+---
+
+## 🔧 CI/CD
+
+- `pyproject.toml`: v9.4.0, pytest-xdist, `[tool.pytest.ini_options]`, `[tool.black]`, `[tool.isort]`
+- `Dockerfile`: multi-arch `BUILDPLATFORM` (amd64 + arm64)
+- `ci.yml`: pytest-xdist `-n 4 --dist loadfile`, benchmarks job (non-blocking)
+- Benchmarks CI: 12 stable benchmarks, 1 skipped (RateLimiter memory leak)
+
+---
+
+## 🧹 Repository Cleanup
+
+15 stale branches deleted: 10 Dependabot + 1 fix + 2 feature + 2 session. Only `main` + `gh-pages` remain.
+
+---
+
+## 🔒 Security & Docs
+
+- `SECURITY_FIX.md`: credential rotation checklist
+- `ROADMAP_NEXT.md`: v9.4.0 achievements + v9.5.0 plan
+
+---
+
+## 📋 v9.5.0 Plan
+
+- Rozetka.ua platform scaffold
+- RateLimiter memory leak fix
+- httpx2 full async migration
+- Performance benchmarks CI thresholds
