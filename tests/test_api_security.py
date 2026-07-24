@@ -227,3 +227,23 @@ async def test_admin_export_rejects_non_numeric_limit():
         )
     assert response.status_code == 400
     assert response.json()["error"] == "limit must be an integer between 1 and 100000"
+
+
+@pytest.mark.asyncio
+async def test_sensitive_admin_operations_have_principal_scoped_rate_limit():
+    from aios_core.rate_limiter import rate_limiter
+
+    path = "/api/v1/admin/keys/generate"
+    rate_limiter.reset()
+    rate_limiter.set_tier(f"sensitive:admin:{path}", 1)
+    try:
+        app = create_app(api_keys={"admin-key": {"subject": "admin", "roles": ["admin"]}})
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            headers = {"Authorization": "Bearer admin-key"}
+            first = await client.post(path, json={"subject": "one", "roles": ["viewer"]}, headers=headers)
+            blocked = await client.post(path, json={"subject": "two", "roles": ["viewer"]}, headers=headers)
+        assert first.status_code == 200
+        assert blocked.status_code == 429
+        assert blocked.headers["retry-after"] == str(rate_limiter.window_seconds)
+    finally:
+        rate_limiter.reset()

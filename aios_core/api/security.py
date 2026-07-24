@@ -18,6 +18,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from aios_core.rate_limiter import rate_limiter
+
 
 @dataclass(frozen=True)
 class Principal:
@@ -131,5 +133,22 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
             required_roles(request.url.path, request.method)
         ):
             return JSONResponse({"error": "Insufficient role"}, status_code=403)
+        # Credential generation, imports, restore and webhook delivery can
+        # trigger expensive or irreversible operations. Apply a separate,
+        # principal-scoped limiter rather than relying on source IP address.
+        sensitive_paths = {
+            "/api/v1/admin/keys/generate",
+            "/api/v1/admin/import",
+            "/api/v1/admin/backups/restore",
+            "/api/v1/admin/webhooks/notify",
+        }
+        if request.url.path in sensitive_paths:
+            limit_key = f"sensitive:{principal.subject}:{request.url.path}"
+            if not rate_limiter.is_allowed(limit_key):
+                return JSONResponse(
+                    {"error": "Rate limit exceeded"},
+                    status_code=429,
+                    headers={"Retry-After": str(rate_limiter.window_seconds)},
+                )
         request.state.principal = principal
         return await call_next(request)
