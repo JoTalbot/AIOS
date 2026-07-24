@@ -619,6 +619,11 @@ class TestRuntimePolicyPersistence(unittest.TestCase):
         self.assertGreater(len(pending), 0)
 
     def test_audit_stats_persistent(self):
+        # Ensure at least one event exists (self-contained)
+        self.runtime.request_execution(
+            {"goal": "audit-stats-setup", "scope": "monitoring", "risk": "low",
+             "audit_log": True, "agent_id": "agent-stats-audit", "authority": "reader"}
+        )
         stats = self.runtime.audit.stats()
         self.assertEqual(stats["storage"], "sqlite")
         self.assertGreater(stats["total_events"], 0)
@@ -628,6 +633,11 @@ class TestRuntimePolicyPersistence(unittest.TestCase):
         self.assertEqual(stats["storage"], "sqlite")
 
     def test_db_stats(self):
+        # Ensure at least one event was recorded (self-contained)
+        self.runtime.request_execution(
+            {"goal": "db-stats-setup", "scope": "monitoring", "risk": "low",
+             "audit_log": True, "agent_id": "agent-stats-db", "authority": "reader"}
+        )
         stats = self.runtime.db.stats()
         self.assertGreater(stats["tables"]["audit_events"], 0)
 

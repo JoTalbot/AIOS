@@ -687,10 +687,18 @@ class TestRuntimePolicy(unittest.TestCase):
         self.assertIn("matched_articles", result)
 
     def test_history(self):
+        # Ensure at least one execution exists (self-contained, no dependency on prior tests)
+        self.runtime.request_execution(
+            {"goal": "history-setup", "scope": "monitoring", "risk": "low", "audit_log": True}
+        )
         history = self.runtime.history()
         self.assertGreater(len(history), 0)
 
     def test_stats(self):
+        # Ensure at least one execution exists (self-contained)
+        self.runtime.request_execution(
+            {"goal": "stats-setup", "scope": "monitoring", "risk": "low", "audit_log": True}
+        )
         stats = self.runtime.stats()
         self.assertEqual(stats["version"], "9.0.0")
         self.assertGreater(stats["total_executions"], 0)
@@ -698,6 +706,10 @@ class TestRuntimePolicy(unittest.TestCase):
 
     def test_audit_logging(self):
         """Verify audit events are recorded."""
+        # Ensure at least one decision was logged (self-contained)
+        self.runtime.request_execution(
+            {"goal": "audit-setup", "scope": "monitoring", "risk": "low", "audit_log": True}
+        )
         events = self.runtime.audit.query("execution_decision")
         self.assertGreater(len(events), 0)
         event = events[-1]

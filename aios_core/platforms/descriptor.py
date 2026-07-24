@@ -99,6 +99,26 @@ def list_platforms() -> List[PlatformDescriptor]:
     return [_PLATFORMS[name] for name in sorted(_PLATFORMS)]
 
 
+def snapshot_registry() -> dict[str, PlatformDescriptor]:
+    """Сохранить snapshot реестра (для изоляции тестов).
+
+    Возвращает копию всего dict _PLATFORMS, чтобы restore_registry
+    могла восстановить удалённые записи.
+    """
+    return dict(_PLATFORMS)
+
+
+def restore_registry(snapshot: dict[str, PlatformDescriptor]) -> None:
+    """Восстановить реестр к snapshot — добавить отсутствующие и удалить лишние."""
+    # Добавить ключи, которые были в snapshot но были удалены тестом
+    for key, descriptor in snapshot.items():
+        if key not in _PLATFORMS:
+            _PLATFORMS[key] = descriptor
+    # Удалить ключи, которых не было в snapshot (добавлены тестом)
+    for key in set(_PLATFORMS.keys()) - set(snapshot.keys()):
+        _PLATFORMS.pop(key, None)
+
+
 register_platform(
     PlatformDescriptor(
         name="olx",
