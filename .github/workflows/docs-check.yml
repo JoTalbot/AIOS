@@ -8,6 +8,10 @@ on:
       - 'mkdocs.yml'
       - '*.md'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
@@ -25,7 +29,7 @@ jobs:
 
       - name: Install MkDocs
         run: |
-          pip install mkdocs mkdocs-material mkdocs-minify-plugin mike
+          python -m pip install -e ".[docs]"
 
       - name: Build documentation
         run: mkdocs build --strict 2>&1 | tee build.log
