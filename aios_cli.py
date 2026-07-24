@@ -23,6 +23,15 @@ from aios_cli.platforms import (
 )
 from aios_cli.instagram import _run_instagram, _adb_dump_driver
 from aios_cli.messengers import _run_msg_platform
+from aios_cli.cross_platform import (
+    _add_cross_platform_parsers, _run_cross_platform, _run_advisor_v2,
+    _run_search, _run_benchmarks,
+)
+from aios_cli.tiktok import _add_tiktok_parsers, _run_tiktok
+from aios_cli.facebook import _add_facebook_parsers, _run_facebook
+from aios_cli.messenger_v2 import (
+    _add_messenger_v2_parsers, _run_whatsapp_v2, _run_viber_v2,
+)
 
 DEFAULT_OLX_DB = "olx_ads.sqlite"
 
@@ -186,6 +195,14 @@ def _add_all_subparsers(subparsers):
     # Rozetka
     _add_rozetka_parsers(subparsers)
 
+    # v9.7.0 — Cross-platform, Advisor v2, Vector search, Benchmarks
+    _add_cross_platform_parsers(subparsers)
+
+    # v9.8.0 — TikTok, Facebook, WhatsApp/Viber v2
+    _add_tiktok_parsers(subparsers)
+    _add_facebook_parsers(subparsers)
+    _add_messenger_v2_parsers(subparsers)
+
 
 def main(argv=None):
     """AIOS CLI entry point — parse args and dispatch to sub-command handlers."""
@@ -270,6 +287,22 @@ def main(argv=None):
         try: handled = _run_benchmarks(args)
         except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
         if not handled: parser.parse_args(["benchmarks", "--help"])
+    elif args.command == "tiktok-shop":
+        try: handled = _run_tiktok(args)
+        except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
+        if not handled: parser.parse_args(["tiktok-shop", "--help"])
+    elif args.command == "fb-marketplace":
+        try: handled = _run_facebook(args)
+        except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
+        if not handled: parser.parse_args(["fb-marketplace", "--help"])
+    elif args.command == "whatsapp-v2":
+        try: handled = _run_whatsapp_v2(args)
+        except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
+        if not handled: parser.parse_args(["whatsapp-v2", "--help"])
+    elif args.command == "viber-v2":
+        try: handled = _run_viber_v2(args)
+        except ValueError as exc: print(json.dumps({"error": str(exc)}, ensure_ascii=False)); handled = True
+        if not handled: parser.parse_args(["viber-v2", "--help"])
     elif args.command == "admin":
         from aios_cli_admin import (
             run_backup_cleanup, run_backup_create, run_backup_health,
