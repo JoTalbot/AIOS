@@ -9,6 +9,9 @@ service AiosCore {
     
     // Core Health & Stats
     rpc GetStats (StatsRequest) returns (StatsResponse);
+    
+    // Real-time Bidirectional Agent Events Streaming
+    rpc StreamAgentEvents (stream AgentEvent) returns (stream AgentEvent);
 }
 
 message TaskRequest {
@@ -40,4 +43,11 @@ message StatsRequest {}
 
 message StatsResponse {
     string stats_json = 1;
+}
+
+message AgentEvent {
+    string event_type = 1;
+    string agent_id = 2;
+    string payload_json = 3;
+    double timestamp = 4;
 }

@@ -64,6 +64,52 @@ class AiosCoreServicer(aios_pb2_grpc.AiosCoreServicer):
             error=task.error or ""
         )
 
+    def StreamAgentEvents(self, request_iterator, context):
+        import time
+        import queue
+        # Queue to hold outgoing events
+        out_queue = queue.Queue()
+        
+        # Subscribe to internal EventBus
+        def on_event(payload):
+            event = aios_pb2.AgentEvent(
+                event_type="orchestrator_event",
+                agent_id="system",
+                payload_json=json.dumps(payload),
+                timestamp=time.time()
+            )
+            out_queue.put(event)
+            
+        self.orchestrator.events.on("task_started", on_event)
+        self.orchestrator.events.on("task_completed", on_event)
+
+        def generate_responses():
+            # In a real async grpc server we'd use async generators, 
+            # but since we are using synchronous gRPC threadpool, we use a simple loop.
+            while context.is_active():
+                try:
+                    yield out_queue.get(timeout=1.0)
+                except queue.Empty:
+                    pass
+
+        # We can also process incoming events from the client stream if needed
+        # For this implementation we'll spawn a background thread to consume incoming
+        import threading
+        def consume_incoming():
+            try:
+                for req in request_iterator:
+                    logger.info(f"Received stream event from {req.agent_id}: {req.event_type}")
+                    # Dispatch to internal event bus
+                    payload = json.loads(req.payload_json) if req.payload_json else {}
+                    self.orchestrator.events.emit(req.event_type, req.agent_id, payload)
+            except Exception:
+                pass
+                
+        t = threading.Thread(target=consume_incoming, daemon=True)
+        t.start()
+
+        yield from generate_responses()
+
     def GetStats(self, request, context):
         stats = self.orchestrator.stats()
         return aios_pb2.StatsResponse(stats_json=json.dumps(stats))

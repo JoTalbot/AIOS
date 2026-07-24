@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\naios.proto\x12\x04\x61ios\"}\n\x0bTaskRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\x12\x10\n\x08\x61gent_id\x18\x03 \x01(\t\x12\x12\n\nrisk_level\x18\x04 \x01(\t\x12\x11\n\ttenant_id\x18\x05 \x01(\t\x12\x12\n\nsteps_json\x18\x06 \x01(\t\"/\n\x0cTaskResponse\x12\x0f\n\x07task_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\"$\n\x11TaskStatusRequest\x12\x0f\n\x07task_id\x18\x01 \x01(\t\"Y\n\x12TaskStatusResponse\x12\x0f\n\x07task_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x13\n\x0bresult_json\x18\x03 \x01(\t\x12\r\n\x05\x65rror\x18\x04 \x01(\t\"\x0e\n\x0cStatsRequest\"#\n\rStatsResponse\x12\x12\n\nstats_json\x18\x01 \x01(\t2\xb8\x01\n\x08\x41iosCore\x12\x33\n\nSubmitTask\x12\x11.aios.TaskRequest\x1a\x12.aios.TaskResponse\x12\x42\n\rGetTaskStatus\x12\x17.aios.TaskStatusRequest\x1a\x18.aios.TaskStatusResponse\x12\x33\n\x08GetStats\x12\x12.aios.StatsRequest\x1a\x13.aios.StatsResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\naios.proto\x12\x04\x61ios\"}\n\x0bTaskRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\x12\x10\n\x08\x61gent_id\x18\x03 \x01(\t\x12\x12\n\nrisk_level\x18\x04 \x01(\t\x12\x11\n\ttenant_id\x18\x05 \x01(\t\x12\x12\n\nsteps_json\x18\x06 \x01(\t\"/\n\x0cTaskResponse\x12\x0f\n\x07task_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\"$\n\x11TaskStatusRequest\x12\x0f\n\x07task_id\x18\x01 \x01(\t\"Y\n\x12TaskStatusResponse\x12\x0f\n\x07task_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x13\n\x0bresult_json\x18\x03 \x01(\t\x12\r\n\x05\x65rror\x18\x04 \x01(\t\"\x0e\n\x0cStatsRequest\"#\n\rStatsResponse\x12\x12\n\nstats_json\x18\x01 \x01(\t\"[\n\nAgentEvent\x12\x12\n\nevent_type\x18\x01 \x01(\t\x12\x10\n\x08\x61gent_id\x18\x02 \x01(\t\x12\x14\n\x0cpayload_json\x18\x03 \x01(\t\x12\x11\n\ttimestamp\x18\x04 \x01(\x01\x32\xf5\x01\n\x08\x41iosCore\x12\x33\n\nSubmitTask\x12\x11.aios.TaskRequest\x1a\x12.aios.TaskResponse\x12\x42\n\rGetTaskStatus\x12\x17.aios.TaskStatusRequest\x1a\x18.aios.TaskStatusResponse\x12\x33\n\x08GetStats\x12\x12.aios.StatsRequest\x1a\x13.aios.StatsResponse\x12;\n\x11StreamAgentEvents\x12\x10.aios.AgentEvent\x1a\x10.aios.AgentEvent(\x01\x30\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -43,6 +43,8 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_STATSREQUEST']._serialized_end=339
   _globals['_STATSRESPONSE']._serialized_start=341
   _globals['_STATSRESPONSE']._serialized_end=376
-  _globals['_AIOSCORE']._serialized_start=379
-  _globals['_AIOSCORE']._serialized_end=563
+  _globals['_AGENTEVENT']._serialized_start=378
+  _globals['_AGENTEVENT']._serialized_end=469
+  _globals['_AIOSCORE']._serialized_start=472
+  _globals['_AIOSCORE']._serialized_end=717
 # @@protoc_insertion_point(module_scope)
