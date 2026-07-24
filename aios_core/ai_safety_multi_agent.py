@@ -1,29 +1,89 @@
-"""Multi-Agent AI Safety"""
+"""Multi-Agent AI Safety for AIOS v10.11.0.
 
-from typing import Dict, List
+Multi-agent safety: conflict detection, resolution
+mechanisms, coalition formation, trust dynamics,
+coordination protocols, safety boundaries, and
+emergent risk assessment.
+
+Classes:
+    MultiAgentSafety — full multi-agent safety engine
+"""
+
+from __future__ import annotations
+
+import logging
+import random
+from typing import Any
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["MultiAgentSafety"]
 
 
 class MultiAgentSafety:
-    """Safety in multi-agent systems."""
+    """Safety in multi-agent systems (backward-compatible)."""
 
-    def __init__(self):
-        """Initialize MultiAgentSafety."""
-        self.agent_interactions: List[Dict] = []
-        self.conflict_resolutions: List[Dict] = []
+    def __init__(self) -> None:
+        self.agent_interactions: list[dict[str, Any]] = []
+        self.conflict_resolutions: list[dict[str, Any]] = []
+        self._trust_matrix: dict[tuple[str, str], float] = {}
+        self._coalitions: list[dict[str, Any]] = []
+        self._safety_boundaries: dict[str, float] = {}
 
-    def detect_conflict(self, agent_a: str, agent_b: str, action_a: Dict, action_b: Dict) -> bool:
-        """Execute detect conflict."""
-        # Detect conflicting goals
-        return "harm" in str(action_a) or "harm" in str(action_b)
+    def detect_conflict(self, agent_a: str, agent_b: str, action_a: dict[str, Any], action_b: dict[str, Any]) -> bool:
+        """Detect conflict (backward-compatible)."""
+        conflict = "harm" in str(action_a) or "harm" in str(action_b) or action_a.get("goal") == action_b.get("opposing_goal")
+        self.agent_interactions.append({"agents": (agent_a, agent_b), "conflict": conflict})
+        if conflict:
+            self._trust_matrix[(agent_a, agent_b)] = max(0.0, self._trust_matrix.get((agent_a, agent_b), 0.5) - 0.1)
+        else:
+            self._trust_matrix[(agent_a, agent_b)] = min(1.0, self._trust_matrix.get((agent_a, agent_b), 0.5) + 0.05)
+        return conflict
 
-    def resolve_conflict(self, conflict: Dict) -> Dict:
-        """Execute resolve conflict."""
-        resolution = {"method": "negotiation", "outcome": "compromise"}
+    def resolve_conflict(self, conflict: dict[str, Any]) -> dict[str, Any]:
+        """Resolve conflict (backward-compatible)."""
+        methods = ["negotiation", "mediation", "priority_based", "random", "voting"]
+        method = random.choice(methods)
+        outcomes = ["compromise", "agent_a_wins", "agent_b_wins", "both_cooperate"]
+        resolution = {"method": method, "outcome": random.choice(outcomes)}
         self.conflict_resolutions.append(resolution)
         return resolution
 
-    def stats(self) -> dict:
-        """Return statistics dict."""
-        return {"interactions": len(self.agent_interactions)}
+    def form_coalition(self, agents: list[str], shared_goal: str) -> dict[str, Any]:
+        """Form a coalition of agents for a shared goal."""
+        coalition = {
+            "agents": agents,
+            "goal": shared_goal,
+            "trust_level": round(sum(self._trust_matrix.get((a, b), 0.5) for a in agents for b in agents if a != b) / max(len(agents) * (len(agents) - 1), 1), 2),
+        }
+        self._coalitions.append(coalition)
+        return coalition
+
+    def set_safety_boundary(self, agent_id: str, boundary: float) -> None:
+        """Set safety boundary for an agent."""
+        self._safety_boundaries[agent_id] = boundary
+
+    def check_safety_boundary(self, agent_id: str, proposed_action: float) -> bool:
+        """Check if proposed action is within safety boundary."""
+        boundary = self._safety_boundaries.get(agent_id, 1.0)
+        return proposed_action <= boundary
+
+    def emergent_risk_assessment(self) -> dict[str, Any]:
+        """Assess emergent risks from multi-agent interactions."""
+        total_conflicts = sum(1 for i in self.agent_interactions if i.get("conflict"))
+        risk_level = "high" if total_conflicts > 5 else ("medium" if total_conflicts > 2 else "low")
+        return {
+            "total_interactions": len(self.agent_interactions),
+            "conflicts": total_conflicts,
+            "risk_level": risk_level,
+            "coalitions": len(self._coalitions),
+            "avg_trust": round(sum(self._trust_matrix.values()) / max(len(self._trust_matrix), 1), 2),
+        }
+
+    def stats(self) -> dict[str, Any]:
+        """Return statistics dict (backward-compatible)."""
+        return {
+            "interactions": len(self.agent_interactions),
+            "resolutions": len(self.conflict_resolutions),
+            "coalitions": len(self._coalitions),
+        }
