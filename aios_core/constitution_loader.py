@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
-__all__ = ["ObligationLevel", "ConstitutionalRule", "Article", "ConstitutionLoader"]
+__all__ = ["Article", "ConstitutionLoader", "ConstitutionalRule", "ObligationLevel"]
 
 
 class ObligationLevel(Enum):

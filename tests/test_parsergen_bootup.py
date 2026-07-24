@@ -9,9 +9,10 @@ import pytest_asyncio
 import yaml
 from httpx import ASGITransport, AsyncClient
 
-from aios_core.platforms import PlatformDescriptor, bootup_platform, build_parser
-from aios_core.platforms import descriptor as descriptor_mod
 from aios_core.platforms import (
+    PlatformDescriptor,
+    bootup_platform,
+    build_parser,
     extract_markers,
     generate_parser_source,
     get_platform,
@@ -21,6 +22,7 @@ from aios_core.platforms import (
     write_hints_to_descriptor,
     write_parser,
 )
+from aios_core.platforms import descriptor as descriptor_mod
 from aios_core.platforms.calibrate import CalibrationAdvisor
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

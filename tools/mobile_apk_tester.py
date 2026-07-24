@@ -7,9 +7,6 @@ Constitutional Safety Laws, and ADB execution runner hooks for Android APKs.
 
 import argparse
 import json
-import os
-import sys
-import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -31,7 +28,7 @@ class APKManifestAnalyzer:
     def __init__(self, apk_path: str):
         self.apk_path = Path(apk_path).resolve()
 
-    def inspect_apk_structure(self) -> Dict[str, Any]:
+    def inspect_apk_structure(self) -> dict[str, Any]:
         """Inspect APK ZIP entries, classes.dex count, and resources."""
         if not self.apk_path.exists():
             raise FileNotFoundError(f"APK file '{self.apk_path}' does not exist.")
@@ -57,8 +54,8 @@ class APKManifestAnalyzer:
         }
 
     def analyze_security_permissions(
-        self, sample_permissions: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        self, sample_permissions: list[str] | None = None
+    ) -> dict[str, Any]:
         """Analyze permissions against AIOS Constitutional Safety Guidelines (Article V / Article XXXII)."""
         permissions = sample_permissions or [
             "android.permission.INTERNET",
@@ -66,7 +63,7 @@ class APKManifestAnalyzer:
             "android.permission.SYSTEM_ALERT_WINDOW",
         ]
 
-        flagged_risks: List[Dict[str, str]] = []
+        flagged_risks: list[dict[str, str]] = []
         for perm in permissions:
             if perm in self.DANGEROUS_PERMISSIONS:
                 flagged_risks.append(

@@ -6,8 +6,6 @@ data models, test runner, built-in suites, reporter, and main engine facade.
 
 import os
 
-import pytest
-
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONSTITUTION_DIR = os.path.join(_PROJECT_ROOT, "docs/constitution")
 POLICIES_DIR = os.path.join(_PROJECT_ROOT, "policies")
@@ -45,7 +43,12 @@ class TestModels:
         assert tc.validator is None
 
     def test_test_result_defaults(self):
-        from aios_core.test_engine.models import TestCategory, TestResult, TestSeverity, TestStatus
+        from aios_core.test_engine.models import (
+            TestCategory,
+            TestResult,
+            TestSeverity,
+            TestStatus,
+        )
 
         r = TestResult(test_name="my_test")
         assert r.test_name == "my_test"
@@ -138,7 +141,6 @@ class TestModels:
         from aios_core.test_engine.models import (
             TestCategory,
             TestResult,
-            TestStatus,
             TestSuiteResult,
         )
 

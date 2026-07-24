@@ -6,7 +6,7 @@ Without Octopus integration (~/agents/).
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 @dataclass
@@ -25,17 +25,17 @@ class ExecutionHistory:
     history_id: str
     action: str
     result: str
-    metrics: Dict[str, float]
+    metrics: dict[str, float]
     timestamp: datetime
 
 
 @dataclass
 class AIOS_EvolutionEngine:
-    execution_history: List[ExecutionHistory] = field(default_factory=list)
-    improvement_proposals: List[ImprovementProposal] = field(default_factory=list)
-    capability_performance: Dict[str, float] = field(default_factory=dict)
+    execution_history: list[ExecutionHistory] = field(default_factory=list)
+    improvement_proposals: list[ImprovementProposal] = field(default_factory=list)
+    capability_performance: dict[str, float] = field(default_factory=dict)
 
-    def record_execution(self, action: str, result: str, metrics: Dict[str, float]) -> None:
+    def record_execution(self, action: str, result: str, metrics: dict[str, float]) -> None:
         self.execution_history.append(
             ExecutionHistory(
                 history_id=f"hist_{len(self.execution_history)}",
@@ -46,7 +46,7 @@ class AIOS_EvolutionEngine:
             )
         )
 
-    def analyze_experience(self) -> List[Dict]:
+    def analyze_experience(self) -> list[dict]:
         # Analyze execution history for patterns, failures, bottlenecks
         return [{"pattern": "efficiency_trend", "value": 0.85}]
 

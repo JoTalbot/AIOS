@@ -2,9 +2,7 @@
 
 from unittest.mock import Mock, patch
 
-import pytest
-
-from aios_core.android_ai_navigation import AIScreenClassifier, ScreenEmbedding, SelfHealingLocator
+from aios_core.android_ai_navigation import AIScreenClassifier, ScreenEmbedding
 
 
 class MockUIElement:

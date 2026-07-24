@@ -8,9 +8,14 @@ from pathlib import Path
 import pytest
 import yaml
 
-from aios_core.platforms import compliance_block, compliance_guard
+from aios_core.platforms import (
+    compliance_block,
+    compliance_guard,
+    get_platform,
+    load_catalog_file,
+    rate_limit_hours,
+)
 from aios_core.platforms import descriptor as descriptor_mod
-from aios_core.platforms import get_platform, load_catalog_file, rate_limit_hours
 
 
 def _write_yaml(tmp_path, platform, package, compliance=None):

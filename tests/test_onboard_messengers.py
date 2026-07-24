@@ -10,12 +10,10 @@ from pathlib import Path
 
 import httpx
 import pytest
-import pytest_asyncio
 import yaml
 
-from aios_core.platforms import ShardJobs, ShardRouter
+from aios_core.platforms import ShardRouter, get_platform, load_catalog_file
 from aios_core.platforms import descriptor as descriptor_mod
-from aios_core.platforms import get_platform, load_catalog_file
 
 CHAT_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <hierarchy rotation="0">

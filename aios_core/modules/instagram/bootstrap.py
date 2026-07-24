@@ -70,7 +70,7 @@ class InstagramBootstrap:
             doc = yaml.safe_load(yaml_path.read_text("utf-8")) or {}
             hints = (doc.get("extras") or {}).get("parser_hints") or {}
             markers = extract_markers(hints)
-        except Exception:  # noqa: BLE001 — broken yaml честно помечаем
+        except Exception:
             hints = {}
         checks["card_markers"] = {
             "ok": bool(markers),
@@ -99,7 +99,7 @@ class InstagramBootstrap:
             storage = InstagramStorage(":memory:")
             storage.close()
             storage_ok, storage_detail = True, "schema opens"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             storage_ok, storage_detail = False, str(exc)[:120]
         checks["storage"] = {"ok": storage_ok, "detail": storage_detail}
 

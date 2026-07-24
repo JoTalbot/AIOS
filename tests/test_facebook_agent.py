@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from aios_core.modules.facebook import (
-    FacebookCollector, FacebookCardParser, FacebookDetailParser,
-    FacebookPriceTracker, FacebookAutoWatch, FacebookFavorites,
-    FacebookAutoLogin, FacebookStorage, FacebookBootstrap,
+    FacebookAutoLogin,
+    FacebookAutoWatch,
+    FacebookCardParser,
+    FacebookCollector,
+    FacebookDetailParser,
+    FacebookFavorites,
+    FacebookPriceTracker,
+    FacebookStorage,
 )
 from aios_core.modules.olx.models import AdCard
 

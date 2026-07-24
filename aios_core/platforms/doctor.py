@@ -118,7 +118,7 @@ def platform_doctor(
             storage = storage_factory()
             storage.close()
             checks["storage"] = {"ok": True, "detail": "opens,clean"}
-        except Exception as exc:  # noqa: BLE001 — честный диагноз
+        except Exception as exc:
             checks["storage"] = {"ok": False, "detail": str(exc)[:200]}
     if serial and adb is not None:
         devices = adb.run(f"{adb.adb} devices")

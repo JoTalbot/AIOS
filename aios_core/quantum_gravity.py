@@ -16,7 +16,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["SpacetimeRegion", "QuantumGravitySimulator"]
+__all__ = ["QuantumGravitySimulator", "SpacetimeRegion"]
 
 
 class SpacetimeRegion:

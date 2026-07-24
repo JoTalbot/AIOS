@@ -9,9 +9,15 @@ import pytest
 import yaml
 
 from aios_core.modules.instagram import InstagramStorage
-from aios_core.platforms import PlatformDescriptor, ReelsCollector, ReelsTabDriver, ShardRouter
+from aios_core.platforms import (
+    PlatformDescriptor,
+    ReelsCollector,
+    ReelsTabDriver,
+    ShardRouter,
+    load_catalog_file,
+    reels_driver_for,
+)
 from aios_core.platforms import descriptor as descriptor_mod
-from aios_core.platforms import get_platform, load_catalog_file, reels_driver_for
 from aios_core.platforms.videocards import HintVideoParser
 
 # ---------------------------------------------------------------------------

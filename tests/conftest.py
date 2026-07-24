@@ -23,7 +23,7 @@ def _isolate_platform_registry():
     после теста удаляем все ключи, которых не было в snapshot.
     Это предотвращает race conditions при параллельном запуске (xdist).
     """
-    from aios_core.platforms.descriptor import snapshot_registry, restore_registry
+    from aios_core.platforms.descriptor import restore_registry, snapshot_registry
 
     snapshot = snapshot_registry()
     yield

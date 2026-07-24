@@ -1,11 +1,14 @@
 """Tests for centralised YAML config."""
 import os
 import tempfile
-import yaml
 from pathlib import Path
 
+import yaml
+
 from aios_core.config_central import (
-    AIOSConfig, DatabaseConfig, load_config, generate_default_config,
+    AIOSConfig,
+    generate_default_config,
+    load_config,
 )
 
 

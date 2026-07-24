@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from aios_core.modules.tiktok import (
-    TikTokCollector, TikTokCardParser, TikTokDetailParser,
-    TikTokPriceTracker, TikTokAutoWatch, TikTokFavorites,
-    TikTokAutoLogin, TikTokStorage, TikTokBootstrap,
-)
 from aios_core.modules.olx.models import AdCard
+from aios_core.modules.tiktok import (
+    TikTokAutoLogin,
+    TikTokAutoWatch,
+    TikTokCardParser,
+    TikTokCollector,
+    TikTokDetailParser,
+    TikTokFavorites,
+    TikTokPriceTracker,
+    TikTokStorage,
+)
 
 
 def _card(title: str, price: float, ad_id: str = "") -> AdCard:

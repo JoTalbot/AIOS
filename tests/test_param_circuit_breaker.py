@@ -1,5 +1,7 @@
 import pytest
+
 from aios_core.circuit_breaker import CircuitBreaker, CircuitState
+
 
 @pytest.mark.parametrize("threshold", [1,2,3,5])
 def test_opens_after_n_failures(threshold):

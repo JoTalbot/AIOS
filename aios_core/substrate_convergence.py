@@ -17,7 +17,7 @@ import time
 from collections import defaultdict
 from typing import Any
 
-__all__ = ["SubstrateType", "SubstrateConvergenceEngine"]
+__all__ = ["SubstrateConvergenceEngine", "SubstrateType"]
 
 
 class SubstrateType:

@@ -1,5 +1,7 @@
 import pytest
+
 from aios_core.rate_limiter import RateLimiter
+
 
 @pytest.mark.parametrize("rpm", [1,2,3,5,10,20,50,100])
 def test_exact_limit(rpm):

@@ -6,10 +6,11 @@ Resources are read-only data sources that agents can read.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from dataclasses import dataclass
+from typing import Optional
+from collections.abc import Callable
 
-from .protocol import MCPResource, MCPResourceContent
+from .protocol import MCPResourceContent
 
 
 @dataclass
@@ -20,7 +21,7 @@ class ResourceDefinition:
     name: str
     description: str = ""
     mime_type: str = "text/plain"
-    provider: Optional[Callable[[], str]] = None  # Function that returns resource content
+    provider: Callable[[], str] | None = None  # Function that returns resource content
     category: str = "general"
 
 
@@ -62,7 +63,7 @@ class ResourceRegistry:
             return True
         return False
 
-    def get(self, uri: str) -> Optional[ResourceDefinition]:
+    def get(self, uri: str) -> ResourceDefinition | None:
         """Get a resource definition by URI.
 
         Args:
@@ -89,7 +90,7 @@ class ResourceRegistry:
             for r in self._resources.values()
         ]
 
-    def read(self, uri: str) -> Optional[MCPResourceContent]:
+    def read(self, uri: str) -> MCPResourceContent | None:
         """Read a resource's content.
 
         Args:

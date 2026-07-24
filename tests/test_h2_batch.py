@@ -9,12 +9,15 @@ from pathlib import Path
 
 import httpx
 import pytest
-import pytest_asyncio
 import yaml
 
-from aios_core.platforms import calibration_recipe, dashboard_html
+from aios_core.platforms import (
+    calibration_recipe,
+    dashboard_html,
+    get_platform,
+    load_catalog_file,
+)
 from aios_core.platforms import descriptor as descriptor_mod
-from aios_core.platforms import get_platform, load_catalog_file
 from aios_core.platforms.recipe import _KIND_HINTS
 
 # ---------------------------------------------------------------------------

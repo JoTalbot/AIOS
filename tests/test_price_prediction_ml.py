@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
-
 from aios_core.price_prediction_ml import (
     EnsemblePredictor,
     ExponentialMovingAverage,
-    PricePredictionEngine,
-    PricePoint,
-    PredictionModel,
-    PredictionResult,
     PolynomialPredictor,
+    PredictionModel,
+    PricePoint,
+    PricePredictionEngine,
     SimpleMovingAverage,
     TrendDirection,
     WeightedMovingAverage,
@@ -21,7 +18,6 @@ from aios_core.price_prediction_ml import (
     _gauss_solve,
     _mean_squared_error,
 )
-
 
 # ─── Helper ───
 

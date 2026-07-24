@@ -21,7 +21,7 @@ from typing import Any
 from aios_core.android_driver import AndroidDriver
 from aios_core.android_parser import UIAutomatorParser, UIElement
 
-__all__ = ["ScreenEmbedding", "ScreenMatch", "AIScreenClassifier", "SelfHealingLocator"]
+__all__ = ["AIScreenClassifier", "ScreenEmbedding", "ScreenMatch", "SelfHealingLocator"]
 
 
 def _text_vector(text: str) -> dict[str, float]:

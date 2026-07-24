@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from aios_core.modules.viber import (
-    ViberStorage, ViberContactManager, ViberBroadcastScheduler,
-    ViberChatAnalyzer, ViberMessenger, ViberBootstrap,
+    ViberBroadcastScheduler,
+    ViberChatAnalyzer,
+    ViberContactManager,
+    ViberStorage,
 )
 from aios_core.modules.whatsapp.contact_manager import Contact
 

@@ -26,7 +26,7 @@ import os
 import sys
 import time
 import urllib.request
-from typing import Any, Dict, List, Optional
+from typing import List
 
 # ---------------------------------------------------------------------------
 # Telegram API helpers (zero-dependency)
@@ -46,7 +46,7 @@ class TelegramAPI:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read())
 
-    def get_updates(self, offset: int = 0) -> List[dict]:
+    def get_updates(self, offset: int = 0) -> list[dict]:
         result = self._request("getUpdates", {"offset": offset, "timeout": 30})
         return result.get("result", [])
 
@@ -81,7 +81,7 @@ def cmd_start() -> str:
         "  /status — сводка по платформам\n"
         "  /olx    — статистика OLX\n"
         "  /help   — помощь\n\n"
-        f"_v9.3.1 · JoTalbot/AIOS_"
+        "_v9.3.1 · JoTalbot/AIOS_"
     )
 
 
@@ -190,9 +190,9 @@ def run_bot(token: str) -> None:
     api = TelegramAPI(token)
     offset = 0
 
-    print(f"🤖 AIOS Telegram Bot запущен")
+    print("🤖 AIOS Telegram Bot запущен")
     print(f"   Команды: {' '.join(COMMANDS)}")
-    print(f"   Ожидание сообщений...\n")
+    print("   Ожидание сообщений...\n")
 
     while True:
         try:

@@ -11,4 +11,3 @@ class RozetkaDetailParser(AdDetailParser):
     Inherits OLX AdDetailParser, Rozetka-specific markers override.
     """
 
-    pass

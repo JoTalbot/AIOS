@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from aios_core.vector_search import VectorSearchEngine, SearchResult
-from aios_core.modules.olx.storage import OLXStorage
 from aios_core.modules.olx.models import AdCard
+from aios_core.modules.olx.storage import OLXStorage
+from aios_core.vector_search import SearchResult, VectorSearchEngine
 
 
 def _card(title: str, price: float, ad_id: str = "", query: str = "test") -> AdCard:

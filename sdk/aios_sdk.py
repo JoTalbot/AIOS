@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Callable, Dict, List, Optional
+from typing import List, Optional
+from collections.abc import Callable
 
 import httpx
 
@@ -19,7 +20,7 @@ class AIOSClient:
     def __init__(
         self,
         base_url: str = "http://localhost:8000",
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         timeout: float = 30.0,
     ):
         self.base_url = base_url.rstrip("/")
@@ -108,7 +109,7 @@ class AIOSClient:
     # --- Memory ---
 
     async def memory_store(
-        self, content: dict, category: str = "operational", tags: Optional[List[str]] = None
+        self, content: dict, category: str = "operational", tags: list[str] | None = None
     ) -> dict:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(
@@ -122,7 +123,7 @@ class AIOSClient:
     async def memory_search(self, query: str, category: str = "", limit: int = 20) -> dict:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.get(
-                self._url(f"/api/v1/memory/search"),
+                self._url("/api/v1/memory/search"),
                 params={"query": query, "category": category, "limit": limit},
                 headers=self.headers,
             )
@@ -132,7 +133,7 @@ class AIOSClient:
     # --- Knowledge Graph ---
 
     async def kg_add_node(
-        self, label: str, node_type: str = "entity", properties: Optional[dict] = None
+        self, label: str, node_type: str = "entity", properties: dict | None = None
     ) -> dict:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(
@@ -234,7 +235,7 @@ class AIOSClient:
         platform: str,
         original_message: str,
         recipient: str,
-        item_context: Optional[dict] = None,
+        item_context: dict | None = None,
     ) -> dict:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(
@@ -250,7 +251,7 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
-    async def advisor_summarize_inbox(self, platform: str, messages: List[dict]) -> dict:
+    async def advisor_summarize_inbox(self, platform: str, messages: list[dict]) -> dict:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(
                 self._url("/api/v1/advisor/summarize"),
@@ -273,7 +274,7 @@ class AIOSClient:
     # --- WebSocket helpers ---
 
     async def watch_events(
-        self, on_event: Callable[[dict], None], channels: Optional[List[str]] = None
+        self, on_event: Callable[[dict], None], channels: list[str] | None = None
     ):
         """Watch events via WebSocket."""
         try:
@@ -300,7 +301,7 @@ class AIOSClient:
 class AIOSClientSync:
     """Sync wrapper - use in scripts without asyncio."""
 
-    def __init__(self, base_url: str = "http://localhost:8000", api_key: Optional[str] = None):
+    def __init__(self, base_url: str = "http://localhost:8000", api_key: str | None = None):
         self._async = AIOSClient(base_url, api_key)
         self.base_url = self._async.base_url
 
@@ -424,4 +425,3 @@ def example_agent():
     results = client.marketplace_search(query="olx")
     print(results)
     """
-    pass

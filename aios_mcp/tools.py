@@ -6,8 +6,9 @@ Every tool call passes through the Constitution Guard before execution.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from dataclasses import dataclass
+from typing import Any, Optional
+from collections.abc import Callable
 
 from .protocol import MCPToolCall, MCPToolResult
 
@@ -63,7 +64,7 @@ class ToolRegistry:
             return True
         return False
 
-    def get(self, name: str) -> Optional[ToolDefinition]:
+    def get(self, name: str) -> ToolDefinition | None:
         """Get a tool definition by name.
 
         Args:

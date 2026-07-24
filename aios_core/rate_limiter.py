@@ -32,16 +32,16 @@ class RateLimiter:
     """
 
     __slots__ = (
-        "requests_per_minute",
-        "requests",
-        "window_seconds",
         "_burst_size",
-        "_tokens",
         "_last_refill",
-        "_tiers",
-        "_quota_used",
-        "_quota_limits",
         "_mode",
+        "_quota_limits",
+        "_quota_used",
+        "_tiers",
+        "_tokens",
+        "requests",
+        "requests_per_minute",
+        "window_seconds",
     )
 
     def __init__(

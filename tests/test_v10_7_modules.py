@@ -3,16 +3,20 @@ Distributed Computing, Edge Computing, Explainable AI, Federated Learning,
 GraphQL, Social Intelligence, Differential Privacy."""
 
 from __future__ import annotations
+
 import time
+
 import pytest
 
 # ═════════════════════════════════════════════════════════════════════════════
 # 1. ADVANCED SECURITY
 # ═════════════════════════════════════════════════════════════════════════════
-
 from aios_core.advanced_security import (
-    ThreatLevel, ThreatEvent, SecurityPolicy, AdvancedSecurity,
+    AdvancedSecurity,
+    SecurityPolicy,
+    ThreatLevel,
 )
+
 
 class TestAdvancedSecurity:
     def setup_method(self):
@@ -75,8 +79,11 @@ class TestAdvancedSecurity:
 # ═════════════════════════════════════════════════════════════════════════════
 
 from aios_core.agent_swarm import (
-    SwarmAgent, AgentRole, SwarmMessage, SwarmDecision, AgentSwarm,
+    AgentRole,
+    AgentSwarm,
+    SwarmAgent,
 )
+
 
 class TestAgentSwarm:
     def setup_method(self):
@@ -151,8 +158,11 @@ class TestAgentSwarm:
 # ═════════════════════════════════════════════════════════════════════════════
 
 from aios_core.adversarial import (
-    AttackType, AdversarialEvent, DefenseStrategy, AdversarialDefense,
+    AdversarialDefense,
+    AttackType,
+    DefenseStrategy,
 )
+
 
 class TestAdversarialDefense:
     def setup_method(self):
@@ -210,8 +220,10 @@ class TestAdversarialDefense:
 # ═════════════════════════════════════════════════════════════════════════════
 
 from aios_core.distributed_computing import (
-    TaskStatus, DistributedTask, WorkerNode, DistributedComputing,
+    DistributedComputing,
+    TaskStatus,
 )
+
 
 class TestDistributedComputing:
     def setup_method(self):
@@ -285,6 +297,7 @@ class TestDistributedComputing:
 
 from aios_core.edge_computing import EdgeNode, EdgeOrchestrator
 
+
 class TestEdgeNode:
     def test_can_handle(self):
         node = EdgeNode(node_id="n1", location="dnipro", capacity=100)
@@ -349,8 +362,10 @@ class TestEdgeOrchestrator:
 # ═════════════════════════════════════════════════════════════════════════════
 
 from aios_core.explainable_ai import (
-    ExplanationLevel, Factor, Explanation, ExplainableAI,
+    ExplainableAI,
+    ExplanationLevel,
 )
+
 
 class TestExplainableAI:
     def setup_method(self):
@@ -406,8 +421,9 @@ class TestExplainableAI:
 # ═════════════════════════════════════════════════════════════════════════════
 
 from aios_core.federated_learning import (
-    NodeStatus, FederatedNode, AggregationResult, FederatedLearning,
+    FederatedLearning,
 )
+
 
 class TestFederatedLearning:
     def setup_method(self):
@@ -456,7 +472,8 @@ class TestFederatedLearning:
 # 8. GRAPHQL
 # ═════════════════════════════════════════════════════════════════════════════
 
-from aios_core.graphql import GraphQLField, GraphQLType, GraphQLSchema, graphql
+from aios_core.graphql import GraphQLField, GraphQLSchema, GraphQLType, graphql
+
 
 class TestGraphQLSchema:
     def setup_method(self):
@@ -500,8 +517,9 @@ class TestGraphQLSchema:
 # ═════════════════════════════════════════════════════════════════════════════
 
 from aios_core.social_intelligence import (
-    TrustLevel, Relationship, Interaction, SocialNorm, SocialIntelligence,
+    SocialIntelligence,
 )
+
 
 class TestSocialIntelligence:
     def setup_method(self):
@@ -558,8 +576,11 @@ class TestSocialIntelligence:
 # ═════════════════════════════════════════════════════════════════════════════
 
 from aios_core.differential_privacy import (
-    MechanismType, PrivacyBudget, DifferentialPrivacy,
+    DifferentialPrivacy,
+    MechanismType,
+    PrivacyBudget,
 )
+
 
 class TestPrivacyBudget:
     def test_consume(self):

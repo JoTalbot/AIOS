@@ -1,6 +1,5 @@
 """Smoke-тесты сгенерированного модуля платформы shafa."""
 
-import pytest
 
 from aios_core.modules.shafa import ShafaStorage
 from aios_core.platforms import get_platform

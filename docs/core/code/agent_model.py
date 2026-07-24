@@ -6,7 +6,7 @@ Without Octopus agent integration (~~/agents/).
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 @dataclass
@@ -28,20 +28,20 @@ class Capability:
 
 @dataclass
 class AgentMemory:
-    short_term: List[str] = field(default_factory=list)  # Minutes → Hours
-    operational: List[str] = field(default_factory=list)  # Running processes
-    long_term_knowledge: Dict[str, str] = field(default_factory=dict)  # Structured knowledge
+    short_term: list[str] = field(default_factory=list)  # Minutes → Hours
+    operational: list[str] = field(default_factory=list)  # Running processes
+    long_term_knowledge: dict[str, str] = field(default_factory=dict)  # Structured knowledge
 
 
 @dataclass
 class Agent:
     identity: AgentIdentity
-    goals: List[str]
-    capabilities: List[Capability]
+    goals: list[str]
+    capabilities: list[Capability]
     memory: AgentMemory
-    permissions: List[str] = field(default_factory=list)
+    permissions: list[str] = field(default_factory=list)
     trust_level: float = 0.0
-    experience_history: List[str] = field(default_factory=list)
+    experience_history: list[str] = field(default_factory=list)
     status: str = "active"
 
     def add_experience(self, experience: str) -> None:
@@ -49,11 +49,11 @@ class Agent:
         # Memory formation: observation → experience → memory (per AIOS_MEMORY_ARCHITECTURE.md)
         self.memory.operational.append(experience)
 
-    def execute_goal(self, goal: str, worker_pool: List[str]) -> bool:
+    def execute_goal(self, goal: str, worker_pool: list[str]) -> bool:
         # Agent plans, worker executes (Agent vs Worker separation)
         return len(worker_pool) > 0 and goal in self.goals
 
-    def evolve(self, improvement: Dict) -> None:
+    def evolve(self, improvement: dict) -> None:
         # Integration with Evolution Engine (AIOS_EVOLUTION_ENGINE.md)
         self.capabilities.append(
             Capability(

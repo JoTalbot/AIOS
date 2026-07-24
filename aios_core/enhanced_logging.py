@@ -18,12 +18,12 @@ from datetime import datetime
 from typing import Any
 
 __all__ = [
-    "LogConfig",
     "CorrelationContext",
-    "PerformanceTracker",
     "EnhancedJSONFormatter",
-    "LogAggregator",
     "EnhancedLogger",
+    "LogAggregator",
+    "LogConfig",
+    "PerformanceTracker",
     "_DummyTracer",
 ]
 
@@ -236,7 +236,7 @@ class LogAggregator:
                     return False
 
         except Exception as e:
-            self.logger.error(f"Error shipping logs: {str(e)}")
+            self.logger.error(f"Error shipping logs: {e!s}")
             return False
 
     async def ship_logs_async(self, logs: list[dict[str, Any]]) -> bool:
@@ -269,7 +269,7 @@ class LogAggregator:
                     return False
 
         except Exception as e:
-            self.logger.error(f"Error shipping logs: {str(e)}")
+            self.logger.error(f"Error shipping logs: {e!s}")
             return False
 
 

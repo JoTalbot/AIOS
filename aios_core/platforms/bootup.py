@@ -277,7 +277,7 @@ def bootup_platform(
                 calibrate_step["source"] = (
                     "driver:injected" if driver else "driver:adb-generic"
                 )
-            except Exception as exc:  # noqa: BLE001 — драйв опционален
+            except Exception as exc:
                 calibrate_step.update(
                     {
                         "source": "driver:injected" if driver else "driver:adb-generic",

@@ -9,7 +9,7 @@ import time
 from collections.abc import Sequence
 from typing import Any
 
-__all__ = ["MetricsExporter", "HistogramConfig", "metrics_exporter"]
+__all__ = ["HistogramConfig", "MetricsExporter", "metrics_exporter"]
 
 
 class HistogramConfig:

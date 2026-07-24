@@ -421,17 +421,14 @@ class MessageQueueAdapter(ProtocolAdapter):
     async def _start_memory_queue(self):
         """Start in-memory message queue."""
         # Simple in-memory queue implementation
-        pass
 
     async def _start_rabbitmq(self):
         """Start RabbitMQ consumer."""
         # RabbitMQ integration would go here
-        pass
 
     async def _start_kafka(self):
         """Start Kafka consumer."""
         # Kafka integration would go here
-        pass
 
     async def handle_message(self, message: Any, connection_id: str = None) -> None:
         """Handle message from queue."""

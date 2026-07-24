@@ -350,9 +350,9 @@ def test_cli_olx_profile_isolation_and_errors(cli_registry, tmp_path, capsys):
 # REST surface
 # ---------------------------------------------------------------------------
 
-import os  # noqa: E402
+import os
 
-from httpx import ASGITransport, AsyncClient  # noqa: E402
+from httpx import ASGITransport, AsyncClient
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -470,7 +470,7 @@ async def test_rest_profile_scoped_olx_storage(api_client):
 # DevicePool
 # ---------------------------------------------------------------------------
 
-from aios_core.platforms import DevicePool  # noqa: E402
+from aios_core.platforms import DevicePool
 
 
 def test_device_pool_lease_release_cycle():
@@ -541,7 +541,7 @@ def test_device_pool_heartbeat_and_reap():
 # YAML catalog
 # ---------------------------------------------------------------------------
 
-from aios_core.platforms import load_catalog, load_catalog_file  # noqa: E402
+from aios_core.platforms import load_catalog, load_catalog_file
 
 
 def test_catalog_loads_platform_from_yaml(tmp_path):

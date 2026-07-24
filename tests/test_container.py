@@ -1,6 +1,7 @@
 """Tests for DI container."""
 from aios_core.container import AppConfig, AppContainer
 
+
 def test_config_defaults():
     cfg = AppConfig()
     assert cfg.db_path == "aios.sqlite"

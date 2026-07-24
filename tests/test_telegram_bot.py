@@ -1,5 +1,5 @@
 """Tests for Telegram bot command handlers (no real API calls)."""
-from run_telegram_bot import cmd_start, cmd_stats, cmd_platforms, cmd_help
+from run_telegram_bot import cmd_help, cmd_platforms, cmd_start, cmd_stats
 
 
 def test_start_returns_text():

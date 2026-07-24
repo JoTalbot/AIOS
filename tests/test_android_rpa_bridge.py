@@ -1,8 +1,5 @@
 """Tests for Android RPA Bridge - Real Android App Integration"""
 
-import hashlib
-import time
-from typing import Any, Dict, Optional
 
 import pytest
 

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from aios_core.geospatial_heatmap import (
-    GeospatialPriceAnalyzer, PriceHeatmap, CityPriceStats,
+    CityPriceStats,
+    GeospatialPriceAnalyzer,
+    PriceHeatmap,
 )
-from aios_core.modules.olx.storage import OLXStorage
 from aios_core.modules.olx.models import AdCard
+from aios_core.modules.olx.storage import OLXStorage
 
 
 def _card(title: str, price: float, city: str = "", ad_id: str = "") -> AdCard:

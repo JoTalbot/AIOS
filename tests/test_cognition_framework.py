@@ -1,6 +1,5 @@
 """Tests for Cognition, Autonomous Science, Engineering, and Role Frameworks."""
 
-import pytest
 
 from aios_core.ai_engineer import AIEngineer
 from aios_core.ai_product_manager import AIProductManager

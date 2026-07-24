@@ -15,7 +15,7 @@ from typing import Any
 
 from aios_core.android_driver import AndroidDriver, DriverCapabilities, UIContext
 
-__all__ = ["AppiumDriverConfig", "AppiumAndroidDriver"]
+__all__ = ["AppiumAndroidDriver", "AppiumDriverConfig"]
 
 logger = logging.getLogger(__name__)
 

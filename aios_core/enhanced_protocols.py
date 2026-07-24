@@ -27,14 +27,14 @@ from starlette.routing import Route
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 __all__ = [
-    "ProtocolType",
-    "ProtocolConfig",
-    "ProtocolAdapter",
-    "GrpcAdapter",
     "AmqpAdapter",
-    "WebSocketAdapter",
+    "GrpcAdapter",
     "MqttAdapter",
+    "ProtocolAdapter",
+    "ProtocolConfig",
     "ProtocolManager",
+    "ProtocolType",
+    "WebSocketAdapter",
 ]
 
 
@@ -74,17 +74,14 @@ class ProtocolAdapter(ABC):
     @abstractmethod
     async def start(self) -> bool:
         """Start the protocol adapter."""
-        pass
 
     @abstractmethod
     async def stop(self) -> bool:
         """Stop the protocol adapter."""
-        pass
 
     @abstractmethod
     async def handle_request(self, request: Any) -> Any:
         """Handle incoming request."""
-        pass
 
     def add_connection(self, connection: Any) -> None:
         """Add active connection."""
@@ -132,7 +129,7 @@ class GrpcAdapter(ProtocolAdapter):
             return True
 
         except Exception as e:
-            self.logger.error(f"Failed to start gRPC server: {str(e)}")
+            self.logger.error(f"Failed to start gRPC server: {e!s}")
             return False
 
     async def stop(self) -> bool:
@@ -143,13 +140,12 @@ class GrpcAdapter(ProtocolAdapter):
                 self.logger.info("gRPC server stopped")
             return True
         except Exception as e:
-            self.logger.error(f"Failed to stop gRPC server: {str(e)}")
+            self.logger.error(f"Failed to stop gRPC server: {e!s}")
             return False
 
     async def handle_request(self, request: Any) -> Any:
         """Handle gRPC request."""
         # gRPC requests are handled by the server directly
-        pass
 
     def add_service(self, service_name: str, service: Any) -> None:
         """Add gRPC service."""
@@ -190,7 +186,7 @@ class AmqpAdapter(ProtocolAdapter):
             return True
 
         except Exception as e:
-            self.logger.error(f"Failed to connect to AMQP: {str(e)}")
+            self.logger.error(f"Failed to connect to AMQP: {e!s}")
             return False
 
     async def stop(self) -> bool:
@@ -201,13 +197,12 @@ class AmqpAdapter(ProtocolAdapter):
                 self.logger.info("AMQP connection closed")
             return True
         except Exception as e:
-            self.logger.error(f"Failed to close AMQP connection: {str(e)}")
+            self.logger.error(f"Failed to close AMQP connection: {e!s}")
             return False
 
     async def handle_request(self, request: Any) -> Any:
         """Handle AMQP request."""
         # AMQP requests are handled by message queues
-        pass
 
     async def publish(self, queue_name: str, message: dict[str, Any]) -> bool:
         """Publish message to queue."""
@@ -230,7 +225,7 @@ class AmqpAdapter(ProtocolAdapter):
             return True
 
         except Exception as e:
-            self.logger.error(f"Failed to publish message: {str(e)}")
+            self.logger.error(f"Failed to publish message: {e!s}")
             return False
 
     async def subscribe(self, queue_name: str, callback: Callable) -> bool:
@@ -253,13 +248,13 @@ class AmqpAdapter(ProtocolAdapter):
                         await callback(data)
                         await message.ack()
                     except Exception as e:
-                        self.logger.error(f"Error processing message: {str(e)}")
+                        self.logger.error(f"Error processing message: {e!s}")
                         await message.nack()
 
             return True
 
         except Exception as e:
-            self.logger.error(f"Failed to subscribe to {queue_name}: {str(e)}")
+            self.logger.error(f"Failed to subscribe to {queue_name}: {e!s}")
             return False
 
 
@@ -280,7 +275,7 @@ class WebSocketAdapter(ProtocolAdapter):
             )
             return True
         except Exception as e:
-            self.logger.error(f"Failed to start WebSocket adapter: {str(e)}")
+            self.logger.error(f"Failed to start WebSocket adapter: {e!s}")
             return False
 
     async def stop(self) -> bool:
@@ -293,7 +288,7 @@ class WebSocketAdapter(ProtocolAdapter):
             self.logger.info("WebSocket connections closed")
             return True
         except Exception as e:
-            self.logger.error(f"Failed to close WebSocket connections: {str(e)}")
+            self.logger.error(f"Failed to close WebSocket connections: {e!s}")
             return False
 
     async def handle_request(self, websocket: WebSocket) -> Any:
@@ -322,7 +317,7 @@ class WebSocketAdapter(ProtocolAdapter):
                 await websocket.send_text(json.dumps({"error": "Unknown message type"}))
 
         except Exception as e:
-            self.logger.error(f"Error handling WebSocket message: {str(e)}")
+            self.logger.error(f"Error handling WebSocket message: {e!s}")
             await websocket.send_text(json.dumps({"error": str(e)}))
 
     def add_route(self, msg_type: str, handler: Callable) -> None:
@@ -354,7 +349,7 @@ class MqttAdapter(ProtocolAdapter):
             return True
 
         except Exception as e:
-            self.logger.error(f"Failed to connect to MQTT: {str(e)}")
+            self.logger.error(f"Failed to connect to MQTT: {e!s}")
             return False
 
     async def stop(self) -> bool:
@@ -365,13 +360,12 @@ class MqttAdapter(ProtocolAdapter):
                 self.logger.info("MQTT client disconnected")
             return True
         except Exception as e:
-            self.logger.error(f"Failed to disconnect MQTT client: {str(e)}")
+            self.logger.error(f"Failed to disconnect MQTT client: {e!s}")
             return False
 
     async def handle_request(self, request: Any) -> Any:
         """Handle MQTT request."""
         # MQTT requests are handled by subscription callbacks
-        pass
 
     async def publish(self, topic: str, message: dict[str, Any]) -> bool:
         """Publish message to topic."""
@@ -384,7 +378,7 @@ class MqttAdapter(ProtocolAdapter):
             return True
 
         except Exception as e:
-            self.logger.error(f"Failed to publish to {topic}: {str(e)}")
+            self.logger.error(f"Failed to publish to {topic}: {e!s}")
             return False
 
     async def subscribe(self, topic: str, callback: Callable) -> bool:
@@ -406,7 +400,7 @@ class MqttAdapter(ProtocolAdapter):
             return True
 
         except Exception as e:
-            self.logger.error(f"Failed to subscribe to {topic}: {str(e)}")
+            self.logger.error(f"Failed to subscribe to {topic}: {e!s}")
             return False
 
     async def _handle_messages(self):
@@ -422,7 +416,7 @@ class MqttAdapter(ProtocolAdapter):
                             await callback(payload)
 
         except Exception as e:
-            self.logger.error(f"Error handling MQTT messages: {str(e)}")
+            self.logger.error(f"Error handling MQTT messages: {e!s}")
 
 
 class ProtocolManager:

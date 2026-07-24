@@ -9,14 +9,18 @@ edge cases, backward-compatible façade, and stats.
 from __future__ import annotations
 
 import time
+
 import pytest
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. ZERO TRUST
 # ═══════════════════════════════════════════════════════════════════════════════
-
 from aios_core.zero_trust import (
-    TrustLevel, DeviceProfile, TrustPolicy, TrustEngine, ZeroTrust,
+    DeviceProfile,
+    TrustEngine,
+    TrustLevel,
+    TrustPolicy,
+    ZeroTrust,
 )
 
 
@@ -156,7 +160,9 @@ class TestZeroTrustFacade:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from aios_core.self_healing import (
-    RecoveryLevel, RecoveryRecord, HealthCheck, HealthMonitor, SelfHealing,
+    HealthMonitor,
+    RecoveryLevel,
+    SelfHealing,
 )
 
 
@@ -263,7 +269,10 @@ class TestSelfHealing:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from aios_core.circuit_breaker import (
-    CircuitState, CircuitMetrics, CircuitBreaker, CircuitOpenError,
+    CircuitBreaker,
+    CircuitMetrics,
+    CircuitOpenError,
+    CircuitState,
 )
 
 
@@ -392,7 +401,7 @@ class TestCircuitBreaker:
 # 4. API GATEWAY
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from aios_core.api_gateway import Route, APIGateway
+from aios_core.api_gateway import APIGateway
 
 
 class TestAPIGateway:
@@ -473,7 +482,11 @@ class TestAPIGateway:
 # 5. GRACEFUL SHUTDOWN
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from aios_core.graceful_shutdown import ShutdownPhase, ShutdownHook, GracefulShutdown, shutdown_handler
+from aios_core.graceful_shutdown import (
+    GracefulShutdown,
+    ShutdownPhase,
+    shutdown_handler,
+)
 
 
 class TestGracefulShutdown:
@@ -540,7 +553,12 @@ class TestGracefulShutdown:
 # 6. SERVICE MESH
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from aios_core.service_mesh import ServiceInstance, TrafficRule, ServiceMesh, service_mesh
+from aios_core.service_mesh import (
+    ServiceInstance,
+    ServiceMesh,
+    TrafficRule,
+    service_mesh,
+)
 
 
 class TestServiceInstance:
@@ -630,7 +648,11 @@ class TestServiceMesh:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from aios_core.distributed_queue import (
-    TaskPriority, TaskStatus, Task, Worker, DistributedQueue,
+    DistributedQueue,
+    Task,
+    TaskPriority,
+    TaskStatus,
+    Worker,
 )
 
 
@@ -740,7 +762,9 @@ class TestDistributedQueue:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from aios_core.chaos_testing import (
-    ChaosAction, ChaosScenario, ChaosResult, ChaosTester,
+    ChaosAction,
+    ChaosScenario,
+    ChaosTester,
 )
 
 
@@ -833,7 +857,10 @@ class TestChaosTester:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from aios_core.auto_scaler import (
-    ScalingDirection, ScalingPolicy, ScalingEvent, AutoScaler, auto_scaler,
+    AutoScaler,
+    ScalingDirection,
+    ScalingPolicy,
+    auto_scaler,
 )
 
 
@@ -909,7 +936,9 @@ class TestAutoScaler:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from aios_core.health_checks import (
-    CheckKind, HealthResult, HealthCheckRegistry, health_registry,
+    CheckKind,
+    HealthCheckRegistry,
+    health_registry,
 )
 
 

@@ -19,7 +19,7 @@ from typing import Any
 
 from .storage import Database
 
-__all__ = ["CapabilityStatus", "Capability", "CapabilityEngine"]
+__all__ = ["Capability", "CapabilityEngine", "CapabilityStatus"]
 
 # ---------------------------------------------------------------------------
 # Status enum

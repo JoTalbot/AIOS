@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from tools.complete_constitution_tula import (
     generate_compliance_matrix,
     generate_index,

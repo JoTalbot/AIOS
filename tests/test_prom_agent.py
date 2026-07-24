@@ -1,6 +1,5 @@
 """Smoke-тесты сгенерированного модуля платформы prom."""
 
-import pytest
 
 from aios_core.modules.prom import PromStorage
 from aios_core.platforms import get_platform

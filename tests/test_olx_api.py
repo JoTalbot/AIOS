@@ -427,7 +427,6 @@ class TestOLXNotify:
     @pytest.mark.asyncio
     async def test_notify_posts_drops(self, client, deps):
         # No webhook reachable in tests → summary reports zero sent, no crash.
-        import socket
 
         # Use an unroutable port quickly failing connection.
         _app, storage, _adb = deps

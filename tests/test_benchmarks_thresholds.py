@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from aios_core.benchmarks_thresholds import (
-    ThresholdConfig,
     THRESHOLDS,
-    get_threshold,
-    check_threshold,
+    ThresholdConfig,
     all_thresholds,
+    check_threshold,
+    get_threshold,
 )
 
 

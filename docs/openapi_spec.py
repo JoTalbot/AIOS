@@ -7,7 +7,6 @@ and AIOS module metadata. Provides Swagger UI integration helpers.
 from __future__ import annotations
 
 import json
-import time
 from typing import Any, Dict, List
 
 __all__ = ["OpenAPIGenerator"]
@@ -28,11 +27,11 @@ class OpenAPIGenerator:
         """Initialize OpenAPIGenerator."""
         self.title = title
         self.version = version
-        self._paths: Dict[str, Dict[str, Any]] = {}
-        self._schemas: Dict[str, Dict[str, Any]] = {}
-        self._tags: List[Dict[str, Any]] = []
+        self._paths: dict[str, dict[str, Any]] = {}
+        self._schemas: dict[str, dict[str, Any]] = {}
+        self._tags: list[dict[str, Any]] = []
 
-    def add_path(self, path: str, method: str, summary: str = "", responses: Dict[int, Dict] = None) -> None:
+    def add_path(self, path: str, method: str, summary: str = "", responses: dict[int, dict] = None) -> None:
         """Register an API endpoint."""
         if path not in self._paths:
             self._paths[path] = {}
@@ -43,7 +42,7 @@ class OpenAPIGenerator:
             "tags": [path.split("/")[1] if len(path.split("/")) > 1 else "default"],
         }
 
-    def add_schema(self, name: str, properties: Dict[str, Any], description: str = "") -> None:
+    def add_schema(self, name: str, properties: dict[str, Any], description: str = "") -> None:
         """Register a data model schema."""
         self._schemas[name] = {
             "type": "object",
@@ -55,7 +54,7 @@ class OpenAPIGenerator:
         """Register an API tag group."""
         self._tags.append({"name": name, "description": description})
 
-    def generate_spec(self) -> Dict[str, Any]:
+    def generate_spec(self) -> dict[str, Any]:
         """Generate full OpenAPI 3.0 specification."""
         return {
             "openapi": "3.0.3",

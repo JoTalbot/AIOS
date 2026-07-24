@@ -16,7 +16,6 @@ from memory_architecture import AIOSMemory, MemoryObservation
 from orchestrator_architecture import (
     AIOS_Node,
     AIOS_Orchestrator,
-    ExecutionPlan,
     MCP_Module,
     WorkerPool,
 )

@@ -18,7 +18,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
-__all__ = ["BackupMetadata", "BackupManager"]
+__all__ = ["BackupManager", "BackupMetadata"]
 
 logger = logging.getLogger(__name__)
 

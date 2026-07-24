@@ -49,7 +49,7 @@ class AsyncMiddleware:
 class _PriorityEntry:
     """Internal handler entry with priority for ordered execution."""
 
-    __slots__ = ("handler", "priority", "name")
+    __slots__ = ("handler", "name", "priority")
 
     def __init__(self, handler: Handler, priority: int = 0, name: str = ""):
         self.handler = handler

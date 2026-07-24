@@ -579,7 +579,7 @@ def generate_report(articles: dict, report_path: Path) -> None:
         "# AIOS Constitutional Audit & Verification Report",
         "",
         f"**Audit Status:** {'COMPLIANT' if compliance_pct == 100.0 and not missing_numbers else 'NON-COMPLIANT'}",
-        f"**Target Articles:** 67 (I to LXVII)",
+        "**Target Articles:** 67 (I to LXVII)",
         f"**Found Articles:** {total_found}",
         f"**Missing Articles:** {len(missing_numbers)}",
         f"**Fully Validated Articles:** {valid_count} / {total_found}",

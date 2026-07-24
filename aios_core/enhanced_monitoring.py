@@ -24,12 +24,12 @@ from .logging_config import setup_logging
 from .telemetry import MetricCounter, MetricGauge, MetricHistogram
 
 __all__ = [
+    "AlertManager",
     "AlertRule",
     "DashboardConfig",
-    "MonitoringMetrics",
-    "AlertManager",
     "DashboardManager",
     "MonitoringAPI",
+    "MonitoringMetrics",
 ]
 
 
@@ -132,7 +132,7 @@ class AlertManager:
                 return value <= threshold
             return False
         except Exception as e:
-            self.logger.error(f"Error evaluating condition: {str(e)}")
+            self.logger.error(f"Error evaluating condition: {e!s}")
             return False
 
     def _trigger_alert(self, rule: AlertRule, value: float, timestamp: float):
@@ -386,7 +386,7 @@ def create_monitoring_app(monitoring_api: MonitoringAPI) -> Starlette:
                 await asyncio.sleep(5)  # Update every 5 seconds
 
         except Exception as e:
-            monitoring_api.logger.error(f"WebSocket error: {str(e)}")
+            monitoring_api.logger.error(f"WebSocket error: {e!s}")
         finally:
             await websocket.close()
 

@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from aios_core.notification_router import (
-    NotificationRouter, NotificationMessage, NotificationPreferences,
-    NotificationChannel, Severity,
+    NotificationChannel,
+    NotificationMessage,
+    NotificationPreferences,
+    NotificationRouter,
+    Severity,
 )
 
 

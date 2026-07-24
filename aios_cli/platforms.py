@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """AIOS CLI — platforms, profiles, devices, shards, cron-plan."""
 
-import argparse
 import json
 import os
 from pathlib import Path
+
+
 def _lazy_import(module_path: str, attr: str = None):
     """Import module on first use and cache result."""
     key = (module_path, attr)

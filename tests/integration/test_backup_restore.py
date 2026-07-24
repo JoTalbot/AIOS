@@ -1,7 +1,6 @@
 """Integration tests for backup and restore operations."""
 
 import sqlite3
-import tempfile
 from pathlib import Path
 
 import pytest

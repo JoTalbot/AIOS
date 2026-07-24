@@ -10,4 +10,3 @@ class RozetkaStorage(OLXStorage):
     с расширениями для отзывов, сравнения цен и автозапчастей.
     """
 
-    pass

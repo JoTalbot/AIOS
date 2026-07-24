@@ -89,7 +89,7 @@ class DiffusionModel:
     - Conditional generation support
     """
 
-    __slots__ = ("timesteps", "schedule", "schedule_type", "betas", "condition_fn")
+    __slots__ = ("betas", "condition_fn", "schedule", "schedule_type", "timesteps")
 
     def __init__(
         self,

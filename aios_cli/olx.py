@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """AIOS CLI — OLX Parser Agent commands."""
 
-import argparse
 import json
-import os
 from pathlib import Path
+
+
 def _add_olx_parsers(subparsers) -> None:
     """Register the ``olx`` subcommand tree with all OLX Parser Agent actions.
 
