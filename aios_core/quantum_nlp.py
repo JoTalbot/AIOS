@@ -120,7 +120,7 @@ class QuantumNLP:
             "superposition_states": 3,
         }
 
-    def quantum_attention(self, sequence_length: int = 10) -> dict[str, Any]:
+    def quantum_attention_stats(self, sequence_length: int = 10) -> dict[str, Any]:
         """Quantum attention mechanism for sequence processing."""
         [
             [round(random.uniform(0, 1), 3) for _ in range(sequence_length)]

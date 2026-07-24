@@ -138,7 +138,7 @@ class QuantumVision:
             "compression_ratio": round(random.uniform(0.1, 0.3), 3),
         }
 
-    def quantum_convolution(self, kernel_size: int = 3) -> dict[str, Any]:
+    def quantum_convolution_filter(self, kernel_size: int = 3) -> dict[str, Any]:
         """Simulate quantum convolutional filter."""
         return {
             "kernel_size": kernel_size,

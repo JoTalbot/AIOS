@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 TULA — Architecture Module Analysis Tool
 Для проекта AIOS (JoTalbot/AIOS) — автономный анализ docs/core/

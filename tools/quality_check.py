@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """AIOS quality gate checker — validates all code-quality invariants."""
 
 import ast

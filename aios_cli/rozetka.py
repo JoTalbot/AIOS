@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """AIOS CLI — Rozetka.ua marketplace commands."""
 
 import json

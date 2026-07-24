@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """AIOS CLI — OLX Parser Agent commands."""
 
 import json

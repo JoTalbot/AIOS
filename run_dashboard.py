@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Run AIOS Dashboard"""
 
 import uvicorn

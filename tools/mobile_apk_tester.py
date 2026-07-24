@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 AIOS Mobile APK Security & Functional Audit Tool ('apk_tester')
 Provides static APK manifest inspection, permission security analysis against

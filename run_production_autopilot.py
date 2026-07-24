@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 AIOS Production Autopilot Runner (v9.1.0)
 
