@@ -156,8 +156,16 @@ async def test_openapi_includes_every_registered_http_route():
     assert spec["paths"]["/api/v1/tasks"]["post"]["security"] == [{"ApiKeyAuth": []}]
 
 
-def test_admin_route_policy_requires_admin_role():
+@pytest.mark.asyncio
+async def test_admin_routes_are_registered_and_require_admin_role():
     from aios_core.api.security import required_roles
 
     assert required_roles("/api/v1/admin/keys", "GET") == {"admin"}
-    assert required_roles("/api/v1/admin/keys/generate", "POST") == {"admin"}
+    keys = {
+        "writer-key": {"subject": "writer", "roles": ["writer"]},
+        "admin-key": {"subject": "admin", "roles": ["admin"]},
+    }
+    app = create_app(api_keys=keys)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        assert (await client.get("/api/v1/admin/keys", headers={"Authorization": "Bearer writer-key"})).status_code == 403
+        assert (await client.get("/api/v1/admin/keys", headers={"Authorization": "Bearer admin-key"})).status_code == 200

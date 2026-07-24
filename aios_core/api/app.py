@@ -222,6 +222,12 @@ class AIOSAPI(
     def create_starlette_app(self) -> Starlette:
         """Build the Starlette application with all routes."""
         routes = register_routes(self)
+        # Admin handlers are defined separately because they own their
+        # persistence helpers; initialise and register them with the main app.
+        from aios_core.api.admin_routes import get_admin_routes, init_admin_routes
+
+        init_admin_routes(db_path=self.db.db_path)
+        routes.extend(get_admin_routes())
 
         async def _value_error_response(request: Request, exc: ValueError):
             # Например: неизвестный профиль платформы (?profile=...).
