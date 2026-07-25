@@ -1,296 +1,610 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AIOS Safety Dashboard v3</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0e27; color: #e0e6ff; }
-
-        .header { display: flex; align-items: center; justify-content: space-between;
-                   padding: 16px 24px; background: #111638; border-bottom: 2px solid #1e3a8a; }
-        .header h1 { font-size: 20px; color: #60a5fa; }
-        .header .version { font-size: 12px; color: #94a3b8; }
-
-        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 24px; }
-
-        .card { background: #111638; border-radius: 12px; padding: 20px; border: 1px solid #1e3a8a; }
-        .card h2 { font-size: 14px; color: #60a5fa; margin-bottom: 12px; }
-
-        .score-circle { width: 120px; height: 120px; border-radius: 50%; display: flex;
-                        align-items: center; justify-content: center; font-size: 32px;
-                        font-weight: bold; margin: 20px auto; }
-        .score-safe { background: radial-gradient(#22c55e33, #0a0e27); border: 3px solid #22c55e; color: #22c55e; }
-        .score-warning { background: radial-gradient(#f59e0b33, #0a0e27); border: 3px solid #f59e0b; color: #f59e0b; }
-        .score-critical { background: radial-gradient(#ef444433, #0a0e27); border: 3px solid #ef4444; color: #ef4444; }
-
-        .metric-row { display: flex; justify-content: space-between; padding: 8px 0;
-                      border-bottom: 1px solid #1e293b; font-size: 13px; }
-        .metric-label { color: #94a3b8; }
-        .metric-value { color: #e0e6ff; font-weight: 600; }
-        .metric-value.high { color: #22c55e; }
-        .metric-value.medium { color: #f59e0b; }
-        .metric-value.low { color: #ef4444; }
-
-        .incident-row { display: flex; gap: 8px; padding: 8px 0; font-size: 12px;
-                        border-bottom: 1px solid #1e293b; }
-        .severity-badge { padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
-        .severity-critical { background: #ef444433; color: #ef4444; }
-        .severity-high { background: #f59e0b33; color: #f59e0b; }
-        .severity-medium { background: #3b82f633; color: #3b82f6; }
-        .severity-low { background: #22c55e33; color: #22c55e; }
-
-        .trend-chart { height: 80px; display: flex; align-items: flex-end; gap: 2px; }
-        .trend-bar { width: 8px; background: #3b82f6; border-radius: 2px 2px 0 0;
-                     min-height: 4px; transition: height 0.3s; }
-        .trend-bar.alert { background: #ef4444; }
-
-        .status-banner { padding: 8px 16px; border-radius: 8px; font-weight: 600;
-                         text-align: center; margin-bottom: 16px; }
-        .status-healthy { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e44; }
-        .status-warning { background: #f59e0b22; color: #f59e0b; border: 1px solid #f59e0b44; }
-        .status-critical { background: #ef444422; color: #ef4444; border: 1px solid #ef444444; }
-
-        .footer { text-align: center; padding: 16px; font-size: 12px; color: #475569; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIOS Control Panel</title>
+<base href=".">
+<!-- AdminLTE 3 via jsDelivr -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlay-scrollbars@2.10.0/styles/overlayscrollbars.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root { --aios-accent: #4f8df9; --aios-bg: #f4f6f9; }
+  [data-theme="dark"] { --aios-accent: #60a5fa; }
+  .brand-link { border-bottom: 1px solid #4b545c !important; }
+  .brand-link .brand-text { font-weight: 600; letter-spacing: 0.5px; }
+  .sidebar-dark-primary { background: #1e2531 !important; }
+  .nav-sidebar .nav-link.active { background: var(--aios-accent) !important; color: #fff !important; }
+  .nav-sidebar .nav-link.active i { color: #fff !important; }
+  .small-box { border-radius: 8px; overflow: hidden; }
+  .small-box .icon { font-size: 60px; opacity: 0.25; }
+  .ad-card { transition: transform 0.12s; }
+  .ad-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+  .ad-card .price { font-size: 1.2rem; font-weight: 700; color: #28a745; }
+  .ad-card .price.dear { color: #dc3545; }
+  .ad-card .price.warn { color: #fd7e14; }
+  .ad-card .price.na { color: #6c757d; font-size: 0.9rem; font-weight: 500; }
+  .log-viewer { background:#0d1117; color:#c9d1d9; font-family: 'SF Mono', Menlo, Consolas, monospace;
+               font-size: 12px; padding: 12px; border-radius: 6px; height: 500px;
+               overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+  .log-viewer .err { color:#f85149; } .log-viewer .warn { color:#d29922; } .log-viewer .ok { color:#3fb950; }
+  .service-row.active { background: rgba(40,167,69,0.05); }
+  .service-row.inactive { background: rgba(220,53,69,0.05); }
+  .badge-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  .badge-dot.green { background:#28a745; box-shadow: 0 0 8px #28a745; }
+  .badge-dot.red { background:#dc3545; }
+  .badge-dot.orange { background:#fd7e14; }
+  .query-pill { cursor:pointer; }
+  .query-pill.active { background:var(--aios-accent); color:#fff; }
+  .content-wrapper { min-height: 100vh; }
+  .throb { animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .page { display: none; }
+  .page.active { display: block; }
+  .navbar-badge { font-size: 10px; }
+  /* Emulator screen */
+  .emu-frame { background:#000; border-radius:12px; padding:10px; max-width:280px;
+               aspect-ratio: 9/16; margin:0 auto; color:#0f0; font-family:monospace;
+               font-size:10px; overflow:hidden; }
+</style>
 </head>
-<body>
-    <div class="header">
-        <h1>🛡️ AIOS Safety Dashboard</h1>
-        <span class="version" id="versionTag">v...</span>
+<body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
+<div class="wrapper">
+
+  <!-- Navbar -->
+  <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+    <ul class="navbar-nav">
+      <li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a></li>
+      <li class="nav-item d-none d-sm-inline-block"><a href="#/" class="nav-link">Домой</a></li>
+    </ul>
+    <ul class="navbar-nav ml-auto">
+      <li class="nav-item">
+        <a class="nav-link" href="#" id="refreshBtn"><i class="fas fa-sync-alt"></i></a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="https://t.me/AIOScontrol_bot" target="_blank" title="Telegram-бот">
+          <i class="fab fa-telegram"></i>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" id="themeToggle" title="Тема">
+          <i class="fas fa-moon"></i>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-widget="fullscreen" href="#" role="button"><i class="fas fa-expand-arrows-alt"></i></a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Sidebar -->
+  <aside class="main-sidebar sidebar-dark-primary elevation-4">
+    <a href="#/" class="brand-link">
+      <i class="fas fa-robot ml-3 mr-2" style="color:#60a5fa"></i>
+      <span class="brand-text font-weight-light">AIOS Control</span>
+      <span class="right badge badge-success ml-2" id="verBadge">v9</span>
+    </a>
+    <div class="sidebar"><div class="user-panel mt-2 pb-2 mb-2 d-flex">
+      <div class="info text-light"><span class="d-block"><i class="fas fa-server mr-1"></i> <span id="hostName">UBU</span></span>
+        <span class="text-xs text-muted" id="uptimeStr">online</span>
+      </div>
     </div>
+    <nav class="mt-2">
+      <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" id="mainNav">
+        <li class="nav-item"><a href="#/" class="nav-link" data-page="overview">
+          <i class="nav-icon fas fa-tachometer-alt"></i><p>Обзор</p></a></li>
+        <li class="nav-item"><a href="#/olx" class="nav-link" data-page="olx">
+          <i class="nav-icon fas fa-shopping-cart"></i><p>OLX объявления</p></a></li>
+        <li class="nav-item"><a href="#/analytics" class="nav-link" data-page="analytics">
+          <i class="nav-icon fas fa-chart-line"></i><p>AI-аналитика цен</p></a></li>
+        <li class="nav-item"><a href="#/alerts" class="nav-link" data-page="alerts">
+          <i class="nav-icon fas fa-bell"></i><p>Подписки / Алерты<span class="badge badge-info right navbar-badge" id="subsCount">0</span></p></a></li>
+        <li class="nav-item"><a href="#/services" class="nav-link" data-page="services">
+          <i class="nav-icon fas fa-cogs"></i><p>Сервисы</p></a></li>
+        <li class="nav-item"><a href="#/tasks" class="nav-link" data-page="tasks">
+          <i class="nav-icon fas fa-tasks"></i><p>Задачи AIOS</p></a></li>
+        <li class="nav-item"><a href="#/logs" class="nav-link" data-page="logs">
+          <i class="nav-icon fas fa-terminal"></i><p>Логи</p></a></li>
+        <li class="nav-item"><a href="#/emulator" class="nav-link" data-page="emulator">
+          <i class="nav-icon fas fa-mobile-alt"></i><p>Android-эмулятор</p></a></li>
+        <li class="nav-header text-uppercase">Интеграции</li>
+        <li class="nav-item"><a href="api/health" target="_blank" class="nav-link"><i class="nav-icon fas fa-plug"></i><p>API JSON</p></a></li>
+        <li class="nav-item"><a href="https://t.me/AIOScontrol_bot" target="_blank" class="nav-link"><i class="nav-icon fab fa-telegram"></i><p>@AIOScontrol_bot</p></a></li>
+      </ul>
+    </nav></div>
+  </aside>
 
-    <div class="status-banner status-healthy" id="statusBanner">
-        ✅ System Status: HEALTHY — Safety Score: <span id="safetyScoreText">1.000</span>
-    </div>
+  <!-- Content Wrapper -->
+  <div class="content-wrapper">
+    <div class="content-header"><div class="container-fluid">
+      <div class="row mb-2"><div class="col-sm-6"><h1 class="m-0" id="pageTitle">Обзор</h1></div>
+      <div class="col-sm-6"><ol class="breadcrumb float-sm-right" id="crumbs">
+        <li class="breadcrumb-item"><a href="#/">Home</a></li><li class="breadcrumb-item active">Обзор</li>
+      </ol></div></div>
+    </div></div>
 
-    <div class="container">
-        <!-- Safety Score Card -->
-        <div class="card">
-            <h2>Composite Safety Score</h2>
-            <div class="score-circle score-safe" id="scoreCircle">1.0</div>
-            <div class="metric-row">
-                <span class="metric-label">Incidents</span>
-                <span class="metric-value" id="incidentCount">0</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Active Alerts</span>
-                <span class="metric-value" id="alertCount">0</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Compliance Status</span>
-                <span class="metric-value high" id="complianceStatus">Compliant</span>
-            </div>
-        </div>
+    <div class="content"><div class="container-fluid">
 
-        <!-- Safety Metrics Card -->
-        <div class="card">
-            <h2>Safety Metrics</h2>
-            <div id="metricsPanel">
-                <div class="metric-row">
-                    <span class="metric-label">Harm Risk</span>
-                    <span class="metric-value" id="harmValue">0.00</span>
-                </div>
-                <div class="metric-row">
-                    <span class="metric-label">Bias Level</span>
-                    <span class="metric-value" id="biasValue">0.00</span>
-                </div>
-                <div class="metric-row">
-                    <span class="metric-label">Deception Score</span>
-                    <span class="metric-value" id="deceptionValue">0.00</span>
-                </div>
-                <div class="metric-row">
-                    <span class="metric-label">Alignment Score</span>
-                    <span class="metric-value high" id="alignmentValue">0.95</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Incident Log Card -->
-        <div class="card">
-            <h2>Recent Incidents</h2>
-            <div id="incidentPanel">
-                <div style="text-align:center; color:#94a3b8; padding:20px;">No incidents recorded</div>
-            </div>
-        </div>
-
-        <!-- Metric Trend Card -->
-        <div class="card">
-            <h2>Safety Score Trend (Last 24h)</h2>
-            <div class="trend-chart" id="trendChart">
-                <!-- Bars generated dynamically -->
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Trend Direction</span>
-                <span class="metric-value high" id="trendDirection">Stable</span>
-            </div>
-        </div>
-
-        <!-- Quantum Substrate Card -->
-        <div class="card">
-            <h2>Quantum Substrate Monitoring</h2>
-            <div class="metric-row">
-                <span class="metric-label">Silicon Load</span>
-                <span class="metric-value" id="siliconLoad">0.15</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Quantum QPU Status</span>
-                <span class="metric-value high" id="qpuStatus">Active</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Neuromorphic Health</span>
-                <span class="metric-value high" id="neuroHealth">0.99</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Bio-Compute Efficiency</span>
-                <span class="metric-value" id="bioEfficiency">50,000 GF/W</span>
-            </div>
-        </div>
-
-        <!-- Constitutional Compliance Card -->
-        <div class="card">
-            <h2>Constitutional Compliance</h2>
-            <div class="metric-row">
-                <span class="metric-label">Invariant Proofs</span>
-                <span class="metric-value" id="invariantProofs">5/5 Passed</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Amendment Status</span>
-                <span class="metric-value high" id="amendmentStatus">Current</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Recursive Reward Model</span>
-                <span class="metric-value" id="rewardModel">v4_iter_2</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Multi-Agent Trust</span>
-                <span class="metric-value high" id="trustLevel">0.75</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="footer">
-        AIOS Autonomous Intelligent Operating System — Dashboard v3 (React) — © 2026
-    </div>
-
-
+      <!-- OVERVIEW -->
+      <div id="page-overview" class="page active">
+        <div class="row" id="overviewBoxes"></div>
+        <div class="row">
+          <section class="col-lg-7 connectedSortable">
             <div class="card">
-                <h2>🛒 OLX Collector</h2>
-                <div id="olxBlock">
-                    <div class="metric-label">Loading…</div>
-                </div>
+              <div class="card-header"><h3 class="card-title"><i class="fas fa-chart-bar mr-1"></i>Новые объявления (по дням, 7д)</h3>
+                <div class="card-tools"><button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button></div></div>
+              <div class="card-body"><canvas id="trendChart" height="120"></canvas></div>
             </div>
+            <div class="card">
+              <div class="card-header"><h3 class="card-title"><i class="fas fa-server mr-1"></i>Статус сервисов</h3></div>
+              <div class="card-body p-0 table-responsive">
+                <table class="table table-sm table-hover mb-0" id="svcMiniTable"></table>
+              </div>
+            </div>
+          </section>
+          <section class="col-lg-5 connectedSortable">
+            <div class="card bg-gradient-primary">
+              <div class="card-header border-0"><h3 class="card-title"><i class="fas fa-bolt mr-1"></i>Кратко</h3></div>
+              <div class="card-body" id="briefBody"><div class="text-center throb">Загрузка…</div></div>
+            </div>
+            <div class="card">
+              <div class="card-header"><h3 class="card-title"><i class="fas fa-tags mr-1"></i>Отслеживаемые запросы</h3></div>
+              <div class="card-body" id="queriesCloud"></div>
+            </div>
+            <div class="card">
+              <div class="card-header"><h3 class="card-title"><i class="fas fa-fire mr-1"></i>Последние интересные находки</h3></div>
+              <div class="card-body p-0" id="latestDeals" style="max-height:400px;overflow:auto"></div>
+            </div>
+          </section>
+        </div>
+      </div>
 
-    <script>
-        // ---------- AIOS v3 Dashboard -- live data ----------
-        const BASE = (function () {
-            const p = location.pathname;
-            const i = p.indexOf('/aios/');
-            return i >= 0 ? p.substring(0, i + 6) : '';
-        })();
-        async function jget(path) {
-            const r = await fetch(BASE + path, {cache: 'no-store'});
-            if (!r.ok) throw new Error(path + ' -> ' + r.status);
-            return r.json();
-        }
+      <!-- OLX LIST -->
+      <div id="page-olx" class="page">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-filter mr-1"></i>Фильтры</h3>
+            <div class="card-tools"><button class="btn btn-primary btn-sm" id="collectNowBtn"><i class="fas fa-play mr-1"></i>Запустить сбор сейчас</button></div></div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-4"><input type="text" class="form-control" id="fQuery" placeholder="Поиск по названию/запросу..."></div>
+              <div class="col-md-2"><input type="number" class="form-control" id="fMin" placeholder="Мин цена"></div>
+              <div class="col-md-2"><input type="number" class="form-control" id="fMax" placeholder="Макс цена"></div>
+              <div class="col-md-2"><select class="form-control" id="fSort"><option value="new">Новые сверху</option><option value="cheap">Дешёвые сверху</option><option value="expensive">Дорогие сверху</option></select></div>
+              <div class="col-md-2"><button class="btn btn-info btn-block" id="fApply"><i class="fas fa-search mr-1"></i>Найти</button></div>
+            </div>
+            <div class="mt-2" id="activeFilters"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title"><i class="fas fa-list mr-1"></i>Объявления <span class="badge badge-light ml-1" id="olxTotal">0</span></h3>
+            <div class="card-tools"><span id="olxLoading" class="text-muted"><i class="fas fa-spinner fa-spin"></i></span></div></div>
+          <div class="card-body"><div class="row" id="olxAds"></div>
+            <nav class="mt-3"><ul class="pagination justify-content-center" id="olxPager"></ul></nav>
+          </div>
+        </div>
+      </div>
 
-        function setText(id, val) {
-            const el = document.getElementById(id);
-            if (el) el.textContent = val;
-        }
+      <!-- ANALYTICS -->
+      <div id="page-analytics" class="page">
+        <div class="card"><div class="card-body">
+          <div class="input-group mb-3">
+            <select class="form-control" id="anaQuery"></select>
+            <div class="input-group-append"><button class="btn btn-primary" id="anaRun"><i class="fas fa-chart-pie mr-1"></i>Анализировать</button></div>
+          </div>
+        </div></div>
+        <div class="row" id="anaSummary"></div>
+        <div class="row">
+          <div class="col-md-8"><div class="card"><div class="card-header"><h3 class="card-title">Распределение цен</h3></div>
+            <div class="card-body"><canvas id="priceHist" height="100"></canvas></div></div></div>
+          <div class="col-md-4"><div class="card"><div class="card-header"><h3 class="card-title">По городам</h3></div>
+            <div class="card-body"><canvas id="cityChart" height="180"></canvas></div></div></div>
+        </div>
+        <div class="row">
+          <div class="col-md-6"><div class="card"><div class="card-header bg-gradient-success"><h3 class="card-title"><i class="fas fa-fire mr-1"></i>ТОП-10 самых дешёвых</h3></div>
+            <div class="card-body p-0"><div class="list-group list-group-flush" id="cheapestList"></div></div></div></div>
+          <div class="col-md-6"><div class="card"><div class="card-header bg-gradient-danger"><h3 class="card-title"><i class="fas fa-gem mr-1"></i>Самые дорогие</h3></div>
+            <div class="card-body p-0"><div class="list-group list-group-flush" id="priciestList"></div></div></div></div>
+        </div>
+      </div>
 
-        async function loadAll() {
-            try {
-                const [stats, olx] = await Promise.all([
-                    jget('api/stats').catch(function(e){ return {}; }),
-                    jget('api/olx').catch(function(e){ return {}; })
-                ]);
+      <!-- ALERTS / SUBS -->
+      <div id="page-alerts" class="page">
+        <div class="row"><div class="col-md-6">
+          <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-plus-circle mr-1"></i>Добавить подписку (ручная)</h3></div>
+            <div class="card-body">
+              <div class="form-group"><label>Chat ID (Telegram)</label><input class="form-control" id="subChat" placeholder="123456789"></div>
+              <div class="form-group"><label>Поисковый запрос</label><input class="form-control" id="subQuery" placeholder="iPhone"></div>
+              <div class="row"><div class="col-6"><div class="form-group"><label>Мин цена</label><input type="number" class="form-control" id="subMin"></div></div>
+                <div class="col-6"><div class="form-group"><label>Макс цена</label><input type="number" class="form-control" id="subMax"></div></div></div>
+              <button class="btn btn-success btn-block" id="subAdd"><i class="fas fa-bell mr-1"></i>Добавить подписку</button>
+              <p class="text-muted mt-2 mb-0"><small>Проще всего — написать боту <a href="https://t.me/AIOScontrol_bot" target="_blank">@AIOScontrol_bot</a> команду <code>/olx_sub запрос</code>. Подписка появится автоматически.</small></p>
+            </div></div></div>
+          <div class="col-md-6">
+            <div class="card bg-gradient-info"><div class="card-body">
+              <h5><i class="fab fa-telegram-plane mr-1"></i> Как получать алерты?</h5>
+              <ol class="mb-0 pl-3"><li>Откройте <a href="https://t.me/AIOScontrol_bot" target="_blank" class="text-white font-weight-bold">@AIOScontrol_bot</a>.</li>
+              <li>Напишите <code>/start</code>, потом <code>/olx_sub MacBook 10000 40000</code>.</li>
+              <li>Каждые 30 мин бот присылает новые объявления с оценкой цены (🔥 СУПЕР ЦІНА / ✅ / ⚠️ / 💸).</li>
+              <li><code>/olx_list</code> — ваши подписки, <code>/olx_analytics</code> — AI-аналитика, <code>/olx_latest</code> — последние.</li></ol>
+            </div></div></div>
+        </div>
+        <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-list mr-1"></i>Все подписки</h3></div>
+          <div class="card-body p-0 table-responsive"><table class="table table-sm table-striped mb-0" id="subsTable"></table></div></div>
+      </div>
 
-                const ver = stats.version || '--';
-                const active = stats.active_tasks || 0;
-                const total = stats.total_tasks || 0;
-                setText('versionTag', 'v' + ver);
+      <!-- SERVICES -->
+      <div id="page-services" class="page">
+        <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-server mr-1"></i>Управление сервисами</h3>
+          <div class="card-tools"><button class="btn btn-sm btn-outline-secondary" id="svcRefresh"><i class="fas fa-sync"></i></button></div></div>
+          <div class="card-body p-0 table-responsive"><table class="table table-hover mb-0" id="svcTable"></table></div></div>
+      </div>
 
-                const score = (olx && olx.available) ? 0.98 : 0.82;
-                const scoreCircle = document.getElementById('scoreCircle');
-                scoreCircle.textContent = score.toFixed(2);
-                if (score > 0.9) {
-                    scoreCircle.className = 'score-circle score-safe';
-                } else if (score > 0.7) {
-                    scoreCircle.className = 'score-circle score-warning';
-                } else {
-                    scoreCircle.className = 'score-circle score-critical';
-                }
-                const banner = document.getElementById('statusBanner');
-                const bannerText = (score > 0.9 ? 'ONLINE' : 'DEGRADED');
-                banner.className = 'status-banner ' +
-                    (score > 0.9 ? 'status-healthy' : score > 0.7 ? 'status-warning' : 'status-critical');
-                banner.textContent = (score > 0.9 ? '✅ ' : '⚠️ ') +
-                    'System Status: ' + bannerText + ' -- Score ' + score.toFixed(2) +
-                    ' · Tasks: ' + active + '/' + total;
-                setText('safetyScoreText', score.toFixed(2));
+      <!-- TASKS -->
+      <div id="page-tasks" class="page">
+        <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-tasks mr-1"></i>Задачи AIOS</h3>
+          <div class="card-tools"><button class="btn btn-success btn-sm" id="createTask"><i class="fas fa-plus mr-1"></i>Создать задачу</button></div></div>
+          <div class="card-body"><div id="tasksBox"><p class="text-muted">Загрузка…</p></div></div></div>
+      </div>
 
-                setText('harmValue',      (stats.subsystems && stats.subsystems.federation &&
-                                           (stats.subsystems.federation.total_nodes || stats.subsystems.federation.online_nodes)) || 1);
-                setText('biasValue',      (stats.subsystems && stats.subsystems.policy && stats.subsystems.policy.rules_count) || 0);
-                setText('deceptionValue', (stats.subsystems && stats.subsystems.policy && stats.subsystems.policy.total_policies) || 0);
-                setText('alignmentValue', '1.00');
-                setText('incidentCount',  0);
-                setText('alertCount',     (olx && olx.new_24h) || 0);
+      <!-- LOGS -->
+      <div id="page-logs" class="page">
+        <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-terminal mr-1"></i>Логи сервисов</h3>
+          <div class="card-tools"><select id="logService" class="form-control form-control-sm d-inline-block w-auto">
+            <option value="aios-api">aios-api</option><option value="aios-dash">aios-dash</option>
+            <option value="aios-mcp">aios-mcp</option><option value="aios-tg">aios-tg</option>
+            <option value="aios-olx-collector">aios-olx-collector</option>
+          </select> <button class="btn btn-sm btn-outline-secondary" id="logRefresh"><i class="fas fa-sync"></i></button>
+            <label class="ml-2 mb-0 text-sm"><input type="checkbox" id="logFollow"> авто-обновление</label></div></div>
+          <div class="card-body"><div class="log-viewer" id="logBox">-- выберите сервис --</div></div></div>
+      </div>
 
-                setText('siliconLoad',   (stats.database && stats.database.tables ? Object.keys(stats.database.tables).length + ' tables' : '--'));
-                setText('qpuStatus',     'active');
-                setText('neuroHealth',   ver);
-                setText('bioEfficiency', (stats.memory_items || 0) + ' memories');
+      <!-- EMULATOR -->
+      <div id="page-emulator" class="page">
+        <div class="row"><div class="col-md-5">
+          <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-mobile-alt mr-1"></i>Эмулятор Android (OLX)</h3></div>
+            <div class="card-body text-center">
+              <div class="emu-frame" id="emuFrame"><div id="emuInfo">ADB not checked yet…</div></div>
+              <hr>
+              <button class="btn btn-outline-primary btn-sm" id="emuSnapBtn"><i class="fas fa-camera mr-1"></i>Сделать скриншот</button>
+              <button class="btn btn-outline-warning btn-sm" id="emuSnapLoad"><i class="fas fa-download mr-1"></i>Загрузить snapshot</button>
+            </div></div></div>
+          <div class="col-md-7"><div class="card"><div class="card-header"><h3 class="card-title">Скриншот</h3></div>
+            <div class="card-body text-center"><div id="emuShot" class="text-muted">Нет скриншота</div></div></div></div>
+        </div>
+      </div>
 
-                const passed = stats.constitution_articles || 0;
-                setText('invariantProofs', passed + ' articles');
-                setText('trustLevel',    ((olx && olx.ads_active) ? olx.ads_active.toLocaleString('uk-UA') : 0) + ' active ads');
+    </div></div>
+  </div>
 
-                const olxBox = document.getElementById('olxBlock');
-                if (olxBox) {
-                    if (!olx || !olx.available) {
-                        olxBox.innerHTML = '<div class="metric-label">Loading OLX data...</div>';
-                    } else {
-                        const q = (olx.queries_tracked || []).slice(0, 8).map(function(q){
-                            return '<span style="color:#60a5fa;margin-right:8px">' + q + '</span>';
-                        }).join('');
-                        const lastRun = olx.last_run_ts ? new Date(olx.last_run_ts).toLocaleString('uk-UA') : '--';
-                        const avg = olx.price_avg ? Math.round(olx.price_avg).toLocaleString('uk-UA') + ' UAH' : '--';
-                        olxBox.innerHTML =
-                            '<div class="metric-row"><span class="metric-label">Total ads</span><span class="metric-value high">' + (olx.ads_total||0).toLocaleString('uk-UA') + '</span></div>' +
-                            '<div class="metric-row"><span class="metric-label">Active</span><span class="metric-value high">' + (olx.ads_active||0).toLocaleString('uk-UA') + '</span></div>' +
-                            '<div class="metric-row"><span class="metric-label">New (24h)</span><span class="metric-value medium">' + (olx.new_24h||0).toLocaleString('uk-UA') + '</span></div>' +
-                            '<div class="metric-row"><span class="metric-label">Avg price</span><span class="metric-value">' + avg + '</span></div>' +
-                            '<div class="metric-row"><span class="metric-label">Last run</span><span class="metric-value" style="font-size:11px">' + lastRun + '</span></div>' +
-                            '<div class="metric-row" style="flex-wrap:wrap;gap:4px;display:flex;margin-top:10px">' + q + '</div>' +
-                            '<div class="metric-row" style="margin-top:10px">' +
-                            '<a href="https://t.me/AIOScontrol_bot" target="_blank" style="color:#60a5fa;text-decoration:none">🤖 Telegram-bot &rarr;</a></div>';
-                    }
-                }
+  <footer class="main-footer"><strong>AIOS Control Panel &copy; 2026.</strong> Powered by AdminLTE.
+    <div class="float-right d-none d-sm-inline"><span id="footVersion">v9</span></div>
+  </footer>
+</div>
 
-                const chart = document.getElementById('trendChart');
-                chart.innerHTML = '';
-                for (let i = 0; i < 20; i++) {
-                    const bar = document.createElement('div');
-                    bar.className = 'trend-bar';
-                    const h = 55 + Math.round(Math.random() * 20) + (i === 19 && olx && olx.new_24h ? Math.min(15, olx.new_24h/20) : 0);
-                    bar.style.height = Math.min(80, h) + 'px';
-                    chart.appendChild(bar);
-                }
-            } catch (e) {
-                console.error('Dashboard load error:', e);
-                const banner = document.getElementById('statusBanner');
-                if (banner) {
-                    banner.textContent = '⚠️ Data load failed: ' + e.message;
-                    banner.className = 'status-banner status-warning';
-                }
-            }
-        }
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script>
+/* =========================================================
+   AIOS Dashboard (AdminLTE SPA)
+   ========================================================= */
+// Use RELATIVE paths — works both on http://host:8580/ and under https://host/aios/
+// because nginx strips /aios/ when proxying to the backend, so backend sees /api/...
+const API_REL = 'api/';
+const AUTH_KEY = localStorage.getItem('aios_key') || ''; // stored admin API key (optional)
 
-        loadAll();
-        setInterval(loadAll, 15000);
-    </script>
+async function jget(path){ const url = path.startsWith('http')?path:API_REL+path; const r = await fetch(url, {cache:'no-store', headers: AUTH_KEY ? {'Authorization':'Bearer '+AUTH_KEY} : {}}); if(!r.ok) throw new Error(path+' -> '+r.status); return r.json(); }
+async function jpost(path, body){ const url = path.startsWith('http')?path:API_REL+path; const r = await fetch(url, {method:'POST', headers:Object.assign({'Content-Type':'application/json'}, AUTH_KEY?{'Authorization':'Bearer '+AUTH_KEY}:{}), body: JSON.stringify(body||{})}); if(!r.ok) throw new Error(path+' -> '+r.status); return r.json(); }
+function fmt(n){ if(n==null) return '—'; if(typeof n==='number') return n.toLocaleString('uk-UA'); return n; }
+function fmtPrice(v, cur, negotiable){ if(negotiable||v==null) return '<span class="price na">Договірна</span>'; const cls = cur==='UAH'?'':'na'; return `<span class="price ${cls}">${fmt(Math.round(v))} ${cur||'грн'}</span>`; }
+function esc(s){ return (s||'').replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+function toast(msg, type){ $(document).Toasts ? $(document).Toasts('create',{title:type.toUpperCase(),body:msg,autohide:true,delay:3000,class:'bg-'+(type==='error'?'danger':type||'info')}) : alert(msg); }
+
+/* -------------- routing -------------- */
+function setPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const el = document.getElementById('page-'+name);
+  if(el) el.classList.add('active');
+  document.querySelectorAll('#mainNav .nav-link').forEach(a=>a.classList.toggle('active', a.dataset.page===name));
+  const titles = {overview:'Обзор', olx:'OLX объявления', analytics:'AI-аналитика цен', alerts:'Подписки / Алерты', services:'Сервисы', tasks:'Задачи AIOS', logs:'Логи', emulator:'Android-эмулятор'};
+  document.getElementById('pageTitle').textContent = titles[name]||name;
+  document.getElementById('crumbs').lastElementChild.textContent = titles[name]||name;
+  pageHandlers[name] && pageHandlers[name]();
+}
+const pageHandlers = {};
+window.addEventListener('hashchange',()=>{
+  const h = location.hash.replace(/^#\/?/, '') || 'overview';
+  setPage(h);
+});
+
+/* -------------- Overview -------------- */
+let trendChart;
+pageHandlers.overview = async function(){
+  try{
+    const [stats, olx, services, subs, queries] = await Promise.all([
+      jget('stats'), jget('olx'), jget('services'), jget('subs'), jget('olx/queries')
+    ]);
+    document.getElementById('verBadge').textContent = 'v'+(stats.version||'?');
+    document.getElementById('footVersion').textContent = 'v'+(stats.version||'?');
+    const activeSvcs = services.services.filter(s=>s.active).length;
+    const totalSvcs = services.services.length;
+    document.getElementById('overviewBoxes').innerHTML = `
+      <div class="col-lg-3 col-6"><div class="small-box bg-info"><div class="inner"><h3>${fmt(olx.ads_total||0)}</h3><p>Всего OLX объявлений</p></div><div class="icon"><i class="fas fa-shopping-cart"></i></div><a href="#/olx" class="small-box-footer">К списку <i class="fas fa-arrow-circle-right"></i></a></div></div>
+      <div class="col-lg-3 col-6"><div class="small-box bg-success"><div class="inner"><h3>${fmt(olx.new_24h||0)}</h3><p>Новых за 24ч</p></div><div class="icon"><i class="fas fa-fire"></i></div><a href="#/olx" class="small-box-footer">Фильтровать <i class="fas fa-arrow-circle-right"></i></a></div></div>
+      <div class="col-lg-3 col-6"><div class="small-box bg-warning"><div class="inner"><h3>${activeSvcs}/${totalSvcs}</h3><p>Сервисов онлайн</p></div><div class="icon"><i class="fas fa-server"></i></div><a href="#/services" class="small-box-footer">Управление <i class="fas fa-arrow-circle-right"></i></a></div></div>
+      <div class="col-lg-3 col-6"><div class="small-box bg-danger"><div class="inner"><h3>${fmt(subs.chats||0)}</h3><p>TG подписчиков</p></div><div class="icon"><i class="fab fa-telegram"></i></div><a href="#/alerts" class="small-box-footer">Подписки <i class="fas fa-arrow-circle-right"></i></a></div></div>
+    `;
+    document.getElementById('briefBody').innerHTML = `
+      <p><i class="fas fa-check-circle mr-1"></i>Версия: <b>${stats.version}</b></p>
+      <p><i class="fas fa-database mr-1"></i>Задач активно: <b>${stats.active_tasks||0}</b> / всего ${stats.total_tasks||0}</p>
+      <p><i class="fas fa-book mr-1"></i>Статей конституции: <b>${stats.constitution_articles||0}</b></p>
+      <p><i class="fas fa-brain mr-1"></i>Элементов памяти: <b>${stats.memory_items||0}</b></p>
+      <p><i class="fas fa-bell mr-1"></i>Подписок: <b>${subs.subscriptions?.length||0}</b> из <b>${subs.chats||0}</b> чатов</p>
+      <p><i class="fas fa-clock mr-1"></i>Последний сбор: <b>${olx.last_run_ts ? new Date(olx.last_run_ts).toLocaleString('ru-RU') : '—'}</b><br><small class="text-white-50">собрано ${fmt(olx.last_run_parsed||0)} объявлений</small></p>
+    `;
+    document.getElementById('queriesCloud').innerHTML = (queries.queries||[]).map(q=>
+      `<span class="badge badge-light query-pill mr-1 mb-1 p-2" data-q="${esc(q.query)}">${esc(q.query)} <small class="text-muted">${fmt(q.count)}</small></span>`
+    ).join('');
+    document.querySelectorAll('.query-pill').forEach(el=>el.onclick = ()=>{ location.hash = '#/analytics'; setTimeout(()=>{document.getElementById('anaQuery').value=el.dataset.q; loadAnalytics();},50); });
+    document.getElementById('svcMiniTable').innerHTML = services.services.map(s=>`
+      <tr class="${s.active?'active':'inactive'}"><td style="width:40px;padding-left:12px"><span class="badge-dot ${s.active?'green':'red'}"></span></td>
+      <td><b>${s.label}</b><br><small class="text-muted">${s.name}${s.port?':'+s.port:''}</small></td>
+      <td class="text-right"><span class="badge badge-${s.active?'success':'danger'}">${s.state}</span></td>
+      <td class="text-right" style="width:80px"><small class="text-muted">${(s.since||'').substring(0,16)}</small></td></tr>`).join('');
+    // Latest interesting finds (cheapest across all queries)
+    const finds = await jget('olx/list?sort=cheap&limit=8&page=1');
+    document.getElementById('latestDeals').innerHTML = (finds.ads||[]).map(a=>`
+      <a href="${esc(a.url)}" target="_blank" class="list-group-item list-group-item-action">
+        <div class="d-flex justify-content-between"><b>${esc((a.title||'').substring(0,60))}</b><span class="text-success font-weight-bold">${a.price_value?Math.round(a.price_value).toLocaleString('uk-UA')+' '+(a.price_currency||'грн'):'Дог.'}</span></div>
+        <small class="text-muted"><i class="fas fa-map-marker-alt"></i> ${esc(a.city||'?')} · ${esc(a.query||'')} · ${a.business?'🏢 Бизнес':'👤 Частное'}</small>
+      </a>`).join('');
+    // Trend chart: sum new ads per day across queries
+    // Use analytics for top query for trend (use 1st query)
+    if(queries.queries && queries.queries[0]){
+      try{
+        const a = await jget('olx/analytics?query='+encodeURIComponent(queries.queries[0].query));
+        const labels = (a.daily_new||[]).map(d=>d.day.substring(5));
+        const data = (a.daily_new||[]).map(d=>d.count);
+        if(trendChart) trendChart.destroy();
+        trendChart = new Chart(document.getElementById('trendChart'),{type:'bar',data:{labels,datasets:[{label:'Новые объявления: '+queries.queries[0].query,data,backgroundColor:'#4f8df9'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true}}}});
+      }catch(e){ console.warn(e); }
+    }
+  }catch(e){ toast('Обзор: '+e.message, 'error'); }
+};
+
+/* -------------- OLX list -------------- */
+let olxState = {page:1, limit:24, query:'', min:null, max:null, sort:'new'};
+async function loadAds(){
+  document.getElementById('olxLoading').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  const qs = new URLSearchParams({page:olxState.page, limit:olxState.limit, sort:olxState.sort});
+  if(olxState.query) qs.set('query', olxState.query);
+  if(olxState.min) qs.set('min', olxState.min);
+  if(olxState.max) qs.set('max', olxState.max);
+  try{
+    const data = await jget('olx/list?'+qs.toString());
+    document.getElementById('olxTotal').textContent = fmt(data.total);
+    document.getElementById('olxAds').innerHTML = (data.ads||[]).map(a=>{
+      const photo = (a.photos && a.photos[0]) || '';
+      return `<div class="col-xl-3 col-md-4 col-sm-6">
+        <div class="card ad-card h-100">
+          <a href="${esc(a.url)}" target="_blank">${photo?`<img src="${esc(photo)}" class="card-img-top" style="height:160px;object-fit:cover" loading="lazy">`:`<div class="text-center py-5 bg-light text-muted"><i class="fas fa-image fa-2x"></i></div>`}</a>
+          <div class="card-body p-2">
+            <h6 class="card-title mb-1" style="font-size:0.85rem;line-height:1.2"><a href="${esc(a.url)}" target="_blank" class="text-dark">${esc((a.title||'').substring(0,70))}</a></h6>
+            <div>${fmtPrice(a.price_value, a.price_currency, a.negotiable)} ${a.promoted||a.urgent||a.top_ad?'<span class="badge badge-warning ml-1">🔥</span>':''}</div>
+            <div class="mt-1"><small class="text-muted"><i class="fas fa-map-marker-alt"></i> ${esc(a.city||'?')} · ${a.business?'🏢':'👤'} ${esc((a.user_name||'').substring(0,18))}</small></div>
+            <div><small class="badge badge-light">${esc(a.query||'')}</small></div>
+          </div></div></div>`;
+    }).join('');
+    // Pager
+    const cur = olxState.page; const pages = data.pages||1;
+    let pg = '';
+    const btn=(label,p,disabled,active)=>`<li class="page-item ${disabled?'disabled':''} ${active?'active':''}"><a class="page-link" href="#" data-page="${p}">${label}</a></li>`;
+    pg += btn('«', 1, cur<=1);
+    pg += btn('‹', cur-1, cur<=1);
+    for(let p=Math.max(1,cur-2); p<=Math.min(pages,cur+2); p++) pg += btn(p, p, false, p===cur);
+    pg += btn('›', cur+1, cur>=pages);
+    pg += btn('»', pages, cur>=pages);
+    document.getElementById('olxPager').innerHTML = pg;
+    document.querySelectorAll('#olxPager .page-link').forEach(a=>a.onclick=e=>{e.preventDefault(); const p=parseInt(a.dataset.page); if(p>=1){olxState.page=p;loadAds();}});
+    // Active filters
+    let flt = [];
+    if(olxState.query) flt.push(`<span class="badge badge-info mr-1">🔎 ${esc(olxState.query)}</span>`);
+    if(olxState.min) flt.push(`<span class="badge badge-secondary mr-1">от ${fmt(olxState.min)}</span>`);
+    if(olxState.max) flt.push(`<span class="badge badge-secondary mr-1">до ${fmt(olxState.max)}</span>`);
+    document.getElementById('activeFilters').innerHTML = flt.join(' ') + (flt.length?`<button class="btn btn-xs btn-outline-danger ml-2" id="fClear">Очистить</button>`:'');
+    const fc = document.getElementById('fClear'); if(fc) fc.onclick = ()=>{document.getElementById('fQuery').value='';document.getElementById('fMin').value='';document.getElementById('fMax').value='';olxState={page:1,limit:24,query:'',min:null,max:null,sort:olxState.sort};loadAds();};
+  }catch(e){ toast(e.message,'error'); }
+  document.getElementById('olxLoading').innerHTML='';
+}
+pageHandlers.olx = loadAds;
+document.getElementById('fApply').onclick=()=>{
+  olxState.query = document.getElementById('fQuery').value.trim();
+  olxState.min = document.getElementById('fMin').value || null;
+  olxState.max = document.getElementById('fMax').value || null;
+  olxState.sort = document.getElementById('fSort').value;
+  olxState.page=1; loadAds();
+};
+document.getElementById('fQuery').addEventListener('keydown', e=>{if(e.key==='Enter') document.getElementById('fApply').click();});
+document.getElementById('collectNowBtn').onclick = async()=>{
+  try{ await jpost('olx/collect',{}); toast('Запущен сбор — перезапуск коллектора…','info'); setTimeout(loadAds,5000); }catch(e){toast(e.message,'error');}
+};
+
+/* -------------- Analytics -------------- */
+let histChart, cityChart;
+async function loadAnalytics(){
+  const q = document.getElementById('anaQuery').value; if(!q) return;
+  try{
+    const a = await jget('olx/analytics?query='+encodeURIComponent(q));
+    if(!a.available){ toast('Нет данных по запросу','warn'); return; }
+    document.getElementById('anaSummary').innerHTML = `
+      <div class="col-md-2 col-4"><div class="small-box bg-gradient-dark"><div class="inner"><h4>${fmt(a.count)}</h4><p>Объявлений</p></div></div></div>
+      <div class="col-md-2 col-4"><div class="small-box bg-gradient-success"><div class="inner"><h4>${Math.round(a.median).toLocaleString('uk-UA')}</h4><p>Медиана, грн</p></div></div></div>
+      <div class="col-md-2 col-4"><div class="small-box bg-gradient-info"><div class="inner"><h4>${Math.round(a.avg).toLocaleString('uk-UA')}</h4><p>Средняя, грн</p></div></div></div>
+      <div class="col-md-2 col-4"><div class="small-box bg-gradient-success"><div class="inner"><h4>${Math.round(a.p10).toLocaleString('uk-UA')}</h4><p>P10 🔥</p></div></div></div>
+      <div class="col-md-2 col-4"><div class="small-box bg-gradient-warning"><div class="inner"><h4>${Math.round(a.p90).toLocaleString('uk-UA')}</h4><p>P90 💸</p></div></div></div>
+      <div class="col-md-2 col-4"><div class="small-box bg-gradient-danger"><div class="inner"><h4>${fmt(a.new_24h)}</h4><p>Новых 24ч</p></div></div></div>
+    `;
+    if(histChart) histChart.destroy();
+    histChart = new Chart(document.getElementById('priceHist'),{type:'bar',data:{labels:a.histogram.labels,datasets:[{label:'Количество',data:a.histogram.counts,backgroundColor:'#28a745'}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+    if(cityChart) cityChart.destroy();
+    cityChart = new Chart(document.getElementById('cityChart'),{type:'doughnut',data:{labels:a.cities.map(c=>c.city),datasets:[{data:a.cities.map(c=>c.count),backgroundColor:['#4f8df9','#28a745','#fd7e14','#dc3545','#6f42c1','#17a2b8','#ffc107','#20c997']}]},options:{plugins:{legend:{position:'bottom',labels:{font:{size:10}}}}}});
+    document.getElementById('cheapestList').innerHTML = a.cheapest.map(ad=>`
+      <a href="${esc(ad.url)}" target="_blank" class="list-group-item list-group-item-action">
+        <div class="d-flex justify-content-between"><span>${esc((ad.title||'').substring(0,60))}</span><span class="text-success font-weight-bold">${Math.round(ad.price_value).toLocaleString('uk-UA')} ${ad.price_currency||'грн'}</span></div>
+        <small class="text-muted">${esc(ad.city||'?')} · ${ad.business?'🏢':'👤'}</small></a>`).join('');
+    document.getElementById('priciestList').innerHTML = a.priciest.map(ad=>`
+      <a href="${esc(ad.url)}" target="_blank" class="list-group-item list-group-item-action">
+        <div class="d-flex justify-content-between"><span>${esc((ad.title||'').substring(0,60))}</span><span class="text-danger font-weight-bold">${Math.round(ad.price_value).toLocaleString('uk-UA')} ${ad.price_currency||'грн'}</span></div>
+        <small class="text-muted">${esc(ad.city||'?')}</small></a>`).join('');
+  }catch(e){ toast(e.message,'error'); }
+}
+pageHandlers.analytics = async function(){
+  try{
+    const q = await jget('olx/queries');
+    const sel = document.getElementById('anaQuery');
+    sel.innerHTML = (q.queries||[]).map(x=>`<option>${esc(x.query)}</option>`).join('');
+    if(sel.value) loadAnalytics();
+  }catch(e){toast(e.message,'error');}
+};
+document.getElementById('anaRun').onclick = loadAnalytics;
+
+/* -------------- Subscriptions -------------- */
+async function loadSubs(){
+  try{
+    const s = await jget('subs');
+    document.getElementById('subsCount').textContent = s.subscriptions?.length||0;
+    document.getElementById('subsTable').innerHTML = `<thead><tr><th>Chat</th><th>Пользователь</th><th>Запрос</th><th>Цена</th><th>Создано</th><th></th></tr></thead><tbody>`+
+      (s.subscriptions||[]).map(sub=>`<tr>
+        <td><code>${sub.chat_id}</code></td><td>${esc(sub.first_name||sub.username||'—')}${sub.username?' @'+esc(sub.username):''}</td>
+        <td><b>${esc(sub.query)}</b></td>
+        <td>${sub.min_price||sub.max_price?`${sub.min_price?fmt(Math.round(sub.min_price)):'0'}–${sub.max_price?fmt(Math.round(sub.max_price)):'∞'} грн`:'<span class="text-muted">любая</span>'}</td>
+        <td><small>${(sub.created_at||'').substring(0,16).replace('T',' ')}</small></td>
+        <td class="text-right"><button class="btn btn-xs btn-danger btn-del-sub" data-chat="${sub.chat_id}" data-q="${esc(sub.query)}"><i class="fas fa-trash"></i></button></td></tr>`).join('')+`</tbody>`;
+    document.querySelectorAll('.btn-del-sub').forEach(b=>b.onclick=async()=>{
+      if(!confirm('Удалить подписку?'))return;
+      await jpost('subs/action',{action:'remove',chat_id:b.dataset.chat,query:b.dataset.q}); loadSubs();
+    });
+  }catch(e){ toast(e.message,'error'); }
+}
+pageHandlers.alerts = loadSubs;
+document.getElementById('subAdd').onclick = async()=>{
+  const chat = document.getElementById('subChat').value.trim();
+  const q = document.getElementById('subQuery').value.trim();
+  if(!chat||!q){ toast('Нужны Chat ID и запрос','warn'); return;}
+  await jpost('subs/action',{action:'add',chat_id:chat,query:q,min_price:document.getElementById('subMin').value||null,max_price:document.getElementById('subMax').value||null});
+  document.getElementById('subQuery').value=''; document.getElementById('subMin').value=''; document.getElementById('subMax').value='';
+  loadSubs(); toast('Подписка добавлена','success');
+};
+
+/* -------------- Services -------------- */
+async function loadServices(){
+  try{
+    const s = await jget('services');
+    document.getElementById('svcTable').innerHTML = `<thead><tr><th style="width:40px"></th><th>Сервис</th><th>Порт</th><th>Статус</th><th>Автозапуск</th><th>С</th><th class="text-right">Действия</th></tr></thead><tbody>`+
+      s.services.map(svc=>`<tr class="service-row ${svc.active?'active':'inactive'}">
+        <td><span class="badge-dot ${svc.active?'green':svc.state==='activating'?'orange':'red'}"></span></td>
+        <td><b>${svc.label}</b><br><small class="text-muted">${svc.name}</small></td>
+        <td>${svc.port||'—'}</td>
+        <td><span class="badge badge-${svc.active?'success':svc.state==='activating'?'warning':'danger'}">${svc.state}</span></td>
+        <td>${svc.enabled?'<span class="badge badge-success">enabled</span>':'<span class="badge badge-secondary">disabled</span>'}</td>
+        <td><small>${(svc.since||'').substring(0,16)}</small></td>
+        <td class="text-right">
+          <button class="btn btn-xs btn-outline-success btn-svc" data-svc="${svc.name}" data-act="start" ${svc.active?'disabled':''}><i class="fas fa-play"></i></button>
+          <button class="btn btn-xs btn-outline-warning btn-svc" data-svc="${svc.name}" data-act="restart"><i class="fas fa-sync"></i></button>
+          <button class="btn btn-xs btn-outline-danger btn-svc" data-svc="${svc.name}" data-act="stop" ${!svc.active?'disabled':''}><i class="fas fa-stop"></i></button>
+          <a href="#/logs" class="btn btn-xs btn-outline-info" onclick="localStorage.setItem('logSvc','${svc.name}')"><i class="fas fa-file-alt"></i></a>
+        </td></tr>`).join('')+`</tbody>`;
+    document.querySelectorAll('.btn-svc').forEach(b=>b.onclick=async()=>{
+      b.disabled=true; b.innerHTML='<i class="fas fa-spinner fa-spin"></i>';
+      try{ await jpost('services/'+b.dataset.svc+'/action',{action:b.dataset.act}); setTimeout(loadServices,1500);}catch(e){toast(e.message,'error'); b.disabled=false;}
+    });
+  }catch(e){toast(e.message,'error');}
+}
+pageHandlers.services = loadServices;
+document.getElementById('svcRefresh').onclick = loadServices;
+
+/* -------------- Tasks -------------- */
+pageHandlers.tasks = async function(){
+  try{
+    const stats = await jget('stats');
+    document.getElementById('tasksBox').innerHTML = `
+      <div class="alert alert-info">Всего задач в БД: <b>${stats.total_tasks||0}</b>, активно: <b>${stats.active_tasks||0}</b>.
+       Полный CRUD доступен через REST API <code>api/v1/tasks</code> (нужен Bearer-токен в LocalStorage key <code>aios_key</code>).</div>
+      <div class="input-group">
+        <input class="form-control" id="newTaskName" placeholder="Название задачи (например, 'Собрать 100 объявлений PS5')">
+        <div class="input-group-append"><button class="btn btn-success" id="doCreateTask"><i class="fas fa-plus mr-1"></i>Создать</button></div>
+      </div>
+      <p class="mt-2 text-muted">Задачи создаются через POST /api/v1/tasks с авторизацией Bearer-ключом. Если у вас есть ключ, откройте консоль DevTools и введите: <code>localStorage.setItem('aios_key','ВАШ_КЛЮЧ')</code> и обновите страницу.</p>`;
+    document.getElementById('doCreateTask').onclick = createTaskUi;
+    document.getElementById('newTaskName').addEventListener('keydown',e=>{if(e.key==='Enter') createTaskUi();});
+  }catch(e){toast(e.message,'error');}
+};
+async function createTaskUi(){
+  const name = document.getElementById('newTaskName').value.trim(); if(!name)return;
+  try{
+    // /api/v1/* lives on the REST API (port 8500), not dashboard; reach via nginx /aios/api/v1/
+    const v1url = 'v1/tasks';
+    const r = await jpost(v1url,{name});
+    toast('Создано задачу '+r.task_id,'success'); pageHandlers.tasks();
+  }catch(e){toast('Создание не удалось — проверьте API ключ (пункт меню "Задачи AIOS" содержит инструкцию): '+e.message,'error');}
+}
+document.getElementById('createTask').onclick = ()=>setPage('tasks');
+
+/* -------------- Logs -------------- */
+let logFollowTimer;
+async function loadLogs(){
+  const svc = document.getElementById('logService').value;
+  try{
+    const r = await fetch(API+'services/'+svc+'/logs?n=300');
+    let t = await r.text();
+    t = esc(t).replace(/\b(error|failed|exception|traceback)\b/gi,'<span class="err">$1</span>')
+             .replace(/\b(warning|warn)\b/gi,'<span class="warn">$1</span>')
+             .replace(/\b(started|active|success|ok)\b/gi,'<span class="ok">$1</span>');
+    document.getElementById('logBox').innerHTML = t;
+    document.getElementById('logBox').scrollTop = 1e9;
+  }catch(e){ document.getElementById('logBox').textContent = 'Ошибка: '+e.message; }
+}
+pageHandlers.logs = ()=>{ const saved=localStorage.getItem('logSvc'); if(saved){document.getElementById('logService').value=saved;} loadLogs(); };
+document.getElementById('logRefresh').onclick = loadLogs;
+document.getElementById('logService').onchange = loadLogs;
+document.getElementById('logFollow').onchange = e=>{
+  if(logFollowTimer) clearInterval(logFollowTimer);
+  if(e.target.checked) logFollowTimer = setInterval(loadLogs, 4000);
+};
+
+/* -------------- Emulator -------------- */
+pageHandlers.emulator = async function(){
+  try{
+    const s = await jget('services');
+    const emu = s.services.find(x=>x.name==='emulator');
+    document.getElementById('emuInfo').innerHTML = emu.active
+      ? '<span class="text-success">✅ EMULATOR ONLINE</span><br>emulator-5554<br>Порт 5554<br>Снапшот: logged_in'
+      : '<span class="text-danger">❌ Эмулятор выключен</span>';
+  }catch(e){ document.getElementById('emuInfo').textContent = String(e); }
+};
+document.getElementById('emuSnapBtn').onclick = async()=>{
+  document.getElementById('emuShot').innerHTML='<i class="fas fa-spinner fa-spin"></i> Скриншот…';
+  // We don't have a screenshot endpoint in backend; use a placeholder + ADB through service logs not possible. Just instruct.
+  document.getElementById('emuShot').innerHTML = '<div class="alert alert-info">Скриншоты через веб не добавлены в бэкенд. Используйте ADB на сервере: <code>adb exec-out screencap -p &gt; /tmp/screen.png</code></div>';
+};
+document.getElementById('emuSnapLoad').onclick = ()=>toast('Snapshot "logged_in" загружается при старте эмулятора через @reboot cron','info');
+
+/* -------------- Theme -------------- */
+if(localStorage.getItem('theme')==='dark'){ document.body.classList.add('dark-mode'); document.querySelector('#themeToggle i').className='fas fa-sun'; }
+document.getElementById('themeToggle').onclick = ()=>{
+  document.body.classList.toggle('dark-mode');
+  const dark = document.body.classList.contains('dark-mode');
+  localStorage.setItem('theme', dark?'dark':'light');
+  document.querySelector('#themeToggle i').className = dark?'fas fa-sun':'fas fa-moon';
+};
+
+/* -------------- Init -------------- */
+document.getElementById('refreshBtn').onclick = ()=>{ const h = location.hash.replace(/^#\/?/,'')||'overview'; pageHandlers[h]&&pageHandlers[h](); toast('Обновлено','success'); };
+const initial = location.hash.replace(/^#\/?/,'') || 'overview';
+setPage(initial);
+setInterval(()=>{ if(document.querySelector('.page.active').id==='page-overview') pageHandlers.overview(); }, 30000);
+</script>
 </body>
 </html>
