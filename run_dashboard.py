@@ -1,5 +1,6 @@
 """Run AIOS Dashboard"""
-
+import argparse
+import os
 import uvicorn
 
 from aios_core.container import container
@@ -7,15 +8,19 @@ from aios_core.dashboard import create_dashboard
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--host', default=os.environ.get('AIOS_DASH_HOST', '0.0.0.0'))
+    parser.add_argument('--port', default=int(os.environ.get('AIOS_DASH_PORT', '8580')), type=int)
+    args = parser.parse_args()
+
     container.db()
     orch = container.orchestrator()
 
     app = create_dashboard(orch)
-    print("🌐 Starting AIOS Dashboard on http://127.0.0.1:8080")
-    uvicorn.run(app, host="127.0.0.1", port=8080)
+    print(f"🌐 Starting AIOS Dashboard on http://{args.host}:{args.port}")
+    uvicorn.run(app, host=args.host, port=args.port)
 
 
-# Gunicorn-compatible entry point
 _app = None
 def _get_app():
     global _app

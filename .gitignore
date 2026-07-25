@@ -59,3 +59,18 @@ coverage.xml
 
 # Docker
 docker-compose.override.yml
+
+# AIOS production deployment additions
+data/
+logs/
+screenshots/
+.apk/
+apk/*.apk
+apk/extracted/
+aios.sqlite
+*.sqlite-journal
+.venv/
+.DS_Store
+deploy/*/dist/
+data/
+apk/**
