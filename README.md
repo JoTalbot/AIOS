@@ -372,3 +372,37 @@ Read [SECURITY.md](SECURITY.md) before deploying. Includes:
 - **Docs:** [GitHub Pages](https://jotalbot.github.io/AIOS/)
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Security:** [SECURITY.md](SECURITY.md)
+
+---
+
+## Production Deployment (AIOS on UBU + reverse proxy)
+
+See `deploy/scripts/install.sh` for an automated install. Manual steps:
+
+1. Install deps: `pip3 install --break-system-packages -r requirements.txt httpx`
+2. Configure `.env` (copy from `.env.example`; add `AIOS_TELEGRAM_TOKEN`, `AIOS_OLX_HTTP_DB`).
+3. Install systemd units from `deploy/systemd/` to `/etc/systemd/system/`, then:
+   `systemctl daemon-reload && systemctl enable --now aios-api aios-mcp aios-dash aios-tg aios-olx-collector`
+4. Default ports (avoid conflicts with other services):
+   - API    → 8500
+   - MCP    → 8571
+   - Dash   → 8580
+5. **OLX HTTP Collector** (`run_olx_http_collector.py`) permanently polls OLX public API
+   every 30 minutes, stores ads in `data/olx_http.sqlite`, detects new ads and pushes
+   Telegram alerts to subscribed chats.
+6. **Telegram Bot** commands: `/start`, `/stats`, `/olx`, `/olx_sub <query> [min max]`,
+   `/olx_unsub [query]`, `/olx_list`, `/olx_latest <query> [N]`, `/olx_analytics <query>`.
+7. **Front-end reverse proxy**: on the public HTTPS server install `aios-tunnel.service`
+   (SSH `-L` forward 18500/18571/18580) and add an nginx location:
+
+   ```nginx
+   location ^~ /aios/ { proxy_pass http://127.0.0.1:18580/; ... }
+   location ^~ /aios/api/v1/ { proxy_pass http://127.0.0.1:18500/api/v1/; ... }
+   location = /aios/health { proxy_pass http://127.0.0.1:18500/health; }
+   location = /aios/api/stats { proxy_pass http://127.0.0.1:18580/api/stats; }
+   location = /aios/api/olx   { proxy_pass http://127.0.0.1:18580/api/olx; }
+   location ^~ /aios/mcp/ { proxy_pass http://127.0.0.1:18571/; }
+   ```
+
+   Use `sub_filter` to rewrite `href="/`, `src="/`, `fetch("/` → `/aios/...` so dashboard
+   assets and API calls work under the `/aios/` prefix.

@@ -150,27 +150,66 @@ class AIOSDashboard:
         return JSONResponse(self.orch.stats())
 
     async def api_olx(self, request: Request) -> None:
-        """OLX Parser Agent counters (AIOS_OLX_DB env; unavailable otherwise)."""
+        """OLX Parser Agent counters — HTTP collector (preferred) or legacy UI DB."""
+        import sqlite3 as _sqlite3
+        # Try HTTP collector DB first
+        http_db = os.environ.get("AIOS_OLX_HTTP_DB", "/root/AIOS/data/olx_http.sqlite")
+        if os.path.exists(http_db):
+            try:
+                conn = _sqlite3.connect(f"file:{http_db}?mode=ro", uri=True)
+                try:
+                    total = conn.execute("SELECT COUNT(*) FROM ads").fetchone()[0]
+                    active = conn.execute("SELECT COUNT(*) FROM ads WHERE active=1").fetchone()[0]
+                    queries = [r[0] for r in conn.execute(
+                        "SELECT query FROM ads WHERE active=1 GROUP BY query ORDER BY COUNT(*) DESC LIMIT 5").fetchall()]
+                    last_run = conn.execute(
+                        "SELECT ts, parsed FROM collection_runs ORDER BY ts DESC LIMIT 1").fetchone()
+                    price_row = conn.execute(
+                        "SELECT AVG(price_value), MIN(price_value), MAX(price_value) "
+                        "FROM ads WHERE price_value>0 AND price_currency='UAH'").fetchone()
+                    new_24h = conn.execute(
+                        "SELECT COUNT(*) FROM ads WHERE first_seen >= datetime('now','-1 day')").fetchone()[0]
+                    return JSONResponse({
+                        "available": True,
+                        "source": "http",
+                        "ads_total": total,
+                        "ads_active": active,
+                        "new_24h": new_24h,
+                        "queries_tracked": queries,
+                        "last_run_ts": last_run[0] if last_run else None,
+                        "last_run_parsed": last_run[1] if last_run else 0,
+                        "price_avg": price_row[0],
+                        "price_min": price_row[1],
+                        "price_max": price_row[2],
+                    })
+                finally:
+                    conn.close()
+            except Exception as e:
+                pass
+        # Fallback: legacy UI-collected DB
         db_path = os.environ.get("AIOS_OLX_DB")
         if not db_path or not os.path.exists(db_path):
             return JSONResponse({"available": False})
-        from aios_core.modules.olx import OLXStorage, OwnAdsTracker, PriceTracker
-
-        storage = OLXStorage(db_path)
         try:
-            drops = PriceTracker(storage).price_drops()
-            payload = {
-                "available": True,
-                "ads_total": storage.count(),
-                "ads_active": storage.count(active_only=True),
-                "drops_count": len(drops),
-                "own_ads": len(storage.own_ads()),
-                "stagnant": len(OwnAdsTracker(storage).stagnant()),
-                "outbox_pending": len(storage.outbox_pending()),
-            }
-        finally:
-            storage.close()
-        return JSONResponse(payload)
+            from aios_core.modules.olx import OLXStorage, OwnAdsTracker, PriceTracker
+            storage = OLXStorage(db_path)
+            try:
+                drops = PriceTracker(storage).price_drops()
+                payload = {
+                    "available": True,
+                    "source": "ui",
+                    "ads_total": storage.count(),
+                    "ads_active": storage.count(active_only=True),
+                    "drops_count": len(drops),
+                    "own_ads": len(storage.own_ads()),
+                    "stagnant": len(OwnAdsTracker(storage).stagnant()),
+                    "outbox_pending": len(storage.outbox_pending()),
+                }
+            finally:
+                storage.close()
+            return JSONResponse(payload)
+        except Exception:
+            return JSONResponse({"available": False})
 
     def create_app(self) -> None:
         """Execute create app."""
