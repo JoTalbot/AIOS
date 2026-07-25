@@ -620,7 +620,7 @@ let logFollowTimer;
 async function loadLogs(){
   const svc = document.getElementById('logService').value;
   try{
-    const r = await fetch(API+'services/'+svc+'/logs?n=300');
+    const r = await fetch(API_REL+'services/'+svc+'/logs?n=300');
     let t = await r.text();
     t = esc(t).replace(/\b(error|failed|exception|traceback)\b/gi,'<span class="err">$1</span>')
              .replace(/\b(warning|warn)\b/gi,'<span class="warn">$1</span>')
@@ -638,22 +638,6 @@ document.getElementById('logFollow').onchange = e=>{
 };
 
 /* -------------- Emulator -------------- */
-pageHandlers.emulator = async function(){
-  try{
-    const s = await jget('services');
-    const emu = s.services.find(x=>x.name==='emulator');
-    document.getElementById('emuInfo').innerHTML = emu.active
-      ? '<span class="text-success">✅ EMULATOR ONLINE</span><br>emulator-5554<br>Порт 5554<br>Снапшот: logged_in'
-      : '<span class="text-danger">❌ Эмулятор выключен</span>';
-  }catch(e){ document.getElementById('emuInfo').textContent = String(e); }
-};
-document.getElementById('emuSnapBtn').onclick = async()=>{
-  document.getElementById('emuShot').innerHTML='<i class="fas fa-spinner fa-spin"></i> Скриншот…';
-  // We don't have a screenshot endpoint in backend; use a placeholder + ADB through service logs not possible. Just instruct.
-  document.getElementById('emuShot').innerHTML = '<div class="alert alert-info">Скриншоты через веб не добавлены в бэкенд. Используйте ADB на сервере: <code>adb exec-out screencap -p &gt; /tmp/screen.png</code></div>';
-};
-document.getElementById('emuSnapLoad').onclick = ()=>toast('Snapshot "logged_in" загружается при старте эмулятора через @reboot cron','info');
-
 /* -------------- Theme -------------- */
 if(localStorage.getItem('theme')==='dark'){ document.body.classList.add('dark-mode'); document.querySelector('#themeToggle i').className='fas fa-sun'; }
 document.getElementById('themeToggle').onclick = ()=>{
