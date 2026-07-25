@@ -17,23 +17,22 @@ ESBUILD = BUILD_DIR / "node_modules" / ".bin" / "esbuild"
 LIVE_PANELS = r"""
 import React from 'react';
 
-// ---- Live API helpers (auto-detect /aios/ prefix) ----
-var _lp = (typeof location !== 'undefined') ? location.pathname : '/';
-var _lmi = _lp.indexOf('/aios/');
-var LIVE_BASE = _lmi >= 0 ? _lp.substring(0, _lmi + 5) : '';
+// IMPORTANT: all fetch() calls use plain root-relative string literals ('/...')
+// so that nginx sub_filter rewrites them under /aios/.
+// NO concatenation, NO template literals, NO base-url variables here.
 
-async function fetchOLX() { try { return await (await fetch(LIVE_BASE + 'api/olx')).json(); } catch(e){ return {available:false}; } }
-async function fetchOLXList(limit) { try { return await (await fetch(LIVE_BASE + 'api/olx/list?sort=new&limit=' + (limit||6))).json(); } catch(e){ return {ads:[]}; } }
-async function fetchServices() { try { return await (await fetch(LIVE_BASE + 'api/services')).json(); } catch(e){ return {services:[]}; } }
-async function fetchAndroidDevicesLive() { try { return await (await fetch(LIVE_BASE + 'api/android/devices')).json(); } catch(e){ return {devices:[]}; } }
-async function fetchAndroidScreenshot(serial) { try { return await (await fetch(LIVE_BASE + 'api/android/screenshot?serial=' + encodeURIComponent(serial||'emulator-5554'))).json(); } catch(e){ return {ok:false}; } }
+async function fetchOLX() { try { return await (await fetch('/api/olx')).json(); } catch(e){ return {available:false}; } }
+async function fetchOLXList(limit) { try { return await (await fetch('/api/olx/list?sort=new&limit=' + (limit||6))).json(); } catch(e){ return {ads:[]}; } }
+async function fetchServices() { try { return await (await fetch('/api/services')).json(); } catch(e){ return {services:[]}; } }
+async function fetchAndroidDevicesLive() { try { return await (await fetch('/api/android/devices')).json(); } catch(e){ return {devices:[]}; } }
+async function fetchAndroidScreenshot(serial) { try { return await (await fetch('/api/android/screenshot?serial=' + encodeURIComponent(serial||'emulator-5554'))).json(); } catch(e){ return {ok:false}; } }
 async function postAndroidAction(action, args) {
-  try { return await (await fetch(LIVE_BASE + 'api/android/action', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(Object.assign({action:action}, args||{}))})).json(); }
+  try { return await (await fetch('/api/android/action', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(Object.assign({action:action}, args||{}))})).json(); }
   catch(e){ return {ok:false, error:String(e)}; }
 }
-async function fetchSubs() { try { return await (await fetch(LIVE_BASE + 'api/subs')).json(); } catch(e){ return {subscriptions:[], chats:0}; } }
+async function fetchSubs() { try { return await (await fetch('/api/subs')).json(); } catch(e){ return {subscriptions:[], chats:0}; } }
 async function postSvcAction(svc, act) {
-  try { return await (await fetch(LIVE_BASE + 'api/services/' + svc + '/action', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:act})})).json(); }
+  try { return await (await fetch('/api/services/' + svc + '/action', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:act})})).json(); }
   catch(e){ return {ok:false}; }
 }
 
@@ -267,32 +266,9 @@ import { fetchHealth as apiFetchHealth, fetchStats as apiFetchStats } from '../w
 // We re-export these so panels are available
 import { OLXPanel, ServicesPanel, AndroidPanel, SubsPanel } from './live_panels';
 
-// Patch aiosApi BASE_URL detection for /aios/ proxy: aiosApi.ts uses BASE_URL='' and
-// fetches '/health' and '/api/v1/...', but under nginx /aios/ we need the prefix.
-// The simplest: monkeypatch global fetch to rewrite root-relative URLs that the aiosApi
-// issues at runtime. We only rewrite root-relative (starting with single '/') URLs when
-// under /aios/; absolute URLs and data: are untouched.
-(function(){
-  var p = (typeof location!=='undefined') ? location.pathname : '/';
-  var mi = p.indexOf('/aios/');
-  if (mi < 0) return;
-  var prefix = p.substring(0, mi+5); // ends with '/aios/'
-  var _f = window.fetch;
-  window.fetch = function(input, init){
-    if (typeof input === 'string') {
-      if (input.charAt(0) === '/' && input.charAt(1) !== '/') {
-        input = prefix + input.slice(1);
-      }
-    } else if (input && typeof input.url === 'string' && input.url.charAt(0)==='/' && input.url.charAt(1)!=='/') {
-      // Request object — clone and rewrite
-      try {
-        var url = prefix + input.url.slice(1);
-        input = new Request(url, input);
-      } catch(e) {}
-    }
-    return _f.call(this, input, init);
-  };
-})();
+// NOTE: No runtime fetch() patching — nginx sub_filter rewrites inline `fetch('/...`
+// literals (including minified ones) to `fetch('/aios/...` when served via reverse proxy,
+// and direct :8580 access works fine as-is.
 
 function App() {
   const [activeTab, setActiveTab] = React.useState('overview');
@@ -367,6 +343,9 @@ if (container) {
 }
 """
 ENTRY.write_text(entry_src, encoding="utf-8")
+# ENTRY uses fetch('/api/...') etc as literals? We intentionally wrote it that way above.
+# Double-check: any string-concat fetch remains? Strip the old runtime-patch code.
+assert "LIVE_BASE" not in entry_src, "entry must not use LIVE_BASE; use plain '/...' literals"
 
 # ---------- Bundle ----------
 SHIM_DIR = BUILD_DIR / "shims"
