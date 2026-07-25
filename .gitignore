@@ -74,3 +74,5 @@ aios.sqlite
 deploy/*/dist/
 data/
 apk/**
+*.bak
+*.bak_*
