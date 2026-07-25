@@ -45,6 +45,13 @@ class AIOSDashboard:
 
     # ---------- Pages ----------
     async def index(self, request: Request) -> HTMLResponse:
+        v = request.query_params.get("v", "")
+        if v in ("adminlte", "2", "new", "full"):
+            alt = Path(__file__).resolve().parent.parent / "dashboard" / "index_adminlte.html"
+            if alt.exists():
+                return HTMLResponse(alt.read_text(encoding="utf-8"))
+        if v in ("4", "v4", "simple", "old"):
+            pass  # fall through to default (v4.1)
         if _DASHBOARD_HTML_PATH.exists():
             html = _DASHBOARD_HTML_PATH.read_text(encoding="utf-8")
             return HTMLResponse(html)
