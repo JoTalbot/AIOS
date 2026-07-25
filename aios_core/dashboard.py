@@ -46,7 +46,11 @@ class AIOSDashboard:
     # ---------- Pages ----------
     async def index(self, request: Request) -> HTMLResponse:
         v = request.query_params.get("v", "")
-        if v in ("adminlte", "2", "new", "full"):
+        if v in ("react", "webui", "tsx", "new-react"):
+            alt = Path(__file__).resolve().parent.parent / "dashboard" / "index_react.html"
+            if alt.exists():
+                return HTMLResponse(alt.read_text(encoding="utf-8"))
+        if v in ("adminlte", "2", "new2", "full"):
             alt = Path(__file__).resolve().parent.parent / "dashboard" / "index_adminlte.html"
             if alt.exists():
                 return HTMLResponse(alt.read_text(encoding="utf-8"))
