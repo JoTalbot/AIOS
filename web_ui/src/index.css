@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+/* Safelist dynamically-composed tone utility classes (detected via brace expansion) */
+@source inline("bg-{indigo,cyan,emerald,amber,rose,violet,slate}-500/10");
+@source inline("text-{indigo,cyan,emerald,amber,rose,violet,slate}-300");
+@source inline("bg-{indigo,cyan,emerald,amber,rose,violet,slate}-400");
+@source inline("text-{indigo,cyan,emerald,amber,rose,violet,slate}-400");
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: #060912;
+  color: #e2e8f0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Layered ambient background */
+.app-bg {
+  background:
+    radial-gradient(1100px 560px at 8% -10%, rgba(99, 102, 241, 0.16), transparent 60%),
+    radial-gradient(900px 520px at 100% -5%, rgba(34, 211, 238, 0.10), transparent 55%),
+    radial-gradient(820px 620px at 50% 118%, rgba(139, 92, 246, 0.10), transparent 60%),
+    #060912;
+}
+
+/* Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #243049 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+  background-clip: content-box;
+}
+
+/* Glass surface */
+.glass {
+  background: linear-gradient(180deg, rgba(20, 27, 45, 0.82), rgba(13, 18, 32, 0.82));
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.glass-strong {
+  background: linear-gradient(180deg, rgba(24, 32, 52, 0.95), rgba(15, 21, 37, 0.95));
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.card-hover {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 18px 50px -18px rgba(0, 0, 0, 0.7);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.4s ease both; }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes pulseRing {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
+  70% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+.pulse-dot { animation: pulseRing 2s infinite; }
+
+@keyframes pulseRingAmber {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+  70% { box-shadow: 0 0 0 7px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+.pulse-dot-amber { animation: pulseRingAmber 2s infinite; }
+
+@keyframes spinSlow { to { transform: rotate(360deg); } }
+.spin-slow { animation: spinSlow 16s linear infinite; }
+
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+.shimmer { position: relative; overflow: hidden; }
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  animation: shimmer 1.8s infinite;
+}
+
+@keyframes growBar { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.grow-bar { transform-origin: bottom; animation: growBar 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes drawLine { from { stroke-dashoffset: 1200; } to { stroke-dashoffset: 0; } }
+.draw-line { stroke-dasharray: 1200; animation: drawLine 1.4s ease-out forwards; }
+
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.blink { animation: blink 1.4s ease-in-out infinite; }
+
+.text-gradient {
+  background: linear-gradient(90deg, #818cf8, #22d3ee);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* hide number input spinners */
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
