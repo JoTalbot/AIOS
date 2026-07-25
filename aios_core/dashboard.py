@@ -412,6 +412,199 @@ class AIOSDashboard:
             return JSONResponse({"ok": True})
         return JSONResponse({"ok": False, "error": "bad action"}, status_code=400)
 
+    # ---------- Android / ADB control ----------
+    ADB = "/opt/android-sdk/platform-tools/adb"
+
+    def _adb(self, *args, serial=None, timeout=30, binary=False):
+        cmd = [self.ADB]
+        if serial:
+            cmd += ["-s", str(serial)]
+        cmd += list(args)
+        r = subprocess.run(cmd, capture_output=True, timeout=timeout)
+        if binary:
+            return r.returncode, r.stdout, r.stderr
+        return r.returncode, r.stdout.decode("utf-8", errors="replace"), r.stderr.decode("utf-8", errors="replace")
+
+    def _default_serial(self):
+        code, out, _ = self._adb("devices")
+        for line in out.splitlines()[1:]:
+            line = line.strip()
+            if line.endswith("\tdevice") or line.endswith(" device"):
+                return line.split()[0]
+        return None
+
+    async def api_android_devices(self, request: Request) -> JSONResponse:
+        try:
+            code, out, err = self._adb("devices", "-l")
+            devs = []
+            for line in out.splitlines()[1:]:
+                parts = line.split()
+                if len(parts) >= 2 and parts[1] == "device":
+                    serial = parts[0]
+                    info = {"serial": serial, "status": "online"}
+                    # Props (model)
+                    rc, model, _ = self._adb("shell", "getprop", "ro.product.model", serial=serial, timeout=5)
+                    rc2, android, _ = self._adb("shell", "getprop", "ro.build.version.release", serial=serial, timeout=5)
+                    rc3, pkg, _ = self._adb("shell", "dumpsys", "window", "|", "grep", "mCurrentFocus", serial=serial, timeout=5)
+                    # dumpsys window mCurrentFocus does not work with pipe via list args
+                    info["model"] = model.strip()
+                    info["android"] = android.strip()
+                    # Foreground app via simpler cmd
+                    rc4, fore, _ = self._adb("shell", "cmd", "activity", "get-foreground-activity", serial=serial, timeout=5)
+                    info["foreground"] = fore.strip() if rc == 0 else ""
+                    devs.append(info)
+            # Screenshot dir
+            shot_dir = Path("/root/AIOS/screenshots")
+            shot_dir.mkdir(parents=True, exist_ok=True)
+            return JSONResponse({"devices": devs, "count": len(devs)})
+        except Exception as e:
+            return JSONResponse({"devices": [], "count": 0, "error": str(e)})
+
+    async def api_android_screenshot(self, request: Request) -> JSONResponse:
+        serial = request.query_params.get("serial") or self._default_serial()
+        if not serial:
+            return JSONResponse({"ok": False, "error": "no device"}, status_code=404)
+        try:
+            import base64
+            shot_dir = Path("/root/AIOS/screenshots")
+            shot_dir.mkdir(parents=True, exist_ok=True)
+            ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+            fn = shot_dir / f"shot_{serial.replace(':','_')}_{ts}.png"
+            # screencap -p outputs png to stdout
+            r = subprocess.run(
+                [self.ADB, "-s", serial, "exec-out", "screencap", "-p"],
+                capture_output=True, timeout=15,
+            )
+            if r.returncode != 0 or not r.stdout:
+                # Fallback: pull
+                self._adb("shell", "screencap", "-p", "/sdcard/screen.png", serial=serial)
+                self._adb("pull", "/sdcard/screen.png", str(fn), serial=serial)
+                data = fn.read_bytes()
+            else:
+                data = r.stdout
+                fn.write_bytes(data)
+            b64 = base64.b64encode(data).decode()
+            return JSONResponse({"ok": True, "serial": serial,
+                                 "ts": ts, "size": len(data),
+                                 "image": "data:image/png;base64," + b64})
+        except subprocess.TimeoutExpired:
+            return JSONResponse({"ok": False, "error": "screenshot timeout"}, status_code=504)
+        except Exception as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+    async def api_android_action(self, request: Request) -> JSONResponse:
+        body = await request.json()
+        serial = body.get("serial") or self._default_serial()
+        if not serial:
+            return JSONResponse({"ok": False, "error": "no device"}, status_code=404)
+        action = body.get("action")
+        try:
+            if action == "tap":
+                x, y = int(body["x"]), int(body["y"])
+                c, o, e = self._adb("shell", "input", "tap", str(x), str(y), serial=serial)
+            elif action == "swipe":
+                c, o, e = self._adb("shell", "input", "swipe",
+                                    str(int(body["x1"])), str(int(body["y1"])),
+                                    str(int(body["x2"])), str(int(body["y2"])),
+                                    str(int(body.get("duration", 300))), serial=serial)
+            elif action == "text":
+                text = body.get("text", "")
+                # Use adb_type.py helper that base64-encodes (handles $, quotes, spaces)
+                import importlib.util
+                spec = importlib.util.spec_from_file_location(
+                    "adb_type", "/root/AIOS/adb_type.py")
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                ok = mod.type_text(serial, text)
+                return JSONResponse({"ok": ok, "serial": serial})
+            elif action == "key":
+                keycode = int(body.get("keycode", 66))  # 66=ENTER
+                c, o, e = self._adb("shell", "input", "keyevent", str(keycode), serial=serial)
+            elif action == "shell":
+                cmd = body.get("command", "")
+                if not cmd or ";" in cmd or "|" in cmd or "&&" in cmd or "rm -rf" in cmd:
+                    return JSONResponse({"ok": False, "error": "dangerous chars blocked"})
+                c, o, e = self._adb("shell", *cmd.split(), serial=serial, timeout=15)
+                return JSONResponse({"ok": c == 0, "serial": serial, "stdout": o, "stderr": e,
+                                     "exit": c})
+            elif action == "launch":
+                pkg = body.get("package", "ua.slando")
+                c, o, e = self._adb("shell", "monkey", "-p", pkg,
+                                    "-c", "android.intent.category.LAUNCHER", "1", serial=serial)
+            elif action == "home":
+                c, o, e = self._adb("shell", "input", "keyevent", "3", serial=serial)
+            elif action == "back":
+                c, o, e = self._adb("shell", "input", "keyevent", "4", serial=serial)
+            elif action == "recents":
+                c, o, e = self._adb("shell", "input", "keyevent", "187", serial=serial)
+            elif action == "power":
+                c, o, e = self._adb("shell", "input", "keyevent", "26", serial=serial)
+            elif action == "uidump":
+                # Pull UI hierarchy XML
+                self._adb("shell", "uiautomator", "dump", "/sdcard/ui.xml", serial=serial, timeout=60)
+                r = subprocess.run([self.ADB, "-s", serial, "exec-out", "cat", "/sdcard/ui.xml"],
+                                   capture_output=True, timeout=15)
+                if r.returncode != 0 or len(r.stdout) < 50:
+                    r2 = subprocess.run([self.ADB, "-s", serial, "pull", "/sdcard/ui.xml", "/tmp/uidump.xml"],
+                                        capture_output=True, timeout=10)
+                    xml = Path("/tmp/uidump.xml").read_text(encoding="utf-8", errors="replace")
+                else:
+                    xml = r.stdout.decode("utf-8", errors="replace")
+                # Parse clickable nodes for overlay
+                import xml.etree.ElementTree as ET
+                nodes = []
+                try:
+                    root = ET.fromstring(xml)
+                    for node in root.iter("node"):
+                        a = node.attrib
+                        if a.get("clickable") == "true" or a.get("focusable") == "true" or a.get("text"):
+                            try:
+                                bb = a.get("bounds", "[0,0][0,0]")
+                                coords = bb.strip("[]").split("][")
+                                x1, y1 = map(int, coords[0].split(","))
+                                x2, y2 = map(int, coords[1].split(","))
+                                nodes.append({
+                                    "text": (a.get("text") or a.get("content-desc") or "")[:80],
+                                    "class": (a.get("class") or "").split(".")[-1],
+                                    "bounds": bb,
+                                    "x": (x1+x2)//2, "y": (y1+y2)//2,
+                                    "clickable": a.get("clickable") == "true",
+                                    "checkable": a.get("checkable") == "true",
+                                    "checked": a.get("checked") == "true",
+                                    "scrollable": a.get("scrollable") == "true",
+                                })
+                            except Exception:
+                                pass
+                except ET.ParseError:
+                    pass
+                return JSONResponse({"ok": True, "serial": serial,
+                                     "xml": xml[:200000], "nodes": nodes[:500]})
+            else:
+                return JSONResponse({"ok": False, "error": f"unknown action: {action}"}, status_code=400)
+            return JSONResponse({"ok": c == 0, "serial": serial, "stdout": o[-1000:], "stderr": e[-1000:], "exit": c})
+        except Exception as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+    async def api_android_emuctl(self, request: Request) -> JSONResponse:
+        """Save/load snapshot, cold boot."""
+        body = await request.json()
+        action = body.get("action")
+        avd = body.get("avd", "AIOS_OLX")
+        emu = "/opt/android-sdk/emulator/emulator"
+        # Simpler: support save snapshot only via adb emu command
+        try:
+            if action == "save":
+                name = body.get("name", "logged_in")
+                c, o, e = self._adb("emu", "avd", "snapshot", "save", name, serial="emulator-5554", timeout=60)
+                return JSONResponse({"ok": c == 0, "stdout": o, "stderr": e})
+            if action == "list_packages":
+                c, o, e = self._adb("shell", "pm", "list", "packages", "-3", serial="emulator-5554", timeout=15)
+                pkgs = sorted([l.replace("package:", "").strip() for l in o.splitlines() if l.startswith("package:")])
+                return JSONResponse({"ok": True, "packages": pkgs})
+        except Exception as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+        return JSONResponse({"ok": False, "error": "bad action"}, status_code=400)
+
     # ---------- Routing ----------
     def create_app(self) -> Starlette:
         routes = [
@@ -430,6 +623,10 @@ class AIOSDashboard:
             Route("/api/services/{name}/logs", self.api_service_logs),
             Route("/api/subs", self.api_subs),
             Route("/api/subs/action", self.api_subs_action, methods=["POST"]),
+            Route("/api/android/devices", self.api_android_devices),
+            Route("/api/android/screenshot", self.api_android_screenshot),
+            Route("/api/android/action", self.api_android_action, methods=["POST"]),
+            Route("/api/android/emu", self.api_android_emuctl, methods=["POST"]),
         ]
         return Starlette(routes=routes)
 

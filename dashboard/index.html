@@ -262,16 +262,79 @@
 
       <!-- EMULATOR -->
       <div id="page-emulator" class="page">
-        <div class="row"><div class="col-md-5">
-          <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-mobile-alt mr-1"></i>Эмулятор Android (OLX)</h3></div>
-            <div class="card-body text-center">
-              <div class="emu-frame" id="emuFrame"><div id="emuInfo">ADB not checked yet…</div></div>
-              <hr>
-              <button class="btn btn-outline-primary btn-sm" id="emuSnapBtn"><i class="fas fa-camera mr-1"></i>Сделать скриншот</button>
-              <button class="btn btn-outline-warning btn-sm" id="emuSnapLoad"><i class="fas fa-download mr-1"></i>Загрузить snapshot</button>
-            </div></div></div>
-          <div class="col-md-7"><div class="card"><div class="card-header"><h3 class="card-title">Скриншот</h3></div>
-            <div class="card-body text-center"><div id="emuShot" class="text-muted">Нет скриншота</div></div></div></div>
+        <div class="row">
+          <div class="col-md-3">
+            <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-mobile-alt mr-1"></i>Устройства</h3>
+              <div class="card-tools"><button class="btn btn-sm btn-outline-secondary" id="devRefresh"><i class="fas fa-sync"></i></button></div></div>
+              <div class="card-body p-0"><div class="list-group" id="devList"><div class="list-group-item text-muted">Загрузка…</div></div></div></div>
+            <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-gamepad mr-1"></i>Клавиши</h3></div>
+              <div class="card-body">
+                <div class="btn-group-vertical btn-block">
+                  <div class="btn-group btn-group-lg mb-1"><button class="btn btn-outline-secondary" data-key="3" title="Home"><i class="fas fa-home"></i></button>
+                    <button class="btn btn-outline-secondary" data-key="4" title="Back"><i class="fas fa-arrow-left"></i></button>
+                    <button class="btn btn-outline-secondary" data-key="187" title="Recents"><i class="fas fa-th-large"></i></button>
+                    <button class="btn btn-outline-secondary" data-key="26" title="Power"><i class="fas fa-power-off"></i></button></div>
+                  <div class="btn-group"><button class="btn btn-sm btn-outline-secondary" data-key="24"><i class="fas fa-volume-up"></i></button>
+                    <button class="btn btn-sm btn-outline-secondary" data-key="25"><i class="fas fa-volume-down"></i></button>
+                    <button class="btn btn-sm btn-outline-secondary" data-key="66" title="Enter">⏎</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-key="67" title="Del">⌫</button></div>
+                </div>
+                <hr>
+                <div class="form-group"><label>Быстрый запуск пакета</label>
+                  <select class="form-control form-control-sm" id="pkgSelect"><option value="">— выберите —</option></select>
+                  <button class="btn btn-primary btn-sm btn-block mt-2" id="launchBtn"><i class="fas fa-play mr-1"></i>Launch</button></div>
+                <div class="form-group"><label>ADB shell (одна команда)</label>
+                  <input class="form-control form-control-sm" id="shellCmd" placeholder="например: dumpsys battery">
+                  <button class="btn btn-dark btn-sm btn-block mt-1" id="shellRun"><i class="fas fa-terminal mr-1"></i>Выполнить</button></div>
+                <pre id="shellOut" class="bg-dark text-light p-2 mt-2" style="font-size:11px;max-height:200px;overflow:auto;border-radius:4px;display:none"></pre>
+              </div></div>
+            <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-pen mr-1"></i>Ввод текста</h3></div>
+              <div class="card-body">
+                <textarea class="form-control form-control-sm mb-2" id="typeText" rows="2" placeholder="Текст для ввода в фокусное поле..."></textarea>
+                <button class="btn btn-warning btn-sm btn-block" id="typeBtn"><i class="fas fa-keyboard mr-1"></i>Отправить текст</button>
+                <p class="text-muted mt-2 mb-0"><small>Ввод работает через ADB <code>input text</code>, поддерживает <code>$!@#%</code> и т.д.</small></p>
+              </div></div>
+          </div>
+          <div class="col-md-6">
+            <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-mobile-alt mr-1"></i>Экран устройства <span id="curSerial" class="badge badge-dark ml-1">—</span></h3>
+              <div class="card-tools">
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-outline-secondary" id="snapBtn"><i class="fas fa-camera mr-1"></i>Скриншот</button>
+                  <button class="btn btn-sm btn-outline-info" id="uixBtn"><i class="fas fa-project-diagram mr-1"></i>UI Dump</button>
+                  <button class="btn btn-sm btn-outline-success" id="autoRefresh"><i class="fas fa-sync-alt mr-1"></i>Авто (3s)</button>
+                </div>
+              </div></div>
+              <div class="card-body p-1 bg-dark text-center" style="position:relative">
+                <div id="scrnWrap" style="display:inline-block;position:relative;max-width:100%">
+                  <img id="scrnImg" src="" alt="screen" style="max-width:360px;width:100%;border-radius:8px;display:none">
+                  <canvas id="scrnCanvas" style="position:absolute;top:0;left:0;max-width:360px;width:100%;cursor:crosshair;border-radius:8px;display:none"></canvas>
+                  <div id="scrnPlaceholder" class="text-muted py-5"><i class="fas fa-image fa-3x"></i><p class="mt-2">Нет скриншота. Нажмите «Скриншот».</p></div>
+                </div>
+              </div>
+              <div class="card-footer text-center">
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-outline-secondary" data-swipe="up"><i class="fas fa-chevron-up"></i> Свайп вверх</button>
+                  <button class="btn btn-sm btn-outline-secondary" data-swipe="down"><i class="fas fa-chevron-down"></i> Вниз</button>
+                  <button class="btn btn-sm btn-outline-secondary" data-swipe="left"><i class="fas fa-chevron-left"></i> Влево</button>
+                  <button class="btn btn-sm btn-outline-secondary" data-swipe="right"><i class="fas fa-chevron-right"></i> Вправо</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-sitemap mr-1"></i>UI элементы</h3>
+              <div class="card-tools"><span id="nodesCount" class="badge badge-info">0</span></div></div>
+              <div class="card-body p-0" style="max-height:620px;overflow:auto">
+                <div class="list-group list-group-flush" id="uixList"><div class="list-group-item text-muted">Нажмите «UI Dump» чтобы получить иерархию.</div></div>
+              </div>
+            </div>
+            <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-database mr-1"></i>Снэпшоты</h3></div>
+              <div class="card-body">
+                <button class="btn btn-success btn-sm btn-block" id="saveSnap"><i class="fas fa-save mr-1"></i>Сохранить snapshot "logged_in"</button>
+                <small class="text-muted">Снэпшот загружается автоматически при старте эмулятора через @reboot cron.</small>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -599,6 +662,151 @@ document.getElementById('themeToggle').onclick = ()=>{
   localStorage.setItem('theme', dark?'dark':'light');
   document.querySelector('#themeToggle i').className = dark?'fas fa-sun':'fas fa-moon';
 };
+
+/* -------------- Android / Emulator control -------------- */
+let curSerial = null;
+let autoScreenshotTimer = null;
+let screenW = 0, screenH = 0;
+async function loadDevices(){
+  try{
+    const d = await jget('android/devices');
+    const list = document.getElementById('devList');
+    if(!d.devices || d.devices.length === 0){
+      list.innerHTML = '<div class="list-group-item text-danger"><i class="fas fa-times-circle mr-1"></i>Нет подключённых устройств</div>';
+      return;
+    }
+    list.innerHTML = d.devices.map(dv=>`
+      <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between ${dv.serial===curSerial?'active':''}" data-serial="${esc(dv.serial)}">
+        <div><b><i class="fas fa-mobile-alt mr-1"></i>${esc(dv.serial)}</b><br><small>${esc(dv.model||'')} Android ${esc(dv.android||'')}</small></div>
+        <span class="badge badge-success align-self-center">online</span>
+      </a>`).join('');
+    list.querySelectorAll('a').forEach(a=>a.onclick=e=>{e.preventDefault(); selectDevice(a.dataset.serial);});
+    if(!curSerial && d.devices[0]) selectDevice(d.devices[0].serial);
+    // Packages
+    const pk = await jpost('android/emu',{action:'list_packages'});
+    const sel = document.getElementById('pkgSelect');
+    if(pk.ok){
+      sel.innerHTML = '<option value="">— выберите —</option>' +
+        pk.packages.map(p=>`<option>${esc(p)}</option>`).join('');
+    }
+  }catch(e){ toast(e.message,'error'); }
+}
+function selectDevice(serial){
+  curSerial = serial;
+  document.getElementById('curSerial').textContent = serial;
+  document.querySelectorAll('#devList a').forEach(a=>a.classList.toggle('active', a.dataset.serial===serial));
+  takeScreenshot();
+}
+async function takeScreenshot(){
+  if(!curSerial) return;
+  const img = document.getElementById('scrnImg');
+  const place = document.getElementById('scrnPlaceholder');
+  try{
+    const r = await jget('android/screenshot?serial='+encodeURIComponent(curSerial));
+    if(r.ok){
+      img.src = r.image;
+      img.style.display='block'; place.style.display='none';
+      img.onload = ()=>{ screenW = img.naturalWidth; screenH = img.naturalHeight; setupCanvas(); };
+      if(screenW) setupCanvas();
+    } else {
+      place.textContent = 'Ошибка: ' + (r.error||'?');
+    }
+  }catch(e){ place.textContent = 'Ошибка: '+e.message; }
+}
+function setupCanvas(){
+  const img = document.getElementById('scrnImg');
+  const canvas = document.getElementById('scrnCanvas');
+  const w = img.clientWidth, h = img.clientHeight;
+  canvas.width = w; canvas.height = h;
+  canvas.style.display='block';
+}
+document.getElementById('scrnCanvas').addEventListener('click', async e=>{
+  if(!curSerial) return;
+  const c = document.getElementById('scrnCanvas');
+  const rect = c.getBoundingClientRect();
+  const xPct = (e.clientX - rect.left) / rect.width;
+  const yPct = (e.clientY - rect.top) / rect.height;
+  const x = Math.round(xPct * (screenW||1080));
+  const y = Math.round(yPct * (screenH||2280));
+  await jpost('android/action',{action:'tap', serial:curSerial, x, y});
+  setTimeout(takeScreenshot, 800);
+});
+document.querySelectorAll('[data-swipe]').forEach(b=>b.onclick=async()=>{
+  if(!curSerial) return;
+  const cx = Math.round((screenW||1080)/2), cy = Math.round((screenH||2280)/2);
+  const dir = b.dataset.swipe;
+  let x1=cx,y1=cy,x2=cx,y2=cy;
+  if(dir==='up'){y1=cy+400;y2=cy-400;}
+  else if(dir==='down'){y1=cy-400;y2=cy+400;}
+  else if(dir==='left'){x1=cx+300;x2=cx-300;}
+  else if(dir==='right'){x1=cx-300;x2=cx+300;}
+  await jpost('android/action',{action:'swipe',serial:curSerial,x1,y1,x2,y2,duration:300});
+  setTimeout(takeScreenshot, 800);
+});
+document.querySelectorAll('[data-key]').forEach(b=>b.onclick=async()=>{
+  if(!curSerial) return;
+  await jpost('android/action',{action:'key',serial:curSerial,keycode:parseInt(b.dataset.key)});
+  setTimeout(takeScreenshot, 500);
+});
+document.getElementById('snapBtn').onclick = takeScreenshot;
+document.getElementById('devRefresh').onclick = loadDevices;
+document.getElementById('launchBtn').onclick = async()=>{
+  const pkg = document.getElementById('pkgSelect').value; if(!pkg||!curSerial)return;
+  await jpost('android/action',{action:'launch',serial:curSerial,package:pkg});
+  setTimeout(takeScreenshot, 2000);
+};
+document.getElementById('shellRun').onclick = async()=>{
+  const cmd = document.getElementById('shellCmd').value.trim(); if(!cmd||!curSerial)return;
+  const out = document.getElementById('shellOut');
+  out.style.display='block'; out.textContent = '$ '+cmd+'\n…';
+  try{
+    const r = await jpost('android/action',{action:'shell',serial:curSerial,command:cmd});
+    out.textContent = '$ '+cmd+'\n'+ (r.stdout||'') + (r.stderr?'\n[stderr]\n'+r.stderr:'') + `\n[exit ${r.exit}]`;
+  }catch(e){out.textContent = '$ '+cmd+'\nERROR: '+e.message;}
+};
+document.getElementById('typeBtn').onclick = async()=>{
+  const txt = document.getElementById('typeText').value; if(!txt||!curSerial)return;
+  const r = await jpost('android/action',{action:'text',serial:curSerial,text:txt});
+  if(r.ok){ toast('Текст отправлен','success'); setTimeout(takeScreenshot, 600); }
+  else toast('Ошибка: '+(r.error||'?'),'error');
+};
+document.getElementById('uixBtn').onclick = async()=>{
+  if(!curSerial) return;
+  const list = document.getElementById('uixList');
+  list.innerHTML = '<div class="list-group-item text-muted">Сбор UI hierarchy (10-30s)...</div>';
+  try{
+    const r = await jpost('android/action',{action:'uidump',serial:curSerial});
+    document.getElementById('nodesCount').textContent = (r.nodes||[]).length;
+    if(!r.nodes){ list.innerHTML='<div class="list-group-item text-danger">Не удалось получить UI</div>'; return; }
+    list.innerHTML = r.nodes.filter(n=>n.text || n.clickable).slice(0,300).map(n=>`
+      <a href="#" class="list-group-item list-group-item-action py-1" data-x="${n.x}" data-y="${n.y}" data-click="${n.clickable}">
+        <div style="font-size:12px"><b>${esc((n.text||'(без текста)').substring(0,50))}</b>
+          <span class="badge badge-light ml-1">${esc(n.class||'')}</span>
+          ${n.clickable?'<span class="badge badge-success">клик</span>':''}
+          ${n.scrollable?'<span class="badge badge-info">скролл</span>':''}
+          ${n.checkable?'<span class="badge badge-warning">чек</span>':''}
+        </div>
+        <small class="text-muted">x=${n.x} y=${n.y} · ${esc(n.bounds||'')}</small>
+      </a>`).join('');
+    list.querySelectorAll('a').forEach(a=>a.onclick=async e=>{
+      e.preventDefault();
+      if(a.dataset.click==='true'){
+        await jpost('android/action',{action:'tap',serial:curSerial,x:parseInt(a.dataset.x),y:parseInt(a.dataset.y)});
+        setTimeout(takeScreenshot, 800);
+      }
+    });
+  }catch(e){ list.innerHTML='<div class="list-group-item text-danger">'+esc(e.message)+'</div>'; }
+};
+document.getElementById('saveSnap').onclick = async()=>{
+  const r = await jpost('android/emu',{action:'save',name:'logged_in'});
+  toast(r.ok?'Snapshot saved':'Error: '+r.stderr, r.ok?'success':'error');
+};
+document.getElementById('autoRefresh').onclick = ()=>{
+  const btn = document.getElementById('autoRefresh');
+  if(autoScreenshotTimer){ clearInterval(autoScreenshotTimer); autoScreenshotTimer=null; btn.classList.remove('active'); btn.innerHTML='<i class="fas fa-sync-alt mr-1"></i>Авто (3s)'; }
+  else{ autoScreenshotTimer = setInterval(takeScreenshot, 3000); btn.classList.add('active'); btn.innerHTML='<i class="fas fa-stop mr-1"></i>Стоп'; }
+};
+pageHandlers.emulator = ()=>{ loadDevices(); };
 
 /* -------------- Init -------------- */
 document.getElementById('refreshBtn').onclick = ()=>{ const h = location.hash.replace(/^#\/?/,'')||'overview'; pageHandlers[h]&&pageHandlers[h](); toast('Обновлено','success'); };
