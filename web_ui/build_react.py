@@ -1,226 +1,343 @@
 #!/usr/bin/env python3
-"""Build a single-file React (Babel-standalone) dashboard from web_ui TSX sources + live panels."""
-import re, os, json, sys
+"""Build a single-file React dashboard:
+ - bundles TSX sources from web_ui_src/ (mirror of repo web_ui/src/)
+ - prepends live panels (OLX/Android/Services/Subs) + API client
+ - uses React/ReactDOM UMD globals
+ - outputs index_react.html — NO in-browser Babel needed (precompiled by esbuild).
+"""
 from pathlib import Path
+import subprocess, sys, os, textwrap, shutil
 
-SRC = Path('/home/user/web_ui_src')
-OUT = Path('/home/user/index_react.html')
+HERE = Path(__file__).resolve().parent                 # /home/user
+SRC = HERE / "web_ui_src"                              # mirrored web_ui/src/
+OUT_HTML = HERE / "index_react.html"
+BUILD_DIR = HERE / "_build"
+ESBUILD = BUILD_DIR / "node_modules" / ".bin" / "esbuild"
 
-# ---------- TS -> JSX stripping ----------
-def strip_ts(src: str) -> str:
-    # Remove JSX comments: {/* ... */} including braces
-    src = re.sub(r'\{\s*/\*.*?\*/\s*\}', '', src, flags=re.S)
-    # Remove plain block comments (not JSX)
-    src = re.sub(r'(?<!\{)/\*.*?\*/(?!\})', '', src, flags=re.S)
-    # Remove // line comments (avoid http:// inside strings)
-    src = re.sub(r'(?m)^[ \t]*//[^\n]*$', '', src)
-    # Rewrite bare fetch('/...') and fetch(`/...`) to use BASE_URL
-    src = re.sub(r"fetch\(\s*'/", "fetch(BASE_URL + '", src)
-    src = re.sub(r'fetch\(\s*`/', 'fetch(BASE_URL + `', src)
-    # Remove import lines (we'll inline all globals)
-    src = re.sub(r'^\s*import\s+.*?;\s*$', '', src, flags=re.M)
-    # Remove export keywords
-    src = re.sub(r'\bexport\s+default\s+', '', src)
-    src = re.sub(r'\bexport\s+', '', src)
-    # Remove interface / type declarations (multi-line blocks)
-    src = re.sub(r'\binterface\s+\w+[^{]*\{[^}]*\}\s*', '', src, flags=re.S)
-    src = re.sub(r'\btype\s+\w+\s*=\s*[^;]+;\s*', '', src, flags=re.S)
-    # Remove React.FC<...> generic type annotation
-    src = re.sub(r':\s*React\.FC\s*<[^>]*>', '', src)
-    # Remove generic type args on useState/useRef/useMemo etc: useState<Foo>( -> useState(
-    src = re.sub(r'(useState|useRef|useMemo|useCallback|useEffect)\s*<[^>]+>', r'\1', src)
-    # Remove `as X` type assertions
-    src = re.sub(r'\bas\s+\w+(\.\w+)*(\[\])?\b', '', src)
-    # Remove typed arrow function params: (x: Type, y: Type) -> (x, y)
-    # This is tricky; we do it line-by-line with a simple regex that covers most cases
-    src = re.sub(r'\(([^()]*)\)\s*=>', lambda m: '(' + _strip_params(m.group(1)) + ') =>', src)
-    # Remove `: React.CSSProperties` / `: Record<string, React.CSSProperties>` etc trailing type annotations after =
-    src = re.sub(r':\s*Record\s*<\s*string\s*,\s*React\.CSSProperties\s*>', '', src)
-    src = re.sub(r':\s*React\.CSSProperties', '', src)
-    src = re.sub(r':\s*React\.CSSProperties\s*\[\s*\]', '', src)
-    # function foo(x: Type): RetType { ... } — strip param/return types between function name and {
-    src = re.sub(r'(function\s+\w+\s*\()([^)]*)(\)\s*)(:\s*[\w<>\[\]\s,|]+)?(\s*\{)',
-                 lambda m: m.group(1) + _strip_params(m.group(2)) + m.group(3) + m.group(5), src)
-    # Remove trailing `: Type` on variable declarations (after const/let/var name and before =)
-    # e.g. const x: Type = ...; but also const [a,b]: [Type,Type] = useState
-    # Handle destructured generics: const [x, setX]: [T, U] = ... -> const [x, setX] =
-    src = re.sub(r'(const|let|var)\s+(\[[^\]]+\])\s*:\s*\[[^\]]+\]\s*=', r'\1 \2 =', src)
-    # Simple const x: Type =
-    src = re.sub(r'(const|let|var)\s+(\w+)\s*:\s*[\w<>\[\]\s\|\.&]+(?=\s*[=;])', r'\1 \2', src)
-    # Strip trailing return types on arrow functions (already handled via first param regex partially)
-    # Remove "?: boolean" optional fields in destructuring remains not used (safe pass)
-    # Remove `: string` `: number` `: boolean` `: any` `: void` etc standalone
-    # Only strip primitive type annotations in positions we are sure of:
-    # - after identifier followed by , or ) or = in parameter lists (handled by _strip_params already)
-    # - after `?` optional marker
-    # Avoid touching object literal values (`key: null`, `key: undefined`).
-    src = re.sub(r'\?\s*:\s*(string|number|boolean|any|void|never|unknown|object)\b(\s*\[\s*\])?', '?', src)
-    # Remove `<T>` generic after identifier like `arr.map<JSX.Element>` (rare)
-    src = re.sub(r'\.\w+\s*<[^>]+>\s*\(', lambda m: re.sub(r'<[^>]+>', '', m.group(0)), src)
-    # Collapse blank lines
-    src = re.sub(r'\n{3,}', '\n\n', src)
-    return src.strip()
+LIVE_PANELS = r"""
+import React from 'react';
 
-def _strip_params(params: str) -> str:
-    # Remove `: Type` annotations, optional `?`, from comma-separated params.
-    out = []
-    for p in params.split(','):
-        p = p.strip()
-        if not p:
-            continue
-        # Remove optional marker
-        p = p.replace('?:', ':')
-        # Split on ':' to remove type
-        if ':' in p and not ('//' in p):
-            # Keep only the name part before first ':'
-            p = p.split(':', 1)[0].strip()
-        out.append(p)
-    return ', '.join(out)
+// ---- Live API helpers (auto-detect /aios/ prefix) ----
+var _lp = (typeof location !== 'undefined') ? location.pathname : '/';
+var _lmi = _lp.indexOf('/aios/');
+var LIVE_BASE = _lmi >= 0 ? _lp.substring(0, _lmi + 5) : '';
 
-# ---------- Load TSX sources ----------
-def read(p):
-    return (SRC / p).read_text(encoding='utf-8')
-
-components_order = [
-    'components/Header.tsx',
-    'components/OverviewView.tsx',
-    'components/SafetyDashboardView.tsx',
-    'components/AgentSwarmView.tsx',
-    'components/ConstitutionViewer.tsx',
-    'components/KnowledgeGraphView.tsx',
-    'components/MLModelRegistryView.tsx',
-    'components/AndroidFleetView.tsx',
-    'components/MarketplaceView.tsx',
-]
-
-services_src = read('services/aiosApi.ts')
-app_src = read('App.tsx')
-
-stripped_components = []
-for c in components_order:
-    s = strip_ts(read(c))
-    name = Path(c).stem
-    stripped_components.append(f"// ===== {name} =====\n{s}")
-
-services_js = strip_ts(services_src)
-
-# Patch services_js: BASE_URL should auto-detect /aios/ prefix, and correct endpoints to dashboard routes.
-services_js_patch = """// ===== API client (auto-detect BASE_URL, real endpoints, fallbacks) =====
-const _p = location.pathname;
-const _mi = _p.indexOf('/aios/');
-const BASE_URL = _mi >= 0 ? _p.substring(0, _mi + 5) : '';
-
-async function fetchHealth() {
-  try {
-    const r = await fetch(BASE_URL + 'health');
-    if (r.ok) {
-      const j = await r.json();
-      return { status: j.status === 'ok' ? 'ok' : 'degraded', version: j.version || '9.0.0', timestamp: Date.now() };
-    }
-  } catch(e) {}
-  return { status: 'degraded', version: '9.0.0', timestamp: Date.now() };
+async function fetchOLX() { try { return await (await fetch(LIVE_BASE + 'api/olx')).json(); } catch(e){ return {available:false}; } }
+async function fetchOLXList(limit) { try { return await (await fetch(LIVE_BASE + 'api/olx/list?sort=new&limit=' + (limit||6))).json(); } catch(e){ return {ads:[]}; } }
+async function fetchServices() { try { return await (await fetch(LIVE_BASE + 'api/services')).json(); } catch(e){ return {services:[]}; } }
+async function fetchAndroidDevicesLive() { try { return await (await fetch(LIVE_BASE + 'api/android/devices')).json(); } catch(e){ return {devices:[]}; } }
+async function fetchAndroidScreenshot(serial) { try { return await (await fetch(LIVE_BASE + 'api/android/screenshot?serial=' + encodeURIComponent(serial||'emulator-5554'))).json(); } catch(e){ return {ok:false}; } }
+async function postAndroidAction(action, args) {
+  try { return await (await fetch(LIVE_BASE + 'api/android/action', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(Object.assign({action:action}, args||{}))})).json(); }
+  catch(e){ return {ok:false, error:String(e)}; }
+}
+async function fetchSubs() { try { return await (await fetch(LIVE_BASE + 'api/subs')).json(); } catch(e){ return {subscriptions:[], chats:0}; } }
+async function postSvcAction(svc, act) {
+  try { return await (await fetch(LIVE_BASE + 'api/services/' + svc + '/action', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:act})})).json(); }
+  catch(e){ return {ok:false}; }
 }
 
-async function fetchStats() {
-  try {
-    const r = await fetch(BASE_URL + 'api/stats');
-    if (r.ok) {
-      const j = await r.json();
-      return {
-        version: j.version || '9.0.0',
-        runtime: j.runtime || 'python',
-        uptime_seconds: j.uptime_seconds || 0,
-        total_tasks: j.total_tasks || 0,
-        completed_tasks: (j.total_tasks||0) - (j.failed_tasks||0),
-        failed_tasks: j.failed_tasks || 0,
-        active_agents: j.active_agents || 3,
-        memory_nodes: (j.memory && j.memory.total) || 0,
-        registered_capabilities: j.capabilities ? (j.capabilities.total || 0) : 0,
-        constitutional_articles: j.constitution_articles || 67,
-        compliance_ratio: 1.0,
-        safety_score: 1.0,
-      };
-    }
-  } catch(e) {}
-  return { version:'9.0.0', uptime_seconds:0, total_tasks:0, completed_tasks:0, failed_tasks:0, active_agents:3, memory_nodes:0, safety_score:1.0, constitutional_articles:67, compliance_ratio:1.0 };
+export function OLXPanel() {
+  const [olx, setOlx] = React.useState({available:false});
+  const [ads, setAds] = React.useState([]);
+  React.useEffect(() => {
+    const load = async () => { setOlx(await fetchOLX()); const l = await fetchOLXList(6); setAds(l.ads||[]); };
+    load(); const i = setInterval(load, 30000); return () => clearInterval(i);
+  }, []);
+  if(!olx.available) return <div style={{padding:'24px',color:'#F8FAFC'}}>OLX data unavailable.</div>;
+  const kpis = [
+    ['Всего объявлений', olx.ads_total||0, '#3B82F6'],
+    ['Активных', olx.ads_active||0, '#10B981'],
+    ['Новых за 24ч', olx.new_24h||0, '#F59E0B'],
+    ['Средняя цена', olx.price_avg?Math.round(olx.price_avg).toLocaleString()+' UAH':'—', '#8B5CF6'],
+  ];
+  return (
+    <div style={{padding:'24px',color:'#F8FAFC'}}>
+      <h2 style={{fontSize:20,fontWeight:700,marginBottom:16}}>🛒 OLX Collector — Live</h2>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:16,marginBottom:20}}>
+        {kpis.map(([t,v,c])=>(
+          <div key={t} style={{background:'#1E293B',padding:18,borderRadius:12,borderLeft:'4px solid '+c}}>
+            <div style={{fontSize:12,color:'#94A3B8',fontWeight:600}}>{t}</div>
+            <div style={{fontSize:24,fontWeight:800,margin:'6px 0'}}>{v}</div>
+          </div>
+        ))}
+      </div>
+      <h3 style={{fontSize:15,fontWeight:700,marginBottom:10}}>Последние объявления</h3>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12}}>
+        {ads.map(a=>(
+          <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer"
+             style={{background:'#1E293B',padding:12,borderRadius:10,color:'#F8FAFC',textDecoration:'none',border:'1px solid #334155',display:'block'}}>
+            {a.photos&&a.photos[0]?<img src={a.photos[0]} alt="" style={{width:'100%',height:120,objectFit:'cover',borderRadius:6,marginBottom:8}}/>:null}
+            <div style={{fontSize:13,fontWeight:600}}>{(a.title||'').substring(0,70)}</div>
+            <div style={{fontSize:14,fontWeight:700,color:'#34D399',marginTop:4}}>{a.price_value?Math.round(a.price_value).toLocaleString()+' '+(a.price_currency||'грн'):'Договірна'}</div>
+            <div style={{fontSize:12,color:'#94A3B8',marginTop:4}}>📍 {a.city||'?'} · {a.query} {a.business?'🏢':'👤'}</div>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
 }
 
-async function fetchSafetyData() {
-  return { safety_score:1.0, status:'healthy', metrics:{ harm_score:0.02, bias_score:0.05, deception_score:0.01 }, recent_incidents:[], thresholds:{ harm_score:0.3, bias_score:0.4, deception_score:0.2 } };
+export function ServicesPanel() {
+  const [svcs, setSvcs] = React.useState({services:[]});
+  const [loading, setLoading] = React.useState({});
+  const load = async () => setSvcs(await fetchServices());
+  React.useEffect(() => { load(); const i = setInterval(load, 10000); return () => clearInterval(i); }, []);
+  const act = async (n, a) => { setLoading(s=>({...s,[n]:true})); await postSvcAction(n,a); setTimeout(load, 1500); };
+  const pill = s => ({background:s.active?'#065F46':s.state==='activating'?'#78350F':'#7F1D1D',color:s.active?'#6EE7B7':s.state==='activating'?'#FCD34D':'#FCA5A5',padding:'4px 10px',borderRadius:999,fontSize:11,fontWeight:600});
+  return (
+    <div style={{padding:'24px',color:'#F8FAFC'}}>
+      <h2 style={{fontSize:20,fontWeight:700,marginBottom:16}}>⚙️ System Services</h2>
+      <div style={{background:'#1E293B',borderRadius:12,overflow:'hidden'}}>
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead><tr><th style={{padding:'10px 14px',textAlign:'left',color:'#94A3B8',background:'#0F172A',borderBottom:'1px solid #334155'}}>Service</th><th style={{padding:'10px 14px',textAlign:'left',color:'#94A3B8',background:'#0F172A',borderBottom:'1px solid #334155'}}>Port</th><th style={{padding:'10px 14px',textAlign:'left',color:'#94A3B8',background:'#0F172A',borderBottom:'1px solid #334155'}}>Status</th><th style={{padding:'10px 14px',textAlign:'left',color:'#94A3B8',background:'#0F172A',borderBottom:'1px solid #334155'}}>Since</th><th style={{padding:'10px 14px',textAlign:'right',color:'#94A3B8',background:'#0F172A',borderBottom:'1px solid #334155'}}>Actions</th></tr></thead>
+          <tbody>
+            {svcs.services.map(s=>(
+              <tr key={s.name} style={{borderBottom:'1px solid #334155'}}>
+                <td style={{padding:'10px 14px'}}><b>{s.label}</b><div style={{fontSize:12,color:'#94A3B8'}}>{s.name}</div></td>
+                <td style={{padding:'10px 14px'}}>{s.port||'—'}</td>
+                <td style={{padding:'10px 14px'}}><span style={pill(s)}>{s.state}</span></td>
+                <td style={{padding:'10px 14px',fontSize:12,color:'#94A3B8'}}>{(s.since||'').substring(0,16)}</td>
+                <td style={{padding:'10px 14px',textAlign:'right'}}>
+                  <button disabled={loading[s.name]||!s.active} onClick={()=>act(s.name,'stop')} style={{background:'transparent',border:'1px solid #334155',color:'#CBD5E1',padding:'4px 10px',borderRadius:6,cursor:'pointer',fontSize:12}}>⏹</button>
+                  <button disabled={loading[s.name]} onClick={()=>act(s.name,'restart')} style={{background:'#3B82F6',color:'#fff',border:'none',padding:'4px 10px',borderRadius:6,cursor:'pointer',fontSize:12,marginLeft:4}}>🔄</button>
+                  <button disabled={loading[s.name]||s.active} onClick={()=>act(s.name,'start')} style={{background:'#10B981',color:'#fff',border:'none',padding:'4px 10px',borderRadius:6,cursor:'pointer',fontSize:12,marginLeft:4}}>▶</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
-async function fetchConstitutionIndex() {
-  return Array.from({length:67},(_,i)=>({
-    number:i+1, numeral:'ARTICLE-'+(i+1), title:'Constitutional Principle '+(i+1),
-    filename:'ARTICLE-'+(i+1)+'.md', status:'Active', level:'Constitutional',
-    scope:'System-wide', valid:true
-  }));
-}
-
-async function fetchKnowledgeGraph() {
-  return {
-    nodes:[
-      {id:'orchestrator',label:'AIOS Core Orchestrator',type:'agent'},
-      {id:'memory_main',label:'Primary Vector Store',type:'memory'},
-      {id:'const_engine',label:'Constitution Engine (67 Articles)',type:'rule'},
-      {id:'ml_planner',label:'ML Scorer & Planner',type:'model'},
-    ],
-    edges:[
-      {source:'orchestrator',target:'memory_main',relation:'PERSISTS'},
-      {source:'orchestrator',target:'const_engine',relation:'ENFORCES'},
-      {source:'orchestrator',target:'ml_planner',relation:'EVALUATES'},
-    ]
+export function AndroidPanel() {
+  const [devices, setDevices] = React.useState([]);
+  const [cur, setCur] = React.useState(null);
+  const [shot, setShot] = React.useState(null);
+  const imgRef = React.useRef(null);
+  const [imgSize, setImgSize] = React.useState({w:0,h:0});
+  const [auto, setAuto] = React.useState(false);
+  const autoRef = React.useRef();
+  const loadDevs = async () => { const d = await fetchAndroidDevicesLive(); setDevices(d.devices||[]); if((!cur)&&d.devices&&d.devices[0]) setCur(d.devices[0].serial); };
+  const takeShot = async () => { if(!cur) return; const r = await fetchAndroidScreenshot(cur); if(r.ok) setShot(r.image); };
+  React.useEffect(() => { loadDevs(); }, []);
+  React.useEffect(() => { if(cur) takeShot(); }, [cur]);
+  React.useEffect(() => {
+    if(auto){ autoRef.current = setInterval(takeShot, 3000); } else { clearInterval(autoRef.current); }
+    return () => clearInterval(autoRef.current);
+  }, [auto, cur]);
+  const onImgLoad = (e) => setImgSize({w:e.target.naturalWidth,h:e.target.naturalHeight});
+  const tap = async (e) => {
+    if(!cur||!imgSize.w) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.round((e.clientX-rect.left)/rect.width*imgSize.w);
+    const y = Math.round((e.clientY-rect.top)/rect.height*imgSize.h);
+    await postAndroidAction('tap',{serial:cur,x,y});
+    setTimeout(takeShot, 600);
   };
+  const swipe = async dir => {
+    if(!cur) return;
+    const w = imgSize.w || 1080;
+    const h = imgSize.h || 2280;
+    const cx=Math.round(w/2), cy=Math.round(h/2);
+    let x1=cx,y1=cy,x2=cx,y2=cy;
+    if(dir==='up'){y1=cy+400;y2=cy-400;} if(dir==='down'){y1=cy-400;y2=cy+400;}
+    if(dir==='left'){x1=cx+300;x2=cx-300;} if(dir==='right'){x1=cx-300;x2=cx+300;}
+    await postAndroidAction('swipe',{serial:cur,x1,y1,x2,y2,duration:300}); setTimeout(takeShot,700);
+  };
+  const btnStyle = (bg)=>({background:bg||'transparent',border:'1px solid #334155',color:'#CBD5E1',padding:'6px 10px',borderRadius:6,cursor:'pointer',fontSize:12});
+  return (
+    <div style={{padding:'24px',color:'#F8FAFC'}}>
+      <h2 style={{fontSize:20,fontWeight:700,marginBottom:8}}>📱 Android Fleet — Remote Control</h2>
+      <div style={{fontSize:13,color:'#94A3B8',marginBottom:16}}>Тап по экрану = клик на устройстве. Свайпы/клавиши/текст поддерживаются.</div>
+      <div style={{display:'grid',gridTemplateColumns:'280px 1fr',gap:20}}>
+        <div>
+          <div style={{background:'#1E293B',borderRadius:12,padding:14,marginBottom:12}}>
+            <h4 style={{margin:'0 0 10px 0'}}>Devices</h4>
+            {devices.map(d=>(
+              <button key={d.serial} onClick={()=>setCur(d.serial)} style={{width:'100%',textAlign:'left',marginBottom:6,background:cur===d.serial?'#3B82F6':'transparent',color:cur===d.serial?'#fff':'#CBD5E1',border:'1px solid #334155',padding:'8px 12px',borderRadius:8,cursor:'pointer',fontSize:13}}>
+                📱 {d.serial}
+                <span style={{float:'right',fontSize:11,padding:'2px 8px',borderRadius:10,background:d.status==='online'?'#065F46':'#7F1D1D',color:d.status==='online'?'#6EE7B7':'#FCA5A5'}}>{d.status}</span>
+                {d.model?<div style={{fontSize:11,color:cur===d.serial?'#DBEAFE':'#94A3B8',marginTop:4}}>{d.model} · Android {d.android||'?'}</div>:null}
+              </button>
+            ))}
+            <button onClick={loadDevs} style={{width:'100%',marginTop:8,background:'transparent',border:'1px solid #334155',color:'#CBD5E1',padding:'6px 12px',borderRadius:8,cursor:'pointer',fontSize:12}}>🔄 Refresh</button>
+          </div>
+          <div style={{background:'#1E293B',borderRadius:12,padding:14}}>
+            <h4 style={{margin:'0 0 10px 0'}}>Quick Actions</h4>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+              <button style={btnStyle()} onClick={async()=>{await postAndroidAction('key',{serial:cur,keycode:3});setTimeout(takeShot,500);}}>🏠 Home</button>
+              <button style={btnStyle()} onClick={async()=>{await postAndroidAction('key',{serial:cur,keycode:4});setTimeout(takeShot,500);}}>⬅ Back</button>
+              <button style={btnStyle()} onClick={()=>swipe('up')}>⬆ Up</button>
+              <button style={btnStyle()} onClick={()=>swipe('down')}>⬇ Down</button>
+              <button style={btnStyle()} onClick={()=>swipe('left')}>⬅ Left</button>
+              <button style={btnStyle()} onClick={()=>swipe('right')}>➡ Right</button>
+            </div>
+            <hr style={{border:'none',borderTop:'1px solid #334155',margin:'12px 0'}}/>
+            <button onClick={()=>setAuto(!auto)} style={{width:'100%',background:auto?'#EF4444':'#10B981',color:'#fff',border:'none',padding:'6px 12px',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600}}>{auto?'⏹ Стоп':'▶ Auto (3s)'}</button>
+            <button onClick={takeShot} style={{width:'100%',marginTop:6,background:'#3B82F6',color:'#fff',border:'none',padding:'6px 12px',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600}}>📸 Screenshot</button>
+            <button onClick={async()=>{await postAndroidAction('launch',{serial:cur,package:'ua.slando'});setTimeout(takeShot,2000);}} style={{width:'100%',marginTop:6,background:'transparent',border:'1px solid #334155',color:'#CBD5E1',padding:'6px 12px',borderRadius:8,cursor:'pointer',fontSize:12}}>🛒 Launch OLX</button>
+          </div>
+        </div>
+        <div style={{background:'#1E293B',borderRadius:12,padding:20,textAlign:'center'}}>
+          <div style={{position:'relative',display:'inline-block',maxWidth:280,width:'100%'}}>
+            {shot
+              ? <img ref={imgRef} src={shot} onLoad={onImgLoad} style={{width:'100%',borderRadius:10,display:'block'}}/>
+              : <div style={{padding:60,textAlign:'center',color:'#94A3B8'}}><div style={{fontSize:48}}>🖼️</div><div style={{marginTop:10}}>Нет скриншота</div></div>}
+            <div onClick={tap} style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',cursor:'crosshair',borderRadius:10}}/>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-async function fetchAgents() {
-  return [
-    { agent_id:'agent_alpha', name:'Alpha Scientist', role:'AI Scientist', autonomy_level:5, autonomy_label:'Self-Directed', status:'thinking', completed_tasks:42 },
-    { agent_id:'agent_beta', name:'Beta Engineer', role:'AI Engineer', autonomy_level:4, autonomy_label:'Autonomous', status:'executing', completed_tasks:128 },
-    { agent_id:'agent_gamma', name:'Gamma Monitor', role:'Safety Auditor', autonomy_level:2, autonomy_label:'Supervised', status:'idle', completed_tasks:310 },
-  ];
-}
-
-async function fetchModels() {
-  return [
-    { name:'risk_scorer', version:'1.0.0', framework:'onnx', stage:'production', sha256:'a9f4c3b...', eval_metrics:{ accuracy:0.982, f1:0.975 } },
-    { name:'plan_evaluator', version:'2.1.0', framework:'scikit-learn', stage:'production', sha256:'e12d8a0...', eval_metrics:{ mse:0.012 } },
-  ];
+export function SubsPanel() {
+  const [subs, setSubs] = React.useState({subscriptions:[],chats:0});
+  React.useEffect(() => { fetchSubs().then(setSubs); }, []);
+  return (
+    <div style={{padding:'24px',color:'#F8FAFC'}}>
+      <h2 style={{fontSize:20,fontWeight:700,marginBottom:16}}>🔔 Telegram Subscribers</h2>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:16,marginBottom:20}}>
+        <div style={{background:'#1E293B',padding:18,borderRadius:12,borderLeft:'4px solid #EC4899'}}>
+          <div style={{fontSize:12,color:'#94A3B8'}}>Подписанных чатов</div><div style={{fontSize:28,fontWeight:800}}>{subs.chats||0}</div>
+        </div>
+        <div style={{background:'#1E293B',padding:18,borderRadius:12,borderLeft:'4px solid #3B82F6'}}>
+          <div style={{fontSize:12,color:'#94A3B8'}}>Активных подписок</div><div style={{fontSize:28,fontWeight:800}}>{(subs.subscriptions||[]).length}</div>
+        </div>
+        <div style={{background:'#1E293B',padding:18,borderRadius:12,borderLeft:'4px solid #10B981'}}>
+          <a href="https://t.me/AIOScontrol_bot" target="_blank" rel="noopener noreferrer" style={{background:'#10B981',color:'#fff',padding:'8px 14px',borderRadius:8,textDecoration:'none',display:'inline-block',marginTop:8,fontWeight:600}}>✈️ Открыть бота</a>
+        </div>
+      </div>
+      <div style={{background:'#1E293B',borderRadius:12,overflow:'hidden'}}>
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead><tr><th style={{padding:'10px 14px',textAlign:'left',color:'#94A3B8',background:'#0F172A',borderBottom:'1px solid #334155'}}>Chat</th><th style={{padding:'10px 14px',textAlign:'left',color:'#94A3B8',background:'#0F172A',borderBottom:'1px solid #334155'}}>User</th><th style={{padding:'10px 14px',textAlign:'left',color:'#94A3B8',background:'#0F172A',borderBottom:'1px solid #334155'}}>Query</th><th style={{padding:'10px 14px',textAlign:'left',color:'#94A3B8',background:'#0F172A',borderBottom:'1px solid #334155'}}>Price filter</th></tr></thead>
+          <tbody>
+            {(subs.subscriptions||[]).map((s,i)=>(
+              <tr key={i} style={{borderBottom:'1px solid #334155'}}>
+                <td style={{padding:'10px 14px'}}><code style={{background:'#0F172A',padding:'2px 6px',borderRadius:4,fontSize:11}}>{s.chat_id}</code></td>
+                <td style={{padding:'10px 14px'}}>{s.first_name||s.username||'—'}{s.username?' @'+s.username:''}</td>
+                <td style={{padding:'10px 14px'}}><b>{s.query}</b></td>
+                <td style={{padding:'10px 14px'}}>{s.min_price||s.max_price?(s.min_price?Math.round(s.min_price).toLocaleString():'0')+'–'+(s.max_price?Math.round(s.max_price).toLocaleString()+' UAH':'∞'):'any'}</td>
+              </tr>
+            ))}
+            {(subs.subscriptions||[]).length===0 && <tr><td colSpan={4} style={{padding:20,textAlign:'center',color:'#94A3B8',fontStyle:'italic'}}>Пока нет подписок. Бот: @AIOScontrol_bot</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 """
 
-# Strip original App.tsx, but we will replace it entirely with our RootApp that adds extra tabs
-# (App.tsx imports components; after stripping imports won't exist, so we write our own.)
+ENTRY = BUILD_DIR / "entry.jsx"
 
-root_app = r"""
-// ===== ROOT APP (augmented with live panels) =====
+def ensure_esbuild():
+    if ESBUILD.exists():
+        return
+    BUILD_DIR.mkdir(exist_ok=True)
+    (BUILD_DIR / "package.json").write_text(textwrap.dedent("""\
+        {"name":"aios-build","private":true,"version":"1.0.0","devDependencies":{"esbuild":"^0.23.0"}}
+    """), encoding="utf-8")
+    subprocess.run(["npm","install","--no-audit","--no-fund","--loglevel=error"],
+                   cwd=str(BUILD_DIR), check=True)
+    assert ESBUILD.exists(), "esbuild install failed"
+
+ensure_esbuild()
+
+# Write live panels as a module
+(BUILD_DIR / "live_panels.jsx").write_text(LIVE_PANELS, encoding="utf-8")
+
+# Write the root App entry
+entry_src = r"""
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { Header } from '../web_ui_src/components/Header';
+import { OverviewView } from '../web_ui_src/components/OverviewView';
+import { SafetyDashboardView } from '../web_ui_src/components/SafetyDashboardView';
+import { AgentSwarmView } from '../web_ui_src/components/AgentSwarmView';
+import { ConstitutionViewer } from '../web_ui_src/components/ConstitutionViewer';
+import { KnowledgeGraphView } from '../web_ui_src/components/KnowledgeGraphView';
+import { MLModelRegistryView } from '../web_ui_src/components/MLModelRegistryView';
+import { AndroidFleetView } from '../web_ui_src/components/AndroidFleetView';
+import { MarketplaceView } from '../web_ui_src/components/MarketplaceView';
+import { fetchHealth as apiFetchHealth, fetchStats as apiFetchStats } from '../web_ui_src/services/aiosApi';
+// We re-export these so panels are available
+import { OLXPanel, ServicesPanel, AndroidPanel, SubsPanel } from './live_panels';
+
+// Patch aiosApi BASE_URL detection for /aios/ proxy: aiosApi.ts uses BASE_URL='' and
+// fetches '/health' and '/api/v1/...', but under nginx /aios/ we need the prefix.
+// The simplest: monkeypatch global fetch to rewrite root-relative URLs that the aiosApi
+// issues at runtime. We only rewrite root-relative (starting with single '/') URLs when
+// under /aios/; absolute URLs and data: are untouched.
+(function(){
+  var p = (typeof location!=='undefined') ? location.pathname : '/';
+  var mi = p.indexOf('/aios/');
+  if (mi < 0) return;
+  var prefix = p.substring(0, mi+5); // ends with '/aios/'
+  var _f = window.fetch;
+  window.fetch = function(input, init){
+    if (typeof input === 'string') {
+      if (input.charAt(0) === '/' && input.charAt(1) !== '/') {
+        input = prefix + input.slice(1);
+      }
+    } else if (input && typeof input.url === 'string' && input.url.charAt(0)==='/' && input.url.charAt(1)!=='/') {
+      // Request object — clone and rewrite
+      try {
+        var url = prefix + input.url.slice(1);
+        input = new Request(url, input);
+      } catch(e) {}
+    }
+    return _f.call(this, input, init);
+  };
+})();
+
 function App() {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [health, setHealth] = useState(null);
-  const [stats, setStats] = useState(null);
-  const [wsConnected, setWsConnected] = useState(false);
+  const [activeTab, setActiveTab] = React.useState('overview');
+  const [health, setHealth] = React.useState(null);
+  const [stats, setStats] = React.useState(null);
+  const [wsConnected] = React.useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const loadData = () => {
-      fetchHealth().then(setHealth).catch(()=>setHealth({status:'degraded',version:'9.0.0',timestamp:Date.now()}));
-      fetchStats().then(setStats).catch(()=>{});
+      apiFetchHealth().then(setHealth).catch(()=>setHealth({status:'degraded',version:'9.0.0',timestamp:Date.now()}));
+      apiFetchStats().then(setStats).catch(()=>{});
     };
     loadData();
     const interval = setInterval(loadData, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  // Extra tabs appended to the 8 built-in tabs
+  const baseTabs = [
+    { id: 'overview',     label: '📊 Overview' },
+    { id: 'android',      label: '📱 Android Fleet M8' },
+    { id: 'marketplace',  label: '🧩 Marketplace' },
+    { id: 'safety',       label: '🛡 Safety' },
+    { id: 'swarm',        label: '🤖 Swarm' },
+    { id: 'constitution', label: '📜 Constitution' },
+    { id: 'kg',           label: '🕸 KG' },
+    { id: 'ml',           label: '🧠 ML' },
+  ];
   const extraTabs = [
-    { id: 'olx',         label: '🛒 OLX Live',       render: () => <OLXPanel/> },
-    { id: 'android_live',label: '📲 Android Remote', render: () => <AndroidPanel/> },
-    { id: 'services',    label: '⚙️ Services',      render: () => <ServicesPanel/> },
-    { id: 'subs',        label: '🔔 Subscribers',   render: () => <SubsPanel/> },
+    { id: 'olx',         label: '🛒 OLX Live',        render: () => <OLXPanel/> },
+    { id: 'android_live',label: '📲 Android Remote',  render: () => <AndroidPanel/> },
+    { id: 'services',    label: '⚙️ Services',       render: () => <ServicesPanel/> },
+    { id: 'subs',        label: '🔔 Subscribers',    render: () => <SubsPanel/> },
   ];
 
   return (
     <div style={{backgroundColor:'#0F172A',minHeight:'100vh',fontFamily:'system-ui,-apple-system,sans-serif'}}>
-      <HeaderWithExtra health={health} activeTab={activeTab} setActiveTab={setActiveTab} wsConnected={wsConnected} extraTabs={extraTabs}/>
+      <Header health={health} activeTab={activeTab} setActiveTab={setActiveTab} wsConnected={wsConnected}/>
+      <nav style={{maxWidth:'1400px',margin:'0 auto',padding:'8px 28px 0',display:'flex',gap:6,flexWrap:'wrap',borderBottom:'1px solid #1E293B'}}>
+        {extraTabs.map(tab => (
+          <button key={tab.id} onClick={()=>setActiveTab(tab.id)}
+            style={{background:'transparent',border:'none',color:activeTab===tab.id?'#38BDF8':'#94A3B8',padding:'8px 12px',cursor:'pointer',fontSize:12,fontWeight:600,borderBottom:activeTab===tab.id?'2px solid #38BDF8':'2px solid transparent'}}>
+            {tab.label}
+          </button>
+        ))}
+      </nav>
       <main style={{maxWidth:'1400px',margin:'0 auto'}}>
         {activeTab==='overview'     && <OverviewView stats={stats}/>}
         {activeTab==='android'      && <AndroidFleetView/>}
@@ -232,8 +349,8 @@ function App() {
         {activeTab==='ml'           && <MLModelRegistryView/>}
         {extraTabs.map(t => activeTab===t.id && <t.render key={t.id}/>)}
       </main>
-      <footer style={{maxWidth:'1400px',margin:'0 auto',padding:'16px 24px',color:'#64748B',fontSize:12,display:'flex',gap:12,flexWrap:'wrap'}}>
-        <span>AIOS v9.1 — React UI (built from <code>web_ui/</code>)</span>
+      <footer style={{maxWidth:'1400px',margin:'0 auto',padding:'16px 28px',color:'#64748B',fontSize:12,display:'flex',gap:12,flexWrap:'wrap'}}>
+        <span>AIOS v9.1 — React UI (из <code style={{background:'#0F172A',padding:'2px 6px',borderRadius:4,fontSize:11}}>web_ui/</code>, собран esbuild)</span>
         <span style={{marginLeft:'auto',display:'flex',gap:10}}>
           <a href="?">v4.1 simple</a>
           <a href="?v=adminlte">AdminLTE</a>
@@ -244,135 +361,100 @@ function App() {
   );
 }
 
-// Extended Header that merges built-in tabs with extraTabs
-function HeaderWithExtra({ health, activeTab, setActiveTab, wsConnected, extraTabs }) {
-  const baseTabs = [
-    { id: 'overview',     label: '📊 Overview' },
-    { id: 'android',      label: '📱 Android Fleet M8' },
-    { id: 'marketplace',  label: '🧩 Marketplace' },
-    { id: 'safety',       label: '🛡 Safety' },
-    { id: 'swarm',        label: '🤖 Swarm' },
-    { id: 'constitution', label: '📜 Constitution' },
-    { id: 'kg',           label: '🕸 KG' },
-    { id: 'ml',           label: '🧠 ML' },
-  ];
-  const tabs = [...baseTabs, ...extraTabs.map(t => ({id:t.id, label:t.label}))];
-  return (
-    <header style={hdrStyles.header}>
-      <div style={hdrStyles.branding}>
-        <div style={hdrStyles.logoBadge}>AIOS</div>
-        <div>
-          <h1 style={hdrStyles.title}>Autonomous Intelligence Operating System</h1>
-          <div style={hdrStyles.subTitle}>v9.1.0 React Hub — web_ui build • 12 tabs • live API</div>
-        </div>
-      </div>
-      <nav style={hdrStyles.nav}>
-        {tabs.map(tab => (
-          <button key={tab.id} onClick={()=>setActiveTab(tab.id)}
-            style={{...hdrStyles.tabButton, ...(activeTab===tab.id?hdrStyles.activeTab:{})}}>
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-      <div style={hdrStyles.statusGroup}>
-        <div style={hdrStyles.badge}>
-          <span style={{...hdrStyles.dot, backgroundColor: wsConnected?'#10B981':'#F59E0B'}}></span>
-          {wsConnected ? 'Live WS' : 'Polling'}
-        </div>
-        <div style={hdrStyles.badge}>
-          <span style={{...hdrStyles.dot, backgroundColor: health && health.status==='ok' ? '#10B981':'#EF4444'}}></span>
-          {health && health.status ? health.status.toUpperCase() : 'CONNECTING'}
-        </div>
-      </div>
-    </header>
-  );
+var container = document.getElementById('root');
+if (container) {
+  createRoot(container).render(<App/>);
 }
-const hdrStyles = {
-  header:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 28px',backgroundColor:'#0F172A',borderBottom:'1px solid #1E293B',color:'#F8FAFC',flexWrap:'wrap',gap:12},
-  branding:{display:'flex',alignItems:'center',gap:14},
-  logoBadge:{backgroundColor:'#3B82F6',color:'#FFFFFF',fontWeight:800,fontSize:20,padding:'8px 14px',borderRadius:8,letterSpacing:1},
-  title:{margin:0,fontSize:16,fontWeight:700,color:'#F8FAFC'},
-  subTitle:{fontSize:11,color:'#94A3B8'},
-  nav:{display:'flex',gap:6,flexWrap:'wrap'},
-  tabButton:{backgroundColor:'transparent',border:'none',color:'#94A3B8',padding:'6px 10px',borderRadius:6,fontSize:12,fontWeight:600,cursor:'pointer'},
-  activeTab:{backgroundColor:'#1E293B',color:'#38BDF8',borderBottom:'2px solid #38BDF8'},
-  statusGroup:{display:'flex',gap:8},
-  badge:{display:'flex',alignItems:'center',gap:6,backgroundColor:'#1E293B',padding:'6px 10px',borderRadius:20,fontSize:11,fontWeight:600,color:'#CBD5E1'},
-  dot:{width:8,height:8,borderRadius:'50%'}
-};
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App/>);
 """
+ENTRY.write_text(entry_src, encoding="utf-8")
 
-# Live panels (from /tmp/react_panels.jsx) — strip duplicate BASE_URL detection (already defined in API section)
-live_panels_raw = Path('/tmp/react_panels.jsx').read_text(encoding='utf-8')
-live_panels = re.sub(r'^// === Live API helpers.*?const BASE_URL = _mi >= 0 \? _p\.substring\(0, _mi \+ 5\) : \x27\x27;\s*',
-                     '// === Live panels ===\n', live_panels_raw, count=1, flags=re.S)
+# ---------- Bundle ----------
+SHIM_DIR = BUILD_DIR / "shims"
+R_SHIM = SHIM_DIR / "react"
+RD_SHIM = SHIM_DIR / "react-dom"
+R_SHIM.mkdir(parents=True, exist_ok=True)
+RD_SHIM.mkdir(parents=True, exist_ok=True)
+(R_SHIM / "index.js").write_text(
+    "var r = window.React;\n"
+    "for (var k in r) if (Object.prototype.hasOwnProperty.call(r,k)) exports[k] = r[k];\n"
+    "exports.default = r;\n",
+    encoding="utf-8",
+)
+(R_SHIM / "jsx-runtime.js").write_text(
+    "var r = window.React;\n"
+    "exports.Fragment = r.Fragment;\n"
+    "exports.jsx = r.createElement;\n"
+    "exports.jsxs = r.createElement;\n",
+    encoding="utf-8",
+)
+(R_SHIM / "jsx-dev-runtime.js").write_text(
+    "var r = window.React;\n"
+    "exports.Fragment = r.Fragment;\n"
+    "exports.jsxDEV = r.createElement;\n",
+    encoding="utf-8",
+)
+(RD_SHIM / "index.js").write_text(
+    "var d = window.ReactDOM;\n"
+    "for (var k in d) if (Object.prototype.hasOwnProperty.call(d,k)) exports[k] = d[k];\n"
+    "exports.default = d;\n",
+    encoding="utf-8",
+)
+(RD_SHIM / "client.js").write_text(
+    "var d = window.ReactDOM;\n"
+    "exports.createRoot = d.createRoot || function(container){ return { render: function(el){ d.render(el, container); }, unmount: function(){} } };\n"
+    "exports.hydrateRoot = d.hydrateRoot || function(c){ return { render: function(el){ d.render(el, c); } } };\n",
+    encoding="utf-8",
+)
 
-# ---------- HTML template ----------
-HTML = """<!DOCTYPE html>
-<html lang=\"en\">
+out_tmp = BUILD_DIR / "bundle.min.js"
+cmd = [
+    str(ESBUILD),
+    str(ENTRY),
+    "--bundle",
+    "--format=iife",
+    "--global-name=AIOSApp",
+    "--jsx=automatic",
+    "--target=es2018",
+    "--minify",
+    "--define:process.env.NODE_ENV=\"production\"",
+    f"--alias:react={R_SHIM}",
+    f"--alias:react-dom={RD_SHIM}",
+    f"--outfile={out_tmp}",
+]
+res = subprocess.run(cmd, cwd=str(HERE), capture_output=True, text=True)
+if res.returncode != 0:
+    sys.stderr.write("ESBUILD STDERR:\n" + res.stderr + "\n")
+    sys.stderr.write("ESBUILD STDOUT:\n" + res.stdout + "\n")
+    raise SystemExit("esbuild failed")
+bundled = out_tmp.read_text(encoding="utf-8")
+
+HTML = f"""<!DOCTYPE html>
+<html lang="ru">
 <head>
-<meta charset=\"UTF-8\"/>
-<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>AIOS — React Hub</title>
-<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css\">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
 <style>
-  body{margin:0;background:#0F172A;color:#F8FAFC;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;}
-  *{box-sizing:border-box;}
-  a{color:#60A5FA;}
-  code{background:#0F172A;padding:2px 6px;border-radius:4px;font-size:11px;}
-  .btn{background:#3B82F6;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;}
-  .btn:hover{background:#2563EB;}
-  .btn.sm{padding:4px 10px;font-size:12px;}
-  .btn.green{background:#10B981;}.btn.green:hover{background:#059669}
-  .btn.red{background:#EF4444;}.btn.red:hover{background:#DC2626}
-  .btn.ghost{background:transparent;border:1px solid #334155;color:#CBD5E1;}
-  .pill{background:#1E293B;border:1px solid #334155;color:#CBD5E1;padding:4px 10px;border-radius:999px;font-size:11px;fontWeight:600;}
-  .pill.green{background:#065F46;color:#6EE7B7;border-color:#065F46;}
-  .pill.red{background:#7F1D1D;color:#FCA5A5;border-color:#7F1D1D;}
-  .pill.orange{background:#78350F;color:#FCD34D;border-color:#78350F;}
-  input,select,textarea{background:#0F172A;border:1px solid #334155;color:#F8FAFC;padding:8px 12px;border-radius:6px;font-size:13px;}
-  table{width:100%;border-collapse:collapse;}
-  th,td{padding:10px 14px;text-align:left;border-bottom:1px solid #334155;font-size:13px;}
-  th{color:#94A3B8;font-weight:600;background:#0F172A;}
-  .muted{color:#94A3B8;font-size:12px;}
-  pre{background:#0F172A;padding:12px;border-radius:8px;font-size:11px;overflow:auto;white-space:pre-wrap;margin:0;}
-  .w-100{width:100%;}
-  .mr-1{margin-right:4px;}
-  .screenshot-wrap{position:relative;display:inline-block;max-width:280px;width:100%;}
-  .screenshot-wrap canvas{position:absolute;top:0;left:0;width:100%;cursor:crosshair;border-radius:10px;}
-  .screenshot-wrap img{width:100%;border-radius:10px;display:block;}
+  body{{margin:0;background:#0F172A;color:#F8FAFC;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;}}
+  *{{box-sizing:border-box;}}
+  a{{color:#60A5FA;}}
+  code{{background:#0F172A;padding:2px 6px;border-radius:4px;font-size:11px;}}
+  button{{font-family:inherit;}}
+  table{{font-size:13px;}}
+  img{{max-width:100%;}}
 </style>
 </head>
 <body>
-<div id=\"root\"></div>
-
-<script crossorigin src=\"https://unpkg.com/react@18/umd/react.production.min.js\"></script>
-<script crossorigin src=\"https://unpkg.com/react-dom@18/umd/react-dom.production.min.js\"></script>
-<script src=\"https://unpkg.com/regenerator-runtime@0.14.1/runtime.js\"></script>
-<script src=\"https://unpkg.com/@babel/standalone/babel.min.js\"></script>
-
-<script type=\"text/babel\" data-presets=\"env,react\">
-const { useState, useEffect, useRef, useMemo, useCallback } = React;
-
-__API__
-__COMPONENTS__
-__LIVE__
-__APP__
+<div id="root"></div>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script>
+{bundled}
 </script>
 </body>
 </html>
 """
 
-all_components_js = '\n\n'.join(stripped_components)
-
-html = (HTML
-        .replace('__API__', services_js_patch)
-        .replace('__COMPONENTS__', all_components_js)
-        .replace('__LIVE__', live_panels)
-        .replace('__APP__', root_app))
-
-OUT.write_text(html, encoding='utf-8')
-print(f"Wrote {OUT} ({len(html)} bytes)")
+OUT_HTML.write_text(HTML, encoding="utf-8")
+print(f"[build] wrote {OUT_HTML} ({len(HTML)} bytes, JS {len(bundled)} bytes)")
