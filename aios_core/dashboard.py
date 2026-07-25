@@ -17,7 +17,7 @@ from starlette.routing import Route
 
 from .orchestrator import Orchestrator
 
-_DASHBOARD_HTML_PATH = Path(__file__).parent.parent.parent / "dashboard" / "index.html"
+_DASHBOARD_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "index.html"
 
 
 class AIOSDashboard:

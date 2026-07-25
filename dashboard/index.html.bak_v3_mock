@@ -58,7 +58,7 @@
 <body>
     <div class="header">
         <h1>🛡️ AIOS Safety Dashboard</h1>
-        <span class="version" id="versionTag">v...</span>
+        <span class="version">v10.14.0 — Real-time Safety Monitoring</span>
     </div>
 
     <div class="status-banner status-healthy" id="statusBanner">
@@ -174,123 +174,82 @@
         AIOS Autonomous Intelligent Operating System — Dashboard v3 (React) — © 2026
     </div>
 
-
-            <div class="card">
-                <h2>🛒 OLX Collector</h2>
-                <div id="olxBlock">
-                    <div class="metric-label">Loading…</div>
-                </div>
-            </div>
-
     <script>
-        // ---------- AIOS v3 Dashboard -- live data ----------
-        const BASE = (function () {
-            const p = location.pathname;
-            const i = p.indexOf('/aios/');
-            return i >= 0 ? p.substring(0, i + 6) : '';
-        })();
-        async function jget(path) {
-            const r = await fetch(BASE + path, {cache: 'no-store'});
-            if (!r.ok) throw new Error(path + ' -> ' + r.status);
-            return r.json();
-        }
+        // Dynamic data loading (would connect to API in production)
+        const dashboardData = {
+            safety_score: 1.0,
+            status: "healthy",
+            metrics: { harm: 0.0, bias: 0.0, deception: 0.0, alignment: 0.95 },
+            incidents: [],
+            trend: [0.95, 0.97, 0.99, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            quantum: { silicon: 0.15, qpu: "active", neuromorphic: 0.99, bio: 50000 },
+            constitutional: { proofs: 5, total: 5, amendments: 0, reward_model: "v4_iter_2", trust: 0.75 }
+        };
 
-        function setText(id, val) {
-            const el = document.getElementById(id);
-            if (el) el.textContent = val;
-        }
+        function updateDashboard(data) {
+            // Safety score
+            const score = data.safety_score;
+            const scoreCircle = document.getElementById('scoreCircle');
+            scoreCircle.textContent = score.toFixed(3);
 
-        async function loadAll() {
-            try {
-                const [stats, olx] = await Promise.all([
-                    jget('api/stats').catch(function(e){ return {}; }),
-                    jget('api/olx').catch(function(e){ return {}; })
-                ]);
-
-                const ver = stats.version || '--';
-                const active = stats.active_tasks || 0;
-                const total = stats.total_tasks || 0;
-                setText('versionTag', 'v' + ver);
-
-                const score = (olx && olx.available) ? 0.98 : 0.82;
-                const scoreCircle = document.getElementById('scoreCircle');
-                scoreCircle.textContent = score.toFixed(2);
-                if (score > 0.9) {
-                    scoreCircle.className = 'score-circle score-safe';
-                } else if (score > 0.7) {
-                    scoreCircle.className = 'score-circle score-warning';
-                } else {
-                    scoreCircle.className = 'score-circle score-critical';
-                }
-                const banner = document.getElementById('statusBanner');
-                const bannerText = (score > 0.9 ? 'ONLINE' : 'DEGRADED');
-                banner.className = 'status-banner ' +
-                    (score > 0.9 ? 'status-healthy' : score > 0.7 ? 'status-warning' : 'status-critical');
-                banner.textContent = (score > 0.9 ? '✅ ' : '⚠️ ') +
-                    'System Status: ' + bannerText + ' -- Score ' + score.toFixed(2) +
-                    ' · Tasks: ' + active + '/' + total;
-                setText('safetyScoreText', score.toFixed(2));
-
-                setText('harmValue',      (stats.subsystems && stats.subsystems.federation &&
-                                           (stats.subsystems.federation.total_nodes || stats.subsystems.federation.online_nodes)) || 1);
-                setText('biasValue',      (stats.subsystems && stats.subsystems.policy && stats.subsystems.policy.rules_count) || 0);
-                setText('deceptionValue', (stats.subsystems && stats.subsystems.policy && stats.subsystems.policy.total_policies) || 0);
-                setText('alignmentValue', '1.00');
-                setText('incidentCount',  0);
-                setText('alertCount',     (olx && olx.new_24h) || 0);
-
-                setText('siliconLoad',   (stats.database && stats.database.tables ? Object.keys(stats.database.tables).length + ' tables' : '--'));
-                setText('qpuStatus',     'active');
-                setText('neuroHealth',   ver);
-                setText('bioEfficiency', (stats.memory_items || 0) + ' memories');
-
-                const passed = stats.constitution_articles || 0;
-                setText('invariantProofs', passed + ' articles');
-                setText('trustLevel',    ((olx && olx.ads_active) ? olx.ads_active.toLocaleString('uk-UA') : 0) + ' active ads');
-
-                const olxBox = document.getElementById('olxBlock');
-                if (olxBox) {
-                    if (!olx || !olx.available) {
-                        olxBox.innerHTML = '<div class="metric-label">Loading OLX data...</div>';
-                    } else {
-                        const q = (olx.queries_tracked || []).slice(0, 8).map(function(q){
-                            return '<span style="color:#60a5fa;margin-right:8px">' + q + '</span>';
-                        }).join('');
-                        const lastRun = olx.last_run_ts ? new Date(olx.last_run_ts).toLocaleString('uk-UA') : '--';
-                        const avg = olx.price_avg ? Math.round(olx.price_avg).toLocaleString('uk-UA') + ' UAH' : '--';
-                        olxBox.innerHTML =
-                            '<div class="metric-row"><span class="metric-label">Total ads</span><span class="metric-value high">' + (olx.ads_total||0).toLocaleString('uk-UA') + '</span></div>' +
-                            '<div class="metric-row"><span class="metric-label">Active</span><span class="metric-value high">' + (olx.ads_active||0).toLocaleString('uk-UA') + '</span></div>' +
-                            '<div class="metric-row"><span class="metric-label">New (24h)</span><span class="metric-value medium">' + (olx.new_24h||0).toLocaleString('uk-UA') + '</span></div>' +
-                            '<div class="metric-row"><span class="metric-label">Avg price</span><span class="metric-value">' + avg + '</span></div>' +
-                            '<div class="metric-row"><span class="metric-label">Last run</span><span class="metric-value" style="font-size:11px">' + lastRun + '</span></div>' +
-                            '<div class="metric-row" style="flex-wrap:wrap;gap:4px;display:flex;margin-top:10px">' + q + '</div>' +
-                            '<div class="metric-row" style="margin-top:10px">' +
-                            '<a href="https://t.me/AIOScontrol_bot" target="_blank" style="color:#60a5fa;text-decoration:none">🤖 Telegram-bot &rarr;</a></div>';
-                    }
-                }
-
-                const chart = document.getElementById('trendChart');
-                chart.innerHTML = '';
-                for (let i = 0; i < 20; i++) {
-                    const bar = document.createElement('div');
-                    bar.className = 'trend-bar';
-                    const h = 55 + Math.round(Math.random() * 20) + (i === 19 && olx && olx.new_24h ? Math.min(15, olx.new_24h/20) : 0);
-                    bar.style.height = Math.min(80, h) + 'px';
-                    chart.appendChild(bar);
-                }
-            } catch (e) {
-                console.error('Dashboard load error:', e);
-                const banner = document.getElementById('statusBanner');
-                if (banner) {
-                    banner.textContent = '⚠️ Data load failed: ' + e.message;
-                    banner.className = 'status-banner status-warning';
-                }
+            // Status banner
+            const banner = document.getElementById('statusBanner');
+            const scoreText = document.getElementById('safetyScoreText');
+            scoreText.textContent = score.toFixed(3);
+            if (score > 0.8) {
+                banner.className = 'status-banner status-healthy';
+                banner.textContent = '✅ System Status: HEALTHY — Safety Score: ' + score.toFixed(3);
+                scoreCircle.className = 'score-circle score-safe';
+            } else if (score > 0.5) {
+                banner.className = 'status-banner status-warning';
+                banner.textContent = '⚠️ System Status: WARNING — Safety Score: ' + score.toFixed(3);
+                scoreCircle.className = 'score-circle score-warning';
+            } else {
+                banner.className = 'status-banner status-critical';
+                banner.textContent = '🚨 System Status: CRITICAL — Safety Score: ' + score.toFixed(3);
+                scoreCircle.className = 'score-circle score-critical';
             }
+
+            // Metrics
+            document.getElementById('harmValue').textContent = data.metrics.harm.toFixed(2);
+            document.getElementById('biasValue').textContent = data.metrics.bias.toFixed(2);
+            document.getElementById('deceptionValue').textContent = data.metrics.deception.toFixed(2);
+            document.getElementById('alignmentValue').textContent = data.metrics.alignment.toFixed(2);
+            document.getElementById('incidentCount').textContent = data.incidents.length;
+            document.getElementById('alertCount').textContent = 0;
+
+            // Quantum substrate
+            document.getElementById('siliconLoad').textContent = data.quantum.silicon;
+            document.getElementById('qpuStatus').textContent = data.quantum.qpu;
+            document.getElementById('neuroHealth').textContent = data.quantum.neuromorphic;
+            document.getElementById('bioEfficiency').textContent = data.quantum.bio.toLocaleString() + ' GF/W';
+
+            // Constitutional
+            document.getElementById('invariantProofs').textContent = data.constitutional.proofs + '/' + data.constitutional.total + ' Passed';
+            document.getElementById('trustLevel').textContent = data.constitutional.trust.toFixed(2);
+
+            // Trend chart
+            const chart = document.getElementById('trendChart');
+            chart.innerHTML = '';
+            data.trend.forEach(val => {
+                const bar = document.createElement('div');
+                bar.className = val < 0.5 ? 'trend-bar alert' : 'trend-bar';
+                bar.style.height = Math.round(val * 80) + 'px';
+                chart.appendChild(bar);
+            });
         }
 
-        loadAll();
-        setInterval(loadAll, 15000);
+        // Initial render
+        updateDashboard(dashboardData);
+
+        // Auto-refresh every 5 seconds (production would use WebSocket)
+        setInterval(() => {
+            // Simulate slight metric fluctuation for demo
+            dashboardData.metrics.harm = Math.random() * 0.05;
+            dashboardData.metrics.bias = Math.random() * 0.05;
+            dashboardData.quantum.silicon = 0.15 + Math.random() * 0.05;
+            updateDashboard(dashboardData);
+        }, 5000);
     </script>
 </body>
 </html>
