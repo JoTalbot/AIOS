@@ -263,12 +263,18 @@ import { MLModelRegistryView } from '../web_ui_src/components/MLModelRegistryVie
 import { AndroidFleetView } from '../web_ui_src/components/AndroidFleetView';
 import { MarketplaceView } from '../web_ui_src/components/MarketplaceView';
 import { fetchHealth as apiFetchHealth, fetchStats as apiFetchStats } from '../web_ui_src/services/aiosApi';
-// We re-export these so panels are available
 import { OLXPanel, ServicesPanel, AndroidPanel, SubsPanel } from './live_panels';
 
-// NOTE: No runtime fetch() patching — nginx sub_filter rewrites inline `fetch('/...`
-// literals (including minified ones) to `fetch('/aios/...` when served via reverse proxy,
+// NOTE: No runtime fetch() patching — nginx sub_filter rewrites inline `fetch("/...`
+// literals (including minified ones) to `fetch("/aios/...` when served via reverse proxy,
 // and direct :8580 access works fine as-is.
+
+// Patch components from web_ui that originally fetched /api/v1/* (Bearer-protected)
+// to use the new public dashboard endpoints: monkey-patch by aliasing in the entry
+// is unnecessary — we patched services/aiosApi.ts to point at /api/safety, /api/models,
+// /api/agents, /api/constitution, /api/knowledge-graph. MarketplaceView / AndroidFleetView
+// still use /api/v1/marketplace/* and /api/v1/shards / /api/v1/android/devices, which
+// don't exist on dashboard; their fetch() will 404 but they fall back to mock state.
 
 function App() {
   const [activeTab, setActiveTab] = React.useState('overview');
