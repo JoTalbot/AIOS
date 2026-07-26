@@ -2,89 +2,43 @@ name: AIOS CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main, master ]
   pull_request:
-    branches: [main]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    branches: [ main, master ]
 
 jobs:
-  test:
+  lint-and-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.11', '3.12', '3.13']
+        python-version: ["3.10", "3.11"]
+
     steps:
-      - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio ruff
 
-      - name: Run tests
-        run: |
-          python -m pytest tests/ \
-            --timeout=30 \
-            -n 4 \
-            --dist loadfile \
-            --tb=short \
-            --ignore=tests/load \
-            --ignore=tests/e2e \
-            --ignore=tests/security \
-            --ignore=tests/test_benchmarks.py \
-            --ignore=tests/performance \
-            -k "not bench"
+    - name: Lint with Ruff
+      run: |
+        # Проверка синтаксиса и стиля (можно добавить --fix для автоисправления)
+        ruff check .
+        ruff format --check .
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-${{ matrix.python-version }}
-          path: test-results/
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Install linting tools
-        run: python -m pip install -e ".[dev]" mypy
-
-      - name: Ruff check
-        run: ruff check aios_core/ --output-format=github
-
-      - name: Ruff format check
-        run: ruff format --check aios_core/
-
-  release:
-    needs: [test, lint]
-    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'v10.')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Extract version
-        id: version
-        run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.VERSION }}
-          name: v${{ steps.version.outputs.VERSION }}
-          body_path: RELEASE_NOTES_${{ steps.version.outputs.VERSION }}.0.md
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Test with pytest
+      run: |
+        # Запускаем тесты с выводом подробной информации и покрытием
+        pytest tests/ -v --tb=short
+      env:
+        # Передаем фиктивные ключи для тестов, чтобы они не падали из-за их отсутствия
+        LLM_API_KEY: "test_dummy_key"
