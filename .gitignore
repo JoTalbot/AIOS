@@ -78,3 +78,9 @@ data/
 apk/**
 *.bak
 *.bak_*
+
+# AIOS Secrets
+.dashboard_token
+*.token
+.env
+.env.local
