@@ -155,5 +155,16 @@ template_engine = TemplateEngine(storage_path="data/templates")
 def advisor_templates_page():
     render_advisor_templates_view(template_engine)
 # === END AI Advisor Templates ===
+# === AI Advisor Metrics (auto-injected) ===
+from aios_core.advisor.metrics_collector import MetricsCollector
+from aios_core.dashboard.views.metrics_view import render_metrics_view
+
+metrics_collector = MetricsCollector(storage_path="data/metrics")
+
+@ui.page('/advisor/metrics', title='AI Advisor — Метрики')
+def advisor_metrics_page():
+    render_metrics_view(metrics_collector)
+# === END AI Advisor Metrics ===
+
 
     ui.run(title="AIOS Dashboard", favicon="🤖", port=8080, reload=False)

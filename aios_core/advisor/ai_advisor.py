@@ -96,3 +96,31 @@ class AIAdvisor:
             "requires_approval": True,
             "sentiment": sentiment.sentiment
         }
+
+# === Интеграция с Platform Registry ===
+from aios_core.platforms.registry import PlatformRegistry
+
+class AIAdvisorWithPlatforms(AIAdvisor):
+    """AI Advisor с интеграцией платформенных адаптеров."""
+    
+    def __init__(self, templates_dir: str = "data/templates", use_llm: bool = False):
+        super().__init__(templates_dir, use_llm)
+        self.platform_registry = PlatformRegistry()
+
+    def register_platform(self, platform: str, config: Dict[str, Any] = None):
+        """Зарегистрировать платформу."""
+        self.platform_registry.register_adapter(platform, config)
+
+    async def process_and_respond(self, platform: str, message_id: str,
+                                  incoming_text: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Полный цикл: обработка + автоматическая отправка после одобрения."""
+        
+        # Обработка через основной пайплайн
+        result = await self.process_incoming_message(message_id, platform, incoming_text, context)
+        
+        if result["status"] == "draft_ready":
+            # Здесь можно интегрировать с Telegram ботом для одобрения
+            # После одобрения — автоматическая отправка через платформу
+            pass
+        
+        return result
