@@ -168,6 +168,13 @@ async def retry_dead_letter(index: int):
 def dead_letter_page():
     render_dead_letter_view()
 
+
+from aios_core.observability.tracing import init_tracing
+from aios_core.security.headers import SecurityHeadersMiddleware
+from aios_core.performance.pool import get_db_pool_config
+app.add_middleware(SecurityHeadersMiddleware)
+init_tracing(service_name="aios")
+
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)
