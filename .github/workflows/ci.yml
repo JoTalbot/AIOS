@@ -14,8 +14,7 @@ jobs:
         python-version: ["3.10", "3.11"]
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -31,14 +30,12 @@ jobs:
 
     - name: Lint with Ruff
       run: |
-        # Проверка синтаксиса и стиля (можно добавить --fix для автоисправления)
         ruff check .
         ruff format --check .
 
     - name: Test with pytest
       run: |
-        # Запускаем тесты с выводом подробной информации и покрытием
         pytest tests/ -v --tb=short
       env:
-        # Передаем фиктивные ключи для тестов, чтобы они не падали из-за их отсутствия
         LLM_API_KEY: "test_dummy_key"
+        OLX_WEBHOOK_SECRET: "test_secret"
