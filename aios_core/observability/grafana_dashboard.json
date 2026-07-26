@@ -1,0 +1,1 @@
+{"dashboard": {"title": "AIOS Overview", "panels": [{"title": "Messages", "type": "graph", "targets": [{"expr": "rate(aios_messages_total[5m])"}]}]}}

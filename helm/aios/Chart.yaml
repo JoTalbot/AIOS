@@ -1,15 +1,5 @@
 apiVersion: v2
 name: aios
-description: AIOS — Autonomous Intelligence Operating System. Multi-platform marketplace automation, constitution-gated execution, agent orchestration.
-type: application
-version: 9.3.1
-appVersion: "9.3.1"
-keywords:
-  - ai
-  - automation
-  - marketplace
-  - agents
-  - multi-platform
-maintainers:
-  - name: JoTalbot
-    email: jo.talbot@gmail.com
+version: 1.0.0
+appVersion: "1.0.0"
+description: AIOS automation system
