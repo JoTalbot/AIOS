@@ -14,7 +14,6 @@ from aios_core.config import (
     AIOSConfig,
     DatabaseConfig,
     LoggingConfig,
-    _DEFAULT_CONFIG,
     load_config,
 )
 from aios_core.config_manager import ConfigLayer, ConfigManager
@@ -123,7 +122,7 @@ class TestConfigManagerLoad:
         assert mgr.config == {}
         assert len(mgr.layers) == 3
 
-    def test_load_env_overrides_file(self, tmp_path, monkeypatch):
+    def test_load_env_flat_key_loading(self, tmp_path, monkeypatch):
         config_file = tmp_path / "config.yaml"
         config_file.write_text("database:\n  path: /file/db.sqlite\n")
         monkeypatch.setenv("AIOS_DB_PATH", "/env/db.sqlite")
@@ -299,12 +298,16 @@ class TestConfigManagerWatchers:
         mgr = ConfigManager(str(config_file))
         mgr.load()
 
+        calls = []
+
         def bad_watcher(cfg):
             raise RuntimeError("watcher error")
 
         mgr.add_watcher(bad_watcher)
-        mgr.add_watcher(lambda cfg: None)
+        mgr.add_watcher(lambda cfg: calls.append(cfg))
         mgr.add_override({"database": {"path": "/new/db.sqlite"}})
+        assert len(calls) == 1
+        assert calls[0]["database"]["path"] == "/new/db.sqlite"
 
     def test_stats_returns_correct_layer_count(self, tmp_path):
         config_file = tmp_path / "config.yaml"
@@ -342,7 +345,7 @@ class TestConfigManagerEdgeCases:
         config_file = tmp_path / "bad.yaml"
         config_file.write_text("database:\n  path: /tmp/db\n  invalid: [unclosed")
         mgr = ConfigManager(str(config_file))
-        with pytest.raises(Exception):
+        with pytest.raises(yaml.YAMLError):
             mgr.load()
 
     def test_load_unreadable_file_graceful(self, tmp_path):
