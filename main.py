@@ -129,6 +129,45 @@ async def export_csv():
 async def import_json(data: dict):
     return data_manager.import_templates_json(json.dumps(data))
 
+
+from aios_core.api.v1.router import v1_router
+from aios_core.api.v2.router import v2_router
+from aios_core.ab_testing.bandit import bandit
+from aios_core.webhooks.retry import retry_handler
+from aios_core.dashboard.views.dead_letter_view import render_dead_letter_view
+
+app.include_router(v1_router)
+app.include_router(v2_router)
+
+@app.post("/api/v1/ab_testing/select", tags=["A/B Testing"])
+async def select_variant(template_id: str):
+    bandit.add_arm(template_id)
+    selected = bandit.select_arm()
+    bandit.record_impression(selected)
+    return {"selected_variant": selected}
+
+@app.post("/api/v1/ab_testing/convert", tags=["A/B Testing"])
+async def record_conversion(variant_id: str):
+    bandit.record_conversion(variant_id)
+    return {"status": "recorded"}
+
+@app.get("/api/v1/ab_testing/stats", tags=["A/B Testing"])
+async def get_ab_stats():
+    return bandit.get_stats()
+
+@app.get("/api/v1/dead_letters", tags=["Webhooks"])
+async def get_dead_letters():
+    return retry_handler.get_dead_letters()
+
+@app.post("/api/v1/dead_letters/{index}/retry", tags=["Webhooks"])
+async def retry_dead_letter(index: int):
+    success = await retry_handler.retry_dead_letter(index)
+    return {"status": "retried" if success else "not_found"}
+
+@ui.page("/advisor/dead_letters", title="Dead Letter Queue")
+def dead_letter_page():
+    render_dead_letter_view()
+
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)
