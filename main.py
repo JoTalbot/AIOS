@@ -101,6 +101,34 @@ async def openapi_json():
 async def openapi_yaml():
     return openapi_exporter.as_yaml()
 
+
+from strawberry.fastapi import GraphQLRouter
+from aios_core.graphql.schema import schema
+from aios_core.utils.circuit_breaker import cb_llm, cb_platform
+from aios_core.dashboard.views.jobs_dashboard_view import render_jobs_dashboard_view
+from aios_core.data_manager import data_manager
+from fastapi.responses import Response
+import json
+
+graphql_app = GraphQLRouter(schema)
+app.include_router(graphql_app, prefix="/graphql", tags=["GraphQL"])
+
+@ui.page("/advisor/jobs", title="Jobs Dashboard")
+def jobs_page():
+    render_jobs_dashboard_view()
+
+@app.get("/api/v1/export/templates/json", tags=["Data"])
+async def export_json():
+    return Response(content=data_manager.export_templates_json(), media_type="application/json")
+
+@app.get("/api/v1/export/templates/csv", tags=["Data"])
+async def export_csv():
+    return Response(content=data_manager.export_templates_csv(), media_type="text/csv")
+
+@app.post("/api/v1/import/templates/json", tags=["Data"])
+async def import_json(data: dict):
+    return data_manager.import_templates_json(json.dumps(data))
+
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)
