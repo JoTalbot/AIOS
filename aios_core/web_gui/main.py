@@ -145,4 +145,15 @@ def devices_page() -> None:
 
 
 def run() -> None:
+# === AI Advisor Templates (auto-injected) ===
+from aios_core.advisor.templates_engine import TemplateEngine
+from aios_core.dashboard.views.advisor_templates_view import render_advisor_templates_view
+
+template_engine = TemplateEngine(storage_path="data/templates")
+
+@ui.page('/advisor/templates', title='AI Advisor — Шаблоны')
+def advisor_templates_page():
+    render_advisor_templates_view(template_engine)
+# === END AI Advisor Templates ===
+
     ui.run(title="AIOS Dashboard", favicon="🤖", port=8080, reload=False)

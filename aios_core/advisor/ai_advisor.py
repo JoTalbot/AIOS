@@ -1,4 +1,4 @@
-"""Main AI Advisor Controller with Dynamic Pricing."""
+"""Main AI Advisor Controller with Dynamic Pricing and Async LLM."""
 from __future__ import annotations
 from typing import Dict, Any
 from .templates_engine import TemplateEngine, AdvisorTemplateIntegration
@@ -11,28 +11,21 @@ class AIAdvisor:
         self.intent_classifier = SmartIntentClassifier(use_llm=use_llm)
 
     def _calculate_dynamic_price(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Анализирует историю торгов и предлагает цену."""
         product = context.get("product", {})
         base_price = product.get("price", 0)
         history = context.get("negotiation_history", [])
         
-        # Эвристика: если клиент торгуется уже 2+ раза, даем лояльную скидку 5%
         if len(history) >= 2:
-            suggested = int(base_price * 0.95)
-            return {"price": suggested, "reason": "Лояльность: скидка 5% за повторный интерес"}
-        
-        # Если клиент спрашивает про цену впервые, держим цену или даем микро-скидку 2%
+            return {"price": int(base_price * 0.95), "reason": "Лояльность: скидка 5% за повторный интерес"}
         if len(history) == 1 and "price_inquiry" in [h.get("intent") for h in history]:
-            suggested = int(base_price * 0.98)
-            return {"price": suggested, "reason": "Микро-скидка 2% для быстрого закрытия сделки"}
-            
+            return {"price": int(base_price * 0.98), "reason": "Микро-скидка 2% для быстрого закрытия"}
         return {"price": base_price, "reason": "Стандартная цена"}
 
     async def process_incoming_message(self, message_id: str, platform: str,
                                        incoming_text: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        intent_result = self.intent_classifier.classify(incoming_text, context)
+        # Теперь classify асинхронный
+        intent_result = await self.intent_classifier.classify(incoming_text, context)
         
-        # Обогащаем контекст динамической ценой и языком
         enriched_context = {**context}
         if "product" in enriched_context:
             pricing = self._calculate_dynamic_price(enriched_context)
