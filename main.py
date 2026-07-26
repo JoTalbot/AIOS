@@ -1,4 +1,8 @@
 from fastapi import FastAPI, Depends
+from aios_core.logging_setup import *
+from aios_core.i18n.translations import t
+from aios_core.schemas.auth import LoginRequest, TokenResponse
+from aios_core.schemas.agents import AgentProcessRequest, AgentProcessResponse
 from nicegui import ui
 from starlette.middleware.cors import CORSMiddleware
 from aios_core.webhooks.router import router as webhook_router
@@ -59,7 +63,8 @@ async def startup_event():
     asyncio.create_task(metrics_broadcast_loop(lambda: {"status": "ok"}))
 
 @app.post("/api/v1/agents/process")
-async def process_with_agents(messages: list, context: dict = {}):
+async def process_with_agents(request: AgentProcessRequest):
+    result = await agent_orchestrator.process(request.messages, request.context or {})
     result = await agent_orchestrator.process(messages, context)
     return result
 

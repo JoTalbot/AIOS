@@ -17,4 +17,7 @@ RUN mkdir -p /app/data/templates /app/data/metrics
 
 EXPOSE 8080
 
+COPY scripts/entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
