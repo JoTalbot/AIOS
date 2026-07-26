@@ -1,84 +1,28 @@
+version: '3.8'
+
 services:
-  aios-api:
+  aios-core:
     build: .
-    container_name: aios-api
     ports:
-      - "8500:8000"
+      - "8080:8080"
     environment:
-      - AIOS_API_KEYS=${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
-      - PYTHONUNBUFFERED=1
-      - PYTHONDONTWRITEBYTECODE=1
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.openai.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-gpt-3.5-turbo}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
     volumes:
-      - ./aios.sqlite:/app/aios.sqlite
-      - ./logs:/app/logs
       - ./data:/app/data
+      - ./aios_core:/app/aios_core
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    networks:
-      - aios-net
 
-  aios-mcp:
-    build: .
-    container_name: aios-mcp
-    command: ["python", "run_mcp_server.py", "--host", "0.0.0.0", "--port", "8471", "--db", "/app/aios.sqlite"]
-    ports:
-      - "8571:8471"
-    environment:
-      - AIOS_API_KEYS=${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - ./aios.sqlite:/app/aios.sqlite
-      - ./logs:/app/logs
-    depends_on:
-      aios-api:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - aios-net
-
-  aios-dashboard:
-    build: .
-    container_name: aios-dashboard
-    command: ["python", "run_dashboard.py"]
-    ports:
-      - "8580:8080"
-    environment:
-      - AIOS_API_KEYS=${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
-    volumes:
-      - ./aios.sqlite:/app/aios.sqlite
-    depends_on:
-      aios-api:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - aios-net
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: aios-prometheus
-    ports:
-      - "8590:9090"
-    volumes:
-      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-    restart: unless-stopped
-    profiles:
-      - monitoring
-    networks:
-      - aios-net
+  # Опционально: локальный LLM через Ollama
+  # ollama:
+  #   image: ollama/ollama
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
 
 volumes:
-  aios-data:
-  prometheus-data:
-
-networks:
-  aios-net:
-    driver: bridge
+  ollama_data:
