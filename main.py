@@ -37,6 +37,32 @@ async def health_check():
     return {"status": "healthy", "platforms": platform_registry.list_platforms()}
 
 # Интеграция NiceGUI с FastAPI
+
+from aios_core.websocket.metrics_ws import manager, metrics_broadcast_loop
+from aios_core.analytics.engine import AnalyticsEngine
+from aios_core.agents.orchestrator import MultiAgentOrchestrator
+
+analytics_engine = AnalyticsEngine([], [])
+agent_orchestrator = MultiAgentOrchestrator(analytics_engine)
+
+@app.websocket("/ws/metrics")
+async def websocket_metrics(websocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except:
+        manager.disconnect(websocket)
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(metrics_broadcast_loop(lambda: {"status": "ok"}))
+
+@app.post("/api/v1/agents/process")
+async def process_with_agents(messages: list, context: dict = {}):
+    result = await agent_orchestrator.process(messages, context)
+    return result
+
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)

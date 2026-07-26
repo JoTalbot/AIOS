@@ -47,3 +47,6 @@ prometheus-client>=0.19.0
 fastapi>=0.109.0
 sqlalchemy>=2.0.0
 alembic>=1.13.0
+
+langgraph>=0.0.20
+websockets>=12.0
