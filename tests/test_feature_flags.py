@@ -1,4 +1,5 @@
 """Behavioral tests for aios_core/feature_flags.py."""
+
 from __future__ import annotations
 
 import time
@@ -13,7 +14,6 @@ from aios_core.feature_flags import (
     RolloutStrategy,
     TargetingRule,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -271,10 +271,7 @@ class TestVariants:
             enabled=True,
             variants={"A": 90, "B": 10},
         )
-        results = {
-            store.get_variant("variant_flag", {"user_id": f"user-{i}"})
-            for i in range(50)
-        }
+        results = {store.get_variant("variant_flag", {"user_id": f"user-{i}"}) for i in range(50)}
         assert results.issubset({90, 10})
         assert len(results) == 2
 
