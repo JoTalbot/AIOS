@@ -1,0 +1,56 @@
+name: Build & Auto-Deploy to VPS
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-and-deploy:
+    name: Build Docker & Deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/aios:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/aios:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Deploy to VPS via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        port: ${{ secrets.VPS_PORT }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          cd ${{ secrets.VPS_APP_DIR }}
+          
+          # Создаем или обновляем .env из секрета
+          echo "${{ secrets.ENV_FILE_CONTENTS }}" > .env
+          
+          # Скачиваем последний образ и перезапускаем
+          docker compose pull
+          docker compose up -d
+          
+          # Очищаем старые неиспользуемые образы
+          docker image prune -f
+          
+          echo "✅ Деплой завершен успешно!"
