@@ -224,6 +224,29 @@ async def heal_template(template: str, reason: str, original: str):
     record_self_heal(result.get("status", "unknown"))
     return result
 
+
+from aios_core.ml.conversion_predictor import predictor
+from aios_core.recommendations.engine import recommendation_engine
+
+@app.get("/api/v1/ml/predict", tags=["ML"])
+async def predict_conversion(template: dict):
+    score = predictor.predict(template)
+    return {"predicted_conversion": score}
+
+@app.get("/api/v1/recommendations", tags=["Recommendations"])
+async def get_recommendations(templates: list = []):
+    return recommendation_engine.get_top_recommendations(templates)
+
+@app.get("/api/v1/recommendations/template/{template_id}", tags=["Recommendations"])
+async def get_template_recommendations(template_id: str):
+    from aios_core.models.template import Template
+    from aios_core.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as session:
+        template = await session.get(Template, template_id)
+        if template:
+            return recommendation_engine.analyze_template(template.to_dict())
+    return {"error": "template_not_found"}
+
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)

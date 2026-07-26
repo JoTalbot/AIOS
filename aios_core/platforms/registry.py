@@ -8,6 +8,10 @@ from .prom_adapter import PromAdapter
 from .facebook_adapter import FacebookAdapter
 from .viber_adapter import ViberAdapter
 from .whatsapp_adapter import WhatsAppAdapter
+from .tiktok_adapter import TiktokAdapter
+from .linkedin_adapter import LinkedinAdapter
+from .ebay_adapter import EbayAdapter
+from .tiktok_shop_adapter import TiktokShopAdapter
 
 class PlatformRegistry:
     """Реестр всех доступных платформ."""
@@ -21,6 +25,10 @@ class PlatformRegistry:
             "facebook": FacebookAdapter,
             "viber": ViberAdapter,
             "whatsapp": WhatsAppAdapter,
+            "tiktok": TiktokAdapter,
+            "linkedin": LinkedinAdapter,
+            "ebay": EbayAdapter,
+            "tiktok_shop": TiktokShopAdapter,
         }
 
     def register_adapter(self, platform: str, config: Dict = None):
