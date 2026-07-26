@@ -1,37 +1,117 @@
-"""Telegram Bot for Manager Approval of Drafts."""
+"""Telegram Bot for Manager Approval of Drafts — Real Integration."""
 from __future__ import annotations
 import os
-import json
-from typing import Dict, Any
-from pathlib import Path
+import httpx
+from typing import Dict, Any, Optional, Callable
+from dataclasses import dataclass
+
+@dataclass
+class PendingDraft:
+    draft_id: str
+    platform: str
+    message_id: str
+    intent: str
+    language: str
+    text: str
+    telegram_message_id: Optional[int] = None
 
 class TelegramApprovalBot:
-    """Бот для одобрения черновиков через Telegram."""
+    """Реальный Telegram-бот для одобрения черновиков."""
     
     def __init__(self, bot_token: str = None, chat_id: str = None):
         self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN")
         self.chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID")
-        self.pending_drafts: Dict[str, Dict[str, Any]] = {}
+        self.pending_drafts: Dict[str, PendingDraft] = {}
+        self.api_base = f"https://api.telegram.org/bot{self.bot_token}"
+        self._on_approved: Optional[Callable] = None
+        self._on_rejected: Optional[Callable] = None
+
+    def on_approved(self, callback: Callable):
+        """Декоратор для регистрации callback при одобрении."""
+        self._on_approved = callback
+        return callback
+
+    def on_rejected(self, callback: Callable):
+        """Декоратор для регистрации callback при отклонении."""
+        self._on_rejected = callback
+        return callback
+
+    async def _send_telegram_message(self, text: str, reply_markup: Dict = None) -> Optional[int]:
+        """Отправить сообщение в Telegram."""
+        if not self.bot_token or not self.chat_id:
+            print("⚠️  Telegram bot не настроен (нет токена/chat_id)")
+            return None
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                payload = {
+                    "chat_id": self.chat_id,
+                    "text": text,
+                    "parse_mode": "HTML"
+                }
+                if reply_markup:
+                    payload["reply_markup"] = reply_markup
+                
+                response = await client.post(
+                    f"{self.api_base}/sendMessage",
+                    json=payload,
+                    timeout=10.0
+                )
+                response.raise_for_status()
+                return response.json()["result"]["message_id"]
+        except Exception as e:
+            print(f"❌ Ошибка отправки в Telegram: {e}")
+            return None
 
     async def send_draft_for_approval(self, draft_data: Dict[str, Any]) -> str:
         """Отправить черновик менеджеру на одобрение."""
         draft_id = draft_data["draft_id"]
-        self.pending_drafts[draft_id] = draft_data
         
-        message = (
-            f"🤖 Новый черновик ответа\n\n"
-            f"📱 Платформа: {draft_data['platform']}\n"
-            f"🎯 Намерение: {draft_data['intent']}\n"
-            f"🌍 Язык: {draft_data['language']}\n\n"
-            f"📝 Текст:\n{draft_data['draft_text']}\n\n"
-            f"✅ Одобрить: /approve_{draft_id}\n"
-            f"❌ Отклонить: /reject_{draft_id}"
+        self.pending_drafts[draft_id] = PendingDraft(
+            draft_id=draft_id,
+            platform=draft_data["platform"],
+            message_id=draft_data["message_id"],
+            intent=draft_data["intent"],
+            language=draft_data["language"],
+            text=draft_data["draft_text"]
         )
         
-        # TODO: Реальный вызов Telegram API
-        # await self._send_telegram_message(message)
+        message = (
+            f"🤖 <b>Новый черновик ответа</b>\n\n"
+            f"📱 <b>Платформа:</b> {draft_data['platform']}\n"
+            f"🎯 <b>Намерение:</b> {draft_data['intent']}\n"
+            f"🌍 <b>Язык:</b> {draft_data['language']}\n\n"
+            f"📝 <b>Текст:</b>\n<pre>{draft_data['draft_text']}</pre>"
+        )
+        
+        # Inline-кнопки для одобрения/отклонения
+        reply_markup = {
+            "inline_keyboard": [
+                [
+                    {"text": "✅ Одобрить", "callback_data": f"approve_{draft_id}"},
+                    {"text": "❌ Отклонить", "callback_data": f"reject_{draft_id}"}
+                ],
+                [
+                    {"text": "✏️ Изменить", "callback_data": f"edit_{draft_id}"}
+                ]
+            ]
+        }
+        
+        msg_id = await self._send_telegram_message(message, reply_markup)
+        if msg_id:
+            self.pending_drafts[draft_id].telegram_message_id = msg_id
         
         return draft_id
+
+    async def handle_callback(self, callback_data: str) -> Dict[str, Any]:
+        """Обработать callback от inline-кнопок."""
+        if callback_data.startswith("approve_"):
+            draft_id = callback_data.replace("approve_", "")
+            return await self.approve_draft(draft_id)
+        elif callback_data.startswith("reject_"):
+            draft_id = callback_data.replace("reject_", "")
+            return await self.reject_draft(draft_id)
+        return {"status": "unknown"}
 
     async def approve_draft(self, draft_id: str) -> Dict[str, Any]:
         """Одобрить черновик."""
@@ -39,12 +119,17 @@ class TelegramApprovalBot:
             return {"status": "error", "message": "Черновик не найден"}
         
         draft = self.pending_drafts.pop(draft_id)
-        draft["status"] = "approved"
         
-        # TODO: Отправить одобренный текст через Platform Adapter
-        # await platform_adapter.send_message(draft["platform"], draft["message_id"], draft["draft_text"])
+        # Уведомление в Telegram
+        await self._send_telegram_message(
+            f"✅ Черновик <code>{draft_id}</code> одобрен и отправлен на {draft.platform}"
+        )
         
-        return {"status": "approved", "draft_id": draft_id}
+        # Вызов callback для реальной отправки через платформу
+        if self._on_approved:
+            await self._on_approved(draft)
+        
+        return {"status": "approved", "draft_id": draft_id, "draft": draft}
 
     async def reject_draft(self, draft_id: str, reason: str = "") -> Dict[str, Any]:
         """Отклонить черновик."""
@@ -52,7 +137,28 @@ class TelegramApprovalBot:
             return {"status": "error", "message": "Черновик не найден"}
         
         draft = self.pending_drafts.pop(draft_id)
-        draft["status"] = "rejected"
-        draft["rejection_reason"] = reason
+        
+        await self._send_telegram_message(
+            f"❌ Черновик <code>{draft_id}</code> отклонён"
+            + (f"\nПричина: {reason}" if reason else "")
+        )
+        
+        if self._on_rejected:
+            await self._on_rejected(draft, reason)
         
         return {"status": "rejected", "draft_id": draft_id}
+
+    async def get_updates(self, offset: int = 0) -> list:
+        """Получить новые обновления от Telegram (polling)."""
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{self.api_base}/getUpdates",
+                    params={"offset": offset, "timeout": 30},
+                    timeout=35.0
+                )
+                response.raise_for_status()
+                return response.json().get("result", [])
+        except Exception as e:
+            print(f"❌ Ошибка polling: {e}")
+            return []
