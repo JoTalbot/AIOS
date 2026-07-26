@@ -6,6 +6,9 @@ class AnalyticsAgent(BaseAgent):
         super().__init__("analytics")
         self.engine = analytics_engine
 
+    from aios_core.observability.agent_metrics import track_agent_metrics
+
+    @track_agent_metrics("analytics")
     async def process(self, state: AgentState) -> AgentState:
         msg = state.messages[-1] if state.messages else ""
         if any(kw in msg.lower() for kw in ["статистика", "отчет", "метрики", "аналитика"]):
