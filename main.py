@@ -247,6 +247,32 @@ async def get_template_recommendations(template_id: str):
             return recommendation_engine.analyze_template(template.to_dict())
     return {"error": "template_not_found"}
 
+
+from aios_core.tenancy.billing import billing_service
+from aios_core.agents.negotiation import negotiation_agent
+from aios_core.plugins.registry import plugin_registry
+from aios_core.plugins.example_avito import AvitoPlugin
+from aios_core.dashboard.views.mobile_pwa import render_mobile_pwa_view
+
+plugin_registry.register(AvitoPlugin)
+
+@app.post("/api/v1/billing/checkout", tags=["SaaS"])
+async def create_checkout(workspace_id: str, tier: str):
+    return billing_service.create_checkout_session(workspace_id, tier, "https://aios.local/success")
+
+@app.post("/api/v1/agents/negotiate", tags=["Agents"])
+async def negotiate(session_id: str, message: str, max_discount: int = 10):
+    guardrails = {"max_discount": max_discount}
+    return negotiation_agent.process_message(session_id, message, guardrails)
+
+@app.get("/api/v1/plugins", tags=["Plugins"])
+async def list_plugins():
+    return {"plugins": plugin_registry.list_plugins()}
+
+@ui.page("/mobile", title="AIOS Mobile")
+def mobile_page():
+    render_mobile_pwa_view()
+
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)
