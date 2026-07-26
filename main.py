@@ -68,6 +68,39 @@ async def process_with_agents(request: AgentProcessRequest):
     result = await agent_orchestrator.process(messages, context)
     return result
 
+
+from aios_core.cache.redis_cache import cache, cached
+from aios_core.audit.recorder import recorder as audit_recorder
+from aios_core.middleware.audit import AuditMiddleware
+from aios_core.config.features import flags
+from aios_core.api.openapi_export import init_exporter
+
+app.add_middleware(AuditMiddleware)
+openapi_exporter = init_exporter(app)
+
+@app.on_event("startup")
+async def startup_cache():
+    await cache.connect()
+
+@app.get("/api/v1/features", tags=["System"])
+async def list_features():
+    return flags.list_all()
+
+@app.get("/api/v1/audit", tags=["System"])
+async def get_audit_logs(user_id: str = None, action: str = None, limit: int = 100,
+                         user: dict = Depends(require_role("admin"))):
+    logs = await audit_recorder.get_logs(user_id=user_id, action=action, limit=limit)
+    return [{"id": l.id, "user_id": l.user_id, "action": l.action,
+             "resource_type": l.resource_type, "created_at": l.created_at.isoformat()} for l in logs]
+
+@app.get("/openapi.json", include_in_schema=False)
+async def openapi_json():
+    return openapi_exporter.as_json()
+
+@app.get("/openapi.yaml", include_in_schema=False)
+async def openapi_yaml():
+    return openapi_exporter.as_yaml()
+
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)
