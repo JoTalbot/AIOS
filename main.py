@@ -302,6 +302,29 @@ def branding_page():
     ui.input("Logo URL", value="https://...").classes("w-full")
     ui.button("Save Branding", color="primary").classes("q-mt-md")
 
+
+from aios_core.onboarding.flows import onboarding_flow
+from aios_core.dashboard.views.onboarding_view import render_onboarding_view
+from aios_core.agents.workflow import sales_workflow
+from aios_core.compliance.pii_masker import pii_masker
+from aios_core.compliance.data_export import data_exporter
+
+@ui.page("/onboarding", title="Onboarding")
+def onboarding_page():
+    render_onboarding_view(onboarding_flow)
+
+@app.post("/api/v1/workflow/sales/execute", tags=["Workflows"])
+async def execute_sales_workflow(price: float = 1000):
+    return await sales_workflow.execute({"price": price})
+
+@app.get("/api/v1/compliance/export/{user_id}", tags=["Compliance"])
+async def export_data(user_id: str, user: dict = Depends(require_role("admin"))):
+    return await data_exporter.export_user_data(user_id)
+
+@app.post("/api/v1/compliance/mask", tags=["Compliance"])
+async def mask_pii(text: str):
+    return {"masked": pii_masker.mask(text)}
+
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)
