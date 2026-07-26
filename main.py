@@ -209,6 +209,21 @@ async def evo_stats():
 async def heal_template(template: str, reason: str, original: str):
     return await self_healing.heal(template, reason, original)
 
+
+from aios_core.dashboard.views.evolution_view import render_evolution_view
+from aios_core.tasks.evolution_tasks import run_evolution_cycle, discover_new_intents, heal_rejected_template
+from aios_core.observability.evolution_metrics import record_self_heal
+
+@ui.page("/advisor/evolution", title="Evolution Dashboard")
+def evolution_page():
+    render_evolution_view(evolution_orchestrator)
+
+@app.post("/api/v1/evolution/heal", tags=["Evolution"])
+async def heal_template(template: str, reason: str, original: str):
+    result = await self_healing.heal(template, reason, original)
+    record_self_heal(result.get("status", "unknown"))
+    return result
+
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)

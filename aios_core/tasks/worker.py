@@ -21,7 +21,7 @@ async def long_llm_request(ctx, prompt, context):
     return {"status": "completed", "response": r.json()["choices"][0]["message"]["content"]}
 
 class WorkerSettings:
-    functions = [process_competitor_prices, send_bulk_messages, long_llm_request]
+    functions = [process_competitor_prices, send_bulk_messages, long_llm_request, run_evolution_cycle, discover_new_intents, heal_rejected_template]
     redis_settings = RedisSettings(host=os.getenv("REDIS_HOST", "localhost"), port=6379)
     max_jobs = 10
     job_timeout = 300
