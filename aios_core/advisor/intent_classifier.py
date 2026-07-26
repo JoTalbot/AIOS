@@ -1,57 +1,56 @@
-"""Smart Intent Classifier for AI Advisor."""
+"""Smart Intent Classifier with Lang Detect and LLM readiness."""
 from __future__ import annotations
-import re
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from dataclasses import dataclass
+import os
 
 @dataclass
 class IntentResult:
     intent: str
     confidence: float
     reasoning: str
+    language: str  # 'uk', 'ru', 'en'
 
 class SmartIntentClassifier:
-    """Гибридный классификатор намерений (Эвристика + LLM fallback)."""
-    
-    def __init__(self, use_llm: bool = False, llm_model: str = "gpt-3.5-turbo"):
+    def __init__(self, use_llm: bool = False, llm_api_key: Optional[str] = None):
         self.use_llm = use_llm
-        self.llm_model = llm_model
+        self.llm_api_key = llm_api_key or os.getenv("LLM_API_KEY")
         self.keyword_map = {
-            "price_inquiry": ["цена", "сколько стоит", "последняя цена", "торг", "дешевле", "скидка"],
-            "delivery_question": ["доставка", "новая почта", "укрпочта", "отправите", "самовывоз"],
-            "stock_check": ["в наличии", "осталось", "есть ли", "резерв"],
-            "greeting": ["здравствуйте", "добрый день", "привет", "доброго времени"],
-            "complaint": ["брак", "не работает", "возврат", "обман", "жалоба"]
+            "price_inquiry": ["цена", "сколько", "торг", "дешевле", "ціна", "скільки", "торг"],
+            "delivery_question": ["доставка", "новая почта", "укрпочта", "отправите", "самовывоз", "відправите"],
+            "stock_check": ["в наличии", "осталось", "есть ли", "резерв", "наявності", "залишилось"],
+            "greeting": ["здравствуйте", "добрый день", "привет", "доброго дня", "вітаю"],
+            "complaint": ["брак", "не работает", "возврат", "обман", "жалоба", "повернення"],
         }
+        self.ua_markers = ["як", "ціна", "наявності", "дякую", "будь ласка", "відправите", "грн"]
+        self.ru_markers = ["как", "цена", "наличии", "спасибо", "пожалуйста", "отправите", "руб"]
+
+    def detect_language(self, text: str) -> str:
+        text = text.lower()
+        ua_score = sum(1 for m in self.ua_markers if m in text)
+        ru_score = sum(1 for m in self.ru_markers if m in text)
+        if ua_score > ru_score: return "uk"
+        if ru_score > ua_score: return "ru"
+        return "en"
 
     def classify(self, message: str, context: Optional[Dict] = None) -> IntentResult:
-        message_lower = message.lower()
+        lang = self.detect_language(message)
+        msg = message.lower()
+        best, max_m = "general_inquiry", 0
         
-        best_intent = "unknown"
-        max_matches = 0
-        
-        for intent, keywords in self.keyword_map.items():
-            matches = sum(1 for kw in keywords if kw in message_lower)
-            if matches > max_matches:
-                max_matches = matches
-                best_intent = intent
-                
-        if max_matches >= 1:
-            confidence = min(0.7 + (max_matches * 0.1), 0.95)
-            return IntentResult(
-                intent=best_intent, 
-                confidence=confidence, 
-                reasoning=f"Найдено {max_matches} ключевых слов для '{best_intent}'"
-            )
+        for intent, kws in self.keyword_map.items():
+            m = sum(1 for k in kws if k in msg)
+            if m > max_m: max_m, best = m, intent
             
-        if self.use_llm:
-            return self._classify_with_llm(message, context)
+        if max_m >= 1:
+            return IntentResult(best, min(0.7 + max_m * 0.1, 0.95), f"{max_m} совпадений", lang)
             
-        return IntentResult(intent="general_inquiry", confidence=0.5, reasoning="Эвристика не сработала, LLM отключен")
+        if self.use_llm and self.llm_api_key:
+            return self._classify_with_llm(message, lang)
+            
+        return IntentResult("general_inquiry", 0.5, "Эвристика не сработала, LLM отключен", lang)
 
-    def _classify_with_llm(self, message: str, context: Optional[Dict]) -> IntentResult:
-        return IntentResult(
-            intent="general_inquiry", 
-            confidence=0.6, 
-            reasoning="LLM анализ (заглушка)"
-        )
+    def _classify_with_llm(self, message: str, lang: str) -> IntentResult:
+        # TODO: Реальный вызов OpenAI / Ollama API
+        # response = requests.post("https://api.openai.com/v1/chat/completions", ...)
+        return IntentResult("general_inquiry", 0.8, "LLM анализ (требуется API ключ)", lang)
