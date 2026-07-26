@@ -273,6 +273,35 @@ async def list_plugins():
 def mobile_page():
     render_mobile_pwa_view()
 
+
+from aios_core.tenancy.stripe_service import stripe_service
+from aios_core.agents.voice_agent import voice_agent
+from aios_core.dashboard.views.marketplace_view import render_marketplace_view
+from aios_core.tenancy.branding import branding_manager
+
+@app.post("/api/v1/billing/webhook", tags=["SaaS"])
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+    return stripe_service.handle_webhook(payload, sig_header)
+
+@app.post("/api/v1/voice/process", tags=["Voice AI"])
+async def process_voice(call_sid: str, recording_url: str):
+    return await voice_agent.process_voice_call(call_sid, recording_url)
+
+@ui.page("/marketplace", title="Plugin Marketplace")
+def marketplace_page():
+    render_marketplace_view()
+
+@ui.page("/settings/branding", title="White-Label Settings")
+def branding_page():
+    branding_manager.apply_branding_to_ui("ws_default")
+    ui.label("White-Label Settings").classes("text-h4 q-mb-md")
+    ui.input("App Name", value="AIOS Manager").classes("w-full")
+    ui.input("Primary Color", value="#6366f1").classes("w-full")
+    ui.input("Logo URL", value="https://...").classes("w-full")
+    ui.button("Save Branding", color="primary").classes("q-mt-md")
+
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)
