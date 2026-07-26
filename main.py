@@ -175,6 +175,22 @@ from aios_core.performance.pool import get_db_pool_config
 app.add_middleware(SecurityHeadersMiddleware)
 init_tracing(service_name="aios")
 
+
+from aios_core.dashboard.themes.saas_theme import apply_saas_theme, apply_dark_theme
+from aios_core.ai_features.voice import voice_processor
+from aios_core.ai_features.image_gen import image_generator
+
+apply_saas_theme()
+
+@app.post("/api/v1/ai/voice/transcribe", tags=["AI Features"])
+async def transcribe_voice():
+    return {"status": "endpoint_ready", "note": "Upload audio file to use"}
+
+@app.post("/api/v1/ai/image/generate", tags=["AI Features"])
+async def generate_image(prompt: str, size: str = "1024x1024"):
+    url = await image_generator.generate(prompt, size)
+    return {"image_url": url} if url else {"error": "generation_failed"}
+
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)
