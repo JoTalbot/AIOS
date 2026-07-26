@@ -493,9 +493,9 @@ jobs:
         id: status
         run: |
           FAILED=false
-          for job in lint-and-unit calibrate-platforms integration-tests production-simulation deploy; do
-            result=$(echo "${{ needs.$job.result }}" | tr '[:upper:]' '[:lower:]')
-            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+          for result in ${{ needs.lint-and-unit.result }} ${{ needs.calibrate-platforms.result }} ${{ needs.integration-tests.result }} ${{ needs.production-simulation.result }} ${{ needs.deploy.result }}; do
+            r=$(echo "$result" | tr '[:upper:]' '[:lower:]')
+            if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
               FAILED=true
             fi
           done
