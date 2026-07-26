@@ -13,6 +13,7 @@ import secrets
 import hmac
 import sqlite3
 import subprocess
+import threading
 import time
 import re as _re
 from pathlib import Path
@@ -23,9 +24,12 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, StreamingResponse
 from starlette.routing import Route, Mount
 from starlette.staticfiles import StaticFiles
+from starlette.websockets import WebSocket
+from starlette.routing import WebSocketRoute
 
 from .orchestrator import Orchestrator
 from .backup_manager import BackupManager
+from .android_auto_study import AndroidAutoStudy
 
 _DASHBOARD_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "index.html"
 
@@ -50,10 +54,19 @@ class AIOSDashboard:
         self.subs_db = "/root/AIOS/data/olx_subs.sqlite"
         self.core_db = os.environ.get("AIOS_DB", "/root/AIOS/aios.sqlite")
         self._started_monotonic = time.monotonic()
+        self._custom_scenarios: dict[str, dict] = {}
+        self._scheduler_lock = __import__("threading").Lock()
+        self._scheduler_active = False
+        self._scheduler_stop = __import__("threading").Event()
+        self._auto_study = AndroidAutoStudy()
+        self._auto_study_lock = __import__("threading").Lock()
+        self._auto_study_history_path = Path("/root/AIOS/data/auto_study_history.json")
+        self._auto_study_history_path.parent.mkdir(parents=True, exist_ok=True)
         self._model_state_path = Path("/root/AIOS/data/dashboard_model_stages.json")
         self._backup_manager = BackupManager(db_path=self.core_db, backup_dir="/root/AIOS/backups")
         self._control_token_path = Path("/root/AIOS/.dashboard_token")
         self._control_token = os.environ.get("AIOS_DASH_TOKEN", "").strip()
+        self.auto_study = AndroidAutoStudy()
         if not self._control_token:
             try:
                 self._control_token = self._control_token_path.read_text(encoding="utf-8").strip()
@@ -699,6 +712,208 @@ class AIOSDashboard:
             return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
         return JSONResponse({"ok": False, "error": "bad action"}, status_code=400)
 
+    # ---------- Android Auto-Study ----------
+    async def api_auto_study(self, request: Request) -> JSONResponse:
+        """Trigger Android app auto-study."""
+        if unauthorized := self._require_control(request):
+            return unauthorized
+        try:
+            body = await request.json()
+            package = body.get("package", "ua.slando")
+            scenario = body.get("scenario", "basic_explore")
+            device_id = body.get("device_id", "emulator-5554")
+            max_duration_sec = int(body.get("max_duration_sec", 300))
+            custom_steps = body.get("custom_steps")
+
+            async def _run_and_save():
+                study = AndroidAutoStudy(device_id=device_id)
+                result = await study.run_study(package, scenario, custom_steps, max_duration_sec)
+                self._auto_study_save_history({
+                    "study_id": result.study_id,
+                    "device_id": device_id,
+                    "package": result.package,
+                    "scenario": result.scenario_name,
+                    "status": result.status.value,
+                    "steps_completed": result.steps_completed,
+                    "steps_total": result.steps_total,
+                    "failure_rate": result.failure_rate,
+                    "started_at": result.started_at,
+                    "completed_at": result.completed_at,
+                    "error": result.error,
+                })
+
+            import asyncio
+            asyncio.create_task(_run_and_save())
+            return JSONResponse({"ok": True, "message": f"Auto-study started for {package} ({scenario})"})
+        except Exception as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+    async def api_auto_study_scenarios(self, request: Request) -> JSONResponse:
+        """Get available auto-study scenarios."""
+        study = AndroidAutoStudy()
+        out = dict(study.get_scenarios())
+        out.update({k: {"name": k, **v} for k, v in self._custom_scenarios.items()})
+        return JSONResponse({"scenarios": out})
+
+    async def api_auto_study_status(self, request: Request) -> JSONResponse:
+        """Get current auto-study status."""
+        study = AndroidAutoStudy()
+        return JSONResponse(study.get_status())
+
+    async def api_auto_study_cancel(self, request: Request) -> JSONResponse:
+        """Cancel active auto-study session."""
+        if unauthorized := self._require_control(request):
+            return unauthorized
+        study = AndroidAutoStudy()
+        study.cancel()
+        return JSONResponse({"ok": True, "message": "Study cancellation requested"})
+
+    async def api_auto_study_results(self, request: Request) -> JSONResponse:
+        """Get the results of the latest completed auto-study."""
+        if unauthorized := self._require_control(request):
+            return unauthorized
+        # This method needs to access the results of the last run study.
+        # Currently, AndroidAutoStudy is instantiated per request, so results are not persisted.
+        # A more robust solution would involve storing results (e.g., in DB or file)
+        # or managing a single instance of AndroidAutoStudy.
+        # For now, return a placeholder indicating the limitation.
+        return JSONResponse({"ok": False, "message": "Study results retrieval is not yet implemented for persistence.", "current_status": self.api_auto_study_status(request)})
+
+    async def api_auto_study_current(self, request: Request) -> JSONResponse:
+        """Get the status of the current auto-study run."""
+        if unauthorized := self._require_control(request):
+            return unauthorized
+        # Assuming a managed instance exists after the study is started.
+        # If not, this will create a new instance, but get_status() should work.
+        try:
+            # If `self.auto_study` were a persistent instance: study = self.auto_study
+            study = AndroidAutoStudy() # Using a temporary instance for status check
+            status = study.get_status()
+            return JSONResponse(status)
+        except Exception as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+    async def api_auto_study_custom_scenario(self, request: Request) -> JSONResponse:
+        """Load a custom auto-study scenario from JSON."""
+        if unauthorized := self._require_control(request):
+            return unauthorized
+        try:
+            body = await request.json()
+            name = body.get("name", "custom_scenario")
+            package = body.get("package", "ua.slando")
+            scenario = body.get("scenario")
+            if not scenario or not isinstance(scenario, dict):
+                return JSONResponse({"ok": False, "error": "scenario object is required"}, status_code=400)
+            self._custom_scenarios[name] = {"name": name, "package": package, **scenario}
+            return JSONResponse({"ok": True, "message": f"Custom scenario loaded: {name}"})
+        except Exception as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+    async def api_auto_study_scheduler(self, request: Request) -> JSONResponse:
+        """Start/stop periodic auto-study scheduler."""
+        if unauthorized := self._require_control(request):
+            return unauthorized
+        try:
+            body = await request.json()
+            action = body.get("action")
+            if action == "start":
+                package = body.get("package", "ua.slando")
+                scenario = body.get("scenario", "basic_explore")
+                device_id = body.get("device_id", "emulator-5554")
+                interval_sec = max(10, int(body.get("interval_sec", 60)))
+                with self._scheduler_lock:
+                    self._scheduler_active = True
+                    self._scheduler_stop.clear()
+                def _loop():
+                    study = AndroidAutoStudy(device_id=device_id)
+                    while not self._scheduler_stop.is_set():
+                        try:
+                            import asyncio
+                            asyncio.run(study.run_study(package, scenario))
+                        except Exception:
+                            pass
+                        for _ in range(interval_sec):
+                            if self._scheduler_stop.is_set():
+                                break
+                            time.sleep(1)
+                    with self._scheduler_lock:
+                        self._scheduler_active = False
+                __import__("threading").Thread(target=_loop, daemon=True).start()
+                return JSONResponse({"ok": True, "message": "Scheduler started"})
+            if action == "stop":
+                with self._scheduler_lock:
+                    self._scheduler_stop.set()
+                    self._scheduler_active = False
+                return JSONResponse({"ok": True, "message": "Scheduler stopped"})
+            return JSONResponse({"ok": False, "error": "bad action"}, status_code=400)
+        except Exception as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+    def _auto_study_history(self) -> list[dict]:
+        try:
+            if self._auto_study_history_path.exists():
+                return json.loads(self._auto_study_history_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        return []
+
+    def _auto_study_save_history(self, item: dict | str) -> None:
+        try:
+            if isinstance(item, str):
+                item = {"study_id": "unknown", "status": "failed", "error": item, "package": "ua.slando", "scenario": "unknown", "steps_completed": 0, "steps_total": 0, "failure_rate": 1.0}
+            elif hasattr(item, "package"):
+                item = {
+                    "study_id": getattr(item, "study_id", "unknown"),
+                    "device_id": getattr(item, "device_id", "emulator-5554"),
+                    "package": getattr(item, "package", "ua.slando"),
+                    "scenario": getattr(item, "scenario_name", "unknown"),
+                    "status": getattr(getattr(item, "status", None), "value", str(getattr(item, "status", "failed"))),
+                    "steps_completed": getattr(item, "steps_completed", 0),
+                    "steps_total": getattr(item, "steps_total", 0),
+                    "failure_rate": getattr(item, "failure_rate", 0.0),
+                    "started_at": getattr(item, "started_at", 0),
+                    "completed_at": getattr(item, "completed_at", 0),
+                    "error": getattr(item, "error", None),
+                }
+            history = self._auto_study_history()
+            history.insert(0, item)
+            self._auto_study_history_path.write_text(
+                json.dumps(history[:200], ensure_ascii=False, default=str),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
+
+    async def api_auto_study_history(self, request: Request) -> JSONResponse:
+        """Get recent auto-study history."""
+        if unauthorized := self._require_control(request):
+            return unauthorized
+        try:
+            history = self._auto_study_history()
+            return JSONResponse({"history": history})
+        except Exception as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+    async def api_auto_study_notifications(self, request: Request) -> JSONResponse:
+        """Get recent auto-study completion notifications."""
+        if unauthorized := self._require_control(request):
+            return unauthorized
+        try:
+            history = self._auto_study_history()
+            notifications = []
+            for item in history[:20]:
+                notifications.append({
+                    "study_id": item.get("study_id"),
+                    "package": item.get("package"),
+                    "scenario": item.get("scenario"),
+                    "status": item.get("status"),
+                    "error": item.get("error"),
+                    "completed_at": item.get("completed_at"),
+                })
+            return JSONResponse({"notifications": notifications})
+        except Exception as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
     # ---------- Routing ----------
 
     # ---------- Public (no auth) data endpoints for React UI ----------
@@ -820,6 +1035,66 @@ class AIOSDashboard:
         for model in models:
             model["stage"] = stages.get(model["name"], model["stage"])
         return JSONResponse(models)
+
+    async def api_chat(self, request: Request) -> JSONResponse:
+        """Simple chat endpoint."""
+        try:
+            if request.method == "POST":
+                body = await request.json()
+                message = body.get("message", "")
+                return JSONResponse({
+                    "status": "ok",
+                    "message": f"Echo: {message}" if message else "No message provided",
+                })
+            return JSONResponse({"status": "ok", "message": "Chat is ready"})
+        except Exception as e:
+            return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+    async def api_memories(self, request: Request) -> JSONResponse:
+        """Return recent memory items from the orchestrator memory store."""
+        try:
+            memories = self.orch.memory.search(limit=50)
+            return JSONResponse({"status": "ok", "items": memories})
+        except Exception as e:
+            return JSONResponse({"status": "error", "items": [], "message": str(e)}, status_code=500)
+
+    async def api_processes(self, request: Request) -> JSONResponse:
+        """Return active orchestrator tasks as processes."""
+        try:
+            tasks = list(getattr(self.orch, "_tasks", {}).values())
+            processes = [
+                {
+                    "id": t.id,
+                    "name": t.name,
+                    "status": t.status.value if hasattr(t.status, "value") else str(t.status),
+                    "agent_id": t.agent_id,
+                    "created_at": t.created_at,
+                    "current_step": t.current_step_index,
+                }
+                for t in tasks
+            ]
+            return JSONResponse({"status": "ok", "processes": processes})
+        except Exception as e:
+            return JSONResponse({"status": "error", "processes": [], "message": str(e)}, status_code=500)
+
+    async def api_workflows(self, request: Request) -> JSONResponse:
+        """Return registered workflows from the workflow engine."""
+        try:
+            from aios_core.workflow import workflow_engine
+
+            workflows = [
+                {
+                    "id": wf.id,
+                    "name": wf.name,
+                    "status": wf.status.value if hasattr(wf.status, "value") else str(wf.status),
+                    "steps": len(wf.steps),
+                    "created_at": wf.created_at,
+                }
+                for wf in workflow_engine.list_workflows()
+            ]
+            return JSONResponse({"status": "ok", "workflows": workflows})
+        except Exception as e:
+            return JSONResponse({"status": "error", "workflows": [], "message": str(e)}, status_code=500)
 
     async def api_knowledge_graph(self, request: Request) -> JSONResponse:
         try:
@@ -1052,6 +1327,18 @@ class AIOSDashboard:
             return JSONResponse({"ok": valid, "backup_id": backup_id, "verified": valid}, status_code=200 if valid else 422)
         return JSONResponse({"ok": False, "error": "unsupported backup action"}, status_code=400)
 
+    async def ws_dashboard(self, ws: WebSocket):
+        await ws.accept()
+        try:
+            while True:
+                msg = await ws.receive_text()
+                if msg == 'ping':
+                    await ws.send_text('pong')
+        except Exception:
+            pass
+        finally:
+            await ws.close()
+
     def create_app(self) -> Starlette:
         routes = [
             Route("/", self.index),
@@ -1073,6 +1360,16 @@ class AIOSDashboard:
             Route("/api/android/screenshot", self.api_android_screenshot),
             Route("/api/android/action", self.api_android_action, methods=["POST"]),
             Route("/api/android/emu", self.api_android_emuctl, methods=["POST"]),
+            Route("/api/auto-study", self.api_auto_study, methods=["POST"]),
+            Route("/api/auto-study/scenarios", self.api_auto_study_scenarios, methods=["GET"]),
+            Route("/api/auto-study/status", self.api_auto_study_status, methods=["GET"]),
+            Route("/api/auto-study/cancel", self.api_auto_study_cancel, methods=["POST"]),
+            Route("/api/auto-study/results", self.api_auto_study_results, methods=["GET"]),
+            Route("/api/auto-study/current", self.api_auto_study_current, methods=["GET"]),
+            Route("/api/auto-study/custom-scenario", self.api_auto_study_custom_scenario, methods=["POST"]),
+            Route("/api/auto-study/scheduler", self.api_auto_study_scheduler, methods=["POST"]),
+            Route("/api/auto-study/history", self.api_auto_study_history, methods=["GET"]),
+            Route("/api/auto-study/notifications", self.api_auto_study_notifications, methods=["GET"]),
             Route("/api/constitution", self.api_constitution),
             Route("/api/constitution/{num}", self.api_constitution_article),
             Route("/api/safety", self.api_safety),
@@ -1080,9 +1377,14 @@ class AIOSDashboard:
             Route("/api/platforms", self.api_platforms),
             Route("/api/models", self.api_models),
             Route("/api/models/{name}/stage", self.api_model_stage, methods=["POST"]),
+            Route("/api/chat", self.api_chat, methods=["GET", "POST"]),
+            Route("/api/memories", self.api_memories, methods=["GET"]),
+            Route("/api/processes", self.api_processes, methods=["GET"]),
+            Route("/api/workflows", self.api_workflows, methods=["GET"]),
             Route("/api/knowledge-graph", self.api_knowledge_graph),
             Route("/api/audit", self.api_audit),
             Route("/api/backups", self.api_backups, methods=["GET", "POST"]),
+            WebSocketRoute("/ws/dashboard", self.ws_dashboard),
 
         ]
         return Starlette(routes=routes)
