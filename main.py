@@ -191,6 +191,24 @@ async def generate_image(prompt: str, size: str = "1024x1024"):
     url = await image_generator.generate(prompt, size)
     return {"image_url": url} if url else {"error": "generation_failed"}
 
+
+from aios_core.evolution.orchestrator import evolution_orchestrator
+from aios_core.evolution.template_evolution import template_evolution
+from aios_core.evolution.intent_discovery import intent_discovery
+from aios_core.evolution.self_healing import self_healing
+
+@app.post("/api/v1/evolution/run", tags=["Evolution"])
+async def run_evo(user: dict = Depends(require_role("admin"))):
+    return await evolution_orchestrator.run_cycle()
+
+@app.get("/api/v1/evolution/stats", tags=["Evolution"])
+async def evo_stats():
+    return evolution_orchestrator.log
+
+@app.post("/api/v1/evolution/heal", tags=["Evolution"])
+async def heal_template(template: str, reason: str, original: str):
+    return await self_healing.heal(template, reason, original)
+
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)
