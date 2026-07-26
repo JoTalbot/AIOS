@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from nicegui import ui
 from starlette.middleware.cors import CORSMiddleware
 from aios_core.webhooks.router import router as webhook_router
