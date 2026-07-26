@@ -340,12 +340,8 @@ class TestSearchFilters:
         assert results[0]["name"] == "tagged1"
 
     def test_search_by_query(self, engine):
-        engine.register(
-            name="searchable_cap", description="find me", handler=None, capability_type="action"
-        )
-        engine.register(
-            name="other_cap", description="unrelated", handler=None, capability_type="action"
-        )
+        engine.register(name="searchable_cap", description="find me", handler=None, capability_type="action")
+        engine.register(name="other_cap", description="unrelated", handler=None, capability_type="action")
         results = engine.search(query="find")
         assert len(results) == 1
         assert results[0]["name"] == "searchable_cap"
@@ -383,9 +379,7 @@ class TestSearchFilters:
             tags=["tag_b"],
             risk_level="low",
         )
-        results = engine.search(
-            capability_type="action", status="trusted", risk_level="high", limit=10
-        )
+        results = engine.search(capability_type="action", status="trusted", risk_level="high", limit=10)
         assert len(results) == 1
         assert results[0]["name"] == "match1"
 
