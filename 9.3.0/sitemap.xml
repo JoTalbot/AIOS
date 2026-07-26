@@ -81,6 +81,10 @@
          <lastmod>2026-07-26</lastmod>
     </url>
     <url>
+         <loc>https://jotalbot.github.io/AIOS/9.3.0/ab_testing/</loc>
+         <lastmod>2026-07-26</lastmod>
+    </url>
+    <url>
          <loc>https://jotalbot.github.io/AIOS/9.3.0/api/</loc>
          <lastmod>2026-07-26</lastmod>
     </url>
@@ -105,6 +109,10 @@
          <lastmod>2026-07-26</lastmod>
     </url>
     <url>
+         <loc>https://jotalbot.github.io/AIOS/9.3.0/load_testing/</loc>
+         <lastmod>2026-07-26</lastmod>
+    </url>
+    <url>
          <loc>https://jotalbot.github.io/AIOS/9.3.0/logging/</loc>
          <lastmod>2026-07-26</lastmod>
     </url>
@@ -118,6 +126,10 @@
     </url>
     <url>
          <loc>https://jotalbot.github.io/AIOS/9.3.0/templates_guide/</loc>
+         <lastmod>2026-07-26</lastmod>
+    </url>
+    <url>
+         <loc>https://jotalbot.github.io/AIOS/9.3.0/webhook_retry/</loc>
          <lastmod>2026-07-26</lastmod>
     </url>
     <url>
