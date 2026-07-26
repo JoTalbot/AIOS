@@ -276,6 +276,7 @@ class TestVariants:
             for i in range(50)
         }
         assert results.issubset({90, 10})
+        assert len(results) == 2
 
     def test_variant_selection_off_when_disabled(self, store: FlagStore) -> None:
         store.register(
@@ -355,7 +356,7 @@ class TestAdditionalBehaviors:
         store.is_enabled("metrics_flag", {})
         m = store.metrics("metrics_flag")
         assert m["evaluation_count"] == 2
-        assert m["exposure_count"] >= 0
+        assert m["exposure_count"] == 2
 
     def test_stats_returns_correct_structure(self, store: FlagStore) -> None:
         store.register("stat_flag")
