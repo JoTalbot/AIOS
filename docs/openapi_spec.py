@@ -12,6 +12,12 @@ from typing import Any
 __all__ = ["OpenAPIGenerator"]
 
 
+try:
+    from aios_core import __version__ as _AIOS_VERSION
+except Exception:  # pragma: no cover - docs tooling standalone
+    _AIOS_VERSION = "11.2.0"
+
+
 class OpenAPIGenerator:
     """Generates OpenAPI 3.0 specification for AIOS REST API.
 
@@ -23,7 +29,7 @@ class OpenAPIGenerator:
     - Version tracking
     """
 
-    def __init__(self, title: str = "AIOS API", version: str = "10.15.0"):
+    def __init__(self, title: str = "AIOS API", version: str = _AIOS_VERSION):
         """Initialize OpenAPIGenerator."""
         self.title = title
         self.version = version

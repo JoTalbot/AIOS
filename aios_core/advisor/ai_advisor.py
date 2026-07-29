@@ -1,5 +1,6 @@
 """Main AI Advisor Controller — Full Pipeline Integration."""
 from __future__ import annotations
+import os
 from typing import Dict, Any, Optional
 from datetime import datetime
 from .templates_engine import TemplateEngine, AdvisorTemplateIntegration
@@ -15,7 +16,7 @@ class AIAdvisor:
         self.intent_classifier = SmartIntentClassifier(use_llm=use_llm)
         self.compliance_guard = ComplianceGuard()
         self.sentiment_analyzer = SentimentAnalyzer()
-        self.metrics = MetricsCollector()
+        self.metrics = MetricsCollector(storage_path=os.path.join(templates_dir, "metrics"))
 
     def _calculate_dynamic_price(self, context: Dict[str, Any]) -> Dict[str, Any]:
         product = context.get("product", {})

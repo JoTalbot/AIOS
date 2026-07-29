@@ -25,7 +25,7 @@ platform_registry.register_adapter("viber")
 orchestrator = AdvisorOrchestrator(advisor, telegram_bot, platform_registry)
 
 # FastAPI приложение
-app = FastAPI(title="AIOS", version="1.0.0")
+app = FastAPI(title="AIOS", version="11.2.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # Подключаем вебхуки
@@ -55,7 +55,7 @@ async def websocket_metrics(websocket):
     try:
         while True:
             await websocket.receive_text()
-    except:
+    except Exception:
         manager.disconnect(websocket)
 
 @app.on_event("startup")

@@ -60,9 +60,16 @@ class PlanetaryMeshNode:
         self.active_tasks: List[str] = []
 
     def is_reachable(self) -> bool:
-        """Execute is reachable."""
-        # Deep space nodes might have high latency but are reachable if online
-        return self.status == "online" and self.energy_consumed_wh < self.energy_capacity_wh
+        """True if node is usable for real-time routing.
+
+        Deep space nodes (e.g. Mars, ~14 min one-way) are only usable via
+        DTN bundles and therefore are not counted as realtime-reachable.
+        """
+        return (
+            self.status == "online"
+            and self.energy_consumed_wh < self.energy_capacity_wh
+            and self.latency_to_earth_ms <= MAX_REALTIME_LATENCY_MS
+        )
         
     def consume_energy(self, compute_hours: float, transmission_mb: float):
         """Simulate energy drain based on computation and transmission (for space edge nodes)."""
@@ -74,6 +81,10 @@ class PlanetaryMeshNode:
         """Simulate solar array recharge."""
         charge = solar_hours * 200.0  # 200W solar array
         self.energy_consumed_wh = max(0.0, self.energy_consumed_wh - charge)
+
+
+# Deep space = not realtime. Lunar ~1.3s is still realtime; Mars (~840s) is not.
+MAX_REALTIME_LATENCY_MS = 600_000.0
 
 
 class PlanetaryMeshOrchestrator:

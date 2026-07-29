@@ -4,12 +4,11 @@ import os
 import hmac
 import hashlib
 from typing import Dict, Any
-from starlette.routing import Router
+from starlette.routing import Router, Route
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from datetime import datetime
 
-router = Router()
 
 # === Безопасность: проверка подписи ===
 def verify_signature(payload: bytes, signature: str, secret: str) -> bool:
@@ -18,7 +17,6 @@ def verify_signature(payload: bytes, signature: str, secret: str) -> bool:
     return hmac.compare_digest(expected, signature)
 
 # === Instagram Webhook (Meta) ===
-@router.get("/webhooks/instagram")
 async def instagram_verify(request: Request):
     """Instagram verification challenge (GET)."""
     params = request.query_params
@@ -26,7 +24,6 @@ async def instagram_verify(request: Request):
         return JSONResponse({"challenge": params.get("hub.challenge")})
     return JSONResponse({"error": "Invalid token"}, status_code=403)
 
-@router.post("/webhooks/instagram")
 async def instagram_webhook(request: Request):
     """Instagram incoming messages (POST)."""
     body = await request.body()
@@ -53,7 +50,6 @@ async def instagram_webhook(request: Request):
     return JSONResponse({"status": "ok", "processed": len(messages)})
 
 # === OLX Webhook ===
-@router.post("/webhooks/olx")
 async def olx_webhook(request: Request):
     """OLX incoming messages."""
     body = await request.body()
@@ -69,7 +65,6 @@ async def olx_webhook(request: Request):
     return JSONResponse({"status": "ok"})
 
 # === Viber Webhook ===
-@router.post("/webhooks/viber")
 async def viber_webhook(request: Request):
     """Viber incoming messages."""
     data = await request.json()
@@ -85,7 +80,6 @@ async def viber_webhook(request: Request):
     return JSONResponse({"status": "ok"})
 
 # === WhatsApp (Meta Cloud API) ===
-@router.get("/webhooks/whatsapp")
 async def whatsapp_verify(request: Request):
     """WhatsApp verification challenge."""
     params = request.query_params
@@ -93,7 +87,6 @@ async def whatsapp_verify(request: Request):
         return JSONResponse(content=params.get("hub.challenge"))
     return JSONResponse({"error": "Invalid token"}, status_code=403)
 
-@router.post("/webhooks/whatsapp")
 async def whatsapp_webhook(request: Request):
     """WhatsApp incoming messages."""
     data = await request.json()
@@ -112,14 +105,12 @@ async def whatsapp_webhook(request: Request):
     return JSONResponse({"status": "ok", "processed": len(messages)})
 
 # === Facebook Messenger ===
-@router.get("/webhooks/facebook")
 async def facebook_verify(request: Request):
     params = request.query_params
     if params.get("hub.verify_token") == os.getenv("FACEBOOK_VERIFY_TOKEN"):
         return JSONResponse(content=params.get("hub.challenge"))
     return JSONResponse({"error": "Invalid token"}, status_code=403)
 
-@router.post("/webhooks/facebook")
 async def facebook_webhook(request: Request):
     """Facebook Messenger incoming messages."""
     data = await request.json()
@@ -134,3 +125,18 @@ async def facebook_webhook(request: Request):
                     "message_id": messaging["message"]["mid"]
                 })
     return JSONResponse({"status": "ok", "processed": len(messages)})
+
+
+# Starlette Router не поддерживает декораторы — регистрируем маршруты явно.
+router = Router(
+    routes=[
+        Route("/webhooks/instagram", instagram_verify, methods=["GET"]),
+        Route("/webhooks/instagram", instagram_webhook, methods=["POST"]),
+        Route("/webhooks/olx", olx_webhook, methods=["POST"]),
+        Route("/webhooks/viber", viber_webhook, methods=["POST"]),
+        Route("/webhooks/whatsapp", whatsapp_verify, methods=["GET"]),
+        Route("/webhooks/whatsapp", whatsapp_webhook, methods=["POST"]),
+        Route("/webhooks/facebook", facebook_verify, methods=["GET"]),
+        Route("/webhooks/facebook", facebook_webhook, methods=["POST"]),
+    ]
+)

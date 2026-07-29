@@ -1,4 +1,4 @@
-"""AIOS Core Executable Layer v10.15.0
+"""AIOS Core Executable Layer v11.2.0
 
 Autonomous Intelligence Operating System - Production Exploitation
 - 1255 tests passed in the latest local audit (2026-07-23)
@@ -7,7 +7,7 @@ Autonomous Intelligence Operating System - Production Exploitation
 - Production Autopilot: 3 IG profiles ≥2 weeks ban-free (simulated + prod-ready)
 """
 
-__version__ = "10.15.0"
+__version__ = "11.2.0"
 __author__ = "AIOS Development"
 
 from .ai_advisor import AdvisorDraft, AISalesAdvisor, InboxSummary, PriceAdvice

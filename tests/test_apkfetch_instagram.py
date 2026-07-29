@@ -2,6 +2,7 @@
 pool-aware bootup and the Instagram onboarding (login-drive)."""
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -191,15 +192,21 @@ def test_load_secrets_file_no_override_by_default(tmp_path, monkeypatch):
         encoding="utf-8",
     )
     monkeypatch.setenv("AIOS_SECRET__INSTAGRAM__USERNAME", "env-user")
-    applied = load_secrets_file(str(secrets_file))
-    assert applied == 1  # USERNAME уже в env — не затирается
-    assert secret("instagram", "USERNAME") == "env-user"
-    assert secret("instagram", "PASSWORD") == "file-pass"
+    try:
+        applied = load_secrets_file(str(secrets_file))
+        assert applied == 1  # USERNAME уже в env — не затирается
+        assert secret("instagram", "USERNAME") == "env-user"
+        assert secret("instagram", "PASSWORD") == "file-pass"
 
-    applied = load_secrets_file(str(secrets_file), override=True)
-    assert applied == 2
-    assert secret("instagram", "USERNAME") == "file-user"
-    assert load_secrets_file(str(tmp_path / "absent.env")) == 0
+        applied = load_secrets_file(str(secrets_file), override=True)
+        assert applied == 2
+        assert secret("instagram", "USERNAME") == "file-user"
+        assert load_secrets_file(str(tmp_path / "absent.env")) == 0
+    finally:
+        # load_secrets_file пишет в os.environ напрямую — чистим, чтобы не
+        # протекать в соседние тесты (например, ConfigManager читает AIOS_*).
+        os.environ.pop("AIOS_SECRET__INSTAGRAM__PASSWORD", None)
+        os.environ.pop("AIOS_SECRET__INSTAGRAM__USERNAME", None)
 
 
 # ---------------------------------------------------------------------------

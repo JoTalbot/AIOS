@@ -186,6 +186,8 @@ class ExportImportPipeline:
         if file_path is None:
             timestamp = int(time.time())
             file_path = os.path.join(self.output_dir, f"export_{timestamp}.json")
+        elif not os.path.isabs(file_path):
+            file_path = os.path.join(self.output_dir, file_path)
 
         # Write JSON
         output = {
@@ -245,6 +247,8 @@ class ExportImportPipeline:
         if file_path is None:
             timestamp = int(time.time())
             file_path = os.path.join(self.output_dir, f"export_{timestamp}.csv")
+        elif not os.path.isabs(file_path):
+            file_path = os.path.join(self.output_dir, file_path)
 
         # Determine columns from schema
         columns = [f["name"] for f in self.schema.fields]
@@ -297,6 +301,8 @@ class ExportImportPipeline:
         if file_path is None:
             timestamp = int(time.time())
             file_path = os.path.join(self.output_dir, f"export_{timestamp}.json.gz")
+        elif not os.path.isabs(file_path):
+            file_path = os.path.join(self.output_dir, file_path)
 
         # First export as JSON
         json_result = self.export_json(records, validate=validate)

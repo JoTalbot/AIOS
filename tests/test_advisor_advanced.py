@@ -5,15 +5,17 @@ from aios_core.advisor.intent_classifier import SmartIntentClassifier, IntentRes
 from aios_core.advisor.ai_advisor import AIAdvisor
 from aios_core.advisor.templates_engine import TemplateEngine, TemplateVariable
 
-def test_language_detection_uk():
+@pytest.mark.asyncio
+async def test_language_detection_uk():
     clf = SmartIntentClassifier()
-    res = clf.classify("Доброго дня! Яка ціна і чи відправите Новою Поштою?")
+    res = await clf.classify("Доброго дня! Яка ціна і чи відправите Новою Поштою?")
     assert res.language == "uk"
     assert res.intent == "delivery_question" # или price_inquiry, зависит от веса
 
-def test_language_detection_ru():
+@pytest.mark.asyncio
+async def test_language_detection_ru():
     clf = SmartIntentClassifier()
-    res = clf.classify("Здравствуйте, сколько стоит и отправите ли в наличии?")
+    res = await clf.classify("Здравствуйте, сколько стоит и отправите ли в наличии?")
     assert res.language == "ru"
 
 def test_dynamic_pricing_no_history():
@@ -33,7 +35,8 @@ def test_dynamic_pricing_haggling():
     assert pricing["price"] == 9500 # 5% скидка
     assert "Лояльность" in pricing["reason"]
 
-def test_full_pipeline_with_pricing_in_template():
+@pytest.mark.asyncio
+async def test_full_pipeline_with_pricing_in_template():
     with tempfile.TemporaryDirectory() as tmpdir:
         engine = TemplateEngine(storage_path=tmpdir)
         engine.create_template(
@@ -51,7 +54,7 @@ def test_full_pipeline_with_pricing_in_template():
             "negotiation_history": [{"intent": "price_inquiry"}, {"intent": "price_inquiry"}]
         }
         # Симулируем результат process_incoming_message
-        intent_res = advisor.intent_classifier.classify("Можете уступить в цене?", context)
+        intent_res = await advisor.intent_classifier.classify("Можете уступить в цене?", context)
         assert intent_res.language in ["uk", "ru"]
         
         draft = advisor.template_integration.generate_draft_with_template(

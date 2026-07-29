@@ -18,8 +18,8 @@ class SmartIntentClassifier:
         self.use_llm = use_llm
         self.llm_api_key = llm_api_key or os.getenv("LLM_API_KEY")
         self.keyword_map = {
-            "price_inquiry": ["цена", "сколько", "торг", "дешевле", "ціна", "скільки", "торг"],
-            "delivery_question": ["доставка", "новая почта", "укрпочта", "отправите", "самовывоз", "відправите"],
+            "price_inquiry": ["цена", "сколько", "торг", "дешевле", "уступ", "скидк", "знижк", "ціна", "скільки", "торг"],
+            "delivery_question": ["доставка", "новая почта", "укрпочта", "отправите", "самовывоз", "відправите", "новою поштою", "нова пошта"],
             "stock_check": ["в наличии", "осталось", "есть ли", "резерв", "наявності", "залишилось"],
             "greeting": ["здравствуйте", "добрый день", "привет", "доброго дня", "вітаю"],
             "complaint": ["брак", "не работает", "возврат", "обман", "жалоба", "повернення"],
@@ -31,8 +31,13 @@ class SmartIntentClassifier:
         text = text.lower()
         ua_score = sum(1 for m in self.ua_markers if m in text)
         ru_score = sum(1 for m in self.ru_markers if m in text)
+        # Характерные буквы алфавитов — сильный сигнал
+        ua_score += sum(1 for ch in ("і", "ї", "є", "ґ") if ch in text)
+        ru_score += sum(1 for ch in ("ы", "э", "ъ", "ё") if ch in text)
         if ua_score > ru_score: return "uk"
         if ru_score > ua_score: return "ru"
+        # Ничья: кириллический текст без явных маркеров → ru (основной рынок)
+        if any("Ѐ" <= c <= "ӿ" for c in text): return "ru"
         return "en"
 
     async def classify(self, message: str, context: Optional[Dict] = None) -> IntentResult:

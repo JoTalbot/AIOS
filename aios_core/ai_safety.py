@@ -203,6 +203,7 @@ class AISafetyFramework:
             "average_safety_score": round(avg_score, 3),
             "layer_results": results,
             "incidents_this_check": len([r for r in results.values() if not r.get("safe", True)]),
+            "incidents": len([r for r in results.values() if not r.get("safe", True)]),
             "timestamp": time.time()
         }
 

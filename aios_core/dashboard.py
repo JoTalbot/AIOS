@@ -43,16 +43,19 @@ AIOS_SERVICES = [
 ]
 
 
+AIOS_HOME = os.environ.get("AIOS_HOME", str(Path.home() / ".aios"))
+
+
 class AIOSDashboard:
     """Full admin dashboard."""
 
     def __init__(self, orchestrator: Orchestrator):
         self.orch = orchestrator
         self.ads_db = os.environ.get(
-            "AIOS_OLX_HTTP_DB", "/root/AIOS/data/olx_http.sqlite"
+            "AIOS_OLX_HTTP_DB", os.path.join(AIOS_HOME, "data", "olx_http.sqlite")
         )
-        self.subs_db = "/root/AIOS/data/olx_subs.sqlite"
-        self.core_db = os.environ.get("AIOS_DB", "/root/AIOS/aios.sqlite")
+        self.subs_db = os.path.join(AIOS_HOME, "data", "olx_subs.sqlite")
+        self.core_db = os.environ.get("AIOS_DB", os.path.join(AIOS_HOME, "aios.sqlite"))
         self._started_monotonic = time.monotonic()
         self._custom_scenarios: dict[str, dict] = {}
         self._scheduler_lock = __import__("threading").Lock()
@@ -60,11 +63,11 @@ class AIOSDashboard:
         self._scheduler_stop = __import__("threading").Event()
         self._auto_study = AndroidAutoStudy()
         self._auto_study_lock = __import__("threading").Lock()
-        self._auto_study_history_path = Path("/root/AIOS/data/auto_study_history.json")
+        self._auto_study_history_path = Path(AIOS_HOME) / "data" / "auto_study_history.json"
         self._auto_study_history_path.parent.mkdir(parents=True, exist_ok=True)
-        self._model_state_path = Path("/root/AIOS/data/dashboard_model_stages.json")
-        self._backup_manager = BackupManager(db_path=self.core_db, backup_dir="/root/AIOS/backups")
-        self._control_token_path = Path("/root/AIOS/.dashboard_token")
+        self._model_state_path = Path(AIOS_HOME) / "data" / "dashboard_model_stages.json"
+        self._backup_manager = BackupManager(db_path=self.core_db, backup_dir=os.path.join(AIOS_HOME, "backups"))
+        self._control_token_path = Path(AIOS_HOME) / ".dashboard_token"
         self._control_token = os.environ.get("AIOS_DASH_TOKEN", "").strip()
         self.auto_study = AndroidAutoStudy()
         if not self._control_token:
@@ -555,7 +558,7 @@ class AIOSDashboard:
                     info["foreground"] = fore.strip() if rc == 0 else ""
                     devs.append(info)
             # Screenshot dir
-            shot_dir = Path("/root/AIOS/screenshots")
+            shot_dir = Path(AIOS_HOME) / "screenshots"
             shot_dir.mkdir(parents=True, exist_ok=True)
             return JSONResponse({"devices": devs, "count": len(devs)})
         except Exception as e:
@@ -569,7 +572,7 @@ class AIOSDashboard:
             return JSONResponse({"ok": False, "error": "no device"}, status_code=404)
         try:
             import base64
-            shot_dir = Path("/root/AIOS/screenshots")
+            shot_dir = Path(AIOS_HOME) / "screenshots"
             shot_dir.mkdir(parents=True, exist_ok=True)
             ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             fn = shot_dir / f"shot_{serial.replace(':','_')}_{ts}.png"
@@ -617,7 +620,7 @@ class AIOSDashboard:
                 # Use adb_type.py helper that base64-encodes (handles $, quotes, spaces)
                 import importlib.util
                 spec = importlib.util.spec_from_file_location(
-                    "adb_type", "/root/AIOS/adb_type.py")
+                    "adb_type", str(Path(__file__).resolve().parents[1] / "adb_type.py"))
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
                 ok = mod.type_text(serial, text)

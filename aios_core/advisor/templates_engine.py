@@ -228,7 +228,7 @@ class TemplateEngine:
         if intent:
             templates = [t for t in templates if t.intent == intent]
         if platform:
-            templates = [t for t in templates if t.platform in (None, platform)]
+            templates = [t for t in templates if t.platform == platform]
         if active_only:
             templates = [t for t in templates if t.is_active]
         
@@ -240,7 +240,7 @@ class TemplateEngine:
         
         missing = []
         for var in template.variables:
-            if var.required and var.name not in context:
+            if var.required and var.default is None and var.name not in context:
                 parts = var.name.split(".")
                 obj = context
                 found = True
@@ -275,15 +275,23 @@ class TemplateEngine:
         intent: str,
         platform: Optional[str] = None,
     ) -> Optional[Template]:
-        """Найти наиболее подходящий шаблон."""
-        templates = self.list_templates(intent=intent, platform=platform)
+        """Найти наиболее подходящий шаблон.
+
+        Приоритет: платформенный шаблон > универсальный (platform=None).
+        """
+        templates = self.list_templates(intent=intent)
         if not templates:
             return None
-        
-        platform_specific = [t for t in templates if t.platform == platform]
-        if platform_specific:
-            return platform_specific[0]
-        
+
+        if platform:
+            platform_specific = [t for t in templates if t.platform == platform]
+            if platform_specific:
+                return platform_specific[0]
+
+        universal = [t for t in templates if t.platform is None]
+        if universal:
+            return universal[0]
+
         return templates[0]
 
 
