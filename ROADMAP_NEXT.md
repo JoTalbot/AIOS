@@ -495,3 +495,16 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 - **Версии синхронизированы**: 11.2.0 во всех источниках (pyproject, `aios_core.__version__`, sdk, main.py, OpenAPI)
 - **Репо-гигиена**: ~75 архивных MD → `docs/releases|roadmaps|reports`, zip-артефакт удалён, `aios.egg-info` анtracked, CI-матрица 3.11–3.13
 - **Deprecations = 0**: все `datetime.utcnow` (включая SQLAlchemy `func.now()`), AsyncDatabase закрывается в тестах, перешли на `httpx2` (TestClient)
+
+## 2026-07-29 (вторая половина дня) — CI Resilience & Dependabot cleanup
+
+Доведены до зелёного все GitHub Actions (коммиты `6dfed7f`, `dae2a20`, `fc3ead9`, `3415c3d` + 15 squash-мержей dependabot):
+
+- **AIOS CI зелёный на раннерах**: тест `test_dashboard_html_file_exists` имел хардкод `/home/user/AIOS/...` → путь от корня репо
+- **Coverage workflow**: ставил только `-e .[dev]` (нет jinja2/numpy) → ставит полный `requirements.txt` + env как в CI
+- **Deploy workflow'ы больше не падают**: `deploy.yml` пропускается чек-джобом, если не заданы секреты (`DOCKERHUB_*`/`VPS_*`); `deploy-aws.yml` активируется переменной `AWS_ROLE_ARN` (был placeholder ARN)
+- **Full CI/CD**: black → ruff (канонический форматтер проекта), фикс `yes | sdkmanager` (SIGPIPE под pipefail)
+- **Дефлак тестов**: `test_config_manager` (изоляция от ambient `AIOS_*` env — CI выставляет `AIOS_FAST_TEST=1`), `test_response_size_impact` (warm-up + медиана), `test_qem_zne` (детерминированный seed + строгая граница 0.95–1.05)
+- **Dependabot**: все 15 PR влиты (полы зависимостей подняты до версий, на которых и так гоняются 3960+ тестов; actions/* актуализированы); PR #30 применён вручную из-за конфликта
+- **Convoy-стек kilo-code-bot**: PR #14 (behavioral-тесты feature_flags, 45 шт) влит на main напрямую (стек был настроен не на main, а на staging-ветку); #15–#17 уже на main в улучшенном виде после lint-фиксов
+- **requirements.txt**: убраны дубли (jinja2 ×2, websockets 12/16, pytest-asyncio 0.21/1.4)
