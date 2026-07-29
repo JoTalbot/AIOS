@@ -1,6 +1,4 @@
-from datetime import datetime
-
-from sqlalchemy import JSON, Column, DateTime, Integer, String
+from sqlalchemy import JSON, Column, DateTime, Integer, String, func
 
 from .base import Base
 
@@ -13,4 +11,4 @@ class Metric(Base):
     intent = Column(String, nullable=True)
     value = Column(Integer, default=1)
     metadata_json = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=func.now(), index=True)

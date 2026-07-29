@@ -1179,16 +1179,22 @@ class TestAsyncCore:
         from aios_core.async_core import AsyncDatabase
 
         db = AsyncDatabase()
-        stats = await db.stats()
-        assert isinstance(stats, dict)
+        try:
+            stats = await db.stats()
+            assert isinstance(stats, dict)
+        finally:
+            await db.close()
 
     @pytest.mark.anyio
     async def test_async_database_tables(self):
         from aios_core.async_core import AsyncDatabase
 
         db = AsyncDatabase()
-        tables = await db.tables()
-        assert isinstance(tables, list)
+        try:
+            tables = await db.tables()
+            assert isinstance(tables, list)
+        finally:
+            await db.close()
 
     @pytest.mark.anyio
     async def test_async_knowledge_graph(self):

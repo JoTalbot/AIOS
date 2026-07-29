@@ -1,6 +1,4 @@
-from datetime import datetime
-
-from sqlalchemy import Boolean, Column, DateTime, String
+from sqlalchemy import Boolean, Column, DateTime, String, func
 
 from aios_core.models.base import Base
 
@@ -12,7 +10,7 @@ class Workspace(Base):
     owner_id = Column(String, nullable=False)
     subscription_tier = Column(String, default="free")  # free, pro, enterprise
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=func.now())
 
 
 class Subscription(Base):

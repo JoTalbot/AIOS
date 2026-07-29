@@ -1,6 +1,4 @@
-from datetime import datetime
-
-from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -13,8 +11,8 @@ class Template(Base):
     content = Column(Text, nullable=False)
     intent = Column(String, nullable=False, index=True)
     platform = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     version = Column(Integer, default=1)
     is_active = Column(Boolean, default=True)
     variables = relationship("TemplateVariable", back_populates="template", cascade="all, delete-orphan")

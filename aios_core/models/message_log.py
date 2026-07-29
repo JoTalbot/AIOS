@@ -1,6 +1,4 @@
-from datetime import datetime
-
-from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, Text, func
 
 from .base import Base
 
@@ -20,5 +18,5 @@ class MessageLog(Base):
     draft_id = Column(String, nullable=True)
     template_used = Column(String, nullable=True)
     metadata_json = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=func.now(), index=True)
     processing_time = Column(Float, nullable=True)

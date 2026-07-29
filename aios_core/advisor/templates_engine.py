@@ -22,6 +22,11 @@ except ImportError:
     JINJA_AVAILABLE = False
 
 
+def _utc_now() -> datetime:
+    """Timezone-aware UTC now (dataclass defaults)."""
+    return datetime.now(UTC)
+
+
 @dataclass
 class TemplateVariable:
     """Описание переменной шаблона."""
@@ -43,8 +48,8 @@ class Template:
     intent: str  # Связанный intent (price_inquiry, delivery_question и т.д.)
     platform: str | None = None  # null = для всех платформ
     variables: list[TemplateVariable] = field(default_factory=list)
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=_utc_now)
+    updated_at: datetime = field(default_factory=_utc_now)
     version: int = 1
     is_active: bool = True
 

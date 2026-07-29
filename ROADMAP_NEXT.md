@@ -469,3 +469,29 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 10.9.0 | 2026-07-24 | 2302 | GraphTransformer + Neuromorphic + TypeTheory + AIGovernance + NeRF + K8s + ScoreBased + Topological + AIAlignment + BCI + Chaos + RAG + HierarchicalRL + Curriculum + ModelBasedRL + OpenAPI + VectorStore + NLP + Sustainability + AIAgent + AIResearcher + LiquidNN + NAS + Uncertainty + KAN + Performance + ABTesting + AIStartup + ContinuousLearning + AutonomousEvolution |
 | 10.10.0 | 2026-07-24 | 2302 | AIEngineer + AIPM + AIScientist + Benchmark + MLIntegration + Transformer + RetNet + RWKV + MoE + SpikingNN + Neuromorphic + TimeSeries + CategoryTheory + JWT + Simulation + WorldModel + EmbodiedAI + AuditEnhanced + Quantum + QML + QEC + QEM + QCrypto + QAdvantage + HybridQC + QOptimization + AGISafety + ConstitutionalAI + Deception + SafetyEvals |
 | 10.11.0 | 2026-07-24 | 2302 | 22 Safety (DictLearn+RecReward+Value+CausalInterp+HonestAI+SafetyInterp+Amplification+AdvInterp+W2S+Debate+FormalVerify+AdvGov+Honesty+MultiAgent+SAE+LongTerm+Bench+RedTeam+ScalableOversight+Sci+Dash+Monitor) + 10 Quantum (Chemistry+Gravity+NLP+Biology+Consciousness+RL+Vision+QAOAAdv+QMLAdv+Internet) |
+| 10.12.0 | 2026-07-24 | 2302 | 27 semi-stub модулей → полные реализации (multitenancy, blockchain, automl, load_testing, swarm, quantum, migration и др.) |
+| 10.13.0 | 2026-07-24 | 2740 | 442 выделенных теста + 238 auto-generated; фиксы blockchain nonce, sovereign_reflection |
+| 10.14.0 | 2026-07-24 | 2740 | 13 компактных модулей расширены; CI/CD pipeline; OpenAPI 3.0 генератор; code_quality; React dashboard v3; ruff lint start |
+| 10.15.0 | 2026-07-24 | 3015 | 216 behavioral тестов для 59 модулей; DTZ-fixes (55); BLE001/S110 noqa; ruff 2398→153 |
+| 10.16.0 | 2026-07-24 | >2700 | Core/Cloud: prod-grade расширения, P0-аудит закрыт, полный IaC (AWS) |
+| 10.17.0 | 2026-07-24 | >2700 | PQ-компрессия vector store (~75% памяти), семантический поиск в MemoryManager, EKS-мониторинг |
+| 10.18.0 | 2026-07-24 | >2700 | Нативные AsyncDatabase (aiosqlite/asyncpg), транслятор диалектов SQL, WASM sandbox, Federated Learning |
+| 10.20.0 | 2026-07-24 | >2700 | Computer Vision RPA (template matching + OCR), mobile RPA, планетарная координация |
+| 11.0.0 | 2026-07-25 | >2700 | Переход на gRPC microservices core, Quantum Error Mitigation, публичный Developer SDK |
+| 11.1.0 | 2026-07-25 | >2700 | Substrate Convergence AI Manager (Q-Learning), двунаправленный gRPC streaming, Quantum benchmarks |
+| 11.2.0 | 2026-07-25 | >2700 | Self-supervised Knowledge Distillation для edge, E2E-шифрование Data Lake, 3D-топология Swarm |
+
+---
+
+## 2026-07-29 — Health Check & Lint Sprint (без смены версии)
+
+Полная проверка здоровья репозитория (коммиты `b5a9509`, `5f9d791`, `4be5eac`, `e16161e`, `3e6ca30` + deprecation-патч):
+
+- **Тесты**: было ~934 ошибок сбора/падений → **3961 passed, 0 failed** (pytest -n auto)
+- **Module/package shadowing**: 8 пар `x.py` vs `x/` объединены (config, cache, websocket, ab_testing, compliance, graphql, performance, rag) — устранён критический `ImportError: AIOSConfig`
+- **Новый модуль**: `aios_core/rag/vector_store.py` — in-memory VectorStore (TF cosine)
+- **Баги**: webhooks router (starlette Routes), dashboard `AIOS_HOME` вместо `/root/AIOS`, planetary is_reachable deep-space семантика, изоляция метрик advisor, утечка env в secrets-тесте, f-string py3.12-синтаксис (2 файла), неимпортируемый main.py (star-import), дубль роута `/evolution/heal`, мёртвый `web_gui/main.py`, `seed_dashboard_data.py`, missing imports (grpc queue, batch tasks)
+- **Ruff**: 1084 ошибки → **0** (`ruff check .`, `ruff format --check .` — оба гейта зелёные, 909 автофиксов + ручная дочистка + глобальный reformat 710 файлов)
+- **Версии синхронизированы**: 11.2.0 во всех источниках (pyproject, `aios_core.__version__`, sdk, main.py, OpenAPI)
+- **Репо-гигиена**: ~75 архивных MD → `docs/releases|roadmaps|reports`, zip-артефакт удалён, `aios.egg-info` анtracked, CI-матрица 3.11–3.13
+- **Deprecations = 0**: все `datetime.utcnow` (включая SQLAlchemy `func.now()`), AsyncDatabase закрывается в тестах, перешли на `httpx2` (TestClient)
