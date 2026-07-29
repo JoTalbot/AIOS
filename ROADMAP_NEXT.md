@@ -1,5 +1,14 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.6.0 ✅ (2026-07-29)
+- ✅ Agent Memory Persistence — `snapshot()`/`restore()`/`save()` (атомарная запись tmp+rename)/`load()`; полная точность полей (confidence, decay, timestamps, access, priority, metadata), страховка id-счётчика от коллизий, версионный формат; сжатый индекс — перестраиваемое производное
+- ✅ Keyword Memory Search — `search(query, limit, pools)` (токен-скоринг, тай-брейк по strength, pool-фильтры incl. archive); UI: панель Recall Search на `/memory` (режимы keyword/compressed)
+- ✅ Lifecycle APIs — `GET /api/memory/recall`, `POST /api/memory/{consolidate,decay,compression/optimize-adaptive}` + панель Memory Lifecycle на дашборде
+- ✅ Bug fix: `decay()` возвращал число выживших вместо удалённых
+- ✅ 24 новых теста (memory_persistence 9 + memory_search 7 + memory_dashboard +8)
+
+**~4113 tests, 0 failures**
+
 ## v11.5.0 ✅ (2026-07-29)
 - ✅ Adaptive Compression Tuner — `AdaptiveTuner` (пробный прогон recall-рейтингов по кандидатным размерностям, выбор наименьшей dim с сохранением качества); `AgentMemorySystem.optimize_storage_adaptive()`, выбор персистится в `compression_stats()["adaptive"]`
 - ✅ Cold-Storage Memory Archive — `archive_dead(min_strength, min_age_days)` переводит деградировавшие записи в архив (вне recall и сжатого индекса); `archived()` / `archive_stats()` / `stats()["archive"]`; эндпоинты `GET /api/memory/archive`, `POST /api/memory/archive/run`
@@ -510,6 +519,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 11.3.0 | 2026-07-29 | ~3985 | Agent Memory Optimization (vector compression), живой Substrate Convergence dashboard, 100% зелёный CI |
 | 11.4.0 | 2026-07-29 | ~4066 | Memory Deduplication Engine, Energy-Aware Substrate Scheduler, живой Agent Memory dashboard, VPS emulator-скрипт починен |
 | 11.5.0 | 2026-07-29 | ~4089 | Adaptive Compression Tuner, cold-storage Memory Archive, Scheduler-панель в Substrate dashboard, эмуляторная цепочка CI зелёная end-to-end |
+| 11.6.0 | 2026-07-29 | ~4113 | Memory Persistence (snapshot/save/load), keyword search + recall API, lifecycle endpoints, decay counter fix |
 
 ---
 

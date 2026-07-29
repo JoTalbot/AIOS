@@ -84,13 +84,18 @@
         .group-card .sim { color: var(--dedup); float: right; font-family: 'Consolas', monospace; }
         .empty { color: #475569; font-style: italic; }
 
+        .lc-btn { background: var(--accent); color: #0f172a; border: none; border-radius: 6px; padding: 6px 18px; font-weight: 600; cursor: pointer; }
+        .lc-btn:hover { opacity: 0.85; }
+        .result-row { background: rgba(255,255,255,0.04); border-radius: 6px; padding: 8px 12px; margin-bottom: 8px; font-size: 0.88rem; font-family: 'Consolas', monospace; }
+        .result-row .score { color: var(--memory); float: right; }
+
         .live-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--success); margin-right: 8px; animation: pulse 2s infinite; }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
     </style>
 </head>
 <body>
     <header>
-        <h1>🧠 Agent Memory <span class="version">v11.5.0</span></h1>
+        <h1>🧠 Agent Memory <span class="version">v11.6.0</span></h1>
         <div class="timestamp"><span class="live-dot"></span>Live · <span id="last-update">—</span></div>
     </header>
 
@@ -122,6 +127,41 @@
         <div class="panel">
             <h2>Platform Distribution</h2>
             <div id="platform-bars"><div class="empty">No memories yet</div></div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="panel">
+            <h2>Recall Search</h2>
+            <div class="stat-group">
+                <div class="stat-row"><span class="stat-label">Query</span>
+                    <input id="search-q" placeholder="olx login success" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:60%;font-family:monospace"></div>
+                <div class="stat-row"><span class="stat-label">Mode / Top-K</span>
+                    <span>
+                        <select id="search-mode" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px;font-family:monospace">
+                            <option value="keyword">keyword</option>
+                            <option value="compressed">compressed</option>
+                        </select>
+                        <input id="search-k" type="number" value="5" min="1" max="50" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px;width:70px;font-family:monospace">
+                        <button onclick="runSearch()" style="background:var(--memory);color:#0f172a;border:none;border-radius:6px;padding:7px 16px;font-weight:600;cursor:pointer">Search</button>
+                    </span></div>
+            </div>
+            <div id="search-results" style="margin-top:10px"><div class="empty">GET /api/memory/recall — results appear here</div></div>
+        </div>
+
+        <div class="panel">
+            <h2>Memory Lifecycle</h2>
+            <div class="stat-group">
+                <div class="stat-row"><span class="stat-label">Consolidate ST/EP → LT</span>
+                    <button onclick="runLifecycle('/api/memory/consolidate', {})" class="lc-btn">Run</button></div>
+                <div class="stat-row"><span class="stat-label">Apply strength decay</span>
+                    <button onclick="runLifecycle('/api/memory/decay', {})" class="lc-btn">Run</button></div>
+                <div class="stat-row"><span class="stat-label">Adaptive compression</span>
+                    <button onclick="runLifecycle('/api/memory/compression/optimize-adaptive', {})" class="lc-btn">Run</button></div>
+                <div class="stat-row"><span class="stat-label">Archive dead memories</span>
+                    <button onclick="runLifecycle('/api/memory/archive/run', {})" class="lc-btn">Run</button></div>
+                <div style="color:#64748b;font-size:0.85rem;font-family:'Consolas',monospace" id="lifecycle-result">—</div>
+            </div>
         </div>
     </div>
 
@@ -182,10 +222,42 @@ async function refreshCompression() {
     const c = await fetchJSON('/api/memory/compression');
     if (!c || !c.entries_compressed) return;
     document.getElementById('cmp-entries').textContent = c.entries_compressed;
-    document.getElementById('cmp-dims').textContent = c.source_dim + 'd → ' + c.target_dim + 'd (uint8)';
+    const adaptive = c.adaptive && c.adaptive.selected_dim ? ' (adaptive)' : '';
+    document.getElementById('cmp-dims').textContent = c.source_dim + 'd → ' + c.target_dim + 'd uint8' + adaptive;
     document.getElementById('cmp-orig').textContent = fmtBytes(c.original_bytes);
     document.getElementById('cmp-bytes').textContent = fmtBytes(c.compressed_bytes);
     document.getElementById('cmp-ratio').textContent = c.ratio + '×';
+}
+
+async function runSearch() {
+    const q = document.getElementById('search-q').value.trim();
+    const mode = document.getElementById('search-mode').value;
+    const k = document.getElementById('search-k').value || 5;
+    const box = document.getElementById('search-results');
+    if (!q) { box.innerHTML = '<div class="empty">Enter a query</div>'; return; }
+    const data = await fetchJSON('/api/memory/recall?q=' + encodeURIComponent(q) + '&mode=' + mode + '&top_k=' + k);
+    if (!data || !data.results || data.results.length === 0) {
+        box.innerHTML = '<div class="empty">No memories matched</div>';
+        return;
+    }
+    box.innerHTML = data.results.map(e => `
+        <div class="result-row">
+            <span>★ ${e.memory_id} · ${e.platform}:${e.action} → ${e.result}</span>
+            <span class="score">${e.score !== undefined ? 'score ' + e.score : 'str ' + e.strength}</span>
+        </div>`).join('');
+}
+
+async function runLifecycle(url, payload) {
+    const out = document.getElementById('lifecycle-result');
+    out.textContent = 'running…';
+    try {
+        const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await r.json();
+        out.textContent = url.split('/').pop() + ' → ' + JSON.stringify(data).slice(0, 220);
+        refreshAll();
+    } catch (e) {
+        out.textContent = 'request failed';
+    }
 }
 
 async function refreshDuplicates() {
