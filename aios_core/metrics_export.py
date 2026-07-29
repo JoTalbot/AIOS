@@ -160,11 +160,35 @@ def _render_scheduler(lines: list[str], scheduler: Any) -> None:
         _sample(lines, "aios_scheduler_budget", budget["remaining"], {"field": "remaining"})
 
 
+def _render_slo(lines: list[str], alerts_report: Any) -> None:
+    """Health score + SLO alert gauges (v11.11.0)."""
+    score = alerts_report.get("score")
+    if score is not None:
+        _header(lines, "aios_health_score", "Aggregate system health score (0-100).", "gauge")
+        _sample(lines, "aios_health_score", score)
+
+    _header(lines, "aios_health_evaluated_components", "Health components with an available signal.", "gauge")
+    _sample(lines, "aios_health_evaluated_components", alerts_report.get("evaluated", 0))
+
+    _header(lines, "aios_slo_ok", "1 when no SLO threshold is violated.", "gauge")
+    _sample(lines, "aios_slo_ok", 1 if alerts_report.get("ok", True) else 0)
+
+    per_severity = {"warning": 0, "critical": 0}
+    for alert in alerts_report.get("alerts") or []:
+        severity = alert.get("severity")
+        if severity in per_severity:
+            per_severity[severity] += 1
+    _header(lines, "aios_slo_alerts", "Active SLO alerts by severity.", "gauge")
+    _sample(lines, "aios_slo_alerts", per_severity["warning"], {"severity": "warning"})
+    _sample(lines, "aios_slo_alerts", per_severity["critical"], {"severity": "critical"})
+
+
 def render_prometheus(
     *,
     memory_system: Any = None,
     engine: Any = None,
     scheduler: Any = None,
+    alerts_report: Any = None,
     version: Any = "unknown",
 ) -> str:
     """Render the Prometheus text exposition of the given live systems.
@@ -173,6 +197,8 @@ def render_prometheus(
         memory_system: ``AgentMemorySystem`` instance (memory gauges).
         engine: ``SubstrateConvergenceEngine`` instance (substrate series).
         scheduler: ``EnergyAwareScheduler`` instance (scheduler counters).
+        alerts_report: ``evaluate_health_alerts()`` report for the
+            health/SLO series (v11.11.0).
         version: build version exported in the ``aios_info`` label.
 
     Returns:
@@ -190,5 +216,7 @@ def render_prometheus(
         _render_engine(lines, engine)
     if scheduler is not None:
         _render_scheduler(lines, scheduler)
+    if alerts_report is not None:
+        _render_slo(lines, alerts_report)
 
     return "\n".join(lines) + "\n"

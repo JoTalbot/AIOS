@@ -1013,6 +1013,49 @@ class AgentMemorySystem:
             "last_report": dict(self._archive_report),
         }
 
+    def preview_archive_dead(
+        self,
+        min_strength: float = 0.05,
+        min_age_days: float = 1.0,
+    ) -> dict[str, Any]:
+        """Dry-run archive_dead() WITHOUT moving anything (v11.11.0).
+
+        Applies the exact same "dead" criterion (decayed strength below
+        ``min_strength`` AND age at least ``min_age_days``) and reports
+        what WOULD move to cold storage: ids, per-entry age/strength and
+        post-archival pool counts. Mirrors preview_dedup() (v11.10.0) so
+        lifecycle operations share one preview pattern.
+
+        Returns:
+            Preview dict: thresholds, would_archive, plans, counts_after.
+        """
+        if min_strength < 0:
+            raise ValueError("min_strength must be >= 0")
+        if min_age_days < 0:
+            raise ValueError("min_age_days must be >= 0")
+
+        dead = [e for e in self._long_term if e.strength < min_strength and e.age_days >= min_age_days]
+        return {
+            "dry_run": True,
+            "min_strength": min_strength,
+            "min_age_days": min_age_days,
+            "would_archive": len(dead),
+            "entries": [
+                {
+                    "memory_id": e.memory_id,
+                    "platform": e.platform,
+                    "action": e.action,
+                    "strength": round(e.strength, 4),
+                    "age_days": round(e.age_days, 2),
+                }
+                for e in dead
+            ],
+            "counts_after": {
+                "long_term": len(self._long_term) - len(dead),
+                "archive": len(self._archive) + len(dead),
+            },
+        }
+
     def archived(self, limit: int = 20) -> list[dict[str, Any]]:
         """Most recently archived entries (newest last), serialised."""
         return [e.to_dict() for e in self._archive[-max(0, limit) :]]

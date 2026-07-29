@@ -7,7 +7,9 @@ The SPA itself lives at dashboard/index.html and is served at '/'.
 from __future__ import annotations
 
 import contextlib
+import csv
 import hmac
+import io
 import json
 import os
 import platform
@@ -1918,6 +1920,28 @@ class AIOSDashboard:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(report)
 
+    async def api_memory_archive_preview(self, request: Request) -> JSONResponse:
+        """Dry-run archive_dead() WITHOUT moving anything (v11.11.0).
+
+        Optional JSON body: {"min_strength": 0.05, "min_age_days": 1.0}.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        try:
+            min_strength = float(body.get("min_strength", 0.05))
+            min_age_days = float(body.get("min_age_days", 1.0))
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "min_strength and min_age_days must be numbers"}, status_code=400)
+        try:
+            preview = _get_memory_system().preview_archive_dead(min_strength=min_strength, min_age_days=min_age_days)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(preview)
+
     # ------------------------------------------------------------------
     # Memory recall search + lifecycle (v11.6.0)
     # ------------------------------------------------------------------
@@ -2083,6 +2107,46 @@ class AIOSDashboard:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(report)
 
+    async def api_substrate_replay(self, request: Request) -> JSONResponse:
+        """Re-plan recorded dispatches against the CURRENT state (v11.11.0).
+
+        Body: JSON {"records": [...], "policy": optional} OR raw CSV text
+        in the /api/substrate/history/export format. Pure dry-run — this
+        is a routing-drift analysis, never an execution.
+        """
+        raw = await request.body()
+        records: Any = None
+        policy: str | None = None
+        try:
+            body = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            body = None
+
+        if isinstance(body, dict) and "records" in body:
+            records = body["records"]
+            policy = body.get("policy")
+            if policy is not None and not isinstance(policy, str):
+                return JSONResponse({"error": "policy must be a string"}, status_code=400)
+        else:
+            # CSV mode: optional ?policy= query parameter selects the policy.
+            query_policy = request.query_params.get("policy")
+            policy = query_policy or None
+            text = raw.decode("utf-8", errors="replace")
+            reader = csv.DictReader(io.StringIO(text))
+            required = {"task_id", "selected_substrate", "energy_cost"}
+            if not reader.fieldnames or not required.issubset(reader.fieldnames):
+                return JSONResponse(
+                    {"error": 'body must be JSON {"records": [...]} or CSV with columns ' + ",".join(sorted(required))},
+                    status_code=400,
+                )
+            records = list(reader)
+
+        try:
+            report = _get_energy_scheduler().replay(records, policy=policy)
+        except (ValueError, TypeError, AttributeError) as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(report)
+
     async def api_health_alerts(self, request: Request) -> JSONResponse:
         """SLO alerts derived from the aggregate health score (v11.10.0).
 
@@ -2134,14 +2198,22 @@ class AIOSDashboard:
         return JSONResponse(preview)
 
     async def api_metrics(self, request: Request) -> PlainTextResponse:
-        """Prometheus text exposition of the live AIOS state (v11.8.0)."""
+        """Prometheus text exposition of the live AIOS state (v11.8.0;
+        health/SLO series since v11.11.0)."""
         from . import __version__
         from .metrics_export import PROMETHEUS_MEDIA_TYPE, render_prometheus
+        from .slo_alerts import evaluate_health_alerts
 
+        alerts_report = evaluate_health_alerts(
+            memory_system=_get_memory_system(),
+            engine=_get_substrate_engine(),
+            scheduler=_get_energy_scheduler(),
+        )
         text = render_prometheus(
             memory_system=_get_memory_system(),
             engine=_get_substrate_engine(),
             scheduler=_get_energy_scheduler(),
+            alerts_report=alerts_report,
             version=__version__,
         )
         return PlainTextResponse(text, media_type=PROMETHEUS_MEDIA_TYPE)
@@ -2160,6 +2232,7 @@ class AIOSDashboard:
             Route("/api/substrate/scheduler", self.api_substrate_scheduler),
             Route("/api/substrate/analytics", self.api_substrate_analytics),
             Route("/api/substrate/forecast", self.api_substrate_forecast, methods=["POST"]),
+            Route("/api/substrate/replay", self.api_substrate_replay, methods=["POST"]),
             Route("/api/memory/stats", self.api_memory_stats),
             Route("/api/memory/patterns", self.api_memory_patterns),
             Route("/api/memory/compression", self.api_memory_compression),
@@ -2168,6 +2241,7 @@ class AIOSDashboard:
             Route("/api/memory/dedup/preview", self.api_memory_dedup_preview, methods=["POST"]),
             Route("/api/memory/archive", self.api_memory_archive),
             Route("/api/memory/archive/run", self.api_memory_archive_run, methods=["POST"]),
+            Route("/api/memory/archive/preview", self.api_memory_archive_preview, methods=["POST"]),
             Route("/api/memory/recall", self.api_memory_recall),
             Route("/api/memory/consolidate", self.api_memory_consolidate, methods=["POST"]),
             Route("/api/memory/decay", self.api_memory_decay, methods=["POST"]),
