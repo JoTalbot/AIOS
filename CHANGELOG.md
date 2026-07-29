@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.7.0] — 2026-07-29 — Scheduling Policies + AI-Manager Wiring + Dispatch Analytics
+
+### Added
+- **Scheduling policies** (`EnergyAwareScheduler`): `min_energy` (default,
+  previous behaviour), `min_latency`, `balanced` (weighted normalized
+  blend, `balanced_weights=(w_energy, w_latency)`) and `ai_optimized`.
+  Policy is selectable per scheduler, per `plan(task, policy=)` and per
+  `dispatch(task, policy=)`; dispatches record `scheduling_policy` and
+  `report()` gains `policy` + `policy_dispatches`. API: `POST
+  /api/substrate/schedule` accepts `"policy"` (unknown → 400).
+- **AI-manager wiring**: `ai_optimized` policy ranks candidates by the
+  Q-values the engine's `SubstrateAIManager` learns from real dispatch
+  outcomes (`update_q_value` already runs after every engine execution —
+  the learning loop is automatic). Cold Q-table falls back to min-energy
+  tie-break. Plans expose `ai_q_value` for the AI policy. This replaces
+  the engine's dead prediction hook (`pass`) with a controlled,
+  deterministic read path.
+- **Dispatch analytics**: `SubstrateConvergenceEngine.analytics(limit)` —
+  per-substrate dispatch counts, energy sums, average latency and energy
+  share %; `GET /api/substrate/analytics?limit=`; substrate dashboard
+  gains a Dispatch Analytics panel (per-substrate bars) and a policy
+  selector on the dry-run plan form.
+- **Tests**: 16 new — `test_scheduler_policies.py` (11),
+  `test_substrate_analytics.py` (5).
+
 ## [11.6.0] — 2026-07-29 — Memory Persistence + Recall Search + Lifecycle APIs
 
 ### Added

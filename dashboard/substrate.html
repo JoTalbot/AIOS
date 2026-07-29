@@ -132,7 +132,7 @@
 <body>
 
     <header>
-        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.6.0</span></h1>
+        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.7.0</span></h1>
         <div style="color: #94a3b8; font-size: 0.9rem;" id="live-indicator">Live Workload Router — data: /api/substrate/*</div>
     </header>
 
@@ -194,12 +194,24 @@
                     <input id="plan-category" value="general" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:150px;font-family:monospace"></div>
                 <div class="stat-row"><span class="stat-label">Compute Units</span>
                     <input id="plan-units" type="number" value="1" min="1" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:80px;font-family:monospace"></div>
+                <div class="stat-row"><span class="stat-label">Policy</span>
+                    <select id="plan-policy" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px;font-family:monospace">
+                        <option value="min_energy">min_energy</option>
+                        <option value="min_latency">min_latency</option>
+                        <option value="balanced">balanced</option>
+                        <option value="ai_optimized">ai_optimized</option>
+                    </select></div>
                 <div class="stat-row">
                     <button onclick="runPlan()" style="background:var(--accent);color:#0f172a;border:none;border-radius:6px;padding:8px 18px;font-weight:600;cursor:pointer">Plan</button>
                     <span id="plan-result" class="stat-value" style="font-size:0.95rem">—</span></div>
                 <div style="color:#64748b;font-size:0.85rem" id="plan-detail">POST /api/substrate/schedule — nothing is executed on dry-run.</div>
             </div>
         </div>
+    </div>
+
+    <div class="panel">
+        <h2>Dispatch Analytics</h2>
+        <div id="analytics-bars"><div style="color:#475569;font-style:italic">No dispatches yet</div></div>
     </div>
 
     <script>
@@ -272,13 +284,39 @@
                 rep.energy_budget ? rep.energy_budget.remaining + ' / ' + rep.energy_budget.limit : '—';
         }
 
+        function renderAnalytics(data) {
+            const box = document.getElementById('analytics-bars');
+            const per = data.per_substrate || {};
+            const entries = Object.entries(per);
+            if (!entries.length) {
+                box.innerHTML = '<div style="color:#475569;font-style:italic">No dispatches yet</div>';
+                return;
+            }
+            const maxDisp = Math.max(...entries.map(([, s]) => s.dispatches));
+            box.innerHTML = entries.sort((a, b) => b[1].dispatches - a[1].dispatches).map(([type, s]) => {
+                const m = meta(type);
+                const width = (100 * s.dispatches / maxDisp).toFixed(1);
+                return `
+                <div style="margin-bottom:12px">
+                    <div style="display:flex;justify-content:space-between;font-size:0.9rem;color:#94a3b8;margin-bottom:4px">
+                        <span style="color:${m.color}">${m.name}</span>
+                        <span>${s.dispatches} dispatches · ${s.energy_cost} Wh (${(data.energy_share_pct[type] ?? 0)}%) · avg ${s.avg_latency_ms}ms</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.08);border-radius:4px;height:10px;overflow:hidden">
+                        <div style="background:${m.color};height:100%;border-radius:4px;width:${width}%"></div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
         async function runPlan() {
             const category = document.getElementById('plan-category').value || 'general';
             const units = parseInt(document.getElementById('plan-units').value || '1', 10);
+            const policy = document.getElementById('plan-policy').value;
             const resp = await fetch('/api/substrate/schedule', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: 'ui-plan-' + Date.now(), category, compute_units: units }),
+                body: JSON.stringify({ id: 'ui-plan-' + Date.now(), category, compute_units: units, policy }),
             });
             const plan = await resp.json();
             const m = plan.selected_substrate ? meta(plan.selected_substrate) : null;
@@ -292,11 +330,12 @@
 
         async function refresh() {
             try {
-                const [stats, mesh, history, scheduler] = await Promise.all([
+                const [stats, mesh, history, scheduler, analytics] = await Promise.all([
                     fetch('/api/substrate/stats').then(r => r.json()),
                     fetch('/api/substrate/mesh').then(r => r.json()),
                     fetch('/api/substrate/history?limit=30').then(r => r.json()),
                     fetch('/api/substrate/scheduler').then(r => r.json()),
+                    fetch('/api/substrate/analytics').then(r => r.json()),
                 ]);
                 document.getElementById('val-dispatches').innerText = (stats.total_dispatches ?? 0).toLocaleString();
                 document.getElementById('val-queued').innerText = stats.queued_tasks ?? 0;
@@ -306,6 +345,7 @@
                 renderSubstrates(mesh.substrates || {});
                 renderHistory(history.history || []);
                 renderSchedulerReport(scheduler);
+                renderAnalytics(analytics);
                 document.getElementById('live-indicator').innerText = 'Live Workload Router — connected';
             } catch (err) {
                 document.getElementById('live-indicator').innerText = 'Live Workload Router — reconnecting…';
