@@ -1,5 +1,14 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.4.0 ✅ (2026-07-29)
+- ✅ Memory Deduplication Engine — `aios_core/memory_dedup.py`: near-duplicate кластеризация поверх сжатого индекса (union-find по косинусу ≥ порога, O(n²) на 80-байтовых векторах), интеграция `AgentMemorySystem.find_duplicates()` / `deduplicate()` / `dedup_stats()` (merge: сильнейшая запись — репрезентатив, поглощает access_count/confidence)
+- ✅ Energy-Aware Substrate Scheduler — `aios_core/substrate_energy_scheduler.py`: политика поверх `SubstrateConvergenceEngine` (min-energy выбор среди кандидатов, latency-бюджет, rolling energy budget, fallback на движок при нарушении ограничений, учёт экономии vs baseline); эндпоинт `POST /api/substrate/schedule` (dry-run план / execute)
+- ✅ Live Agent Memory Dashboard — страница `/memory` + `/api/memory/{stats,patterns,compression,duplicates}` на реальном `AgentMemorySystem` с демо-сидингом (поллинг 5 сек)
+- ✅ VPS fix: `setup/android-emulator-env.sh` переписан по урокам CI (system image реально ставится sdkmanager, cmdline-tools распаковываются корректно, `;`-ABI, append-only config.ini, pipefail-safe licenses, KVM best-effort)
+- ✅ 36 новых тестов (memory_dedup 12 + energy_scheduler 18 + memory_dashboard 6)
+
+**~4066 tests, 0 failures**
+
 ## v11.3.0 ✅ (2026-07-29)
 - ✅ Agent Memory Optimization (Vector compression) — `aios_core/memory_compression.py`: HashingVectorizer (512d) + VectorCompressor (JL-проекция 64d + uint8-квантование, ~51x экономия), интеграция `AgentMemorySystem.optimize_storage()` / `recall_compressed()` / `compression_stats()`
 - ✅ Substrate Convergence Dashboard UI — живой вместо мокового: роуты `/substrate` + `/api/substrate/{stats,mesh,energy,history}` на реальном `SubstrateConvergenceEngine`, `dashboard/substrate.html` читает API
@@ -489,6 +498,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 11.1.0 | 2026-07-25 | >2700 | Substrate Convergence AI Manager (Q-Learning), двунаправленный gRPC streaming, Quantum benchmarks |
 | 11.2.0 | 2026-07-25 | >2700 | Self-supervised Knowledge Distillation для edge, E2E-шифрование Data Lake, 3D-топология Swarm |
 | 11.3.0 | 2026-07-29 | ~3985 | Agent Memory Optimization (vector compression), живой Substrate Convergence dashboard, 100% зелёный CI |
+| 11.4.0 | 2026-07-29 | ~4066 | Memory Deduplication Engine, Energy-Aware Substrate Scheduler, живой Agent Memory dashboard, VPS emulator-скрипт починен |
 
 ---
 

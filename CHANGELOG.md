@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.4.0] — 2026-07-29 — Memory Deduplication + Energy-Aware Scheduling + Live Memory Dashboard
+
+### Added
+- **`aios_core/memory_dedup.py`** — Memory Deduplication Engine: near-duplicate
+  clustering on top of the compressed memory index (union-find over pairs with
+  cosine >= threshold, O(n²) over 80-byte vectors). `AgentMemorySystem` gains
+  `find_duplicates(threshold, pool)`, `deduplicate(threshold, pool)` and
+  `dedup_stats()`; `stats()` now exposes a `dedup` block. Merge policy: the
+  strongest entry is the representative and absorbs access counts / best
+  confidence of the merged members.
+- **`aios_core/substrate_energy_scheduler.py`** — Energy-Aware Substrate
+  Scheduler: policy layer over `SubstrateConvergenceEngine` picking the
+  minimum-energy substrate among latency/feasibility candidates, with a
+  `RollingEnergyBudget` (sliding window) and graceful fallback to engine
+  routing on constraint violations. Savings tracked per dispatch against the
+  engine's own baseline selection (`report()` → spent/saved/savings_pct).
+- **Dashboard**: `POST /api/substrate/schedule` — dry-run energy-aware plan
+  for a task JSON, or real dispatch with `"execute": true`.
+- **Live Agent Memory dashboard**: `GET /memory` page plus
+  `/api/memory/{stats,patterns,compression,duplicates}` served from a real
+  shared, demo-seeded `AgentMemorySystem`.
+- **Tests**: 36 new — `test_memory_dedup.py` (12),
+  `test_substrate_energy_scheduler.py` (18), `test_memory_dashboard.py` (6).
+
+### Fixed
+- **`setup/android-emulator-env.sh`** (VPS provisioning): the system image was
+  never installed (bare `mkdir` of its directory), cmdline-tools ZIP was
+  downloaded over the `sdkmanager` binary, ABI used the slash form, and
+  `config.ini` was overwritten (wiping `abi.type`). Rewritten per the CI
+  lessons: sdkmanager-driven installs, `;`-ABI (slash accepted and
+  normalized), append-only `config.ini`, pipefail-safe licenses, best-effort
+  KVM udev rule.
+
 ## [11.3.0] — 2026-07-29 — Agent Memory Optimization + Live Substrate Dashboard
 
 ### Added

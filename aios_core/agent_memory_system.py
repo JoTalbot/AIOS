@@ -164,6 +164,10 @@ class AgentMemorySystem:
         self._compressor: Any = None
         self._compression_report: dict[str, Any] = {}
 
+        # Deduplication state (Memory Deduplication Engine, v11.4.0)
+        self._dedup_report: dict[str, Any] = {}
+        self._dedup_removed_total: int = 0
+
     def _next_id(self) -> str:
         """Generate unique memory ID."""
         self._counter += 1
@@ -626,6 +630,119 @@ class AgentMemorySystem:
         """Last optimize_storage() report (empty dict if never run)."""
         return dict(self._compression_report)
 
+    # ------------------------------------------------------------------
+    # Deduplication (Memory Deduplication Engine, v11.4.0)
+    # ------------------------------------------------------------------
+
+    def _pool_entries(self, pool: str) -> list[MemoryEntry]:
+        """Entries covered by the compressed index for the given pool."""
+        if pool == "long_term":
+            return list(self._long_term)
+        if pool == "episodic":
+            return list(self._episodic)
+        return [*self._long_term, *self._episodic]
+
+    def _duplicate_groups(
+        self,
+        threshold: float,
+        pool: str,
+    ) -> tuple[list[Any], dict[str, MemoryEntry]]:
+        """Raw DuplicateGroups + id->entry map for the scanned pool."""
+        from .memory_dedup import MemoryDeduplicator
+
+        if not self._compressed:
+            self.optimize_storage()
+        if not self._compressed:
+            return [], {}
+
+        entries = self._pool_entries(pool)
+        by_id = {e.memory_id: e for e in entries}
+        vectors = {mid: self._compressed[mid] for mid in by_id if mid in self._compressed}
+        if len(vectors) < 2:
+            return [], by_id
+
+        score = {mid: by_id[mid].strength for mid in vectors}
+        deduplicator = MemoryDeduplicator(threshold=threshold)
+        groups = deduplicator.find_groups(vectors, self._compressor, score=score)
+        return groups, by_id
+
+    def find_duplicates(
+        self,
+        threshold: float = 0.92,
+        pool: str = "all",
+    ) -> list[dict[str, Any]]:
+        """Detect near-duplicate memories without modifying anything.
+
+        Similarity is measured in compressed space (the index built by
+        optimize_storage); pairs with cosine >= threshold are clustered.
+
+        Args:
+            threshold: cosine similarity threshold in (0.0, 1.0].
+            pool: "long_term", "episodic" or "all".
+
+        Returns:
+            Group dicts (representative_id, member_ids, avg_similarity),
+            sorted by group size (desc) then representative id.
+        """
+        groups, _ = self._duplicate_groups(threshold, pool)
+        return [g.to_dict() for g in groups]
+
+    def deduplicate(
+        self,
+        threshold: float = 0.92,
+        pool: str = "all",
+    ) -> dict[str, Any]:
+        """Merge near-duplicate memories into single representatives.
+
+        Merge policy: the strongest entry in each group survives; it
+        absorbs the access counts and best confidence of the merged
+        members, then the members are removed from the pools and from
+        the compressed index.
+
+        Returns:
+            Deduplication report (groups found, entries removed, etc.).
+        """
+        groups, by_id = self._duplicate_groups(threshold, pool)
+
+        removed_ids: set[str] = set()
+        merged: list[dict[str, Any]] = []
+        for group in groups:
+            rep = by_id.get(group.representative_id)
+            if rep is None:
+                continue
+            absorbed = [by_id[mid] for mid in group.absorbed_ids() if mid in by_id]
+            rep.access_count += sum(a.access_count for a in absorbed)
+            if absorbed:
+                rep.confidence = max(rep.confidence, *(a.confidence for a in absorbed))
+                rep.last_accessed = max(rep.last_accessed, *(a.last_accessed for a in absorbed))
+            removed_ids.update(a.memory_id for a in absorbed)
+            merged.append(group.to_dict())
+
+        if removed_ids:
+            self._long_term = [e for e in self._long_term if e.memory_id not in removed_ids]
+            self._episodic = [e for e in self._episodic if e.memory_id not in removed_ids]
+            for mid in removed_ids:
+                self._compressed.pop(mid, None)
+
+        self._dedup_removed_total += len(removed_ids)
+        self._dedup_report = {
+            "groups_found": len(merged),
+            "entries_removed": len(removed_ids),
+            "removed_ids": sorted(removed_ids),
+            "merged": merged,
+            "threshold": threshold,
+            "pool": pool,
+            "deduplicated_at": time.time(),
+        }
+        return dict(self._dedup_report)
+
+    def dedup_stats(self) -> dict[str, Any]:
+        """Deduplication summary: last report + lifetime removal count."""
+        return {
+            "removed_total": self._dedup_removed_total,
+            "last_report": dict(self._dedup_report),
+        }
+
     def stats(self) -> dict[str, Any]:
         """Memory system statistics.
 
@@ -656,4 +773,5 @@ class AgentMemorySystem:
             "platform_distribution": dict(platform_dist),
             "last_consolidation": self._last_consolidation,
             "compression": self.compression_stats(),
+            "dedup": self.dedup_stats(),
         }

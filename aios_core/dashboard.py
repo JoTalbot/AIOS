@@ -32,9 +32,14 @@ from .orchestrator import Orchestrator
 
 _DASHBOARD_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "index.html"
 _SUBSTRATE_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "substrate.html"
+_MEMORY_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "memory.html"
 
 # Shared Substrate Convergence engine for the live /substrate dashboard (v11.3.0)
 _substrate_engine: Any = None
+# Shared Agent Memory system for the live /memory dashboard (v11.4.0)
+_memory_system: Any = None
+# Shared energy-aware scheduler wrapper for /api/substrate/schedule (v11.4.0)
+_energy_scheduler: Any = None
 
 
 def _get_substrate_engine():
@@ -46,6 +51,61 @@ def _get_substrate_engine():
 
         _substrate_engine = SubstrateConvergenceEngine()
     return _substrate_engine
+
+
+def _get_memory_system():
+    """Lazy-singleton AgentMemorySystem, seeded once with demo entries so
+    the live /memory dashboard renders real data on first open."""
+    global _memory_system
+    if _memory_system is None:
+        from .agent_memory_system import AgentMemorySystem, MemoryType
+
+        system = AgentMemorySystem()
+        # Long-term knowledge (includes a near-duplicate pair so the
+        # duplicates panel demonstrates real detection).
+        system.record(
+            "olx",
+            "login",
+            "success",
+            memory_type=MemoryType.LONG_TERM,
+            context={"params": {"proxy": "resi-1", "delay_s": 5}},
+        )
+        system.record(
+            "olx",
+            "login",
+            "success",
+            memory_type=MemoryType.LONG_TERM,
+            context={"params": {"proxy": "resi-1", "delay_s": 5}},
+        )
+        system.record(
+            "rozetka", "collect", "success", memory_type=MemoryType.LONG_TERM, context={"params": {"batch": 50}}
+        )
+        # Episodic successes (>= 3 per group so a SuccessPattern emerges).
+        for i in range(4):
+            system.record(
+                "olx",
+                "collect",
+                "success",
+                memory_type=MemoryType.EPISODIC,
+                context={"items": 40 + i, "latency_ms": 1200 + i * 100, "params": {"pages": 2}},
+            )
+        system.extract_patterns()
+        system.optimize_storage()
+        _memory_system = system
+    return _memory_system
+
+
+def _get_energy_scheduler():
+    """Lazy-singleton EnergyAwareScheduler over the substrate engine."""
+    global _energy_scheduler
+    if _energy_scheduler is None:
+        from .substrate_energy_scheduler import EnergyAwareScheduler, RollingEnergyBudget
+
+        _energy_scheduler = EnergyAwareScheduler(
+            _get_substrate_engine(),
+            energy_budget=RollingEnergyBudget(limit=100.0, window_seconds=3600.0),
+        )
+    return _energy_scheduler
 
 
 # Systemd services we manage
@@ -1676,14 +1736,73 @@ class AIOSDashboard:
         limit = max(1, min(limit, 200))
         return JSONResponse({"history": engine.dispatch_history[-limit:]})
 
+    async def api_substrate_schedule(self, request: Request) -> JSONResponse:
+        """Energy-aware routing plan for a task (v11.4.0).
+
+        POST body: task JSON ({"id", "category", "compute_units", ...}).
+        Default is a dry-run plan; pass "execute": true to actually
+        dispatch through the energy-aware policy.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+
+        scheduler = _get_energy_scheduler()
+        task = {k: v for k, v in body.items() if k != "execute"}
+        if body.get("execute"):
+            return JSONResponse(scheduler.dispatch(task))
+        plan = scheduler.plan(task)
+        plan["scheduler_report"] = scheduler.report()
+        return JSONResponse(plan)
+
+    # ------------------------------------------------------------------
+    # Agent Memory dashboard (live, v11.4.0)
+    # ------------------------------------------------------------------
+
+    async def memory(self, request: Request) -> HTMLResponse:
+        if _MEMORY_HTML_PATH.exists():
+            return HTMLResponse(_MEMORY_HTML_PATH.read_text(encoding="utf-8"))
+        return HTMLResponse("<h1>Memory dashboard missing</h1>", status_code=500)
+
+    async def api_memory_stats(self, request: Request) -> JSONResponse:
+        """Memory pool counters, strengths, platform distribution, dedup."""
+        return JSONResponse(_get_memory_system().stats())
+
+    async def api_memory_patterns(self, request: Request) -> JSONResponse:
+        """Extracted success patterns (real SuccessPattern objects)."""
+        patterns = _get_memory_system().extract_patterns()
+        return JSONResponse({"patterns": [p.to_dict() for p in patterns]})
+
+    async def api_memory_compression(self, request: Request) -> JSONResponse:
+        """Vector-compression report from the memory index."""
+        return JSONResponse(_get_memory_system().compression_stats())
+
+    async def api_memory_duplicates(self, request: Request) -> JSONResponse:
+        """Near-duplicate groups detected in the compressed index."""
+        try:
+            threshold = float(request.query_params.get("threshold", "0.92"))
+        except ValueError:
+            threshold = 0.92
+        threshold = min(1.0, max(0.01, threshold))
+        return JSONResponse({"threshold": threshold, "groups": _get_memory_system().find_duplicates(threshold)})
+
     def create_app(self) -> Starlette:
         routes = [
             Route("/", self.index),
             Route("/substrate", self.substrate),
+            Route("/memory", self.memory),
             Route("/api/substrate/stats", self.api_substrate_stats),
             Route("/api/substrate/mesh", self.api_substrate_mesh),
             Route("/api/substrate/energy", self.api_substrate_energy),
             Route("/api/substrate/history", self.api_substrate_history),
+            Route("/api/substrate/schedule", self.api_substrate_schedule, methods=["POST"]),
+            Route("/api/memory/stats", self.api_memory_stats),
+            Route("/api/memory/patterns", self.api_memory_patterns),
+            Route("/api/memory/compression", self.api_memory_compression),
+            Route("/api/memory/duplicates", self.api_memory_duplicates),
             Route("/api/stats", self.api_stats),
             Route("/health", self.api_health),
             Route("/api/health", self.api_health),
