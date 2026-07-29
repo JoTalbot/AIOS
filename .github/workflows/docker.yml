@@ -72,10 +72,15 @@ jobs:
     needs: build-and-push
     if: github.event_name != 'pull_request'
     steps:
+      - name: Lowercase image name
+        id: img
+        run: echo "name=$(echo '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: Run Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          # OCI references must be lowercase; github.repository keeps the display case
+          image-ref: ${{ steps.img.outputs.name }}:latest
           format: 'sarif'
           output: 'trivy-results.sarif'
 
