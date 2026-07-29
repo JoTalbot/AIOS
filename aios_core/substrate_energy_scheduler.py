@@ -19,7 +19,9 @@ router?".
 
 from __future__ import annotations
 
+import json
 import time
+from pathlib import Path
 from typing import Any
 
 __all__ = ["SCHEDULING_POLICIES", "EnergyAwareScheduler", "RollingEnergyBudget"]
@@ -29,6 +31,43 @@ _MIN_HEALTH = 0.5
 
 #: Supported scheduling policies for plan()/dispatch().
 SCHEDULING_POLICIES = ("min_energy", "min_latency", "balanced", "ai_optimized")
+
+#: On-disk format tag for persisted rolling-budget configuration (v11.13.0).
+BUDGET_FILE_FORMAT = 1
+
+
+def load_energy_budget(path: str | Path) -> RollingEnergyBudget | None:
+    """Load a persisted rolling energy budget (v11.13.0).
+
+    Args:
+        path: JSON file written by ``EnergyAwareScheduler.save_budget()``.
+
+    Returns:
+        A fresh ``RollingEnergyBudget`` (spend ledger starts empty —
+        only the configuration is persisted), or ``None`` when the file
+        does not exist.
+
+    Raises:
+        ValueError: file exists but is malformed or holds invalid values.
+    """
+    target = Path(path)
+    if not target.exists():
+        return None
+    try:
+        data = json.loads(target.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise ValueError(f"budget file {target} is not valid JSON") from None
+    if not isinstance(data, dict) or data.get("format") != BUDGET_FILE_FORMAT:
+        raise ValueError(f"budget file {target} has an unsupported format")
+    try:
+        limit_value = float(data["limit"])
+        window_value = float(data["window_seconds"])
+    except KeyError as exc:
+        raise ValueError(f"budget file {target} is missing key {exc}") from None
+    except (TypeError, ValueError):
+        raise ValueError(f"budget file {target} holds non-numeric values") from None
+    # Constructor re-validates positivity -> ValueError with a clear message.
+    return RollingEnergyBudget(limit=limit_value, window_seconds=window_value)
 
 
 class RollingEnergyBudget:
@@ -578,3 +617,81 @@ class EnergyAwareScheduler:
             "latency_budget_ms": self.latency_budget_ms,
             "energy_budget": self.energy_budget.to_dict() if self.energy_budget else None,
         }
+
+    # ------------------------------------------------------------------
+    # Runtime budget reconfiguration + persistence (v11.13.0)
+    # ------------------------------------------------------------------
+
+    def configure_budget(self, limit: float, window_seconds: float | None = None) -> dict[str, Any]:
+        """Replace the rolling energy budget while the scheduler is live.
+
+        Spends still inside the NEW window are carried into the new
+        budget, so reconfiguring can never silently reset the window
+        accounting (a shorter window naturally expires old spends on the
+        next prune).
+
+        Args:
+            limit: new budget limit in cost units (must be positive).
+            window_seconds: new window (default: keep the current one,
+                or 3600 when no budget was configured).
+
+        Returns:
+            Report dict with the old/new budget state and how many
+            spends were carried over.
+        """
+        try:
+            limit_value = float(limit)
+        except (TypeError, ValueError):
+            raise ValueError("budget limit must be a number") from None
+        if limit_value <= 0:
+            raise ValueError("budget limit must be positive")
+        if window_seconds is None:
+            window_value = self.energy_budget.window_seconds if self.energy_budget else 3600.0
+        else:
+            try:
+                window_value = float(window_seconds)
+            except (TypeError, ValueError):
+                raise ValueError("window_seconds must be a number") from None
+            if window_value <= 0:
+                raise ValueError("window_seconds must be positive")
+
+        old_state = self.energy_budget.to_dict() if self.energy_budget else None
+        new_budget = RollingEnergyBudget(limit=limit_value, window_seconds=window_value)
+        carried = 0
+        carried_cost = 0.0
+        if self.energy_budget is not None:
+            cutoff = time.time() - window_value
+            for ts, cost in self.energy_budget._spends:
+                if ts >= cutoff:
+                    new_budget._spends.append((ts, cost))
+                    carried += 1
+                    carried_cost += cost
+        self.energy_budget = new_budget
+        return {
+            "old": old_state,
+            "new": new_budget.to_dict(),
+            "carried_spends": carried,
+            "carried_cost": round(carried_cost, 6),
+        }
+
+    def save_budget(self, path: str | Path) -> dict[str, Any]:
+        """Persist the rolling-budget configuration as JSON (v11.13.0).
+
+        Only the configuration (limit/window) is written — the live
+        spend ledger stays in memory. Load with load_energy_budget().
+
+        Raises:
+            ValueError: scheduler has no energy budget configured.
+        """
+        if self.energy_budget is None:
+            raise ValueError("scheduler has no energy budget configured")
+        payload = {
+            "format": BUDGET_FILE_FORMAT,
+            "limit": self.energy_budget.limit,
+            "window_seconds": self.energy_budget.window_seconds,
+            "saved_at": time.time(),
+        }
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        return payload

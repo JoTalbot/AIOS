@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.13.0] — 2026-07-30 — History Retention + Budget Persistence + Policy Projection Metrics
+
+### Added
+- **Dispatch-history retention management**
+  (`SubstrateConvergenceEngine.preview_purge_history` /
+  `purge_history(keep_last, older_than_seconds)`): a record survives when
+  it is within the newest `keep_last` entries OR newer than the age
+  cutoff — the preview dry-runs the exact mutator criteria (`dry_run`,
+  `would_remove/would_remain`, protected count, cutoff and oldest
+  survivor timestamps). APIs: `POST /api/substrate/history/preview`
+  (read-only) and guarded `POST /api/substrate/history/purge` requiring
+  `{"confirm": true}` (400 otherwise, pointing at the preview). History
+  Retention panel with Preview + red Purge buttons.
+- **Runtime energy-budget reconfiguration + persistence**
+  (`EnergyAwareScheduler.configure_budget(limit, window_seconds=None)`):
+  replaces the rolling budget while live; spends still inside the new
+  window are carried over so reconfiguring can never silently reset
+  window accounting. `save_budget(path)` persists limit/window as tagged
+  JSON (`format: 1`), `load_energy_budget(path)` restores it (None for a
+  missing file, ValueError for malformed/invalid/negative data). API:
+  `POST /api/substrate/budget` — applies and persists to
+  `~/.aios/energy_budget.json`; the dashboard seeds the scheduler from
+  it on start, tolerant fall-back to the built-in default. Energy Budget
+  panel shows limit/window/spent/remaining live with an Apply form.
+- **Policy-projection Prometheus series**: `render_prometheus(...,
+  policy_projection_records=N)` rebuilds the newest N dispatch records
+  (clamped to 500) into tasks — same energy→units rule as the replay —
+  and serves the v11.12 A/B compare matrix continuously:
+  `aios_policy_projection_tasks`, `aios_policy_projection_energy{policy}`,
+  `aios_policy_projection_delta_vs_reference{policy}` and
+  `aios_policy_projection_recommended{policy}` (exactly one 1). Default
+  0 keeps the exposition unchanged; `GET /api/metrics` enables it with
+  the newest 100 records. Unknown substrates fall back to 1 compute
+  unit; empty history omits the block entirely.
+- **Tests**: 29 new — `test_history_purge.py` (13),
+  `test_budget_config.py` (10), `test_metrics_projection.py` (6).
+
 ## [11.12.0] — 2026-07-29 — Policy Compare Matrix + Dedup Merge API + Snapshot Diff
 
 ### Added

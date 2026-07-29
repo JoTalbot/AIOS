@@ -1,5 +1,13 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.13.0 ✅ (2026-07-30)
+- ✅ History Retention — `preview_purge_history()/purge_history(keep_last, older_than_seconds)`: выживает запись из свежих N ИЛИ новее cutoff; preview dry-runит точные критерии мутатора (would_remove/would_remain, защищённые, cutoff, старейший выживший); `POST /api/substrate/history/preview` (read-only) + охраняемый `POST /api/substrate/history/purge` с `{"confirm": true}`; панель History Retention (Preview + красная Purge)
+- ✅ Budget Reconfigure + Persistence — `configure_budget(limit, window_seconds)`: замена rolling-бюджета на живую с переносом трат, попадающих в новое окно (accounting не сбрасывается тихо); `save_budget()/load_energy_budget()` (format-тег 1, None для отсутствующего файла, ValueError для битого); `POST /api/substrate/budget` применяет и персистит в `~/.aios/energy_budget.json`, дашборд сидит планировщик из файла при старте; панель Energy Budget с live-состоянием и формой Apply
+- ✅ Policy Projection Metrics — `render_prometheus(..., policy_projection_records=N)`: новейшие N записей истории (≤500) пересобираются в задачи (правило energy→units из replay) и A/B-матрица v11.12 отдаётся непрерывно: `aios_policy_projection_tasks/energy/delta_vs_reference/recommended{policy}`; `GET /api/metrics` включает блок по 100 записям; пустая история → блок отсутствует
+- ✅ 29 новых тестов (history_purge 13 + budget_config 10 + metrics_projection 6)
+
+**~4284 tests, 0 failures**
+
 ## v11.12.0 ✅ (2026-07-29)
 - ✅ Policy Compare Matrix — `compare_policies(tasks)`: dry-run матрица одного батча под всеми политиками (энергия, affordable, выборы по задачам, Δ vs reference); `recommended_policy` тай-брейкит в reference («переключайся только за измеримый выигрыш»); `POST /api/substrate/compare` + кнопка Compare A/B
 - ✅ Dedup Merge API — `POST /api/memory/dedup/run` с обязательным `{"confirm": true}` (400 + указание на preview); кнопка Merge на панели дубликатов — цепочка Tune → Preview → **Merge** завершена end-to-end
@@ -573,6 +581,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 11.9.0 | 2026-07-29 | ~4183 | Dedup threshold auto-tuner (+apply, persist), history CSV export, aggregate health score API + панель |
 | 11.10.0 | 2026-07-29 | ~4209 | Dedup merge preview (dry-run) API, windowed scheduler report, SLO alerts на health score |
 | 11.11.0 | 2026-07-29 | ~4233 | Replay drift analysis (CSV/JSON), archive dry-run preview, health/SLO series в Prometheus |
+| 11.13.0 | 2026-07-30 | ~4284 | History retention preview+guarded purge, budget reconfigure+persistence, policy-projection metrics |
 | 11.12.0 | 2026-07-29 | ~4255 | Policy compare matrix (A/B), guarded dedup merge API + UI, snapshot diff live-vs-file |
 
 ---
