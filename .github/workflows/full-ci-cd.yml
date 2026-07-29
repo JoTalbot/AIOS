@@ -27,7 +27,7 @@ env:
   ANDROID_SDK_ROOT: /opt/android-sdk
   AVD_NAME: AIOS_Calibration
   API_LEVEL: "35"
-  ABI: google_apis/x86_64
+  ABI: google_apis;x86_64
   EMULATOR_OPTS: "-no-snapshot-load -no-audio -no-boot-anim -gpu swiftshader_indirect -no-window"
   PYTHON_VERSION: "3.12"
 
@@ -398,17 +398,19 @@ jobs:
             --output simulation_report.json
 
       - name: Verify GA criteria
+        # Report schema from ProductionAutopilot.simulate_2_weeks():
+        # all GA fields live under the top-level "simulation" object.
         run: |
           python -c "
           import json
           with open('simulation_report.json') as f:
-            r = json.load(f)
+            r = json.load(f)['simulation']
           assert r['ban_free'] == True, 'Bans detected!'
-          assert r['ga_met'] == True, 'GA not met'
+          assert r['ga_criteria_met'] == True, 'GA not met'
           assert r['avg_success_rate'] > 0.9, f'Success rate too low: {r[\"avg_success_rate\"]}'
           assert r['profiles'] >= 3, 'Need 3+ profiles'
           print('✅ GA criteria met: ban-free, success >90%, 3+ profiles')
-          print(f'   Cycles: {r[\"cycles\"]}, Actions: {r[\"actions\"]}, Avg success: {r[\"avg_success_rate\"]:.1%}')
+          print(f'   Cycles: {r[\"total_cycles\"]}, Actions: {r[\"total_actions\"]}, Avg success: {r[\"avg_success_rate\"]:.1%}')
           "
 
       - name: Upload simulation report
@@ -421,12 +423,31 @@ jobs:
   # ---------------------------------------------------------
   # 6. Deploy to Production Server
   # ---------------------------------------------------------
+  check-deploy-secrets:
+    name: Check deploy secrets
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - name: Verify SSH secrets exist
+        id: check
+        env:
+          SEC_SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SEC_SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$SEC_SSH_PRIVATE_KEY" ] || [ -z "$SEC_SSH_KNOWN_HOSTS" ]; then
+            echo "SSH deploy secrets not configured — production deploy will be skipped."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy:
     name: Deploy to Production Server
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [integration-tests, production-simulation]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.deploy == 'true'
+    needs: [integration-tests, production-simulation, check-deploy-secrets]
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event.inputs.deploy == 'true') && needs.check-deploy-secrets.outputs.configured == 'true'
     environment: production
     steps:
       - name: Checkout
