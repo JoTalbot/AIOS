@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.3.0] — 2026-07-29 — Agent Memory Optimization + Live Substrate Dashboard
+
+### Added
+- **`aios_core/memory_compression.py`** — Agent Memory Optimization (vector compression):
+  `HashingVectorizer` (deterministic signed-hashing, 512d) + `VectorCompressor`
+  (Johnson–Lindenstrauss ±1 projection to 64d + per-vector affine uint8 quantisation).
+  ~51× byte savings (4096 B → 80 B per vector) with top-1 recall preserved.
+- **AgentMemorySystem**: `optimize_storage(target_dim=64)`, `recall_compressed(query, top_k)`,
+  `compression_stats()`; `stats()` now exposes a `compression` block.
+- **Live Substrate Convergence dashboard**: `GET /substrate` page plus
+  `/api/substrate/{stats,mesh,energy,history}` served from a real shared
+  `SubstrateConvergenceEngine` (replaces the self-animating mock page).
+- **Tests**: 24 new — `test_memory_compression.py` (18), `test_substrate_dashboard.py` (6).
+
+### CI/Infra (same release window)
+- 100% green GitHub Actions board: coverage workflow dep install, Trivy GHCR
+  lowercase ref + `security-events: write`, deploy workflows auto-skip without
+  secrets, Full CI/CD KVM enable + AVD config append + `ANDROID_HOME` pin,
+  emulator calibration chain moved to manual `workflow_dispatch`.
+- Repo hygiene: stale `gt/*`/`convoy/*` bot branches removed,
+  `delete_branch_on_merge` enabled.
+
+## [9.3.1] — 2026-07-23 — Code Quality & Documentation Sprint
+
 ## [9.3.1] — 2026-07-23 — Code Quality & Documentation Sprint
 
 ### Stats

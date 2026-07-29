@@ -18,6 +18,7 @@ import subprocess
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -30,6 +31,22 @@ from .backup_manager import BackupManager
 from .orchestrator import Orchestrator
 
 _DASHBOARD_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "index.html"
+_SUBSTRATE_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "substrate.html"
+
+# Shared Substrate Convergence engine for the live /substrate dashboard (v11.3.0)
+_substrate_engine: Any = None
+
+
+def _get_substrate_engine():
+    """Lazy-singleton SubstrateConvergenceEngine (lazy import keeps the
+    dashboard importable in minimal installs)."""
+    global _substrate_engine
+    if _substrate_engine is None:
+        from .substrate_convergence import SubstrateConvergenceEngine
+
+        _substrate_engine = SubstrateConvergenceEngine()
+    return _substrate_engine
+
 
 # Systemd services we manage
 AIOS_SERVICES = [
@@ -1630,9 +1647,43 @@ class AIOSDashboard:
         finally:
             await ws.close()
 
+    async def substrate(self, request: Request) -> HTMLResponse:
+        """Live Substrate Convergence dashboard page."""
+        if _SUBSTRATE_HTML_PATH.exists():
+            return HTMLResponse(_SUBSTRATE_HTML_PATH.read_text(encoding="utf-8"))
+        return HTMLResponse("<h1>Substrate dashboard missing</h1>", status_code=500)
+
+    async def api_substrate_stats(self, request: Request) -> JSONResponse:
+        """Engine-level counters: dispatches, queue, energy, failovers."""
+        return JSONResponse(_get_substrate_engine().stats())
+
+    async def api_substrate_mesh(self, request: Request) -> JSONResponse:
+        """Per-substrate live state (latency, efficiency, health, load)."""
+        engine = _get_substrate_engine()
+        return JSONResponse({"substrates": {k: dict(v) for k, v in engine.substrates.items()}})
+
+    async def api_substrate_energy(self, request: Request) -> JSONResponse:
+        """Energy accounting per substrate + efficiency ranking."""
+        return JSONResponse(_get_substrate_engine().get_energy_report())
+
+    async def api_substrate_history(self, request: Request) -> JSONResponse:
+        """Recent dispatch records (real routing decisions, newest last)."""
+        engine = _get_substrate_engine()
+        try:
+            limit = int(request.query_params.get("limit", "20"))
+        except ValueError:
+            limit = 20
+        limit = max(1, min(limit, 200))
+        return JSONResponse({"history": engine.dispatch_history[-limit:]})
+
     def create_app(self) -> Starlette:
         routes = [
             Route("/", self.index),
+            Route("/substrate", self.substrate),
+            Route("/api/substrate/stats", self.api_substrate_stats),
+            Route("/api/substrate/mesh", self.api_substrate_mesh),
+            Route("/api/substrate/energy", self.api_substrate_energy),
+            Route("/api/substrate/history", self.api_substrate_history),
             Route("/api/stats", self.api_stats),
             Route("/health", self.api_health),
             Route("/api/health", self.api_health),

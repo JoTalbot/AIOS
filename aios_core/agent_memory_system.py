@@ -158,6 +158,12 @@ class AgentMemorySystem:
         self._last_consolidation: float = time.time()
         self._counter: int = 0
 
+        # Vector compression state (Agent Memory Optimization, v11.3.0)
+        self._compressed: dict[str, Any] = {}  # memory_id -> CompressedVector
+        self._vectorizer: Any = None
+        self._compressor: Any = None
+        self._compression_report: dict[str, Any] = {}
+
     def _next_id(self) -> str:
         """Generate unique memory ID."""
         self._counter += 1
@@ -522,6 +528,104 @@ class AgentMemorySystem:
         self._short_term.clear()
         return count
 
+    # ── Agent Memory Optimization (vector compression, v11.3.0) ─────────
+
+    def _ensure_compressor(self, target_dim: int = 64) -> None:
+        """Lazily build text vectoriser + compressor (import guarded)."""
+        if self._vectorizer is not None and self._compressor is not None:
+            return
+        try:
+            from aios_core.memory_compression import HashingVectorizer, VectorCompressor
+        except ImportError as exc:  # pragma: no cover - numpy is a hard dep
+            raise RuntimeError("Vector compression requires aios_core.memory_compression (numpy)") from exc
+        self._vectorizer = HashingVectorizer(dim=512)
+        self._compressor = VectorCompressor(target_dim=target_dim)
+        # fit immediately on the vectoriser width
+        self._compressor.fit(self._vectorizer.dim)
+
+    def _entry_text(self, entry: MemoryEntry) -> str:
+        """Flatten a memory entry into a vectorisable text."""
+        import json as _json
+
+        try:
+            ctx = _json.dumps(entry.context, sort_keys=True, ensure_ascii=False)
+        except Exception:
+            ctx = str(entry.context)
+        return f"{entry.platform} {entry.action} {entry.result} {ctx}"
+
+    def optimize_storage(self, target_dim: int = 64) -> dict[str, Any]:
+        """Compress long-term + episodic memory contexts into uint8 vectors.
+
+        Keeps raw entries untouched (compressed vectors are an index for
+        fast similarity recall), replaces previous index on each call.
+
+        Returns:
+            Compression report with byte savings.
+        """
+        self._ensure_compressor(target_dim)
+        self._compressed.clear()
+
+        entries = [*self._long_term, *self._episodic]
+        for entry in entries:
+            vec = self._vectorizer.vectorize(self._entry_text(entry))
+            self._compressed[entry.memory_id] = self._compressor.compress(vec)
+
+        original_bytes = len(entries) * self._vectorizer.dim * 8
+        compressed_bytes = sum(cv.byte_size() for cv in self._compressed.values())
+        self._compression_report = {
+            "entries_compressed": len(entries),
+            "source_dim": self._vectorizer.dim,
+            "target_dim": target_dim,
+            "original_bytes": original_bytes,
+            "compressed_bytes": compressed_bytes,
+            "ratio": round(original_bytes / compressed_bytes, 2) if compressed_bytes else 0.0,
+            "compressed_at": time.time(),
+        }
+        return dict(self._compression_report)
+
+    def recall_compressed(
+        self,
+        query: str,
+        top_k: int = 5,
+        pool: str = "long_term",
+    ) -> list[MemoryEntry]:
+        """Similarity recall entirely in compressed space (JL-preserved).
+
+        Args:
+            query: free-form text query.
+            top_k: number of memories to return.
+            pool: "long_term", "episodic" or "all".
+
+        Returns:
+            Top-k memory entries by cosine similarity to the query.
+        """
+        if not self._compressed:
+            self.optimize_storage()
+        if not self._compressed:
+            return []
+
+        candidates: list[MemoryEntry]
+        if pool == "long_term":
+            candidates = list(self._long_term)
+        elif pool == "episodic":
+            candidates = list(self._episodic)
+        else:
+            candidates = [*self._long_term, *self._episodic]
+
+        qv = self._compressor.compress(self._vectorizer.vectorize(query))
+        scored = []
+        for entry in candidates:
+            cv = self._compressed.get(entry.memory_id)
+            if cv is None:
+                continue
+            scored.append((self._compressor.cosine_similarity(qv, cv), entry))
+        scored.sort(key=lambda t: t[0], reverse=True)
+        return [entry for _score, entry in scored[: max(0, top_k)]]
+
+    def compression_stats(self) -> dict[str, Any]:
+        """Last optimize_storage() report (empty dict if never run)."""
+        return dict(self._compression_report)
+
     def stats(self) -> dict[str, Any]:
         """Memory system statistics.
 
@@ -551,4 +655,5 @@ class AgentMemorySystem:
             "avg_strength_long": round(avg_strength_long, 4),
             "platform_distribution": dict(platform_dist),
             "last_consolidation": self._last_consolidation,
+            "compression": self.compression_stats(),
         }

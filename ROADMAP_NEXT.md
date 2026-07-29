@@ -1,5 +1,13 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.3.0 ✅ (2026-07-29)
+- ✅ Agent Memory Optimization (Vector compression) — `aios_core/memory_compression.py`: HashingVectorizer (512d) + VectorCompressor (JL-проекция 64d + uint8-квантование, ~51x экономия), интеграция `AgentMemorySystem.optimize_storage()` / `recall_compressed()` / `compression_stats()`
+- ✅ Substrate Convergence Dashboard UI — живой вместо мокового: роуты `/substrate` + `/api/substrate/{stats,mesh,energy,history}` на реальном `SubstrateConvergenceEngine`, `dashboard/substrate.html` читает API
+- ✅ 24 новых теста (memory_compression 18 + substrate_dashboard 6)
+- ✅ CI: 100% зелёный Actions board, калибровка на manual dispatch, KVM/AVD/Trivy фиксы (ниже — CI Resilience секции)
+
+**~3985 tests, 0 failures**
+
 ## v10.12.0 ✅ (2026-07-24)
 - ✅ 27 semi-stub modules (50–99 lines) → full implementations
   - Batch 1: multitenancy, blockchain, automl, load_testing, swarm_intelligence, quantum_computing, infinite_constitution, migration, sovereign_reflection, universal_multi_species_ethics
@@ -72,8 +80,8 @@
 - ✅ Add WebAssembly (Wasm) execution runtime for safe plugin isolation
 
 ## v10.17.0 ✅
-- 🔲 Implement Agent Memory Optimization (Vector compression)
-- 🔲 Introduce Substrate Convergence Dashboard UI
+- ✅ Implement Agent Memory Optimization (Vector compression) — landed in v11.3.0 (`memory_compression.py` + интеграция в AgentMemorySystem)
+- ✅ Introduce Substrate Convergence Dashboard UI — landed in v11.3.0 (live `/substrate` + `/api/substrate/*`)
 - ✅ Datadog / Prometheus comprehensive alert tuning for EKS
 
 ## v10.16.0 ✅ (2026-07-24)
@@ -480,6 +488,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 11.0.0 | 2026-07-25 | >2700 | Переход на gRPC microservices core, Quantum Error Mitigation, публичный Developer SDK |
 | 11.1.0 | 2026-07-25 | >2700 | Substrate Convergence AI Manager (Q-Learning), двунаправленный gRPC streaming, Quantum benchmarks |
 | 11.2.0 | 2026-07-25 | >2700 | Self-supervised Knowledge Distillation для edge, E2E-шифрование Data Lake, 3D-топология Swarm |
+| 11.3.0 | 2026-07-29 | ~3985 | Agent Memory Optimization (vector compression), живой Substrate Convergence dashboard, 100% зелёный CI |
 
 ---
 
