@@ -1830,6 +1830,80 @@ class AIOSDashboard:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(report)
 
+    # ------------------------------------------------------------------
+    # Memory recall search + lifecycle (v11.6.0)
+    # ------------------------------------------------------------------
+
+    async def api_memory_recall(self, request: Request) -> JSONResponse:
+        """Recall memories by free text: mode=keyword (token search) or
+        mode=compressed (similarity over the v11.3 index)."""
+        query = (request.query_params.get("q") or "").strip()
+        if not query:
+            return JSONResponse({"error": "query parameter 'q' is required"}, status_code=400)
+        mode = request.query_params.get("mode", "keyword")
+        try:
+            top_k = int(request.query_params.get("top_k", "5"))
+        except ValueError:
+            top_k = 5
+        top_k = max(1, min(top_k, 50))
+
+        system = _get_memory_system()
+        if mode == "keyword":
+            results = system.search(query, limit=top_k)
+        elif mode == "compressed":
+            results = [e.to_dict() for e in system.recall_compressed(query, top_k=top_k, pool="all")]
+        else:
+            return JSONResponse({"error": f"unknown mode {mode!r} (keyword|compressed)"}, status_code=400)
+        return JSONResponse({"query": query, "mode": mode, "top_k": top_k, "results": results})
+
+    async def api_memory_consolidate(self, request: Request) -> JSONResponse:
+        """Run short/episodic -> long-term consolidation."""
+        system = _get_memory_system()
+        consolidated = system.consolidate()
+        return JSONResponse({"consolidated": consolidated, "pattern_count": len(system._patterns)})
+
+    async def api_memory_decay(self, request: Request) -> JSONResponse:
+        """Apply strength decay pruning (optional {"min_strength"} body)."""
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        try:
+            min_strength = float(body.get("min_strength", 0.05))
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "min_strength must be a number"}, status_code=400)
+        if min_strength < 0:
+            return JSONResponse({"error": "min_strength must be >= 0"}, status_code=400)
+        decayed = _get_memory_system().decay(min_strength=min_strength)
+        return JSONResponse({"decayed": decayed, "min_strength": min_strength})
+
+    async def api_memory_optimize_adaptive(self, request: Request) -> JSONResponse:
+        """Run adaptive-dimension compression (optional tuning params)."""
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        try:
+            min_overlap = float(body.get("min_overlap", 0.8))
+            top_k = int(body.get("top_k", 5))
+            probes = int(body.get("probes", 8))
+            dims = body.get("dims")
+            if dims is not None:
+                dims = [int(d) for d in dims]
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "invalid tuning parameters"}, status_code=400)
+        try:
+            report = _get_memory_system().optimize_storage_adaptive(
+                min_overlap=min_overlap, top_k=top_k, dims=dims, probes=probes
+            )
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(report)
+
     def create_app(self) -> Starlette:
         routes = [
             Route("/", self.index),
@@ -1847,6 +1921,10 @@ class AIOSDashboard:
             Route("/api/memory/duplicates", self.api_memory_duplicates),
             Route("/api/memory/archive", self.api_memory_archive),
             Route("/api/memory/archive/run", self.api_memory_archive_run, methods=["POST"]),
+            Route("/api/memory/recall", self.api_memory_recall),
+            Route("/api/memory/consolidate", self.api_memory_consolidate, methods=["POST"]),
+            Route("/api/memory/decay", self.api_memory_decay, methods=["POST"]),
+            Route("/api/memory/compression/optimize-adaptive", self.api_memory_optimize_adaptive, methods=["POST"]),
             Route("/api/stats", self.api_stats),
             Route("/health", self.api_health),
             Route("/api/health", self.api_health),

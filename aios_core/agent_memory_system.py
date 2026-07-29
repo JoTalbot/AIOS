@@ -15,6 +15,7 @@ Enables agents to learn from past scraping sessions and adapt behavior.
 from __future__ import annotations
 
 import math
+import re
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -516,15 +517,10 @@ class AgentMemorySystem:
         Returns:
             Number of memories removed.
         """
-        removed = 0
-
+        before = len(self._short_term) + len(self._episodic)
         self._short_term = [m for m in self._short_term if m.strength >= min_strength]
         self._episodic = [m for m in self._episodic if m.strength >= min_strength]
-
-        # Count removed (approximate)
-        removed += len(self._short_term) + len(self._episodic)
-
-        return removed
+        return before - len(self._short_term) - len(self._episodic)
 
     def clear_short_term(self) -> int:
         """Clear all short-term memories.
@@ -687,6 +683,56 @@ class AgentMemorySystem:
     def compression_stats(self) -> dict[str, Any]:
         """Last optimize_storage() report (empty dict if never run)."""
         return dict(self._compression_report)
+
+    # ------------------------------------------------------------------
+    # Keyword search (v11.6.0)
+    # ------------------------------------------------------------------
+
+    def search(
+        self,
+        query: str,
+        limit: int = 20,
+        pools: str = "all",
+    ) -> list[dict[str, Any]]:
+        """Token-based keyword search across memory entries (no vectors).
+
+        Score = fraction of query tokens present in the flattened entry
+        text (case-insensitive); ties break by entry strength. Entries
+        with zero hits are excluded.
+
+        Args:
+            query: free-form text.
+            limit: max results.
+            pools: "all" (short+long+episodic), "short_term", "long_term",
+                "episodic" or "archive" (cold storage from v11.5.0).
+
+        Returns:
+            [{**entry.to_dict(), "score"}] sorted by score then strength.
+        """
+        tokens = [t for t in re.split(r"\W+", query.lower()) if t]
+        if not tokens:
+            return []
+
+        if pools == "short_term":
+            candidates = list(self._short_term)
+        elif pools == "long_term":
+            candidates = list(self._long_term)
+        elif pools == "episodic":
+            candidates = list(self._episodic)
+        elif pools == "archive":
+            candidates = list(self._archive)
+        else:
+            candidates = [*self._short_term, *self._long_term, *self._episodic]
+
+        scored: list[tuple[float, MemoryEntry]] = []
+        for entry in candidates:
+            text = self._entry_text(entry).lower()
+            hits = sum(1 for token in tokens if token in text)
+            if hits:
+                scored.append((hits / len(tokens), entry))
+
+        scored.sort(key=lambda t: (-t[0], -t[1].strength))
+        return [{**entry.to_dict(), "score": round(score, 4)} for score, entry in scored[: max(0, limit)]]
 
     # ------------------------------------------------------------------
     # Deduplication (Memory Deduplication Engine, v11.4.0)
@@ -859,6 +905,156 @@ class AgentMemorySystem:
     def archived(self, limit: int = 20) -> list[dict[str, Any]]:
         """Most recently archived entries (newest last), serialised."""
         return [e.to_dict() for e in self._archive[-max(0, limit) :]]
+
+    # ------------------------------------------------------------------
+    # Persistence (snapshot export/import, v11.6.0)
+    # ------------------------------------------------------------------
+
+    #: On-disk snapshot format version (bump on incompatible changes).
+    SNAPSHOT_FORMAT = 1
+
+    @staticmethod
+    def _entry_snapshot(entry: MemoryEntry) -> dict[str, Any]:
+        """Full-fidelity serialisation (unlike to_dict, keeps decay fields)."""
+        return {
+            "memory_id": entry.memory_id,
+            "memory_type": entry.memory_type.value,
+            "platform": entry.platform,
+            "action": entry.action,
+            "result": entry.result,
+            "context": entry.context,
+            "priority": entry.priority.value,
+            "confidence": entry.confidence,
+            "created_at": entry.created_at,
+            "last_accessed": entry.last_accessed,
+            "access_count": entry.access_count,
+            "decay_rate": entry.decay_rate,
+            "metadata": entry.metadata,
+        }
+
+    @staticmethod
+    def _entry_from_snapshot(data: dict[str, Any]) -> MemoryEntry:
+        return MemoryEntry(
+            memory_id=str(data["memory_id"]),
+            memory_type=MemoryType(data["memory_type"]),
+            platform=str(data["platform"]),
+            action=str(data["action"]),
+            result=str(data["result"]),
+            context=dict(data.get("context") or {}),
+            priority=MemoryPriority(data.get("priority", MemoryPriority.NORMAL.value)),
+            confidence=float(data.get("confidence", 1.0)),
+            created_at=float(data.get("created_at", time.time())),
+            last_accessed=float(data.get("last_accessed", time.time())),
+            access_count=int(data.get("access_count", 0)),
+            decay_rate=float(data.get("decay_rate", 0.01)),
+            metadata=dict(data.get("metadata") or {}),
+        )
+
+    def snapshot(self) -> dict[str, Any]:
+        """Full memory state as a JSON-serialisable dict.
+
+        The compressed vector index is NOT persisted (it is derived state:
+        rebuild with optimize_storage() / optimize_storage_adaptive()).
+        """
+        return {
+            "format": self.SNAPSHOT_FORMAT,
+            "created_at": time.time(),
+            "counter": self._counter,
+            "dedup_removed_total": self._dedup_removed_total,
+            "pools": {
+                "short_term": [self._entry_snapshot(e) for e in self._short_term],
+                "long_term": [self._entry_snapshot(e) for e in self._long_term],
+                "episodic": [self._entry_snapshot(e) for e in self._episodic],
+                "archive": [self._entry_snapshot(e) for e in self._archive],
+            },
+            "patterns": [p.to_dict() for p in self._patterns.values()],
+        }
+
+    def restore(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Replace the entire memory state from a snapshot dict.
+
+        The id counter is raised past the largest ``mem_N`` id found, so
+        entries recorded after restore can never collide with restored ids.
+
+        Raises:
+            ValueError: unsupported or missing snapshot format version.
+        """
+        if not isinstance(data, dict) or "pools" not in data:
+            raise ValueError("not an AgentMemorySystem snapshot (missing 'pools')")
+        fmt = data.get("format")
+        if fmt != self.SNAPSHOT_FORMAT:
+            raise ValueError(f"unsupported snapshot format {fmt!r} (expected {self.SNAPSHOT_FORMAT})")
+
+        pools = data["pools"]
+        for name in ("short_term", "long_term", "episodic", "archive"):
+            if name not in pools:
+                raise ValueError(f"snapshot pools missing '{name}'")
+
+        self._short_term = [self._entry_from_snapshot(e) for e in pools["short_term"]]
+        self._long_term = [self._entry_from_snapshot(e) for e in pools["long_term"]]
+        self._episodic = [self._entry_from_snapshot(e) for e in pools["episodic"]]
+        self._archive = [self._entry_from_snapshot(e) for e in pools["archive"]]
+
+        self._patterns = {}
+        for pdata in data.get("patterns", []):
+            pattern = SuccessPattern(
+                pattern_id=str(pdata["pattern_id"]),
+                platform=str(pdata["platform"]),
+                action=str(pdata["action"]),
+                success_rate=float(pdata["success_rate"]),
+                avg_latency_ms=float(pdata["avg_latency_ms"]),
+                avg_items=float(pdata["avg_items"]),
+                best_params=dict(pdata.get("best_params") or {}),
+                sample_size=int(pdata["sample_size"]),
+                confidence=float(pdata["confidence"]),
+            )
+            self._patterns[pattern.pattern_id] = pattern
+
+        # Derived/index state does not survive the restore.
+        self._compressed.clear()
+        self._compression_report = {}
+        self._dedup_report = {}
+        self._archive_report = {}
+        self._dedup_removed_total = int(data.get("dedup_removed_total", 0))
+
+        # Id uniqueness: counter must pass every restored mem_N id.
+        max_id = int(data.get("counter", 0))
+        for pool in (self._short_term, self._long_term, self._episodic, self._archive):
+            for entry in pool:
+                match = re.fullmatch(r"mem_(\d+)", entry.memory_id)
+                if match:
+                    max_id = max(max_id, int(match.group(1)))
+        self._counter = max_id
+
+        return {
+            "short_term": len(self._short_term),
+            "long_term": len(self._long_term),
+            "episodic": len(self._episodic),
+            "archive": len(self._archive),
+            "patterns": len(self._patterns),
+        }
+
+    def save(self, path: str) -> dict[str, Any]:
+        """Atomically write the snapshot to ``path`` (tmp file + rename)."""
+        import json
+        from pathlib import Path
+
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        tmp = target.with_suffix(target.suffix + ".tmp")
+        tmp.write_text(json.dumps(self.snapshot(), ensure_ascii=False), encoding="utf-8")
+        tmp.replace(target)
+        return {"saved": str(target)}
+
+    def load(self, path: str) -> dict[str, Any]:
+        """Load a snapshot written by :meth:`save` (replaces current state)."""
+        import json
+        from pathlib import Path
+
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        report = self.restore(data)
+        report["loaded"] = str(path)
+        return report
 
     def stats(self) -> dict[str, Any]:
         """Memory system statistics.

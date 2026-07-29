@@ -93,3 +93,80 @@ def test_memory_patterns_list(client):
     assert pattern["sample_size"] >= 3
     for key in ["success_rate", "avg_latency_ms", "avg_items", "best_params", "confidence"]:
         assert key in pattern
+
+
+# ------------------------------------------------------------------
+# Recall search + lifecycle endpoints (v11.6.0)
+# ------------------------------------------------------------------
+
+
+def test_recall_api_keyword_mode(client):
+    data = client.get("/api/memory/recall?q=olx&mode=keyword&top_k=3").json()
+    assert data["mode"] == "keyword"
+    assert data["top_k"] == 3
+    assert data["results"]
+    assert data["results"][0]["platform"] == "olx"
+    assert "score" in data["results"][0]
+    assert len(data["results"]) <= 3
+
+
+def test_recall_api_compressed_mode(client):
+    data = client.get("/api/memory/recall?q=olx+login+success&mode=compressed").json()
+    assert data["mode"] == "compressed"
+    assert data["results"]
+    assert data["results"][0]["platform"] == "olx"
+
+
+def test_recall_api_validation(client):
+    missing_q = client.get("/api/memory/recall")
+    assert missing_q.status_code == 400
+    blank_q = client.get("/api/memory/recall?q=++")
+    assert blank_q.status_code == 400
+    bad_mode = client.get("/api/memory/recall?q=olx&mode=esoteric")
+    assert bad_mode.status_code == 400
+    # top_k is clamped / defaulted, never an error
+    clamped = client.get("/api/memory/recall?q=olx&top_k=abc")
+    assert clamped.status_code == 200
+    assert clamped.json()["top_k"] == 5
+
+
+def test_consolidate_endpoint(client):
+    data = client.post("/api/memory/consolidate").json()
+    assert isinstance(data["consolidated"], int)
+    assert data["pattern_count"] >= 1  # seeded episodic successes
+
+
+def test_decay_endpoint(client):
+    data = client.post("/api/memory/decay", json={}).json()
+    assert data["decayed"] == 0  # fresh seeded entries are all strong
+    assert data["min_strength"] == 0.05
+    bad = client.post("/api/memory/decay", json={"min_strength": "abc"})
+    assert bad.status_code == 400
+    negative = client.post("/api/memory/decay", json={"min_strength": -1})
+    assert negative.status_code == 400
+
+
+def test_optimize_adaptive_endpoint(client):
+    data = client.post(
+        "/api/memory/compression/optimize-adaptive",
+        json={"min_overlap": 0.5, "top_k": 3, "dims": [16, 64]},
+    ).json()
+    assert data["adaptive"]["selected_dim"] in (16, 64)
+    assert data["target_dim"] == data["adaptive"]["selected_dim"]
+    # Compression report now carries the adaptive block for the page
+    compression = client.get("/api/memory/compression").json()
+    assert compression["adaptive"]["selected_dim"] == data["adaptive"]["selected_dim"]
+    bad = client.post("/api/memory/compression/optimize-adaptive", json={"dims": "oops"})
+    assert bad.status_code == 400
+    bad2 = client.post("/api/memory/compression/optimize-adaptive", json={"min_overlap": 2.0})
+    assert bad2.status_code == 400
+
+
+def test_memory_page_has_search_and_lifecycle_wiring(client):
+    resp = client.get("/memory")
+    assert resp.status_code == 200
+    assert "v11.6.0" in resp.text
+    assert "/api/memory/recall" in resp.text
+    assert "runSearch" in resp.text
+    assert "runLifecycle" in resp.text
+    assert "/api/memory/consolidate" in resp.text

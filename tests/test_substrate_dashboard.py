@@ -18,7 +18,7 @@ def client():
     dashboard_module._energy_scheduler = None
     orch = MagicMock()
     orch.stats.return_value = {"total_steps_executed": 0}
-    orch.version = "11.5.0"
+    orch.version = "11.6.0"
     app = create_dashboard(orch)
     yield TestClient(app)
     dashboard_module._substrate_engine = None
@@ -88,14 +88,14 @@ def test_substrate_history_limit_validation(client):
 
 
 # ------------------------------------------------------------------
-# Energy Scheduler panel + report endpoint (v11.5.0)
+# Energy Scheduler panel + report endpoint (v11.6.0)
 # ------------------------------------------------------------------
 
 
 def test_substrate_page_has_scheduler_panel(client):
     resp = client.get("/substrate")
     assert resp.status_code == 200
-    assert "v11.5.0" in resp.text
+    assert "v11.6.0" in resp.text
     assert "sch-dispatches" in resp.text
     assert "/api/substrate/scheduler" in resp.text
     assert "/api/substrate/schedule" in resp.text  # plan form wiring

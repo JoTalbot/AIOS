@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.6.0] — 2026-07-29 — Memory Persistence + Recall Search + Lifecycle APIs
+
+### Added
+- **Agent Memory persistence**: `AgentMemorySystem.snapshot()` /
+  `restore(data)` / `save(path)` (atomic tmp+rename writes, parent dirs
+  auto-created) / `load(path)`. Full-fidelity entry serialisation keeps
+  confidence, decay rate, timestamps, access counts, priority and metadata;
+  the id counter is raised past every restored `mem_N` id so new entries
+  never collide. Format-versioned (`SNAPSHOT_FORMAT = 1`); the compressed
+  index stays derived-only (rebuild after load).
+- **Keyword memory search**: `AgentMemorySystem.search(query, limit, pools)` —
+  token-based scoring over flattened entry text with strength tie-break;
+  covers active pools plus the `archive` pool on demand.
+- **Dashboard**: `GET /api/memory/recall?q=&mode=keyword|compressed&top_k=`,
+  `POST /api/memory/consolidate`, `POST /api/memory/decay`,
+  `POST /api/memory/compression/optimize-adaptive`. The `/memory` page gains
+  a Recall Search panel and a Memory Lifecycle panel (consolidate / decay /
+  adaptive-compress / archive buttons, live result feedback).
+- **Tests**: 24 new — `test_memory_persistence.py` (9),
+  `test_memory_search.py` (7), `test_memory_dashboard.py` (+8).
+
+### Fixed
+- `AgentMemorySystem.decay()` returned the number of SURVIVORS instead of
+  removed entries (counted after filtering). Tests only asserted `int`, so
+  the wrong count leaked into the new lifecycle API — fixed to
+  `before - after`.
+
 ## [11.5.0] — 2026-07-29 — Adaptive Compression Tuning + Scheduler Panel + Memory Archival
 
 ### Added
