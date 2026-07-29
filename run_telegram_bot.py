@@ -25,6 +25,7 @@ AIOS Telegram Bot — управление агентами через Telegram.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import sys
@@ -135,8 +136,7 @@ def cmd_platforms() -> str:
 
     plats = list_platforms()
     lines = [f"📱 <b>Платформы</b> ({len(plats)})\n"]
-    for p in plats:
-        lines.append(f"  • <code>{p.name}</code> — <code>{p.android_package}</code>")
+    lines.extend(f"  • <code>{p.name}</code> — <code>{p.android_package}</code>" for p in plats)
     return "\n".join(lines)
 
 
@@ -201,12 +201,8 @@ def cmd_olx_sub(args: str, chat_id: int, username: str | None, first_name: str |
         except ValueError:
             pass
     if len(parts) >= 2:
-        try:
-            maybe_max = float(parts[-1].replace(",", "."))
-            # Two-arg: only max? Or single numeric = min? Be strict: need both.
-            # For simplicity, treat single trailing number as max if preceded by query
-        except ValueError:
-            pass
+        with contextlib.suppress(ValueError):
+            float(parts[-1].replace(",", "."))
     query = " ".join(parts)
     if not query:
         return "❌ Укажите поисковый запрос."
@@ -383,7 +379,6 @@ def run_bot(token: str) -> None:
                 offset = upd["update_id"] + 1
                 msg = upd.get("message", {})
                 chat_id = msg.get("chat", {}).get("id")
-                chat_type = msg.get("chat", {}).get("type")
                 username = msg.get("from", {}).get("username")
                 first_name = msg.get("from", {}).get("first_name")
                 text = (msg.get("text") or "").strip()

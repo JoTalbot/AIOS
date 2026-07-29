@@ -2,6 +2,7 @@
 import tempfile
 
 import pytest
+from jinja2.exceptions import UndefinedError
 
 from aios_core.advisor.templates_engine import (
     TemplateEngine,
@@ -81,7 +82,7 @@ def test_missing_required_variable(engine):
         variables=[TemplateVariable("required_var", "string", required=True)],
     )
     
-    with pytest.raises(Exception):
+    with pytest.raises(UndefinedError):
         engine.render(template.id, {})
 
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from .base import IncomingMessage, PlatformAdapter, SentMessage
@@ -13,7 +13,7 @@ class InstagramAdapter(PlatformAdapter):
     
     GRAPH_API_URL = "https://graph.facebook.com/v18.0"
     
-    def __init__(self, config: dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config or {})
         self.access_token = self.config.get("access_token") or os.getenv("INSTAGRAM_ACCESS_TOKEN")
         self.instagram_account_id = self.config.get("account_id") or os.getenv("INSTAGRAM_ACCOUNT_ID")
@@ -37,7 +37,7 @@ class InstagramAdapter(PlatformAdapter):
         
         return []
 
-    async def send_message(self, recipient_id: str, text: str, metadata: dict = None) -> SentMessage:
+    async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
         """Отправить ответ в Instagram Direct."""
         # TODO: Реальный вызов
         # async with httpx.AsyncClient() as client:
@@ -51,11 +51,11 @@ class InstagramAdapter(PlatformAdapter):
         #     )
         
         return SentMessage(
-            message_id=f"ig_{int(datetime.utcnow().timestamp())}",
+            message_id=f"ig_{int(datetime.now(UTC).timestamp())}",
             platform="instagram",
             recipient_id=recipient_id,
             text=text,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(UTC)
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

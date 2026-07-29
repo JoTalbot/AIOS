@@ -1,4 +1,5 @@
 import contextlib
+import time
 
 import pytest
 
@@ -11,5 +12,5 @@ def test_opens_after_n_failures(threshold):
     for _ in range(threshold):
         with contextlib.suppress(ValueError): cb.call(lambda: (_ for _ in ()).throw(ValueError()))
     assert cb.state == CircuitState.OPEN
-    import time; time.sleep(0.02)
+    time.sleep(0.02)
     assert cb.call(lambda: "ok") == "ok"

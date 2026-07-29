@@ -116,10 +116,11 @@ def _write_yaml(tmp_path, platform, package, hints=None):
 
 @pytest.fixture
 def registered():
-    platforms = []
-    for name in ("whatsapp", "viber", "tiktok"):
-        for loaded in load_catalog_file(f"platforms/{name}.yaml"):
-            platforms.append(loaded)
+    platforms = [
+        loaded
+        for name in ("whatsapp", "viber", "tiktok")
+        for loaded in load_catalog_file(f"platforms/{name}.yaml")
+    ]
     yield platforms
     for d in platforms:
         descriptor_mod._PLATFORMS.pop(d.name, None)

@@ -129,7 +129,7 @@ def test_fetch_apk_failure_and_no_file(tmp_path):
     def silent(package, out_dir, source="apkpure"):
         return {"code": 0, "stdout": "done", "stderr": ""}
 
-    with pytest.raises(ValueError, match="no .apk appeared"):
+    with pytest.raises(ValueError, match=r"no \.apk appeared"):
         fetch_apk("com.x", out_dir=tmp_path, runner=silent)
 
 

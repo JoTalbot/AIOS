@@ -1,5 +1,6 @@
 """Deep circuit breaker — state machine."""
 import contextlib
+import time
 
 from aios_core.circuit_breaker import CircuitBreaker, CircuitState
 
@@ -13,7 +14,7 @@ def test_full_state_machine():
     assert cb.state == CircuitState.OPEN
     try: cb.call(lambda: "should_not_run"); raise AssertionError()
     except Exception: pass
-    import time; time.sleep(0.02)
+    time.sleep(0.02)
     result = cb.call(lambda: "recovered")
     assert result == "recovered"
     assert cb.state == CircuitState.CLOSED

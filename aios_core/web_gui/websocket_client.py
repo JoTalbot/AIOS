@@ -24,8 +24,10 @@ class DashboardWebSocket:
     async def connect(self) -> None:
         """Connect to WebSocket and listen for events."""
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
-                async with client.stream("GET", self.url) as response:
+            async with (
+                httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client,
+                client.stream("GET", self.url) as response,
+            ):
                     async for line in response.aiter_text():
                         if line.startswith("{"):
                             try:

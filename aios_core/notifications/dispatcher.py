@@ -9,7 +9,7 @@ class NotificationDispatcher:
         self.sms = SMSSender()
 
     async def dispatch_escalation(self, platform: str, message_text: str,
-                                   emails: list[str] = None, phones: list[str] = None):
+                                   emails: list[str] | None = None, phones: list[str] | None = None):
         results = {}
         if emails:
             results["email"] = await self.email.send_escalation_alert(emails, platform, message_text)

@@ -32,7 +32,7 @@ class PlatformRegistry:
             "tiktok_shop": TiktokShopAdapter,
         }
 
-    def register_adapter(self, platform: str, config: dict = None):
+    def register_adapter(self, platform: str, config: dict | None = None):
         if platform not in self._adapter_classes:
             raise ValueError(f"Неизвестная платформа: {platform}. Доступные: {list(self._adapter_classes.keys())}")
         adapter_class = self._adapter_classes[platform]

@@ -39,8 +39,7 @@ def _checker_pixels_9x8() -> list[int]:
     """Create 9×8 checkerboard pattern for dHash."""
     pixels = []
     for row in range(8):
-        for col in range(9):
-            pixels.append(255 if (row + col) % 2 == 0 else 0)
+        pixels.extend(255 if (row + col) % 2 == 0 else 0 for col in range(9))
     return pixels
 
 
@@ -146,8 +145,7 @@ class TestDifferenceHash:
         # 9×8 gradient
         pixels = []
         for _row in range(8):
-            for col in range(9):
-                pixels.append(col * 28)  # 0, 28, 56, ... across each row
+            pixels.extend(col * 28 for col in range(9))  # 0, 28, 56, ... across each row
         h = difference_hash(pixels, 9, 8)
         assert h.algorithm == HashAlgorithm.DHASH
         # All left < right → all bits set to 1

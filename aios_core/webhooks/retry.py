@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -29,7 +29,7 @@ class WebhookRetryHandler:
             "args": str(args),
             "kwargs": str(kwargs),
             "error": error,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "retry_count": self.max_retries
         })
         print(f"[DeadLetter] Message sent to DLQ: {error}")
@@ -39,7 +39,7 @@ class WebhookRetryHandler:
     
     async def retry_dead_letter(self, index: int):
         if 0 <= index < len(self.dead_letters):
-            dl = self.dead_letters.pop(index)
+            self.dead_letters.pop(index)
             print(f"[DeadLetter] Retrying message {index}")
             return True
         return False

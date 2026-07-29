@@ -278,7 +278,6 @@ class KnowledgeDistiller:
         teacher = self.teacher_models[teacher_id]
         student = self.student_models[student_id]
 
-        start_time = time.time()
         
         pseudo_labels_generated = len(unlabeled_samples)
         compression_ratio = teacher.num_params / max(1, student.num_params)
@@ -292,7 +291,6 @@ class KnowledgeDistiller:
         student.accuracy = min(teacher.accuracy, new_accuracy)
         student.latency_ms = student.latency_ms * 1.05
 
-        duration = time.time() - start_time
         simulated_loss = 1.0 / (new_accuracy + 0.01)
 
         result = DistillationResult(

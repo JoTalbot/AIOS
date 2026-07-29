@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -27,22 +27,22 @@ async def instagram_verify(request: Request):
 
 async def instagram_webhook(request: Request):
     """Instagram incoming messages (POST)."""
-    body = await request.body()
     # TODO: Проверка подписи X-Hub-Signature-256
     data = await request.json()
     
     # Парсинг Instagram webhook payload
-    messages = []
-    for entry in data.get("entry", []):
-        for messaging in entry.get("messaging", []):
-            if "message" in messaging:
-                messages.append({
-                    "platform": "instagram",
-                    "sender_id": messaging["sender"]["id"],
-                    "text": messaging["message"].get("text", ""),
-                    "message_id": messaging["message"]["mid"],
-                    "timestamp": datetime.fromtimestamp(messaging["timestamp"])
-                })
+    messages = [
+        {
+            "platform": "instagram",
+            "sender_id": messaging["sender"]["id"],
+            "text": messaging["message"].get("text", ""),
+            "message_id": messaging["message"]["mid"],
+            "timestamp": datetime.fromtimestamp(messaging["timestamp"], tz=UTC),
+        }
+        for entry in data.get("entry", [])
+        for messaging in entry.get("messaging", [])
+        if "message" in messaging
+    ]
     
     # TODO: Передать в AIAdvisor pipeline
     # for msg in messages:
@@ -60,7 +60,7 @@ async def olx_webhook(request: Request):
     if secret and not verify_signature(body, signature, secret):
         return JSONResponse({"error": "Invalid signature"}, status_code=401)
     
-    data = await request.json()
+    await request.json()
     # TODO: Парсинг OLX payload и передача в AIAdvisor
     
     return JSONResponse({"status": "ok"})
@@ -70,14 +70,8 @@ async def viber_webhook(request: Request):
     """Viber incoming messages."""
     data = await request.json()
     if data.get("event") == "message":
-        message = {
-            "platform": "viber",
-            "sender_id": data["sender"]["id"],
-            "sender_name": data["sender"]["name"],
-            "text": data["message"].get("text", ""),
-            "message_id": data["message_token"]
-        }
-        # TODO: Передать в AIAdvisor
+        # TODO: Передать в AIAdvisor карточку сообщения
+        pass
     return JSONResponse({"status": "ok"})
 
 # === WhatsApp (Meta Cloud API) ===
@@ -91,18 +85,18 @@ async def whatsapp_verify(request: Request):
 async def whatsapp_webhook(request: Request):
     """WhatsApp incoming messages."""
     data = await request.json()
-    messages = []
-    for entry in data.get("entry", []):
-        for change in entry.get("changes", []):
-            value = change.get("value", {})
-            for msg in value.get("messages", []):
-                if msg.get("type") == "text":
-                    messages.append({
-                        "platform": "whatsapp",
-                        "sender_id": msg["from"],
-                        "text": msg["text"]["body"],
-                        "message_id": msg["id"]
-                    })
+    messages = [
+        {
+            "platform": "whatsapp",
+            "sender_id": msg["from"],
+            "text": msg["text"]["body"],
+            "message_id": msg["id"],
+        }
+        for entry in data.get("entry", [])
+        for change in entry.get("changes", [])
+        for msg in change.get("value", {}).get("messages", [])
+        if msg.get("type") == "text"
+    ]
     return JSONResponse({"status": "ok", "processed": len(messages)})
 
 # === Facebook Messenger ===
@@ -115,16 +109,17 @@ async def facebook_verify(request: Request):
 async def facebook_webhook(request: Request):
     """Facebook Messenger incoming messages."""
     data = await request.json()
-    messages = []
-    for entry in data.get("entry", []):
-        for messaging in entry.get("messaging", []):
-            if "message" in messaging:
-                messages.append({
-                    "platform": "facebook",
-                    "sender_id": messaging["sender"]["id"],
-                    "text": messaging["message"].get("text", ""),
-                    "message_id": messaging["message"]["mid"]
-                })
+    messages = [
+        {
+            "platform": "facebook",
+            "sender_id": messaging["sender"]["id"],
+            "text": messaging["message"].get("text", ""),
+            "message_id": messaging["message"]["mid"],
+        }
+        for entry in data.get("entry", [])
+        for messaging in entry.get("messaging", [])
+        if "message" in messaging
+    ]
     return JSONResponse({"status": "ok", "processed": len(messages)})
 
 

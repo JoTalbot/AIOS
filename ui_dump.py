@@ -1,7 +1,8 @@
 import sys
 import xml.etree.ElementTree as ET
 
-t = open(sys.argv[1]).read()
+with open(sys.argv[1]) as _f:
+    t = _f.read()
 root = ET.fromstring(t)
 
 def walk(n, depth=0):
@@ -11,7 +12,6 @@ def walk(n, depth=0):
     click = n.get('clickable', 'false')
     b = n.get('bounds', '')
     desc = n.get('content-desc', '').strip()
-    focusable = n.get('focusable', 'false')
     if txt or click == 'true' or rid or desc:
         indent = '  ' * depth
         print(f"{indent}{cl} | text='{txt}' | desc='{desc}' | id={rid} | click={click} | {b}")

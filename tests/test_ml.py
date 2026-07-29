@@ -3,7 +3,7 @@ from aios_core.ml.conversion_predictor import ConversionPredictor
 
 def test_predictor_initialization():
     predictor = ConversionPredictor()
-    assert predictor.trained == False
+    assert not predictor.trained
     assert predictor.weights is None
 
 def test_predict_without_training():
@@ -25,5 +25,5 @@ def test_train_model():
     templates = [{"content": f"Template {i}"} for i in range(15)]
     conversions = [0.1 * (i % 10) for i in range(15)]
     predictor.train(templates, conversions)
-    assert predictor.trained == True
+    assert predictor.trained
     assert predictor.weights is not None

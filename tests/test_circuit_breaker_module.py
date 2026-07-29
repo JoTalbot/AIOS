@@ -18,7 +18,7 @@ class TestCircuitBreaker:
 
     def test_call_failure(self):
         cb = CircuitBreaker(failure_threshold=3, recovery_timeout=60)
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             cb.call(lambda: (_ for _ in ()).throw(ValueError("fail")))
 
     def test_add_listener(self):

@@ -28,7 +28,6 @@ def _run_nicegui() -> None:
 
 def main() -> int:
     api_port = int(os.environ.get("AIOS_DASH_PORT", "8580"))
-    gui_port = int(os.environ.get("AIOS_GUI_PORT", "8080"))
 
     api_thread = threading.Thread(
         target=_run_fastapi,

@@ -12,10 +12,11 @@ def check_bare_excepts() -> int:
     count = 0
     for py_file in (ROOT / "aios_core").rglob("*.py"):
         if py_file.name.startswith("__"): continue
-        for i, line in enumerate(open(py_file), 1):
-            if line.strip() == "except:" and "noqa" not in line:
-                print(f"❌ {py_file.relative_to(ROOT)}:{i}: bare except")
-                count += 1
+        with open(py_file) as fh:
+            for i, line in enumerate(fh, 1):
+                if line.strip() == "except:" and "noqa" not in line:
+                    print(f"❌ {py_file.relative_to(ROOT)}:{i}: bare except")
+                    count += 1
     return count
 
 
@@ -24,7 +25,8 @@ def check_unannotated_passes() -> int:
     count = 0
     for py_file in (ROOT / "aios_core").rglob("*.py"):
         if py_file.name.startswith("__"): continue
-        lines = open(py_file).readlines()
+        with open(py_file) as fh:
+            lines = fh.readlines()
         for i, line in enumerate(lines):
             if line.strip().startswith("except") and i + 1 < len(lines):
                 if lines[i + 1].strip() == "pass":
@@ -49,8 +51,10 @@ def check_docstrings() -> tuple:
     total = undoc = 0
     for py_file in (ROOT / "aios_core").rglob("*.py"):
         if py_file.name.startswith("__"): continue
-        try: tree = ast.parse(py_file.read_text())
-        except: continue
+        try:
+            tree = ast.parse(py_file.read_text())
+        except Exception:
+            continue
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef) and not node.name.startswith("_"):
                 total += 1
@@ -79,7 +83,8 @@ def main():
     test_files = sum(1 for _ in (ROOT / "tests").rglob("test_*.py"))
     test_funcs = 0
     for f in (ROOT / "tests").rglob("test_*.py"):
-        test_funcs += len([l for l in open(f) if l.strip().startswith("def test_")])
+        with open(f) as fh:
+            test_funcs += len([ln for ln in fh if ln.strip().startswith("def test_")])
     print(f"  Test files: {test_files}")
     print(f"  Test functions: {test_funcs}")
     

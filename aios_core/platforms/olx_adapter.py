@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from .base import IncomingMessage, PlatformAdapter, SentMessage
@@ -13,7 +13,7 @@ class OLXAdapter(PlatformAdapter):
     
     BASE_URL = "https://www.olx.ua/api/v1"
     
-    def __init__(self, config: dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config or {})
         self.client_id = self.config.get("client_id") or os.getenv("OLX_CLIENT_ID")
         self.client_secret = self.config.get("client_secret") or os.getenv("OLX_CLIENT_SECRET")
@@ -22,7 +22,7 @@ class OLXAdapter(PlatformAdapter):
 
     async def _ensure_token(self):
         """Обновить OAuth2 токен если нужно."""
-        if self.access_token and self._token_expires and datetime.utcnow() < self._token_expires:
+        if self.access_token and self._token_expires and datetime.now(UTC) < self._token_expires:
             return
         
         # TODO: Реальный OAuth2 flow
@@ -38,7 +38,7 @@ class OLXAdapter(PlatformAdapter):
         #     )
         #     data = response.json()
         #     self.access_token = data["access_token"]
-        #     self._token_expires = datetime.utcnow() + timedelta(seconds=data["expires_in"])
+        #     self._token_expires = datetime.now(UTC) + timedelta(seconds=data["expires_in"])
 
     async def receive_messages(self, since: datetime | None = None) -> list[IncomingMessage]:
         """Получить новые сообщения из OLX threads."""
@@ -56,7 +56,7 @@ class OLXAdapter(PlatformAdapter):
         # Заглушка для демонстрации
         return []
 
-    async def send_message(self, recipient_id: str, text: str, metadata: dict = None) -> SentMessage:
+    async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
         """Отправить ответ в OLX thread."""
         await self._ensure_token()
         
@@ -69,11 +69,11 @@ class OLXAdapter(PlatformAdapter):
         #     )
         
         return SentMessage(
-            message_id=f"olx_{int(datetime.utcnow().timestamp())}",
+            message_id=f"olx_{int(datetime.now(UTC).timestamp())}",
             platform="olx",
             recipient_id=recipient_id,
             text=text,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(UTC)
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

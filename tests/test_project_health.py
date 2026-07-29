@@ -24,9 +24,10 @@ def test_3_no_critical_bare_excepts():
     count = 0
     for f in content:
         if f.name.startswith('__'): continue
-        for line in open(f):
-            if line.strip() == 'except:' and 'noqa' not in line:
-                count += 1
+        with open(f) as fh:
+            for line in fh:
+                if line.strip() == 'except:' and 'noqa' not in line:
+                    count += 1
     assert count == 0, f"Bare excepts found: {count}"
 
 

@@ -38,7 +38,6 @@ def test_orchestrator_tenant_binding():
     # (Since execute_task triggers evaluation and execution, we just check if it binds correctly initially)
     # We will patch the actual execute to fail fast just to see context bound
     
-    original_exec = orch._execute_step
     bound_tenant = None
     
     def fake_exec(task_obj, step_obj):

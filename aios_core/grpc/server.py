@@ -1,5 +1,6 @@
 """gRPC Server Implementation for AIOS Core v11.0.0."""
 
+import contextlib
 import json
 import logging
 import time
@@ -85,10 +86,8 @@ class AiosCoreServicer(aios_pb2_grpc.AiosCoreServicer):
             # In a real async grpc server we'd use async generators, 
             # but since we are using synchronous gRPC threadpool, we use a simple loop.
             while context.is_active():
-                try:
+                with contextlib.suppress(queue.Empty):
                     yield out_queue.get(timeout=1.0)
-                except queue.Empty:
-                    pass
 
         # We can also process incoming events from the client stream if needed
         # For this implementation we'll spawn a background thread to consume incoming

@@ -293,7 +293,7 @@ class AIOSClient:
                     except Exception:
                         on_event({"raw": msg})
         except ImportError:
-            raise RuntimeError("websockets package required for watch_events")
+            raise RuntimeError("websockets package required for watch_events") from None
 
 
 # Synchronous wrapper with all methods mirrored

@@ -47,10 +47,10 @@ def render_agents_chat_view(agent_orchestrator):
                     result = {"agent": state.current_agent, "result": state.result}
                 
                 with chat_area:
-                    ui.label(f"[{result["agent"]}]: {result["result"]}").classes("text-positive")
+                    ui.label(f'[{result["agent"]}]: {result["result"]}').classes("text-positive")
                 
                 with history_area:
-                    ui.label(f"→ {user_msg} [{result["agent"]}]").classes("text-caption")
+                    ui.label(f'→ {user_msg} [{result["agent"]}]').classes("text-caption")
             
             send_btn.on_click(send_message)
             message_input.on("keydown.enter", send_message)

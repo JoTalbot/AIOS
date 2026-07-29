@@ -19,7 +19,7 @@ class GraphRAG:
         subgraph = nx.ego_graph(self.graph, query_entity, radius=max_depth)
         context = f"Graph Context for {query_entity}:\n"
         for node, data in subgraph.nodes(data=True):
-            context += f"- {node} ({data.get("type", "entity")})\n"
+            context += f'- {node} ({data.get("type", "entity")})\n'
         return context
 
 graph_rag = GraphRAG()

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from .base import IncomingMessage, PlatformAdapter, SentMessage
@@ -13,7 +13,7 @@ class WhatsAppAdapter(PlatformAdapter):
     
     GRAPH_API_URL = "https://graph.facebook.com/v18.0"
     
-    def __init__(self, config: dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config or {})
         self.access_token = self.config.get("access_token") or os.getenv("WHATSAPP_ACCESS_TOKEN")
         self.phone_number_id = self.config.get("phone_number_id") or os.getenv("WHATSAPP_PHONE_NUMBER_ID")
@@ -22,12 +22,12 @@ class WhatsAppAdapter(PlatformAdapter):
         # WhatsApp использует Webhooks
         return []
 
-    async def send_message(self, recipient_id: str, text: str, metadata: dict = None) -> SentMessage:
+    async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
         # TODO: POST /{phone_number_id}/messages
         return SentMessage(
-            message_id=f"wa_{int(datetime.utcnow().timestamp())}",
+            message_id=f"wa_{int(datetime.now(UTC).timestamp())}",
             platform="whatsapp", recipient_id=recipient_id,
-            text=text, timestamp=datetime.utcnow()
+            text=text, timestamp=datetime.now(UTC)
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

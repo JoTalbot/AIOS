@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from .base import IncomingMessage, PlatformAdapter, SentMessage
@@ -13,7 +13,7 @@ class ViberAdapter(PlatformAdapter):
     
     API_URL = "https://chatapi.viber.com/pa"
     
-    def __init__(self, config: dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config or {})
         self.auth_token = self.config.get("auth_token") or os.getenv("VIBER_AUTH_TOKEN")
 
@@ -21,12 +21,12 @@ class ViberAdapter(PlatformAdapter):
         # Viber использует Webhooks
         return []
 
-    async def send_message(self, recipient_id: str, text: str, metadata: dict = None) -> SentMessage:
+    async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
         # TODO: POST /send_message
         return SentMessage(
-            message_id=f"viber_{int(datetime.utcnow().timestamp())}",
+            message_id=f"viber_{int(datetime.now(UTC).timestamp())}",
             platform="viber", recipient_id=recipient_id,
-            text=text, timestamp=datetime.utcnow()
+            text=text, timestamp=datetime.now(UTC)
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

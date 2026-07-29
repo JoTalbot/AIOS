@@ -62,12 +62,11 @@ class APKManifestAnalyzer:
             "android.permission.SYSTEM_ALERT_WINDOW",
         ]
 
-        flagged_risks: list[dict[str, str]] = []
-        for perm in permissions:
-            if perm in self.DANGEROUS_PERMISSIONS:
-                flagged_risks.append(
-                    {"permission": perm, "risk_assessment": self.DANGEROUS_PERMISSIONS[perm]}
-                )
+        flagged_risks: list[dict[str, str]] = [
+            {"permission": perm, "risk_assessment": self.DANGEROUS_PERMISSIONS[perm]}
+            for perm in permissions
+            if perm in self.DANGEROUS_PERMISSIONS
+        ]
 
         constitutional_safety = len(flagged_risks) == 0 or not any(
             "Critical" in r["risk_assessment"] for r in flagged_risks

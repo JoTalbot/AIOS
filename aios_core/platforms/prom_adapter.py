@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from .base import IncomingMessage, PlatformAdapter, SentMessage
@@ -13,7 +13,7 @@ class PromAdapter(PlatformAdapter):
     
     API_URL = "https://my.prom.ua/api/v1"
     
-    def __init__(self, config: dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config or {})
         self.api_key = self.config.get("api_key") or os.getenv("PROM_API_KEY")
         self.client_id = self.config.get("client_id") or os.getenv("PROM_CLIENT_ID")
@@ -22,12 +22,12 @@ class PromAdapter(PlatformAdapter):
         # TODO: GET /chat_messages
         return []
 
-    async def send_message(self, recipient_id: str, text: str, metadata: dict = None) -> SentMessage:
+    async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
         # TODO: POST /chat_messages
         return SentMessage(
-            message_id=f"prom_{int(datetime.utcnow().timestamp())}",
+            message_id=f"prom_{int(datetime.now(UTC).timestamp())}",
             platform="prom", recipient_id=recipient_id,
-            text=text, timestamp=datetime.utcnow()
+            text=text, timestamp=datetime.now(UTC)
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

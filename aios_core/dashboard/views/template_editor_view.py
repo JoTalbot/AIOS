@@ -46,7 +46,7 @@ def render_template_editor_view(template_engine):
                         ui.notify(f"Error: {e}", type="negative")
 
                 ui.button("💾 Save", on_click=save_template).props("color=primary")
-                ui.button("🔄 Refresh Preview", on_click=refresh_preview).props("color=secondary")
+                ui.button("🔄 Refresh Preview", on_click=refresh_preview).props("color=secondary")  # noqa: F821  # определён ниже в том же scope
 
         with ui.column().classes("w-1/2"):
             ui.label("Live Preview").classes("text-h6")
@@ -68,7 +68,7 @@ def render_template_editor_view(template_engine):
                         name="preview", content=content_area.value, intent="preview"
                     )
                     ctx = json.loads(context_area.value or "{}")
-                    rendered = temp_engine.render(temp_tpl.id, ctx)
+                    temp_engine.render(temp_tpl.id, ctx)
                     preview_area.content = ""
                     temp_engine.delete_template(temp_tpl.id)
                 except Exception as e:

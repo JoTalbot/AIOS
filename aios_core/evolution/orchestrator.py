@@ -15,7 +15,7 @@ class EvolutionOrchestrator:
         self.log = []
     
     async def run_cycle(self):
-        results = {"timestamp": datetime.datetime.utcnow().isoformat()}
+        results = {"timestamp": datetime.datetime.now(datetime.UTC).isoformat()}
         try:
             results["evolved"] = await template_evolution.auto_evolve_all() if hasattr(template_evolution, "auto_evolve_all") else []
         except Exception as e:

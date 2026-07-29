@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from nicegui import ui
@@ -86,7 +86,7 @@ def render_metrics_view(metrics_collector):
         
         history_data = []
         for i in range(7):
-            date = (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
+            date = (datetime.now(UTC) - timedelta(days=i)).strftime("%Y-%m-%d")
             metrics_file = Path(metrics_collector.storage_path) / f"{date}.json"
             if metrics_file.exists():
                 data = json.loads(metrics_file.read_text())

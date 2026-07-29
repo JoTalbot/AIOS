@@ -77,7 +77,6 @@ def seed():
             )
 
     # --- Seed memory_items ---
-    categories = ["operational", "semantic", "episodic", "procedural"]
     memory_contents = [
         ("operational", "OLX collector cycle completed: 305 ads parsed, 300 new"),
         ("operational", "Android emulator-5554 online, OLX app logged in"),
@@ -153,4 +152,4 @@ def seed():
 
 
 if __name__ == "__main__":
-    seed()"
+    seed()

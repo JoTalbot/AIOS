@@ -111,7 +111,7 @@ class AIAdvisorWithPlatforms(AIAdvisor):
         super().__init__(templates_dir, use_llm)
         self.platform_registry = PlatformRegistry()
 
-    def register_platform(self, platform: str, config: dict[str, Any] = None):
+    def register_platform(self, platform: str, config: dict[str, Any] | None = None):
         """Зарегистрировать платформу."""
         self.platform_registry.register_adapter(platform, config)
 

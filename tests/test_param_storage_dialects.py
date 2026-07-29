@@ -19,4 +19,4 @@ def test_table_row_count(table_name):
 def test_json_roundtrip(json_data):
     j = Database.to_json(json_data)
     d = Database.from_json(j)
-    assert type(d) == type(json_data) or isinstance(d, (dict, list, str, int, float, bool))
+    assert isinstance(d, (type(json_data), dict, list, str, int, float, bool))

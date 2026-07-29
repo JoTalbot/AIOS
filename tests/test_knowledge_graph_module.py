@@ -169,8 +169,8 @@ class TestEntities:
         assert entity is not None
 
     def test_get_entities_by_type(self, kg):
-        n1 = kg.add_node(label="p1", node_type="person")
-        n2 = kg.add_node(label="p2", node_type="person")
+        kg.add_node(label="p1", node_type="person")
+        kg.add_node(label="p2", node_type="person")
         results = kg.get_entities_by_type("person")
         assert isinstance(results, list)
 

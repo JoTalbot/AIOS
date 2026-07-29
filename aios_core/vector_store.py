@@ -116,7 +116,7 @@ class VectorStore:
         self._entries = [e for e in self._entries if e.id != id]
         self._entries.append(entry)
 
-    def add_batch(self, items: list[Tuple[str, list[float], dict[str, Any]]]) -> None:
+    def add_batch(self, items: list[tuple[str, list[float], dict[str, Any]]]) -> None:
         """Add a batch of vectors."""
         for id, vector, metadata in items:
             self.add(id, vector, metadata)

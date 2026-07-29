@@ -23,10 +23,14 @@ class TestAPIGateway:
         gw.unregister("/temp")
 
     def test_add_middleware(self, gw):
-        gw.add_middleware(lambda req, next_fn: next_fn(req))
+        def _mw(req, next_fn):
+            return next_fn(req)
+
+        gw.add_middleware(_mw)
 
     def test_remove_middleware(self, gw):
-        mw = lambda req, next_fn: next_fn(req)
+        def mw(req, next_fn):
+            return next_fn(req)
         gw.add_middleware(mw)
         gw.remove_middleware(mw)
 

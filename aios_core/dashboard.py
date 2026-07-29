@@ -6,6 +6,7 @@ The SPA itself lives at dashboard/index.html and is served at '/'.
 
 from __future__ import annotations
 
+import contextlib
 import hmac
 import json
 import os
@@ -58,6 +59,7 @@ class AIOSDashboard:
         self._scheduler_lock = __import__("threading").Lock()
         self._scheduler_active = False
         self._scheduler_stop = __import__("threading").Event()
+        self._background_tasks: set = set()
         self._auto_study = AndroidAutoStudy()
         self._auto_study_lock = __import__("threading").Lock()
         self._auto_study_history_path = Path(AIOS_HOME) / "data" / "auto_study_history.json"
@@ -68,10 +70,8 @@ class AIOSDashboard:
         self._control_token = os.environ.get("AIOS_DASH_TOKEN", "").strip()
         self.auto_study = AndroidAutoStudy()
         if not self._control_token:
-            try:
+            with contextlib.suppress(Exception):
                 self._control_token = self._control_token_path.read_text(encoding="utf-8").strip()
-            except Exception:
-                pass
         if not self._control_token:
             self._control_token = secrets.token_urlsafe(32)
             self._control_token_path.write_text(self._control_token + "\n", encoding="utf-8")
@@ -332,7 +332,7 @@ class AIOSDashboard:
             ).fetchone()[0]
             rows = conn.execute(
                 f"SELECT * FROM ads WHERE {wsql} ORDER BY {order} "
-                f"LIMIT ? OFFSET ?", params + [limit, offset]
+                f"LIMIT ? OFFSET ?", [*params, limit, offset]
             ).fetchall()
             out = []
             for r in rows:
@@ -527,16 +527,16 @@ class AIOSDashboard:
         return r.returncode, r.stdout.decode("utf-8", errors="replace"), r.stderr.decode("utf-8", errors="replace")
 
     def _default_serial(self):
-        code, out, _ = self._adb("devices")
+        _, out, _ = self._adb("devices")
         for line in out.splitlines()[1:]:
             line = line.strip()
-            if line.endswith("\tdevice") or line.endswith(" device"):
+            if line.endswith(("\tdevice", " device")):
                 return line.split()[0]
         return None
 
     async def api_android_devices(self, request: Request) -> JSONResponse:
         try:
-            code, out, err = self._adb("devices", "-l")
+            _, out, _ = self._adb("devices", "-l")
             devs = []
             for line in out.splitlines()[1:]:
                 parts = line.split()
@@ -545,13 +545,13 @@ class AIOSDashboard:
                     info = {"serial": serial, "status": "online"}
                     # Props (model)
                     rc, model, _ = self._adb("shell", "getprop", "ro.product.model", serial=serial, timeout=5)
-                    rc2, android, _ = self._adb("shell", "getprop", "ro.build.version.release", serial=serial, timeout=5)
-                    rc3, pkg, _ = self._adb("shell", "dumpsys", "window", "|", "grep", "mCurrentFocus", serial=serial, timeout=5)
+                    _rc2, android, _ = self._adb("shell", "getprop", "ro.build.version.release", serial=serial, timeout=5)
+                    _rc3, _pkg, _ = self._adb("shell", "dumpsys", "window", "|", "grep", "mCurrentFocus", serial=serial, timeout=5)
                     # dumpsys window mCurrentFocus does not work with pipe via list args
                     info["model"] = model.strip()
                     info["android"] = android.strip()
                     # Foreground app via simpler cmd
-                    rc4, fore, _ = self._adb("shell", "cmd", "activity", "get-foreground-activity", serial=serial, timeout=5)
+                    _rc4, fore, _ = self._adb("shell", "cmd", "activity", "get-foreground-activity", serial=serial, timeout=5)
                     info["foreground"] = fore.strip() if rc == 0 else ""
                     devs.append(info)
             # Screenshot dir
@@ -650,8 +650,8 @@ class AIOSDashboard:
                 r = subprocess.run([self.ADB, "-s", serial, "exec-out", "cat", "/sdcard/ui.xml"],
                                    capture_output=True, timeout=15)
                 if r.returncode != 0 or len(r.stdout) < 50:
-                    r2 = subprocess.run([self.ADB, "-s", serial, "pull", "/sdcard/ui.xml", "/tmp/uidump.xml"],
-                                        capture_output=True, timeout=10)
+                    subprocess.run([self.ADB, "-s", serial, "pull", "/sdcard/ui.xml", "/tmp/uidump.xml"],
+                                   capture_output=True, timeout=10)
                     xml = Path("/tmp/uidump.xml").read_text(encoding="utf-8", errors="replace")
                 else:
                     xml = r.stdout.decode("utf-8", errors="replace")
@@ -696,8 +696,6 @@ class AIOSDashboard:
             return unauthorized
         body = await request.json()
         action = body.get("action")
-        avd = body.get("avd", "AIOS_OLX")
-        emu = "/opt/android-sdk/emulator/emulator"
         # Simpler: support save snapshot only via adb emu command
         try:
             if action == "save":
@@ -706,7 +704,7 @@ class AIOSDashboard:
                 return JSONResponse({"ok": c == 0, "stdout": o, "stderr": e})
             if action == "list_packages":
                 c, o, e = self._adb("shell", "pm", "list", "packages", "-3", serial="emulator-5554", timeout=15)
-                pkgs = sorted([l.replace("package:", "").strip() for l in o.splitlines() if l.startswith("package:")])
+                pkgs = sorted([ln.replace("package:", "").strip() for ln in o.splitlines() if ln.startswith("package:")])
                 return JSONResponse({"ok": True, "packages": pkgs})
         except Exception as e:
             return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -743,7 +741,9 @@ class AIOSDashboard:
                 })
 
             import asyncio
-            asyncio.create_task(_run_and_save())
+            task = asyncio.create_task(_run_and_save())
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
             return JSONResponse({"ok": True, "message": f"Auto-study started for {package} ({scenario})"})
         except Exception as e:
             return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -900,16 +900,17 @@ class AIOSDashboard:
             return unauthorized
         try:
             history = self._auto_study_history()
-            notifications = []
-            for item in history[:20]:
-                notifications.append({
+            notifications = [
+                {
                     "study_id": item.get("study_id"),
                     "package": item.get("package"),
                     "scenario": item.get("scenario"),
                     "status": item.get("status"),
                     "error": item.get("error"),
                     "completed_at": item.get("completed_at"),
-                })
+                }
+                for item in history[:20]
+            ]
             return JSONResponse({"notifications": notifications})
         except Exception as e:
             return JSONResponse({"ok": False, "error": str(e)}, status_code=500)

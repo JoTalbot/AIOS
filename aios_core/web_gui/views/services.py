@@ -40,7 +40,7 @@ def render() -> None:
                 "pid": s.get("pid", "N/A"),
                 "actions": ui.button(
                     "Restart",
-                    on_click=lambda svc=s.get("name"): restart_service(svc),
+                    on_click=lambda svc=s.get("name"): restart_service(svc),  # noqa: B008  # идиома захвата loop var
                 ),
             }
             for s in services

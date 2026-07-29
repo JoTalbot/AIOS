@@ -217,7 +217,7 @@ class AndroidAutoStudy:
                 name=scenario.name,
                 package=package,
                 description=scenario.description,
-                steps=[s for s in scenario.steps],
+                steps=list(scenario.steps),
                 max_duration_sec=max_duration_sec,
             )
 
@@ -240,7 +240,6 @@ class AndroidAutoStudy:
         )
 
         screenshots = []
-        events = []
         latencies = []
 
         try:
@@ -253,7 +252,7 @@ class AndroidAutoStudy:
             if not self.driver.launch_app():
                 raise RuntimeError(f"Failed to launch {package}")
 
-            for i, step in enumerate(scenario.steps):
+            for _i, step in enumerate(scenario.steps):
                 if self._cancel_requested:
                     raise asyncio.CancelledError("Study cancelled by user")
 

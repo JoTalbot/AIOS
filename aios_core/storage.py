@@ -10,7 +10,7 @@ import sqlite3
 import threading
 import uuid
 from collections.abc import Generator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import UTC, datetime
 from typing import Any
 
@@ -249,17 +249,13 @@ class Database:
                     isolation_level=None
                 )
                 self._transaction_state.conn.row_factory = sqlite3.Row
-                try:
+                with suppress(Exception):
                     self._transaction_state.conn.execute("PRAGMA journal_mode=WAL;")
                     self._transaction_state.conn.execute("PRAGMA synchronous=NORMAL;")
-                except Exception:
-                    pass
                 
                 # Ensure tables exist in this connection context
-                try:
+                with suppress(Exception):
                     self._transaction_state.conn.executescript(_CREATE_TABLES_SQLITE)
-                except Exception:
-                    pass
                     
         return self._transaction_state.conn
 

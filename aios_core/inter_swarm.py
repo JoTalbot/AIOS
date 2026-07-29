@@ -8,7 +8,6 @@ WebSockets and gRPC, integrating with the Planetary Federation Mesh.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -103,14 +102,9 @@ class InterSwarmCoordinator:
 
     def broadcast_event(self, event_type: str, payload: dict[str, Any]) -> int:
         """Broadcast a non-blocking event to all authenticated swarms."""
-        message = json.dumps({
-            "source": self.local_swarm_id,
-            "type": event_type,
-            "payload": payload
-        })
-        
+        # In real scenario: await websocket.send(json.dumps({...}))
         sent_count = 0
-        for swarm_id, node in self.known_swarms.items():
+        for node in self.known_swarms.values():
             if node.is_authenticated:
                 # In real scenario: await websocket.send(message)
                 sent_count += 1

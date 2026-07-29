@@ -4,9 +4,30 @@ from __future__ import annotations
 
 from nicegui import ui
 
-from .api_client import get_android_devices, get_auto_study_history, get_auto_study_status, get_services, get_stats, start_auto_study
-from .views import admin, audit, chat, constitution, fleet, knowledge, ml_registry, memories, olx, overview, platforms, processes, safety, services, swarm, workflows
-
+from .api_client import (
+    get_android_devices,
+    get_auto_study_history,
+    get_auto_study_status,
+    start_auto_study,
+)
+from .views import (
+    admin,
+    audit,
+    chat,
+    constitution,
+    fleet,
+    knowledge,
+    memories,
+    ml_registry,
+    olx,
+    overview,
+    platforms,
+    processes,
+    safety,
+    services,
+    swarm,
+    workflows,
+)
 
 # Enable dark mode globally
 ui.dark_mode().enable()
@@ -145,26 +166,25 @@ def devices_page() -> None:
 
 
 def run() -> None:
-# === AI Advisor Templates (auto-injected) ===
-from aios_core.advisor.templates_engine import TemplateEngine
-from aios_core.dashboard.views.advisor_templates_view import render_advisor_templates_view
+    # === AI Advisor Templates (auto-injected) ===
+    from aios_core.advisor.templates_engine import TemplateEngine
+    from aios_core.dashboard.views.advisor_templates_view import render_advisor_templates_view
 
-template_engine = TemplateEngine(storage_path="data/templates")
+    template_engine = TemplateEngine(storage_path="data/templates")
 
-@ui.page('/advisor/templates', title='AI Advisor — Шаблоны')
-def advisor_templates_page():
-    render_advisor_templates_view(template_engine)
-# === END AI Advisor Templates ===
-# === AI Advisor Metrics (auto-injected) ===
-from aios_core.advisor.metrics_collector import MetricsCollector
-from aios_core.dashboard.views.metrics_view import render_metrics_view
+    @ui.page('/advisor/templates', title='AI Advisor — Шаблоны')
+    def advisor_templates_page():
+        render_advisor_templates_view(template_engine)
+    # === END AI Advisor Templates ===
+    # === AI Advisor Metrics (auto-injected) ===
+    from aios_core.advisor.metrics_collector import MetricsCollector
+    from aios_core.dashboard.views.metrics_view import render_metrics_view
 
-metrics_collector = MetricsCollector(storage_path="data/metrics")
+    metrics_collector = MetricsCollector(storage_path="data/metrics")
 
-@ui.page('/advisor/metrics', title='AI Advisor — Метрики')
-def advisor_metrics_page():
-    render_metrics_view(metrics_collector)
-# === END AI Advisor Metrics ===
-
+    @ui.page('/advisor/metrics', title='AI Advisor — Метрики')
+    def advisor_metrics_page():
+        render_metrics_view(metrics_collector)
+    # === END AI Advisor Metrics ===
 
     ui.run(title="AIOS Dashboard", favicon="🤖", port=8080, reload=False)

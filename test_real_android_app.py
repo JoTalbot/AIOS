@@ -137,7 +137,7 @@ def search_on_olx(device_id: str, query: str, category: str = "all") -> dict[str
     ):
         return {"status": "error", "error": "App not installed", "package": "ua.slando"}
 
-    package = "ua.slando" if check_app_installed("ua.slando", device_id) else "ua.slando"
+    package = "ua.slando"
     launch_app(package, device_id)
     time.sleep(3)
 

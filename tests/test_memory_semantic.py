@@ -14,7 +14,7 @@ def test_memory_manager_semantic_search():
         metadata={"embedding": [0.9, 0.1, 0.1]}
     )
     
-    res2 = manager.store(
+    manager.store(
         content={"text": "I enjoy baking cookies"},
         category="personal",
         owner_id="user_1",

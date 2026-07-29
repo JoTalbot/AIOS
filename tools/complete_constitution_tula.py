@@ -588,8 +588,7 @@ def generate_report(articles: dict, report_path: Path) -> None:
     ]
 
     if missing_numbers:
-        for num in missing_numbers:
-            lines.append(f"- Article {num} (Missing)")
+        lines.extend(f"- Article {num} (Missing)" for num in missing_numbers)
     else:
         lines.append("No missing articles. All 67 articles present.")
 

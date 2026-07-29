@@ -193,8 +193,10 @@ def cycle(client: httpx.Client, conn: sqlite3.Connection, queries: list[str],
             time.sleep(1.0)
         # Mark not-seen ads for this query as inactive
         if seen:
-            cur.execute("UPDATE ads SET active=0 WHERE query=? AND id NOT IN (%s)"
-                        % ",".join("?" * len(seen)), [q] + list(seen))
+            cur.execute(
+                f"UPDATE ads SET active=0 WHERE query=? AND id NOT IN ({','.join('?' * len(seen))})",
+                [q, *list(seen)],
+            )
             conn.commit()
             deact = cur.rowcount
         else:

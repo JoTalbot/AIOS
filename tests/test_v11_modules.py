@@ -15,8 +15,6 @@ def test_qem_zne():
         return counts.get("00", 0) / sum(counts.values())
         
     val_with_mitigation = qem.zero_noise_extrapolation(build_circ, exp_val)
-    raw_circ = build_circ(0.05)
-    raw_val = exp_val(raw_circ.measure(2000))
     
     # Due to random nature, extrapolation should generally bring it closer to 1.0 than raw
     # We just ensure it runs without error and returns a float

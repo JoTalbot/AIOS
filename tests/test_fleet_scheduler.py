@@ -326,7 +326,7 @@ class TestFleetScheduler:
             scheduler.register_device(dev)
 
         tasks = []
-        for i in range(6):
+        for _ in range(6):
             t = scheduler.schedule("olx", "collect")
             if t:
                 tasks.append(t)
@@ -400,7 +400,7 @@ class TestFleetSchedulerIntegration:
 
         # Schedule 10 tasks
         tasks = []
-        for i in range(10):
+        for _ in range(10):
             t = scheduler.schedule("olx", "collect", TaskPriority.NORMAL)
             if t:
                 tasks.append(t)

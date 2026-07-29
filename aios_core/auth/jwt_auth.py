@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from fastapi import Depends, HTTPException
@@ -25,9 +25,9 @@ ROLE_PERMISSIONS = {
     "viewer": ["read"],
 }
 
-def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -36,11 +36,11 @@ def verify_token(token: str) -> dict:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
+        raise HTTPException(status_code=401, detail="Token expired") from None
     except jwt.JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="Invalid token") from None
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:  # noqa: B008  # FastAPI idiom
     payload = verify_token(credentials.credentials)
     username = payload.get("sub")
     if not username or username not in USERS_DB:
@@ -48,7 +48,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     return {"username": username, "role": USERS_DB[username]["role"]}
 
 def require_role(required_role: str):
-    async def role_checker(user: dict = Depends(get_current_user)):
+    async def role_checker(user: dict = Depends(get_current_user)):  # noqa: B008  # FastAPI idiom
         role_hierarchy = {"viewer": 1, "manager": 2, "admin": 3}
         if role_hierarchy.get(user["role"], 0) < role_hierarchy.get(required_role, 0):
             raise HTTPException(status_code=403, detail="Insufficient permissions")

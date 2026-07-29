@@ -1,11 +1,14 @@
-from fastapi import Depends, FastAPI
+import asyncio
+
+from fastapi import Depends, FastAPI, Request
 from nicegui import ui
 from starlette.middleware.cors import CORSMiddleware
 
+import aios_core.logging_setup  # noqa: F401  # side effect: sentry + logging init
 from aios_core.advisor.ai_advisor import AIAdvisor
 from aios_core.advisor.orchestrator import AdvisorOrchestrator
 from aios_core.advisor.telegram_bot import TelegramApprovalBot
-from aios_core.logging_setup import *
+from aios_core.auth.jwt_auth import require_role
 from aios_core.observability.prometheus_metrics import metrics_endpoint
 from aios_core.platforms.registry import PlatformRegistry
 from aios_core.schemas.agents import AgentProcessRequest
@@ -48,6 +51,8 @@ from aios_core.websocket.metrics_ws import manager, metrics_broadcast_loop
 analytics_engine = AnalyticsEngine([], [])
 agent_orchestrator = MultiAgentOrchestrator(analytics_engine)
 
+_BACKGROUND_TASKS: set = set()
+
 @app.websocket("/ws/metrics")
 async def websocket_metrics(websocket):
     await manager.connect(websocket)
@@ -59,12 +64,13 @@ async def websocket_metrics(websocket):
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(metrics_broadcast_loop(lambda: {"status": "ok"}))
+    task = asyncio.create_task(metrics_broadcast_loop(lambda: {"status": "ok"}))
+    _BACKGROUND_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_TASKS.discard)
 
 @app.post("/api/v1/agents/process")
 async def process_with_agents(request: AgentProcessRequest):
     result = await agent_orchestrator.process(request.messages, request.context or {})
-    result = await agent_orchestrator.process(messages, context)
     return result
 
 
@@ -86,11 +92,11 @@ async def list_features():
     return flags.list_all()
 
 @app.get("/api/v1/audit", tags=["System"])
-async def get_audit_logs(user_id: str = None, action: str = None, limit: int = 100,
-                         user: dict = Depends(require_role("admin"))):
+async def get_audit_logs(user_id: str | None = None, action: str | None = None, limit: int = 100,
+                         user: dict = Depends(require_role("admin"))):  # noqa: B008  # FastAPI idiom
     logs = await audit_recorder.get_logs(user_id=user_id, action=action, limit=limit)
-    return [{"id": l.id, "user_id": l.user_id, "action": l.action,
-             "resource_type": l.resource_type, "created_at": l.created_at.isoformat()} for l in logs]
+    return [{"id": log.id, "user_id": log.user_id, "action": log.action,
+             "resource_type": log.resource_type, "created_at": log.created_at.isoformat()} for log in logs]
 
 @app.get("/openapi.json", include_in_schema=False)
 async def openapi_json():
@@ -196,17 +202,12 @@ from aios_core.evolution.self_healing import self_healing
 
 
 @app.post("/api/v1/evolution/run", tags=["Evolution"])
-async def run_evo(user: dict = Depends(require_role("admin"))):
+async def run_evo(user: dict = Depends(require_role("admin"))):  # noqa: B008  # FastAPI idiom
     return await evolution_orchestrator.run_cycle()
 
 @app.get("/api/v1/evolution/stats", tags=["Evolution"])
 async def evo_stats():
     return evolution_orchestrator.log
-
-@app.post("/api/v1/evolution/heal", tags=["Evolution"])
-async def heal_template(template: str, reason: str, original: str):
-    return await self_healing.heal(template, reason, original)
-
 
 from aios_core.dashboard.views.evolution_view import render_evolution_view
 from aios_core.observability.evolution_metrics import record_self_heal
@@ -319,7 +320,7 @@ async def execute_sales_workflow(price: float = 1000):
     return await sales_workflow.execute({"price": price})
 
 @app.get("/api/v1/compliance/export/{user_id}", tags=["Compliance"])
-async def export_data(user_id: str, user: dict = Depends(require_role("admin"))):
+async def export_data(user_id: str, user: dict = Depends(require_role("admin"))):  # noqa: B008  # FastAPI idiom
     return await data_exporter.export_user_data(user_id)
 
 @app.post("/api/v1/compliance/mask", tags=["Compliance"])

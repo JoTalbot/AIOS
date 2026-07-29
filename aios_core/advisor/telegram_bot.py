@@ -22,7 +22,7 @@ class PendingDraft:
 class TelegramApprovalBot:
     """Реальный Telegram-бот для одобрения черновиков."""
     
-    def __init__(self, bot_token: str = None, chat_id: str = None):
+    def __init__(self, bot_token: str | None = None, chat_id: str | None = None):
         self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN")
         self.chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID")
         self.pending_drafts: dict[str, PendingDraft] = {}
@@ -40,7 +40,7 @@ class TelegramApprovalBot:
         self._on_rejected = callback
         return callback
 
-    async def _send_telegram_message(self, text: str, reply_markup: dict = None) -> int | None:
+    async def _send_telegram_message(self, text: str, reply_markup: dict | None = None) -> int | None:
         """Отправить сообщение в Telegram."""
         if not self.bot_token or not self.chat_id:
             print("⚠️  Telegram bot не настроен (нет токена/chat_id)")

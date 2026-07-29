@@ -1,5 +1,5 @@
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,7 @@ class TemplateEvolution:
     async def analyze(self, template_id: str) -> dict:
         if not self.db: return {"status": "no_db"}
         from aios_core.models.template_variant import TemplateVariant
-        result = await self.db.execute(select(TemplateVariant).where(TemplateVariant.template_id == template_id, TemplateVariant.is_active == True))
+        result = await self.db.execute(select(TemplateVariant).where(TemplateVariant.template_id == template_id, TemplateVariant.is_active))
         variants = result.scalars().all()
         if not variants: return {"status": "no_variants"}
         winner = max(variants, key=lambda v: v.conversion_rate)
@@ -28,7 +28,7 @@ class TemplateEvolution:
         if not variant or not template: return {"status": "not_found"}
         template.content = variant.content
         template.version += 1
-        template.updated_at = datetime.utcnow()
+        template.updated_at = datetime.now(UTC)
         variant.is_active = False
         await self.db.commit()
         return {"status": "promoted", "new_version": template.version}

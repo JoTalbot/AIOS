@@ -87,7 +87,7 @@ def test_predictive_autonomy_regulator():
 
     # Low risk step
     safe_step = {"action": "read_data", "complexity": 1.0}
-    level, reason = regulator.regulate_autonomy(
+    level, _reason = regulator.regulate_autonomy(
         agent_id="agent_001", current_level=AutonomyLevel.LEVEL_5_SELF_DIRECTED, plan_step=safe_step
     )
     assert level == AutonomyLevel.LEVEL_5_SELF_DIRECTED

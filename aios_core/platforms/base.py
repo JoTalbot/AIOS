@@ -40,7 +40,7 @@ class PlatformAdapter(ABC):
         """Получить новые входящие сообщения."""
 
     @abstractmethod
-    async def send_message(self, recipient_id: str, text: str, metadata: dict = None) -> SentMessage:
+    async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
         """Отправить сообщение."""
 
     @abstractmethod

@@ -90,7 +90,7 @@ class FakeADB:
         return {"code": 0, "stdout": "", "stderr": ""}
 
 
-NOW = datetime(2026, 7, 21, 15, 0, 0)
+NOW = datetime(2026, 7, 21, 15, 0, 0)  # noqa: DTZ001  # парсер отдаёт naive-datetime по контракту
 
 
 # --- text_utils -------------------------------------------------------------

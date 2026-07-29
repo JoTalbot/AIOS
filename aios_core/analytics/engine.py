@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, select
@@ -15,7 +15,7 @@ class AnalyticsEngine:
     async def get_conversion_rate(self, days: int = 7) -> dict[str, float]:
         if not self.db:
             return {"period_days": days, "created": 0, "approved": 0, "rate": 0.0}
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         created_q = await self.db.execute(
             select(func.count()).select_from(Metric).where(
                 Metric.metric_type == "draft_created",
@@ -36,7 +36,7 @@ class AnalyticsEngine:
     async def get_avg_response_time(self, days: int = 7) -> float:
         if not self.db:
             return 0.0
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         result = await self.db.execute(
             select(func.avg(MessageLog.processing_time)).where(
                 MessageLog.created_at > cutoff,
@@ -48,7 +48,7 @@ class AnalyticsEngine:
     async def get_top_platforms(self, days: int = 30) -> list[dict[str, Any]]:
         if not self.db:
             return []
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         result = await self.db.execute(
             select(MessageLog.platform, func.count().label("count"))
             .where(MessageLog.created_at > cutoff)
@@ -60,7 +60,7 @@ class AnalyticsEngine:
     async def get_intent_distribution(self, days: int = 7) -> dict[str, int]:
         if not self.db:
             return {}
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         result = await self.db.execute(
             select(MessageLog.intent, func.count().label("count"))
             .where(MessageLog.created_at > cutoff, MessageLog.intent.isnot(None))
@@ -71,7 +71,7 @@ class AnalyticsEngine:
     async def get_seasonal_patterns(self, days: int = 30) -> dict[str, int]:
         if not self.db:
             return {}
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         result = await self.db.execute(
             select(MessageLog).where(MessageLog.created_at > cutoff)
         )

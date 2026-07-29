@@ -1,6 +1,8 @@
 """Security tests for AIOS system."""
 
 
+import contextlib
+
 import httpx
 import pytest
 from starlette.applications import Starlette
@@ -121,13 +123,9 @@ class TestInputValidation:
 
         manager = WebhookManager()
 
-        # Try registering invalid URL
-        try:
+        # Try registering invalid URL — should either validate or raise
+        with contextlib.suppress(Exception):
             manager.register("test", "not-a-valid-url", ["ban_detected"])
-            # Should either validate or handle gracefully
-        except Exception:
-            # Should raise validation error
-            pass
 
     def test_backup_path_traversal(self, tmp_path):
         """Test backup prevents path traversal attacks."""
@@ -149,12 +147,9 @@ class TestInputValidation:
         # Try path traversal in backup label
         malicious_label = "../../../etc/passwd"
 
-        try:
+        with contextlib.suppress(Exception):
+            # Should sanitize or reject malicious label gracefully
             manager.create_backup(label=malicious_label)
-            # Should sanitize or reject malicious label
-        except Exception:
-            # Should handle gracefully
-            pass
 
     def test_export_file_size_limit(self, tmp_path):
         """Test export handles large datasets."""

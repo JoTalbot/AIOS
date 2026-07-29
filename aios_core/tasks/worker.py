@@ -3,6 +3,8 @@ import os
 import httpx
 from arq.connections import RedisSettings
 
+from aios_core.tasks.evolution_tasks import discover_new_intents, heal_rejected_template, run_evolution_cycle
+
 
 async def process_competitor_prices(ctx, urls):
     return {"status": "completed", "count": len(urls)}

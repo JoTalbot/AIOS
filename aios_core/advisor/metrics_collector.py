@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +11,7 @@ class MetricsCollector:
     def __init__(self, storage_path: str = "data/metrics"):
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(parents=True, exist_ok=True)
-        self.current_date = datetime.utcnow().strftime("%Y-%m-%d")
+        self.current_date = datetime.now(UTC).strftime("%Y-%m-%d")
         self.metrics_file = self.storage_path / f"{self.current_date}.json"
         self._load()
 

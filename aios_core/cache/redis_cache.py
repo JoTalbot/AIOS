@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 import json
 import os
@@ -33,7 +34,7 @@ class RedisCache:
         except Exception:
             return None
 
-    async def set(self, key: str, value: Any, ttl: int = None):
+    async def set(self, key: str, value: Any, ttl: int | None = None):
         if not self.redis:
             return
         try:
@@ -44,10 +45,8 @@ class RedisCache:
     async def delete(self, key: str):
         if not self.redis:
             return
-        try:
+        with contextlib.suppress(Exception):
             await self.redis.delete(f"aios:{key}")
-        except Exception:
-            pass
 
     async def invalidate_pattern(self, pattern: str):
         if not self.redis:

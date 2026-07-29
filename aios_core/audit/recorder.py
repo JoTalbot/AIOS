@@ -5,9 +5,9 @@ class AuditRecorder:
     def __init__(self, db: AsyncSession = None):
         self.db = db
 
-    async def record(self, user_id: str, action: str, resource_type: str = None,
-                     resource_id: str = None, details: dict = None,
-                     ip_address: str = None, user_agent: str = None):
+    async def record(self, user_id: str, action: str, resource_type: str | None = None,
+                     resource_id: str | None = None, details: dict | None = None,
+                     ip_address: str | None = None, user_agent: str | None = None):
         if not self.db:
             print(f"[Audit] {user_id} -> {action} on {resource_type}:{resource_id}")
             return
@@ -23,7 +23,7 @@ class AuditRecorder:
         except Exception as e:
             print(f"[Audit] Error: {e}")
 
-    async def get_logs(self, user_id: str = None, action: str = None, limit: int = 100):
+    async def get_logs(self, user_id: str | None = None, action: str | None = None, limit: int = 100):
         if not self.db:
             return []
         from sqlalchemy import select

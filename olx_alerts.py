@@ -217,10 +217,7 @@ def tg_send(token: str, chat_id: int, text: str, parse_mode: str = "HTML",
 def format_ad_message(ad: dict, stats: PriceStats | None, query: str) -> str:
     price = ad.get("price_value")
     cur = ad.get("price_currency") or "грн"
-    if price is None:
-        price_str = "💵 Договірна"
-    else:
-        price_str = f"💵 <b>{int(price):,} {cur}</b>".replace(",", " ")
+    price_str = "💵 Договірна" if price is None else f"💵 <b>{int(price):,} {cur}</b>".replace(",", " ")
     tag = ""
     if stats and price is not None and cur == "UAH":
         tag = f" — {price_assessment(stats, price)}"

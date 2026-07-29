@@ -175,11 +175,6 @@ class AsyncDatabase:
 
     async def batch_execute(self, statements: Sequence[tuple[str, tuple]]) -> list[Any]:
         """Execute multiple write statements concurrently."""
-        coros = [self.execute(sql, params) for sql, params in statements]
-        return list(await asyncio.gather(*coros, return_exceptions=True))
-
-    async def batch_execute(self, statements: Sequence[tuple[str, tuple]]) -> list[Any]:
-        """Execute multiple write statements concurrently."""
         calls = [("execute", (sql, params), {}) for sql, params in statements]
         results = await self._run_many(calls)
         return results

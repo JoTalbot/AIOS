@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # Fallback for systems without cv2 installed
 try:
     import cv2
-    import numpy as np
+
     CV2_AVAILABLE = True
 except ImportError:
     CV2_AVAILABLE = False
@@ -54,7 +54,7 @@ class ComputerVisionRPA:
                 raise ValueError("Image files not found or invalid.")
 
             result = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+            _, max_val, _, max_loc = cv2.minMaxLoc(result)
 
             if max_val >= self.confidence_threshold:
                 h, w = template.shape[:2]
