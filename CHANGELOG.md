@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.12.0] — 2026-07-29 — Policy Compare Matrix + Dedup Merge API + Snapshot Diff
+
+### Added
+- **Policy A/B comparison matrix**
+  (`EnergyAwareScheduler.compare_policies(tasks, policies, reference_policy)`):
+  dry-run forecasts of the SAME batch under every policy side by side —
+  projected energy, affordable counts, per-task substrate choices, deltas
+  and choice-overlap vs the reference; `recommended_policy` is the lowest
+  energy with ties breaking toward the reference (switch only for a
+  measurable win). API: `POST /api/substrate/compare`; Compare A/B button
+  on the Dispatch Forecast panel.
+- **Guarded dedup merge endpoint** `POST /api/memory/dedup/run` — the
+  previously code-only `deduplicate()` is now reachable from the
+  dashboard, completing the Tune → Preview → **Merge** workflow. Merging
+  is irreversible, so the body MUST contain `{"confirm": true}` (400
+  otherwise, pointing at the preview endpoint); optional threshold/pool
+  overrides, tuned default otherwise. Merge button on the Near-Duplicate
+  Groups panel.
+- **Snapshot diff** (`AgentMemorySystem.diff_snapshot`): live state vs an
+  on-disk snapshot — added/removed/changed ids per pool, pattern drift,
+  counts on both sides, metadata drift (tuned threshold, lifetime removed
+  total) and an `identical` flag. Entry equality uses the persistence
+  serialisation (derived strength deliberately excluded), so passive
+  ageing never produces phantom changes. API:
+  `POST /api/memory/snapshot/diff` (read-only: 404 missing file, 400
+  corrupt); Diff vs live button on the Snapshot Persistence panel.
+- **Tests**: 22 new — `test_snapshot_diff.py` (9),
+  `test_policy_compare.py` (7), `test_dedup_run.py` (6).
+
 ## [11.11.0] — 2026-07-29 — Replay Drift Analysis + Archive Preview + SLO Metrics
 
 ### Added
