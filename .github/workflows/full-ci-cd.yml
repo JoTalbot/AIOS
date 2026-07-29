@@ -136,6 +136,19 @@ jobs:
             echo "no" | avdmanager create avd -n "${AVD}" \
               -k "system-images;android-${API_LEVEL};${ABI}" \
               -d "pixel" --force
+          done
+
+          echo "=== AVD diagnostic (config + system-images layout) ==="
+          echo "--- config.ini ---"
+          cat "${ANDROID_AVD_HOME}/AIOS_1.avd/config.ini" || true
+          echo "--- system-images tree ---"
+          find "${ANDROID_SDK_ROOT}/system-images" -maxdepth 3 -type d || true
+          echo "--- env ---"
+          echo "ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+
+          # Config tweaks — separate loop so diagnostics above see the pristine avdmanager output
+          for i in 1 2 3; do
+            AVD="AIOS_${i}"
 
             # Config for faster boot — APPEND (>>), never overwrite (>)!
             # avdmanager writes abi.type/image.sysdir/cpu entries into config.ini;
