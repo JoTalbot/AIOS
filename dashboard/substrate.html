@@ -132,8 +132,8 @@
 <body>
 
     <header>
-        <h1>🌌 AIOS Substrate Convergence <span class="version">v10.17.0</span></h1>
-        <div style="color: #94a3b8; font-size: 0.9rem;">Live Workload Router</div>
+        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.3.0</span></h1>
+        <div style="color: #94a3b8; font-size: 0.9rem;" id="live-indicator">Live Workload Router — data: /api/substrate/*</div>
     </header>
 
     <div class="grid">
@@ -142,27 +142,27 @@
             <div class="stat-group">
                 <div class="stat-row">
                     <span class="stat-label">Active Dispatches</span>
-                    <span class="stat-value" id="val-dispatches">14,892</span>
+                    <span class="stat-value" id="val-dispatches">–</span>
                 </div>
                 <div class="stat-row">
                     <span class="stat-label">Queued Tasks</span>
-                    <span class="stat-value" id="val-queued">42</span>
+                    <span class="stat-value" id="val-queued">–</span>
                 </div>
                 <div class="stat-row">
                     <span class="stat-label">Total Energy Cost (Wh)</span>
-                    <span class="stat-value" style="color: var(--warning)" id="val-energy">1.4502</span>
+                    <span class="stat-value" style="color: var(--warning)" id="val-energy">–</span>
                 </div>
                 <div class="stat-row">
                     <span class="stat-label">Failover Events</span>
-                    <span class="stat-value" id="val-failover">3</span>
+                    <span class="stat-value" id="val-failover">–</span>
                 </div>
             </div>
         </div>
-        
+
         <div class="panel" style="grid-column: span 2;">
             <h2>Substrate Mesh Health</h2>
             <div class="substrate-grid" id="substrate-container">
-                <!-- Rendered via JS -->
+                <!-- Rendered via JS from /api/substrate/mesh -->
             </div>
         </div>
     </div>
@@ -170,83 +170,92 @@
     <div class="panel">
         <h2>Live Dispatch Router</h2>
         <div class="log-container" id="log-window">
-            <!-- Logs -->
+            <!-- Real dispatch history from /api/substrate/history -->
         </div>
     </div>
 
     <script>
-        const substrates = [
-            { id: 'quantum_qpu', name: 'Quantum', colorClass: 'type-quantum', latency: '1.0ms', eff: '2000 GFLOPS/W', health: 1.0, active: true },
-            { id: 'photonic_optical', name: 'Photonic', colorClass: 'type-photonic', latency: '0.05ms', eff: '10000 GFLOPS/W', health: 0.98, active: true },
-            { id: 'neuromorphic_snn', name: 'Neuromorphic', colorClass: 'type-neuromorphic', latency: '0.20ms', eff: '5000 GFLOPS/W', health: 0.85, active: true },
-            { id: 'bio_compute', name: 'Bio-Compute', colorClass: 'type-bio', latency: '50.0ms', eff: '50000 GFLOPS/W', health: 0.99, active: true },
-            { id: 'silicon_x86_arm', name: 'Silicon', colorClass: 'type-silicon', latency: '5.0ms', eff: '100 GFLOPS/W', health: 1.0, active: true }
-        ];
+        // Static presentation metadata per SubstrateType (names/colors only —
+        // every dynamic value comes from the live engine).
+        const SUB_META = {
+            quantum_qpu:      { name: 'Quantum',      colorClass: 'type-quantum',      color: 'var(--quantum)' },
+            photonic_optical: { name: 'Photonic',     colorClass: 'type-photonic',     color: 'var(--photonic)' },
+            neuromorphic_snn: { name: 'Neuromorphic', colorClass: 'type-neuromorphic', color: 'var(--neuromorphic)' },
+            bio_compute:      { name: 'Bio-Compute',  colorClass: 'type-bio',          color: 'var(--bio)' },
+            silicon_x86_arm:  { name: 'Silicon',      colorClass: 'type-silicon',      color: 'var(--silicon)' },
+        };
+        let knownHistoryIds = new Set();
 
-        function renderSubstrates() {
+        function meta(type) {
+            return SUB_META[type] || { name: type, colorClass: 'type-silicon', color: 'var(--silicon)' };
+        }
+
+        function renderSubstrates(mesh) {
             const container = document.getElementById('substrate-container');
-            container.innerHTML = substrates.map(s => {
-                const healthColor = s.health > 0.8 ? 'var(--success)' : (s.health > 0.4 ? 'var(--warning)' : 'var(--danger)');
+            container.innerHTML = Object.entries(mesh).map(([type, s]) => {
+                const m = meta(type);
+                const health = s.health ?? 0;
+                const healthColor = health > 0.8 ? 'var(--success)' : (health > 0.4 ? 'var(--warning)' : 'var(--danger)');
                 return `
-                <div class="sub-card ${s.colorClass}">
+                <div class="sub-card ${m.colorClass}">
                     <div class="sub-header">
-                        <span class="sub-title">${s.name}</span>
+                        <span class="sub-title">${m.name}</span>
                         <span class="status-dot status-${s.active ? 'active' : 'offline'}"></span>
                     </div>
-                    <div class="metric"><span style="color:#94a3b8">Latency</span><span class="metric-val">${s.latency}</span></div>
-                    <div class="metric"><span style="color:#94a3b8">Efficiency</span><span class="metric-val">${s.eff}</span></div>
-                    <div class="metric"><span style="color:#94a3b8">Health</span><span class="metric-val">${(s.health * 100).toFixed(0)}%</span></div>
+                    <div class="metric"><span style="color:#94a3b8">Latency</span><span class="metric-val">${s.latency_base_ms}ms</span></div>
+                    <div class="metric"><span style="color:#94a3b8">Efficiency</span><span class="metric-val">${s.efficiency_gflops_per_watt} GFLOPS/W</span></div>
+                    <div class="metric"><span style="color:#94a3b8">Load</span><span class="metric-val">${s.current_load}/${s.capacity}</span></div>
+                    <div class="metric"><span style="color:#94a3b8">Health</span><span class="metric-val">${(health * 100).toFixed(0)}%</span></div>
                     <div class="health-bar">
-                        <div class="health-fill" style="width: ${s.health * 100}%; background: ${healthColor}"></div>
+                        <div class="health-fill" style="width: ${health * 100}%; background: ${healthColor}"></div>
                     </div>
                 </div>
                 `;
             }).join('');
         }
 
-        const taskTypes = ["compute", "parallel", "inference", "optimization", "pattern", "crypto"];
-        let dispatches = 14892;
-        let queued = 42;
-        let energy = 1.4502;
-
-        function addLog() {
+        function renderHistory(history) {
             const logWindow = document.getElementById('log-window');
-            const sub = substrates[Math.floor(Math.random() * substrates.length)];
-            const task = taskTypes[Math.floor(Math.random() * taskTypes.length)];
-            
-            dispatches++;
-            energy += (Math.random() * 0.05);
-            queued = Math.max(0, queued + (Math.random() > 0.7 ? 1 : -1));
-            
-            document.getElementById('val-dispatches').innerText = dispatches.toLocaleString();
-            document.getElementById('val-queued').innerText = queued;
-            document.getElementById('val-energy').innerText = energy.toFixed(4);
+            if (!history.length && !knownHistoryIds.size) {
+                logWindow.innerHTML = '<div class="log-entry"><span style="color:#64748b">No dispatches yet — submit tasks to the convergence engine.</span></div>';
+                return;
+            }
+            // Append only new records (history arrives oldest→newest)
+            history.forEach(d => {
+                if (knownHistoryIds.has(d.task_id)) return;
+                knownHistoryIds.add(d.task_id);
+                const m = meta(d.selected_substrate);
+                const time = new Date((d.timestamp || 0) * 1000).toISOString().split('T')[1].slice(0, -1);
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                entry.innerHTML = `<span class="log-time">[${time}]</span> Routed <span style="color:#e2e8f0">${d.task_id}</span> to <span class="log-type" style="background: ${m.color}">${m.name}</span> <span style="color:#64748b">cost: ${d.energy_cost}Wh, exec: ${d.execution_time_ms}ms</span>`;
+                logWindow.prepend(entry);
+            });
+            while (logWindow.children.length > 50) logWindow.removeChild(logWindow.lastChild);
+        }
 
-            const time = new Date().toISOString().split('T')[1].slice(0, -1);
-            const logEntry = document.createElement('div');
-            logEntry.className = 'log-entry';
-            logEntry.innerHTML = `<span class="log-time">[${time}]</span> Routed <span style="color: #e2e8f0">${task}</span> task to <span class="log-type" style="background: var(--${sub.name.toLowerCase().split('-')[0]})">${sub.name}</span> <span style="color:#64748b">cost: ${(Math.random() * 0.01).toFixed(4)}Wh</span>`;
-            
-            logWindow.prepend(logEntry);
-            if (logWindow.children.length > 50) {
-                logWindow.removeChild(logWindow.lastChild);
+        async function refresh() {
+            try {
+                const [stats, mesh, history] = await Promise.all([
+                    fetch('/api/substrate/stats').then(r => r.json()),
+                    fetch('/api/substrate/mesh').then(r => r.json()),
+                    fetch('/api/substrate/history?limit=30').then(r => r.json()),
+                ]);
+                document.getElementById('val-dispatches').innerText = (stats.total_dispatches ?? 0).toLocaleString();
+                document.getElementById('val-queued').innerText = stats.queued_tasks ?? 0;
+                document.getElementById('val-energy').innerText = (stats.total_energy_cost ?? 0).toFixed(4);
+                const failovers = Object.values(stats.failover_events || {}).reduce((a, b) => a + b, 0);
+                document.getElementById('val-failover').innerText = failovers;
+                renderSubstrates(mesh.substrates || {});
+                renderHistory(history.history || []);
+                document.getElementById('live-indicator').innerText = 'Live Workload Router — connected';
+            } catch (err) {
+                document.getElementById('live-indicator').innerText = 'Live Workload Router — reconnecting…';
             }
         }
 
-        renderSubstrates();
-        setInterval(addLog, 1200); // Simulate incoming traffic
-        
-        // Randomly adjust health
-        setInterval(() => {
-            substrates.forEach(s => {
-                if (Math.random() > 0.8) {
-                    s.health = Math.max(0.1, Math.min(1.0, s.health + (Math.random() * 0.1 - 0.05)));
-                    if (s.health < 0.2) s.active = false;
-                    else s.active = true;
-                }
-            });
-            renderSubstrates();
-        }, 5000);
+        refresh();
+        setInterval(refresh, 5000);
     </script>
 </body>
 </html>
