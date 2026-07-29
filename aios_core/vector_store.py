@@ -16,7 +16,7 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +26,11 @@ class VectorEntry:
     """Stored vector with metadata."""
 
     id: str
-    vector: List[float] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    vector: list[float] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=time.time)
     compressed: bool = False
-    compressed_data: List[int] = field(default_factory=list)
+    compressed_data: list[int] = field(default_factory=list)
 
 
 class VectorCompressor:
@@ -51,7 +51,7 @@ class VectorCompressor:
         norm = code / float(self.max_val)
         return v_min + norm * (v_max - v_min)
 
-    def compress(self, vector: List[float]) -> Dict[str, Any]:
+    def compress(self, vector: list[float]) -> dict[str, Any]:
         """Compress a float32 vector into uint8 codes using min/max scaling."""
         if not vector:
             return {"codes": [], "min": 0.0, "max": 0.0, "dim": 0}
@@ -67,7 +67,7 @@ class VectorCompressor:
             "dim": len(vector)
         }
         
-    def decompress(self, compressed: Dict[str, Any]) -> List[float]:
+    def decompress(self, compressed: dict[str, Any]) -> list[float]:
         """Decompress uint8 codes back to float32 approx vector."""
         codes = compressed.get("codes", [])
         v_min = compressed.get("min", 0.0)
@@ -88,16 +88,16 @@ class VectorStore:
     """
 
     def __init__(self, use_compression: bool = False) -> None:
-        self.vectors: Dict[str, List[float]] = {}
-        self.metadata: Dict[str, Dict[str, Any]] = {}
-        self._entries: List[VectorEntry] = []
+        self.vectors: dict[str, list[float]] = {}
+        self.metadata: dict[str, dict[str, Any]] = {}
+        self._entries: list[VectorEntry] = []
         
         self.use_compression = use_compression
         self.compressor = VectorCompressor()
-        self.compressed_store: Dict[str, Dict[str, Any]] = {}
+        self.compressed_store: dict[str, dict[str, Any]] = {}
 
     def add(
-        self, id: str, vector: List[float], metadata: Optional[Dict[str, Any]] = None
+        self, id: str, vector: list[float], metadata: dict[str, Any] | None = None
     ) -> None:
         """Add a vector with metadata."""
         meta = metadata or {}
@@ -116,28 +116,28 @@ class VectorStore:
         self._entries = [e for e in self._entries if e.id != id]
         self._entries.append(entry)
 
-    def add_batch(self, items: List[Tuple[str, List[float], Dict[str, Any]]]) -> None:
+    def add_batch(self, items: list[Tuple[str, list[float], dict[str, Any]]]) -> None:
         """Add a batch of vectors."""
         for id, vector, metadata in items:
             self.add(id, vector, metadata)
             
-    def _get_vector(self, id: str) -> List[float]:
+    def _get_vector(self, id: str) -> list[float]:
         if self.use_compression and id in self.compressed_store:
             return self.compressor.decompress(self.compressed_store[id])
         return self.vectors.get(id, [])
 
     def search(
         self,
-        query_vector: List[float],
+        query_vector: list[float],
         top_k: int = 5,
-        metadata_filter: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        metadata_filter: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """Search by cosine similarity."""
         q_norm = math.sqrt(sum(v * v for v in query_vector))
         if q_norm == 0:
             return []
 
-        scores: Dict[str, float] = {}
+        scores: dict[str, float] = {}
         all_ids = list(self.compressed_store.keys()) if self.use_compression else list(self.vectors.keys())
         
         for vid in all_ids:
@@ -182,7 +182,7 @@ class VectorStore:
         self.metadata.pop(id, None)
         self._entries = [e for e in self._entries if e.id != id]
 
-    def get(self, id: str) -> Optional[Dict[str, Any]]:
+    def get(self, id: str) -> dict[str, Any] | None:
         """Get a vector by ID."""
         vec = self._get_vector(id)
         if not vec:
@@ -200,7 +200,7 @@ class VectorStore:
             return len(self.compressed_store)
         return len(self.vectors)
         
-    def optimize_memory(self) -> Dict[str, Any]:
+    def optimize_memory(self) -> dict[str, Any]:
         """Convert all uncompressed vectors to compressed format."""
         if self.use_compression:
             return {"status": "already_compressed"}
@@ -219,7 +219,7 @@ class VectorStore:
         self.use_compression = True
         return {"status": "compressed", "converted": initial_count, "memory_savings_percent": 75}
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
         if self.use_compression:
             avg_dim = sum(c["dim"] for c in self.compressed_store.values()) / max(1, len(self.compressed_store))

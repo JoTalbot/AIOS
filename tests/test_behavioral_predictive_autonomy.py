@@ -1,6 +1,6 @@
-import pytest
-from aios_core.predictive_autonomy import PredictiveAutonomyRegulator
 from aios_core.autonomy_manager import AutonomyLevel
+from aios_core.predictive_autonomy import PredictiveAutonomyRegulator
+
 
 def test_autonomy_low_risk_action():
     regulator = PredictiveAutonomyRegulator()

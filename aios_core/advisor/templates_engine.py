@@ -5,16 +5,16 @@ Custom Template Engine for AI Advisor.
 """
 from __future__ import annotations
 
-import re
 import hashlib
+import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 from pathlib import Path
-import json
+from typing import Any
 
 try:
-    from jinja2 import Environment, BaseLoader, TemplateSyntaxError, UndefinedError
+    from jinja2 import BaseLoader, Environment, TemplateSyntaxError, UndefinedError
     JINJA_AVAILABLE = True
 except ImportError:
     JINJA_AVAILABLE = False
@@ -37,14 +37,14 @@ class Template:
     name: str
     content: str
     intent: str  # Связанный intent (price_inquiry, delivery_question и т.д.)
-    platform: Optional[str] = None  # null = для всех платформ
-    variables: List[TemplateVariable] = field(default_factory=list)
+    platform: str | None = None  # null = для всех платформ
+    variables: list[TemplateVariable] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
     version: int = 1
     is_active: bool = True
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -68,7 +68,7 @@ class Template:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Template":
+    def from_dict(cls, data: dict[str, Any]) -> Template:
         variables = [
             TemplateVariable(**v) for v in data.get("variables", [])
         ]
@@ -86,7 +86,6 @@ class Template:
 
 class TemplateValidationError(Exception):
     """Ошибка валидации шаблона."""
-    pass
 
 
 class TemplateEngine:
@@ -110,7 +109,7 @@ class TemplateEngine:
             lstrip_blocks=True,
         )
         
-        self._cache: Dict[str, Template] = {}
+        self._cache: dict[str, Template] = {}
         self._load_all()
     
     def _load_all(self) -> None:
@@ -138,7 +137,7 @@ class TemplateEngine:
         short_hash = hashlib.md5(f"{name}{timestamp}".encode()).hexdigest()[:6]
         return f"tpl_{slug}_{short_hash}"
     
-    def validate_template(self, content: str) -> List[str]:
+    def validate_template(self, content: str) -> list[str]:
         """Валидация синтаксиса шаблона."""
         errors = []
         try:
@@ -152,14 +151,14 @@ class TemplateEngine:
         name: str,
         content: str,
         intent: str,
-        platform: Optional[str] = None,
-        variables: Optional[List[TemplateVariable]] = None,
+        platform: str | None = None,
+        variables: list[TemplateVariable] | None = None,
     ) -> Template:
         """Создать новый шаблон."""
         errors = self.validate_template(content)
         if errors:
             raise TemplateValidationError(
-                f"Ошибки в шаблоне:\n" + "\n".join(f"  • {e}" for e in errors)
+                "Ошибки в шаблоне:\n" + "\n".join(f"  • {e}" for e in errors)
             )
         
         template = Template(
@@ -186,7 +185,7 @@ class TemplateEngine:
             errors = self.validate_template(updates["content"])
             if errors:
                 raise TemplateValidationError(
-                    f"Ошибки в шаблоне:\n" + "\n".join(f"  • {e}" for e in errors)
+                    "Ошибки в шаблоне:\n" + "\n".join(f"  • {e}" for e in errors)
                 )
         
         for key, value in updates.items():
@@ -218,10 +217,10 @@ class TemplateEngine:
     
     def list_templates(
         self,
-        intent: Optional[str] = None,
-        platform: Optional[str] = None,
+        intent: str | None = None,
+        platform: str | None = None,
         active_only: bool = True,
-    ) -> List[Template]:
+    ) -> list[Template]:
         """Список шаблонов с фильтрацией."""
         templates = list(self._cache.values())
         
@@ -234,7 +233,7 @@ class TemplateEngine:
         
         return sorted(templates, key=lambda t: t.updated_at, reverse=True)
     
-    def render(self, template_id: str, context: Dict[str, Any]) -> str:
+    def render(self, template_id: str, context: dict[str, Any]) -> str:
         """Отрендерить шаблон с переданным контекстом."""
         template = self.get_template(template_id)
         
@@ -273,8 +272,8 @@ class TemplateEngine:
     def find_best_template(
         self,
         intent: str,
-        platform: Optional[str] = None,
-    ) -> Optional[Template]:
+        platform: str | None = None,
+    ) -> Template | None:
         """Найти наиболее подходящий шаблон.
 
         Приоритет: платформенный шаблон > универсальный (platform=None).
@@ -305,9 +304,9 @@ class AdvisorTemplateIntegration:
         self,
         intent: str,
         platform: str,
-        context: Dict[str, Any],
-        template_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        context: dict[str, Any],
+        template_id: str | None = None,
+    ) -> dict[str, Any]:
         """Сгенерировать черновик ответа используя кастомный шаблон."""
         if template_id:
             template = self.engine.get_template(template_id)

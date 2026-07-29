@@ -1,7 +1,9 @@
 """Tests for aios_core/credential_manager.py"""
 from __future__ import annotations
+
 import pytest
-from aios_core.credential_manager import CredentialManager, CredentialEntry, CredentialType
+
+from aios_core.credential_manager import CredentialEntry, CredentialManager, CredentialType
 
 
 @pytest.fixture()

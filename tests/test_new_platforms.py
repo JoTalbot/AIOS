@@ -1,10 +1,12 @@
 """Tests for new platform adapters."""
 import pytest
-from aios_core.platforms.registry import PlatformRegistry
-from aios_core.platforms.prom_adapter import PromAdapter
+
 from aios_core.platforms.facebook_adapter import FacebookAdapter
+from aios_core.platforms.prom_adapter import PromAdapter
+from aios_core.platforms.registry import PlatformRegistry
 from aios_core.platforms.viber_adapter import ViberAdapter
 from aios_core.platforms.whatsapp_adapter import WhatsAppAdapter
+
 
 def test_registry_has_all_platforms():
     """Реестр знает все 6 платформ."""

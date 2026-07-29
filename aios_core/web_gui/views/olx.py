@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from nicegui import ui
 
-from ..api_client import get, post
+from ..api_client import get
 
 
 async def _get_olx_queries() -> dict:

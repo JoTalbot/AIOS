@@ -1,13 +1,15 @@
 """Main AI Advisor Controller — Full Pipeline Integration."""
 from __future__ import annotations
+
 import os
-from typing import Dict, Any, Optional
-from datetime import datetime
-from .templates_engine import TemplateEngine, AdvisorTemplateIntegration
-from .intent_classifier import SmartIntentClassifier
+from typing import Any
+
 from .compliance_guard import ComplianceGuard
-from .sentiment_analyzer import SentimentAnalyzer
+from .intent_classifier import SmartIntentClassifier
 from .metrics_collector import MetricsCollector
+from .sentiment_analyzer import SentimentAnalyzer
+from .templates_engine import AdvisorTemplateIntegration, TemplateEngine
+
 
 class AIAdvisor:
     def __init__(self, templates_dir: str = "data/templates", use_llm: bool = False):
@@ -18,7 +20,7 @@ class AIAdvisor:
         self.sentiment_analyzer = SentimentAnalyzer()
         self.metrics = MetricsCollector(storage_path=os.path.join(templates_dir, "metrics"))
 
-    def _calculate_dynamic_price(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_dynamic_price(self, context: dict[str, Any]) -> dict[str, Any]:
         product = context.get("product", {})
         base_price = product.get("price", 0)
         history = context.get("negotiation_history", [])
@@ -30,7 +32,7 @@ class AIAdvisor:
         return {"price": base_price, "reason": "Стандартная цена"}
 
     async def process_incoming_message(self, message_id: str, platform: str,
-                                       incoming_text: str, context: Dict[str, Any]) -> Dict[str, Any]:
+                                       incoming_text: str, context: dict[str, Any]) -> dict[str, Any]:
         """Полный пайплайн: Sentiment → Intent → Pricing → Template → Compliance."""
         
         # 1. Анализ тональности
@@ -101,6 +103,7 @@ class AIAdvisor:
 # === Интеграция с Platform Registry ===
 from aios_core.platforms.registry import PlatformRegistry
 
+
 class AIAdvisorWithPlatforms(AIAdvisor):
     """AI Advisor с интеграцией платформенных адаптеров."""
     
@@ -108,12 +111,12 @@ class AIAdvisorWithPlatforms(AIAdvisor):
         super().__init__(templates_dir, use_llm)
         self.platform_registry = PlatformRegistry()
 
-    def register_platform(self, platform: str, config: Dict[str, Any] = None):
+    def register_platform(self, platform: str, config: dict[str, Any] = None):
         """Зарегистрировать платформу."""
         self.platform_registry.register_adapter(platform, config)
 
     async def process_and_respond(self, platform: str, message_id: str,
-                                  incoming_text: str, context: Dict[str, Any]) -> Dict[str, Any]:
+                                  incoming_text: str, context: dict[str, Any]) -> dict[str, Any]:
         """Полный цикл: обработка + автоматическая отправка после одобрения."""
         
         # Обработка через основной пайплайн

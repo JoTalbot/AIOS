@@ -1,5 +1,5 @@
-import pytest
-from aios_core.plugin_manager import PluginManager, PluginInfo
+from aios_core.plugin_manager import PluginManager
+
 
 def test_wasm_plugin_registration_and_execution():
     pm = PluginManager()

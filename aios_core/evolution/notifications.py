@@ -1,6 +1,6 @@
 
 import os
-from typing import Dict, List
+
 from aios_core.notifications.dispatcher import NotificationDispatcher
 
 dispatcher = NotificationDispatcher()

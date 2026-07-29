@@ -1,5 +1,5 @@
-import pytest
-from aios_core.vector_store import VectorStore, VectorCompressor
+from aios_core.vector_store import VectorCompressor, VectorStore
+
 
 def test_vector_compressor():
     comp = VectorCompressor(bits_per_sub=8)

@@ -10,14 +10,13 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import sqlite3
 import statistics
 import urllib.request
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
 
 log = logging.getLogger("olx-alerts")
 

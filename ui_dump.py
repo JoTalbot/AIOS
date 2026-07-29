@@ -1,5 +1,5 @@
-import xml.etree.ElementTree as ET
 import sys
+import xml.etree.ElementTree as ET
 
 t = open(sys.argv[1]).read()
 root = ET.fromstring(t)

@@ -1,7 +1,10 @@
-import pytest
 import os
 import shutil
+
+import pytest
+
 from aios_core.rag.vector_store import VectorStore
+
 
 @pytest.fixture(autouse=True)
 def cleanup():

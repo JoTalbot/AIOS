@@ -1,10 +1,12 @@
 """Smart Intent Classifier with Real LLM Integration."""
 from __future__ import annotations
-import os
+
 import json
-import httpx
-from typing import Dict, Optional
+import os
 from dataclasses import dataclass
+
+import httpx
+
 
 @dataclass
 class IntentResult:
@@ -14,7 +16,7 @@ class IntentResult:
     language: str  # 'uk', 'ru', 'en'
 
 class SmartIntentClassifier:
-    def __init__(self, use_llm: bool = False, llm_api_key: Optional[str] = None):
+    def __init__(self, use_llm: bool = False, llm_api_key: str | None = None):
         self.use_llm = use_llm
         self.llm_api_key = llm_api_key or os.getenv("LLM_API_KEY")
         self.keyword_map = {
@@ -40,7 +42,7 @@ class SmartIntentClassifier:
         if any("Ѐ" <= c <= "ӿ" for c in text): return "ru"
         return "en"
 
-    async def classify(self, message: str, context: Optional[Dict] = None) -> IntentResult:
+    async def classify(self, message: str, context: dict | None = None) -> IntentResult:
         lang = self.detect_language(message)
         msg = message.lower()
         best, max_m = "general_inquiry", 0
@@ -94,4 +96,4 @@ class SmartIntentClassifier:
                     language=lang
                 )
         except Exception as e:
-            return IntentResult("general_inquiry", 0.5, f"LLM error: {str(e)}", lang)
+            return IntentResult("general_inquiry", 0.5, f"LLM error: {e!s}", lang)

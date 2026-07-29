@@ -1,6 +1,8 @@
 """Tests for aios_core/circuit_breaker.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.circuit_breaker import CircuitBreaker
 
 

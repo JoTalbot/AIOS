@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from aios_core.planner import PlanStatus, Planner, StepStatus
+from aios_core.planner import Planner
 from aios_core.storage import Database
 
 

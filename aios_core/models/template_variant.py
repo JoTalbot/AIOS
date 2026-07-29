@@ -1,6 +1,9 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean
 from datetime import datetime
+
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String
+
 from .base import Base
+
 
 class TemplateVariant(Base):
     __tablename__ = "template_variants"

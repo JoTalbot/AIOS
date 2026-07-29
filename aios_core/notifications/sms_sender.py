@@ -1,6 +1,7 @@
 import os
+
 import httpx
-from typing import List
+
 
 class SMSSender:
     def __init__(self):
@@ -9,7 +10,7 @@ class SMSSender:
         self.from_number = os.getenv("TWILIO_FROM_NUMBER")
         self.api_url = "https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
 
-    async def send(self, to_numbers: List[str], body: str) -> bool:
+    async def send(self, to_numbers: list[str], body: str) -> bool:
         if not self.account_sid:
             print("[SMS] Twilio credentials not set, skipping")
             return False
@@ -29,6 +30,6 @@ class SMSSender:
             print(f"[SMS] Error: {e}")
             return False
 
-    async def send_escalation_alert(self, to_numbers: List[str], platform: str):
+    async def send_escalation_alert(self, to_numbers: list[str], platform: str):
         body = f"[AIOS] Escalation on {platform}. Check dashboard."
         return await self.send(to_numbers, body)

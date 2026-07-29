@@ -152,7 +152,6 @@ def _get_ads_db():
 
 @_safe
 def cmd_olx(args: str = "") -> str:
-    import sqlite3
     conn, err = _get_ads_db()
     if err:
         return err
@@ -249,7 +248,6 @@ def cmd_olx_list(chat_id: int) -> str:
 
 @_safe
 def cmd_olx_latest(args: str, chat_id: int) -> str:
-    import sqlite3
     parts = args.strip().split()
     n = 5
     if parts and parts[-1].isdigit():

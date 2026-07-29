@@ -1,10 +1,10 @@
 
-from aios_core.evolution.orchestrator import evolution_orchestrator
-from aios_core.evolution.template_evolution import template_evolution
+import os
+
 from aios_core.evolution.intent_discovery import intent_discovery
+from aios_core.evolution.orchestrator import evolution_orchestrator
 from aios_core.evolution.self_healing import self_healing
 from aios_core.notifications.dispatcher import NotificationDispatcher
-import os
 
 dispatcher = NotificationDispatcher()
 

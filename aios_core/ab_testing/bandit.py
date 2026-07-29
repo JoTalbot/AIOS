@@ -1,6 +1,6 @@
 import random
-from typing import List, Dict
 from dataclasses import dataclass
+
 
 @dataclass
 class Arm:
@@ -14,7 +14,7 @@ class Arm:
 
 class ThompsonSamplingBandit:
     def __init__(self):
-        self.arms: Dict[str, Arm] = {}
+        self.arms: dict[str, Arm] = {}
     
     def add_arm(self, arm_id: str):
         if arm_id not in self.arms:
@@ -40,7 +40,7 @@ class ThompsonSamplingBandit:
         if arm_id in self.arms:
             self.arms[arm_id].conversions += 1
     
-    def get_stats(self) -> List[Dict]:
+    def get_stats(self) -> list[dict]:
         return [
             {
                 "id": arm.id,

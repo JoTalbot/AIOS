@@ -1,7 +1,9 @@
 
-from enum import Enum
-from typing import Dict, Any, Callable, List
 import asyncio
+from collections.abc import Callable
+from enum import Enum
+from typing import Any
+
 
 class WorkflowState(Enum):
     PENDING = "pending"
@@ -22,7 +24,7 @@ class SalesWorkflow:
     def add_step(self, name: str, func: Callable):
         self.steps.append(WorkflowStep(name, func))
     
-    async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, context: dict[str, Any]) -> dict[str, Any]:
         state = WorkflowState.IN_PROGRESS
         history = []
         

@@ -1,7 +1,9 @@
 """Tests for aios_core/observability.py"""
 from __future__ import annotations
+
 import pytest
-from aios_core.observability import Observability, MetricKind
+
+from aios_core.observability import MetricKind, Observability
 
 
 @pytest.fixture()

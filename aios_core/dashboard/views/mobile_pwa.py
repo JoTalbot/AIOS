@@ -1,5 +1,6 @@
 from nicegui import ui
 
+
 def render_mobile_pwa_view():
     ui.add_head_html('<link rel="manifest" href="/static/manifest.json">')
     ui.add_head_html('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">')

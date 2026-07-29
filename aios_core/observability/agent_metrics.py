@@ -1,6 +1,7 @@
-from prometheus_client import Counter, Histogram, Gauge
-from functools import wraps
 import time
+from functools import wraps
+
+from prometheus_client import Counter, Gauge, Histogram
 
 AGENT_REQUESTS = Counter(
     "aios_agent_requests_total",

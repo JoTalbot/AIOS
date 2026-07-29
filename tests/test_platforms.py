@@ -1,9 +1,11 @@
 """Tests for Platform Adapters."""
+
 import pytest
-from datetime import datetime
-from aios_core.platforms.registry import PlatformRegistry
-from aios_core.platforms.olx_adapter import OLXAdapter
+
 from aios_core.platforms.instagram_adapter import InstagramAdapter
+from aios_core.platforms.olx_adapter import OLXAdapter
+from aios_core.platforms.registry import PlatformRegistry
+
 
 def test_platform_registry():
     """Регистрация и получение адаптеров."""

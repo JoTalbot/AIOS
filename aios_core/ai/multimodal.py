@@ -1,12 +1,13 @@
 import os
+
 import httpx
-from typing import Optional, Dict
+
 
 class MultiModalAI:
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
     
-    async def analyze_image(self, image_url: str, prompt: str = "Describe") -> Optional[str]:
+    async def analyze_image(self, image_url: str, prompt: str = "Describe") -> str | None:
         if not self.api_key:
             return "No API key"
         try:

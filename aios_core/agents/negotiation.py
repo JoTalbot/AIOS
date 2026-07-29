@@ -1,5 +1,6 @@
-from typing import Dict, Any, List
 from enum import Enum
+from typing import Any
+
 
 class NegotiationState(Enum):
     INITIAL_OFFER = "initial_offer"
@@ -10,9 +11,9 @@ class NegotiationState(Enum):
 
 class NegotiationAgent:
     def __init__(self):
-        self.sessions: Dict[str, Dict] = {}
+        self.sessions: dict[str, dict] = {}
     
-    def process_message(self, session_id: str, user_message: str, guardrails: Dict) -> Dict[str, Any]:
+    def process_message(self, session_id: str, user_message: str, guardrails: dict) -> dict[str, Any]:
         session = self.sessions.get(session_id, {"state": NegotiationState.INITIAL_OFFER, "history": []})
         session["history"].append({"role": "user", "text": user_message})
         

@@ -1,6 +1,8 @@
 import pytest
+
 from aios_core.multitenancy import MultiTenantManager
 from aios_core.orchestrator import Orchestrator
+
 
 def test_tenant_data_bounds():
     manager = MultiTenantManager()

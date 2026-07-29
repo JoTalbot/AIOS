@@ -1,9 +1,11 @@
 """Metrics Collector — сбор статистики работы AI Advisor."""
 from __future__ import annotations
+
 import json
-from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any
+from pathlib import Path
+from typing import Any
+
 
 class MetricsCollector:
     def __init__(self, storage_path: str = "data/metrics"):
@@ -64,7 +66,7 @@ class MetricsCollector:
         self.data["platforms"][platform] = self.data["platforms"].get(platform, 0) + 1
         self._save()
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         total_drafts = self.data["drafts_created"]
         approval_rate = (self.data["drafts_approved"] / total_drafts * 100) if total_drafts > 0 else 0
         return {

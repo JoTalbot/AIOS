@@ -6,8 +6,7 @@ delay-tolerant task routing (DTN), and planetary mesh fault recovery.
 
 import time
 import uuid
-import math
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class BundleProtocol:
@@ -15,7 +14,7 @@ class BundleProtocol:
     def __init__(self):
         self.bundles = {}
         
-    def encapsulate(self, data: Any, destination: str, ttl_hours: float = 24.0) -> Dict[str, Any]:
+    def encapsulate(self, data: Any, destination: str, ttl_hours: float = 24.0) -> dict[str, Any]:
         bundle_id = str(uuid.uuid4())
         bundle = {
             "id": bundle_id,
@@ -34,7 +33,7 @@ class BundleProtocol:
         for b_id in expired:
             self.bundles[b_id]["status"] = "expired"
             
-    def get_bundle(self, bundle_id: str) -> Optional[Dict[str, Any]]:
+    def get_bundle(self, bundle_id: str) -> dict[str, Any] | None:
         return self.bundles.get(bundle_id)
 
 
@@ -57,7 +56,7 @@ class PlanetaryMeshNode:
         self.energy_capacity_wh = energy_capacity_wh
         self.energy_consumed_wh = 0.0
         self.status = "online"
-        self.active_tasks: List[str] = []
+        self.active_tasks: list[str] = []
 
     def is_reachable(self) -> bool:
         """True if node is usable for real-time routing.
@@ -92,8 +91,8 @@ class PlanetaryMeshOrchestrator:
 
     def __init__(self):
         """Initialize PlanetaryMeshOrchestrator."""
-        self.nodes: Dict[str, PlanetaryMeshNode] = {}
-        self.routed_tasks: List[Dict[str, Any]] = []
+        self.nodes: dict[str, PlanetaryMeshNode] = {}
+        self.routed_tasks: list[dict[str, Any]] = []
         self.dtn = BundleProtocol()
 
         # Default mesh nodes
@@ -127,8 +126,8 @@ class PlanetaryMeshOrchestrator:
         return total_latency * energy_penalty
 
     def route_planetary_task(
-        self, task: Dict[str, Any], max_allowed_latency_ms: float = 100.0, payload_size_mb: float = 1.0
-    ) -> Dict[str, Any]:
+        self, task: dict[str, Any], max_allowed_latency_ms: float = 100.0, payload_size_mb: float = 1.0
+    ) -> dict[str, Any]:
         """Find the optimal planetary node based on task latency budget, location, and node availability."""
         start_time = time.time()
         task_id = task.get("id", f"p_task_{len(self.routed_tasks)}")
@@ -185,7 +184,7 @@ class PlanetaryMeshOrchestrator:
             if node.location_type in ["orbital_leo", "lunar_edge"]:
                 node.recharge(solar_hours=1.0)
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "total_planetary_nodes": len(self.nodes),
@@ -221,5 +220,5 @@ class QuantumLinkManager:
             return True
         return False
         
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         return {"active_entangled_pairs": len(self.entangled_pairs)}

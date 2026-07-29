@@ -1,24 +1,25 @@
 """Platform Registry — управление всеми платформенными адаптерами."""
 from __future__ import annotations
-from typing import Dict, Type, List
+
 from .base import PlatformAdapter
-from .olx_adapter import OLXAdapter
-from .instagram_adapter import InstagramAdapter
-from .prom_adapter import PromAdapter
+from .ebay_adapter import EbayAdapter
 from .facebook_adapter import FacebookAdapter
+from .instagram_adapter import InstagramAdapter
+from .linkedin_adapter import LinkedinAdapter
+from .olx_adapter import OLXAdapter
+from .prom_adapter import PromAdapter
+from .tiktok_adapter import TiktokAdapter
+from .tiktok_shop_adapter import TiktokShopAdapter
 from .viber_adapter import ViberAdapter
 from .whatsapp_adapter import WhatsAppAdapter
-from .tiktok_adapter import TiktokAdapter
-from .linkedin_adapter import LinkedinAdapter
-from .ebay_adapter import EbayAdapter
-from .tiktok_shop_adapter import TiktokShopAdapter
+
 
 class PlatformRegistry:
     """Реестр всех доступных платформ."""
     
     def __init__(self):
-        self._adapters: Dict[str, PlatformAdapter] = {}
-        self._adapter_classes: Dict[str, Type[PlatformAdapter]] = {
+        self._adapters: dict[str, PlatformAdapter] = {}
+        self._adapter_classes: dict[str, type[PlatformAdapter]] = {
             "olx": OLXAdapter,
             "instagram": InstagramAdapter,
             "prom": PromAdapter,
@@ -31,7 +32,7 @@ class PlatformRegistry:
             "tiktok_shop": TiktokShopAdapter,
         }
 
-    def register_adapter(self, platform: str, config: Dict = None):
+    def register_adapter(self, platform: str, config: dict = None):
         if platform not in self._adapter_classes:
             raise ValueError(f"Неизвестная платформа: {platform}. Доступные: {list(self._adapter_classes.keys())}")
         adapter_class = self._adapter_classes[platform]
@@ -42,14 +43,14 @@ class PlatformRegistry:
             raise KeyError(f"Платформа {platform} не зарегистрирована")
         return self._adapters[platform]
 
-    def list_platforms(self) -> List[str]:
+    def list_platforms(self) -> list[str]:
         return list(self._adapters.keys())
 
-    def list_available_platforms(self) -> List[str]:
+    def list_available_platforms(self) -> list[str]:
         """Все платформы, которые можно зарегистрировать."""
         return list(self._adapter_classes.keys())
 
-    async def health_check_all(self) -> Dict[str, bool]:
+    async def health_check_all(self) -> dict[str, bool]:
         results = {}
         for platform, adapter in self._adapters.items():
             try:

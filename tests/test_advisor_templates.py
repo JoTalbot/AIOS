@@ -1,11 +1,12 @@
 """Тесты для Template Engine."""
-import pytest
-from pathlib import Path
 import tempfile
+
+import pytest
+
 from aios_core.advisor.templates_engine import (
     TemplateEngine,
-    TemplateVariable,
     TemplateValidationError,
+    TemplateVariable,
 )
 
 

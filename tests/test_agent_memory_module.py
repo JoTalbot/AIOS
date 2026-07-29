@@ -1,7 +1,9 @@
 """Tests for aios_core/agent_memory_system.py"""
 from __future__ import annotations
+
 import pytest
-from aios_core.agent_memory_system import AgentMemorySystem, MemoryEntry, MemoryType, MemoryPriority, SuccessPattern
+
+from aios_core.agent_memory_system import AgentMemorySystem, MemoryEntry, MemoryType, SuccessPattern
 
 
 @pytest.fixture()

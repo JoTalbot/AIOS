@@ -1,9 +1,12 @@
 """Comprehensive tests for AI Advisor v2 (Lang, Pricing, LLM)."""
-import pytest
 import tempfile
-from aios_core.advisor.intent_classifier import SmartIntentClassifier, IntentResult
+
+import pytest
+
 from aios_core.advisor.ai_advisor import AIAdvisor
+from aios_core.advisor.intent_classifier import SmartIntentClassifier
 from aios_core.advisor.templates_engine import TemplateEngine, TemplateVariable
+
 
 @pytest.mark.asyncio
 async def test_language_detection_uk():

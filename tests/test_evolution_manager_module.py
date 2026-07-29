@@ -1,6 +1,8 @@
 """Tests for aios_core/evolution_manager.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.evolution_manager import EvolutionManager
 from aios_core.storage import Database
 

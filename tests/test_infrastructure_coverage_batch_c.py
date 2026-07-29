@@ -1,6 +1,5 @@
 """Coverage for cache, encryption, queue and shutdown infrastructure."""
 
-import time
 
 from aios_core.cache import TTLCache
 from aios_core.encryption import EncryptionManager

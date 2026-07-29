@@ -10,8 +10,8 @@ import json
 import os
 
 from starlette.requests import Request
-from starlette.websockets import WebSocket
 from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from starlette.websockets import WebSocket
 
 from aios_core.api.security import Principal, find_principal, required_roles
 from aios_core.rate_limiter import rate_limiter

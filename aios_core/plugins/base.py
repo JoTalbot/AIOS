@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
+from typing import Any
+
 
 class BasePlugin(ABC):
     @property
@@ -13,9 +14,9 @@ class BasePlugin(ABC):
         pass
     
     @abstractmethod
-    async def initialize(self, config: Dict[str, Any]) -> bool:
+    async def initialize(self, config: dict[str, Any]) -> bool:
         pass
     
     @abstractmethod
-    async def execute(self, action: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
         pass

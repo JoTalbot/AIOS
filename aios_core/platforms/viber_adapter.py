@@ -1,25 +1,27 @@
 """Viber Platform Adapter."""
 from __future__ import annotations
+
 import os
-import httpx
-from typing import List, Dict, Any, Optional
 from datetime import datetime
-from .base import PlatformAdapter, IncomingMessage, SentMessage
+from typing import Any
+
+from .base import IncomingMessage, PlatformAdapter, SentMessage
+
 
 class ViberAdapter(PlatformAdapter):
     """Адаптер для Viber Public Accounts."""
     
     API_URL = "https://chatapi.viber.com/pa"
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] = None):
         super().__init__(config or {})
         self.auth_token = self.config.get("auth_token") or os.getenv("VIBER_AUTH_TOKEN")
 
-    async def receive_messages(self, since: Optional[datetime] = None) -> List[IncomingMessage]:
+    async def receive_messages(self, since: datetime | None = None) -> list[IncomingMessage]:
         # Viber использует Webhooks
         return []
 
-    async def send_message(self, recipient_id: str, text: str, metadata: Dict = None) -> SentMessage:
+    async def send_message(self, recipient_id: str, text: str, metadata: dict = None) -> SentMessage:
         # TODO: POST /send_message
         return SentMessage(
             message_id=f"viber_{int(datetime.utcnow().timestamp())}",
@@ -30,7 +32,7 @@ class ViberAdapter(PlatformAdapter):
     async def mark_as_read(self, message_id: str) -> bool:
         return True
 
-    async def get_user_info(self, user_id: str) -> Dict[str, Any]:
+    async def get_user_info(self, user_id: str) -> dict[str, Any]:
         # TODO: POST /get_user_details
         return {"user_id": user_id, "platform": "viber"}
 

@@ -1,6 +1,8 @@
 """Tests for aios_core/self_supervised.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.self_supervised import SelfSupervisedLearner
 
 

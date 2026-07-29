@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any
+
 
 class FeatureFlags:
     DEFAULTS = {
@@ -22,7 +22,7 @@ class FeatureFlags:
     }
 
     def __init__(self):
-        self._cache: Dict[str, bool] = {}
+        self._cache: dict[str, bool] = {}
 
     def is_enabled(self, feature: str) -> bool:
         if feature in self._cache:
@@ -45,7 +45,7 @@ class FeatureFlags:
             return wrapper
         return decorator
 
-    def list_all(self) -> Dict[str, bool]:
+    def list_all(self) -> dict[str, bool]:
         return {f: self.is_enabled(f) for f in self.DEFAULTS}
 
     def reload(self):

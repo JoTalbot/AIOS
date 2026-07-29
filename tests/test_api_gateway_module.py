@@ -1,6 +1,8 @@
 """Tests for aios_core/api_gateway.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.api_gateway import APIGateway
 
 

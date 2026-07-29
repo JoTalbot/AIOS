@@ -1,7 +1,8 @@
 """Tests for aios_core/constitution_loader.py"""
 from __future__ import annotations
-import os
+
 import pytest
+
 from aios_core.constitution_loader import ConstitutionLoader
 
 

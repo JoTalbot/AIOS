@@ -1,25 +1,25 @@
 """Comprehensive AI Safety Framework for AIOS"""
 
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = [
     "AISafetyFramework",
+    "AdversarialSafety",
     "AlignmentSafety",
+    "BiasSafety",
     "ConstitutionalSafety",
     "GovernanceSafety",
     "InterpretabilitySafety",
-    "RobustnessSafety",
-    "BiasSafety",
     "PrivacySafety",
-    "AdversarialSafety",
-    "ResourceSafety"
+    "ResourceSafety",
+    "RobustnessSafety"
 ]
 
 
 class SafetyLayer:
     """Base class for all safety layers."""
-    def check(self, action: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         raise NotImplementedError("Subclasses must implement check method.")
 
 
@@ -30,7 +30,7 @@ class ConstitutionalSafety(SafetyLayer):
         self.harm_keywords = ["harm", "damage", "injure", "destroy", "kill", "attack", "abuse"]
         self.discrimination_keywords = ["discriminate", "racist", "sexist", "bias"]
 
-    def check(self, action: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         action_str = str(action).lower()
         violations = []
         
@@ -54,7 +54,7 @@ class ConstitutionalSafety(SafetyLayer):
 class AlignmentSafety(SafetyLayer):
     """Safety layer quantifying value-alignment of actions."""
 
-    def check(self, action: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         # Simulate alignment checking against system values
         intent = action.get("intent", "").lower()
         if "override" in intent or "bypass" in intent:
@@ -65,7 +65,7 @@ class AlignmentSafety(SafetyLayer):
 class InterpretabilitySafety(SafetyLayer):
     """Safety layer assessing how interpretable an action is."""
 
-    def check(self, action: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         complexity = action.get("complexity", 1.0)
         # If action is too complex, it's less interpretable
         if complexity > 8.0:
@@ -76,7 +76,7 @@ class InterpretabilitySafety(SafetyLayer):
 class RobustnessSafety(SafetyLayer):
     """Safety layer checking robustness against perturbations."""
 
-    def check(self, action: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         # A simple heuristic for robustness
         params = action.get("parameters", {})
         if not params:
@@ -93,7 +93,7 @@ class RobustnessSafety(SafetyLayer):
 class GovernanceSafety(SafetyLayer):
     """Safety layer enforcing governance compliance."""
 
-    def check(self, action: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         policy = action.get("policy", "")
         if policy == "unrestricted":
             return {"safe": False, "score": 0.2, "governance_compliance": 0.1, "reason": "Unrestricted policy not allowed"}
@@ -103,7 +103,7 @@ class GovernanceSafety(SafetyLayer):
 class BiasSafety(SafetyLayer):
     """Safety layer evaluating statistical bias potential."""
     
-    def check(self, action: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         target_demographics = action.get("demographics", [])
         if len(target_demographics) == 1:
             return {"safe": False, "score": 0.4, "bias_risk": 0.8, "reason": "Action targets a single demographic exclusively"}
@@ -116,7 +116,7 @@ class PrivacySafety(SafetyLayer):
     def __init__(self):
         self.pii_fields = ["ssn", "social_security", "credit_card", "password", "health_record"]
 
-    def check(self, action: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         data_fields = action.get("data_fields", [])
         exposed = [f for f in data_fields if f.lower() in self.pii_fields]
         if exposed:
@@ -127,7 +127,7 @@ class PrivacySafety(SafetyLayer):
 class AdversarialSafety(SafetyLayer):
     """Safety layer detecting adversarial inputs (e.g. prompt injection)."""
     
-    def check(self, action: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = str(action.get("payload", "")).lower()
         if "ignore previous instructions" in payload or "system prompt" in payload:
             return {"safe": False, "score": 0.1, "adversarial_risk": 0.9, "reason": "Prompt injection detected"}
@@ -137,7 +137,7 @@ class AdversarialSafety(SafetyLayer):
 class ResourceSafety(SafetyLayer):
     """Safety layer ensuring an action does not cause resource exhaustion."""
     
-    def check(self, action: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         compute_req = action.get("compute_required", 0)
         memory_req = action.get("memory_required_gb", 0)
         
@@ -151,7 +151,7 @@ class AISafetyFramework:
 
     def __init__(self):
         """Initialize AISafetyFramework."""
-        self.safety_layers: Dict[str, SafetyLayer] = {
+        self.safety_layers: dict[str, SafetyLayer] = {
             "constitutional": ConstitutionalSafety(),
             "alignment": AlignmentSafety(),
             "interpretability": InterpretabilitySafety(),
@@ -162,7 +162,7 @@ class AISafetyFramework:
             "adversarial": AdversarialSafety(),
             "resource": ResourceSafety()
         }
-        self.incidents: List[Dict[str, Any]] = []
+        self.incidents: list[dict[str, Any]] = []
         self.safety_checks_performed = 0
         self.global_threshold = 0.7
 
@@ -170,7 +170,7 @@ class AISafetyFramework:
         """Allow dynamic addition of custom safety layers."""
         self.safety_layers[name] = layer
 
-    def comprehensive_safety_check(self, action: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def comprehensive_safety_check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Run all safety layers on an action."""
         self.safety_checks_performed += 1
         results = {}
@@ -207,7 +207,7 @@ class AISafetyFramework:
             "timestamp": time.time()
         }
 
-    def get_safety_report(self) -> Dict[str, Any]:
+    def get_safety_report(self) -> dict[str, Any]:
         """Execute get safety report."""
         return {
             "total_checks": self.safety_checks_performed,
@@ -217,7 +217,7 @@ class AISafetyFramework:
             "system_health": "Critical" if len(self.incidents) > 10 else "Nominal"
         }
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         return {
             "layers": len(self.safety_layers),

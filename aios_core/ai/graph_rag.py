@@ -1,11 +1,13 @@
+from typing import Any
+
 import networkx as nx
-from typing import Dict, Any
+
 
 class GraphRAG:
     def __init__(self):
         self.graph = nx.DiGraph()
     
-    def add_entity(self, entity_id: str, entity_type: str, properties: Dict[str, Any]):
+    def add_entity(self, entity_id: str, entity_type: str, properties: dict[str, Any]):
         self.graph.add_node(entity_id, type=entity_type, **properties)
     
     def add_relationship(self, source: str, target: str, relation: str, weight: float = 1.0):

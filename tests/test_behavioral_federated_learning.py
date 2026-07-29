@@ -1,5 +1,5 @@
-import pytest
-from aios_core.federated_learning import FederatedLearning, EdgeProfile, NodeStatus
+from aios_core.federated_learning import EdgeProfile, FederatedLearning
+
 
 def test_fl_local_differential_privacy():
     fl = FederatedLearning()

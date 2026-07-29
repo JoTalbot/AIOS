@@ -1,8 +1,11 @@
 """End-to-end tests for full AI Advisor pipeline."""
-import pytest
 import tempfile
+
+import pytest
+
 from aios_core.advisor.ai_advisor import AIAdvisor
 from aios_core.advisor.templates_engine import TemplateVariable
+
 
 @pytest.fixture
 def advisor():

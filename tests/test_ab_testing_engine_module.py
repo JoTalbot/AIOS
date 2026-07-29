@@ -6,7 +6,6 @@ import pytest
 
 from aios_core.ab_testing_engine import (
     ABTestingEngine,
-    ExperimentStatus,
     MetricType,
     Variant,
 )

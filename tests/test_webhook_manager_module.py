@@ -1,6 +1,8 @@
 """Tests for aios_core/webhook_manager.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.webhook_manager import WebhookManager
 
 

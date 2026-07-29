@@ -1,6 +1,8 @@
 """Tests for aios_core/reinforcement_learning.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.reinforcement_learning import QLearningAgent
 
 

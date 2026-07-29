@@ -1,4 +1,5 @@
-from typing import Dict, Any
+from typing import Any
+
 
 class BrandingManager:
     def __init__(self):
@@ -9,7 +10,7 @@ class BrandingManager:
             "custom_domain": None
         }
     
-    def get_workspace_branding(self, workspace_id: str) -> Dict[str, Any]:
+    def get_workspace_branding(self, workspace_id: str) -> dict[str, Any]:
         """В реальном приложении здесь был бы запрос к БД."""
         return self.defaults
     

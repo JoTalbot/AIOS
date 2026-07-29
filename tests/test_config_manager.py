@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 
 import pytest
 import yaml
@@ -14,7 +12,6 @@ from aios_core.config import (
     load_config,
 )
 from aios_core.config_manager import ConfigLayer, ConfigManager
-
 
 # ── config.py tests ──────────────────────────────────────────────────────
 

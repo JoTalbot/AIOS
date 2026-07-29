@@ -6,30 +6,27 @@ The SPA itself lives at dashboard/index.html and is served at '/'.
 
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import platform
+import re as _re
 import secrets
-import hmac
 import sqlite3
 import subprocess
-import threading
 import time
-import re as _re
-from pathlib import Path
 from datetime import UTC, datetime
+from pathlib import Path
 
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, StreamingResponse
-from starlette.routing import Route, Mount
-from starlette.staticfiles import StaticFiles
+from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocket
-from starlette.routing import WebSocketRoute
 
-from .orchestrator import Orchestrator
-from .backup_manager import BackupManager
 from .android_auto_study import AndroidAutoStudy
+from .backup_manager import BackupManager
+from .orchestrator import Orchestrator
 
 _DASHBOARD_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "index.html"
 

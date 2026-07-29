@@ -9,10 +9,9 @@ from __future__ import annotations
 
 import contextlib
 import importlib
-import json
 import logging
 from collections.abc import Callable
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +26,11 @@ class PluginInfo:
         "dependencies",
         "description",
         "enabled",
+        "is_wasm",
         "module_path",
         "name",
         "priority",
         "version",
-        "is_wasm",
     )
 
     def __init__(
@@ -40,7 +39,7 @@ class PluginInfo:
         version: str = "0.0.1",
         description: str = "",
         author: str = "",
-        dependencies: Optional[List[str]] = None,
+        dependencies: list[str] | None = None,
         priority: int = 0,
         enabled: bool = True,
         module_path: str = "",
@@ -85,7 +84,7 @@ class WasmRuntime:
         }
         return True
         
-    def execute_hook(self, name: str, hook_name: str, payload: Dict[str, Any]) -> Any:
+    def execute_hook(self, name: str, hook_name: str, payload: dict[str, Any]) -> Any:
         """Execute a specific hook inside the Wasm sandbox."""
         if name not in self.loaded_modules:
             raise ValueError(f"Wasm module {name} not loaded")
@@ -123,12 +122,12 @@ class PluginManager:
 
     def __init__(self):
         """Initialize PluginManager."""
-        self.plugins: Dict[str, Any] = {}
-        self._info: Dict[str, PluginInfo] = {}
-        self.hooks: Dict[str, List[Tuple[Callable, int, str]]] = {}
-        self._config: Dict[str, Dict[str, Any]] = {}
-        self._hook_results: Dict[str, List[Any]] = {}
-        self._load_order: List[str] = []
+        self.plugins: dict[str, Any] = {}
+        self._info: dict[str, PluginInfo] = {}
+        self.hooks: dict[str, list[tuple[Callable, int, str]]] = {}
+        self._config: dict[str, dict[str, Any]] = {}
+        self._hook_results: dict[str, list[Any]] = {}
+        self._load_order: list[str] = []
         
         self.wasm_runtime = WasmRuntime()
 
@@ -140,7 +139,7 @@ class PluginManager:
         self,
         name: str,
         plugin: Any,
-        info: Optional[PluginInfo] = None,
+        info: PluginInfo | None = None,
     ) -> bool:
         """Register a plugin object under *name* with optional metadata."""
         if name in self.plugins:
@@ -162,7 +161,7 @@ class PluginManager:
                 
         return True
 
-    def register_wasm_plugin(self, name: str, bytecode: bytes, info: Optional[PluginInfo] = None) -> bool:
+    def register_wasm_plugin(self, name: str, bytecode: bytes, info: PluginInfo | None = None) -> bool:
         """Register a WebAssembly plugin payload."""
         if info is None:
             info = PluginInfo(name=name)
@@ -238,8 +237,8 @@ class PluginManager:
     def load_plugin(
         self,
         module_path: str,
-        name: Optional[str] = None,
-        info: Optional[PluginInfo] = None,
+        name: str | None = None,
+        info: PluginInfo | None = None,
     ) -> bool:
         """Dynamically load a Python plugin module by dotted path."""
         try:
@@ -250,10 +249,10 @@ class PluginManager:
         except Exception:
             return False
 
-    def resolve_dependencies(self) -> List[str]:
+    def resolve_dependencies(self) -> list[str]:
         """Return a load order that respects declared dependencies."""
-        resolved: List[str] = []
-        unresolved: Dict[str, List[str]] = {}
+        resolved: list[str] = []
+        unresolved: dict[str, list[str]] = {}
 
         for name, info in self._info.items():
             deps = [d for d in info.dependencies if d in self._info]
@@ -303,9 +302,9 @@ class PluginManager:
             
         self.register_hook(hook_name, wasm_callback, priority, plugin_name)
 
-    def run_hook(self, hook_name: str, *args, **kwargs) -> List[Any]:
+    def run_hook(self, hook_name: str, *args, **kwargs) -> list[Any]:
         """Execute all registered callbacks for *hook_name*."""
-        results: List[Any] = []
+        results: list[Any] = []
         for callback, _priority, pname in self.hooks.get(hook_name, []):
             if pname and pname in self._info and not self._info[pname].enabled:
                 continue
@@ -317,7 +316,7 @@ class PluginManager:
         self._hook_results[hook_name] = results
         return results
 
-    def get_hook_results(self, hook_name: str) -> List[Any]:
+    def get_hook_results(self, hook_name: str) -> list[Any]:
         """Return cached results from the last ``run_hook`` call."""
         return self._hook_results.get(hook_name, [])
 
@@ -335,7 +334,7 @@ class PluginManager:
     # Inspection
     # ------------------------------------------------------------------
 
-    def list_plugins(self, enabled_only: bool = False) -> List[str]:
+    def list_plugins(self, enabled_only: bool = False) -> list[str]:
         if enabled_only:
             return [
                 n for n in self._load_order if n in self._info and self._info[n].enabled

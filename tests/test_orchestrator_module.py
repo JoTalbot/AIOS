@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import os
 import pytest
 
-from aios_core.orchestrator import Orchestrator, StepStatus, TaskStatus, TaskStep
+from aios_core.orchestrator import Orchestrator, StepStatus, TaskStatus
 from aios_core.storage import Database
 
 

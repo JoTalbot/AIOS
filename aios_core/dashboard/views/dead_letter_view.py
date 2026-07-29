@@ -1,5 +1,6 @@
 from nicegui import ui
 
+
 def render_dead_letter_view():
     ui.label("Dead Letter Queue").classes("text-h4 q-mb-md")
     ui.label("Failed webhook messages that exceeded retry limit").classes("text-grey q-mb-md")

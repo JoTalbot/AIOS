@@ -1,17 +1,18 @@
+
 import strawberry
-from typing import List, Optional
+
 
 @strawberry.type
 class TemplateType:
     id: str
     name: str
     intent: str
-    platform: Optional[str]
+    platform: str | None
 
 @strawberry.type
 class Query:
     @strawberry.field
-    def templates(self) -> List[TemplateType]:
+    def templates(self) -> list[TemplateType]:
         return [
             TemplateType(id="1", name="Greeting", intent="greeting", platform="olx"),
             TemplateType(id="2", name="Price", intent="price_inquiry", platform=None)

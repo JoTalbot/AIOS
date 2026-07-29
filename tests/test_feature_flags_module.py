@@ -1,7 +1,9 @@
 """Tests for aios_core/feature_flags.py"""
 from __future__ import annotations
+
 import pytest
-from aios_core.feature_flags import FlagStore, FeatureFlags
+
+from aios_core.feature_flags import FeatureFlags, FlagStore
 
 
 @pytest.fixture()

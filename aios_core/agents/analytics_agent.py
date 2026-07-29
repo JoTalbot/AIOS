@@ -1,5 +1,7 @@
-from .base import BaseAgent, AgentState
 from aios_core.analytics.engine import AnalyticsEngine
+
+from .base import AgentState, BaseAgent
+
 
 class AnalyticsAgent(BaseAgent):
     def __init__(self, analytics_engine: AnalyticsEngine):

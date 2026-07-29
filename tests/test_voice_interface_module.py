@@ -1,6 +1,8 @@
 """Tests for aios_core/voice_interface.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.voice_interface import VoiceInterface
 
 

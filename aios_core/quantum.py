@@ -20,7 +20,7 @@ import logging
 import math
 import random
 from collections.abc import Callable
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class QuantumGate:
         self.param = param
         self.matrix = self.GATES.get(name, [[1, 0], [0, 1]])
 
-    def apply(self, state: List[complex]) -> List[complex]:
+    def apply(self, state: list[complex]) -> list[complex]:
         """Apply gate to a 2-qubit state (simplified)."""
         if self.name == "H":
             s = 1 / math.sqrt(2)
@@ -75,7 +75,7 @@ class QuantumGate:
             ]
         return state
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         return {"name": self.name, "target": self.target, "param": self.param}
 
 
@@ -85,9 +85,9 @@ class QuantumCircuit:
     def __init__(self, qubits: int = 2, noise_factor: float = 0.0) -> None:
         self.qubits = qubits
         self.noise_factor = noise_factor
-        self.gates: List[QuantumGate] = []
-        self._state: List[complex] = [complex(1, 0)] + [complex(0, 0)] * (2**qubits - 1)
-        self._measurement_results: List[int] = []
+        self.gates: list[QuantumGate] = []
+        self._state: list[complex] = [complex(1, 0)] + [complex(0, 0)] * (2**qubits - 1)
+        self._measurement_results: list[int] = []
 
     def add_gate(self, name: str, target: int = 0, param: float = 0.0) -> QuantumGate:
         """Add a gate to the circuit."""
@@ -95,7 +95,7 @@ class QuantumCircuit:
         self.gates.append(gate)
         return gate
 
-    def simulate(self) -> List[complex]:
+    def simulate(self) -> list[complex]:
         """Simulate the circuit with depolarization noise."""
         state = [complex(1, 0), complex(0, 0)]  # |00>
         for gate in self.gates:
@@ -112,7 +112,7 @@ class QuantumCircuit:
         self._state = state
         return state
 
-    def measure(self, shots: int = 1000) -> Dict[str, int]:
+    def measure(self, shots: int = 1000) -> dict[str, int]:
         """Measure circuit output with sampling and SPAM noise."""
         self.simulate()
         probs = [abs(s) ** 2 for s in self._state]
@@ -121,7 +121,7 @@ class QuantumCircuit:
             return {"0": shots}
             
         probs_norm = [p / total for p in probs]
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         for _ in range(shots):
             r = random.random()
             cumulative = 0.0
@@ -151,14 +151,14 @@ class QuantumCircuit:
         cost_hamiltonian: Callable,
         mixer_angle: float = 0.5,
         cost_angle: float = 0.5,
-    ) -> List[complex]:
+    ) -> list[complex]:
         """Simulate a QAOA layer."""
         self.add_gate("H", 0)  # Initial superposition
         self.add_gate("RY", 0, cost_angle)  # Cost unitary
         self.add_gate("RX", 0, mixer_angle)  # Mixer unitary
         return self.simulate()
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         return {
             "qubits": self.qubits,
             "gates": len(self.gates),
@@ -173,7 +173,7 @@ class QuantumErrorMitigation:
     def __init__(self, base_noise: float = 0.05):
         self.base_noise = base_noise
         
-    def zero_noise_extrapolation(self, circuit_builder: Callable[[float], QuantumCircuit], expectation_func: Callable[[Dict[str, int]], float], scale_factors: List[float] = [1.0, 2.0, 3.0]) -> float:
+    def zero_noise_extrapolation(self, circuit_builder: Callable[[float], QuantumCircuit], expectation_func: Callable[[dict[str, int]], float], scale_factors: list[float] = [1.0, 2.0, 3.0]) -> float:
         """ZNE: Run circuit at amplified noise levels, then extrapolate back to zero noise."""
         results = []
         for scale in scale_factors:
@@ -200,7 +200,7 @@ class QuantumErrorMitigation:
         
         return c
 
-    def readout_error_mitigation(self, counts: Dict[str, int], confusion_matrix: List[List[float]]) -> Dict[str, float]:
+    def readout_error_mitigation(self, counts: dict[str, int], confusion_matrix: list[list[float]]) -> dict[str, float]:
         """Correct measurement distributions by inverting the confusion matrix (using Pseudo-inverse)."""
         # simplified 2-qubit (4 states) or 1-qubit (2 states) mapping
         # For our 2-state output:
@@ -241,8 +241,8 @@ class QuantumInspiredOptimizer:
         self.temperature = temperature
 
     def optimize(
-        self, solution: List, cost_func: Callable, iterations: int = 1000
-    ) -> Tuple[List, float]:
+        self, solution: list, cost_func: Callable, iterations: int = 1000
+    ) -> tuple[list, float]:
         """Quantum-inspired annealing."""
         current = solution[:]
         current_cost = cost_func(current)
@@ -271,5 +271,5 @@ class QuantumInspiredOptimizer:
 
         return best, best_cost
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         return {"temperature": round(self.temperature, 2)}

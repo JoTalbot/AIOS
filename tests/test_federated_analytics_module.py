@@ -1,6 +1,8 @@
 """Tests for aios_core/federated_analytics.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.federated_analytics import FederatedAnalytics
 
 

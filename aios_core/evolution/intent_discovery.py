@@ -1,13 +1,13 @@
 
-from typing import List, Dict
-from collections import defaultdict
 import hashlib
+from collections import defaultdict
+
 
 class IntentDiscovery:
     def __init__(self):
         self.min_cluster = 5
     
-    def analyze(self, messages: List[Dict]) -> Dict:
+    def analyze(self, messages: list[dict]) -> dict:
         uncertain = [m for m in messages if m.get("confidence", 1.0) < 0.6]
         if not uncertain: return {"status": "no_uncertain"}
         

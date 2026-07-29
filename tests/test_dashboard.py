@@ -9,7 +9,7 @@ import pytest
 from starlette.requests import Request
 from starlette.testclient import TestClient
 
-from aios_core.dashboard import AIOSDashboard, AIOS_SERVICES
+from aios_core.dashboard import AIOS_SERVICES, AIOSDashboard
 
 
 def _redirect_path(tmp_path):

@@ -7,7 +7,6 @@ for Android/Desktop RPA when UI elements lack accessibility IDs.
 from __future__ import annotations
 
 import logging
-import math
 from dataclasses import dataclass
 from typing import Any
 

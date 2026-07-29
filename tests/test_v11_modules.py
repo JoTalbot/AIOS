@@ -1,5 +1,5 @@
-import pytest
 from aios_core.quantum import QuantumCircuit, QuantumErrorMitigation
+
 
 def test_qem_zne():
     qem = QuantumErrorMitigation(base_noise=0.05)

@@ -1,5 +1,6 @@
 from nicegui import ui
 
+
 def apply_saas_theme():
     ui.add_head_html("""
     <style>

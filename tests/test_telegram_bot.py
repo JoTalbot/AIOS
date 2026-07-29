@@ -1,6 +1,8 @@
 """Tests for Telegram Approval Bot."""
 import pytest
+
 from aios_core.advisor.telegram_bot import TelegramApprovalBot
+
 
 @pytest.mark.asyncio
 async def test_send_draft_for_approval():

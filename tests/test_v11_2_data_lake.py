@@ -1,5 +1,5 @@
-import pytest
 from aios_core.data_lake import DataLake
+
 
 def test_encrypted_data_lake_export():
     lake = DataLake()

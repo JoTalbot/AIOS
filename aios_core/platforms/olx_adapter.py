@@ -1,17 +1,19 @@
 """OLX Platform Adapter — интеграция с OLX API."""
 from __future__ import annotations
+
 import os
-import httpx
-from typing import List, Dict, Any, Optional
 from datetime import datetime
-from .base import PlatformAdapter, IncomingMessage, SentMessage
+from typing import Any
+
+from .base import IncomingMessage, PlatformAdapter, SentMessage
+
 
 class OLXAdapter(PlatformAdapter):
     """Адаптер для OLX.ua (использует OLX API v2)."""
     
     BASE_URL = "https://www.olx.ua/api/v1"
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] = None):
         super().__init__(config or {})
         self.client_id = self.config.get("client_id") or os.getenv("OLX_CLIENT_ID")
         self.client_secret = self.config.get("client_secret") or os.getenv("OLX_CLIENT_SECRET")
@@ -38,7 +40,7 @@ class OLXAdapter(PlatformAdapter):
         #     self.access_token = data["access_token"]
         #     self._token_expires = datetime.utcnow() + timedelta(seconds=data["expires_in"])
 
-    async def receive_messages(self, since: Optional[datetime] = None) -> List[IncomingMessage]:
+    async def receive_messages(self, since: datetime | None = None) -> list[IncomingMessage]:
         """Получить новые сообщения из OLX threads."""
         await self._ensure_token()
         
@@ -54,7 +56,7 @@ class OLXAdapter(PlatformAdapter):
         # Заглушка для демонстрации
         return []
 
-    async def send_message(self, recipient_id: str, text: str, metadata: Dict = None) -> SentMessage:
+    async def send_message(self, recipient_id: str, text: str, metadata: dict = None) -> SentMessage:
         """Отправить ответ в OLX thread."""
         await self._ensure_token()
         
@@ -79,7 +81,7 @@ class OLXAdapter(PlatformAdapter):
         # TODO: PUT /threads/{thread_id}/read
         return True
 
-    async def get_user_info(self, user_id: str) -> Dict[str, Any]:
+    async def get_user_info(self, user_id: str) -> dict[str, Any]:
         await self._ensure_token()
         # TODO: GET /users/{user_id}
         return {"user_id": user_id, "platform": "olx"}

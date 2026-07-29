@@ -1,5 +1,7 @@
-from nicegui import ui
 import json
+
+from nicegui import ui
+
 
 def render_template_editor_view(template_engine):
     ui.label("🎨 Template Editor").classes("text-h4 q-mb-md")
@@ -60,14 +62,14 @@ def render_template_editor_view(template_engine):
 
             def refresh_preview():
                 try:
-                    from aios_core.advisor.templates_engine import TemplateEngine, Template
+                    from aios_core.advisor.templates_engine import TemplateEngine
                     temp_engine = TemplateEngine(storage_path="/tmp/preview")
                     temp_tpl = temp_engine.create_template(
                         name="preview", content=content_area.value, intent="preview"
                     )
                     ctx = json.loads(context_area.value or "{}")
                     rendered = temp_engine.render(temp_tpl.id, ctx)
-                    preview_area.content = f""
+                    preview_area.content = ""
                     temp_engine.delete_template(temp_tpl.id)
                 except Exception as e:
                     preview_area.content = f"**Error:** {e}"

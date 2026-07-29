@@ -1,7 +1,8 @@
 """Sentiment Analyzer — определение тональности и эскалация."""
 from __future__ import annotations
-from typing import Dict
+
 from dataclasses import dataclass
+
 
 @dataclass
 class SentimentResult:

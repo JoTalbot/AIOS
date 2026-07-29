@@ -1,6 +1,7 @@
 
 from nicegui import ui
 
+
 def render_evolution_view(evolution_orchestrator):
     ui.label("Evolution Dashboard").classes("text-h4 q-mb-md")
     

@@ -1,6 +1,8 @@
+import os
+
 from arq import create_pool
 from arq.connections import RedisSettings
-import os
+
 
 async def get_queue():
     return await create_pool(RedisSettings(host=os.getenv("REDIS_HOST", "localhost"), port=6379))

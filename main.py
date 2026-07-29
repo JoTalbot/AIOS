@@ -1,16 +1,15 @@
-from fastapi import FastAPI, Depends
-from aios_core.logging_setup import *
-from aios_core.i18n.translations import t
-from aios_core.schemas.auth import LoginRequest, TokenResponse
-from aios_core.schemas.agents import AgentProcessRequest, AgentProcessResponse
+from fastapi import Depends, FastAPI
 from nicegui import ui
 from starlette.middleware.cors import CORSMiddleware
-from aios_core.webhooks.router import router as webhook_router
-from aios_core.advisor.orchestrator import AdvisorOrchestrator
+
 from aios_core.advisor.ai_advisor import AIAdvisor
+from aios_core.advisor.orchestrator import AdvisorOrchestrator
 from aios_core.advisor.telegram_bot import TelegramApprovalBot
-from aios_core.platforms.registry import PlatformRegistry
+from aios_core.logging_setup import *
 from aios_core.observability.prometheus_metrics import metrics_endpoint
+from aios_core.platforms.registry import PlatformRegistry
+from aios_core.schemas.agents import AgentProcessRequest
+from aios_core.webhooks.router import router as webhook_router
 
 # Инициализация компонентов
 advisor = AIAdvisor(templates_dir="data/templates", use_llm=True)
@@ -42,9 +41,9 @@ async def health_check():
 
 # Интеграция NiceGUI с FastAPI
 
-from aios_core.websocket.metrics_ws import manager, metrics_broadcast_loop
-from aios_core.analytics.engine import AnalyticsEngine
 from aios_core.agents.orchestrator import MultiAgentOrchestrator
+from aios_core.analytics.engine import AnalyticsEngine
+from aios_core.websocket.metrics_ws import manager, metrics_broadcast_loop
 
 analytics_engine = AnalyticsEngine([], [])
 agent_orchestrator = MultiAgentOrchestrator(analytics_engine)
@@ -69,11 +68,11 @@ async def process_with_agents(request: AgentProcessRequest):
     return result
 
 
-from aios_core.cache.redis_cache import cache, cached
-from aios_core.audit.recorder import recorder as audit_recorder
-from aios_core.middleware.audit import AuditMiddleware
-from aios_core.config.features import flags
 from aios_core.api.openapi_export import init_exporter
+from aios_core.audit.recorder import recorder as audit_recorder
+from aios_core.cache.redis_cache import cache
+from aios_core.config.features import flags
+from aios_core.middleware.audit import AuditMiddleware
 
 app.add_middleware(AuditMiddleware)
 openapi_exporter = init_exporter(app)
@@ -102,13 +101,14 @@ async def openapi_yaml():
     return openapi_exporter.as_yaml()
 
 
+import json
+
+from fastapi.responses import Response
 from strawberry.fastapi import GraphQLRouter
-from aios_core.graphql.schema import schema
-from aios_core.utils.circuit_breaker import cb_llm, cb_platform
+
 from aios_core.dashboard.views.jobs_dashboard_view import render_jobs_dashboard_view
 from aios_core.data_manager import data_manager
-from fastapi.responses import Response
-import json
+from aios_core.graphql.schema import schema
 
 graphql_app = GraphQLRouter(schema)
 app.include_router(graphql_app, prefix="/graphql", tags=["GraphQL"])
@@ -130,11 +130,11 @@ async def import_json(data: dict):
     return data_manager.import_templates_json(json.dumps(data))
 
 
+from aios_core.ab_testing.bandit import bandit
 from aios_core.api.v1.router import v1_router
 from aios_core.api.v2.router import v2_router
-from aios_core.ab_testing.bandit import bandit
-from aios_core.webhooks.retry import retry_handler
 from aios_core.dashboard.views.dead_letter_view import render_dead_letter_view
+from aios_core.webhooks.retry import retry_handler
 
 app.include_router(v1_router)
 app.include_router(v2_router)
@@ -171,14 +171,13 @@ def dead_letter_page():
 
 from aios_core.observability.tracing import init_tracing
 from aios_core.security.headers import SecurityHeadersMiddleware
-from aios_core.performance.pool import get_db_pool_config
+
 app.add_middleware(SecurityHeadersMiddleware)
 init_tracing(service_name="aios")
 
 
-from aios_core.dashboard.themes.saas_theme import apply_saas_theme, apply_dark_theme
-from aios_core.ai_features.voice import voice_processor
 from aios_core.ai_features.image_gen import image_generator
+from aios_core.dashboard.themes.saas_theme import apply_saas_theme
 
 apply_saas_theme()
 
@@ -193,9 +192,8 @@ async def generate_image(prompt: str, size: str = "1024x1024"):
 
 
 from aios_core.evolution.orchestrator import evolution_orchestrator
-from aios_core.evolution.template_evolution import template_evolution
-from aios_core.evolution.intent_discovery import intent_discovery
 from aios_core.evolution.self_healing import self_healing
+
 
 @app.post("/api/v1/evolution/run", tags=["Evolution"])
 async def run_evo(user: dict = Depends(require_role("admin"))):
@@ -211,8 +209,8 @@ async def heal_template(template: str, reason: str, original: str):
 
 
 from aios_core.dashboard.views.evolution_view import render_evolution_view
-from aios_core.tasks.evolution_tasks import run_evolution_cycle, discover_new_intents, heal_rejected_template
 from aios_core.observability.evolution_metrics import record_self_heal
+
 
 @ui.page("/advisor/evolution", title="Evolution Dashboard")
 def evolution_page():
@@ -228,6 +226,7 @@ async def heal_template(template: str, reason: str, original: str):
 from aios_core.ml.conversion_predictor import predictor
 from aios_core.recommendations.engine import recommendation_engine
 
+
 @app.get("/api/v1/ml/predict", tags=["ML"])
 async def predict_conversion(template: dict):
     score = predictor.predict(template)
@@ -239,8 +238,8 @@ async def get_recommendations(templates: list = []):
 
 @app.get("/api/v1/recommendations/template/{template_id}", tags=["Recommendations"])
 async def get_template_recommendations(template_id: str):
-    from aios_core.models.template import Template
     from aios_core.database import AsyncSessionLocal
+    from aios_core.models.template import Template
     async with AsyncSessionLocal() as session:
         template = await session.get(Template, template_id)
         if template:
@@ -248,11 +247,11 @@ async def get_template_recommendations(template_id: str):
     return {"error": "template_not_found"}
 
 
-from aios_core.tenancy.billing import billing_service
 from aios_core.agents.negotiation import negotiation_agent
-from aios_core.plugins.registry import plugin_registry
-from aios_core.plugins.example_avito import AvitoPlugin
 from aios_core.dashboard.views.mobile_pwa import render_mobile_pwa_view
+from aios_core.plugins.example_avito import AvitoPlugin
+from aios_core.plugins.registry import plugin_registry
+from aios_core.tenancy.billing import billing_service
 
 plugin_registry.register(AvitoPlugin)
 
@@ -274,10 +273,11 @@ def mobile_page():
     render_mobile_pwa_view()
 
 
-from aios_core.tenancy.stripe_service import stripe_service
 from aios_core.agents.voice_agent import voice_agent
 from aios_core.dashboard.views.marketplace_view import render_marketplace_view
 from aios_core.tenancy.branding import branding_manager
+from aios_core.tenancy.stripe_service import stripe_service
+
 
 @app.post("/api/v1/billing/webhook", tags=["SaaS"])
 async def stripe_webhook(request: Request):
@@ -303,11 +303,12 @@ def branding_page():
     ui.button("Save Branding", color="primary").classes("q-mt-md")
 
 
-from aios_core.onboarding.flows import onboarding_flow
-from aios_core.dashboard.views.onboarding_view import render_onboarding_view
 from aios_core.agents.workflow import sales_workflow
-from aios_core.compliance.pii_masker import pii_masker
 from aios_core.compliance.data_export import data_exporter
+from aios_core.compliance.pii_masker import pii_masker
+from aios_core.dashboard.views.onboarding_view import render_onboarding_view
+from aios_core.onboarding.flows import onboarding_flow
+
 
 @ui.page("/onboarding", title="Onboarding")
 def onboarding_page():
@@ -328,10 +329,10 @@ async def mask_pii(text: str):
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
 # Импорт страниц NiceGUI (должен быть после ui.run_with)
+from aios_core.advisor.metrics_collector import MetricsCollector
+from aios_core.advisor.templates_engine import TemplateEngine
 from aios_core.dashboard.views.advisor_templates_view import render_advisor_templates_view
 from aios_core.dashboard.views.metrics_view import render_metrics_view
-from aios_core.advisor.templates_engine import TemplateEngine
-from aios_core.advisor.metrics_collector import MetricsCollector
 
 template_engine = TemplateEngine(storage_path="data/templates")
 metrics_collector = MetricsCollector(storage_path="data/metrics")

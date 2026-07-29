@@ -1,8 +1,10 @@
+import hashlib
+from collections import defaultdict
+from datetime import datetime, timedelta
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-from datetime import datetime, timedelta
-from collections import defaultdict
-import hashlib
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, max_requests=100, window_seconds=60):

@@ -13,7 +13,7 @@ def main() -> int:
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
 
-    from aios_core.web_gui.main import run  # noqa: E402
+    from aios_core.web_gui.main import run
 
     run()
     return 0

@@ -1,9 +1,12 @@
 """NiceGUI View for AI Advisor Metrics Dashboard."""
 from __future__ import annotations
-from nicegui import ui
-from pathlib import Path
+
 import json
 from datetime import datetime, timedelta
+from pathlib import Path
+
+from nicegui import ui
+
 
 def render_metrics_view(metrics_collector):
     """Отрисовка дашборда метрик AI Advisor."""

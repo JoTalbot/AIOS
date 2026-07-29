@@ -1,6 +1,8 @@
 import os
-from typing import Dict, Any, Optional
+from typing import Any
+
 import httpx
+
 
 class VoiceAIAgent:
     def __init__(self):
@@ -8,7 +10,7 @@ class VoiceAIAgent:
         self.twilio_token = os.getenv("TWILIO_AUTH_TOKEN")
         self.openai_key = os.getenv("OPENAI_API_KEY")
     
-    async def process_voice_call(self, call_sid: str, recording_url: str) -> Dict[str, Any]:
+    async def process_voice_call(self, call_sid: str, recording_url: str) -> dict[str, Any]:
         """Обрабатывает голосовое сообщение/звонок через Whisper."""
         if not self.openai_key or not recording_url:
             return {"status": "error", "message": "Missing credentials or URL"}

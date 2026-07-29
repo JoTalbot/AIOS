@@ -1,7 +1,7 @@
 """Tests for aios_core/agent_architecture.py"""
 from __future__ import annotations
-import pytest
-from aios_core.agent_architecture import AgentMemory, AdvancedAgent, AgentOrchestrator
+
+from aios_core.agent_architecture import AdvancedAgent, AgentMemory, AgentOrchestrator
 
 
 class TestAgentMemory:

@@ -1,13 +1,14 @@
 import os
+
 import httpx
-from typing import Optional
+
 
 class VoiceProcessor:
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
         self.whisper_url = "https://api.openai.com/v1/audio/transcriptions"
     
-    async def transcribe(self, audio_file_path: str, language: str = "uk") -> Optional[str]:
+    async def transcribe(self, audio_file_path: str, language: str = "uk") -> str | None:
         if not self.api_key:
             return None
         try:

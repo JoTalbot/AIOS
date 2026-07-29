@@ -1,6 +1,7 @@
 import time
 from functools import wraps
 
+
 class CircuitBreaker:
     def __init__(self, failure_threshold=5, recovery_timeout=60):
         self.failure_threshold = failure_threshold

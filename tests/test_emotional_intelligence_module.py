@@ -1,7 +1,9 @@
 """Tests for aios_core/emotional_intelligence.py"""
 from __future__ import annotations
+
 import pytest
-from aios_core.emotional_intelligence import EmotionalIntelligence, EmotionState, EmotionSignal
+
+from aios_core.emotional_intelligence import EmotionalIntelligence, EmotionState
 
 
 @pytest.fixture()

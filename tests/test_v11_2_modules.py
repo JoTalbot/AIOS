@@ -1,5 +1,5 @@
-import pytest
-from aios_core.knowledge_distillation import KnowledgeDistiller, ModelConfig
+from aios_core.knowledge_distillation import KnowledgeDistiller
+
 
 def test_self_supervised_distillation():
     kd = KnowledgeDistiller()

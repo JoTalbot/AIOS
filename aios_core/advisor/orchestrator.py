@@ -1,9 +1,12 @@
 """Orchestrator — связывает AI Advisor + Telegram + Platforms."""
 from __future__ import annotations
-from typing import Dict, Any
+
+from typing import Any
+
+from ..platforms.registry import PlatformRegistry
 from .ai_advisor import AIAdvisor
 from .telegram_bot import TelegramApprovalBot
-from ..platforms.registry import PlatformRegistry
+
 
 class AdvisorOrchestrator:
     """Оркестратор полного цикла обработки сообщений."""
@@ -19,7 +22,7 @@ class AdvisorOrchestrator:
         self.telegram_bot.on_rejected(self._on_draft_rejected)
 
     async def handle_incoming_message(self, platform: str, message_id: str,
-                                      text: str, context: Dict[str, Any]) -> Dict[str, Any]:
+                                      text: str, context: dict[str, Any]) -> dict[str, Any]:
         """Полный цикл: входящее → обработка → Telegram → отправка."""
         
         # 1. Обработка через AI Advisor

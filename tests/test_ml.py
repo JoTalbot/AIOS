@@ -1,5 +1,5 @@
-import pytest
 from aios_core.ml.conversion_predictor import ConversionPredictor
+
 
 def test_predictor_initialization():
     predictor = ConversionPredictor()

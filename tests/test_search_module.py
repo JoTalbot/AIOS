@@ -1,6 +1,8 @@
 """Tests for aios_core/search.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.search import SimpleSearchEngine
 
 

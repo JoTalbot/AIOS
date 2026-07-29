@@ -1,4 +1,6 @@
 import os
+
+
 def init_tracing(service_name="aios"):
     endpoint = os.getenv("OTEL_EXPORTER_ENDPOINT")
     if not endpoint:
@@ -6,10 +8,10 @@ def init_tracing(service_name="aios"):
         return None
     try:
         from opentelemetry import trace
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
         from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
         resource = Resource.create({"service.name": service_name})
         provider = TracerProvider(resource=resource)
         exporter = OTLPSpanExporter(endpoint=endpoint)

@@ -1,6 +1,9 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON
 from datetime import datetime
+
+from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
+
 from .base import Base
+
 
 class DeadLetterMessage(Base):
     __tablename__ = "dead_letter_messages"

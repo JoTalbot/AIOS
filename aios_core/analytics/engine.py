@@ -1,15 +1,18 @@
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
 from collections import defaultdict
+from datetime import datetime, timedelta
+from typing import Any
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from aios_core.models import MessageLog, Metric
+
 
 class AnalyticsEngine:
     def __init__(self, db_session: AsyncSession = None):
         self.db = db_session
 
-    async def get_conversion_rate(self, days: int = 7) -> Dict[str, float]:
+    async def get_conversion_rate(self, days: int = 7) -> dict[str, float]:
         if not self.db:
             return {"period_days": days, "created": 0, "approved": 0, "rate": 0.0}
         cutoff = datetime.utcnow() - timedelta(days=days)
@@ -42,7 +45,7 @@ class AnalyticsEngine:
         )
         return result.scalar() or 0.0
 
-    async def get_top_platforms(self, days: int = 30) -> List[Dict[str, Any]]:
+    async def get_top_platforms(self, days: int = 30) -> list[dict[str, Any]]:
         if not self.db:
             return []
         cutoff = datetime.utcnow() - timedelta(days=days)
@@ -54,7 +57,7 @@ class AnalyticsEngine:
         )
         return [{"platform": row[0], "count": row[1]} for row in result]
 
-    async def get_intent_distribution(self, days: int = 7) -> Dict[str, int]:
+    async def get_intent_distribution(self, days: int = 7) -> dict[str, int]:
         if not self.db:
             return {}
         cutoff = datetime.utcnow() - timedelta(days=days)
@@ -65,7 +68,7 @@ class AnalyticsEngine:
         )
         return {row[0]: row[1] for row in result}
 
-    async def get_seasonal_patterns(self, days: int = 30) -> Dict[str, int]:
+    async def get_seasonal_patterns(self, days: int = 30) -> dict[str, int]:
         if not self.db:
             return {}
         cutoff = datetime.utcnow() - timedelta(days=days)
@@ -77,7 +80,7 @@ class AnalyticsEngine:
             hourly[log.created_at.hour] += 1
         return {str(h): c for h, c in sorted(hourly.items())}
 
-    async def get_full_report(self) -> Dict[str, Any]:
+    async def get_full_report(self) -> dict[str, Any]:
         return {
             "conversion_7d": await self.get_conversion_rate(7),
             "conversion_30d": await self.get_conversion_rate(30),

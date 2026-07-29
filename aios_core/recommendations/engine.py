@@ -1,12 +1,14 @@
 
-from typing import List, Dict, Any
+from typing import Any
+
 from aios_core.ml.conversion_predictor import predictor
+
 
 class RecommendationEngine:
     def __init__(self):
         self.threshold = 0.2
     
-    def analyze_template(self, template: Dict) -> Dict[str, Any]:
+    def analyze_template(self, template: dict) -> dict[str, Any]:
         """Анализирует шаблон и дает рекомендации."""
         predicted_conversion = predictor.predict(template)
         recommendations = []
@@ -40,7 +42,7 @@ class RecommendationEngine:
             "score": round(predicted_conversion * 100, 1)
         }
     
-    def get_top_recommendations(self, templates: List[Dict]) -> List[Dict]:
+    def get_top_recommendations(self, templates: list[dict]) -> list[dict]:
         """Возвращает топ рекомендаций для всех шаблонов."""
         results = []
         for template in templates:

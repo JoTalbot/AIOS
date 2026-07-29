@@ -1,7 +1,9 @@
 """Tests for aios_core/price_alert_system.py"""
 from __future__ import annotations
+
 import pytest
-from aios_core.price_alert_system import PriceAlertSystem, PriceAlert, AlertCondition
+
+from aios_core.price_alert_system import AlertCondition, PriceAlert, PriceAlertSystem
 
 
 @pytest.fixture()

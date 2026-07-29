@@ -1,13 +1,14 @@
 """Webhook Router — endpoints для получения входящих сообщений от платформ."""
 from __future__ import annotations
-import os
-import hmac
+
 import hashlib
-from typing import Dict, Any
-from starlette.routing import Router, Route
+import hmac
+import os
+from datetime import datetime
+
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from datetime import datetime
+from starlette.routing import Route, Router
 
 
 # === Безопасность: проверка подписи ===

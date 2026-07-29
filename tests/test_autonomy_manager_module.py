@@ -1,6 +1,8 @@
 """Tests for aios_core/autonomy_manager.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.autonomy_manager import AutonomyManager
 from aios_core.storage import Database
 

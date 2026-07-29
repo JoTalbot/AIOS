@@ -1,8 +1,10 @@
-import os
-import json
 import hashlib
-from typing import Any, Callable
+import json
+import os
+from collections.abc import Callable
 from functools import wraps
+from typing import Any
+
 
 class RedisCache:
     def __init__(self):

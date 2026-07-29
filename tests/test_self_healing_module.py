@@ -1,7 +1,9 @@
 """Tests for aios_core/self_healing.py"""
 from __future__ import annotations
+
 import pytest
-from aios_core.self_healing import SelfHealing, HealthMonitor
+
+from aios_core.self_healing import HealthMonitor, SelfHealing
 
 
 @pytest.fixture()

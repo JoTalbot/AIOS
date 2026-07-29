@@ -5,6 +5,7 @@ from aios_core.async_bus import AsyncEventBus
 from aios_core.async_core import AsyncDatabase
 from aios_core.container import AppConfig, AppContainer
 
+
 def test_async_bus_emit_and_handler():
     """Async handlers receive events."""
     bus = AsyncEventBus()

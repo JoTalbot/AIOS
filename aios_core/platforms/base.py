@@ -1,9 +1,11 @@
 """Base Platform Adapter — абстрактный интерфейс для всех платформ."""
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
+
 
 @dataclass
 class IncomingMessage:
@@ -14,7 +16,7 @@ class IncomingMessage:
     sender_name: str
     text: str
     timestamp: datetime
-    metadata: Dict[str, Any] = None
+    metadata: dict[str, Any] = None
 
 @dataclass
 class SentMessage:
@@ -29,29 +31,25 @@ class SentMessage:
 class PlatformAdapter(ABC):
     """Абстрактный базовый класс для всех платформ."""
     
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
         self.platform_name = self.__class__.__name__.replace("Adapter", "").lower()
 
     @abstractmethod
-    async def receive_messages(self, since: Optional[datetime] = None) -> List[IncomingMessage]:
+    async def receive_messages(self, since: datetime | None = None) -> list[IncomingMessage]:
         """Получить новые входящие сообщения."""
-        pass
 
     @abstractmethod
-    async def send_message(self, recipient_id: str, text: str, metadata: Dict = None) -> SentMessage:
+    async def send_message(self, recipient_id: str, text: str, metadata: dict = None) -> SentMessage:
         """Отправить сообщение."""
-        pass
 
     @abstractmethod
     async def mark_as_read(self, message_id: str) -> bool:
         """Пометить сообщение как прочитанное."""
-        pass
 
     @abstractmethod
-    async def get_user_info(self, user_id: str) -> Dict[str, Any]:
+    async def get_user_info(self, user_id: str) -> dict[str, Any]:
         """Получить информацию о пользователе."""
-        pass
 
     async def health_check(self) -> bool:
         """Проверить работоспособность соединения."""

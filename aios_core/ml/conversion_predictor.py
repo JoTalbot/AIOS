@@ -1,14 +1,14 @@
 
+
 import numpy as np
-from typing import Dict, List, Tuple
-from datetime import datetime
+
 
 class ConversionPredictor:
     def __init__(self):
         self.weights = None
         self.trained = False
     
-    def extract_features(self, template: Dict) -> np.ndarray:
+    def extract_features(self, template: dict) -> np.ndarray:
         """Извлекает фичи из шаблона для предсказания."""
         content = template.get("content", "")
         features = np.array([
@@ -21,7 +21,7 @@ class ConversionPredictor:
         ])
         return features
     
-    def predict(self, template: Dict) -> float:
+    def predict(self, template: dict) -> float:
         """Предсказывает конверсию шаблона."""
         if not self.trained:
             return 0.1
@@ -33,7 +33,7 @@ class ConversionPredictor:
         prediction = np.dot(features, self.weights)
         return min(max(prediction, 0.0), 1.0)
     
-    def train(self, templates: List[Dict], conversions: List[float]):
+    def train(self, templates: list[dict], conversions: list[float]):
         """Обучает модель на исторических данных."""
         if len(templates) < 10:
             return

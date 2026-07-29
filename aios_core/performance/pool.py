@@ -1,4 +1,6 @@
 import os
+
+
 def get_db_pool_config():
     return {
         "pool_size": int(os.getenv("DB_POOL_SIZE", "20")),

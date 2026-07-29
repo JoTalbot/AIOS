@@ -163,7 +163,7 @@ async def export_data(request: Request) -> None:
                     "count": count,
                 }
             )
-    except Exception as e:
+    except Exception:
         logger.exception("Admin API operation failed")
         return JSONResponse({"error": "Internal server error"}, status_code=500)
 
@@ -205,7 +205,7 @@ async def import_data(request: Request) -> None:
                     "count": count,
                 }
             )
-    except Exception as e:
+    except Exception:
         logger.exception("Admin API operation failed")
         return JSONResponse({"error": "Internal server error"}, status_code=500)
 
@@ -251,7 +251,7 @@ async def generate_api_key(request: Request) -> None:
         )
     except ValueError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
-    except Exception as e:
+    except Exception:
         logger.exception("Admin API operation failed")
         return JSONResponse({"error": "Internal server error"}, status_code=500)
 
@@ -380,7 +380,7 @@ async def export_keys(request: Request) -> None:
                 "count": count,
             }
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Admin API operation failed")
         return JSONResponse({"error": "Internal server error"}, status_code=500)
 
@@ -406,7 +406,7 @@ async def generate_env_file(request: Request) -> None:
                 "message": "Environment file generated",
             }
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Admin API operation failed")
         return JSONResponse({"error": "Internal server error"}, status_code=500)
 
@@ -445,7 +445,7 @@ async def create_backup(request: Request) -> None:
                 "created_at": metadata.created_at,
             }
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Admin API operation failed")
         return JSONResponse({"error": "Internal server error"}, status_code=500)
 
@@ -603,7 +603,7 @@ async def register_webhook(request: Request) -> None:
                 "webhook": target.to_dict(),
             }
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Admin API operation failed")
         return JSONResponse({"error": "Internal server error"}, status_code=500)
 
@@ -766,7 +766,7 @@ async def export_webhooks(request: Request) -> None:
                 "count": count,
             }
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Admin API operation failed")
         return JSONResponse({"error": "Internal server error"}, status_code=500)
 
@@ -795,7 +795,7 @@ async def import_webhooks(request: Request) -> None:
                 "count": count,
             }
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Admin API operation failed")
         return JSONResponse({"error": "Internal server error"}, status_code=500)
 

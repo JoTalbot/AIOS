@@ -1,10 +1,14 @@
 
-from .template_evolution import template_evolution
-from .intent_discovery import intent_discovery
-from .self_healing import self_healing
 import datetime
-from aios_core.observability.evolution_metrics import record_cycle, record_promotion, record_new_intent, record_self_heal
-from aios_core.evolution.notifications import notify_template_promoted, notify_new_intent, notify_self_heal
+
+from aios_core.evolution.notifications import notify_template_promoted
+from aios_core.observability.evolution_metrics import (
+    record_cycle,
+    record_promotion,
+)
+
+from .template_evolution import template_evolution
+
 
 class EvolutionOrchestrator:
     def __init__(self):

@@ -1,6 +1,8 @@
 """Tests for aios_core/memory_manager.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.memory_manager import MemoryManager
 from aios_core.storage import Database
 

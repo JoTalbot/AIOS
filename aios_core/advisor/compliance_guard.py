@@ -1,7 +1,8 @@
 """Compliance Guard — проверка черновиков на соответствие Конституции AIOS."""
 from __future__ import annotations
-from typing import List, Dict
+
 from dataclasses import dataclass
+
 
 @dataclass
 class ComplianceViolation:
@@ -24,7 +25,7 @@ class ComplianceGuard:
             }
         }
 
-    def check(self, draft_text: str, context: Dict) -> List[ComplianceViolation]:
+    def check(self, draft_text: str, context: dict) -> list[ComplianceViolation]:
         violations = []
         text_lower = draft_text.lower()
         

@@ -1,5 +1,6 @@
 from nicegui import ui
 
+
 def render_jobs_dashboard_view():
     ui.label("Background Jobs Dashboard").classes("text-h4 q-mb-md")
     with ui.row().classes("w-full gap-4"):

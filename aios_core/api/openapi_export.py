@@ -1,7 +1,8 @@
+import yaml
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse, YAMLResponse
-import yaml
+from fastapi.responses import JSONResponse
+
 
 class OpenAPIExporter:
     def __init__(self, app: FastAPI):

@@ -1,6 +1,7 @@
-from typing import List
+
 from .email_sender import EmailSender
 from .sms_sender import SMSSender
+
 
 class NotificationDispatcher:
     def __init__(self):
@@ -8,7 +9,7 @@ class NotificationDispatcher:
         self.sms = SMSSender()
 
     async def dispatch_escalation(self, platform: str, message_text: str,
-                                   emails: List[str] = None, phones: List[str] = None):
+                                   emails: list[str] = None, phones: list[str] = None):
         results = {}
         if emails:
             results["email"] = await self.email.send_escalation_alert(emails, platform, message_text)

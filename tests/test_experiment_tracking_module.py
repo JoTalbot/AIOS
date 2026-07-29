@@ -1,6 +1,8 @@
 """Tests for aios_core/experiment_tracking.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.experiment_tracking import ExperimentTracker
 
 

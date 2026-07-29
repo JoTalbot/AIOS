@@ -1,6 +1,5 @@
 """Tests for aios_core/api/protocols.py"""
 from __future__ import annotations
-import pytest
 
 
 class TestProtocolManager:

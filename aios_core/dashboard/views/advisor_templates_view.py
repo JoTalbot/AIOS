@@ -1,6 +1,7 @@
 """NiceGUI View for AI Advisor Template Management."""
+
 from nicegui import ui
-from typing import Dict, Any
+
 
 def render_advisor_templates_view(template_engine):
     """Отрисовка страницы управления шаблонами AI Advisor."""
@@ -45,6 +46,7 @@ def render_advisor_templates_view(template_engine):
             def save_template():
                 try:
                     import json
+
                     from aios_core.advisor.templates_engine import TemplateVariable
                     vars_obj = [TemplateVariable(**v) for v in json.loads(variables_input.value or '[]')]
                     
@@ -60,7 +62,7 @@ def render_advisor_templates_view(template_engine):
                     table.update()
                     dialog.close()
                 except Exception as e:
-                    ui.notify(f'Ошибка: {str(e)}', type='negative')
+                    ui.notify(f'Ошибка: {e!s}', type='negative')
 
             ui.button('Сохранить', on_click=save_template).props('unelevated color=primary')
 
@@ -92,6 +94,6 @@ def render_advisor_templates_view(template_engine):
             except json.JSONDecodeError:
                 ui.notify('Невалидный JSON в контексте', type='negative')
             except Exception as e:
-                ui.notify(f'Ошибка рендеринга: {str(e)}', type='negative')
+                ui.notify(f'Ошибка рендеринга: {e!s}', type='negative')
                 
         ui.button('▶ Запустить предпросмотр', on_click=run_preview).classes('q-mt-sm')

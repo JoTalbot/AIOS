@@ -1,6 +1,9 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, Float
 from datetime import datetime
+
+from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, Text
+
 from .base import Base
+
 
 class MessageLog(Base):
     __tablename__ = "message_logs"

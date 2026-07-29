@@ -5,8 +5,7 @@ resource demand, environment context, and agent history, dynamically scaling aut
 """
 
 import time
-import math
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any
 
 from .autonomy_manager import AutonomyLevel
 
@@ -35,7 +34,7 @@ class ResourceImpactPredictor:
         self.max_cpu_usage = 80.0  # percentage
         self.max_memory_usage_gb = 64.0
         
-    def estimate_impact(self, plan_step: Dict[str, Any]) -> float:
+    def estimate_impact(self, plan_step: dict[str, Any]) -> float:
         """Returns a normalized risk score based on predicted resource usage."""
         expected_cpu = plan_step.get("expected_cpu_percent", 0.0)
         expected_mem = plan_step.get("expected_memory_gb", 0.0)
@@ -51,7 +50,7 @@ class AgentHistoryAnalyzer:
     """Tracks and analyzes past agent performance to predict future success."""
     
     def __init__(self):
-        self.agent_profiles: Dict[str, Dict[str, Any]] = {}
+        self.agent_profiles: dict[str, dict[str, Any]] = {}
         
     def update_profile(self, agent_id: str, success: bool, complexity: float):
         if agent_id not in self.agent_profiles:
@@ -92,7 +91,7 @@ class PredictiveAutonomyRegulator:
         """Initialize PredictiveAutonomyRegulator."""
         self.high_risk_threshold = high_risk_threshold
         self.critical_risk_threshold = critical_risk_threshold
-        self.history: List[Dict[str, Any]] = []
+        self.history: list[dict[str, Any]] = []
         
         # Sub-analyzers
         self.env_analyzer = EnvironmentContextAnalyzer()
@@ -102,8 +101,8 @@ class PredictiveAutonomyRegulator:
     def assess_risk(
         self,
         agent_id: str,
-        plan_step: Dict[str, Any],
-        agent_history_stats: Optional[Dict[str, float]] = None,
+        plan_step: dict[str, Any],
+        agent_history_stats: dict[str, float] | None = None,
         environment: str = "default"
     ) -> float:
         """Calculate normalized failure risk score [0.0, 1.0]."""
@@ -151,10 +150,10 @@ class PredictiveAutonomyRegulator:
         self,
         agent_id: str,
         current_level: AutonomyLevel,
-        plan_step: Dict[str, Any],
-        agent_history_stats: Optional[Dict[str, float]] = None,
+        plan_step: dict[str, Any],
+        agent_history_stats: dict[str, float] | None = None,
         environment: str = "default"
-    ) -> Tuple[AutonomyLevel, str]:
+    ) -> tuple[AutonomyLevel, str]:
         """Dynamically regulate autonomy level based on predicted task risk."""
         risk = self.assess_risk(agent_id, plan_step, agent_history_stats, environment)
         effective_level = current_level
@@ -187,12 +186,12 @@ class PredictiveAutonomyRegulator:
 
         return effective_level, reason
 
-    def record_execution_result(self, agent_id: str, plan_step: Dict[str, Any], success: bool):
+    def record_execution_result(self, agent_id: str, plan_step: dict[str, Any], success: bool):
         """Record the outcome to improve future predictions."""
         complexity = plan_step.get("complexity", 1.0)
         self.history_analyzer.update_profile(agent_id, success, complexity)
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Summary of predictive regulation decisions."""
         return {
             "total_regulations": len(self.history),

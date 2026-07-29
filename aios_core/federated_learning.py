@@ -24,7 +24,7 @@ import random
 import time
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ class FederatedNode:
     """Participant edge node with model version and profile."""
 
     node_id: str = ""
-    capabilities: List[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
     status: NodeStatus = NodeStatus.ACTIVE
     profile: EdgeProfile = field(default_factory=EdgeProfile)
     model_version: int = 0
@@ -75,7 +75,7 @@ class AggregationResult:
     global_accuracy: float = 0.0
     converged: bool = False
     timestamp: float = field(default_factory=time.time)
-    weights: Dict[str, float] = field(default_factory=dict)  # node_id → weight
+    weights: dict[str, float] = field(default_factory=dict)  # node_id → weight
     aggregation_method: str = "FedAvg"
 
 
@@ -84,7 +84,7 @@ class GlobalModel:
     """Global aggregated model state."""
 
     version: int = 0
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
     accuracy: float = 0.0
 
 
@@ -92,14 +92,14 @@ class SecureAggregator:
     """Simulates Secure Aggregation (SecAgg) via secret sharing / masking."""
     
     def __init__(self):
-        self.active_masks: Dict[str, float] = {}
+        self.active_masks: dict[str, float] = {}
         
     def generate_mask(self, node_id: str) -> float:
         mask = random.uniform(-10.0, 10.0)
         self.active_masks[node_id] = mask
         return mask
         
-    def unmask_aggregate(self, masked_sum: float, node_ids: List[str]) -> float:
+    def unmask_aggregate(self, masked_sum: float, node_ids: list[str]) -> float:
         total_mask = sum(self.active_masks.get(nid, 0.0) for nid in node_ids)
         # Clear used masks
         for nid in node_ids:
@@ -131,9 +131,9 @@ class FederatedLearning:
         async_mode: bool = False,
         enable_sec_agg: bool = True
     ) -> None:
-        self.nodes: Dict[str, FederatedNode] = {}
+        self.nodes: dict[str, FederatedNode] = {}
         self.global_model: GlobalModel = GlobalModel()
-        self.rounds: List[AggregationResult] = []
+        self.rounds: list[AggregationResult] = []
         
         self.async_mode = async_mode
         self.enable_sec_agg = enable_sec_agg
@@ -151,8 +151,8 @@ class FederatedLearning:
     def register_node(
         self, 
         node_id: str, 
-        capabilities: Optional[List[str]] = None,
-        profile: Optional[EdgeProfile] = None
+        capabilities: list[str] | None = None,
+        profile: EdgeProfile | None = None
     ) -> FederatedNode:
         """Register a participating edge node."""
         node = FederatedNode(
@@ -188,7 +188,7 @@ class FederatedLearning:
 
     # ── Client Selection ─────────────────────────────────────────
 
-    def select_clients(self, strategy: str = "random", fraction: float = 0.5) -> List[FederatedNode]:
+    def select_clients(self, strategy: str = "random", fraction: float = 0.5) -> list[FederatedNode]:
         """Select a subset of clients for the next training round."""
         available = [n for n in self.nodes.values() if n.is_available()]
         if not available:
@@ -232,7 +232,7 @@ class FederatedLearning:
         node_id: str,
         local_accuracy: float,
         samples_count: int,
-        parameters: Optional[Dict[str, Any]] = None,
+        parameters: dict[str, Any] | None = None,
         apply_ldp: bool = False
     ) -> None:
         """Submit local model update from an edge node."""
@@ -280,7 +280,7 @@ class FederatedLearning:
             last.aggregation_method = "FedAsync"
             last.converged = self._check_convergence()
 
-    def aggregate(self, local_updates: Optional[List[Dict[str, Any]]] = None) -> GlobalModel:
+    def aggregate(self, local_updates: list[dict[str, Any]] | None = None) -> GlobalModel:
         return self.aggregate_sync()
 
     def aggregate_sync(self) -> GlobalModel:
@@ -351,11 +351,11 @@ class FederatedLearning:
     def get_model(self) -> GlobalModel:
         return self.global_model
 
-    def get_active_nodes(self) -> List[FederatedNode]:
+    def get_active_nodes(self) -> list[FederatedNode]:
         """Return active nodes."""
         return [n for n in self.nodes.values() if n.is_available()]
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
         return {
             "nodes": len(self.nodes),

@@ -1,7 +1,9 @@
 """Tests for aios_core/scraping_strategy_templates.py"""
 from __future__ import annotations
+
 import pytest
-from aios_core.scraping_strategy_templates import StrategyTemplate, StrategyTemplateRegistry, StrategyKind
+
+from aios_core.scraping_strategy_templates import StrategyTemplate, StrategyTemplateRegistry
 
 
 @pytest.fixture()

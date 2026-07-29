@@ -7,7 +7,7 @@ lateral inhibition, and sub-millisecond neuromorphic event routing.
 
 import math
 import time
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any
 
 
 class LIFNeuron:
@@ -28,7 +28,7 @@ class LIFNeuron:
         self.v_membrane = v_rest
         self.tau = tau  # Membrane decay time constant
         self.refractory_period_ms = refractory_period_ms
-        self.last_spike_time: Optional[float] = None
+        self.last_spike_time: float | None = None
         self.spike_count = 0
 
     def integrate_current(self, current: float, dt_ms: float = 1.0) -> bool:
@@ -71,7 +71,7 @@ class IzhikevichNeuron:
         self.d = d
         self.v = c
         self.u = b * c
-        self.last_spike_time: Optional[float] = None
+        self.last_spike_time: float | None = None
         self.spike_count = 0
         
     def integrate_current(self, current: float, dt_ms: float = 1.0) -> bool:
@@ -95,12 +95,12 @@ class LateralInhibition:
     def __init__(self, inhibition_strength: float = 2.0):
         self.inhibition_strength = inhibition_strength
         
-    def apply(self, currents: Dict[int, float], spiked_neurons: List[int]):
+    def apply(self, currents: dict[int, float], spiked_neurons: list[int]):
         """Dampen currents to neighbors if strong spikes occurred recently."""
         if not spiked_neurons:
             return
             
-        for i in currents.keys():
+        for i in currents:
             if i not in spiked_neurons:
                 currents[i] -= self.inhibition_strength * len(spiked_neurons)
 
@@ -126,7 +126,7 @@ class NeuromorphicEventRouter:
                     "delivery_time": current_time + (conn["delay"] / 1000.0)
                 })
                 
-    def get_currents(self, current_time: float) -> Dict[int, float]:
+    def get_currents(self, current_time: float) -> dict[int, float]:
         """Deliver arrived events as currents to target neurons."""
         currents = {}
         pending = []
@@ -146,8 +146,8 @@ class NeuromorphicMatrixEngine:
     def __init__(self, size: int = 16):
         """Initialize NeuromorphicMatrixEngine."""
         self.size = size
-        self.neurons: List[LIFNeuron] = [LIFNeuron(f"sn_{i}") for i in range(size)]
-        self.synaptic_weights: Dict[Tuple[int, int], float] = {}
+        self.neurons: list[LIFNeuron] = [LIFNeuron(f"sn_{i}") for i in range(size)]
+        self.synaptic_weights: dict[tuple[int, int], float] = {}
         self.lateral_inhibition = LateralInhibition()
         self.router = NeuromorphicEventRouter()
 
@@ -159,8 +159,8 @@ class NeuromorphicMatrixEngine:
                     self.router.add_connection(i, j, 0.25, delay_ms=1.0)
 
     def step_simulation(
-        self, input_currents: Dict[int, float], dt_ms: float = 1.0
-    ) -> List[int]:
+        self, input_currents: dict[int, float], dt_ms: float = 1.0
+    ) -> list[int]:
         """Simulate one discrete time step dt across all neurons, returning indices of fired neurons."""
         spiked_neurons = []
         current_time = time.time()
@@ -199,7 +199,7 @@ class NeuromorphicMatrixEngine:
 
         return spiked_neurons
 
-    def _apply_stdp_plasticity(self, spiked_indices: List[int]):
+    def _apply_stdp_plasticity(self, spiked_indices: list[int]):
         """Adjust synaptic weights based on temporal spike correlation."""
         for post_idx in spiked_indices:
             for pre_idx in range(self.size):
@@ -230,7 +230,7 @@ class NeuromorphicMatrixEngine:
                 if conn["target"] == post:
                     conn["weight"] = new_weight
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
         total_spikes = sum(n.spike_count for n in self.neurons)
         return {

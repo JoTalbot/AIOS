@@ -1,5 +1,6 @@
 from nicegui import ui
 
+
 def render_marketplace_view():
     ui.label("Plugin Marketplace").classes("text-h4 q-mb-md")
     ui.label("Discover and install extensions for your workspace").classes("text-grey q-mb-lg")

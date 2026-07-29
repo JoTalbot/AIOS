@@ -1,6 +1,9 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Integer
 from datetime import datetime
+
+from sqlalchemy import Boolean, Column, DateTime, String
+
 from aios_core.models.base import Base
+
 
 class Workspace(Base):
     __tablename__ = "workspaces"

@@ -1,13 +1,14 @@
 import os
+
 import httpx
-from typing import Optional
+
 
 class ImageGenerator:
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
         self.dalle_url = "https://api.openai.com/v1/images/generations"
     
-    async def generate(self, prompt: str, size: str = "1024x1024") -> Optional[str]:
+    async def generate(self, prompt: str, size: str = "1024x1024") -> str | None:
         if not self.api_key:
             return None
         try:

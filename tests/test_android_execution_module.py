@@ -1,8 +1,7 @@
 """Tests for aios_core/android_execution.py"""
 from __future__ import annotations
-import pytest
-from aios_core.android_execution import UIElement, UIAutomatorParser
 
+from aios_core.android_execution import UIAutomatorParser, UIElement
 
 SAMPLE_XML = '''<?xml version="1.0" encoding="UTF-8"?>
 <hierarchy>

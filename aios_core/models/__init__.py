@@ -1,4 +1,4 @@
-from .template import Template, TemplateVariable
+from .base import Base
 from .message_log import MessageLog
 from .metric import Metric
-from .base import Base
+from .template import Template, TemplateVariable

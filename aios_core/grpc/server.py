@@ -2,14 +2,13 @@
 
 import json
 import logging
-import asyncio
-from concurrent import futures
-import grpc
 import time
+from concurrent import futures
 
-from aios_core.orchestrator import Orchestrator
-from aios_core.async_core import AsyncDatabase
+import grpc
+
 from aios_core.grpc import aios_pb2, aios_pb2_grpc
+from aios_core.orchestrator import Orchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +64,6 @@ class AiosCoreServicer(aios_pb2_grpc.AiosCoreServicer):
         )
 
     def StreamAgentEvents(self, request_iterator, context):
-        import time
         import queue
         # Queue to hold outgoing events
         out_queue = queue.Queue()

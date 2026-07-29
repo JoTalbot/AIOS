@@ -1,22 +1,24 @@
 """Instagram Platform Adapter — интеграция с Meta Graph API."""
 from __future__ import annotations
+
 import os
-import httpx
-from typing import List, Dict, Any, Optional
 from datetime import datetime
-from .base import PlatformAdapter, IncomingMessage, SentMessage
+from typing import Any
+
+from .base import IncomingMessage, PlatformAdapter, SentMessage
+
 
 class InstagramAdapter(PlatformAdapter):
     """Адаптер для Instagram (Meta Graph API для Business Accounts)."""
     
     GRAPH_API_URL = "https://graph.facebook.com/v18.0"
     
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] = None):
         super().__init__(config or {})
         self.access_token = self.config.get("access_token") or os.getenv("INSTAGRAM_ACCESS_TOKEN")
         self.instagram_account_id = self.config.get("account_id") or os.getenv("INSTAGRAM_ACCOUNT_ID")
 
-    async def receive_messages(self, since: Optional[datetime] = None) -> List[IncomingMessage]:
+    async def receive_messages(self, since: datetime | None = None) -> list[IncomingMessage]:
         """Получить новые сообщения из Instagram Direct."""
         # Instagram использует Webhooks для получения сообщений в реальном времени
         # Этот метод используется для initial sync или polling
@@ -35,7 +37,7 @@ class InstagramAdapter(PlatformAdapter):
         
         return []
 
-    async def send_message(self, recipient_id: str, text: str, metadata: Dict = None) -> SentMessage:
+    async def send_message(self, recipient_id: str, text: str, metadata: dict = None) -> SentMessage:
         """Отправить ответ в Instagram Direct."""
         # TODO: Реальный вызов
         # async with httpx.AsyncClient() as client:
@@ -60,7 +62,7 @@ class InstagramAdapter(PlatformAdapter):
         # Instagram автоматически помечает как прочитанное при получении
         return True
 
-    async def get_user_info(self, user_id: str) -> Dict[str, Any]:
+    async def get_user_info(self, user_id: str) -> dict[str, Any]:
         # TODO: GET /{user_id}?fields=username,name,profile_pic
         return {"user_id": user_id, "platform": "instagram"}
 

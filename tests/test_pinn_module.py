@@ -1,6 +1,8 @@
 """Tests for aios_core/pinn.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.pinn import PINN
 
 

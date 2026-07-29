@@ -1,7 +1,7 @@
 import os
+from typing import Any
+
 import stripe
-from typing import Dict, Any, Optional
-from datetime import datetime
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
@@ -28,7 +28,7 @@ class StripeService:
         )
         return session.url
 
-    def handle_webhook(self, payload: bytes, sig_header: str) -> Dict[str, Any]:
+    def handle_webhook(self, payload: bytes, sig_header: str) -> dict[str, Any]:
         try:
             event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
             

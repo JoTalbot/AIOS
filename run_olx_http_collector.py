@@ -13,7 +13,6 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import quote
 
 import httpx
 

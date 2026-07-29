@@ -1,9 +1,16 @@
 """Tests for aios_core/enhanced_protocols.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.enhanced_protocols import (
-    ProtocolManager, GrpcAdapter, AmqpAdapter, WebSocketAdapter, MqttAdapter,
-    ProtocolConfig, ProtocolType,
+    AmqpAdapter,
+    GrpcAdapter,
+    MqttAdapter,
+    ProtocolConfig,
+    ProtocolManager,
+    ProtocolType,
+    WebSocketAdapter,
 )
 
 

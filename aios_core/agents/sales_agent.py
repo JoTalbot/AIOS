@@ -1,4 +1,5 @@
-from .base import BaseAgent, AgentState
+from .base import AgentState, BaseAgent
+
 
 class SalesAgent(BaseAgent):
     def __init__(self):

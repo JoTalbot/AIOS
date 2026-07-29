@@ -1,8 +1,8 @@
-import json
 import csv
 import io
-from typing import Dict, Any
-from fastapi.responses import Response
+import json
+from typing import Any
+
 
 class DataManager:
     def export_templates_json(self) -> str:
@@ -15,7 +15,7 @@ class DataManager:
         writer.writerow({"id": "1", "name": "Test", "intent": "greeting"})
         return output.getvalue()
 
-    def import_templates_json(self, data_str: str) -> Dict[str, Any]:
+    def import_templates_json(self, data_str: str) -> dict[str, Any]:
         try:
             templates = json.loads(data_str)
             return {"status": "success", "imported": len(templates)}

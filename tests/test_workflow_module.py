@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
 from aios_core.workflow import (
-    CompensationAction,
     DAGExecutor,
     RetryPolicy,
     TimeoutPolicy,
@@ -14,7 +11,6 @@ from aios_core.workflow import (
     WorkflowStep,
     WorkflowTemplate,
 )
-
 
 # ── RetryPolicy ────────────────────────────────────────────────
 

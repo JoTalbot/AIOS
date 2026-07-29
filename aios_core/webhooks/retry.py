@@ -1,7 +1,8 @@
 import asyncio
-import time
-from typing import Callable, Any
+from collections.abc import Callable
 from datetime import datetime
+from typing import Any
+
 
 class WebhookRetryHandler:
     def __init__(self, max_retries=3, base_delay=1.0):

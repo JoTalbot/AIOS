@@ -1,6 +1,8 @@
 """Tests for aios_core/health_checks.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.health_checks import HealthCheckRegistry
 
 

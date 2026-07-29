@@ -46,7 +46,7 @@ class SubstrateAIManager:
 
     def predict_best_substrate(self, task_category: str, available_substrates: list[str]) -> str | None:
         if task_category not in self.q_table:
-            self.q_table[task_category] = {s: 0.0 for s in SubstrateType.ALL}
+            self.q_table[task_category] = dict.fromkeys(SubstrateType.ALL, 0.0)
             
         import random
         # Explore
@@ -66,7 +66,7 @@ class SubstrateAIManager:
 
     def update_q_value(self, task_category: str, substrate: str, latency_ms: float, health: float, success: bool):
         if task_category not in self.q_table:
-            self.q_table[task_category] = {s: 0.0 for s in SubstrateType.ALL}
+            self.q_table[task_category] = dict.fromkeys(SubstrateType.ALL, 0.0)
             
         # Reward calculation
         # High reward for success, high health, low latency

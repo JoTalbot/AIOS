@@ -1,5 +1,8 @@
+import os
+
+import httpx
 from arq.connections import RedisSettings
-import httpx, os
+
 
 async def process_competitor_prices(ctx, urls):
     return {"status": "completed", "count": len(urls)}

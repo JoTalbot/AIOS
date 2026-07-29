@@ -9,17 +9,16 @@ from __future__ import annotations
 
 import asyncio
 import json
-import random
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-from .android_driver import ADBDriver, AndroidDriver, DriverCapabilities, UIContext
+from .android_driver import ADBDriver, AndroidDriver, UIContext
 from .android_observability import AndroidExecutionEvent, AndroidObservability
-from .telemetry import Telemetry, telemetry as global_telemetry
+from .telemetry import Telemetry
+from .telemetry import telemetry as global_telemetry
 
 
 class StudyPhase(StrEnum):

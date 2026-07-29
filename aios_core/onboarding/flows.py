@@ -1,5 +1,4 @@
 
-from typing import List, Dict
 
 class OnboardingFlow:
     def __init__(self):
@@ -10,7 +9,7 @@ class OnboardingFlow:
             {"id": "setup_billing", "title": "Настроить биллинг", "done": False}
         ]
     
-    def get_progress(self, workspace_id: str) -> Dict:
+    def get_progress(self, workspace_id: str) -> dict:
         done = sum(1 for s in self.steps if s["done"])
         return {"total": len(self.steps), "done": done, "percent": int(done / len(self.steps) * 100), "steps": self.steps}
 

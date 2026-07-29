@@ -1,7 +1,9 @@
 """Tests for aios_core/enhanced_logging.py"""
 from __future__ import annotations
+
 import pytest
-from aios_core.enhanced_logging import EnhancedLogger, LogConfig, CorrelationContext
+
+from aios_core.enhanced_logging import CorrelationContext, EnhancedLogger, LogConfig
 
 
 @pytest.fixture()

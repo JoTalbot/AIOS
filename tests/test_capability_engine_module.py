@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from aios_core.capability_engine import CapabilityEngine, CapabilityStatus
+from aios_core.capability_engine import CapabilityEngine
 from aios_core.storage import Database
 
 

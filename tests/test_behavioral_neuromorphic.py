@@ -1,5 +1,5 @@
-import pytest
-from aios_core.neuromorphic_matrix import NeuromorphicMatrixEngine, LIFNeuron
+from aios_core.neuromorphic_matrix import LIFNeuron, NeuromorphicMatrixEngine
+
 
 def test_lif_neuron_integration():
     neuron = LIFNeuron("n1", v_threshold=1.0, v_rest=0.0, tau=10.0)

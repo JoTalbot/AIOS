@@ -1,6 +1,8 @@
 """Tests for aios_core/data_lake.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.data_lake import DataLake
 
 

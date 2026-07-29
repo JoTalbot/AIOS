@@ -1,6 +1,10 @@
 
-import os, httpx, json
-from typing import Dict, Any
+import json
+import os
+from typing import Any
+
+import httpx
+
 
 class SelfHealing:
     def __init__(self):
@@ -8,7 +12,7 @@ class SelfHealing:
         self.base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
         self.model = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
     
-    async def heal(self, template: str, reason: str, original: str) -> Dict[str, Any]:
+    async def heal(self, template: str, reason: str, original: str) -> dict[str, Any]:
         if not self.api_key: return {"status": "no_api_key"}
         
         prompt = f"""Улучши шаблон ответа.

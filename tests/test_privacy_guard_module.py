@@ -1,6 +1,8 @@
 """Tests for aios_core/privacy_guard.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.privacy_guard import PrivacyGuard
 from aios_core.storage import Database
 

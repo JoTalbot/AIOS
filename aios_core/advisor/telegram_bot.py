@@ -1,9 +1,13 @@
 """Telegram Bot for Manager Approval of Drafts — Real Integration."""
 from __future__ import annotations
+
 import os
-import httpx
-from typing import Dict, Any, Optional, Callable
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
+
+import httpx
+
 
 @dataclass
 class PendingDraft:
@@ -13,7 +17,7 @@ class PendingDraft:
     intent: str
     language: str
     text: str
-    telegram_message_id: Optional[int] = None
+    telegram_message_id: int | None = None
 
 class TelegramApprovalBot:
     """Реальный Telegram-бот для одобрения черновиков."""
@@ -21,10 +25,10 @@ class TelegramApprovalBot:
     def __init__(self, bot_token: str = None, chat_id: str = None):
         self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN")
         self.chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID")
-        self.pending_drafts: Dict[str, PendingDraft] = {}
+        self.pending_drafts: dict[str, PendingDraft] = {}
         self.api_base = f"https://api.telegram.org/bot{self.bot_token}"
-        self._on_approved: Optional[Callable] = None
-        self._on_rejected: Optional[Callable] = None
+        self._on_approved: Callable | None = None
+        self._on_rejected: Callable | None = None
 
     def on_approved(self, callback: Callable):
         """Декоратор для регистрации callback при одобрении."""
@@ -36,7 +40,7 @@ class TelegramApprovalBot:
         self._on_rejected = callback
         return callback
 
-    async def _send_telegram_message(self, text: str, reply_markup: Dict = None) -> Optional[int]:
+    async def _send_telegram_message(self, text: str, reply_markup: dict = None) -> int | None:
         """Отправить сообщение в Telegram."""
         if not self.bot_token or not self.chat_id:
             print("⚠️  Telegram bot не настроен (нет токена/chat_id)")
@@ -63,7 +67,7 @@ class TelegramApprovalBot:
             print(f"❌ Ошибка отправки в Telegram: {e}")
             return None
 
-    async def send_draft_for_approval(self, draft_data: Dict[str, Any]) -> str:
+    async def send_draft_for_approval(self, draft_data: dict[str, Any]) -> str:
         """Отправить черновик менеджеру на одобрение."""
         draft_id = draft_data["draft_id"]
         
@@ -103,7 +107,7 @@ class TelegramApprovalBot:
         
         return draft_id
 
-    async def handle_callback(self, callback_data: str) -> Dict[str, Any]:
+    async def handle_callback(self, callback_data: str) -> dict[str, Any]:
         """Обработать callback от inline-кнопок."""
         if callback_data.startswith("approve_"):
             draft_id = callback_data.replace("approve_", "")
@@ -113,7 +117,7 @@ class TelegramApprovalBot:
             return await self.reject_draft(draft_id)
         return {"status": "unknown"}
 
-    async def approve_draft(self, draft_id: str) -> Dict[str, Any]:
+    async def approve_draft(self, draft_id: str) -> dict[str, Any]:
         """Одобрить черновик."""
         if draft_id not in self.pending_drafts:
             return {"status": "error", "message": "Черновик не найден"}
@@ -131,7 +135,7 @@ class TelegramApprovalBot:
         
         return {"status": "approved", "draft_id": draft_id, "draft": draft}
 
-    async def reject_draft(self, draft_id: str, reason: str = "") -> Dict[str, Any]:
+    async def reject_draft(self, draft_id: str, reason: str = "") -> dict[str, Any]:
         """Отклонить черновик."""
         if draft_id not in self.pending_drafts:
             return {"status": "error", "message": "Черновик не найден"}

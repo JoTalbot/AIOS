@@ -5,10 +5,10 @@ from __future__ import annotations
 import pytest
 
 from aios_core.rbac import (
+    RBAC,
     AccessPolicy,
     Permission,
     PermissionSet,
-    RBAC,
     RBACEngine,
     Role,
     RoleHierarchy,

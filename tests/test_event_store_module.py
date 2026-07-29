@@ -1,6 +1,8 @@
 """Tests for aios_core/event_store.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.event_store import EventStore
 
 

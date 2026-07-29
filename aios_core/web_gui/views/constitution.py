@@ -30,10 +30,9 @@ def render() -> None:
     ).classes("w-full")
 
     article_dialog = ui.dialog()
-    with article_dialog:
-        with ui.card().classes("w-full max-w-3xl"):
-            ui.label("Article").classes("text-h6")
-            article_content = ui.markdown("").classes("w-full")
+    with article_dialog, ui.card().classes("w-full max-w-3xl"):
+        ui.label("Article").classes("text-h6")
+        article_content = ui.markdown("").classes("w-full")
 
     async def load_constitution() -> None:
         data = await _get_constitution()

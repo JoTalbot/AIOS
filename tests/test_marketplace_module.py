@@ -1,6 +1,8 @@
 """Tests for aios_core/marketplace.py"""
 from __future__ import annotations
+
 import pytest
+
 from aios_core.marketplace import CapabilityMarketplace
 from aios_core.storage import Database
 
