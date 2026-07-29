@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.5.0] — 2026-07-29 — Adaptive Compression Tuning + Scheduler Panel + Memory Archival
+
+### Added
+- **Adaptive Compression Tuner** (`aios_core/memory_compression.py`):
+  `AdaptiveTuner` probes recall-ranking stability per candidate dimension
+  (dense vs compressed top-k `ranking_overlap`) and selects the smallest dim
+  meeting `min_overlap` (falls back to the largest — quality beats savings).
+  `AgentMemorySystem.optimize_storage_adaptive(min_overlap, top_k, dims, probes)`
+  stores the index at the chosen dim and persists the selection in
+  `compression_stats()["adaptive"]`.
+- **Cold-Storage Memory Archive**: `AgentMemorySystem.archive_dead(
+  min_strength, min_age_days)` moves decayed long-term entries into an
+  archive pool (leaves active recall AND the compressed index);
+  `archived(limit)`, `archive_stats()`, `stats()["archive"]`.
+  Dashboard endpoints `GET /api/memory/archive`,
+  `POST /api/memory/archive/run`.
+- **Substrate dashboard Energy Scheduler panel**: live report card (policy
+  dispatches, fallbacks, spent/saved, savings %, budget) backed by new
+  `GET /api/substrate/scheduler`, plus a dry-run plan form posting to
+  `POST /api/substrate/schedule`.
+- **Tests**: 23 new — `test_adaptive_compression.py` (10),
+  `test_memory_archive.py` (10), `test_substrate_dashboard.py` (+3).
+
+### Fixed
+- `_ensure_compressor` now rebuilds the `VectorCompressor` when a different
+  `target_dim` is requested (previously the first dim stuck for the lifetime
+  of the memory system, silently ignoring later dim changes).
+
 ## [11.4.0] — 2026-07-29 — Memory Deduplication + Energy-Aware Scheduling + Live Memory Dashboard
 
 ### Added

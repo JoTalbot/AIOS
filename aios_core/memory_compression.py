@@ -32,9 +32,11 @@ from typing import Any
 import numpy as np
 
 __all__ = [
+    "AdaptiveTuner",
     "CompressedVector",
     "HashingVectorizer",
     "VectorCompressor",
+    "ranking_overlap",
 ]
 
 
@@ -244,3 +246,111 @@ def unpack_compressed(blob: bytes) -> CompressedVector:
     if len(payload) != dims:
         raise ValueError(f"payload length {len(payload)} != dims {dims}")
     return CompressedVector(dims=dims, source_dim=source_dim, vmin=vmin, vmax=vmax, payload=payload)
+
+
+# ── Adaptive dimension tuning (v11.5.0) ───────────────────────────────
+
+
+def ranking_overlap(dense_ranking: list[str], compressed_ranking: list[str], k: int) -> float:
+    """Fraction of top-k agreement between two rankings over the same ids.
+
+    Edge cases: ``k <= 0`` or two empty rankings → 1.0 (vacuous agreement);
+    exactly one empty ranking → 0.0.
+    """
+    if k <= 0:
+        return 1.0
+    dense_top = dense_ranking[:k]
+    comp_top = compressed_ranking[:k]
+    if not dense_top and not comp_top:
+        return 1.0
+    if not dense_top or not comp_top:
+        return 0.0
+    return len(set(comp_top) & set(dense_top)) / float(k)
+
+
+class AdaptiveTuner:
+    """Pick the smallest compression dim that preserves recall rankings.
+
+    Probes a handful of entries as pseudo-queries: for each candidate dim,
+    entry rankings by dense cosine and by compressed cosine are compared
+    via top-k :func:`ranking_overlap`; a dim's score is the mean overlap
+    across probes. The smallest dim scoring >= ``min_overlap`` wins; if no
+    dim qualifies, the largest candidate is returned (quality beats
+    savings).
+    """
+
+    DEFAULT_DIMS = (16, 32, 64, 128)
+
+    def __init__(
+        self,
+        vectorizer: HashingVectorizer,
+        dims: tuple[int, ...] | list[int] | None = None,
+        min_overlap: float = 0.8,
+        top_k: int = 5,
+        seed: int = 42,
+    ) -> None:
+        if not 0.0 <= min_overlap <= 1.0:
+            raise ValueError("min_overlap must be in [0.0, 1.0]")
+        if top_k <= 0:
+            raise ValueError("top_k must be positive")
+        self.vectorizer = vectorizer
+        self.dims = tuple(sorted({int(d) for d in (dims or self.DEFAULT_DIMS)}))
+        if not self.dims or self.dims[0] <= 0:
+            raise ValueError("dims must be positive")
+        self.min_overlap = float(min_overlap)
+        self.top_k = int(top_k)
+        self.seed = int(seed)
+
+    @staticmethod
+    def _dense_cosine(a: np.ndarray, b: np.ndarray) -> float:
+        denom = float(np.linalg.norm(a) * np.linalg.norm(b))
+        if denom <= 1e-12:
+            return 0.0
+        return float(np.dot(a, b) / denom)
+
+    def evaluate(self, entries: dict[str, str], probes: int = 8) -> dict[int, float]:
+        """Mean top-k overlap per candidate dim.
+
+        Args:
+            entries: memory_id -> text to vectorise.
+            probes: max number of pseudo-queries (evenly spaced over ids).
+        """
+        ids = sorted(entries)
+        if len(ids) < 2:
+            return dict.fromkeys(self.dims, 1.0)
+
+        dense = {mid: self.vectorizer.vectorize(entries[mid]) for mid in ids}
+        k = min(self.top_k, len(ids))
+        step = max(1, len(ids) // max(1, probes))
+        probe_ids = ids[::step][:probes] or [ids[0]]
+        dense_rankings = {
+            pid: sorted(ids, key=lambda m: -self._dense_cosine(dense[pid], dense[m])) for pid in probe_ids
+        }
+
+        scores: dict[int, float] = {}
+        for dim in self.dims:
+            compressor = VectorCompressor(target_dim=dim, seed=self.seed)
+            compressor.fit(self.vectorizer.dim)
+            compressed = {mid: compressor.compress(dense[mid]) for mid in ids}
+            total = 0.0
+            for pid in probe_ids:
+                comp_ranking = sorted(
+                    ids,
+                    key=lambda m: -compressor.cosine_similarity(compressed[pid], compressed[m]),
+                )
+                total += ranking_overlap(dense_rankings[pid], comp_ranking, k)
+            scores[dim] = round(total / len(probe_ids), 4)
+        return scores
+
+    def select(self, entries: dict[str, str], probes: int = 8) -> dict[str, Any]:
+        """Evaluate all candidate dims and pick the smallest qualifying one."""
+        scores = self.evaluate(entries, probes=probes)
+        selected = next((d for d in self.dims if scores[d] >= self.min_overlap), self.dims[-1])
+        return {
+            "selected_dim": selected,
+            "scores": {str(d): scores[d] for d in self.dims},
+            "min_overlap": self.min_overlap,
+            "top_k": self.top_k,
+            "probes_used": min(max(1, len(entries)), max(1, probes)),
+            "entries": len(entries),
+        }

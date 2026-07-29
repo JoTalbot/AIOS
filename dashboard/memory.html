@@ -90,7 +90,7 @@
 </head>
 <body>
     <header>
-        <h1>🧠 Agent Memory <span class="version">v11.4.0</span></h1>
+        <h1>🧠 Agent Memory <span class="version">v11.5.0</span></h1>
         <div class="timestamp"><span class="live-dot"></span>Live · <span id="last-update">—</span></div>
     </header>
 
@@ -104,6 +104,7 @@
                 <div class="stat-row"><span class="stat-label">Success Patterns</span><span class="stat-value success" id="pat-count">0</span></div>
                 <div class="stat-row"><span class="stat-label">Avg Strength (ST / LT)</span><span class="stat-value" id="strength">0 / 0</span></div>
                 <div class="stat-row"><span class="stat-label">Duplicates Removed (total)</span><span class="stat-value dedup" id="dedup-removed">0</span></div>
+                <div class="stat-row"><span class="stat-label">Archived to Cold Storage</span><span class="stat-value warning" id="archived-total">0</span></div>
             </div>
         </div>
 
@@ -161,6 +162,7 @@ async function refreshStats() {
     document.getElementById('pat-count').textContent = s.pattern_count;
     document.getElementById('strength').textContent = s.avg_strength_short + ' / ' + s.avg_strength_long;
     document.getElementById('dedup-removed').textContent = (s.dedup && s.dedup.removed_total) || 0;
+    document.getElementById('archived-total').textContent = (s.archive && s.archive.archived_total) || 0;
 
     const dist = s.platform_distribution || {};
     const total = Object.values(dist).reduce((a, b) => a + b, 0);
