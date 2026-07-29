@@ -80,183 +80,28 @@ jobs:
           python -c "from aios_core.platforms import list_platforms; print('Platforms:', [p.name for p in list_platforms()])"
 
   # ---------------------------------------------------------
-  # 2. Android Emulator Setup (reusable for next jobs)
-  # ---------------------------------------------------------
-  setup-emulators:
-    name: Setup Android Emulators
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    # Emulators cannot be shared across jobs (each job is a fresh VM), so
-    # the whole emulator chain runs only on manual dispatch with real APKs.
-    if: github.event_name == 'workflow_dispatch'
-    outputs:
-      emulator_serials: ${{ steps.get-serials.outputs.serials }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Android SDK & Create AVDs
-        run: |
-          set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -qq -y openjdk-17-jdk-headless unzip wget curl lz4 libpulse-dev libx11-6 libxext6 libxi6 libxrender1 libxtst6 libglib2.0-0
-
-          # Android SDK
-          mkdir -p "${ANDROID_SDK_ROOT}/cmdline-tools"
-          cd "${ANDROID_SDK_ROOT}/cmdline-tools"
-          wget -q "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -O cmdline-tools.zip
-          unzip -q cmdline-tools.zip
-          mv cmdline-tools latest
-          rm cmdline-tools.zip
-
-          export PATH="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${PATH}"
-          echo "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "${ANDROID_SDK_ROOT}/platform-tools" >> $GITHUB_PATH
-          echo "${ANDROID_SDK_ROOT}/emulator" >> $GITHUB_PATH
-
-          # All Android tools must agree on ONE SDK root in later steps.
-          # Runners preset ANDROID_HOME=/usr/local/lib/android/sdk while we
-          # use ANDROID_SDK_ROOT=/opt/android-sdk; sdkmanager/avdmanager and
-          # the emulator resolve roots with different precedence, which leads
-          # to "Broken AVD system path" at boot.
-          echo "ANDROID_HOME=${ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
-
-          # Licenses (pipefail off: 'yes' dies with SIGPIPE once sdkmanager exits,
-          # with pipefail the pipeline would return 141 and fail the step)
-          set +o pipefail
-          yes | sdkmanager --licenses > /dev/null
-          set -o pipefail
-
-          # Install packages (unmuted on purpose: previous silent failures were undebuggable)
-          sdkmanager "platform-tools" "emulator" "platforms;android-${API_LEVEL}" \
-            "system-images;android-${API_LEVEL};${ABI}" \
-            "build-tools;35.0.0"
-
-          echo "=== installed packages (sanity) ==="
-          sdkmanager --list_installed | grep -Ei "system-images|platforms|emulator" || true
-
-          # Pin AVD storage location so avdmanager and the config.ini writer agree
-          export ANDROID_SDK_HOME="$HOME"
-          export ANDROID_AVD_HOME="$HOME/.android/avd"
-          mkdir -p "$ANDROID_AVD_HOME"
-
-          # Create 3 AVDs for parallel calibration
-          for i in 1 2 3; do
-            AVD="AIOS_${i}"
-            echo "no" | avdmanager create avd -n "${AVD}" \
-              -k "system-images;android-${API_LEVEL};${ABI}" \
-              -d "pixel" --force
-          done
-
-          echo "=== AVD diagnostic (config + system-images layout) ==="
-          echo "--- config.ini ---"
-          cat "${ANDROID_AVD_HOME}/AIOS_1.avd/config.ini" || true
-          echo "--- system-images tree ---"
-          find "${ANDROID_SDK_ROOT}/system-images" -maxdepth 3 -type d || true
-          echo "--- env ---"
-          echo "ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-
-          # Config tweaks — separate loop so diagnostics above see the pristine avdmanager output
-          for i in 1 2 3; do
-            AVD="AIOS_${i}"
-
-            # Config for faster boot — APPEND (>>), never overwrite (>)!
-            # avdmanager writes abi.type/image.sysdir/cpu entries into config.ini;
-            # overwriting the file makes the emulator fall back to arm defaults
-            # and die with "CPU Architecture 'arm' is not supported by QEMU2".
-            cat >> "${ANDROID_AVD_HOME}/${AVD}.avd/config.ini" <<EOF
-          hw.lcd.density=160
-          hw.lcd.width=320
-          hw.lcd.height=640
-          sdcard.size=512M
-          hw.gpu.enabled=yes
-          hw.gpu.mode=swiftshader_indirect
-          hw.keyboard=yes
-          vm.heapSize=256M
-          hw.ramSize=1536
-          EOF
-          done
-
-      - name: Enable KVM (required for x86_64 emulation)
-        run: |
-          # Same approach as reactivecircus/android-emulator-runner
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          ls -la /dev/kvm
-
-      - name: Start Emulators (3 parallel)
-        run: |
-          export PATH="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator:${PATH}"
-
-          # Start 3 emulators in background
-          for i in 1 2 3; do
-            AVD="AIOS_${i}"
-            emulator -avd "${AVD}" ${EMULATOR_OPTS} -port $((5554 + (i-1)*2)) > /tmp/emulator_${i}.log 2>&1 &
-            echo $! > /tmp/emulator_${i}.pid
-            echo "Started ${AVD} on port $((5554 + (i-1)*2))"
-          done
-
-      - name: Wait for Emulators Boot
-        run: |
-          export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
-          for i in 1 2 3; do
-            PORT=$((5554 + (i-1)*2))
-            SERIAL="emulator-${PORT}"
-            echo "Waiting for ${SERIAL}..."
-            timeout 300 bash -c "
-              until adb -s ${SERIAL} shell getprop sys.boot_completed 2>/dev/null | grep -q '1'; do
-                sleep 5
-              done
-            " || { echo "Timeout waiting for ${SERIAL}"; cat /tmp/emulator_${i}.log; exit 1; }
-            echo "${SERIAL} booted"
-          done
-          adb devices
-
-      - name: Get Emulator Serials
-        id: get-serials
-        run: |
-          export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
-          SERIALS=$(adb devices | grep emulator | awk '{print $1}' | paste -sd,)
-          echo "serials=${SERIALS}" >> $GITHUB_OUTPUT
-          echo "Available emulators: ${SERIALS}"
-
-      - name: Register Emulators in AIOS Device Pool
-        run: |
-          export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
-          python -m pip install -r requirements.txt -q
-          IFS=',' read -ra SERIALS <<< "${{ steps.get-serials.outputs.serials }}"
-          PLATFORMS=("prom" "bigl" "shafa")
-          for i in "${!SERIALS[@]}"; do
-            python aios_cli.py devices register --serial "${SERIALS[i]}" --avd "AIOS_$((i+1))"
-          done
-
-  # ---------------------------------------------------------
   # 3. Calibration for Regional Platforms (prom, bigl, shafa)
   # ---------------------------------------------------------
   calibrate-platforms:
     name: Calibrate Regional Platforms
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    needs: [lint-and-unit, setup-emulators]
+    needs: [lint-and-unit]
     # Manual dispatch only: needs live APKs (apkeep) + real app UIs.
-    # NOTE: emulators from setup-emulators are gone (different VM); this job
-    # currently documents the calibration flow and must be reworked to own
-    # its emulator before it can pass end-to-end.
+    # Self-contained: every matrix leg brings up its own emulator
+    # (emulator state cannot cross job boundaries on hosted runners).
     if: github.event_name == 'workflow_dispatch'
     strategy:
+      fail-fast: false  # one platform's failure must not cancel the others
       matrix:
         platform: [prom, bigl, shafa]
         include:
           - platform: prom
             package: ua.prom
-            serial_index: 0
           - platform: bigl
             package: ua.bigl
-            serial_index: 1
           - platform: shafa
             package: com.shafa
-            serial_index: 2
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -272,11 +117,20 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Get emulator serial
-        id: serial
+      - name: Bring up local emulator
+        run: bash setup/ci-android-emulator.sh 1
+
+      - name: Install apkeep (APK fetcher, best-effort)
         run: |
-          IFS=',' read -ra SERIALS <<< "${{ needs.setup-emulators.outputs.emulator_serials }}"
-          echo "serial=${SERIALS[${{ matrix.serial_index }}]}" >> $GITHUB_OUTPUT
+          if curl -fsSL "https://github.com/EFForg/apkeep/releases/latest/download/apkeep-x86_64-unknown-linux-gnu" -o /tmp/apkeep; then
+            chmod +x /tmp/apkeep
+            mkdir -p "$HOME/bin"
+            mv /tmp/apkeep "$HOME/bin/apkeep"
+            echo "$HOME/bin" >> "$GITHUB_PATH"
+            "$HOME/bin/apkeep" --version || true
+          else
+            echo "apkeep prebuilt unavailable — fetch-apk will degrade gracefully"
+          fi
 
       - name: Fetch APK (if available via apkeep)
         run: |
@@ -287,7 +141,7 @@ jobs:
         if: always()
         run: |
           export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
-          SERIAL="${{ steps.serial.outputs.serial }}"
+          SERIAL="emulator-5554"
           APK_PATH="apks/${{ matrix.package }}.apk"
           if [ -f "$APK_PATH" ]; then
             adb -s $SERIAL install -r "$APK_PATH" || echo "Install failed, maybe already installed"
@@ -304,7 +158,7 @@ jobs:
       - name: Execute calibration dump collection
         run: |
           export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
-          SERIAL="${{ steps.serial.outputs.serial }}"
+          SERIAL="emulator-5554"
 
           # The recipe gives us exact ADB commands. We'll run the key ones:
           # 1. Open app
@@ -362,6 +216,10 @@ jobs:
           path: |
             platforms/${{ matrix.platform }}.yaml
             aios_core/modules/${{ matrix.platform }}/
+            /tmp/${{ matrix.platform }}_search.xml
+            /tmp/${{ matrix.platform }}_detail.xml
+            /tmp/${{ matrix.platform }}_messenger.xml
+            /tmp/${{ matrix.platform }}_navigation.xml
           retention-days: 7
 
   # ---------------------------------------------------------
@@ -372,7 +230,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [calibrate-platforms]
-    # Manual dispatch only (see calibrate-platforms note).
+    # Manual dispatch only. Self-contained: brings up its own emulator and
+    # reuses the calibration dump XMLs uploaded by calibrate-platforms.
     if: github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout
@@ -389,13 +248,23 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Get emulator serials
+      - name: Bring up local emulator
+        run: bash setup/ci-android-emulator.sh 1
+
+      - name: Download calibrated artifacts (dump XMLs)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: calibrated-*
+          path: /tmp
+          merge-multiple: true
+
+      - name: Setup profiles (single local emulator)
         run: |
-          IFS=',' read -ra SERIALS <<< "${{ needs.setup-emulators.outputs.emulator_serials }}"
-          for i in "${!SERIALS[@]}"; do
-            PLATFORM=("prom" "bigl" "shafa")
-            python aios_cli.py profiles add --platform ${PLATFORM[$i]} --name ${PLATFORM[$i]}_ci --device ${SERIALS[$i]}
-            python aios_cli.py devices lease --profile ${PLATFORM[$i]}:${PLATFORM[$i]}_ci
+          export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
+          for platform in prom bigl shafa; do
+            python aios_cli.py profiles add --platform $platform --name ${platform}_ci --device emulator-5554
+            python aios_cli.py devices lease --profile ${platform}:${platform}_ci
           done
 
       - name: Run AutoWatch cycle for each platform
