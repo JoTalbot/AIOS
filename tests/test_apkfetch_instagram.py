@@ -119,6 +119,21 @@ def test_fetch_apk_success(tmp_path):
     assert Path(path).exists()
 
 
+def test_apkeep_source_aliases_normalized():
+    """apkeep требует канонические значения -d (apk-pure, ...); алиасы переводятся."""
+    from aios_core.platforms.apkfetch import _normalize_source
+
+    assert _normalize_source("apkpure") == "apk-pure"
+    assert _normalize_source("APKPure ") == "apk-pure"
+    assert _normalize_source("apk_pure") == "apk-pure"
+    assert _normalize_source("google_play") == "google-play"
+    assert _normalize_source("fdroid") == "f-droid"
+    assert _normalize_source("huawei") == "huawei-app-gallery"
+    # Канонические значения проходят как есть
+    assert _normalize_source("apk-pure") == "apk-pure"
+    assert _normalize_source("google-play") == "google-play"
+
+
 def test_fetch_apk_failure_and_no_file(tmp_path):
     def failing(package, out_dir, source="apkpure"):
         return {"code": 1, "stdout": "", "stderr": "network error"}

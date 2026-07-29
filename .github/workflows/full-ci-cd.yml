@@ -160,32 +160,47 @@ jobs:
           export PATH="${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
           SERIAL="emulator-5554"
 
+          # uiautomator dump can intermittently fail with
+          # "ERROR: null root node returned by UiTestAutomationBridge"
+          # (screen mid-transition), leaving no remote file and failing the
+          # pull. Retry a few times; a screen that never dumps must warn,
+          # not kill the leg — the other screens are still calibratable.
+          dump_screen() {
+            local name="$1"
+            for attempt in 1 2 3; do
+              if adb -s "$SERIAL" shell uiautomator dump "/sdcard/${name}.xml" \
+                 && adb -s "$SERIAL" pull "/sdcard/${name}.xml" "/tmp/${name}.xml"; then
+                return 0
+              fi
+              echo "dump ${name}: attempt ${attempt} failed, retrying..."
+              sleep 2
+            done
+            echo "::warning::${name} dump failed after 3 attempts — continuing without it"
+            return 0
+          }
+
           # The recipe gives us exact ADB commands. We'll run the key ones:
           # 1. Open app
           adb -s $SERIAL shell am start -n ${{ matrix.package }}/.ui.main.MainActivity || true
           sleep 3
 
           # 2. Dump search screen
-          adb -s $SERIAL shell uiautomator dump /sdcard/${{ matrix.platform }}_search.xml
-          adb -s $SERIAL pull /sdcard/${{ matrix.platform }}_search.xml /tmp/${{ matrix.platform }}_search.xml
+          dump_screen ${{ matrix.platform }}_search
 
           # 3. Dump detail screen (navigate to first item)
           adb -s $SERIAL shell input tap 160 200
           sleep 2
-          adb -s $SERIAL shell uiautomator dump /sdcard/${{ matrix.platform }}_detail.xml
-          adb -s $SERIAL pull /sdcard/${{ matrix.platform }}_detail.xml /tmp/${{ matrix.platform }}_detail.xml
+          dump_screen ${{ matrix.platform }}_detail
 
           # 4. Dump messenger screen
           adb -s $SERIAL shell input tap 160 500
           sleep 2
-          adb -s $SERIAL shell uiautomator dump /sdcard/${{ matrix.platform }}_messenger.xml
-          adb -s $SERIAL pull /sdcard/${{ matrix.platform }}_messenger.xml /tmp/${{ matrix.platform }}_messenger.xml
+          dump_screen ${{ matrix.platform }}_messenger
 
           # 5. Dump navigation (home)
           adb -s $SERIAL shell input keyevent 3
           sleep 1
-          adb -s $SERIAL shell uiautomator dump /sdcard/${{ matrix.platform }}_navigation.xml
-          adb -s $SERIAL pull /sdcard/${{ matrix.platform }}_navigation.xml /tmp/${{ matrix.platform }}_navigation.xml
+          dump_screen ${{ matrix.platform }}_navigation
 
       - name: Calibrate (write hints to YAML)
         run: |
