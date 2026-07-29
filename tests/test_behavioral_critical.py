@@ -406,7 +406,8 @@ class TestDashboardIntegration:
     def test_dashboard_html_file_exists(self):
         from pathlib import Path
 
-        dash_path = Path("/home/user/AIOS/dashboard/index.html")
+        # Repo-relative path: works both locally and on CI runners.
+        dash_path = Path(__file__).resolve().parents[1] / "dashboard" / "index.html"
         assert dash_path.exists()
 
     def test_dashboard_app_creation(self):
