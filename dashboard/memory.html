@@ -95,7 +95,7 @@
 </head>
 <body>
     <header>
-        <h1>🧠 Agent Memory <span class="version">v11.11.0</span></h1>
+        <h1>🧠 Agent Memory <span class="version">v11.12.0</span></h1>
         <div class="timestamp"><span class="live-dot"></span>Live · <span id="last-update">—</span></div>
     </header>
 
@@ -175,8 +175,9 @@
                     <span>
                         <button onclick="runSnapshot('save')" class="lc-btn">Save</button>
                         <button onclick="runSnapshot('load')" class="lc-btn" style="background:var(--success)">Load</button>
+                        <button onclick="runSnapshotDiff()" class="lc-btn" style="background:var(--warning)">Diff vs live</button>
                     </span></div>
-                <div style="color:#64748b;font-size:0.85rem;font-family:'Consolas',monospace" id="snapshot-result">POST /api/memory/snapshot/save · /api/memory/snapshot/load</div>
+                <div style="color:#64748b;font-size:0.85rem;font-family:'Consolas',monospace" id="snapshot-result">POST /api/memory/snapshot/save · /load · /diff</div>
             </div>
         </div>
     </div>
@@ -184,12 +185,13 @@
     <div class="grid">
         <div class="panel">
             <h2>Near-Duplicate Groups</h2>
-            <div class="stat-row" style="margin-bottom:10px"><span class="stat-label">Merge preview / auto-tune</span>
+            <div class="stat-row" style="margin-bottom:10px"><span class="stat-label">Preview / tune / merge</span>
                 <span>
                     <button onclick="runDedupPreview()" class="lc-btn">Preview</button>
                     <button onclick="runDedupTune()" class="lc-btn" style="background:var(--dedup)">Tune</button>
+                    <button onclick="runDedupMerge()" class="lc-btn" style="background:var(--danger);color:#fff">Merge</button>
                 </span></div>
-            <div style="color:#64748b;font-size:0.82rem;font-family:'Consolas',monospace;margin-bottom:10px" id="dedup-tune-result">POST /api/memory/dedup/preview · /api/memory/dedup/tune</div>
+            <div style="color:#64748b;font-size:0.82rem;font-family:'Consolas',monospace;margin-bottom:10px" id="dedup-tune-result">POST /api/memory/dedup/preview · /tune · /run</div>
             <div id="dup-groups"><div class="empty">No duplicates detected</div></div>
         </div>
 
@@ -282,6 +284,26 @@ async function runLifecycle(url, payload) {
     }
 }
 
+async function runSnapshotDiff() {
+    const path = document.getElementById('snap-path').value.trim();
+    const out = document.getElementById('snapshot-result');
+    out.textContent = 'diffing…';
+    try {
+        const r = await fetch('/api/memory/snapshot/diff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(path ? { path } : {}),
+        });
+        const data = await r.json();
+        if (data.error) { out.textContent = data.error; return; }
+        if (data.identical) { out.textContent = 'diff → identical to live state'; return; }
+        const sum = m => Object.values(m).reduce((a, b) => a + b.length, 0);
+        out.textContent = `diff → +${sum(data.added)} / -${sum(data.removed)} / ~${sum(data.changed)} (pat +${data.patterns_added.length}/-${data.patterns_removed.length})`;
+    } catch (e) {
+        out.textContent = 'request failed';
+    }
+}
+
 async function runArchivePreview() {
     const out = document.getElementById('lifecycle-result');
     out.textContent = 'previewing…';
@@ -311,6 +333,24 @@ async function runDedupPreview() {
         const data = await r.json();
         out.textContent = data.error ? data.error
             : `dry-run @ ${data.threshold}: ${data.would_remove} would merge in ${data.groups} groups → LT ${data.counts_after.long_term}, EP ${data.counts_after.episodic}`;
+    } catch (e) {
+        out.textContent = 'request failed';
+    }
+}
+
+async function runDedupMerge() {
+    const out = document.getElementById('dedup-tune-result');
+    if (!confirm('Merge near-duplicates irreversibly? (Preview first shows the exact plan.)')) return;
+    out.textContent = 'merging…';
+    try {
+        const r = await fetch('/api/memory/dedup/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ confirm: true }),
+        });
+        const data = await r.json();
+        out.textContent = data.error ? data.error : `merge → ${data.entries_removed} removed in ${data.groups_found} groups`;
+        refreshAll();
     } catch (e) {
         out.textContent = 'request failed';
     }

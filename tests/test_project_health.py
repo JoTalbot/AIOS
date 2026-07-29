@@ -8,7 +8,7 @@ ROOT = Path(__file__).parent.parent
 def test_1_core_imports():
     import aios_core
 
-    assert aios_core.__version__ == "11.11.0"
+    assert aios_core.__version__ == "11.12.0"
 
 
 def test_2_all_init_files():

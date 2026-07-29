@@ -1,5 +1,13 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.12.0 ✅ (2026-07-29)
+- ✅ Policy Compare Matrix — `compare_policies(tasks)`: dry-run матрица одного батча под всеми политиками (энергия, affordable, выборы по задачам, Δ vs reference); `recommended_policy` тай-брейкит в reference («переключайся только за измеримый выигрыш»); `POST /api/substrate/compare` + кнопка Compare A/B
+- ✅ Dedup Merge API — `POST /api/memory/dedup/run` с обязательным `{"confirm": true}` (400 + указание на preview); кнопка Merge на панели дубликатов — цепочка Tune → Preview → **Merge** завершена end-to-end
+- ✅ Snapshot Diff — `diff_snapshot()`: live vs файл снапшота (added/removed/changed по пулам, pattern drift, metadata drift, `identical`); равенство по persistence-сериализации → пассивное старение не даёт фантомных изменений; `POST /api/memory/snapshot/diff` (read-only) + кнопка Diff vs live
+- ✅ 22 новых теста (snapshot_diff 9 + policy_compare 7 + dedup_run 6)
+
+**~4255 tests, 0 failures**
+
 ## v11.11.0 ✅ (2026-07-29)
 - ✅ History Replay / Drift Analysis — `replay(records, policy=)`: re-plan экспортированных диспетчей против ТЕКУЩЕГО состояния (units восстанавливаются точно из recorded energy/cost-per-unit); matches, deltas, potential savings, unknown substrates; ничего не исполняется; `POST /api/substrate/replay` (JSON-записи или сырой CSV; policy через `?policy=`) + file-picker в панели Forecast
 - ✅ Archive Preview — `preview_archive_dead()`: dry-run точного критерия archive_dead (strength ниже порога И age ≥ floor) без перемещений; ids, age/strength, counts_after; `POST /api/memory/archive/preview` + кнопка Preview в Lifecycle-панели
@@ -565,6 +573,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 11.9.0 | 2026-07-29 | ~4183 | Dedup threshold auto-tuner (+apply, persist), history CSV export, aggregate health score API + панель |
 | 11.10.0 | 2026-07-29 | ~4209 | Dedup merge preview (dry-run) API, windowed scheduler report, SLO alerts на health score |
 | 11.11.0 | 2026-07-29 | ~4233 | Replay drift analysis (CSV/JSON), archive dry-run preview, health/SLO series в Prometheus |
+| 11.12.0 | 2026-07-29 | ~4255 | Policy compare matrix (A/B), guarded dedup merge API + UI, snapshot diff live-vs-file |
 
 ---
 

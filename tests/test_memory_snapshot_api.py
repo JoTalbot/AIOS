@@ -98,6 +98,5 @@ def test_memory_page_has_persistence_panel(client):
     resp = client.get("/memory")
     assert resp.status_code == 200
     assert "Snapshot Persistence" in resp.text
-    assert "/api/memory/snapshot/save" in resp.text
-    assert "/api/memory/snapshot/load" in resp.text
+    assert "/api/memory/snapshot/" in resp.text  # save/load base path used by runSnapshot()
     assert "snap-path" in resp.text

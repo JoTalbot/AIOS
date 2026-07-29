@@ -469,6 +469,77 @@ class EnergyAwareScheduler:
         }
 
     # ------------------------------------------------------------------
+    # Policy A/B comparison matrix (v11.12.0)
+    # ------------------------------------------------------------------
+
+    def compare_policies(
+        self,
+        tasks: list[dict[str, Any]],
+        policies: list[str] | None = None,
+        reference_policy: str | None = None,
+    ) -> dict[str, Any]:
+        """Forecast the SAME task batch under several policies side by side
+        (A/B decision matrix, v11.12.0).
+
+        Each policy gets one dry-run forecast; the matrix rows show
+        projected energy, affordable task count and the substrate choice
+        per task, plus deltas against the reference policy (the
+        scheduler's default unless overridden). Pure dry-run.
+
+        Args:
+            tasks: the batch (same validation as forecast()).
+            policies: policies to compare (default: all 4).
+            reference_policy: delta baseline (default: scheduler policy);
+                must be part of the compared set.
+
+        Returns:
+            Matrix dict: per-policy stats, deltas vs reference, the
+            recommended (lowest-energy) policy name.
+        """
+        if policies is not None and not isinstance(policies, list):
+            raise ValueError("policies must be a list of policy names")
+        names = list(dict.fromkeys(policies)) if policies is not None else list(SCHEDULING_POLICIES)
+        if not names:
+            raise ValueError("policies must be a non-empty list")
+        for name in names:
+            self._check_policy(name)
+        reference = reference_policy or self.policy
+        if reference not in names:
+            raise ValueError(f"reference policy {reference!r} must be one of the compared policies")
+
+        matrix: dict[str, Any] = {}
+        for name in names:
+            projection = self.forecast(tasks, policy=name)
+            matrix[name] = {
+                "tasks_affordable": projection["tasks_affordable"],
+                "projected_energy": projection["projected_energy"],
+                "substrate_choices": [entry["selected_substrate"] for entry in projection["plans"]],
+            }
+
+        ref = matrix[reference]
+        totals = len(ref["substrate_choices"])
+        for stats in matrix.values():
+            stats["energy_delta_vs_reference"] = round(stats["projected_energy"] - ref["projected_energy"], 6)
+            overlap = sum(
+                1
+                for chosen, base in zip(stats["substrate_choices"], ref["substrate_choices"], strict=True)
+                if chosen == base
+            )
+            stats["choice_overlap_vs_reference_pct"] = round(100.0 * overlap / totals, 2) if totals else 0.0
+
+        recommended = min(
+            names,
+            key=lambda n: (matrix[n]["projected_energy"], -matrix[n]["tasks_affordable"], n != reference, n),
+        )
+        return {
+            "tasks_total": len(tasks),
+            "policies": names,
+            "reference_policy": reference,
+            "recommended_policy": recommended,
+            "matrix": matrix,
+        }
+
+    # ------------------------------------------------------------------
     # Reporting
     # ------------------------------------------------------------------
 

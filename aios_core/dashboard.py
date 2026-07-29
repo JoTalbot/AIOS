@@ -1817,6 +1817,34 @@ class AIOSDashboard:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(forecast)
 
+    async def api_substrate_compare(self, request: Request) -> JSONResponse:
+        """A/B compare the same task batch across policies (v11.12.0).
+
+        POST body: {"tasks": [...], "policies": optional list,
+        "reference": optional}. Dry-run only.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if "tasks" not in body:
+            return JSONResponse({"error": "body must include a 'tasks' list"}, status_code=400)
+        policies = body.get("policies")
+        if policies is not None and not isinstance(policies, list):
+            return JSONResponse({"error": "policies must be a list of policy names"}, status_code=400)
+        reference = body.get("reference")
+        if reference is not None and not isinstance(reference, str):
+            return JSONResponse({"error": "reference must be a string"}, status_code=400)
+        try:
+            matrix = _get_energy_scheduler().compare_policies(
+                body["tasks"], policies=policies, reference_policy=reference
+            )
+        except (ValueError, TypeError, AttributeError) as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(matrix)
+
     async def api_substrate_history_export(self, request: Request) -> Response:
         """Dispatch history as a downloadable CSV file (v11.9.0)."""
         try:
@@ -2197,6 +2225,65 @@ class AIOSDashboard:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(preview)
 
+    async def api_memory_dedup_run(self, request: Request) -> JSONResponse:
+        """Actually MERGE near-duplicates (v11.12.0).
+
+        Merging is irreversible: the body MUST include {"confirm": true}.
+        Optional "threshold" / "pool" override the tuned default. For a
+        dry-run use /api/memory/dedup/preview instead.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if body.get("confirm") is not True:
+            return JSONResponse(
+                {
+                    "error": 'dedup merge is irreversible — pass {"confirm": true} '
+                    "(dry-run available at /api/memory/dedup/preview)"
+                },
+                status_code=400,
+            )
+        threshold = body.get("threshold")
+        if threshold is not None:
+            if not isinstance(threshold, (int, float)) or isinstance(threshold, bool):
+                return JSONResponse({"error": "threshold must be a number in (0.0, 1.0]"}, status_code=400)
+        pool = body.get("pool", "all")
+        if pool not in ("all", "long_term", "episodic"):
+            return JSONResponse({"error": "pool must be one of: all, long_term, episodic"}, status_code=400)
+        system = _get_memory_system()
+        effective = system.dedup_threshold if threshold is None else float(threshold)
+        try:
+            report = system.deduplicate(threshold=effective, pool=pool)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(report)
+
+    async def api_memory_snapshot_diff(self, request: Request) -> JSONResponse:
+        """Diff the LIVE memory state against a snapshot file (v11.12.0).
+
+        Optional body: {"path": "..."} (default ~/.aios/memory_snapshot.json).
+        Read-only: the file is never loaded into the system.
+        """
+        path = await self._snapshot_path_from(request)
+        if isinstance(path, JSONResponse):
+            return path
+        target = Path(path)
+        if not target.is_file():
+            return JSONResponse({"error": f"snapshot not found: {path}"}, status_code=404)
+        try:
+            data = json.loads(target.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            return JSONResponse({"error": f"snapshot read failed: {exc}"}, status_code=400)
+        try:
+            report = _get_memory_system().diff_snapshot(data)
+        except (ValueError, KeyError) as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        report["path"] = str(target)
+        return JSONResponse(report)
+
     async def api_metrics(self, request: Request) -> PlainTextResponse:
         """Prometheus text exposition of the live AIOS state (v11.8.0;
         health/SLO series since v11.11.0)."""
@@ -2232,6 +2319,7 @@ class AIOSDashboard:
             Route("/api/substrate/scheduler", self.api_substrate_scheduler),
             Route("/api/substrate/analytics", self.api_substrate_analytics),
             Route("/api/substrate/forecast", self.api_substrate_forecast, methods=["POST"]),
+            Route("/api/substrate/compare", self.api_substrate_compare, methods=["POST"]),
             Route("/api/substrate/replay", self.api_substrate_replay, methods=["POST"]),
             Route("/api/memory/stats", self.api_memory_stats),
             Route("/api/memory/patterns", self.api_memory_patterns),
@@ -2239,6 +2327,7 @@ class AIOSDashboard:
             Route("/api/memory/duplicates", self.api_memory_duplicates),
             Route("/api/memory/dedup/tune", self.api_memory_dedup_tune, methods=["POST"]),
             Route("/api/memory/dedup/preview", self.api_memory_dedup_preview, methods=["POST"]),
+            Route("/api/memory/dedup/run", self.api_memory_dedup_run, methods=["POST"]),
             Route("/api/memory/archive", self.api_memory_archive),
             Route("/api/memory/archive/run", self.api_memory_archive_run, methods=["POST"]),
             Route("/api/memory/archive/preview", self.api_memory_archive_preview, methods=["POST"]),
@@ -2248,6 +2337,7 @@ class AIOSDashboard:
             Route("/api/memory/compression/optimize-adaptive", self.api_memory_optimize_adaptive, methods=["POST"]),
             Route("/api/memory/snapshot/save", self.api_memory_snapshot_save, methods=["POST"]),
             Route("/api/memory/snapshot/load", self.api_memory_snapshot_load, methods=["POST"]),
+            Route("/api/memory/snapshot/diff", self.api_memory_snapshot_diff, methods=["POST"]),
             Route("/api/metrics", self.api_metrics),
             Route("/api/health/score", self.api_health_score),
             Route("/api/health/alerts", self.api_health_alerts),

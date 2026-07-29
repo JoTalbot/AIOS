@@ -1213,6 +1213,78 @@ class AgentMemorySystem:
         report["loaded"] = str(path)
         return report
 
+    def diff_snapshot(self, other: dict[str, Any]) -> dict[str, Any]:
+        """Compare the LIVE memory state against a snapshot dict (v11.12.0).
+
+        Entry equality uses full-fidelity serialisation (the same
+        _entry_snapshot used by save(); derived strength is deliberately
+        NOT compared), so only real mutations surface — passive decay
+        drift never produces phantom changes.
+
+        Args:
+            other: snapshot dict as produced by snapshot()/save().
+
+        Returns:
+            Diff dict: added/removed/changed ids per pool, pattern drift,
+            pool counts on both sides, metadata drift and an `identical`
+            flag.
+        Raises:
+            ValueError: malformed snapshot structure.
+        """
+        if not isinstance(other, dict) or "pools" not in other:
+            raise ValueError("not an AgentMemorySystem snapshot (missing 'pools')")
+        pools = other["pools"]
+        if not isinstance(pools, dict):
+            raise ValueError("not an AgentMemorySystem snapshot ('pools' must be a dict)")
+        for name in ("short_term", "long_term", "episodic", "archive"):
+            if name not in pools or not isinstance(pools[name], list):
+                raise ValueError(f"snapshot pools missing '{name}'")
+
+        live_pools = {
+            "short_term": self._short_term,
+            "long_term": self._long_term,
+            "episodic": self._episodic,
+            "archive": self._archive,
+        }
+        added: dict[str, list[str]] = {}
+        removed: dict[str, list[str]] = {}
+        changed: dict[str, list[str]] = {}
+        live_totals: dict[str, int] = {}
+        snap_totals: dict[str, int] = {}
+        for name, entries in live_pools.items():
+            live_map = {e.memory_id: self._entry_snapshot(e) for e in entries}
+            snap_map = {str(e.get("memory_id")): e for e in pools[name] if isinstance(e, dict)}
+            added[name] = sorted(mid for mid in live_map if mid not in snap_map)
+            removed[name] = sorted(mid for mid in snap_map if mid not in live_map)
+            changed[name] = sorted(mid for mid in live_map if mid in snap_map and live_map[mid] != snap_map[mid])
+            live_totals[name] = len(live_map)
+            snap_totals[name] = len(snap_map)
+
+        snap_patterns = {str(p.get("pattern_id")) for p in other.get("patterns", []) if isinstance(p, dict)}
+        live_patterns = set(self._patterns)
+        identical = (
+            not any(added.values())
+            and not any(removed.values())
+            and not any(changed.values())
+            and live_patterns == snap_patterns
+        )
+        return {
+            "identical": identical,
+            "added": added,
+            "removed": removed,
+            "changed": changed,
+            "patterns_added": sorted(live_patterns - snap_patterns),
+            "patterns_removed": sorted(snap_patterns - live_patterns),
+            "counts": {"live": live_totals, "snapshot": snap_totals},
+            "metadata_drift": {
+                "dedup_threshold": {"live": self._dedup_threshold, "snapshot": other.get("dedup_threshold")},
+                "dedup_removed_total": {
+                    "live": self._dedup_removed_total,
+                    "snapshot": other.get("dedup_removed_total"),
+                },
+            },
+        }
+
     def stats(self) -> dict[str, Any]:
         """Memory system statistics.
 
