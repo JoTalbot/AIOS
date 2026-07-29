@@ -132,7 +132,7 @@
 <body>
 
     <header>
-        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.12.0</span></h1>
+        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.13.0</span></h1>
         <div style="color: #94a3b8; font-size: 0.9rem;" id="live-indicator">Live Workload Router — data: /api/substrate/*</div>
     </header>
 
@@ -248,6 +248,40 @@
         </div>
     </div>
 
+    <div class="grid">
+        <div class="panel">
+            <h2>Energy Budget (persisted)</h2>
+            <div class="stat-group">
+                <div class="stat-row"><span class="stat-label">Limit (cost units)</span><span class="stat-value" id="budget-limit-view">—</span></div>
+                <div class="stat-row"><span class="stat-label">Window</span><span class="stat-value" id="budget-window-view">—</span></div>
+                <div class="stat-row"><span class="stat-label">Spent / Remaining</span><span class="stat-value" id="budget-spent-view">—</span></div>
+                <div class="stat-row"><span class="stat-label">New Limit</span>
+                    <input id="budget-limit-input" type="number" min="0.0001" step="any" placeholder="e.g. 150" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:110px;font-family:monospace"></div>
+                <div class="stat-row"><span class="stat-label">New Window (s, optional)</span>
+                    <span>
+                        <input id="budget-window-input" type="number" min="1" step="any" placeholder="keep current" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:130px;font-family:monospace">
+                        <button onclick="runBudgetApply()" style="background:var(--accent);color:#0f172a;border:none;border-radius:6px;padding:7px 16px;font-weight:600;cursor:pointer">Apply</button>
+                    </span></div>
+                <div id="budget-result" style="color:#64748b;font-size:0.85rem;font-family:'Consolas',monospace">POST /api/substrate/budget — in-window spends carry over; config persists to ~/.aios/energy_budget.json.</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>History Retention</h2>
+            <div class="stat-group">
+                <div class="stat-row"><span class="stat-label">Keep Last N</span>
+                    <input id="purge-keep" type="number" min="0" step="1" placeholder="optional" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:110px;font-family:monospace"></div>
+                <div class="stat-row"><span class="stat-label">Older Than (s)</span>
+                    <span>
+                        <input id="purge-age" type="number" min="1" step="any" placeholder="optional" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:110px;font-family:monospace">
+                        <button onclick="runHistoryPreview()" style="background:var(--accent);color:#0f172a;border:none;border-radius:6px;padding:7px 16px;font-weight:600;cursor:pointer">Preview</button>
+                        <button onclick="runHistoryPurge()" style="background:var(--danger);color:#0f172a;border:none;border-radius:6px;padding:7px 16px;font-weight:600;cursor:pointer">Purge</button>
+                    </span></div>
+                <div id="purge-result" style="color:#64748b;font-size:0.85rem;font-family:'Consolas',monospace;white-space:pre-line">POST /api/substrate/history/preview — dry-run first; purge is irreversible.</div>
+            </div>
+        </div>
+    </div>
+
     <div class="panel">
         <h2>Dispatch Analytics</h2>
         <div id="analytics-bars"><div style="color:#475569;font-style:italic">No dispatches yet</div></div>
@@ -321,6 +355,69 @@
             document.getElementById('sch-pct').innerText = (rep.savings_pct ?? 0) + '%';
             document.getElementById('sch-budget').innerText =
                 rep.energy_budget ? rep.energy_budget.remaining + ' / ' + rep.energy_budget.limit : '—';
+            const budgetView = rep.energy_budget;
+            document.getElementById('budget-limit-view').innerText = budgetView ? budgetView.limit : '—';
+            document.getElementById('budget-window-view').innerText = budgetView ? budgetView.window_seconds + 's' : '—';
+            document.getElementById('budget-spent-view').innerText =
+                budgetView ? budgetView.spent + ' / ' + budgetView.remaining : '—';
+        }
+
+        async function runBudgetApply() {
+            const out = document.getElementById('budget-result');
+            const limitRaw = document.getElementById('budget-limit-input').value;
+            const windowRaw = document.getElementById('budget-window-input').value;
+            if (!limitRaw) { out.innerText = 'enter a new limit first'; return; }
+            const body = { limit: parseFloat(limitRaw) };
+            if (windowRaw) body.window_seconds = parseFloat(windowRaw);
+            out.innerText = 'applying…';
+            const resp = await fetch('/api/substrate/budget', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            const data = await resp.json();
+            if (data.error) { out.innerText = 'error: ' + data.error; return; }
+            out.innerText = `applied: ${data.new.limit} units / ${data.new.window_seconds}s · carried ${data.carried_spends} spend(s) (${data.carried_cost} units)` +
+                (data.budget_file ? ` · persisted to ${data.budget_file}` : ' · NOT persisted');
+        }
+
+        function purgeCriteria() {
+            const body = {};
+            const keepRaw = document.getElementById('purge-keep').value;
+            const ageRaw = document.getElementById('purge-age').value;
+            if (keepRaw !== '') body.keep_last = parseInt(keepRaw, 10);
+            if (ageRaw !== '') body.older_than_seconds = parseFloat(ageRaw);
+            return body;
+        }
+
+        async function runHistoryPreview() {
+            const out = document.getElementById('purge-result');
+            out.innerText = 'previewing…';
+            const resp = await fetch('/api/substrate/history/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(purgeCriteria()),
+            });
+            const data = await resp.json();
+            if (data.error) { out.innerText = 'error: ' + data.error; return; }
+            out.innerText = `dry-run: would remove ${data.would_remove}/${data.total_records} record(s), keep ${data.would_remain}` +
+                (data.oldest_remaining_timestamp ? `\noldest survivor: ${new Date(data.oldest_remaining_timestamp * 1000).toISOString()}` : '\nno survivors');
+        }
+
+        async function runHistoryPurge() {
+            const out = document.getElementById('purge-result');
+            if (!confirm('Irreversibly DELETE dispatch history under these criteria?')) return;
+            out.innerText = 'purging…';
+            const body = purgeCriteria();
+            body.confirm = true;
+            const resp = await fetch('/api/substrate/history/purge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            const data = await resp.json();
+            if (data.error) { out.innerText = 'error: ' + data.error; return; }
+            out.innerText = `purged ${data.removed} record(s), ${data.remaining} remaining`;
         }
 
         function renderAnalytics(data) {

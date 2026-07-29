@@ -37,6 +37,8 @@ _SUBSTRATE_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "s
 _MEMORY_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "memory.html"
 # Default on-disk location for the memory snapshot endpoints (v11.8.0)
 _MEMORY_SNAPSHOT_PATH = Path.home() / ".aios" / "memory_snapshot.json"
+# Persisted rolling energy-budget configuration (v11.13.0).
+_BUDGET_PATH = Path.home() / ".aios" / "energy_budget.json"
 
 # Shared Substrate Convergence engine for the live /substrate dashboard (v11.3.0)
 _substrate_engine: Any = None
@@ -100,14 +102,23 @@ def _get_memory_system():
 
 
 def _get_energy_scheduler():
-    """Lazy-singleton EnergyAwareScheduler over the substrate engine."""
+    """Lazy-singleton EnergyAwareScheduler over the substrate engine.
+
+    When a budget configuration was persisted via POST /api/substrate/budget
+    it takes precedence over the built-in default (v11.13.0).
+    """
     global _energy_scheduler
     if _energy_scheduler is None:
-        from .substrate_energy_scheduler import EnergyAwareScheduler, RollingEnergyBudget
+        from .substrate_energy_scheduler import EnergyAwareScheduler, RollingEnergyBudget, load_energy_budget
 
+        budget = None
+        try:
+            budget = load_energy_budget(_BUDGET_PATH)
+        except ValueError:
+            budget = None  # malformed/unsupported file -> fall back to default
         _energy_scheduler = EnergyAwareScheduler(
             _get_substrate_engine(),
-            energy_budget=RollingEnergyBudget(limit=100.0, window_seconds=3600.0),
+            energy_budget=budget or RollingEnergyBudget(limit=100.0, window_seconds=3600.0),
         )
     return _energy_scheduler
 
@@ -1859,6 +1870,90 @@ class AIOSDashboard:
             headers={"Content-Disposition": 'attachment; filename="substrate_dispatch_history.csv"'},
         )
 
+    async def api_substrate_history_preview(self, request: Request) -> JSONResponse:
+        """Dry-run dispatch-history retention (v11.13.0).
+
+        POST body: {"keep_last": optional int, "older_than_seconds":
+        optional number} — at least one criterion required. Read-only:
+        reports what POST /api/substrate/history/purge would delete.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        try:
+            result = _get_substrate_engine().preview_purge_history(
+                keep_last=body.get("keep_last"),
+                older_than_seconds=body.get("older_than_seconds"),
+            )
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(result)
+
+    async def api_substrate_history_purge(self, request: Request) -> JSONResponse:
+        """Irreversibly purge dispatch history (v11.13.0).
+
+        The body MUST include {"confirm": true}; keep_last /
+        older_than_seconds criteria work exactly like the preview
+        endpoint — dry-run first via /api/substrate/history/preview.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if body.get("confirm") is not True:
+            return JSONResponse(
+                {
+                    "error": 'history purge is irreversible — pass {"confirm": true} '
+                    "(dry-run available at /api/substrate/history/preview)"
+                },
+                status_code=400,
+            )
+        try:
+            result = _get_substrate_engine().purge_history(
+                keep_last=body.get("keep_last"),
+                older_than_seconds=body.get("older_than_seconds"),
+            )
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(result)
+
+    async def api_substrate_budget(self, request: Request) -> JSONResponse:
+        """Reconfigure the rolling energy budget at runtime (v11.13.0).
+
+        POST body: {"limit": cost units (required), "window_seconds":
+        optional}. Spends still inside the window are carried over, and
+        the new configuration is persisted to ~/.aios/energy_budget.json
+        so it survives dashboard restarts.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if "limit" not in body:
+            return JSONResponse({"error": "body must include a 'limit' (cost units per window)"}, status_code=400)
+        scheduler = _get_energy_scheduler()
+        try:
+            result = scheduler.configure_budget(
+                limit=body.get("limit"),
+                window_seconds=body.get("window_seconds"),
+            )
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        try:
+            scheduler.save_budget(_BUDGET_PATH)
+            result["budget_file"] = str(_BUDGET_PATH)
+        except OSError as exc:
+            result["budget_file"] = None
+            result["persist_warning"] = f"budget applied in memory but not persisted: {exc}"
+        return JSONResponse(result)
+
     async def api_health_score(self, request: Request) -> JSONResponse:
         """Aggregate 0..100 system health score (v11.9.0)."""
         from .health_score import compute_health_score
@@ -2286,7 +2381,8 @@ class AIOSDashboard:
 
     async def api_metrics(self, request: Request) -> PlainTextResponse:
         """Prometheus text exposition of the live AIOS state (v11.8.0;
-        health/SLO series since v11.11.0)."""
+        health/SLO series since v11.11.0; policy-projection series from
+        the newest 100 dispatch records since v11.13.0)."""
         from . import __version__
         from .metrics_export import PROMETHEUS_MEDIA_TYPE, render_prometheus
         from .slo_alerts import evaluate_health_alerts
@@ -2302,6 +2398,7 @@ class AIOSDashboard:
             scheduler=_get_energy_scheduler(),
             alerts_report=alerts_report,
             version=__version__,
+            policy_projection_records=100,
         )
         return PlainTextResponse(text, media_type=PROMETHEUS_MEDIA_TYPE)
 
@@ -2315,6 +2412,9 @@ class AIOSDashboard:
             Route("/api/substrate/energy", self.api_substrate_energy),
             Route("/api/substrate/history", self.api_substrate_history),
             Route("/api/substrate/history/export", self.api_substrate_history_export),
+            Route("/api/substrate/history/preview", self.api_substrate_history_preview, methods=["POST"]),
+            Route("/api/substrate/history/purge", self.api_substrate_history_purge, methods=["POST"]),
+            Route("/api/substrate/budget", self.api_substrate_budget, methods=["POST"]),
             Route("/api/substrate/schedule", self.api_substrate_schedule, methods=["POST"]),
             Route("/api/substrate/scheduler", self.api_substrate_scheduler),
             Route("/api/substrate/analytics", self.api_substrate_analytics),
