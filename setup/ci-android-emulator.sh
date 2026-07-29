@@ -18,6 +18,13 @@ AVD_COUNT="${1:-1}"
 : "${API_LEVEL:=35}"
 : "${ABI:=google_apis;x86_64}"
 
+# Pin ANDROID_HOME to our SDK root for the SCRIPT ITSELF, not only for later
+# workflow steps: GitHub-hosted runners preset ANDROID_HOME=/usr/local/lib/android/sdk
+# and the emulator inherits it from this script's environment, then dies with
+# "Broken AVD system path" because the system image lives under ANDROID_SDK_ROOT.
+# (Dispatch run 30478262476: All three calibrate legs boot-timed-out on this.)
+export ANDROID_HOME="${ANDROID_SDK_ROOT}"
+
 echo "==> Bring up ${AVD_COUNT} emulator(s): SDK=${ANDROID_SDK_ROOT} API=${API_LEVEL} ABI=${ABI}"
 
 # 1. KVM (required for x86_64 emulation on hosted runners)

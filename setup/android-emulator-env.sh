@@ -28,6 +28,11 @@ SD_CARD_SIZE="${AIOS_SD_CARD_SIZE:-512M}"
 # Normalize slash form (google_apis/x86_64) to sdkmanager package-id form (google_apis;x86_64)
 ABI="${ABI//\//;}"
 
+# Pin ANDROID_HOME to our SDK root: runner/CI images often preset ANDROID_HOME
+# to another SDK, and avdmanager/emulator then look for system images in the
+# wrong tree ("Broken AVD system path").
+export ANDROID_HOME="${ANDROID_SDK_ROOT}"
+
 SUDO=""
 if [ "$(id -u)" -ne 0 ]; then
   SUDO="$(command -v sudo || true)"
