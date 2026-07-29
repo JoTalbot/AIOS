@@ -181,6 +181,13 @@ test_gauge 42.5
         small_latencies = []
         large_latencies = []
 
+        # Warm up both endpoints first: under parallel load cold-start
+        # (lazy imports, DB init) distorts the comparison and makes the
+        # test flaky on loaded machines.
+        for _ in range(5):
+            await client.get("/health")
+            await client.get("/api/v1/stats")
+
         # Measure small response
         for _ in range(50):
             start = time.perf_counter()
@@ -193,9 +200,9 @@ test_gauge 42.5
             await client.get("/api/v1/stats")
             large_latencies.append((time.perf_counter() - start) * 1000)
 
-        # Compare
-        small_avg = statistics.mean(small_latencies)
-        large_avg = statistics.mean(large_latencies)
+        # Median is robust to load spikes on shared/loaded runners
+        small_avg = statistics.median(small_latencies)
+        large_avg = statistics.median(large_latencies)
 
         # Larger response should not be more than 2x slower
         ratio = large_avg / small_avg

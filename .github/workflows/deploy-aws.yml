@@ -13,13 +13,16 @@ jobs:
   terraform:
     name: Provision AWS Infrastructure
     runs-on: ubuntu-latest
+    # Runs only when the AWS role is configured (repo variable AWS_ROLE_ARN).
+    # Without it the job is skipped and the workflow stays green.
+    if: ${{ vars.AWS_ROLE_ARN != '' }}
     steps:
       - uses: actions/checkout@v4
       
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::123456789012:role/github-actions-aios-role
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: eu-central-1
           
       - name: Setup Terraform

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 import yaml
@@ -13,6 +14,19 @@ from aios_core.config import (
     load_config,
 )
 from aios_core.config_manager import ConfigLayer, ConfigManager
+
+
+@pytest.fixture(autouse=True)
+def _isolate_aios_env(monkeypatch):
+    """Isolate tests from ambient AIOS_* env vars (e.g. AIOS_FAST_TEST on CI runners).
+
+    ConfigManager._load_env slurps every AIOS_* variable into config by design,
+    so leftover env vars would break tests that assert an empty config.
+    """
+    for key in list(os.environ):
+        if key.startswith("AIOS_"):
+            monkeypatch.delenv(key, raising=False)
+
 
 # ── config.py tests ──────────────────────────────────────────────────────
 
