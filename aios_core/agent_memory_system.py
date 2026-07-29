@@ -168,6 +168,8 @@ class AgentMemorySystem:
         # Deduplication state (Memory Deduplication Engine, v11.4.0)
         self._dedup_report: dict[str, Any] = {}
         self._dedup_removed_total: int = 0
+        # Default duplicate threshold, adjustable by the auto-tuner (v11.9.0)
+        self._dedup_threshold: float = 0.92
 
         # Cold-storage archive (Memory Lifecycle, v11.5.0)
         self._archive: list[MemoryEntry] = []
@@ -844,8 +846,58 @@ class AgentMemorySystem:
         """Deduplication summary: last report + lifetime removal count."""
         return {
             "removed_total": self._dedup_removed_total,
+            "threshold": self._dedup_threshold,
             "last_report": dict(self._dedup_report),
         }
+
+    @property
+    def dedup_threshold(self) -> float:
+        """Current default near-duplicate threshold (v11.9.0)."""
+        return self._dedup_threshold
+
+    # ------------------------------------------------------------------
+    # Dedup threshold auto-tuning (v11.9.0)
+    # ------------------------------------------------------------------
+
+    def tune_dedup_threshold(
+        self,
+        pool: str = "all",
+        candidates: list[float] | None = None,
+        apply: bool = False,
+    ) -> dict[str, Any]:
+        """Auto-tune the near-duplicate threshold over real signatures.
+
+        Scans candidate thresholds against the compressed index (built
+        on demand, exactly like find_duplicates) and recommends the
+        cut-off with the best confidence-weighted merge count. With
+        ``apply=True`` the recommendation becomes the system's default
+        ``dedup_threshold`` (persisted in snapshots) — nothing is merged
+        either way, so tuning is always safe to run.
+
+        Args:
+            pool: "long_term", "episodic" or "all".
+            candidates: thresholds to scan (module default set if None).
+            apply: store the recommendation as the new default.
+
+        Returns:
+            Tuning report (recommendation, per-candidate stats, applied).
+        """
+        from .memory_dedup import tune_dedup_threshold
+
+        if not self._compressed:
+            self.optimize_storage()
+        entries = self._pool_entries(pool)
+        by_id = {e.memory_id: e for e in entries}
+        vectors = {mid: self._compressed[mid] for mid in by_id if mid in self._compressed}
+        score = {mid: by_id[mid].strength for mid in vectors}
+
+        report = tune_dedup_threshold(vectors, self._compressor, score=score, candidates=candidates)
+        report["pool"] = pool
+        report["applied"] = False
+        if apply:
+            self._dedup_threshold = report["recommended_threshold"]
+            report["applied"] = True
+        return report
 
     # ------------------------------------------------------------------
     # Cold-storage archive (Memory Lifecycle, v11.5.0)
@@ -961,6 +1013,7 @@ class AgentMemorySystem:
             "created_at": time.time(),
             "counter": self._counter,
             "dedup_removed_total": self._dedup_removed_total,
+            "dedup_threshold": self._dedup_threshold,
             "pools": {
                 "short_term": [self._entry_snapshot(e) for e in self._short_term],
                 "long_term": [self._entry_snapshot(e) for e in self._long_term],
@@ -1016,6 +1069,8 @@ class AgentMemorySystem:
         self._dedup_report = {}
         self._archive_report = {}
         self._dedup_removed_total = int(data.get("dedup_removed_total", 0))
+        tuned = float(data.get("dedup_threshold", 0.92))
+        self._dedup_threshold = min(1.0, tuned) if tuned > 0.0 else 0.92
 
         # Id uniqueness: counter must pass every restored mem_N id.
         max_id = int(data.get("counter", 0))
