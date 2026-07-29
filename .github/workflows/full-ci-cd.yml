@@ -235,6 +235,7 @@ jobs:
             /tmp/${{ matrix.platform }}_detail.xml
             /tmp/${{ matrix.platform }}_messenger.xml
             /tmp/${{ matrix.platform }}_navigation.xml
+            !**/__pycache__/**
           retention-days: 7
 
   # ---------------------------------------------------------
@@ -273,6 +274,17 @@ jobs:
           pattern: calibrated-*
           path: /tmp
           merge-multiple: true
+
+      - name: Normalize dump XML locations
+        run: |
+          # upload-artifact lowers the least common ancestor to '/' for
+          # absolute paths, so /tmp/prom_search.xml is stored as
+          # tmp/prom_search.xml and downloads to /tmp/tmp/prom_search.xml.
+          # Flatten back so marker-check can use /tmp/<platform>_*.xml.
+          if ls /tmp/tmp/*.xml >/dev/null 2>&1; then
+            cp /tmp/tmp/*.xml /tmp/
+            ls -la /tmp/*.xml
+          fi
 
       - name: Setup profiles (single local emulator)
         run: |
