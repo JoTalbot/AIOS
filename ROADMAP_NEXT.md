@@ -508,3 +508,11 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 - **Dependabot**: все 15 PR влиты (полы зависимостей подняты до версий, на которых и так гоняются 3960+ тестов; actions/* актуализированы); PR #30 применён вручную из-за конфликта
 - **Convoy-стек kilo-code-bot**: PR #14 (behavioral-тесты feature_flags, 45 шт) влит на main напрямую (стек был настроен не на main, а на staging-ветку); #15–#17 уже на main в улучшенном виде после lint-фиксов
 - **requirements.txt**: убраны дубли (jinja2 ×2, websockets 12/16, pytest-asyncio 0.21/1.4)
+
+### Раунд 2 — доводка до 100% зелёного Actions (коммиты `3b47698`…`ecd0e68`)
+
+- **Docker/Trivy**: GHCR lowercase-референс для сканера (OCI не принимает `JoTalbot`), `security-events: write` для upload-sarif
+- **Full CI/CD → впервые зелёный**: system-image id с `;` вместо `/`; GA-verify по реальной схеме отчёта (ключи под `simulation.*`); config.ini AVD — append вместо overwrite (стёртые `abi.type` давали фатальный «arm not supported by QEMU2»); явный `ANDROID_HOME=ANDROID_SDK_ROOT` для всех шагов; **KVM udev-rule (0666)** — без аппаратного ускорения x86_64-эмулятор не стартует
+- **Эмуляторная цепочка → ручной запуск**: между джобами состояние эмулятора не передаётся (каждая джоба — новая VM), калибровка требует живых APK/apkeep и реальных UI маркетплейсов. setup-emulators / calibrate-platforms / integration-tests переведены на workflow_dispatch (с заметкой о необходимом self-emulator-рефакторе); push-линия: lint+unit + GA-симуляция + нотифай — зелёные
+- **Деплои по гейтам секретов**: VPS (`DOCKERHUB_*`/`VPS_*`), AWS (`AWS_ROLE_ARN` repo-var), production SSH (`SSH_PRIVATE_KEY`/`SSH_KNOWN_HOSTS`) — без конфигурации skipped-зелёные, с конфигурацией активируются автоматически
+- **Итог**: все 10 workflow на `main` зелёные на одном коммите (21/21 check-run success/skipped)
