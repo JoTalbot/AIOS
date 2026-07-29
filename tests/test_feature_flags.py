@@ -7,10 +7,10 @@ import time
 import pytest
 
 from aios_core.feature_flags import (
-    FlagStore,
-    FlagState,
     FeatureFlag,
     FeatureFlags,
+    FlagState,
+    FlagStore,
     RolloutStrategy,
     TargetingRule,
 )
