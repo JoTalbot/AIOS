@@ -23,13 +23,30 @@ from pathlib import Path
 
 DEFAULT_APK_DIR = "apks"
 
+# apkeep's --download-source accepts only these spellings
+# (apk-pure, google-play, f-droid, huawei-app-gallery); map the friendly
+# aliases historically used by AIOS callers ("apkpure" etc.) onto them.
+_SOURCE_ALIASES = {
+    "apkpure": "apk-pure",
+    "apk_pure": "apk-pure",
+    "googleplay": "google-play",
+    "google_play": "google-play",
+    "fdroid": "f-droid",
+    "huawei": "huawei-app-gallery",
+}
+
+
+def _normalize_source(source: str) -> str:
+    """Normalize a download-source alias to apkeep's expected spelling."""
+    return _SOURCE_ALIASES.get(str(source).strip().lower(), str(source))
+
 
 def _apkeep(package: str, out_dir: str, source: str) -> dict[str, object]:
     """Реальный вызов apkeep (требует установленный apkeep)."""
     import subprocess
 
     result = subprocess.run(
-        f"apkeep -a '{package}' -d '{source}' '{out_dir}'",
+        f"apkeep -a '{package}' -d '{_normalize_source(source)}' '{out_dir}'",
         shell=True,
         capture_output=True,
         text=True,
@@ -49,7 +66,7 @@ def fetch_apk(
     Args:
         package: Android-пакет (``com.instagram.android``).
         out_dir: Каталог назначения (создаётся).
-        source: Источник apkeep (``apkpure``/``google-play``/``f-droid``).
+        source: Источник apkeep (``apkpure``/``google-play``/``f-droid``; алиасы нормализуются в канонические ``apk-pure``/``google-play``/``f-droid``/``huawei-app-gallery``).
         runner: Инъекция вызова apkeep (тесты).
 
     Returns:
@@ -65,7 +82,7 @@ def fetch_apk(
     if result.get("code") != 0:
         raise ValueError(
             "apkeep failed (install: cargo install apkeep; sources: "
-            "apkpure/google-play/f-droid): "
+            "apk-pure/google-play/f-droid/huawei-app-gallery): "
             f"{(result.get('stderr') or 'no apkeep binary')[:200]}"
         )
     candidates = sorted(
