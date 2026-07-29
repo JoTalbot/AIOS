@@ -95,7 +95,7 @@
 </head>
 <body>
     <header>
-        <h1>🧠 Agent Memory <span class="version">v11.9.0</span></h1>
+        <h1>🧠 Agent Memory <span class="version">v11.10.0</span></h1>
         <div class="timestamp"><span class="live-dot"></span>Live · <span id="last-update">—</span></div>
     </header>
 
@@ -182,9 +182,12 @@
     <div class="grid">
         <div class="panel">
             <h2>Near-Duplicate Groups</h2>
-            <div class="stat-row" style="margin-bottom:10px"><span class="stat-label">Auto-tune threshold (apply)</span>
-                <button onclick="runDedupTune()" class="lc-btn" style="background:var(--dedup)">Tune</button></div>
-            <div style="color:#64748b;font-size:0.82rem;font-family:'Consolas',monospace;margin-bottom:10px" id="dedup-tune-result">POST /api/memory/dedup/tune</div>
+            <div class="stat-row" style="margin-bottom:10px"><span class="stat-label">Merge preview / auto-tune</span>
+                <span>
+                    <button onclick="runDedupPreview()" class="lc-btn">Preview</button>
+                    <button onclick="runDedupTune()" class="lc-btn" style="background:var(--dedup)">Tune</button>
+                </span></div>
+            <div style="color:#64748b;font-size:0.82rem;font-family:'Consolas',monospace;margin-bottom:10px" id="dedup-tune-result">POST /api/memory/dedup/preview · /api/memory/dedup/tune</div>
             <div id="dup-groups"><div class="empty">No duplicates detected</div></div>
         </div>
 
@@ -272,6 +275,23 @@ async function runLifecycle(url, payload) {
         const data = await r.json();
         out.textContent = url.split('/').pop() + ' → ' + JSON.stringify(data).slice(0, 220);
         refreshAll();
+    } catch (e) {
+        out.textContent = 'request failed';
+    }
+}
+
+async function runDedupPreview() {
+    const out = document.getElementById('dedup-tune-result');
+    out.textContent = 'previewing…';
+    try {
+        const r = await fetch('/api/memory/dedup/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        const data = await r.json();
+        out.textContent = data.error ? data.error
+            : `dry-run @ ${data.threshold}: ${data.would_remove} would merge in ${data.groups} groups → LT ${data.counts_after.long_term}, EP ${data.counts_after.episodic}`;
     } catch (e) {
         out.textContent = 'request failed';
     }

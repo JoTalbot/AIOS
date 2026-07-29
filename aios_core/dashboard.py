@@ -1765,8 +1765,22 @@ class AIOSDashboard:
         return JSONResponse(plan)
 
     async def api_substrate_scheduler(self, request: Request) -> JSONResponse:
-        """Energy-aware scheduler aggregate report (v11.5.0)."""
-        return JSONResponse(_get_energy_scheduler().report())
+        """Energy-aware scheduler aggregate report (v11.5.0).
+
+        Optional ?window=<seconds> restricts the aggregation to a sliding
+        window (v11.10.0); non-numeric or non-positive values -> 400.
+        """
+        raw = request.query_params.get("window")
+        window = None
+        if raw is not None:
+            try:
+                window = float(raw)
+            except ValueError:
+                return JSONResponse({"error": "window must be a number of seconds"}, status_code=400)
+            if window <= 0:
+                return JSONResponse({"error": "window must be positive"}, status_code=400)
+            window = min(window, 31_536_000.0)  # clamp to one year
+        return JSONResponse(_get_energy_scheduler().report(window_seconds=window))
 
     async def api_substrate_analytics(self, request: Request) -> JSONResponse:
         """Aggregated dispatch analytics (v11.7.0)."""
@@ -2069,6 +2083,56 @@ class AIOSDashboard:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(report)
 
+    async def api_health_alerts(self, request: Request) -> JSONResponse:
+        """SLO alerts derived from the aggregate health score (v11.10.0).
+
+        Optional ?warn=&critical= thresholds (defaults 80/50); requires
+        0 <= critical < warning <= 100, otherwise 400.
+        """
+        from .slo_alerts import evaluate_health_alerts
+
+        try:
+            warning = float(request.query_params.get("warn", "80"))
+            critical = float(request.query_params.get("critical", "50"))
+        except ValueError:
+            return JSONResponse({"error": "warn and critical must be numbers"}, status_code=400)
+        try:
+            report = evaluate_health_alerts(
+                memory_system=_get_memory_system(),
+                engine=_get_substrate_engine(),
+                scheduler=_get_energy_scheduler(),
+                warning=warning,
+                critical=critical,
+            )
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(report)
+
+    async def api_memory_dedup_preview(self, request: Request) -> JSONResponse:
+        """Dry-run the dedup merge plan without merging (v11.10.0).
+
+        Optional body: {"threshold": 0.9, "pool": "all"}. Without a
+        threshold the system's (possibly tuner-set) default is used.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        threshold = body.get("threshold")
+        if threshold is not None:
+            if not isinstance(threshold, (int, float)) or isinstance(threshold, bool):
+                return JSONResponse({"error": "threshold must be a number in (0.0, 1.0]"}, status_code=400)
+        pool = body.get("pool", "all")
+        if pool not in ("all", "long_term", "episodic"):
+            return JSONResponse({"error": "pool must be one of: all, long_term, episodic"}, status_code=400)
+        try:
+            preview = _get_memory_system().preview_dedup(threshold=threshold, pool=pool)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(preview)
+
     async def api_metrics(self, request: Request) -> PlainTextResponse:
         """Prometheus text exposition of the live AIOS state (v11.8.0)."""
         from . import __version__
@@ -2101,6 +2165,7 @@ class AIOSDashboard:
             Route("/api/memory/compression", self.api_memory_compression),
             Route("/api/memory/duplicates", self.api_memory_duplicates),
             Route("/api/memory/dedup/tune", self.api_memory_dedup_tune, methods=["POST"]),
+            Route("/api/memory/dedup/preview", self.api_memory_dedup_preview, methods=["POST"]),
             Route("/api/memory/archive", self.api_memory_archive),
             Route("/api/memory/archive/run", self.api_memory_archive_run, methods=["POST"]),
             Route("/api/memory/recall", self.api_memory_recall),
@@ -2111,6 +2176,7 @@ class AIOSDashboard:
             Route("/api/memory/snapshot/load", self.api_memory_snapshot_load, methods=["POST"]),
             Route("/api/metrics", self.api_metrics),
             Route("/api/health/score", self.api_health_score),
+            Route("/api/health/alerts", self.api_health_alerts),
             Route("/api/stats", self.api_stats),
             Route("/health", self.api_health),
             Route("/api/health", self.api_health),

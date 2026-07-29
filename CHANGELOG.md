@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.10.0] — 2026-07-29 — Dedup Merge Preview + Windowed Reports + SLO Alerts
+
+### Added
+- **Dedup merge preview** (`AgentMemorySystem.preview_dedup`): dry-run of
+  the exact deduplicate() merge policy — per-group absorbed ids,
+  projected representative access_count/confidence/strength and
+  post-merge pool counts — WITHOUT merging anything. threshold=None uses
+  the (possibly tuner-set) default. API: `POST /api/memory/dedup/preview`
+  (optional `threshold`/`pool`, 400 on invalid input). Preview button on
+  the Near-Duplicate Groups panel.
+- **Windowed scheduler report**: `EnergyAwareScheduler.report(window_seconds=)`
+  aggregates only dispatches inside a sliding window (validated positive);
+  `GET /api/substrate/scheduler?window=` (400 on non-numeric/non-positive,
+  clamped at one year). The Energy Scheduler panel shows a Last-Hour
+  dispatches/spent stat.
+- **SLO alerts** (`aios_core/slo_alerts.py`): `evaluate_health_alerts()`
+  compares the aggregate health score AND each available component
+  against warning/critical thresholds (0 <= critical < warning <= 100,
+  validated); reports ok/alert_count/worst_severity and per-subject
+  messages so operators see WHICH pillar drags the system down. Served at
+  `GET /api/health/alerts?warn=&critical=` (400 on bad thresholds); the
+  System Health Score panel surfaces alert summaries.
+- **Tests**: 26 new — `test_slo_alerts.py` (11),
+  `test_dedup_preview.py` (9), `test_scheduler_window.py` (6).
+
 ## [11.9.0] — 2026-07-29 — Dedup Auto-Tuner + History CSV Export + Health Score
 
 ### Added
