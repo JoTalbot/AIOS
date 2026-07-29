@@ -165,7 +165,7 @@ def test_optimize_adaptive_endpoint(client):
 def test_memory_page_has_search_and_lifecycle_wiring(client):
     resp = client.get("/memory")
     assert resp.status_code == 200
-    assert "v11.10.0" in resp.text
+    assert "v11.11.0" in resp.text
     assert "/api/memory/recall" in resp.text
     assert "runSearch" in resp.text
     assert "runLifecycle" in resp.text

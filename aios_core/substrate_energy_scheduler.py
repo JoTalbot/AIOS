@@ -372,6 +372,103 @@ class EnergyAwareScheduler:
         }
 
     # ------------------------------------------------------------------
+    # History replay / drift analysis (v11.11.0)
+    # ------------------------------------------------------------------
+
+    def replay(self, records: list[dict[str, Any]], policy: str | None = None) -> dict[str, Any]:
+        """Re-plan previously recorded dispatches against the CURRENT state
+        (routing-drift analysis, v11.11.0).
+
+        Each record (one row of the v11.9 CSV export, or an equivalent
+        dict) is reconstructed into a task — compute units are recovered
+        exactly from `recorded energy_cost / substrate cost-per-unit`
+        (the same formula dispatch used) — and planned dry-run under the
+        given policy. The report compares the recorded substrate/energy
+        with what the scheduler would pick NOW: matches, potential
+        savings and unknown substrate names.
+
+        Nothing is executed or recorded (plans are dry-runs).
+
+        Args:
+            records: up to FORECAST_MAX_TASKS dicts with task_id,
+                selected_substrate, energy_cost (category optional).
+            policy: override for the scheduler's default policy.
+
+        Returns:
+            Drift report dict with per-record comparisons.
+        """
+        policy = policy or self.policy
+        self._check_policy(policy)
+        if not isinstance(records, list):
+            raise ValueError("records must be a list of dispatch records")
+        if len(records) > self.FORECAST_MAX_TASKS:
+            raise ValueError(f"records exceeds the {self.FORECAST_MAX_TASKS}-record replay limit")
+
+        rows: list[dict[str, Any]] = []
+        unknown: set[str] = set()
+        recorded_total = 0.0
+        planned_total = 0.0
+
+        for index, record in enumerate(records):
+            if not isinstance(record, dict):
+                raise ValueError(f"records[{index}] must be a dict")
+            recorded_sub = str(record.get("selected_substrate", ""))
+            try:
+                recorded_energy = float(record.get("energy_cost", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                raise ValueError(f"records[{index}].energy_cost must be a number") from None
+            sub_info = self.engine.substrates.get(recorded_sub)
+            if sub_info is None and recorded_sub:
+                unknown.add(recorded_sub)
+            if sub_info and sub_info["energy_cost_per_unit"] > 0:
+                units = max(1, round(recorded_energy / sub_info["energy_cost_per_unit"]))
+            else:
+                units = 1
+            try:
+                units = int(record.get("compute_units", units) or units)
+            except (TypeError, ValueError):
+                raise ValueError(f"records[{index}].compute_units must be a number") from None
+
+            task = {
+                "id": str(record.get("task_id", f"replay_{index}")),
+                "category": str(record.get("category") or "general"),
+                "compute_units": units,
+            }
+            plan = self.plan(task, policy=policy)
+            planned_energy = plan["expected_energy"]
+            recorded_total += recorded_energy
+            if planned_energy is not None:
+                planned_total += planned_energy
+            rows.append(
+                {
+                    "index": index,
+                    "task_id": task["id"],
+                    "recorded_substrate": recorded_sub or None,
+                    "recorded_energy": recorded_energy,
+                    "planned_substrate": plan["selected_substrate"],
+                    "planned_energy": planned_energy,
+                    "matching": plan["selected_substrate"] == recorded_sub,
+                    "energy_delta": (
+                        round(recorded_energy - planned_energy, 6) if planned_energy is not None else None
+                    ),
+                    "violations": plan["violations"],
+                }
+            )
+
+        matches = sum(1 for row in rows if row["matching"])
+        return {
+            "policy": policy,
+            "records": len(rows),
+            "matching": matches,
+            "match_pct": round(100.0 * matches / len(rows), 2) if rows else 0.0,
+            "recorded_energy_total": round(recorded_total, 4),
+            "planned_energy_total": round(planned_total, 4),
+            "potential_savings": round(max(0.0, recorded_total - planned_total), 4),
+            "unknown_substrates": sorted(unknown),
+            "rows": rows,
+        }
+
+    # ------------------------------------------------------------------
     # Reporting
     # ------------------------------------------------------------------
 

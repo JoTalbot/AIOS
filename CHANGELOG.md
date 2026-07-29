@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.11.0] — 2026-07-29 — Replay Drift Analysis + Archive Preview + SLO Metrics
+
+### Added
+- **History replay / routing-drift analysis**
+  (`EnergyAwareScheduler.replay(records, policy=)`): re-plans recorded
+  dispatches (rows of the v11.9 CSV export) against the CURRENT engine
+  state — compute units are recovered exactly from recorded
+  energy/cost-per-unit — and reports matches, energy deltas, potential
+  savings and unknown substrate names. Pure dry-run. API:
+  `POST /api/substrate/replay` accepting BOTH JSON `{"records": [...],
+  "policy"}` and raw CSV export text (policy via `?policy=`); 400 on
+  malformed input. The Dispatch Forecast panel gains a Replay CSV picker.
+- **Archive dry-run preview** (`AgentMemorySystem.preview_archive_dead`):
+  the exact archive_dead() "dead" criterion (decayed strength below
+  threshold AND age floor) without moving anything — ids, per-entry
+  age/strength, post-archival pool counts; mirrors preview_dedup() so all
+  lifecycle mutations share the preview pattern. API:
+  `POST /api/memory/archive/preview`; Preview button in the Memory
+  Lifecycle panel.
+- **Health/SLO Prometheus series**: `render_prometheus(alerts_report=)`
+  exports `aios_health_score`, `aios_health_evaluated_components`,
+  `aios_slo_ok` and `aios_slo_alerts{severity=warning|critical}`;
+  `GET /api/metrics` now evaluates default SLO thresholds on every
+  scrape. `evaluate_health_alerts()` gains the `evaluated` field.
+- **Tests**: 24 new — `test_replay.py` (10), `test_archive_preview.py`
+  (8), `test_metrics_slo.py` (6).
+
 ## [11.10.0] — 2026-07-29 — Dedup Merge Preview + Windowed Reports + SLO Alerts
 
 ### Added

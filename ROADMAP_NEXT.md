@@ -1,5 +1,13 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.11.0 ✅ (2026-07-29)
+- ✅ History Replay / Drift Analysis — `replay(records, policy=)`: re-plan экспортированных диспетчей против ТЕКУЩЕГО состояния (units восстанавливаются точно из recorded energy/cost-per-unit); matches, deltas, potential savings, unknown substrates; ничего не исполняется; `POST /api/substrate/replay` (JSON-записи или сырой CSV; policy через `?policy=`) + file-picker в панели Forecast
+- ✅ Archive Preview — `preview_archive_dead()`: dry-run точного критерия archive_dead (strength ниже порога И age ≥ floor) без перемещений; ids, age/strength, counts_after; `POST /api/memory/archive/preview` + кнопка Preview в Lifecycle-панели
+- ✅ Health/SLO Prometheus series — `aios_health_score`, `aios_health_evaluated_components`, `aios_slo_ok`, `aios_slo_alerts{severity}` в `/api/metrics` (дефолтные пороги на каждом скрейпе); `evaluate_health_alerts()` теперь возвращает `evaluated`
+- ✅ 24 новых теста (replay 10 + archive_preview 8 + metrics_slo 6)
+
+**~4233 tests, 0 failures**
+
 ## v11.10.0 ✅ (2026-07-29)
 - ✅ Dedup Merge Preview — `preview_dedup()`: dry-run точной merge-политики (absorbed ids, проекции access/confidence/strength, счётчики пулов после мёрджа) без изменения состояния; без порога берёт тюнерский дефолт; `POST /api/memory/dedup/preview` + кнопка Preview на панели дубликатов
 - ✅ Windowed Scheduler Report — `report(window_seconds=)` агрегирует только диспетчи внутри скользящего окна (positive-валидация); `?window=` в API (400 на мусоре, клэмп до года); стат Last Hour в панели планировщика
@@ -556,6 +564,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 11.8.0 | 2026-07-29 | ~4156 | Batch dispatch forecasting + forecast API/панель, memory snapshot save/load APIs + панель, Prometheus /api/metrics export |
 | 11.9.0 | 2026-07-29 | ~4183 | Dedup threshold auto-tuner (+apply, persist), history CSV export, aggregate health score API + панель |
 | 11.10.0 | 2026-07-29 | ~4209 | Dedup merge preview (dry-run) API, windowed scheduler report, SLO alerts на health score |
+| 11.11.0 | 2026-07-29 | ~4233 | Replay drift analysis (CSV/JSON), archive dry-run preview, health/SLO series в Prometheus |
 
 ---
 

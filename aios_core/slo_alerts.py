@@ -89,4 +89,5 @@ def evaluate_health_alerts(
         "alerts": alerts,
         "score": score,
         "status": health["status"],
+        "evaluated": health["evaluated"],
     }
