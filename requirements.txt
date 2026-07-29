@@ -1,7 +1,7 @@
 # AIOS Core Dependencies
 python-dateutil>=2.9.0
 PyYAML>=6.0.0
-psutil>=6.0.0
+psutil>=7.2.2
 
 # HTTP API and servers
 starlette>=1.3.1
