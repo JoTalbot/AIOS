@@ -137,8 +137,11 @@ jobs:
               -k "system-images;android-${API_LEVEL};${ABI}" \
               -d "pixel" --force
 
-            # Config for faster boot
-            cat > ~/.android/avd/${AVD}.avd/config.ini <<EOF
+            # Config for faster boot — APPEND (>>), never overwrite (>)!
+            # avdmanager writes abi.type/image.sysdir/cpu entries into config.ini;
+            # overwriting the file makes the emulator fall back to arm defaults
+            # and die with "CPU Architecture 'arm' is not supported by QEMU2".
+            cat >> "${ANDROID_AVD_HOME}/${AVD}.avd/config.ini" <<EOF
           hw.lcd.density=160
           hw.lcd.width=320
           hw.lcd.height=640
