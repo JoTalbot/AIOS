@@ -100,12 +100,8 @@ class AIEngineer:
         """Create a system design from *requirements* and return the blueprint."""
         name = requirements.get("name", "NewSystem")
         domain = requirements.get("domain", "web")
-        architecture = requirements.get("architecture") or random.choice(
-            ARCHITECTURE_TYPES
-        )
-        tech_stack = requirements.get("tech_stack") or TECH_STACKS.get(
-            domain, TECH_STACKS["web"]
-        )
+        architecture = requirements.get("architecture") or random.choice(ARCHITECTURE_TYPES)
+        tech_stack = requirements.get("tech_stack") or TECH_STACKS.get(domain, TECH_STACKS["web"])
 
         base_components = ["api", "database", "ml_service"]
         extra = requirements.get("extra_components", [])

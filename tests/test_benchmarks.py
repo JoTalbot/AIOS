@@ -17,12 +17,15 @@ from aios_core.storage import Database
 
 # -- Core module init -----------------------------------------------------------------
 
+
 @pytest.mark.timeout(60)
 def test_bench_db_create(benchmark):
     """Database creation — should be sub-millisecond."""
+
     def create():
         db = Database(":memory:")
         db.stats()
+
     benchmark(create)
 
 
@@ -39,9 +42,11 @@ def test_bench_rate_limiter(benchmark):
     rl = RateLimiter(requests_per_minute=100000)
     # Use fresh key each iteration to avoid memory buildup
     counter = [0]
+
     def check():
         counter[0] += 1
         rl.is_allowed(f"bench_key_{counter[0] % 100}")
+
     benchmark(check)
 
 
@@ -99,14 +104,17 @@ def test_bench_benchmark_runner(benchmark):
 
 # -- Batch operations ----------------------------------------------------------------
 
+
 @pytest.mark.timeout(60)
 @pytest.mark.skip(reason="RateLimiter memory leak makes batch benchmark unstable")
 def test_bench_batch_rate_limit_10k(benchmark):
     """100 rate-limit checks — throughput test."""
     rl = RateLimiter(requests_per_minute=100000)
+
     def batch():
         for i in range(100):
             rl.is_allowed(f"key_{i % 100}")
+
     benchmark(batch)
 
 
@@ -114,18 +122,23 @@ def test_bench_batch_rate_limit_10k(benchmark):
 def test_bench_batch_ab_1k(benchmark):
     """100 AB variant assignments."""
     ab = ABTest("batch", {"a": 0.5, "b": 0.5})
+
     def batch():
         for i in range(100):
             ab.assign_variant(f"user_{i % 100}")
+
     benchmark(batch)
 
 
 # -- Multi-module integration --------------------------------------------------------
 
+
 @pytest.mark.timeout(60)
 def test_bench_integration_core_startup(benchmark):
     """Full core startup: DB + config load + graph creation."""
+
     def startup():
         db = Database(":memory:")
         assert db.stats() is not None
+
     benchmark(startup)

@@ -1,4 +1,5 @@
 """Tests for aios_core/agent_swarm.py"""
+
 from __future__ import annotations
 
 import pytest

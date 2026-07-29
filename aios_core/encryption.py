@@ -91,9 +91,7 @@ class EncryptionManager:
         self.key = self._keys["default"].key_bytes
         self._fernet = Fernet(self.key) if HAS_CRYPTO and len(self.key) == 44 else None
 
-    def _register_key(
-        self, key_id: str, key_bytes: bytes, purpose: str = "encryption"
-    ) -> KeyInfo:
+    def _register_key(self, key_id: str, key_bytes: bytes, purpose: str = "encryption") -> KeyInfo:
         """Register a new key."""
         info = KeyInfo(key_id=key_id, key_bytes=key_bytes, purpose=purpose)
         self._keys[key_id] = info
@@ -206,9 +204,7 @@ class EncryptionManager:
 
     # ── Key Derivation ──────────────────────────────────────────────
 
-    def derive_key(
-        self, password: str, salt: bytes | None = None, iterations: int = 100000
-    ) -> bytes:
+    def derive_key(self, password: str, salt: bytes | None = None, iterations: int = 100000) -> bytes:
         """Derive a key from password using PBKDF2."""
         salt = salt or os.urandom(16)
         if HAS_CRYPTO:
@@ -220,9 +216,7 @@ class EncryptionManager:
             )
             return kdf.derive(password.encode())
         # Fallback: hashlib-based PBKDF2
-        return hashlib.pbkdf2_hmac(
-            "sha256", password.encode(), salt, iterations, dklen=32
-        )
+        return hashlib.pbkdf2_hmac("sha256", password.encode(), salt, iterations, dklen=32)
 
     # ── Stats ──────────────────────────────────────────────────────
 

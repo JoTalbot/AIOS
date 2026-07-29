@@ -45,13 +45,9 @@ class ApprovalManager:
 
         if self.db:
             # Check max pending limit
-            pending_count = self.db.query_one(
-                "SELECT COUNT(*) as cnt FROM approvals WHERE status = 'pending'"
-            )["cnt"]
+            pending_count = self.db.query_one("SELECT COUNT(*) as cnt FROM approvals WHERE status = 'pending'")["cnt"]
             if pending_count >= self.max_pending:
-                raise RuntimeError(
-                    f"Max pending approvals ({self.max_pending}) reached"
-                )
+                raise RuntimeError(f"Max pending approvals ({self.max_pending}) reached")
 
             self.db.execute(
                 """INSERT INTO approvals
@@ -92,9 +88,7 @@ class ApprovalManager:
         """Deny a pending action by its UUID."""
         return self._resolve(approval_id, "denied", resolved_by)
 
-    def _resolve(
-        self, approval_id: str, new_status: str, resolved_by: str
-    ) -> dict | None:
+    def _resolve(self, approval_id: str, new_status: str, resolved_by: str) -> dict | None:
         """Resolve an approval (approve or deny)."""
         if self.db:
             record = self._get_by_id(approval_id)
@@ -117,9 +111,7 @@ class ApprovalManager:
     def _get_by_id(self, approval_id: str) -> dict | None:
         """Get a single approval by ID."""
         if self.db:
-            row = self.db.query_one(
-                "SELECT * FROM approvals WHERE id = ?", (approval_id,)
-            )
+            row = self.db.query_one("SELECT * FROM approvals WHERE id = ?", (approval_id,))
             if row is None:
                 return None
             return self._row_to_dict(row)
@@ -128,11 +120,7 @@ class ApprovalManager:
     def _row_to_dict(self, row: dict) -> dict:
         """Convert a DB row to a friendly dict."""
         action = Database.from_json(row["action_data"])
-        validation = (
-            Database.from_json(row["validation_data"])
-            if row["validation_data"]
-            else None
-        )
+        validation = Database.from_json(row["validation_data"]) if row["validation_data"] else None
         metadata = Database.from_json(row["metadata"]) if row["metadata"] else None
         return {
             "id": row["id"],
@@ -152,8 +140,7 @@ class ApprovalManager:
         if self.db:
             self._expire_timeouts()
             rows = self.db.query(
-                "SELECT * FROM approvals WHERE status = 'pending' "
-                "ORDER BY requested_at ASC LIMIT ?",
+                "SELECT * FROM approvals WHERE status = 'pending' ORDER BY requested_at ASC LIMIT ?",
                 (limit,),
             )
             return [self._row_to_dict(r) for r in rows]
@@ -169,14 +156,12 @@ class ApprovalManager:
         if self.db:
             if status:
                 rows = self.db.query(
-                    "SELECT * FROM approvals WHERE status = ? "
-                    "ORDER BY requested_at DESC LIMIT ? OFFSET ?",
+                    "SELECT * FROM approvals WHERE status = ? ORDER BY requested_at DESC LIMIT ? OFFSET ?",
                     (status, limit, offset),
                 )
             else:
                 rows = self.db.query(
-                    "SELECT * FROM approvals "
-                    "ORDER BY requested_at DESC LIMIT ? OFFSET ?",
+                    "SELECT * FROM approvals ORDER BY requested_at DESC LIMIT ? OFFSET ?",
                     (limit, offset),
                 )
             return [self._row_to_dict(r) for r in rows]
@@ -188,9 +173,7 @@ class ApprovalManager:
             return
         from datetime import timedelta
 
-        cutoff = (
-            datetime.now(UTC) - timedelta(seconds=self.timeout_seconds)
-        ).isoformat()
+        cutoff = (datetime.now(UTC) - timedelta(seconds=self.timeout_seconds)).isoformat()
         now = Database.now_iso()
         self.db.execute(
             """UPDATE approvals
@@ -203,9 +186,7 @@ class ApprovalManager:
         """Return approval statistics."""
         if self.db:
             self._expire_timeouts()
-            rows = self.db.query(
-                "SELECT status, COUNT(*) as cnt FROM approvals GROUP BY status"
-            )
+            rows = self.db.query("SELECT status, COUNT(*) as cnt FROM approvals GROUP BY status")
             return {
                 "by_status": {r["status"]: r["cnt"] for r in rows},
                 "timeout_seconds": self.timeout_seconds,

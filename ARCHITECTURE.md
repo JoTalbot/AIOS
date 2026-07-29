@@ -139,14 +139,16 @@ Evaluates actions against 67 articles + 3 YAML policies.
 ```python
 engine = ConstitutionEngine(constitution_dir="...", policies_dir="...")
 
-result = engine.evaluate({
-    "goal": "Deploy module",
-    "scope": "production",
-    "risk": "high",
-    "audit_log": True,
-    "agent_id": "deploy-agent",
-    "authority": "operator",
-})
+result = engine.evaluate(
+    {
+        "goal": "Deploy module",
+        "scope": "production",
+        "risk": "high",
+        "audit_log": True,
+        "agent_id": "deploy-agent",
+        "authority": "operator",
+    }
+)
 # Returns: {decision: "REVIEW", reason: "risk_review", violations: [...], ...}
 ```
 
@@ -224,7 +226,7 @@ em = EvolutionManager(db=db)
 proposal = em.propose(
     change={"component": "reasoning_engine", "modification": "Add CoT"},
     component="reasoning_engine",
-    reason="Improve accuracy"
+    reason="Improve accuracy",
 )
 
 # Stages: proposal → testing → sandbox → simulation → audit → approval → deployment
@@ -517,6 +519,7 @@ suite = engine.run_suite("constitutional_compliance")
 
 # Custom test case
 from aios_core.test_engine.models import TestCase, TestCategory
+
 custom = TestCase(
     name="my_test",
     category=TestCategory.SECURITY,
@@ -627,21 +630,50 @@ proposed  in_testing in_sandbox in_simulation in_audit pending_approval deployin
 
 ```python
 from aios_core import (
-    Orchestrator, Database, TaskStatus, StepStatus,
-    ConstitutionLoader, ConstitutionEngine, ObligationLevel,
-    MemoryManager, KnowledgeGraph, ReasoningEngine,
-    LearningEngine, EvolutionManager, PrivacyGuard,
-    RuntimePolicy, ApprovalManager, AuditLogger,
-    create_app, AIOSAPI,
-    TestEngine, TestRunner, TestReporter,
-    TestCase, TestResult, TestSuiteResult, TestReport,
-    TestStatus, TestSeverity, TestCategory,
-    constitutional_compliance_suite, security_policy_suite,
-    evolution_safety_suite, integration_suite,
-    MCPGateway, GatewayConfig, ConstitutionGuard,
-    MCPProtocol, JSONRPCRequest, JSONRPCResponse,
-    ToolDefinition, ToolRegistry, ResourceDefinition, ResourceRegistry,
-    PromptDefinition, PromptRegistry,
+    Orchestrator,
+    Database,
+    TaskStatus,
+    StepStatus,
+    ConstitutionLoader,
+    ConstitutionEngine,
+    ObligationLevel,
+    MemoryManager,
+    KnowledgeGraph,
+    ReasoningEngine,
+    LearningEngine,
+    EvolutionManager,
+    PrivacyGuard,
+    RuntimePolicy,
+    ApprovalManager,
+    AuditLogger,
+    create_app,
+    AIOSAPI,
+    TestEngine,
+    TestRunner,
+    TestReporter,
+    TestCase,
+    TestResult,
+    TestSuiteResult,
+    TestReport,
+    TestStatus,
+    TestSeverity,
+    TestCategory,
+    constitutional_compliance_suite,
+    security_policy_suite,
+    evolution_safety_suite,
+    integration_suite,
+    MCPGateway,
+    GatewayConfig,
+    ConstitutionGuard,
+    MCPProtocol,
+    JSONRPCRequest,
+    JSONRPCResponse,
+    ToolDefinition,
+    ToolRegistry,
+    ResourceDefinition,
+    ResourceRegistry,
+    PromptDefinition,
+    PromptRegistry,
 )
 ```
 
@@ -654,18 +686,21 @@ db = Database(":memory:")
 orch = Orchestrator(db=db)
 
 # Evaluate
-result = orch.evaluate({
-    "goal": "Read metrics", "scope": "monitoring",
-    "risk": "low", "audit_log": True,
-    "agent_id": "agent-1", "authority": "user",
-})
+result = orch.evaluate(
+    {
+        "goal": "Read metrics",
+        "scope": "monitoring",
+        "risk": "low",
+        "audit_log": True,
+        "agent_id": "agent-1",
+        "authority": "user",
+    }
+)
 print(result["decision"])  # ALLOW
 
 # Task
 task = orch.create_task("demo", "Demo task", risk_level="low")
-orch.add_step(task, "memory", params={
-    "action": "store", "content": {"demo": True}, "category": "operational"
-})
+orch.add_step(task, "memory", params={"action": "store", "content": {"demo": True}, "category": "operational"})
 result = orch.execute_task(task)
 print(result["status"])  # completed
 

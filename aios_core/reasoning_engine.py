@@ -156,7 +156,9 @@ class ReasoningEngine:
 
         # Step 4: Conclusion
         chain.overall_confidence = self._calculate_chain_confidence(chain.steps)
-        chain.conclusion = f"Reasoning complete. Confidence: {chain.overall_confidence:.2f} based on {len(chain.steps)} steps."
+        chain.conclusion = (
+            f"Reasoning complete. Confidence: {chain.overall_confidence:.2f} based on {len(chain.steps)} steps."
+        )
         chain.steps.append(
             ReasoningStep(
                 step_type="conclusion",
@@ -268,8 +270,7 @@ class ReasoningEngine:
 
         chain = ReasoningChain(
             id=chain_id,
-            question="forward_chain from "
-            + "; ".join(f["fact"][:40] for f in facts[:3]),
+            question="forward_chain from " + "; ".join(f["fact"][:40] for f in facts[:3]),
         )
 
         # Seed with the provided facts as premises
@@ -387,8 +388,7 @@ class ReasoningEngine:
             )
         else:
             chain.conclusion = (
-                "Forward chaining completed with no new derivations. "
-                f"Confidence: {chain.overall_confidence:.2f}."
+                f"Forward chaining completed with no new derivations. Confidence: {chain.overall_confidence:.2f}."
             )
         chain.steps.append(
             ReasoningStep(
@@ -459,8 +459,7 @@ class ReasoningEngine:
                         step_type="evidence",
                         content=(
                             f"Found {len(all_nodes)} knowledge nodes for "
-                            f"{len(words)} search terms: "
-                            + ", ".join(n.get("label", n["id"]) for n in all_nodes[:5])
+                            f"{len(words)} search terms: " + ", ".join(n.get("label", n["id"]) for n in all_nodes[:5])
                         ),
                         confidence=0.75,
                         sources=evidence_sources[:5],
@@ -488,19 +487,14 @@ class ReasoningEngine:
                     for p in paths_found[:3]:
                         path_desc = " -> ".join(
                             step.get("label", step.get("id", "?"))
-                            for step in p.get(
-                                "nodes", p if isinstance(p, list) else [p]
-                            )
+                            for step in p.get("nodes", p if isinstance(p, list) else [p])
                         )
                         path_descriptions.append(path_desc)
 
                     chain.steps.append(
                         ReasoningStep(
                             step_type="evidence",
-                            content=(
-                                f"Found {len(paths_found)} paths between nodes: "
-                                + "; ".join(path_descriptions)
-                            ),
+                            content=(f"Found {len(paths_found)} paths between nodes: " + "; ".join(path_descriptions)),
                             confidence=0.7,
                             sources=evidence_sources[:5],
                             metadata={"path_count": len(paths_found)},
@@ -511,12 +505,8 @@ class ReasoningEngine:
                     for p in paths_found[:2]:
                         nodes_in_path = p.get("nodes", p if isinstance(p, list) else [])
                         if len(nodes_in_path) >= 2:
-                            first_label = nodes_in_path[0].get(
-                                "label", nodes_in_path[0].get("id", "?")
-                            )
-                            last_label = nodes_in_path[-1].get(
-                                "label", nodes_in_path[-1].get("id", "?")
-                            )
+                            first_label = nodes_in_path[0].get("label", nodes_in_path[0].get("id", "?"))
+                            last_label = nodes_in_path[-1].get("label", nodes_in_path[-1].get("id", "?"))
                             chain.steps.append(
                                 ReasoningStep(
                                     step_type="inference",
@@ -544,8 +534,7 @@ class ReasoningEngine:
             )
         else:
             chain.conclusion = (
-                "No relevant knowledge graph nodes found for the question. "
-                f"Confidence: {chain.overall_confidence:.2f}."
+                f"No relevant knowledge graph nodes found for the question. Confidence: {chain.overall_confidence:.2f}."
             )
         chain.steps.append(
             ReasoningStep(
@@ -603,9 +592,7 @@ class ReasoningEngine:
             if self.knowledge:
                 try:
                     ev_nodes = self.knowledge.find_nodes(label=ev_fact[:60], limit=3)
-                    hyp_nodes = self.knowledge.find_nodes(
-                        label=hypothesis[:60], limit=3
-                    )
+                    hyp_nodes = self.knowledge.find_nodes(label=hypothesis[:60], limit=3)
                 except Exception:
                     ev_nodes = []
                     hyp_nodes = []
@@ -627,24 +614,18 @@ class ReasoningEngine:
                             ):
                                 weight = r.get("weight", r.get("confidence", 0.7))
                                 support_score += ev_conf * weight
-                                supporting_details.append(
-                                    f"{ev_fact} --[{rel_type}]--> {r.get('target_label', '')}"
-                                )
+                                supporting_details.append(f"{ev_fact} --[{rel_type}]--> {r.get('target_label', '')}")
                             elif rel_type in ("contradicts", "negates", "refutes"):
                                 weight = r.get("weight", r.get("confidence", 0.7))
                                 contradiction_score += ev_conf * weight
-                                contradicting_details.append(
-                                    f"{ev_fact} --[{rel_type}]--> {r.get('target_label', '')}"
-                                )
+                                contradicting_details.append(f"{ev_fact} --[{rel_type}]--> {r.get('target_label', '')}")
             else:
                 # No KG — simple keyword overlap heuristic
                 ev_words = set(ev_fact.lower().split())
                 hyp_words = set(hypothesis.lower().split())
                 overlap = ev_words & hyp_words
                 if overlap:
-                    support_score += (
-                        ev_conf * 0.5 * (len(overlap) / max(len(hyp_words), 1))
-                    )
+                    support_score += ev_conf * 0.5 * (len(overlap) / max(len(hyp_words), 1))
                     supporting_details.append(f"Keyword overlap: {overlap}")
 
         # Also search KG directly for hypothesis-related relations

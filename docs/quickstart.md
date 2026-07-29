@@ -142,11 +142,13 @@ aios platforms bootup --verify
 import asyncio
 from aios_sdk import AIOSClient
 
+
 async def main():
     async with AIOSClient("http://localhost:8000", api_key="my-secret-key") as client:
         health = await client.health()
         stats = await client.stats()
         print(f"AIOS: {health['status']}, tasks: {stats['tasks_total']}")
+
 
 asyncio.run(main())
 ```

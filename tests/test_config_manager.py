@@ -1,4 +1,5 @@
 """Tests for aios_core/config.py and aios_core/config_manager.py."""
+
 from __future__ import annotations
 
 import json
@@ -35,9 +36,7 @@ class TestAIOSConfigFromDict:
         assert cfg.logging.level == "DEBUG"
 
     def test_from_dict_coerces_int_fields(self):
-        cfg = AIOSConfig.from_dict(
-            {"audit": {"retention_days": "180"}, "approval": {"timeout_seconds": "3600"}}
-        )
+        cfg = AIOSConfig.from_dict({"audit": {"retention_days": "180"}, "approval": {"timeout_seconds": "3600"}})
         assert cfg.audit.retention_days == 180
         assert cfg.approval.timeout_seconds == 3600
 
@@ -126,9 +125,7 @@ class TestConfigManagerLoad:
 
     def test_load_yaml_file_parsing(self, tmp_path):
         config_file = tmp_path / "config.yaml"
-        config_file.write_text(
-            "audit:\n  file_path: /tmp/audit.jsonl\n  retention_days: 30\n"
-        )
+        config_file.write_text("audit:\n  file_path: /tmp/audit.jsonl\n  retention_days: 30\n")
         mgr = ConfigManager(str(config_file))
         mgr.load()
         assert mgr.config["audit"]["file_path"] == "/tmp/audit.jsonl"
@@ -358,9 +355,7 @@ class TestConfigManagerEdgeCases:
 
     def test_deep_merge_nested_dicts(self, tmp_path):
         config_file = tmp_path / "config.yaml"
-        config_file.write_text(
-            "database:\n  path: /tmp/db.sqlite\n  pool_size: 5\n"
-        )
+        config_file.write_text("database:\n  path: /tmp/db.sqlite\n  pool_size: 5\n")
         mgr = ConfigManager(str(config_file))
         mgr.load()
         mgr.add_override({"database": {"timeout": 30}})

@@ -1,4 +1,3 @@
-
 from aios_core.analytics.engine import AnalyticsEngine
 
 from .analytics_agent import AnalyticsAgent
@@ -9,11 +8,7 @@ from .support_agent import SupportAgent
 
 class MultiAgentOrchestrator:
     def __init__(self, analytics_engine: AnalyticsEngine):
-        self.agents = {
-            "sales": SalesAgent(),
-            "support": SupportAgent(),
-            "analytics": AnalyticsAgent(analytics_engine)
-        }
+        self.agents = {"sales": SalesAgent(), "support": SupportAgent(), "analytics": AnalyticsAgent(analytics_engine)}
 
     async def route(self, state: AgentState) -> str:
         msg = state.messages[-1].lower() if state.messages else ""
@@ -30,8 +25,4 @@ class MultiAgentOrchestrator:
         next_agent = await self.route(state)
         agent = self.agents[next_agent]
         state = await agent.process(state)
-        return {
-            "agent": state.current_agent,
-            "result": state.result,
-            "messages": state.messages
-        }
+        return {"agent": state.current_agent, "result": state.result, "messages": state.messages}

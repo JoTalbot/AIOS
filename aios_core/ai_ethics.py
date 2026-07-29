@@ -41,15 +41,11 @@ class AIEthicsFramework:
                 score = 0.0
                 violated.append(principle)
 
-            if principle == "justice" and any(
-                word in action_str for word in ["discriminate", "bias", "unfair"]
-            ):
+            if principle == "justice" and any(word in action_str for word in ["discriminate", "bias", "unfair"]):
                 score = 0.3
                 violated.append(principle)
 
-            if principle == "privacy" and any(
-                word in action_str for word in ["leak", "expose", "share_data"]
-            ):
+            if principle == "privacy" and any(word in action_str for word in ["leak", "expose", "share_data"]):
                 score = 0.2
                 violated.append(principle)
 
@@ -77,9 +73,7 @@ class AIEthicsFramework:
         if not self.assessments:
             return {"message": "No assessments yet"}
 
-        avg_score = sum(a["overall_score"] for a in self.assessments) / len(
-            self.assessments
-        )
+        avg_score = sum(a["overall_score"] for a in self.assessments) / len(self.assessments)
 
         return {
             "total_assessments": len(self.assessments),
@@ -96,11 +90,7 @@ class AIEthicsFramework:
         for v in self.violations:
             for p in v.get("violated_principles", []):
                 violation_counts[p] = violation_counts.get(p, 0) + 1
-        return (
-            max(violation_counts, key=violation_counts.get)
-            if violation_counts
-            else "None"
-        )
+        return max(violation_counts, key=violation_counts.get) if violation_counts else "None"
 
     def stats(self) -> dict:
         """Return statistics dict."""

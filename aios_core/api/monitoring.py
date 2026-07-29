@@ -144,20 +144,12 @@ class PerformanceMonitor:
     def __init__(self):
         """Initialize PerformanceMonitor."""
         self.metrics = {
-            "request_count": MetricCounter(
-                "requests_total", "Total number of requests"
-            ),
+            "request_count": MetricCounter("requests_total", "Total number of requests"),
             "error_count": MetricCounter("errors_total", "Total number of errors"),
-            "response_time": MetricHistogram(
-                "response_time_seconds", "Response time distribution"
-            ),
-            "active_connections": MetricGauge(
-                "active_connections", "Number of active connections"
-            ),
+            "response_time": MetricHistogram("response_time_seconds", "Response time distribution"),
+            "active_connections": MetricGauge("active_connections", "Number of active connections"),
             "cpu_usage": MetricGauge("cpu_usage_percent", "CPU usage percentage"),
-            "memory_usage": MetricGauge(
-                "memory_usage_percent", "Memory usage percentage"
-            ),
+            "memory_usage": MetricGauge("memory_usage_percent", "Memory usage percentage"),
         }
 
         self.request_times = deque(maxlen=1000)
@@ -202,16 +194,8 @@ class PerformanceMonitor:
         response_times = [rt for _, rt, _ in self.request_times]
         response_time_avg = sum(response_times) / max(len(response_times), 1)
         response_time_sorted = sorted(response_times)
-        response_time_p95 = (
-            response_time_sorted[int(len(response_time_sorted) * 0.95)]
-            if response_time_sorted
-            else 0
-        )
-        response_time_p99 = (
-            response_time_sorted[int(len(response_time_sorted) * 0.99)]
-            if response_time_sorted
-            else 0
-        )
+        response_time_p95 = response_time_sorted[int(len(response_time_sorted) * 0.95)] if response_time_sorted else 0
+        response_time_p99 = response_time_sorted[int(len(response_time_sorted) * 0.99)] if response_time_sorted else 0
 
         return MetricSnapshot(
             timestamp=now,
@@ -241,16 +225,10 @@ class IntegrationMonitor:
     def _create_integration_metrics(self) -> dict[str, Any]:
         """Factory for per-integration metric objects (name set on first use)."""
         return {
-            "requests": MetricCounter(
-                "integration_requests", "Requests for integration"
-            ),
+            "requests": MetricCounter("integration_requests", "Requests for integration"),
             "errors": MetricCounter("integration_errors", "Errors for integration"),
-            "response_time": MetricHistogram(
-                "integration_response_time", "Response time for integration"
-            ),
-            "last_activity": MetricGauge(
-                "integration_last_activity", "Last activity for integration"
-            ),
+            "response_time": MetricHistogram("integration_response_time", "Response time for integration"),
+            "last_activity": MetricGauge("integration_last_activity", "Last activity for integration"),
         }
 
     def register_integration(self, name: str, health_check: Callable) -> None:
@@ -258,9 +236,7 @@ class IntegrationMonitor:
         self.health_checks[name] = health_check
         logger.info(f"Registered integration for monitoring: {name}")
 
-    def record_integration_request(
-        self, integration: str, response_time: float, success: bool = True
-    ):
+    def record_integration_request(self, integration: str, response_time: float, success: bool = True):
         """Record an integration request."""
         metrics = self.integration_metrics[integration]
         metrics["requests"].add(1)

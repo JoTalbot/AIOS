@@ -1,4 +1,5 @@
 """Tests for aios_core/task_scheduler.py"""
+
 from __future__ import annotations
 
 import pytest

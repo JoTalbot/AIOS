@@ -228,8 +228,7 @@ class AutoTuningEngine:
 
         # Record default score if first feedback
         if not self._default_score and all(
-            feedback.params.get(name) == self._params[name].default
-            for name in self._params
+            feedback.params.get(name) == self._params[name].default for name in self._params
         ):
             self._default_score = score
 
@@ -256,12 +255,7 @@ class AutoTuningEngine:
         # Error penalty
         error_penalty = min(1.0, feedback.errors / 10.0)
 
-        score = (
-            success * 0.5
-            + latency_score * 0.2
-            + items_score * 0.3
-            - error_penalty * 0.1
-        )
+        score = success * 0.5 + latency_score * 0.2 + items_score * 0.3 - error_penalty * 0.1
         return max(0.0, min(1.0, score))
 
     def get_current_params(self) -> dict[str, Any]:
@@ -306,13 +300,9 @@ class AutoTuningEngine:
                 best = param.best if param.best is not None else param.default
                 if param.param_type in (ParamType.INT, ParamType.FLOAT):
                     perturbation = (
-                        (param.max_value - param.min_value) * 0.1
-                        if param.max_value and param.min_value
-                        else 1.0
+                        (param.max_value - param.min_value) * 0.1 if param.max_value and param.min_value else 1.0
                     )
-                    config[name] = param.clamp(
-                        best + random.uniform(-perturbation, perturbation)
-                    )
+                    config[name] = param.clamp(best + random.uniform(-perturbation, perturbation))
                     if param.param_type == ParamType.INT:
                         config[name] = int(config[name])
                 elif param.param_type == ParamType.BOOL:
@@ -338,11 +328,7 @@ class AutoTuningEngine:
         """
         best = param.best if param.best is not None else param.default
         if param.param_type in (ParamType.INT, ParamType.FLOAT):
-            range_size = (
-                (param.max_value - param.min_value)
-                if param.max_value and param.min_value
-                else 10.0
-            )
+            range_size = (param.max_value - param.min_value) if param.max_value and param.min_value else 10.0
             # Decreasing perturbation as we get closer to best
             perturbation = range_size * 0.2 * random.uniform(-1, 1)
             return param.clamp(float(best) + perturbation)
@@ -377,9 +363,7 @@ class AutoTuningEngine:
         if effective_strategy == TuningStrategy.GRID_SEARCH:
             return self.tune_grid(scoring_fn=effective_scoring)
 
-        best_config = (
-            dict(self._best_params) if self._best_params else self.get_default_params()
-        )
+        best_config = dict(self._best_params) if self._best_params else self.get_default_params()
         best_score = self._best_score if self._best_score else 0.0
 
         for _i in range(effective_max):
@@ -399,11 +383,7 @@ class AutoTuningEngine:
 
         # Compute improvement
         default_score = self._default_score if self._default_score > 0 else 0.1
-        improvement = (
-            ((best_score - default_score) / default_score * 100)
-            if default_score > 0
-            else 0.0
-        )
+        improvement = ((best_score - default_score) / default_score * 100) if default_score > 0 else 0.0
 
         duration = time.time() - start_time
 
@@ -485,9 +465,7 @@ class AutoTuningEngine:
                 if param.max_value and param.min_value:
                     range_size = param.max_value - param.min_value
                     if range_size > 0:
-                        proximity = (
-                            1 - abs(float(val_a or 0) - float(val_b or 0)) / range_size
-                        )
+                        proximity = 1 - abs(float(val_a or 0) - float(val_b or 0)) / range_size
                         matches += proximity
             # Choice/bool: exact match only
 
@@ -531,11 +509,7 @@ class AutoTuningEngine:
                 self._params[name].best = value
 
         default_score = self._default_score if self._default_score > 0 else 0.1
-        improvement = (
-            ((best_score - default_score) / default_score * 100)
-            if default_score > 0
-            else 0.0
-        )
+        improvement = ((best_score - default_score) / default_score * 100) if default_score > 0 else 0.0
 
         return TuningResult(
             strategy=TuningStrategy.GRID_SEARCH,
@@ -588,9 +562,7 @@ class AutoTuningEngine:
             result = new_result
         return result
 
-    def tune_random(
-        self, n_iterations: int = 50, scoring_fn: Any | None = None
-    ) -> TuningResult:
+    def tune_random(self, n_iterations: int = 50, scoring_fn: Any | None = None) -> TuningResult:
         """Random parameter search.
 
         Args:
@@ -606,9 +578,7 @@ class AutoTuningEngine:
             scoring_fn=scoring_fn,
         )
 
-    def tune_hill_climbing(
-        self, n_iterations: int = 50, scoring_fn: Any | None = None
-    ) -> TuningResult:
+    def tune_hill_climbing(self, n_iterations: int = 50, scoring_fn: Any | None = None) -> TuningResult:
         """Hill climbing optimization.
 
         Args:

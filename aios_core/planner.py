@@ -186,9 +186,7 @@ class Planner:
         """
         )
         self.db.execute("CREATE INDEX IF NOT EXISTS idx_plans_status ON plans(status)")
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_plans_created ON plans(created_at)"
-        )
+        self.db.execute("CREATE INDEX IF NOT EXISTS idx_plans_created ON plans(created_at)")
 
     # ------------------------------------------------------------------
     # Plan CRUD
@@ -303,12 +301,8 @@ class Planner:
                 "description": r["description"],
                 "goal": r["goal"],
                 "status": r["status"],
-                "step_count": (
-                    len(Database.from_json(r["steps_data"])) if r["steps_data"] else 0
-                ),
-                "edge_count": (
-                    len(Database.from_json(r["edges_data"])) if r["edges_data"] else 0
-                ),
+                "step_count": (len(Database.from_json(r["steps_data"])) if r["steps_data"] else 0),
+                "edge_count": (len(Database.from_json(r["edges_data"])) if r["edges_data"] else 0),
                 "created_at": r["created_at"],
                 "updated_at": r["updated_at"],
             }
@@ -360,9 +354,7 @@ class Planner:
         # Auto-create edges for declared dependencies
         for dep_id in step.dependencies:
             # Avoid duplicate edges
-            already = any(
-                e.source_id == dep_id and e.target_id == step.id for e in plan.edges
-            )
+            already = any(e.source_id == dep_id and e.target_id == step.id for e in plan.edges)
             if not already:
                 plan.edges.append(
                     PlanEdge(
@@ -435,22 +427,24 @@ class Planner:
                 key = ("source", edge.source_id, edge.target_id)
                 if key not in seen_missing:
                     errors.append(
-                        f"Edge references unknown source step '{edge.source_id}' "
-                        f"(target: '{edge.target_id}')"
+                        f"Edge references unknown source step '{edge.source_id}' (target: '{edge.target_id}')"
                     )
                     seen_missing.add(key)
             if edge.target_id not in step_ids:
                 key = ("target", edge.source_id, edge.target_id)
                 if key not in seen_missing:
                     errors.append(
-                        f"Edge references unknown target step '{edge.target_id}' "
-                        f"(source: '{edge.source_id}')"
+                        f"Edge references unknown target step '{edge.target_id}' (source: '{edge.source_id}')"
                     )
                     seen_missing.add(key)
 
         # Also check step-level dependency references
         for step in plan.steps:
-            errors = [f"Step '{step.name}' ({step.id}) depends on " f"unknown step '{dep_id}'" for dep_id in step.dependencies if dep_id not in step_ids]
+            errors = [
+                f"Step '{step.name}' ({step.id}) depends on unknown step '{dep_id}'"
+                for dep_id in step.dependencies
+                if dep_id not in step_ids
+            ]
 
         # --- Build adjacency list (only from valid edges) ---
         adj: dict[str, list[str]] = {s.id: [] for s in plan.steps}
@@ -513,10 +507,7 @@ class Planner:
             if disconnected:
                 for did in sorted(disconnected):
                     label = self._step_label(plan, did)
-                    errors.append(
-                        f"Disconnected step '{label}' ({did}): "
-                        f"no path from any root step"
-                    )
+                    errors.append(f"Disconnected step '{label}' ({did}): no path from any root step")
 
         # --- Execution layers ---
         execution_layers: list[list[str]] = []
@@ -624,9 +615,7 @@ class Planner:
 
         return ready
 
-    def mark_step_completed(
-        self, plan: Plan, step_id: str, result: Any = None
-    ) -> PlanStep | None:
+    def mark_step_completed(self, plan: Plan, step_id: str, result: Any = None) -> PlanStep | None:
         """Mark a step as completed and update dependent step statuses.
 
         Returns the updated step, or *None* if not found.
@@ -647,9 +636,7 @@ class Planner:
 
         return step
 
-    def mark_step_failed(
-        self, plan: Plan, step_id: str, error: str = ""
-    ) -> PlanStep | None:
+    def mark_step_failed(self, plan: Plan, step_id: str, error: str = "") -> PlanStep | None:
         """Mark a step as failed and propagate failure to dependents.
 
         For edges with condition "success", dependent steps are skipped.
@@ -708,8 +695,7 @@ class Planner:
                 "progress_pct": 0.0,
                 "current_layer": -1,
                 "total_layers": 0,
-                "is_finished": plan.status
-                in (PlanStatus.COMPLETED, PlanStatus.FAILED, PlanStatus.CANCELLED),
+                "is_finished": plan.status in (PlanStatus.COMPLETED, PlanStatus.FAILED, PlanStatus.CANCELLED),
             }
 
         by_status: dict[str, int] = {}
@@ -734,9 +720,7 @@ class Planner:
         current_layer = -1
         for i, layer in enumerate(layers):
             layer_statuses = {
-                self._find_step(plan, sid).status
-                for sid in layer
-                if self._find_step(plan, sid) is not None
+                self._find_step(plan, sid).status for sid in layer if self._find_step(plan, sid) is not None
             }
             # A layer is "current" if it has running or ready steps
             if layer_statuses & {
@@ -761,8 +745,7 @@ class Planner:
             "progress_pct": progress_pct,
             "current_layer": current_layer,
             "total_layers": len(layers),
-            "is_finished": plan.status
-            in (PlanStatus.COMPLETED, PlanStatus.FAILED, PlanStatus.CANCELLED),
+            "is_finished": plan.status in (PlanStatus.COMPLETED, PlanStatus.FAILED, PlanStatus.CANCELLED),
         }
 
     # ------------------------------------------------------------------
@@ -792,9 +775,7 @@ class Planner:
             return {"score": 0.0, "reason": "empty plan"}
 
         layers = self.get_execution_layers(plan)
-        parallelism = len(layers) / max(
-            1, len(plan.steps)
-        )  # lower is better parallelism
+        parallelism = len(layers) / max(1, len(plan.steps))  # lower is better parallelism
 
         # Dependency density
         dep_count = sum(len(s.dependencies) for s in plan.steps)
@@ -806,9 +787,7 @@ class Planner:
 
         # Weighted score
         score = round(
-            (1 - parallelism) * 0.4
-            + (1 - min(dep_density, 1.0)) * 0.35
-            + diversity * 0.25,
+            (1 - parallelism) * 0.4 + (1 - min(dep_density, 1.0)) * 0.35 + diversity * 0.25,
             3,
         )
 
@@ -820,9 +799,7 @@ class Planner:
             "layers": len(layers),
         }
 
-    def generate_multi_agent_plan(
-        self, goal: str, agents: list[str], max_steps_per_agent: int = 4
-    ) -> Plan:
+    def generate_multi_agent_plan(self, goal: str, agents: list[str], max_steps_per_agent: int = 4) -> Plan:
         """Generate a simple multi-agent plan skeleton.
 
         Each agent gets a dedicated 'plan' step + coordination.
@@ -889,9 +866,7 @@ class Planner:
                 return e.condition
         return "success"
 
-    def _dfs_reachable(
-        self, node: str, adj: dict[str, list[str]], visited: set[str]
-    ) -> None:
+    def _dfs_reachable(self, node: str, adj: dict[str, list[str]], visited: set[str]) -> None:
         """Mark all nodes reachable from *node*."""
         stack = [node]
         while stack:
@@ -984,10 +959,7 @@ class Planner:
                 # This dependent can never run — skip it
                 if dep_step.status in (StepStatus.PENDING, StepStatus.READY):
                     dep_step.status = StepStatus.SKIPPED
-                    dep_step.error = (
-                        f"Skipped: dependency '{failed_step_id[:8]}' failed "
-                        f"(condition: success)"
-                    )
+                    dep_step.error = f"Skipped: dependency '{failed_step_id[:8]}' failed (condition: success)"
                     # Recursively propagate
                     self._propagate_failure(plan, dep_step.id)
 
@@ -1016,9 +988,7 @@ class Planner:
                 "name": s.name,
                 "step_type": s.step_type,
                 "params": s.params,
-                "status": (
-                    s.status.value if isinstance(s.status, StepStatus) else s.status
-                ),
+                "status": (s.status.value if isinstance(s.status, StepStatus) else s.status),
                 "dependencies": s.dependencies,
             }
             if s.result is not None:

@@ -132,17 +132,13 @@ class ScenarioRecorder:
             raise IndexError(f"Step index {index} out of range")
         return self.steps.pop(index)
 
-    def insert_step(
-        self, index: int, action: str, meta: dict[str, Any] | None = None
-    ) -> RecordedStep:
+    def insert_step(self, index: int, action: str, meta: dict[str, Any] | None = None) -> RecordedStep:
         """Insert a step at *index*."""
         step = RecordedStep(action=action, ts=time.time(), meta=meta or {})
         self.steps.insert(index, step)
         return step
 
-    def replace_step(
-        self, index: int, action: str, meta: dict[str, Any] | None = None
-    ) -> RecordedStep:
+    def replace_step(self, index: int, action: str, meta: dict[str, Any] | None = None) -> RecordedStep:
         """Replace step at *index* with a new action."""
         if index < 0 or index >= len(self.steps):
             raise IndexError(f"Step index {index} out of range")
@@ -158,9 +154,7 @@ class ScenarioRecorder:
         """Return steps whose action matches *pattern* (supports wildcards)."""
         return [s for s in self.steps if s.matches_action(pattern)]
 
-    def filter_by_time_range(
-        self, start_ts: float, end_ts: float
-    ) -> list[RecordedStep]:
+    def filter_by_time_range(self, start_ts: float, end_ts: float) -> list[RecordedStep]:
         """Return steps within the given time range."""
         return [s for s in self.steps if start_ts <= s.ts <= end_ts]
 
@@ -181,10 +175,7 @@ class ScenarioRecorder:
         """Return average time between consecutive steps."""
         if len(self.steps) < 2:
             return 0.0
-        intervals = [
-            self.steps[i].elapsed_from(self.steps[i - 1])
-            for i in range(1, len(self.steps))
-        ]
+        intervals = [self.steps[i].elapsed_from(self.steps[i - 1]) for i in range(1, len(self.steps))]
         return sum(intervals) / len(intervals)
 
     # ------------------------------------------------------------------
@@ -228,10 +219,18 @@ class ScenarioRecorder:
             issues.append("Scenario has no recorded steps")
 
         # Check monotonic timestamps
-        issues = [f"Step {i} has earlier timestamp than step {i - 1}" for i in range(1, len(self.steps)) if self.steps[i].ts < self.steps[i - 1].ts]
+        issues = [
+            f"Step {i} has earlier timestamp than step {i - 1}"
+            for i in range(1, len(self.steps))
+            if self.steps[i].ts < self.steps[i - 1].ts
+        ]
 
         # Check assertions reference valid indices
-        issues = [f"Assertion references invalid step_index {assertion.step_index}" for assertion in self.assertions if assertion.step_index >= len(self.steps) or assertion.step_index < 0]
+        issues = [
+            f"Assertion references invalid step_index {assertion.step_index}"
+            for assertion in self.assertions
+            if assertion.step_index >= len(self.steps) or assertion.step_index < 0
+        ]
 
         return {
             "valid": len(issues) == 0,

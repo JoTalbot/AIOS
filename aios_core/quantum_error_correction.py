@@ -21,9 +21,7 @@ logger = logging.getLogger(__name__)
 class CodeDescriptor:
     """QECC metadata."""
 
-    def __init__(
-        self, name: str, physical_qubits: int, logical_qubits: int, distance: int
-    ) -> None:
+    def __init__(self, name: str, physical_qubits: int, logical_qubits: int, distance: int) -> None:
         self.name = name
         self.physical_qubits = physical_qubits
         self.logical_qubits = logical_qubits
@@ -81,9 +79,7 @@ class QuantumErrorCorrection:
         """Decode via majority vote (backward-compatible)."""
         return 1 if sum(physical_qubits) > len(physical_qubits) // 2 else 0
 
-    def syndrome_decode(
-        self, physical_qubits: list[int], code: str = "repetition"
-    ) -> dict[str, Any]:
+    def syndrome_decode(self, physical_qubits: list[int], code: str = "repetition") -> dict[str, Any]:
         """Decode syndrome to identify errors."""
         if code == "repetition":
             # Check pairwise parity
@@ -101,9 +97,7 @@ class QuantumErrorCorrection:
             }
         return {"syndromes": [], "error_position": -1, "correctable": False}
 
-    def correct(
-        self, physical_qubits: list[int], code: str = "repetition"
-    ) -> list[int]:
+    def correct(self, physical_qubits: list[int], code: str = "repetition") -> list[int]:
         """Apply error correction."""
         syndrome = self.syndome_decode(physical_qubits, code)
         corrected = list(physical_qubits)
@@ -112,9 +106,7 @@ class QuantumErrorCorrection:
             corrected[error_pos] = 1 - corrected[error_pos]  # Flip the erroneous qubit
         return corrected
 
-    def logical_error_rate(
-        self, physical_error_rate: float, code: str = "repetition"
-    ) -> float:
+    def logical_error_rate(self, physical_error_rate: float, code: str = "repetition") -> float:
         """Estimate logical error rate given physical error rate."""
         desc = self.codes.get(code, self.codes["repetition"])
         n = desc.physical_qubits
@@ -125,9 +117,7 @@ class QuantumErrorCorrection:
             return round(physical_error_rate**threshold_errors, 6)
         # For larger p, use binomial approximation
         logical_rate = sum(
-            math.comb(n, k)
-            * physical_error_rate**k
-            * (1 - physical_error_rate) ** (n - k)
+            math.comb(n, k) * physical_error_rate**k * (1 - physical_error_rate) ** (n - k)
             for k in range(threshold_errors + 1, n + 1)
         )
         return round(logical_rate, 6)

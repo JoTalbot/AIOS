@@ -37,9 +37,7 @@ class Schema:
         errors = [f"Missing required field: '{req}'" for req in self.required_fields if req not in event]
         for fname, expected_type in self.field_types.items():
             if fname in event and not isinstance(event[fname], expected_type):
-                errors.append(
-                    f"Field '{fname}' expected {expected_type.__name__}, got {type(event[fname]).__name__}"
-                )
+                errors.append(f"Field '{fname}' expected {expected_type.__name__}, got {type(event[fname]).__name__}")
         return (len(errors) == 0, errors)
 
 
@@ -150,9 +148,7 @@ class DataLake:
 
         return events[:limit]
 
-    def query_by_field(
-        self, field: str, value: Any, date: str | None = None
-    ) -> list[dict[str, Any]]:
+    def query_by_field(self, field: str, value: Any, date: str | None = None) -> list[dict[str, Any]]:
         """Query events where field == value."""
         return self.query(date, filter_fn=lambda e: e.get(field) == value)
 
@@ -170,11 +166,7 @@ class DataLake:
         Operations: count, sum, avg, min, max.
         """
         events = self.query(date, filter_fn, limit=10000)
-        values = [
-            e.get(field)
-            for e in events
-            if field in e and isinstance(e[field], (int, float))
-        ]
+        values = [e.get(field) for e in events if field in e and isinstance(e[field], (int, float))]
 
         if not values:
             return None
@@ -210,9 +202,7 @@ class DataLake:
         }
         if aggregations:
             for result_name, (field, operation) in aggregations.items():
-                view_data[result_name] = self.aggregate(
-                    field, operation, date, filter_fn
-                )
+                view_data[result_name] = self.aggregate(field, operation, date, filter_fn)
         self.views[name] = view_data
         return view_data
 
@@ -227,7 +217,6 @@ class DataLake:
         return self.views.get(name)
 
     # ── Stats ───────────────────────────────────────────────────
-
 
     def export_encrypted_pipeline(
         self,
@@ -248,6 +237,7 @@ class DataLake:
             return {"status": "empty", "encrypted_payload": None, "records": 0}
 
         import json
+
         raw_json = json.dumps(data_to_export)
 
         encrypted_payload = {
@@ -255,14 +245,14 @@ class DataLake:
             "key_fingerprint": public_key[:8] + "...",
             "ciphertext": f"ENCRYPTED_BLOB_[len={len(raw_json)}]",
             "iv": "simulated_iv_vector",
-            "auth_tag": "simulated_auth_tag"
+            "auth_tag": "simulated_auth_tag",
         }
 
         return {
             "status": "success",
             "records": len(data_to_export),
             "encrypted_payload": encrypted_payload,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
     def stats(self) -> dict[str, Any]:

@@ -29,9 +29,7 @@ class Particle:
         self.best_position: list[float] = position[:]
         self.best_value: float = float("inf")
 
-    def update(
-        self, global_best: list[float], w: float = 0.7, c1: float = 1.5, c2: float = 1.5
-    ) -> None:
+    def update(self, global_best: list[float], w: float = 0.7, c1: float = 1.5, c2: float = 1.5) -> None:
         """Update particle (backward-compatible)."""
         for i in range(len(self.position)):
             r1, r2 = random.random(), random.random()
@@ -92,16 +90,13 @@ class ParticleSwarmOptimizer:
 
     def __init__(self, num_particles: int = 20, dimensions: int = 5) -> None:
         self.particles: list[Particle] = [
-            Particle([random.uniform(-10, 10) for _ in range(dimensions)])
-            for _ in range(num_particles)
+            Particle([random.uniform(-10, 10) for _ in range(dimensions)]) for _ in range(num_particles)
         ]
         self.global_best: list[float] = self.particles[0].position[:]
         self.global_best_value: float = float("inf")
         self._convergence_history: list[float] = []
 
-    def optimize(
-        self, fitness_func: Callable, iterations: int = 100
-    ) -> tuple[list[float], float]:
+    def optimize(self, fitness_func: Callable, iterations: int = 100) -> tuple[list[float], float]:
         """PSO optimization (backward-compatible)."""
         for _it in range(iterations):
             for p in self.particles:
@@ -116,16 +111,10 @@ class ParticleSwarmOptimizer:
             self._convergence_history.append(self.global_best_value)
         return self.global_best, self.global_best_value
 
-    def ant_colony_optimize(
-        self, num_nodes: int = 10, num_ants: int = 5, iterations: int = 50
-    ) -> dict[str, Any]:
+    def ant_colony_optimize(self, num_nodes: int = 10, num_ants: int = 5, iterations: int = 50) -> dict[str, Any]:
         """Ant Colony Optimization."""
-        pheromone: list[list[float]] = [
-            [0.1 for _ in range(num_nodes)] for _ in range(num_nodes)
-        ]
-        distance: list[list[float]] = [
-            [random.uniform(1, 10) for _ in range(num_nodes)] for _ in range(num_nodes)
-        ]
+        pheromone: list[list[float]] = [[0.1 for _ in range(num_nodes)] for _ in range(num_nodes)]
+        distance: list[list[float]] = [[random.uniform(1, 10) for _ in range(num_nodes)] for _ in range(num_nodes)]
         best_path: list[int] = []
         best_cost: float = float("inf")
 
@@ -133,10 +122,7 @@ class ParticleSwarmOptimizer:
             ants = [Ant(num_nodes) for _ in range(num_ants)]
             for ant in ants:
                 ant.construct_path(pheromone, distance)
-                cost = sum(
-                    distance[ant.path[i]][ant.path[i + 1]]
-                    for i in range(len(ant.path) - 1)
-                )
+                cost = sum(distance[ant.path[i]][ant.path[i + 1]] for i in range(len(ant.path) - 1))
                 if cost < best_cost:
                     best_cost = cost
                     best_path = ant.path[:]
@@ -163,9 +149,7 @@ class ParticleSwarmOptimizer:
             "iterations": len(self._convergence_history),
             "initial": self._convergence_history[0],
             "final": self._convergence_history[-1],
-            "improvement": round(
-                self._convergence_history[0] - self._convergence_history[-1], 4
-            ),
+            "improvement": round(self._convergence_history[0] - self._convergence_history[-1], 4),
         }
 
     def stats(self) -> dict[str, Any]:

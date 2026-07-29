@@ -127,9 +127,7 @@ class AutonomousEvolution:
 
         # Create offspring through mutation
         offspring = []
-        top_indices = sorted(
-            range(len(fitnesses)), key=lambda i: fitnesses[i], reverse=True
-        )[:3]
+        top_indices = sorted(range(len(fitnesses)), key=lambda i: fitnesses[i], reverse=True)[:3]
         for _ in range(num_offspring):
             parent_idx = random.choice(top_indices)
             child = dict(population[parent_idx])
@@ -142,9 +140,7 @@ class AutonomousEvolution:
         self._population = population + offspring
 
         # Check convergence
-        converged = len(self._fitness_log) > 10 and all(
-            f == self._fitness_log[-1] for f in self._fitness_log[-5:]
-        )
+        converged = len(self._fitness_log) > 10 and all(f == self._fitness_log[-1] for f in self._fitness_log[-5:])
 
         return EvolutionResult(
             generation=self._generation,
@@ -195,11 +191,7 @@ class AutonomousEvolution:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics (backward-compatible)."""
-        avg_fitness = (
-            (sum(self._fitness_log) / len(self._fitness_log))
-            if self._fitness_log
-            else 0
-        )
+        avg_fitness = (sum(self._fitness_log) / len(self._fitness_log)) if self._fitness_log else 0
         return {
             "mutations": len(self.evolution_history),
             "mutation_rate": round(self.mutation_rate, 3),

@@ -40,9 +40,7 @@ class QuantumChemistrySimulator:
 
     def simulate_molecule(self, formula: str, basis: str = "sto-3g") -> dict[str, Any]:
         """Simulate molecule (backward-compatible)."""
-        atom_count = sum(
-            int(c) if c.isdigit() else 1 for c in formula if c not in "()[] "
-        )
+        atom_count = sum(int(c) if c.isdigit() else 1 for c in formula if c not in "()[] ")
         energy = -atom_count * 1.0 + random.uniform(-0.5, 0.5)
         result = {
             "formula": formula,
@@ -82,9 +80,7 @@ class QuantumChemistrySimulator:
 
     def spectroscopy(self, formula: str, spectrum_type: str = "ir") -> dict[str, Any]:
         """Simulate spectroscopy."""
-        peaks = [
-            round(random.uniform(100, 4000), 1) for _ in range(random.randint(3, 8))
-        ]
+        peaks = [round(random.uniform(100, 4000), 1) for _ in range(random.randint(3, 8))]
         return {
             "formula": formula,
             "type": spectrum_type,
@@ -92,9 +88,7 @@ class QuantumChemistrySimulator:
             "intensity": [round(random.uniform(0.1, 1.0), 2) for _ in peaks],
         }
 
-    def reaction_pathway(
-        self, reactants: list[str], products: list[str]
-    ) -> dict[str, Any]:
+    def reaction_pathway(self, reactants: list[str], products: list[str]) -> dict[str, Any]:
         """Compute reaction pathway."""
         energy_barrier = round(random.uniform(0.5, 5.0), 2)
         return {
@@ -118,29 +112,20 @@ class QuantumChemistrySimulator:
     def density_matrix(self, formula: str = "H2") -> dict[str, Any]:
         """Compute simplified density matrix."""
         size = 4
-        [
-            [round(random.uniform(0, 1), 3) for _ in range(size)] for _ in range(size)
-        ]
+        [[round(random.uniform(0, 1), 3) for _ in range(size)] for _ in range(size)]
         return {
             "formula": formula,
             "matrix_size": size,
             "purity": round(random.uniform(0.8, 1.0), 3),
         }
 
-    def excited_states(
-        self, formula: str = "H2", num_states: int = 3
-    ) -> dict[str, Any]:
+    def excited_states(self, formula: str = "H2", num_states: int = 3) -> dict[str, Any]:
         """Compute excited state energies."""
-        states = [
-            {"level": i, "energy": round(random.uniform(-0.3, 0.5), 4)}
-            for i in range(num_states)
-        ]
+        states = [{"level": i, "energy": round(random.uniform(-0.3, 0.5), 4)} for i in range(num_states)]
         return {
             "formula": formula,
             "excited_states": states,
-            "transition_probabilities": [
-                round(random.uniform(0.01, 0.1), 3) for _ in range(num_states - 1)
-            ],
+            "transition_probabilities": [round(random.uniform(0.01, 0.1), 3) for _ in range(num_states - 1)],
         }
 
     def stats(self) -> dict[str, Any]:

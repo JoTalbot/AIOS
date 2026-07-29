@@ -1,4 +1,3 @@
-
 import strawberry
 
 
@@ -9,13 +8,15 @@ class TemplateType:
     intent: str
     platform: str | None
 
+
 @strawberry.type
 class Query:
     @strawberry.field
     def templates(self) -> list[TemplateType]:
         return [
             TemplateType(id="1", name="Greeting", intent="greeting", platform="olx"),
-            TemplateType(id="2", name="Price", intent="price_inquiry", platform=None)
+            TemplateType(id="2", name="Price", intent="price_inquiry", platform=None),
         ]
+
 
 schema = strawberry.Schema(query=Query)

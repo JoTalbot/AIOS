@@ -28,17 +28,12 @@ class AppConfig:
         return cls(
             db_path=os.environ.get("AIOS_DB_PATH", "aios.sqlite"),
             backup_dir=os.environ.get("AIOS_BACKUP_DIR", "./backups"),
-            constitution_dir=os.environ.get(
-                "AIOS_CONSTITUTION_DIR", "docs/constitution"
-            ),
+            constitution_dir=os.environ.get("AIOS_CONSTITUTION_DIR", "docs/constitution"),
             policies_dir=os.environ.get("AIOS_POLICIES_DIR", "policies"),
             audit_file=os.environ.get("AIOS_AUDIT_FILE", "audit_log.jsonl"),
-            backup_retention_days=int(
-                os.environ.get("AIOS_BACKUP_RETENTION_DAYS", "30")
-            ),
+            backup_retention_days=int(os.environ.get("AIOS_BACKUP_RETENTION_DAYS", "30")),
             backup_max_count=int(os.environ.get("AIOS_BACKUP_MAX_COUNT", "10")),
-            backup_compress=os.environ.get("AIOS_BACKUP_COMPRESS", "").lower()
-            in ("1", "true", "yes"),
+            backup_compress=os.environ.get("AIOS_BACKUP_COMPRESS", "").lower() in ("1", "true", "yes"),
             api_keys_json=os.environ.get("AIOS_API_KEYS", "{}"),
         )
 

@@ -129,11 +129,7 @@ class ProfileParser:
                 if text_or_path.lstrip().startswith("<")
                 else ET.parse(text_or_path).getroot()
             )
-        return [
-            text
-            for node in root.iter("node")
-            if (text := normalize_text(node.attrib.get("text")))
-        ]
+        return [text for node in root.iter("node") if (text := normalize_text(node.attrib.get("text")))]
 
 
 class ProfileEditor:

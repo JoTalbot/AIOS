@@ -70,6 +70,7 @@ def _run_tiktok(args) -> bool:
 
     if args.tiktok_command == "doctor":
         from aios_core.modules.tiktok import TikTokBootstrap
+
         report = TikTokBootstrap().doctor()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return True
@@ -77,6 +78,7 @@ def _run_tiktok(args) -> bool:
     if args.tiktok_command == "price-tracker":
         with TikTokStorage(_resolve_tiktok_db(args)) as storage:
             from aios_core.modules.tiktok import TikTokPriceTracker
+
             tracker = TikTokPriceTracker(storage)
             if args.price_command == "drops":
                 alerts = tracker.detect_drops()
@@ -89,6 +91,7 @@ def _run_tiktok(args) -> bool:
     if args.tiktok_command == "autowatch":
         with TikTokStorage(_resolve_tiktok_db(args)) as storage:
             from aios_core.modules.tiktok import TikTokAutoWatch
+
             watcher = TikTokAutoWatch(storage)
             report = watcher.run_cycle(queries=args.query if args.query else None, collect=not args.no_collect)
             print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -97,6 +100,7 @@ def _run_tiktok(args) -> bool:
     if args.tiktok_command == "favorites":
         with TikTokStorage(_resolve_tiktok_db(args)) as storage:
             from aios_core.modules.tiktok import TikTokFavorites, TikTokPriceTracker
+
             tracker = TikTokPriceTracker(storage)
             fav = TikTokFavorites(storage, price_tracker=tracker)
             cmd = args.favorites_command

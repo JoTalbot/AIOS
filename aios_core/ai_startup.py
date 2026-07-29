@@ -105,9 +105,7 @@ class AIStartup:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics (backward-compatible)."""
-        avg_skill = (
-            (sum(m["skill"] for m in self.team) / len(self.team)) if self.team else 0
-        )
+        avg_skill = (sum(m["skill"] for m in self.team) / len(self.team)) if self.team else 0
         return {
             "name": self.name,
             "team_size": len(self.team),

@@ -1,4 +1,5 @@
 """Viber Platform Adapter."""
+
 from __future__ import annotations
 
 import os
@@ -10,9 +11,9 @@ from .base import IncomingMessage, PlatformAdapter, SentMessage
 
 class ViberAdapter(PlatformAdapter):
     """Адаптер для Viber Public Accounts."""
-    
+
     API_URL = "https://chatapi.viber.com/pa"
-    
+
     def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config or {})
         self.auth_token = self.config.get("auth_token") or os.getenv("VIBER_AUTH_TOKEN")
@@ -25,8 +26,10 @@ class ViberAdapter(PlatformAdapter):
         # TODO: POST /send_message
         return SentMessage(
             message_id=f"viber_{int(datetime.now(UTC).timestamp())}",
-            platform="viber", recipient_id=recipient_id,
-            text=text, timestamp=datetime.now(UTC)
+            platform="viber",
+            recipient_id=recipient_id,
+            text=text,
+            timestamp=datetime.now(UTC),
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

@@ -46,9 +46,7 @@ class RAGSystem:
     - Hybrid search (keyword + semantic)
     """
 
-    def __init__(
-        self, vector_store: Any = None, chunk_size: int = 500, top_k: int = 5
-    ) -> None:
+    def __init__(self, vector_store: Any = None, chunk_size: int = 500, top_k: int = 5) -> None:
         self.vector_store = vector_store
         self.documents: list[dict[str, Any]] = []
         self.chunks: list[DocumentChunk] = []
@@ -59,9 +57,7 @@ class RAGSystem:
 
     # ── Document Indexing ──────────────────────────────────────────
 
-    def index_document(
-        self, doc_id: str, text: str, metadata: dict[str, Any] | None = None
-    ) -> None:
+    def index_document(self, doc_id: str, text: str, metadata: dict[str, Any] | None = None) -> None:
         """Index a document with automatic chunking (backward-compatible)."""
         doc = {
             "id": doc_id,
@@ -120,9 +116,7 @@ class RAGSystem:
             # Embedding similarity (cosine)
             min_len = min(len(query_embedding), len(chunk.embedding))
             if min_len > 0:
-                dot = sum(
-                    query_embedding[i] * chunk.embedding[i] for i in range(min_len)
-                )
+                dot = sum(query_embedding[i] * chunk.embedding[i] for i in range(min_len))
                 norm_q = math.sqrt(sum(v * v for v in query_embedding[:min_len]))
                 norm_c = math.sqrt(sum(v * v for v in chunk.embedding[:min_len]))
                 sim = dot / (norm_q * norm_c) if norm_q > 0 and norm_c > 0 else 0.0

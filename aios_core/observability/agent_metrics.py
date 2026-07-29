@@ -3,29 +3,19 @@ from functools import wraps
 
 from prometheus_client import Counter, Gauge, Histogram
 
-AGENT_REQUESTS = Counter(
-    "aios_agent_requests_total",
-    "Total requests to agents",
-    ["agent_name", "action"]
-)
+AGENT_REQUESTS = Counter("aios_agent_requests_total", "Total requests to agents", ["agent_name", "action"])
 
-AGENT_PROCESSING_TIME = Histogram(
-    "aios_agent_processing_seconds",
-    "Time spent processing by agents",
-    ["agent_name"]
-)
+AGENT_PROCESSING_TIME = Histogram("aios_agent_processing_seconds", "Time spent processing by agents", ["agent_name"])
 
 AGENT_CONFIDENCE = Histogram(
     "aios_agent_confidence",
     "Agent confidence distribution",
     ["agent_name"],
-    buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
 )
 
-ACTIVE_AGENTS = Gauge(
-    "aios_active_agents",
-    "Number of active agents"
-)
+ACTIVE_AGENTS = Gauge("aios_active_agents", "Number of active agents")
+
 
 def track_agent_metrics(agent_name: str):
     def decorator(func):
@@ -42,5 +32,7 @@ def track_agent_metrics(agent_name: str):
             finally:
                 duration = time.time() - start
                 AGENT_PROCESSING_TIME.labels(agent_name=agent_name).observe(duration)
+
         return wrapper
+
     return decorator

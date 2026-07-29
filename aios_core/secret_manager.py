@@ -59,9 +59,7 @@ class APIKey:
 class SecretManager:
     """Manages API keys and secrets for AIOS."""
 
-    def __init__(
-        self, max_keys_per_subject: int = 5, default_ttl_days: int = 90
-    ) -> None:
+    def __init__(self, max_keys_per_subject: int = 5, default_ttl_days: int = 90) -> None:
         """Initialize SecretManager."""
         self.keys: dict[str, APIKey] = {}
         self.max_keys_per_subject = max_keys_per_subject
@@ -87,13 +85,10 @@ class SecretManager:
             New APIKey instance
         """
         # Enforce max keys per subject
-        subject_keys = [
-            k for k in self.keys.values() if k.subject == subject and not k.revoked
-        ]
+        subject_keys = [k for k in self.keys.values() if k.subject == subject and not k.revoked]
         if len(subject_keys) >= self.max_keys_per_subject:
             raise ValueError(
-                f"Subject '{subject}' has reached max keys ({self.max_keys_per_subject}). "
-                "Revoke an existing key first."
+                f"Subject '{subject}' has reached max keys ({self.max_keys_per_subject}). Revoke an existing key first."
             )
 
         # Generate cryptographically secure key
@@ -157,9 +152,7 @@ class SecretManager:
 
         return True
 
-    def rotate_key(
-        self, old_key: str, ttl_days: int | None = None, reason: str = "rotation"
-    ) -> APIKey | None:
+    def rotate_key(self, old_key: str, ttl_days: int | None = None, reason: str = "rotation") -> APIKey | None:
         """Rotate an API key (revoke old, create new with same subject/roles).
 
         Args:
@@ -235,9 +228,7 @@ class SecretManager:
         return [
             k
             for k in self.keys.values()
-            if k.expires_at
-            and not k.revoked
-            and datetime.fromisoformat(k.expires_at) <= threshold
+            if k.expires_at and not k.revoked and datetime.fromisoformat(k.expires_at) <= threshold
         ]
 
     def cleanup_revoked(self, older_than_days: int = 30) -> int:
@@ -256,10 +247,7 @@ class SecretManager:
             if api_key.revoked:
                 # Check if revoked long enough ago
                 for log in reversed(self.rotation_log):
-                    if (
-                        log["action"] == "revoked"
-                        and log["key_prefix"] == key[:12] + "..."
-                    ):
+                    if log["action"] == "revoked" and log["key_prefix"] == key[:12] + "...":
                         revoked_at = datetime.fromisoformat(log["timestamp"])
                         if revoked_at < threshold:
                             to_remove.append(key)
@@ -331,8 +319,7 @@ class SecretManager:
                     log_entry
                     for log_entry in self.rotation_log
                     if log_entry["action"] == "rotated"
-                    and datetime.fromisoformat(log_entry["timestamp"])
-                    > datetime.now(UTC) - timedelta(days=30)
+                    and datetime.fromisoformat(log_entry["timestamp"]) > datetime.now(UTC) - timedelta(days=30)
                 ]
             ),
         }
@@ -343,11 +330,7 @@ class SecretManager:
         Args:
             path: Output file path (.env or .sh)
         """
-        active_keys = {
-            k.key: {"subject": k.subject, "roles": k.roles}
-            for k in self.keys.values()
-            if k.is_valid()
-        }
+        active_keys = {k.key: {"subject": k.subject, "roles": k.roles} for k in self.keys.values() if k.is_valid()}
 
         env_value = json.dumps(active_keys)
 

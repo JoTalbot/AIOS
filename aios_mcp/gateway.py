@@ -159,8 +159,7 @@ class MCPGateway:
         # database and splits audit/approval/memory state.
         db = db or Database(db_path=self.config.db_path)
         self.runtime = RuntimePolicy(
-            constitution_dir=self.config.constitution_dir
-            or os.path.join(_PROJECT_ROOT, "docs/constitution"),
+            constitution_dir=self.config.constitution_dir or os.path.join(_PROJECT_ROOT, "docs/constitution"),
             policies_dir=self.config.policies_dir or os.path.join(_PROJECT_ROOT, "policies"),
             db=db,
         )
@@ -524,9 +523,7 @@ class MCPGateway:
         from aios_core.memory_manager import MemoryManager
 
         if params.get("category") == "personal":
-            raise PermissionError(
-                "Personal memory is available only through the authenticated REST API"
-            )
+            raise PermissionError("Personal memory is available only through the authenticated REST API")
 
         mm = MemoryManager(db=self.runtime.db)
         tags = params.get("tags", "")
@@ -544,9 +541,7 @@ class MCPGateway:
         from aios_core.memory_manager import MemoryManager
 
         if params.get("category") == "personal":
-            raise PermissionError(
-                "Personal memory is available only through the authenticated REST API"
-            )
+            raise PermissionError("Personal memory is available only through the authenticated REST API")
 
         mm = MemoryManager(db=self.runtime.db)
         results = mm.search(

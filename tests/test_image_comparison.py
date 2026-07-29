@@ -15,6 +15,7 @@ from aios_core.image_comparison import (
 
 # ─── Test helpers ───
 
+
 def _uniform_pixels(value: int, size: int = 64) -> list[int]:
     """Create flat pixel array of uniform value."""
     return [value] * size
@@ -45,6 +46,7 @@ def _checker_pixels_9x8() -> list[int]:
 
 # ─── ImageHash ───
 
+
 class TestImageHash:
     """Tests for ImageHash dataclass."""
 
@@ -62,10 +64,7 @@ class TestImageHash:
 
     def test_custom_bit_string(self) -> None:
         """Custom bit_string preserved."""
-        h = ImageHash(
-            hash_value=1, algorithm=HashAlgorithm.AHASH,
-            bit_string="0001"
-        )
+        h = ImageHash(hash_value=1, algorithm=HashAlgorithm.AHASH, bit_string="0001")
         assert h.bit_string == "0001"
 
     def test_identical_hashes_distance_zero(self) -> None:
@@ -100,6 +99,7 @@ class TestImageHash:
 
 
 # ─── Average Hash ───
+
 
 class TestAverageHash:
     """Tests for average_hash function."""
@@ -137,6 +137,7 @@ class TestAverageHash:
 
 # ─── Difference Hash ───
 
+
 class TestDifferenceHash:
     """Tests for difference_hash function."""
 
@@ -168,6 +169,7 @@ class TestDifferenceHash:
 
 # ─── Perceptual Hash ───
 
+
 class TestPerceptualHash:
     """Tests for perceptual_hash function."""
 
@@ -197,6 +199,7 @@ class TestPerceptualHash:
 
 # ─── Color Histogram ───
 
+
 class TestColorHistogram:
     """Tests for ColorHistogram and compute_color_histogram."""
 
@@ -224,10 +227,10 @@ class TestColorHistogram:
         rgb = [(0, 0, 0), (255, 255, 255), (128, 128, 128), (64, 64, 64)]
         hist = compute_color_histogram(rgb, bins=8)
         # bin_size = 256/8 = 32
-        assert hist.red[0] == 1   # (0) → bin 0
-        assert hist.red[7] == 1   # (255) → bin 7
-        assert hist.red[4] == 1   # (128) → bin 4
-        assert hist.red[2] == 1   # (64) → bin 2
+        assert hist.red[0] == 1  # (0) → bin 0
+        assert hist.red[7] == 1  # (255) → bin 7
+        assert hist.red[4] == 1  # (128) → bin 4
+        assert hist.red[2] == 1  # (64) → bin 2
 
     def test_partial_overlap_histogram(self) -> None:
         """Partial overlap → partial similarity."""
@@ -239,6 +242,7 @@ class TestColorHistogram:
 
 # ─── ImageComparisonEngine ───
 
+
 class TestImageComparisonEngine:
     """Tests for ImageComparisonEngine."""
 
@@ -247,7 +251,12 @@ class TestImageComparisonEngine:
         engine = ImageComparisonEngine(duplicate_threshold=0.8)
         pixels = _gradient_pixels(64)
         result = engine.compare(
-            pixels, 8, 8, pixels, 8, 8,
+            pixels,
+            8,
+            8,
+            pixels,
+            8,
+            8,
             source_fingerprint="fp1",
             target_fingerprint="fp1_copy",
         )
@@ -257,13 +266,16 @@ class TestImageComparisonEngine:
 
     def test_compare_different_images(self) -> None:
         """Different images → low similarity, not duplicate."""
-        engine = ImageComparisonEngine(
-            duplicate_threshold=0.9, hash_algorithm=HashAlgorithm.AHASH
-        )
+        engine = ImageComparisonEngine(duplicate_threshold=0.9, hash_algorithm=HashAlgorithm.AHASH)
         pixels1 = _uniform_pixels(50, 64)
         pixels2 = _checker_pixels()
         result = engine.compare(
-            pixels1, 8, 8, pixels2, 8, 8,
+            pixels1,
+            8,
+            8,
+            pixels2,
+            8,
+            8,
             source_fingerprint="fp_flat",
             target_fingerprint="fp_checker",
             algorithm=HashAlgorithm.AHASH,
@@ -273,15 +285,19 @@ class TestImageComparisonEngine:
 
     def test_compare_with_color_histograms(self) -> None:
         """RGB histograms enhance composite similarity."""
-        engine = ImageComparisonEngine(
-            hash_weight=0.5, color_weight=0.5
-        )
+        engine = ImageComparisonEngine(hash_weight=0.5, color_weight=0.5)
         pixels = _gradient_pixels(64)
         rgb1 = [(128, 128, 128)] * 64
         rgb2 = [(128, 128, 128)] * 64
         result = engine.compare(
-            pixels, 8, 8, pixels, 8, 8,
-            source_rgb=rgb1, target_rgb=rgb2,
+            pixels,
+            8,
+            8,
+            pixels,
+            8,
+            8,
+            source_rgb=rgb1,
+            target_rgb=rgb2,
             source_fingerprint="fp_rgb1",
             target_fingerprint="fp_rgb2",
         )
@@ -293,11 +309,21 @@ class TestImageComparisonEngine:
         engine = ImageComparisonEngine(hash_algorithm=HashAlgorithm.AHASH)
         pixels = _gradient_pixels(64)
         r_ahash = engine.compare(
-            pixels, 8, 8, pixels, 8, 8,
+            pixels,
+            8,
+            8,
+            pixels,
+            8,
+            8,
             algorithm=HashAlgorithm.AHASH,
         )
         r_phash = engine.compare(
-            pixels, 32, 32, pixels, 32, 32,
+            pixels,
+            32,
+            32,
+            pixels,
+            32,
+            32,
             algorithm=HashAlgorithm.PHASH,
         )
         # Same image → both should show similarity

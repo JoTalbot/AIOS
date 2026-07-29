@@ -1,4 +1,5 @@
 """Tests for aios_core/dashboard.py"""
+
 from __future__ import annotations
 
 import json
@@ -20,7 +21,7 @@ def _redirect_path(tmp_path):
             p = cls._real(*parts)
             s = str(p)
             if s.startswith("/root/AIOS"):
-                rel = s[len("/root/AIOS"):]
+                rel = s[len("/root/AIOS") :]
                 target = tmp_path / rel.lstrip("/")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 return target
@@ -38,9 +39,11 @@ def dashboard(tmp_path):
     mock_orch.stats.return_value = {"total_steps_executed": 42}
     mock_orch.version = "10.15.0"
     RedirectedPath = _redirect_path(tmp_path)
-    with patch("aios_core.dashboard.Path", RedirectedPath), \
-         patch("aios_core.dashboard.BackupManager") as mock_bm, \
-         patch("aios_core.dashboard.AndroidAutoStudy") as mock_aas:
+    with (
+        patch("aios_core.dashboard.Path", RedirectedPath),
+        patch("aios_core.dashboard.BackupManager") as mock_bm,
+        patch("aios_core.dashboard.AndroidAutoStudy") as mock_aas,
+    ):
         mock_bm.return_value = MagicMock()
         mock_aas.return_value = MagicMock()
         d = AIOSDashboard(mock_orch)
@@ -201,10 +204,7 @@ class TestReadConstitutionIndex:
         constitution_dir.mkdir()
         article_file = constitution_dir / "ARTICLE-IV-test.md"
         article_file.write_text(
-            "# Article IV \u2014 Access Control\n"
-            "status: Active\n"
-            "level: Constitutional\n"
-            "scope: System-wide\n",
+            "# Article IV \u2014 Access Control\nstatus: Active\nlevel: Constitutional\nscope: System-wide\n",
             encoding="utf-8",
         )
         result = dashboard._read_constitution_index()
@@ -223,8 +223,7 @@ class TestReadConstitutionIndex:
         for numeral in ["I", "IV", "X", "XX", "L"]:
             article_file = constitution_dir / f"ARTICLE-{numeral}-test.md"
             article_file.write_text(
-                f"# Article {numeral} \u2014 Test {numeral}\n"
-                "status: Active\n",
+                f"# Article {numeral} \u2014 Test {numeral}\nstatus: Active\n",
                 encoding="utf-8",
             )
         result = dashboard._read_constitution_index()
@@ -257,7 +256,7 @@ class TestReadConstitutionArticle:
         constitution_dir.mkdir()
         article_file = constitution_dir / "ARTICLE-V-test.md"
         article_file.write_text(
-            "# Article V \u2014 Due Process\n" "status: Active\n",
+            "# Article V \u2014 Due Process\nstatus: Active\n",
             encoding="utf-8",
         )
         result = dashboard._read_constitution_article(5)
@@ -421,9 +420,7 @@ class TestRomanToIdx:
 class TestApiServices:
     def test_api_services_returns_all_services(self, dashboard):
         with patch("aios_core.dashboard.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                stdout="active\n", returncode=0
-            )
+            mock_run.return_value = MagicMock(stdout="active\n", returncode=0)
             app = dashboard.create_app()
             client = TestClient(app)
             response = client.get("/api/services")

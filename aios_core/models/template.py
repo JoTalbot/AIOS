@@ -19,6 +19,7 @@ class Template(Base):
     is_active = Column(Boolean, default=True)
     variables = relationship("TemplateVariable", back_populates="template", cascade="all, delete-orphan")
 
+
 class TemplateVariable(Base):
     __tablename__ = "template_variables"
     id = Column(Integer, primary_key=True, autoincrement=True)

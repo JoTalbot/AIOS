@@ -55,9 +55,7 @@ class ActiveLearner:
 
     # ── Data Management ──────────────────────────────────────────────
 
-    def add_unlabeled(
-        self, data: dict[str, Any], uncertainty: float = 0.0
-    ) -> DataPoint:
+    def add_unlabeled(self, data: dict[str, Any], uncertainty: float = 0.0) -> DataPoint:
         """Add data to the unlabeled pool."""
         self._id_counter += 1
         point = DataPoint(id=self._id_counter, features=data, uncertainty=uncertainty)
@@ -96,9 +94,7 @@ class ActiveLearner:
 
         elif strategy == "margin":
             # Margin sampling: smallest margin between top-2 predictions
-            sorted_by_unc = sorted(
-                self.unlabeled, key=lambda p: p.uncertainty, reverse=True
-            )
+            sorted_by_unc = sorted(self.unlabeled, key=lambda p: p.uncertainty, reverse=True)
             return sorted_by_unc[0] if sorted_by_unc else None
 
         elif strategy == "entropy":
@@ -239,11 +235,7 @@ class ActiveLearner:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_uncertainty = (
-            (sum(p.uncertainty for p in self.unlabeled) / len(self.unlabeled))
-            if self.unlabeled
-            else 0.0
-        )
+        avg_uncertainty = (sum(p.uncertainty for p in self.unlabeled) / len(self.unlabeled)) if self.unlabeled else 0.0
         return {
             "labeled": len(self.labeled),
             "unlabeled": len(self.unlabeled),

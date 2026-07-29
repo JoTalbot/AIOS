@@ -97,9 +97,7 @@ class EdgeOrchestrator:
 
     # ── Scheduling ──────────────────────────────────────────────
 
-    def schedule(
-        self, task_size: int, preferred_location: str | None = None
-    ) -> str | None:
+    def schedule(self, task_size: int, preferred_location: str | None = None) -> str | None:
         """Schedule task to best node (least-loaded, preferably nearby)."""
         candidates = [n for n in self.nodes.values() if n.can_handle(task_size)]
         if not candidates:
@@ -139,20 +137,14 @@ class EdgeOrchestrator:
 
     def offload_overloaded(self, threshold: float = 90.0) -> list[str]:
         """Offload tasks from nodes above utilization threshold."""
-        overloaded = [
-            n
-            for n in self.nodes.values()
-            if n.utilization() > threshold and n.health != "offline"
-        ]
+        overloaded = [n for n in self.nodes.values() if n.utilization() > threshold and n.health != "offline"]
         offloaded: list[str] = []
         for node in overloaded:
             # Find underloaded node to receive tasks
             receivers = [
                 n
                 for n in self.nodes.values()
-                if n.utilization() < 50
-                and n.can_handle(10)
-                and n.node_id != node.node_id
+                if n.utilization() < 50 and n.can_handle(10) and n.node_id != node.node_id
             ]
             if receivers:
                 receiver = min(receivers, key=lambda n: n.utilization())
@@ -206,7 +198,5 @@ class EdgeOrchestrator:
             "by_health": by_health,
             "total_load": total_load,
             "total_capacity": total_capacity,
-            "overall_utilization": total_load / total_capacity * 100
-            if total_capacity
-            else 0.0,
+            "overall_utilization": total_load / total_capacity * 100 if total_capacity else 0.0,
         }

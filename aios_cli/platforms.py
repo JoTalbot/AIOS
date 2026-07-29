@@ -12,9 +12,11 @@ def _lazy_import(module_path: str, attr: str | None = None):
     key = (module_path, attr)
     if key not in _import_cache:
         import importlib
+
         mod = importlib.import_module(module_path)
         _import_cache[key] = getattr(mod, attr) if attr else mod
     return _import_cache[key]
+
 
 DEFAULT_OLX_DB = "olx_ads.sqlite"
 
@@ -80,11 +82,7 @@ def _run_platforms(args) -> bool:
                 except ImportError:
                     pass
                 if login_driver is None:
-                    print(
-                        json.dumps(
-                            {"error": f"platform '{args.platform}' has no " "login driver module"}
-                        )
-                    )
+                    print(json.dumps({"error": f"platform '{args.platform}' has no login driver module"}))
                     return True
                 driver = login_driver
             else:
@@ -148,9 +146,7 @@ def _run_platforms(args) -> bool:
         messenger_hints = None
         navigation_hints = None
         if args.detail:
-            detail_hints = DetailCalibrationAdvisor().analyze_detail(
-                Path(args.detail).read_text(encoding="utf-8")
-            )
+            detail_hints = DetailCalibrationAdvisor().analyze_detail(Path(args.detail).read_text(encoding="utf-8"))
         if args.messages:
             messenger_hints = DetailCalibrationAdvisor().analyze_messenger(
                 Path(args.messages).read_text(encoding="utf-8")
@@ -254,11 +250,7 @@ def _run_platforms(args) -> bool:
 
         check = compliance_guard(args.platform, "collect", directory=args.directory)
         if not check["allowed"]:
-            print(
-                json.dumps(
-                    {"error": check["reason"], "compliance": check}, ensure_ascii=False, indent=2
-                )
-            )
+            print(json.dumps({"error": check["reason"], "compliance": check}, ensure_ascii=False, indent=2))
             return True
         from aios_core.platforms.reelscout import ReelsCollector
         from aios_core.platforms.resolver import resolve_profile, storage_for
@@ -688,8 +680,7 @@ def _run_shards(args) -> bool:
                     "enqueued": job_id,
                     "profile_key": args.profile,
                     "kind": args.kind,
-                    "note": "нода-исполнитель заберёт джобу через "
-                    "`aios shards work` (pull-модель)",
+                    "note": "нода-исполнитель заберёт джобу через `aios shards work` (pull-модель)",
                 },
                 ensure_ascii=False,
             )
@@ -761,10 +752,7 @@ def _run_cron_plan(args) -> bool:
             kinds = {"instagram": "autopilot"}
             kind = kinds.get(profile.platform)
             if kind is None:
-                return (
-                    f"# (нет builtin job kind для {profile.platform}; "
-                    f"оставьте shell-cron или добавьте handler)"
-                )
+                return f"# (нет builtin job kind для {profile.platform}; оставьте shell-cron или добавьте handler)"
             return (
                 f"*/{interval} * * * * cd {root} && "
                 f"python3 aios_cli.py shards enqueue "
@@ -814,9 +802,7 @@ def _run_cron_plan(args) -> bool:
             lines.append("")
     else:
         lines.extend(line for _, line in entries)
-    monitor_note = (
-        "  # pool monitor — запускать на каждом хосте" if getattr(args, "shard_map", False) else ""
-    )
+    monitor_note = "  # pool monitor — запускать на каждом хосте" if getattr(args, "shard_map", False) else ""
     lines.append(
         f"*/{interval} * * * * cd {root} && "
         f"python3 aios_cli.py devices monitor --once "
@@ -847,4 +833,3 @@ def _run_cron_plan(args) -> bool:
     else:
         print(plan)
     return True
-

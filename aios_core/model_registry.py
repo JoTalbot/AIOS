@@ -30,9 +30,7 @@ class ModelRegistry:
     ) -> dict[str, Any]:
         """Register a new model version in the registry."""
         key = f"{name}:{version}"
-        sha256_hash = (
-            hashlib.sha256(artifact_bytes).hexdigest() if artifact_bytes else "no_hash"
-        )
+        sha256_hash = hashlib.sha256(artifact_bytes).hexdigest() if artifact_bytes else "no_hash"
 
         entry = {
             "name": name,
@@ -59,9 +57,7 @@ class ModelRegistry:
     def register(self, name: str, version: str, metadata: dict) -> dict[str, Any]:
         """Backward-compatible registry wrapper."""
         framework = metadata.get("framework", "custom")
-        return self.register_model(
-            name=name, version=version, framework=framework, metadata=metadata
-        )
+        return self.register_model(name=name, version=version, framework=framework, metadata=metadata)
 
     def promote(self, name: str, version: str, stage: str = "production") -> bool:
         """Promote a model version to a target stage (e.g., 'production', 'archived')."""
@@ -79,9 +75,7 @@ class ModelRegistry:
         self.stage_routes[name][stage] = version
         return True
 
-    def get_model(
-        self, name: str, version_or_stage: str = "production"
-    ) -> dict[str, Any] | None:
+    def get_model(self, name: str, version_or_stage: str = "production") -> dict[str, Any] | None:
         """Retrieve model metadata by explicit version or stage name."""
         if name in self.stage_routes and version_or_stage in self.stage_routes[name]:
             target_version = self.stage_routes[name][version_or_stage]
@@ -102,9 +96,7 @@ class ModelRegistry:
         """Backward-compatible fetcher."""
         return self.get_model(name, version)
 
-    def log_evaluation_metrics(
-        self, name: str, version: str, metrics: dict[str, float]
-    ) -> bool:
+    def log_evaluation_metrics(self, name: str, version: str, metrics: dict[str, float]) -> bool:
         """Log accuracy, latency, F1, or MSE evaluation metrics for a model version."""
         key = f"{name}:{version}"
         if key not in self.models:
@@ -120,9 +112,7 @@ class ModelRegistry:
 
     def stats(self) -> dict[str, Any]:
         """Return registry aggregate statistics."""
-        production_count = sum(
-            1 for v in self.models.values() if v["stage"] == "production"
-        )
+        production_count = sum(1 for v in self.models.values() if v["stage"] == "production")
         return {
             "total_models": len(self.models),
             "production_models": production_count,

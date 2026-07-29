@@ -1,6 +1,5 @@
 """Security tests for AIOS system."""
 
-
 import contextlib
 
 import httpx
@@ -32,9 +31,7 @@ class TestSQLInjection:
         with DataExporter(str(db_path)) as exporter:
             # Should not execute malicious SQL
             try:
-                count = exporter.export_tasks(
-                    str(tmp_path / "export.json"), format="json", status=malicious_input
-                )
+                count = exporter.export_tasks(str(tmp_path / "export.json"), format="json", status=malicious_input)
                 # Should return 0 results, not crash
                 assert count == 0
             except Exception:
@@ -396,9 +393,7 @@ class TestDataIsolation:
 
         # Export only user1's memory
         with DataExporter(str(db_path)) as exporter:
-            count = exporter.export_memory(
-                str(tmp_path / "user1_memory.json"), format="json", subject="user1"
-            )
+            count = exporter.export_memory(str(tmp_path / "user1_memory.json"), format="json", subject="user1")
 
             # Should only export user1's records
             assert count == 1

@@ -152,9 +152,7 @@ class TestOLXRecommendations:
 class TestOLXCollection:
     @pytest.mark.asyncio
     async def test_collect_one_off_dedupes(self, client):
-        resp = await client.post(
-            "/api/v1/modules/olx/collect", json={"query": QUERY, "max_cards": 10}
-        )
+        resp = await client.post("/api/v1/modules/olx/collect", json={"query": QUERY, "max_cards": 10})
         assert resp.status_code == 200
         summary = resp.json()["summaries"][QUERY]
         assert summary["parsed"] == 2
@@ -482,9 +480,7 @@ class TestOLXFavorites:
         ads = storage.get_ads()
         bmw = next(ad for ad in ads if ad.url)
 
-        add = await client.post(
-            "/api/v1/modules/olx/favorites", json={"fingerprint": bmw.fingerprint}
-        )
+        add = await client.post("/api/v1/modules/olx/favorites", json={"fingerprint": bmw.fingerprint})
         assert add.json()["added"] is True
 
         listing = await client.get("/api/v1/modules/olx/favorites")
@@ -512,9 +508,7 @@ class TestOLXEditAndAutowatch:
         await client.post("/api/v1/modules/olx/own/snapshot", json={"ads": OWN_SNAPSHOT})
         fp = storage.own_ads()[0]["fingerprint"]
 
-        dry = await client.post(
-            "/api/v1/modules/olx/own/edit", json={"fingerprint": fp, "query": QUERY}
-        )
+        dry = await client.post("/api/v1/modules/olx/own/edit", json={"fingerprint": fp, "query": QUERY})
         assert dry.status_code == 200
         assert dry.json()["status"] == "dry_run"
         assert dry.json()["steps"]
@@ -626,9 +620,7 @@ class TestOLXCompetitiveAndAdvisor:
         await client.post("/api/v1/modules/olx/own/snapshot", json={"ads": OWN_SNAPSHOT})
         fp = storage.own_ads()[0]["fingerprint"]
 
-        bad = await client.post(
-            "/api/v1/modules/olx/competitive/seller-scan", json={"fingerprint": fp}
-        )
+        bad = await client.post("/api/v1/modules/olx/competitive/seller-scan", json={"fingerprint": fp})
         assert bad.status_code == 400
 
         unknown = await client.post(

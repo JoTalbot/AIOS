@@ -1,4 +1,5 @@
 """Tests for async core wrappers."""
+
 import asyncio
 
 from aios_core.async_bus import AsyncEventBus
@@ -39,6 +40,7 @@ def test_async_bus_multiple_handlers():
     asyncio.run(bus.emit("multi", {}))
     assert sorted(results) == [1, 2, 3]
 
+
 def test_async_bus_stats():
     bus = AsyncEventBus()
     assert "async_handlers" in bus.stats()
@@ -47,26 +49,31 @@ def test_async_bus_stats():
 def test_async_db_stats():
     """AsyncDatabase uses native async."""
     db = AsyncDatabase(db_path=":memory:")
+
     async def run():
         s = await db.stats()
         await db.close()
         return s
+
     stats = asyncio.run(run())
     assert stats["dialect"] == "sqlite"
 
 
 def test_async_db_tables():
     db = AsyncDatabase(db_path=":memory:")
+
     async def run():
         t = await db.tables()
         await db.close()
         return t
+
     tables = asyncio.run(run())
     assert isinstance(tables, list)
 
 
 def test_async_db_row_count():
     db = AsyncDatabase(db_path=":memory:")
+
     async def run():
         try:
             count = await db.row_count("nonexistent")
@@ -75,6 +82,7 @@ def test_async_db_row_count():
         finally:
             await db.close()
         return count
+
     count = asyncio.run(run())
     assert count in (0, None)
 

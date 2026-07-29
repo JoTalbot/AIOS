@@ -69,15 +69,11 @@ class SimpleSearchEngine:
 
     # ── Document Management ──────────────────────────────────────────
 
-    def index(
-        self, doc_id: str, text: str, metadata: dict[str, Any] | None = None
-    ) -> None:
+    def index(self, doc_id: str, text: str, metadata: dict[str, Any] | None = None) -> None:
         """Index a document (backward-compatible)."""
         self.add_document(doc_id, text, metadata)
 
-    def add_document(
-        self, doc_id: str, text: str, metadata: dict[str, Any] | None = None
-    ) -> Document:
+    def add_document(self, doc_id: str, text: str, metadata: dict[str, Any] | None = None) -> Document:
         """Add a document with full indexing."""
         # Tokenize and compute term frequencies
         words = re.findall(r"\b\w+\b", text.lower())
@@ -94,11 +90,7 @@ class SimpleSearchEngine:
         self.documents[doc_id] = doc
         self._doc_lengths[doc_id] = len(words)
         self._num_docs = len(self.documents)
-        self._avg_doc_length = (
-            (sum(self._doc_lengths.values()) / self._num_docs)
-            if self._num_docs > 0
-            else 0
-        )
+        self._avg_doc_length = (sum(self._doc_lengths.values()) / self._num_docs) if self._num_docs > 0 else 0
 
         # Update inverted index
         for term, count in term_freq.items():
@@ -120,11 +112,7 @@ class SimpleSearchEngine:
                         del self._index[term]
             self._doc_lengths.pop(doc_id, None)
             self._num_docs = len(self.documents)
-            self._avg_doc_length = (
-                (sum(self._doc_lengths.values()) / self._num_docs)
-                if self._num_docs > 0
-                else 0
-            )
+            self._avg_doc_length = (sum(self._doc_lengths.values()) / self._num_docs) if self._num_docs > 0 else 0
 
     def get_document(self, doc_id: str) -> Document | None:
         """Return a document."""
@@ -173,9 +161,7 @@ class SimpleSearchEngine:
 
     # ── Search ──────────────────────────────────────────────────────
 
-    def search(
-        self, query: str, limit: int = 10, method: str = "bm25"
-    ) -> list[SearchResult]:
+    def search(self, query: str, limit: int = 10, method: str = "bm25") -> list[SearchResult]:
         """Search documents using specified method (backward-compatible with bm25)."""
         query_terms = re.findall(r"\b\w+\b", query.lower())
 
@@ -201,9 +187,7 @@ class SimpleSearchEngine:
 
         # Build results
         results = []
-        for doc_id, score in sorted(scores.items(), key=lambda x: x[1], reverse=True)[
-            :limit
-        ]:
+        for doc_id, score in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:limit]:
             doc = self.documents.get(doc_id)
             if doc:
                 snippet = self._generate_snippet(doc.text, query_terms)
@@ -219,9 +203,7 @@ class SimpleSearchEngine:
 
         return results
 
-    def _generate_snippet(
-        self, text: str, query_terms: list[str], max_len: int = 200
-    ) -> str:
+    def _generate_snippet(self, text: str, query_terms: list[str], max_len: int = 200) -> str:
         """Generate a snippet highlighting matched terms."""
         text_lower = text.lower()
         best_pos = 0
@@ -231,11 +213,7 @@ class SimpleSearchEngine:
         for term in query_terms:
             pos = text_lower.find(term)
             if pos >= 0:
-                density = sum(
-                    1
-                    for t in query_terms
-                    if t in text_lower[max(0, pos - 50) : pos + 150]
-                )
+                density = sum(1 for t in query_terms if t in text_lower[max(0, pos - 50) : pos + 150])
                 if density > best_density:
                     best_density = density
                     best_pos = max(0, pos - 50)
@@ -249,9 +227,7 @@ class SimpleSearchEngine:
 
     # ── Faceted Search ──────────────────────────────────────────────
 
-    def faceted_search(
-        self, query: str, facets: dict[str, Any], limit: int = 10
-    ) -> list[SearchResult]:
+    def faceted_search(self, query: str, facets: dict[str, Any], limit: int = 10) -> list[SearchResult]:
         """Search with metadata facet filtering."""
         # Get base results
         base_results = self.search(query, limit=limit * 5)
@@ -261,10 +237,7 @@ class SimpleSearchEngine:
         for result in base_results:
             match = True
             for facet_key, facet_value in facets.items():
-                if (
-                    facet_key not in result.metadata
-                    or result.metadata[facet_key] != facet_value
-                ):
+                if facet_key not in result.metadata or result.metadata[facet_key] != facet_value:
                     match = False
                     break
             if match:
@@ -274,9 +247,7 @@ class SimpleSearchEngine:
 
     # ── Relevance Feedback ──────────────────────────────────────────
 
-    def expand_query(
-        self, query: str, relevant_doc_ids: list[str], num_expansion_terms: int = 3
-    ) -> str:
+    def expand_query(self, query: str, relevant_doc_ids: list[str], num_expansion_terms: int = 3) -> str:
         """Expand query using relevance feedback (Rocchio)."""
         # Find terms common in relevant documents
         term_scores: dict[str, float] = {}

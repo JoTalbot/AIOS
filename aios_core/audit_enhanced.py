@@ -76,9 +76,7 @@ class EnhancedAudit:
         self._alert_rules: list[dict[str, Any]] = []
         self._chain_hash: str = ""
 
-    def record(
-        self, action: str, actor: str, resource: str, decision: str, **metadata
-    ) -> AuditRecord:
+    def record(self, action: str, actor: str, resource: str, decision: str, **metadata) -> AuditRecord:
         """Record an audit event (backward-compatible + hash chaining)."""
         audit_record = AuditRecord(
             action=action,
@@ -142,13 +140,9 @@ class EnhancedAudit:
             "retention_days": self.retention_days,
         }
 
-    def add_alert_rule(
-        self, condition: str, threshold: int = 10, action: str = "notify"
-    ) -> None:
+    def add_alert_rule(self, condition: str, threshold: int = 10, action: str = "notify") -> None:
         """Add an alert rule for audit monitoring."""
-        self._alert_rules.append(
-            {"condition": condition, "threshold": threshold, "action": action}
-        )
+        self._alert_rules.append({"condition": condition, "threshold": threshold, "action": action})
 
     def _check_alerts(self, record: AuditRecord) -> None:
         """Check if a record triggers any alert rules."""

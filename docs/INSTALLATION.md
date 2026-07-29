@@ -39,12 +39,7 @@ from aios_core import ConstitutionEngine, RuntimePolicy
 engine = ConstitutionEngine()
 
 # Evaluate action
-action = {
-    "goal": "system_check",
-    "scope": "local_node",
-    "risk": "low",
-    "audit_log": True
-}
+action = {"goal": "system_check", "scope": "local_node", "risk": "low", "audit_log": True}
 
 result = engine.evaluate(action)
 print(result)

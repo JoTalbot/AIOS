@@ -43,9 +43,7 @@ class BiglCollector:
     def launch_search(self, query: str) -> dict:
         """Open Bigl app and navigate to search."""
         self.adb.open_app()
-        self.adb.run(
-            f"am start -a android.intent.action.VIEW -d '{self.search_deep_link(query)}'"
-        )
+        self.adb.run(f"am start -a android.intent.action.VIEW -d '{self.search_deep_link(query)}'")
         return {"code": 0, "action": "search", "query": query}
 
     def collect(
@@ -63,11 +61,7 @@ class BiglCollector:
             if len(all_cards) >= max_cards:
                 break
             self.adb.dump_ui(filename)
-            xml_text = (
-                Path(filename).read_text(encoding="utf-8")
-                if Path(filename).exists()
-                else ""
-            )
+            xml_text = Path(filename).read_text(encoding="utf-8") if Path(filename).exists() else ""
             new_cards = self.parser.parse(xml_text, query=query)
             added = 0
             for card in new_cards:
@@ -93,16 +87,12 @@ class BiglCollector:
                 time.sleep(self.swipe_pause_s)
         return all_cards
 
-    def collect_to_storage(
-        self, storage, query: str | None = None, max_cards: int = 50
-    ) -> dict:
+    def collect_to_storage(self, storage, query: str | None = None, max_cards: int = 50) -> dict:
         """Collect cards and save to storage."""
         cards = self.collect(query=query, max_cards=max_cards)
         storage.save_ads(cards)
         return {
             "collected": len(cards),
             "new": len(cards),
-            "cards": [
-                {"title": c.title, "price": c.price, "url": c.url} for c in cards
-            ],
+            "cards": [{"title": c.title, "price": c.price, "url": c.url} for c in cards],
         }

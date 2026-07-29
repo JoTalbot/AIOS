@@ -69,9 +69,7 @@ class PerformanceProfiler:
                         name=name,
                         threshold_ms=self.alert_threshold_ms,
                         actual_ms=round(duration, 2),
-                        severity="critical"
-                        if duration > self.alert_threshold_ms * 3
-                        else "warning",
+                        severity="critical" if duration > self.alert_threshold_ms * 3 else "warning",
                     )
                 )
 
@@ -88,9 +86,7 @@ class PerformanceProfiler:
 
         return {"name": name, "duration_ms": round(duration, 4), "result": result}
 
-    def benchmark(
-        self, func: Callable, name: str = "", runs: int = 10
-    ) -> dict[str, Any]:
+    def benchmark(self, func: Callable, name: str = "", runs: int = 10) -> dict[str, Any]:
         """Benchmark a function over multiple runs."""
         name = name or func.__name__
         times = []
@@ -106,9 +102,7 @@ class PerformanceProfiler:
             "min_ms": round(min(times), 2),
             "max_ms": round(max(times), 2),
             "std_ms": round(
-                math.sqrt(
-                    sum((t - sum(times) / len(times)) ** 2 for t in times) / len(times)
-                ),
+                math.sqrt(sum((t - sum(times) / len(times)) ** 2 for t in times) / len(times)),
                 2,
             )
             if len(times) >= 2
@@ -134,13 +128,9 @@ class PerformanceProfiler:
         for name, times in self.measurements.items():
             avg = sum(times) / len(times)
             if avg > 100:
-                suggestions.append(
-                    f"{name}: Consider caching or async execution (avg {round(avg, 1)}ms)"
-                )
+                suggestions.append(f"{name}: Consider caching or async execution (avg {round(avg, 1)}ms)")
             if max(times) > min(times) * 3:
-                suggestions.append(
-                    f"{name}: High variance suggests inconsistent performance"
-                )
+                suggestions.append(f"{name}: High variance suggests inconsistent performance")
         return suggestions
 
     def stats(self) -> dict[str, Any]:

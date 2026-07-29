@@ -25,9 +25,7 @@ class QuantumNeuralNetwork:
     def __init__(self, qubits: int = 4, layers: int = 3) -> None:
         self.qubits = qubits
         self.layers = layers
-        self.params: list[float] = [
-            random.uniform(0, 2 * math.pi) for _ in range(qubits * layers)
-        ]
+        self.params: list[float] = [random.uniform(0, 2 * math.pi) for _ in range(qubits * layers)]
         self._training_history: list[float] = []
         self._best_loss: float = float("inf")
 
@@ -43,9 +41,7 @@ class QuantumNeuralNetwork:
             result += xi * math.cos(angle)
         return round(result / len(x[: self.qubits]) + random.gauss(0, 0.01), 4)
 
-    def train(
-        self, X: list[list[float]], y: list[float], epochs: int = 100
-    ) -> dict[str, Any]:
+    def train(self, X: list[list[float]], y: list[float], epochs: int = 100) -> dict[str, Any]:
         """Train QNN (backward-compatible)."""
         losses: list[float] = []
         for _epoch in range(epochs):
@@ -77,9 +73,7 @@ class QuantumNeuralNetwork:
         self.params[idx] = original
         return round((loss_plus - loss_minus) / (2 * delta), 4)
 
-    def transfer_learning(
-        self, source_params: list[float], freeze_ratio: float = 0.5
-    ) -> dict[str, Any]:
+    def transfer_learning(self, source_params: list[float], freeze_ratio: float = 0.5) -> dict[str, Any]:
         """Transfer learning: freeze bottom params, retrain top."""
         freeze_count = int(len(self.params) * freeze_ratio)
         for i in range(min(freeze_count, len(source_params))):
@@ -98,8 +92,7 @@ class QuantumNeuralNetwork:
             "epochs": len(self._training_history),
             "best_loss": round(self._best_loss, 4),
             "final_loss": round(self._training_history[-1], 4),
-            "convergence": abs(self._training_history[-1] - self._training_history[-5])
-            < 0.01
+            "convergence": abs(self._training_history[-1] - self._training_history[-5]) < 0.01
             if len(self._training_history) >= 5
             else False,
         }
@@ -117,9 +110,7 @@ class QuantumNeuralNetwork:
         """Compute quantum kernel matrix for sample pairs."""
         matrix = [
             [
-                round(random.uniform(0.5, 1.0), 3)
-                if i == j
-                else round(random.uniform(0.1, 0.5), 3)
+                round(random.uniform(0.5, 1.0), 3) if i == j else round(random.uniform(0.1, 0.5), 3)
                 for j in range(num_samples)
             ]
             for i in range(num_samples)

@@ -212,10 +212,7 @@ def test_hints_yaml_fragment_and_descriptor_roundtrip(tmp_path):
     try:
         load_catalog_file(catalog)
         descriptor = get_platform("demo")
-        assert (
-            descriptor.extras["parser_hints"]["card_markers"][0]["resource_id"]
-            == "com.demo:id/adCard"
-        )
+        assert descriptor.extras["parser_hints"]["card_markers"][0]["resource_id"] == "com.demo:id/adCard"
         assert descriptor.to_dict()["extras"]["parser_hints"]["currencies"] == {"UAH": 2}
     finally:
         descriptor_mod._PLATFORMS.pop("demo", None)

@@ -20,10 +20,8 @@ class FacebookCardParser(CardParser):
         if xml:
             import re
 
-            pattern = (
-                r'<node[^>]*resource-id="[^"]*({})[^"]*"[^>]*text="([^"]*)"'.format(
-                    "|".join(FB_CARD_RESOURCE_IDS)
-                )
+            pattern = r'<node[^>]*resource-id="[^"]*({})[^"]*"[^>]*text="([^"]*)"'.format(
+                "|".join(FB_CARD_RESOURCE_IDS)
             )
             matches = re.findall(pattern, xml, re.IGNORECASE)
 

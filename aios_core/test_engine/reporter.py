@@ -64,12 +64,14 @@ class TestReporter:
             f"AIOS Test Report: {report.report_id}",
             f"{'=' * 50}",
             f"Overall: {report.overall_status.upper()}",
-            (f"Suites: {report.total_suites}  "
-            f"Tests: {report.total_tests}  "
-            f"Passed: {report.total_passed}  "
-            f"Failed: {report.total_failed}  "
-            f"Errors: {report.total_errors}  "
-            f"Skipped: {report.total_skipped}"),
+            (
+                f"Suites: {report.total_suites}  "
+                f"Tests: {report.total_tests}  "
+                f"Passed: {report.total_passed}  "
+                f"Failed: {report.total_failed}  "
+                f"Errors: {report.total_errors}  "
+                f"Skipped: {report.total_skipped}"
+            ),
             f"Duration: {report.duration_ms:.1f}ms",
             "",
         ]
@@ -77,9 +79,7 @@ class TestReporter:
         for suite in report.suites:
             status_icon = "PASS" if suite.status == TestStatus.PASSED else "FAIL"
             lines.append(
-                f"  [{status_icon}] {suite.suite_name}: "
-                f"{suite.passed}/{suite.total} passed "
-                f"({suite.duration_ms:.1f}ms)"
+                f"  [{status_icon}] {suite.suite_name}: {suite.passed}/{suite.total} passed ({suite.duration_ms:.1f}ms)"
             )
 
         if report.failures:

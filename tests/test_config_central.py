@@ -1,4 +1,5 @@
 """Tests for centralised YAML config."""
+
 import os
 import tempfile
 from pathlib import Path
@@ -72,6 +73,15 @@ def test_generate_default_config():
 
 def test_all_sections_present():
     cfg = AIOSConfig()
-    for attr in ("database", "backup", "audit", "constitution", "policies",
-                 "logging", "pacing", "webhook", "platforms"):
+    for attr in (
+        "database",
+        "backup",
+        "audit",
+        "constitution",
+        "policies",
+        "logging",
+        "pacing",
+        "webhook",
+        "platforms",
+    ):
         assert hasattr(cfg, attr), f"Missing section: {attr}"

@@ -216,9 +216,7 @@ class MCPProtocol:
         return json.dumps(msg, ensure_ascii=False)
 
     @staticmethod
-    def encode_error(
-        id: str | int | None, code: int, message: str, data: Any = None
-    ) -> str:
+    def encode_error(id: str | int | None, code: int, message: str, data: Any = None) -> str:
         """Encode a JSON-RPC 2.0 error response.
 
         Args:
@@ -291,9 +289,7 @@ class MCPPrompt:
 
     name: str
     description: str = ""
-    arguments: list[dict] = field(
-        default_factory=list
-    )  # [{"name", "description", "required"}]
+    arguments: list[dict] = field(default_factory=list)  # [{"name", "description", "required"}]
 
 
 @dataclass
@@ -301,6 +297,4 @@ class MCPPromptResult:
     """Result of rendering a prompt template."""
 
     description: str = ""
-    messages: list[dict] = field(
-        default_factory=list
-    )  # [{"role": "user", "content": {...}}]
+    messages: list[dict] = field(default_factory=list)  # [{"role": "user", "content": {...}}]

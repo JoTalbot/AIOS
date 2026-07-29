@@ -85,18 +85,14 @@ class AppiumAndroidDriver(AndroidDriver):
         """Execute dump ui."""
         try:
             if self._driver is None:
-                return UIContext(
-                    xml="", package=self.config.package, current_activity=""
-                )
+                return UIContext(xml="", package=self.config.package, current_activity="")
             xml = self._driver.page_source
             current = ""
             try:  # noqa: SIM105
                 current = self._driver.current_activity or ""
             except Exception:
                 pass  # current_activity is best-effort metadata
-            return UIContext(
-                xml=xml, package=self.config.package, current_activity=current
-            )
+            return UIContext(xml=xml, package=self.config.package, current_activity=current)
         except Exception:
             return UIContext(
                 xml="",

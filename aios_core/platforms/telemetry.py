@@ -37,22 +37,13 @@ def _platform_db_metrics(data_dir: str) -> dict[str, dict[str, int]]:
         try:
             conn = _sqlite3.connect(f"file:{db_file}?mode=ro", uri=True)
             try:
-                tables = {
-                    row[0]
-                    for row in conn.execute(
-                        "SELECT name FROM sqlite_master WHERE type = 'table'"
-                    )
-                }
+                tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
                 if "olx_seen" in tables:
-                    for kind, count in conn.execute(
-                        "SELECT kind, COUNT(*) FROM olx_seen GROUP BY kind"
-                    ):
+                    for kind, count in conn.execute("SELECT kind, COUNT(*) FROM olx_seen GROUP BY kind"):
                         key = f"seen_{kind}"
                         entry[key] = entry.get(key, 0) + int(count)
                 if "olx_outbox" in tables:
-                    (pending,) = conn.execute(
-                        "SELECT COUNT(*) FROM olx_outbox WHERE status = 'pending'"
-                    ).fetchone()
+                    (pending,) = conn.execute("SELECT COUNT(*) FROM olx_outbox WHERE status = 'pending'").fetchone()
                     entry["outbox_pending"] = int(pending)
                 # cards collected from olx_ads or generic ads table
                 if "olx_ads" in tables:
@@ -62,9 +53,7 @@ def _platform_db_metrics(data_dir: str) -> dict[str, dict[str, int]]:
                 if "ads" in tables:
                     try:
                         (cards2,) = conn.execute("SELECT COUNT(*) FROM ads").fetchone()
-                        entry["cards_collected"] = entry.get(
-                            "cards_collected", 0
-                        ) + int(cards2)
+                        entry["cards_collected"] = entry.get("cards_collected", 0) + int(cards2)
                     except Exception:
                         pass  # Telemetry read from foreign DB — skip
             finally:
@@ -98,9 +87,7 @@ def _production_metrics() -> dict[str, object]:
             # cards collected ~= total_actions
             for profile_key, metrics in content.get("pacing_metrics", {}).items():
                 plat = profile_key.split(":")[0] if ":" in profile_key else "unknown"
-                data["cards_collected"][plat] = data["cards_collected"].get(
-                    plat, 0
-                ) + int(metrics.get("actions", 0))
+                data["cards_collected"][plat] = data["cards_collected"].get(plat, 0) + int(metrics.get("actions", 0))
                 data["cycle_duration"][profile_key] = metrics.get("session_s", 0)
             # drift from health
             health = content.get("health", {})
@@ -111,9 +98,7 @@ def _production_metrics() -> dict[str, object]:
             for daily in content.get("daily_reports", []):
                 for pkey in daily.get("profiles", {}):
                     plat = pkey.split(":")[0] if ":" in pkey else pkey
-                    data["drift_events"][plat] = data["drift_events"].get(
-                        plat, 0
-                    ) + int(daily.get("drifts", 0))
+                    data["drift_events"][plat] = data["drift_events"].get(plat, 0) + int(daily.get("drifts", 0))
             # cycle rate: total_cycles / 14 days = per day, /24 per hour
             total_cycles = sim.get("total_cycles", 0)
             if total_cycles:
@@ -129,9 +114,7 @@ def _production_metrics() -> dict[str, object]:
         try:
             cm = json.loads(cycle_file.read_text())
             for plat, val in cm.get("cards_collected", {}).items():
-                data["cards_collected"][plat] = data["cards_collected"].get(
-                    plat, 0
-                ) + int(val)
+                data["cards_collected"][plat] = data["cards_collected"].get(plat, 0) + int(val)
             for k, v in cm.get("drift_events", {}).items():
                 data["drift_events"][k] = data["drift_events"].get(k, 0) + int(v)
         except Exception:
@@ -200,9 +183,7 @@ def fleet_snapshot(
             all_profiles = store.list()
             per_platform: dict[str, int] = {}
             for profile in all_profiles:
-                per_platform[profile.platform] = (
-                    per_platform.get(profile.platform, 0) + 1
-                )
+                per_platform[profile.platform] = per_platform.get(profile.platform, 0) + 1
             profiles = {
                 "total": len(all_profiles),
                 "per_platform": per_platform,
@@ -218,10 +199,7 @@ def fleet_snapshot(
     return {
         "jobs": {
             "stats": jobs_stats,
-            "total": sum(
-                int(jobs_stats.get(k, 0) or 0)
-                for k in ("pending", "claimed", "done", "failed")
-            ),
+            "total": sum(int(jobs_stats.get(k, 0) or 0) for k in ("pending", "claimed", "done", "failed")),
         },
         "devices": devices,
         "profiles": profiles,
@@ -317,19 +295,13 @@ def prometheus_metrics(
         for key, count in sorted(entry.items()):
             if key.startswith("seen_"):
                 kind = key[len("seen_") :]
-                lines.append(
-                    f'aios_seen_receipts{{platform="{platform}",kind="{kind}"}} {count}'
-                )
+                lines.append(f'aios_seen_receipts{{platform="{platform}",kind="{kind}"}} {count}')
     lines += [
-        ("# HELP aios_outbox_pending Guarded outbox drafts awaiting "
-        "approval per platform"),
+        ("# HELP aios_outbox_pending Guarded outbox drafts awaiting approval per platform"),
         "# TYPE aios_outbox_pending gauge",
     ]
     for platform, entry in sorted(platform_db.items()):
-        lines.append(
-            f'aios_outbox_pending{{platform="{platform}"}} '
-            f"{entry.get('outbox_pending', 0)}"
-        )
+        lines.append(f'aios_outbox_pending{{platform="{platform}"}} {entry.get("outbox_pending", 0)}')
 
     # Extended metrics: cards collected, cycle rates, drift events (alpha.27 / H2.9)
     prod = _production_metrics()
@@ -343,9 +315,7 @@ def prometheus_metrics(
     # Also from platform_db if has cards_collected
     for platform, entry in sorted(platform_db.items()):
         if "cards_collected" in entry:
-            lines.append(
-                f'aios_cards_collected_total{{platform="{platform}"}} {entry["cards_collected"]}'
-            )
+            lines.append(f'aios_cards_collected_total{{platform="{platform}"}} {entry["cards_collected"]}')
 
     # Cycle rates
     cycle_rates = prod.get("cycle_rates", {})

@@ -22,7 +22,7 @@ class SMSSender:
                         self.api_url.format(sid=self.account_sid),
                         auth=(self.account_sid, self.auth_token),
                         data={"From": self.from_number, "To": number, "Body": body},
-                        timeout=10.0
+                        timeout=10.0,
                     )
                     results.append(response.status_code == 201)
             return all(results)

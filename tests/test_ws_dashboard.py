@@ -47,12 +47,14 @@ def test_dashboard_event_bus_init():
 def test_dashboard_event_bus_emit_price_drop():
     """emit_price_drop creates a PRICE_DROP message."""
     bus = DashboardEventBus()
-    msg = bus.emit_price_drop({
-        "fingerprint": "fp-iphone15",
-        "old_price": 30000,
-        "new_price": 28000,
-        "drop_pct": 6.67,
-    })
+    msg = bus.emit_price_drop(
+        {
+            "fingerprint": "fp-iphone15",
+            "old_price": 30000,
+            "new_price": 28000,
+            "drop_pct": 6.67,
+        }
+    )
     assert msg.type == WSMessageType.PRICE_DROP
     assert msg.payload["fingerprint"] == "fp-iphone15"
     assert msg.source == "fp-iphone15"
@@ -61,11 +63,13 @@ def test_dashboard_event_bus_emit_price_drop():
 def test_dashboard_event_bus_emit_autowatch():
     """emit_autowatch creates an AUTOWATCH_CYCLE message."""
     bus = DashboardEventBus()
-    msg = bus.emit_autowatch({
-        "platform": "rozetka",
-        "price_drop_alerts": [],
-        "stagnant": [],
-    })
+    msg = bus.emit_autowatch(
+        {
+            "platform": "rozetka",
+            "price_drop_alerts": [],
+            "stagnant": [],
+        }
+    )
     assert msg.type == WSMessageType.AUTOWATCH_CYCLE
     assert msg.payload["platform"] == "rozetka"
     assert msg.source == "rozetka"
@@ -74,11 +78,13 @@ def test_dashboard_event_bus_emit_autowatch():
 def test_dashboard_event_bus_emit_cross_platform():
     """emit_cross_platform creates a CROSS_PLATFORM message."""
     bus = DashboardEventBus()
-    msg = bus.emit_cross_platform({
-        "group_id": "cmp_12345",
-        "platforms": ["olx", "rozetka"],
-        "lowest_price": 28000,
-    })
+    msg = bus.emit_cross_platform(
+        {
+            "group_id": "cmp_12345",
+            "platforms": ["olx", "rozetka"],
+            "lowest_price": 28000,
+        }
+    )
     assert msg.type == WSMessageType.CROSS_PLATFORM
     assert msg.payload["group_id"] == "cmp_12345"
     assert msg.source == "cmp_12345"
@@ -96,7 +102,7 @@ def test_dashboard_event_bus_buffer():
         )
         bus._buffer.append(msg)
         if len(bus._buffer) > bus._buffer_size:
-            bus._buffer = bus._buffer[-bus._buffer_size:]
+            bus._buffer = bus._buffer[-bus._buffer_size :]
 
     assert len(bus._buffer) == 5
     # Buffer should contain last 5 messages (iterations 2-6)

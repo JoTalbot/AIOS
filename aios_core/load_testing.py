@@ -46,9 +46,7 @@ class LoadTester:
         self._profiles: list[LoadProfile] = []
         self._errors: int = 0
 
-    def run(
-        self, func: Callable, concurrent_users: int = 10, duration_seconds: int = 30
-    ) -> dict[str, Any]:
+    def run(self, func: Callable, concurrent_users: int = 10, duration_seconds: int = 30) -> dict[str, Any]:
         """Run load test (backward-compatible + enhanced)."""
         self.results = []
         self._errors = 0
@@ -83,9 +81,7 @@ class LoadTester:
             "p95_ms": round(sorted(self.results)[int(len(self.results) * 0.95)], 2),
             "p99_ms": round(sorted(self.results)[int(len(self.results) * 0.99)], 2),
             "errors": self._errors,
-            "error_rate": round(
-                self._errors / max(self._errors + len(self.results), 1), 4
-            ),
+            "error_rate": round(self._errors / max(self._errors + len(self.results), 1), 4),
         }
 
     def run_with_ramp_up(self, func: Callable, profile: LoadProfile) -> dict[str, Any]:
@@ -132,9 +128,7 @@ class LoadTester:
             "errors": self._errors,
         }
 
-    def compare_profiles(
-        self, func: Callable, profiles: list[LoadProfile]
-    ) -> list[dict[str, Any]]:
+    def compare_profiles(self, func: Callable, profiles: list[LoadProfile]) -> list[dict[str, Any]]:
         """Compare different load profiles."""
         comparisons: list[dict[str, Any]] = []
         for profile in profiles:

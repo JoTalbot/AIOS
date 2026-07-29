@@ -62,9 +62,7 @@ class TTLCache:
 
     # ── Core Operations ─────────────────────────────────────────────
 
-    def set(
-        self, key: str, value: Any, ttl: int | None = None, namespace: str = "default"
-    ) -> None:
+    def set(self, key: str, value: Any, ttl: int | None = None, namespace: str = "default") -> None:
         """Set a cache entry with optional TTL and namespace."""
         expiry = time.time() + (ttl or self.default_ttl)
 
@@ -173,9 +171,7 @@ class TTLCache:
 
     # ── Bulk Operations ──────────────────────────────────────────────
 
-    def set_many(
-        self, items: dict[str, Any], ttl: int | None = None, namespace: str = "default"
-    ) -> None:
+    def set_many(self, items: dict[str, Any], ttl: int | None = None, namespace: str = "default") -> None:
         """Set multiple cache entries."""
         for key, value in items.items():
             self.set(key, value, ttl, namespace)

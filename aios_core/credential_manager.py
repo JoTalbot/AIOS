@@ -382,9 +382,7 @@ class CredentialManager:
         Returns:
             Updated CredentialEntry, or None.
         """
-        return self.rotate(
-            credential_id, new_value, reason="compromise", rotated_by=rotated_by
-        )
+        return self.rotate(credential_id, new_value, reason="compromise", rotated_by=rotated_by)
 
     def deactivate(self, credential_id: str) -> CredentialEntry | None:
         """Deactivate a credential.
@@ -455,9 +453,7 @@ class CredentialManager:
                     is_active=entry.is_active,
                     age_days=round(entry.age_days, 1),
                     needs_rotation=entry.needs_rotation,
-                    days_until_expiry=round(entry.days_until_expiry, 1)
-                    if entry.days_until_expiry
-                    else None,
+                    days_until_expiry=round(entry.days_until_expiry, 1) if entry.days_until_expiry else None,
                 )
             )
 

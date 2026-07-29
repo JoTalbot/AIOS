@@ -106,9 +106,7 @@ class InstagramLoginDriver:
         """
         opened = self.adb.open_app()
         if opened.get("code") != 0:
-            raise ValueError(
-                f"adb open_app failed: {(opened.get('stderr') or 'no device')[:160]}"
-            )
+            raise ValueError(f"adb open_app failed: {(opened.get('stderr') or 'no device')[:160]}")
         time.sleep(self.open_wait_s)
         xml = self._dump()
         if login_screen_detected(xml):
@@ -147,8 +145,5 @@ class InstagramLoginDriver:
             target = Path(tmp) / "screen.xml"
             result = self.adb.dump_ui(str(target))
             if result.get("code") != 0 or not target.exists():
-                raise ValueError(
-                    "adb dump_ui failed: "
-                    f"{(result.get('stderr') or 'dump unavailable')[:160]}"
-                )
+                raise ValueError(f"adb dump_ui failed: {(result.get('stderr') or 'dump unavailable')[:160]}")
             return target.read_text(encoding="utf-8")

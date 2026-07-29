@@ -6,11 +6,12 @@ import stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
+
 class StripeService:
     def __init__(self):
         self.prices = {
             "pro": os.getenv("STRIPE_PRICE_PRO", "price_pro_mock"),
-            "enterprise": os.getenv("STRIPE_PRICE_ENT", "price_ent_mock")
+            "enterprise": os.getenv("STRIPE_PRICE_ENT", "price_ent_mock"),
         }
 
     def create_customer(self, email: str, name: str) -> str:
@@ -31,17 +32,18 @@ class StripeService:
     def handle_webhook(self, payload: bytes, sig_header: str) -> dict[str, Any]:
         try:
             event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-            
+
             if event["type"] == "checkout.session.completed":
                 session = event["data"]["object"]
                 return {"status": "success", "action": "subscription_created", "customer": session["customer"]}
-            
+
             elif event["type"] == "customer.subscription.deleted":
                 sub = event["data"]["object"]
                 return {"status": "success", "action": "subscription_canceled", "customer": sub["customer"]}
-                
+
             return {"status": "ignored", "type": event["type"]}
         except stripe.error.SignatureVerificationError:
             return {"status": "error", "message": "Invalid signature"}
+
 
 stripe_service = StripeService()

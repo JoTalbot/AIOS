@@ -169,10 +169,7 @@ def test_secret_env_precedence(monkeypatch):
     assert secret("instagram", "USERNAME", profile="work") == "prof-user"
     assert secret("instagram", "PASSWORD") is None
     assert secret("instagram", "PASSWORD", default="fallback") == "fallback"
-    assert (
-        env_name("instagram", "PASSWORD", profile="work")
-        == "AIOS_SECRET__INSTAGRAM__WORK__PASSWORD"
-    )
+    assert env_name("instagram", "PASSWORD", profile="work") == "AIOS_SECRET__INSTAGRAM__WORK__PASSWORD"
 
 
 def test_required_secret_errors_with_env_name(monkeypatch):
@@ -186,9 +183,7 @@ def test_required_secret_errors_with_env_name(monkeypatch):
 def test_load_secrets_file_no_override_by_default(tmp_path, monkeypatch):
     secrets_file = tmp_path / "secrets.env"
     secrets_file.write_text(
-        "# comment\n"
-        "AIOS_SECRET__INSTAGRAM__USERNAME='file-user'\n"
-        "AIOS_SECRET__INSTAGRAM__PASSWORD=file-pass\n",
+        "# comment\nAIOS_SECRET__INSTAGRAM__USERNAME='file-user'\nAIOS_SECRET__INSTAGRAM__PASSWORD=file-pass\n",
         encoding="utf-8",
     )
     monkeypatch.setenv("AIOS_SECRET__INSTAGRAM__USERNAME", "env-user")
@@ -226,9 +221,7 @@ def test_detail_advisor_finds_price_seller_cta():
 
 
 def test_detail_advisor_empty_screen_hint():
-    hints = DetailCalibrationAdvisor().analyze_detail(
-        "<hierarchy><node text='' resource-id=''/></hierarchy>"
-    )
+    hints = DetailCalibrationAdvisor().analyze_detail("<hierarchy><node text='' resource-id=''/></hierarchy>")
     assert hints["price_nodes"] == []
     assert "не распознан" in hints["hint"]
 
@@ -531,9 +524,7 @@ def test_instagram_drive_logs_in_and_returns_feed(monkeypatch):
     inputs = [c for c in adb.calls if isinstance(c, tuple)]
     assert inputs == [("input_text", "u@example.com"), ("input_text", "p@ss")]
     assert any("keyevent 61" in c for c in adb.calls if isinstance(c, str))  # TAB между полями
-    assert any(
-        "keyevent 66" in c for c in adb.calls if isinstance(c, str)
-    )  # ENTER — отправка формы
+    assert any("keyevent 66" in c for c in adb.calls if isinstance(c, str))  # ENTER — отправка формы
 
 
 def test_instagram_drive_without_credentials_explains_env(monkeypatch):

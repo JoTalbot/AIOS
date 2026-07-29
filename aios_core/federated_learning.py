@@ -41,6 +41,7 @@ class NodeStatus(StrEnum):
 @dataclass
 class EdgeProfile:
     """Hardware and network profile of an edge node."""
+
     compute_gflops: float = 10.0
     bandwidth_mbps: float = 50.0
     battery_level: float = 1.0  # 0.0 to 1.0
@@ -90,15 +91,15 @@ class GlobalModel:
 
 class SecureAggregator:
     """Simulates Secure Aggregation (SecAgg) via secret sharing / masking."""
-    
+
     def __init__(self):
         self.active_masks: dict[str, float] = {}
-        
+
     def generate_mask(self, node_id: str) -> float:
         mask = random.uniform(-10.0, 10.0)
         self.active_masks[node_id] = mask
         return mask
-        
+
     def unmask_aggregate(self, masked_sum: float, node_ids: list[str]) -> float:
         total_mask = sum(self.active_masks.get(nid, 0.0) for nid in node_ids)
         # Clear used masks
@@ -109,11 +110,11 @@ class SecureAggregator:
 
 class LocalDifferentialPrivacy:
     """Applies LDP (Local Differential Privacy) noise to gradients."""
-    
+
     def __init__(self, epsilon: float = 2.0, delta: float = 1e-5):
         self.epsilon = epsilon
         self.delta = delta
-        
+
     def apply_gaussian_noise(self, value: float, sensitivity: float = 1.0) -> float:
         """Inject Gaussian noise based on epsilon budget."""
         # Standard deviation for Gaussian mechanism
@@ -125,21 +126,16 @@ class LocalDifferentialPrivacy:
 class FederatedLearning:
     """Full Edge FL coordinator with async aggregation, privacy, and client selection."""
 
-    def __init__(
-        self, 
-        total_epsilon: float = 100.0,
-        async_mode: bool = False,
-        enable_sec_agg: bool = True
-    ) -> None:
+    def __init__(self, total_epsilon: float = 100.0, async_mode: bool = False, enable_sec_agg: bool = True) -> None:
         self.nodes: dict[str, FederatedNode] = {}
         self.global_model: GlobalModel = GlobalModel()
         self.rounds: list[AggregationResult] = []
-        
+
         self.async_mode = async_mode
         self.enable_sec_agg = enable_sec_agg
         self.sec_aggregator = SecureAggregator()
         self.ldp = LocalDifferentialPrivacy()
-        
+
         self._current_round: int = 0
         self._epsilon_budget: float = total_epsilon
         self._epsilon_consumed: float = 0.0
@@ -149,17 +145,10 @@ class FederatedLearning:
     # ── Node Management ─────────────────────────────────────────
 
     def register_node(
-        self, 
-        node_id: str, 
-        capabilities: list[str] | None = None,
-        profile: EdgeProfile | None = None
+        self, node_id: str, capabilities: list[str] | None = None, profile: EdgeProfile | None = None
     ) -> FederatedNode:
         """Register a participating edge node."""
-        node = FederatedNode(
-            node_id=node_id, 
-            capabilities=capabilities or [],
-            profile=profile or EdgeProfile()
-        )
+        node = FederatedNode(node_id=node_id, capabilities=capabilities or [], profile=profile or EdgeProfile())
         self.nodes[node_id] = node
         return node
 
@@ -193,9 +182,9 @@ class FederatedLearning:
         available = [n for n in self.nodes.values() if n.is_available()]
         if not available:
             return []
-            
+
         k = max(1, int(len(available) * fraction))
-        
+
         if strategy == "resource_aware":
             # Select nodes with best battery and reliability
             available.sort(key=lambda n: n.profile.battery_level * n.profile.reliability_score, reverse=True)
@@ -204,7 +193,7 @@ class FederatedLearning:
             # Select nodes with highest compute
             available.sort(key=lambda n: n.profile.compute_gflops, reverse=True)
             return available[:k]
-        else: # Random
+        else:  # Random
             return random.sample(available, k)
 
     # ── Training Rounds ──────────────────────────────────────────
@@ -213,12 +202,12 @@ class FederatedLearning:
         """Start a new training round and select clients."""
         self._current_round += 1
         self.prune_stale_nodes()
-        
+
         selected_nodes = self.select_clients(strategy=selection_strategy, fraction=fraction)
-        
+
         for node in selected_nodes:
             node.status = NodeStatus.TRAINING
-            
+
             # If secure aggregation is enabled, distribute masks
             if self.enable_sec_agg:
                 self.sec_aggregator.generate_mask(node.node_id)
@@ -233,7 +222,7 @@ class FederatedLearning:
         local_accuracy: float,
         samples_count: int,
         parameters: dict[str, Any] | None = None,
-        apply_ldp: bool = False
+        apply_ldp: bool = False,
     ) -> None:
         """Submit local model update from an edge node."""
         node = self.nodes.get(node_id)
@@ -255,7 +244,7 @@ class FederatedLearning:
 
         # Consume global epsilon for privacy tracking
         self._epsilon_consumed += self.ldp.epsilon if apply_ldp else 1.0
-        
+
         # Async aggregation: update global model immediately on reception
         if self.async_mode:
             self._aggregate_async(node)
@@ -265,13 +254,13 @@ class FederatedLearning:
     def _aggregate_async(self, node: FederatedNode) -> None:
         """FedAsync: blend incoming stale gradient with current global model."""
         staleness = self.global_model.version - node.model_version
-        alpha = 0.5 * math.exp(-0.1 * staleness) # Mixing hyperparameter decaying by staleness
-        
+        alpha = 0.5 * math.exp(-0.1 * staleness)  # Mixing hyperparameter decaying by staleness
+
         new_accuracy = (1 - alpha) * self.global_model.accuracy + alpha * node.local_accuracy
-        
+
         self.global_model.version += 1
         self.global_model.accuracy = new_accuracy
-        
+
         # Update current round
         if self.rounds:
             last = self.rounds[-1]
@@ -287,11 +276,10 @@ class FederatedLearning:
         """Aggregate model updates using FedAvg (weighted average)."""
         if self.async_mode:
             return self.global_model
-            
+
         # Use node data for aggregation
         updated_nodes = [
-            n for n in self.nodes.values() 
-            if n.last_update > 0 and n.model_version == self.global_model.version
+            n for n in self.nodes.values() if n.last_update > 0 and n.model_version == self.global_model.version
         ]
         total_samples = sum(n.samples_count for n in updated_nodes)
 
@@ -331,11 +319,8 @@ class FederatedLearning:
         """Check if model has converged."""
         if len(self.rounds) < 3:
             return False
-            
-        deltas = [
-            abs(self.rounds[i].global_accuracy - self.rounds[i-1].global_accuracy)
-            for i in range(-1, -3, -1)
-        ]
+
+        deltas = [abs(self.rounds[i].global_accuracy - self.rounds[i - 1].global_accuracy) for i in range(-1, -3, -1)]
         return all(d < self._convergence_threshold for d in deltas)
 
     # ── Queries & Stats ──────────────────────────────────────────
@@ -367,5 +352,5 @@ class FederatedLearning:
             "epsilon_remaining": round(self.privacy_budget_remaining(), 2),
             "converged": self._check_convergence(),
             "async_mode": self.async_mode,
-            "sec_agg_enabled": self.enable_sec_agg
+            "sec_agg_enabled": self.enable_sec_agg,
         }

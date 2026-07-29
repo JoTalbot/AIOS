@@ -12,17 +12,30 @@ from aios_core.seller_reputation import (
 
 
 def _card(title: str, price: float, ad_id: str = "", city: str = "Kyiv") -> AdCard:
-    return AdCard(title=title, price=price, currency="UAH", city=city,
-                  published_text="today", is_top=False, url=f"https://test.ua/{title}",
-                  ad_id=ad_id or f"id-{title}", query="test", raw_texts=[title])
+    return AdCard(
+        title=title,
+        price=price,
+        currency="UAH",
+        city=city,
+        published_text="today",
+        is_top=False,
+        url=f"https://test.ua/{title}",
+        ad_id=ad_id or f"id-{title}",
+        query="test",
+        raw_texts=[title],
+    )
 
 
 def test_seller_score_dataclass():
     """SellerScore has all fields."""
     score = SellerScore(
-        seller_id="seller1", composite_score=75.0, grade="B",
-        response_time_score=50, listing_quality_score=80,
-        price_consistency_score=70, activity_score=60,
+        seller_id="seller1",
+        composite_score=75.0,
+        grade="B",
+        response_time_score=50,
+        listing_quality_score=80,
+        price_consistency_score=70,
+        activity_score=60,
     )
     d = score.to_dict()
     assert d["seller_id"] == "seller1"
@@ -49,11 +62,13 @@ def test_seller_reputation_empty():
 def test_seller_reputation_single_seller():
     """Scorer computes score for a seller with ads."""
     storage = OLXStorage(":memory:")
-    storage.save_ads([
-        _card("iPhone 15", 30000, ad_id="seller1"),
-        _card("iPhone 16", 35000, ad_id="seller1"),
-        _card("MacBook", 50000, ad_id="seller1"),
-    ])
+    storage.save_ads(
+        [
+            _card("iPhone 15", 30000, ad_id="seller1"),
+            _card("iPhone 16", 35000, ad_id="seller1"),
+            _card("MacBook", 50000, ad_id="seller1"),
+        ]
+    )
     scorer = SellerReputationScorer(storage)
     score = scorer.score_seller("seller1")
 
@@ -96,10 +111,12 @@ def test_seller_reputation_price_consistency():
 def test_seller_reputation_score_all():
     """score_all_sellers returns list sorted by score."""
     storage = OLXStorage(":memory:")
-    storage.save_ads([
-        _card("Product A", 100, ad_id="seller_a"),
-        _card("Product B", 500, ad_id="seller_b"),
-    ])
+    storage.save_ads(
+        [
+            _card("Product A", 100, ad_id="seller_a"),
+            _card("Product B", 500, ad_id="seller_b"),
+        ]
+    )
     scorer = SellerReputationScorer(storage)
     scores = scorer.score_all_sellers()
     assert len(scores) >= 1

@@ -203,14 +203,8 @@ def test_post_composer_confirm_full_flow(tmp_path):
     assert result["status"] == "published"
     actions = [step["action"] for step in result["steps"]]
     assert actions == ["push", "open_create", "tap_next", "input_caption", "tap_share"]
-    assert any(
-        "instagram://library" in c and "adb -s emulator-5557" in c
-        for c in adb.calls
-        if isinstance(c, str)
-    )
-    assert any(
-        "push" in c and "/sdcard/aios_post_input.jpg" in c for c in adb.calls if isinstance(c, str)
-    )
+    assert any("instagram://library" in c and "adb -s emulator-5557" in c for c in adb.calls if isinstance(c, str))
+    assert any("push" in c and "/sdcard/aios_post_input.jpg" in c for c in adb.calls if isinstance(c, str))
     assert ("input_text", "Нові кросівки!") in adb.calls
     assert adb.calls.count(("tap", 540, 150)) == 2
 

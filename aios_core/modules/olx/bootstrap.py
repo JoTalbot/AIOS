@@ -19,13 +19,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-PLATFORM_TOOLS_URL = (
-    "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
-)
-CMDLINE_TOOLS_URL = (
-    "https://dl.google.com/android/repository/"
-    "commandlinetools-linux-11076708_latest.zip"
-)
+PLATFORM_TOOLS_URL = "https://dl.google.com/android/repository/platform-tools-latest-linux.zip"
+CMDLINE_TOOLS_URL = "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
 ADBKEYBOARD_URL = "https://github.com/senzhk/ADBKeyBoard/raw/master/ADBKeyboard.apk"
 SDK_ROOT = "/opt/android-sdk"
 SYSTEM_IMAGE = "system-images;android-34;google_apis;x86_64"
@@ -151,11 +146,15 @@ class OLXBootstrap:
                     "Android SDK cmdline-tools — керування образами й AVD",
                     [
                         f"wget -q {CMDLINE_TOOLS_URL} -O {self.workdir}/cmdline-tools.zip",
-                        (f"sudo mkdir -p {SDK_ROOT}/cmdline-tools && "
-                        f"unzip -o -q {self.workdir}/cmdline-tools.zip -d {self.workdir}/cmdline-tools"),
-                        (f"sudo mkdir -p {SDK_ROOT}/cmdline-tools/latest && "
-                        f"sudo cp -r {self.workdir}/cmdline-tools/cmdline-tools/* "
-                        f"{SDK_ROOT}/cmdline-tools/latest/"),
+                        (
+                            f"sudo mkdir -p {SDK_ROOT}/cmdline-tools && "
+                            f"unzip -o -q {self.workdir}/cmdline-tools.zip -d {self.workdir}/cmdline-tools"
+                        ),
+                        (
+                            f"sudo mkdir -p {SDK_ROOT}/cmdline-tools/latest && "
+                            f"sudo cp -r {self.workdir}/cmdline-tools/cmdline-tools/* "
+                            f"{SDK_ROOT}/cmdline-tools/latest/"
+                        ),
                     ],
                 )
             )
@@ -165,8 +164,10 @@ class OLXBootstrap:
                     "Емулятор + системний образ Android 34 (x86_64)",
                     [
                         f"yes | {SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --licenses",
-                        (f"{SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager "
-                        f"'platform-tools' 'emulator' '{SYSTEM_IMAGE}'"),
+                        (
+                            f"{SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager "
+                            f"'platform-tools' 'emulator' '{SYSTEM_IMAGE}'"
+                        ),
                     ],
                 )
             )
@@ -175,8 +176,10 @@ class OLXBootstrap:
                     "create-avd",
                     f"Створити headless-AVD «{AVD_NAME}»",
                     [
-                        (f"echo no | {SDK_ROOT}/cmdline-tools/latest/bin/avdmanager "
-                        f"create avd -n {AVD_NAME} -k '{SYSTEM_IMAGE}' --device 'pixel_6'")
+                        (
+                            f"echo no | {SDK_ROOT}/cmdline-tools/latest/bin/avdmanager "
+                            f"create avd -n {AVD_NAME} -k '{SYSTEM_IMAGE}' --device 'pixel_6'"
+                        )
                     ],
                 )
             )
@@ -185,11 +188,12 @@ class OLXBootstrap:
                     "start-emulator",
                     "Запуск емулятора у фоні (headless) й очікування завантаження",
                     [
-                        (f"nohup {SDK_ROOT}/emulator/emulator -avd {AVD_NAME} "
-                        f"-no-window -no-audio -no-snapshot-save &"),
+                        (
+                            f"nohup {SDK_ROOT}/emulator/emulator -avd {AVD_NAME} "
+                            f"-no-window -no-audio -no-snapshot-save &"
+                        ),
                         "adb wait-for-device",
-                        ("adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do "
-                        "sleep 2; done'"),
+                        ("adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 2; done'"),
                     ],
                 )
             )
@@ -203,9 +207,7 @@ class OLXBootstrap:
                     + (
                         [f"adb install -r {olx_apk}"]
                         if olx_apk
-                        else [
-                            "# Встановіть OLX: adb install -r olx.apk (або з Play Store вручну)"
-                        ]
+                        else ["# Встановіть OLX: adb install -r olx.apk (або з Play Store вручну)"]
                     )
                     + [
                         "adb shell ime set com.android.adbkeyboard/.AdbIME",
@@ -265,11 +267,7 @@ class OLXBootstrap:
             DoctorCheck(
                 "adb_installed",
                 adb_ok,
-                (
-                    ""
-                    if adb_ok
-                    else "Встановіть platform-tools (bootstrap: platform-tools)"
-                ),
+                ("" if adb_ok else "Встановіть platform-tools (bootstrap: platform-tools)"),
             )
         )
 
@@ -284,8 +282,7 @@ class OLXBootstrap:
                     (
                         ""
                         if online
-                        else "Підключіть телефон або запустіть емулятор "
-                        f"(bootstrap: start-emulator → AVD {AVD_NAME})"
+                        else f"Підключіть телефон або запустіть емулятор (bootstrap: start-emulator → AVD {AVD_NAME})"
                     ),
                 )
             )
@@ -305,21 +302,14 @@ class OLXBootstrap:
                     DoctorCheck(
                         "adbkeyboard_ime",
                         ime_ok,
-                        (
-                            ""
-                            if ime_ok
-                            else "adb shell ime set com.android.adbkeyboard/.AdbIME"
-                        ),
+                        ("" if ime_ok else "adb shell ime set com.android.adbkeyboard/.AdbIME"),
                     )
                 )
 
         try:
-
             checks.append(DoctorCheck("python_module", True))
         except Exception as exc:
-            checks.append(
-                DoctorCheck("python_module", False, f"pip install -e . ({exc})")
-            )
+            checks.append(DoctorCheck("python_module", False, f"pip install -e . ({exc})"))
 
         try:
             from .storage import OLXStorage

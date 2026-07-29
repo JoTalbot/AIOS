@@ -476,9 +476,7 @@ class TestResources:
     def test_list_resources(self):
         reg = ResourceRegistry()
         reg.register(ResourceDefinition(uri="test://a", name="A", provider=lambda: ""))
-        reg.register(
-            ResourceDefinition(uri="test://b", name="B", description="Desc", provider=lambda: "")
-        )
+        reg.register(ResourceDefinition(uri="test://b", name="B", description="Desc", provider=lambda: ""))
         resources = reg.list_resources()
         assert len(resources) == 2
         uris = {r["uri"] for r in resources}
@@ -523,15 +521,9 @@ class TestResources:
 
     def test_stats(self):
         reg = ResourceRegistry()
-        reg.register(
-            ResourceDefinition(uri="test://s1", name="S1", category="cat_a", provider=lambda: "")
-        )
-        reg.register(
-            ResourceDefinition(uri="test://s2", name="S2", category="cat_a", provider=lambda: "")
-        )
-        reg.register(
-            ResourceDefinition(uri="test://s3", name="S3", category="cat_b", provider=lambda: "")
-        )
+        reg.register(ResourceDefinition(uri="test://s1", name="S1", category="cat_a", provider=lambda: ""))
+        reg.register(ResourceDefinition(uri="test://s2", name="S2", category="cat_a", provider=lambda: ""))
+        reg.register(ResourceDefinition(uri="test://s3", name="S3", category="cat_b", provider=lambda: ""))
         st = reg.stats()
         assert st["total"] == 3
         assert st["by_category"]["cat_a"] == 2

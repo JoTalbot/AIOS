@@ -130,6 +130,7 @@ python -m pytest -q -k "not real_device"
 import pytest
 from aios_core.your_module import YourClass
 
+
 class TestYourClass:
     def test_basic_functionality(self):
         obj = YourClass()

@@ -48,9 +48,7 @@ class RobotInterface:
         """Read sensor data (backward-compatible + enhanced)."""
         # Generate simulated sensor reading
         value = random.uniform(0, 100)
-        reading = SensorReading(
-            sensor_type=sensor, value=value, confidence=random.uniform(0.8, 1.0)
-        )
+        reading = SensorReading(sensor_type=sensor, value=value, confidence=random.uniform(0.8, 1.0))
         self.sensors[sensor] = reading
         return reading
 
@@ -148,9 +146,7 @@ class EmbodiedAI:
             "pending_tasks": len(self._task_queue),
         }
 
-    def path_plan(
-        self, robot_id: str, goal: dict[str, float]
-    ) -> list[dict[str, float]]:
+    def path_plan(self, robot_id: str, goal: dict[str, float]) -> list[dict[str, float]]:
         """Simple path planning: straight line waypoints."""
         if robot_id not in self.robots:
             return []

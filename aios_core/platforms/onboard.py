@@ -78,8 +78,7 @@ def onboard_package(
     if report.get("status") != "ready":
         if not dump_path and driver is None:
             next_commands.append(
-                "# калибровка: получить search-дамп с устройства и "
-                "повторить: aios onboard {apk} --dump dump.xml"
+                "# калибровка: получить search-дамп с устройства и повторить: aios onboard {apk} --dump dump.xml"
             )
         next_commands.append(f"aios platforms doctor --platform {platform or '<name>'}")
     else:

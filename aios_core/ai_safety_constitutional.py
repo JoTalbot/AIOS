@@ -67,9 +67,7 @@ class ConstitutionalAI:
         self.constitution = constitution or list(DEFAULT_CONSTITUTION)
         self.violations: list[dict[str, Any]] = []
         self._principles: list[Principle] = [
-            Principle(
-                text=p, priority=i + 1, enforcement="strict" if i < 3 else "advisory"
-            )
+            Principle(text=p, priority=i + 1, enforcement="strict" if i < 3 else "advisory")
             for i, p in enumerate(self.constitution)
         ]
         self._critique_history: list[CritiqueResult] = []
@@ -82,16 +80,12 @@ class ConstitutionalAI:
             principle_lower = principle.text.lower()
             output_lower = output.lower()
             if (
-                ("harm" in principle_lower
-                and ("harm" in output_lower or "danger" in output_lower))
-                or ("deception" in principle_lower
-                and (
-                    "lie" in output_lower
-                    or "deceive" in output_lower
-                    or "trick" in output_lower
-                ))
-                or ("privacy" in principle_lower
-                and ("personal data" in output_lower or "tracking" in output_lower))
+                ("harm" in principle_lower and ("harm" in output_lower or "danger" in output_lower))
+                or (
+                    "deception" in principle_lower
+                    and ("lie" in output_lower or "deceive" in output_lower or "trick" in output_lower)
+                )
+                or ("privacy" in principle_lower and ("personal data" in output_lower or "tracking" in output_lower))
             ):
                 violations.append(principle.text)
                 principle.violations += 1
@@ -106,11 +100,7 @@ class ConstitutionalAI:
             if "harm" in violation.lower():
                 revised = revised.replace("harm", "safety").replace("danger", "caution")
             elif "deception" in violation.lower():
-                revised = (
-                    revised.replace("lie", "truth")
-                    .replace("deceive", "inform")
-                    .replace("trick", "explain")
-                )
+                revised = revised.replace("lie", "truth").replace("deceive", "inform").replace("trick", "explain")
             elif "privacy" in violation.lower():
                 revised = revised.replace("personal data", "anonymized data").replace(
                     "tracking", "monitoring with consent"
@@ -147,14 +137,10 @@ class ConstitutionalAI:
         return {
             "adversarial_prompts": len(adversarial_prompts),
             "violations_found": len(violations_found),
-            "defense_success_rate": round(
-                1 - len(violations_found) / max(len(adversarial_prompts) * 3, 1), 2
-            ),
+            "defense_success_rate": round(1 - len(violations_found) / max(len(adversarial_prompts) * 3, 1), 2),
         }
 
-    def add_principle(
-        self, text: str, priority: int = 5, enforcement: str = "advisory"
-    ) -> Principle:
+    def add_principle(self, text: str, priority: int = 5, enforcement: str = "advisory") -> Principle:
         """Add a new constitutional principle."""
         principle = Principle(text=text, priority=priority, enforcement=enforcement)
         self._principles.append(principle)

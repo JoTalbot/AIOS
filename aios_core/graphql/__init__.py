@@ -83,9 +83,7 @@ class GraphQLSchema:
 
     # ── Query Execution ──────────────────────────────────────────
 
-    def execute(
-        self, query: str, context: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def execute(self, query: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Execute a GraphQL-like query string.
 
         Parses field names from the query and resolves them.
@@ -127,9 +125,7 @@ class GraphQLSchema:
             result["errors"] = errors
         return result
 
-    def execute_mutation(
-        self, mutation: str, context: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def execute_mutation(self, mutation: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Execute a mutation."""
         context = context or {}
         # Parse mutation name

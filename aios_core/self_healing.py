@@ -91,9 +91,7 @@ class HealthMonitor:
     def __init__(self) -> None:
         self.checks: dict[str, HealthCheck] = {}
 
-    def register(
-        self, name: str, check_fn: Callable[[], bool], interval: float = 30.0
-    ) -> None:
+    def register(self, name: str, check_fn: Callable[[], bool], interval: float = 30.0) -> None:
         """Register a health check."""
         self.checks[name] = HealthCheck(name=name, check_fn=check_fn, interval=interval)
 
@@ -110,9 +108,7 @@ class HealthMonitor:
 
     def unhealthy_services(self) -> list[str]:
         """Return names of services currently unhealthy."""
-        return [
-            name for name, check in self.checks.items() if not check.cached_result()
-        ]
+        return [name for name, check in self.checks.items() if not check.cached_result()]
 
 
 # ── Self-Healing ─────────────────────────────────────────────────────────────
@@ -126,9 +122,7 @@ class SelfHealing:
     diagnostic analysis, and recovery history tracking.
     """
 
-    def __init__(
-        self, max_recovery_attempts: int = 3, escalation_threshold: int = 2
-    ) -> None:
+    def __init__(self, max_recovery_attempts: int = 3, escalation_threshold: int = 2) -> None:
         """Initialize SelfHealing.
 
         Args:
@@ -153,9 +147,7 @@ class SelfHealing:
         self.recovery_strategies[error_type] = strategy
         self.strategy_levels[error_type] = level
 
-    def register_health_check(
-        self, name: str, check_fn: Callable[[], bool], interval: float = 30.0
-    ) -> None:
+    def register_health_check(self, name: str, check_fn: Callable[[], bool], interval: float = 30.0) -> None:
         """Register a health check for monitoring."""
         self.health_monitor.register(name, check_fn, interval)
 
@@ -244,8 +236,7 @@ class SelfHealing:
             "overall_healthy": self.health_monitor.overall_healthy(),
             "unhealthy_services": self.health_monitor.unhealthy_services(),
             "recent_recoveries": [
-                {"error": r.error_type, "success": r.success, "level": r.level.value}
-                for r in recent
+                {"error": r.error_type, "success": r.success, "level": r.level.value} for r in recent
             ],
             "recurring_errors": list(set(failed_types)),
             "strategies_registered": len(self.recovery_strategies),
@@ -278,8 +269,6 @@ class SelfHealing:
             "strategies": len(self.recovery_strategies),
             "recovery_attempts": len(self.recovery_history),
             "successful_recoveries": success_count,
-            "success_rate": success_count / len(self.recovery_history)
-            if self.recovery_history
-            else 0.0,
+            "success_rate": success_count / len(self.recovery_history) if self.recovery_history else 0.0,
             "health_checks": len(self.health_monitor.checks),
         }

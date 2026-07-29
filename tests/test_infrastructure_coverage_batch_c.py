@@ -1,6 +1,5 @@
 """Coverage for cache, encryption, queue and shutdown infrastructure."""
 
-
 from aios_core.cache import TTLCache
 from aios_core.encryption import EncryptionManager
 from aios_core.graceful_shutdown import GracefulShutdown, ShutdownPhase

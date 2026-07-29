@@ -104,10 +104,7 @@ class MultiHeadAttention:
 
         # Scaled dot-product scores
         scale = math.sqrt(self.head_dim)
-        scores = [
-            (proj_q[i] * proj_k[i]) / scale
-            for i in range(min(len(proj_q), len(proj_k)))
-        ]
+        scores = [(proj_q[i] * proj_k[i]) / scale for i in range(min(len(proj_q), len(proj_k)))]
 
         # Apply mask if provided
         if mask:
@@ -128,12 +125,8 @@ class TransformerBlock:
         self.attention = MultiHeadAttention(dim, heads)
         self.dim = dim
         self.ffn_dim = ffn_dim
-        self._ffn_w1: list[list[float]] = [
-            [random.gauss(0, 0.02) for _ in range(dim)] for _ in range(ffn_dim)
-        ]
-        self._ffn_w2: list[list[float]] = [
-            [random.gauss(0, 0.02) for _ in range(ffn_dim)] for _ in range(dim)
-        ]
+        self._ffn_w1: list[list[float]] = [[random.gauss(0, 0.02) for _ in range(dim)] for _ in range(ffn_dim)]
+        self._ffn_w2: list[list[float]] = [[random.gauss(0, 0.02) for _ in range(ffn_dim)] for _ in range(dim)]
 
     def _layer_norm(self, x: list[float]) -> list[float]:
         """Layer normalization."""
@@ -156,18 +149,12 @@ class TransformerBlock:
         # FFN sub-layer (simplified: skip full matmul, use weighted average)
         ffn_out = self._relu(
             [
-                0.5
-                * sum(
-                    x_norm[j] * self._ffn_w1[i][j]
-                    for j in range(min(len(x_norm), self.dim))
-                )
+                0.5 * sum(x_norm[j] * self._ffn_w1[i][j] for j in range(min(len(x_norm), self.dim)))
                 for i in range(min(self.ffn_dim, len(x_norm)))
             ]
         )
         # Residual + layer norm
-        output = self._layer_norm(
-            [x_norm[i] + 0.1 * ffn_out[i % len(ffn_out)] for i in range(len(x_norm))]
-        )
+        output = self._layer_norm([x_norm[i] + 0.1 * ffn_out[i % len(ffn_out)] for i in range(len(x_norm))])
         return output
 
     def stats(self) -> dict[str, Any]:
@@ -189,9 +176,7 @@ class Transformer:
             x = layer.forward(x, mask)
         return x
 
-    def generate(
-        self, prompt: list[float], max_tokens: int = 10, temperature: float = 1.0
-    ) -> list[list[float]]:
+    def generate(self, prompt: list[float], max_tokens: int = 10, temperature: float = 1.0) -> list[list[float]]:
         """Generate a sequence of token representations."""
         outputs = []
         current = prompt[:]

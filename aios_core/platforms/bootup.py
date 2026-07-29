@@ -58,18 +58,13 @@ def _adb_calibrator_drive(
     adb = ADBController(package=package, serial=serial)
     opened = adb.open_app()
     if opened.get("code") != 0:
-        raise ValueError(
-            f"adb open_app failed: {(opened.get('stderr') or 'no device')[:160]}"
-        )
+        raise ValueError(f"adb open_app failed: {(opened.get('stderr') or 'no device')[:160]}")
     time.sleep(8)  # приложению нужно прогрузить ленту
     with tempfile.TemporaryDirectory(prefix="aios-bootup-") as tmp:
         target = Path(tmp) / "screen.xml"
         pulled = adb.dump_ui(str(target))
         if pulled.get("code") != 0 or not target.exists():
-            raise ValueError(
-                "adb dump_ui failed: "
-                f"{(pulled.get('stderr') or 'dump unavailable')[:160]}"
-            )
+            raise ValueError(f"adb dump_ui failed: {(pulled.get('stderr') or 'dump unavailable')[:160]}")
         return target.read_text(encoding="utf-8")
 
 
@@ -138,8 +133,7 @@ def bootup_platform(
     """
     if not apk_path and not (name and package):
         raise ValueError(
-            "bootup needs either --apk or both --name and --package "
-            "(package is downloadable with --fetch via apkeep)"
+            "bootup needs either --apk or both --name and --package (package is downloadable with --fetch via apkeep)"
         )
 
     root = Path(project_root)
@@ -274,9 +268,7 @@ def bootup_platform(
             drive = driver or _adb_calibrator_drive
             try:
                 xml = _call_driver(drive, android_package, query, serial)
-                calibrate_step["source"] = (
-                    "driver:injected" if driver else "driver:adb-generic"
-                )
+                calibrate_step["source"] = "driver:injected" if driver else "driver:adb-generic"
             except Exception as exc:
                 calibrate_step.update(
                     {

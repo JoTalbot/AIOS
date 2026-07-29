@@ -1,4 +1,5 @@
 """Metrics Collector — сбор статистики работы AI Advisor."""
+
 from __future__ import annotations
 
 import json
@@ -28,7 +29,7 @@ class MetricsCollector:
                 "compliance_violations": 0,
                 "intents": {},
                 "sentiments": {"positive": 0, "neutral": 0, "negative": 0},
-                "platforms": {}
+                "platforms": {},
             }
 
     def _save(self):
@@ -76,5 +77,5 @@ class MetricsCollector:
             "escalations": self.data["escalations"],
             "compliance_violations": self.data["compliance_violations"],
             "top_intents": sorted(self.data["intents"].items(), key=lambda x: x[1], reverse=True)[:5],
-            "sentiment_distribution": self.data["sentiments"]
+            "sentiment_distribution": self.data["sentiments"],
         }

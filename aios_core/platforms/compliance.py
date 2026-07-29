@@ -65,9 +65,7 @@ def compliance_guard(
         ValueError: неизвестное действие (честная ошибка, не silently).
     """
     if action not in ACTIONS:
-        raise ValueError(
-            f"unknown compliance action '{action}': expected one of {list(ACTIONS)}"
-        )
+        raise ValueError(f"unknown compliance action '{action}': expected one of {list(ACTIONS)}")
     block = compliance_block(platform, directory)
     policy_declared = bool(block)
     note = str(block.get("note") or "")
@@ -77,16 +75,14 @@ def compliance_guard(
         reason = (
             "autopost_allowed: true"
             if allowed
-            else "автопостинг запрещён compliance (%s)"
-            % (note or "autopost_allowed не задан — deny by default")
+            else "автопостинг запрещён compliance (%s)" % (note or "autopost_allowed не задан — deny by default")
         )
     elif action == "collect":
         allowed = policy_declared and bool(block.get("collector"))
         reason = (
             "collector: true"
             if allowed
-            else "сбор ленты запрещён compliance (%s)"
-            % (note or "collector не задан — deny by default")
+            else "сбор ленты запрещён compliance (%s)" % (note or "collector не задан — deny by default")
         )
     elif action == "send":
         messenger = str(block.get("messenger") or "")
@@ -94,11 +90,7 @@ def compliance_guard(
         reason = (
             "draft в outbox (approval-only)"
             if messenger == "approval-only"
-            else (
-                "мессенджер отключён compliance (messenger: none)"
-                if not allowed
-                else "мессенджер разрешён"
-            )
+            else ("мессенджер отключён compliance (messenger: none)" if not allowed else "мессенджер разрешён")
         )
     else:  # auto_send
         messenger = str(block.get("messenger") or "")

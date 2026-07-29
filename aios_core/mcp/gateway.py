@@ -22,9 +22,7 @@ import sys
 from dataclasses import dataclass
 
 # Ensure AIOS core is importable
-_project_root = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
@@ -45,9 +43,7 @@ from .resources import ResourceDefinition, ResourceRegistry
 from .tools import ToolDefinition, ToolRegistry
 
 # Default constitution/policy dirs relative to project root
-_PROJECT_ROOT = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class ConstitutionGuard:
@@ -62,9 +58,7 @@ class ConstitutionGuard:
         self.policy = runtime_policy
         self._call_log: list[dict] = []
 
-    def check(
-        self, tool_call: MCPToolCall, tool_def: ToolDefinition | None = None
-    ) -> dict:
+    def check(self, tool_call: MCPToolCall, tool_def: ToolDefinition | None = None) -> dict:
         """Evaluate a tool call against the constitution.
 
         Args:
@@ -167,10 +161,8 @@ class MCPGateway:
         # database and splits audit/approval/memory state.
         db = db or Database(db_path=self.config.db_path)
         self.runtime = RuntimePolicy(
-            constitution_dir=self.config.constitution_dir
-            or os.path.join(_PROJECT_ROOT, "docs/constitution"),
-            policies_dir=self.config.policies_dir
-            or os.path.join(_PROJECT_ROOT, "policies"),
+            constitution_dir=self.config.constitution_dir or os.path.join(_PROJECT_ROOT, "docs/constitution"),
+            policies_dir=self.config.policies_dir or os.path.join(_PROJECT_ROOT, "policies"),
             db=db,
         )
 
@@ -533,9 +525,7 @@ class MCPGateway:
         from aios_core.memory_manager import MemoryManager
 
         if params.get("category") == "personal":
-            raise PermissionError(
-                "Personal memory is available only through the authenticated REST API"
-            )
+            raise PermissionError("Personal memory is available only through the authenticated REST API")
 
         mm = MemoryManager(db=self.runtime.db)
         tags = params.get("tags", "")
@@ -553,9 +543,7 @@ class MCPGateway:
         from aios_core.memory_manager import MemoryManager
 
         if params.get("category") == "personal":
-            raise PermissionError(
-                "Personal memory is available only through the authenticated REST API"
-            )
+            raise PermissionError("Personal memory is available only through the authenticated REST API")
 
         mm = MemoryManager(db=self.runtime.db)
         results = mm.search(
@@ -842,9 +830,7 @@ class MCPGateway:
             )
 
         # Constitution check
-        tool_call = MCPToolCall(
-            name=name, arguments=arguments, request_id=str(request.id)
-        )
+        tool_call = MCPToolCall(name=name, arguments=arguments, request_id=str(request.id))
         guard_result = self.guard.check(tool_call, tool_def)
 
         if not guard_result["allowed"]:
@@ -885,9 +871,7 @@ class MCPGateway:
 
     def _handle_resources_list(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle resources/list."""
-        return JSONRPCResponse(
-            id=request.id, result={"resources": self.resources.list_resources()}
-        )
+        return JSONRPCResponse(id=request.id, result={"resources": self.resources.list_resources()})
 
     def _handle_resources_read(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle resources/read."""
@@ -917,9 +901,7 @@ class MCPGateway:
 
     def _handle_prompts_list(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle prompts/list."""
-        return JSONRPCResponse(
-            id=request.id, result={"prompts": self.prompts.list_prompts()}
-        )
+        return JSONRPCResponse(id=request.id, result={"prompts": self.prompts.list_prompts()})
 
     def _handle_prompts_get(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle prompts/get."""
@@ -959,9 +941,7 @@ class MCPGateway:
     def _handle_aios_approvals(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle aios/approvals."""
         pending = self.runtime.get_pending_approvals()
-        return JSONRPCResponse(
-            id=request.id, result={"approvals": pending, "count": len(pending)}
-        )
+        return JSONRPCResponse(id=request.id, result={"approvals": pending, "count": len(pending)})
 
     def _handle_aios_stats(self, request: JSONRPCRequest) -> JSONRPCResponse:
         """Handle aios/stats."""

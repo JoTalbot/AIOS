@@ -23,9 +23,7 @@ __all__ = ["Migration", "MigrationManager"]
 class Migration:
     """Single database migration (backward-compatible)."""
 
-    def __init__(
-        self, version: str, description: str, up_sql: str, down_sql: str = ""
-    ) -> None:
+    def __init__(self, version: str, description: str, up_sql: str, down_sql: str = "") -> None:
         self.version = version
         self.description = description
         self.up_sql = up_sql

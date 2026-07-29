@@ -113,7 +113,7 @@ class Telemetry:
     def export(self) -> str:
         """Compatibility alias for :meth:`export_prometheus_format`."""
         return self.export_prometheus_format()
-        
+
     def increment_counter(self, name: str, value: float = 1.0) -> None:
         """Add *value* to a counter, creating it when necessary."""
         self.counter(name).add(value)
@@ -158,15 +158,11 @@ class Telemetry:
         """Return summary statistics for a histogram, or an empty summary."""
         return self.histogram(name).get_summary()
 
-    def record_metric(
-        self, name: str, value: float, tags: dict[str, str] | None = None
-    ) -> None:
+    def record_metric(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
         """Record a generic metric observation."""
         hist = self.histogram(name)
         hist.observe(value)
-        self.recorded_events.append(
-            {"metric": name, "value": value, "tags": tags or {}, "ts": time.time()}
-        )
+        self.recorded_events.append({"metric": name, "value": value, "tags": tags or {}, "ts": time.time()})
 
     def export_prometheus_format(self) -> str:
         """Export current metric state in Prometheus exposition format."""
@@ -200,14 +196,9 @@ class Telemetry:
     def get_all_metrics(self) -> dict[str, dict[str, Any]]:
         """Return a serialisable snapshot of all collected metrics."""
         return {
-            "counters": {
-                name: counter.value for name, counter in self.counters.items()
-            },
+            "counters": {name: counter.value for name, counter in self.counters.items()},
             "gauges": {name: gauge.value for name, gauge in self.gauges.items()},
-            "histograms": {
-                name: histogram.get_summary()
-                for name, histogram in self.histograms.items()
-            },
+            "histograms": {name: histogram.get_summary() for name, histogram in self.histograms.items()},
         }
 
     def export_json(self) -> dict[str, dict[str, Any]]:

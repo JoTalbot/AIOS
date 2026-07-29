@@ -130,9 +130,7 @@ class ExperimentTracker:
         exp = self._get(exp_id)
         exp.notes = note
 
-    def end_experiment(
-        self, exp_id: str, status: ExperimentStatus = ExperimentStatus.COMPLETED
-    ) -> None:
+    def end_experiment(self, exp_id: str, status: ExperimentStatus = ExperimentStatus.COMPLETED) -> None:
         """End an experiment."""
         exp = self._get(exp_id)
         exp.status = status
@@ -148,9 +146,7 @@ class ExperimentTracker:
 
     # ── Comparison ─────────────────────────────────────────────
 
-    def compare(
-        self, exp_ids: list[str], metric: str | None = None
-    ) -> dict[str, dict[str, float]]:
+    def compare(self, exp_ids: list[str], metric: str | None = None) -> dict[str, dict[str, float]]:
         """Compare metrics across experiments."""
         result = {}
         for exp_id in exp_ids:
@@ -168,11 +164,7 @@ class ExperimentTracker:
 
         direction: 'max' → highest metric, 'min' → lowest metric.
         """
-        candidates = [
-            e
-            for e in self.experiments.values()
-            if metric in e.metrics and e.is_completed()
-        ]
+        candidates = [e for e in self.experiments.values() if metric in e.metrics and e.is_completed()]
         if not candidates:
             return None
         if direction == "max":
@@ -181,9 +173,7 @@ class ExperimentTracker:
 
     # ── Filtering ──────────────────────────────────────────────
 
-    def list_experiments(
-        self, status: ExperimentStatus | None = None, tag: str | None = None
-    ) -> list[Experiment]:
+    def list_experiments(self, status: ExperimentStatus | None = None, tag: str | None = None) -> list[Experiment]:
         """List experiments with optional filtering."""
         result = list(self.experiments.values())
         if status:
@@ -211,11 +201,7 @@ class ExperimentTracker:
         return {
             "experiments": len(self.experiments),
             "by_status": by_status,
-            "completed": sum(
-                1
-                for e in self.experiments.values()
-                if e.status == ExperimentStatus.COMPLETED
-            ),
+            "completed": sum(1 for e in self.experiments.values() if e.status == ExperimentStatus.COMPLETED),
         }
 
     # ── Internal ───────────────────────────────────────────────

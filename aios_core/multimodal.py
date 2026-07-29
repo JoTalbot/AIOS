@@ -107,9 +107,7 @@ class MultiModalProcessor:
             try:
                 result = config.processor_fn(data)
                 embedding = (
-                    result
-                    if isinstance(result, list)
-                    else [random.gauss(0, 0.1) for _ in range(config.embedding_dim)]
+                    result if isinstance(result, list) else [random.gauss(0, 0.1) for _ in range(config.embedding_dim)]
                 )
             except Exception as e:
                 return {"error": str(e), "modality": modality}
@@ -177,9 +175,7 @@ class MultiModalProcessor:
         self._fusion_history.append(result)
         return result
 
-    def _apply_fusion(
-        self, embeddings: list[list[float]], strategy: str
-    ) -> list[float]:
+    def _apply_fusion(self, embeddings: list[list[float]], strategy: str) -> list[float]:
         """Apply fusion strategy to embeddings."""
         if strategy == "concat":
             # Concatenate all embeddings
@@ -198,9 +194,7 @@ class MultiModalProcessor:
             max_dim = max(len(e) for e in embeddings)
             padded = [e + [0.0] * (max_dim - len(e)) for e in embeddings]
 
-            fused = [
-                sum(w * e[d] for w, e in zip(weights, padded, strict=False)) for d in range(max_dim)
-            ]
+            fused = [sum(w * e[d] for w, e in zip(weights, padded, strict=False)) for d in range(max_dim)]
             return fused
 
         elif strategy == "gated":
@@ -210,19 +204,13 @@ class MultiModalProcessor:
             for d in range(min_dim):
                 gate = random.uniform(0.3, 0.7)
                 values = [e[d] for e in embeddings if d < len(e)]
-                fused.append(
-                    gate * values[0] + (1 - gate) * values[-1]
-                    if len(values) >= 2
-                    else values[0]
-                )
+                fused.append(gate * values[0] + (1 - gate) * values[-1] if len(values) >= 2 else values[0])
             return fused
 
         elif strategy == "mean":
             # Average pooling
             min_dim = min(len(e) for e in embeddings)
-            return [
-                sum(e[d] for e in embeddings) / len(embeddings) for d in range(min_dim)
-            ]
+            return [sum(e[d] for e in embeddings) / len(embeddings) for d in range(min_dim)]
 
         else:
             # Default: concat

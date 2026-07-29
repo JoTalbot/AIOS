@@ -198,8 +198,7 @@ def test_pool_monitor_run_once_heartbeats_and_reap():
         # emulator-5558 молчит с давних пор.
         with pool._lock, pool._conn:
             pool._conn.execute(
-                "UPDATE devices SET last_heartbeat = '2020-01-01T00:00:00+00:00' "
-                "WHERE serial = 'emulator-5558'"
+                "UPDATE devices SET last_heartbeat = '2020-01-01T00:00:00+00:00' WHERE serial = 'emulator-5558'"
             )
         monitor = PoolMonitor(
             pool=pool,

@@ -13,12 +13,13 @@ __all__ = [
     "InterpretabilitySafety",
     "PrivacySafety",
     "ResourceSafety",
-    "RobustnessSafety"
+    "RobustnessSafety",
 ]
 
 
 class SafetyLayer:
     """Base class for all safety layers."""
+
     def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         raise NotImplementedError("Subclasses must implement check method.")
 
@@ -33,21 +34,21 @@ class ConstitutionalSafety(SafetyLayer):
     def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         action_str = str(action).lower()
         violations = []
-        
+
         if any(word in action_str for word in self.harm_keywords):
             violations.append("non_maleficence")
         if any(word in action_str for word in self.discrimination_keywords):
             violations.append("fairness_and_equity")
-            
+
         score = 1.0
         if violations:
             score -= 0.5 * len(violations)
-            
+
         return {
             "safe": len(violations) == 0,
             "score": max(0.0, score),
             "violations": violations,
-            "details": f"Checked against {len(self.harm_keywords) + len(self.discrimination_keywords)} constitutional rules."
+            "details": f"Checked against {len(self.harm_keywords) + len(self.discrimination_keywords)} constitutional rules.",
         }
 
 
@@ -81,12 +82,12 @@ class RobustnessSafety(SafetyLayer):
         params = action.get("parameters", {})
         if not params:
             return {"safe": True, "score": 0.90, "robustness": 0.88}
-        
+
         # Check if parameters have bounds
         has_bounds = any(isinstance(v, dict) and ("min" in v or "max" in v) for v in params.values())
         if not has_bounds and len(params) > 5:
             return {"safe": False, "score": 0.6, "robustness": 0.5, "reason": "Many unbounded parameters"}
-            
+
         return {"safe": True, "score": 0.90, "robustness": 0.88}
 
 
@@ -96,23 +97,33 @@ class GovernanceSafety(SafetyLayer):
     def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         policy = action.get("policy", "")
         if policy == "unrestricted":
-            return {"safe": False, "score": 0.2, "governance_compliance": 0.1, "reason": "Unrestricted policy not allowed"}
+            return {
+                "safe": False,
+                "score": 0.2,
+                "governance_compliance": 0.1,
+                "reason": "Unrestricted policy not allowed",
+            }
         return {"safe": True, "score": 0.93, "governance_compliance": 0.91}
 
 
 class BiasSafety(SafetyLayer):
     """Safety layer evaluating statistical bias potential."""
-    
+
     def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         target_demographics = action.get("demographics", [])
         if len(target_demographics) == 1:
-            return {"safe": False, "score": 0.4, "bias_risk": 0.8, "reason": "Action targets a single demographic exclusively"}
+            return {
+                "safe": False,
+                "score": 0.4,
+                "bias_risk": 0.8,
+                "reason": "Action targets a single demographic exclusively",
+            }
         return {"safe": True, "score": 0.98, "bias_risk": 0.05}
 
 
 class PrivacySafety(SafetyLayer):
     """Safety layer protecting PII and sensitive data."""
-    
+
     def __init__(self):
         self.pii_fields = ["ssn", "social_security", "credit_card", "password", "health_record"]
 
@@ -126,7 +137,7 @@ class PrivacySafety(SafetyLayer):
 
 class AdversarialSafety(SafetyLayer):
     """Safety layer detecting adversarial inputs (e.g. prompt injection)."""
-    
+
     def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = str(action.get("payload", "")).lower()
         if "ignore previous instructions" in payload or "system prompt" in payload:
@@ -136,11 +147,11 @@ class AdversarialSafety(SafetyLayer):
 
 class ResourceSafety(SafetyLayer):
     """Safety layer ensuring an action does not cause resource exhaustion."""
-    
+
     def check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         compute_req = action.get("compute_required", 0)
         memory_req = action.get("memory_required_gb", 0)
-        
+
         if compute_req > 1000 or memory_req > 128:
             return {"safe": False, "score": 0.3, "reason": "Resource requirements exceed limits"}
         return {"safe": True, "score": 0.96}
@@ -160,7 +171,7 @@ class AISafetyFramework:
             "bias": BiasSafety(),
             "privacy": PrivacySafety(),
             "adversarial": AdversarialSafety(),
-            "resource": ResourceSafety()
+            "resource": ResourceSafety(),
         }
         self.incidents: list[dict[str, Any]] = []
         self.safety_checks_performed = 0
@@ -170,7 +181,9 @@ class AISafetyFramework:
         """Allow dynamic addition of custom safety layers."""
         self.safety_layers[name] = layer
 
-    def comprehensive_safety_check(self, action: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
+    def comprehensive_safety_check(
+        self, action: dict[str, Any], context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Run all safety layers on an action."""
         self.safety_checks_performed += 1
         results = {}
@@ -184,16 +197,16 @@ class AISafetyFramework:
                 self.incidents.append(
                     {
                         "action_id": action_id,
-                        "action": action, 
-                        "layer": layer_name, 
+                        "action": action,
+                        "layer": layer_name,
                         "details": result,
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
                     }
                 )
 
         overall_safe = all(r.get("safe", True) for r in results.values())
         avg_score = sum(r.get("score", 1.0) for r in results.values()) / len(results)
-        
+
         # Enforce global threshold
         if avg_score < self.global_threshold:
             overall_safe = False
@@ -204,7 +217,7 @@ class AISafetyFramework:
             "layer_results": results,
             "incidents_this_check": len([r for r in results.values() if not r.get("safe", True)]),
             "incidents": len([r for r in results.values() if not r.get("safe", True)]),
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
     def get_safety_report(self) -> dict[str, Any]:
@@ -214,7 +227,7 @@ class AISafetyFramework:
             "total_incidents": len(self.incidents),
             "layers_active": list(self.safety_layers.keys()),
             "recent_incidents": self.incidents[-5:] if self.incidents else [],
-            "system_health": "Critical" if len(self.incidents) > 10 else "Nominal"
+            "system_health": "Critical" if len(self.incidents) > 10 else "Nominal",
         }
 
     def stats(self) -> dict[str, Any]:
@@ -223,7 +236,7 @@ class AISafetyFramework:
             "layers": len(self.safety_layers),
             "checks_performed": self.safety_checks_performed,
             "incidents": len(self.incidents),
-            "global_threshold": self.global_threshold
+            "global_threshold": self.global_threshold,
         }
 
     def clear_incidents(self):

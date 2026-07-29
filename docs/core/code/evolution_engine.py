@@ -49,9 +49,7 @@ class AIOS_EvolutionEngine:
         # Analyze execution history for patterns, failures, bottlenecks
         return [{"pattern": "efficiency_trend", "value": 0.85}]
 
-    def propose_improvement(
-        self, target: str, description: str, reasoning: str
-    ) -> ImprovementProposal:
+    def propose_improvement(self, target: str, description: str, reasoning: str) -> ImprovementProposal:
         proposal = ImprovementProposal(
             proposal_id=f"prop_{len(self.improvement_proposals)}",
             target=target,

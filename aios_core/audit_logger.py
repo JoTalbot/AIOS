@@ -166,8 +166,7 @@ class AuditLogger:
             total = self.db.query_one("SELECT COUNT(*) as cnt FROM audit_events")["cnt"]
 
             by_type = self.db.query(
-                "SELECT event_type, COUNT(*) as cnt FROM audit_events "
-                "GROUP BY event_type ORDER BY cnt DESC"
+                "SELECT event_type, COUNT(*) as cnt FROM audit_events GROUP BY event_type ORDER BY cnt DESC"
             )
             by_decision = self.db.query(
                 "SELECT decision, COUNT(*) as cnt FROM audit_events "
@@ -202,14 +201,10 @@ class AuditLogger:
         cutoff = (datetime.now(UTC) - timedelta(days=retention_days)).isoformat()
 
         if self.db:
-            cursor = self.db.execute(
-                "DELETE FROM audit_events WHERE timestamp < ?", (cutoff,)
-            )
+            cursor = self.db.execute("DELETE FROM audit_events WHERE timestamp < ?", (cutoff,))
             return cursor.rowcount
 
         # In-memory cleanup
         before = len(self._in_memory)
-        self._in_memory = [
-            e for e in self._in_memory if e.get("timestamp", "") >= cutoff
-        ]
+        self._in_memory = [e for e in self._in_memory if e.get("timestamp", "") >= cutoff]
         return before - len(self._in_memory)

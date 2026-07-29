@@ -1,6 +1,5 @@
 """Tests for Advanced ML Intelligence Layer (Milestone 4.2.1)."""
 
-
 from aios_core.anomaly_detection import AnomalyDetector
 from aios_core.autonomy_manager import AutonomyLevel
 from aios_core.model_registry import ModelRegistry
@@ -34,9 +33,7 @@ def test_model_registry():
     assert prod_model["version"] == "1.0.0"
 
     # Log metrics
-    logged = registry.log_evaluation_metrics(
-        "risk_scorer", "1.0.0", {"accuracy": 0.982, "f1": 0.975}
-    )
+    logged = registry.log_evaluation_metrics("risk_scorer", "1.0.0", {"accuracy": 0.982, "f1": 0.975})
     assert logged is True
     assert prod_model["eval_metrics"]["accuracy"] == 0.982
 

@@ -83,9 +83,7 @@ class NaturalLanguageInterface:
         for phrase, cmd in self.command_map.items():
             if phrase in text_lower:
                 entities = self._extract_entities(text)
-                intent = NLIntent(
-                    intent=cmd, confidence=0.9, entities=entities, original_text=text
-                )
+                intent = NLIntent(intent=cmd, confidence=0.9, entities=entities, original_text=text)
                 self._context.append({"text": text, "intent": intent})
                 return {
                     "command": cmd,
@@ -156,9 +154,7 @@ class NaturalLanguageInterface:
         return {
             "word_count": len(words),
             "char_count": len(text),
-            "avg_word_length": round(sum(len(w) for w in words) / len(words), 2)
-            if words
-            else 0,
+            "avg_word_length": round(sum(len(w) for w in words) / len(words), 2) if words else 0,
             "has_numbers": any(re.search(r"\d", w) for w in words),
             "has_special_chars": any(not w.isalnum() for w in words),
         }

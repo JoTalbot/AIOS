@@ -92,9 +92,7 @@ class StrategyAdvisor:
     ) -> list[ActionAdvice]:
         """Return recommended actions for owned ads."""
         now = now or datetime.now(UTC)
-        planner = RepostPlanner(
-            min_age_days=min_age_days, min_views_per_day=min_views_per_day
-        )
+        planner = RepostPlanner(min_age_days=min_age_days, min_views_per_day=min_views_per_day)
         advice: list[ActionAdvice] = []
 
         for row in self.storage.own_ads(status="active"):
@@ -124,8 +122,7 @@ class StrategyAdvisor:
                         row["fingerprint"],
                         own.title,
                         ACTION_EDIT_PRICE,
-                        f"{cheaper} конкурентів дешевші; медіана ніші {median_price:g}. "
-                        f"Знизьте до ~{suggested} грн.",
+                        f"{cheaper} конкурентів дешевші; медіана ніші {median_price:g}. Знизьте до ~{suggested} грн.",
                         suggested_price=suggested,
                         priority=1,
                     )
@@ -140,19 +137,13 @@ class StrategyAdvisor:
                         priority=2,
                     )
                 )
-            elif (
-                cheaper >= 1
-                and own.price
-                and median_price
-                and own.price > median_price * 1.1
-            ):
+            elif cheaper >= 1 and own.price and median_price and own.price > median_price * 1.1:
                 advice.append(
                     ActionAdvice(
                         row["fingerprint"],
                         own.title,
                         ACTION_EDIT_PRICE,
-                        f"Ціна вища за медіану ніші ({median_price:g}) — "
-                        "перегляди просідатимуть.",
+                        f"Ціна вища за медіану ніші ({median_price:g}) — перегляди просідатимуть.",
                         suggested_price=round(median_price * 0.98),
                         priority=2,
                     )

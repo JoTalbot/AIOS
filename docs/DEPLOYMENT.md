@@ -62,7 +62,7 @@ change = {
     "component": "component_name",
     "description": "what is changing",
     "risk_level": "low|medium|high",
-    "reversible": True/False
+    "reversible": True / False,
 }
 
 proposal = manager.create_proposal(change)

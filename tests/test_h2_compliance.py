@@ -357,7 +357,5 @@ def test_alert_rules_yaml_valid_and_cover_critical_paths():
     for group in alerts["groups"]:
         for rule in group["rules"]:
             assert rule["labels"]["severity"] in ("warning", "critical")
-    prometheus_cfg = yaml.safe_load(
-        Path("deploy/monitoring/prometheus.yml").read_text(encoding="utf-8")
-    )
+    prometheus_cfg = yaml.safe_load(Path("deploy/monitoring/prometheus.yml").read_text(encoding="utf-8"))
     assert "aios-alerts.yml" in prometheus_cfg["rule_files"]

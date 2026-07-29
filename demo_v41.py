@@ -36,9 +36,7 @@ def main():
 
     # 3. Multi-Agent
     print("👥 Multi-Agent Demo")
-    team = orch.multi_agent.form_team(
-        goal="Build report", agents=["researcher", "analyst", "writer"]
-    )
+    team = orch.multi_agent.form_team(goal="Build report", agents=["researcher", "analyst", "writer"])
     print(f"  Created team: {team.team_id} with {len(team.agents)} agents\n")
 
     # 4. Constitution Evolver

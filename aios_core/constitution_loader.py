@@ -69,9 +69,7 @@ _SHOULD_NOT_RE = re.compile(r"\bSHOULD\s+NOT\b", re.IGNORECASE)
 _SHOULD_RE = re.compile(r"\bSHOULD\b(?!\s+NOT\b)", re.IGNORECASE)
 
 # Article filename pattern: ARTICLE-I-IDENTITY.md, ARTICLE-XXXII-SECURITY.md
-_ARTICLE_FILENAME_RE = re.compile(
-    r"ARTICLE-(?P<roman>[IVXLCDM]+)-(?P<name>[\w-]+)\.md", re.IGNORECASE
-)
+_ARTICLE_FILENAME_RE = re.compile(r"ARTICLE-(?P<roman>[IVXLCDM]+)-(?P<name>[\w-]+)\.md", re.IGNORECASE)
 
 
 def _roman_to_int(roman: str) -> int:
@@ -239,9 +237,7 @@ class ConstitutionLoader:
     def _load_all(self):
         """Load and parse all article files from the constitution directory."""
         if not os.path.isdir(self.constitution_dir):
-            raise FileNotFoundError(
-                f"Constitution directory not found: {self.constitution_dir}"
-            )
+            raise FileNotFoundError(f"Constitution directory not found: {self.constitution_dir}")
 
         filenames = sorted(os.listdir(self.constitution_dir))
         article_files = [f for f in filenames if _ARTICLE_FILENAME_RE.match(f)]
@@ -331,9 +327,7 @@ class ConstitutionLoader:
         """Get a parsed article by its ID (e.g. 'ARTICLE-V')."""
         return self.articles.get(article_id)
 
-    def get_rules(
-        self, obligation: ObligationLevel | None = None
-    ) -> list[ConstitutionalRule]:
+    def get_rules(self, obligation: ObligationLevel | None = None) -> list[ConstitutionalRule]:
         """Get rules, optionally filtered by obligation level."""
         if obligation is None:
             return list(self.rules)

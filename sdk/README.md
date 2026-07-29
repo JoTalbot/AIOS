@@ -14,6 +14,7 @@ pip install aios-client
 import asyncio
 from aios_sdk import AIOSClient
 
+
 async def main():
     client = AIOSClient("http://localhost:8000", api_key="your-api-key")
 
@@ -28,6 +29,7 @@ async def main():
     # OLX — market statistics
     market = await client.olx_stats(query="iphone")
     print(f"Min price: {market.get('min_price')}, Avg: {market.get('avg_price')}")
+
 
 asyncio.run(main())
 ```

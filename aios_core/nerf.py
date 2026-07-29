@@ -53,9 +53,7 @@ class NeRF:
 
     # ── Scene Management ──────────────────────────────────────────
 
-    def add_scene_point(
-        self, position: list[float], density: float, color: list[float]
-    ) -> None:
+    def add_scene_point(self, position: list[float], density: float, color: list[float]) -> None:
         """Add a known scene point."""
         key = f"{position[0]:.2f}_{position[1]:.2f}_{position[2]:.2f}"
         self._scene_points[key] = (density, color)
@@ -66,9 +64,7 @@ class NeRF:
 
     # ── Query ──────────────────────────────────────────────────────
 
-    def query(
-        self, position: list[float], direction: list[float]
-    ) -> tuple[float, list[float]]:
+    def query(self, position: list[float], direction: list[float]) -> tuple[float, list[float]]:
         """Query density and color at a point (backward-compatible)."""
         self._query_count += 1
 
@@ -130,9 +126,7 @@ class NeRF:
 
     # ── Rendering ──────────────────────────────────────────────────
 
-    def render(
-        self, rays: list[tuple[list[float], list[float]]], num_samples: int = 64
-    ) -> list[list[float]]:
+    def render(self, rays: list[tuple[list[float], list[float]]], num_samples: int = 64) -> list[list[float]]:
         """Render rays through the scene (backward-compatible)."""
         rendered = []
 
@@ -153,9 +147,7 @@ class NeRF:
 
         return rendered
 
-    def render_volume(
-        self, rays: list[tuple[list[float], list[float]]], num_samples: int = 64
-    ) -> list[dict[str, Any]]:
+    def render_volume(self, rays: list[tuple[list[float], list[float]]], num_samples: int = 64) -> list[dict[str, Any]]:
         """Render rays with full volume information."""
         results = []
         for origin, direction in rays:

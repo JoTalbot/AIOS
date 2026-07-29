@@ -166,9 +166,7 @@ class GracefulShutdown:
             "total_duration": total_duration,
             "phases": {
                 phase.value: [
-                    r
-                    for r in self._progress
-                    if any(h.phase == phase for h in self.hooks if h.name == r["name"])
+                    r for r in self._progress if any(h.phase == phase for h in self.hooks if h.name == r["name"])
                 ]
                 for phase in ShutdownPhase
             },

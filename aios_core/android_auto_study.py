@@ -23,6 +23,7 @@ from .telemetry import telemetry as global_telemetry
 
 class StudyPhase(StrEnum):
     """Auto-study execution phase."""
+
     DISCOVERY = "discovery"
     LAUNCH = "launch"
     EXPLORE = "explore"
@@ -34,6 +35,7 @@ class StudyPhase(StrEnum):
 
 class InteractionType(StrEnum):
     """Types of automated interactions."""
+
     TAP = "tap"
     SWIPE = "swipe"
     INPUT_TEXT = "input_text"
@@ -46,6 +48,7 @@ class InteractionType(StrEnum):
 @dataclass
 class StudyStep:
     """Single step in a study scenario."""
+
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
     phase: StudyPhase = StudyPhase.DISCOVERY
     interaction: InteractionType = InteractionType.WAIT
@@ -63,6 +66,7 @@ class StudyStep:
 @dataclass
 class StudyScenario:
     """Predefined study scenario for an app."""
+
     name: str
     package: str
     description: str
@@ -73,6 +77,7 @@ class StudyScenario:
 @dataclass
 class StudyResult:
     """Result of a completed study run."""
+
     study_id: str
     package: str
     scenario_name: str
@@ -99,78 +104,150 @@ class AndroidAutoStudy:
             package="ua.slando",
             description="Launch app and capture initial UI hierarchy",
             steps=[
-                StudyStep(phase=StudyPhase.LAUNCH, interaction=InteractionType.WAIT,
-                          target="app_launch", description="Launch app and wait for main activity"),
-                StudyStep(phase=StudyPhase.EXPLORE, interaction=InteractionType.WAIT,
-                          target="ui_dump", description="Capture initial UI hierarchy"),
-            ]
+                StudyStep(
+                    phase=StudyPhase.LAUNCH,
+                    interaction=InteractionType.WAIT,
+                    target="app_launch",
+                    description="Launch app and wait for main activity",
+                ),
+                StudyStep(
+                    phase=StudyPhase.EXPLORE,
+                    interaction=InteractionType.WAIT,
+                    target="ui_dump",
+                    description="Capture initial UI hierarchy",
+                ),
+            ],
         ),
         "search_flow": StudyScenario(
             name="search_flow",
             package="ua.slando",
             description="Open search, enter query and submit",
             steps=[
-                StudyStep(phase=StudyPhase.LAUNCH, interaction=InteractionType.WAIT,
-                          target="app_launch", description="Launch app"),
-                StudyStep(phase=StudyPhase.INTERACT, interaction=InteractionType.TAP,
-                          target="search_button", params={"by_text": "Поиск"},
-                          description="Open search"),
-                StudyStep(phase=StudyPhase.INTERACT, interaction=InteractionType.INPUT_TEXT,
-                          target="search_input", params={"text": "iPhone 15"},
-                          description="Enter search query"),
-                StudyStep(phase=StudyPhase.INTERACT, interaction=InteractionType.TAP,
-                          target="search_submit", params={"by_text": "Найти"},
-                          description="Submit search"),
-            ]
+                StudyStep(
+                    phase=StudyPhase.LAUNCH,
+                    interaction=InteractionType.WAIT,
+                    target="app_launch",
+                    description="Launch app",
+                ),
+                StudyStep(
+                    phase=StudyPhase.INTERACT,
+                    interaction=InteractionType.TAP,
+                    target="search_button",
+                    params={"by_text": "Поиск"},
+                    description="Open search",
+                ),
+                StudyStep(
+                    phase=StudyPhase.INTERACT,
+                    interaction=InteractionType.INPUT_TEXT,
+                    target="search_input",
+                    params={"text": "iPhone 15"},
+                    description="Enter search query",
+                ),
+                StudyStep(
+                    phase=StudyPhase.INTERACT,
+                    interaction=InteractionType.TAP,
+                    target="search_submit",
+                    params={"by_text": "Найти"},
+                    description="Submit search",
+                ),
+            ],
         ),
         "listing_browse": StudyScenario(
             name="listing_browse",
             package="ua.slando",
             description="Open first listing and return back",
             steps=[
-                StudyStep(phase=StudyPhase.LAUNCH, interaction=InteractionType.WAIT,
-                          target="app_launch", description="Launch app"),
-                StudyStep(phase=StudyPhase.INTERACT, interaction=InteractionType.TAP,
-                          target="first_item", params={"index": 0},
-                          description="Tap first listing"),
-                StudyStep(phase=StudyPhase.EXPLORE, interaction=InteractionType.WAIT,
-                          target="detail_screen", description="Wait for detail screen"),
-                StudyStep(phase=StudyPhase.INTERACT, interaction=InteractionType.BACK,
-                          target="back", description="Return to feed"),
-            ]
+                StudyStep(
+                    phase=StudyPhase.LAUNCH,
+                    interaction=InteractionType.WAIT,
+                    target="app_launch",
+                    description="Launch app",
+                ),
+                StudyStep(
+                    phase=StudyPhase.INTERACT,
+                    interaction=InteractionType.TAP,
+                    target="first_item",
+                    params={"index": 0},
+                    description="Tap first listing",
+                ),
+                StudyStep(
+                    phase=StudyPhase.EXPLORE,
+                    interaction=InteractionType.WAIT,
+                    target="detail_screen",
+                    description="Wait for detail screen",
+                ),
+                StudyStep(
+                    phase=StudyPhase.INTERACT,
+                    interaction=InteractionType.BACK,
+                    target="back",
+                    description="Return to feed",
+                ),
+            ],
         ),
         "chat_flow": StudyScenario(
             name="chat_flow",
             package="ua.slando",
             description="Open chat from first listing",
             steps=[
-                StudyStep(phase=StudyPhase.LAUNCH, interaction=InteractionType.WAIT,
-                          target="app_launch", description="Launch app"),
-                StudyStep(phase=StudyPhase.INTERACT, interaction=InteractionType.TAP,
-                          target="first_item", params={"index": 0},
-                          description="Tap first listing"),
-                StudyStep(phase=StudyPhase.INTERACT, interaction=InteractionType.TAP,
-                          target="chat_button", params={"by_text": "Написать"},
-                          description="Open chat"),
-                StudyStep(phase=StudyPhase.EXPLORE, interaction=InteractionType.WAIT,
-                          target="chat_screen", description="Wait for chat screen"),
-            ]
+                StudyStep(
+                    phase=StudyPhase.LAUNCH,
+                    interaction=InteractionType.WAIT,
+                    target="app_launch",
+                    description="Launch app",
+                ),
+                StudyStep(
+                    phase=StudyPhase.INTERACT,
+                    interaction=InteractionType.TAP,
+                    target="first_item",
+                    params={"index": 0},
+                    description="Tap first listing",
+                ),
+                StudyStep(
+                    phase=StudyPhase.INTERACT,
+                    interaction=InteractionType.TAP,
+                    target="chat_button",
+                    params={"by_text": "Написать"},
+                    description="Open chat",
+                ),
+                StudyStep(
+                    phase=StudyPhase.EXPLORE,
+                    interaction=InteractionType.WAIT,
+                    target="chat_screen",
+                    description="Wait for chat screen",
+                ),
+            ],
         ),
         "profile_check": StudyScenario(
             name="profile_check",
             package="ua.slando",
             description="Open profile/settings and return",
             steps=[
-                StudyStep(phase=StudyPhase.LAUNCH, interaction=InteractionType.WAIT,
-                          target="app_launch", description="Launch app"),
-                StudyStep(phase=StudyPhase.INTERACT, interaction=InteractionType.TAP,
-                          target="profile", params={"by_text": "Профиль"},
-                          description="Open profile"),
-                StudyStep(phase=StudyPhase.EXPLORE, interaction=InteractionType.WAIT,
-                          target="profile_screen", description="Wait for profile screen"),
-                StudyStep(phase=StudyPhase.INTERACT, interaction=InteractionType.BACK,
-                          target="back", description="Return to previous screen"),
-            ]
+                StudyStep(
+                    phase=StudyPhase.LAUNCH,
+                    interaction=InteractionType.WAIT,
+                    target="app_launch",
+                    description="Launch app",
+                ),
+                StudyStep(
+                    phase=StudyPhase.INTERACT,
+                    interaction=InteractionType.TAP,
+                    target="profile",
+                    params={"by_text": "Профиль"},
+                    description="Open profile",
+                ),
+                StudyStep(
+                    phase=StudyPhase.EXPLORE,
+                    interaction=InteractionType.WAIT,
+                    target="profile_screen",
+                    description="Wait for profile screen",
+                ),
+                StudyStep(
+                    phase=StudyPhase.INTERACT,
+                    interaction=InteractionType.BACK,
+                    target="back",
+                    description="Return to previous screen",
+                ),
+            ],
         ),
     }
 
@@ -333,6 +410,7 @@ class AndroidAutoStudy:
                     ui = self.driver.dump_ui()
                     # Find element by text in XML
                     import xml.etree.ElementTree as ET
+
                     root = ET.fromstring(ui.xml)
                     for elem in root.iter("node"):
                         if step.params["by_text"] in (elem.get("text", "") or ""):
@@ -404,6 +482,7 @@ class AndroidAutoStudy:
     def _parse_bounds(self, bounds: str) -> tuple[int, int]:
         """Parse Android bounds string '[x1,y1][x2,y2]' -> center point."""
         import re
+
         match = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds)
         if match:
             x1, y1, x2, y2 = map(int, match.groups())
@@ -460,6 +539,7 @@ async def run_auto_study(
 
 if __name__ == "__main__":
     import sys
+
     pkg = sys.argv[1] if len(sys.argv) > 1 else "ua.slando"
     scn = sys.argv[2] if len(sys.argv) > 2 else "basic_explore"
     result = asyncio.run(run_auto_study(pkg, scn))

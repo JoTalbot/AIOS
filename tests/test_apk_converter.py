@@ -25,9 +25,7 @@ def test_apk_function_converter_direct():
 
     assert profile["user_id"] == "user_admin_01"
     assert profile["total_converted_capabilities"] == 2
-    assert profile["converted_capabilities"][0]["api_endpoint"].startswith(
-        "/api/v1/users/profiles/user_admin_01/apk/"
-    )
+    assert profile["converted_capabilities"][0]["api_endpoint"].startswith("/api/v1/users/profiles/user_admin_01/apk/")
 
     user_profiles = converter.get_user_profiles("user_admin_01")
     assert len(user_profiles) == 1

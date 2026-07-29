@@ -20,7 +20,9 @@ def _dashboard_html(api) -> str:
         html = html.replace("AIOS Safety Dashboard v3", f"AIOS Safety Dashboard v3 ({api.orchestrator.version})")
         return html
     # Fallback simple dashboard
-    return f"<html><body><h1>AIOS Dashboard v{api.orchestrator.version}</h1><p>Dashboard file not found.</p></body></html>"
+    return (
+        f"<html><body><h1>AIOS Dashboard v{api.orchestrator.version}</h1><p>Dashboard file not found.</p></body></html>"
+    )
 
 
 def register_routes(api) -> list:

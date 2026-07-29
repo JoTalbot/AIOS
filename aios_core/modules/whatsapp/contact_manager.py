@@ -84,9 +84,7 @@ class ContactManager:
             True if removed.
         """
         with self.storage._lock, self.storage._conn:
-            cursor = self.storage._conn.execute(
-                "DELETE FROM olx_profile_kv WHERE key = ?", (f"contact:{jid}",)
-            )
+            cursor = self.storage._conn.execute("DELETE FROM olx_profile_kv WHERE key = ?", (f"contact:{jid}",))
             return cursor.rowcount > 0
 
     def list_contacts(self, tag: str | None = None) -> list[Contact]:

@@ -15,19 +15,13 @@ class ZeroKnowledgeSafetyProof:
     """Zero-Knowledge Safety Proof generator and verifier for zero-trust task delegation."""
 
     @staticmethod
-    def generate_proof(
-        task_payload: dict[str, Any], secret_salt: str = "aios_zk_salt"
-    ) -> dict[str, Any]:
+    def generate_proof(task_payload: dict[str, Any], secret_salt: str = "aios_zk_salt") -> dict[str, Any]:
         """Generate a zero-knowledge commitment proof asserting payload constitutional safety."""
         payload_str = json.dumps(task_payload, sort_keys=True)
-        commitment_hash = hashlib.sha256(
-            f"{payload_str}:{secret_salt}".encode()
-        ).hexdigest()
+        commitment_hash = hashlib.sha256(f"{payload_str}:{secret_salt}".encode()).hexdigest()
 
         # Simulated ZK circuit verification proof
-        proof_signature = hashlib.sha256(
-            f"ZK_PROOF_{commitment_hash}".encode()
-        ).hexdigest()
+        proof_signature = hashlib.sha256(f"ZK_PROOF_{commitment_hash}".encode()).hexdigest()
 
         return {
             "commitment_hash": commitment_hash,
@@ -42,9 +36,7 @@ class ZeroKnowledgeSafetyProof:
         if proof.get("commitment_hash") != commitment_hash:
             return False
 
-        expected_sig = hashlib.sha256(
-            f"ZK_PROOF_{commitment_hash}".encode()
-        ).hexdigest()
+        expected_sig = hashlib.sha256(f"ZK_PROOF_{commitment_hash}".encode()).hexdigest()
         return proof.get("proof_signature") == expected_sig
 
 
@@ -72,18 +64,12 @@ class GlobalSwarmGovernance:
         }
         return did
 
-    def create_amendment_proposal(
-        self, proposer_did: str, title: str, description: str
-    ) -> str:
+    def create_amendment_proposal(self, proposer_did: str, title: str, description: str) -> str:
         """Create a swarm-wide constitutional amendment proposal."""
         if proposer_did not in self.registered_nodes:
-            raise ValueError(
-                f"Proposer DID '{proposer_did}' is not registered in Swarm."
-            )
+            raise ValueError(f"Proposer DID '{proposer_did}' is not registered in Swarm.")
 
-        proposal_id = (
-            f"prop_{hashlib.md5(f'{title}:{time.time()}'.encode()).hexdigest()[:10]}"
-        )
+        proposal_id = f"prop_{hashlib.md5(f'{title}:{time.time()}'.encode()).hexdigest()[:10]}"
         self.proposals[proposal_id] = {
             "id": proposal_id,
             "proposer_did": proposer_did,
@@ -128,8 +114,6 @@ class GlobalSwarmGovernance:
         return {
             "registered_nodes_count": len(self.registered_nodes),
             "total_proposals": len(self.proposals),
-            "ratified_proposals": sum(
-                1 for p in self.proposals.values() if p["status"] == "ratified"
-            ),
+            "ratified_proposals": sum(1 for p in self.proposals.values() if p["status"] == "ratified"),
             "primary_did": self.primary_did,
         }

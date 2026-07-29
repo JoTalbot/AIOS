@@ -54,9 +54,7 @@ class LiquidNeuralNetwork:
     """
 
     def __init__(self, size: int = 64) -> None:
-        self.neurons: list[LiquidNeuron] = [
-            LiquidNeuron(id=f"n{i}") for i in range(size)
-        ]
+        self.neurons: list[LiquidNeuron] = [LiquidNeuron(id=f"n{i}") for i in range(size)]
         self.size = size
         self._connections: dict[str, list[tuple[str, float]]] = {}
         self._output_weights: list[float] = [0.1] * size

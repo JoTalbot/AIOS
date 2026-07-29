@@ -29,9 +29,7 @@ def register_webhook_metrics(manager: WebhookManager | None = None) -> None:
     # Total targets
     metrics_exporter.set_gauge("aios_webhook_targets_total", report["total_targets"])
     metrics_exporter.set_gauge("aios_webhook_targets_active", report["active_targets"])
-    metrics_exporter.set_gauge(
-        "aios_webhook_targets_inactive", report["inactive_targets"]
-    )
+    metrics_exporter.set_gauge("aios_webhook_targets_inactive", report["inactive_targets"])
 
     # Total triggers and errors
     metrics_exporter.set_gauge("aios_webhook_triggers_total", report["total_triggers"])
@@ -104,24 +102,16 @@ def get_webhook_prometheus_text(manager: WebhookManager | None = None) -> str:
             labels = f'target="{name}",url="{url}"'
 
             lines.append("")
-            lines.append(
-                f"# HELP aios_webhook_target_triggers Triggers for target {name}"
-            )
+            lines.append(f"# HELP aios_webhook_target_triggers Triggers for target {name}")
             lines.append("# TYPE aios_webhook_target_triggers gauge")
-            lines.append(
-                f"aios_webhook_target_triggers{{{labels}}} {target['trigger_count']}"
-            )
+            lines.append(f"aios_webhook_target_triggers{{{labels}}} {target['trigger_count']}")
 
             lines.append(f"# HELP aios_webhook_target_errors Errors for target {name}")
             lines.append("# TYPE aios_webhook_target_errors gauge")
-            lines.append(
-                f"aios_webhook_target_errors{{{labels}}} {target['error_count']}"
-            )
+            lines.append(f"aios_webhook_target_errors{{{labels}}} {target['error_count']}")
 
             active_val = 1 if target.get("active", True) else 0
-            lines.append(
-                f"# HELP aios_webhook_target_active Whether target {name} is active"
-            )
+            lines.append(f"# HELP aios_webhook_target_active Whether target {name} is active")
             lines.append("# TYPE aios_webhook_target_active gauge")
             lines.append(f"aios_webhook_target_active{{{labels}}} {active_val}")
 

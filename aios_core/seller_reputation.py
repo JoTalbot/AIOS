@@ -123,12 +123,7 @@ class SellerReputationScorer:
         response_score = self._compute_response_time(key)
 
         # Weighted composite
-        composite = (
-            activity_score * 0.40
-            + price_score * 0.30
-            + quality_score * 0.20
-            + response_score * 0.10
-        )
+        composite = activity_score * 0.40 + price_score * 0.30 + quality_score * 0.20 + response_score * 0.10
 
         # Grade
         grade = self._grade(composite)
@@ -143,8 +138,7 @@ class SellerReputationScorer:
             grade=grade,
             details={
                 "total_ads": len(ad_list),
-                "avg_price": sum(a.price for a in ad_list if a.price)
-                / len([a for a in ad_list if a.price])
+                "avg_price": sum(a.price for a in ad_list if a.price) / len([a for a in ad_list if a.price])
                 if any(a.price for a in ad_list)
                 else None,
             },

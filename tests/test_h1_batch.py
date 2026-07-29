@@ -32,8 +32,7 @@ def _claimed_job(db, claimed_at):
         job_id = jobs.enqueue("instagram:main", "autopilot")
         with jobs._lock, jobs._conn:
             jobs._conn.execute(
-                "UPDATE shard_jobs SET status='claimed', host='worker-1',"
-                " claimed_at=? WHERE id=?",
+                "UPDATE shard_jobs SET status='claimed', host='worker-1', claimed_at=? WHERE id=?",
                 (claimed_at, job_id),
             )
         return job_id
@@ -115,10 +114,7 @@ def test_default_handlers_all_kinds_shell_out(tmp_path, monkeypatch):
     for kind in ("reels", "dm-flush"):
         result = handlers[kind]("instagram:main", {"args": ["--max", "3"]})
         assert result["code"] == 0
-        assert any(
-            kind.replace("-", "-") in part or "reels" in part or "dm-flush" in part
-            for part in ran[-1]
-        )
+        assert any(kind.replace("-", "-") in part or "reels" in part or "dm-flush" in part for part in ran[-1])
         assert any("instagram-main.sqlite" in part for part in ran[-1])
         with pytest.raises(ValueError, match="instagram"):
             handlers[kind]("olx:main", {})
@@ -138,9 +134,7 @@ def test_default_handlers_all_kinds_shell_out(tmp_path, monkeypatch):
 def test_pacer_jitter_and_stats():
     rng = random.Random(7)
     slept = []
-    pacer = Pacer(
-        actions_per_hour=0, jitter_s=(0.1, 0.2), rng=rng, sleeper=slept.append, now=lambda: 1000.0
-    )
+    pacer = Pacer(actions_per_hour=0, jitter_s=(0.1, 0.2), rng=rng, sleeper=slept.append, now=lambda: 1000.0)
     assert pacer.before_action() is True
     assert pacer.before_action() is True
     assert len(slept) == 2
@@ -227,9 +221,7 @@ def test_collectors_stop_on_pacing(tmp_path):
     # квота 1 действие: лента бесконечная, но цикл обрублен честно:
     pacer = Pacer(actions_per_hour=1, jitter_s=None, now=lambda: 0.0)
     collector = ReelsCollector(
-        PlatformDescriptor(
-            name="instagram", android_package="com.instagram.android", agent_module="x"
-        ),
+        PlatformDescriptor(name="instagram", android_package="com.instagram.android", agent_module="x"),
         adb=_ADB(),
         parser=HintVideoParser(["reel_card"]),
         pacer=pacer,

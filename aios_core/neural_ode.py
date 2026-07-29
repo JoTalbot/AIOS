@@ -52,23 +52,17 @@ class NeuralODE:
     ) -> None:
         self.dynamics = dynamics
         self.solver = solver
-        self.config = ODESolverConfig(
-            method=solver, step_size=step_size, max_steps=max_steps
-        )
+        self.config = ODESolverConfig(method=solver, step_size=step_size, max_steps=max_steps)
         self._trajectory_count = 0
 
     # ── Solver Methods ──────────────────────────────────────────────
 
-    def _euler_step(
-        self, state: list[float], dynamics: Callable, dt: float
-    ) -> list[float]:
+    def _euler_step(self, state: list[float], dynamics: Callable, dt: float) -> list[float]:
         """Single Euler step."""
         dstate = dynamics(state)
         return [s + dt * d for s, d in zip(state, dstate, strict=False)]
 
-    def _rk4_step(
-        self, state: list[float], dynamics: Callable, dt: float
-    ) -> list[float]:
+    def _rk4_step(self, state: list[float], dynamics: Callable, dt: float) -> list[float]:
         """Single RK4 step."""
         k1 = dynamics(state)
         s2 = [s + dt / 2 * k for s, k in zip(state, k1, strict=False)]
@@ -83,9 +77,7 @@ class NeuralODE:
             for s, k1i, k2i, k3i, k4i in zip(state, k1, k2, k3, k4, strict=False)
         ]
 
-    def _dopri5_step(
-        self, state: list[float], dynamics: Callable, dt: float
-    ) -> list[float]:
+    def _dopri5_step(self, state: list[float], dynamics: Callable, dt: float) -> list[float]:
         """Dormand-Prince 5th order step (simplified)."""
         # Use RK4 as approximation for Dopri5 (full Dopri5 would require more k's)
         return self._rk4_step(state, dynamics, dt)
@@ -102,9 +94,7 @@ class NeuralODE:
 
     # ── Integration ─────────────────────────────────────────────────
 
-    def integrate(
-        self, initial_state: list[float], t_span: tuple[float, float], steps: int = 100
-    ) -> list[list[float]]:
+    def integrate(self, initial_state: list[float], t_span: tuple[float, float], steps: int = 100) -> list[list[float]]:
         """Integrate the ODE dynamics over t_span with given steps."""
         t0, t1 = t_span
         dt = (t1 - t0) / steps
@@ -122,9 +112,7 @@ class NeuralODE:
         self._trajectory_count += 1
         return trajectory
 
-    def integrate_to(
-        self, initial_state: list[float], t: float, t_start: float = 0.0
-    ) -> list[float]:
+    def integrate_to(self, initial_state: list[float], t: float, t_start: float = 0.0) -> list[float]:
         """Integrate to a specific time point."""
         steps = max(10, int(abs(t - t_start) / self.config.step_size))
         trajectory = self.integrate(initial_state, (t_start, t), steps)
@@ -160,6 +148,7 @@ class NeuralODE:
             # Reverse dynamics: -dynamics(adjoint_state)
             def rev_dynamics(s):
                 return [-d for d in self.dynamics(s)]
+
             adjoint_state = step_fn(adjoint_state, rev_dynamics, dt)
             adjoint_trajectory.append(adjoint_state[:])
 
@@ -198,9 +187,11 @@ class NeuralODE:
         steps: int = 100,
     ) -> list[float]:
         """CNF inverse: reverse the flow."""
+
         # Define reverse dynamics
         def reverse_dynamics(s):
             return [-d for d in self.dynamics(s)]
+
         reverse_ode = NeuralODE(reverse_dynamics, solver=self.solver)
         trajectory = reverse_ode.integrate(state, t_span, steps)
         return trajectory[-1]
@@ -228,11 +219,7 @@ class NeuralODE:
         frac = max(0, min(1, frac))
 
         s0 = trajectory[step_idx]
-        s1 = (
-            trajectory[step_idx + 1]
-            if step_idx + 1 < len(trajectory)
-            else trajectory[step_idx]
-        )
+        s1 = trajectory[step_idx + 1] if step_idx + 1 < len(trajectory) else trajectory[step_idx]
 
         return [a * (1 - frac) + b * frac for a, b in zip(s0, s1, strict=False)]
 

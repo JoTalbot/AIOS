@@ -131,9 +131,7 @@ class RuntimePolicy:
         execution_result = {
             "allowed": allowed,
             "decision": decision_str,
-            "constitution_version": evaluation.get(
-                "constitution_version", self.version
-            ),
+            "constitution_version": evaluation.get("constitution_version", self.version),
             "details": evaluation.get("details", ""),
             "reason": evaluation.get("reason", ""),
             "validation": validation,
@@ -180,9 +178,7 @@ class RuntimePolicy:
             "version": self.version,
             "total_executions": len(self.executions),
             "outcomes": outcome_counts,
-            "pending_approvals": sum(
-                1 for a in self.approvals.history() if a.get("status") == "pending"
-            ),
+            "pending_approvals": sum(1 for a in self.approvals.history() if a.get("status") == "pending"),
             "constitution": engine_stats.get("constitution", {}),
             "policies": engine_stats.get("policies", {}),
             "validation_summary": validator_report,

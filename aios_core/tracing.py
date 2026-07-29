@@ -42,9 +42,7 @@ class Span:
 
     def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         """Execute add event."""
-        self.events.append(
-            {"name": name, "attributes": attributes or {}, "timestamp": time.time()}
-        )
+        self.events.append({"name": name, "attributes": attributes or {}, "timestamp": time.time()})
 
     def set_status_error(self, message: str) -> None:
         """Execute set status error."""
@@ -103,9 +101,7 @@ class Tracer:
             parent_trace_id, parent_span_id = self.parse_w3c_header(parent_traceparent)
 
         # Retrieve thread local active span if available
-        current_active: Span | None = getattr(
-            _current_trace_context, "active_span", None
-        )
+        current_active: Span | None = getattr(_current_trace_context, "active_span", None)
 
         if parent_trace_id:
             trace_id = parent_trace_id

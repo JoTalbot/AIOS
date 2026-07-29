@@ -3,6 +3,7 @@ TULA — Architecture Module Analysis Tool
 Для проекта AIOS (JoTalbot/AIOS) — автономный анализ docs/core/
 Без привязки к Octopus.
 """
+
 import argparse
 import os
 from datetime import UTC, datetime
@@ -120,9 +121,7 @@ def generate_matrix(directory):
 
 def main():
     parser = argparse.ArgumentParser(description="TULA — Architecture Analysis Tool")
-    parser.add_argument(
-        "--scan", metavar="DIR", default="docs/core/", help="Директория архитектуры"
-    )
+    parser.add_argument("--scan", metavar="DIR", default="docs/core/", help="Директория архитектуры")
     parser.add_argument("--report", action="store_true", help="Сгенерировать отчёт")
     parser.add_argument("--index", action="store_true", help="Создать INDEX.md")
     parser.add_argument("--matrix", action="store_true", help="Создать матрицу соответствия")

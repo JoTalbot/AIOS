@@ -60,48 +60,44 @@ class PluginInfo:
 
 class WasmRuntime:
     """WebAssembly execution environment wrapper (using dummy/mock execution for OS-agnostic testing).
-    
+
     Provides isolated execution of .wasm binaries preventing them from accessing
     host memory, filesystem, or network without explicit permission.
     """
-    
+
     def __init__(self):
         self.loaded_modules = {}
         self.memory_limit_mb = 128
-        
+
         # Real implementation would use `wasmtime` or `wasm3` here.
         # import wasmtime
         # self.engine = wasmtime.Engine()
         # self.store = wasmtime.Store(self.engine)
-        
+
     def load_module(self, name: str, wasm_bytecode: bytes) -> bool:
         """Load and compile a Wasm module."""
         # Mock compilation
-        self.loaded_modules[name] = {
-            "size": len(wasm_bytecode),
-            "state": "compiled",
-            "exports": ["run_hook", "init"]
-        }
+        self.loaded_modules[name] = {"size": len(wasm_bytecode), "state": "compiled", "exports": ["run_hook", "init"]}
         return True
-        
+
     def execute_hook(self, name: str, hook_name: str, payload: dict[str, Any]) -> Any:
         """Execute a specific hook inside the Wasm sandbox."""
         if name not in self.loaded_modules:
             raise ValueError(f"Wasm module {name} not loaded")
-            
+
         module = self.loaded_modules[name]
         if "run_hook" not in module["exports"]:
             return None
-            
+
         # Serialize payload for Wasm boundary
         # input_json = json.dumps(payload)
-        
+
         # Mock execution logic: if it's a known test plugin, return a mock response
         if name == "test_wasm_plugin":
             return {"status": "success", "wasm_hook": hook_name, "processed": True}
-            
+
         return {"status": "executed", "sandbox": "wasm", "result": None}
-        
+
     def unload(self, name: str):
         """Unload and free Wasm module memory."""
         self.loaded_modules.pop(name, None)
@@ -128,7 +124,7 @@ class PluginManager:
         self._config: dict[str, dict[str, Any]] = {}
         self._hook_results: dict[str, list[Any]] = {}
         self._load_order: list[str] = []
-        
+
         self.wasm_runtime = WasmRuntime()
 
     # ------------------------------------------------------------------
@@ -149,16 +145,16 @@ class PluginManager:
             info = PluginInfo(name=name)
         else:
             info.name = name
-            
+
         self._info[name] = info
         self._load_order.append(name)
         self._config.setdefault(name, {})
-        
+
         # Call init hook if the plugin has one
         if not info.is_wasm and hasattr(plugin, "on_init"):
             with contextlib.suppress(Exception):
                 plugin.on_init(self._config.get(name, {}))
-                
+
         return True
 
     def register_wasm_plugin(self, name: str, bytecode: bytes, info: PluginInfo | None = None) -> bool:
@@ -167,39 +163,35 @@ class PluginManager:
             info = PluginInfo(name=name)
         info.name = name
         info.is_wasm = True
-        
+
         if not self.wasm_runtime.load_module(name, bytecode):
             return False
-            
+
         return self.register_plugin(name, plugin=name, info=info)
 
     def unregister_plugin(self, name: str) -> bool:
         """Remove a plugin completely, calling its teardown hook first."""
         if name not in self.plugins:
             return False
-            
+
         info = self._info.get(name)
         plugin = self.plugins.get(name)
-        
+
         if info and info.is_wasm:
             self.wasm_runtime.unload(name)
         elif plugin and hasattr(plugin, "on_teardown"):
             with contextlib.suppress(Exception):
                 plugin.on_teardown()
-                
+
         self.plugins.pop(name, None)
         self._info.pop(name, None)
         self._config.pop(name, None)
         if name in self._load_order:
             self._load_order.remove(name)
-            
+
         # Remove hooks associated with this plugin
         for hook_name in list(self.hooks.keys()):
-            self.hooks[hook_name] = [
-                (cb, prio, pname)
-                for cb, prio, pname in self.hooks[hook_name]
-                if pname != name
-            ]
+            self.hooks[hook_name] = [(cb, prio, pname) for cb, prio, pname in self.hooks[hook_name] if pname != name]
         return True
 
     def enable_plugin(self, name: str) -> bool:
@@ -208,7 +200,7 @@ class PluginManager:
         if info is None:
             return False
         info.enabled = True
-        
+
         if not info.is_wasm:
             plugin = self.plugins.get(name)
             if plugin and hasattr(plugin, "on_start"):
@@ -222,7 +214,7 @@ class PluginManager:
         if info is None:
             return False
         info.enabled = False
-        
+
         if not info.is_wasm:
             plugin = self.plugins.get(name)
             if plugin and hasattr(plugin, "on_stop"):
@@ -296,10 +288,11 @@ class PluginManager:
 
     def register_wasm_hook(self, hook_name: str, plugin_name: str, priority: int = 0) -> None:
         """Register a Wasm module to respond to a specific hook."""
+
         def wasm_callback(*args, **kwargs):
             payload = {"args": args, "kwargs": kwargs}
             return self.wasm_runtime.execute_hook(plugin_name, hook_name, payload)
-            
+
         self.register_hook(hook_name, wasm_callback, priority, plugin_name)
 
     def run_hook(self, hook_name: str, *args, **kwargs) -> list[Any]:
@@ -336,9 +329,7 @@ class PluginManager:
 
     def list_plugins(self, enabled_only: bool = False) -> list[str]:
         if enabled_only:
-            return [
-                n for n in self._load_order if n in self._info and self._info[n].enabled
-            ]
+            return [n for n in self._load_order if n in self._info and self._info[n].enabled]
         return list(self._load_order)
 
     def stats(self) -> dict:
@@ -351,5 +342,6 @@ class PluginManager:
             "registered_hooks": len(self.hooks),
             "total_hook_callbacks": sum(len(v) for v in self.hooks.values()),
         }
+
 
 plugin_manager = PluginManager()

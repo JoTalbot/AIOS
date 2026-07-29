@@ -132,9 +132,7 @@ class DigitalTwin:
     def sync(self, new_state: dict[str, Any]) -> dict[str, Any]:
         """Sync twin state with new data. Returns diff."""
         diff = self._compute_diff(self.state, new_state)
-        self.history.append(
-            {"state": self.state.copy(), "diff": diff, "timestamp": time.time()}
-        )
+        self.history.append({"state": self.state.copy(), "diff": diff, "timestamp": time.time()})
         self.state.update(new_state)
         # Update properties
         for name, value in new_state.items():
@@ -172,9 +170,7 @@ class DigitalTwin:
 
     # ── Simulation ──────────────────────────────────────────────
 
-    def register_action(
-        self, name: str, handler: Callable[[dict[str, Any]], SimulationOutcome]
-    ) -> None:
+    def register_action(self, name: str, handler: Callable[[dict[str, Any]], SimulationOutcome]) -> None:
         """Register a simulation action handler."""
         self._action_handlers[name] = handler
 
@@ -196,9 +192,7 @@ class DigitalTwin:
         self._simulations.append(outcome)
         return outcome
 
-    def what_if(
-        self, action: str, assumed_changes: dict[str, Any] | None = None
-    ) -> SimulationOutcome:
+    def what_if(self, action: str, assumed_changes: dict[str, Any] | None = None) -> SimulationOutcome:
         """What-if analysis: simulate without committing changes.
 
         Temporarily applies assumed_changes, runs simulation, then restores.
@@ -227,9 +221,7 @@ class DigitalTwin:
             return self.sync(outcome.effects) is not None
         return True
 
-    def inject_event(
-        self, event_type: str, event_data: dict[str, Any]
-    ) -> SimulationOutcome:
+    def inject_event(self, event_type: str, event_data: dict[str, Any]) -> SimulationOutcome:
         """Inject an event for testing (e.g., failure, recovery)."""
         outcome = SimulationOutcome(
             action=f"inject_{event_type}",

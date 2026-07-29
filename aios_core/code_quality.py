@@ -120,9 +120,7 @@ class CodeQualityChecker:
             total_functions += len(func_matches)
 
             # Count docstrings (triple-quote strings after def/class)
-            docstring_count = len(
-                re.findall(r'(?:def \w+|class \w+)[^"\']*("""|\'\'\')', content)
-            )
+            docstring_count = len(re.findall(r'(?:def \w+|class \w+)[^"\']*("""|\'\'\')', content))
             documented_functions += docstring_count
 
         func_coverage = round(documented_functions / max(1, total_functions) * 100, 1)
@@ -144,16 +142,14 @@ class CodeQualityChecker:
             modules_checked += 1
             content = py_file.read_text(encoding="utf-8")
             # Find import lines
-            import_lines = re.findall(
-                r"^(?:import |from \S+ import )(.+)$", content, re.MULTILINE
-            )
+            import_lines = re.findall(r"^(?:import |from \S+ import )(.+)$", content, re.MULTILINE)
             for import_spec in import_lines:
                 # Very simplified: check if imported name appears elsewhere
                 names = [n.strip().split(" as ")[0] for n in import_spec.split(",")]
                 for name in names:
-                    if name and name not in content.replace(
-                        f"import {name}", ""
-                    ).replace(f"import {name.split('.')[0]}", ""):
+                    if name and name not in content.replace(f"import {name}", "").replace(
+                        f"import {name.split('.')[0]}", ""
+                    ):
                         # Name not used elsewhere (rough heuristic)
                         pass  # Skip detailed analysis for now
         return {

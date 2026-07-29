@@ -152,9 +152,7 @@ class NotificationRouter:
 
         return results
 
-    def _dispatch(
-        self, channel: NotificationChannel, message: NotificationMessage
-    ) -> dict[str, object]:
+    def _dispatch(self, channel: NotificationChannel, message: NotificationMessage) -> dict[str, object]:
         """Dispatch a message to a specific channel.
 
         Args:

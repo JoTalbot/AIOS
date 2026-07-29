@@ -160,9 +160,7 @@ class MolecularDNARuntime:
     # PCR Amplification
     # ------------------------------------------------------------------
 
-    def simulate_pcr_amplification(
-        self, rule_id: str, amplification_cycles: int = 10
-    ) -> dict[str, Any]:
+    def simulate_pcr_amplification(self, rule_id: str, amplification_cycles: int = 10) -> dict[str, Any]:
         """Simulate Polymerase Chain Reaction (PCR) molecular amplification."""
         seq = self.dna_memory_bank.get(rule_id, "")
         if not seq:
@@ -201,9 +199,7 @@ class MolecularDNARuntime:
     # Restriction enzyme digestion
     # ------------------------------------------------------------------
 
-    def digest_with_restriction_enzyme(
-        self, dna_sequence: str, enzyme_name: str
-    ) -> dict[str, Any]:
+    def digest_with_restriction_enzyme(self, dna_sequence: str, enzyme_name: str) -> dict[str, Any]:
         """Simulate restriction enzyme cutting at recognition sites.
 
         Returns fragments and cut positions.
@@ -259,9 +255,7 @@ class MolecularDNARuntime:
     # Enzymatic ligation
     # ------------------------------------------------------------------
 
-    def ligate_fragments(
-        self, fragments: Sequence[str], sticky_end_length: int = 4
-    ) -> dict[str, Any]:
+    def ligate_fragments(self, fragments: Sequence[str], sticky_end_length: int = 4) -> dict[str, Any]:
         """Simulate enzymatic ligation of DNA fragments with sticky ends."""
         if len(fragments) < 2:
             return {
@@ -416,9 +410,7 @@ class MolecularDNARuntime:
     # Gene expression regulation
     # ------------------------------------------------------------------
 
-    def regulate_expression(
-        self, rule_id: str, expression_level: float
-    ) -> dict[str, Any]:
+    def regulate_expression(self, rule_id: str, expression_level: float) -> dict[str, Any]:
         """Set expression level (0.0–2.0) for a stored rule."""
         if rule_id not in self._gene_expression:
             return {

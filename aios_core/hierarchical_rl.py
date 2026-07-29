@@ -86,9 +86,7 @@ class HierarchicalRL:
         # Check initiation sets
         eligible = []
         for name, option in self.options.items():
-            if not option.initiation_set or any(
-                s in state_str for s in option.initiation_set
-            ):
+            if not option.initiation_set or any(s in state_str for s in option.initiation_set):
                 eligible.append(name)
 
         if not eligible:
@@ -155,19 +153,13 @@ class HierarchicalRL:
         self._goal_registry[goal] = sub_options
         return sub_options
 
-    def set_high_level_policy(
-        self, state: str, option_weights: dict[str, float]
-    ) -> None:
+    def set_high_level_policy(self, state: str, option_weights: dict[str, float]) -> None:
         """Set high-level policy weights for a state."""
         self.high_level_policy[state] = option_weights
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_reward = (
-            (sum(o.reward_total for o in self.options.values()) / len(self.options))
-            if self.options
-            else 0.0
-        )
+        avg_reward = (sum(o.reward_total for o in self.options.values()) / len(self.options)) if self.options else 0.0
         return {
             "options": len(self.options),
             "executions": len(self._execution_log),

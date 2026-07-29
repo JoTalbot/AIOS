@@ -79,12 +79,8 @@ class AutonomyManager:
                     metadata TEXT
                 )"""
             )
-            self.db.execute(
-                "CREATE INDEX IF NOT EXISTS idx_autonomy_agent ON autonomy_profiles(agent_id)"
-            )
-            self.db.execute(
-                "CREATE INDEX IF NOT EXISTS idx_autonomy_level ON autonomy_profiles(level)"
-            )
+            self.db.execute("CREATE INDEX IF NOT EXISTS idx_autonomy_agent ON autonomy_profiles(agent_id)")
+            self.db.execute("CREATE INDEX IF NOT EXISTS idx_autonomy_level ON autonomy_profiles(level)")
             self._load_profiles()
 
     # ------------------------------------------------------------------
@@ -315,10 +311,7 @@ class AutonomyManager:
         elif auto_approved:
             reason = f"Level {int(level)} auto-approves {risk}-risk actions"
         else:
-            reason = (
-                f"Level {int(level)} does not auto-approve {risk}-risk actions; "
-                f"human approval required"
-            )
+            reason = f"Level {int(level)} does not auto-approve {risk}-risk actions; human approval required"
 
         return {
             "agent_id": agent_id,
@@ -425,10 +418,7 @@ class AutonomyManager:
         else:
             promote = True
             suggested = current + 1
-            reason = (
-                f"Agent meets promotion criteria: {total} actions, "
-                f"{success_rate:.2%} success rate"
-            )
+            reason = f"Agent meets promotion criteria: {total} actions, {success_rate:.2%} success rate"
 
         return {
             "agent_id": agent_id,
@@ -483,10 +473,7 @@ class AutonomyManager:
         else:
             demote = True
             suggested = max(0, current - 1)
-            reason = (
-                f"Agent meets demotion criteria: {total} actions, "
-                f"{success_rate:.2%} success rate below 70%"
-            )
+            reason = f"Agent meets demotion criteria: {total} actions, {success_rate:.2%} success rate below 70%"
 
         return {
             "agent_id": agent_id,
@@ -533,9 +520,7 @@ class AutonomyManager:
             by_level[lvl] = by_level.get(lvl, 0) + 1
 
         auto_adjusted = sum(
-            1
-            for p in self._profiles.values()
-            if "auto_promoted_at" in p.metadata or "auto_demoted_at" in p.metadata
+            1 for p in self._profiles.values() if "auto_promoted_at" in p.metadata or "auto_demoted_at" in p.metadata
         )
 
         return {

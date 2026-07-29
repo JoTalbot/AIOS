@@ -11,9 +11,11 @@ import pytest
 # multitenancy
 # ======================================================================
 
+
 class TestMultiTenantManager:
     def setup_method(self):
         from aios_core.multitenancy import MultiTenantManager
+
         self.mgr = MultiTenantManager()
 
     def test_create_tenant(self):
@@ -46,6 +48,7 @@ class TestMultiTenantManager:
 
     def test_tenant_operations(self):
         from aios_core.multitenancy import Tenant
+
         t = Tenant(tenant_id="delta", name="Delta Co")
         t.set_quota("memory", 512)
         assert t.check_quota("memory", 256) is True
@@ -63,9 +66,11 @@ class TestMultiTenantManager:
 # blockchain
 # ======================================================================
 
+
 class TestBlockchain:
     def setup_method(self):
         from aios_core.blockchain import Blockchain
+
         self.bc = Blockchain()
 
     def test_add_transaction(self):
@@ -97,9 +102,11 @@ class TestBlockchain:
 # automl
 # ======================================================================
 
+
 class TestAutoMLPipeline:
     def setup_method(self):
         from aios_core.automl import AutoMLPipeline
+
         self.pipeline = AutoMLPipeline()
 
     def test_create_pipeline(self):
@@ -131,9 +138,11 @@ class TestAutoMLPipeline:
 # load_testing
 # ======================================================================
 
+
 class TestLoadTester:
     def setup_method(self):
         from aios_core.load_testing import LoadTester
+
         self.lt = LoadTester()
 
     def test_run(self):
@@ -150,6 +159,7 @@ class TestLoadTester:
 
     def test_load_profile(self):
         from aios_core.load_testing import LoadProfile
+
         profile = LoadProfile(name="baseline", concurrent_users=10, duration_seconds=30)
         assert profile.name == "baseline"
 
@@ -158,14 +168,17 @@ class TestLoadTester:
 # swarm_intelligence
 # ======================================================================
 
+
 class TestParticleSwarmOptimizer:
     def setup_method(self):
         from aios_core.swarm_intelligence import ParticleSwarmOptimizer
+
         self.pso = ParticleSwarmOptimizer(num_particles=10, dimensions=3)
 
     def test_optimize(self):
         def fitness(pos):
             return sum(x**2 for x in pos)
+
         best_pos, best_fit = self.pso.optimize(fitness, iterations=20)
         assert len(best_pos) == 3
         assert isinstance(best_fit, float)
@@ -177,6 +190,7 @@ class TestParticleSwarmOptimizer:
     def test_convergence_report(self):
         def fitness(pos):
             return sum(x**2 for x in pos)
+
         self.pso.optimize(fitness, iterations=5)
         report = self.pso.convergence_report()
         assert isinstance(report, dict)
@@ -190,9 +204,11 @@ class TestParticleSwarmOptimizer:
 # quantum_computing
 # ======================================================================
 
+
 class TestQuantumComputing:
     def setup_method(self):
         from aios_core.quantum_computing import QuantumCircuit
+
         self.circuit = QuantumCircuit(num_qubits=2)
 
     def test_hadamard(self):
@@ -224,6 +240,7 @@ class TestQuantumComputing:
 
     def test_quantum_processor(self):
         from aios_core.quantum_computing import QuantumProcessor
+
         qp = QuantumProcessor()
         qp.create_circuit("test", 2)
         qp.run("test")
@@ -232,6 +249,7 @@ class TestQuantumComputing:
 
     def test_qubit(self):
         from aios_core.quantum_computing import Qubit
+
         q = Qubit()
         q.apply_hadamard()
         result = q.measure()
@@ -246,9 +264,11 @@ class TestQuantumComputing:
 # infinite_constitution
 # ======================================================================
 
+
 class TestInfiniteConstitution:
     def setup_method(self):
         from aios_core.infinite_constitution import InfiniteConstitutionEngine
+
         self.engine = InfiniteConstitutionEngine()
 
     def test_propose_amendment(self):
@@ -278,13 +298,16 @@ class TestInfiniteConstitution:
 # migration
 # ======================================================================
 
+
 class TestMigrationManager:
     def setup_method(self):
         from aios_core.migration import MigrationManager
+
         self.mgr = MigrationManager(db_path="/tmp/test_aios_migration.db")
 
     def test_add_migration(self):
         from aios_core.migration import Migration
+
         m = Migration(version="001", description="add_users_table", up_sql="CREATE TABLE users (id INT)")
         self.mgr.add_migration(m)
         status = self.mgr.status()
@@ -292,6 +315,7 @@ class TestMigrationManager:
 
     def test_validate(self):
         from aios_core.migration import Migration
+
         self.mgr.add_migration(Migration("001", "create_table", "CREATE TABLE users (id INT)"))
         result = self.mgr.validate()
         assert "valid" in result
@@ -301,6 +325,7 @@ class TestMigrationManager:
 
     def test_rollback(self):
         from aios_core.migration import Migration
+
         self.mgr.add_migration(Migration("002", "create_index", "CREATE INDEX idx_users ON users(id)"))
         result = self.mgr.rollback(target_version=None)
         assert isinstance(result, dict)
@@ -314,9 +339,11 @@ class TestMigrationManager:
 # sovereign_reflection
 # ======================================================================
 
+
 class TestSovereignReflection:
     def setup_method(self):
         from aios_core.sovereign_reflection import SovereignReflectionEngine
+
         self.engine = SovereignReflectionEngine()
 
     def test_deep_reflection(self):
@@ -328,10 +355,12 @@ class TestSovereignReflection:
         assert "drift_score" in result
 
     def test_detect_belief_contradiction(self):
-        result = self.engine.detect_belief_contradiction([
-            {"belief": "privacy first", "weight": 0.9},
-            {"belief": "collect all data", "weight": 0.8},
-        ])
+        result = self.engine.detect_belief_contradiction(
+            [
+                {"belief": "privacy first", "weight": 0.9},
+                {"belief": "collect all data", "weight": 0.8},
+            ]
+        )
         assert "contradictions" in result
 
     def test_audit_goal_hierarchy(self):
@@ -351,9 +380,11 @@ class TestSovereignReflection:
 # universal_multi_species_ethics
 # ======================================================================
 
+
 class TestUniversalMultiSpeciesEthics:
     def setup_method(self):
         from aios_core.universal_multi_species_ethics import UniversalMultiSpeciesEthics
+
         self.ethics = UniversalMultiSpeciesEthics()
 
     def test_register_species(self):
@@ -362,9 +393,7 @@ class TestUniversalMultiSpeciesEthics:
 
     def test_evaluate_multi_species_impact(self):
         self.ethics.register_species("humans", "Humans", "biological")
-        result = self.ethics.evaluate_multi_species_impact(
-            {"operation": "deploy_ai"}, ["humans"]
-        )
+        result = self.ethics.evaluate_multi_species_impact({"operation": "deploy_ai"}, ["humans"])
         assert "harmony_score" in result
 
     def test_ethical_vote(self):
@@ -391,16 +420,20 @@ class TestUniversalMultiSpeciesEthics:
 # async_bus
 # ======================================================================
 
+
 class TestAsyncEventBus:
     def setup_method(self):
         from aios_core.async_bus import AsyncEventBus
+
         self.bus = AsyncEventBus()
 
     @pytest.mark.anyio
     async def test_emit_and_on(self):
         received = []
+
         async def handler(payload):
             received.append(payload)
+
         self.bus.on("test.event", handler)
         await self.bus.emit("test.event", {"key": "value"})
         assert len(received) == 1
@@ -409,6 +442,7 @@ class TestAsyncEventBus:
     async def test_off_removes_handler(self):
         async def handler(payload):
             pass
+
         self.bus.on("ev2", handler)
         removed = self.bus.off("ev2", handler)
         assert removed == 1
@@ -416,8 +450,10 @@ class TestAsyncEventBus:
     @pytest.mark.anyio
     async def test_wildcard_subscription(self):
         received = []
+
         async def handler(payload):
             received.append(payload)
+
         self.bus.on("user.*", handler)
         await self.bus.emit("user.created", {"id": 1})
         assert len(received) == 1
@@ -425,14 +461,18 @@ class TestAsyncEventBus:
     @pytest.mark.anyio
     async def test_middleware(self):
         from aios_core.async_bus import AsyncMiddleware
+
         class SuppressAll(AsyncMiddleware):
             async def before_emit(self, event, payload):
                 return None
+
         mw = SuppressAll()
         self.bus.add_middleware(mw)
         received = []
+
         async def handler(payload):
             received.append(payload)
+
         self.bus.on("suppressed", handler)
         await self.bus.emit("suppressed", {"x": 1})
         assert len(received) == 0
@@ -452,6 +492,7 @@ class TestAsyncEventBus:
     async def test_clear(self):
         async def handler(payload):
             pass
+
         self.bus.on("clear_ev", handler)
         self.bus.clear()
         s = self.bus.stats()
@@ -462,9 +503,11 @@ class TestAsyncEventBus:
 # websocket
 # ======================================================================
 
+
 class TestWebSocketManager:
     def setup_method(self):
         from aios_core.websocket import WebSocketManager
+
         self.mgr = WebSocketManager()
 
     def test_stats_initial(self):
@@ -473,6 +516,7 @@ class TestWebSocketManager:
 
     def test_subscribe_unsubscribe(self):
         from aios_core.websocket import ConnectionInfo
+
         info = ConnectionInfo(None, "test1")
         self.mgr._connections["test1"] = info
         self.mgr.subscribe("test1", "alerts")
@@ -488,6 +532,7 @@ class TestWebSocketManager:
 
     def test_stale_detection(self):
         from aios_core.websocket import ConnectionInfo
+
         info = ConnectionInfo(None, "stale1")
         info.last_ping = time.time() - 120
         self.mgr._connections["stale1"] = info
@@ -499,9 +544,11 @@ class TestWebSocketManager:
 # android_recorder
 # ======================================================================
 
+
 class TestScenarioRecorder:
     def setup_method(self):
         from aios_core.android_recorder import ScenarioRecorder
+
         self.rec = ScenarioRecorder(package="ua.slando", device_id="emulator")
 
     def test_record_step(self):
@@ -569,9 +616,11 @@ class TestScenarioRecorder:
 # cosmic_swarm_matrix
 # ======================================================================
 
+
 class TestCosmicSwarmMatrix:
     def setup_method(self):
         from aios_core.cosmic_swarm_matrix import CosmicSwarmMatrix
+
         self.matrix = CosmicSwarmMatrix()
 
     def test_register_node(self):
@@ -614,9 +663,11 @@ class TestCosmicSwarmMatrix:
 # plugin_manager
 # ======================================================================
 
+
 class TestPluginManager:
     def setup_method(self):
         from aios_core.plugin_manager import PluginManager
+
         self.pm = PluginManager()
 
     def test_register_plugin(self):
@@ -634,6 +685,7 @@ class TestPluginManager:
     def test_register_hook(self):
         def callback():
             return 42
+
         self.pm.register_hook("on_start", callback, plugin_name="p1")
         results = self.pm.run_hook("on_start")
         assert 42 in results
@@ -650,6 +702,7 @@ class TestPluginManager:
 
     def test_resolve_dependencies(self):
         from aios_core.plugin_manager import PluginInfo
+
         self.pm.register_plugin("base", {}, PluginInfo(dependencies=[]))
         self.pm.register_plugin("dependent", {}, PluginInfo(dependencies=["base"]))
         order = self.pm.resolve_dependencies()
@@ -664,9 +717,11 @@ class TestPluginManager:
 # rate_limiter
 # ======================================================================
 
+
 class TestRateLimiter:
     def setup_method(self):
         from aios_core.rate_limiter import RateLimiter
+
         self.rl = RateLimiter(requests_per_minute=60)
 
     def test_is_allowed(self):
@@ -700,6 +755,7 @@ class TestRateLimiter:
 
     def test_token_bucket_mode(self):
         from aios_core.rate_limiter import RateLimiter
+
         rl_tb = RateLimiter(requests_per_minute=60, mode="token_bucket", burst_size=20)
         assert rl_tb.is_allowed("tb_user") is True
 
@@ -718,30 +774,36 @@ class TestRateLimiter:
 # android_driver
 # ======================================================================
 
+
 class TestAndroidDriver:
     def test_driver_capabilities(self):
         from aios_core.android_driver import DriverCapabilities
+
         caps = DriverCapabilities(package="com.test")
         assert caps.package == "com.test"
 
     def test_ui_context(self):
         from aios_core.android_driver import UIContext
+
         ctx = UIContext(xml="<root/>", package="com.test", current_activity="MainActivity")
         assert ctx.xml == "<root/>"
 
     def test_adb_driver_instantiation(self):
         from aios_core.android_driver import ADBDriver, DriverCapabilities
+
         driver = ADBDriver(capabilities=DriverCapabilities(package="com.test"))
         assert driver.capabilities.package == "com.test"
 
     def test_adb_driver_list_devices(self):
         from aios_core.android_driver import ADBDriver
+
         driver = ADBDriver()
         devices = driver.list_devices()
         assert isinstance(devices, list)
 
     def test_driver_pool(self):
         from aios_core.android_driver import ADBDriver, DriverCapabilities, DriverPool
+
         pool = DriverPool()
         driver = ADBDriver(capabilities=DriverCapabilities())
         pool.add_driver("device1", driver)
@@ -749,6 +811,7 @@ class TestAndroidDriver:
 
     def test_driver_pool_dispatch(self):
         from aios_core.android_driver import ADBDriver, DriverPool
+
         pool = DriverPool()
         pool.add_driver("d1", ADBDriver())
         d = pool.dispatch("round_robin")
@@ -756,6 +819,7 @@ class TestAndroidDriver:
 
     def test_driver_pool_stats(self):
         from aios_core.android_driver import ADBDriver, DriverPool
+
         pool = DriverPool()
         pool.add_driver("d1", ADBDriver())
         s = pool.stats()
@@ -763,11 +827,13 @@ class TestAndroidDriver:
 
     def test_appium_driver_wrapper(self):
         from aios_core.android_driver import AppiumDriverWrapper, DriverCapabilities
+
         wrapper = AppiumDriverWrapper(DriverCapabilities())
         assert wrapper.capabilities is not None
 
     def test_remove_driver_from_pool(self):
         from aios_core.android_driver import ADBDriver, DriverPool
+
         pool = DriverPool()
         pool.add_driver("d1", ADBDriver())
         assert pool.remove_driver("d1") is True
@@ -778,9 +844,11 @@ class TestAndroidDriver:
 # molecular_dna_runtime
 # ======================================================================
 
+
 class TestMolecularDNARuntime:
     def setup_method(self):
         from aios_core.molecular_dna_runtime import MolecularDNARuntime
+
         self.dna = MolecularDNARuntime()
 
     def test_encode_decode(self):
@@ -854,9 +922,11 @@ class TestMolecularDNARuntime:
 # logging_config
 # ======================================================================
 
+
 class TestLoggingConfig:
     def test_json_formatter(self):
         from aios_core.logging_config import JSONFormatter
+
         formatter = JSONFormatter()
         record = logging.LogRecord("aios", logging.INFO, "", 0, "test msg", (), None)
         output = formatter.format(record)
@@ -864,16 +934,19 @@ class TestLoggingConfig:
 
     def test_set_log_context(self):
         from aios_core.logging_config import _ctx_agent_id, set_log_context
+
         set_log_context(agent_id="agent42")
         assert _ctx_agent_id.get() == "agent42"
 
     def test_clear_log_context(self):
         from aios_core.logging_config import _ctx_agent_id, clear_log_context
+
         clear_log_context()
         assert _ctx_agent_id.get() == "system"
 
     def test_sanitize(self):
         from aios_core.logging_config import _sanitize
+
         data = {"password": "secret123", "name": "Alice"}
         sanitized = _sanitize(data)
         assert sanitized["password"] == "***REDACTED***"
@@ -881,6 +954,7 @@ class TestLoggingConfig:
 
     def test_buffered_handler(self):
         from aios_core.logging_config import BufferedHandler
+
         bh = BufferedHandler(buffer_size=5)
         record = logging.LogRecord("test", logging.INFO, "", 0, "msg", (), None)
         bh.emit(record)
@@ -888,6 +962,7 @@ class TestLoggingConfig:
 
     def test_setup_logging_returns_logger(self):
         from aios_core.logging_config import setup_logging
+
         with tempfile.NamedTemporaryFile(suffix=".log", delete=False) as f:
             logger = setup_logging(level="DEBUG", log_file=f.name)
             assert logger.level == logging.DEBUG
@@ -898,9 +973,11 @@ class TestLoggingConfig:
 # metrics_exporter
 # ======================================================================
 
+
 class TestMetricsExporter:
     def setup_method(self):
         from aios_core.metrics_exporter import MetricsExporter
+
         self.me = MetricsExporter()
 
     def test_inc_counter(self):
@@ -963,9 +1040,11 @@ class TestMetricsExporter:
 # multidimensional_world_model
 # ======================================================================
 
+
 class TestMultiDimensionalWorldModel:
     def setup_method(self):
         from aios_core.multidimensional_world_model import MultiDimensionalWorldModel
+
         self.wm = MultiDimensionalWorldModel(simulation_horizon_steps=5)
 
     def test_simulate_action_impact(self):
@@ -978,10 +1057,7 @@ class TestMultiDimensionalWorldModel:
         assert "safe_trajectory_probability" in result
 
     def test_analyze_branches(self):
-        result = self.wm.analyze_branches(
-            {"complexity": 0.5},
-            [{"complexity": 0.3}, {"complexity": 1.0}]
-        )
+        result = self.wm.analyze_branches({"complexity": 0.5}, [{"complexity": 0.3}, {"complexity": 1.0}])
         assert "branch_results" in result
 
     def test_score_action_risk(self):
@@ -1003,9 +1079,11 @@ class TestMultiDimensionalWorldModel:
 # agent_architecture
 # ======================================================================
 
+
 class TestAgentArchitecture:
     def setup_method(self):
         from aios_core.agent_architecture import AdvancedAgent, Tool
+
         self.agent = AdvancedAgent("test_agent")
         self.Tool = Tool
 
@@ -1054,12 +1132,14 @@ class TestAgentArchitecture:
 
     def test_memory(self):
         from aios_core.agent_architecture import AgentMemory
+
         mem = AgentMemory()
         mem.add_short_term({"key": "test", "value": 42})
         assert len(mem.short_term) == 1
 
     def test_memory_consolidation(self):
         from aios_core.agent_architecture import AgentMemory
+
         mem = AgentMemory()
         for _ in range(5):
             mem.add_short_term({"key": "frequent", "value": 1})
@@ -1068,12 +1148,14 @@ class TestAgentArchitecture:
 
     def test_orchestrator(self):
         from aios_core.agent_architecture import AgentOrchestrator
+
         orch = AgentOrchestrator()
         agent = orch.create_agent("worker1")
         assert agent.id in orch.agents
 
     def test_orchestrator_delegate(self):
         from aios_core.agent_architecture import AgentOrchestrator, Tool
+
         orch = AgentOrchestrator()
         a1 = orch.create_agent("searcher")
         a1.add_tool(Tool("search", "Search", lambda x: x))
@@ -1090,10 +1172,12 @@ class TestAgentArchitecture:
 # async_core
 # ======================================================================
 
+
 class TestAsyncCore:
     @pytest.mark.anyio
     async def test_async_database_stats(self):
         from aios_core.async_core import AsyncDatabase
+
         db = AsyncDatabase()
         stats = await db.stats()
         assert isinstance(stats, dict)
@@ -1101,6 +1185,7 @@ class TestAsyncCore:
     @pytest.mark.anyio
     async def test_async_database_tables(self):
         from aios_core.async_core import AsyncDatabase
+
         db = AsyncDatabase()
         tables = await db.tables()
         assert isinstance(tables, list)
@@ -1108,6 +1193,7 @@ class TestAsyncCore:
     @pytest.mark.anyio
     async def test_async_knowledge_graph(self):
         from aios_core.async_core import AsyncKnowledgeGraph
+
         kg = AsyncKnowledgeGraph()
         stats = await kg.stats()
         assert isinstance(stats, dict)
@@ -1115,6 +1201,7 @@ class TestAsyncCore:
     @pytest.mark.anyio
     async def test_async_orchestrator(self):
         from aios_core.async_core import AsyncOrchestrator
+
         orch = AsyncOrchestrator()
         stats = await orch.stats()
         assert isinstance(stats, dict)
@@ -1124,9 +1211,11 @@ class TestAsyncCore:
 # android_registry
 # ======================================================================
 
+
 class TestAndroidRegistry:
     def setup_method(self):
         from aios_core.android_registry import AndroidAppDescriptor, AndroidAppRegistry
+
         self.reg = AndroidAppRegistry()
         self.Desc = AndroidAppDescriptor
 
@@ -1171,9 +1260,11 @@ class TestAndroidRegistry:
 # substrate_convergence
 # ======================================================================
 
+
 class TestSubstrateConvergence:
     def setup_method(self):
         from aios_core.substrate_convergence import SubstrateConvergenceEngine
+
         self.engine = SubstrateConvergenceEngine()
 
     def test_select_optimal_substrate(self):
@@ -1232,9 +1323,11 @@ class TestSubstrateConvergence:
 # universal_invariant_prover
 # ======================================================================
 
+
 class TestUniversalInvariantProver:
     def setup_method(self):
         from aios_core.universal_invariant_prover import UniversalInvariantProver
+
         self.prover = UniversalInvariantProver()
 
     def test_prove_safe_transition(self):
@@ -1255,6 +1348,7 @@ class TestUniversalInvariantProver:
 
     def test_add_invariant(self):
         from aios_core.universal_invariant_prover import SafetyInvariant
+
         inv = SafetyInvariant("INV_99", "Custom", "x > 0")
         self.prover.add_invariant(inv)
         assert self.prover.get_invariant("INV_99") is not None
@@ -1273,10 +1367,12 @@ class TestUniversalInvariantProver:
         assert composed["proven"] is True
 
     def test_batch_prove(self):
-        results = self.prover.batch_prove([
-            ({}, {"agent_id": "a1"}),
-            ({}, {"agent_id": "a2"}),
-        ])
+        results = self.prover.batch_prove(
+            [
+                ({}, {"agent_id": "a1"}),
+                ({}, {"agent_id": "a2"}),
+            ]
+        )
         assert len(results) == 2
 
     def test_violation_severity(self):
@@ -1292,13 +1388,16 @@ class TestUniversalInvariantProver:
 # ml_planner_scorer
 # ======================================================================
 
+
 class TestMLPlannerScorer:
     def setup_method(self):
         from aios_core.ml_planner_scorer import MLPlannerScorer
+
         self.scorer = MLPlannerScorer()
 
     def _make_plan(self):
         from aios_core.planner import Plan, PlanStep
+
         steps = [
             PlanStep(id="1", name="search", step_type="search", dependencies=[]),
             PlanStep(id="2", name="analyze", step_type="analyze", dependencies=["1"]),
@@ -1307,6 +1406,7 @@ class TestMLPlannerScorer:
 
     def test_score_plan(self):
         from aios_core.planner import Planner
+
         plan = self._make_plan()
         planner = Planner()
         result = self.scorer.score_plan(plan, planner)
@@ -1315,6 +1415,7 @@ class TestMLPlannerScorer:
 
     def test_optimize_plan(self):
         from aios_core.planner import Planner
+
         plan = self._make_plan()
         planner = Planner()
         result = self.scorer.optimize_plan(plan, planner)

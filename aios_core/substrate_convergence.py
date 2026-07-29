@@ -32,14 +32,14 @@ class SubstrateType:
     ALL = [SILICON, PHOTONIC, NEUROMORPHIC, QUANTUM, BIO_COMPUTE]
 
 
-
 class SubstrateAIManager:
     """AI-driven Substrate Convergence Manager.
     Uses basic Reinforcement Learning (Q-learning approach) to predict
     the most efficient substrate based on historical latency and success rates.
     """
+
     def __init__(self):
-        self.q_table: dict[str, dict[str, float]] = {} # category -> {substrate: q_value}
+        self.q_table: dict[str, dict[str, float]] = {}  # category -> {substrate: q_value}
         self.learning_rate = 0.1
         self.discount_factor = 0.9
         self.exploration_rate = 0.2
@@ -47,37 +47,39 @@ class SubstrateAIManager:
     def predict_best_substrate(self, task_category: str, available_substrates: list[str]) -> str | None:
         if task_category not in self.q_table:
             self.q_table[task_category] = dict.fromkeys(SubstrateType.ALL, 0.0)
-            
+
         import random
+
         # Explore
         if random.random() < self.exploration_rate:
             return random.choice(available_substrates) if available_substrates else None
-            
+
         # Exploit
         q_values = self.q_table[task_category]
         best_sub = None
-        best_q = -float('inf')
+        best_q = -float("inf")
         for sub in available_substrates:
             if q_values.get(sub, 0.0) > best_q:
                 best_q = q_values.get(sub, 0.0)
                 best_sub = sub
-                
+
         return best_sub
 
     def update_q_value(self, task_category: str, substrate: str, latency_ms: float, health: float, success: bool):
         if task_category not in self.q_table:
             self.q_table[task_category] = dict.fromkeys(SubstrateType.ALL, 0.0)
-            
+
         # Reward calculation
         # High reward for success, high health, low latency
         reward = -10.0
         if success:
             reward = (health * 10.0) + (100.0 / max(0.1, latency_ms))
-            
+
         old_q = self.q_table[task_category].get(substrate, 0.0)
         # Simplified Q-learning update (no future state)
         new_q = old_q + self.learning_rate * (reward - old_q)
         self.q_table[task_category][substrate] = new_q
+
 
 class SubstrateConvergenceEngine:
     """Substrate-Agnostic Unified Execution Router.
@@ -227,8 +229,8 @@ class SubstrateConvergenceEngine:
             ai_prediction = self.ai_manager.predict_best_substrate(req_category, active_subs)
             if ai_prediction and ai_prediction in self.substrates:
                 # We give AI prediction a high priority chance, but fallback if not optimal
-                pass # The true implementation can decide to just return it
-                
+                pass  # The true implementation can decide to just return it
+
         # Check preferred type
         if req_type and req_type in self.substrates:
             sub = self.substrates[req_type]
@@ -256,9 +258,7 @@ class SubstrateConvergenceEngine:
             return best_affinity[1]
 
         # Fallback: highest efficiency active substrate
-        active = [
-            s for s in self.substrates.values() if s["active"] and s["health"] > 0.5
-        ]
+        active = [s for s in self.substrates.values() if s["active"] and s["health"] > 0.5]
         if not active:
             # Emergency: use any substrate regardless of health
             active = list(self.substrates.values())
@@ -323,14 +323,14 @@ class SubstrateConvergenceEngine:
         sub_info["current_load"] = max(0, sub_info["current_load"] - 1)
 
         self.dispatch_history.append(dispatch_record)
-        
+
         # Feedback to AI Manager
         self.ai_manager.update_q_value(
             task_category=task.get("category", "general"),
             substrate=substrate_type,
             latency_ms=dispatch_record["execution_time_ms"],
             health=sub_info["health"],
-            success=True
+            success=True,
         )
         return dispatch_record
 
@@ -350,9 +350,7 @@ class SubstrateConvergenceEngine:
     # Failover
     # ------------------------------------------------------------------
 
-    def execute_with_failover(
-        self, task: dict[str, Any], max_retries: int = 3
-    ) -> dict[str, Any]:
+    def execute_with_failover(self, task: dict[str, Any], max_retries: int = 3) -> dict[str, Any]:
         """Execute task with automatic failover on substrate failure."""
         for attempt in range(max_retries):
             result = self.execute_substrate_task(task)
@@ -407,9 +405,7 @@ class SubstrateConvergenceEngine:
             latencies: list[float] = []
             for _ in range(trials):
                 time.time()
-                result = self.execute_substrate_task(
-                    test_task or {"id": "bench", "category": "general"}
-                )
+                result = self.execute_substrate_task(test_task or {"id": "bench", "category": "general"})
                 latencies.append(result["execution_time_ms"])
 
             avg_latency = sum(latencies) / len(latencies) if latencies else 0
@@ -453,16 +449,11 @@ class SubstrateConvergenceEngine:
         """Return statistics dict."""
         return {
             "registered_substrates": len(self.substrates),
-            "active_substrates": sum(
-                1 for s in self.substrates.values() if s["active"]
-            ),
+            "active_substrates": sum(1 for s in self.substrates.values() if s["active"]),
             "total_dispatches": len(self.dispatch_history),
             "queued_tasks": len(self._task_queue),
             "substrate_counts": {
-                st: sum(
-                    1 for d in self.dispatch_history if d["selected_substrate"] == st
-                )
-                for st in self.substrates
+                st: sum(1 for d in self.dispatch_history if d["selected_substrate"] == st) for st in self.substrates
             },
             "total_energy_cost": round(sum(self._energy_account.values()), 4),
             "failover_events": dict(self._substrate_failover_count),

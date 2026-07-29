@@ -172,8 +172,7 @@ class NAS:
         pareto = []
         for a in evaluated:
             dominated = any(
-                other.score >= a.score and other.params <= a.params and other.id != a.id
-                for other in evaluated
+                other.score >= a.score and other.params <= a.params and other.id != a.id for other in evaluated
             )
             if not dominated:
                 pareto.append(
@@ -194,12 +193,7 @@ class NAS:
     def stats(self) -> dict[str, Any]:
         """Return summary statistics (backward-compatible)."""
         avg_score = (
-            (
-                sum(a.score for a in self.architectures.values())
-                / len(self.architectures)
-            )
-            if self.architectures
-            else 0
+            (sum(a.score for a in self.architectures.values()) / len(self.architectures)) if self.architectures else 0
         )
         return {
             "architectures": len(self.architectures),

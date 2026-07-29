@@ -363,14 +363,10 @@ class AgentMemorySystem:
                     "total_sessions": len(entries),
                     "success_count": len(successes),
                     "failure_count": len(failures),
-                    "avg_latency": sum(e.context.get("latency_ms", 0) for e in entries)
-                    / len(entries),
-                    "avg_items": sum(e.context.get("items", 0) for e in entries)
-                    / len(entries),
+                    "avg_latency": sum(e.context.get("latency_ms", 0) for e in entries) / len(entries),
+                    "avg_items": sum(e.context.get("items", 0) for e in entries) / len(entries),
                 },
-                priority=MemoryPriority.HIGH
-                if success_rate > 0.7
-                else MemoryPriority.NORMAL,
+                priority=MemoryPriority.HIGH if success_rate > 0.7 else MemoryPriority.NORMAL,
                 confidence=min(0.95, 0.5 + len(entries) * 0.05),
                 decay_rate=0.001,  # Long-term decays slowly
             )
@@ -412,9 +408,7 @@ class AgentMemorySystem:
             # Find best params (highest items / lowest latency)
             best_entry = max(
                 successes,
-                key=lambda e: (
-                    e.context.get("items", 0) / max(1, e.context.get("latency_ms", 1))
-                ),
+                key=lambda e: e.context.get("items", 0) / max(1, e.context.get("latency_ms", 1)),
             )
 
             pattern = SuccessPattern(
@@ -424,18 +418,10 @@ class AgentMemorySystem:
                 success_rate=len(successes)
                 / max(
                     1,
-                    len(
-                        [
-                            e
-                            for e in self._episodic
-                            if e.platform == platform and e.action == action
-                        ]
-                    ),
+                    len([e for e in self._episodic if e.platform == platform and e.action == action]),
                 ),
-                avg_latency_ms=sum(e.context.get("latency_ms", 0) for e in successes)
-                / len(successes),
-                avg_items=sum(e.context.get("items", 0) for e in successes)
-                / len(successes),
+                avg_latency_ms=sum(e.context.get("latency_ms", 0) for e in successes) / len(successes),
+                avg_items=sum(e.context.get("items", 0) for e in successes) / len(successes),
                 best_params=best_entry.context.get("params", {}),
                 sample_size=len(successes),
                 confidence=min(0.9, 0.3 + len(successes) * 0.1),
@@ -461,9 +447,7 @@ class AgentMemorySystem:
             Dict with recommended params, warnings, success_rate.
         """
         # Find relevant long-term memories
-        self.recall(
-            platform=platform, action=action, memory_type=MemoryType.LONG_TERM, limit=5
-        )
+        self.recall(platform=platform, action=action, memory_type=MemoryType.LONG_TERM, limit=5)
 
         # Find relevant patterns
         pattern = None
@@ -473,9 +457,7 @@ class AgentMemorySystem:
                 break
 
         # Check for past failures/blocks
-        failures = self.recall(
-            platform=platform, action=action, result="failure", limit=5
-        )
+        failures = self.recall(platform=platform, action=action, result="failure", limit=5)
 
         # Check for past blocks/bans
         blocks = self.recall(platform=platform, result="blocked", limit=5)
@@ -492,15 +474,11 @@ class AgentMemorySystem:
         # Add warnings from failures
         for f in failures[:3]:
             if f.strength > 0.3:
-                advice["warnings"].append(
-                    f"{f.action} failed on {f.platform}: {f.context.get('errors', ['unknown'])}"
-                )
+                advice["warnings"].append(f"{f.action} failed on {f.platform}: {f.context.get('errors', ['unknown'])}")
 
         # Add block/ban warnings
         for b in blocks[:3]:
-            advice["warnings"].append(
-                f"⚠️ BLOCK detected on {b.platform}: avoid {b.context.get('params', {})}"
-            )
+            advice["warnings"].append(f"⚠️ BLOCK detected on {b.platform}: avoid {b.context.get('params', {})}")
 
         # Find params that led to failures
         bad_params = []
@@ -555,14 +533,8 @@ class AgentMemorySystem:
         total_episodic = len(self._episodic)
         total_patterns = len(self._patterns)
 
-        avg_strength_short = (
-            sum(m.strength for m in self._short_term) / total_short
-            if total_short
-            else 0
-        )
-        avg_strength_long = (
-            sum(m.strength for m in self._long_term) / total_long if total_long else 0
-        )
+        avg_strength_short = sum(m.strength for m in self._short_term) / total_short if total_short else 0
+        avg_strength_long = sum(m.strength for m in self._long_term) / total_long if total_long else 0
 
         # Platform distribution
         platform_dist: dict[str, int] = defaultdict(int)

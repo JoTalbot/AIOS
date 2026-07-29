@@ -99,9 +99,7 @@ class EnhancedIntegrationSystem:
             # Setup external integration API
             self.integration_api = ExternalIntegrationAPI()
             for webhook_config in self.config.webhook_configs:
-                self.integration_api.add_webhook(
-                    "webhook_" + webhook_config.url, webhook_config
-                )
+                self.integration_api.add_webhook("webhook_" + webhook_config.url, webhook_config)
 
             self.integration_api.set_graphql(self.config.graphql_config)
 
@@ -132,9 +130,7 @@ class EnhancedIntegrationSystem:
                 else:
                     continue
 
-                self.protocol_manager.add_adapter(
-                    protocol_config.protocol_type, adapter
-                )
+                self.protocol_manager.add_adapter(protocol_config.protocol_type, adapter)
 
             self.logger.info("Enhanced integration system initialized successfully")
             return True
@@ -149,11 +145,7 @@ class EnhancedIntegrationSystem:
     async def start(self) -> None:
         """Start the integration system."""
         try:
-            if (
-                not self.integration_api
-                or not self.monitoring_api
-                or not self.protocol_manager
-            ):
+            if not self.integration_api or not self.monitoring_api or not self.protocol_manager:
                 await self.initialize()
 
             # Start all adapters
@@ -187,9 +179,7 @@ class EnhancedIntegrationSystem:
                 print(f"Failed to stop integration system: {e!s}")
             return False
 
-    async def send_webhook(
-        self, webhook_name: str, event: str, data: dict[str, Any]
-    ) -> bool:
+    async def send_webhook(self, webhook_name: str, event: str, data: dict[str, Any]) -> bool:
         """Send webhook notification."""
         if not self.integration_api:
             return False
@@ -204,14 +194,10 @@ class EnhancedIntegrationSystem:
         }
 
         if self.integration_api:
-            status["components"][
-                "external_integration"
-            ] = await self.integration_api.get_integration_metrics()
+            status["components"]["external_integration"] = await self.integration_api.get_integration_metrics()
 
         if self.monitoring_api:
-            status["components"][
-                "monitoring"
-            ] = await self.monitoring_api.get_metrics_summary()
+            status["components"]["monitoring"] = await self.monitoring_api.get_metrics_summary()
 
         if self.protocol_manager:
             status["components"]["protocols"] = {}

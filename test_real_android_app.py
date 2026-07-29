@@ -70,9 +70,7 @@ def get_connected_devices() -> list[str]:
 
 def check_app_installed(package_name: str, device_id: str) -> bool:
     """Check if app is installed on device."""
-    success, output = run_adb_command(
-        f"shell pm list packages | grep {package_name}", device_id=device_id
-    )
+    success, output = run_adb_command(f"shell pm list packages | grep {package_name}", device_id=device_id)
     return success and package_name in output
 
 
@@ -98,9 +96,7 @@ def launch_app(package_name: str, device_id: str) -> bool:
 
 
 def get_current_activity(device_id: str) -> str | None:
-    success, output = run_adb_command(
-        "shell dumpsys window | grep mCurrentFocus", device_id=device_id
-    )
+    success, output = run_adb_command("shell dumpsys window | grep mCurrentFocus", device_id=device_id)
     if success and output:
         parts = output.split()
         if len(parts) >= 2:
@@ -132,9 +128,7 @@ def take_screenshot(device_id: str, output_path: str = "/tmp/screenshot.png") ->
 def search_on_olx(device_id: str, query: str, category: str = "all") -> dict[str, Any]:
     start_time = time.time()
 
-    if not check_app_installed("ua.slando", device_id) and not check_app_installed(
-        "ua.slando", device_id
-    ):
+    if not check_app_installed("ua.slando", device_id) and not check_app_installed("ua.slando", device_id):
         return {"status": "error", "error": "App not installed", "package": "ua.slando"}
 
     package = "ua.slando"
@@ -280,9 +274,7 @@ def aios_integration_real(package_name: str):
 
             def real_execute_ui_action(package_name, action_name, params):
                 if action_name == "search":
-                    return search_on_olx(
-                        device_id, params.get("query", ""), params.get("category", "all")
-                    )
+                    return search_on_olx(device_id, params.get("query", ""), params.get("category", "all"))
                 elif action_name == "get_item_details":
                     return {
                         "status": "success",
@@ -323,9 +315,7 @@ def aios_integration_real(package_name: str):
                 action_name="get_item_details",
                 params={"item_id": "olx_123"},
             )
-            print(
-                f"✅ Real item details: {item_result.get('title')} real={item_result.get('real_adb')}"
-            )
+            print(f"✅ Real item details: {item_result.get('title')} real={item_result.get('real_adb')}")
 
             msg_result = real_emulator.execute_ui_action(
                 package_name=package_name,

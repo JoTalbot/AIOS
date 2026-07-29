@@ -293,9 +293,7 @@ class TestWebhookLoadTests:
         results = []
 
         def register_webhook(i):
-            return manager.register(
-                f"webhook-{i}", f"https://example{i}.com/hook", ["ban_detected"]
-            )
+            return manager.register(f"webhook-{i}", f"https://example{i}.com/hook", ["ban_detected"])
 
         # Register 100 webhooks concurrently
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:

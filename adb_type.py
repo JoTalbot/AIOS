@@ -8,6 +8,7 @@ Can be used as library:
 Or CLI:
     python adb_type.py emulator-5554 "hello world"
 """
+
 import subprocess
 import sys
 
@@ -24,12 +25,9 @@ def type_text(serial: str, text: str, adb: str = ADB) -> bool:
     if not text:
         return True
     # 'input text' treats space as separator, so replace spaces with %s
-    sanitized = (text
-                 .replace(" ", "%s")
-                 .replace("&", "&amp;")
-                 .replace("<", "&lt;")
-                 .replace(">", "&gt;")
-                 .replace('"', '\\"'))
+    sanitized = (
+        text.replace(" ", "%s").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', '\\"')
+    )
     # ADB shell takes a single command string; sh_single_quote protects special chars.
     shell_cmd = f"input text {sh_single_quote(sanitized)}"
     cmd = [adb, "-s", serial, "shell", shell_cmd]
@@ -42,8 +40,9 @@ def type_text(serial: str, text: str, adb: str = ADB) -> bool:
 
 def press_key(serial: str, keycode: int, adb: str = ADB) -> bool:
     try:
-        r = subprocess.run([adb, "-s", serial, "shell", "input", "keyevent", str(keycode)],
-                           capture_output=True, text=True, timeout=10)
+        r = subprocess.run(
+            [adb, "-s", serial, "shell", "input", "keyevent", str(keycode)], capture_output=True, text=True, timeout=10
+        )
         return r.returncode == 0
     except Exception:
         return False

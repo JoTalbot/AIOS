@@ -45,9 +45,7 @@ class RozetkaCollector:
     def launch_search(self, query: str) -> dict:
         """Open the Rozetka app and navigate to search results."""
         self.adb.open_app()
-        self.adb.run(
-            f"am start -a android.intent.action.VIEW -d '{self.search_deep_link(query)}'"
-        )
+        self.adb.run(f"am start -a android.intent.action.VIEW -d '{self.search_deep_link(query)}'")
         return {"code": 0, "action": "search", "query": query}
 
     def collect(
@@ -69,11 +67,7 @@ class RozetkaCollector:
                 break
 
             self.adb.dump_ui(filename)
-            xml_text = (
-                Path(filename).read_text(encoding="utf-8")
-                if Path(filename).exists()
-                else ""
-            )
+            xml_text = Path(filename).read_text(encoding="utf-8") if Path(filename).exists() else ""
 
             new_cards = self.parser.parse(xml_text, query=query)
             added = 0
@@ -104,9 +98,7 @@ class RozetkaCollector:
 
         return all_cards
 
-    def collect_to_storage(
-        self, storage, query: str | None = None, max_cards: int = 50
-    ) -> dict:
+    def collect_to_storage(self, storage, query: str | None = None, max_cards: int = 50) -> dict:
         """Collect cards and save to storage.
 
         Returns a summary dict with count and cards.
@@ -116,7 +108,5 @@ class RozetkaCollector:
         return {
             "collected": len(cards),
             "new": len(cards),
-            "cards": [
-                {"title": c.title, "price": c.price, "url": c.url} for c in cards
-            ],
+            "cards": [{"title": c.title, "price": c.price, "url": c.url} for c in cards],
         }

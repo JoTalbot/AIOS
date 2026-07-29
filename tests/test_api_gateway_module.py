@@ -1,4 +1,5 @@
 """Tests for aios_core/api_gateway.py"""
+
 from __future__ import annotations
 
 import pytest
@@ -31,6 +32,7 @@ class TestAPIGateway:
     def test_remove_middleware(self, gw):
         def mw(req, next_fn):
             return next_fn(req)
+
         gw.add_middleware(mw)
         gw.remove_middleware(mw)
 

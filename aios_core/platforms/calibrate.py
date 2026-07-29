@@ -75,9 +75,7 @@ class CalibrationAdvisor:
             resource_id = node.attrib.get("resource-id") or ""
             if not resource_id:
                 continue
-            texts = [
-                (child.attrib.get("text") or "").strip() for child in node.iter("node")
-            ]
+            texts = [(child.attrib.get("text") or "").strip() for child in node.iter("node")]
             texts = [t for t in texts if t]
             if not texts:
                 continue
@@ -127,8 +125,7 @@ class CalibrationAdvisor:
             "hint": (
                 "маркеры найдены — запишите в extras.parser_hints"
                 if card_markers
-                else "карточки не обнаружены: нужен дамп поисковой выдачи "
-                "с хотя бы одной ценой"
+                else "карточки не обнаружены: нужен дамп поисковой выдачи с хотя бы одной ценой"
             ),
         }
 
@@ -232,16 +229,12 @@ class DetailCalibrationAdvisor:
 
             if text and parse_price(text) is not None and resource_id:
                 price_nodes[resource_id] += 1
-            if resource_id and any(
-                marker in resource_id for marker in _SELLER_ID_MARKERS
-            ):
+            if resource_id and any(marker in resource_id for marker in _SELLER_ID_MARKERS):
                 seller_markers[resource_id] += 1
             if len(text) >= _MIN_DESCRIPTION_LEN:
                 description_nodes += 1
             if resource_id and any(marker in combined for marker in _CTA_TEXT_MARKERS):
-                if len(cta_markers) < 5 and all(
-                    m["resource_id"] != resource_id for m in cta_markers
-                ):
+                if len(cta_markers) < 5 and all(m["resource_id"] != resource_id for m in cta_markers):
                     cta_markers.append(
                         {
                             "resource_id": resource_id,
@@ -252,8 +245,7 @@ class DetailCalibrationAdvisor:
         found = bool(price_nodes or seller_markers or cta_markers)
         return {
             "price_nodes": [
-                {"resource_id": rid, "price_occurrences": count}
-                for rid, count in price_nodes.most_common(5)
+                {"resource_id": rid, "price_occurrences": count} for rid, count in price_nodes.most_common(5)
             ],
             "seller_markers": [rid for rid, _ in seller_markers.most_common(5)],
             "cta_markers": cta_markers,
@@ -261,14 +253,11 @@ class DetailCalibrationAdvisor:
             "hint": (
                 "detail-маркеры найдены"
                 if found
-                else "детальный экран не распознан: нужен дамп открытого "
-                "объявления (цена/продавец/кнопка связи)"
+                else "детальный экран не распознан: нужен дамп открытого объявления (цена/продавец/кнопка связи)"
             ),
         }
 
-    def analyze_messenger(
-        self, xml_source: str | Path | ET.Element
-    ) -> dict[str, object]:
+    def analyze_messenger(self, xml_source: str | Path | ET.Element) -> dict[str, object]:
         """Разбирает дамп диалога мессенджера.
 
         Returns:
@@ -289,9 +278,7 @@ class DetailCalibrationAdvisor:
             if "edittext" in klass.lower():
                 input_classes[klass] += 1
             if any(marker in combined for marker in _SEND_MARKERS) and (
-                resource_id
-                and len(send_markers) < 5
-                and all(m["resource_id"] != resource_id for m in send_markers)
+                resource_id and len(send_markers) < 5 and all(m["resource_id"] != resource_id for m in send_markers)
             ):
                 send_markers.append(
                     {
@@ -303,9 +290,7 @@ class DetailCalibrationAdvisor:
                 bubbles[resource_id] += 1
 
         bubble_markers = [
-            {"resource_id": rid, "occurrences": count}
-            for rid, count in bubbles.most_common(5)
-            if count >= 2
+            {"resource_id": rid, "occurrences": count} for rid, count in bubbles.most_common(5) if count >= 2
         ]
         found = bool(input_classes or send_markers)
         return {
@@ -315,8 +300,7 @@ class DetailCalibrationAdvisor:
             "hint": (
                 "messenger-маркеры найдены"
                 if found
-                else "диалог не распознан: нужен дамп переписки (поле "
-                "ввода/кнопка отправки)"
+                else "диалог не распознан: нужен дамп переписки (поле ввода/кнопка отправки)"
             ),
         }
 
@@ -361,9 +345,9 @@ class DetailCalibrationAdvisor:
             if any(m in rid_tail for m in self._TAB_BAR_MARKERS):
                 if not any(m["resource_id"] == resource_id for m in tab_bar_markers):
                     tab_bar_markers.append({"resource_id": resource_id})
-            is_tab = (
-                bool(rid_tail) and any(m in rid_tail for m in self._TAB_NODE_MARKERS)
-            ) or (desc.lower() in ("home", "search", "reels", "clips", "video"))
+            is_tab = (bool(rid_tail) and any(m in rid_tail for m in self._TAB_NODE_MARKERS)) or (
+                desc.lower() in ("home", "search", "reels", "clips", "video")
+            )
             if not is_tab or bounds is None:
                 continue
             label = desc or text
@@ -376,9 +360,7 @@ class DetailCalibrationAdvisor:
             )
             combined = f"{rid_tail} {text.lower()} {desc.lower()}"
             if any(m in combined for m in self._REELS_MARKERS):
-                if resource_id and not any(
-                    m["resource_id"] == resource_id for m in reels_rid
-                ):
+                if resource_id and not any(m["resource_id"] == resource_id for m in reels_rid):
                     reels_rid.append({"resource_id": resource_id})
                 if label and label.lower() not in (t.lower() for t in reels_texts):
                     reels_texts.append(label)

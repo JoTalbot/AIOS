@@ -1,4 +1,5 @@
 """Tests for aios_core/auto_tuning.py"""
+
 from __future__ import annotations
 
 from aios_core.auto_tuning import AutoTuningEngine, TunableParam
@@ -36,10 +37,12 @@ class TestAutoTuningEngine:
 
     def test_register_params(self):
         engine = AutoTuningEngine(scoring_fn=lambda p: 1.0)
-        engine.register_params([
-            TunableParam(name="lr", param_type="float", min_value=0.001, max_value=1.0),
-            TunableParam(name="batch", param_type="int", min_value=8, max_value=128),
-        ])
+        engine.register_params(
+            [
+                TunableParam(name="lr", param_type="float", min_value=0.001, max_value=1.0),
+                TunableParam(name="batch", param_type="int", min_value=8, max_value=128),
+            ]
+        )
 
     def test_get_current_params(self):
         engine = AutoTuningEngine(scoring_fn=lambda p: 1.0)
@@ -54,7 +57,7 @@ class TestAutoTuningEngine:
         assert isinstance(defaults, dict)
 
     def test_tune(self):
-        engine = AutoTuningEngine(scoring_fn=lambda p: -(p.get("x", 0) - 0.5) ** 2)
+        engine = AutoTuningEngine(scoring_fn=lambda p: -((p.get("x", 0) - 0.5) ** 2))
         engine.register_param(TunableParam(name="x", param_type="float", min_value=0.0, max_value=1.0))
         result = engine.tune(max_iterations=5)
         assert result is not None

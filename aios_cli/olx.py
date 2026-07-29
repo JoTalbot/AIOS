@@ -89,9 +89,7 @@ def _add_olx_parsers(subparsers) -> None:
 
     repost = olx_sub.add_parser("repost", help="Repost plan (dry-run) or execute")
     repost.add_argument("--fingerprint", required=True)
-    repost.add_argument(
-        "--confirm", action="store_true", help="Execute on device (default: dry-run)"
-    )
+    repost.add_argument("--confirm", action="store_true", help="Execute on device (default: dry-run)")
     with_db(repost)
 
     subscribe = olx_sub.add_parser("subscribe", help="Add a search subscription")
@@ -115,9 +113,7 @@ def _add_olx_parsers(subparsers) -> None:
     with_db(favorites)
 
     autowatch = olx_sub.add_parser("autowatch", help="Run one full AutoWatch cycle")
-    autowatch.add_argument(
-        "--query", action="append", default=[], help="Search query to collect (repeatable)"
-    )
+    autowatch.add_argument("--query", action="append", default=[], help="Search query to collect (repeatable)")
     autowatch.add_argument("--no-collect", action="store_true")
     autowatch.add_argument("--max-cards", type=int, default=50)
     autowatch.add_argument("--webhook", default=None)
@@ -144,12 +140,8 @@ def _add_olx_parsers(subparsers) -> None:
     )
     seller.add_argument("xml", help="Path to the dumped detail-page XML")
     seller.add_argument("--fingerprint", required=True, help="Own ad fingerprint to link against")
-    seller.add_argument(
-        "--viewed-url", default=None, help="URL of the viewed competitor ad (excluded)"
-    )
-    seller.add_argument(
-        "--viewed-ad-id", default=None, help="Ad-id of the viewed competitor ad (excluded)"
-    )
+    seller.add_argument("--viewed-url", default=None, help="URL of the viewed competitor ad (excluded)")
+    seller.add_argument("--viewed-ad-id", default=None, help="Ad-id of the viewed competitor ad (excluded)")
     with_db(seller)
 
     advisor = olx_sub.add_parser("advisor", help="Portfolio advice + new listings")
@@ -212,9 +204,7 @@ def _run_olx(args) -> bool:
 
     if args.olx_command == "collect":
         with OLXStorage(_resolve_olx_db(args)) as storage:
-            scheduler = CollectionScheduler(
-                collector=OLXCollector(adb=_resolve_olx_adb(args)), storage=storage
-            )
+            scheduler = CollectionScheduler(collector=OLXCollector(adb=_resolve_olx_adb(args)), storage=storage)
             summaries = scheduler.run_once([args.query], max_cards=args.max_cards)
             print(json.dumps(summaries, ensure_ascii=False, indent=2))
         return True
@@ -461,9 +451,7 @@ def _run_olx(args) -> bool:
                     storage.profile_set(key, value)
                 payload = profile.to_dict()
                 if args.settings:
-                    payload["settings"] = parser.settings_from_texts(
-                        parser._texts(xml_text)
-                    ).to_dict()
+                    payload["settings"] = parser.settings_from_texts(parser._texts(xml_text)).to_dict()
                 print(json.dumps(payload, ensure_ascii=False, indent=2))
             else:
                 print(json.dumps(storage.profile_all(), ensure_ascii=False, indent=2))
@@ -511,11 +499,7 @@ def _run_olx(args) -> bool:
         with OLXStorage(_resolve_olx_db(args)) as storage:
             watch = CompetitiveWatch(storage)
             if args.fingerprint:
-                print(
-                    json.dumps(
-                        watch.report(args.fingerprint), ensure_ascii=False, indent=2, default=str
-                    )
-                )
+                print(json.dumps(watch.report(args.fingerprint), ensure_ascii=False, indent=2, default=str))
             else:
                 own_list = [
                     OwnAd(
@@ -568,4 +552,3 @@ def _run_olx(args) -> bool:
         return True
 
     return False
-

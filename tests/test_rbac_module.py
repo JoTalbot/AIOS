@@ -189,11 +189,18 @@ class TestRBACEngine:
 
     def test_add_policy(self, engine):
         engine.create_role("viewer")
-        policy = AccessPolicy(name="docs:read:allow", role_name="viewer", permission=Permission(resource="docs", action="read"), conditions={})
+        policy = AccessPolicy(
+            name="docs:read:allow",
+            role_name="viewer",
+            permission=Permission(resource="docs", action="read"),
+            conditions={},
+        )
         engine.add_policy(policy)
 
     def test_remove_policy(self, engine):
-        policy = AccessPolicy(name="x:y:deny", role_name="any", permission=Permission(resource="x", action="y"), conditions={})
+        policy = AccessPolicy(
+            name="x:y:deny", role_name="any", permission=Permission(resource="x", action="y"), conditions={}
+        )
         engine.add_policy(policy)
         engine.remove_policy("x:y:deny")
 

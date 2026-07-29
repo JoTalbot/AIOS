@@ -154,9 +154,7 @@ class Recommendation:
             lines.append(f"- Рекомендована ціна: {self.suggested_price:g}")
         lines.append(f"- Оцінка ціни: {self.verdict}")
         if self.title_keywords:
-            lines.append(
-                "- Ключові слова для заголовка: " + ", ".join(self.title_keywords)
-            )
+            lines.append("- Ключові слова для заголовка: " + ", ".join(self.title_keywords))
         top_verdict = "так" if self.use_top_promotion else "не обов'язково"
         lines.append(f"- TOP-просування: {top_verdict}")
         for note in self.notes:
@@ -194,14 +192,10 @@ class RecommendationEngine:
             if my_price is not None:
                 if my_price <= market_median * 0.9:
                     verdict = "below_market"
-                    notes.append(
-                        "Ціна нижча за ринок — можна підняти без втрати інтересу."
-                    )
+                    notes.append("Ціна нижча за ринок — можна підняти без втрати інтересу.")
                 elif my_price >= market_median * 1.1:
                     verdict = "above_market"
-                    notes.append(
-                        f"Ціна вища за медіану ринку ({market_median:g}) — очікуйте менше відгуків."
-                    )
+                    notes.append(f"Ціна вища за медіану ринку ({market_median:g}) — очікуйте менше відгуків.")
                 else:
                     verdict = "competitive"
         else:
@@ -213,10 +207,7 @@ class RecommendationEngine:
         plain_ads = [ad for ad in ads if not ad.is_top and ad.price is not None]
         use_top = False
         if len(top_ads) >= 3 or (
-            top_ads
-            and plain_ads
-            and median([a.price for a in top_ads])
-            >= median([a.price for a in plain_ads])
+            top_ads and plain_ads and median([a.price for a in top_ads]) >= median([a.price for a in plain_ads])
         ):
             use_top = True
         if use_top:
@@ -251,9 +242,7 @@ class RecommendationEngine:
         for ad in priced:
             counter.update(set(_tokenize(ad.title)))
         mine = set(_tokenize(my_title)) if my_title else set()
-        return [word for word, _count in counter.most_common(20) if word not in mine][
-            :10
-        ]
+        return [word for word, _count in counter.most_common(20) if word not in mine][:10]
 
 
 @dataclass
@@ -294,9 +283,7 @@ class PriceTracker:
         """Initialize PriceTracker."""
         self.storage = storage
 
-    def price_drops(
-        self, query: str | None = None, threshold_pct: float = -0.005
-    ) -> list[PriceChange]:
+    def price_drops(self, query: str | None = None, threshold_pct: float = -0.005) -> list[PriceChange]:
         """Ads whose latest sighted price is below the first sighted price.
 
         Args:
@@ -309,11 +296,7 @@ class PriceTracker:
         drops: list[PriceChange] = []
         for ad in self.storage.get_ads(query=query):
             history = self.storage.price_history(ad.fingerprint)
-            prices = [
-                (point["seen_at"], point["price"])
-                for point in history
-                if point["price"]
-            ]
+            prices = [(point["seen_at"], point["price"]) for point in history if point["price"]]
             if len(prices) < 2:
                 continue
             first_price = prices[0][1]

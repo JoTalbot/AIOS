@@ -1,4 +1,5 @@
 """Тесты для Template Engine."""
+
 import tempfile
 
 import pytest
@@ -28,12 +29,15 @@ def test_create_and_render(engine):
             TemplateVariable("price", "number"),
         ],
     )
-    
-    result = engine.render(template.id, {
-        "customer": {"name": "Иван"},
-        "price": 1500,
-    })
-    
+
+    result = engine.render(
+        template.id,
+        {
+            "customer": {"name": "Иван"},
+            "price": 1500,
+        },
+    )
+
     assert result == "Здравствуйте, Иван! Цена: 1500 грн."
 
 
@@ -45,7 +49,7 @@ def test_template_with_conditions(engine):
         intent="stock_check",
         variables=[TemplateVariable("in_stock", "boolean")],
     )
-    
+
     assert engine.render(template.id, {"in_stock": True}) == "В наличии"
     assert engine.render(template.id, {"in_stock": False}) == "Закончился"
 
@@ -61,14 +65,17 @@ def test_template_with_loops(engine):
         intent="delivery",
         variables=[TemplateVariable("delivery_options", "list")],
     )
-    
-    result = engine.render(template.id, {
-        "delivery_options": [
-            {"name": "Новая Почта", "price": 70},
-            {"name": "Укрпочта", "price": 45},
-        ]
-    })
-    
+
+    result = engine.render(
+        template.id,
+        {
+            "delivery_options": [
+                {"name": "Новая Почта", "price": 70},
+                {"name": "Укрпочта", "price": 45},
+            ]
+        },
+    )
+
     assert "Новая Почта — 70 грн" in result
     assert "Укрпочта — 45 грн" in result
 
@@ -81,7 +88,7 @@ def test_missing_required_variable(engine):
         intent="test",
         variables=[TemplateVariable("required_var", "string", required=True)],
     )
-    
+
     with pytest.raises(UndefinedError):
         engine.render(template.id, {})
 
@@ -94,7 +101,7 @@ def test_default_values(engine):
         intent="discount",
         variables=[TemplateVariable("discount", "number", default=5)],
     )
-    
+
     result = engine.render(template.id, {})
     assert result == "Скидка: 5%"
 
@@ -122,10 +129,10 @@ def test_find_best_template_platform_priority(engine):
         intent="greeting",
         platform="olx",
     )
-    
+
     best = engine.find_best_template("greeting", platform="olx")
     assert best.name == "OLX"
-    
+
     best = engine.find_best_template("greeting", platform="instagram")
     assert best.name == "Общий"
 
@@ -135,7 +142,7 @@ def test_list_templates_filter(engine):
     engine.create_template(name="T1", content="1", intent="greeting", platform="olx")
     engine.create_template(name="T2", content="2", intent="greeting", platform="prom")
     engine.create_template(name="T3", content="3", intent="price")
-    
+
     assert len(engine.list_templates(intent="greeting")) == 2
     assert len(engine.list_templates(platform="olx")) == 1
     assert len(engine.list_templates()) == 3

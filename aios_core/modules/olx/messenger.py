@@ -25,9 +25,7 @@ _CHAT_MARKERS = ("chatitem", "conversationitem", "chat_item", "chatroot")
 _MESSAGE_MARKERS = ("message", "bubble")
 _TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
 _UNREAD_RE = re.compile(r"^\d{1,3}$")
-_DATE_HINT_RE = re.compile(
-    r"(сьогодні|сегодня|вчора|вчера|\d{1,2}\s+[а-яіїєґ]+)", re.IGNORECASE
-)
+_DATE_HINT_RE = re.compile(r"(сьогодні|сегодня|вчора|вчера|\d{1,2}\s+[а-яіїєґ]+)", re.IGNORECASE)
 _BOUNDS_RE = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 
 _AVAILABILITY_RE = re.compile(
@@ -253,14 +251,10 @@ class ReplySuggester:
         if _MEETING_RE.search(last):
             place = f" ({city})" if city else ""
             return (
-                f"Можна подивитись{place}. Пропоную будній вечір або вихідні — "
-                "напишіть, будь ласка, коли вам зручно."
+                f"Можна подивитись{place}. Пропоную будній вечір або вихідні — напишіть, будь ласка, коли вам зручно."
             )
         if _GREETING_RE.search(last):
-            return (
-                f"Добрий день! Дякую за інтерес до {item}. "
-                "З радістю відповім на запитання."
-            )
+            return f"Добрий день! Дякую за інтерес до {item}. З радістю відповім на запитання."
         return "Добрий день! Дякую за повідомлення. Що саме вас цікавить?"
 
     def _looks_like_offer(self, text: str, my_price: float | None) -> bool:
@@ -285,10 +279,7 @@ class ReplySuggester:
                 f"За {int(offer)} грн, на жаль, не вийде. "
                 f"Мінімальна ціна {int(counter)} грн — можемо зустрітись посередині?"
             )
-        return (
-            f"По {item} можливий невеликий торг. "
-            f"Орієнтовно готовий(-а) віддати за {int(counter)} грн."
-        )
+        return f"По {item} можливий невеликий торг. Орієнтовно готовий(-а) віддати за {int(counter)} грн."
 
 
 class OLXMessenger:
@@ -325,9 +316,7 @@ class OLXMessenger:
                 return []
             return ChatListParser().parse(path)
 
-    def read_chat(
-        self, thread: ChatThread, dump_path: str = "chat.xml"
-    ) -> list[Message]:
+    def read_chat(self, thread: ChatThread, dump_path: str = "chat.xml") -> list[Message]:
         """Execute read chat."""
         import os
         import tempfile
@@ -355,15 +344,11 @@ class OLXMessenger:
         if not auto_send:
             outbox_id = None
             if self.storage is not None:
-                outbox_id = self.storage.enqueue_outbox(
-                    chat_key, text, interlocutor=interlocutor
-                )
+                outbox_id = self.storage.enqueue_outbox(chat_key, text, interlocutor=interlocutor)
             return {"status": "queued", "outbox_id": outbox_id, "text": text}
         result = self._type_and_send(text)
         if self.storage is not None:
-            outbox_id = self.storage.enqueue_outbox(
-                chat_key, text, interlocutor=interlocutor
-            )
+            outbox_id = self.storage.enqueue_outbox(chat_key, text, interlocutor=interlocutor)
             self.storage.outbox_mark(
                 outbox_id,
                 "sent" if result.get("code") == 0 else "failed",

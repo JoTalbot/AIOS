@@ -9,7 +9,7 @@ def test_advanced_security_detects_sanitizes_keys_and_resolves_threats():
     security = AdvancedSecurity()
     security.add_policy(SecurityPolicy("custom", "custom", ThreatLevel.LOW, lambda req: req.get("flag")))
     assert security.detect_threat({"ip": "127.0.0.1", "body": "<script>x</script>; DROP table", "flag": True})
-    assert security.sanitize('<b onclick="x">javascript:hello</b>') == 'hello'
+    assert security.sanitize('<b onclick="x">javascript:hello</b>') == "hello"
     signature = security.hmac_sign("body", "key")
     assert security.verify_hmac("body", "key", signature)
     key = security.generate_api_key("service")
@@ -22,7 +22,13 @@ def test_advanced_security_detects_sanitizes_keys_and_resolves_threats():
 
 
 def test_zero_trust_profiles_policies_networks_and_facade():
-    profile = DeviceProfile("d1", platform="olx", ip_address="8.8.8.8", fingerprint="fp", attributes={"verified_device": True, "mfa_enabled": True})
+    profile = DeviceProfile(
+        "d1",
+        platform="olx",
+        ip_address="8.8.8.8",
+        fingerprint="fp",
+        attributes={"verified_device": True, "mfa_enabled": True},
+    )
     engine = TrustEngine()
     engine.register_device(profile)
     assert profile.trust_level() == TrustLevel.FULLY_TRUSTED

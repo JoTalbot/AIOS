@@ -185,9 +185,7 @@ class FlagStore:
             description=description,
         )
         self.flags[name] = flag
-        self._audit(
-            name, "register", details={"enabled": enabled, "state": state.value}
-        )
+        self._audit(name, "register", details={"enabled": enabled, "state": state.value})
         logger.info("Registered flag '%s' (state=%s)", name, state.value)
         return flag
 
@@ -256,9 +254,7 @@ class FlagStore:
         self._audit(
             name,
             "update",
-            details={
-                "targeting_rule": f"{rule.attribute} {rule.operator} {rule.value}"
-            },
+            details={"targeting_rule": f"{rule.attribute} {rule.operator} {rule.value}"},
         )
 
     def add_variant(self, name: str, variant_name: str, value: Any) -> None:
@@ -380,11 +376,7 @@ class FlagStore:
             "name": flag.name,
             "evaluation_count": flag.evaluation_count,
             "exposure_count": flag.exposure_count,
-            "exposure_rate": (
-                flag.exposure_count / flag.evaluation_count
-                if flag.evaluation_count > 0
-                else 0.0
-            ),
+            "exposure_rate": (flag.exposure_count / flag.evaluation_count if flag.evaluation_count > 0 else 0.0),
             "last_evaluated_at": flag.last_evaluated_at,
             "enabled": flag.enabled,
             "state": flag.state.value,
@@ -407,9 +399,7 @@ class FlagStore:
             "audit_events": len(self.audit_log),
         }
 
-    def get_audit_log(
-        self, flag_name: str | None = None, limit: int = 100
-    ) -> list[AuditEvent]:
+    def get_audit_log(self, flag_name: str | None = None, limit: int = 100) -> list[AuditEvent]:
         """Return audit events, optionally filtered by flag name."""
         events = [e for e in self.audit_log if e.flag_name == flag_name] if flag_name else self.audit_log
         return events[-limit:]

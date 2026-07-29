@@ -88,9 +88,7 @@ class QuantumConsciousnessSimulator:
                 "entropy_range": (0.9, 1.0),
             },
         }
-        config = states_config.get(
-            state_label, {"coherence_range": (0.1, 0.3), "entropy_range": (0.5, 0.8)}
-        )
+        config = states_config.get(state_label, {"coherence_range": (0.1, 0.3), "entropy_range": (0.5, 0.8)})
         coherence = round(random.uniform(*config["coherence_range"]), 2)
         entropy = round(random.uniform(*config["entropy_range"]), 2)
         return {
@@ -139,9 +137,7 @@ class QuantumConsciousnessSimulator:
         return {
             "system_size": system_size,
             "phi": phi,
-            "consciousness_level": "high"
-            if phi > 0.5
-            else ("medium" if phi > 0.2 else "low"),
+            "consciousness_level": "high" if phi > 0.5 else ("medium" if phi > 0.2 else "low"),
             "integration_degree": round(random.uniform(0.3, 0.9), 2),
             "differentiation_degree": round(random.uniform(0.1, 0.7), 2),
         }
@@ -166,9 +162,7 @@ class QuantumConsciousnessSimulator:
         """Generate consciousness spectrum analysis across all recorded states."""
         if not self._brain_states:
             return {"status": "no_data"}
-        coherence_values = [
-            s.get("penrose_hameroff_score", 0) for s in self._brain_states
-        ]
+        coherence_values = [s.get("penrose_hameroff_score", 0) for s in self._brain_states]
         return {
             "states_analyzed": len(self._brain_states),
             "avg_coherence": round(sum(coherence_values) / len(coherence_values), 3),

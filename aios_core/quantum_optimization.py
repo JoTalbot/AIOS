@@ -22,17 +22,13 @@ logger = logging.getLogger(__name__)
 class QuantumAnnealingOptimizer:
     """Simulated quantum annealing with convergence tracking."""
 
-    def __init__(
-        self, initial_temp: float = 1000.0, cooling_rate: float = 0.95
-    ) -> None:
+    def __init__(self, initial_temp: float = 1000.0, cooling_rate: float = 0.95) -> None:
         self.temp = initial_temp
         self.cooling = cooling_rate
         self._convergence_history: list[float] = []
         self._best_history: list[float] = []
 
-    def optimize(
-        self, initial_solution: list, cost_func: Callable, iterations: int = 5000
-    ) -> tuple[list, float]:
+    def optimize(self, initial_solution: list, cost_func: Callable, iterations: int = 5000) -> tuple[list, float]:
         """Simulated quantum annealing (backward-compatible, now returns tuple)."""
         current = initial_solution[:]
         best = current[:]
@@ -65,16 +61,13 @@ class QuantumAnnealingOptimizer:
 
         return best, best_cost
 
-    def maxcut(
-        self, edges: list[tuple[int, int]], nodes: int = 10, iterations: int = 1000
-    ) -> dict[str, Any]:
+    def maxcut(self, edges: list[tuple[int, int]], nodes: int = 10, iterations: int = 1000) -> dict[str, Any]:
         """Solve MaxCut problem via quantum-inspired optimization."""
         # Initialize random partition
         partition = [random.choice([0, 1]) for _ in range(nodes)]
+
         def cost_func(p):
-            return (
-                    -sum(1 for u, v in edges if p[u] != p[v])
-                )  # Maximize cuts = minimize negative
+            return -sum(1 for u, v in edges if p[u] != p[v])  # Maximize cuts = minimize negative
 
         best, _best_cost = self.optimize(partition, cost_func, iterations)
         # Convert back to binary partition
@@ -98,13 +91,12 @@ class QuantumAnnealingOptimizer:
         n_assets = len(returns)
         # Initial weights: equal allocation
         initial = [budget / n_assets] * n_assets
+
         def cost_func(w):
-            return (
-                    -(
-                        sum(wi * ri for wi, ri in zip(w, returns, strict=False))
-                        / max(math.sqrt(sum(wi**2 * ri**2 for wi, ri in zip(w, risks, strict=False))), 0.01)
-                    )
-                )
+            return -(
+                sum(wi * ri for wi, ri in zip(w, returns, strict=False))
+                / max(math.sqrt(sum(wi**2 * ri**2 for wi, ri in zip(w, risks, strict=False))), 0.01)
+            )
 
         best, _best_cost = self.optimize(initial, cost_func, iterations)
         # Normalize weights to sum to budget
@@ -127,14 +119,11 @@ class QuantumAnnealingOptimizer:
             "iterations": len(self._convergence_history),
             "final_cost": round(self._convergence_history[-1], 4),
             "best_cost": round(
-                min(self._best_history)
-                if self._best_history
-                else self._convergence_history[-1],
+                min(self._best_history) if self._best_history else self._convergence_history[-1],
                 4,
             ),
             "convergence_rate": round(
-                abs(self._convergence_history[-1] - self._convergence_history[0])
-                / len(self._convergence_history),
+                abs(self._convergence_history[-1] - self._convergence_history[0]) / len(self._convergence_history),
                 4,
             ),
             "final_temperature": round(self.temp, 4),

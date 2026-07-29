@@ -7,14 +7,16 @@ ROOT = Path(__file__).parent.parent
 
 def test_1_core_imports():
     import aios_core
+
     assert aios_core.__version__ == "11.2.0"
 
 
 def test_2_all_init_files():
     missing = []
-    for d in ROOT.rglob('aios_core/*/'):
-        if '__pycache__' in str(d): continue
-        if not (d / '__init__.py').exists():
+    for d in ROOT.rglob("aios_core/*/"):
+        if "__pycache__" in str(d):
+            continue
+        if not (d / "__init__.py").exists():
             missing.append(str(d.relative_to(ROOT)))
     assert len(missing) <= 5, f"Missing __init__.py: {missing}"
 
@@ -23,18 +25,22 @@ def test_3_no_critical_bare_excepts():
     content = (ROOT / "aios_core").rglob("*.py")
     count = 0
     for f in content:
-        if f.name.startswith('__'): continue
+        if f.name.startswith("__"):
+            continue
         with open(f) as fh:
             for line in fh:
-                if line.strip() == 'except:' and 'noqa' not in line:
+                if line.strip() == "except:" and "noqa" not in line:
                     count += 1
     assert count == 0, f"Bare excepts found: {count}"
 
 
 def test_4_config_files_present():
     required = [
-        ".editorconfig", ".gitignore", "Makefile",
-        "requirements.txt", "pyproject.toml",
+        ".editorconfig",
+        ".gitignore",
+        "Makefile",
+        "requirements.txt",
+        "pyproject.toml",
         ".pre-commit-config.yaml",
     ]
     for f in required:

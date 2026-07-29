@@ -46,9 +46,7 @@ class Feature:
 
     def compute_rice(self) -> float:
         """Compute RICE priority score."""
-        self.priority = (self.reach * self.impact * self.confidence) / max(
-            self.effort, 0.5
-        )
+        self.priority = (self.reach * self.impact * self.confidence) / max(self.effort, 0.5)
         return self.priority
 
 
@@ -102,9 +100,7 @@ class AIProductManager:
 
     def create_product(self, name: str, vision: str) -> Product:
         """Create a product in ideation stage with *name* and *vision*."""
-        product = Product(
-            name=name, vision=vision, status="ideation", metrics={"awareness": 0.0}
-        )
+        product = Product(name=name, vision=vision, status="ideation", metrics={"awareness": 0.0})
         self.products.append(product)
         logger.info("Created product %s", name)
         return product
@@ -114,9 +110,7 @@ class AIProductManager:
         milestones = [f"Q{i + 1}: Core feature {i + 1}" for i in range(quarters)]
         fpq: dict[str, list[str]] = {}
         for i in range(quarters):
-            fpq[f"Q{i + 1}"] = [
-                f.name for f in product.features[i * 2 : (i + 1) * 2]
-            ] or [f"Feature {i + 1}"]
+            fpq[f"Q{i + 1}"] = [f.name for f in product.features[i * 2 : (i + 1) * 2]] or [f"Feature {i + 1}"]
         roadmap = Roadmap(
             product=product.name,
             quarters=quarters,

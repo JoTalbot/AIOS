@@ -78,10 +78,7 @@ class FleetDevice:
         """True if device can accept new tasks."""
         if self.status == DeviceStatus.COOLDOWN:
             return time.time() >= self.cooldown_until
-        return (
-            self.status == DeviceStatus.ONLINE
-            and self.current_tasks < self.max_concurrent
-        )
+        return self.status == DeviceStatus.ONLINE and self.current_tasks < self.max_concurrent
 
     @property
     def utilization(self) -> float:
@@ -351,9 +348,7 @@ class FleetScheduler:
             List of FleetTask (some may be queued if no devices).
         """
         # Sort by priority (lower value = higher priority)
-        sorted_tasks = sorted(
-            tasks, key=lambda t: t[2].value if isinstance(t[2], TaskPriority) else 2
-        )
+        sorted_tasks = sorted(tasks, key=lambda t: t[2].value if isinstance(t[2], TaskPriority) else 2)
         results = []
         for platform, action, priority in sorted_tasks:
             task = self.schedule(platform, action, priority, policy=policy)
@@ -361,9 +356,7 @@ class FleetScheduler:
                 results.append(task)
         return results
 
-    def complete_task(
-        self, task_id: str, result: dict[str, Any] | None = None
-    ) -> FleetTask | None:
+    def complete_task(self, task_id: str, result: dict[str, Any] | None = None) -> FleetTask | None:
         """Mark a task as completed and release the device.
 
         Args:
@@ -493,25 +486,14 @@ class FleetScheduler:
         busy = sum(
             1
             for d in self._devices.values()
-            if d.status == DeviceStatus.BUSY
-            or (d.status == DeviceStatus.ONLINE and d.current_tasks > 0)
+            if d.status == DeviceStatus.BUSY or (d.status == DeviceStatus.ONLINE and d.current_tasks > 0)
         )
 
-        avg_utilization = (
-            sum(d.utilization for d in self._devices.values()) / total
-            if total > 0
-            else 0.0
-        )
+        avg_utilization = sum(d.utilization for d in self._devices.values()) / total if total > 0 else 0.0
 
-        avg_reliability = (
-            sum(d.reliability for d in self._devices.values()) / total
-            if total > 0
-            else 0.0
-        )
+        avg_reliability = sum(d.reliability for d in self._devices.values()) / total if total > 0 else 0.0
 
-        completed = sum(
-            1 for t in self._tasks.values() if t.status == TaskStatus.COMPLETED
-        )
+        completed = sum(1 for t in self._tasks.values() if t.status == TaskStatus.COMPLETED)
         failed = sum(1 for t in self._tasks.values() if t.status == TaskStatus.FAILED)
         running = sum(1 for t in self._tasks.values() if t.status == TaskStatus.RUNNING)
         pending = len(self._queue)
@@ -520,12 +502,8 @@ class FleetScheduler:
             "total_devices": total,
             "available_devices": available,
             "busy_devices": busy,
-            "offline_devices": sum(
-                1 for d in self._devices.values() if d.status == DeviceStatus.OFFLINE
-            ),
-            "cooldown_devices": sum(
-                1 for d in self._devices.values() if d.status == DeviceStatus.COOLDOWN
-            ),
+            "offline_devices": sum(1 for d in self._devices.values() if d.status == DeviceStatus.OFFLINE),
+            "cooldown_devices": sum(1 for d in self._devices.values() if d.status == DeviceStatus.COOLDOWN),
             "avg_utilization": round(avg_utilization, 3),
             "avg_reliability": round(avg_reliability, 3),
             "queue_size": pending,
@@ -544,11 +522,7 @@ class FleetScheduler:
         Returns:
             List of FleetTask assigned to this device.
         """
-        return [
-            t
-            for t in self._tasks.values()
-            if t.assigned_device == device_id and t.status == TaskStatus.RUNNING
-        ]
+        return [t for t in self._tasks.values() if t.assigned_device == device_id and t.status == TaskStatus.RUNNING]
 
     def rebalance(self) -> int:
         """Rebalance tasks from overloaded to underloaded devices.
@@ -559,12 +533,8 @@ class FleetScheduler:
             Number of tasks moved.
         """
         moved = 0
-        overloaded = [
-            d for d in self._devices.values() if d.utilization > 0.8 and d.is_available
-        ]
-        underloaded = [
-            d for d in self._devices.values() if d.utilization < 0.3 and d.is_available
-        ]
+        overloaded = [d for d in self._devices.values() if d.utilization > 0.8 and d.is_available]
+        underloaded = [d for d in self._devices.values() if d.utilization < 0.3 and d.is_available]
 
         for busy_device in overloaded:
             tasks = self.get_device_tasks(busy_device.device_id)
@@ -581,9 +551,7 @@ class FleetScheduler:
                     underloaded = [
                         d
                         for d in self._devices.values()
-                        if (d.utilization < 0.3
-                        and d.is_available
-                        and d.device_id != target.device_id)
+                        if (d.utilization < 0.3 and d.is_available and d.device_id != target.device_id)
                         or (d.device_id == target.device_id and d.utilization < 0.3)
                     ]
 

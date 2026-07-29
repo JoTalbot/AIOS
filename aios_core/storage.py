@@ -206,9 +206,7 @@ class Database:
             config = load_config()
             self.db_path = config.resolve_path(config.database.path)
 
-        self.is_postgres = self.db_path.startswith(
-            "postgresql://"
-        ) or self.db_path.startswith("postgres://")
+        self.is_postgres = self.db_path.startswith("postgresql://") or self.db_path.startswith("postgres://")
         self.dialect = "postgresql" if self.is_postgres else "sqlite"
         self._conn: Any = None
         self._legacy_conn: Any = None
@@ -231,39 +229,34 @@ class Database:
         """Get or establish database connection.
         Thread-safe SQLite connection using WAL mode.
         """
-        if getattr(self, '_legacy_conn', None) is not None:
+        if getattr(self, "_legacy_conn", None) is not None:
             return self._legacy_conn
-            
-        if not hasattr(self._transaction_state, 'conn') or self._transaction_state.conn is None:
+
+        if not hasattr(self._transaction_state, "conn") or self._transaction_state.conn is None:
             if self.is_postgres:
                 try:
                     import psycopg2
+
                     self._transaction_state.conn = psycopg2.connect(self.db_path)
                 except Exception:
                     self._transaction_state.conn = sqlite3.connect(":memory:", check_same_thread=False)
                     self._transaction_state.conn.row_factory = sqlite3.Row
             else:
-                self._transaction_state.conn = sqlite3.connect(
-                    self.db_path,
-                    timeout=30.0,
-                    isolation_level=None
-                )
+                self._transaction_state.conn = sqlite3.connect(self.db_path, timeout=30.0, isolation_level=None)
                 self._transaction_state.conn.row_factory = sqlite3.Row
                 with suppress(Exception):
                     self._transaction_state.conn.execute("PRAGMA journal_mode=WAL;")
                     self._transaction_state.conn.execute("PRAGMA synchronous=NORMAL;")
-                
+
                 # Ensure tables exist in this connection context
                 with suppress(Exception):
                     self._transaction_state.conn.executescript(_CREATE_TABLES_SQLITE)
-                    
+
         return self._transaction_state.conn
 
     def _check_migration(self, conn: sqlite3.Connection):
         """Check and apply schema migrations."""
-        row = conn.execute(
-            "SELECT version FROM schema_version ORDER BY version DESC LIMIT 1"
-        ).fetchone()
+        row = conn.execute("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1").fetchone()
         current = row["version"] if row else 0
 
         if current < _SCHEMA_VERSION:
@@ -276,14 +269,10 @@ class Database:
 
     def _migrate(self, conn: sqlite3.Connection, from_ver: int, to_ver: int):
         if from_ver < 2:
-            columns = {
-                row["name"] for row in conn.execute("PRAGMA table_info(memory_items)")
-            }
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(memory_items)")}
             if "owner_id" not in columns:
                 conn.execute("ALTER TABLE memory_items ADD COLUMN owner_id TEXT")
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_memory_owner ON memory_items(owner_id)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_memory_owner ON memory_items(owner_id)")
 
     @contextmanager
     def transaction(self) -> Generator[Any, None, None]:
@@ -347,9 +336,7 @@ class Database:
     def query(self, sql: str, params: tuple = ()) -> list[dict]:
         """Execute a read query and return rows as a list of dicts."""
         with self._lock:
-            rows = (
-                self._get_conn().execute(self.translate_query(sql), params).fetchall()
-            )
+            rows = self._get_conn().execute(self.translate_query(sql), params).fetchall()
             return [dict(row) for row in rows]
 
     def query_one(self, sql: str, params: tuple = ()) -> dict | None:
@@ -392,13 +379,9 @@ class Database:
     def tables(self) -> list[str]:
         """Return the list of user-table names in the database."""
         if self.dialect == "postgresql":
-            rows = self.query(
-                "SELECT table_name as name FROM information_schema.tables WHERE table_schema='public'"
-            )
+            rows = self.query("SELECT table_name as name FROM information_schema.tables WHERE table_schema='public'")
         else:
-            rows = self.query(
-                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-            )
+            rows = self.query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
         return [r["name"] for r in rows]
 
     def stats(self) -> dict:

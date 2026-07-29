@@ -68,14 +68,13 @@ class TestExperiment:
 
     def test_duration(self) -> None:
         """Duration computed from timestamps."""
-        exp = Experiment(
-            experiment_id="e1", name="test", started_at=100.0, completed_at=115.0
-        )
+        exp = Experiment(experiment_id="e1", name="test", started_at=100.0, completed_at=115.0)
         assert exp.duration == 15.0
 
     def test_duration_running(self) -> None:
         """Duration for running experiment uses current time."""
         import time as _time
+
         exp = Experiment(experiment_id="e1", name="test", started_at=_time.time() - 10)
         assert exp.duration > 0
 
@@ -114,9 +113,7 @@ class TestABTestingEngine:
     def test_create_experiment_single_variant_adds_baseline(self) -> None:
         """One variant → baseline auto-added."""
         engine = ABTestingEngine()
-        exp = engine.create_experiment(
-            "test_exp", variants=[{"name": "strategy_b"}]
-        )
+        exp = engine.create_experiment("test_exp", variants=[{"name": "strategy_b"}])
         assert len(exp.variants) == 2
         assert exp.variants[0].name == "baseline"
 
@@ -285,6 +282,7 @@ class TestABTestingEngine:
         # CDF(-1.96) ≈ 0.025
         assert abs(engine._normal_cdf(-1.96) - 0.025) < 0.01
 
+
 import random
 
 
@@ -294,6 +292,7 @@ class TestKnowledgeGraphUnit:
     def test_add_triple(self) -> None:
         """Add triple to graph."""
         from aios_core.knowledge_graph import KnowledgeGraph, Triple
+
         kg = KnowledgeGraph()
         kg.add_triple(Triple(subject="iphone", predicate="sold_by", object="seller1"))
         assert kg.count_nodes() == 2  # iphone + seller1
@@ -301,6 +300,7 @@ class TestKnowledgeGraphUnit:
     def test_add_relation(self) -> None:
         """Add relation via API-compatible method."""
         from aios_core.knowledge_graph import KnowledgeGraph
+
         kg = KnowledgeGraph()
         result = kg.add_relation(source_id="iphone", target_id="seller1", relation="sold_by")
         assert result["source"] == "iphone"
@@ -309,6 +309,7 @@ class TestKnowledgeGraphUnit:
     def test_find_path(self) -> None:
         """Find path between entities."""
         from aios_core.knowledge_graph import KnowledgeGraph
+
         kg = KnowledgeGraph()
         kg.add_relation(source_id="A", target_id="B", relation="r")
         kg.add_relation(source_id="B", target_id="C", relation="r")
@@ -318,6 +319,7 @@ class TestKnowledgeGraphUnit:
     def test_infer(self) -> None:
         """Inference rules derive new relationships."""
         from aios_core.knowledge_graph import KnowledgeGraph
+
         kg = KnowledgeGraph()
         kg.add_relation(source_id="iphone", target_id="seller1", relation="sold_by")
         kg.add_relation(source_id="seller1", target_id="Kyiv", relation="located_in")
@@ -328,6 +330,7 @@ class TestKnowledgeGraphUnit:
     def test_stats(self) -> None:
         """Graph statistics."""
         from aios_core.knowledge_graph import KnowledgeGraph
+
         kg = KnowledgeGraph()
         kg.add_relation(source_id="A", target_id="B", relation="r")
         stats = kg.stats()
@@ -341,11 +344,14 @@ class TestAutoTuningEngine:
     def test_register_params(self) -> None:
         """Register tunable parameters."""
         from aios_core.auto_tuning import AutoTuningEngine, ParamType, TunableParam
+
         engine = AutoTuningEngine()
-        engine.register_params([
-            TunableParam(name="timeout", param_type=ParamType.FLOAT, min_value=1.0, max_value=30.0, default=10.0),
-            TunableParam(name="max_items", param_type=ParamType.INT, min_value=10, max_value=500, default=100),
-        ])
+        engine.register_params(
+            [
+                TunableParam(name="timeout", param_type=ParamType.FLOAT, min_value=1.0, max_value=30.0, default=10.0),
+                TunableParam(name="max_items", param_type=ParamType.INT, min_value=10, max_value=500, default=100),
+            ]
+        )
         assert len(engine._params) == 2
         assert engine.get_default_params()["timeout"] == 10.0
 
@@ -357,8 +363,11 @@ class TestAutoTuningEngine:
             PerformanceFeedback,
             TunableParam,
         )
+
         engine = AutoTuningEngine()
-        engine.register_param(TunableParam(name="timeout", param_type=ParamType.FLOAT, min_value=1.0, max_value=30.0, default=10.0))
+        engine.register_param(
+            TunableParam(name="timeout", param_type=ParamType.FLOAT, min_value=1.0, max_value=30.0, default=10.0)
+        )
 
         fb = PerformanceFeedback(
             params={"timeout": 10.0},
@@ -373,6 +382,7 @@ class TestAutoTuningEngine:
     def test_tune_grid(self) -> None:
         """Grid search tuning."""
         from aios_core.auto_tuning import AutoTuningEngine, ParamType, TunableParam
+
         engine = AutoTuningEngine()
 
         # Custom scoring: prefer timeout around 5
@@ -380,7 +390,9 @@ class TestAutoTuningEngine:
             return max(0, 1 - abs(config.get("timeout", 10) - 5) / 30)
 
         engine.register_param(
-            TunableParam(name="timeout", param_type=ParamType.FLOAT, min_value=1.0, max_value=30.0, step=1.0, default=10.0)
+            TunableParam(
+                name="timeout", param_type=ParamType.FLOAT, min_value=1.0, max_value=30.0, step=1.0, default=10.0
+            )
         )
         result = engine.tune_grid(scoring_fn=scoring)
         assert result.strategy.value == "grid_search"
@@ -389,20 +401,24 @@ class TestAutoTuningEngine:
     def test_tune_random(self) -> None:
         """Random search tuning."""
         from aios_core.auto_tuning import AutoTuningEngine, ParamType, TunableParam
+
         engine = AutoTuningEngine()
 
         def scoring(config):
             return 0.5 + config.get("max_items", 100) / 1000
 
-        engine.register_params([
-            TunableParam(name="max_items", param_type=ParamType.INT, min_value=10, max_value=500, default=100),
-        ])
+        engine.register_params(
+            [
+                TunableParam(name="max_items", param_type=ParamType.INT, min_value=10, max_value=500, default=100),
+            ]
+        )
         result = engine.tune_random(n_iterations=20, scoring_fn=scoring)
         assert result.iterations == 20
 
     def test_tune_hill_climbing(self) -> None:
         """Hill climbing optimization."""
         from aios_core.auto_tuning import AutoTuningEngine, ParamType, TunableParam
+
         engine = AutoTuningEngine()
 
         def scoring(config):
@@ -414,9 +430,12 @@ class TestAutoTuningEngine:
         )
         # Seed with feedback at default
         from aios_core.auto_tuning import PerformanceFeedback
-        engine.record_feedback(PerformanceFeedback(
-            params={"timeout": 10.0}, success_rate=0.5, latency_ms=1000, items_collected=50, errors=0
-        ))
+
+        engine.record_feedback(
+            PerformanceFeedback(
+                params={"timeout": 10.0}, success_rate=0.5, latency_ms=1000, items_collected=50, errors=0
+            )
+        )
         result = engine.tune_hill_climbing(n_iterations=30, scoring_fn=scoring)
         assert result.score >= engine._default_score
 
@@ -428,11 +447,16 @@ class TestAutoTuningEngine:
             PerformanceFeedback,
             TunableParam,
         )
+
         engine = AutoTuningEngine()
-        engine.register_param(TunableParam(name="timeout", param_type=ParamType.FLOAT, min_value=1.0, max_value=30.0, default=10.0))
-        engine.record_feedback(PerformanceFeedback(
-            params={"timeout": 10.0}, success_rate=0.7, latency_ms=500, items_collected=50, errors=1
-        ))
+        engine.register_param(
+            TunableParam(name="timeout", param_type=ParamType.FLOAT, min_value=1.0, max_value=30.0, default=10.0)
+        )
+        engine.record_feedback(
+            PerformanceFeedback(
+                params={"timeout": 10.0}, success_rate=0.7, latency_ms=500, items_collected=50, errors=1
+            )
+        )
         stats = engine.stats()
         assert stats["params_count"] == 1
         assert stats["feedback_count"] == 1
@@ -446,23 +470,29 @@ class TestAutoTuningEngine:
             PerformanceFeedback,
             TunableParam,
         )
+
         engine = AutoTuningEngine()
-        engine.register_param(TunableParam(name="timeout", param_type=ParamType.FLOAT, min_value=1.0, max_value=30.0, default=10.0))
+        engine.register_param(
+            TunableParam(name="timeout", param_type=ParamType.FLOAT, min_value=1.0, max_value=30.0, default=10.0)
+        )
 
         # First feedback (poor)
-        engine.record_feedback(PerformanceFeedback(
-            params={"timeout": 10.0}, success_rate=0.3, latency_ms=2000, items_collected=10, errors=5
-        ))
+        engine.record_feedback(
+            PerformanceFeedback(
+                params={"timeout": 10.0}, success_rate=0.3, latency_ms=2000, items_collected=10, errors=5
+            )
+        )
         # Second feedback (better)
-        engine.record_feedback(PerformanceFeedback(
-            params={"timeout": 5.0}, success_rate=0.9, latency_ms=200, items_collected=80, errors=0
-        ))
+        engine.record_feedback(
+            PerformanceFeedback(params={"timeout": 5.0}, success_rate=0.9, latency_ms=200, items_collected=80, errors=0)
+        )
         best = engine.get_best_params()
         assert best["timeout"] == 5.0
 
     def test_tunable_param_grid_values(self) -> None:
         """Grid values generation."""
         from aios_core.auto_tuning import ParamType, TunableParam
+
         p = TunableParam(name="test", param_type=ParamType.INT, min_value=0, max_value=10, step=2)
         values = p.grid_values()
         assert values == [0, 2, 4, 6, 8, 10]
@@ -470,6 +500,7 @@ class TestAutoTuningEngine:
     def test_tunable_param_random_value(self) -> None:
         """Random value within range."""
         from aios_core.auto_tuning import ParamType, TunableParam
+
         p = TunableParam(name="test", param_type=ParamType.INT, min_value=0, max_value=100)
         val = p.random_value()
         assert 0 <= val <= 100
@@ -477,12 +508,14 @@ class TestAutoTuningEngine:
     def test_bool_param_grid(self) -> None:
         """Bool param grid values."""
         from aios_core.auto_tuning import ParamType, TunableParam
+
         p = TunableParam(name="test", param_type=ParamType.BOOL)
         assert p.grid_values() == [True, False]
 
     def test_choice_param(self) -> None:
         """Choice parameter."""
         from aios_core.auto_tuning import ParamType, TunableParam
+
         p = TunableParam(name="strategy", param_type=ParamType.CHOICE, choices=["fast", "slow", "balanced"])
         val = p.random_value()
         assert val in ["fast", "slow", "balanced"]

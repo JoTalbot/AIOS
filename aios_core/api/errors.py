@@ -21,7 +21,11 @@ class RequestSafetyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         """Apply request validation and attach a safe correlation identifier."""
         supplied_request_id = request.headers.get("X-Request-ID", "")
-        request_id = supplied_request_id if len(supplied_request_id) <= 128 and supplied_request_id.isprintable() else str(uuid.uuid4())
+        request_id = (
+            supplied_request_id
+            if len(supplied_request_id) <= 128 and supplied_request_id.isprintable()
+            else str(uuid.uuid4())
+        )
         request.state.request_id = request_id
         content_length = request.headers.get("content-length")
         if content_length:
@@ -47,7 +51,9 @@ class RequestSafetyMiddleware(BaseHTTPMiddleware):
             response.headers.setdefault("Cache-Control", "no-store")
             return response
         except (json.JSONDecodeError, UnicodeDecodeError):
-            return JSONResponse({"error": "Invalid JSON request body"}, status_code=400, headers={"X-Request-ID": request_id})
+            return JSONResponse(
+                {"error": "Invalid JSON request body"}, status_code=400, headers={"X-Request-ID": request_id}
+            )
         except (KeyError, TypeError, ValueError):
             # Endpoint handlers use these for invalid client supplied fields.
             return JSONResponse(

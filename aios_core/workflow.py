@@ -72,9 +72,7 @@ class RetryPolicy:
     backoff: BackoffStrategy = BackoffStrategy.EXPONENTIAL
     initial_delay: float = 1.0  # seconds
     max_delay: float = 60.0
-    retryable_exceptions: list[str] = field(
-        default_factory=list
-    )  # exception class names
+    retryable_exceptions: list[str] = field(default_factory=list)  # exception class names
 
     def compute_delay(self, attempt: int) -> float:
         """Compute delay before next retry based on attempt number."""
@@ -197,9 +195,7 @@ class WorkflowResult:
     step_results: dict[str, Any] = field(default_factory=dict)  # step_id → result
     step_errors: dict[str, str] = field(default_factory=dict)  # step_id → error
     step_durations: dict[str, float] = field(default_factory=dict)  # step_id → seconds
-    step_statuses: dict[str, StepStatus] = field(
-        default_factory=dict
-    )  # step_id → status
+    step_statuses: dict[str, StepStatus] = field(default_factory=dict)  # step_id → status
     compensation_results: dict[str, Any] = field(default_factory=dict)
     total_duration: float = 0.0
     started_at: float | None = None
@@ -212,15 +208,9 @@ class WorkflowResult:
             "status": self.status.value,
             "step_results": self.step_results,
             "total_duration": self.total_duration,
-            "steps_completed": sum(
-                1 for s in self.step_statuses.values() if s == StepStatus.SUCCESS
-            ),
-            "steps_failed": sum(
-                1 for s in self.step_statuses.values() if s == StepStatus.FAILED
-            ),
-            "steps_skipped": sum(
-                1 for s in self.step_statuses.values() if s == StepStatus.SKIPPED
-            ),
+            "steps_completed": sum(1 for s in self.step_statuses.values() if s == StepStatus.SUCCESS),
+            "steps_failed": sum(1 for s in self.step_statuses.values() if s == StepStatus.FAILED),
+            "steps_skipped": sum(1 for s in self.step_statuses.values() if s == StepStatus.SKIPPED),
             "total_steps": len(self.step_statuses),
         }
 
@@ -271,9 +261,7 @@ class WorkflowTemplate:
     description: str = ""
     version: str = "1.0"
 
-    def create_workflow(
-        self, name: str, actions: dict[str, Callable] | None = None
-    ) -> Workflow:
+    def create_workflow(self, name: str, actions: dict[str, Callable] | None = None) -> Workflow:
         """Instantiate a workflow from this template.
 
         actions maps step_name → callable for execution.
@@ -304,9 +292,7 @@ class DAGExecutor:
 
     def __init__(self) -> None:
         self._compensation_queue: list[CompensationAction] = []
-        self._completed_compensations: list[
-            CompensationAction
-        ] = []  # compensations of successful steps
+        self._completed_compensations: list[CompensationAction] = []  # compensations of successful steps
 
     def compute_layers(self, steps: dict[str, WorkflowStep]) -> list[list[str]]:
         """Compute execution layers via topological sort.
@@ -371,9 +357,7 @@ class DAGExecutor:
                 step.started_at = time.time()
                 result.step_statuses[step_id] = StepStatus.RUNNING
 
-                max_attempts = 1 + (
-                    step.retry_policy.max_retries if step.retry_policy else 0
-                )
+                max_attempts = 1 + (step.retry_policy.max_retries if step.retry_policy else 0)
                 attempt = 0
 
                 while attempt < max_attempts:
@@ -406,11 +390,7 @@ class DAGExecutor:
                         exc_name = type(e).__name__
                         step.error = str(e)
 
-                        if (
-                            step.retry_policy
-                            and step.retry_policy.should_retry(exc_name)
-                            and attempt < max_attempts
-                        ):
+                        if step.retry_policy and step.retry_policy.should_retry(exc_name) and attempt < max_attempts:
                             step.status = StepStatus.RETRYING
                             result.step_statuses[step_id] = StepStatus.RETRYING
                             delay = step.retry_policy.compute_delay(attempt)
@@ -426,7 +406,7 @@ class DAGExecutor:
                             continue
                         else:
                             # Try Self-Healing DAG mechanism
-                            if getattr(step, 'is_self_healing', False) and getattr(step, 'healing_action', None):
+                            if getattr(step, "is_self_healing", False) and getattr(step, "healing_action", None):
                                 logger.info(f"Self-healing triggered for step '{step.name}'")
                                 try:
                                     step.result = step.healing_action(error=str(e), **merged_params)
@@ -443,7 +423,7 @@ class DAGExecutor:
                                 except Exception as heal_e:
                                     logger.error(f"Self-healing for step '{step.name}' failed: {heal_e}")
                                     # If healing fails, fall through to final failure
-                            
+
                             # Final failure
                             step.status = StepStatus.FAILED
                             step.finished_at = time.time()
@@ -458,14 +438,10 @@ class DAGExecutor:
                             # Fail the entire workflow
                             result.status = WorkflowStatus.FAILED
                             result.finished_at = time.time()
-                            result.total_duration = (
-                                result.finished_at - result.started_at
-                            )
+                            result.total_duration = result.finished_at - result.started_at
 
                             # Saga rollback: compensate all successful steps + failed step, in reverse order
-                            all_compensations = (
-                                self._completed_compensations + self._compensation_queue
-                            )
+                            all_compensations = self._completed_compensations + self._compensation_queue
                             self._run_compensations(result, all_compensations)
 
                             return result
@@ -580,9 +556,7 @@ class WorkflowEngine:
 
     # ── Execute ────────────────────────────────────────────────────
 
-    def execute(
-        self, workflow_id: str, context: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def execute(self, workflow_id: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Execute a workflow and return result summary.
 
         Backward-compatible: returns dict with status + results.

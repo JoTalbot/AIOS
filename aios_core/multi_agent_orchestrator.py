@@ -42,9 +42,7 @@ class MultiAgentOrchestrator:
         self._teams: dict[str, AgentTeam] = {}
         self.version = "4.0.0-alpha"
 
-    def form_team(
-        self, goal: str, agents: list[str], leader: str | None = None
-    ) -> AgentTeam:
+    def form_team(self, goal: str, agents: list[str], leader: str | None = None) -> AgentTeam:
         """Form a new agent team."""
         if leader is None and agents:
             leader = agents[0]
@@ -53,9 +51,7 @@ class MultiAgentOrchestrator:
         self._teams[team.team_id] = team
         return team
 
-    def create_team_task(
-        self, team_id: str, task_name: str, description: str = ""
-    ) -> Task | None:
+    def create_team_task(self, team_id: str, task_name: str, description: str = "") -> Task | None:
         """Create a coordinated task for the entire team."""
         team = self._teams.get(team_id)
         if not team or not self.base:
@@ -69,9 +65,7 @@ class MultiAgentOrchestrator:
         )
 
         # Add coordination step
-        self.base.add_step(
-            task, "plan", params={"mode": "team_coordination", "team_id": team_id}
-        )
+        self.base.add_step(task, "plan", params={"mode": "team_coordination", "team_id": team_id})
 
         # Add individual agent steps
         for agent in team.agents:
@@ -117,7 +111,5 @@ class MultiAgentOrchestrator:
         return {
             "version": self.version,
             "total_teams": len(self._teams),
-            "active_teams": len(
-                [t for t in self._teams.values() if t.status == "active"]
-            ),
+            "active_teams": len([t for t in self._teams.values() if t.status == "active"]),
         }

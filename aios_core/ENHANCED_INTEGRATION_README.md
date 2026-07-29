@@ -55,9 +55,7 @@ integration_system = EnhancedIntegrationSystem(config)
 await integration_system.start()
 
 # Send webhook notification
-success = await integration_system.send_webhook(
-    "webhook_name", "event_type", {"key": "value"}
-)
+success = await integration_system.send_webhook("webhook_name", "event_type", {"key": "value"})
 
 # Get system status
 status = await integration_system.get_system_status()
@@ -91,9 +89,7 @@ config = IntegrationConfig(
             retry_count=3,
         )
     ],
-    graphql_config=GraphQLConfig(
-        schema="type Query { hello: String }", playground_enabled=True
-    ),
+    graphql_config=GraphQLConfig(schema="type Query { hello: String }", playground_enabled=True),
     alert_rules=[
         AlertRule(
             name="high_cpu_usage",
@@ -524,9 +520,7 @@ The system supports:
 Enable debug logging for troubleshooting:
 
 ```python
-debug_config = IntegrationConfig(
-    log_config=LogConfig(level="DEBUG", format="json", log_file="debug.log")
-)
+debug_config = IntegrationConfig(log_config=LogConfig(level="DEBUG", format="json", log_file="debug.log"))
 ```
 
 ## Contributing

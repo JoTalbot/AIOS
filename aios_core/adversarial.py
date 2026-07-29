@@ -76,20 +76,14 @@ class AdversarialDefense:
 
     # ── Detection ────────────────────────────────────────────────
 
-    def detect_adversarial(
-        self, input_data: list[float], threshold: float = 0.3
-    ) -> bool:
+    def detect_adversarial(self, input_data: list[float], threshold: float = 0.3) -> bool:
         """Detect adversarial input via variance analysis."""
         if not input_data:
             return False
         variance = max(input_data) - min(input_data)
         mean = sum(input_data) / len(input_data)
         # Z-score outlier check
-        std = (
-            math.sqrt(sum((x - mean) ** 2 for x in input_data) / len(input_data))
-            if len(input_data) > 1
-            else 0
-        )
+        std = math.sqrt(sum((x - mean) ** 2 for x in input_data) / len(input_data)) if len(input_data) > 1 else 0
         max_zscore = max(abs(x - mean) / (std + 1e-10) for x in input_data)
 
         detected = variance > threshold or max_zscore > 3.0
@@ -110,9 +104,7 @@ class AdversarialDefense:
         for pattern in patterns:
             if pattern in lower:
                 self.attacks_detected += 1
-                self._record(
-                    AttackType.PROMPT_INJECTION, text[:50], detected=True, severity=0.8
-                )
+                self._record(AttackType.PROMPT_INJECTION, text[:50], detected=True, severity=0.8)
                 return True
         return False
 
@@ -133,9 +125,7 @@ class AdversarialDefense:
             return [x + epsilon * s for x, s in zip(data, signs, strict=False)]
         return data
 
-    def generate_adversarial_batch(
-        self, clean_data: list[list[float]], epsilon: float = 0.1
-    ) -> list[list[float]]:
+    def generate_adversarial_batch(self, clean_data: list[list[float]], epsilon: float = 0.1) -> list[list[float]]:
         """Generate batch of adversarial examples."""
         return [self.generate_perturbation(d, epsilon=epsilon) for d in clean_data]
 
@@ -145,30 +135,20 @@ class AdversarialDefense:
         """Register a defense strategy."""
         self.strategies[strategy.name] = strategy
 
-    def apply_defense(
-        self, input_data: list[float], strategy_name: str | None = None
-    ) -> list[float]:
+    def apply_defense(self, input_data: list[float], strategy_name: str | None = None) -> list[float]:
         """Apply defense strategy to input data."""
         if strategy_name and strategy_name in self.strategies:
             strategy = self.strategies[strategy_name]
             if strategy.defense_fn:
                 result = strategy.defense_fn(input_data)
-                self._defense_stats[strategy_name] = (
-                    self._defense_stats.get(strategy_name, 0) + 1
-                )
+                self._defense_stats[strategy_name] = self._defense_stats.get(strategy_name, 0) + 1
                 return result if isinstance(result, list) else input_data
 
         # Default: clip values to remove extreme outliers
         mean = sum(input_data) / len(input_data) if input_data else 0
-        std = (
-            math.sqrt(sum((x - mean) ** 2 for x in input_data) / len(input_data))
-            if len(input_data) > 1
-            else 1
-        )
+        std = math.sqrt(sum((x - mean) ** 2 for x in input_data) / len(input_data)) if len(input_data) > 1 else 1
         clipped = [max(mean - 3 * std, min(mean + 3 * std, x)) for x in input_data]
-        self._defense_stats["default_clip"] = (
-            self._defense_stats.get("default_clip", 0) + 1
-        )
+        self._defense_stats["default_clip"] = self._defense_stats.get("default_clip", 0) + 1
         return clipped
 
     def smooth_input(self, input_data: list[float], window: int = 3) -> list[float]:
@@ -183,9 +163,7 @@ class AdversarialDefense:
 
     # ── Training ─────────────────────────────────────────────────
 
-    def adversarial_training(
-        self, model: Any, clean_data: list, adversarial_data: list
-    ) -> dict[str, Any]:
+    def adversarial_training(self, model: Any, clean_data: list, adversarial_data: list) -> dict[str, Any]:
         """Adversarial training loop (simplified)."""
         self._record(
             AttackType.FGSM,
@@ -201,15 +179,9 @@ class AdversarialDefense:
 
     # ── Robustness Score ─────────────────────────────────────────
 
-    def robustness_score(
-        self, clean_outputs: list[float], adversarial_outputs: list[float]
-    ) -> float:
+    def robustness_score(self, clean_outputs: list[float], adversarial_outputs: list[float]) -> float:
         """Calculate robustness score (0..1). Higher = more robust."""
-        if (
-            not clean_outputs
-            or not adversarial_outputs
-            or len(clean_outputs) != len(adversarial_outputs)
-        ):
+        if not clean_outputs or not adversarial_outputs or len(clean_outputs) != len(adversarial_outputs):
             return 0.0
         diffs = [abs(c - a) for c, a in zip(clean_outputs, adversarial_outputs, strict=False)]
         avg_diff = sum(diffs) / len(diffs)
@@ -225,9 +197,7 @@ class AdversarialDefense:
         errors = []
         for i, val in enumerate(input_data):
             if val < min_val or val > max_val:
-                errors.append(
-                    f"Value at index {i} ({val}) out of bounds [{min_val}, {max_val}]"
-                )
+                errors.append(f"Value at index {i} ({val}) out of bounds [{min_val}, {max_val}]")
         return (len(errors) == 0, errors)
 
     # ── Audit ────────────────────────────────────────────────────
@@ -249,9 +219,7 @@ class AdversarialDefense:
             )
         )
 
-    def get_events(
-        self, attack_type: AttackType | None = None, limit: int = 50
-    ) -> list[AdversarialEvent]:
+    def get_events(self, attack_type: AttackType | None = None, limit: int = 50) -> list[AdversarialEvent]:
         """Return recorded events."""
         result = self.events
         if attack_type:

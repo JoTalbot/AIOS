@@ -6,11 +6,13 @@ def test_predictor_initialization():
     assert not predictor.trained
     assert predictor.weights is None
 
+
 def test_predict_without_training():
     predictor = ConversionPredictor()
     template = {"content": "Hello {{name}}!"}
     score = predictor.predict(template)
     assert score == 0.1
+
 
 def test_predict_with_features():
     predictor = ConversionPredictor()
@@ -19,6 +21,7 @@ def test_predict_with_features():
     template = {"content": "Hello {{name}}! Special discount for you!"}
     score = predictor.predict(template)
     assert 0.0 <= score <= 1.0
+
 
 def test_train_model():
     predictor = ConversionPredictor()

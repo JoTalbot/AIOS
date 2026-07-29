@@ -126,9 +126,7 @@ class QLearningAgent:
         self._step_count += 1
         self._episode_rewards.append(reward)
 
-    def learn_sarsa(
-        self, state: str, action: str, reward: float, next_state: str, next_action: str
-    ) -> None:
+    def learn_sarsa(self, state: str, action: str, reward: float, next_state: str, next_action: str) -> None:
         """SARSA update: Q(s,a) += lr * (r + discount * Q(s',a') - Q(s,a))."""
         if state not in self.q_table:
             self.q_table[state] = dict.fromkeys(self.actions, 0.0)
@@ -138,9 +136,7 @@ class QLearningAgent:
         new_q = current_q + self.lr * (reward + self.discount * next_q - current_q)
         self.q_table[state][action] = new_q
 
-    def learn_double_q(
-        self, state: str, action: str, reward: float, next_state: str
-    ) -> None:
+    def learn_double_q(self, state: str, action: str, reward: float, next_state: str) -> None:
         """Double Q-Learning update (reduces overestimation)."""
         # Randomly choose which table to update
         if random.random() < 0.5:
@@ -150,9 +146,7 @@ class QLearningAgent:
             current_q = self.get_q(state, action)
             best_next = self.best_action(next_state)  # from Q_A
             next_q_val = self.get_q_b(next_state, best_next)  # evaluate using Q_B
-            new_q = current_q + self.lr * (
-                reward + self.discount * next_q_val - current_q
-            )
+            new_q = current_q + self.lr * (reward + self.discount * next_q_val - current_q)
             self.q_table[state][action] = new_q
         else:
             # Update Q_B using Q_A for next-state evaluation
@@ -165,9 +159,7 @@ class QLearningAgent:
                 default=self.actions[0],
             )
             next_q_val = self.get_q(next_state, best_next_b)
-            new_q = current_q + self.lr * (
-                reward + self.discount * next_q_val - current_q
-            )
+            new_q = current_q + self.lr * (reward + self.discount * next_q_val - current_q)
             self.q_table_b[state][action] = new_q
 
     # ── Experience Replay ────────────────────────────────────────────
@@ -181,9 +173,7 @@ class QLearningAgent:
         done: bool = False,
     ) -> Experience:
         """Add an experience to the replay buffer."""
-        exp = Experience(
-            state=state, action=action, reward=reward, next_state=next_state, done=done
-        )
+        exp = Experience(state=state, action=action, reward=reward, next_state=next_state, done=done)
         self.experience_buffer.append(exp)
         if len(self.experience_buffer) > self.buffer_size:
             self.experience_buffer = self.experience_buffer[-self.buffer_size :]
@@ -247,11 +237,7 @@ class QLearningAgent:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_reward = (
-            (sum(self._episode_rewards) / len(self._episode_rewards))
-            if self._episode_rewards
-            else 0.0
-        )
+        avg_reward = (sum(self._episode_rewards) / len(self._episode_rewards)) if self._episode_rewards else 0.0
         return {
             "states": len(self.q_table),
             "actions": len(self.actions),

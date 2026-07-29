@@ -122,9 +122,7 @@ class KnowledgeGraph:
         """
         tid = self._triple_id(triple)
         # Check for duplicates
-        existing = [
-            t for t in self._outgoing[triple.subject] if self._triple_id(t) == tid
-        ]
+        existing = [t for t in self._outgoing[triple.subject] if self._triple_id(t) == tid]
         if existing:
             # Update weight if duplicate
             existing[0].weight = max(existing[0].weight, triple.weight)
@@ -308,7 +306,15 @@ class KnowledgeGraph:
             List of dicts with source, target, relation, weight keys.
         """
         triples = self.find_related(entity_id, relation, "both", 100)
-        results = [{ "source": t.subject, "target": t.object, "relation": t.predicate, "weight": t.weight, } for t in triples]
+        results = [
+            {
+                "source": t.subject,
+                "target": t.object,
+                "relation": t.predicate,
+                "weight": t.weight,
+            }
+            for t in triples
+        ]
         return results
 
     def neighbors(
@@ -344,11 +350,7 @@ class KnowledgeGraph:
                             next_frontier.append(nn)
                 frontier = next_frontier
             # Exclude the original node
-            return [
-                self.get_node(nid)
-                for nid in visited
-                if nid != node_id and self.get_node(nid)
-            ]
+            return [self.get_node(nid) for nid in visited if nid != node_id and self.get_node(nid)]
 
     def path(self, source: str, target: str) -> list[dict[str, Any]]:
         """Find path between two nodes — API-compatible method.
@@ -369,9 +371,7 @@ class KnowledgeGraph:
                     {
                         "source": result.path[i],
                         "target": result.path[i + 1],
-                        "relation": result.relations[i]
-                        if i < len(result.relations)
-                        else "",
+                        "relation": result.relations[i] if i < len(result.relations) else "",
                         "weight": 1.0,
                     }
                 )
@@ -515,9 +515,7 @@ class KnowledgeGraph:
             return None
 
         visited: set[str] = {start}
-        queue: list[tuple[str, list[str], list[str], float, float]] = [
-            (start, [start], [], 0.0, 1.0)
-        ]
+        queue: list[tuple[str, list[str], list[str], float, float]] = [(start, [start], [], 0.0, 1.0)]
 
         while queue:
             current, path, relations, total_weight, confidence = queue.pop(0)
@@ -525,15 +523,11 @@ class KnowledgeGraph:
             if len(path) > max_depth:
                 continue
 
-            for triple in self._outgoing.get(current, []) + self._incoming.get(
-                current, []
-            ):
+            for triple in self._outgoing.get(current, []) + self._incoming.get(current, []):
                 if predicate and triple.predicate != predicate:
                     continue
 
-                neighbor = (
-                    triple.object if triple.subject == current else triple.subject
-                )
+                neighbor = triple.object if triple.subject == current else triple.subject
                 if neighbor in visited:
                     continue
 
@@ -639,16 +633,8 @@ class KnowledgeGraph:
         n_triples = len(self._triples)
         n_inferred = len(self._inferred)
 
-        avg_out = (
-            sum(e.outgoing_count for e in self._entities.values()) / n_entities
-            if n_entities
-            else 0
-        )
-        avg_in = (
-            sum(e.incoming_count for e in self._entities.values()) / n_entities
-            if n_entities
-            else 0
-        )
+        avg_out = sum(e.outgoing_count for e in self._entities.values()) / n_entities if n_entities else 0
+        avg_in = sum(e.incoming_count for e in self._entities.values()) / n_entities if n_entities else 0
 
         max_possible = n_entities * (n_entities - 1) if n_entities > 1 else 0
         density = n_triples / max_possible if max_possible > 0 else 0.0

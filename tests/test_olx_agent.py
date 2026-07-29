@@ -243,9 +243,7 @@ def test_collector_launch_search_deep_link():
 
 
 def _sample_cards():
-    return CardParser().parse(PAGE_TWO_XML, query="лобове скло") + CardParser().parse(
-        SAMPLE_XML, query="лобове скло"
-    )
+    return CardParser().parse(PAGE_TWO_XML, query="лобове скло") + CardParser().parse(SAMPLE_XML, query="лобове скло")
 
 
 def test_storage_roundtrip_and_deduplication(tmp_path):

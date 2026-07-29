@@ -15,10 +15,8 @@ class RedisCache:
     async def connect(self):
         try:
             import redis.asyncio as aioredis
-            self.redis = aioredis.from_url(
-                os.getenv("REDIS_URL", "redis://localhost:6379"),
-                decode_responses=True
-            )
+
+            self.redis = aioredis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True)
             await self.redis.ping()
             print("[Cache] Redis connected")
         except Exception as e:
@@ -58,7 +56,9 @@ class RedisCache:
         except Exception:
             pass
 
+
 cache = RedisCache()
+
 
 def cached(key_prefix: str, ttl: int = 300):
     def decorator(func: Callable):
@@ -72,5 +72,7 @@ def cached(key_prefix: str, ttl: int = 300):
             result = await func(*args, **kwargs)
             await cache.set(key_hash, result, ttl)
             return result
+
         return wrapper
+
     return decorator

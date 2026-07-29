@@ -83,9 +83,7 @@ class SecretsManager:
 
     # ── Set / Get ──────────────────────────────────────────────
 
-    def set(
-        self, key: str, value: str, namespace: str = "default", encrypt: bool = False
-    ) -> None:
+    def set(self, key: str, value: str, namespace: str = "default", encrypt: bool = False) -> None:
         """Set a secret value."""
         # Store in namespace
         if namespace not in self._namespaces:
@@ -114,9 +112,7 @@ class SecretsManager:
 
         self._audit("set", {"key": key, "namespace": namespace, "encrypted": encrypt})
 
-    def get(
-        self, key: str, default: str | None = None, namespace: str = "default"
-    ) -> str | None:
+    def get(self, key: str, default: str | None = None, namespace: str = "default") -> str | None:
         """Get a secret value. Priority: env > namespace > main dict > default."""
         # Priority: environment variable
         env_val = os.getenv(key)
@@ -126,9 +122,7 @@ class SecretsManager:
         # Namespace lookup
         ns_secrets = self._namespaces.get(namespace, {})
         if key in ns_secrets:
-            self._audit(
-                "get", {"key": key, "namespace": namespace, "source": "namespace"}
-            )
+            self._audit("get", {"key": key, "namespace": namespace, "source": "namespace"})
             return ns_secrets[key]
 
         # Main dict
@@ -171,13 +165,9 @@ class SecretsManager:
 
     # ── Rotation ───────────────────────────────────────────────
 
-    def set_rotation_policy(
-        self, key: str, interval_days: int = 90, auto_generate: bool = False
-    ) -> RotationPolicy:
+    def set_rotation_policy(self, key: str, interval_days: int = 90, auto_generate: bool = False) -> RotationPolicy:
         """Set rotation policy for a secret."""
-        policy = RotationPolicy(
-            key=key, interval_days=interval_days, auto_generate=auto_generate
-        )
+        policy = RotationPolicy(key=key, interval_days=interval_days, auto_generate=auto_generate)
         self._rotation_policies[key] = policy
         return policy
 
@@ -225,9 +215,7 @@ class SecretsManager:
 
     # ── Audit ──────────────────────────────────────────────────
 
-    def get_audit_log(
-        self, key: str | None = None, limit: int = 100
-    ) -> list[dict[str, Any]]:
+    def get_audit_log(self, key: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
         """Return audit events, optionally filtered by key."""
         if key:
             return [e for e in self._audit_log if e.get("key") == key][-limit:]

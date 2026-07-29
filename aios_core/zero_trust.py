@@ -258,9 +258,7 @@ class ZeroTrust:
         # Also register in engine
         resource = rules.get("resource", "*")
         min_trust = TrustLevel(rules.get("min_trust", 50))
-        conditions = {
-            k: v for k, v in rules.items() if k not in ("resource", "min_trust")
-        }
+        conditions = {k: v for k, v in rules.items() if k not in ("resource", "min_trust")}
         self._engine.add_policy(
             TrustPolicy(
                 name=name,

@@ -164,9 +164,7 @@ class AIScientist:
             "reproducibility": round(random.uniform(0.5, 0.9), 2),
         }
         overall = sum(scores.values()) / len(scores)
-        recommendation = (
-            "accept" if overall > 0.7 else ("revise" if overall > 0.5 else "reject")
-        )
+        recommendation = "accept" if overall > 0.7 else ("revise" if overall > 0.5 else "reject")
         review = {
             "scores": scores,
             "overall": round(overall, 2),

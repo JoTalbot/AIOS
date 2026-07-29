@@ -117,9 +117,7 @@ def _write_yaml(tmp_path, platform, package, hints=None):
 @pytest.fixture
 def registered():
     platforms = [
-        loaded
-        for name in ("whatsapp", "viber", "tiktok")
-        for loaded in load_catalog_file(f"platforms/{name}.yaml")
+        loaded for name in ("whatsapp", "viber", "tiktok") for loaded in load_catalog_file(f"platforms/{name}.yaml")
     ]
     yield platforms
     for d in platforms:
@@ -382,14 +380,8 @@ def test_cron_plan_via_shards_enqueues(tmp_path, capsys, monkeypatch):
 
     profiles_db = tmp_path / "profiles.sqlite"
     store = ProfileStore(str(profiles_db))
-    store.add(
-        Profile(
-            platform="instagram", name="main", is_default=True, db_path=str(tmp_path / "ig.sqlite")
-        )
-    )
-    store.add(
-        Profile(platform="tiktok", name="fun", is_default=True, db_path=str(tmp_path / "tt.sqlite"))
-    )
+    store.add(Profile(platform="instagram", name="main", is_default=True, db_path=str(tmp_path / "ig.sqlite")))
+    store.add(Profile(platform="tiktok", name="fun", is_default=True, db_path=str(tmp_path / "tt.sqlite")))
     store.close()
     monkeypatch.setenv("AIOS_PROFILES_DB", str(profiles_db))
     ProfileStore.reset_default()

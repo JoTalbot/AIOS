@@ -27,9 +27,18 @@ from aios_core.modules.shafa import (
 
 
 def _card(title: str, price: float, ad_id: str = "") -> AdCard:
-    return AdCard(title=title, price=price, currency="UAH", city="Kyiv",
-                  published_text="today", is_top=False, url=f"https://test.ua/{title}",
-                  ad_id=ad_id or f"id-{title}", query="test", raw_texts=[title])
+    return AdCard(
+        title=title,
+        price=price,
+        currency="UAH",
+        city="Kyiv",
+        published_text="today",
+        is_top=False,
+        url=f"https://test.ua/{title}",
+        ad_id=ad_id or f"id-{title}",
+        query="test",
+        raw_texts=[title],
+    )
 
 
 def test_bigl_imports():
@@ -44,6 +53,7 @@ def test_bigl_imports():
 def test_bigl_storage_inherits_olx():
     """BiglStorage inherits OLXStorage."""
     from aios_core.modules.olx.storage import OLXStorage
+
     assert issubclass(BiglStorage, OLXStorage)
 
 

@@ -1,4 +1,5 @@
 """Tests for aios_core/event_bus.py"""
+
 from __future__ import annotations
 
 import pytest
@@ -50,7 +51,7 @@ class TestEventBus:
 
     def test_get_event(self, bus):
         event = bus.emit("get.me", source="test", data={})
-        eid = getattr(event, 'event_id', getattr(event, 'id', None))
+        eid = getattr(event, "event_id", getattr(event, "id", None))
         if eid:
             fetched = bus.get_event(eid)
             assert fetched is not None

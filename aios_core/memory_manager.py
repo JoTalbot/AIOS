@@ -67,9 +67,7 @@ class MemoryManager:
         if ttl_seconds is not None:
             from datetime import timedelta
 
-            expires_at = (
-                datetime.now(UTC) + timedelta(seconds=ttl_seconds)
-            ).isoformat()
+            expires_at = (datetime.now(UTC) + timedelta(seconds=ttl_seconds)).isoformat()
 
         if self.db:
             self.db.execute(
@@ -94,9 +92,7 @@ class MemoryManager:
         # If vector embedding provided in metadata, store in compressed vector index
         if metadata and "embedding" in metadata:
             self.vector_store.add(
-                id=item_id, 
-                vector=metadata["embedding"],
-                metadata={"category": category, "owner_id": owner_id}
+                id=item_id, vector=metadata["embedding"], metadata={"category": category, "owner_id": owner_id}
             )
 
         return {
@@ -111,9 +107,7 @@ class MemoryManager:
             "owner_id": owner_id,
         }
 
-    def retrieve(
-        self, item_id: str, requester_id: str | None = None, is_admin: bool = False
-    ) -> dict | None:
+    def retrieve(self, item_id: str, requester_id: str | None = None, is_admin: bool = False) -> dict | None:
         """Retrieve an item, enforcing ownership when a requester is supplied."""
         if self.db is None:
             return None
@@ -185,11 +179,7 @@ class MemoryManager:
         return [self._row_to_dict(r) for r in rows]
 
     def semantic_search(
-        self,
-        query_vector: list[float],
-        category: str | None = None,
-        top_k: int = 5,
-        requester_id: str | None = None
+        self, query_vector: list[float], category: str | None = None, top_k: int = 5, requester_id: str | None = None
     ) -> list[dict]:
         """Search memories using compressed vector embeddings."""
         meta_filter = {}
@@ -197,13 +187,11 @@ class MemoryManager:
             meta_filter["category"] = category
         if requester_id:
             meta_filter["owner_id"] = requester_id
-            
+
         vector_results = self.vector_store.search(
-            query_vector=query_vector,
-            top_k=top_k,
-            metadata_filter=meta_filter if meta_filter else None
+            query_vector=query_vector, top_k=top_k, metadata_filter=meta_filter if meta_filter else None
         )
-        
+
         results = []
         for v_res in vector_results:
             mem = self.retrieve(v_res["id"], requester_id=requester_id)
@@ -254,9 +242,7 @@ class MemoryManager:
         )
         return self.retrieve(item_id)
 
-    def delete(
-        self, item_id: str, requester_id: str | None = None, is_admin: bool = False
-    ) -> bool:
+    def delete(self, item_id: str, requester_id: str | None = None, is_admin: bool = False) -> bool:
         """Delete a memory item, enforcing owner access when supplied."""
         if self.db is None:
             return False
@@ -291,8 +277,7 @@ class MemoryManager:
             )
         else:
             row = self.db.query_one(
-                "SELECT COUNT(*) as cnt FROM memory_items "
-                "WHERE expires_at IS NULL OR expires_at > ?",
+                "SELECT COUNT(*) as cnt FROM memory_items WHERE expires_at IS NULL OR expires_at > ?",
                 (Database.now_iso(),),
             )
         return row["cnt"] if row else 0

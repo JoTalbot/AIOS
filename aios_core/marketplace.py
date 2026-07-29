@@ -152,16 +152,12 @@ class CapabilityMarketplace:
 
         return item
 
-    def search(
-        self, query: str = "", tag: str = "", limit: int = 20, kind: str = ""
-    ) -> list[MarketplaceCapability]:
+    def search(self, query: str = "", tag: str = "", limit: int = 20, kind: str = "") -> list[MarketplaceCapability]:
         """Search marketplace for capabilities matching a query."""
         results = list(self._items.values())
         if query:
             q = query.lower()
-            results = [
-                r for r in results if q in r.name.lower() or q in r.description.lower()
-            ]
+            results = [r for r in results if q in r.name.lower() or q in r.description.lower()]
         if tag:
             results = [r for r in results if tag in r.tags]
         if kind:
@@ -234,9 +230,7 @@ class CapabilityMarketplace:
             except Exception:
                 pass  # Plugin registration DB write failed — skip
 
-    def list_platform_plugins(
-        self, platform: str = "", verified_only: bool = False
-    ) -> list[PlatformPlugin]:
+    def list_platform_plugins(self, platform: str = "", verified_only: bool = False) -> list[PlatformPlugin]:
         """List registered platform plugins."""
         results = list(self._plugins.values())
         if platform:
@@ -265,9 +259,7 @@ class CapabilityMarketplace:
         p.downloads += 1
         return {"success": True, "plugin": asdict(p), "downloads": p.downloads}
 
-    def install_plugin(
-        self, plugin_id: str, target_dir: str = "platforms"
-    ) -> dict[str, Any]:
+    def install_plugin(self, plugin_id: str, target_dir: str = "platforms") -> dict[str, Any]:
         """Simulated install - writes descriptor yaml to platforms/<platform>.yaml"""
         p = self._plugins.get(plugin_id)
         if not p:

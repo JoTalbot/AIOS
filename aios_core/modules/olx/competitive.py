@@ -105,11 +105,7 @@ def parse_seller_ads(
     cards = CardParser().parse(root, query=query)
     skip_urls = {u for u in exclude_urls if u}
     skip_ids = {i for i in exclude_ad_ids if i}
-    return [
-        card
-        for card in cards
-        if card.url not in skip_urls and card.ad_id not in skip_ids
-    ]
+    return [card for card in cards if card.url not in skip_urls and card.ad_id not in skip_ids]
 
 
 class CompetitiveWatch:
@@ -143,9 +139,7 @@ class CompetitiveWatch:
                 score = link_score(own, candidate)
                 if score < self.threshold:
                     continue
-                is_new = self.storage.competitor_link_upsert(
-                    own.fingerprint, candidate.fingerprint, score, seen_at=now
-                )
+                is_new = self.storage.competitor_link_upsert(own.fingerprint, candidate.fingerprint, score, seen_at=now)
                 new_links += int(is_new)
                 linked += 1
                 if own.price and candidate.price and candidate.price < own.price:
@@ -201,9 +195,7 @@ class CompetitiveWatch:
             score = link_score(my_ad, card)
             if score < self.threshold:
                 continue
-            is_new = self.storage.competitor_link_upsert(
-                my_ad.fingerprint, card.fingerprint, score, seen_at=now
-            )
+            is_new = self.storage.competitor_link_upsert(my_ad.fingerprint, card.fingerprint, score, seen_at=now)
             linked += 1
             new_links += int(is_new)
         return {
@@ -229,9 +221,7 @@ class CompetitiveWatch:
             competitors.append(entry)
 
         prices = [
-            entry["ad"]["price"]
-            for entry in competitors
-            if entry.get("ad") and entry["ad"].get("price") is not None
+            entry["ad"]["price"] for entry in competitors if entry.get("ad") and entry["ad"].get("price") is not None
         ]
         prices.sort()
         return {
@@ -242,17 +232,11 @@ class CompetitiveWatch:
             "competitors": competitors,
         }
 
-    def price_position(
-        self, own: OwnAd, candidates: list[AdCard] | None = None
-    ) -> dict[str, object]:
+    def price_position(self, own: OwnAd, candidates: list[AdCard] | None = None) -> dict[str, object]:
         """Where my price stands among similar ads (1 = cheapest)."""
         if candidates is None:
             candidates = self.storage.get_ads(active_only=True)
-        similar = [
-            card
-            for card in candidates
-            if card.price is not None and link_score(own, card) >= self.threshold
-        ]
+        similar = [card for card in candidates if card.price is not None and link_score(own, card) >= self.threshold]
         prices = sorted(card.price for card in similar)
         if not prices or own.price is None:
             return {

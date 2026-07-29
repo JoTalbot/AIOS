@@ -55,9 +55,7 @@ class ContinualLearner:
 
     # ── Task Learning ──────────────────────────────────────────────
 
-    def learn_task(
-        self, task_name: str, importance: float = 1.0, performance: float = 1.0
-    ) -> TaskBoundary:
+    def learn_task(self, task_name: str, importance: float = 1.0, performance: float = 1.0) -> TaskBoundary:
         """Learn a new task with importance weighting."""
         boundary = TaskBoundary(
             task_name=task_name,
@@ -72,9 +70,7 @@ class ContinualLearner:
 
         # Update EWC penalty for all previous tasks
         for prev_task in self.tasks[:-1]:
-            self._ewc_penalty[prev_task] = self.ewc_lambda * self.importance.get(
-                prev_task, 1.0
-            )
+            self._ewc_penalty[prev_task] = self.ewc_lambda * self.importance.get(prev_task, 1.0)
 
         return boundary
 
@@ -100,9 +96,7 @@ class ContinualLearner:
         if len(self.rehearsal_buffer) > self.rehearsal_size:
             self.rehearsal_buffer = self.rehearsal_buffer[-self.rehearsal_size :]
 
-    def get_rehearsal(
-        self, task_name: str | None = None, limit: int = 10
-    ) -> list[dict[str, Any]]:
+    def get_rehearsal(self, task_name: str | None = None, limit: int = 10) -> list[dict[str, Any]]:
         """Retrieve rehearsal data, optionally filtered by task."""
         filtered = [r for r in self.rehearsal_buffer if r["task"] == task_name] if task_name else self.rehearsal_buffer
         return filtered[-limit:]

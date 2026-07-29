@@ -313,7 +313,6 @@ class TestOrchestrator(unittest.TestCase):
 
 
 class TestReasoningEngine(unittest.TestCase):
-
     def setUp(self):
         self.db = _make_db()
         self.memory = MemoryManager(db=self.db)
@@ -424,7 +423,6 @@ class TestReasoningEngine(unittest.TestCase):
 
 
 class TestLearningEngine(unittest.TestCase):
-
     def setUp(self):
         self.db = _make_db()
         self.engine = LearningEngine(db=self.db)
@@ -513,7 +511,6 @@ class TestLearningEngine(unittest.TestCase):
 
 
 class TestEvolutionManager(unittest.TestCase):
-
     def setUp(self):
         self.db = _make_db()
         self.mgr = EvolutionManager(db=self.db)
@@ -622,7 +619,6 @@ class TestEvolutionManager(unittest.TestCase):
 
 
 class TestPrivacyGuard(unittest.TestCase):
-
     def setUp(self):
         self.guard = PrivacyGuard()
 
@@ -812,9 +808,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_evolution_through_orchestrator(self):
         """Evolution proposals should persist through the orchestrator."""
-        task = self.orch.create_task(
-            "evolution_task", "Evolution via orchestrator", risk_level="low"
-        )
+        task = self.orch.create_task("evolution_task", "Evolution via orchestrator", risk_level="low")
         self.orch.add_step(
             task,
             "evolve",

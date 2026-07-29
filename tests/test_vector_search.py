@@ -26,11 +26,13 @@ def _card(title: str, price: float, ad_id: str = "", query: str = "test") -> AdC
 def test_vector_search_build_index():
     """Build TF-IDF index from storage."""
     storage = OLXStorage(":memory:")
-    storage.save_ads([
-        _card("iPhone 15 Pro", 30000, ad_id="id-iphone15"),
-        _card("Samsung Galaxy S24", 25000, ad_id="id-samsung"),
-        _card("MacBook Air M3", 50000, ad_id="id-mac"),
-    ])
+    storage.save_ads(
+        [
+            _card("iPhone 15 Pro", 30000, ad_id="id-iphone15"),
+            _card("Samsung Galaxy S24", 25000, ad_id="id-samsung"),
+            _card("MacBook Air M3", 50000, ad_id="id-mac"),
+        ]
+    )
 
     engine = VectorSearchEngine(storage=storage)
     count = engine.build_index()
@@ -48,12 +50,14 @@ def test_vector_search_build_index_empty():
 def test_vector_search_query():
     """Search query returns relevant results."""
     storage = OLXStorage(":memory:")
-    storage.save_ads([
-        _card("iPhone 15 Pro Max", 40000, ad_id="id-iphone15"),
-        _card("iPhone 14", 20000, ad_id="id-iphone14"),
-        _card("Samsung Galaxy S24", 25000, ad_id="id-samsung"),
-        _card("MacBook Air M3", 50000, ad_id="id-mac"),
-    ])
+    storage.save_ads(
+        [
+            _card("iPhone 15 Pro Max", 40000, ad_id="id-iphone15"),
+            _card("iPhone 14", 20000, ad_id="id-iphone14"),
+            _card("Samsung Galaxy S24", 25000, ad_id="id-samsung"),
+            _card("MacBook Air M3", 50000, ad_id="id-mac"),
+        ]
+    )
 
     engine = VectorSearchEngine(storage=storage)
     engine.build_index()
@@ -69,11 +73,13 @@ def test_vector_search_query():
 def test_vector_search_find_similar():
     """Find products similar to a reference."""
     storage = OLXStorage(":memory:")
-    storage.save_ads([
-        _card("iPhone 15 Pro", 30000, ad_id="id-iphone15"),
-        _card("iPhone 14 Pro", 25000, ad_id="id-iphone14"),
-        _card("Samsung Galaxy", 22000, ad_id="id-samsung"),
-    ])
+    storage.save_ads(
+        [
+            _card("iPhone 15 Pro", 30000, ad_id="id-iphone15"),
+            _card("iPhone 14 Pro", 25000, ad_id="id-iphone14"),
+            _card("Samsung Galaxy", 22000, ad_id="id-samsung"),
+        ]
+    )
 
     engine = VectorSearchEngine(storage=storage)
     engine.build_index()
@@ -110,11 +116,13 @@ def test_vector_search_no_storage():
 def test_vector_search_min_term_freq():
     """Terms below min_term_freq are excluded from vocabulary."""
     storage = OLXStorage(":memory:")
-    storage.save_ads([
-        _card("unique_rare_word phone", 1000, ad_id="id1"),
-        _card("common common phone", 2000, ad_id="id2"),
-        _card("common phone laptop", 3000, ad_id="id3"),
-    ])
+    storage.save_ads(
+        [
+            _card("unique_rare_word phone", 1000, ad_id="id1"),
+            _card("common common phone", 2000, ad_id="id2"),
+            _card("common phone laptop", 3000, ad_id="id3"),
+        ]
+    )
 
     engine = VectorSearchEngine(storage=storage, min_term_freq=2)
     engine.build_index()

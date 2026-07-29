@@ -443,12 +443,7 @@ class ExportImportPipeline:
                 # Parse JSON-encoded fields
                 record = {}
                 for key, value in row.items():
-                    if (
-                        (value
-                        and value.startswith("{"))
-                        or (value
-                        and value.startswith("["))
-                    ):
+                    if (value and value.startswith("{")) or (value and value.startswith("[")):
                         try:
                             record[key] = json.loads(value)
                         except json.JSONDecodeError:
@@ -528,11 +523,7 @@ class ExportImportPipeline:
         Returns:
             ExportResult with only changed records.
         """
-        changed = [
-            r
-            for r in records
-            if r.get("updated_at", r.get("created_at", 0)) > last_export_timestamp
-        ]
+        changed = [r for r in records if r.get("updated_at", r.get("created_at", 0)) > last_export_timestamp]
 
         if format == ExportFormat.CSV:
             return self.export_csv(changed)

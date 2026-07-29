@@ -47,17 +47,13 @@ def load_config(name: str) -> ProductionConfig:
 
 def main():
     parser = argparse.ArgumentParser(description="AIOS Production Autopilot v9.1.0")
-    parser.add_argument(
-        "--config", default="default_3_ig", help="Config: default_3_ig, from_env, or JSON file"
-    )
+    parser.add_argument("--config", default="default_3_ig", help="Config: default_3_ig, from_env, or JSON file")
     parser.add_argument(
         "--simulate-2weeks",
         action="store_true",
         help="Simulate 14 days x 24 cycles in accelerated mode",
     )
-    parser.add_argument(
-        "--cycles-per-day", type=int, default=24, help="Cycles per day for simulation"
-    )
+    parser.add_argument("--cycles-per-day", type=int, default=24, help="Cycles per day for simulation")
     parser.add_argument("--daemon", action="store_true", help="Run as daemon with interval")
     parser.add_argument(
         "--interval",
@@ -66,9 +62,7 @@ def main():
         help="Interval seconds for daemon (default 900 = 15min)",
     )
     parser.add_argument("--health", action="store_true", help="Print health report and exit")
-    parser.add_argument(
-        "--prometheus-metrics", action="store_true", help="Print Prometheus metrics and exit"
-    )
+    parser.add_argument("--prometheus-metrics", action="store_true", help="Print Prometheus metrics and exit")
     parser.add_argument(
         "--output",
         default="production_simulation_report.json",
@@ -100,11 +94,9 @@ def main():
         return
 
     if args.simulate_2weeks:
+        print(f"🎬 Starting 2-week simulation: {len(config.profiles)} profiles, {args.cycles_per_day} cycles/day")
         print(
-            f"🎬 Starting 2-week simulation: {len(config.profiles)} profiles, {args.cycles_per_day} cycles/day"
-        )
-        print(
-            f"   Expected total cycles: 14 * {args.cycles_per_day} * {len(config.profiles)} = {14*args.cycles_per_day*len(config.profiles)}"
+            f"   Expected total cycles: 14 * {args.cycles_per_day} * {len(config.profiles)} = {14 * args.cycles_per_day * len(config.profiles)}"
         )
         print()
 
@@ -115,18 +107,14 @@ def main():
         print(f"\n✅ Simulation finished in {elapsed:.2f}s (accelerated)")
         print(f"   Total cycles: {report['simulation']['total_cycles']}")
         print(f"   Total actions: {report['simulation']['total_actions']}")
-        print(f"   Avg success rate: {report['simulation']['avg_success_rate']*100:.2f}%")
-        print(
-            f"   Bans: {report['simulation']['bans']} (ban_free={report['simulation']['ban_free']})"
-        )
+        print(f"   Avg success rate: {report['simulation']['avg_success_rate'] * 100:.2f}%")
+        print(f"   Bans: {report['simulation']['bans']} (ban_free={report['simulation']['ban_free']})")
         print(f"   Drifts: {report['simulation']['drifts']}")
         print(f"   GA criteria met: {report['simulation']['ga_criteria_met']}")
         print()
 
         # Write report
-        Path(args.output).write_text(
-            json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+        Path(args.output).write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"💾 Report saved to {args.output}")
 
         # Also print pacing metrics
@@ -136,9 +124,7 @@ def main():
 
         print("\n🔮 Predictive health:")
         health = report["health"]
-        print(
-            f"   Devices: {health['total_devices']}, critical: {health['critical']}, high: {health['high']}"
-        )
+        print(f"   Devices: {health['total_devices']}, critical: {health['critical']}, high: {health['high']}")
         print(f"   Avg risk: {health['avg_risk']:.3f}")
 
         if report["simulation"]["ga_criteria_met"]:
@@ -146,9 +132,7 @@ def main():
         else:
             print("\n⚠️  GA criteria not fully met — check bans, success rate, profile count")
             if report["simulation"]["bans"] > 0:
-                print(
-                    "   → Bans detected: reduce actions_per_hour, increase jitter, check compliance"
-                )
+                print("   → Bans detected: reduce actions_per_hour, increase jitter, check compliance")
             if report["simulation"]["avg_success_rate"] < 0.9:
                 print("   → Success rate <90%: recalibrate hints, check selectors")
 
@@ -171,7 +155,7 @@ def main():
                 if cycle_num % 10 == 0:
                     health = autopilot.health_report()
                     print(
-                        f"\n📊 Health after {cycle_num} cycles: success_rate={health['avg_success_rate']*100:.1f}%, bans={health['bans']}, total_actions={health['total_actions']}"
+                        f"\n📊 Health after {cycle_num} cycles: success_rate={health['avg_success_rate'] * 100:.1f}%, bans={health['bans']}, total_actions={health['total_actions']}"
                     )
 
                 print(f"   Sleeping {args.interval}s...")
@@ -192,7 +176,7 @@ def main():
 
     health = autopilot.health_report()
     print(
-        f"\n📊 Overall health: {health['total_cycles']} cycles, {health['avg_success_rate']*100:.1f}% success, bans={health['bans']}"
+        f"\n📊 Overall health: {health['total_cycles']} cycles, {health['avg_success_rate'] * 100:.1f}% success, bans={health['bans']}"
     )
 
 

@@ -36,6 +36,7 @@ def demo_constitutional_evaluation():
 
     # Use in-memory DB via container override
     from aios_core.container import container
+
     container.configure(db_path=":memory:")
     db = container.db()
     orch = Orchestrator(db=db)
@@ -125,6 +126,7 @@ def demo_task_orchestration():
 
     # Use in-memory DB via container override
     from aios_core.container import container
+
     container.configure(db_path=":memory:")
     db = container.db()
     orch = Orchestrator(db=db)
@@ -227,9 +229,7 @@ def demo_task_orchestration():
     print(f"Steps: {result['completed_steps']}/{result['total_steps']} completed")
     for step in result["steps"]:
         cc = step["constitutional_check"]
-        print(
-            f"  {step['name']}: {step['status']} (constitutional: {cc['decision'] if cc else 'N/A'})"
-        )
+        print(f"  {step['name']}: {step['status']} (constitutional: {cc['decision'] if cc else 'N/A'})")
 
     # Show final stats
     stats = orch.stats()
@@ -250,6 +250,7 @@ def demo_memory_knowledge():
 
     # Use in-memory DB via container override
     from aios_core.container import container
+
     container.configure(db_path=":memory:")
     db = container.db()
     orch = Orchestrator(db=db)
@@ -315,6 +316,7 @@ def demo_reasoning_learning():
 
     # Use in-memory DB via container override
     from aios_core.container import container
+
     container.configure(db_path=":memory:")
     db = container.db()
     orch = Orchestrator(db=db)
@@ -365,6 +367,7 @@ def demo_evolution():
 
     # Use in-memory DB via container override
     from aios_core.container import container
+
     container.configure(db_path=":memory:")
     db = container.db()
     orch = Orchestrator(db=db)
@@ -480,9 +483,7 @@ def demo_rest_api():
             # Stats
             resp = await client.get("/api/v1/stats")
             data = resp.json()
-            print(
-                f"GET /api/v1/stats: version={data.get('version', '9.0.0')}, tasks={data.get('total_tasks', 0)}"
-            )
+            print(f"GET /api/v1/stats: version={data.get('version', '9.0.0')}, tasks={data.get('total_tasks', 0)}")
 
             # Evaluate
             resp = await client.post(
@@ -545,18 +546,14 @@ def demo_rest_api():
             print(f"GET /api/v1/tests/suites: {len(resp.json()['suites'])} suites")
 
             resp = await client.post("/api/v1/tests/run")
-            print(
-                f"POST /api/v1/tests/run: {resp.json()['overall_status']} ({resp.json()['total_tests']} tests)"
-            )
+            print(f"POST /api/v1/tests/run: {resp.json()['overall_status']} ({resp.json()['total_tests']} tests)")
 
             # Audit
             resp = await client.get("/api/v1/audit")
             print(f"GET /api/v1/audit: {resp.json()['count']} events")
 
             # JSON-RPC bridge
-            resp = await client.post(
-                "/rpc", json={"jsonrpc": "2.0", "id": 1, "method": "ping", "params": {}}
-            )
+            resp = await client.post("/rpc", json={"jsonrpc": "2.0", "id": 1, "method": "ping", "params": {}})
             print(f"POST /rpc (ping): {resp.json()['result']}")
 
     asyncio.run(test_api())
@@ -571,6 +568,7 @@ def demo_test_engine():
 
     # Use in-memory DB via container override
     from aios_core.container import container
+
     container.configure(db_path=":memory:")
     db = container.db()
     engine = TestEngine(
@@ -587,9 +585,7 @@ def demo_test_engine():
 
     print(f"\nReport: {report.report_id[:8]}...")
     print(f"  Overall: {report.overall_status}")
-    print(
-        f"  Total: {report.total_tests} | Passed: {report.total_passed} | Failed: {report.total_failed}"
-    )
+    print(f"  Total: {report.total_tests} | Passed: {report.total_passed} | Failed: {report.total_failed}")
 
     # Show summary
     print(f"\n{engine.report_text(report)[:500]}...")

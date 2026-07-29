@@ -25,11 +25,13 @@ ROLE_PERMISSIONS = {
     "viewer": ["read"],
 }
 
+
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
     expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
 
 def verify_token(token: str) -> dict:
     try:
@@ -40,6 +42,7 @@ def verify_token(token: str) -> dict:
     except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Invalid token") from None
 
+
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:  # noqa: B008  # FastAPI idiom
     payload = verify_token(credentials.credentials)
     username = payload.get("sub")
@@ -47,13 +50,16 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=401, detail="User not found")
     return {"username": username, "role": USERS_DB[username]["role"]}
 
+
 def require_role(required_role: str):
     async def role_checker(user: dict = Depends(get_current_user)):  # noqa: B008  # FastAPI idiom
         role_hierarchy = {"viewer": 1, "manager": 2, "admin": 3}
         if role_hierarchy.get(user["role"], 0) < role_hierarchy.get(required_role, 0):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return user
+
     return role_checker
+
 
 def login(username: str, password: str) -> str | None:
     user = USERS_DB.get(username)

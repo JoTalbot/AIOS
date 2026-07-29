@@ -143,9 +143,7 @@ def retry(
         except Exception as e:
             last_exception = e
             exc_name = type(e).__name__
-            _retry_stats.by_exception[exc_name] = (
-                _retry_stats.by_exception.get(exc_name, 0) + 1
-            )
+            _retry_stats.by_exception[exc_name] = _retry_stats.by_exception.get(exc_name, 0) + 1
 
             if not should_retry(e, policy) or attempt == policy.max_attempts:
                 break

@@ -63,13 +63,9 @@ class CausalInference:
 
     # ── Graph Construction ──────────────────────────────────────────
 
-    def add_causal_link(
-        self, cause: str, effect: str, strength: float = 1.0, mechanism: str = "direct"
-    ) -> CausalLink:
+    def add_causal_link(self, cause: str, effect: str, strength: float = 1.0, mechanism: str = "direct") -> CausalLink:
         """Add a directed causal link."""
-        link = CausalLink(
-            cause=cause, effect=effect, strength=strength, mechanism=mechanism
-        )
+        link = CausalLink(cause=cause, effect=effect, strength=strength, mechanism=mechanism)
         if cause not in self.causal_graph:
             self.causal_graph[cause] = []
         self.causal_graph[cause].append(link)
@@ -193,27 +189,15 @@ class CausalInference:
 
     # ── Mediation Analysis ──────────────────────────────────────────
 
-    def mediating_effect(
-        self, cause: str, mediator: str, effect: str
-    ) -> dict[str, Any]:
+    def mediating_effect(self, cause: str, mediator: str, effect: str) -> dict[str, Any]:
         """Compute indirect (mediated) and direct effects."""
         # Total effect
-        total_links = [
-            link for link in self.causal_graph.get(cause, []) if link.effect == effect
-        ]
-        total_strength = (
-            sum(link.strength for link in total_links) / len(total_links)
-            if total_links
-            else 0.0
-        )
+        total_links = [link for link in self.causal_graph.get(cause, []) if link.effect == effect]
+        total_strength = sum(link.strength for link in total_links) / len(total_links) if total_links else 0.0
 
         # Indirect effect (cause → mediator → effect)
-        cause_to_med = [
-            link for link in self.causal_graph.get(cause, []) if link.effect == mediator
-        ]
-        med_to_eff = [
-            link for link in self.causal_graph.get(mediator, []) if link.effect == effect
-        ]
+        cause_to_med = [link for link in self.causal_graph.get(cause, []) if link.effect == mediator]
+        med_to_eff = [link for link in self.causal_graph.get(mediator, []) if link.effect == effect]
 
         if cause_to_med and med_to_eff:
             indirect = (sum(link.strength for link in cause_to_med) / len(cause_to_med)) * (
@@ -224,9 +208,7 @@ class CausalInference:
                 "total": round(total_strength, 4),
                 "direct": round(direct, 4),
                 "indirect": round(indirect, 4),
-                "mediated_proportion": round(
-                    indirect / total_strength if total_strength > 0 else 0, 4
-                ),
+                "mediated_proportion": round(indirect / total_strength if total_strength > 0 else 0, 4),
             }
 
         return {

@@ -61,9 +61,7 @@ class NeuromorphicChip:
         self.neurons_per_core = neurons_per_core
         self.energy_per_spike = 0.000001  # pJ per spike
         self.neurons: dict[str, SpikingNeuron] = {}
-        self.connections: dict[
-            str, list[tuple[str, float]]
-        ] = {}  # src → [(dst, weight)]
+        self.connections: dict[str, list[tuple[str, float]]] = {}  # src → [(dst, weight)]
         self._spike_log: list[dict[str, Any]] = []
         self._power_total: float = 0.0
         self._total_spikes: int = 0
@@ -72,9 +70,7 @@ class NeuromorphicChip:
 
     def map_network(self, num_neurons: int) -> dict[str, Any]:
         """Map a network onto available cores."""
-        cores_needed = (
-            num_neurons + self.neurons_per_core - 1
-        ) // self.neurons_per_core
+        cores_needed = (num_neurons + self.neurons_per_core - 1) // self.neurons_per_core
         cores_used = min(cores_needed, self.cores)
         utilization = cores_used / self.cores
 
@@ -87,9 +83,7 @@ class NeuromorphicChip:
             "power_estimate_w": round(cores_used * 0.1, 4),
         }
 
-    def add_neuron(
-        self, neuron_id: str, threshold: float = 1.0, leak: float = 0.1
-    ) -> SpikingNeuron:
+    def add_neuron(self, neuron_id: str, threshold: float = 1.0, leak: float = 0.1) -> SpikingNeuron:
         """Add a spiking neuron."""
         neuron = SpikingNeuron(id=neuron_id, threshold=threshold, leak=leak)
         self.neurons[neuron_id] = neuron
@@ -103,9 +97,7 @@ class NeuromorphicChip:
 
     # ── Simulation ──────────────────────────────────────────────────
 
-    def simulate_step(
-        self, inputs: dict[str, float], dt: float = 0.001
-    ) -> dict[str, Any]:
+    def simulate_step(self, inputs: dict[str, float], dt: float = 0.001) -> dict[str, Any]:
         """Simulate one timestep across all neurons."""
         spike_events = []
 
@@ -134,8 +126,7 @@ class NeuromorphicChip:
                         delta_w = 0.01 * math.exp(-abs(time_diff) * 100)
                         # Update weight in connection list
                         self.connections[src] = [
-                            (d, w + delta_w) if d == dst else (d, w)
-                            for d, w in self.connections[src]
+                            (d, w + delta_w) if d == dst else (d, w) for d, w in self.connections[src]
                         ]
 
         self._spike_log.append(
@@ -152,9 +143,7 @@ class NeuromorphicChip:
             "total_spikes": self._total_spikes,
         }
 
-    def simulate_sequence(
-        self, input_sequence: list[dict[str, float]], dt: float = 0.001
-    ) -> list[dict[str, Any]]:
+    def simulate_sequence(self, input_sequence: list[dict[str, float]], dt: float = 0.001) -> list[dict[str, Any]]:
         """Simulate a sequence of input steps."""
         results = []
         # Reset membrane potentials

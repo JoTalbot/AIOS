@@ -22,6 +22,7 @@ from aios_core.price_prediction_ml import (
 
 # ─── Price Prediction ───
 
+
 def _add_price_prediction_parsers(subparsers) -> None:
     """Add price-prediction subparsers."""
     pp = subparsers.add_parser("price-predict", help="ML price prediction models")
@@ -111,12 +112,14 @@ def _run_price_predict(args) -> bool:
         results = engine.predict_all(fp, history, horizon)
         out = []
         for r in results:
-            out.append({
-                "model": r.model.value,
-                "predicted_price": r.predicted_price,
-                "confidence": r.confidence,
-                "trend": r.trend.value,
-            })
+            out.append(
+                {
+                    "model": r.model.value,
+                    "predicted_price": r.predicted_price,
+                    "confidence": r.confidence,
+                    "trend": r.trend.value,
+                }
+            )
         print(json.dumps(out, ensure_ascii=False))
 
     else:
@@ -126,6 +129,7 @@ def _run_price_predict(args) -> bool:
 
 
 # ─── Image Comparison ───
+
 
 def _add_image_comparison_parsers(subparsers) -> None:
     """Add image-compare subparsers."""
@@ -162,6 +166,7 @@ def _run_image_compare(args) -> bool:
             difference_hash,
             perceptual_hash,
         )
+
         pixels = getattr(args, "pixels", [])
         w = getattr(args, "width", 8)
         h = getattr(args, "height", 8)
@@ -189,12 +194,8 @@ def _run_image_compare(args) -> bool:
         threshold = getattr(args, "threshold", 0.85)
         algo = algo_map.get(getattr(args, "algorithm", "ahash"), HashAlgorithm.AHASH)
 
-        engine = ImageComparisonEngine(
-            hash_algorithm=algo, duplicate_threshold=threshold
-        )
-        result = engine.compare(
-            src, 8, 8, tgt, 8, 8, algorithm=algo
-        )
+        engine = ImageComparisonEngine(hash_algorithm=algo, duplicate_threshold=threshold)
+        result = engine.compare(src, 8, 8, tgt, 8, 8, algorithm=algo)
         out = {
             "hash_similarity": result.hash_similarity,
             "composite_similarity": result.composite_similarity,
@@ -211,6 +212,7 @@ def _run_image_compare(args) -> bool:
 
 
 # ─── Fleet Scheduler ───
+
 
 def _add_fleet_parsers(subparsers) -> None:
     """Add fleet-scheduler subparsers."""

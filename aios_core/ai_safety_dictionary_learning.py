@@ -61,19 +61,13 @@ class DictionaryLearner:
 
     def learn_dictionary(self, activations: list[list[float]]) -> None:
         """Fit a dictionary of *dict_size* concepts to *activations* (backward-compatible)."""
-        self.dictionary = {
-            f"concept_{i}": random.uniform(0.01, 0.5) for i in range(self.dict_size)
-        }
+        self.dictionary = {f"concept_{i}": random.uniform(0.01, 0.5) for i in range(self.dict_size)}
         self._entries = [
-            DictionaryEntry(
-                i, f"Interpretable concept {i}", activation_freq=self.sparsity
-            )
+            DictionaryEntry(i, f"Interpretable concept {i}", activation_freq=self.sparsity)
             for i in range(self.dict_size)
         ]
         # Compute residuals
-        self._residuals = [
-            random.uniform(0.01, 0.1) for _ in range(min(100, len(activations)))
-        ]
+        self._residuals = [random.uniform(0.01, 0.1) for _ in range(min(100, len(activations)))]
         logger.info("Learned dictionary with %d concepts", self.dict_size)
 
     def interpret_feature(self, feature_idx: int) -> str:
@@ -94,10 +88,7 @@ class DictionaryLearner:
 
     def reconstruct(self, codes: list[float]) -> list[float]:
         """Reconstruct activation from sparse codes."""
-        return [
-            codes[i % len(codes)] * self.dictionary.get(f"concept_{i}", 0.0)
-            for i in range(min(len(codes), 64))
-        ]
+        return [codes[i % len(codes)] * self.dictionary.get(f"concept_{i}", 0.0) for i in range(min(len(codes), 64))]
 
     def residual_score(self) -> float:
         """Average reconstruction residual."""
@@ -105,15 +96,11 @@ class DictionaryLearner:
             return 0.0
         return sum(self._residuals) / len(self._residuals)
 
-    def evolve_dictionary(
-        self, new_activations: list[list[float]], merge_ratio: float = 0.1
-    ) -> None:
+    def evolve_dictionary(self, new_activations: list[list[float]], merge_ratio: float = 0.1) -> None:
         """Evolve dictionary with new data."""
         for key in list(self.dictionary.keys())[: int(self.dict_size * merge_ratio)]:
             int(key.split("_")[1])
-            self.dictionary[key] = (
-                self.dictionary[key] * 0.9 + random.uniform(0.01, 0.1) * 0.1
-            )
+            self.dictionary[key] = self.dictionary[key] * 0.9 + random.uniform(0.01, 0.1) * 0.1
 
     def stats(self) -> dict[str, Any]:
         """Return the number of concepts in the dictionary (backward-compatible)."""

@@ -109,24 +109,16 @@ class MetaCognition:
         """Check if the system is systematically overconfident."""
         if not self._calibration_data:
             return False
-        avg_predicted = sum(p for p, a in self._calibration_data) / len(
-            self._calibration_data
-        )
-        avg_actual = sum(a for p, a in self._calibration_data) / len(
-            self._calibration_data
-        )
+        avg_predicted = sum(p for p, a in self._calibration_data) / len(self._calibration_data)
+        avg_actual = sum(a for p, a in self._calibration_data) / len(self._calibration_data)
         return avg_predicted > avg_actual + 0.1
 
     def is_underconfident(self) -> bool:
         """Check if the system is systematically underconfident."""
         if not self._calibration_data:
             return False
-        avg_predicted = sum(p for p, a in self._calibration_data) / len(
-            self._calibration_data
-        )
-        avg_actual = sum(a for p, a in self._calibration_data) / len(
-            self._calibration_data
-        )
+        avg_predicted = sum(p for p, a in self._calibration_data) / len(self._calibration_data)
+        avg_actual = sum(a for p, a in self._calibration_data) / len(self._calibration_data)
         return avg_actual > avg_predicted + 0.1
 
     def calibrate_confidence(self, task: str) -> float:
@@ -207,9 +199,7 @@ class MetaCognition:
             return available_strategies[0] if available_strategies else "direct"
         elif confidence > 0.5:
             # Medium confidence: use careful strategy
-            return (
-                available_strategies[-1] if len(available_strategies) > 1 else "careful"
-            )
+            return available_strategies[-1] if len(available_strategies) > 1 else "careful"
         else:
             # Low confidence: seek external help or explore
             return "explore" if "explore" in available_strategies else "ask_for_help"
@@ -218,18 +208,10 @@ class MetaCognition:
 
     def reflect(self) -> dict[str, Any]:
         """Reflect on recent monitoring data."""
-        recent = (
-            self.monitoring[-10:] if len(self.monitoring) >= 10 else self.monitoring
-        )
-        avg_confidence = (
-            (sum(e.confidence for e in recent) / len(recent)) if recent else 0.5
-        )
-        avg_performance = (
-            (sum(e.actual_performance for e in recent) / len(recent)) if recent else 0.0
-        )
-        avg_load = (
-            (sum(e.cognitive_load for e in recent) / len(recent)) if recent else 0.0
-        )
+        recent = self.monitoring[-10:] if len(self.monitoring) >= 10 else self.monitoring
+        avg_confidence = (sum(e.confidence for e in recent) / len(recent)) if recent else 0.5
+        avg_performance = (sum(e.actual_performance for e in recent) / len(recent)) if recent else 0.0
+        avg_load = (sum(e.cognitive_load for e in recent) / len(recent)) if recent else 0.0
 
         return {
             "recent_events": len(recent),

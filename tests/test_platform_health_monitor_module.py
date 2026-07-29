@@ -1,4 +1,5 @@
 """Tests for aios_core/platform_health_monitor.py"""
+
 from __future__ import annotations
 
 import pytest

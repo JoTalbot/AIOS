@@ -72,9 +72,7 @@ class Variant:
         if len(self.observations) < 2:
             return 0.0
         m = self.mean
-        return sum((x - m) ** 2 for x in self.observations) / (
-            len(self.observations) - 1
-        )
+        return sum((x - m) ** 2 for x in self.observations) / (len(self.observations) - 1)
 
     @property
     def std_dev(self) -> float:
@@ -198,9 +196,7 @@ class ABTestingEngine:
 
         # If only one variant provided, add a default "baseline"
         if len(variant_objs) == 1:
-            variant_objs.insert(
-                0, Variant(name="baseline", description="Default strategy")
-            )
+            variant_objs.insert(0, Variant(name="baseline", description="Default strategy"))
 
         # If no variants, create default A/B pair
         if not variant_objs:
@@ -478,13 +474,9 @@ class ABTestingEngine:
                 is_significant=False,
                 metric_type=exp.metric_type,
                 variant_a_name=a.name,
-                variant_a_value=a.mean
-                if exp.metric_type != MetricType.RATE
-                else a.rate,
+                variant_a_value=a.mean if exp.metric_type != MetricType.RATE else a.rate,
                 variant_b_name=b.name,
-                variant_b_value=b.mean
-                if exp.metric_type != MetricType.RATE
-                else b.rate,
+                variant_b_value=b.mean if exp.metric_type != MetricType.RATE else b.rate,
                 lift=0.0,
                 p_value=1.0,
                 sample_size_a=a.sample_size,
@@ -596,9 +588,7 @@ class ABTestingEngine:
         """
         return self._experiments.get(experiment_id)
 
-    def list_experiments(
-        self, status: ExperimentStatus | None = None
-    ) -> list[Experiment]:
+    def list_experiments(self, status: ExperimentStatus | None = None) -> list[Experiment]:
         """List experiments, optionally filtered by status.
 
         Args:

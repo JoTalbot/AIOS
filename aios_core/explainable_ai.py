@@ -103,13 +103,9 @@ class ExplainableAI:
         factor_objs: list[Factor] = []
         if factors:
             for i, name in enumerate(factors):
-                weight = (
-                    weights[i] if weights and i < len(weights) else 1.0 / len(factors)
-                )
+                weight = weights[i] if weights and i < len(weights) else 1.0 / len(factors)
                 direction = "positive" if weight >= 0 else "negative"
-                factor_objs.append(
-                    Factor(name=name, weight=abs(weight), direction=direction)
-                )
+                factor_objs.append(Factor(name=name, weight=abs(weight), direction=direction))
 
         explanation = Explanation(
             decision_id=decision_id,
@@ -120,9 +116,7 @@ class ExplainableAI:
             reasoning=self._build_reasoning(factor_objs, decision, level),
         )
         self.explanations[decision_id] = explanation
-        self._decision_log.append(
-            {"id": decision_id, "decision": decision, "timestamp": time.time()}
-        )
+        self._decision_log.append({"id": decision_id, "decision": decision, "timestamp": time.time()})
         return explanation
 
     def explain_with_values(
@@ -139,26 +133,20 @@ class ExplainableAI:
         factor_objs = []
         for name, (value, weight) in factors.items():
             direction = "positive" if weight >= 0 else "negative"
-            factor_objs.append(
-                Factor(name=name, weight=abs(weight), value=value, direction=direction)
-            )
+            factor_objs.append(Factor(name=name, weight=abs(weight), value=value, direction=direction))
         explanation = Explanation(
             decision_id=decision_id,
             decision=decision,
             factors=factor_objs,
             confidence=confidence,
-            reasoning=self._build_reasoning(
-                factor_objs, decision, ExplanationLevel.DETAILED
-            ),
+            reasoning=self._build_reasoning(factor_objs, decision, ExplanationLevel.DETAILED),
         )
         self.explanations[decision_id] = explanation
         return explanation
 
     # ── Level-based Retrieval ────────────────────────────────────
 
-    def get_explanation(
-        self, decision_id: str, level: ExplanationLevel = ExplanationLevel.DETAILED
-    ) -> str:
+    def get_explanation(self, decision_id: str, level: ExplanationLevel = ExplanationLevel.DETAILED) -> str:
         """Get explanation at specified detail level."""
         exp = self.explanations.get(decision_id)
         if exp is None:
@@ -176,9 +164,7 @@ class ExplainableAI:
 
     # ── Counterfactual ───────────────────────────────────────────
 
-    def counterfactual(
-        self, decision_id: str, change_factor: str, new_value: Any
-    ) -> str:
+    def counterfactual(self, decision_id: str, change_factor: str, new_value: Any) -> str:
         """Generate counterfactual: what if one factor were different?"""
         exp = self.explanations.get(decision_id)
         if exp is None:
@@ -227,9 +213,7 @@ class ExplainableAI:
 
     # ── Internal ─────────────────────────────────────────────────
 
-    def _build_reasoning(
-        self, factors: list[Factor], decision: str, level: ExplanationLevel
-    ) -> str:
+    def _build_reasoning(self, factors: list[Factor], decision: str, level: ExplanationLevel) -> str:
         """Auto-generate reasoning text from factors."""
         if not factors:
             return f"Decision {decision} was made based on default logic"
@@ -243,8 +227,7 @@ class ExplainableAI:
         return {
             "explained_decisions": len(self.explanations),
             "total_factors": sum(len(e.factors) for e in self.explanations.values()),
-            "avg_confidence": sum(e.confidence for e in self.explanations.values())
-            / len(self.explanations)
+            "avg_confidence": sum(e.confidence for e in self.explanations.values()) / len(self.explanations)
             if self.explanations
             else 0.0,
         }

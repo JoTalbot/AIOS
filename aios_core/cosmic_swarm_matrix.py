@@ -32,12 +32,8 @@ class CosmicSwarmMatrix:
 
         # Bootstrap default nodes
         self.register_cosmic_node("sol_earth_hub", light_delay_seconds=0.0)
-        self.register_cosmic_node(
-            "sol_mars_outpost", light_delay_seconds=780.0
-        )  # ~13 min
-        self.register_cosmic_node(
-            "proxima_centauri_node", light_delay_seconds=133800000.0
-        )  # ~4.24 ly
+        self.register_cosmic_node("sol_mars_outpost", light_delay_seconds=780.0)  # ~13 min
+        self.register_cosmic_node("proxima_centauri_node", light_delay_seconds=133800000.0)  # ~4.24 ly
 
     # ------------------------------------------------------------------
     # Node management
@@ -68,9 +64,7 @@ class CosmicSwarmMatrix:
         # Auto-connect to existing nodes within reachable distance
         for other_id, other in self.cosmic_nodes.items():
             if other_id != node_id:
-                combined_delay = (
-                    record["light_delay_seconds"] + other["light_delay_seconds"]
-                )
+                combined_delay = record["light_delay_seconds"] + other["light_delay_seconds"]
                 # Nodes within 30-minute round-trip can auto-connect
                 if combined_delay * 2 < 1800:
                     record["connections"].append(other_id)
@@ -127,22 +121,12 @@ class CosmicSwarmMatrix:
 
         # Select replication targets
         if target_nodes:
-            nodes = [
-                n
-                for n in target_nodes
-                if n in self.cosmic_nodes and self.cosmic_nodes[n]["status"] == "active"
-            ]
+            nodes = [n for n in target_nodes if n in self.cosmic_nodes and self.cosmic_nodes[n]["status"] == "active"]
         else:
-            nodes = [
-                nid
-                for nid, info in self.cosmic_nodes.items()
-                if info["status"] == "active"
-            ]
+            nodes = [nid for nid, info in self.cosmic_nodes.items() if info["status"] == "active"]
 
         # Apply redundancy factor
-        replicated = (
-            nodes[:redundancy_factor] if len(nodes) >= redundancy_factor else nodes
-        )
+        replicated = nodes[:redundancy_factor] if len(nodes) >= redundancy_factor else nodes
 
         # Compute payload hash for integrity verification
         payload_hash = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()[:16]
@@ -162,15 +146,11 @@ class CosmicSwarmMatrix:
         self.holographic_shards[shard_id] = shard_record
         # Update node loads
         for nid in replicated:
-            self.cosmic_nodes[nid]["load"] += (
-                len(payload_str) / self.cosmic_nodes[nid]["capacity"]
-            )
+            self.cosmic_nodes[nid]["load"] += len(payload_str) / self.cosmic_nodes[nid]["capacity"]
 
         return shard_record
 
-    def retrieve_holographic_state(
-        self, shard_key: str, source_node: str | None = None
-    ) -> dict[str, Any] | None:
+    def retrieve_holographic_state(self, shard_key: str, source_node: str | None = None) -> dict[str, Any] | None:
         """Retrieve holographic shard by key, preferring nearest node."""
         shard_id = f"holo_{hashlib.sha256(shard_key.encode('utf-8')).hexdigest()[:12]}"
         shard = self.holographic_shards.get(shard_id)
@@ -241,9 +221,7 @@ class CosmicSwarmMatrix:
             segment_delay = max(n1["light_delay_seconds"], n2["light_delay_seconds"])
             total_delay += segment_delay
 
-        signal_id = (
-            f"sig_{hashlib.sha256(str(signal_payload).encode()).hexdigest()[:8]}"
-        )
+        signal_id = f"sig_{hashlib.sha256(str(signal_payload).encode()).hexdigest()[:8]}"
 
         record = {
             "signal_id": signal_id,
@@ -284,12 +262,10 @@ class CosmicSwarmMatrix:
         """Run self-diagnostic on mesh health, connectivity, and shard integrity."""
         active = sum(1 for n in self.cosmic_nodes.values() if n["status"] == "active")
         degraded = sum(1 for n in self.cosmic_nodes.values() if n["status"] != "active")
-        avg_health = sum(n["health"] for n in self.cosmic_nodes.values()) / max(
+        avg_health = sum(n["health"] for n in self.cosmic_nodes.values()) / max(1, len(self.cosmic_nodes))
+        connectivity = sum(len(n.get("connections", [])) for n in self.cosmic_nodes.values()) / max(
             1, len(self.cosmic_nodes)
         )
-        connectivity = sum(
-            len(n.get("connections", [])) for n in self.cosmic_nodes.values()
-        ) / max(1, len(self.cosmic_nodes))
         # Shard integrity: check all replicated nodes are active
         degraded_shards = 0
         for shard in self.holographic_shards.values():
@@ -309,9 +285,7 @@ class CosmicSwarmMatrix:
             "average_connectivity": round(connectivity, 2),
             "total_shards": len(self.holographic_shards),
             "degraded_shards": degraded_shards,
-            "mesh_status": "healthy"
-            if degraded == 0 and degraded_shards == 0
-            else "degraded",
+            "mesh_status": "healthy" if degraded == 0 and degraded_shards == 0 else "degraded",
             "signals_routed": len(self._signal_log),
         }
 
@@ -341,8 +315,7 @@ class CosmicSwarmMatrix:
                 available = [
                     nid
                     for nid, info in self.cosmic_nodes.items()
-                    if info["status"] == "active"
-                    and nid not in shard["replicated_nodes"]
+                    if info["status"] == "active" and nid not in shard["replicated_nodes"]
                 ]
                 needed = shard["redundancy_factor"] - len(active_replicas)
                 new_nodes = available[:needed]

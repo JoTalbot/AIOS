@@ -36,9 +36,7 @@ class ValueLearning:
 
     def learn_preference(self, option_a: str, option_b: str, preference: str) -> None:
         """Learn a preference (backward-compatible)."""
-        self.preferences.append(
-            {"a": option_a, "b": option_b, "preference": preference}
-        )
+        self.preferences.append({"a": option_a, "b": option_b, "preference": preference})
         # Update value scores
         weight = 0.1
         if preference == option_a:
@@ -67,11 +65,7 @@ class ValueLearning:
         inconsistencies = 0
         for p1 in self.preferences:
             for p2 in self.preferences:
-                if (
-                    p1["a"] == p2["b"]
-                    and p1["b"] == p2["a"]
-                    and p1["preference"] != p2["preference"]
-                ):
+                if p1["a"] == p2["b"] and p1["b"] == p2["a"] and p1["preference"] != p2["preference"]:
                     inconsistencies += 1
         return {
             "coherent": inconsistencies == 0,

@@ -26,26 +26,17 @@ _SCREENS: dict[str, dict[str, str]] = {
     },
     "detail": {
         "dump": "detail.xml",
-        "hint": (
-            "откройте любую карточку (экран деталей: цена/продавец/CTA-"
-            "кнопки), дождитесь полной загрузки"
-        ),
+        "hint": ("откройте любую карточку (экран деталей: цена/продавец/CTA-кнопки), дождитесь полной загрузки"),
         "cli_flag": "--detail",
     },
     "messenger": {
         "dump": "messenger.xml",
-        "hint": (
-            "откройте инбокс/чат: должны быть видны входящие сообщения, "
-            "поле ввода и кнопка отправки"
-        ),
+        "hint": ("откройте инбокс/чат: должны быть видны входящие сообщения, поле ввода и кнопка отправки"),
         "cli_flag": "--messages",
     },
     "navigation": {
         "dump": "navigation.xml",
-        "hint": (
-            "вернитесь на главный экран приложения (tab-bar с иконками "
-            "ленты/reels/профиля)"
-        ),
+        "hint": ("вернитесь на главный экран приложения (tab-bar с иконками ленты/reels/профиля)"),
         "cli_flag": "--navigation",
     },
 }
@@ -96,9 +87,7 @@ def calibration_recipe(
         ``steps`` — список {action, title, command?} в порядке выполнения.
     """
     if kind not in _KIND_HINTS:
-        raise ValueError(
-            f"unknown platform kind '{kind}': expected one of {sorted(_KIND_HINTS)}"
-        )
+        raise ValueError(f"unknown platform kind '{kind}': expected one of {sorted(_KIND_HINTS)}")
     have_hints = have_hints or {}
     needed: list[str] = list(_KIND_HINTS[kind])
     if kind != "messenger":
@@ -146,11 +135,7 @@ def calibration_recipe(
             {
                 "action": "calibrate",
                 "title": "Извлечь маркеры из дампов и записать в дескриптор",
-                "command": (
-                    f"aios platforms calibrate --platform {platform} "
-                    + " ".join(dump_flags)
-                    + " --write"
-                ),
+                "command": (f"aios platforms calibrate --platform {platform} " + " ".join(dump_flags) + " --write"),
             }
         )
         steps.append(
@@ -158,8 +143,7 @@ def calibration_recipe(
                 "action": "verify",
                 "title": "Зафиксировать регрессию маркеров (baseline для drift)",
                 "command": (
-                    f"aios platforms marker-check --platform {platform} "
-                    f"--dump {directory}/{platform}-cards.xml"
+                    f"aios platforms marker-check --platform {platform} --dump {directory}/{platform}-cards.xml"
                     if "cards" in missing
                     else f"aios platforms doctor --platform {platform}"
                 ),

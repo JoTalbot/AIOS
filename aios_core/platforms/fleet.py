@@ -43,13 +43,9 @@ def _run(cmd: str, timeout: int = 300) -> dict:
     }
 
 
-def default_create_avd(
-    avd_name: str, package: str = "system-images;android-34;google_apis;x86_64"
-) -> bool:
+def default_create_avd(avd_name: str, package: str = "system-images;android-34;google_apis;x86_64") -> bool:
     """Создаёт AVD через avdmanager (без интерактива)."""
-    result = _run(
-        f"echo no | avdmanager create avd -n {avd_name} -k '{package}' --force"
-    )
+    result = _run(f"echo no | avdmanager create avd -n {avd_name} -k '{package}' --force")
     return result["code"] == 0
 
 
@@ -69,11 +65,7 @@ def default_wait_serial(known_serials: list[str], timeout_s: int = 180) -> str |
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         result = _run("adb devices")
-        serials = [
-            line.split("\t")[0]
-            for line in result["stdout"].splitlines()[1:]
-            if line.strip().endswith("device")
-        ]
+        serials = [line.split("\t")[0] for line in result["stdout"].splitlines()[1:] if line.strip().endswith("device")]
         new = [s for s in serials if s not in known]
         if new:
             serial = new[0]
@@ -87,11 +79,7 @@ def default_wait_serial(known_serials: list[str], timeout_s: int = 180) -> str |
 def default_list_devices() -> list[str]:
     """Serial-ы всех устройств в состоянии `device`."""
     result = _run("adb devices")
-    return [
-        line.split("\t")[0]
-        for line in result["stdout"].splitlines()[1:]
-        if line.strip().endswith("device")
-    ]
+    return [line.split("\t")[0] for line in result["stdout"].splitlines()[1:] if line.strip().endswith("device")]
 
 
 # --------------------------------------------------------------------------- #

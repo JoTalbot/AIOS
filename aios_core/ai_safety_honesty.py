@@ -76,9 +76,7 @@ class HonestyFramework:
             "underconfident": confidence < accuracy - 0.1,
         }
 
-    def pressure_test_honesty(
-        self, scenario: str, reward_for_lying: float
-    ) -> dict[str, Any]:
+    def pressure_test_honesty(self, scenario: str, reward_for_lying: float) -> dict[str, Any]:
         """Test whether system remains honest when incentivized to lie."""
         honesty_maintained = random.random() > 0.2 * reward_for_lying
         return {
@@ -86,9 +84,7 @@ class HonestyFramework:
             "reward_for_lying": reward_for_lying,
             "honesty_maintained": honesty_maintained,
             "score": round(
-                random.uniform(0.7, 1.0)
-                if honesty_maintained
-                else random.uniform(0.2, 0.5),
+                random.uniform(0.7, 1.0) if honesty_maintained else random.uniform(0.2, 0.5),
                 2,
             ),
         }

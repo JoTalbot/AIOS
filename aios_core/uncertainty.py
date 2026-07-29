@@ -82,9 +82,7 @@ class UncertaintyQuantifier:
 
     def total_uncertainty(self, model_id: str) -> float:
         """Compute total uncertainty (backward-compatible)."""
-        return self.epistemic_uncertainty(model_id) + self.aleatoric_uncertainty(
-            model_id
-        )
+        return self.epistemic_uncertainty(model_id) + self.aleatoric_uncertainty(model_id)
 
     def ensemble_disagreement(self) -> float:
         """Measure disagreement across all models."""
@@ -97,9 +95,7 @@ class UncertaintyQuantifier:
             return 0.0
         return statistics.stdev(means)
 
-    def confidence_interval(
-        self, model_id: str, level: float = 0.95
-    ) -> tuple[float, float]:
+    def confidence_interval(self, model_id: str, level: float = 0.95) -> tuple[float, float]:
         """Compute confidence interval for predictions."""
         preds = self.predictions.get(model_id, [])
         if len(preds) < 2:

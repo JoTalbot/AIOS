@@ -78,9 +78,7 @@ class OLXCollector:
     ) -> dict[str, object]:
         """Open the OLX app on the (optionally filtered) results screen."""
         link = self.search_deep_link(query, min_price, max_price, sort)
-        return self.adb.run(
-            f'adb shell am start -a android.intent.action.VIEW -d "{link}"'
-        )
+        return self.adb.run(f'adb shell am start -a android.intent.action.VIEW -d "{link}"')
 
     def collect(
         self,
@@ -153,9 +151,7 @@ class OLXCollector:
         inserted = storage.save_ads(cards)
         summary = {"parsed": len(cards), "inserted": inserted}
         if query is not None:
-            summary["deactivated"] = storage.sync_activity(
-                query, [card.fingerprint for card in cards]
-            )
+            summary["deactivated"] = storage.sync_activity(query, [card.fingerprint for card in cards])
         return summary
 
     def _swipe_feed(self) -> None:

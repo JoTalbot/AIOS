@@ -92,9 +92,7 @@ class BayesianInference:
 
     # ── Belief Updating ────────────────────────────────────────────
 
-    def update_belief(
-        self, hypothesis: str, evidence: bool, likelihood: float = 0.8
-    ) -> float:
+    def update_belief(self, hypothesis: str, evidence: bool, likelihood: float = 0.8) -> float:
         """Update belief using Bayes' theorem.
 
         P(H|E) = P(E|H) * P(H) / P(E)
@@ -147,9 +145,7 @@ class BayesianInference:
         """Return all current beliefs."""
         return {name: h.posterior for name, h in self.hypotheses.items()}
 
-    def get_confidence_interval(
-        self, hypothesis: str, width: float = 0.95
-    ) -> tuple[float, float]:
+    def get_confidence_interval(self, hypothesis: str, width: float = 0.95) -> tuple[float, float]:
         """Approximate confidence interval for posterior."""
         h = self.hypotheses.get(hypothesis)
         if h is None:
@@ -181,9 +177,7 @@ class BayesianInference:
 
     def rank_hypotheses(self) -> list[tuple[str, float]]:
         """Rank hypotheses by posterior probability."""
-        ranked = sorted(
-            self.hypotheses.items(), key=lambda x: x[1].posterior, reverse=True
-        )
+        ranked = sorted(self.hypotheses.items(), key=lambda x: x[1].posterior, reverse=True)
         return [(name, h.posterior) for name, h in ranked]
 
     def most_probable(self) -> str | None:

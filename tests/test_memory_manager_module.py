@@ -1,4 +1,5 @@
 """Tests for aios_core/memory_manager.py"""
+
 from __future__ import annotations
 
 import pytest
@@ -30,7 +31,7 @@ class TestMemoryManager:
 
     def test_retrieve(self, memory):
         item = memory.store(content="retrieve me")
-        iid = getattr(item, 'item_id', getattr(item, 'id', None))
+        iid = getattr(item, "item_id", getattr(item, "id", None))
         if iid:
             fetched = memory.retrieve(iid)
             assert fetched is not None
@@ -63,13 +64,13 @@ class TestMemoryManager:
 
     def test_delete(self, memory):
         item = memory.store(content="delete me")
-        iid = getattr(item, 'item_id', getattr(item, 'id', None))
+        iid = getattr(item, "item_id", getattr(item, "id", None))
         if iid:
             memory.delete(iid)
 
     def test_update(self, memory):
         item = memory.store(content="original")
-        iid = getattr(item, 'item_id', getattr(item, 'id', None))
+        iid = getattr(item, "item_id", getattr(item, "id", None))
         if iid:
             memory.update(iid, content="updated")
 

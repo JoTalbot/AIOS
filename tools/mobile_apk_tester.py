@@ -52,9 +52,7 @@ class APKManifestAnalyzer:
             "has_native_c_libraries": has_native_libs,
         }
 
-    def analyze_security_permissions(
-        self, sample_permissions: list[str] | None = None
-    ) -> dict[str, Any]:
+    def analyze_security_permissions(self, sample_permissions: list[str] | None = None) -> dict[str, Any]:
         """Analyze permissions against AIOS Constitutional Safety Guidelines (Article V / Article XXXII)."""
         permissions = sample_permissions or [
             "android.permission.INTERNET",
@@ -83,9 +81,7 @@ class APKManifestAnalyzer:
 def main():
     parser = argparse.ArgumentParser(description="AIOS Mobile APK Testing & Security Audit Tool")
     parser.add_argument("--apk", type=str, required=True, help="Path to target Android .apk file")
-    parser.add_argument(
-        "--report", type=str, default="apk_audit_report.json", help="Report output JSON path"
-    )
+    parser.add_argument("--report", type=str, default="apk_audit_report.json", help="Report output JSON path")
 
     args = parser.parse_args()
 

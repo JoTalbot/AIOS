@@ -22,9 +22,7 @@ class ProductionWebhookBridge:
         self.webhook = webhook_manager or WebhookManager()
         self.enabled = True
 
-    def on_ban_detected(
-        self, profile: str, reason: str, details: dict | None = None
-    ) -> None:
+    def on_ban_detected(self, profile: str, reason: str, details: dict | None = None) -> None:
         """Notify when a ban is detected."""
         if not self.enabled:
             return
@@ -42,9 +40,7 @@ class ProductionWebhookBridge:
             severity="critical",
         )
 
-    def on_low_success_rate(
-        self, profile: str, rate: float, threshold: float = 0.8
-    ) -> None:
+    def on_low_success_rate(self, profile: str, rate: float, threshold: float = 0.8) -> None:
         """Notify when success rate drops below threshold."""
         if not self.enabled:
             return
@@ -149,23 +145,17 @@ class ProductionWebhookBridge:
                 "days": summary.get("simulation", {}).get("days", 14),
                 "profiles": summary.get("simulation", {}).get("profiles", 0),
                 "total_cycles": summary.get("simulation", {}).get("total_cycles", 0),
-                "avg_success_rate": summary.get("simulation", {}).get(
-                    "avg_success_rate", 0
-                ),
+                "avg_success_rate": summary.get("simulation", {}).get("avg_success_rate", 0),
                 "bans": summary.get("simulation", {}).get("bans", 0),
                 "ban_free": summary.get("simulation", {}).get("ban_free", False),
-                "ga_criteria_met": summary.get("simulation", {}).get(
-                    "ga_criteria_met", False
-                ),
+                "ga_criteria_met": summary.get("simulation", {}).get("ga_criteria_met", False),
                 "source": "production_autopilot",
             },
             source="production_autopilot",
             severity="info",
         )
 
-    def on_key_rotated(
-        self, subject: str, old_key_prefix: str, new_key_prefix: str
-    ) -> None:
+    def on_key_rotated(self, subject: str, old_key_prefix: str, new_key_prefix: str) -> None:
         """Notify when an API key is rotated."""
         if not self.enabled:
             return

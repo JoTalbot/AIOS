@@ -84,15 +84,9 @@ def test_prometheus_metrics():
 def test_ban_free_simulation():
     cfg = ProductionConfig(
         profiles=[
-            ProductionProfile(
-                platform="instagram", name="ig1", actions_per_hour=30, session_max_s=1200
-            ),
-            ProductionProfile(
-                platform="instagram", name="ig2", actions_per_hour=30, session_max_s=1200
-            ),
-            ProductionProfile(
-                platform="instagram", name="ig3", actions_per_hour=30, session_max_s=1200
-            ),
+            ProductionProfile(platform="instagram", name="ig1", actions_per_hour=30, session_max_s=1200),
+            ProductionProfile(platform="instagram", name="ig2", actions_per_hour=30, session_max_s=1200),
+            ProductionProfile(platform="instagram", name="ig3", actions_per_hour=30, session_max_s=1200),
         ],
         device_pool_size=3,
     )

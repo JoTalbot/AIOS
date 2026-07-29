@@ -516,12 +516,8 @@ class TestKnowledge:
     @pytest.mark.asyncio
     async def test_add_edge(self, client):
         # Create two nodes
-        a_resp = await client.post(
-            "/api/v1/knowledge/nodes", json={"label": "A", "node_type": "test"}
-        )
-        b_resp = await client.post(
-            "/api/v1/knowledge/nodes", json={"label": "B", "node_type": "test"}
-        )
+        a_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "A", "node_type": "test"})
+        b_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "B", "node_type": "test"})
         a_id = a_resp.json()["id"]
         b_id = b_resp.json()["id"]
         # Add edge
@@ -544,12 +540,8 @@ class TestKnowledge:
     @pytest.mark.asyncio
     async def test_get_neighbors(self, client):
         # Create nodes and edge
-        a_resp = await client.post(
-            "/api/v1/knowledge/nodes", json={"label": "NbrA", "node_type": "nbr"}
-        )
-        b_resp = await client.post(
-            "/api/v1/knowledge/nodes", json={"label": "NbrB", "node_type": "nbr"}
-        )
+        a_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "NbrA", "node_type": "nbr"})
+        b_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "NbrB", "node_type": "nbr"})
         a_id = a_resp.json()["id"]
         b_id = b_resp.json()["id"]
         await client.post(
@@ -570,15 +562,9 @@ class TestKnowledge:
     @pytest.mark.asyncio
     async def test_path_exists(self, client):
         # Create path: A -> B -> C
-        a_resp = await client.post(
-            "/api/v1/knowledge/nodes", json={"label": "PathA", "node_type": "path"}
-        )
-        b_resp = await client.post(
-            "/api/v1/knowledge/nodes", json={"label": "PathB", "node_type": "path"}
-        )
-        c_resp = await client.post(
-            "/api/v1/knowledge/nodes", json={"label": "PathC", "node_type": "path"}
-        )
+        a_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "PathA", "node_type": "path"})
+        b_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "PathB", "node_type": "path"})
+        c_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "PathC", "node_type": "path"})
         a_id = a_resp.json()["id"]
         b_id = b_resp.json()["id"]
         c_id = c_resp.json()["id"]
@@ -613,12 +599,8 @@ class TestKnowledge:
     @pytest.mark.asyncio
     async def test_path_not_found(self, client):
         # Two disconnected nodes
-        a_resp = await client.post(
-            "/api/v1/knowledge/nodes", json={"label": "IsoA", "node_type": "iso"}
-        )
-        b_resp = await client.post(
-            "/api/v1/knowledge/nodes", json={"label": "IsoB", "node_type": "iso"}
-        )
+        a_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "IsoA", "node_type": "iso"})
+        b_resp = await client.post("/api/v1/knowledge/nodes", json={"label": "IsoB", "node_type": "iso"})
         a_id = a_resp.json()["id"]
         b_id = b_resp.json()["id"]
         resp = await client.get(
@@ -648,12 +630,8 @@ class TestKnowledge:
     async def test_kg_full_workflow(self, client):
         """Full workflow: add nodes, edges, find, traverse, stats."""
         # Add nodes
-        n1 = (
-            await client.post("/api/v1/knowledge/nodes", json={"label": "WF1", "node_type": "wf"})
-        ).json()
-        n2 = (
-            await client.post("/api/v1/knowledge/nodes", json={"label": "WF2", "node_type": "wf"})
-        ).json()
+        n1 = (await client.post("/api/v1/knowledge/nodes", json={"label": "WF1", "node_type": "wf"})).json()
+        n2 = (await client.post("/api/v1/knowledge/nodes", json={"label": "WF2", "node_type": "wf"})).json()
         # Add edge
         edge = (
             await client.post(

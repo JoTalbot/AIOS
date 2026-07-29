@@ -32,9 +32,7 @@ CREATE_DEEP_LINK = "instagram://library"
 
 NEXT_LABELS = ("next", "далі", "дальше", "continue")
 SHARE_LABELS = ("share", "поділитися", "поделиться", "опублікувати", "опубликовать")
-_COMMENT_RE = re.compile(
-    r"^(\d[\d\s\u00a0,.]*)\s*(коментар\w*|comments?)$", re.IGNORECASE
-)
+_COMMENT_RE = re.compile(r"^(\d[\d\s\u00a0,.]*)\s*(коментар\w*|comments?)$", re.IGNORECASE)
 
 #: Дефолтные маркеры ячеек сетки профиля (после калибровки — из hints).
 DEFAULT_GRID_MARKERS = ("row_profile", "grid_item", "profile_media")
@@ -227,10 +225,7 @@ class PostComposer:
         if pushed.get("code") != 0:
             return {"status": "error", "error": "push failed", "steps": steps}
 
-        opened = self.adb.run(
-            f"{self.adb.adb} shell am start "
-            f'-a android.intent.action.VIEW -d "{CREATE_DEEP_LINK}"'
-        )
+        opened = self.adb.run(f'{self.adb.adb} shell am start -a android.intent.action.VIEW -d "{CREATE_DEEP_LINK}"')
         steps.append({"action": "open_create", "code": opened.get("code")})
         time.sleep(self.wait_s)
 

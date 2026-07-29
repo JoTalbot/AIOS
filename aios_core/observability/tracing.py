@@ -12,6 +12,7 @@ def init_tracing(service_name="aios"):
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
         resource = Resource.create({"service.name": service_name})
         provider = TracerProvider(resource=resource)
         exporter = OTLPSpanExporter(endpoint=endpoint)

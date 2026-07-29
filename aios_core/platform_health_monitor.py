@@ -244,11 +244,7 @@ class PlatformHealthMonitor:
         health = self._platforms.get(platform)
         consecutive = health.consecutive_failures if health else 0
 
-        status = (
-            HealthStatus.UNSTABLE
-            if consecutive < self.max_consecutive_failures
-            else HealthStatus.DOWN
-        )
+        status = HealthStatus.UNSTABLE if consecutive < self.max_consecutive_failures else HealthStatus.DOWN
 
         check = HealthCheck(
             check_id=self._next_id(),
@@ -385,9 +381,7 @@ class PlatformHealthMonitor:
         # Failure penalty
         failure_penalty = health.consecutive_failures * 5
 
-        total = (
-            success_score + latency_score + block_score + consec_score - failure_penalty
-        )
+        total = success_score + latency_score + block_score + consec_score - failure_penalty
         return max(0, min(100, total))
 
     def get_health(self, platform: str) -> PlatformHealth | None:
@@ -447,9 +441,7 @@ class PlatformHealthMonitor:
 
         best = max(
             candidates,
-            key=lambda p: (
-                self._platforms.get(p, PlatformHealth(platform=p)).health_score
-            ),
+            key=lambda p: self._platforms.get(p, PlatformHealth(platform=p)).health_score,
         )
         health = self._platforms.get(best)
         if health and health.is_available:
@@ -463,25 +455,13 @@ class PlatformHealthMonitor:
             Dict with platform counts, average health, etc.
         """
         total = len(self._platforms)
-        healthy = sum(
-            1 for h in self._platforms.values() if h.status == HealthStatus.HEALTHY
-        )
-        degraded = sum(
-            1 for h in self._platforms.values() if h.status == HealthStatus.DEGRADED
-        )
-        blocked = sum(
-            1 for h in self._platforms.values() if h.status == HealthStatus.BLOCKED
-        )
+        healthy = sum(1 for h in self._platforms.values() if h.status == HealthStatus.HEALTHY)
+        degraded = sum(1 for h in self._platforms.values() if h.status == HealthStatus.DEGRADED)
+        blocked = sum(1 for h in self._platforms.values() if h.status == HealthStatus.BLOCKED)
         down = sum(1 for h in self._platforms.values() if h.status == HealthStatus.DOWN)
 
-        avg_score = (
-            sum(h.health_score for h in self._platforms.values()) / total
-            if total
-            else 0
-        )
-        avg_latency = (
-            sum(h.latency_ms for h in self._platforms.values()) / total if total else 0
-        )
+        avg_score = sum(h.health_score for h in self._platforms.values()) / total if total else 0
+        avg_latency = sum(h.latency_ms for h in self._platforms.values()) / total if total else 0
 
         return {
             "monitored_platforms": total,

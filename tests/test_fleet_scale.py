@@ -51,10 +51,7 @@ def test_waitlist_served_on_release_and_reap():
         # reap_stale: мёртвое устройство → offline, его аренда освобождается,
         # но очередь ждёт — свободных устройств не осталось.
         with pool._lock, pool._conn:
-            pool._conn.execute(
-                "UPDATE devices SET last_heartbeat = '2020-01-01T00:00:00+00:00' "
-                "WHERE serial = 'e2'"
-            )
+            pool._conn.execute("UPDATE devices SET last_heartbeat = '2020-01-01T00:00:00+00:00' WHERE serial = 'e2'")
         reaped = pool.reap_stale()
         assert reaped == ["e2"]
         assert pool.device_for("olx:b") is None  # аренда мёртвого снята

@@ -17,16 +17,14 @@ class AnalyticsEngine:
             return {"period_days": days, "created": 0, "approved": 0, "rate": 0.0}
         cutoff = datetime.now(UTC) - timedelta(days=days)
         created_q = await self.db.execute(
-            select(func.count()).select_from(Metric).where(
-                Metric.metric_type == "draft_created",
-                Metric.created_at > cutoff
-            )
+            select(func.count())
+            .select_from(Metric)
+            .where(Metric.metric_type == "draft_created", Metric.created_at > cutoff)
         )
         approved_q = await self.db.execute(
-            select(func.count()).select_from(Metric).where(
-                Metric.metric_type == "draft_approved",
-                Metric.created_at > cutoff
-            )
+            select(func.count())
+            .select_from(Metric)
+            .where(Metric.metric_type == "draft_approved", Metric.created_at > cutoff)
         )
         created = created_q.scalar() or 0
         approved = approved_q.scalar() or 0
@@ -39,8 +37,7 @@ class AnalyticsEngine:
         cutoff = datetime.now(UTC) - timedelta(days=days)
         result = await self.db.execute(
             select(func.avg(MessageLog.processing_time)).where(
-                MessageLog.created_at > cutoff,
-                MessageLog.processing_time.isnot(None)
+                MessageLog.created_at > cutoff, MessageLog.processing_time.isnot(None)
             )
         )
         return result.scalar() or 0.0
@@ -72,9 +69,7 @@ class AnalyticsEngine:
         if not self.db:
             return {}
         cutoff = datetime.now(UTC) - timedelta(days=days)
-        result = await self.db.execute(
-            select(MessageLog).where(MessageLog.created_at > cutoff)
-        )
+        result = await self.db.execute(select(MessageLog).where(MessageLog.created_at > cutoff))
         hourly = defaultdict(int)
         for log in result.scalars():
             hourly[log.created_at.hour] += 1
@@ -87,5 +82,5 @@ class AnalyticsEngine:
             "avg_response_time_7d": round(await self.get_avg_response_time(7), 2),
             "top_platforms_30d": await self.get_top_platforms(30),
             "intent_distribution_7d": await self.get_intent_distribution(7),
-            "seasonal_patterns_30d": await self.get_seasonal_patterns(30)
+            "seasonal_patterns_30d": await self.get_seasonal_patterns(30),
         }

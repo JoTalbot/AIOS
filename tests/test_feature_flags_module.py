@@ -1,4 +1,5 @@
 """Tests for aios_core/feature_flags.py"""
+
 from __future__ import annotations
 
 import pytest

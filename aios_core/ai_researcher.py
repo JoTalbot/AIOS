@@ -69,9 +69,7 @@ class AIResearcher:
         self._literature: list[dict[str, Any]] = []
         self._hypotheses: list[dict[str, Any]] = []
 
-    def write_paper(
-        self, topic: str, experiments: list[dict[str, Any]] | None = None
-    ) -> dict[str, Any]:
+    def write_paper(self, topic: str, experiments: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         """Draft a research paper (backward-compatible)."""
         paper = Paper(
             title=f"Advances in {topic}",
@@ -98,9 +96,7 @@ class AIResearcher:
 
         # Score based on experiment count and methodology clarity
         score = min(10.0, 5.0 + exp_count * 0.5)
-        recommendation = (
-            "accept" if score >= 8.0 else "minor_revision" if score >= 6.0 else "revise"
-        )
+        recommendation = "accept" if score >= 8.0 else "minor_revision" if score >= 6.0 else "revise"
 
         review = ReviewResult(
             paper_title=title,
@@ -153,11 +149,7 @@ class AIResearcher:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics (backward-compatible)."""
-        avg_score = (
-            (sum(r.score for r in self._reviews) / len(self._reviews))
-            if self._reviews
-            else 0.0
-        )
+        avg_score = (sum(r.score for r in self._reviews) / len(self._reviews)) if self._reviews else 0.0
         return {
             "papers": len(self.papers),
             "reviews": len(self._reviews),

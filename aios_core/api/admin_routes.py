@@ -34,9 +34,7 @@ _db_path: str = "aios.sqlite"
 logger = logging.getLogger(__name__)
 
 
-def init_admin_routes(
-    db_path: str = "aios.sqlite", backup_dir: str = "./backups"
-) -> None:
+def init_admin_routes(db_path: str = "aios.sqlite", backup_dir: str = "./backups") -> None:
     """Initialize admin route handlers with database path."""
     global _db_path, _secret_manager, _backup_manager, _webhook_manager
     _db_path = db_path
@@ -45,12 +43,7 @@ def init_admin_routes(
     needs_schema = not Path(db_path).exists()
     if not needs_schema:
         with sqlite3.connect(db_path) as conn:
-            needs_schema = (
-                conn.execute(
-                    "SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1"
-                ).fetchone()
-                is None
-            )
+            needs_schema = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1").fetchone() is None
     if needs_schema:
         Database(db_path=db_path).close()
     _secret_manager = SecretManager()
@@ -140,9 +133,7 @@ async def export_data(request: Request) -> None:
                     }
                 )
             elif export_type == "tasks":
-                count = exporter.export_tasks(
-                    output_path, format_type, limit, since=since
-                )
+                count = exporter.export_tasks(output_path, format_type, limit, since=since)
             elif export_type == "memory":
                 count = exporter.export_memory(output_path, format_type, limit)
             elif export_type == "audit":
@@ -150,9 +141,7 @@ async def export_data(request: Request) -> None:
             elif export_type == "knowledge":
                 count = exporter.export_knowledge_graph(output_path, format_type)
             else:
-                return JSONResponse(
-                    {"error": f"Unknown type: {export_type}"}, status_code=400
-                )
+                return JSONResponse({"error": f"Unknown type: {export_type}"}, status_code=400)
 
             return JSONResponse(
                 {
@@ -640,9 +629,7 @@ async def unregister_webhook(request: Request) -> None:
 
     success = _webhook_manager.unregister(name)
     if success:
-        return JSONResponse(
-            {"status": "success", "message": f"Webhook '{name}' removed"}
-        )
+        return JSONResponse({"status": "success", "message": f"Webhook '{name}' removed"})
     return JSONResponse({"error": "Webhook not found"}, status_code=404)
 
 

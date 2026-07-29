@@ -31,8 +31,12 @@ class TestDeviceProfile:
         assert score >= 20.0  # fingerprint bonus
 
     def test_compute_trust_with_mfa(self) -> None:
-        d = DeviceProfile(device_id="dev2", fingerprint="abc", platform="olx",
-                          attributes={"verified_device": True, "mfa_enabled": True})
+        d = DeviceProfile(
+            device_id="dev2",
+            fingerprint="abc",
+            platform="olx",
+            attributes={"verified_device": True, "mfa_enabled": True},
+        )
         score = d.compute_trust()
         assert score >= 75.0
 
@@ -47,8 +51,13 @@ class TestDeviceProfile:
         assert d.trust_level() == TrustLevel.UNTRUSTED
 
     def test_trust_score_capped_at_100(self) -> None:
-        d = DeviceProfile(device_id="dev1", fingerprint="a", platform="r",
-                          ip_address="1.2.3.4", attributes={"verified_device": True, "mfa_enabled": True})
+        d = DeviceProfile(
+            device_id="dev1",
+            fingerprint="a",
+            platform="r",
+            ip_address="1.2.3.4",
+            attributes={"verified_device": True, "mfa_enabled": True},
+        )
         score = d.compute_trust()
         assert score <= 100.0
 
@@ -295,7 +304,7 @@ class TestCircuitMetrics:
         m.record_success(1.0)
         m.record_success(2.0)
         m.record_failure()
-        assert m.success_rate() == 2/3
+        assert m.success_rate() == 2 / 3
 
     def test_success_rate_no_data(self) -> None:
         m = CircuitMetrics()
@@ -792,8 +801,10 @@ class TestChaosTester:
 
     def test_run_scenario_with_probe(self) -> None:
         scenario = ChaosScenario(
-            name="probe_s", actions=[ChaosAction.ERROR_INJECTION],
-            probe_fn=lambda: True, probability=1.0,
+            name="probe_s",
+            actions=[ChaosAction.ERROR_INJECTION],
+            probe_fn=lambda: True,
+            probability=1.0,
         )
         self.ct.register_scenario(scenario)
         result = self.ct.run_scenario("probe_s")
@@ -801,8 +812,10 @@ class TestChaosTester:
 
     def test_run_scenario_probe_fails(self) -> None:
         scenario = ChaosScenario(
-            name="fail_s", actions=[ChaosAction.ERROR_INJECTION],
-            probe_fn=lambda: False, probability=1.0,
+            name="fail_s",
+            actions=[ChaosAction.ERROR_INJECTION],
+            probe_fn=lambda: False,
+            probability=1.0,
         )
         self.ct.register_scenario(scenario)
         result = self.ct.run_scenario("fail_s")
@@ -810,8 +823,10 @@ class TestChaosTester:
 
     def test_run_scenario_abort(self) -> None:
         scenario = ChaosScenario(
-            name="abort_s", actions=[ChaosAction.ERROR_INJECTION, ChaosAction.LATENCY_INJECTION],
-            abort_fn=lambda: True, probability=1.0,
+            name="abort_s",
+            actions=[ChaosAction.ERROR_INJECTION, ChaosAction.LATENCY_INJECTION],
+            abort_fn=lambda: True,
+            probability=1.0,
         )
         self.ct.register_scenario(scenario)
         result = self.ct.run_scenario("abort_s")
@@ -1021,6 +1036,7 @@ class TestHealthCheckRegistry:
 # ═══════════════════════════════════════════════════════════════════════════════
 # INTEGRATION
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class TestIntegration:
     def test_circuit_breaker_with_service_mesh(self) -> None:

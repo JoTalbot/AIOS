@@ -295,9 +295,7 @@ def instagram_registered():
     descriptor_mod._PLATFORMS.pop(loaded[0].name, None)
 
 
-def test_cli_autopilot_own_step_new_posts_alert(
-    tmp_path, capsys, monkeypatch, instagram_registered
-):
+def test_cli_autopilot_own_step_new_posts_alert(tmp_path, capsys, monkeypatch, instagram_registered):
     from aios_cli import main
 
     _write_yaml(
@@ -358,9 +356,7 @@ def test_cli_autopilot_own_step_new_posts_alert(
     assert "own" not in out2["steps"]
 
 
-def test_cli_autopilot_own_drift_on_shrunk_counters(
-    tmp_path, capsys, monkeypatch, instagram_registered
-):
+def test_cli_autopilot_own_drift_on_shrunk_counters(tmp_path, capsys, monkeypatch, instagram_registered):
     from aios_cli import main
 
     _write_yaml(tmp_path, {})
@@ -408,9 +404,7 @@ def test_cli_autopilot_own_drift_on_shrunk_counters(
     storage.close()
 
 
-def test_cli_autopilot_own_live_dump_missing_is_honest(
-    tmp_path, capsys, monkeypatch, instagram_registered
-):
+def test_cli_autopilot_own_live_dump_missing_is_honest(tmp_path, capsys, monkeypatch, instagram_registered):
     from aios_cli import main
 
     _write_yaml(tmp_path, {})

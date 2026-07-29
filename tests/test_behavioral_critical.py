@@ -21,6 +21,7 @@ def _make_planner() -> Planner:
 # Planner behavioral tests
 # ==========================================================================
 
+
 class TestPlannerCreatePlan:
     """Test plan creation and lifecycle."""
 
@@ -192,6 +193,7 @@ class TestPlannerScorePlan:
 # Storage behavioral tests
 # ==========================================================================
 
+
 class TestDatabaseBasic:
     """Test Database CRUD operations."""
 
@@ -282,6 +284,7 @@ class TestDatabaseBasic:
 # Orchestrator behavioral tests
 # ==========================================================================
 
+
 class TestOrchestratorCreateTask:
     """Test task creation and lifecycle."""
 
@@ -341,13 +344,15 @@ class TestOrchestratorEvaluate:
 
     def test_evaluate_action_with_goal_scope_risk(self):
         orch = Orchestrator()
-        result = orch.evaluate({
-            "action": "read",
-            "target": "public_data",
-            "goal": "information retrieval",
-            "scope": "public",
-            "risk": "low",
-        })
+        result = orch.evaluate(
+            {
+                "action": "read",
+                "target": "public_data",
+                "goal": "information retrieval",
+                "scope": "public",
+                "risk": "low",
+            }
+        )
         assert isinstance(result, dict)
         # Should have a decision
         assert "decision" in result
@@ -356,6 +361,7 @@ class TestOrchestratorEvaluate:
 # ==========================================================================
 # API integration tests (OpenAPI spec + Dashboard)
 # ==========================================================================
+
 
 class TestOpenAPISpecIntegration:
     """Test OpenAPI spec generation integrated with swagger module."""

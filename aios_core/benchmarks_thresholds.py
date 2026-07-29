@@ -130,9 +130,7 @@ def check_threshold(name: str, actual_ms: float) -> dict[str, object]:
         "status": "pass" if passed else "fail",
         "actual_ms": round(actual_ms, 2),
         "threshold_ms": threshold.max_ms,
-        "over_pct": round(((actual_ms - threshold.max_ms) / threshold.max_ms) * 100, 2)
-        if not passed
-        else 0,
+        "over_pct": round(((actual_ms - threshold.max_ms) / threshold.max_ms) * 100, 2) if not passed else 0,
         "description": threshold.description,
     }
 

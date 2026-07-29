@@ -32,11 +32,7 @@ class UIElement:
         """Execute matches text."""
         if not text:
             return False
-        return (
-            text.lower() in self.text.lower()
-            if partial
-            else text.lower() == self.text.lower()
-        )
+        return text.lower() in self.text.lower() if partial else text.lower() == self.text.lower()
 
     def matches_resource(self, resource_id: str) -> bool:
         """Execute matches resource."""
@@ -97,12 +93,7 @@ class UIAutomatorParser:
             return result
         for node in self.root.iter("node"):
             node_text = node.attrib.get("text", "")
-            if (
-                (partial
-                and text.lower() in node_text.lower())
-                or (not partial
-                and text.lower() == node_text.lower())
-            ):
+            if (partial and text.lower() in node_text.lower()) or (not partial and text.lower() == node_text.lower()):
                 result.append(self._to_element(node))
         return result
 
@@ -112,10 +103,7 @@ class UIAutomatorParser:
         if self.root is None:
             return result
         for node in self.root.iter("node"):
-            if (
-                node.attrib.get("clickable") == "true"
-                and node.attrib.get("enabled") == "true"
-            ):
+            if node.attrib.get("clickable") == "true" and node.attrib.get("enabled") == "true":
                 result.append(self._to_element(node))  # noqa: PERF401
         return result
 
@@ -199,11 +187,7 @@ class UIAutomatorParser:
     def _nodes_by_resource_id(self, resource_id: str):
         if self.root is None:
             return []
-        return [
-            node
-            for node in self.root.iter("node")
-            if resource_id in node.attrib.get("resource-id", "")
-        ]
+        return [node for node in self.root.iter("node") if resource_id in node.attrib.get("resource-id", "")]
 
     def _to_element(self, node) -> UIElement:
         bounds = self._parse_bounds(node.attrib.get("bounds", "[0,0][0,0]"))

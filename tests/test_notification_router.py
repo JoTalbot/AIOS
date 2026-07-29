@@ -115,10 +115,13 @@ def test_notification_router_send_email():
 
 def test_notification_router_history():
     """Router tracks sent notification history."""
-    router = NotificationRouter(prefs=NotificationPreferences(
-        telegram_bot_token="123:ABC", telegram_chat_id="12345",
-        min_severity=Severity.WARNING,
-    ))
+    router = NotificationRouter(
+        prefs=NotificationPreferences(
+            telegram_bot_token="123:ABC",
+            telegram_chat_id="12345",
+            min_severity=Severity.WARNING,
+        )
+    )
     router.send(NotificationMessage(title="Msg1", body="Test", severity=Severity.WARNING))
     router.send(NotificationMessage(title="Msg2", body="Test2", severity=Severity.CRITICAL))
 
@@ -130,7 +133,11 @@ def test_notification_router_history():
 def test_notification_router_no_channels():
     """Router with no configured channels returns empty results."""
     prefs = NotificationPreferences(
-        email=False, telegram=False, slack=False, push=False, webhook_url=None,
+        email=False,
+        telegram=False,
+        slack=False,
+        push=False,
+        webhook_url=None,
         min_severity=Severity.INFO,
     )
     router = NotificationRouter(prefs=prefs)

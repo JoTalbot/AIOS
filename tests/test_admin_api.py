@@ -19,15 +19,9 @@ def test_db(tmp_path):
     """Create a test database."""
     db_path = tmp_path / "test.sqlite"
     conn = sqlite3.connect(str(db_path))
-    conn.execute(
-        "CREATE TABLE tasks (id TEXT PRIMARY KEY, status TEXT, created_at TEXT, updated_at TEXT)"
-    )
-    conn.execute(
-        "CREATE TABLE personal_memory (id TEXT PRIMARY KEY, owner TEXT, content TEXT, created_at TEXT)"
-    )
-    conn.execute(
-        "CREATE TABLE audit_log (id TEXT PRIMARY KEY, event_type TEXT, timestamp TEXT, details TEXT)"
-    )
+    conn.execute("CREATE TABLE tasks (id TEXT PRIMARY KEY, status TEXT, created_at TEXT, updated_at TEXT)")
+    conn.execute("CREATE TABLE personal_memory (id TEXT PRIMARY KEY, owner TEXT, content TEXT, created_at TEXT)")
+    conn.execute("CREATE TABLE audit_log (id TEXT PRIMARY KEY, event_type TEXT, timestamp TEXT, details TEXT)")
     conn.execute(
         "CREATE TABLE knowledge_graph (id TEXT PRIMARY KEY, subject TEXT, predicate TEXT, object TEXT, created_at TEXT)"
     )

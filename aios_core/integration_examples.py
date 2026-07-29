@@ -367,9 +367,7 @@ async def simulate_system_metrics(
         error_rate = 0.01 + (i * 0.005)  # Increasing error rate
         if error_rate > 0.05:
             # Trigger alert
-            await integration_system.monitoring_api.alert_manager.check_metric(
-                "error_rate", error_rate, time.time()
-            )
+            await integration_system.monitoring_api.alert_manager.check_metric("error_rate", error_rate, time.time())
 
         # Simulate memory usage
         memory_usage = 60 + (i * 5)  # Increasing memory usage
@@ -442,16 +440,12 @@ async def example_integration_with_aios_core() -> None:
 
     for event in aios_events:
         # Send webhook notification
-        success = await integration_api.send_webhook(
-            "external_system", event["type"], event
-        )
+        success = await integration_api.send_webhook("external_system", event["type"], event)
         logger.info(f"Webhook sent for {event['type']}", success=success)
 
         # Check monitoring alerts
         if event["type"] == "system.alert":
-            await monitoring_api.alert_manager.check_metric(
-                "aios_alerts", 1, time.time()
-            )
+            await monitoring_api.alert_manager.check_metric("aios_alerts", 1, time.time())
 
         # Log the event
         logger.info("AIOS event processed", extra={"event_type": event["type"]})

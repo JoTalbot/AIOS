@@ -67,9 +67,7 @@ class AIOSOperator:
 
     # ── CRD Management ──────────────────────────────────────────────
 
-    def create_crd(
-        self, name: str, spec: dict[str, Any] | None = None, replicas: int = 1
-    ) -> CRD:
+    def create_crd(self, name: str, spec: dict[str, Any] | None = None, replicas: int = 1) -> CRD:
         """Create a Custom Resource Definition."""
         crd = CRD(name=name, spec=spec or {}, replicas=replicas)
         self.crds[name] = crd
@@ -116,9 +114,7 @@ class AIOSOperator:
 
         crd.status = "ready" if dep.available else "reconciling"
 
-        self._log_event(
-            "reconciled", name, {"status": crd.status, "ready": dep.ready_replicas}
-        )
+        self._log_event("reconciled", name, {"status": crd.status, "ready": dep.ready_replicas})
         return {
             "status": crd.status,
             "name": name,
@@ -175,16 +171,12 @@ class AIOSOperator:
             "healthy": dep.available,
             "ready_replicas": dep.ready_replicas,
             "desired_replicas": dep.replicas,
-            "progress": round(dep.ready_replicas / dep.replicas, 4)
-            if dep.replicas > 0
-            else 0.0,
+            "progress": round(dep.ready_replicas / dep.replicas, 4) if dep.replicas > 0 else 0.0,
         }
 
     # ── Event Logging ──────────────────────────────────────────────
 
-    def _log_event(
-        self, event_type: str, resource: str, details: dict[str, Any] | None = None
-    ) -> None:
+    def _log_event(self, event_type: str, resource: str, details: dict[str, Any] | None = None) -> None:
         """Log a K8s event."""
         self._event_log.append(
             {
@@ -195,9 +187,7 @@ class AIOSOperator:
             }
         )
 
-    def get_events(
-        self, resource: str | None = None, limit: int = 20
-    ) -> list[dict[str, Any]]:
+    def get_events(self, resource: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
         """Get recent events, optionally filtered by resource."""
         events = self._event_log
         if resource:

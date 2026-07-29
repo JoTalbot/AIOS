@@ -17,13 +17,13 @@ def render_jobs_dashboard_view():
         columns=[
             {"name": "id", "label": "Job ID", "field": "id"},
             {"name": "name", "label": "Task", "field": "name"},
-            {"name": "status", "label": "Status", "field": "status"}
+            {"name": "status", "label": "Status", "field": "status"},
         ],
         rows=[
             {"id": "job_1", "name": "process_competitor_prices", "status": "running"},
             {"id": "job_2", "name": "send_bulk_messages", "status": "completed"},
-            {"id": "job_3", "name": "long_llm_request", "status": "failed"}
+            {"id": "job_3", "name": "long_llm_request", "status": "failed"},
         ],
-        row_key="id"
+        row_key="id",
     ).classes("w-full")
     ui.button("Refresh", on_click=lambda: ui.notify("Refreshing...")).classes("q-mt-md")

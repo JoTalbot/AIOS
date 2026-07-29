@@ -135,18 +135,14 @@ class SocialIntelligence:
             ]
         )
         self._norms_dict: dict[str, SocialNorm] = {
-            "cooperation": SocialNorm(
-                "cooperation", "Work together toward common goals"
-            ),
+            "cooperation": SocialNorm("cooperation", "Work together toward common goals"),
             "fairness": SocialNorm("fairness", "Treat others equitably"),
             "reciprocity": SocialNorm("reciprocity", "Return favors and kindness"),
         }
 
     # ── Relationship Management ──────────────────────────────────
 
-    def update_relationship(
-        self, agent_a: str, agent_b: str, interaction: dict[str, Any]
-    ) -> Relationship:
+    def update_relationship(self, agent_a: str, agent_b: str, interaction: dict[str, Any]) -> Relationship:
         """Update relationship based on interaction."""
         key = f"{agent_a}_{agent_b}"
         if key not in self.relationships:
@@ -200,9 +196,7 @@ class SocialIntelligence:
         self.update_relationship(from_agent, to_agent, {"outcome": outcome})
         return interaction
 
-    def get_interactions(
-        self, agent: str | None = None, limit: int = 50
-    ) -> list[Interaction]:
+    def get_interactions(self, agent: str | None = None, limit: int = 50) -> list[Interaction]:
         """Return interactions, optionally filtered by agent."""
         result = self.interactions
         if agent:
@@ -230,8 +224,7 @@ class SocialIntelligence:
 
         # High trust environment → cooperate
         trust_avg = (
-            sum(r.trust_score for r in self.relationships.values())
-            / len(self.relationships)
+            sum(r.trust_score for r in self.relationships.values()) / len(self.relationships)
             if self.relationships
             else 1.0
         )
@@ -262,8 +255,7 @@ class SocialIntelligence:
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
         avg_trust = (
-            sum(r.trust_score for r in self.relationships.values())
-            / len(self.relationships)
+            sum(r.trust_score for r in self.relationships.values()) / len(self.relationships)
             if self.relationships
             else 0.0
         )

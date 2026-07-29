@@ -23,6 +23,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.requests[key].append(now)
         return await call_next(request)
 
+
 class WebhookSecurityMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         return await call_next(request)

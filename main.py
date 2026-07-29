@@ -33,14 +33,17 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 # Подключаем вебхуки
 app.include_router(webhook_router)
 
+
 # Эндпоинт для метрик Prometheus
 @app.get("/metrics")
 async def prometheus_metrics():
     return await metrics_endpoint(None)
 
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "platforms": platform_registry.list_platforms()}
+
 
 # Интеграция NiceGUI с FastAPI
 
@@ -53,6 +56,10 @@ agent_orchestrator = MultiAgentOrchestrator(analytics_engine)
 
 _BACKGROUND_TASKS: set = set()
 
+# Module-level admin dependency (B008: no Depends() call in argument defaults)
+ADMIN_DEP = Depends(require_role("admin"))
+
+
 @app.websocket("/ws/metrics")
 async def websocket_metrics(websocket):
     await manager.connect(websocket)
@@ -62,11 +69,13 @@ async def websocket_metrics(websocket):
     except Exception:
         manager.disconnect(websocket)
 
+
 @app.on_event("startup")
 async def startup_event():
     task = asyncio.create_task(metrics_broadcast_loop(lambda: {"status": "ok"}))
     _BACKGROUND_TASKS.add(task)
     task.add_done_callback(_BACKGROUND_TASKS.discard)
+
 
 @app.post("/api/v1/agents/process")
 async def process_with_agents(request: AgentProcessRequest):
@@ -83,24 +92,38 @@ from aios_core.middleware.audit import AuditMiddleware
 app.add_middleware(AuditMiddleware)
 openapi_exporter = init_exporter(app)
 
+
 @app.on_event("startup")
 async def startup_cache():
     await cache.connect()
+
 
 @app.get("/api/v1/features", tags=["System"])
 async def list_features():
     return flags.list_all()
 
+
 @app.get("/api/v1/audit", tags=["System"])
-async def get_audit_logs(user_id: str | None = None, action: str | None = None, limit: int = 100,
-                         user: dict = Depends(require_role("admin"))):  # noqa: B008  # FastAPI idiom
+async def get_audit_logs(
+    user_id: str | None = None, action: str | None = None, limit: int = 100, user: dict = ADMIN_DEP
+):
     logs = await audit_recorder.get_logs(user_id=user_id, action=action, limit=limit)
-    return [{"id": log.id, "user_id": log.user_id, "action": log.action,
-             "resource_type": log.resource_type, "created_at": log.created_at.isoformat()} for log in logs]
+    return [
+        {
+            "id": log.id,
+            "user_id": log.user_id,
+            "action": log.action,
+            "resource_type": log.resource_type,
+            "created_at": log.created_at.isoformat(),
+        }
+        for log in logs
+    ]
+
 
 @app.get("/openapi.json", include_in_schema=False)
 async def openapi_json():
     return openapi_exporter.as_json()
+
 
 @app.get("/openapi.yaml", include_in_schema=False)
 async def openapi_yaml():
@@ -119,17 +142,21 @@ from aios_core.graphql.schema import schema
 graphql_app = GraphQLRouter(schema)
 app.include_router(graphql_app, prefix="/graphql", tags=["GraphQL"])
 
+
 @ui.page("/advisor/jobs", title="Jobs Dashboard")
 def jobs_page():
     render_jobs_dashboard_view()
+
 
 @app.get("/api/v1/export/templates/json", tags=["Data"])
 async def export_json():
     return Response(content=data_manager.export_templates_json(), media_type="application/json")
 
+
 @app.get("/api/v1/export/templates/csv", tags=["Data"])
 async def export_csv():
     return Response(content=data_manager.export_templates_csv(), media_type="text/csv")
+
 
 @app.post("/api/v1/import/templates/json", tags=["Data"])
 async def import_json(data: dict):
@@ -145,6 +172,7 @@ from aios_core.webhooks.retry import retry_handler
 app.include_router(v1_router)
 app.include_router(v2_router)
 
+
 @app.post("/api/v1/ab_testing/select", tags=["A/B Testing"])
 async def select_variant(template_id: str):
     bandit.add_arm(template_id)
@@ -152,23 +180,28 @@ async def select_variant(template_id: str):
     bandit.record_impression(selected)
     return {"selected_variant": selected}
 
+
 @app.post("/api/v1/ab_testing/convert", tags=["A/B Testing"])
 async def record_conversion(variant_id: str):
     bandit.record_conversion(variant_id)
     return {"status": "recorded"}
 
+
 @app.get("/api/v1/ab_testing/stats", tags=["A/B Testing"])
 async def get_ab_stats():
     return bandit.get_stats()
+
 
 @app.get("/api/v1/dead_letters", tags=["Webhooks"])
 async def get_dead_letters():
     return retry_handler.get_dead_letters()
 
+
 @app.post("/api/v1/dead_letters/{index}/retry", tags=["Webhooks"])
 async def retry_dead_letter(index: int):
     success = await retry_handler.retry_dead_letter(index)
     return {"status": "retried" if success else "not_found"}
+
 
 @ui.page("/advisor/dead_letters", title="Dead Letter Queue")
 def dead_letter_page():
@@ -187,9 +220,11 @@ from aios_core.dashboard.themes.saas_theme import apply_saas_theme
 
 apply_saas_theme()
 
+
 @app.post("/api/v1/ai/voice/transcribe", tags=["AI Features"])
 async def transcribe_voice():
     return {"status": "endpoint_ready", "note": "Upload audio file to use"}
+
 
 @app.post("/api/v1/ai/image/generate", tags=["AI Features"])
 async def generate_image(prompt: str, size: str = "1024x1024"):
@@ -205,9 +240,11 @@ from aios_core.evolution.self_healing import self_healing
 async def run_evo(user: dict = Depends(require_role("admin"))):  # noqa: B008  # FastAPI idiom
     return await evolution_orchestrator.run_cycle()
 
+
 @app.get("/api/v1/evolution/stats", tags=["Evolution"])
 async def evo_stats():
     return evolution_orchestrator.log
+
 
 from aios_core.dashboard.views.evolution_view import render_evolution_view
 from aios_core.observability.evolution_metrics import record_self_heal
@@ -216,6 +253,7 @@ from aios_core.observability.evolution_metrics import record_self_heal
 @ui.page("/advisor/evolution", title="Evolution Dashboard")
 def evolution_page():
     render_evolution_view(evolution_orchestrator)
+
 
 @app.post("/api/v1/evolution/heal", tags=["Evolution"])
 async def heal_template(template: str, reason: str, original: str):
@@ -233,14 +271,17 @@ async def predict_conversion(template: dict):
     score = predictor.predict(template)
     return {"predicted_conversion": score}
 
+
 @app.get("/api/v1/recommendations", tags=["Recommendations"])
 async def get_recommendations(templates: list = []):
     return recommendation_engine.get_top_recommendations(templates)
+
 
 @app.get("/api/v1/recommendations/template/{template_id}", tags=["Recommendations"])
 async def get_template_recommendations(template_id: str):
     from aios_core.database import AsyncSessionLocal
     from aios_core.models.template import Template
+
     async with AsyncSessionLocal() as session:
         template = await session.get(Template, template_id)
         if template:
@@ -256,18 +297,22 @@ from aios_core.tenancy.billing import billing_service
 
 plugin_registry.register(AvitoPlugin)
 
+
 @app.post("/api/v1/billing/checkout", tags=["SaaS"])
 async def create_checkout(workspace_id: str, tier: str):
     return billing_service.create_checkout_session(workspace_id, tier, "https://aios.local/success")
+
 
 @app.post("/api/v1/agents/negotiate", tags=["Agents"])
 async def negotiate(session_id: str, message: str, max_discount: int = 10):
     guardrails = {"max_discount": max_discount}
     return negotiation_agent.process_message(session_id, message, guardrails)
 
+
 @app.get("/api/v1/plugins", tags=["Plugins"])
 async def list_plugins():
     return {"plugins": plugin_registry.list_plugins()}
+
 
 @ui.page("/mobile", title="AIOS Mobile")
 def mobile_page():
@@ -286,13 +331,16 @@ async def stripe_webhook(request: Request):
     sig_header = request.headers.get("stripe-signature", "")
     return stripe_service.handle_webhook(payload, sig_header)
 
+
 @app.post("/api/v1/voice/process", tags=["Voice AI"])
 async def process_voice(call_sid: str, recording_url: str):
     return await voice_agent.process_voice_call(call_sid, recording_url)
 
+
 @ui.page("/marketplace", title="Plugin Marketplace")
 def marketplace_page():
     render_marketplace_view()
+
 
 @ui.page("/settings/branding", title="White-Label Settings")
 def branding_page():
@@ -315,17 +363,21 @@ from aios_core.onboarding.flows import onboarding_flow
 def onboarding_page():
     render_onboarding_view(onboarding_flow)
 
+
 @app.post("/api/v1/workflow/sales/execute", tags=["Workflows"])
 async def execute_sales_workflow(price: float = 1000):
     return await sales_workflow.execute({"price": price})
+
 
 @app.get("/api/v1/compliance/export/{user_id}", tags=["Compliance"])
 async def export_data(user_id: str, user: dict = Depends(require_role("admin"))):  # noqa: B008  # FastAPI idiom
     return await data_exporter.export_user_data(user_id)
 
+
 @app.post("/api/v1/compliance/mask", tags=["Compliance"])
 async def mask_pii(text: str):
     return {"masked": pii_masker.mask(text)}
+
 
 ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 
@@ -338,16 +390,19 @@ from aios_core.dashboard.views.metrics_view import render_metrics_view
 template_engine = TemplateEngine(storage_path="data/templates")
 metrics_collector = MetricsCollector(storage_path="data/metrics")
 
-@ui.page('/', title='AIOS Dashboard')
-def index():
-    ui.label('🐙 AIOS Dashboard').classes('text-h3 q-mb-md')
-    ui.link('🤖 Шаблоны AI Advisor', '/advisor/templates').classes('text-h5')
-    ui.link('📊 Метрики', '/advisor/metrics').classes('text-h5')
 
-@ui.page('/advisor/templates', title='Шаблоны')
+@ui.page("/", title="AIOS Dashboard")
+def index():
+    ui.label("🐙 AIOS Dashboard").classes("text-h3 q-mb-md")
+    ui.link("🤖 Шаблоны AI Advisor", "/advisor/templates").classes("text-h5")
+    ui.link("📊 Метрики", "/advisor/metrics").classes("text-h5")
+
+
+@ui.page("/advisor/templates", title="Шаблоны")
 def templates_page():
     render_advisor_templates_view(template_engine)
 
-@ui.page('/advisor/metrics', title='Метрики')
+
+@ui.page("/advisor/metrics", title="Метрики")
 def metrics_page():
     render_metrics_view(metrics_collector)

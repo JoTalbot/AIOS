@@ -33,26 +33,20 @@ class Block:
 
     def calculate_hash(self) -> str:
         """Calculate hash (backward-compatible)."""
-        block_string = (
-            f"{self.index}{self.timestamp}{self.data}{self.previous_hash}{self.nonce}"
-        )
+        block_string = f"{self.index}{self.timestamp}{self.data}{self.previous_hash}{self.nonce}"
         return hashlib.sha256(block_string.encode()).hexdigest()
 
 
 class Transaction:
     """Blockchain transaction."""
 
-    def __init__(
-        self, sender: str, receiver: str, amount: float, tx_type: str = "transfer"
-    ) -> None:
+    def __init__(self, sender: str, receiver: str, amount: float, tx_type: str = "transfer") -> None:
         self.sender = sender
         self.receiver = receiver
         self.amount = amount
         self.tx_type = tx_type
         self.timestamp: float = time.time()
-        self.tx_hash: str = hashlib.sha256(
-            f"{sender}{receiver}{amount}{self.timestamp}".encode()
-        ).hexdigest()
+        self.tx_hash: str = hashlib.sha256(f"{sender}{receiver}{amount}{self.timestamp}".encode()).hexdigest()
 
 
 class SmartContract:
@@ -114,9 +108,7 @@ class Blockchain:
                 return False
         return True
 
-    def add_transaction(
-        self, sender: str, receiver: str, amount: float, tx_type: str = "transfer"
-    ) -> Transaction:
+    def add_transaction(self, sender: str, receiver: str, amount: float, tx_type: str = "transfer") -> Transaction:
         """Add a pending transaction."""
         tx = Transaction(sender, receiver, amount, tx_type)
         self._pending_transactions.append(tx)
@@ -139,12 +131,9 @@ class Blockchain:
             return {"blocks": 0}
         return {
             "blocks": len(self.chain),
-            "total_transactions": sum(
-                len(b.data) if isinstance(b.data, list) else 1 for b in self.chain
-            ),
+            "total_transactions": sum(len(b.data) if isinstance(b.data, list) else 1 for b in self.chain),
             "avg_block_time": round(
-                (self.chain[-1].timestamp - self.chain[0].timestamp)
-                / max(len(self.chain) - 1, 1),
+                (self.chain[-1].timestamp - self.chain[0].timestamp) / max(len(self.chain) - 1, 1),
                 2,
             ),
             "chain_hash": self.chain[-1].hash[:16],

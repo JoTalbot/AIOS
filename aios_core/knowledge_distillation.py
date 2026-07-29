@@ -118,9 +118,7 @@ class KnowledgeDistiller:
 
     # ── Soft Targets ────────────────────────────────────────────────
 
-    def soft_targets(
-        self, logits: list[float], temperature: float = 2.0
-    ) -> list[float]:
+    def soft_targets(self, logits: list[float], temperature: float = 2.0) -> list[float]:
         """Generate temperature-scaled soft targets from logits.
 
         softmax(z/T) where T is temperature.
@@ -197,9 +195,7 @@ class KnowledgeDistiller:
             )
 
         teacher = self.teacher_models[teacher_id]
-        student = self.student_models.get(
-            student_id, ModelConfig(model_id=student_id, model_type="student")
-        )
+        student = self.student_models.get(student_id, ModelConfig(model_id=student_id, model_type="student"))
 
         # Simulate distillation
         accuracy_before = student.accuracy
@@ -208,9 +204,7 @@ class KnowledgeDistiller:
         accuracy_after = min(teacher.accuracy, accuracy_before + improvement)
 
         # Compression ratio
-        compression = (
-            teacher.num_params / student.num_params if student.num_params > 0 else 0.0
-        )
+        compression = teacher.num_params / student.num_params if student.num_params > 0 else 0.0
 
         # Simulated losses
         kd_loss_val = max(0.01, 1.0 / (epochs + 1))
@@ -253,13 +247,10 @@ class KnowledgeDistiller:
 
         for stage in range(stages):
             temp = temperature_start - stage * temp_step
-            result = self.distill(
-                teacher_id, student_id, temperature=temp, epochs=epochs_per_stage
-            )
+            result = self.distill(teacher_id, student_id, temperature=temp, epochs=epochs_per_stage)
             results.append(result)
 
         return results
-
 
     def perform_self_supervised_distillation(
         self,
@@ -278,15 +269,15 @@ class KnowledgeDistiller:
         teacher = self.teacher_models[teacher_id]
         student = self.student_models[student_id]
 
-        
         pseudo_labels_generated = len(unlabeled_samples)
         compression_ratio = teacher.num_params / max(1, student.num_params)
-        
+
         import math
+
         learning_factor = min(1.0, math.log10(max(10, pseudo_labels_generated)) / 5.0)
         base_improvement = (teacher.accuracy - student.accuracy) * 0.4
         new_accuracy = student.accuracy + (base_improvement * learning_factor)
-        
+
         orig_acc = student.accuracy
         student.accuracy = min(teacher.accuracy, new_accuracy)
         student.latency_ms = student.latency_ms * 1.05
@@ -301,9 +292,6 @@ class KnowledgeDistiller:
             temperature=temperature,
             alpha=alpha,
             kd_loss=simulated_loss,
-            
-            
-            
             compression_ratio=compression_ratio,
         )
         self.distillation_history.append(result)
@@ -314,18 +302,12 @@ class KnowledgeDistiller:
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
         avg_teacher_accuracy = (
-            (
-                sum(t.accuracy for t in self.teacher_models.values())
-                / len(self.teacher_models)
-            )
+            (sum(t.accuracy for t in self.teacher_models.values()) / len(self.teacher_models))
             if self.teacher_models
             else 0.0
         )
         avg_student_accuracy = (
-            (
-                sum(s.accuracy for s in self.student_models.values())
-                / len(self.student_models)
-            )
+            (sum(s.accuracy for s in self.student_models.values()) / len(self.student_models))
             if self.student_models
             else 0.0
         )

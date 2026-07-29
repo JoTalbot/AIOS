@@ -105,10 +105,16 @@ def _run_rozetka(args) -> bool:
     if args.rozetka_command == "stats":
         with RozetkaStorage(_resolve_rozetka_db(args)) as storage:
             ads = storage.get_ads(query=args.query)
-            print(json.dumps({
-                "total_ads": len(ads),
-                "query": args.query,
-            }, ensure_ascii=False, indent=2))
+            print(
+                json.dumps(
+                    {
+                        "total_ads": len(ads),
+                        "query": args.query,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
         return True
 
     if args.rozetka_command == "chats":
@@ -120,6 +126,7 @@ def _run_rozetka(args) -> bool:
     if args.rozetka_command == "dm-send":
         with RozetkaStorage(_resolve_rozetka_db(args)) as storage:
             from aios_core.modules.rozetka import RozetkaMessenger
+
             messenger = RozetkaMessenger(storage=storage)
             result = messenger.send_reply(args.chat, args.text)
             print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -128,6 +135,7 @@ def _run_rozetka(args) -> bool:
     if args.rozetka_command == "dm-flush":
         with RozetkaStorage(_resolve_rozetka_db(args)) as storage:
             from aios_core.modules.rozetka import RozetkaMessenger
+
             messenger = RozetkaMessenger(storage=storage)
             flushed = messenger.flush_outbox()
             print(json.dumps(flushed, ensure_ascii=False, indent=2))
@@ -140,6 +148,7 @@ def _run_rozetka(args) -> bool:
 
     if args.rozetka_command == "doctor":
         from aios_core.modules.rozetka import RozetkaBootstrap
+
         report = RozetkaBootstrap().doctor()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return True
@@ -148,6 +157,7 @@ def _run_rozetka(args) -> bool:
     if args.rozetka_command == "price-tracker":
         with RozetkaStorage(_resolve_rozetka_db(args)) as storage:
             from aios_core.modules.rozetka import RozetkaPriceTracker
+
             tracker = RozetkaPriceTracker(
                 storage,
                 min_drop_pct=getattr(args, "min_drop_pct", 5.0),
@@ -167,6 +177,7 @@ def _run_rozetka(args) -> bool:
     if args.rozetka_command == "autowatch":
         with RozetkaStorage(_resolve_rozetka_db(args)) as storage:
             from aios_core.modules.rozetka import RozetkaAutoWatch
+
             watcher = RozetkaAutoWatch(
                 storage,
                 min_drop_pct=getattr(args, "min_drop_pct", 5.0),
@@ -184,9 +195,8 @@ def _run_rozetka(args) -> bool:
     if args.rozetka_command == "favorites":
         with RozetkaStorage(_resolve_rozetka_db(args)) as storage:
             from aios_core.modules.rozetka import RozetkaFavorites, RozetkaPriceTracker
-            tracker = RozetkaPriceTracker(
-                storage, min_drop_pct=getattr(args, "min_drop_pct", 5.0)
-            )
+
+            tracker = RozetkaPriceTracker(storage, min_drop_pct=getattr(args, "min_drop_pct", 5.0))
             fav = RozetkaFavorites(storage, price_tracker=tracker)
             cmd = getattr(args, "favorites_command", None)
             if cmd == "add":
@@ -212,6 +222,7 @@ def _run_rozetka(args) -> bool:
     # v9.6.0 — Auto-login commands
     if args.rozetka_command == "auto-login":
         from aios_core.modules.rozetka import RozetkaAutoLogin
+
         auto = RozetkaAutoLogin()
         cmd = getattr(args, "login_command", None)
         if cmd == "check":
@@ -222,11 +233,17 @@ def _run_rozetka(args) -> bool:
                 email=getattr(args, "email", None),
                 password=getattr(args, "password", None),
             )
-            print(json.dumps({
-                "state": result.state.value,
-                "message": result.message,
-                "timestamp": result.timestamp,
-            }, ensure_ascii=False, indent=2))
+            print(
+                json.dumps(
+                    {
+                        "state": result.state.value,
+                        "message": result.message,
+                        "timestamp": result.timestamp,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
         else:
             print(json.dumps({"error": "unknown auto-login subcommand"}, indent=2))
         return True

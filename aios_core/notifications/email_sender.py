@@ -17,17 +17,14 @@ class EmailSender:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     self.api_url,
-                    headers={
-                        "Authorization": f"Bearer {self.api_key}",
-                        "Content-Type": "application/json"
-                    },
+                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
                     json={
                         "personalizations": [{"to": [{"email": e} for e in to_emails]}],
                         "from": {"email": self.from_email},
                         "subject": subject,
-                        "content": [{"type": "text/html", "value": html_body}]
+                        "content": [{"type": "text/html", "value": html_body}],
                     },
-                    timeout=10.0
+                    timeout=10.0,
                 )
                 return response.status_code in (200, 202)
         except Exception as e:

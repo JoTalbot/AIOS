@@ -83,11 +83,7 @@ def platform_doctor(
         doc = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
     checks["descriptor"] = {
         "ok": bool(doc and doc.get("name") == platform),
-        "detail": (
-            str(yaml_path)
-            if yaml_path.exists()
-            else f"descriptor not found: {yaml_path}"
-        ),
+        "detail": (str(yaml_path) if yaml_path.exists() else f"descriptor not found: {yaml_path}"),
     }
     hints = (doc.get("extras") or {}).get("parser_hints") or {}
     compliance_block = (doc.get("extras") or {}).get("compliance") or {}
@@ -107,11 +103,7 @@ def platform_doctor(
         present = bool(secret(platform, field))
         checks[f"secrets_{field.lower()}"] = {
             "ok": present,
-            "detail": (
-                "env set (value hidden)"
-                if present
-                else f"set AIOS_SECRET__{platform.upper()}__{field}"
-            ),
+            "detail": ("env set (value hidden)" if present else f"set AIOS_SECRET__{platform.upper()}__{field}"),
         }
     if storage_factory is not None:
         try:
@@ -125,19 +117,14 @@ def platform_doctor(
         online = f"{serial}\tdevice" in (devices.get("stdout") or "")
         checks["device"] = {
             "ok": bool(devices.get("code") == 0 and online),
-            "detail": (
-                f"{serial} online"
-                if online
-                else f"{serial} не в 'adb devices' (эмулятор запущен?)"
-            ),
+            "detail": (f"{serial} online" if online else f"{serial} не в 'adb devices' (эмулятор запущен?)"),
         }
         if online:
             pm = adb.run(f"{adb.adb} shell pm path {package}")
             checks["package"] = {
                 "ok": bool((pm.get("stdout") or "").startswith("package:")),
                 "detail": (
-                    pm.get("stdout", "").strip()[:120]
-                    or f"{package} не установлен — platforms fetch-apk {package}"
+                    pm.get("stdout", "").strip()[:120] or f"{package} не установлен — platforms fetch-apk {package}"
                 ),
             }
     ok = all(check["ok"] for check in checks.values())
@@ -147,7 +134,5 @@ def platform_doctor(
         "checks": checks,
     }
     if report_recipe:
-        report["calibrate_recipe"] = _report_recipe(
-            platform, package, checks, hints_for_recipe
-        )
+        report["calibrate_recipe"] = _report_recipe(platform, package, checks, hints_for_recipe)
     return report

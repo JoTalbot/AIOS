@@ -76,9 +76,7 @@ class QuantumNativeEngine:
         """Initialize QuantumNativeEngine."""
         self.circuits_executed = 0
 
-    def optimize_task_schedule_qaoa(
-        self, tasks: list[dict[str, Any]], num_agents: int = 2
-    ) -> dict[str, Any]:
+    def optimize_task_schedule_qaoa(self, tasks: list[dict[str, Any]], num_agents: int = 2) -> dict[str, Any]:
         """Use Quantum Approximate Optimization Algorithm (QAOA) simulation to solve task assignment."""
         start_time = time.time()
         num_qubits = min(6, max(2, len(tasks)))

@@ -43,9 +43,7 @@ class GraphTransformer:
     - Positional encoding for graph structure
     """
 
-    def __init__(
-        self, dim: int = 64, heads: int = 4, layers: int = 2, dropout: float = 0.0
-    ) -> None:
+    def __init__(self, dim: int = 64, heads: int = 4, layers: int = 2, dropout: float = 0.0) -> None:
         self.dim = dim
         self.heads = heads
         self.layers = layers
@@ -53,10 +51,7 @@ class GraphTransformer:
         self.nodes: dict[str, list[float]] = {}
         self.edges: list[tuple[str, str]] = []
         self.edge_features: dict[tuple[str, str], list[float]] = {}
-        self._layer_configs = [
-            GraphTransformerLayer(dim=dim, heads=heads, dropout=dropout)
-            for _ in range(layers)
-        ]
+        self._layer_configs = [GraphTransformerLayer(dim=dim, heads=heads, dropout=dropout) for _ in range(layers)]
 
     # ── Node/Edge Management ────────────────────────────────────────
 
@@ -140,9 +135,7 @@ class GraphTransformer:
 
     # ── Forward Pass ────────────────────────────────────────────────
 
-    def forward(
-        self, nodes: list[dict] | None = None, edges: list[tuple] | None = None
-    ) -> list[dict]:
+    def forward(self, nodes: list[dict] | None = None, edges: list[tuple] | None = None) -> list[dict]:
         """Process graph through transformer layers."""
         edges = edges or self.edges
         node_ids = list(self.nodes.keys())
@@ -168,19 +161,14 @@ class GraphTransformer:
 
                 # Residual connection
                 layer_cfg = (
-                    self._layer_configs[layer_idx]
-                    if layer_idx < len(self._layer_configs)
-                    else GraphTransformerLayer()
+                    self._layer_configs[layer_idx] if layer_idx < len(self._layer_configs) else GraphTransformerLayer()
                 )
                 if layer_cfg.residual:
                     attended = [(a + n) / 2 for a, n in zip(attended, node_emb, strict=False)]
 
                 # Dropout (simplified)
                 if layer_cfg.dropout > 0:
-                    attended = [
-                        v if random.random() > layer_cfg.dropout else 0.0
-                        for v in attended
-                    ]
+                    attended = [v if random.random() > layer_cfg.dropout else 0.0 for v in attended]
 
                 new_embeddings[node_id] = attended
             self.nodes = new_embeddings
@@ -201,9 +189,7 @@ class GraphTransformer:
         elif method == "sum":
             return [sum(e[d] for e in all_embs) for d in range(self.dim)]
         else:  # mean
-            return [
-                sum(e[d] for e in all_embs) / len(all_embs) for d in range(self.dim)
-            ]
+            return [sum(e[d] for e in all_embs) / len(all_embs) for d in range(self.dim)]
 
     # ── Stats ──────────────────────────────────────────────────────
 

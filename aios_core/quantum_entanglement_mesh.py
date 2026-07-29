@@ -45,9 +45,9 @@ class QuantumEntangledChannel:
 
     def quantum_key_distribution(self, key_length: int = 256) -> dict[str, Any]:
         """Generate quantum-secure key via EPR pair measurement."""
-        key = hashlib.sha256(
-            f"{self.channel_id}:{self.teleported_states_count}:{time.time()}".encode()
-        ).hexdigest()[: key_length // 4]
+        key = hashlib.sha256(f"{self.channel_id}:{self.teleported_states_count}:{time.time()}".encode()).hexdigest()[
+            : key_length // 4
+        ]
         self._qkd_keys.append(key)
         return {
             "key_length_bits": key_length,
@@ -93,9 +93,7 @@ class QuantumEntanglementMesh:
 
     def create_channel(self, node_a: str, node_b: str) -> QuantumEntangledChannel:
         """Create entangled EPR pair channel between two nodes."""
-        channel_id = (
-            f"epr_{hashlib.sha256(f'{node_a}:{node_b}'.encode()).hexdigest()[:8]}"
-        )
+        channel_id = f"epr_{hashlib.sha256(f'{node_a}:{node_b}'.encode()).hexdigest()[:8]}"
         channel = QuantumEntangledChannel(channel_id, node_a, node_b)
         self.channels[channel_id] = channel
         # Update node registries
@@ -104,9 +102,7 @@ class QuantumEntanglementMesh:
                 self._node_registry[nid]["channels"].append(channel_id)
         return channel
 
-    def teleport(
-        self, source_node: str, target_node: str, state_payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    def teleport(self, source_node: str, target_node: str, state_payload: dict[str, Any]) -> dict[str, Any]:
         """Teleport quantum state between nodes."""
         # Find direct or indirect channel
         channel = self._find_channel(source_node, target_node)
@@ -118,9 +114,7 @@ class QuantumEntanglementMesh:
         self._teleport_log.append(result)
         return result
 
-    def entanglement_swap(
-        self, node_a: str, node_b: str, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    def entanglement_swap(self, node_a: str, node_b: str, payload: dict[str, Any]) -> dict[str, Any]:
         """Multi-hop entanglement swapping for indirect teleportation."""
         # Find intermediate path
         path = self._find_path(node_a, node_b)
@@ -183,8 +177,7 @@ class QuantumEntanglementMesh:
         if not self.channels:
             return {"status": "empty", "channels": 0}
         avg_fidelity = round(
-            sum(c.coherence_fidelity for c in self.channels.values())
-            / len(self.channels),
+            sum(c.coherence_fidelity for c in self.channels.values()) / len(self.channels),
             4,
         )
         degraded = sum(1 for c in self.channels.values() if c.coherence_fidelity < 0.99)

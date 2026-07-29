@@ -191,9 +191,7 @@ class Orchestrator:
         )
         self.memory = MemoryManager(db=self.db)
         self.knowledge = KnowledgeGraph()
-        self.reasoning = ReasoningEngine(
-            db=self.db, memory=self.memory, knowledge=self.knowledge
-        )
+        self.reasoning = ReasoningEngine(db=self.db, memory=self.memory, knowledge=self.knowledge)
         self.learning = LearningEngine(db=self.db, memory=self.memory)
         self.evolution = EvolutionManager(db=self.db)
         self.privacy = PrivacyGuard()
@@ -205,9 +203,7 @@ class Orchestrator:
         self.autonomy = AutonomyManager(db=self.db)
 
         # v4.0-alpha
-        self.federation = FederationManager(
-            db=self.db, local_node_id=f"aios_{uuid.uuid4().hex[:8]}"
-        )
+        self.federation = FederationManager(db=self.db, local_node_id=f"aios_{uuid.uuid4().hex[:8]}")
         self.ml_scorer = MLPlannerScorer(db=self.db)
         self.multi_agent = MultiAgentOrchestrator(db=self.db, base_orchestrator=self)
         self.constitution_evolver = ConstitutionEvolver(db=self.db)
@@ -260,9 +256,7 @@ class Orchestrator:
             try:
                 asyncio.get_running_loop()
                 asyncio.create_task(  # noqa: RUF006
-                    ws_manager.send_event(
-                        "task_created", {"task_id": task.id, "name": task.name}
-                    )
+                    ws_manager.send_event("task_created", {"task_id": task.id, "name": task.name})
                 )
             except RuntimeError:
                 pass  # No running loop (sync context)
@@ -310,16 +304,14 @@ class Orchestrator:
         tenant_id = task.metadata.get("tenant_id")
         if tenant_id and hasattr(self, "tenant_manager") and self.tenant_manager:
             self.tenant_manager.set_execution_context(task.id, tenant_id)
-            
+
         if task.status in (TaskStatus.COMPLETED, TaskStatus.RUNNING):
             if hasattr(self, "tenant_manager") and self.tenant_manager:
                 self.tenant_manager.clear_execution_context(task.id)
             return self._task_summary(task)
 
         task.status = TaskStatus.RUNNING
-        self.events.emit(
-            "task_started", "orchestrator", {"task_id": task.id, "name": task.name}
-        )
+        self.events.emit("task_started", "orchestrator", {"task_id": task.id, "name": task.name})
         task.started_at = datetime.now(UTC).isoformat()
 
         for i, step in enumerate(task.steps):
@@ -333,9 +325,7 @@ class Orchestrator:
 
                 if step.constitutional_check.get("decision") == "DENY":
                     step.status = StepStatus.FAILED
-                    step.error = step.constitutional_check.get(
-                        "details", "Constitution denied"
-                    )
+                    step.error = step.constitutional_check.get("details", "Constitution denied")
                     task.status = TaskStatus.FAILED
                     task.error = f"Step '{step.name}' denied by constitution"
                     break
@@ -362,14 +352,13 @@ class Orchestrator:
                         task.agent_id,
                         action_risk=step.params.get("risk", task.risk_level),
                     )
-                    if (
-                        autonomy_result["requires_approval"]
-                        and step.constitutional_check.get("decision") != "REVIEW"
-                    ):
+                    if autonomy_result["requires_approval"] and step.constitutional_check.get("decision") != "REVIEW":
                         step.status = StepStatus.FAILED
                         step.error = f"Requires approval (autonomy level {autonomy_result['level']})"
                         task.status = TaskStatus.WAITING_APPROVAL
-                        task.error = f"Step '{step.name}' requires approval due to autonomy level {autonomy_result['level']}"
+                        task.error = (
+                            f"Step '{step.name}' requires approval due to autonomy level {autonomy_result['level']}"
+                        )
                         self.events.emit(
                             "approval_requested",
                             "orchestrator",
@@ -389,9 +378,7 @@ class Orchestrator:
             except Exception as e:
                 step.status = StepStatus.FAILED
                 step.error = str(e)
-                self.autonomy.record_action(
-                    task.agent_id, success=False, triggered_review=True
-                )
+                self.autonomy.record_action(task.agent_id, success=False, triggered_review=True)
                 task.status = TaskStatus.FAILED
                 task.error = f"Step '{step.name}' failed: {e}"
                 self.events.emit(
@@ -455,9 +442,7 @@ class Orchestrator:
             "name": task.name,
             "status": task.status.value,
             "total_steps": len(task.steps),
-            "completed_steps": sum(
-                1 for s in task.steps if s.status == StepStatus.COMPLETED
-            ),
+            "completed_steps": sum(1 for s in task.steps if s.status == StepStatus.COMPLETED),
             "failed_steps": sum(1 for s in task.steps if s.status == StepStatus.FAILED),
             "error": task.error,
             "steps": [
@@ -470,15 +455,9 @@ class Orchestrator:
                     "error": s.error,
                     "constitutional_check": (
                         {
-                            "decision": (
-                                s.constitutional_check.get("decision")
-                                if s.constitutional_check
-                                else None
-                            ),
+                            "decision": (s.constitutional_check.get("decision") if s.constitutional_check else None),
                             "evaluation_id": (
-                                s.constitutional_check.get("evaluation_id")
-                                if s.constitutional_check
-                                else None
+                                s.constitutional_check.get("evaluation_id") if s.constitutional_check else None
                             ),
                         }
                         if s.constitutional_check
@@ -576,8 +555,7 @@ class Orchestrator:
             "total_tasks": len(self._tasks),
             "tasks_by_status": status_counts,
             "total_steps_executed": len(self._execution_log),
-            "active_tasks": status_counts.get("running", 0)
-            + status_counts.get("pending", 0),
+            "active_tasks": status_counts.get("running", 0) + status_counts.get("pending", 0),
             "constitution_articles": 67,
             "memory_items": mem_stats.get("total_items", 0),
             "evolution_proposals": evo_stats.get("total_proposals", 0),
@@ -735,9 +713,7 @@ def _step_plan(orch: Orchestrator, params: dict) -> dict:
         )
     # Add dependencies if specified
     for dep in params.get("dependencies", []):
-        orch.planner.add_dependency(
-            plan, dep["from"], dep["to"], dep.get("condition", "success")
-        )
+        orch.planner.add_dependency(plan, dep["from"], dep["to"], dep.get("condition", "success"))
     validation = orch.planner.validate_plan(plan)
     return {
         "plan_id": plan.id,

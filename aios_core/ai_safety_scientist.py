@@ -78,9 +78,7 @@ class AISafetyScientist:
             "gaps_identified": random.randint(1, 5),
         }
 
-    def write_paper(
-        self, hypothesis: dict[str, Any], findings: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def write_paper(self, hypothesis: dict[str, Any], findings: list[dict[str, Any]]) -> dict[str, Any]:
         """Write a research paper."""
         paper = {
             "title": f"Safety Research on {hypothesis.get('topic', 'unknown')}",

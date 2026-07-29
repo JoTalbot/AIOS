@@ -1,4 +1,5 @@
 """WhatsApp Platform Adapter (Meta Cloud API)."""
+
 from __future__ import annotations
 
 import os
@@ -10,9 +11,9 @@ from .base import IncomingMessage, PlatformAdapter, SentMessage
 
 class WhatsAppAdapter(PlatformAdapter):
     """Адаптер для WhatsApp Business (Meta Cloud API)."""
-    
+
     GRAPH_API_URL = "https://graph.facebook.com/v18.0"
-    
+
     def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config or {})
         self.access_token = self.config.get("access_token") or os.getenv("WHATSAPP_ACCESS_TOKEN")
@@ -26,8 +27,10 @@ class WhatsAppAdapter(PlatformAdapter):
         # TODO: POST /{phone_number_id}/messages
         return SentMessage(
             message_id=f"wa_{int(datetime.now(UTC).timestamp())}",
-            platform="whatsapp", recipient_id=recipient_id,
-            text=text, timestamp=datetime.now(UTC)
+            platform="whatsapp",
+            recipient_id=recipient_id,
+            text=text,
+            timestamp=datetime.now(UTC),
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

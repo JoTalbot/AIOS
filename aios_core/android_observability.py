@@ -148,13 +148,9 @@ class AndroidObservability:
             meta=meta or {},
         )
         self.events.append(event)
-        self.counters[f"android_{action}_total"] = (
-            self.counters.get(f"android_{action}_total", 0.0) + 1.0
-        )
+        self.counters[f"android_{action}_total"] = self.counters.get(f"android_{action}_total", 0.0) + 1.0
         if not success:
-            self.counters[f"android_{action}_failed"] = (
-                self.counters.get(f"android_{action}_failed", 0.0) + 1.0
-            )
+            self.counters[f"android_{action}_failed"] = self.counters.get(f"android_{action}_failed", 0.0) + 1.0
         self.gauges["android_active_device"] = 1.0 if self.device_id else 0.0
         return event
 

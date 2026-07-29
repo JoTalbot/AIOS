@@ -50,9 +50,7 @@ class DataExporter:
 
     def _table_columns(self, table: str) -> set[str]:
         """Return columns for an optional table without failing an export."""
-        row = self.conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,)
-        ).fetchone()
+        row = self.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
         if not row:
             return set()
         return {item[1] for item in self.conn.execute(f"PRAGMA table_info({table})")}
@@ -217,9 +215,7 @@ class DataExporter:
 
         return len(rows)
 
-    def export_all(
-        self, output_dir: str, format: str = "json", since: str | None = None
-    ) -> dict[str, int]:
+    def export_all(self, output_dir: str, format: str = "json", since: str | None = None) -> dict[str, int]:
         """Export all data to separate files.
 
         Args:
@@ -374,16 +370,10 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="AIOS Data Export/Import")
-    parser.add_argument(
-        "action", choices=["export", "import"], help="Action to perform"
-    )
+    parser.add_argument("action", choices=["export", "import"], help="Action to perform")
     parser.add_argument("--db", default="aios.sqlite", help="Database path")
-    parser.add_argument(
-        "--format", choices=["json", "csv"], default="json", help="Export format"
-    )
-    parser.add_argument(
-        "--output", "-o", default="./export", help="Output directory/file"
-    )
+    parser.add_argument("--format", choices=["json", "csv"], default="json", help="Export format")
+    parser.add_argument("--output", "-o", default="./export", help="Output directory/file")
     parser.add_argument("--since", help="Export data since date (ISO format)")
     parser.add_argument("--limit", type=int, help="Maximum records to export")
     parser.add_argument(
@@ -400,17 +390,13 @@ if __name__ == "__main__":
                 counts = exporter.export_all(args.output, args.format, args.since)
                 print(f"Exported: {counts}")
             elif args.type == "tasks":
-                count = exporter.export_tasks(
-                    args.output, args.format, args.limit, since=args.since
-                )
+                count = exporter.export_tasks(args.output, args.format, args.limit, since=args.since)
                 print(f"Exported {count} tasks")
             elif args.type == "memory":
                 count = exporter.export_memory(args.output, args.format, args.limit)
                 print(f"Exported {count} memory records")
             elif args.type == "audit":
-                count = exporter.export_audit_log(
-                    args.output, args.format, since=args.since
-                )
+                count = exporter.export_audit_log(args.output, args.format, since=args.since)
                 print(f"Exported {count} audit records")
             elif args.type == "knowledge":
                 count = exporter.export_knowledge_graph(args.output, args.format)

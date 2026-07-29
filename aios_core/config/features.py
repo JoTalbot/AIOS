@@ -36,13 +36,17 @@ class FeatureFlags:
     def require(self, feature: str):
         def decorator(func):
             from functools import wraps
+
             @wraps(func)
             async def wrapper(*args, **kwargs):
                 if not self.is_enabled(feature):
                     from fastapi import HTTPException
+
                     raise HTTPException(status_code=503, detail=f"Feature {feature} is disabled")
                 return await func(*args, **kwargs)
+
             return wrapper
+
         return decorator
 
     def list_all(self) -> dict[str, bool]:
@@ -50,5 +54,6 @@ class FeatureFlags:
 
     def reload(self):
         self._cache.clear()
+
 
 flags = FeatureFlags()

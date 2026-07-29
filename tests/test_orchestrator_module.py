@@ -41,8 +41,11 @@ class TestCreateTask:
 
     def test_create_task_with_all_fields(self, orch):
         task = orch.create_task(
-            name="full", description="full task",
-            agent_id="agent-1", authority="admin", risk_level="low",
+            name="full",
+            description="full task",
+            agent_id="agent-1",
+            authority="admin",
+            risk_level="low",
             metadata={"key": "value"},
         )
         assert task.agent_id == "agent-1"

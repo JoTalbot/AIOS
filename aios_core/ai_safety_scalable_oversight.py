@@ -82,9 +82,7 @@ class ScalableOversight:
         )
         return result
 
-    def amplification_oversight(
-        self, base_agent: Any, levels: int = 3
-    ) -> dict[str, Any]:
+    def amplification_oversight(self, base_agent: Any, levels: int = 3) -> dict[str, Any]:
         """Amplification oversight."""
         quality = round(min(1.0, 0.7 + 0.05 * levels), 2)
         result = {"levels": levels, "quality": quality, "technique": "amplification"}
@@ -118,9 +116,7 @@ class ScalableOversight:
         """Report on oversight quality across techniques."""
         if not self._records:
             return {"avg_quality": 0.0, "total_cost": 0.0}
-        avg_quality = round(
-            sum(r.quality for r in self._records) / len(self._records), 2
-        )
+        avg_quality = round(sum(r.quality for r in self._records) / len(self._records), 2)
         total_cost = round(sum(r.cost for r in self._records), 2)
         best = max(self._records, key=lambda r: r.quality)
         return {
@@ -135,11 +131,7 @@ class ScalableOversight:
         ranking: list[dict[str, Any]] = []
         for technique in self.techniques:
             records = [r for r in self._records if r.technique == technique]
-            avg_quality = (
-                sum(r.quality for r in records) / max(len(records), 1)
-                if records
-                else 0.5
-            )
+            avg_quality = sum(r.quality for r in records) / max(len(records), 1) if records else 0.5
             avg_cost = (
                 sum(r.cost for r in records) / max(len(records), 1)
                 if records

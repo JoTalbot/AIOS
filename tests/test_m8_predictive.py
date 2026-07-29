@@ -1,6 +1,5 @@
 """M8 Predictive Maintenance tests"""
 
-
 from aios_core.android_predictive import PredictiveMaintenance, RiskLevel
 
 

@@ -30,8 +30,7 @@ EMPTY_XML = "<hierarchy rotation='0'/>"
 def test_search_deep_link_filters():
     base = OLXCollector.search_deep_link("лобове скло")
     assert (
-        base
-        == "https://www.olx.ua/d/uk/list/q-%D0%BB%D0%BE%D0%B1%D0%BE%D0%B2%D0%B5-%D1%81%D0%BA%D0%BB%D0%BE/"
+        base == "https://www.olx.ua/d/uk/list/q-%D0%BB%D0%BE%D0%B1%D0%BE%D0%B2%D0%B5-%D1%81%D0%BA%D0%BB%D0%BE/"
         or base.startswith("https://www.olx.ua/d/uk/list/q-лобове-скло/")
     )
 

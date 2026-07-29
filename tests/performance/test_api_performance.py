@@ -26,9 +26,7 @@ class TestAPIPerformance:
             return JSONResponse({"status": "healthy"})
 
         async def stats(request: Request):
-            return JSONResponse(
-                {"tasks_total": 1000, "memory_total": 5000, "uptime_seconds": 86400}
-            )
+            return JSONResponse({"tasks_total": 1000, "memory_total": 5000, "uptime_seconds": 86400})
 
         async def metrics(request: Request):
             # Simulate metrics generation

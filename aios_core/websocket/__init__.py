@@ -62,9 +62,7 @@ class WebSocketManager:
     # Connection lifecycle
     # ------------------------------------------------------------------
 
-    async def connect(
-        self, websocket: WebSocket, client_id: str = "", topics: list[str] | None = None
-    ) -> str:
+    async def connect(self, websocket: WebSocket, client_id: str = "", topics: list[str] | None = None) -> str:
         """Accept *websocket* and register it with optional *topics*."""
         if topics is None:
             topics = []
@@ -142,11 +140,7 @@ class WebSocketManager:
         Returns the number of clients that received the message.
         """
         if topic:
-            targets = [
-                cid
-                for cid in self._topic_subscribers.get(topic, set())
-                if cid in self._connections
-            ]
+            targets = [cid for cid in self._topic_subscribers.get(topic, set()) if cid in self._connections]
         else:
             targets = list(self._connections.keys())
 
@@ -179,9 +173,7 @@ class WebSocketManager:
         self._message_count += 1
         return success
 
-    async def send_event(
-        self, event_type: str, data: Any, topic: str | None = None
-    ) -> int:
+    async def send_event(self, event_type: str, data: Any, topic: str | None = None) -> int:
         """Send a typed event to all or topic-filtered clients."""
         msg = {
             "type": event_type,
@@ -273,9 +265,7 @@ class WebSocketManager:
             "total_broadcasts": self._broadcast_count,
             "max_messages_per_second": self._max_msgs_per_sec,
             "heartbeat_interval": self._heartbeat_interval,
-            "topics": {
-                t: len(subs) for t, subs in self._topic_subscribers.items()
-            },
+            "topics": {t: len(subs) for t, subs in self._topic_subscribers.items()},
         }
 
 

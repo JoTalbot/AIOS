@@ -1,4 +1,5 @@
 """Tests for aios_core/autonomy_manager.py"""
+
 from __future__ import annotations
 
 import pytest

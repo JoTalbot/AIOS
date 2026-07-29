@@ -58,9 +58,7 @@ class APIGateway:
         self.routes: dict[str, Route] = {}
         self.middleware: list[Callable] = []
         self._rate_limit_counters: dict[str, list[float]] = {}  # path → timestamps
-        self._request_metrics: dict[
-            str, dict[str, int]
-        ] = {}  # path → {success, failure, total}
+        self._request_metrics: dict[str, dict[str, int]] = {}  # path → {success, failure, total}
         self._total_requests: int = 0
 
     # ── Route Registration ───────────────────────────────────────

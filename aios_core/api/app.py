@@ -88,9 +88,7 @@ from .errors import RequestSafetyMiddleware
 from .security import APIKeyAuthMiddleware, load_api_keys
 
 # Ensure project root is importable
-_PROJECT_ROOT = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
@@ -101,9 +99,7 @@ from aios_core.api.mixins_olx import OLXHandlersMixin
 from aios_core.api.mixins_platforms import PlatformsModulesMixin
 
 
-class AIOSAPI(
-    OLXHandlersMixin, DevicesShardsMixin, PlatformsModulesMixin, CoreHandlersMixin
-):
+class AIOSAPI(OLXHandlersMixin, DevicesShardsMixin, PlatformsModulesMixin, CoreHandlersMixin):
     """Central API state holder.
 
     Holds references to all AIOS subsystems and provides
@@ -134,18 +130,12 @@ class AIOSAPI(
 
         self.db = Database(db_path=db_path)
         self.auth_required = auth_required
-        self.api_keys = (
-            load_api_keys(api_keys) if isinstance(api_keys, str) else api_keys
-        )
+        self.api_keys = load_api_keys(api_keys) if isinstance(api_keys, str) else api_keys
 
-        _const_dir = constitution_dir or os.path.join(
-            _PROJECT_ROOT, "docs/constitution"
-        )
+        _const_dir = constitution_dir or os.path.join(_PROJECT_ROOT, "docs/constitution")
         _pol_dir = policies_dir or os.path.join(_PROJECT_ROOT, "policies")
 
-        self.orchestrator = Orchestrator(
-            db=self.db, constitution_dir=_const_dir, policies_dir=_pol_dir
-        )
+        self.orchestrator = Orchestrator(db=self.db, constitution_dir=_const_dir, policies_dir=_pol_dir)
         self.policy = self.orchestrator.policy
         self.memory = self.orchestrator.memory
         self.knowledge = self.orchestrator.knowledge
@@ -153,9 +143,7 @@ class AIOSAPI(
         self.audit = self.orchestrator.policy.audit
         self.approvals = self.orchestrator.policy.approvals
 
-        self.test_engine = TestEngine(
-            constitution_dir=_const_dir, policies_dir=_pol_dir, db=self.db
-        )
+        self.test_engine = TestEngine(constitution_dir=_const_dir, policies_dir=_pol_dir, db=self.db)
 
         self.mcp_gateway = MCPGateway(
             config=GatewayConfig(
@@ -201,18 +189,14 @@ class AIOSAPI(
         # data/devices.sqlite — set the env to share it).
         from aios_core.platforms import DevicePool
 
-        self.device_pool = device_pool or DevicePool(
-            os.environ.get("AIOS_DEVICES_DB", ":memory:")
-        )
+        self.device_pool = device_pool or DevicePool(os.environ.get("AIOS_DEVICES_DB", ":memory:"))
 
         # Shard router: profile → host sticky routing across servers.
         # AIOS_SHARDS_DB points at the shared routes store; without it the
         # API process keeps an in-memory router.
         from aios_core.platforms import ShardRouter
 
-        self.shard_router = shard_router or ShardRouter(
-            os.environ.get("AIOS_SHARDS_DB", ":memory:")
-        )
+        self.shard_router = shard_router or ShardRouter(os.environ.get("AIOS_SHARDS_DB", ":memory:"))
 
         # Shard gateway: proxies module calls to the profile's host.
         from aios_core.platforms import ShardGateway

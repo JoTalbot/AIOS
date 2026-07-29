@@ -321,9 +321,7 @@ class TestAPIChaos:
             base_url="http://testserver",
         ) as client:
             # Send malformed JSON
-            response = await client.post(
-                "/test", content="not json", headers={"Content-Type": "application/json"}
-            )
+            response = await client.post("/test", content="not json", headers={"Content-Type": "application/json"})
 
             # Should handle gracefully (not crash)
             assert response.status_code in [200, 400, 422, 500]

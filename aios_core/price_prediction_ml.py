@@ -167,9 +167,7 @@ def _eval_poly(coeffs: list[float], x: float) -> float:
     return sum(c * x**i for i, c in enumerate(coeffs))
 
 
-def _mean_squared_error(
-    points: list[tuple[float, float]], coeffs: list[float]
-) -> float:
+def _mean_squared_error(points: list[tuple[float, float]], coeffs: list[float]) -> float:
     """Compute MSE of polynomial fit against observed data.
 
     Args:
@@ -199,9 +197,7 @@ class SimpleMovingAverage:
         """
         self.window = window
 
-    def predict(
-        self, history: list[PricePoint], horizon_days: int = 7
-    ) -> PredictionResult:
+    def predict(self, history: list[PricePoint], horizon_days: int = 7) -> PredictionResult:
         """Predict future price using SMA.
 
         Args:
@@ -259,9 +255,7 @@ class WeightedMovingAverage:
         """
         self.window = window
 
-    def predict(
-        self, history: list[PricePoint], horizon_days: int = 7
-    ) -> PredictionResult:
+    def predict(self, history: list[PricePoint], horizon_days: int = 7) -> PredictionResult:
         """Predict future price using WMA.
 
         Args:
@@ -322,9 +316,7 @@ class ExponentialMovingAverage:
         self.window = window
         self.alpha = 2.0 / (window + 1)
 
-    def predict(
-        self, history: list[PricePoint], horizon_days: int = 7
-    ) -> PredictionResult:
+    def predict(self, history: list[PricePoint], horizon_days: int = 7) -> PredictionResult:
         """Predict future price using EMA.
 
         Args:
@@ -425,9 +417,7 @@ class PolynomialPredictor:
         self.degree = degree
         self.min_points = min_points
 
-    def predict(
-        self, history: list[PricePoint], horizon_days: int = 7, fingerprint: str = ""
-    ) -> PredictionResult:
+    def predict(self, history: list[PricePoint], horizon_days: int = 7, fingerprint: str = "") -> PredictionResult:
         """Predict future price using polynomial regression.
 
         Args:
@@ -462,9 +452,7 @@ class PolynomialPredictor:
 
         if not coeffs:
             return PredictionResult(
-                model=PredictionModel.POLYNOMIAL_2
-                if self.degree == 2
-                else PredictionModel.POLYNOMIAL_3,
+                model=PredictionModel.POLYNOMIAL_2 if self.degree == 2 else PredictionModel.POLYNOMIAL_3,
                 fingerprint=fingerprint,
                 current_price=history[-1].price,
                 predicted_price=history[-1].price,
@@ -544,9 +532,7 @@ class EnsemblePredictor:
 
         self.weights = weights or [1.0] * len(self.predictors)
 
-    def predict(
-        self, history: list[PricePoint], horizon_days: int = 7, fingerprint: str = ""
-    ) -> PredictionResult:
+    def predict(self, history: list[PricePoint], horizon_days: int = 7, fingerprint: str = "") -> PredictionResult:
         """Predict using ensemble of multiple models.
 
         Args:

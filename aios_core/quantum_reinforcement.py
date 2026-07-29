@@ -62,14 +62,10 @@ class QuantumQLearning:
         """Update Q-values with quantum-enhanced learning rate."""
         key = (state, action)
         old_value = self.q_table.get(key, 0.0)
-        next_max = max(
-            self.q_table.get((next_state, a), 0.0) for a in range(self.actions)
-        )
+        next_max = max(self.q_table.get((next_state, a), 0.0) for a in range(self.actions))
         # Quantum-enhanced learning rate (annealing)
         quantum_lr = self._learning_rate * (1 + 0.1 * random.uniform(-1, 1))
-        new_value = old_value + quantum_lr * (
-            reward + self._discount * next_max - old_value
-        )
+        new_value = old_value + quantum_lr * (reward + self._discount * next_max - old_value)
         self.q_table[key] = round(new_value, 4)
         self._episode_rewards.append(reward)
         # Store in quantum replay buffer
@@ -87,24 +83,16 @@ class QuantumQLearning:
         """Simulate quantum policy gradient training."""
         avg_rewards: list[float] = []
         for ep in range(episodes):
-            total_reward = sum(
-                random.uniform(-1, 1) * (1 + ep * 0.05) for _ in range(self.states)
-            )
+            total_reward = sum(random.uniform(-1, 1) * (1 + ep * 0.05) for _ in range(self.states))
             avg_rewards.append(round(total_reward, 2))
         return {
             "episodes": episodes,
             "final_avg_reward": avg_rewards[-1] if avg_rewards else 0,
-            "convergence": abs(avg_rewards[-1] - avg_rewards[0]) < 1
-            if len(avg_rewards) > 1
-            else False,
-            "policy_improvement": round(
-                (avg_rewards[-1] - avg_rewards[0]) / max(1, abs(avg_rewards[0])), 3
-            ),
+            "convergence": abs(avg_rewards[-1] - avg_rewards[0]) < 1 if len(avg_rewards) > 1 else False,
+            "policy_improvement": round((avg_rewards[-1] - avg_rewards[0]) / max(1, abs(avg_rewards[0])), 3),
         }
 
-    def variational_quantum_circuit(
-        self, num_params: int = 4, shots: int = 100
-    ) -> dict[str, Any]:
+    def variational_quantum_circuit(self, num_params: int = 4, shots: int = 100) -> dict[str, Any]:
         """Optimize policy via variational quantum circuit."""
         params = [round(random.uniform(0, 2 * math.pi), 4) for _ in range(num_params)]
         best_cost = round(random.uniform(0.5, 2.0), 3)
@@ -122,12 +110,8 @@ class QuantumQLearning:
         if len(self._quantum_replay_buffer) < batch_size:
             return self._quantum_replay_buffer
         # Weight by entanglement tag (higher = more important)
-        weights = [
-            entry.get("entanglement_tag", 0.5) for entry in self._quantum_replay_buffer
-        ]
-        sampled = random.choices(
-            self._quantum_replay_buffer, weights=weights, k=batch_size
-        )
+        weights = [entry.get("entanglement_tag", 0.5) for entry in self._quantum_replay_buffer]
+        sampled = random.choices(self._quantum_replay_buffer, weights=weights, k=batch_size)
         return sampled
 
     def quantum_episode(self, steps: int = 20) -> dict[str, Any]:
@@ -141,9 +125,7 @@ class QuantumQLearning:
             next_state = random.randint(0, self.states - 1)
             self.update(state, action, reward, next_state)
             total_reward += reward
-            path.append(
-                {"step": step, "state": state, "action": action, "reward": reward}
-            )
+            path.append({"step": step, "state": state, "action": action, "reward": reward})
             state = next_state
         return {
             "total_reward": round(total_reward, 2),
@@ -164,9 +146,7 @@ class QuantumQLearning:
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
-        avg_reward = round(
-            sum(self._episode_rewards) / max(1, len(self._episode_rewards)), 3
-        )
+        avg_reward = round(sum(self._episode_rewards) / max(1, len(self._episode_rewards)), 3)
         return {
             "q_entries": len(self.q_table),
             "states": self.states,

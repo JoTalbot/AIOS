@@ -99,9 +99,7 @@ class OfflineRL:
         """Add a batch of transitions."""
         return [self.add_transition(t) for t in transitions]
 
-    def get_transitions(
-        self, state: str | None = None, action: str | None = None, limit: int = 50
-    ) -> list[Transition]:
+    def get_transitions(self, state: str | None = None, action: str | None = None, limit: int = 50) -> list[Transition]:
         """Query transitions from the dataset."""
         result = self.dataset
         if state:
@@ -122,8 +120,7 @@ class OfflineRL:
             "avg_reward": round(avg_reward, 4),
             "unique_states": unique_states,
             "unique_actions": unique_actions,
-            "terminal_ratio": sum(1 for t in self.dataset if t.done)
-            / len(self.dataset),
+            "terminal_ratio": sum(1 for t in self.dataset if t.done) / len(self.dataset),
         }
 
     # ── Behavior Policy ────────────────────────────────────────────
@@ -132,9 +129,7 @@ class OfflineRL:
         """Update behavior policy estimate from new transition."""
         if state not in self.behavior_policy:
             self.behavior_policy[state] = {}
-        self.behavior_policy[state][action] = (
-            self.behavior_policy[state].get(action, 0) + 1
-        )
+        self.behavior_policy[state][action] = self.behavior_policy[state].get(action, 0) + 1
 
     def estimate_behavior_prob(self, state: str, action: str) -> float:
         """Estimate probability of action under behavior policy."""
@@ -174,27 +169,17 @@ class OfflineRL:
                 if prob >= self.bcq_threshold:
                     # Q-learning update
                     current_q = self.q_values.get(t.state, {}).get(t.action, 0.0)
-                    max_next_q = max(
-                        self.q_values.get(t.next_state, {}).values(), default=0
-                    )
+                    max_next_q = max(self.q_values.get(t.next_state, {}).values(), default=0)
                     new_q = current_q + 0.1 * (t.reward + 0.9 * max_next_q - current_q)
                     if t.state not in self.q_values:
                         self.q_values[t.state] = {}
                     self.q_values[t.state][t.action] = new_q
 
         # Estimate policy value
-        avg_q = sum(max(q.values()) for q in self.q_values.values() if q) / max(
-            len(self.q_values), 1
-        )
-        avg_behavior_reward = sum(t.reward for t in self.dataset) / max(
-            len(self.dataset), 1
-        )
+        avg_q = sum(max(q.values()) for q in self.q_values.values() if q) / max(len(self.q_values), 1)
+        avg_behavior_reward = sum(t.reward for t in self.dataset) / max(len(self.dataset), 1)
 
-        improvement = (
-            (avg_q - avg_behavior_reward) / abs(avg_behavior_reward)
-            if avg_behavior_reward != 0
-            else 0.0
-        )
+        improvement = (avg_q - avg_behavior_reward) / abs(avg_behavior_reward) if avg_behavior_reward != 0 else 0.0
 
         return OfflineRLResult(
             algorithm="bcq",
@@ -211,9 +196,7 @@ class OfflineRL:
             for t in self.dataset:
                 # Standard Q-learning update
                 current_q = self.q_values.get(t.state, {}).get(t.action, 0.0)
-                max_next_q = max(
-                    self.q_values.get(t.next_state, {}).values(), default=0
-                )
+                max_next_q = max(self.q_values.get(t.next_state, {}).values(), default=0)
                 new_q = current_q + 0.1 * (t.reward + 0.9 * max_next_q - current_q)
                 if t.state not in self.q_values:
                     self.q_values[t.state] = {}
@@ -222,25 +205,15 @@ class OfflineRL:
             # CQL penalty: penalize Q-values for actions not in dataset
             for state, q_dict in self.q_values.items():
                 # Find actions in dataset for this state
-                dataset_actions = {
-                    t.action for t in self.dataset if t.state == state
-                }
+                dataset_actions = {t.action for t in self.dataset if t.state == state}
                 for action in q_dict:
                     if action not in dataset_actions:
                         q_dict[action] -= self.cql_alpha * 0.1  # conservative penalty
                         cql_penalty += self.cql_alpha * 0.1
 
-        avg_q = sum(max(q.values()) for q in self.q_values.values() if q) / max(
-            len(self.q_values), 1
-        )
-        avg_behavior_reward = sum(t.reward for t in self.dataset) / max(
-            len(self.dataset), 1
-        )
-        improvement = (
-            (avg_q - avg_behavior_reward) / abs(avg_behavior_reward)
-            if avg_behavior_reward != 0
-            else 0.0
-        )
+        avg_q = sum(max(q.values()) for q in self.q_values.values() if q) / max(len(self.q_values), 1)
+        avg_behavior_reward = sum(t.reward for t in self.dataset) / max(len(self.dataset), 1)
+        improvement = (avg_q - avg_behavior_reward) / abs(avg_behavior_reward) if avg_behavior_reward != 0 else 0.0
 
         return OfflineRLResult(
             algorithm="cql",
@@ -253,9 +226,7 @@ class OfflineRL:
 
     # ── Importance Sampling ──────────────────────────────────────────
 
-    def importance_weights(
-        self, target_policy: dict[str, dict[str, float]]
-    ) -> list[float]:
+    def importance_weights(self, target_policy: dict[str, dict[str, float]]) -> list[float]:
         """Compute importance sampling weights for OPE."""
         weights = []
         for t in self.dataset:
@@ -265,9 +236,7 @@ class OfflineRL:
             weights.append(weight)
         return weights
 
-    def off_policy_evaluation(
-        self, target_policy: dict[str, dict[str, float]]
-    ) -> float:
+    def off_policy_evaluation(self, target_policy: dict[str, dict[str, float]]) -> float:
         """Off-Policy Evaluation using importance sampling (IS estimate)."""
         weights = self.importance_weights(target_policy)
         weighted_rewards = [w * t.reward for w, t in zip(weights, self.dataset, strict=False)]
@@ -283,10 +252,7 @@ class OfflineRL:
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
         avg_q = (
-            (
-                sum(max(q.values()) for q in self.q_values.values() if q)
-                / max(len(self.q_values), 1)
-            )
+            (sum(max(q.values()) for q in self.q_values.values() if q) / max(len(self.q_values), 1))
             if self.q_values
             else 0.0
         )

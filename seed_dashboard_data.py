@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 DB_PATH = "/root/AIOS/aios.sqlite"
 
+
 def seed():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -60,20 +61,33 @@ def seed():
                 completed = started
             agent = ["orch", "olx", "android", "tg", "policy"][i % 5]
             risk = ["low", "medium", "high"][i % 3]
-            steps_data = json.dumps([
-                {"name": "init", "status": "completed", "step_type": "tool"},
-                {"name": "execute", "status": status if status != "running" else "running", "step_type": "tool"},
-            ])
+            steps_data = json.dumps(
+                [
+                    {"name": "init", "status": "completed", "step_type": "tool"},
+                    {"name": "execute", "status": status if status != "running" else "running", "step_type": "tool"},
+                ]
+            )
             cur.execute(
                 """INSERT INTO tasks (id, name, description, status, agent_id, authority,
                     risk_level, steps_data, current_step_index, created_at, started_at,
                     completed_at, error, metadata)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (tid, name, desc, status, agent, "constitution", risk,
-                 steps_data, 1 if status == "running" else 0,
-                 created, started, completed,
-                 "Timeout waiting for emulator response" if status == "failed" else None,
-                 json.dumps({"priority": i % 3, "query": "spot"})),
+                (
+                    tid,
+                    name,
+                    desc,
+                    status,
+                    agent,
+                    "constitution",
+                    risk,
+                    steps_data,
+                    1 if status == "running" else 0,
+                    created,
+                    started,
+                    completed,
+                    "Timeout waiting for emulator response" if status == "failed" else None,
+                    json.dumps({"priority": i % 3, "query": "spot"}),
+                ),
             )
 
     # --- Seed memory_items ---
@@ -100,8 +114,19 @@ def seed():
             """INSERT INTO memory_items (id, category, content, tags, source,
                 confidence, created_at, updated_at, access_count, metadata, owner_id)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (mid, cat, content, tags, "orchestrator", 0.95,
-             created, updated, i * 5, json.dumps({"importance": 0.8}), "aios"),
+            (
+                mid,
+                cat,
+                content,
+                tags,
+                "orchestrator",
+                0.95,
+                created,
+                updated,
+                i * 5,
+                json.dumps({"importance": 0.8}),
+                "aios",
+            ),
         )
 
     # --- Seed evolution_records ---
@@ -112,15 +137,15 @@ def seed():
         "Add Telegram bot inline query support",
         "Integrate WebAssembly plugin system",
         "Add constitutional rule conflict resolver",
-    ]    
-    
+    ]
+
     for i, etype in enumerate(evolution_types):
         eid = str(uuid.uuid4())[:12]
         proposed_at = (now - timedelta(days=i + 1)).isoformat()
         cur.execute(
             """INSERT INTO evolution_records (id, evolution_type, proposed_at, status)
                VALUES (?, ?, ?, ?)""",
-            (eid, etype, proposed_at, "proposed")
+            (eid, etype, proposed_at, "proposed"),
         )
 
     # --- Seed audit_events ---
@@ -134,7 +159,7 @@ def seed():
         ("approval_granted", "policy", "Evolution proposal approved for deployment"),
         ("approval_denied", "policy", "Low-scoring proposal rejected"),
     ]
-    
+
     for i, (etype, agent, detail) in enumerate(audit_events):
         aid = str(uuid.uuid4())[:12]
         ts = (now - timedelta(hours=i + 1)).isoformat()
@@ -142,8 +167,7 @@ def seed():
             """INSERT INTO audit_events (id, event_type, data, timestamp,
                 agent_id, decision)
                VALUES (?, ?, ?, ?, ?, ?)""",
-            (aid, etype, json.dumps({"detail": detail, "task_id": uuid.uuid4().hex[:12]}),
-             ts, agent, "allow")
+            (aid, etype, json.dumps({"detail": detail, "task_id": uuid.uuid4().hex[:12]}), ts, agent, "allow"),
         )
 
     conn.commit()

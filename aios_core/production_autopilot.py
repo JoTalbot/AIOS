@@ -105,11 +105,7 @@ class ProductionConfig:
                     platform=plat,
                     name=name,
                     actions_per_hour=int(os.getenv(f"AIOS_{name.upper()}_APH", aph)),
-                    queries=(
-                        ["iPhone", "Samsung", "Nike"]
-                        if plat == "olx"
-                        else ["fashion", "shoes"]
-                    ),
+                    queries=(["iPhone", "Samsung", "Nike"] if plat == "olx" else ["fashion", "shoes"]),
                     webhook_url=webhook,
                 )
             )
@@ -240,11 +236,7 @@ class ProductionAutopilot:
         self._daily_reports: list[DailyReport] = []
         self._ban_count = 0
         self.version = "9.1.0-production"
-        self.fast_mode = (
-            fast_mode
-            or config.simulation_speed > 5
-            or os.getenv("AIOS_FAST_TEST", "") == "1"
-        )
+        self.fast_mode = fast_mode or config.simulation_speed > 5 or os.getenv("AIOS_FAST_TEST", "") == "1"
 
         # init pacers
         for prof in config.profiles:
@@ -258,9 +250,7 @@ class ProductionAutopilot:
             )
             self._pacers[key] = pacer
 
-    def _check_compliance(
-        self, profile: ProductionProfile, action: str
-    ) -> dict[str, Any]:
+    def _check_compliance(self, profile: ProductionProfile, action: str) -> dict[str, Any]:
         """Check compliance for action."""
         try:
             result = compliance_guard(profile.platform, action)
@@ -294,9 +284,7 @@ class ProductionAutopilot:
     def _get_pacer(self, profile_key: str) -> Pacer | None:
         return self._pacers.get(profile_key)
 
-    def run_single_cycle(
-        self, profile: ProductionProfile, simulate_actions: int = 20
-    ) -> CycleReport:
+    def run_single_cycle(self, profile: ProductionProfile, simulate_actions: int = 20) -> CycleReport:
         """Run single autopilot cycle for one profile."""
         profile_key = f"{profile.platform}:{profile.name}"
         started = time.time()
@@ -309,9 +297,7 @@ class ProductionAutopilot:
             compliance_checks.append(check)
 
         # If compliance blocks collect, skip cycle guarded
-        collect_allowed = next(
-            (c for c in compliance_checks if c["action"] == "collect"), {}
-        ).get("allowed", True)
+        collect_allowed = next((c for c in compliance_checks if c["action"] == "collect"), {}).get("allowed", True)
         if not collect_allowed and self.config.compliance_strict:
             return CycleReport(
                 profile_key=profile_key,
@@ -344,9 +330,7 @@ class ProductionAutopilot:
 
             # Record for predictive
             device_id = profile.device_serial or f"emulator-{hash(profile_key) % 1000}"
-            self._predictive.record_event(
-                device_id, f"{profile.platform}_collect", latency, is_success
-            )
+            self._predictive.record_event(device_id, f"{profile.platform}_collect", latency, is_success)
 
             actions += 1
             if is_success:
@@ -427,11 +411,7 @@ class ProductionAutopilot:
         # Generate daily reports
         daily = defaultdict(list)
         for r in all_reports:
-            day_idx = (
-                int((r.started_at - all_reports[0].started_at) / (24 * 3600))
-                if all_reports
-                else 0
-            )
+            day_idx = int((r.started_at - all_reports[0].started_at) / (24 * 3600)) if all_reports else 0
             daily[day_idx].append(r)
 
         daily_reports = []
@@ -460,9 +440,7 @@ class ProductionAutopilot:
                 bans=sum(1 for r in reps if r.failed / max(r.actions, 1) > 0.5),
                 drifts=sum(1 for r in reps if r.drift_detected),
                 predictive_alerts=sum(1 for r in reps if r.predictive_risk > 0.5),
-                compliance_blocks=sum(
-                    1 for r in reps if r.status == "blocked-compliance"
-                ),
+                compliance_blocks=sum(1 for r in reps if r.status == "blocked-compliance"),
             )
             daily_reports.append(dar)
             self._daily_reports.append(dar)
@@ -470,9 +448,7 @@ class ProductionAutopilot:
         # Final summary
         total_bans = self._ban_count
         total_drifts = sum(1 for r in all_reports if r.drift_detected)
-        avg_success = sum(r.success for r in all_reports) / max(
-            sum(r.actions for r in all_reports), 1
-        )
+        avg_success = sum(r.success for r in all_reports) / max(sum(r.actions for r in all_reports), 1)
 
         summary = {
             "simulation": {
@@ -484,15 +460,11 @@ class ProductionAutopilot:
                 "bans": total_bans,
                 "drifts": total_drifts,
                 "ban_free": total_bans == 0,
-                "ga_criteria_met": total_bans == 0
-                and avg_success > 0.9
-                and len(self.config.profiles) >= 3,
+                "ga_criteria_met": total_bans == 0 and avg_success > 0.9 and len(self.config.profiles) >= 3,
             },
             "profiles": {p.name: p.to_dict() for p in self.config.profiles},
             "daily_reports": [d.to_dict() for d in daily_reports],
-            "pacing_metrics": {
-                key: pacer.stats() for key, pacer in self._pacers.items()
-            },
+            "pacing_metrics": {key: pacer.stats() for key, pacer in self._pacers.items()},
             "health": self._predictive.health_report(),
             "timestamp": time.time(),
             "version": self.version,
@@ -504,11 +476,7 @@ class ProductionAutopilot:
         """Current production health."""
         total_cycles = len(self._cycle_history)
         total_actions = sum(r.actions for r in self._cycle_history)
-        avg_success = (
-            sum(r.success for r in self._cycle_history) / max(total_actions, 1)
-            if total_cycles
-            else 0
-        )
+        avg_success = sum(r.success for r in self._cycle_history) / max(total_actions, 1) if total_cycles else 0
 
         return {
             "version": self.version,

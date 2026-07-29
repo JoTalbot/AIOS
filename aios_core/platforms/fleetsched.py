@@ -54,8 +54,7 @@ class FleetScheduler:
         return [
             job
             for job in jobs
-            if now - self._last_run(job["platform"], job["profile"])
-            >= float(job.get("every_s", 900))
+            if now - self._last_run(job["platform"], job["profile"]) >= float(job.get("every_s", 900))
         ]
 
     def run_due(
@@ -112,8 +111,7 @@ class FleetScheduler:
                             {
                                 "platform": platform,
                                 "profile": profile,
-                                "hint": "recalibrate: calibrate --write && "
-                                "codegen --force",
+                                "hint": "recalibrate: calibrate --write && codegen --force",
                             },
                         )
             except Exception as exc:

@@ -1,4 +1,5 @@
 """Platform Registry — управление всеми платформенными адаптерами."""
+
 from __future__ import annotations
 
 from .base import PlatformAdapter
@@ -16,7 +17,7 @@ from .whatsapp_adapter import WhatsAppAdapter
 
 class PlatformRegistry:
     """Реестр всех доступных платформ."""
-    
+
     def __init__(self):
         self._adapters: dict[str, PlatformAdapter] = {}
         self._adapter_classes: dict[str, type[PlatformAdapter]] = {

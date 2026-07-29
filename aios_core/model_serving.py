@@ -18,9 +18,7 @@ class ModelServer:
         """Initialize ModelServer."""
         self.registry = registry
         self.models: dict[str, dict[str, Any]] = {}
-        self.traffic_splits: dict[
-            str, dict[str, float]
-        ] = {}  # model_name -> {version: weight}
+        self.traffic_splits: dict[str, dict[str, float]] = {}  # model_name -> {version: weight}
         self.performance_stats: dict[str, dict[str, float]] = {}
 
     def deploy(
@@ -57,9 +55,7 @@ class ModelServer:
         normalized = {v: w / total_weight for v, w in split_dict.items()}
         self.traffic_splits[model_id] = normalized
 
-    def predict(
-        self, model_id: str, input_data: Any, explicit_version: str | None = None
-    ) -> dict[str, Any]:
+    def predict(self, model_id: str, input_data: Any, explicit_version: str | None = None) -> dict[str, Any]:
         """Perform thread-safe inference routing with performance timing."""
         start_time = time.time()
         key = None

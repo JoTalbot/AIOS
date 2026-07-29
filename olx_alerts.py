@@ -6,6 +6,7 @@ Handles:
 - Price analytics (min/max/avg/median/p10/p90) per query
 - Sending Telegram alerts to subscribed chats
 """
+
 from __future__ import annotations
 
 import json
@@ -60,16 +61,24 @@ def init_subs_db(path: str = SUBS_DB) -> sqlite3.Connection:
     return conn
 
 
-def subscribe_chat(conn: sqlite3.Connection, chat_id: int, query: str,
-                   username: str | None = None, first_name: str | None = None,
-                   min_price: float | None = None, max_price: float | None = None):
+def subscribe_chat(
+    conn: sqlite3.Connection,
+    chat_id: int,
+    query: str,
+    username: str | None = None,
+    first_name: str | None = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
+):
     now = datetime.now(UTC).isoformat()
     conn.execute(
-        "INSERT OR IGNORE INTO subscribers(chat_id,username,first_name,subscribed_at,enabled) "
-        "VALUES (?,?,?,?,1)", (chat_id, username, first_name, now))
+        "INSERT OR IGNORE INTO subscribers(chat_id,username,first_name,subscribed_at,enabled) VALUES (?,?,?,?,1)",
+        (chat_id, username, first_name, now),
+    )
     conn.execute(
-        "INSERT OR REPLACE INTO subscriptions(chat_id,query,min_price,max_price,created_at) "
-        "VALUES (?,?,?,?,?)", (chat_id, query, min_price, max_price, now))
+        "INSERT OR REPLACE INTO subscriptions(chat_id,query,min_price,max_price,created_at) VALUES (?,?,?,?,?)",
+        (chat_id, query, min_price, max_price, now),
+    )
     conn.commit()
 
 
@@ -83,8 +92,8 @@ def unsubscribe_chat(conn: sqlite3.Connection, chat_id: int, query: str | None =
 
 def list_subscriptions(conn: sqlite3.Connection, chat_id: int) -> list[dict]:
     rows = conn.execute(
-        "SELECT query, min_price, max_price, created_at FROM subscriptions "
-        "WHERE chat_id=? ORDER BY query", (chat_id,)).fetchall()
+        "SELECT query, min_price, max_price, created_at FROM subscriptions WHERE chat_id=? ORDER BY query", (chat_id,)
+    ).fetchall()
     return [{"query": r[0], "min_price": r[1], "max_price": r[2], "created_at": r[3]} for r in rows]
 
 
@@ -92,21 +101,24 @@ def all_enabled_chats_for_query(conn: sqlite3.Connection, query: str) -> list[in
     rows = conn.execute(
         "SELECT s.chat_id FROM subscriptions s "
         "JOIN subscribers sub ON sub.chat_id=s.chat_id "
-        "WHERE s.query=? AND sub.enabled=1", (query,)).fetchall()
+        "WHERE s.query=? AND sub.enabled=1",
+        (query,),
+    ).fetchall()
     return [r[0] for r in rows]
 
 
 def mark_sent(conn: sqlite3.Connection, chat_id: int, ad_id: int, query: str):
     conn.execute(
         "INSERT OR IGNORE INTO sent_alerts(chat_id,ad_id,query,sent_at) VALUES (?,?,?,?)",
-        (chat_id, ad_id, query, datetime.now(UTC).isoformat()))
+        (chat_id, ad_id, query, datetime.now(UTC).isoformat()),
+    )
     conn.commit()
 
 
 def already_sent(conn: sqlite3.Connection, chat_id: int, ad_id: int) -> bool:
-    return conn.execute(
-        "SELECT 1 FROM sent_alerts WHERE chat_id=? AND ad_id=?", (chat_id, ad_id)
-    ).fetchone() is not None
+    return (
+        conn.execute("SELECT 1 FROM sent_alerts WHERE chat_id=? AND ad_id=?", (chat_id, ad_id)).fetchone() is not None
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -128,10 +140,12 @@ def compute_price_stats(ads_conn: sqlite3.Connection, query: str) -> PriceStats 
     rows = ads_conn.execute(
         "SELECT price_value FROM ads WHERE query=? AND active=1 AND price_currency='UAH' "
         "AND price_value IS NOT NULL AND price_value > 0",
-        (query,)).fetchall()
+        (query,),
+    ).fetchall()
     vals = sorted(r[0] for r in rows)
     if not vals:
         return None
+
     def pct(p):
         if len(vals) == 1:
             return vals[0]
@@ -139,12 +153,16 @@ def compute_price_stats(ads_conn: sqlite3.Connection, query: str) -> PriceStats 
         f = int(k)
         c = min(f + 1, len(vals) - 1)
         return vals[f] + (vals[c] - vals[f]) * (k - f)
+
     return PriceStats(
-        query=query, count=len(vals),
-        min_p=vals[0], max_p=vals[-1],
+        query=query,
+        count=len(vals),
+        min_p=vals[0],
+        max_p=vals[-1],
         avg=statistics.fmean(vals),
         median=statistics.median(vals),
-        p10=pct(0.10), p90=pct(0.90),
+        p10=pct(0.10),
+        p90=pct(0.90),
     )
 
 
@@ -166,8 +184,13 @@ def price_assessment(stats: PriceStats, price: float) -> str:
 # ---------------------------------------------------------------------------
 # New-ad detection (after a collection cycle)
 # ---------------------------------------------------------------------------
-def find_new_ads(ads_conn: sqlite3.Connection, since_ts: str, query: str,
-                 min_price: float | None = None, max_price: float | None = None) -> list[dict]:
+def find_new_ads(
+    ads_conn: sqlite3.Connection,
+    since_ts: str,
+    query: str,
+    min_price: float | None = None,
+    max_price: float | None = None,
+) -> list[dict]:
     """Return ads inserted or refreshed after since_ts that were never collected before."""
     sql = """
     SELECT a.* FROM ads a
@@ -194,17 +217,17 @@ def find_new_ads(ads_conn: sqlite3.Connection, since_ts: str, query: str,
 # ---------------------------------------------------------------------------
 # Telegram sending
 # ---------------------------------------------------------------------------
-def tg_send(token: str, chat_id: int, text: str, parse_mode: str = "HTML",
-            disable_web_preview: bool = False) -> bool:
+def tg_send(token: str, chat_id: int, text: str, parse_mode: str = "HTML", disable_web_preview: bool = False) -> bool:
     url = TG_API.format(token=token)
-    data = json.dumps({
-        "chat_id": chat_id,
-        "text": text[:4000],
-        "parse_mode": parse_mode,
-        "disable_web_page_preview": disable_web_preview,
-    }).encode()
-    req = urllib.request.Request(url, data=data,
-                                 headers={"Content-Type": "application/json"})
+    data = json.dumps(
+        {
+            "chat_id": chat_id,
+            "text": text[:4000],
+            "parse_mode": parse_mode,
+            "disable_web_page_preview": disable_web_preview,
+        }
+    ).encode()
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             result = json.loads(resp.read())
@@ -228,15 +251,21 @@ def format_ad_message(ad: dict, stats: PriceStats | None, query: str) -> str:
     url = ad.get("url") or "#"
     return (
         f"🔔 <b>Нове оголошення</b> «{query}»{tag}\n"
-        f"<a href=\"{url}\">{title}</a>\n"
+        f'<a href="{url}">{title}</a>\n'
         f"{price_str}\n"
         f"📍 {city} · {is_business} {name}\n"
     )
 
 
-def send_cycle_alerts(ads_conn: sqlite3.Connection, subs_conn: sqlite3.Connection,
-                      tg_token: str, queries: Iterable[str], cycle_ts: str,
-                      previous_cycle_ts: str | None, max_per_query_per_chat: int = 5):
+def send_cycle_alerts(
+    ads_conn: sqlite3.Connection,
+    subs_conn: sqlite3.Connection,
+    tg_token: str,
+    queries: Iterable[str],
+    cycle_ts: str,
+    previous_cycle_ts: str | None,
+    max_per_query_per_chat: int = 5,
+):
     """Send new-ad alerts for every subscribed chat.
 
     previous_cycle_ts: last completed cycle's timestamp (cutoff for "newness").
@@ -250,17 +279,17 @@ def send_cycle_alerts(ads_conn: sqlite3.Connection, subs_conn: sqlite3.Connectio
         new_ads = find_new_ads(ads_conn, previous_cycle_ts or cycle_ts, query)
         if not new_ads:
             continue
-        log.info("Alerts for '%s': %d new ads, %d subscribed chats",
-                 query, len(new_ads), len(chats))
+        log.info("Alerts for '%s': %d new ads, %d subscribed chats", query, len(new_ads), len(chats))
         for chat_id in chats:
             sent = 0
             # Determine price filter for this chat+query
             sub = subs_conn.execute(
-                "SELECT min_price, max_price FROM subscriptions WHERE chat_id=? AND query=?",
-                (chat_id, query)).fetchone()
+                "SELECT min_price, max_price FROM subscriptions WHERE chat_id=? AND query=?", (chat_id, query)
+            ).fetchone()
             min_p, max_p = (sub[0], sub[1]) if sub else (None, None)
             filtered = [
-                a for a in new_ads
+                a
+                for a in new_ads
                 if (min_p is None or a.get("price_value") is None or a["price_value"] >= min_p)
                 and (max_p is None or a.get("price_value") is None or a["price_value"] <= max_p)
                 and not already_sent(subs_conn, chat_id, a["id"])

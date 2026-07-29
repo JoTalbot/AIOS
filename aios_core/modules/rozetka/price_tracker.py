@@ -90,9 +90,7 @@ class RozetkaPriceTracker:
 
             # Find the most recent sighting and the highest prior price
             latest = history[-1]
-            prior_prices = [
-                h["price"] for h in history[:-1] if h.get("price") is not None
-            ]
+            prior_prices = [h["price"] for h in history[:-1] if h.get("price") is not None]
 
             if not prior_prices or latest.get("price") is None:
                 continue

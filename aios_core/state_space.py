@@ -130,9 +130,7 @@ class StateSpaceModel:
     def step(self, u: float) -> float:
         """Single step in recurrence mode: state update + output."""
         # State update: s = dA * s + dB * u
-        self.state = [
-            da * s + db * u for da, s, db in zip(self.dA, self.state, self.dB, strict=False)
-        ]
+        self.state = [da * s + db * u for da, s, db in zip(self.dA, self.state, self.dB, strict=False)]
         # Output: y = C * s + D * u
         y = sum(c * s for c, s in zip(self.C, self.state, strict=False))
         y += self.D[0] * u if self.input_dim > 0 else 0.0

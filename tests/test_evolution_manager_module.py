@@ -1,4 +1,5 @@
 """Tests for aios_core/evolution_manager.py"""
+
 from __future__ import annotations
 
 import pytest
@@ -32,32 +33,32 @@ class TestEvolutionManager:
 
     def test_get_proposal(self, manager):
         proposal = manager.propose(change="test", component="c")
-        pid = getattr(proposal, 'proposal_id', getattr(proposal, 'id', None))
+        pid = getattr(proposal, "proposal_id", getattr(proposal, "id", None))
         if pid:
             fetched = manager.get_proposal(pid)
             assert fetched is not None
 
     def test_advance(self, manager):
         proposal = manager.propose(change="test", component="c")
-        pid = getattr(proposal, 'proposal_id', getattr(proposal, 'id', None))
+        pid = getattr(proposal, "proposal_id", getattr(proposal, "id", None))
         if pid:
             manager.advance(pid)
 
     def test_approve(self, manager):
         proposal = manager.propose(change="approved", component="c")
-        pid = getattr(proposal, 'proposal_id', getattr(proposal, 'id', None))
+        pid = getattr(proposal, "proposal_id", getattr(proposal, "id", None))
         if pid:
             manager.approve(pid)
 
     def test_reject(self, manager):
         proposal = manager.propose(change="rejected", component="c")
-        pid = getattr(proposal, 'proposal_id', getattr(proposal, 'id', None))
+        pid = getattr(proposal, "proposal_id", getattr(proposal, "id", None))
         if pid:
             manager.reject(pid, reason="too risky")
 
     def test_can_deploy(self, manager):
         proposal = manager.propose(change="deploy", component="c")
-        pid = getattr(proposal, 'proposal_id', getattr(proposal, 'id', None))
+        pid = getattr(proposal, "proposal_id", getattr(proposal, "id", None))
         if pid:
             result = manager.can_deploy(pid)
             assert isinstance(result, bool)

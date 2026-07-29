@@ -68,26 +68,18 @@ class GeneratedTest:
         ]
 
         for idx, step in enumerate(self.steps):
-            lines.append(
-                f"    # Step {idx + 1}: {step.description or step.action} {step.target or ''}"
-            )
+            lines.append(f"    # Step {idx + 1}: {step.description or step.action} {step.target or ''}")
             if step.action == "tap":
                 hints = f'["{step.target}"]' if step.target else "[]"
-                lines.append(
-                    f"    assert classifier.find_with_cv(driver, {hints}) or driver.tap_by_hint({hints})"
-                )
+                lines.append(f"    assert classifier.find_with_cv(driver, {hints}) or driver.tap_by_hint({hints})")
             elif step.action == "type":
                 lines.append(f'    driver.type_text("{step.value or ""}")')
             elif step.action == "swipe":
                 lines.append("    driver.swipe(500, 1500, 500, 500)")
             elif step.action == "wait":
-                lines.append(
-                    f'    driver.wait_for_screen("{step.expected_screen}", timeout={step.timeout})'
-                )
+                lines.append(f'    driver.wait_for_screen("{step.expected_screen}", timeout={step.timeout})')
             elif step.action == "assert":
-                lines.append(
-                    f'    assert driver.find_elements_by_text("{step.target or step.value}")'
-                )
+                lines.append(f'    assert driver.find_elements_by_text("{step.target or step.value}")')
             if step.screenshot:
                 lines.append(f'    driver.screenshot("/tmp/{self.id}_step{idx}.png")')
             lines.append("")
@@ -121,9 +113,7 @@ class AndroidTestGenerator:
         self._generated: list[GeneratedTest] = []
         self.version = "8.0.0"
 
-    def from_recording(
-        self, recording_path: str, platform: str = "ua.slando", name: str = ""
-    ) -> GeneratedTest:
+    def from_recording(self, recording_path: str, platform: str = "ua.slando", name: str = "") -> GeneratedTest:
         """Generate test from ScenarioRecorder JSON."""
         try:
             with open(recording_path) as f:
@@ -153,9 +143,7 @@ class AndroidTestGenerator:
             steps = [
                 TestStep(action="tap", target="search_field", description="Tap search"),
                 TestStep(action="type", value="iPhone 13", description="Type query"),
-                TestStep(
-                    action="tap", target="search_button", description="Submit search"
-                ),
+                TestStep(action="tap", target="search_button", description="Submit search"),
                 TestStep(
                     action="wait",
                     expected_screen="search_results",
@@ -182,9 +170,7 @@ class AndroidTestGenerator:
         self._generated.append(test)
         return test
 
-    def from_user_flow(
-        self, flow: list[str], platform: str, name: str, description: str = ""
-    ) -> GeneratedTest:
+    def from_user_flow(self, flow: list[str], platform: str, name: str, description: str = "") -> GeneratedTest:
         """Generate test from list of textual steps (user described flow)."""
         steps: list[TestStep] = []
         for txt in flow:
@@ -197,11 +183,7 @@ class AndroidTestGenerator:
                 val = txt.split(":")[-1].strip() if ":" in txt else "test"
                 steps.append(TestStep(action="type", value=val, description=txt))
             elif "wait" in low or "жди" in low or "подожди" in low:
-                steps.append(
-                    TestStep(
-                        action="wait", expected_screen=txt, timeout=10, description=txt
-                    )
-                )
+                steps.append(TestStep(action="wait", expected_screen=txt, timeout=10, description=txt))
             elif "assert" in low or "проверь" in low or "убедись" in low:
                 steps.append(TestStep(action="assert", target=txt, description=txt))
             else:
@@ -220,9 +202,7 @@ class AndroidTestGenerator:
         self._generated.append(test)
         return test
 
-    def from_navigation_history(
-        self, history: list[dict[str, Any]], platform: str
-    ) -> list[GeneratedTest]:
+    def from_navigation_history(self, history: list[dict[str, Any]], platform: str) -> list[GeneratedTest]:
         """Generate tests from AIScreenClassifier navigation history."""
         if not history:
             return []

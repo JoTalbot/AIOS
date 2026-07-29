@@ -169,9 +169,7 @@ class MetricsExporter:
             self._labels[key] = labels
         self._creation_time.setdefault(name, time.time())
 
-    def get_histogram_stats(
-        self, name: str, labels: dict[str, str] | None = None
-    ) -> dict[str, Any]:
+    def get_histogram_stats(self, name: str, labels: dict[str, str] | None = None) -> dict[str, Any]:
         """Compute histogram statistics: count, sum, buckets, min, max, mean."""
         key = self._make_key(name, labels)
         values = self.histograms.get(key, [])
@@ -186,11 +184,7 @@ class MetricsExporter:
             }
 
         config = self._hist_configs.get(name)
-        buckets = (
-            config.buckets
-            if config
-            else [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
-        )
+        buckets = config.buckets if config else [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
 
         bucket_counts: dict[str, int] = {}
         for boundary in buckets:
@@ -283,11 +277,7 @@ class MetricsExporter:
         for key, values in self.histograms.items():
             name = key.split("{")[0]
             config = self._hist_configs.get(name)
-            buckets = (
-                config.buckets
-                if config
-                else [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
-            )
+            buckets = config.buckets if config else [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
 
             if name not in seen_hist_names:
                 meta = self._metadata.get(name, {})

@@ -71,6 +71,7 @@ def _run_whatsapp_v2(args) -> bool:
 
     if args.wa_v2_command == "doctor":
         from aios_core.modules.whatsapp import WhatsAppBootstrap
+
         report = WhatsAppBootstrap().doctor()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return True
@@ -99,6 +100,7 @@ def _run_whatsapp_v2(args) -> bool:
                 from aios_core.modules.whatsapp.broadcast_scheduler import (
                     BroadcastStatus,
                 )
+
                 status = BroadcastStatus(args.status)
             broadcasts = scheduler.list_broadcasts(status=status)
             print(json.dumps([b.to_dict() for b in broadcasts], indent=2))
@@ -127,6 +129,7 @@ def _run_viber_v2(args) -> bool:
 
     if args.vi_v2_command == "doctor":
         from aios_core.modules.viber import ViberBootstrap
+
         report = ViberBootstrap().doctor()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return True

@@ -1,4 +1,5 @@
 """Tests for new platform adapters."""
+
 import pytest
 
 from aios_core.platforms.facebook_adapter import FacebookAdapter
@@ -19,13 +20,15 @@ def test_registry_has_all_platforms():
     assert "viber" in available
     assert "whatsapp" in available
 
+
 def test_register_all_platforms():
     """Можно зарегистрировать все платформы."""
     registry = PlatformRegistry()
     for platform in ["olx", "instagram", "prom", "facebook", "viber", "whatsapp"]:
         registry.register_adapter(platform)
-    
+
     assert len(registry.list_platforms()) == 6
+
 
 @pytest.mark.asyncio
 async def test_prom_send():
@@ -33,17 +36,20 @@ async def test_prom_send():
     result = await adapter.send_message("user_1", "Тест")
     assert result.platform == "prom"
 
+
 @pytest.mark.asyncio
 async def test_facebook_send():
     adapter = FacebookAdapter()
     result = await adapter.send_message("user_1", "Тест")
     assert result.platform == "facebook"
 
+
 @pytest.mark.asyncio
 async def test_viber_send():
     adapter = ViberAdapter()
     result = await adapter.send_message("user_1", "Тест")
     assert result.platform == "viber"
+
 
 @pytest.mark.asyncio
 async def test_whatsapp_send():

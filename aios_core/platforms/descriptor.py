@@ -127,8 +127,7 @@ register_platform(
         storage_factory=_olx_storage_factory,
         adb_factory=_olx_adb_factory,
         default_locale="uk-UA",
-        description="Slando Ukraine Android agent (коллекция, мессенджер, "
-        "свои объявления, конкуренты, советник)",
+        description="Slando Ukraine Android agent (коллекция, мессенджер, свои объявления, конкуренты, советник)",
         legacy_default_db="olx_ads.sqlite",
     )
 )

@@ -29,7 +29,9 @@ class TestScheduledTask:
         assert t.is_recurring() is False
 
     def test_is_recurring_true(self) -> None:
-        t = ScheduledTask(name="rec", func=lambda: 1, run_at=datetime.now(UTC), recurring_interval=timedelta(seconds=60))
+        t = ScheduledTask(
+            name="rec", func=lambda: 1, run_at=datetime.now(UTC), recurring_interval=timedelta(seconds=60)
+        )
         assert t.is_recurring() is True
 
     def test_can_retry(self) -> None:
@@ -81,15 +83,24 @@ class TestTaskScheduler:
 
     def test_tick_priority_order(self) -> None:
         order = []
-        self.ts.schedule("low", lambda: order.append("low"), datetime.now(UTC) - timedelta(seconds=1), priority=TaskPriority.LOW)
-        self.ts.schedule("crit", lambda: order.append("crit"), datetime.now(UTC) - timedelta(seconds=1), priority=TaskPriority.CRITICAL)
+        self.ts.schedule(
+            "low", lambda: order.append("low"), datetime.now(UTC) - timedelta(seconds=1), priority=TaskPriority.LOW
+        )
+        self.ts.schedule(
+            "crit",
+            lambda: order.append("crit"),
+            datetime.now(UTC) - timedelta(seconds=1),
+            priority=TaskPriority.CRITICAL,
+        )
         self.ts.tick()
         # Both should execute, CRITICAL first
         if len(order) >= 2:
             assert order[0] == "crit"
 
     def test_tick_failure(self) -> None:
-        self.ts.schedule("fail", lambda: (_ for _ in ()).throw(ValueError("err")), datetime.now(UTC) - timedelta(seconds=1))
+        self.ts.schedule(
+            "fail", lambda: (_ for _ in ()).throw(ValueError("err")), datetime.now(UTC) - timedelta(seconds=1)
+        )
         self.ts.tick()
         task = self.ts.get_task("fail")
         assert task.status == TaskScheduleStatus.FAILED
@@ -213,6 +224,7 @@ class TestEventStore:
         def handler(event: Event, state: dict) -> dict:
             state["count"] = state.get("count", 0) + 1
             return state
+
         self.es.register_projection("counter", handler)
         self.es.append("e1", {"a": 1})
         self.es.append("e2", {"b": 2})
@@ -597,8 +609,9 @@ class TestAPIVersioning:
         assert result["status"] == 404
 
     def test_deprecation_notice(self) -> None:
-        self.api.register("v1", "/users", lambda r: {"users": []},
-                          deprecated=True, deprecation_message="Use v2 instead")
+        self.api.register(
+            "v1", "/users", lambda r: {"users": []}, deprecated=True, deprecation_message="Use v2 instead"
+        )
         result = self.api.resolve({"path": "/users"})
         assert "warnings" in result
 
@@ -675,7 +688,9 @@ class TestDigitalTwin:
         assert outcome.predicted_outcome in ("success", "failure", "degraded")
 
     def test_simulate_with_handler(self) -> None:
-        self.twin.register_action("deploy", lambda s: SimulationOutcome(action="deploy", predicted_outcome="success", confidence=0.9))
+        self.twin.register_action(
+            "deploy", lambda s: SimulationOutcome(action="deploy", predicted_outcome="success", confidence=0.9)
+        )
         outcome = self.twin.simulate("deploy")
         assert outcome.predicted_outcome == "success"
         assert outcome.confidence == 0.9
@@ -736,10 +751,13 @@ class TestComplianceFramework:
         assert result["compliant"] is True
 
     def test_add_rule(self) -> None:
-        rule = ComplianceRule("encryption_check", "soc2",
-                              check_fn=lambda ctx: ctx.get("encryption_enabled", False),
-                              severity=ViolationSeverity.HIGH,
-                              remediation="Enable encryption")
+        rule = ComplianceRule(
+            "encryption_check",
+            "soc2",
+            check_fn=lambda ctx: ctx.get("encryption_enabled", False),
+            severity=ViolationSeverity.HIGH,
+            remediation="Enable encryption",
+        )
         self.cf.add_rule(rule)
         assert "encryption_check" in self.cf.rules
 
@@ -887,6 +905,7 @@ class TestSecretsManager:
 # INTEGRATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestIntegration:
     def test_scheduler_with_event_store(self) -> None:
         """Schedule events via TaskScheduler and replay via EventStore."""
@@ -913,12 +932,15 @@ class TestIntegration:
         cf = ComplianceFramework()
         sm = SecretsManager()
         sm.set("db_password", "secret", encrypt=True)
-        cf.add_rule(ComplianceRule(
-            "secrets_encrypted", "soc2",
-            check_fn=lambda ctx: ctx.get("secrets_encrypted", False),
-            severity=ViolationSeverity.HIGH,
-            remediation="Enable secrets encryption",
-        ))
+        cf.add_rule(
+            ComplianceRule(
+                "secrets_encrypted",
+                "soc2",
+                check_fn=lambda ctx: ctx.get("secrets_encrypted", False),
+                severity=ViolationSeverity.HIGH,
+                remediation="Enable secrets encryption",
+            )
+        )
         violations = cf.check_rules({"secrets_encrypted": True})
         assert len(violations) == 0
 

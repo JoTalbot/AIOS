@@ -73,6 +73,7 @@ class TestRozetkaCardParser:
     def test_parse_with_generic_markers(self):
         """CardParser can parse cards with known olx markers."""
         from aios_core.modules.olx.card_parser import CardParser
+
         parser = CardParser()
         cards = parser.parse(ROZETKA_XML, query="iPhone")
         assert len(cards) >= 1
@@ -114,4 +115,5 @@ class TestRozetkaDetailParser:
 
     def test_detail_parser_is_subclass(self):
         from aios_core.modules.olx.detail import AdDetailParser
+
         assert issubclass(RozetkaDetailParser, AdDetailParser)

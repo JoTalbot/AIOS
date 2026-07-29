@@ -667,15 +667,9 @@ class TestReporter:
             errors=0,
             skipped=0,
             results=[
-                TestResult(
-                    test_name="t1", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL
-                ),
-                TestResult(
-                    test_name="t2", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL
-                ),
-                TestResult(
-                    test_name="t3", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL
-                ),
+                TestResult(test_name="t1", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL),
+                TestResult(test_name="t2", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL),
+                TestResult(test_name="t3", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL),
             ],
         )
         report = reporter.generate("All Pass Test", [suite])
@@ -704,9 +698,7 @@ class TestReporter:
             errors=0,
             skipped=0,
             results=[
-                TestResult(
-                    test_name="t1", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL
-                ),
+                TestResult(test_name="t1", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL),
                 TestResult(
                     test_name="t2",
                     status=TestStatus.FAILED,
@@ -749,12 +741,8 @@ class TestReporter:
             errors=0,
             skipped=0,
             results=[
-                TestResult(
-                    test_name="t1", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL
-                ),
-                TestResult(
-                    test_name="t2", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL
-                ),
+                TestResult(test_name="t1", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL),
+                TestResult(test_name="t2", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL),
             ],
         )
         report = reporter.generate("Summary Test", [suite])
@@ -783,9 +771,7 @@ class TestReporter:
             errors=0,
             skipped=0,
             results=[
-                TestResult(
-                    test_name="t1", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL
-                ),
+                TestResult(test_name="t1", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL),
             ],
         )
         report = reporter.generate("Clean", [suite])
@@ -847,9 +833,7 @@ class TestReporter:
             skipped=0,
             duration_ms=10.5,
             results=[
-                TestResult(
-                    test_name="t1", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL
-                ),
+                TestResult(test_name="t1", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL),
             ],
         )
         report = reporter.generate("Dict Test", [suite])
@@ -882,11 +866,7 @@ class TestReporter:
             failed=0,
             errors=0,
             skipped=0,
-            results=[
-                TestResult(
-                    test_name="t", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL
-                )
-            ],
+            results=[TestResult(test_name="t", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL)],
         )
         report = reporter.generate("P", [suite])
         assert report.overall_status == "passed"
@@ -910,9 +890,7 @@ class TestReporter:
             errors=0,
             skipped=0,
             results=[
-                TestResult(
-                    test_name="t1", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL
-                ),
+                TestResult(test_name="t1", status=TestStatus.PASSED, category=TestCategory.CONSTITUTIONAL),
                 TestResult(
                     test_name="t2",
                     status=TestStatus.FAILED,
@@ -1158,9 +1136,7 @@ class TestIntegration:
         engine = TestEngine(CONSTITUTION_DIR, POLICIES_DIR, db=db)
         report = engine.run_all()
         # Check that the report was persisted in memory_items
-        rows = db.query(
-            "SELECT * FROM memory_items WHERE source = 'test_engine' AND tags LIKE '%test_report%'"
-        )
+        rows = db.query("SELECT * FROM memory_items WHERE source = 'test_engine' AND tags LIKE '%test_report%'")
         assert len(rows) == 1
         content = db.from_json(rows[0]["content"])
         assert content["total_tests"] == report.total_tests

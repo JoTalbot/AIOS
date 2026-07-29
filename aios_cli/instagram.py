@@ -11,9 +11,11 @@ def _lazy_import(module_path: str, attr: str | None = None):
     key = (module_path, attr)
     if key not in _import_cache:
         import importlib
+
         mod = importlib.import_module(module_path)
         _import_cache[key] = getattr(mod, attr) if attr else mod
     return _import_cache[key]
+
 
 DEFAULT_OLX_DB = "olx_ads.sqlite"
 
@@ -148,9 +150,7 @@ def _run_instagram(args) -> bool:
                     storage=storage,
                     directory=args.directory,
                 )
-                steps["dm_flush"] = [
-                    {"id": r["id"], "status": r["status"]} for r in messenger.flush_outbox()
-                ]
+                steps["dm_flush"] = [{"id": r["id"], "status": r["status"]} for r in messenger.flush_outbox()]
             finally:
                 storage.close()
             if args.own:
@@ -163,10 +163,7 @@ def _run_instagram(args) -> bool:
                     target = "data/instagram_own.xml"
                     adb.dump_ui(target)
                     if not Path(target).exists():
-                        raise RuntimeError(
-                            "own-posts: dump_ui не вернул экран профиля — "
-                            "передайте --own-dump grid.xml"
-                        )
+                        raise RuntimeError("own-posts: dump_ui не вернул экран профиля — передайте --own-dump grid.xml")
                     own_xml = Path(target).read_text(encoding="utf-8")
                 posts = OwnPostsParser(markers=None).parse(own_xml)
                 storage = InstagramStorage(args.db)
@@ -281,9 +278,7 @@ def _run_instagram(args) -> bool:
             from aios_core.modules.instagram import InstagramMessenger, InstagramStorage
             from aios_core.modules.olx.adb import ADBController
 
-            adb = ADBController(
-                package="com.instagram.android", serial=getattr(args, "serial", None)
-            )
+            adb = ADBController(package="com.instagram.android", serial=getattr(args, "serial", None))
             storage = InstagramStorage(args.db)
             try:
                 messenger = InstagramMessenger(
@@ -323,8 +318,7 @@ def _run_instagram(args) -> bool:
                 pulled = adb.dump_ui(target)
                 if not Path(target).exists():
                     raise ValueError(
-                        "dump_ui failed (no device?) — pass --dump "
-                        f"({(pulled.get('stderr') or '')[:120]})"
+                        f"dump_ui failed (no device?) — pass --dump ({(pulled.get('stderr') or '')[:120]})"
                     )
                 xml = Path(target).read_text(encoding="utf-8")
             markers = getattr(args, "marker", None) or None
@@ -375,9 +369,7 @@ def _run_instagram(args) -> bool:
                     "instagram",
                     directory=args.directory,
                 ).parse(xml, query=args.query)
-                output["cards"] = [
-                    {"title": c.title, "price": c.price, "currency": c.currency} for c in cards
-                ]
+                output["cards"] = [{"title": c.title, "price": c.price, "currency": c.currency} for c in cards]
             except ValueError:
                 output["cards"] = "parser hints not calibrated"
             print(json.dumps(output, ensure_ascii=False, indent=2))
@@ -415,4 +407,3 @@ def _adb_dump_driver(default_serial=None):
             return Path(tmp.name).read_text(encoding="utf-8")
 
     return driver
-

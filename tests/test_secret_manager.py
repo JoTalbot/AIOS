@@ -1,6 +1,5 @@
 """Tests for AIOS secret manager."""
 
-
 import pytest
 
 from aios_core.secret_manager import APIKey, SecretManager

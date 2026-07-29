@@ -19,7 +19,7 @@ class LIFNeuron:
         v_threshold: float = 1.0,
         v_rest: float = 0.0,
         tau: float = 10.0,
-        refractory_period_ms: float = 2.0
+        refractory_period_ms: float = 2.0,
     ):
         """Initialize LIFNeuron."""
         self.neuron_id = neuron_id
@@ -39,9 +39,7 @@ class LIFNeuron:
                 return False
 
         decay = math.exp(-dt_ms / self.tau)
-        self.v_membrane = (
-            self.v_rest + (self.v_membrane - self.v_rest) * decay + current
-        )
+        self.v_membrane = self.v_rest + (self.v_membrane - self.v_rest) * decay + current
 
         # Check threshold spike condition
         if self.v_membrane >= self.v_threshold:
@@ -55,15 +53,8 @@ class LIFNeuron:
 
 class IzhikevichNeuron:
     """Izhikevich Spiking Neuron model for rich firing patterns (bursting, chattering)."""
-    
-    def __init__(
-        self,
-        neuron_id: str,
-        a: float = 0.02,
-        b: float = 0.2,
-        c: float = -65.0,
-        d: float = 8.0
-    ):
+
+    def __init__(self, neuron_id: str, a: float = 0.02, b: float = 0.2, c: float = -65.0, d: float = 8.0):
         self.neuron_id = neuron_id
         self.a = a
         self.b = b
@@ -73,13 +64,13 @@ class IzhikevichNeuron:
         self.u = b * c
         self.last_spike_time: float | None = None
         self.spike_count = 0
-        
+
     def integrate_current(self, current: float, dt_ms: float = 1.0) -> bool:
         """Integrate using Izhikevich difference equations."""
         # Simplified Euler integration
         self.v += dt_ms * (0.04 * self.v**2 + 5 * self.v + 140 - self.u + current)
         self.u += dt_ms * self.a * (self.b * self.v - self.u)
-        
+
         if self.v >= 30.0:  # Spike threshold
             self.v = self.c
             self.u += self.d
@@ -91,15 +82,15 @@ class IzhikevichNeuron:
 
 class LateralInhibition:
     """Winner-Take-All (WTA) lateral inhibition module for SNNs."""
-    
+
     def __init__(self, inhibition_strength: float = 2.0):
         self.inhibition_strength = inhibition_strength
-        
+
     def apply(self, currents: dict[int, float], spiked_neurons: list[int]):
         """Dampen currents to neighbors if strong spikes occurred recently."""
         if not spiked_neurons:
             return
-            
+
         for i in currents:
             if i not in spiked_neurons:
                 currents[i] -= self.inhibition_strength * len(spiked_neurons)
@@ -107,25 +98,27 @@ class LateralInhibition:
 
 class NeuromorphicEventRouter:
     """Address-Event Representation (AER) router for scalable SNN topologies."""
-    
+
     def __init__(self):
         self.event_queue = []
         self.routing_table = {}
-        
+
     def add_connection(self, source_id: int, target_id: int, weight: float, delay_ms: float = 1.0):
         if source_id not in self.routing_table:
             self.routing_table[source_id] = []
         self.routing_table[source_id].append({"target": target_id, "weight": weight, "delay": delay_ms})
-        
+
     def route_spike(self, source_id: int, current_time: float):
         if source_id in self.routing_table:
             for conn in self.routing_table[source_id]:
-                self.event_queue.append({
-                    "target": conn["target"],
-                    "weight": conn["weight"],
-                    "delivery_time": current_time + (conn["delay"] / 1000.0)
-                })
-                
+                self.event_queue.append(
+                    {
+                        "target": conn["target"],
+                        "weight": conn["weight"],
+                        "delivery_time": current_time + (conn["delay"] / 1000.0),
+                    }
+                )
+
     def get_currents(self, current_time: float) -> dict[int, float]:
         """Deliver arrived events as currents to target neurons."""
         currents = {}
@@ -158,24 +151,22 @@ class NeuromorphicMatrixEngine:
                     self.synaptic_weights[(i, j)] = 0.25
                     self.router.add_connection(i, j, 0.25, delay_ms=1.0)
 
-    def step_simulation(
-        self, input_currents: dict[int, float], dt_ms: float = 1.0
-    ) -> list[int]:
+    def step_simulation(self, input_currents: dict[int, float], dt_ms: float = 1.0) -> list[int]:
         """Simulate one discrete time step dt across all neurons, returning indices of fired neurons."""
         spiked_neurons = []
         current_time = time.time()
-        
+
         # 1. Fetch routed events (AER)
         routed_currents = self.router.get_currents(current_time)
-        
+
         # Merge external inputs with routed synaptic inputs
         total_currents = {}
         for i in range(self.size):
             total_currents[i] = input_currents.get(i, 0.0) + routed_currents.get(i, 0.0)
-            
+
         # Optional: apply lateral inhibition from previous step's fired neurons
         # (For simplicity, we assume we want to apply it to current external inputs)
-        
+
         # 2. Integrate currents
         for i, neuron in enumerate(self.neurons):
             # For backward compatibility, also support the legacy direct weight-driven accumulation
@@ -212,18 +203,14 @@ class NeuromorphicMatrixEngine:
                     delta_t = time.time() - pre_neuron.last_spike_time
                     if delta_t > 0 and delta_t < 0.1:
                         # Potentiation: Pre before Post -> strengthen synapse
-                        self.synaptic_weights[pair] = min(
-                            1.0, self.synaptic_weights[pair] + 0.02
-                        )
+                        self.synaptic_weights[pair] = min(1.0, self.synaptic_weights[pair] + 0.02)
                         # Sync router
                         self._sync_router_weight(pre_idx, post_idx, self.synaptic_weights[pair])
                     elif delta_t < 0:
                         # Depression: Post before Pre -> weaken synapse
-                        self.synaptic_weights[pair] = max(
-                            0.01, self.synaptic_weights[pair] - 0.01
-                        )
+                        self.synaptic_weights[pair] = max(0.01, self.synaptic_weights[pair] - 0.01)
                         self._sync_router_weight(pre_idx, post_idx, self.synaptic_weights[pair])
-                        
+
     def _sync_router_weight(self, pre: int, post: int, new_weight: float):
         if pre in self.router.routing_table:
             for conn in self.router.routing_table[pre]:
@@ -237,8 +224,6 @@ class NeuromorphicMatrixEngine:
             "matrix_size": self.size,
             "total_synapses": len(self.synaptic_weights),
             "total_spikes_fired": total_spikes,
-            "mean_synaptic_weight": round(
-                sum(self.synaptic_weights.values()) / len(self.synaptic_weights), 4
-            ),
-            "aer_queue_size": len(self.router.event_queue)
+            "mean_synaptic_weight": round(sum(self.synaptic_weights.values()) / len(self.synaptic_weights), 4),
+            "aer_queue_size": len(self.router.event_queue),
         }

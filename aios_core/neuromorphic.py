@@ -63,9 +63,7 @@ class NeuromorphicLayer:
 
     def __init__(self, size: int, threshold: float = 1.0) -> None:
         self.neurons = [SpikingNeuron(threshold) for _ in range(size)]
-        self._event_queue: list[
-            tuple[float, int, float]
-        ] = []  # (time, neuron_idx, current)
+        self._event_queue: list[tuple[float, int, float]] = []  # (time, neuron_idx, current)
 
     def forward(self, inputs: list[float]) -> list[int]:
         """Forward pass (backward-compatible)."""
@@ -108,9 +106,7 @@ class CrossbarArray:
         self.rows = rows
         self.cols = cols
         # Initialize weight matrix (memristor conductances)
-        self.weights: list[list[float]] = [
-            [random.uniform(0.01, 0.99) for _ in range(cols)] for _ in range(rows)
-        ]
+        self.weights: list[list[float]] = [[random.uniform(0.01, 0.99) for _ in range(cols)] for _ in range(rows)]
 
     def read(self, row_idx: int, col_idx: int) -> float:
         """Read conductance at a crossbar point."""
@@ -177,9 +173,7 @@ class NeuromorphicChip:
                 spikes = layer.forward(current_input)
                 all_spikes.append(spikes)
                 current_input = [s * 0.1 for s in spikes]
-        self._latency_ns = (
-            timesteps * len(self.layers) * 100
-        )  # ~100ns per layer per timestep
+        self._latency_ns = timesteps * len(self.layers) * 100  # ~100ns per layer per timestep
         return {
             "spikes": all_spikes,
             "timesteps": timesteps,
@@ -189,12 +183,8 @@ class NeuromorphicChip:
 
     def power_report(self) -> dict[str, Any]:
         """Generate power consumption report."""
-        neuron_power = (
-            sum(layer.total_energy() for layer in self.layers) * 1e6
-        )  # convert pJ to mW equivalent
-        crossbar_power = (
-            sum(cb.estimate_power() for cb in self.crossbars) / 1000
-        )  # µW → mW
+        neuron_power = sum(layer.total_energy() for layer in self.layers) * 1e6  # convert pJ to mW equivalent
+        crossbar_power = sum(cb.estimate_power() for cb in self.crossbars) / 1000  # µW → mW
         return {
             "chip": self.name,
             "neuron_power_mW": round(neuron_power, 2),

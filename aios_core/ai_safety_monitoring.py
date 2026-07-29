@@ -69,11 +69,7 @@ class SafetyMonitor:
         recent = data[-window:]
         mean = sum(recent) / len(recent)
         slope = (recent[-1] - recent[0]) / len(recent) if len(recent) >= 2 else 0.0
-        trend = (
-            "improving"
-            if slope < -0.01
-            else ("declining" if slope > 0.01 else "stable")
-        )
+        trend = "improving" if slope < -0.01 else ("declining" if slope > 0.01 else "stable")
         return {
             "metric": metric,
             "trend": trend,
@@ -81,13 +77,9 @@ class SafetyMonitor:
             "slope": round(slope, 3),
         }
 
-    def add_escalation_rule(
-        self, metric: str, threshold: float, action: str = "notify"
-    ) -> None:
+    def add_escalation_rule(self, metric: str, threshold: float, action: str = "notify") -> None:
         """Add escalation rule."""
-        self._escalation_rules.append(
-            {"metric": metric, "threshold": threshold, "action": action}
-        )
+        self._escalation_rules.append({"metric": metric, "threshold": threshold, "action": action})
 
     def generate_report(self) -> dict[str, Any]:
         """Generate comprehensive monitoring report."""

@@ -28,9 +28,7 @@ class Policy:
     name: str
     rules: dict[str, Any] = field(default_factory=dict)
     severity: str = "medium"  # low, medium, high, critical
-    category: str = (
-        "general"  # data_privacy, safety, ethics, transparency, accountability
-    )
+    category: str = "general"  # data_privacy, safety, ethics, transparency, accountability
     enabled: bool = True
     created_at: float = field(default_factory=time.time)
     violations: int = 0
@@ -77,9 +75,7 @@ class AIGovernance:
         category: str = "general",
     ) -> Policy:
         """Register a governance policy."""
-        policy = Policy(
-            name=name, rules=rules or {}, severity=severity, category=category
-        )
+        policy = Policy(name=name, rules=rules or {}, severity=severity, category=category)
         self.policies[name] = policy
         return policy
 
@@ -140,9 +136,7 @@ class AIGovernance:
         self.audits.append(result)
         return result
 
-    def audit_category(
-        self, system_state: dict[str, Any], category: str
-    ) -> AuditResult:
+    def audit_category(self, system_state: dict[str, Any], category: str) -> AuditResult:
         """Audit against policies of a specific category."""
         category_violations = []
         score = 1.0
@@ -192,13 +186,7 @@ class AIGovernance:
         risk_score += len(violations) * 0.1
 
         level = (
-            "low"
-            if risk_score < 0.3
-            else "medium"
-            if risk_score < 0.6
-            else "high"
-            if risk_score < 0.8
-            else "critical"
+            "low" if risk_score < 0.3 else "medium" if risk_score < 0.6 else "high" if risk_score < 0.8 else "critical"
         )
 
         return {
@@ -210,9 +198,7 @@ class AIGovernance:
 
     # ── Transparency ──────────────────────────────────────────────
 
-    def record_transparency(
-        self, action: dict[str, Any], explanation: str = ""
-    ) -> None:
+    def record_transparency(self, action: dict[str, Any], explanation: str = "") -> None:
         """Record a transparency event."""
         self._transparency_records.append(
             {
@@ -224,9 +210,7 @@ class AIGovernance:
 
     # ── Accountability ────────────────────────────────────────────
 
-    def log_accountability(
-        self, agent_id: str, action: str, outcome: str, decision_reason: str = ""
-    ) -> None:
+    def log_accountability(self, agent_id: str, action: str, outcome: str, decision_reason: str = "") -> None:
         """Log an accountability event."""
         self._accountability_log.append(
             {
@@ -243,11 +227,7 @@ class AIGovernance:
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
         active_policies = sum(1 for p in self.policies.values() if p.enabled)
-        avg_audit_score = (
-            (sum(a.score for a in self.audits) / len(self.audits))
-            if self.audits
-            else 1.0
-        )
+        avg_audit_score = (sum(a.score for a in self.audits) / len(self.audits)) if self.audits else 1.0
         return {
             "policies": len(self.policies),
             "active_policies": active_policies,

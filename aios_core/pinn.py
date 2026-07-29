@@ -86,9 +86,7 @@ class PINN:
         self.collocation_points = points
         return points
 
-    def adaptive_collocation(
-        self, residual_threshold: float = 0.1, max_points: int = 500
-    ) -> list[list[float]]:
+    def adaptive_collocation(self, residual_threshold: float = 0.1, max_points: int = 500) -> list[list[float]]:
         """Adaptive collocation: add points where residual is high."""
         new_points = []
         d_min, d_max = self.domain
@@ -160,24 +158,16 @@ class PINN:
                 # du/dx(x_boundary) = value
                 # Approximate derivative
                 eps = 0.001
-                predicted_plus = self.predict(
-                    [bc.location[0] + eps] if bc.location else [0.001]
-                )
-                predicted_minus = self.predict(
-                    [bc.location[0] - eps] if bc.location else [-0.001]
-                )
+                predicted_plus = self.predict([bc.location[0] + eps] if bc.location else [0.001])
+                predicted_minus = self.predict([bc.location[0] - eps] if bc.location else [-0.001])
                 derivative = (predicted_plus - predicted_minus) / (2 * eps)
                 total_loss += bc.weight * (derivative - bc.value) ** 2
             elif bc.condition_type == "robin":
                 # a*u(x) + b*du/dx(x) = value
                 predicted = self.predict(bc.location)
                 eps = 0.001
-                predicted_plus = self.predict(
-                    [bc.location[0] + eps] if bc.location else [0.001]
-                )
-                predicted_minus = self.predict(
-                    [bc.location[0] - eps] if bc.location else [-0.001]
-                )
+                predicted_plus = self.predict([bc.location[0] + eps] if bc.location else [0.001])
+                predicted_minus = self.predict([bc.location[0] - eps] if bc.location else [-0.001])
                 derivative = (predicted_plus - predicted_minus) / (2 * eps)
                 total_loss += bc.weight * (predicted + derivative - bc.value) ** 2
 
@@ -185,9 +175,7 @@ class PINN:
 
     # ── Training ────────────────────────────────────────────────────
 
-    def train(
-        self, epochs: int = 1000, pde_weight: float = 1.0, boundary_weight: float = 10.0
-    ) -> TrainingResult:
+    def train(self, epochs: int = 1000, pde_weight: float = 1.0, boundary_weight: float = 10.0) -> TrainingResult:
         """Train the PINN with loss balancing."""
         if not self.collocation_points:
             self.generate_collocation()

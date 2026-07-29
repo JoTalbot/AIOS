@@ -1,4 +1,5 @@
 """Tests for aios_core/voice_interface.py"""
+
 from __future__ import annotations
 
 import pytest
@@ -35,7 +36,6 @@ class TestVoiceInterface:
 
     def test_speak(self, vi):
         vi.speak("Hello world")
-
 
     def test_get_history(self, vi):
         history = vi.get_history()

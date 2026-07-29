@@ -55,7 +55,7 @@ class TestDatabase(unittest.TestCase):
         db = _make_db()
         with db.transaction() as conn:
             conn.execute(
-                "INSERT INTO audit_events (id, event_type, data, timestamp) " "VALUES (?, ?, ?, ?)",
+                "INSERT INTO audit_events (id, event_type, data, timestamp) VALUES (?, ?, ?, ?)",
                 ("test-1", "test", "{}", "2026-01-01T00:00:00Z"),
             )
         self.assertEqual(db.row_count("audit_events"), 1)
@@ -66,8 +66,7 @@ class TestDatabase(unittest.TestCase):
         try:
             with db.transaction() as conn:
                 conn.execute(
-                    "INSERT INTO audit_events (id, event_type, data, timestamp) "
-                    "VALUES (?, ?, ?, ?)",
+                    "INSERT INTO audit_events (id, event_type, data, timestamp) VALUES (?, ?, ?, ?)",
                     ("test-2", "test", "{}", "2026-01-01T00:00:00Z"),
                 )
                 raise ValueError("force rollback")
@@ -79,7 +78,7 @@ class TestDatabase(unittest.TestCase):
     def test_query(self):
         db = _make_db()
         db.execute(
-            "INSERT INTO audit_events (id, event_type, data, timestamp) " "VALUES (?, ?, ?, ?)",
+            "INSERT INTO audit_events (id, event_type, data, timestamp) VALUES (?, ?, ?, ?)",
             ("q1", "type_a", '{"x":1}', "2026-01-01T00:00:00Z"),
         )
         rows = db.query("SELECT * FROM audit_events WHERE event_type = ?", ("type_a",))
@@ -621,8 +620,14 @@ class TestRuntimePolicyPersistence(unittest.TestCase):
     def test_audit_stats_persistent(self):
         # Ensure at least one event exists (self-contained)
         self.runtime.request_execution(
-            {"goal": "audit-stats-setup", "scope": "monitoring", "risk": "low",
-             "audit_log": True, "agent_id": "agent-stats-audit", "authority": "reader"}
+            {
+                "goal": "audit-stats-setup",
+                "scope": "monitoring",
+                "risk": "low",
+                "audit_log": True,
+                "agent_id": "agent-stats-audit",
+                "authority": "reader",
+            }
         )
         stats = self.runtime.audit.stats()
         self.assertEqual(stats["storage"], "sqlite")
@@ -635,8 +640,14 @@ class TestRuntimePolicyPersistence(unittest.TestCase):
     def test_db_stats(self):
         # Ensure at least one event was recorded (self-contained)
         self.runtime.request_execution(
-            {"goal": "db-stats-setup", "scope": "monitoring", "risk": "low",
-             "audit_log": True, "agent_id": "agent-stats-db", "authority": "reader"}
+            {
+                "goal": "db-stats-setup",
+                "scope": "monitoring",
+                "risk": "low",
+                "audit_log": True,
+                "agent_id": "agent-stats-db",
+                "authority": "reader",
+            }
         )
         stats = self.runtime.db.stats()
         self.assertGreater(stats["tables"]["audit_events"], 0)

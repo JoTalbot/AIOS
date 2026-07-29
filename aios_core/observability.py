@@ -165,37 +165,25 @@ class Observability:
         self.metrics[entry.key()] = entry
         return entry
 
-    def record_metric(
-        self, name: str, value: float, labels: dict[str, str] | None = None
-    ) -> None:
+    def record_metric(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """Record a metric value (backward-compatible)."""
         label_str = labels or {}
         entry = MetricEntry(name=name, kind=MetricKind.GAUGE, labels=label_str)
         entry.set_value(value)
         self.metrics[entry.key()] = entry
 
-    def increment(
-        self, name: str, amount: float = 1.0, labels: dict[str, str] | None = None
-    ) -> None:
+    def increment(self, name: str, amount: float = 1.0, labels: dict[str, str] | None = None) -> None:
         """Increment a counter metric."""
         key = MetricEntry(name=name, kind=MetricKind.COUNTER, labels=labels or {}).key()
         if key not in self.metrics:
-            self.metrics[key] = MetricEntry(
-                name=name, kind=MetricKind.COUNTER, labels=labels or {}
-            )
+            self.metrics[key] = MetricEntry(name=name, kind=MetricKind.COUNTER, labels=labels or {})
         self.metrics[key].increment(amount)
 
-    def observe_histogram(
-        self, name: str, value: float, labels: dict[str, str] | None = None
-    ) -> None:
+    def observe_histogram(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """Record histogram observation."""
-        key = MetricEntry(
-            name=name, kind=MetricKind.HISTOGRAM, labels=labels or {}
-        ).key()
+        key = MetricEntry(name=name, kind=MetricKind.HISTOGRAM, labels=labels or {}).key()
         if key not in self.metrics:
-            self.metrics[key] = MetricEntry(
-                name=name, kind=MetricKind.HISTOGRAM, labels=labels or {}
-            )
+            self.metrics[key] = MetricEntry(name=name, kind=MetricKind.HISTOGRAM, labels=labels or {})
         self.metrics[key].observe(value)
 
     def get_metric(self, name: str, labels: dict[str, str] | None = None) -> float:
@@ -204,9 +192,7 @@ class Observability:
         entry = self.metrics.get(key)
         return entry.value if entry else 0.0
 
-    def get_metric_entry(
-        self, name: str, labels: dict[str, str] | None = None
-    ) -> MetricEntry | None:
+    def get_metric_entry(self, name: str, labels: dict[str, str] | None = None) -> MetricEntry | None:
         """Get full metric entry."""
         key = MetricEntry(name=name, kind=MetricKind.GAUGE, labels=labels or {}).key()
         return self.metrics.get(key)
@@ -309,9 +295,7 @@ class Observability:
             )
         )
 
-    def get_logs(
-        self, level: str | None = None, trace_id: str | None = None, limit: int = 100
-    ) -> list[LogEntry]:
+    def get_logs(self, level: str | None = None, trace_id: str | None = None, limit: int = 100) -> list[LogEntry]:
         """Query logs by level or trace."""
         result = self.logs
         if level:

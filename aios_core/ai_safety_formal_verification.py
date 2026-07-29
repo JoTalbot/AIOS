@@ -23,9 +23,7 @@ logger = logging.getLogger(__name__)
 class VerificationResult:
     """Verification outcome."""
 
-    def __init__(
-        self, property_name: str, verified: bool, counterexample: Any = None
-    ) -> None:
+    def __init__(self, property_name: str, verified: bool, counterexample: Any = None) -> None:
         self.property_name = property_name
         self.verified = verified
         self.counterexample = counterexample

@@ -1,4 +1,5 @@
 """Instagram Platform Adapter — интеграция с Meta Graph API."""
+
 from __future__ import annotations
 
 import os
@@ -10,9 +11,9 @@ from .base import IncomingMessage, PlatformAdapter, SentMessage
 
 class InstagramAdapter(PlatformAdapter):
     """Адаптер для Instagram (Meta Graph API для Business Accounts)."""
-    
+
     GRAPH_API_URL = "https://graph.facebook.com/v18.0"
-    
+
     def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config or {})
         self.access_token = self.config.get("access_token") or os.getenv("INSTAGRAM_ACCESS_TOKEN")
@@ -22,7 +23,7 @@ class InstagramAdapter(PlatformAdapter):
         """Получить новые сообщения из Instagram Direct."""
         # Instagram использует Webhooks для получения сообщений в реальном времени
         # Этот метод используется для initial sync или polling
-        
+
         # TODO: Реальный вызов Graph API
         # async with httpx.AsyncClient() as client:
         #     response = await client.get(
@@ -34,7 +35,7 @@ class InstagramAdapter(PlatformAdapter):
         #         }
         #     )
         #     conversations = response.json()["data"]
-        
+
         return []
 
     async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
@@ -49,13 +50,13 @@ class InstagramAdapter(PlatformAdapter):
         #             "message": {"text": text}
         #         }
         #     )
-        
+
         return SentMessage(
             message_id=f"ig_{int(datetime.now(UTC).timestamp())}",
             platform="instagram",
             recipient_id=recipient_id,
             text=text,
-            timestamp=datetime.now(UTC)
+            timestamp=datetime.now(UTC),
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

@@ -36,10 +36,8 @@ class TikTokCardParser(CardParser):
             import re
 
             # Find video/product card nodes
-            pattern = (
-                r'<node[^>]*resource-id="[^"]*({})[^"]*"[^>]*text="([^"]*)"'.format(
-                    "|".join(TIKTOK_CARD_RESOURCE_IDS)
-                )
+            pattern = r'<node[^>]*resource-id="[^"]*({})[^"]*"[^>]*text="([^"]*)"'.format(
+                "|".join(TIKTOK_CARD_RESOURCE_IDS)
             )
             matches = re.findall(pattern, xml, re.IGNORECASE)
 

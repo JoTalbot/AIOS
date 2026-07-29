@@ -1,6 +1,5 @@
 """Tests for CapabilityEngine v3.0 suggestions"""
 
-
 from aios_core import Database, Orchestrator
 
 

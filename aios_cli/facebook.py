@@ -62,6 +62,7 @@ def _run_facebook(args) -> bool:
 
     if args.facebook_command == "doctor":
         from aios_core.modules.facebook import FacebookBootstrap
+
         report = FacebookBootstrap().doctor()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return True
@@ -69,6 +70,7 @@ def _run_facebook(args) -> bool:
     if args.facebook_command == "price-tracker":
         with FacebookStorage(_resolve_facebook_db(args)) as storage:
             from aios_core.modules.facebook import FacebookPriceTracker
+
             tracker = FacebookPriceTracker(storage)
             if args.price_command == "drops":
                 alerts = tracker.detect_drops()
@@ -81,6 +83,7 @@ def _run_facebook(args) -> bool:
     if args.facebook_command == "autowatch":
         with FacebookStorage(_resolve_facebook_db(args)) as storage:
             from aios_core.modules.facebook import FacebookAutoWatch
+
             watcher = FacebookAutoWatch(storage)
             report = watcher.run_cycle(queries=args.query if args.query else None, collect=not args.no_collect)
             print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -89,6 +92,7 @@ def _run_facebook(args) -> bool:
     if args.facebook_command == "favorites":
         with FacebookStorage(_resolve_facebook_db(args)) as storage:
             from aios_core.modules.facebook import FacebookFavorites
+
             fav = FacebookFavorites(storage)
             cmd = args.favorites_command
             if cmd == "add":

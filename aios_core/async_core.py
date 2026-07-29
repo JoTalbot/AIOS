@@ -58,17 +58,19 @@ class AsyncDatabase:
         self.db_path = db_path
         self.is_postgres = self.db_path.startswith("postgresql://") or self.db_path.startswith("postgres://")
         self._conn = None
-        
+
     async def _get_conn(self):
         """Establish or return existing native async connection."""
         if self._conn is None:
             if self.is_postgres:
                 import asyncpg
+
                 # Strip dialect for asyncpg if needed
                 dsn = self.db_path.replace("postgresql://", "postgres://")
                 self._conn = await asyncpg.connect(dsn)
             else:
                 import aiosqlite
+
                 path = ":memory:" if self.db_path == ":memory:" else self.db_path
                 self._conn = await aiosqlite.connect(path)
                 self._conn.row_factory = aiosqlite.Row
@@ -79,21 +81,21 @@ class AsyncDatabase:
                 except Exception:
                     pass
         return self._conn
-        
+
     def _translate_query(self, sql: str) -> str:
         """Translate SQLite ? to PostgreSQL %s or $1 depending on driver."""
         if not self.is_postgres:
             return sql
-        
+
         # Simple translation for asyncpg $1, $2, etc.
-        parts = sql.split('?')
+        parts = sql.split("?")
         if len(parts) == 1:
             return sql
-            
+
         translated = parts[0]
         for i, part in enumerate(parts[1:], 1):
             translated += f"${i}{part}"
-            
+
         return translated
 
     async def stats(self) -> dict:
@@ -102,7 +104,7 @@ class AsyncDatabase:
             "tables": len(await self.tables()),
             "type": "postgresql" if self.is_postgres else "sqlite",
             "dialect": "postgresql" if self.is_postgres else "sqlite",
-            "driver": "asyncpg" if self.is_postgres else "aiosqlite"
+            "driver": "asyncpg" if self.is_postgres else "aiosqlite",
         }
 
     async def tables(self) -> list[str]:
@@ -123,7 +125,7 @@ class AsyncDatabase:
         """Execute a read query."""
         conn = await self._get_conn()
         trans_sql = self._translate_query(sql)
-        
+
         if self.is_postgres:
             rows = await conn.fetch(trans_sql, *params)
             return [dict(r) for r in rows]
@@ -136,7 +138,7 @@ class AsyncDatabase:
         """Execute a read query returning one row."""
         conn = await self._get_conn()
         trans_sql = self._translate_query(sql)
-        
+
         if self.is_postgres:
             row = await conn.fetchrow(trans_sql, *params)
             return dict(row) if row else None
@@ -149,7 +151,7 @@ class AsyncDatabase:
         """Execute a write statement."""
         conn = await self._get_conn()
         trans_sql = self._translate_query(sql)
-        
+
         if self.is_postgres:
             res = await conn.execute(trans_sql, *params)
             return res
@@ -166,9 +168,7 @@ class AsyncDatabase:
 
     # --- Batch helpers ------------------------------------------------------
 
-    async def batch_query(
-        self, queries: Sequence[tuple[str, tuple]]
-    ) -> list[list[dict]]:
+    async def batch_query(self, queries: Sequence[tuple[str, tuple]]) -> list[list[dict]]:
         """Execute multiple queries concurrently."""
         coros = [self.query(sql, params) for sql, params in queries]
         return list(await asyncio.gather(*coros, return_exceptions=True))
@@ -271,9 +271,7 @@ class AsyncEventBusWrapper(AsyncRunner):
 # ------------------------------------------------------------------
 
 
-async def async_batch(
-    func: Callable, args_list: Sequence[tuple], kwargs_list: Sequence[dict] = ()
-) -> list[Any]:
+async def async_batch(func: Callable, args_list: Sequence[tuple], kwargs_list: Sequence[dict] = ()) -> list[Any]:
     """Run *func* for each ``(args, kwargs)`` pair concurrently via to_thread.
 
     Useful for any synchronous function that needs to be called many
@@ -301,6 +299,4 @@ async def async_parallel(
         async with semaphore:
             return await c
 
-    return list(
-        await asyncio.gather(*(_guarded(c) for c in coros), return_exceptions=True)
-    )
+    return list(await asyncio.gather(*(_guarded(c) for c in coros), return_exceptions=True))

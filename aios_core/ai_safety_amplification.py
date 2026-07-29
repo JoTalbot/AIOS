@@ -26,9 +26,7 @@ __all__ = ["IteratedAmplification"]
 class AmplificationLevel:
     """Single amplification step."""
 
-    def __init__(
-        self, level: int, quality: float = 0.8, alignment: float = 0.9
-    ) -> None:
+    def __init__(self, level: int, quality: float = 0.8, alignment: float = 0.9) -> None:
         self.level = level
         self.quality = quality
         self.alignment = alignment
@@ -71,9 +69,7 @@ class IteratedAmplification:
         """Decompose a query into sub-problems."""
         return [f"sub_{i}_{query}" for i in range(level)]
 
-    def distill(
-        self, amplified_agent: Callable, target_size: int = 100
-    ) -> dict[str, Any]:
+    def distill(self, amplified_agent: Callable, target_size: int = 100) -> dict[str, Any]:
         """Distill amplified agent into smaller model."""
         result = {
             "original_levels": len(self._level_history),
@@ -106,7 +102,5 @@ class IteratedAmplification:
         return {
             "levels": len(self.amplification_levels),
             "distillations": len(self._distillation_results),
-            "max_level": max(self.amplification_levels.keys())
-            if self.amplification_levels
-            else 0,
+            "max_level": max(self.amplification_levels.keys()) if self.amplification_levels else 0,
         }

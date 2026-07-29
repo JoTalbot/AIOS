@@ -62,6 +62,7 @@ def _get_app():
     global _app
     if _app is None:
         import os
+
         root = os.path.dirname(os.path.abspath(__file__))
         const_dir = os.environ.get("AIOS_CONSTITUTION_DIR", os.path.join(root, "docs/constitution"))
         pol_dir = os.environ.get("AIOS_POLICIES_DIR", os.path.join(root, "policies"))
@@ -72,6 +73,8 @@ def _get_app():
             policies_dir=pol_dir,
         )
     return _app
+
+
 # Exported app for gunicorn/uvicorn discovery
 app = _get_app()
 

@@ -1,4 +1,5 @@
 """Tests for aios_core/privacy_guard.py"""
+
 from __future__ import annotations
 
 import pytest

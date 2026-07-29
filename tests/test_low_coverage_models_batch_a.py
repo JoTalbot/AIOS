@@ -86,11 +86,13 @@ def test_uncertainty_estimation_calibration_and_empty_paths():
 
 def test_vector_store_search_filter_delete_and_zero_vector():
     store = VectorStore()
-    store.add_batch([
-        ("one", [1.0, 0.0], {"kind": "a"}),
-        ("two", [0.0, 1.0], {"kind": "b"}),
-        ("zero", [0.0, 0.0], {"kind": "a"}),
-    ])
+    store.add_batch(
+        [
+            ("one", [1.0, 0.0], {"kind": "a"}),
+            ("two", [0.0, 1.0], {"kind": "b"}),
+            ("zero", [0.0, 0.0], {"kind": "a"}),
+        ]
+    )
     assert store.search([0.0, 0.0]) == []
     assert store.search([1.0, 0.0], metadata_filter={"kind": "a"})[0]["id"] == "one"
     assert store.get("two")["metadata"]["kind"] == "b"

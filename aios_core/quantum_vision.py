@@ -30,34 +30,17 @@ class QuantumVision:
             "enhancement": True,
         }
 
-    def quantum_convolution(
-        self, image: list[list[float]], kernel: list[list[float]]
-    ) -> list[list[float]]:
+    def quantum_convolution(self, image: list[list[float]], kernel: list[list[float]]) -> list[list[float]]:
         """Quantum convolution (backward-compatible)."""
         result: list[list[float]] = []
         for i in range(len(image)):
             row: list[float] = []
             for j in range(len(image[0]) if image else 0):
-                val = (
-                    sum(
-                        image[i][j] * k
-                        for j2, k in enumerate(kernel[0])
-                        if j + j2 < len(image[0])
-                    )
-                    if image
-                    else 0
-                )
+                val = sum(image[i][j] * k for j2, k in enumerate(kernel[0]) if j + j2 < len(image[0])) if image else 0
                 row.append(round(val, 3))
             result.append(row)
         return (
-            result
-            if result
-            else [
-                [
-                    sum(image[i][j] * k for j, k in enumerate(kernel[0]))
-                    for i in range(len(image))
-                ]
-            ]
+            result if result else [[sum(image[i][j] * k for j, k in enumerate(kernel[0])) for i in range(len(image))]]
         )
 
     def quantum_edge_detection(self, image: list[list[float]]) -> list[list[float]]:
@@ -71,20 +54,14 @@ class QuantumVision:
             result.append(row)
         return result
 
-    def quantum_feature_extraction(
-        self, image: list[list[float]], num_features: int = 4
-    ) -> list[float]:
+    def quantum_feature_extraction(self, image: list[list[float]], num_features: int = 4) -> list[float]:
         """Extract quantum features from an image."""
         features: list[float] = []
         flat = [pixel for row in image for pixel in row]
         if not flat:
             return [0.0] * num_features
         mean = sum(flat) / len(flat)
-        std = (
-            math.sqrt(sum((f - mean) ** 2 for f in flat) / len(flat))
-            if len(flat) > 1
-            else 0
-        )
+        std = math.sqrt(sum((f - mean) ** 2 for f in flat) / len(flat)) if len(flat) > 1 else 0
         features = [
             round(mean, 3),
             round(std, 3),
@@ -95,9 +72,7 @@ class QuantumVision:
             features.append(round(random.uniform(0, 1), 3))
         return features[:num_features]
 
-    def quantum_image_classification(
-        self, features: list[float], classes: int = 3
-    ) -> dict[str, Any]:
+    def quantum_image_classification(self, features: list[float], classes: int = 3) -> dict[str, Any]:
         """Classify image using quantum features."""
         probs = [round(random.uniform(0.1, 0.5), 3) for _ in range(classes)]
         total = sum(probs)
@@ -110,9 +85,7 @@ class QuantumVision:
             "probabilities": probs,
         }
 
-    def quantum_enhancement(
-        self, image: list[list[float]], enhancement_factor: float = 1.5
-    ) -> list[list[float]]:
+    def quantum_enhancement(self, image: list[list[float]], enhancement_factor: float = 1.5) -> list[list[float]]:
         """Enhance image contrast via quantum amplitude amplification."""
         result: list[list[float]] = []
         for row in image:

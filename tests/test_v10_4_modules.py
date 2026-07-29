@@ -55,13 +55,17 @@ class TestFeatureFlagStore:
         assert flag.rollout_percentage == 25.0
 
     def test_register_with_user_list(self) -> None:
-        flag = self.store.register("beta_access", rollout_strategy=RolloutStrategy.USER_LIST, rollout_user_list=["user1", "user2"])
+        flag = self.store.register(
+            "beta_access", rollout_strategy=RolloutStrategy.USER_LIST, rollout_user_list=["user1", "user2"]
+        )
         assert flag.rollout_strategy == RolloutStrategy.USER_LIST
         assert "user1" in flag.rollout_user_list
 
     def test_register_with_scheduled(self) -> None:
         ts = time.time() + 3600
-        flag = self.store.register("launch_feature", rollout_strategy=RolloutStrategy.SCHEDULED, rollout_scheduled_at=ts)
+        flag = self.store.register(
+            "launch_feature", rollout_strategy=RolloutStrategy.SCHEDULED, rollout_scheduled_at=ts
+        )
         assert flag.rollout_scheduled_at == ts
 
     def test_register_with_parent(self) -> None:
@@ -158,7 +162,9 @@ class TestFeatureFlagStore:
     # ── Evaluation: percentage rollout ──────────────────────────
 
     def test_percentage_rollout_deterministic(self) -> None:
-        self.store.register("pct_flag", enabled=True, rollout_strategy=RolloutStrategy.PERCENTAGE, rollout_percentage=50.0)
+        self.store.register(
+            "pct_flag", enabled=True, rollout_strategy=RolloutStrategy.PERCENTAGE, rollout_percentage=50.0
+        )
         # Same user always gets same result
         ctx = {"user_id": "alice"}
         result1 = self.store.is_enabled("pct_flag", ctx)
@@ -166,37 +172,51 @@ class TestFeatureFlagStore:
         assert result1 == result2
 
     def test_percentage_rollout_100_percent(self) -> None:
-        self.store.register("full_flag", enabled=True, rollout_strategy=RolloutStrategy.PERCENTAGE, rollout_percentage=100.0)
+        self.store.register(
+            "full_flag", enabled=True, rollout_strategy=RolloutStrategy.PERCENTAGE, rollout_percentage=100.0
+        )
         assert self.store.is_enabled("full_flag", {"user_id": "anyone"}) is True
 
     def test_percentage_rollout_0_percent(self) -> None:
-        self.store.register("zero_flag", enabled=True, rollout_strategy=RolloutStrategy.PERCENTAGE, rollout_percentage=0.0)
+        self.store.register(
+            "zero_flag", enabled=True, rollout_strategy=RolloutStrategy.PERCENTAGE, rollout_percentage=0.0
+        )
         assert self.store.is_enabled("zero_flag", {"user_id": "anyone"}) is False
 
     # ── Evaluation: user list ──────────────────────────────────
 
     def test_user_list_included(self) -> None:
-        self.store.register("beta", enabled=True, rollout_strategy=RolloutStrategy.USER_LIST, rollout_user_list=["alice", "bob"])
+        self.store.register(
+            "beta", enabled=True, rollout_strategy=RolloutStrategy.USER_LIST, rollout_user_list=["alice", "bob"]
+        )
         assert self.store.is_enabled("beta", {"user_id": "alice"}) is True
 
     def test_user_list_excluded(self) -> None:
-        self.store.register("beta", enabled=True, rollout_strategy=RolloutStrategy.USER_LIST, rollout_user_list=["alice"])
+        self.store.register(
+            "beta", enabled=True, rollout_strategy=RolloutStrategy.USER_LIST, rollout_user_list=["alice"]
+        )
         assert self.store.is_enabled("beta", {"user_id": "carol"}) is False
 
     def test_user_list_no_context(self) -> None:
-        self.store.register("beta", enabled=True, rollout_strategy=RolloutStrategy.USER_LIST, rollout_user_list=["alice"])
+        self.store.register(
+            "beta", enabled=True, rollout_strategy=RolloutStrategy.USER_LIST, rollout_user_list=["alice"]
+        )
         assert self.store.is_enabled("beta") is False  # no user_id → not in list
 
     # ── Evaluation: scheduled rollout ──────────────────────────
 
     def test_scheduled_past_time_enabled(self) -> None:
         past_time = time.time() - 100
-        self.store.register("launch", enabled=True, rollout_strategy=RolloutStrategy.SCHEDULED, rollout_scheduled_at=past_time)
+        self.store.register(
+            "launch", enabled=True, rollout_strategy=RolloutStrategy.SCHEDULED, rollout_scheduled_at=past_time
+        )
         assert self.store.is_enabled("launch") is True
 
     def test_scheduled_future_time_disabled(self) -> None:
         future_time = time.time() + 3600
-        self.store.register("future_launch", enabled=True, rollout_strategy=RolloutStrategy.SCHEDULED, rollout_scheduled_at=future_time)
+        self.store.register(
+            "future_launch", enabled=True, rollout_strategy=RolloutStrategy.SCHEDULED, rollout_scheduled_at=future_time
+        )
         assert self.store.is_enabled("future_launch") is False
 
     def test_scheduled_no_time_disabled(self) -> None:
@@ -594,7 +614,7 @@ class TestRoleHierarchy:
         h = RoleHierarchy()
         # Create a chain deeper than MAX_DEPTH
         for i in range(15):
-            parents = [f"role_{i-1}"] if i > 0 else []
+            parents = [f"role_{i - 1}"] if i > 0 else []
             h.register(Role(f"role_{i}", permissions={Permission(f"r{i}", "read")}, parent_roles=parents))
         resolved = h.resolve_permissions("role_14")
         # Should not hang, should truncate at MAX_DEPTH
@@ -1027,6 +1047,7 @@ class TestCompensationAction:
     def test_execute_success(self) -> None:
         def undo(**kwargs):
             return "rolled_back"
+
         comp = CompensationAction(name="undo_step", action=undo, params={"item": "test"})
         result = comp.execute()
         assert result == "rolled_back"
@@ -1034,6 +1055,7 @@ class TestCompensationAction:
     def test_execute_failure_returns_none(self) -> None:
         def failing_undo(**kwargs):
             raise RuntimeError("undo failed")
+
         comp = CompensationAction(name="failing_undo", action=failing_undo)
         result = comp.execute()
         assert result is None
@@ -1187,10 +1209,12 @@ class TestWorkflowEngine:
     def test_execute_linear_chain(self) -> None:
         wf = self.engine.create_workflow("chain_wf")
         s1 = self.engine.add_step(wf.id, "first", action=lambda: 10)
+
         # Dependent step receives {s1.id}_result in its params
         def second_step(**kwargs):
             prev = kwargs.get(f"{s1.id}_result", 0)
             return prev + 5
+
         s2 = self.engine.add_step(wf.id, "second", action=second_step, depends_on=[s1.id])
         result = self.engine.execute(wf.id)
         assert result["status"] == "completed"
@@ -1286,20 +1310,26 @@ class TestWorkflowEngine:
     # ── Templates ──────────────────────────────────────────────
 
     def test_register_template(self) -> None:
-        template = WorkflowTemplate(name="etl", step_definitions=[
-            {"name": "extract", "params": {}},
-            {"name": "transform", "params": {}, "depends_on": ["extract"]},
-            {"name": "load", "params": {}, "depends_on": ["transform"]},
-        ])
+        template = WorkflowTemplate(
+            name="etl",
+            step_definitions=[
+                {"name": "extract", "params": {}},
+                {"name": "transform", "params": {}, "depends_on": ["extract"]},
+                {"name": "load", "params": {}, "depends_on": ["transform"]},
+            ],
+        )
         self.engine.register_template(template)
         assert "etl" in self.engine.templates
 
     def test_create_from_template(self) -> None:
-        template = WorkflowTemplate(name="etl", step_definitions=[
-            {"name": "extract", "params": {}},
-            {"name": "transform", "params": {}, "depends_on": ["extract"]},
-            {"name": "load", "params": {}, "depends_on": ["transform"]},
-        ])
+        template = WorkflowTemplate(
+            name="etl",
+            step_definitions=[
+                {"name": "extract", "params": {}},
+                {"name": "transform", "params": {}, "depends_on": ["extract"]},
+                {"name": "load", "params": {}, "depends_on": ["transform"]},
+            ],
+        )
         self.engine.register_template(template)
         actions = {
             "extract": lambda: "data",
@@ -1403,6 +1433,7 @@ class TestWorkflowGlobal:
 
 # ── Integration ──────────────────────────────────────────────────────────────
 
+
 class TestFeatureFlagsIntegration:
     """Integration: feature flags + RBAC + workflow together."""
 
@@ -1453,6 +1484,7 @@ class TestFeatureFlagsIntegration:
 
 
 # ── Edge Cases ──────────────────────────────────────────────────────────────
+
 
 class TestFeatureFlagsEdgeCases:
     """Edge case tests for Feature Flags."""
@@ -1572,7 +1604,9 @@ class TestWorkflowEdgeCases:
         wf = engine.create_workflow("chain_wf")
         s1 = engine.add_step(wf.id, "producer", action=lambda: 42)
         # The dependent step should receive s1.id_result in its params
-        s2 = engine.add_step(wf.id, "consumer", action=lambda **kwargs: kwargs.get(f"{s1.id}_result", 0) + 1, depends_on=[s1.id])
+        s2 = engine.add_step(
+            wf.id, "consumer", action=lambda **kwargs: kwargs.get(f"{s1.id}_result", 0) + 1, depends_on=[s1.id]
+        )
         result = engine.execute(wf.id)
         assert result["status"] == "completed"
         wf_result = engine.get_result(wf.id)
@@ -1590,7 +1624,9 @@ class TestWorkflowEdgeCases:
 
         engine = WorkflowEngine()
         wf = engine.create_workflow("specific_retry_wf")
-        retry = RetryPolicy(max_retries=3, backoff=BackoffStrategy.CONSTANT, initial_delay=0.01, retryable_exceptions=["ValueError"])
+        retry = RetryPolicy(
+            max_retries=3, backoff=BackoffStrategy.CONSTANT, initial_delay=0.01, retryable_exceptions=["ValueError"]
+        )
         engine.add_step(wf.id, "specific_retry", action=raises_value_error, retry_policy=retry)
         result = engine.execute(wf.id)
         assert result["status"] == "completed"
@@ -1601,7 +1637,9 @@ class TestWorkflowEdgeCases:
 
         engine = WorkflowEngine()
         wf = engine.create_workflow("non_retry_wf")
-        retry = RetryPolicy(max_retries=3, backoff=BackoffStrategy.CONSTANT, initial_delay=0.01, retryable_exceptions=["ValueError"])
+        retry = RetryPolicy(
+            max_retries=3, backoff=BackoffStrategy.CONSTANT, initial_delay=0.01, retryable_exceptions=["ValueError"]
+        )
         engine.add_step(wf.id, "non_retry", action=raises_type_error, retry_policy=retry)
         result = engine.execute(wf.id)
         assert result["status"] == "failed"

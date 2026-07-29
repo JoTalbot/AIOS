@@ -214,7 +214,5 @@ class FederationManager:
             "local_node": self.local_node_id,
             "total_nodes": len(self._nodes),
             "by_status": by_status,
-            "online_nodes": len(
-                [n for n in self._nodes.values() if n.status == NodeStatus.ONLINE]
-            ),
+            "online_nodes": len([n for n in self._nodes.values() if n.status == NodeStatus.ONLINE]),
         }

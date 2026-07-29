@@ -148,7 +148,11 @@ class TypeSystem:
     def type_hierarchy(self, type_name: str) -> list[str]:
         """Return supertype chain for a type."""
         chain = [type_name]
-        chain = [other_name for other_name in self.types if other_name != type_name and self.is_subtype(type_name, other_name)]
+        chain = [
+            other_name
+            for other_name in self.types
+            if other_name != type_name and self.is_subtype(type_name, other_name)
+        ]
         return chain
 
     # ── Type Composition ──────────────────────────────────────────
@@ -168,9 +172,7 @@ class TypeSystem:
                     and isinstance(t[1], td2.base_type)
                 ),
             ]
-        return self.define_type(
-            name, base, constraints, description=f"Product({type1}, {type2})"
-        )
+        return self.define_type(name, base, constraints, description=f"Product({type1}, {type2})")
 
     def union_type(self, name: str, type1: str, type2: str) -> TypeDefinition:
         """Create a union type from two types."""
@@ -182,9 +184,7 @@ class TypeSystem:
         if td2:
             bases.append(td2.base_type)
         constraints = [lambda t: any(isinstance(t, b) for b in bases)] if bases else []
-        return self.define_type(
-            name, object, constraints, description=f"Union({type1}, {type2})"
-        )
+        return self.define_type(name, object, constraints, description=f"Union({type1}, {type2})")
 
     # ── Proof Simulation ──────────────────────────────────────────
 

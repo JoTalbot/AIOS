@@ -25,9 +25,7 @@ async def test_role_guard_and_rest_mcp_share_database():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         viewer = {"Authorization": "Bearer viewer-key"}
         writer = {"Authorization": "Bearer writer-key"}
-        assert (
-            await client.post("/api/v1/memory", json={"content": {"a": 1}}, headers=viewer)
-        ).status_code == 403
+        assert (await client.post("/api/v1/memory", json={"content": {"a": 1}}, headers=viewer)).status_code == 403
         saved = await client.post("/api/v1/memory", json={"content": {"a": 1}}, headers=writer)
         assert saved.status_code == 201
         rpc = await client.post(
@@ -168,8 +166,12 @@ async def test_admin_routes_are_registered_and_require_admin_role():
     }
     app = create_app(api_keys=keys)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        assert (await client.get("/api/v1/admin/keys", headers={"Authorization": "Bearer writer-key"})).status_code == 403
-        assert (await client.get("/api/v1/admin/keys", headers={"Authorization": "Bearer admin-key"})).status_code == 200
+        assert (
+            await client.get("/api/v1/admin/keys", headers={"Authorization": "Bearer writer-key"})
+        ).status_code == 403
+        assert (
+            await client.get("/api/v1/admin/keys", headers={"Authorization": "Bearer admin-key"})
+        ).status_code == 200
 
 
 def test_bearer_lookup_uses_configured_principal():

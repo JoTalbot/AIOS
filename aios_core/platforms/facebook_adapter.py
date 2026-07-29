@@ -1,4 +1,5 @@
 """Facebook Messenger Platform Adapter (Meta Graph API)."""
+
 from __future__ import annotations
 
 import os
@@ -10,9 +11,9 @@ from .base import IncomingMessage, PlatformAdapter, SentMessage
 
 class FacebookAdapter(PlatformAdapter):
     """Адаптер для Facebook Messenger."""
-    
+
     GRAPH_API_URL = "https://graph.facebook.com/v18.0"
-    
+
     def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config or {})
         self.access_token = self.config.get("access_token") or os.getenv("FACEBOOK_ACCESS_TOKEN")
@@ -26,8 +27,10 @@ class FacebookAdapter(PlatformAdapter):
         # TODO: POST /{page_id}/messages (Send API)
         return SentMessage(
             message_id=f"fb_{int(datetime.now(UTC).timestamp())}",
-            platform="facebook", recipient_id=recipient_id,
-            text=text, timestamp=datetime.now(UTC)
+            platform="facebook",
+            recipient_id=recipient_id,
+            text=text,
+            timestamp=datetime.now(UTC),
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

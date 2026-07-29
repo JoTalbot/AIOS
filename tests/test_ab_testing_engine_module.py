@@ -118,7 +118,8 @@ class TestExperimentLifecycle:
 class TestRecording:
     def test_record_observation(self, engine):
         exp = engine.create_experiment(
-            name="exp", metric_type=MetricType.MEAN,
+            name="exp",
+            metric_type=MetricType.MEAN,
             variants=[{"name": "control"}, {"name": "treatment"}],
         )
         engine.start_experiment(exp.experiment_id)
@@ -127,7 +128,8 @@ class TestRecording:
 
     def test_record_rate_observation(self, engine):
         exp = engine.create_experiment(
-            name="exp", metric_type=MetricType.RATE,
+            name="exp",
+            metric_type=MetricType.RATE,
             variants=[{"name": "a"}, {"name": "b"}],
         )
         engine.start_experiment(exp.experiment_id)
@@ -141,7 +143,8 @@ class TestRecording:
 class TestAnalysis:
     def test_analyze(self, engine):
         exp = engine.create_experiment(
-            name="exp", metric_type=MetricType.MEAN,
+            name="exp",
+            metric_type=MetricType.MEAN,
             variants=[{"name": "a"}, {"name": "b"}],
         )
         engine.start_experiment(exp.experiment_id)

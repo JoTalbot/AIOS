@@ -143,9 +143,7 @@ def test_doctor_recipe_reports_missing_sections(tmp_path):
     assert recipe["kind"] == "messenger"
     assert recipe["ready"] is False
     assert "messenger" in recipe["missing"]
-    assert any(
-        "--messages" in s.get("command", "") for s in recipe["steps"] if s["action"] == "calibrate"
-    )
+    assert any("--messages" in s.get("command", "") for s in recipe["steps"] if s["action"] == "calibrate")
 
     # секция закрыта → рецепт зелёный
     _write_yaml(tmp_path, "whatsapp", "com.whatsapp", {"messenger": _hint_markers()})
@@ -179,9 +177,7 @@ def test_cli_platforms_doctor_calibrate_recipe(tmp_path, capsys, monkeypatch):
     from aios_cli import main
     from aios_core.platforms import ProfileStore
 
-    loaded = load_catalog_file(
-        str(Path(__file__).resolve().parent.parent / "platforms" / "whatsapp.yaml")
-    )
+    loaded = load_catalog_file(str(Path(__file__).resolve().parent.parent / "platforms" / "whatsapp.yaml"))
     _write_yaml(tmp_path, "whatsapp", "com.whatsapp")
     monkeypatch.setenv("AIOS_PROFILES_DB", str(tmp_path / "profiles.sqlite"))
     ProfileStore.reset_default()
@@ -295,9 +291,7 @@ def test_fleet_snapshot_and_prometheus_metrics(tmp_path):
     from aios_core.platforms.telemetry import fleet_snapshot, prometheus_metrics
 
     shards, profiles, devices = _telemetry_dbs(tmp_path)
-    snapshot = fleet_snapshot(
-        shards_db=shards, profiles_db=profiles, devices_db=devices, catalog_dir="platforms"
-    )
+    snapshot = fleet_snapshot(shards_db=shards, profiles_db=profiles, devices_db=devices, catalog_dir="platforms")
     assert snapshot["jobs"]["stats"]["pending"] == 2
     assert snapshot["devices"]["total"] == 2
     assert snapshot["devices"]["leased"] == 1
@@ -305,9 +299,7 @@ def test_fleet_snapshot_and_prometheus_metrics(tmp_path):
     assert snapshot["profiles"]["per_platform"] == {"instagram": 1, "olx": 1}
     assert "facebook" in snapshot["platforms"]
 
-    text = prometheus_metrics(
-        shards_db=shards, profiles_db=profiles, devices_db=devices, catalog_dir="platforms"
-    )
+    text = prometheus_metrics(shards_db=shards, profiles_db=profiles, devices_db=devices, catalog_dir="platforms")
     assert 'aios_shard_jobs{status="pending"} 2' in text
     assert "aios_shard_job_queue_depth 2" in text
     assert "aios_shard_host" in text

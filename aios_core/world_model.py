@@ -44,23 +44,15 @@ class WorldModel:
         self._imagination_horizon = imagination_horizon
         self._state_keys: list[str] = []
 
-    def observe(
-        self, state: dict, action: Any, next_state: dict, reward: float
-    ) -> None:
+    def observe(self, state: dict, action: Any, next_state: dict, reward: float) -> None:
         """Record a transition (backward-compatible)."""
-        trans = Transition(
-            state=state, action=action, next_state=next_state, reward=reward
-        )
+        trans = Transition(state=state, action=action, next_state=next_state, reward=reward)
         self.observations.append(trans)
         # Update state keys
-        self._state_keys = (
-            list(state.keys()) if not self._state_keys else self._state_keys
-        )
+        self._state_keys = list(state.keys()) if not self._state_keys else self._state_keys
         # Update reward model
         action_key = str(action)
-        self._reward_model[action_key] = (
-            0.9 * self._reward_model.get(action_key, 0.0) + 0.1 * reward
-        )
+        self._reward_model[action_key] = 0.9 * self._reward_model.get(action_key, 0.0) + 0.1 * reward
         # Update latent state (simplified representation)
         for i, key in enumerate(self._state_keys[:32]):
             self._latent_state[i % 32] = next_state.get(key, 0.0) * 0.5
@@ -93,22 +85,16 @@ class WorldModel:
         if not self._state_keys:
             state = {"x": 0.0}
         else:
-            state = dict(zip(
-                    self._state_keys, self._latent_state[: len(self._state_keys)], strict=False
-                ))
+            state = dict(zip(self._state_keys, self._latent_state[: len(self._state_keys)], strict=False))
         for _step in range(horizon):
             action = random.choice(["forward", "backward", "noop"])
             next_state = self.predict(state, action)
             reward = self.predict_reward(state, action)
-            trajectory.append(
-                {"state": state, "action": action, "next": next_state, "reward": reward}
-            )
+            trajectory.append({"state": state, "action": action, "next": next_state, "reward": reward})
             state = next_state
         return trajectory
 
-    def dream_rollout(
-        self, start_state: dict[str, float] | None = None, horizon: int = 10
-    ) -> dict[str, Any]:
+    def dream_rollout(self, start_state: dict[str, float] | None = None, horizon: int = 10) -> dict[str, Any]:
         """Dreamer-style imagination rollout with value estimation."""
         state = (
             start_state
@@ -144,9 +130,7 @@ class WorldModel:
             "horizon": horizon,
         }
 
-    def plan(
-        self, goal_state: dict[str, float], horizon: int = 5
-    ) -> list[dict[str, Any]]:
+    def plan(self, goal_state: dict[str, float], horizon: int = 5) -> list[dict[str, Any]]:
         """MPC-style planning toward a goal state."""
         current = (
             dict(zip(self._state_keys, self._latent_state[: len(self._state_keys)], strict=False))
@@ -160,10 +144,7 @@ class WorldModel:
             best_dist = 1e9
             for action in ["forward", "backward", "noop"]:
                 predicted = self.predict(current, action)
-                dist = sum(
-                    (predicted.get(k, 0) - goal_state.get(k, 0)) ** 2
-                    for k in goal_state
-                )
+                dist = sum((predicted.get(k, 0) - goal_state.get(k, 0)) ** 2 for k in goal_state)
                 if dist < best_dist:
                     best_dist = dist
                     best_action = action

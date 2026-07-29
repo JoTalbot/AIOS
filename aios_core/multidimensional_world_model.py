@@ -72,12 +72,8 @@ class MultiDimensionalWorldModel:
 
             env_state["cpu_load"] = min(1.0, env_state["cpu_load"] + delta_cpu)
             env_state["memory_mb"] = env_state["memory_mb"] + delta_mem
-            env_state["econ_cost_usd"] = round(
-                env_state["econ_cost_usd"] + delta_cost, 4
-            )
-            env_state["risk_score"] = min(
-                1.0, round(env_state["risk_score"] + delta_risk, 3)
-            )
+            env_state["econ_cost_usd"] = round(env_state["econ_cost_usd"] + delta_cost, 4)
+            env_state["risk_score"] = min(1.0, round(env_state["risk_score"] + delta_risk, 3))
 
             # Check simulated threshold bounds
             if env_state["cpu_load"] >= 0.95 or env_state["memory_mb"] > 16384:
@@ -140,12 +136,8 @@ class MultiDimensionalWorldModel:
         safe_count = sum(1 for r in results if r["is_safe_trajectory"])
         avg_failures = sum(r["projected_failures"] for r in results) / n
         avg_cost = sum(r["final_predicted_state"]["econ_cost_usd"] for r in results) / n
-        avg_health = (
-            sum(r["final_predicted_state"]["system_health"] for r in results) / n
-        )
-        avg_risk = (
-            sum(r["final_predicted_state"].get("risk_score", 0) for r in results) / n
-        )
+        avg_health = sum(r["final_predicted_state"]["system_health"] for r in results) / n
+        avg_risk = sum(r["final_predicted_state"].get("risk_score", 0) for r in results) / n
 
         # Confidence intervals (bootstrap-style)
         costs = [r["final_predicted_state"]["econ_cost_usd"] for r in results]
@@ -238,12 +230,7 @@ class MultiDimensionalWorldModel:
         health_penalty = 1.0 - final["system_health"]
 
         # Composite risk score (weighted)
-        composite_risk = (
-            resource_risk * 0.30
-            + econ_risk * 0.20
-            + safety_risk * 0.35
-            + health_penalty * 0.15
-        )
+        composite_risk = resource_risk * 0.30 + econ_risk * 0.20 + safety_risk * 0.35 + health_penalty * 0.15
 
         return {
             "action_plan": action_plan,
@@ -253,13 +240,7 @@ class MultiDimensionalWorldModel:
             "safety_risk": round(safety_risk, 3),
             "health_penalty": round(health_penalty, 3),
             "is_acceptable": composite_risk < 0.5,
-            "risk_category": (
-                "low"
-                if composite_risk < 0.3
-                else "medium"
-                if composite_risk < 0.6
-                else "high"
-            ),
+            "risk_category": ("low" if composite_risk < 0.3 else "medium" if composite_risk < 0.6 else "high"),
             "simulation_result": result,
         }
 
@@ -267,9 +248,7 @@ class MultiDimensionalWorldModel:
     # Confidence intervals
     # ------------------------------------------------------------------
 
-    def _compute_ci(
-        self, values: list[float], confidence: float = 0.95
-    ) -> tuple[float, float]:
+    def _compute_ci(self, values: list[float], confidence: float = 0.95) -> tuple[float, float]:
         """Compute bootstrap confidence interval for *values*."""
         if len(values) < 2:
             return (min(values) if values else 0.0, max(values) if values else 0.0)
@@ -285,9 +264,7 @@ class MultiDimensionalWorldModel:
     # Divergence computation
     # ------------------------------------------------------------------
 
-    def _compute_divergence(
-        self, base: dict[str, Any], branch: dict[str, Any]
-    ) -> float:
+    def _compute_divergence(self, base: dict[str, Any], branch: dict[str, Any]) -> float:
         """Compute divergence score between base and branch trajectories."""
         base_final = base["final_predicted_state"]
         branch_final = branch["final_predicted_state"]
@@ -314,9 +291,7 @@ class MultiDimensionalWorldModel:
     # Historical tracking
     # ------------------------------------------------------------------
 
-    def get_history(
-        self, limit: int = 50, filter_safe: bool | None = None
-    ) -> list[dict[str, Any]]:
+    def get_history(self, limit: int = 50, filter_safe: bool | None = None) -> list[dict[str, Any]]:
         """Return recent simulation history, optionally filtered."""
         if filter_safe is True:
             filtered = [r for r in self._history if r["is_safe_trajectory"]]

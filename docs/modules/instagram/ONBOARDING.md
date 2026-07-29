@@ -55,8 +55,10 @@ from aios_core.platforms import bootup_platform
 
 drv = InstagramLoginDriver(serial="emulator-5554")
 report = bootup_platform(
-    apk_path="com.instagram.android", fetch=True,
-    driver=drv.drive, query="sneakers",
+    apk_path="com.instagram.android",
+    fetch=True,
+    driver=drv.drive,
+    query="sneakers",
 )
 print(report["status"], report["steps"]["verify"])
 ```

@@ -28,24 +28,33 @@ from aios_core.platform_health_monitor import (
 
 # ─── Agent Memory System ───
 
+
 class TestMemoryEntry:
     """Tests for MemoryEntry dataclass."""
 
     def test_strength_new_memory(self) -> None:
         """New memory has high strength."""
         entry = MemoryEntry(
-            memory_id="m1", memory_type=MemoryType.SHORT_TERM,
-            platform="olx", action="collect", result="success",
-            confidence=1.0, created_at=time.time(),
+            memory_id="m1",
+            memory_type=MemoryType.SHORT_TERM,
+            platform="olx",
+            action="collect",
+            result="success",
+            confidence=1.0,
+            created_at=time.time(),
         )
         assert entry.strength >= 0.9
 
     def test_strength_decays(self) -> None:
         """Old memory has lower strength."""
         entry = MemoryEntry(
-            memory_id="m1", memory_type=MemoryType.SHORT_TERM,
-            platform="olx", action="collect", result="success",
-            confidence=1.0, created_at=time.time() - 100 * 86400,
+            memory_id="m1",
+            memory_type=MemoryType.SHORT_TERM,
+            platform="olx",
+            action="collect",
+            result="success",
+            confidence=1.0,
+            created_at=time.time() - 100 * 86400,
             decay_rate=0.01,
         )
         assert entry.strength < 0.5
@@ -53,22 +62,33 @@ class TestMemoryEntry:
     def test_strength_boosted_by_access(self) -> None:
         """Frequently accessed memories are stronger."""
         entry1 = MemoryEntry(
-            memory_id="m1", memory_type=MemoryType.LONG_TERM,
-            platform="olx", action="collect", result="success",
-            confidence=0.8, access_count=0,
+            memory_id="m1",
+            memory_type=MemoryType.LONG_TERM,
+            platform="olx",
+            action="collect",
+            result="success",
+            confidence=0.8,
+            access_count=0,
         )
         entry2 = MemoryEntry(
-            memory_id="m2", memory_type=MemoryType.LONG_TERM,
-            platform="olx", action="collect", result="success",
-            confidence=0.8, access_count=50,
+            memory_id="m2",
+            memory_type=MemoryType.LONG_TERM,
+            platform="olx",
+            action="collect",
+            result="success",
+            confidence=0.8,
+            access_count=50,
         )
         assert entry2.strength > entry1.strength
 
     def test_age_days(self) -> None:
         """Age calculation."""
         entry = MemoryEntry(
-            memory_id="m1", memory_type=MemoryType.SHORT_TERM,
-            platform="olx", action="collect", result="success",
+            memory_id="m1",
+            memory_type=MemoryType.SHORT_TERM,
+            platform="olx",
+            action="collect",
+            result="success",
             created_at=time.time() - 7 * 86400,
         )
         assert abs(entry.age_days - 7.0) < 0.1
@@ -76,8 +96,11 @@ class TestMemoryEntry:
     def test_to_dict(self) -> None:
         """Serialize memory entry."""
         entry = MemoryEntry(
-            memory_id="m1", memory_type=MemoryType.SHORT_TERM,
-            platform="olx", action="collect", result="success",
+            memory_id="m1",
+            memory_type=MemoryType.SHORT_TERM,
+            platform="olx",
+            action="collect",
+            result="success",
         )
         d = entry.to_dict()
         assert d["platform"] == "olx"
@@ -98,7 +121,10 @@ class TestAgentMemorySystem:
         """Record episodic memory."""
         system = AgentMemorySystem()
         entry = system.record(
-            "olx", "collect", "success", memory_type=MemoryType.EPISODIC,
+            "olx",
+            "collect",
+            "success",
+            memory_type=MemoryType.EPISODIC,
         )
         assert entry.memory_type == MemoryType.EPISODIC
 
@@ -106,8 +132,11 @@ class TestAgentMemorySystem:
         """Record a scraping session."""
         system = AgentMemorySystem()
         entry = system.record_session(
-            platform="olx", action="collect", success=True,
-            latency_ms=500, items=50,
+            platform="olx",
+            action="collect",
+            success=True,
+            latency_ms=500,
+            items=50,
         )
         assert entry.result == "success"
         assert entry.context["latency_ms"] == 500
@@ -116,7 +145,9 @@ class TestAgentMemorySystem:
         """Record a failed session."""
         system = AgentMemorySystem()
         entry = system.record_session(
-            platform="olx", action="collect", success=False,
+            platform="olx",
+            action="collect",
+            success=False,
             errors=["timeout", "captcha"],
         )
         assert entry.result == "failure"
@@ -126,7 +157,9 @@ class TestAgentMemorySystem:
         """Record a blocked session → critical priority."""
         system = AgentMemorySystem()
         entry = system.record_session(
-            platform="olx", action="collect", success=False,
+            platform="olx",
+            action="collect",
+            success=False,
             errors=["IP banned by platform"],
         )
         assert entry.priority == MemoryPriority.CRITICAL
@@ -182,7 +215,9 @@ class TestAgentMemorySystem:
         system = AgentMemorySystem()
         for i in range(10):
             system.record_session(
-                "olx", "collect", success=True,
+                "olx",
+                "collect",
+                success=True,
                 latency_ms=500 + i * 10,
                 items=50 + i,
                 params={"timeout": 30, "max_pages": 5},
@@ -209,7 +244,9 @@ class TestAgentMemorySystem:
         """Advice includes block warnings."""
         system = AgentMemorySystem()
         system.record(
-            "olx", "collect", "blocked",
+            "olx",
+            "collect",
+            "blocked",
             memory_type=MemoryType.EPISODIC,
             priority=MemoryPriority.CRITICAL,
             context={"params": {"delay": 0}},
@@ -250,6 +287,7 @@ class TestAgentMemorySystem:
 
 # ─── Platform Health Monitor ───
 
+
 class TestPlatformHealth:
     """Tests for PlatformHealth dataclass."""
 
@@ -287,9 +325,12 @@ class TestHealthCheck:
     def test_to_dict(self) -> None:
         """Serialize check."""
         check = HealthCheck(
-            check_id="c1", platform="olx",
-            check_type=CheckType.PING, status=HealthStatus.HEALTHY,
-            latency_ms=200, success=True,
+            check_id="c1",
+            platform="olx",
+            check_type=CheckType.PING,
+            status=HealthStatus.HEALTHY,
+            latency_ms=200,
+            success=True,
         )
         d = check.to_dict()
         assert d["platform"] == "olx"
@@ -402,6 +443,7 @@ class TestPlatformHealthMonitor:
 
 # ─── Export/Import Pipeline ───
 
+
 class TestExportSchema:
     """Tests for ExportSchema."""
 
@@ -433,9 +475,36 @@ class TestExportImportPipeline:
     def _make_records(self) -> list[dict[str, Any]]:
         """Create sample records."""
         return [
-            {"fingerprint": "fp1", "title": "iPhone 15", "price": 45000, "currency": "UAH", "url": "https://olx.ua/1", "city": "Kyiv", "platform": "olx", "is_active": True},
-            {"fingerprint": "fp2", "title": "Samsung S24", "price": 35000, "currency": "UAH", "url": "https://olx.ua/2", "city": "Lviv", "platform": "olx", "is_active": True},
-            {"fingerprint": "fp3", "title": "MacBook Pro", "price": 85000, "currency": "UAH", "url": "https://rozetka.ua/3", "city": "Dnipro", "platform": "rozetka", "is_active": False},
+            {
+                "fingerprint": "fp1",
+                "title": "iPhone 15",
+                "price": 45000,
+                "currency": "UAH",
+                "url": "https://olx.ua/1",
+                "city": "Kyiv",
+                "platform": "olx",
+                "is_active": True,
+            },
+            {
+                "fingerprint": "fp2",
+                "title": "Samsung S24",
+                "price": 35000,
+                "currency": "UAH",
+                "url": "https://olx.ua/2",
+                "city": "Lviv",
+                "platform": "olx",
+                "is_active": True,
+            },
+            {
+                "fingerprint": "fp3",
+                "title": "MacBook Pro",
+                "price": 85000,
+                "currency": "UAH",
+                "url": "https://rozetka.ua/3",
+                "city": "Dnipro",
+                "platform": "rozetka",
+                "is_active": False,
+            },
         ]
 
     def test_export_json(self, tmp_path) -> None:
@@ -484,9 +553,7 @@ class TestExportImportPipeline:
         records = self._make_records()
 
         export_result = pipeline.export_json(records, validate=False)
-        import_result = pipeline.import_json(
-            export_result.file_path, mode=ImportMode.APPEND, existing=records
-        )
+        import_result = pipeline.import_json(export_result.file_path, mode=ImportMode.APPEND, existing=records)
         # All records already exist → skipped
         assert import_result.skipped_count >= 2
 
@@ -496,9 +563,7 @@ class TestExportImportPipeline:
         records = self._make_records()
 
         export_result = pipeline.export_json(records, validate=False)
-        import_result = pipeline.import_json(
-            export_result.file_path, mode=ImportMode.UPSERT, existing=records
-        )
+        import_result = pipeline.import_json(export_result.file_path, mode=ImportMode.UPSERT, existing=records)
         assert import_result.updated_count >= 2
 
     def test_import_csv(self, tmp_path) -> None:
@@ -523,9 +588,7 @@ class TestExportImportPipeline:
             {"fingerprint": "fp2", "title": "New", "platform": "olx", "updated_at": time.time()},
         ]
 
-        result = pipeline.incremental_export(
-            records, last_export_timestamp=time.time() - 50
-        )
+        result = pipeline.incremental_export(records, last_export_timestamp=time.time() - 50)
         assert result.record_count == 1  # Only the "New" record
 
     def test_validate(self) -> None:

@@ -521,19 +521,13 @@ def parse_article_file(file_path: Path) -> dict:
     if not title_match:
         title_match = re.search(r"^#\s*ARTICLE-[I|V|X|L|C|D|M]+-(.*)\.md$", content, re.MULTILINE)
 
-    title = (
-        title_match.group(1).strip()
-        if title_match
-        else filename.replace("ARTICLE-", "").replace(".md", "")
-    )
+    title = title_match.group(1).strip() if title_match else filename.replace("ARTICLE-", "").replace(".md", "")
 
     # Check required structural elements
     has_status = "Status:" in content or "**Status:**" in content
     has_level = "Level:" in content or "**Level:**" in content
     has_scope = "Scope:" in content or "**Scope:**" in content
-    has_principle = (
-        "# Principle" in content or "# 1. Definition" in content or "Definition of" in content
-    )
+    has_principle = "# Principle" in content or "# 1. Definition" in content or "Definition of" in content
     has_laws = "Law" in content or "Law of" in content or "Laws" in content
 
     is_valid = all([has_status, has_level, has_scope, (has_principle or has_laws)])
@@ -607,16 +601,12 @@ def generate_report(articles: dict, report_path: Path) -> None:
             a = articles[num]
             status_str = "Status/Level/Scope/Principle OK" if a["valid"] else "Missing Sections"
             valid_symbol = "✅" if a["valid"] else "⚠️"
-            lines.append(
-                f"| {num} | {a['numeral']} | {a['title']} | {a['filename']} | {status_str} | {valid_symbol} |"
-            )
+            lines.append(f"| {num} | {a['numeral']} | {a['title']} | {a['filename']} | {status_str} | {valid_symbol} |")
         else:
             lines.append(f"| {num} | N/A | Missing Article | N/A | File Not Found | ❌ |")
 
     lines.append("")
-    lines.append(
-        "*Report generated automatically by AIOS Constitutional Maintenance Tool (`tula`).*"
-    )
+    lines.append("*Report generated automatically by AIOS Constitutional Maintenance Tool (`tula`).*")
 
     report_path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -637,9 +627,7 @@ def generate_index(articles: dict, index_path: Path) -> None:
     for num in range(1, 68):
         if num in articles:
             a = articles[num]
-            lines.append(
-                f"| Article {num} | {a['numeral']} | {a['title']} | [{a['filename']}](./{a['filename']}) |"
-            )
+            lines.append(f"| Article {num} | {a['numeral']} | {a['title']} | [{a['filename']}](./{a['filename']}) |")
 
     lines.append("")
     lines.append("---")
@@ -673,36 +661,24 @@ def generate_compliance_matrix(matrix_path: Path) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="AIOS Constitutional Verification & Maintenance Tool ('tula')"
-    )
-    parser.add_argument(
-        "--scan", type=str, default="docs/constitution", help="Path to constitution directory"
-    )
+    parser = argparse.ArgumentParser(description="AIOS Constitutional Verification & Maintenance Tool ('tula')")
+    parser.add_argument("--scan", type=str, default="docs/constitution", help="Path to constitution directory")
     parser.add_argument(
         "--report",
         type=str,
         default="docs/constitution/CONSTITUTION_REPORT.md",
         help="Path to report output",
     )
-    parser.add_argument(
-        "--fix-names", action="store_true", help="Automatically rename misnamed files"
-    )
-    parser.add_argument(
-        "--generate-matrix", action="store_true", help="Generate COMPLIANCE_MATRIX.md"
-    )
+    parser.add_argument("--fix-names", action="store_true", help="Automatically rename misnamed files")
+    parser.add_argument("--generate-matrix", action="store_true", help="Generate COMPLIANCE_MATRIX.md")
     parser.add_argument("--generate-index", action="store_true", help="Generate INDEX.md")
-    parser.add_argument(
-        "--strict", action="store_true", help="Fail if any article is missing or invalid"
-    )
+    parser.add_argument("--strict", action="store_true", help="Fail if any article is missing or invalid")
 
     args = parser.parse_args()
 
     constitution_dir = Path(args.scan).resolve()
     if not constitution_dir.exists():
-        print(
-            f"Error: Constitution directory '{constitution_dir}' does not exist.", file=sys.stderr
-        )
+        print(f"Error: Constitution directory '{constitution_dir}' does not exist.", file=sys.stderr)
         sys.exit(1)
 
     if args.fix_names:

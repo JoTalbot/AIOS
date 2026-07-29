@@ -147,12 +147,8 @@ def _storage_with_portfolio():
         seen_at="2026-07-01T10:00:00+00:00",
     )
     for card in [
-        AdCard(
-            title="Лобове оголошення схоже", price=7000.0, currency="UAH", city="Київ", query="q"
-        ),
-        AdCard(
-            title="Аналог лобове оголошення", price=6500.0, currency="UAH", city="Львів", query="q"
-        ),
+        AdCard(title="Лобове оголошення схоже", price=7000.0, currency="UAH", city="Київ", query="q"),
+        AdCard(title="Аналог лобове оголошення", price=6500.0, currency="UAH", city="Львів", query="q"),
     ]:
         storage.save_ads([card])
     return storage
@@ -201,9 +197,7 @@ def test_advisor_new_listings_fills_gaps():
     assert first.suggested_price is not None
     assert first.reason and "ніша" in first.reason
     # A query whose tokens are covered by the portfolio is not suggested:
-    covered = AdCard(
-        title="Лобове оголошення схоже", price=7000.0, currency="UAH", query="лобове оголошення"
-    )
+    covered = AdCard(title="Лобове оголошення схоже", price=7000.0, currency="UAH", query="лобове оголошення")
     storage.save_ads([covered])
     fresh = advisor.advise_new_listings()
     assert all(item.query != "лобове оголошення" for item in fresh)
@@ -275,9 +269,7 @@ def test_doctor_ready_in_emulator_and_hints_when_bare():
     assert by_name["olx_installed"]["ok"] is True
     assert by_name["adbkeyboard_ime"]["ok"] is True
 
-    bare = OLXBootstrap(
-        runner=lambda cmd: {"code": 127, "stdout": "", "stderr": "not found"}
-    ).doctor_report()
+    bare = OLXBootstrap(runner=lambda cmd: {"code": 127, "stdout": "", "stderr": "not found"}).doctor_report()
     assert bare["ready"] is False
     adb_check = next(c for c in bare["checks"] if c["name"] == "adb_installed")
     assert adb_check["ok"] is False
@@ -367,9 +359,7 @@ def test_observe_seller_ads_stores_portfolio_and_links_similar():
             ad_id="myOwn1",
         )
         watch = CompetitiveWatch(storage)
-        result = watch.observe_seller_ads(
-            SELLER_XML, my, seen_at=NOW.isoformat(), viewed_ad_id="z7kLq"
-        )
+        result = watch.observe_seller_ads(SELLER_XML, my, seen_at=NOW.isoformat(), viewed_ad_id="z7kLq")
         assert result["seller_ads_found"] == 2
         assert result["seller_ads_stored"] == 2
         assert result["new_market_ads"] == 2
@@ -381,9 +371,7 @@ def test_observe_seller_ads_stores_portfolio_and_links_similar():
         assert len(storage.get_ads(limit=10)) == 2
 
         # Re-scanning the same page creates no duplicates.
-        again = watch.observe_seller_ads(
-            SELLER_XML, my, seen_at=NOW.isoformat(), viewed_ad_id="z7kLq"
-        )
+        again = watch.observe_seller_ads(SELLER_XML, my, seen_at=NOW.isoformat(), viewed_ad_id="z7kLq")
         assert again["new_market_ads"] == 0
         assert again["new_links"] == 0
         assert len(storage.competitor_links(my.fingerprint)) == 1

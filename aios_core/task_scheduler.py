@@ -104,17 +104,13 @@ class TaskScheduler:
 
     # ── Scheduling ──────────────────────────────────────────────
 
-    def schedule(
-        self, name: str, func: Callable, run_at: datetime, **kwargs: Any
-    ) -> ScheduledTask:
+    def schedule(self, name: str, func: Callable, run_at: datetime, **kwargs: Any) -> ScheduledTask:
         """Schedule a task at a specific time."""
         task = ScheduledTask(name=name, func=func, run_at=run_at, kwargs=kwargs)
         self.tasks[name] = task
         return task
 
-    def schedule_in(
-        self, name: str, func: Callable, seconds: int, **kwargs: Any
-    ) -> ScheduledTask:
+    def schedule_in(self, name: str, func: Callable, seconds: int, **kwargs: Any) -> ScheduledTask:
         """Schedule a task N seconds from now."""
         run_at = datetime.now(UTC) + timedelta(seconds=seconds)
         return self.schedule(name, func, run_at, **kwargs)
@@ -148,9 +144,7 @@ class TaskScheduler:
         **kwargs: Any,
     ) -> ScheduledTask:
         """Schedule a task with priority."""
-        task = ScheduledTask(
-            name=name, func=func, run_at=run_at, kwargs=kwargs, priority=priority
-        )
+        task = ScheduledTask(name=name, func=func, run_at=run_at, kwargs=kwargs, priority=priority)
         self.tasks[name] = task
         return task
 
@@ -163,9 +157,7 @@ class TaskScheduler:
         **kwargs: Any,
     ) -> ScheduledTask:
         """Schedule a task with retry policy."""
-        task = ScheduledTask(
-            name=name, func=func, run_at=run_at, max_retries=max_retries, kwargs=kwargs
-        )
+        task = ScheduledTask(name=name, func=func, run_at=run_at, max_retries=max_retries, kwargs=kwargs)
         self.tasks[name] = task
         return task
 
@@ -200,11 +192,7 @@ class TaskScheduler:
 
         # Sort by priority (highest first)
         due_tasks = sorted(
-            [
-                t
-                for t in self.tasks.values()
-                if t.status == TaskScheduleStatus.SCHEDULED and now >= t.run_at
-            ],
+            [t for t in self.tasks.values() if t.status == TaskScheduleStatus.SCHEDULED and now >= t.run_at],
             key=lambda t: t.priority,
             reverse=True,
         )
@@ -272,15 +260,11 @@ class TaskScheduler:
 
     def get_pending(self) -> list[ScheduledTask]:
         """Return all scheduled (pending) tasks."""
-        return [
-            t for t in self.tasks.values() if t.status == TaskScheduleStatus.SCHEDULED
-        ]
+        return [t for t in self.tasks.values() if t.status == TaskScheduleStatus.SCHEDULED]
 
     def get_completed(self) -> list[ScheduledTask]:
         """Return all completed tasks."""
-        return [
-            t for t in self.tasks.values() if t.status == TaskScheduleStatus.COMPLETED
-        ]
+        return [t for t in self.tasks.values() if t.status == TaskScheduleStatus.COMPLETED]
 
     def get_failed(self) -> list[ScheduledTask]:
         """Return all failed tasks."""

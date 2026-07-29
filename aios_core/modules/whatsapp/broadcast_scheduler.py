@@ -115,9 +115,7 @@ class BroadcastScheduler:
             broadcast.status = BroadcastStatus.APPROVED
         return broadcast
 
-    def list_broadcasts(
-        self, status: BroadcastStatus | None = None
-    ) -> list[BroadcastMessage]:
+    def list_broadcasts(self, status: BroadcastStatus | None = None) -> list[BroadcastMessage]:
         """List all broadcasts, optionally filtered by status.
 
         Args:

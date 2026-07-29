@@ -44,9 +44,7 @@ class RozetkaAutoWatch:
         """
         self.storage = storage
         self.collector = collector or RozetkaCollector()
-        self.price_tracker = price_tracker or RozetkaPriceTracker(
-            storage, min_drop_pct=min_drop_pct
-        )
+        self.price_tracker = price_tracker or RozetkaPriceTracker(storage, min_drop_pct=min_drop_pct)
         self.max_cards = max_cards
         self.min_age_days = min_age_days
 
@@ -73,14 +71,10 @@ class RozetkaAutoWatch:
         collection_stats: dict[str, object] = {"collected": 0, "new": 0}
         if collect and queries:
             for query in queries:
-                result = self.collector.collect_to_storage(
-                    self.storage, query=query, max_cards=self.max_cards
-                )
+                result = self.collector.collect_to_storage(self.storage, query=query, max_cards=self.max_cards)
                 collected = result.get("collected", 0)
                 new = result.get("new", 0)
-                collection_stats["collected"] = (
-                    collection_stats.get("collected", 0) + collected
-                )
+                collection_stats["collected"] = collection_stats.get("collected", 0) + collected
                 collection_stats["new"] = collection_stats.get("new", 0) + new
 
         report["collection"] = collection_stats

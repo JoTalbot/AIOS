@@ -1,4 +1,5 @@
 """Tests for DI container."""
+
 from aios_core.container import AppConfig, AppContainer
 
 

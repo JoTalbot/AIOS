@@ -76,11 +76,7 @@ class EmotionState:
     def valence_score(self) -> float:
         """Overall valence (positive vs negative)."""
         pos = self.emotions.get("joy", 0) + self.emotions.get("trust", 0)
-        neg = (
-            self.emotions.get("sadness", 0)
-            + self.emotions.get("anger", 0)
-            + self.emotions.get("fear", 0)
-        )
+        neg = self.emotions.get("sadness", 0) + self.emotions.get("anger", 0) + self.emotions.get("fear", 0)
         return pos - neg
 
 
@@ -214,9 +210,7 @@ class EmotionalIntelligence:
         for emotion, coords in EMOTION_CATEGORIES.items():
             if emotion == "neutral":
                 continue
-            dist = math.sqrt(
-                (coords["valence"] - valence) ** 2 + (coords["arousal"] - arousal) ** 2
-            )
+            dist = math.sqrt((coords["valence"] - valence) ** 2 + (coords["arousal"] - arousal) ** 2)
             if dist < best_dist:
                 best_dist = dist
                 best_emotion = emotion
@@ -244,14 +238,10 @@ class EmotionalIntelligence:
         text = signals.get("text", "")
         if isinstance(text, str) and text:
             text_lower = text.lower()
-            keyword_count = sum(
-                1 for kw in self._keyword_map.get(emotion, []) if kw in text_lower
-            )
+            keyword_count = sum(1 for kw in self._keyword_map.get(emotion, []) if kw in text_lower)
             confidence = min(1.0, 0.3 + keyword_count * 0.2)
 
-        coords = EMOTION_CATEGORIES.get(
-            emotion, {"valence": 0.0, "arousal": 0.0, "dominance": 0.0}
-        )
+        coords = EMOTION_CATEGORIES.get(emotion, {"valence": 0.0, "arousal": 0.0, "dominance": 0.0})
         signal = EmotionSignal(
             emotion=emotion,
             confidence=round(confidence, 4),
@@ -274,9 +264,7 @@ class EmotionalIntelligence:
             self.emotions[emotion] = intensity_val
 
         # Update state
-        self.emotion_state.dominant_emotion = max(
-            self.emotion_state.emotions, key=self.emotion_state.emotions.get
-        )
+        self.emotion_state.dominant_emotion = max(self.emotion_state.emotions, key=self.emotion_state.emotions.get)
         self.emotion_state.last_updated = time.time()
 
         # Select regulation strategy
@@ -328,9 +316,7 @@ class EmotionalIntelligence:
 
     # ── Empathy ────────────────────────────────────────────────────
 
-    def model_empathy(
-        self, target_id: str, target_emotion: str, perspective: str = "cognitive"
-    ) -> dict[str, Any]:
+    def model_empathy(self, target_id: str, target_emotion: str, perspective: str = "cognitive") -> dict[str, Any]:
         """Model empathy toward another agent's emotional state."""
         self.empathy_models[target_id] = {
             "emotion": target_emotion,
@@ -349,9 +335,7 @@ class EmotionalIntelligence:
             "target": target_id,
             "emotion": target_emotion,
             "perspective": perspective,
-            "understanding_score": self.empathy_models[target_id][
-                "understanding_score"
-            ],
+            "understanding_score": self.empathy_models[target_id]["understanding_score"],
         }
 
     def _compute_contagion(self, emotion: str) -> float:
@@ -364,9 +348,7 @@ class EmotionalIntelligence:
     def analyze_sentiment(self, text: str) -> dict[str, Any]:
         """Analyze sentiment of text using VAD (Valence-Arousal-Dominance)."""
         emotion = self._recognize_from_text(text)
-        coords = EMOTION_CATEGORIES.get(
-            emotion, {"valence": 0.0, "arousal": 0.0, "dominance": 0.0}
-        )
+        coords = EMOTION_CATEGORIES.get(emotion, {"valence": 0.0, "arousal": 0.0, "dominance": 0.0})
         return {
             "emotion": emotion,
             "valence": coords["valence"],

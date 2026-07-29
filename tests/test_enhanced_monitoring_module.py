@@ -1,4 +1,5 @@
 """Tests for aios_core/enhanced_monitoring.py"""
+
 from __future__ import annotations
 
 from aios_core.enhanced_monitoring import MonitoringAPI

@@ -10,9 +10,11 @@ def _lazy_import(module_path: str, attr: str | None = None):
     key = (module_path, attr)
     if key not in _import_cache:
         import importlib
+
         mod = importlib.import_module(module_path)
         _import_cache[key] = getattr(mod, attr) if attr else mod
     return _import_cache[key]
+
 
 DEFAULT_OLX_DB = "olx_ads.sqlite"
 
@@ -95,4 +97,3 @@ def _run_msg_platform(args, platform: str) -> bool:
         print(json.dumps({"error": str(exc)}, ensure_ascii=False))
         return True
     return False
-

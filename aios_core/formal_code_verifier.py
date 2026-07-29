@@ -44,26 +44,16 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
         """Execute visit Import."""
         for alias in node.names:
             mod_name = alias.name.split(".")[0]
-            if (
-                mod_name in self.FORBIDDEN_MODULES
-                and mod_name not in self.allowed_imports
-            ):
-                self.violations.append(
-                    f"Forbidden module import detected: '{mod_name}' (Line {node.lineno})"
-                )
+            if mod_name in self.FORBIDDEN_MODULES and mod_name not in self.allowed_imports:
+                self.violations.append(f"Forbidden module import detected: '{mod_name}' (Line {node.lineno})")
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         """Execute visit ImportFrom."""
         if node.module:
             mod_name = node.module.split(".")[0]
-            if (
-                mod_name in self.FORBIDDEN_MODULES
-                and mod_name not in self.allowed_imports
-            ):
-                self.violations.append(
-                    f"Forbidden from-import detected: '{node.module}' (Line {node.lineno})"
-                )
+            if mod_name in self.FORBIDDEN_MODULES and mod_name not in self.allowed_imports:
+                self.violations.append(f"Forbidden from-import detected: '{node.module}' (Line {node.lineno})")
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
@@ -76,9 +66,7 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
             func_name = node.func.attr
 
         if func_name in self.FORBIDDEN_CALLS:
-            self.violations.append(
-                f"Forbidden built-in function invocation: '{func_name}()' (Line {node.lineno})"
-            )
+            self.violations.append(f"Forbidden built-in function invocation: '{func_name}()' (Line {node.lineno})")
 
         self.generic_visit(node)
 
@@ -91,17 +79,13 @@ class ForbiddenASTVisitor(ast.NodeVisitor):
             "__builtins__",
             "__code__",
         }:
-            self.violations.append(
-                f"Dunder reflection property access blocked: '.{node.attr}' (Line {node.lineno})"
-            )
+            self.violations.append(f"Dunder reflection property access blocked: '.{node.attr}' (Line {node.lineno})")
         self.generic_visit(node)
 
     def visit_While(self, node: ast.While) -> None:
         """Execute visit While."""
         # Check for un-bounded infinite while loop (while True without explicit break/return)
-        has_break = any(
-            isinstance(child, (ast.Break, ast.Return)) for child in ast.walk(node)
-        )
+        has_break = any(isinstance(child, (ast.Break, ast.Return)) for child in ast.walk(node))
         if not has_break:
             self.has_unbounded_loops = True
             self.violations.append(
@@ -126,9 +110,7 @@ class FormalCodeVerifier:
         }
         self.verification_history: list[dict[str, Any]] = []
 
-    def verify_code(
-        self, code_str: str, preconditions: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def verify_code(self, code_str: str, preconditions: dict[str, Any] | None = None) -> dict[str, Any]:
         """Mathematically and statically verify generated code before execution."""
         start_time = time.time()
         violations: list[str] = []
@@ -137,17 +119,13 @@ class FormalCodeVerifier:
         # 1. Syntax Correctness Proof
         try:
             tree = ast.parse(code_str)
-            proven_guarantees.append(
-                "AST Parsing Proof: Valid Python Abstract Syntax Tree"
-            )
+            proven_guarantees.append("AST Parsing Proof: Valid Python Abstract Syntax Tree")
         except SyntaxError as syn_err:
             return {
                 "verified": False,
                 "safety_score": 0.0,
                 "proven_guarantees": [],
-                "detected_violations": [
-                    f"Syntax Error: {syn_err.msg} at line {syn_err.lineno}"
-                ],
+                "detected_violations": [f"Syntax Error: {syn_err.msg} at line {syn_err.lineno}"],
                 "verification_time_ms": round((time.time() - start_time) * 1000.0, 3),
             }
 
@@ -157,26 +135,17 @@ class FormalCodeVerifier:
         violations.extend(visitor.violations)
 
         if not visitor.violations:
-            proven_guarantees.append(
-                "Memory Isolation Proof: Zero reflection or dunder exploits detected"
-            )
-            proven_guarantees.append(
-                "Import Safety Guarantee: All dependencies within constitutional whitelist"
-            )
+            proven_guarantees.append("Memory Isolation Proof: Zero reflection or dunder exploits detected")
+            proven_guarantees.append("Import Safety Guarantee: All dependencies within constitutional whitelist")
 
         if not visitor.has_unbounded_loops:
-            proven_guarantees.append(
-                "Termination Proof: No unbounded infinite loops found"
-            )
+            proven_guarantees.append("Termination Proof: No unbounded infinite loops found")
 
         # 3. Precondition & Variable Assertion Verification
         if preconditions:
             for var_name in preconditions:
                 # Verify code references expected variables securely
-                var_referenced = any(
-                    isinstance(node, ast.Name) and node.id == var_name
-                    for node in ast.walk(tree)
-                )
+                var_referenced = any(isinstance(node, ast.Name) and node.id == var_name for node in ast.walk(tree))
                 if var_referenced:
                     proven_guarantees.append(
                         f"Type Invariant Assertion: Variable '{var_name}' referencing contract verified"

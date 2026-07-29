@@ -23,9 +23,7 @@ logger = logging.getLogger(__name__)
 class SpikingNeuron:
     """Leaky Integrate-and-Fire neuron."""
 
-    def __init__(
-        self, threshold: float = 1.0, decay: float = 0.9, resting: float = 0.0
-    ) -> None:
+    def __init__(self, threshold: float = 1.0, decay: float = 0.9, resting: float = 0.0) -> None:
         self.threshold = threshold
         self.decay = decay
         self.resting = resting
@@ -66,9 +64,7 @@ class SpikingNeuron:
 class Synapse:
     """Weighted connection with STDP plasticity."""
 
-    def __init__(
-        self, weight: float = 0.5, max_weight: float = 1.0, min_weight: float = 0.0
-    ) -> None:
+    def __init__(self, weight: float = 0.5, max_weight: float = 1.0, min_weight: float = 0.0) -> None:
         self.weight = weight
         self.max_weight = max_weight
         self.min_weight = min_weight
@@ -79,9 +75,7 @@ class Synapse:
         """Transmit signal through synapse."""
         return self.weight * spike
 
-    def stdp_update(
-        self, pre_spiked: bool, post_spiked: bool, learning_rate: float = 0.01
-    ) -> None:
+    def stdp_update(self, pre_spiked: bool, post_spiked: bool, learning_rate: float = 0.01) -> None:
         """STDP weight update: strengthen if pre→post, weaken if post→pre."""
         if pre_spiked and post_spiked:
             self.weight = min(self.max_weight, self.weight + learning_rate)
@@ -146,18 +140,14 @@ class SpikingNetwork:
         self.layers = [SpikingLayer(size) for size in layer_sizes]
         self._synapses: list[list[Synapse]] = []
 
-    def connect_layers(
-        self, idx_from: int, idx_to: int, initial_weight: float = 0.5
-    ) -> None:
+    def connect_layers(self, idx_from: int, idx_to: int, initial_weight: float = 0.5) -> None:
         """Create all-to-all synaptic connections between layers."""
         from_size = len(self.layers[idx_from].neurons)
         to_size = len(self.layers[idx_to].neurons)
         syn_matrix = [Synapse(initial_weight) for _ in range(from_size * to_size)]
         self._synapses.append(syn_matrix)
 
-    def poisson_encode(
-        self, values: list[float], duration: int = 10
-    ) -> list[list[int]]:
+    def poisson_encode(self, values: list[float], duration: int = 10) -> list[list[int]]:
         """Encode values as Poisson spike trains."""
         spike_trains: list[list[int]] = []
         for v in values:

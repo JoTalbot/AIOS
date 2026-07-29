@@ -34,9 +34,7 @@ class SAEConfig:
 class SparseAutoencoder:
     """Sparse autoencoder for feature discovery (backward-compatible)."""
 
-    def __init__(
-        self, input_dim: int = 64, hidden_dim: int = 128, sparsity: float = 0.01
-    ) -> None:
+    def __init__(self, input_dim: int = 64, hidden_dim: int = 128, sparsity: float = 0.01) -> None:
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.sparsity = sparsity
@@ -52,9 +50,7 @@ class SparseAutoencoder:
 
     def train(self, activations: list[list[float]]) -> None:
         """Train on activations (backward-compatible)."""
-        self.features = {
-            f"feature_{i}": random.uniform(0.01, 0.1) for i in range(self.hidden_dim)
-        }
+        self.features = {f"feature_{i}": random.uniform(0.01, 0.1) for i in range(self.hidden_dim)}
         # Compute reconstruction loss
         for act in activations[:10]:
             loss = self._compute_reconstruction_loss(act)
@@ -65,9 +61,7 @@ class SparseAutoencoder:
         # MSE between input and reconstruction
         encoded = self._sparse_encode(activation)
         reconstructed = self._decode(encoded)
-        mse = sum((a - r) ** 2 for a, r in zip(activation, reconstructed, strict=False)) / max(
-            len(activation), 1
-        )
+        mse = sum((a - r) ** 2 for a, r in zip(activation, reconstructed, strict=False)) / max(len(activation), 1)
         return round(mse, 4)
 
     def _sparse_encode(self, activation: list[float]) -> list[float]:
@@ -87,8 +81,7 @@ class SparseAutoencoder:
         reconstructed: list[float] = []
         for i in range(self.input_dim):
             total = sum(
-                self._decoder_weights[i][j] * codes[j]
-                for j in range(min(len(codes), len(self._decoder_weights[i])))
+                self._decoder_weights[i][j] * codes[j] for j in range(min(len(codes), len(self._decoder_weights[i])))
             )
             reconstructed.append(total)
         return reconstructed
@@ -96,9 +89,7 @@ class SparseAutoencoder:
     def extract_features(self, activation: list[float]) -> dict[str, float]:
         """Extract features (backward-compatible)."""
         codes = self._sparse_encode(activation)
-        return {
-            f"feature_{i}": round(c, 4) for i, c in enumerate(codes[: self.hidden_dim])
-        }
+        return {f"feature_{i}": round(c, 4) for i, c in enumerate(codes[: self.hidden_dim])}
 
     def interpret_feature(self, feature_idx: int) -> str:
         """Interpret a specific feature."""
@@ -126,9 +117,7 @@ class SparseAutoencoder:
         """Average reconstruction loss."""
         if not self._reconstruction_losses:
             return 0.0
-        return round(
-            sum(self._reconstruction_losses) / len(self._reconstruction_losses), 4
-        )
+        return round(sum(self._reconstruction_losses) / len(self._reconstruction_losses), 4)
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict (backward-compatible)."""

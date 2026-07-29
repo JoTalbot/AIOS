@@ -111,10 +111,7 @@ class ChaosMonkey:
                 results["injections"] += 1
                 if action.action_type == "error":
                     results["errors"] += 1
-                elif (
-                    action.action_type == "delay"
-                    or action.action_type == "resource_kill"
-                ):
+                elif action.action_type == "delay" or action.action_type == "resource_kill":
                     pass
 
         # Check abort conditions
@@ -137,9 +134,7 @@ class ChaosMonkey:
         steady_state: dict[str, Any] | None = None,
     ) -> ChaosExperiment:
         """Create a chaos experiment."""
-        return ChaosExperiment(
-            name=name, actions=actions or [], steady_state=steady_state or {}
-        )
+        return ChaosExperiment(name=name, actions=actions or [], steady_state=steady_state or {})
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""

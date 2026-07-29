@@ -61,23 +61,15 @@ class ProtocolConfig:
 class ProtocolAdapter:
     """Base adapter for different communication protocols."""
 
-    def __init__(
-        self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager
-    ):
+    def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
         """Initialize ProtocolAdapter."""
         self.config = config
         self.integration_manager = integration_manager
         self.metrics = {
-            "connections": MetricCounter(
-                "protocol_connections", "Number of protocol connections"
-            ),
-            "messages_processed": MetricCounter(
-                "protocol_messages", "Number of messages processed"
-            ),
+            "connections": MetricCounter("protocol_connections", "Number of protocol connections"),
+            "messages_processed": MetricCounter("protocol_messages", "Number of messages processed"),
             "errors": MetricCounter("protocol_errors", "Number of protocol errors"),
-            "active_connections": MetricGauge(
-                "protocol_active_connections", "Number of active connections"
-            ),
+            "active_connections": MetricGauge("protocol_active_connections", "Number of active connections"),
         }
 
     async def start(self) -> None:
@@ -96,9 +88,7 @@ class ProtocolAdapter:
 class WebSocketAdapter(ProtocolAdapter):
     """WebSocket protocol adapter."""
 
-    def __init__(
-        self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager
-    ):
+    def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
         """Initialize WebSocketAdapter."""
         super().__init__(config, integration_manager)
         self.server = None
@@ -139,9 +129,7 @@ class WebSocketAdapter(ProtocolAdapter):
             ssl=None if not self.config.tls else self._create_ssl_context(),
         )
 
-        logger.info(
-            f"WebSocket server started on {self.config.host}:{self.config.port}"
-        )
+        logger.info(f"WebSocket server started on {self.config.host}:{self.config.port}")
 
     async def stop(self) -> None:
         """Stop WebSocket server."""
@@ -187,9 +175,7 @@ class WebSocketAdapter(ProtocolAdapter):
 class GraphQLAdapter(ProtocolAdapter):
     """GraphQL protocol adapter."""
 
-    def __init__(
-        self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager
-    ):
+    def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
         """Initialize GraphQLAdapter."""
         super().__init__(config, integration_manager)
         self.schema = self._create_schema()
@@ -230,9 +216,7 @@ class GraphQLAdapter(ProtocolAdapter):
                     args={"limit": GraphQLString},
                     resolve=resolve_integration_events,
                 ),
-                "systemMetrics": GraphQLField(
-                    GraphQLString, resolve=resolve_system_metrics
-                ),
+                "systemMetrics": GraphQLField(GraphQLString, resolve=resolve_system_metrics),
             },
         )
 
@@ -251,9 +235,7 @@ class GraphQLAdapter(ProtocolAdapter):
 
     async def start(self) -> None:
         """Start GraphQL server."""
-        logger.info(
-            f"GraphQL schema created with endpoints on {self.config.host}:{self.config.port}"
-        )
+        logger.info(f"GraphQL schema created with endpoints on {self.config.host}:{self.config.port}")
 
     async def stop(self) -> None:
         """Stop GraphQL server."""
@@ -275,9 +257,7 @@ class GraphQLAdapter(ProtocolAdapter):
 class GrpcAdapter(ProtocolAdapter):
     """gRPC protocol adapter."""
 
-    def __init__(
-        self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager
-    ):
+    def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
         """Initialize GrpcAdapter."""
         super().__init__(config, integration_manager)
         self.server = None
@@ -301,9 +281,7 @@ class GrpcAdapter(ProtocolAdapter):
                     await self.integration_manager.event_queue.put(event)
                     self.metrics["messages_processed"].add(1)
 
-                    return grpc.aio.ProcessEventResponse(
-                        success=True, message="Event processed successfully"
-                    )
+                    return grpc.aio.ProcessEventResponse(success=True, message="Event processed successfully")
                 except Exception as e:
                     logger.error(f"gRPC error: {e}")
                     self.metrics["errors"].add(1)
@@ -328,9 +306,7 @@ class GrpcAdapter(ProtocolAdapter):
 class SSEAdapter(ProtocolAdapter):
     """Server-Sent Events adapter."""
 
-    def __init__(
-        self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager
-    ):
+    def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
         """Initialize SSEAdapter."""
         super().__init__(config, integration_manager)
         self.connections = {}
@@ -367,7 +343,6 @@ class SSEAdapter(ProtocolAdapter):
         if not self.connections:
             return
 
-
         # Broadcast to all connections
         for subscriptions in self.connections.values():
             # Check if connection wants this type of event
@@ -379,9 +354,7 @@ class SSEAdapter(ProtocolAdapter):
 class MessageQueueAdapter(ProtocolAdapter):
     """Message Queue adapter (RabbitMQ, Kafka, etc.)."""
 
-    def __init__(
-        self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager
-    ):
+    def __init__(self, config: ProtocolConfig, integration_manager: ExternalIntegrationManager):
         """Initialize MessageQueueAdapter."""
         super().__init__(config, integration_manager)
         self.queue_config = config.kwargs
@@ -474,9 +447,7 @@ class ProtocolManager:
             except Exception as e:
                 logger.error(f"Failed to stop adapter {name}: {e}")
 
-    async def handle_protocol_message(
-        self, protocol_name: str, message: Any, connection_id: str | None = None
-    ):
+    async def handle_protocol_message(self, protocol_name: str, message: Any, connection_id: str | None = None):
         """Handle message from specific protocol."""
         if protocol_name in self.adapters:
             await self.adapters[protocol_name].handle_message(message, connection_id)
@@ -497,9 +468,7 @@ def create_protocol_manager(
         port=8765,
         endpoint="/ws",
     )
-    manager.add_adapter(
-        "websocket", WebSocketAdapter(websocket_config, integration_manager)
-    )
+    manager.add_adapter("websocket", WebSocketAdapter(websocket_config, integration_manager))
 
     graphql_config = ProtocolConfig(
         protocol_type=ProtocolType.GRAPHQL,
@@ -509,9 +478,7 @@ def create_protocol_manager(
     )
     manager.add_adapter("graphql", GraphQLAdapter(graphql_config, integration_manager))
 
-    sse_config = ProtocolConfig(
-        protocol_type=ProtocolType.SSE, host="localhost", port=8767, endpoint="/events"
-    )
+    sse_config = ProtocolConfig(protocol_type=ProtocolType.SSE, host="localhost", port=8767, endpoint="/events")
     manager.add_adapter("sse", SSEAdapter(sse_config, integration_manager))
 
     return manager

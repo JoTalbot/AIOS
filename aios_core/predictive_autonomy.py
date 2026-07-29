@@ -12,11 +12,11 @@ from .autonomy_manager import AutonomyLevel
 
 class EnvironmentContextAnalyzer:
     """Analyzes the current environment to adjust risk profiles."""
-    
+
     def __init__(self):
         self.critical_environments = ["production", "prod", "mainnet", "live"]
         self.safe_environments = ["sandbox", "dev", "testnet", "local"]
-        
+
     def get_environment_multiplier(self, env_name: str) -> float:
         """Return a risk multiplier based on environment type."""
         env_name = env_name.lower()
@@ -29,70 +29,68 @@ class EnvironmentContextAnalyzer:
 
 class ResourceImpactPredictor:
     """Predicts if an action will exhaust available system resources."""
-    
+
     def __init__(self):
         self.max_cpu_usage = 80.0  # percentage
         self.max_memory_usage_gb = 64.0
-        
+
     def estimate_impact(self, plan_step: dict[str, Any]) -> float:
         """Returns a normalized risk score based on predicted resource usage."""
         expected_cpu = plan_step.get("expected_cpu_percent", 0.0)
         expected_mem = plan_step.get("expected_memory_gb", 0.0)
-        
+
         cpu_risk = min(1.0, expected_cpu / self.max_cpu_usage)
         mem_risk = min(1.0, expected_mem / self.max_memory_usage_gb)
-        
+
         # Exponential penalty as it approaches limits
-        return (cpu_risk ** 2 + mem_risk ** 2) / 2.0
+        return (cpu_risk**2 + mem_risk**2) / 2.0
 
 
 class AgentHistoryAnalyzer:
     """Tracks and analyzes past agent performance to predict future success."""
-    
+
     def __init__(self):
         self.agent_profiles: dict[str, dict[str, Any]] = {}
-        
+
     def update_profile(self, agent_id: str, success: bool, complexity: float):
         if agent_id not in self.agent_profiles:
             self.agent_profiles[agent_id] = {"attempts": 0, "failures": 0, "avg_complexity": 0.0}
-            
+
         prof = self.agent_profiles[agent_id]
         prof["attempts"] += 1
         if not success:
             prof["failures"] += 1
-            
+
         # Moving average of complexity handled
         prof["avg_complexity"] = (prof["avg_complexity"] * 0.9) + (complexity * 0.1)
-        
+
     def get_historical_risk(self, agent_id: str, task_complexity: float) -> float:
         """Compute risk purely from historical success rates and capability limits."""
         if agent_id not in self.agent_profiles:
             return 0.3  # Unknown agent risk
-            
+
         prof = self.agent_profiles[agent_id]
         if prof["attempts"] < 5:
             return 0.3  # Not enough data
-            
+
         failure_rate = prof["failures"] / prof["attempts"]
-        
+
         # If task is much harder than what the agent usually does, increase risk
         complexity_ratio = task_complexity / max(0.1, prof["avg_complexity"])
         overreach_penalty = max(0.0, (complexity_ratio - 1.5) * 0.2)
-        
+
         return min(1.0, failure_rate + overreach_penalty)
 
 
 class PredictiveAutonomyRegulator:
     """Predictive Autonomy Regulator that dynamically bounds agent execution scope."""
 
-    def __init__(
-        self, high_risk_threshold: float = 0.6, critical_risk_threshold: float = 0.85
-    ):
+    def __init__(self, high_risk_threshold: float = 0.6, critical_risk_threshold: float = 0.85):
         """Initialize PredictiveAutonomyRegulator."""
         self.high_risk_threshold = high_risk_threshold
         self.critical_risk_threshold = critical_risk_threshold
         self.history: list[dict[str, Any]] = []
-        
+
         # Sub-analyzers
         self.env_analyzer = EnvironmentContextAnalyzer()
         self.resource_predictor = ResourceImpactPredictor()
@@ -103,29 +101,23 @@ class PredictiveAutonomyRegulator:
         agent_id: str,
         plan_step: dict[str, Any],
         agent_history_stats: dict[str, float] | None = None,
-        environment: str = "default"
+        environment: str = "default",
     ) -> float:
         """Calculate normalized failure risk score [0.0, 1.0]."""
         risk_score = 0.1  # baseline minimal risk
 
         # Factor 1: Plan step operational risk
         action_type = plan_step.get("action", "").lower()
-        if any(
-            keyword in action_type
-            for keyword in ["delete", "drop", "terminate", "wipe", "force", "sudo"]
-        ):
+        if any(keyword in action_type for keyword in ["delete", "drop", "terminate", "wipe", "force", "sudo"]):
             risk_score += 0.4
-        elif any(
-            keyword in action_type
-            for keyword in ["write", "modify", "deploy", "update", "exec"]
-        ):
+        elif any(keyword in action_type for keyword in ["write", "modify", "deploy", "update", "exec"]):
             risk_score += 0.2
 
         # Factor 2: Complexity and required capabilities
         complexity = plan_step.get("complexity", 1.0)
         if complexity > 5.0:
             risk_score += 0.15
-            
+
         # Factor 3: Resource impact
         resource_risk = self.resource_predictor.estimate_impact(plan_step)
         risk_score += resource_risk * 0.2
@@ -138,7 +130,7 @@ class PredictiveAutonomyRegulator:
         else:
             historical_risk = self.history_analyzer.get_historical_risk(agent_id, complexity)
             risk_score += historical_risk * 0.3
-            
+
         # Apply environment multiplier
         env_multiplier = self.env_analyzer.get_environment_multiplier(environment)
         risk_score *= env_multiplier
@@ -152,7 +144,7 @@ class PredictiveAutonomyRegulator:
         current_level: AutonomyLevel,
         plan_step: dict[str, Any],
         agent_history_stats: dict[str, float] | None = None,
-        environment: str = "default"
+        environment: str = "default",
     ) -> tuple[AutonomyLevel, str]:
         """Dynamically regulate autonomy level based on predicted task risk."""
         risk = self.assess_risk(agent_id, plan_step, agent_history_stats, environment)
@@ -164,10 +156,7 @@ class PredictiveAutonomyRegulator:
             effective_level = AutonomyLevel.LEVEL_1_ASSISTED
             reason = f"Critical Risk ({risk:.2f} >= {self.critical_risk_threshold}) — downgraded to Level 1 Assisted"
 
-        elif (
-            risk >= self.high_risk_threshold
-            and current_level.value > AutonomyLevel.LEVEL_2_SUPERVISED.value
-        ):
+        elif risk >= self.high_risk_threshold and current_level.value > AutonomyLevel.LEVEL_2_SUPERVISED.value:
             # Clamp to Level 2 (Supervised Execution)
             effective_level = AutonomyLevel.LEVEL_2_SUPERVISED
             reason = f"High Risk ({risk:.2f} >= {self.high_risk_threshold}) — clamped to Level 2 Supervised"
@@ -195,10 +184,8 @@ class PredictiveAutonomyRegulator:
         """Summary of predictive regulation decisions."""
         return {
             "total_regulations": len(self.history),
-            "clamped_count": sum(
-                1 for h in self.history if h["regulated_level"] < h["original_level"]
-            ),
+            "clamped_count": sum(1 for h in self.history if h["regulated_level"] < h["original_level"]),
             "high_risk_threshold": self.high_risk_threshold,
             "critical_risk_threshold": self.critical_risk_threshold,
-            "tracked_agents": len(self.history_analyzer.agent_profiles)
+            "tracked_agents": len(self.history_analyzer.agent_profiles),
         }

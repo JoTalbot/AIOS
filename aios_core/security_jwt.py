@@ -84,9 +84,7 @@ class JWTManager:
         # Rate limiting
         self._check_rate_limit(subject)
         now = int(time.time())
-        jti = hashlib.sha256(
-            f"{subject}:{now}:{random.randint(0, 100000)}".encode()
-        ).hexdigest()[:16]
+        jti = hashlib.sha256(f"{subject}:{now}:{random.randint(0, 100000)}".encode()).hexdigest()[:16]
         payload = {
             "sub": subject,
             "roles": roles or ["user"],
@@ -97,9 +95,7 @@ class JWTManager:
             "type": "access",
         }
         token = jwt.encode(payload, self.secret, algorithm=self.algorithm)
-        self._audit_log.append(
-            {"action": "create", "subject": subject, "jti": jti, "time": now}
-        )
+        self._audit_log.append({"action": "create", "subject": subject, "jti": jti, "time": now})
         return token
 
     def create_refresh_token(self, subject: str, roles: list[str] | None = None) -> str:
@@ -156,9 +152,7 @@ class JWTManager:
             jti = payload.get("jti", "")
             exp = payload.get("exp", 0)
             self._blacklist.add(jti, exp)
-            self._audit_log.append(
-                {"action": "revoke", "jti": jti, "time": int(time.time())}
-            )
+            self._audit_log.append({"action": "revoke", "jti": jti, "time": int(time.time())})
             return True
         return False
 
@@ -181,9 +175,7 @@ class JWTManager:
         now = time.time()
         if subject not in self._rate_limit:
             self._rate_limit[subject] = []
-        self._rate_limit[subject] = [
-            t for t in self._rate_limit[subject] if t > now - 60
-        ]
+        self._rate_limit[subject] = [t for t in self._rate_limit[subject] if t > now - 60]
         if len(self._rate_limit[subject]) >= self._rate_limit_max:
             raise ValueError(f"Rate limit exceeded for {subject}")
         self._rate_limit[subject].append(now)

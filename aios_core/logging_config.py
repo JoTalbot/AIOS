@@ -35,9 +35,7 @@ __all__ = [
 
 # Context variables for dynamic injection
 _ctx_agent_id: ContextVar[str] = ContextVar("agent_id", default="system")
-_ctx_constitutional_status: ContextVar[str] = ContextVar(
-    "constitutional_status", default="VALID"
-)
+_ctx_constitutional_status: ContextVar[str] = ContextVar("constitutional_status", default="VALID")
 _ctx_task_id: ContextVar[str] = ContextVar("task_id", default="")
 
 # Sensitive field patterns to sanitize
@@ -111,14 +109,8 @@ class JSONFormatter(logging.Formatter):
             "message": record.getMessage(),
             "module": record.module,
             "line": record.lineno,
-            "trace_id": (
-                current_span.trace_id
-                if current_span
-                else record.__dict__.get("trace_id")
-            ),
-            "span_id": (
-                current_span.span_id if current_span else record.__dict__.get("span_id")
-            ),
+            "trace_id": (current_span.trace_id if current_span else record.__dict__.get("trace_id")),
+            "span_id": (current_span.span_id if current_span else record.__dict__.get("span_id")),
             "agent_id": _ctx_agent_id.get(),
             "constitutional_status": _ctx_constitutional_status.get(),
             "task_id": _ctx_task_id.get(),
@@ -244,10 +236,7 @@ class BufferedHandler(logging.Handler):
         """Buffer the record; flush when buffer is full or interval elapsed."""
         self._buffer.append(record)
         now = time.time()
-        if (
-            len(self._buffer) >= self._buffer_size
-            or (now - self._last_flush) >= self._flush_interval
-        ):
+        if len(self._buffer) >= self._buffer_size or (now - self._last_flush) >= self._flush_interval:
             self.flush()
 
     def flush(self) -> None:
@@ -302,9 +291,7 @@ def setup_logging(
     logger.addHandler(console_handler)
 
     # File Handler (possibly wrapped in BufferedHandler)
-    file_handler = RotatingFileHandler(
-        log_file, maxBytes=max_bytes, backupCount=backup_count
-    )
+    file_handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
     file_handler.setFormatter(formatter)
 
     if buffer_size > 0:

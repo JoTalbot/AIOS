@@ -176,12 +176,8 @@ class EventBus:
                    metadata    TEXT
                )"""
         )
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type)"
-        )
-        self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)"
-        )
+        self.db.execute("CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type)")
+        self.db.execute("CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)")
 
     # ------------------------------------------------------------------
     # Subscriptions
@@ -247,17 +243,11 @@ class EventBus:
             event_type = sub["type"]
             handlers = self._exact_handlers.get(event_type)
             if handlers is not None:
-                self._exact_handlers[event_type] = [
-                    (sid, h) for sid, h in handlers if sid != subscription_id
-                ]
+                self._exact_handlers[event_type] = [(sid, h) for sid, h in handlers if sid != subscription_id]
                 if not self._exact_handlers[event_type]:
                     del self._exact_handlers[event_type]
         else:
-            self._pattern_handlers = [
-                (sid, p, h)
-                for sid, p, h in self._pattern_handlers
-                if sid != subscription_id
-            ]
+            self._pattern_handlers = [(sid, p, h) for sid, p, h in self._pattern_handlers if sid != subscription_id]
 
         return True
 
@@ -343,8 +333,7 @@ class EventBus:
                     handler(event_dict)
                 except Exception:
                     logger.exception(
-                        "Pattern handler error for subscription %s "
-                        "(pattern=%s) on event type %s",
+                        "Pattern handler error for subscription %s (pattern=%s) on event type %s",
                         sub_id,
                         pattern,
                         event_type,
@@ -476,8 +465,7 @@ class EventBus:
             result["total_events"] = total_row["cnt"] if total_row else 0
 
             type_rows = self.db.query(
-                "SELECT event_type, COUNT(*) AS cnt FROM events "
-                "GROUP BY event_type ORDER BY cnt DESC"
+                "SELECT event_type, COUNT(*) AS cnt FROM events GROUP BY event_type ORDER BY cnt DESC"
             )
             result["by_type"] = {r["event_type"]: r["cnt"] for r in type_rows}
 
@@ -497,7 +485,5 @@ def _row_to_dict(row: dict) -> dict:
         "source": row["source"],
         "data": Database.from_json(row["data"]),
         "timestamp": row["timestamp"],
-        "metadata": (
-            Database.from_json(row["metadata"]) if row.get("metadata") else {}
-        ),
+        "metadata": (Database.from_json(row["metadata"]) if row.get("metadata") else {}),
     }

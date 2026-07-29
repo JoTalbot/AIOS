@@ -18,9 +18,16 @@ from aios_core.modules.olx.models import AdCard
 def _card(title: str, price: float, ad_id: str = "") -> AdCard:
     """Helper to create an AdCard."""
     return AdCard(
-        title=title, price=price, currency="UAH", city="Kyiv",
-        published_text="today", is_top=False, url=f"https://fb.com/{title}",
-        ad_id=ad_id or f"fb-{title}", query="test", raw_texts=[title],
+        title=title,
+        price=price,
+        currency="UAH",
+        city="Kyiv",
+        published_text="today",
+        is_top=False,
+        url=f"https://fb.com/{title}",
+        ad_id=ad_id or f"fb-{title}",
+        query="test",
+        raw_texts=[title],
     )
 
 
@@ -39,6 +46,7 @@ def test_facebook_imports():
 def test_facebook_storage_inherits_olx():
     """FacebookStorage inherits OLXStorage."""
     from aios_core.modules.olx.storage import OLXStorage
+
     assert issubclass(FacebookStorage, OLXStorage)
 
 
@@ -78,6 +86,7 @@ def test_facebook_favorites():
 def test_facebook_auto_login():
     """FacebookAutoLogin uses Facebook package."""
     from aios_core.modules.rozetka.auto_login import LoginState
+
     auto = FacebookAutoLogin()
     assert auto.package == "com.facebook.katana"
 

@@ -1,4 +1,5 @@
 """Base Platform Adapter — абстрактный интерфейс для всех платформ."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -10,6 +11,7 @@ from typing import Any
 @dataclass
 class IncomingMessage:
     """Входящее сообщение с платформы."""
+
     message_id: str
     platform: str
     sender_id: str
@@ -18,9 +20,11 @@ class IncomingMessage:
     timestamp: datetime
     metadata: dict[str, Any] = None
 
+
 @dataclass
 class SentMessage:
     """Отправленное сообщение."""
+
     message_id: str
     platform: str
     recipient_id: str
@@ -28,9 +32,10 @@ class SentMessage:
     timestamp: datetime
     status: str = "sent"  # sent, delivered, failed
 
+
 class PlatformAdapter(ABC):
     """Абстрактный базовый класс для всех платформ."""
-    
+
     def __init__(self, config: dict[str, Any]):
         self.config = config
         self.platform_name = self.__class__.__name__.replace("Adapter", "").lower()

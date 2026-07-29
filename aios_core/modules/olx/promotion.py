@@ -51,9 +51,7 @@ class ImprovementSuggestion:
         if self.suggested_title != self.title:
             lines.append(f"- Новий заголовок: {self.suggested_title}")
         if self.suggested_price is not None:
-            lines.append(
-                f"- Ціна: {self.current_price} → {self.suggested_price} ({self.price_verdict})"
-            )
+            lines.append(f"- Ціна: {self.current_price} → {self.suggested_price} ({self.price_verdict})")
         if self.keywords_to_add:
             lines.append("- Ключові слова: " + ", ".join(self.keywords_to_add))
         for item in self.description_additions:
@@ -102,9 +100,7 @@ class AdImprover:
                     notes.append("Ціна нижча за ринок — можна підняти.")
                 elif own_ad.price >= market_median * 1.1:
                     verdict = "above_market"
-                    notes.append(
-                        f"Ціна вища за медіану ({market_median:g}) — головний фактор застою."
-                    )
+                    notes.append(f"Ціна вища за медіану ({market_median:g}) — головний фактор застою.")
                 else:
                     verdict = "competitive"
         else:
@@ -118,9 +114,7 @@ class AdImprover:
             if city.lower() not in lowered_desc:
                 additions.append(f"Місто та можливість огляду: {city}.")
         if keywords:
-            additions.append(
-                "Фрази з успішних оголошень: " + ", ".join(keywords[:5]) + "."
-            )
+            additions.append("Фрази з успішних оголошень: " + ", ".join(keywords[:5]) + ".")
         additions.append("Чіткі фото з кількох ракурсів (мінімум 4-6).")
         additions.append("Контакт для швидкого зв'язку та години відповідей.")
 
@@ -238,16 +232,10 @@ class Reposter:
         """Initialize Reposter."""
         self.adb = adb or ADBController()
 
-    def plan_steps(
-        self, own_ad: OwnAd, suggestion: ImprovementSuggestion | None = None
-    ) -> list[str]:
+    def plan_steps(self, own_ad: OwnAd, suggestion: ImprovementSuggestion | None = None) -> list[str]:
         """Plan actionable steps for the repost."""
         title = suggestion.suggested_title if suggestion else own_ad.title
-        price = (
-            suggestion.suggested_price
-            if suggestion and suggestion.suggested_price is not None
-            else own_ad.price
-        )
+        price = suggestion.suggested_price if suggestion and suggestion.suggested_price is not None else own_ad.price
         steps = [
             f"Відкрити оголошення «{own_ad.title}» ({own_ad.url or own_ad.ad_id or 'з переліку'})",
             f"Меню {'/'.join(self.MENU_LABELS)} → {'/'.join(self.DELETE_LABELS)}",
@@ -257,9 +245,7 @@ class Reposter:
         if price is not None:
             steps.append(f"Встановити ціну {price:g} {own_ad.currency or 'грн'}")
         if suggestion and suggestion.description_additions:
-            steps.append(
-                "Доповнити опис: " + " | ".join(suggestion.description_additions)
-            )
+            steps.append("Доповнити опис: " + " | ".join(suggestion.description_additions))
         steps.append("Опублікувати та перевірити появу в «Мої оголошення»")
         return steps
 
@@ -280,18 +266,12 @@ class Reposter:
             }
         log: list[dict[str, object]] = []
         if own_ad.url:
-            log.append(
-                self.adb.run(
-                    f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"'
-                )
-            )
+            log.append(self.adb.run(f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"'))
         log.append(
             {
                 "code": 0,
                 "stdout": (
-                    "step-by-step UI flow for "
-                    + "/".join(self.DELETE_LABELS)
-                    + " (requires per-device calibration)"
+                    "step-by-step UI flow for " + "/".join(self.DELETE_LABELS) + " (requires per-device calibration)"
                 ),
                 "stderr": "",
             }
@@ -322,13 +302,8 @@ class OwnAdEditor:
         ]
         if suggestion.suggested_title != own_ad.title:
             steps.append(f"Заголовок: «{suggestion.suggested_title}»")
-        if (
-            suggestion.suggested_price is not None
-            and suggestion.suggested_price != own_ad.price
-        ):
-            steps.append(
-                f"Ціна: {own_ad.price} → {suggestion.suggested_price:g} ({suggestion.price_verdict})"
-            )
+        if suggestion.suggested_price is not None and suggestion.suggested_price != own_ad.price:
+            steps.append(f"Ціна: {own_ad.price} → {suggestion.suggested_price:g} ({suggestion.price_verdict})")
         for addition in suggestion.description_additions:
             steps.append(f"Доповнити опис: {addition}")  # noqa: PERF401
         steps.append("Зберегти зміни та перевірити публічну сторінку")
@@ -346,17 +321,11 @@ class OwnAdEditor:
             return {"status": "dry_run", "steps": steps, "executed": False}
         log: list[dict[str, object]] = []
         if own_ad.url:
-            log.append(
-                self.adb.run(
-                    f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"'
-                )
-            )
+            log.append(self.adb.run(f'adb shell am start -a android.intent.action.VIEW -d "{own_ad.url}"'))
         log.append(
             {
                 "code": 0,
-                "stdout": "edit flow via "
-                + "/".join(self.EDIT_LABELS)
-                + " (requires per-device calibration)",
+                "stdout": "edit flow via " + "/".join(self.EDIT_LABELS) + " (requires per-device calibration)",
                 "stderr": "",
             }
         )

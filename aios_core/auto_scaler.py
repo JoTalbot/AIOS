@@ -142,10 +142,7 @@ class AutoScaler:
 
         # ── Check stabilization window ──
         # Don't scale down if we recently scaled up
-        if (
-            self._last_scale_up_time
-            and now - self._last_scale_up_time < self.stabilization_window
-        ):
+        if self._last_scale_up_time and now - self._last_scale_up_time < self.stabilization_window:
             # Only allow scale UP during stabilization
             pass
 
@@ -160,21 +157,14 @@ class AutoScaler:
             if value > policy.scale_up_threshold:
                 should_scale_up = True
                 should_scale_down = False
-                up_reasons.append(
-                    f"{policy.metric_name}={value} > {policy.scale_up_threshold}"
-                )
+                up_reasons.append(f"{policy.metric_name}={value} > {policy.scale_up_threshold}")
             elif value < policy.scale_down_threshold:
-                down_reasons.append(
-                    f"{policy.metric_name}={value} < {policy.scale_down_threshold}"
-                )
+                down_reasons.append(f"{policy.metric_name}={value} < {policy.scale_down_threshold}")
             else:
                 should_scale_down = False  # at least one metric in normal range
 
         # ── Stabilization override ──
-        if (
-            self._last_scale_up_time
-            and now - self._last_scale_up_time < self.stabilization_window
-        ):
+        if self._last_scale_up_time and now - self._last_scale_up_time < self.stabilization_window:
             should_scale_down = False
 
         if should_scale_up:
@@ -196,13 +186,9 @@ class AutoScaler:
             cpu = self._current_metrics.get("cpu_usage", 0.0)
             queue = self._current_metrics.get("queue_size", 0.0)
             if cpu > 80 or queue > 50:
-                self.current_replicas = min(
-                    self.current_replicas + 1, self.max_replicas
-                )
+                self.current_replicas = min(self.current_replicas + 1, self.max_replicas)
             elif cpu < 30 and queue < 5:
-                self.current_replicas = max(
-                    self.current_replicas - 1, self.min_replicas
-                )
+                self.current_replicas = max(self.current_replicas - 1, self.min_replicas)
             return self.current_replicas
 
         direction = self.evaluate()
@@ -247,9 +233,7 @@ class AutoScaler:
 
     # ── History ──────────────────────────────────────────────────
 
-    def get_events(
-        self, direction: ScalingDirection | None = None, limit: int = 50
-    ) -> list[ScalingEvent]:
+    def get_events(self, direction: ScalingDirection | None = None, limit: int = 50) -> list[ScalingEvent]:
         """Return scaling events, optionally filtered by direction."""
         events = self.events
         if direction:

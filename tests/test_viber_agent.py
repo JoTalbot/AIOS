@@ -22,6 +22,7 @@ def test_viber_imports():
 def test_viber_storage_inherits_olx():
     """ViberStorage inherits OLXStorage."""
     from aios_core.modules.olx.storage import OLXStorage
+
     assert issubclass(ViberStorage, OLXStorage)
 
 
@@ -48,6 +49,7 @@ def test_viber_chat_analyzer():
     analyzer = ViberChatAnalyzer(storage)
     analytics = analyzer.analytics()
     assert analytics.platform == "viber"
+
 
 def test_viber_sentiment():
     """ViberChatAnalyzer computes sentiment."""

@@ -18,9 +18,16 @@ from aios_core.modules.tiktok import (
 def _card(title: str, price: float, ad_id: str = "") -> AdCard:
     """Helper to create an AdCard."""
     return AdCard(
-        title=title, price=price, currency="UAH", city="Kyiv",
-        published_text="today", is_top=False, url=f"https://tiktok.com/{title}",
-        ad_id=ad_id or f"tt-{title}", query="test", raw_texts=[title],
+        title=title,
+        price=price,
+        currency="UAH",
+        city="Kyiv",
+        published_text="today",
+        is_top=False,
+        url=f"https://tiktok.com/{title}",
+        ad_id=ad_id or f"tt-{title}",
+        query="test",
+        raw_texts=[title],
     )
 
 
@@ -39,6 +46,7 @@ def test_tiktok_imports():
 def test_tiktok_storage_inherits_olx():
     """TikTokStorage inherits OLXStorage."""
     from aios_core.modules.olx.storage import OLXStorage
+
     assert issubclass(TikTokStorage, OLXStorage)
 
 
@@ -98,6 +106,7 @@ def test_tiktok_favorites_add_remove():
 def test_tiktok_auto_login():
     """TikTokAutoLogin uses TikTok package."""
     from aios_core.modules.rozetka.auto_login import LoginState
+
     auto = TikTokAutoLogin()
     assert auto.package == "com.zhiliaoapp.musically"
 
@@ -117,6 +126,7 @@ def test_tiktok_collector_deep_link():
 def test_tiktok_card_parser():
     """TikTokCardParser is importable and inherits CardParser."""
     from aios_core.modules.olx.card_parser import CardParser
+
     assert issubclass(TikTokCardParser, CardParser)
 
 

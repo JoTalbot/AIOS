@@ -295,9 +295,7 @@ class WebhookManager:
             "total_triggers": total_triggers,
             "total_errors": total_errors,
             "history_size": len(self.history),
-            "last_notification": self.history[-1]["timestamp"]
-            if self.history
-            else None,
+            "last_notification": self.history[-1]["timestamp"] if self.history else None,
         }
 
     def test_webhook(self, name: str) -> dict:
@@ -352,9 +350,7 @@ class WebhookManager:
 
 
 # Convenience functions for common events
-def notify_ban_detected(
-    profile: str, reason: str, manager: WebhookManager | None = None
-) -> None:
+def notify_ban_detected(profile: str, reason: str, manager: WebhookManager | None = None) -> None:
     """Send ban detection notification."""
     mgr = manager or WebhookManager()
     return mgr.notify(
@@ -364,9 +360,7 @@ def notify_ban_detected(
     )
 
 
-def notify_backup_completed(
-    backup_id: str, size_mb: float, manager: WebhookManager | None = None
-) -> None:
+def notify_backup_completed(backup_id: str, size_mb: float, manager: WebhookManager | None = None) -> None:
     """Send backup completed notification."""
     mgr = manager or WebhookManager()
     return mgr.notify(
@@ -376,9 +370,7 @@ def notify_backup_completed(
     )
 
 
-def notify_low_success_rate(
-    profile: str, rate: float, threshold: float, manager: WebhookManager | None = None
-) -> None:
+def notify_low_success_rate(profile: str, rate: float, threshold: float, manager: WebhookManager | None = None) -> None:
     """Send low success rate notification."""
     mgr = manager or WebhookManager()
     return mgr.notify(

@@ -23,9 +23,7 @@ class AndroidRPADeviceEmulator:
         self.active_package: str | None = None
         self.authenticated_sessions: dict[str, dict[str, Any]] = {}
         self.real_execution = real_execution
-        self.real_executor = (
-            RealDeviceExecutor(device_id=device_id) if real_execution else None
-        )
+        self.real_executor = RealDeviceExecutor(device_id=device_id) if real_execution else None
 
     def launch_app(self, package_name: str) -> bool:
         """Launch target package inside emulator via ADB activity start."""
@@ -34,15 +32,10 @@ class AndroidRPADeviceEmulator:
             return self.real_executor.launch_app(package_name)
         return True
 
-    def authenticate_user(
-        self, package_name: str, user_credentials: dict[str, str]
-    ) -> dict[str, Any]:
+    def authenticate_user(self, package_name: str, user_credentials: dict[str, str]) -> dict[str, Any]:
         """Automate UI login inputs (username/phone/password) inside emulator with security masking."""
         username = (
-            user_credentials.get("phone")
-            or user_credentials.get("login")
-            or user_credentials.get("email")
-            or "user"
+            user_credentials.get("phone") or user_credentials.get("login") or user_credentials.get("email") or "user"
         )
         session_token = f"sess_{hashlib.sha256(f'{package_name}:{username}:{time.time()}'.encode()).hexdigest()[:12]}"
 
@@ -59,27 +52,19 @@ class AndroidRPADeviceEmulator:
         self.authenticated_sessions[package_name] = session_record
         return session_record
 
-    def execute_ui_action(
-        self, package_name: str, action_name: str, params: dict[str, Any]
-    ) -> dict[str, Any]:
+    def execute_ui_action(self, package_name: str, action_name: str, params: dict[str, Any]) -> dict[str, Any]:
         """Perform automated tap/type/scroll action inside emulator and extract view hierarchy data."""
         start_time = time.time()
         if self.real_execution and self.real_executor:
             if action_name == "search":
-                return self.real_executor.search(
-                    params.get("query", ""), params.get("category", "all")
-                )
+                return self.real_executor.search(params.get("query", ""), params.get("category", "all"))
             if action_name == "get_item_details":
                 return self.real_executor.get_item_details(params.get("item_id", ""))
             if action_name == "send_message":
-                return self.real_executor.send_message(
-                    params.get("seller_id", ""), params.get("message", "")
-                )
+                return self.real_executor.send_message(params.get("seller_id", ""), params.get("message", ""))
 
         if package_name not in self.authenticated_sessions:
-            self.authenticate_user(
-                package_name, {"login": "auto_user", "password": "pass"}
-            )
+            self.authenticate_user(package_name, {"login": "auto_user", "password": "pass"})
 
         if package_name == "ua.slando":
             app_label = "Slando Ukraine"

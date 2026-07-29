@@ -267,17 +267,9 @@ def test_cli_cron_plan_generic_lines_for_non_olx(tmp_path, capsys, monkeypatch):
 
     profiles_db = tmp_path / "profiles.sqlite"
     store = _Store(str(profiles_db))
-    store.add(
-        Profile(
-            platform="instagram", name="main", is_default=True, db_path=str(tmp_path / "ig.sqlite")
-        )
-    )
-    store.add(
-        Profile(platform="tiktok", name="fun", is_default=True, db_path=str(tmp_path / "tt.sqlite"))
-    )
-    store.add(
-        Profile(platform="olx", name="work", is_default=True, db_path=str(tmp_path / "olx.sqlite"))
-    )
+    store.add(Profile(platform="instagram", name="main", is_default=True, db_path=str(tmp_path / "ig.sqlite")))
+    store.add(Profile(platform="tiktok", name="fun", is_default=True, db_path=str(tmp_path / "tt.sqlite")))
+    store.add(Profile(platform="olx", name="work", is_default=True, db_path=str(tmp_path / "olx.sqlite")))
     store.close()
     monkeypatch.setenv("AIOS_PROFILES_DB", str(profiles_db))
     monkeypatch.setenv("AIOS_DEVICES_DB", str(tmp_path / "devices.sqlite"))

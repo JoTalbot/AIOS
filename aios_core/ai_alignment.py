@@ -56,9 +56,7 @@ class AIAlignment:
         self.violations: list[dict[str, Any]] = []
         self._audit_log: list[dict[str, Any]] = []
 
-    def add_goal(
-        self, name: str, priority: float = 1.0, description: str = ""
-    ) -> AlignmentGoal:
+    def add_goal(self, name: str, priority: float = 1.0, description: str = "") -> AlignmentGoal:
         """Add an alignment goal."""
         goal = AlignmentGoal(name=name, priority=priority, description=description)
         self.alignment_goals[name] = goal
@@ -90,9 +88,7 @@ class AIAlignment:
                     penalty = 0.5 * (goal.priority if goal else 1.0)
                     score -= penalty
                     issues.append(f"potential_{goal_name}")
-                    self.violations.append(
-                        {"decision": decision, "goal": goal_name, "pattern": pattern}
-                    )
+                    self.violations.append({"decision": decision, "goal": goal_name, "pattern": pattern})
                     if goal:
                         goal.violations += 1
                     break
@@ -105,18 +101,14 @@ class AIAlignment:
 
         return {"score": round(max(0, score), 4), "issues": issues}
 
-    def impact_regularization(
-        self, action_impact: float, threshold: float = 0.1
-    ) -> bool:
+    def impact_regularization(self, action_impact: float, threshold: float = 0.1) -> bool:
         """Check if action impact is within acceptable bounds."""
         return action_impact < threshold
 
     def corrigibility_check(self, decision: dict[str, Any]) -> dict[str, Any]:
         """Check corrigibility (willingness to accept corrections)."""
         decision_str = str(decision).lower()
-        resistant = any(
-            w in decision_str for w in ["refuse", "resist", "override", "ignore"]
-        )
+        resistant = any(w in decision_str for w in ["refuse", "resist", "override", "ignore"])
         return {
             "corrigible": not resistant,
             "confidence": 0.9 if not resistant else 0.3,
@@ -148,8 +140,7 @@ class AIAlignment:
             "alignment_score": round(avg_score, 4),
             "total_violations": total_violations,
             "goal_status": {
-                name: {"priority": g.priority, "violations": g.violations}
-                for name, g in self.alignment_goals.items()
+                name: {"priority": g.priority, "violations": g.violations} for name, g in self.alignment_goals.items()
             },
         }
 

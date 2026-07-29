@@ -1,4 +1,5 @@
 """Tests for aios_core/constitution_validator.py"""
+
 from __future__ import annotations
 
 import pytest
@@ -21,9 +22,7 @@ def validator(tmp_path):
 ## MUST NOT
 - System MUST NOT impersonate users
 """)
-    (policies_dir / "security.yaml").write_text(
-        "name: security\nrules:\n  allow_deploy: true\n"
-    )
+    (policies_dir / "security.yaml").write_text("name: security\nrules:\n  allow_deploy: true\n")
     return ConstitutionValidator(constitution_dir=str(const_dir), policies_dir=str(policies_dir))
 
 

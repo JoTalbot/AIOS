@@ -33,6 +33,7 @@ from aios_core.scraping_strategy_templates import (
 
 # ─── Credential Manager ───
 
+
 class TestEncryption:
     """Tests for encryption utilities."""
 
@@ -82,7 +83,8 @@ class TestCredentialEntry:
     def test_age_days(self) -> None:
         """Age calculation."""
         entry = CredentialEntry(
-            credential_id="c1", platform="olx",
+            credential_id="c1",
+            platform="olx",
             credential_type=CredentialType.PASSWORD,
             created_at=time.time() - 86400,
         )
@@ -91,7 +93,8 @@ class TestCredentialEntry:
     def test_days_until_expiry(self) -> None:
         """Expiry countdown."""
         entry = CredentialEntry(
-            credential_id="c1", platform="olx",
+            credential_id="c1",
+            platform="olx",
             credential_type=CredentialType.PASSWORD,
             expires_at=time.time() + 7 * 86400,
         )
@@ -100,7 +103,8 @@ class TestCredentialEntry:
     def test_days_until_expiry_none(self) -> None:
         """No expiry → None."""
         entry = CredentialEntry(
-            credential_id="c1", platform="olx",
+            credential_id="c1",
+            platform="olx",
             credential_type=CredentialType.PASSWORD,
         )
         assert entry.days_until_expiry is None
@@ -108,7 +112,8 @@ class TestCredentialEntry:
     def test_needs_rotation_monthly(self) -> None:
         """Monthly rotation after 30 days."""
         entry = CredentialEntry(
-            credential_id="c1", platform="olx",
+            credential_id="c1",
+            platform="olx",
             credential_type=CredentialType.PASSWORD,
             rotation_policy=RotationPolicy.MONTHLY,
             last_rotated_at=time.time() - 35 * 86400,
@@ -118,7 +123,8 @@ class TestCredentialEntry:
     def test_needs_rotation_never(self) -> None:
         """Never rotation → False."""
         entry = CredentialEntry(
-            credential_id="c1", platform="olx",
+            credential_id="c1",
+            platform="olx",
             credential_type=CredentialType.PASSWORD,
             rotation_policy=RotationPolicy.NEVER,
         )
@@ -127,7 +133,8 @@ class TestCredentialEntry:
     def test_needs_rotation_daily(self) -> None:
         """Daily rotation after 24 hours."""
         entry = CredentialEntry(
-            credential_id="c1", platform="olx",
+            credential_id="c1",
+            platform="olx",
             credential_type=CredentialType.PASSWORD,
             rotation_policy=RotationPolicy.DAILY,
             last_rotated_at=time.time() - 86400 * 2,
@@ -213,7 +220,9 @@ class TestCredentialManager:
         """Find credentials needing rotation."""
         mgr = CredentialManager()
         entry = mgr.store(
-            "olx", CredentialType.PASSWORD, "pass",
+            "olx",
+            CredentialType.PASSWORD,
+            "pass",
             rotation_policy=RotationPolicy.MONTHLY,
         )
         # Manually set last_rotated_at to >30 days ago
@@ -257,14 +266,17 @@ class TestCredentialManager:
 
 # ─── Price Alert System ───
 
+
 class TestAlertRule:
     """Tests for AlertRule dataclass."""
 
     def test_rule_creation(self) -> None:
         """Create alert rule."""
         rule = AlertRule(
-            rule_id="r1", name="Price Drop Alert",
-            condition=AlertCondition.PRICE_DROP_PCT, threshold=10.0,
+            rule_id="r1",
+            name="Price Drop Alert",
+            condition=AlertCondition.PRICE_DROP_PCT,
+            threshold=10.0,
         )
         assert rule.is_active
         assert rule.threshold == 10.0
@@ -276,10 +288,15 @@ class TestPriceAlert:
     def test_alert_to_dict(self) -> None:
         """Serialize alert to dict."""
         alert = PriceAlert(
-            alert_id="a1", rule_id="r1", platform="olx",
-            fingerprint="fp1", title="iPhone",
+            alert_id="a1",
+            rule_id="r1",
+            platform="olx",
+            fingerprint="fp1",
+            title="iPhone",
             condition=AlertCondition.PRICE_DROP_PCT,
-            old_price=100, new_price=80, change_pct=-20,
+            old_price=100,
+            new_price=80,
+            change_pct=-20,
             message="Price dropped 20%",
         )
         d = alert.to_dict()
@@ -302,8 +319,11 @@ class TestPriceAlertSystem:
         system.create_rule("Drop Alert", AlertCondition.PRICE_DROP_PCT, threshold=10.0)
 
         snapshot = PriceSnapshot(
-            fingerprint="iphone", platform="olx", title="iPhone 15",
-            current_price=80, previous_price=100,
+            fingerprint="iphone",
+            platform="olx",
+            title="iPhone 15",
+            current_price=80,
+            previous_price=100,
         )
         alerts = system.check_prices([snapshot])
         assert len(alerts) >= 1
@@ -315,8 +335,11 @@ class TestPriceAlertSystem:
         system.create_rule("Increase Alert", AlertCondition.PRICE_INCREASE_PCT, threshold=20.0)
 
         snapshot = PriceSnapshot(
-            fingerprint="macbook", platform="olx", title="MacBook",
-            current_price=120, previous_price=100,
+            fingerprint="macbook",
+            platform="olx",
+            title="MacBook",
+            current_price=120,
+            previous_price=100,
         )
         alerts = system.check_prices([snapshot])
         assert len(alerts) >= 1
@@ -327,7 +350,9 @@ class TestPriceAlertSystem:
         system.create_rule("Cheap Alert", AlertCondition.BELOW_THRESHOLD, threshold=500.0)
 
         snapshot = PriceSnapshot(
-            fingerprint="phone", platform="olx", title="Phone",
+            fingerprint="phone",
+            platform="olx",
+            title="Phone",
             current_price=400,
         )
         alerts = system.check_prices([snapshot])
@@ -339,7 +364,9 @@ class TestPriceAlertSystem:
         system.create_rule("Expensive Alert", AlertCondition.ABOVE_THRESHOLD, threshold=50000.0)
 
         snapshot = PriceSnapshot(
-            fingerprint="car", platform="olx", title="BMW",
+            fingerprint="car",
+            platform="olx",
+            title="BMW",
             current_price=60000,
         )
         alerts = system.check_prices([snapshot])
@@ -351,8 +378,11 @@ class TestPriceAlertSystem:
         system.create_rule("Drop 10%", AlertCondition.PRICE_DROP_PCT, threshold=10.0)
 
         snapshot = PriceSnapshot(
-            fingerprint="iphone", platform="olx", title="iPhone",
-            current_price=99, previous_price=100,  # 1% drop, not enough
+            fingerprint="iphone",
+            platform="olx",
+            title="iPhone",
+            current_price=99,
+            previous_price=100,  # 1% drop, not enough
         )
         alerts = system.check_prices([snapshot])
         assert len(alerts) == 0
@@ -361,8 +391,11 @@ class TestPriceAlertSystem:
         """Fire alert stores in history."""
         system = PriceAlertSystem()
         alert = PriceAlert(
-            alert_id="a1", rule_id="r1", platform="olx",
-            fingerprint="fp1", title="Test",
+            alert_id="a1",
+            rule_id="r1",
+            platform="olx",
+            fingerprint="fp1",
+            title="Test",
             condition=AlertCondition.PRICE_DROP_PCT,
             message="Test alert",
         )
@@ -376,8 +409,11 @@ class TestPriceAlertSystem:
 
         snapshots = [
             PriceSnapshot(
-                fingerprint="iphone", platform="olx", title="iPhone",
-                current_price=80, previous_price=100,
+                fingerprint="iphone",
+                platform="olx",
+                title="iPhone",
+                current_price=80,
+                previous_price=100,
             ),
         ]
         fired = system.check_and_fire(snapshots)
@@ -389,8 +425,11 @@ class TestPriceAlertSystem:
         system.create_rule("Drop 5%", AlertCondition.PRICE_DROP_PCT, threshold=5.0, cooldown_minutes=120)
 
         snapshot = PriceSnapshot(
-            fingerprint="iphone", platform="olx", title="iPhone",
-            current_price=90, previous_price=100,
+            fingerprint="iphone",
+            platform="olx",
+            title="iPhone",
+            current_price=90,
+            previous_price=100,
         )
         # First check → alert
         alerts1 = system.check_and_fire([snapshot])
@@ -404,8 +443,11 @@ class TestPriceAlertSystem:
         """Acknowledge an alert."""
         system = PriceAlertSystem()
         alert = PriceAlert(
-            alert_id="a1", rule_id="r1", platform="olx",
-            fingerprint="fp1", title="Test",
+            alert_id="a1",
+            rule_id="r1",
+            platform="olx",
+            fingerprint="fp1",
+            title="Test",
             condition=AlertCondition.PRICE_DROP_PCT,
             message="Test",
         )
@@ -416,26 +458,36 @@ class TestPriceAlertSystem:
     def test_get_alerts(self) -> None:
         """Retrieve alert history."""
         system = PriceAlertSystem()
-        system.fire_alert(PriceAlert(
-            alert_id="a1", rule_id="r1", platform="olx",
-            fingerprint="fp1", title="Test",
-            condition=AlertCondition.PRICE_DROP_PCT,
-            priority=AlertPriority.CRITICAL,
-            message="Test",
-        ))
+        system.fire_alert(
+            PriceAlert(
+                alert_id="a1",
+                rule_id="r1",
+                platform="olx",
+                fingerprint="fp1",
+                title="Test",
+                condition=AlertCondition.PRICE_DROP_PCT,
+                priority=AlertPriority.CRITICAL,
+                message="Test",
+            )
+        )
         alerts = system.get_alerts(priority=AlertPriority.CRITICAL)
         assert len(alerts) == 1
 
     def test_digest(self) -> None:
         """Create alert digest."""
         system = PriceAlertSystem()
-        system.fire_alert(PriceAlert(
-            alert_id="a1", rule_id="r1", platform="olx",
-            fingerprint="fp1", title="Test",
-            condition=AlertCondition.PRICE_DROP_PCT,
-            priority=AlertPriority.NORMAL,
-            message="Test",
-        ))
+        system.fire_alert(
+            PriceAlert(
+                alert_id="a1",
+                rule_id="r1",
+                platform="olx",
+                fingerprint="fp1",
+                title="Test",
+                condition=AlertCondition.PRICE_DROP_PCT,
+                priority=AlertPriority.NORMAL,
+                message="Test",
+            )
+        )
         digest = system.digest()
         assert digest["total_alerts"] == 1
 
@@ -453,13 +505,19 @@ class TestPriceAlertSystem:
 
         # OLX snapshot → alert
         snap_olx = PriceSnapshot(
-            fingerprint="fp1", platform="olx", title="iPhone",
-            current_price=80, previous_price=100,
+            fingerprint="fp1",
+            platform="olx",
+            title="iPhone",
+            current_price=80,
+            previous_price=100,
         )
         # Rozetka snapshot → no alert (wrong platform)
         snap_roz = PriceSnapshot(
-            fingerprint="fp2", platform="rozetka", title="iPhone",
-            current_price=80, previous_price=100,
+            fingerprint="fp2",
+            platform="rozetka",
+            title="iPhone",
+            current_price=80,
+            previous_price=100,
         )
         alerts = system.check_prices([snap_olx, snap_roz])
         assert len(alerts) == 1  # Only OLX matches
@@ -471,8 +529,11 @@ class TestPriceAlertSystem:
         rule.metadata["prev_available"] = True
 
         snap = PriceSnapshot(
-            fingerprint="fp1", platform="olx", title="iPhone",
-            current_price=100, is_available=False,
+            fingerprint="fp1",
+            platform="olx",
+            title="iPhone",
+            current_price=100,
+            is_available=False,
         )
         alerts = system.check_prices([snap])
         assert len(alerts) >= 1
@@ -488,14 +549,17 @@ class TestPriceAlertSystem:
 
 # ─── Scraping Strategy Templates ───
 
+
 class TestStrategyTemplate:
     """Tests for StrategyTemplate dataclass."""
 
     def test_template_to_dict(self) -> None:
         """Serialize template to dict."""
         t = StrategyTemplate(
-            template_id="test", name="Test Template",
-            kind=StrategyKind.COLLECTOR, platform="olx",
+            template_id="test",
+            name="Test Template",
+            kind=StrategyKind.COLLECTOR,
+            platform="olx",
         )
         d = t.to_dict()
         assert d["template_id"] == "test"
@@ -534,8 +598,10 @@ class TestStrategyTemplateRegistry:
         """Register custom template."""
         registry = StrategyTemplateRegistry()
         custom = StrategyTemplate(
-            template_id="my_template", name="My Custom Strategy",
-            kind=StrategyKind.MONITOR, platform="custom",
+            template_id="my_template",
+            name="My Custom Strategy",
+            kind=StrategyKind.MONITOR,
+            platform="custom",
         )
         registry.register(custom)
         assert registry.get("my_template") is not None
@@ -562,7 +628,8 @@ class TestStrategyTemplateRegistry:
         """Validate template configuration."""
         registry = StrategyTemplateRegistry()
         good_template = StrategyTemplate(
-            template_id="t1", name="Good Template",
+            template_id="t1",
+            name="Good Template",
             params={"timeout": 30},
             sections=["cards", "detail"],
             rate_limits={"requests_per_minute": 30, "concurrent": 2},
@@ -575,11 +642,12 @@ class TestStrategyTemplateRegistry:
         """Validate template with errors."""
         registry = StrategyTemplateRegistry()
         bad_template = StrategyTemplate(
-            template_id="t2", name="",  # Missing name
-            params={"delay": -5},       # Negative param
-            sections=[],                 # No sections
+            template_id="t2",
+            name="",  # Missing name
+            params={"delay": -5},  # Negative param
+            sections=[],  # No sections
             rate_limits={"requests_per_minute": 200},  # Too aggressive
-            retry_config={"max_retries": 20},          # Too many retries
+            retry_config={"max_retries": 20},  # Too many retries
         )
         errors = registry.validate(bad_template)
         assert len(errors) >= 3
@@ -599,7 +667,8 @@ class TestStrategyTemplateRegistry:
         """Adapt template for different platform."""
         registry = StrategyTemplateRegistry()
         adapted = registry.adapt(
-            "olx_collector", "rozetka",
+            "olx_collector",
+            "rozetka",
             PlatformCategory.ECOMMERCE,
         )
         assert adapted is not None
@@ -625,10 +694,13 @@ class TestStrategyTemplateRegistry:
     def test_list_builtin_only(self) -> None:
         """List only built-in templates."""
         registry = StrategyTemplateRegistry()
-        registry.register(StrategyTemplate(
-            template_id="custom1", name="Custom",
-            kind=StrategyKind.COLLECTOR,
-        ))
+        registry.register(
+            StrategyTemplate(
+                template_id="custom1",
+                name="Custom",
+                kind=StrategyKind.COLLECTOR,
+            )
+        )
         builtins = registry.list_templates(builtin_only=True)
         customs = registry.list_templates(builtin_only=False)
         assert len(builtins) < len(customs)

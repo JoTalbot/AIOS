@@ -104,9 +104,7 @@ class TopologicalAnalyzer:
         betti_0 = unique_clusters
 
         # Betti-1: estimate loops from average connectivity
-        avg_neighbors = (
-            sum(sum(1 for d in dists[i] if d < self.epsilon) for i in range(n)) / n
-        )
+        avg_neighbors = sum(sum(1 for d in dists[i] if d < self.epsilon) for i in range(n)) / n
         betti_1 = max(0, int(avg_neighbors - 2) // 2) if avg_neighbors > 2 else 0
 
         # Betti-2: estimate cavities (rare in low dimensions)
@@ -116,11 +114,7 @@ class TopologicalAnalyzer:
         diagrams = []
         # Betti-0 points: components merge
         sorted_dists = sorted([dists[i][j] for i in range(n) for j in range(i + 1, n)])
-        merge_distances = (
-            sorted_dists[: n - betti_0]
-            if len(sorted_dists) >= n - betti_0
-            else sorted_dists
-        )
+        merge_distances = sorted_dists[: n - betti_0] if len(sorted_dists) >= n - betti_0 else sorted_dists
         for d in merge_distances:
             diagrams.append(PersistenceDiagram(birth=0.0, death=d, dimension=0))  # noqa: PERF401
 
@@ -152,12 +146,8 @@ class TopologicalAnalyzer:
         # Compute topological feature vector
         total_persistence_0 = sum(d.persistence for d in diagrams if d.dimension == 0)
         total_persistence_1 = sum(d.persistence for d in diagrams if d.dimension == 1)
-        max_persistence_0 = max(
-            (d.persistence for d in diagrams if d.dimension == 0), default=0.0
-        )
-        avg_persistence_0 = total_persistence_0 / max(
-            len([d for d in diagrams if d.dimension == 0]), 1
-        )
+        max_persistence_0 = max((d.persistence for d in diagrams if d.dimension == 0), default=0.0)
+        avg_persistence_0 = total_persistence_0 / max(len([d for d in diagrams if d.dimension == 0]), 1)
 
         return [
             persistence["betti_0"],

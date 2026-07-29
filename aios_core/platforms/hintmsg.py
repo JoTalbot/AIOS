@@ -73,14 +73,8 @@ class HintsMessenger(OLXMessenger):
     def open_chats(self) -> dict[str, object]:
         """Открыть инбокс: deep-link или fallback-запуск приложения."""
         if self.deep_link:
-            return self.adb.run(
-                f"{self.adb.adb} shell am start "
-                f'-a android.intent.action.VIEW -d "{self.deep_link}"'
-            )
-        return self.adb.run(
-            f"{self.adb.adb} shell monkey -p {self.package} "
-            f"-c android.intent.category.LAUNCHER 1"
-        )
+            return self.adb.run(f'{self.adb.adb} shell am start -a android.intent.action.VIEW -d "{self.deep_link}"')
+        return self.adb.run(f"{self.adb.adb} shell monkey -p {self.package} -c android.intent.category.LAUNCHER 1")
 
     def list_chats(self, dump_path: str = "chats.xml") -> list[ChatThread]:
         """Список диалогов; без калиброванных маркеров — честный []."""
@@ -93,9 +87,7 @@ class HintsMessenger(OLXMessenger):
                 return []
             return self._chat_parser.parse(path)
 
-    def read_chat(
-        self, thread: ChatThread, dump_path: str = "chat.xml"
-    ) -> list[Message]:
+    def read_chat(self, thread: ChatThread, dump_path: str = "chat.xml") -> list[Message]:
         """Открытый диалог: alignment-парсер OLX (shape-based)."""
         return super().read_chat(thread, dump_path)
 

@@ -41,9 +41,7 @@ class LongTermSafety:
         self._plans: list[SafetyPlan] = []
         self._trajectory: list[dict[str, Any]] = []
 
-    def create_long_term_plan(
-        self, horizon_years: int, goals: list[str]
-    ) -> dict[str, Any]:
+    def create_long_term_plan(self, horizon_years: int, goals: list[str]) -> dict[str, Any]:
         """Create long-term plan (backward-compatible)."""
         plan = SafetyPlan(horizon_years, goals)
         plan.risks = [
@@ -119,9 +117,7 @@ class LongTermSafety:
         return {
             "final_capability": latest[-1]["capability_level"] if latest else 0.0,
             "final_safety": latest[-1]["safety_level"] if latest else 1.0,
-            "safety_decline": round(
-                1.0 - (latest[-1]["safety_level"] if latest else 1.0), 2
-            ),
+            "safety_decline": round(1.0 - (latest[-1]["safety_level"] if latest else 1.0), 2),
         }
 
     def stats(self) -> dict[str, Any]:

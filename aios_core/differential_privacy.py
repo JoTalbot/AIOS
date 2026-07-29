@@ -81,9 +81,7 @@ class DifferentialPrivacy:
     - K-anonymity helper
     """
 
-    def __init__(
-        self, epsilon: float = 1.0, delta: float = 1e-5, total_epsilon: float = 10.0
-    ) -> None:
+    def __init__(self, epsilon: float = 1.0, delta: float = 1e-5, total_epsilon: float = 10.0) -> None:
         self.epsilon = epsilon
         self.delta = delta
         self.budget = PrivacyBudget(total_epsilon=total_epsilon, total_delta=delta)
@@ -98,9 +96,7 @@ class DifferentialPrivacy:
         mechanism: MechanismType = MechanismType.LAPLACE,
     ) -> float:
         """Add privacy-preserving noise to a value."""
-        if not self.budget.consume(
-            self.epsilon, self.delta if mechanism == MechanismType.GAUSSIAN else 0
-        ):
+        if not self.budget.consume(self.epsilon, self.delta if mechanism == MechanismType.GAUSSIAN else 0):
             return value  # budget exhausted → return original (not ideal but practical)
 
         self._queries_count += 1
@@ -111,9 +107,7 @@ class DifferentialPrivacy:
             return value + noise
 
         if mechanism == MechanismType.GAUSSIAN:
-            sigma = (
-                sensitivity * math.sqrt(2 * math.log(1.25 / self.delta)) / self.epsilon
-            )
+            sigma = sensitivity * math.sqrt(2 * math.log(1.25 / self.delta)) / self.epsilon
             noise = random.gauss(0, sigma)
             return value + noise
 
@@ -137,9 +131,7 @@ class DifferentialPrivacy:
         result = true_count + round(noise)
         return max(0, result)  # counts can't be negative
 
-    def privatize_sum(
-        self, true_sum: float, sensitivity: float = 1.0, epsilon: float = 1.0
-    ) -> float:
+    def privatize_sum(self, true_sum: float, sensitivity: float = 1.0, epsilon: float = 1.0) -> float:
         """Private sum via Laplace mechanism."""
         if not self.budget.consume(epsilon):
             return true_sum
@@ -147,9 +139,7 @@ class DifferentialPrivacy:
         noise = self._laplace_sample(0, scale)
         return true_sum + noise
 
-    def privatize_mean(
-        self, values: list[float], sensitivity: float = 1.0, epsilon: float = 1.0
-    ) -> float:
+    def privatize_mean(self, values: list[float], sensitivity: float = 1.0, epsilon: float = 1.0) -> float:
         """Private mean: DP sum / DP count."""
         dp_count = self.privatize_count(len(values), epsilon / 2)
         dp_sum = self.privatize_sum(sum(values), sensitivity, epsilon / 2)
@@ -159,9 +149,7 @@ class DifferentialPrivacy:
 
     # ── Threshold (Sparse Vector Technique) ──────────────────────
 
-    def threshold_query(
-        self, value: float, threshold: float, epsilon: float = 1.0
-    ) -> bool:
+    def threshold_query(self, value: float, threshold: float, epsilon: float = 1.0) -> bool:
         """Answer threshold query privately: is value above threshold?"""
         if not self.budget.consume(epsilon):
             return False
@@ -181,9 +169,7 @@ class DifferentialPrivacy:
 
     # ── K-Anonymity ──────────────────────────────────────────────
 
-    def k_anonymize(
-        self, data: list[dict[str, Any]], quasi_identifiers: list[str], k: int = 5
-    ) -> list[dict[str, Any]]:
+    def k_anonymize(self, data: list[dict[str, Any]], quasi_identifiers: list[str], k: int = 5) -> list[dict[str, Any]]:
         """Apply k-anonymity: suppress or generalize quasi-identifiers."""
         if k <= 0:
             return data
@@ -203,9 +189,7 @@ class DifferentialPrivacy:
             else:
                 # Suppress: remove quasi-identifiers
                 for record in records:
-                    suppressed = {
-                        k: v for k, v in record.items() if k not in quasi_identifiers
-                    }
+                    suppressed = {k: v for k, v in record.items() if k not in quasi_identifiers}
                     result.append(suppressed)
 
         return result

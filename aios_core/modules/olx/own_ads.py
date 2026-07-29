@@ -141,9 +141,7 @@ class OwnAdsTracker:
         """Initialize OwnAdsTracker."""
         self.storage = storage
 
-    def record_snapshot(
-        self, ads: list[OwnAd], seen_at: str | None = None
-    ) -> dict[str, object]:
+    def record_snapshot(self, ads: list[OwnAd], seen_at: str | None = None) -> dict[str, object]:
         """Persist one snapshot of all own ads; reports counter deltas."""
         now = seen_at or datetime.now(UTC).isoformat()
         result: dict[str, object] = {"recorded": len(ads), "new": 0, "deltas": {}}
@@ -158,10 +156,8 @@ class OwnAdsTracker:
                 result["deltas"][ad.fingerprint] = {
                     "title": ad.title,
                     "views_delta": (latest["views"] or 0) - (previous["views"] or 0),
-                    "favorites_delta": (latest["favorites"] or 0)
-                    - (previous["favorites"] or 0),
-                    "messages_delta": (latest["messages"] or 0)
-                    - (previous["messages"] or 0),
+                    "favorites_delta": (latest["favorites"] or 0) - (previous["favorites"] or 0),
+                    "messages_delta": (latest["messages"] or 0) - (previous["messages"] or 0),
                 }
         return result
 
@@ -178,9 +174,7 @@ class OwnAdsTracker:
             first_seen = row.get("first_seen_at")
             if not first_seen:
                 continue
-            age_days = (
-                now - datetime.fromisoformat(first_seen)
-            ).total_seconds() / 86400.0
+            age_days = (now - datetime.fromisoformat(first_seen)).total_seconds() / 86400.0
             if age_days < min_age_days:
                 continue
             views_total = row.get("last_views") or 0

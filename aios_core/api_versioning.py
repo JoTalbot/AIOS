@@ -102,9 +102,7 @@ class APIVersioning:
     """
 
     def __init__(self, default_version: str = "v1") -> None:
-        self.versions: dict[
-            str, dict[str, VersionRoute]
-        ] = {}  # version → {path: route}
+        self.versions: dict[str, dict[str, VersionRoute]] = {}  # version → {path: route}
         self.default_version = default_version
         self._negotiation_priority: list[str] = ["header", "path", "query"]
 
@@ -178,8 +176,7 @@ class APIVersioning:
                 warnings.append(
                     {
                         "type": "deprecation",
-                        "message": route.deprecation_message
-                        or f"Version {version} is deprecated",
+                        "message": route.deprecation_message or f"Version {version} is deprecated",
                         "sunset": route.sunset_date,
                     }
                 )
@@ -203,9 +200,7 @@ class APIVersioning:
 
     # ── Deprecation ─────────────────────────────────────────────
 
-    def deprecate_version(
-        self, version: str, message: str = "", sunset_date: str | None = None
-    ) -> None:
+    def deprecate_version(self, version: str, message: str = "", sunset_date: str | None = None) -> None:
         """Mark all routes in a version as deprecated."""
         for route in self.versions.get(version, {}).values():
             route.deprecated = True
@@ -244,12 +239,7 @@ class APIVersioning:
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
         total_routes = sum(len(routes) for routes in self.versions.values())
-        deprecated_routes = sum(
-            1
-            for routes in self.versions.values()
-            for r in routes.values()
-            if r.deprecated
-        )
+        deprecated_routes = sum(1 for routes in self.versions.values() for r in routes.values() if r.deprecated)
         return {
             "versions": len(self.versions),
             "total_routes": total_routes,

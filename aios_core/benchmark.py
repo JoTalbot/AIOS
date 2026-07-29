@@ -99,9 +99,7 @@ class Benchmark:
             passed_threshold=passed,
         )
         self.results[name] = result
-        logger.info(
-            "Benchmark %s: %.2f ops/s, mean=%.6fs, p95=%.6fs", name, ops, mean_s, p95_s
-        )
+        logger.info("Benchmark %s: %.2f ops/s, mean=%.6fs, p95=%.6fs", name, ops, mean_s, p95_s)
         return result
 
     def set_threshold(self, name: str, max_mean_seconds: float) -> None:

@@ -125,18 +125,30 @@ class OpenAPIGenerator:
         self.add_tag("events", "Event bus endpoints")
 
         # Schemas
-        self.add_schema("HealthResponse", {
-            "status": {"type": "string"},
-            "version": {"type": "string"},
-            "uptime_seconds": {"type": "number"},
-        }, "Health check response")
-        self.add_schema("StatsResponse", {
-            "total_tasks": {"type": "integer"},
-            "total_events": {"type": "integer"},
-            "version": {"type": "string"},
-        }, "System statistics response")
-        self.add_schema("Task", {
-            "id": {"type": "string"},
-            "name": {"type": "string"},
-            "status": {"type": "string"},
-        }, "Task object")
+        self.add_schema(
+            "HealthResponse",
+            {
+                "status": {"type": "string"},
+                "version": {"type": "string"},
+                "uptime_seconds": {"type": "number"},
+            },
+            "Health check response",
+        )
+        self.add_schema(
+            "StatsResponse",
+            {
+                "total_tasks": {"type": "integer"},
+                "total_events": {"type": "integer"},
+                "version": {"type": "string"},
+            },
+            "System statistics response",
+        )
+        self.add_schema(
+            "Task",
+            {
+                "id": {"type": "string"},
+                "name": {"type": "string"},
+                "status": {"type": "string"},
+            },
+            "Task object",
+        )

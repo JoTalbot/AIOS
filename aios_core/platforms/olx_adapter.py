@@ -1,4 +1,5 @@
 """OLX Platform Adapter — интеграция с OLX API."""
+
 from __future__ import annotations
 
 import os
@@ -10,9 +11,9 @@ from .base import IncomingMessage, PlatformAdapter, SentMessage
 
 class OLXAdapter(PlatformAdapter):
     """Адаптер для OLX.ua (использует OLX API v2)."""
-    
+
     BASE_URL = "https://www.olx.ua/api/v1"
-    
+
     def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config or {})
         self.client_id = self.config.get("client_id") or os.getenv("OLX_CLIENT_ID")
@@ -24,7 +25,7 @@ class OLXAdapter(PlatformAdapter):
         """Обновить OAuth2 токен если нужно."""
         if self.access_token and self._token_expires and datetime.now(UTC) < self._token_expires:
             return
-        
+
         # TODO: Реальный OAuth2 flow
         # async with httpx.AsyncClient() as client:
         #     response = await client.post(
@@ -43,7 +44,7 @@ class OLXAdapter(PlatformAdapter):
     async def receive_messages(self, since: datetime | None = None) -> list[IncomingMessage]:
         """Получить новые сообщения из OLX threads."""
         await self._ensure_token()
-        
+
         # TODO: Реальный вызов OLX API
         # async with httpx.AsyncClient() as client:
         #     response = await client.get(
@@ -52,14 +53,14 @@ class OLXAdapter(PlatformAdapter):
         #         params={"last_id": since.timestamp() if since else None}
         #     )
         #     threads = response.json()["data"]
-        
+
         # Заглушка для демонстрации
         return []
 
     async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
         """Отправить ответ в OLX thread."""
         await self._ensure_token()
-        
+
         # TODO: Реальный вызов
         # async with httpx.AsyncClient() as client:
         #     response = await client.post(
@@ -67,13 +68,13 @@ class OLXAdapter(PlatformAdapter):
         #         headers={"Authorization": f"Bearer {self.access_token}"},
         #         json={"text": text}
         #     )
-        
+
         return SentMessage(
             message_id=f"olx_{int(datetime.now(UTC).timestamp())}",
             platform="olx",
             recipient_id=recipient_id,
             text=text,
-            timestamp=datetime.now(UTC)
+            timestamp=datetime.now(UTC),
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

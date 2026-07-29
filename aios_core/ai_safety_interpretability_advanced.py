@@ -63,9 +63,7 @@ class AdvancedInterpretability:
         self._results.append(result)
         return {"task": task, "circuits": circuits, "importance": 0.92}
 
-    def activation_patching(
-        self, model: Any, source_task: str, target_task: str
-    ) -> dict[str, Any]:
+    def activation_patching(self, model: Any, source_task: str, target_task: str) -> dict[str, Any]:
         """Activation patching: transplant activations between tasks."""
         result = InterpretabilityResult(
             "activation_patching",

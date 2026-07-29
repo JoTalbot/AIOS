@@ -180,9 +180,7 @@ async def ws_dashboard_handler(websocket) -> None:
             try:
                 msg = json.loads(data)
                 if msg.get("command") == "ping":
-                    await websocket.send_text(
-                        json.dumps({"type": "pong", "timestamp": time.time()})
-                    )
+                    await websocket.send_text(json.dumps({"type": "pong", "timestamp": time.time()}))
             except json.JSONDecodeError:
                 pass  # Ignore non-JSON messages
     except Exception:

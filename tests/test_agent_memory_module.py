@@ -1,4 +1,5 @@
 """Tests for aios_core/agent_memory_system.py"""
+
 from __future__ import annotations
 
 import pytest
@@ -13,32 +14,38 @@ def memory():
 
 class TestMemoryEntry:
     def test_create(self):
-        e = MemoryEntry(memory_id="m1", memory_type=MemoryType.SHORT_TERM,
-                        platform="olx", action="scrape", result="success")
+        e = MemoryEntry(
+            memory_id="m1", memory_type=MemoryType.SHORT_TERM, platform="olx", action="scrape", result="success"
+        )
         assert e.memory_id == "m1"
 
     def test_strength(self):
-        e = MemoryEntry(memory_id="m1", memory_type=MemoryType.SHORT_TERM,
-                        platform="olx", action="scrape", result="ok")
+        e = MemoryEntry(memory_id="m1", memory_type=MemoryType.SHORT_TERM, platform="olx", action="scrape", result="ok")
         assert isinstance(e.strength, (int, float))
 
     def test_age_days(self):
-        e = MemoryEntry(memory_id="m1", memory_type=MemoryType.SHORT_TERM,
-                        platform="olx", action="scrape", result="ok")
+        e = MemoryEntry(memory_id="m1", memory_type=MemoryType.SHORT_TERM, platform="olx", action="scrape", result="ok")
         assert isinstance(e.age_days, (int, float))
 
     def test_to_dict(self):
-        e = MemoryEntry(memory_id="m1", memory_type=MemoryType.SHORT_TERM,
-                        platform="olx", action="scrape", result="ok")
+        e = MemoryEntry(memory_id="m1", memory_type=MemoryType.SHORT_TERM, platform="olx", action="scrape", result="ok")
         d = e.to_dict()
         assert isinstance(d, dict)
 
 
 class TestSuccessPattern:
     def test_create(self):
-        p = SuccessPattern(pattern_id="p1", platform="olx", action="scrape",
-                           success_rate=0.9, avg_latency_ms=150, avg_items=10,
-                           best_params={}, sample_size=50, confidence=0.85)
+        p = SuccessPattern(
+            pattern_id="p1",
+            platform="olx",
+            action="scrape",
+            success_rate=0.9,
+            avg_latency_ms=150,
+            avg_items=10,
+            best_params={},
+            sample_size=50,
+            confidence=0.85,
+        )
         assert p.success_rate == 0.9
 
 

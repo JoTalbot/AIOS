@@ -96,9 +96,7 @@ class ConstitutionEvolver:
 
         return article
 
-    def review_proposal(
-        self, proposal_id: str, decision: str, reviewer: str = "system"
-    ) -> dict:
+    def review_proposal(self, proposal_id: str, decision: str, reviewer: str = "system") -> dict:
         """Review and accept/reject a proposal."""
         proposal = self._proposals.get(proposal_id)
         if not proposal:
@@ -118,9 +116,7 @@ class ConstitutionEvolver:
             "reviewer": reviewer,
         }
 
-    def generate_article_from_experience(
-        self, experience: dict
-    ) -> ProposedArticle | None:
+    def generate_article_from_experience(self, experience: dict) -> ProposedArticle | None:
         """Automatically generate an article proposal from observed patterns."""
         # Simple heuristic-based generation (placeholder for real ML)
         if "repeated_failure" in experience:

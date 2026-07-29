@@ -96,9 +96,7 @@ class AutoMLPipeline:
             "all_scores": all_scores,
         }
 
-    def feature_selection(
-        self, features: list[str], method: str = "variance_threshold"
-    ) -> list[str]:
+    def feature_selection(self, features: list[str], method: str = "variance_threshold") -> list[str]:
         """Select best features."""
         importance = {f: round(random.uniform(0.01, 1.0), 2) for f in features}
         sorted_features = sorted(importance.items(), key=lambda x: x[1], reverse=True)
@@ -115,17 +113,12 @@ class AutoMLPipeline:
             "scores": scores,
             "mean": round(sum(scores) / len(scores), 4),
             "std": round(
-                math.sqrt(
-                    sum((s - sum(scores) / len(scores)) ** 2 for s in scores)
-                    / len(scores)
-                ),
+                math.sqrt(sum((s - sum(scores) / len(scores)) ** 2 for s in scores) / len(scores)),
                 4,
             ),
         }
 
-    def hyperparameter_search(
-        self, algorithm: str, param_grid: dict[str, list[Any]]
-    ) -> dict[str, Any]:
+    def hyperparameter_search(self, algorithm: str, param_grid: dict[str, list[Any]]) -> dict[str, Any]:
         """Grid search over hyperparameters."""
         total_combos = 1
         for v in param_grid.values():
@@ -145,9 +138,7 @@ class AutoMLPipeline:
         return {
             "ensemble_size": len(top_results),
             "algorithms": [r.algorithm for r in top_results],
-            "estimated_score": round(
-                sum(r.score for r in top_results) / max(len(top_results), 1), 4
-            ),
+            "estimated_score": round(sum(r.score for r in top_results) / max(len(top_results), 1), 4),
         }
 
     def model_comparison(self) -> list[dict[str, Any]]:

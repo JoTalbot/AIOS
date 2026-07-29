@@ -154,9 +154,7 @@ class PriceAlertSystem:
         self.max_alerts = max_alerts
         self._rules: dict[str, AlertRule] = {}
         self._alerts: list[PriceAlert] = []
-        self._last_fired: dict[
-            str, float
-        ] = {}  # rule_id+fingerprint → last fired timestamp
+        self._last_fired: dict[str, float] = {}  # rule_id+fingerprint → last fired timestamp
         self._counter: int = 0
 
     def _next_id(self) -> str:
@@ -265,16 +263,8 @@ class PriceAlertSystem:
 
                 # Create alert
                 change_pct = None
-                if (
-                    snapshot.previous_price
-                    and snapshot.current_price
-                    and snapshot.previous_price > 0
-                ):
-                    change_pct = (
-                        (snapshot.current_price - snapshot.previous_price)
-                        / snapshot.previous_price
-                        * 100
-                    )
+                if snapshot.previous_price and snapshot.current_price and snapshot.previous_price > 0:
+                    change_pct = (snapshot.current_price - snapshot.previous_price) / snapshot.previous_price * 100
 
                 alert = PriceAlert(
                     alert_id=self._next_id(),
@@ -295,9 +285,7 @@ class PriceAlertSystem:
 
         return alerts
 
-    def _evaluate_condition(
-        self, snapshot: PriceSnapshot, rule: AlertRule
-    ) -> bool | dict[str, Any]:
+    def _evaluate_condition(self, snapshot: PriceSnapshot, rule: AlertRule) -> bool | dict[str, Any]:
         """Evaluate whether a snapshot matches a rule condition.
 
         Args:
@@ -308,30 +296,14 @@ class PriceAlertSystem:
             True/dict if condition matches, False otherwise.
         """
         if rule.condition == AlertCondition.PRICE_DROP_PCT:
-            if (
-                snapshot.previous_price
-                and snapshot.current_price
-                and snapshot.previous_price > 0
-            ):
-                drop_pct = (
-                    (snapshot.previous_price - snapshot.current_price)
-                    / snapshot.previous_price
-                    * 100
-                )
+            if snapshot.previous_price and snapshot.current_price and snapshot.previous_price > 0:
+                drop_pct = (snapshot.previous_price - snapshot.current_price) / snapshot.previous_price * 100
                 if drop_pct >= rule.threshold:
                     return {"drop_pct": round(drop_pct, 2)}
 
         elif rule.condition == AlertCondition.PRICE_INCREASE_PCT:
-            if (
-                snapshot.previous_price
-                and snapshot.current_price
-                and snapshot.previous_price > 0
-            ):
-                increase_pct = (
-                    (snapshot.current_price - snapshot.previous_price)
-                    / snapshot.previous_price
-                    * 100
-                )
+            if snapshot.previous_price and snapshot.current_price and snapshot.previous_price > 0:
+                increase_pct = (snapshot.current_price - snapshot.previous_price) / snapshot.previous_price * 100
                 if increase_pct >= rule.threshold:
                     return {"increase_pct": round(increase_pct, 2)}
 
@@ -366,19 +338,13 @@ class PriceAlertSystem:
 
         elif rule.condition == AlertCondition.ARBITRAGE_SPREAD:
             # Requires cross-platform data in snapshot metadata
-            spread = (
-                snapshot.metadata.get("spread_pct", 0)
-                if hasattr(snapshot, "metadata")
-                else 0
-            )
+            spread = snapshot.metadata.get("spread_pct", 0) if hasattr(snapshot, "metadata") else 0
             if spread >= rule.threshold:
                 return {"spread_pct": spread}
 
         return False
 
-    def _generate_message(
-        self, snapshot: PriceSnapshot, rule: AlertRule, match: Any
-    ) -> str:
+    def _generate_message(self, snapshot: PriceSnapshot, rule: AlertRule, match: Any) -> str:
         """Generate alert message text.
 
         Args:
@@ -521,11 +487,7 @@ class PriceAlertSystem:
         """
         cutoff = since or (time.time() - 86400)  # Default: last 24h
 
-        recent = [
-            a
-            for a in self._alerts
-            if a.created_at >= cutoff and (priority is None or a.priority == priority)
-        ]
+        recent = [a for a in self._alerts if a.created_at >= cutoff and (priority is None or a.priority == priority)]
 
         # Group by priority
         by_priority: dict[str, list[PriceAlert]] = {}
@@ -545,9 +507,7 @@ class PriceAlertSystem:
             "high_count": len(by_priority.get("high", [])),
             "normal_count": len(by_priority.get("normal", [])),
             "low_count": len(by_priority.get("low", [])),
-            "by_priority": {
-                k: [a.to_dict() for a in v] for k, v in by_priority.items()
-            },
+            "by_priority": {k: [a.to_dict() for a in v] for k, v in by_priority.items()},
             "by_platform": {k: len(v) for k, v in by_platform.items()},
             "since": cutoff,
         }
@@ -560,9 +520,7 @@ class PriceAlertSystem:
         """
         total = len(self._alerts)
         delivered = sum(1 for a in self._alerts if a.status == AlertStatus.DELIVERED)
-        acknowledged = sum(
-            1 for a in self._alerts if a.status == AlertStatus.ACKNOWLEDGED
-        )
+        acknowledged = sum(1 for a in self._alerts if a.status == AlertStatus.ACKNOWLEDGED)
 
         return {
             "rules_count": len(self._rules),
@@ -570,9 +528,7 @@ class PriceAlertSystem:
             "total_alerts": total,
             "delivered_alerts": delivered,
             "acknowledged_alerts": acknowledged,
-            "pending_alerts": sum(
-                1 for a in self._alerts if a.status == AlertStatus.PENDING
-            ),
+            "pending_alerts": sum(1 for a in self._alerts if a.status == AlertStatus.PENDING),
         }
 
     def clear_history(self) -> int:

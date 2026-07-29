@@ -165,10 +165,7 @@ class UIAutomatorParser:
 
         elements = []
         for node in self.root.iter("node"):
-            if (
-                node.attrib.get("clickable") == "true"
-                and node.attrib.get("enabled") == "true"
-            ):
+            if node.attrib.get("clickable") == "true" and node.attrib.get("enabled") == "true":
                 bounds = self._parse_bounds(node.attrib.get("bounds", "[0,0][0,0]"))
                 elements.append(
                     UIElement(
@@ -235,17 +232,11 @@ class UIAutomatorParser:
                         child_text = child.attrib.get("text", "")
                         child_resource = child.attrib.get("resource-id", "")
 
-                        if (
-                            "title" in child_resource.lower()
-                            or "name" in child_resource.lower()
-                        ) and child_text:
+                        if ("title" in child_resource.lower() or "name" in child_resource.lower()) and child_text:
                             title = child_text
                         elif "price" in child_resource.lower() and child_text:
                             price = child_text
-                        elif (
-                            "location" in child_resource.lower()
-                            or "city" in child_resource.lower()
-                        ) and child_text:
+                        elif ("location" in child_resource.lower() or "city" in child_resource.lower()) and child_text:
                             location = child_text
 
                 if title or price:
@@ -390,9 +381,7 @@ class RealDeviceExecutor:
 
     def launch_app(self, package: str) -> bool:
         """Launch app."""
-        result = self._adb(
-            f"shell monkey -p {package} -c android.intent.category.LAUNCHER 1"
-        )
+        result = self._adb(f"shell monkey -p {package} -c android.intent.category.LAUNCHER 1")
         if result["code"] == 0:
             time.sleep(2)
             return True
@@ -442,9 +431,7 @@ class RealDeviceExecutor:
         self.parser = UIAutomatorParser(ui_xml)
         self.parser.parse()
 
-        results = self.parser.find_search_results() or self._fallback_search_results(
-            ui_xml
-        )
+        results = self.parser.find_search_results() or self._fallback_search_results(ui_xml)
 
         return {
             "status": "success",
@@ -467,9 +454,7 @@ class RealDeviceExecutor:
         for el in clickable:
             txt = (el.text or "").strip()
             if txt and "UAH" in (el.content_desc or ""):
-                results.append(
-                    SearchResult(f"fallback_{len(results)}", txt, "", "", el.bounds)
-                )
+                results.append(SearchResult(f"fallback_{len(results)}", txt, "", "", el.bounds))
         return results[:10]
 
     def get_item_details(self, item_id: str) -> dict[str, Any]:
@@ -559,9 +544,7 @@ class SlandoScreenClassifier:
             return self.SCREEN_CHAT
 
         # Check for profile
-        profile_elements = self.parser.find_elements_by_resource(
-            "ua.slando:id/profile_container"
-        )
+        profile_elements = self.parser.find_elements_by_resource("ua.slando:id/profile_container")
         if profile_elements:
             return self.SCREEN_PROFILE
 
@@ -581,9 +564,7 @@ class SlandoScreenClassifier:
         if ui_xml:
             self.parser = UIAutomatorParser(ui_xml)
             if self.parser.parse():
-                info["clickable_elements_count"] = len(
-                    self.parser.find_clickable_elements()
-                )
+                info["clickable_elements_count"] = len(self.parser.find_clickable_elements())
                 info["has_search"] = self.parser.find_search_field() is not None
                 info["has_results"] = len(self.parser.find_search_results()) > 0
 

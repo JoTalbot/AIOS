@@ -24,6 +24,7 @@ class ProtocolType(StrEnum):
 @dataclass
 class SwarmNode:
     """Remote AIOS Swarm/Cluster descriptor."""
+
     swarm_id: str
     endpoint: str
     protocol: ProtocolType
@@ -34,7 +35,7 @@ class SwarmNode:
 
 class InterSwarmCoordinator:
     """Handles Multi-Cluster delegation and messaging.
-    
+
     Features:
     - Handshake and auth with remote AIOS instances
     - Workload delegation via WebSockets
@@ -48,15 +49,14 @@ class InterSwarmCoordinator:
         self.message_callbacks: list[Any] = []
 
     def register_swarm(
-        self, swarm_id: str, endpoint: str, protocol: ProtocolType = ProtocolType.WEBSOCKET, capabilities: list[str] | None = None
+        self,
+        swarm_id: str,
+        endpoint: str,
+        protocol: ProtocolType = ProtocolType.WEBSOCKET,
+        capabilities: list[str] | None = None,
     ) -> SwarmNode:
         """Register a remote AIOS swarm cluster."""
-        node = SwarmNode(
-            swarm_id=swarm_id,
-            endpoint=endpoint,
-            protocol=protocol,
-            capabilities=capabilities or []
-        )
+        node = SwarmNode(swarm_id=swarm_id, endpoint=endpoint, protocol=protocol, capabilities=capabilities or [])
         self.known_swarms[swarm_id] = node
         logger.info(f"Registered remote swarm: {swarm_id} at {endpoint}")
         return node
@@ -66,11 +66,11 @@ class InterSwarmCoordinator:
         node = self.known_swarms.get(swarm_id)
         if not node:
             raise ValueError("Swarm not registered.")
-        
+
         logger.info(f"Initiating {node.protocol} handshake with {swarm_id}...")
         # Simulated async network delay
         await asyncio.sleep(0.1)
-        
+
         if auth_token == "valid_token":
             node.is_authenticated = True
             logger.info(f"Swarm {swarm_id} successfully authenticated.")
@@ -87,17 +87,17 @@ class InterSwarmCoordinator:
 
         node.active_tasks += 1
         logger.info(f"Delegating task {task_payload.get('id')} to {target_swarm_id}")
-        
+
         # Simulate network transmission
         await asyncio.sleep(0.2)
-        
+
         # Simulated response from remote swarm
         response = {
             "status": "accepted",
             "remote_task_id": f"remote_{task_payload.get('id')}",
-            "assigned_node": target_swarm_id
+            "assigned_node": target_swarm_id,
         }
-        
+
         return response
 
     def broadcast_event(self, event_type: str, payload: dict[str, Any]) -> int:
@@ -108,7 +108,7 @@ class InterSwarmCoordinator:
             if node.is_authenticated:
                 # In real scenario: await websocket.send(message)
                 sent_count += 1
-                
+
         return sent_count
 
     def stats(self) -> dict[str, Any]:
@@ -117,5 +117,5 @@ class InterSwarmCoordinator:
             "local_swarm": self.local_swarm_id,
             "total_remote_swarms": len(self.known_swarms),
             "authenticated_swarms": sum(1 for n in self.known_swarms.values() if n.is_authenticated),
-            "delegated_active_tasks": sum(n.active_tasks for n in self.known_swarms.values())
+            "delegated_active_tasks": sum(n.active_tasks for n in self.known_swarms.values()),
         }

@@ -83,12 +83,7 @@ from aios_core import ConstitutionEngine
 engine = ConstitutionEngine()
 
 # Evaluate action
-action = {
-    "goal": "system_health_check",
-    "scope": "local_node",
-    "risk": "low",
-    "audit_log": True
-}
+action = {"goal": "system_health_check", "scope": "local_node", "risk": "low", "audit_log": True}
 
 result = engine.evaluate(action)
 print(result)  # {"decision": "ALLOW", ...}

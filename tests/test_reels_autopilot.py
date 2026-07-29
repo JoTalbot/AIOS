@@ -445,11 +445,7 @@ def test_cron_plan_instagram_autopilot_line(tmp_path, capsys, monkeypatch):
 
     profiles_db = tmp_path / "profiles.sqlite"
     store = ProfileStore(str(profiles_db))
-    store.add(
-        Profile(
-            platform="instagram", name="main", is_default=True, db_path=str(tmp_path / "ig.sqlite")
-        )
-    )
+    store.add(Profile(platform="instagram", name="main", is_default=True, db_path=str(tmp_path / "ig.sqlite")))
     store.close()
     monkeypatch.setenv("AIOS_PROFILES_DB", str(profiles_db))
     monkeypatch.setenv("AIOS_DEVICES_DB", str(tmp_path / "devices.sqlite"))

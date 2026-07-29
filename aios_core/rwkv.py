@@ -31,9 +31,7 @@ class WKVState:
 
     def update(self, k: list[float], v: list[float]) -> list[float]:
         """WKV update: wkv = decay * wkv + bonus * k * v."""
-        self.wkv = [
-            d * self._decay + self._bonus * ki * vi for d, ki, vi in zip(self.wkv, k, v, strict=False)
-        ]
+        self.wkv = [d * self._decay + self._bonus * ki * vi for d, ki, vi in zip(self.wkv, k, v, strict=False)]
         return list(self.wkv)
 
     def set_decay(self, decay: float, bonus: float = 0.1) -> None:
@@ -59,9 +57,7 @@ class RWKVBlock:
         self._channel_mix_weights = [random.gauss(0, 0.02) for _ in range(dim)]
         self._receptance = [random.gauss(0, 0.02) for _ in range(dim)]
 
-    def _token_shift(
-        self, x: list[float], prev: list[float], ratio: float = 0.5
-    ) -> list[float]:
+    def _token_shift(self, x: list[float], prev: list[float], ratio: float = 0.5) -> list[float]:
         """Token shift: blend current with previous."""
         return [xi * ratio + pi * (1 - ratio) for xi, pi in zip(x, prev, strict=False)]
 
@@ -81,9 +77,7 @@ class RWKVBlock:
     def _sigmoid(self, x: list[float]) -> list[float]:
         return [1.0 / (1.0 + math.exp(-max(-10, min(10, v)))) for v in x]
 
-    def time_mixing(
-        self, x: list[float], prev: list[float] | None = None
-    ) -> list[float]:
+    def time_mixing(self, x: list[float], prev: list[float] | None = None) -> list[float]:
         """Time-mixing sub-layer (backward-compatible)."""
         prev = prev or [0.0] * self.dim
         shifted = self._token_shift(x, prev)
@@ -94,16 +88,12 @@ class RWKVBlock:
         r = self._sigmoid([si * w for si, w in zip(shifted, self._receptance, strict=False)])
         return [ri * wi for ri, wi in zip(r, wkv, strict=False)]
 
-    def channel_mixing(
-        self, x: list[float], prev: list[float] | None = None
-    ) -> list[float]:
+    def channel_mixing(self, x: list[float], prev: list[float] | None = None) -> list[float]:
         """Channel-mixing sub-layer."""
         prev = prev or [0.0] * self.dim
         shifted = self._token_shift(x, prev, ratio=0.7)
         # Squared ReLU (RWKV channel-mixing activation)
-        mixed = [
-            max(0, si * w) ** 2 for si, w in zip(shifted, self._channel_mix_weights, strict=False)
-        ]
+        mixed = [max(0, si * w) ** 2 for si, w in zip(shifted, self._channel_mix_weights, strict=False)]
         r = self._sigmoid([si * w for si, w in zip(shifted, self._receptance, strict=False)])
         return [ri * mi for ri, mi in zip(r, mixed, strict=False)]
 

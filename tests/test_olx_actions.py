@@ -157,9 +157,7 @@ def test_reply_suggester_bargain_accept_and_counter():
     accept = suggester.suggest([Message(author="them", text="Віддасте за 6700?")], my_price=7000.0)
     assert "домовились за 6700" in accept
 
-    counter = suggester.suggest(
-        [Message(author="them", text="А віддасте за 4000?")], my_price=7000.0
-    )
+    counter = suggester.suggest([Message(author="them", text="А віддасте за 4000?")], my_price=7000.0)
     assert "За 4000 грн, на жаль" in counter
     assert str(round(7000 * 0.95)) in counter
 
@@ -167,9 +165,7 @@ def test_reply_suggester_bargain_accept_and_counter():
 def test_reply_suggester_meeting_and_greeting_and_no_reply_needed():
     suggester = ReplySuggester()
 
-    meeting = suggester.suggest(
-        [Message(author="them", text="Коли можна подивитись?")], city="Дніпро"
-    )
+    meeting = suggester.suggest([Message(author="them", text="Коли можна подивитись?")], city="Дніпро")
     assert "Дніпро" in meeting
 
     greeting = suggester.suggest([Message(author="them", text="Добрый день!")])
@@ -371,9 +367,7 @@ def test_notifier_webhook_and_telegram_payload():
     assert payload["data"]["last_price"] == 6500.0
 
     # Telegram-shaped payload
-    tg = WebhookNotifier(
-        url="https://api.telegram.org/botX/sendMessage", poster=poster, chat_id="42"
-    )
+    tg = WebhookNotifier(url="https://api.telegram.org/botX/sendMessage", poster=poster, chat_id="42")
     assert tg.send("olx_price_drop", {"title": "t"}) is True
     assert captured[-1][1]["chat_id"] == "42"
     assert "olx_price_drop" in captured[-1][1]["text"]
@@ -415,9 +409,7 @@ def test_mcp_olx_tools_registered_and_callable(tmp_path, monkeypatch):
     )
 
     listed = json.loads(
-        gateway.handle_request(
-            json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
-        )
+        gateway.handle_request(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}))
     )
     names = [tool["name"] for tool in listed["result"]["tools"]]
     assert "olx_market_stats" in names

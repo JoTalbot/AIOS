@@ -23,7 +23,9 @@ class TestRozetkaCalibrationRecipe:
 
     def test_recipe_ecommerce_partial_hints(self):
         recipe = calibration_recipe(
-            "rozetka", "com.rozetka", kind="ecommerce",
+            "rozetka",
+            "com.rozetka",
+            kind="ecommerce",
             have_hints={"cards": {"card_markers": [{"resource_id": "x"}]}},
         )
         assert "cards" not in recipe["missing"]
@@ -33,7 +35,9 @@ class TestRozetkaCalibrationRecipe:
 
     def test_recipe_ecommerce_ready_when_all_hints(self):
         done = calibration_recipe(
-            "rozetka", "com.rozetka", kind="ecommerce",
+            "rozetka",
+            "com.rozetka",
+            kind="ecommerce",
             have_hints={
                 "cards": {"card_markers": [{"resource_id": "x:id/card"}]},
                 "detail": {"seller_markers": [{"resource_id": "x:id/seller"}]},

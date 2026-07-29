@@ -207,14 +207,8 @@ class ConstitutionEngine:
         principle_violations = self._check_core_principles(action, ctx)
 
         # Combine all violations and requirements
-        all_violations = (
-            prohibition_hits + policy_violations + principle_violations + ctx.violations
-        )
-        all_requirements = (
-            [h for h in must_not_hits if h["type"] == "requirement"]
-            + policy_reqs
-            + ctx.requirements
-        )
+        all_violations = prohibition_hits + policy_violations + principle_violations + ctx.violations
+        all_requirements = [h for h in must_not_hits if h["type"] == "requirement"] + policy_reqs + ctx.requirements
 
         # --- Phase 7: Determine outcome ---
         outcome, reason, details = self._determine_outcome(
@@ -228,12 +222,8 @@ class ConstitutionEngine:
         )
 
         # Gather matched articles and policies
-        matched_articles = list(
-            {v.get("article", "") for v in all_violations if v.get("article")}
-        )
-        matched_policies = list(
-            {v.get("policy", "") for v in all_violations if v.get("policy")}
-        )
+        matched_articles = list({v.get("article", "") for v in all_violations if v.get("article")})
+        matched_policies = list({v.get("policy", "") for v in all_violations if v.get("policy")})
 
         decision = Decision(
             evaluation_id=ctx.evaluation_id,
@@ -267,9 +257,7 @@ class ConstitutionEngine:
         if sec:
             # Unknown access blocked rule
             if (
-                self.policies.is_rule_enabled(
-                    "security_policy", "unknown_access_blocked"
-                )
+                self.policies.is_rule_enabled("security_policy", "unknown_access_blocked")
                 and action.get("agent_id") == "unknown"
             ):
                 violations.append(
@@ -296,9 +284,7 @@ class ConstitutionEngine:
                 )
 
             # Audit logging required
-            if self.policies.is_requirement_met(
-                "security_policy", "audit_logging"
-            ) and not action.get("audit_log"):
+            if self.policies.is_requirement_met("security_policy", "audit_logging") and not action.get("audit_log"):
                 violations.append(
                     {
                         "type": "policy_violation",
@@ -339,9 +325,7 @@ class ConstitutionEngine:
                             )
 
                 # Constitutional validation required
-                if self.policies.is_requirement_met(
-                    "evolution_policy", "constitutional_validation"
-                ):
+                if self.policies.is_requirement_met("evolution_policy", "constitutional_validation"):
                     if not action.get("constitutional_check"):
                         violations.append(
                             {
@@ -355,9 +339,11 @@ class ConstitutionEngine:
         # Federation policy checks
         if action.get("action_type", "") in ("federate", "sync", "state_exchange"):
             fed = self.policies.get_federation_policy()
-            if fed and self.policies.is_rule_enabled(
-                "federation_policy", "verified_nodes_only"
-            ) and not action.get("node_verified"):
+            if (
+                fed
+                and self.policies.is_rule_enabled("federation_policy", "verified_nodes_only")
+                and not action.get("node_verified")
+            ):
                 violations.append(
                     {
                         "type": "policy_violation",
@@ -369,9 +355,7 @@ class ConstitutionEngine:
 
         return violations
 
-    def _check_policy_requirements(
-        self, action: dict, ctx: EvaluationContext
-    ) -> list[dict]:
+    def _check_policy_requirements(self, action: dict, ctx: EvaluationContext) -> list[dict]:
         """Check that policy requirements are satisfied."""
         reqs = []
 
@@ -419,10 +403,7 @@ class ConstitutionEngine:
                                     "detail": "Testing must complete before deployment",
                                 }
                             )
-                    if (
-                        req.name == "rollback_capability"
-                        and str(req.value) == "required"
-                    ):
+                    if req.name == "rollback_capability" and str(req.value) == "required":
                         if not action.get("rollback_plan"):
                             reqs.append(
                                 {
@@ -435,9 +416,7 @@ class ConstitutionEngine:
 
         return reqs
 
-    def _check_core_principles(
-        self, action: dict, ctx: EvaluationContext
-    ) -> list[dict]:
+    def _check_core_principles(self, action: dict, ctx: EvaluationContext) -> list[dict]:
         """Check action against the 6 core constitutional principles."""
         violations = []
 
@@ -486,9 +465,7 @@ class ConstitutionEngine:
             )
 
         # Principle 5: Controlled Evolution — evolution needs stages
-        if action.get("action_type", "").startswith("evolution") and not action.get(
-            "evolution_stage"
-        ):
+        if action.get("action_type", "").startswith("evolution") and not action.get("evolution_stage"):
             evo_stages = self.policies.get_evolution_stages()
             violations.append(
                 {
@@ -515,8 +492,7 @@ class ConstitutionEngine:
         hard_violations = [
             v
             for v in violations
-            if v.get("type")
-            in ("policy_violation", "core_principle_violation", "prohibition")
+            if v.get("type") in ("policy_violation", "core_principle_violation", "prohibition")
             and v.get("type") != "policy_escalation"
         ]
         if hard_violations:
@@ -528,11 +504,7 @@ class ConstitutionEngine:
             )
 
         # Escalation violations → REVIEW
-        escalation_hits = [
-            v
-            for v in violations
-            if v.get("type") in ("policy_escalation", "restricted_action")
-        ]
+        escalation_hits = [v for v in violations if v.get("type") in ("policy_escalation", "restricted_action")]
         if escalation_hits:
             reasons = [v.get("reason", "") for v in escalation_hits]
             return (
@@ -556,8 +528,10 @@ class ConstitutionEngine:
             return (
                 DecisionOutcome.REVIEW,
                 "risk_review",
-                (f"Risk level '{risk_level}' requires review. "
-                f"Policy action: {threat_action}, escalation: {threat_escalation}"),
+                (
+                    f"Risk level '{risk_level}' requires review. "
+                    f"Policy action: {threat_action}, escalation: {threat_escalation}"
+                ),
             )
 
         # All checks passed → ALLOW

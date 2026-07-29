@@ -22,4 +22,5 @@ class DataManager:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+
 data_manager = DataManager()

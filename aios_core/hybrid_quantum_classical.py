@@ -25,9 +25,7 @@ __all__ = ["HybridQuantumClassical"]
 class HybridJob:
     """Hybrid computation job descriptor."""
 
-    def __init__(
-        self, name: str, quantum_func: Callable, classical_func: Callable, data: Any
-    ) -> None:
+    def __init__(self, name: str, quantum_func: Callable, classical_func: Callable, data: Any) -> None:
         self.name = name
         self.quantum_func = quantum_func
         self.classical_func = classical_func
@@ -51,9 +49,7 @@ class HybridQuantumClassical:
         """Set quantum backend (backward-compatible)."""
         self.quantum_backend = backend
 
-    def execute_hybrid(
-        self, quantum_part: Callable, classical_part: Callable, data: Any
-    ) -> dict[str, Any]:
+    def execute_hybrid(self, quantum_part: Callable, classical_part: Callable, data: Any) -> dict[str, Any]:
         """Execute hybrid computation (backward-compatible)."""
         try:
             if self.quantum_backend:
@@ -61,9 +57,7 @@ class HybridQuantumClassical:
                 c_result = classical_part(q_result)
                 return {"quantum": q_result, "classical": c_result, "hybrid": True}
         except Exception as exc:
-            logger.warning(
-                "Hybrid execution failed, falling back to classical: %s", exc
-            )
+            logger.warning("Hybrid execution failed, falling back to classical: %s", exc)
         return {"result": classical_part(data), "hybrid": False, "fallback": True}
 
     def vqe_loop(
@@ -81,23 +75,18 @@ class HybridQuantumClassical:
             if self.quantum_backend:
                 energy = ansatz(params, hamiltonian)
             else:
-                energy = sum(p**2 for p in params) + random.gauss(
-                    0, 0.01
-                )  # Classical fallback
+                energy = sum(p**2 for p in params) + random.gauss(0, 0.01)  # Classical fallback
             energy_history.append(round(energy, 6))
             # Classical: optimize parameters
             params = optimizer(params, energy)
         return {
-            "converged": len(energy_history) > 5
-            and abs(energy_history[-1] - energy_history[-5]) < 0.01,
+            "converged": len(energy_history) > 5 and abs(energy_history[-1] - energy_history[-5]) < 0.01,
             "final_energy": energy_history[-1] if energy_history else None,
             "iterations": len(energy_history),
             "energy_history": energy_history[-10:],
         }
 
-    def qaoa_hybrid(
-        self, cost_func: Callable, p_layers: int = 3, max_iter: int = 50
-    ) -> dict[str, Any]:
+    def qaoa_hybrid(self, cost_func: Callable, p_layers: int = 3, max_iter: int = 50) -> dict[str, Any]:
         """QAOA hybrid optimization."""
         best_solution: list[float] = [random.uniform(0, 1) for _ in range(8)]
         best_cost = cost_func(best_solution)
@@ -119,9 +108,7 @@ class HybridQuantumClassical:
             "iterations": max_iter,
         }
 
-    def circuit_cutting(
-        self, circuit_size: int, max_subcircuit: int = 4
-    ) -> dict[str, Any]:
+    def circuit_cutting(self, circuit_size: int, max_subcircuit: int = 4) -> dict[str, Any]:
         """Cut large circuit into smaller subcircuits."""
         num_subcircuits = max(1, math.ceil(circuit_size / max_subcircuit))
         return {
@@ -169,8 +156,7 @@ class HybridQuantumClassical:
             "pending_jobs": len(self._jobs),
             "completed_jobs": len(self._job_history),
             "quantum_success_rate": round(
-                sum(1 for h in self._job_history if h.get("used_quantum"))
-                / max(len(self._job_history), 1),
+                sum(1 for h in self._job_history if h.get("used_quantum")) / max(len(self._job_history), 1),
                 2,
             ),
         }

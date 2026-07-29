@@ -57,9 +57,7 @@ class QuantumBiologySimulator:
         }
         self.systems["photosynthesis"] = result
         self._quantum_coherence_events += 1
-        self._simulation_log.append(
-            {"system": "photosynthesis", "timestamp": time.time()}
-        )
+        self._simulation_log.append({"system": "photosynthesis", "timestamp": time.time()})
         return result
 
     def fmo_complex_dynamics(self, num_sites: int = 7) -> dict[str, Any]:
@@ -74,9 +72,7 @@ class QuantumBiologySimulator:
                     "population_transfer_prob": round(random.uniform(0.85, 0.99), 3),
                 }
             )
-        total_coherence = round(
-            sum(s["population_transfer_prob"] for s in sites) / num_sites, 3
-        )
+        total_coherence = round(sum(s["population_transfer_prob"] for s in sites) / num_sites, 3)
         return {
             "fmo_sites": sites,
             "total_coherence": total_coherence,
@@ -91,9 +87,7 @@ class QuantumBiologySimulator:
     def simulate_enzyme(self, reaction_rate: float) -> dict[str, Any]:
         """Simulate enzyme with quantum tunneling contribution."""
         tunneling_probability = round(
-            math.exp(-reaction_rate * 10)
-            if reaction_rate < 0.1
-            else random.uniform(0.01, 0.1),
+            math.exp(-reaction_rate * 10) if reaction_rate < 0.1 else random.uniform(0.01, 0.1),
             4,
         )
         result = {
@@ -114,12 +108,7 @@ class QuantumBiologySimulator:
         mass = 1.67e-27  # proton mass (kg)
         barrier_width = round(random.uniform(0.5, 2.0), 2)  # Å
         tunneling_prob = round(
-            math.exp(
-                -2
-                * barrier_width
-                * math.sqrt(2 * mass * barrier_height * 1.6e-19)
-                / 1.055e-34
-            ),
+            math.exp(-2 * barrier_width * math.sqrt(2 * mass * barrier_height * 1.6e-19) / 1.055e-34),
             4,
         )
         return {
@@ -214,15 +203,11 @@ class QuantumBiologySimulator:
     def simulate_protein_folding(self, amino_acids: int = 100) -> dict[str, Any]:
         """Simulate quantum-assisted protein folding search."""
         folding_time_classical = round(random.uniform(10, 1000), 1)
-        folding_time_quantum = round(
-            folding_time_classical * random.uniform(0.01, 0.1), 2
-        )
+        folding_time_quantum = round(folding_time_classical * random.uniform(0.01, 0.1), 2)
         return {
             "amino_acids": amino_acids,
             "levinthal_paradox": "classical exponentially slow",
-            "quantum_search_speedup": round(
-                folding_time_classical / max(0.01, folding_time_quantum), 1
-            ),
+            "quantum_search_speedup": round(folding_time_classical / max(0.01, folding_time_quantum), 1),
             "classical_folding_ns": folding_time_classical,
             "quantum_folding_ns": folding_time_quantum,
             "native_state_found": True,
@@ -250,12 +235,8 @@ class QuantumBiologySimulator:
 
     def quantum_evolution_simulation(self, generations: int = 100) -> dict[str, Any]:
         """Simulate quantum-assisted evolutionary optimization."""
-        fitness_history = [
-            round(random.uniform(0.1, 0.5) + g * 0.003, 3) for g in range(generations)
-        ]
-        quantum_advantage = round(
-            sum(fitness_history[-10:]) / 10 / (sum(fitness_history[:10]) / 10), 2
-        )
+        fitness_history = [round(random.uniform(0.1, 0.5) + g * 0.003, 3) for g in range(generations)]
+        quantum_advantage = round(sum(fitness_history[-10:]) / 10 / (sum(fitness_history[:10]) / 10), 2)
         return {
             "generations": generations,
             "final_fitness": fitness_history[-1],

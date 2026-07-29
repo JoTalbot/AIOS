@@ -24,6 +24,7 @@ except ImportError:
 @dataclass
 class BoundingBox:
     """Bounding box for visual elements."""
+
     x: int
     y: int
     width: int
@@ -58,13 +59,7 @@ class ComputerVisionRPA:
 
             if max_val >= self.confidence_threshold:
                 h, w = template.shape[:2]
-                return BoundingBox(
-                    x=max_loc[0],
-                    y=max_loc[1],
-                    width=w,
-                    height=h,
-                    confidence=max_val
-                )
+                return BoundingBox(x=max_loc[0], y=max_loc[1], width=w, height=h, confidence=max_val)
             return None
         except Exception as e:
             logger.error(f"Template matching failed: {e}")
@@ -76,13 +71,13 @@ class ComputerVisionRPA:
         # Since this is an agentic framework and pytesseract requires system binaries,
         # we provide a robust mock for testing and roadmap completion, falling back to cv2 preprocessing.
         logger.info(f"Running OCR (lang={lang}) on {screen_image_path}...")
-        
+
         if CV2_AVAILABLE:
             # Simulated preprocessing
             img = cv2.imread(screen_image_path, cv2.IMREAD_GRAYSCALE)
             if img is not None:
                 _, _ = cv2.threshold(img, 150, 255, cv2.THRESH_BINARY_INV)
-                
+
         # Simulated OCR text extraction
         return "MOCKED_OCR_TEXT: AIOS Computer Vision Active"
 
@@ -97,6 +92,6 @@ class ComputerVisionRPA:
             elif hasattr(driver, "execute_shell_command"):
                 driver.execute_shell_command(f"input tap {cx} {cy}")
             return True
-            
+
         logger.warning("Visual element not found on screen.")
         return False

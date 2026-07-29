@@ -300,9 +300,7 @@ class UniversalInvariantProver:
             self._violation_stats[v["inv_id"]] += 1
 
         # Generate cryptographic proof hash
-        proof_payload = (
-            f"{current_state}:{next_state_action}:{proven_invariants}:{violations}"
-        )
+        proof_payload = f"{current_state}:{next_state_action}:{proven_invariants}:{violations}"
         proof_hash = hashlib.sha256(proof_payload.encode("utf-8")).hexdigest()
 
         # Determine max severity of violations
@@ -458,7 +456,6 @@ class UniversalInvariantProver:
             "proof_chain_count": len(self._proof_chains),
             "violation_stats": dict(self._violation_stats),
             "invariant_categories": {
-                cat: len(self.invariants_by_category(cat))
-                for cat in {inv.category for inv in self.invariants}
+                cat: len(self.invariants_by_category(cat)) for cat in {inv.category for inv in self.invariants}
             },
         }

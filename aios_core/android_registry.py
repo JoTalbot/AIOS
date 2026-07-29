@@ -55,9 +55,7 @@ class AndroidAppDescriptor:
         if self.backend == "adb":
             return RealDeviceExecutor(device_id=device_id or "emulator-5554")
         if self.backend == "appium":
-            cfg = self.capabilities or AppiumDriverConfig(
-                package=self.package, device_name=device_id or "emulator"
-            )
+            cfg = self.capabilities or AppiumDriverConfig(package=self.package, device_name=device_id or "emulator")
             return AppiumAndroidDriver(cfg)
         raise ValueError(f"Unsupported backend: {self.backend}")
 
@@ -146,9 +144,7 @@ class AndroidAppRegistry:
     # Driver management
     # ------------------------------------------------------------------
 
-    def driver_for(
-        self, package: str, device_id: str | None = None
-    ) -> AndroidDriver | None:
+    def driver_for(self, package: str, device_id: str | None = None) -> AndroidDriver | None:
         """Create or retrieve a cached driver for *package*."""
         desc = self.get(package)
         if desc is None:

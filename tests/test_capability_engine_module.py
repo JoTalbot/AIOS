@@ -492,6 +492,7 @@ class TestRegistration:
     def test_register_stores_handler(self, engine):
         def handler(d):
             return d["value"] * 2
+
         engine.register(name="with_handler", description="d", handler=handler, capability_type="action")
         result = engine.execute("with_handler", input_data={"value": 3})
         assert result["success"] is True

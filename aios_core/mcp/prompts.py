@@ -17,9 +17,7 @@ class PromptDefinition:
 
     name: str
     description: str = ""
-    arguments: list[dict] = field(
-        default_factory=list
-    )  # [{"name", "description", "required"}]
+    arguments: list[dict] = field(default_factory=list)  # [{"name", "description", "required"}]
     renderer: Callable[[dict], MCPPromptResult] | None = None
     template: str | None = None  # Simple string template with {var} placeholders
 

@@ -1,4 +1,5 @@
 """Tests for aios_core/marketplace.py"""
+
 from __future__ import annotations
 
 import pytest
@@ -36,14 +37,14 @@ class TestCapabilityMarketplace:
 
     def test_get(self, market):
         item = market.publish(name="get_me", description="d")
-        iid = getattr(item, 'item_id', getattr(item, 'id', None))
+        iid = getattr(item, "item_id", getattr(item, "id", None))
         if iid:
             fetched = market.get(iid)
             assert fetched is not None
 
     def test_download(self, market):
         item = market.publish(name="dl", description="d")
-        iid = getattr(item, 'item_id', getattr(item, 'id', None))
+        iid = getattr(item, "item_id", getattr(item, "id", None))
         if iid:
             result = market.download(iid)
             assert result is not None

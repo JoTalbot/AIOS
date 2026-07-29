@@ -62,12 +62,8 @@ _MONTHS = {
     "декабря": 12,
 }
 
-_TODAY_RE = re.compile(
-    r"(?:сьогодні|сегодня)\s*(?:[воу]\s*)?(\d{1,2}:\d{2})", re.IGNORECASE
-)
-_YESTERDAY_RE = re.compile(
-    r"(?:вчора|вчера)\s*(?:[воу]\s*)?(\d{1,2}:\d{2})", re.IGNORECASE
-)
+_TODAY_RE = re.compile(r"(?:сьогодні|сегодня)\s*(?:[воу]\s*)?(\d{1,2}:\d{2})", re.IGNORECASE)
+_YESTERDAY_RE = re.compile(r"(?:вчора|вчера)\s*(?:[воу]\s*)?(\d{1,2}:\d{2})", re.IGNORECASE)
 _DATE_RE = re.compile(r"(\d{1,2})\s+([а-яіїєґА-ЯІЇЄҐ]+)\s+(\d{4})")
 
 
@@ -130,17 +126,13 @@ def parse_published(text: str | None, now: datetime | None = None) -> str | None
     match = _TODAY_RE.search(raw)
     if match:
         hour, minute = map(int, match.group(1).split(":"))
-        return now.replace(
-            hour=hour, minute=minute, second=0, microsecond=0
-        ).isoformat()
+        return now.replace(hour=hour, minute=minute, second=0, microsecond=0).isoformat()
 
     match = _YESTERDAY_RE.search(raw)
     if match:
         hour, minute = map(int, match.group(1).split(":"))
         yesterday = now - timedelta(days=1)
-        return yesterday.replace(
-            hour=hour, minute=minute, second=0, microsecond=0
-        ).isoformat()
+        return yesterday.replace(hour=hour, minute=minute, second=0, microsecond=0).isoformat()
 
     match = _DATE_RE.search(raw)
     if match:

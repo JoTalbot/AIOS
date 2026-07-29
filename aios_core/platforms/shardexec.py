@@ -84,8 +84,7 @@ class ShardJobs:
         """Повесить джобу на профиль; вернуть id."""
         with self._lock, self._conn:
             cursor = self._conn.execute(
-                "INSERT INTO shard_jobs (profile_key, kind, payload, enqueued_at)"
-                " VALUES (?, ?, ?, ?)",
+                "INSERT INTO shard_jobs (profile_key, kind, payload, enqueued_at) VALUES (?, ?, ?, ?)",
                 (
                     profile_key,
                     kind,
@@ -130,11 +129,7 @@ class ShardJobs:
 
     def pending_for(self, host: str) -> builtins.list[dict]:
         """Pending-джобы, маршрут которых указывает на ``host``."""
-        return [
-            job
-            for job in self.list(status="pending")
-            if self._host_for(job["profile_key"]) == host
-        ]
+        return [job for job in self.list(status="pending") if self._host_for(job["profile_key"]) == host]
 
     def claim_next(self, host: str) -> dict | None:
         """Атомарно забрать следующую джобу ноды (статуc → claimed)."""
@@ -151,14 +146,11 @@ class ShardJobs:
                     return job
         return None
 
-    def complete(
-        self, job_id: int, ok: bool = True, result: dict | None = None
-    ) -> bool:
+    def complete(self, job_id: int, ok: bool = True, result: dict | None = None) -> bool:
         """Зафиксировать результат джобы (done/failed)."""
         with self._lock, self._conn:
             cursor = self._conn.execute(
-                "UPDATE shard_jobs SET status = ?, finished_at = ?, result = ? "
-                "WHERE id = ?",
+                "UPDATE shard_jobs SET status = ?, finished_at = ?, result = ? WHERE id = ?",
                 (
                     "done" if ok else "failed",
                     _now(),
@@ -178,9 +170,7 @@ class ShardJobs:
                 (host, _now()),
             )
 
-    def requeue_stale(
-        self, stale_after_s: float = 600.0, now: str | None = None
-    ) -> builtins.list[dict]:
+    def requeue_stale(self, stale_after_s: float = 600.0, now: str | None = None) -> builtins.list[dict]:
         """Вернуть в pending claimed-джобы, зависшие дольше TTL.
 
         Джоба считается зависшей, если с момента claim прошло больше
@@ -200,8 +190,7 @@ class ShardJobs:
                 if age < stale_after_s:
                     continue
                 self._conn.execute(
-                    "UPDATE shard_jobs SET status = 'pending', host = NULL, "
-                    "claimed_at = NULL WHERE id = ?",
+                    "UPDATE shard_jobs SET status = 'pending', host = NULL, claimed_at = NULL WHERE id = ?",
                     (job["id"],),
                 )
                 job["status"] = "pending"
@@ -217,15 +206,11 @@ class ShardJobs:
         now_dt = _dt.fromisoformat(now) if now else _dt.now(UTC)
         counts: dict[str, int] = {}
         with self._lock:
-            for row in self._conn.execute(
-                "SELECT status, COUNT(*) AS n FROM shard_jobs GROUP BY status"
-            ).fetchall():
+            for row in self._conn.execute("SELECT status, COUNT(*) AS n FROM shard_jobs GROUP BY status").fetchall():
                 counts[row["status"]] = int(row["n"])
             heartbeats = {
                 row["host"]: row["seen_at"]
-                for row in self._conn.execute(
-                    "SELECT host, seen_at FROM shard_heartbeats"
-                ).fetchall()
+                for row in self._conn.execute("SELECT host, seen_at FROM shard_heartbeats").fetchall()
             }
 
         def _age(ts: str) -> float:
@@ -344,9 +329,7 @@ def default_handlers(cli_path: str | None = None) -> dict[str, Callable]:
         """Execute autopilot."""
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
-            raise ValueError(
-                f"autopilot job поддерживает instagram-профили, не {platform!r}"
-            )
+            raise ValueError(f"autopilot job поддерживает instagram-профили, не {platform!r}")
         return _run_cli(
             [
                 "python3",
@@ -364,9 +347,7 @@ def default_handlers(cli_path: str | None = None) -> dict[str, Callable]:
         """Execute reels."""
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
-            raise ValueError(
-                f"reels job поддерживает instagram-профили, не {platform!r}"
-            )
+            raise ValueError(f"reels job поддерживает instagram-профили, не {platform!r}")
         return _run_cli(
             [
                 "python3",
@@ -384,9 +365,7 @@ def default_handlers(cli_path: str | None = None) -> dict[str, Callable]:
         """Execute dm flush."""
         platform, _, name = profile_key.partition(":")
         if platform != "instagram":
-            raise ValueError(
-                f"dm-flush job поддерживает instagram-профили, не {platform!r}"
-            )
+            raise ValueError(f"dm-flush job поддерживает instagram-профили, не {platform!r}")
         return _run_cli(
             [
                 "python3",

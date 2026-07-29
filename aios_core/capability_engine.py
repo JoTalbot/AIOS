@@ -257,24 +257,12 @@ class CapabilityEngine:
             "capability_type": row["capability_type"],
             "status": row["status"],
             "version": row["version"],
-            "input_schema": (
-                Database.from_json(row["input_schema"])
-                if row.get("input_schema")
-                else None
-            ),
-            "output_schema": (
-                Database.from_json(row["output_schema"])
-                if row.get("output_schema")
-                else None
-            ),
+            "input_schema": (Database.from_json(row["input_schema"]) if row.get("input_schema") else None),
+            "output_schema": (Database.from_json(row["output_schema"]) if row.get("output_schema") else None),
             "risk_level": row["risk_level"],
             "required_authority": row["required_authority"],
             "tags": Database.from_json(row["tags"]) if row.get("tags") else [],
-            "dependencies": (
-                Database.from_json(row["dependencies"])
-                if row.get("dependencies")
-                else []
-            ),
+            "dependencies": (Database.from_json(row["dependencies"]) if row.get("dependencies") else []),
             "metrics": (
                 Database.from_json(row["metrics"])
                 if row.get("metrics")
@@ -286,9 +274,7 @@ class CapabilityEngine:
                     "last_executed": None,
                 }
             ),
-            "properties": (
-                Database.from_json(row["properties"]) if row.get("properties") else {}
-            ),
+            "properties": (Database.from_json(row["properties"]) if row.get("properties") else {}),
             "registered_at": row["registered_at"],
             "updated_at": row["updated_at"],
             "validated_at": row["validated_at"],
@@ -336,9 +322,7 @@ class CapabilityEngine:
     def _authority_sufficient(provided: str, required: str) -> bool:
         """Return True if *provided* authority meets or exceeds *required*."""
         try:
-            return _AUTHORITY_LEVELS.index(provided) >= _AUTHORITY_LEVELS.index(
-                required
-            )
+            return _AUTHORITY_LEVELS.index(provided) >= _AUTHORITY_LEVELS.index(required)
         except ValueError:
             return False
 
@@ -474,10 +458,7 @@ class CapabilityEngine:
                 "result": None,
                 "capability": capability_name,
                 "duration_ms": 0.0,
-                "error": (
-                    f"Capability '{capability_name}' is in status '{status}' "
-                    f"and cannot be executed"
-                ),
+                "error": (f"Capability '{capability_name}' is in status '{status}' and cannot be executed"),
             }
 
         # Check authority
@@ -488,9 +469,7 @@ class CapabilityEngine:
                 "result": None,
                 "capability": capability_name,
                 "duration_ms": 0.0,
-                "error": (
-                    f"Authority '{authority}' insufficient; requires '{required_auth}'"
-                ),
+                "error": (f"Authority '{authority}' insufficient; requires '{required_auth}'"),
             }
 
         # Check handler availability
@@ -603,10 +582,7 @@ class CapabilityEngine:
                 "capability": capability_name,
                 "old_status": old_status,
                 "new_status": new_status,
-                "error": (
-                    f"Invalid status '{new_status}'. "
-                    f"Must be one of: {sorted(valid_values)}"
-                ),
+                "error": (f"Invalid status '{new_status}'. Must be one of: {sorted(valid_values)}"),
             }
 
         # Same status is a no-op
@@ -653,8 +629,7 @@ class CapabilityEngine:
                 "old_status": old_status,
                 "new_status": new_status,
                 "error": (
-                    f"Transition from '{old_status}' to '{new_status}' "
-                    f"is not allowed. Allowed: {sorted(allowed)}"
+                    f"Transition from '{old_status}' to '{new_status}' is not allowed. Allowed: {sorted(allowed)}"
                 ),
             }
 
@@ -759,10 +734,7 @@ class CapabilityEngine:
                     next_input = dict(current)
                 resp = engine_self.execute(step_name, next_input, authority="system")
                 if not resp["success"]:
-                    raise RuntimeError(
-                        f"Composition step '{step_name}' failed: "
-                        f"{resp.get('error', 'unknown error')}"
-                    )
+                    raise RuntimeError(f"Composition step '{step_name}' failed: {resp.get('error', 'unknown error')}")
                 last_result = resp["result"]
                 # Merge result into current context for next step
                 if isinstance(last_result, dict):
@@ -771,9 +743,7 @@ class CapabilityEngine:
 
         # Register the composition as a new capability
         dep_names = [s["name"] for s in step_caps]
-        full_desc = description or (
-            f"Composite capability chaining: {' -> '.join(dep_names)}"
-        )
+        full_desc = description or (f"Composite capability chaining: {' -> '.join(dep_names)}")
 
         result = self.register(
             name=composition_name,
@@ -821,15 +791,10 @@ class CapabilityEngine:
             if query:
                 q = query.lower()
                 results = [
-                    c
-                    for c in results
-                    if q in c.get("name", "").lower()
-                    or q in c.get("description", "").lower()
+                    c for c in results if q in c.get("name", "").lower() or q in c.get("description", "").lower()
                 ]
             if capability_type:
-                results = [
-                    c for c in results if c.get("capability_type") == capability_type
-                ]
+                results = [c for c in results if c.get("capability_type") == capability_type]
             if status:
                 results = [c for c in results if c.get("status") == status]
             if tag:
@@ -843,9 +808,7 @@ class CapabilityEngine:
         params: list[Any] = []
 
         if query:
-            conditions.append(
-                "(name LIKE ? OR description LIKE ? OR properties LIKE ?)"
-            )
+            conditions.append("(name LIKE ? OR description LIKE ? OR properties LIKE ?)")
             like = f"%{query}%"
             params.extend([like, like, like])
 
@@ -917,14 +880,11 @@ class CapabilityEngine:
         total_row = self.db.query_one("SELECT COUNT(*) as cnt FROM capabilities")
         total = total_row["cnt"] if total_row else 0
 
-        by_status_rows = self.db.query(
-            "SELECT status, COUNT(*) as cnt FROM capabilities GROUP BY status"
-        )
+        by_status_rows = self.db.query("SELECT status, COUNT(*) as cnt FROM capabilities GROUP BY status")
         by_status = {r["status"]: r["cnt"] for r in by_status_rows}
 
         by_type_rows = self.db.query(
-            "SELECT capability_type, COUNT(*) as cnt FROM capabilities "
-            "GROUP BY capability_type"
+            "SELECT capability_type, COUNT(*) as cnt FROM capabilities GROUP BY capability_type"
         )
         by_type = {r["capability_type"]: r["cnt"] for r in by_type_rows}
 
@@ -969,9 +929,7 @@ class CapabilityEngine:
 
         for cap in top:
             metrics = cap.get("metrics", {}) if isinstance(cap, dict) else {}
-            exec_count = (
-                metrics.get("execution_count", 0) if isinstance(metrics, dict) else 0
-            )
+            exec_count = metrics.get("execution_count", 0) if isinstance(metrics, dict) else 0
             failure_rate = 0
             if exec_count > 0:
                 failures = metrics.get("failure_count", 0)
@@ -1002,10 +960,7 @@ class CapabilityEngine:
                 )
 
         # Add generic suggestions for missing core types
-        existing_types = {
-            c.get("capability_type")
-            for c in (self._in_memory.values() if not self.db else [])
-        }
+        existing_types = {c.get("capability_type") for c in (self._in_memory.values() if not self.db else [])}
         for missing in ["reasoning", "memory", "knowledge", "evolution"]:
             if missing not in existing_types:
                 suggestions.append(  # noqa: PERF401

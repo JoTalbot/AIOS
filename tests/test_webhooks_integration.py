@@ -9,7 +9,9 @@ from aios_core.webhooks.router import router
 
 
 @pytest.fixture
-def app(): return Starlette(routes=router.routes)
+def app():
+    return Starlette(routes=router.routes)
+
 
 @pytest.mark.asyncio
 async def test_olx_sig(app, monkeypatch):

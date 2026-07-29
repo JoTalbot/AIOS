@@ -59,10 +59,7 @@ class VectorStore:
         if not self._docs or n_results <= 0:
             return []
         query_tokens = _tokenize(query)
-        scored = [
-            (self._score(query_tokens, doc["tokens"]), doc)
-            for doc in self._docs.values()
-        ]
+        scored = [(self._score(query_tokens, doc["tokens"]), doc) for doc in self._docs.values()]
         scored.sort(key=lambda item: item[0], reverse=True)
         return [
             {

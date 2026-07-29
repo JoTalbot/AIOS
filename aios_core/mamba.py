@@ -65,43 +65,32 @@ class MambaBlock:
         self.state = [0.0] * d_state
 
         # Discretization parameters (A, B, C matrices as lists)
-        self.A_log = [
-            -1.0 + random.uniform(0, 0.5) for _ in range(d_state)
-        ]  # log of diagonal A
+        self.A_log = [-1.0 + random.uniform(0, 0.5) for _ in range(d_state)]  # log of diagonal A
         self.D = [0.0] * d_model  # skip connection
 
         # Input-dependent projection parameters (simplified)
         self.dt_proj = [random.uniform(dt_min, dt_max) for _ in range(d_model)]
-        self.B_proj = [
-            [random.gauss(0, 0.1) for _ in range(d_state)] for _ in range(d_model)
-        ]
-        self.C_proj = [
-            [random.gauss(0, 0.1) for _ in range(d_model)] for _ in range(d_state)
-        ]
+        self.B_proj = [[random.gauss(0, 0.1) for _ in range(d_state)] for _ in range(d_model)]
+        self.C_proj = [[random.gauss(0, 0.1) for _ in range(d_model)] for _ in range(d_state)]
 
         # Conv1d kernel (simplified)
         self.conv_kernel = [random.gauss(0, 0.1) for _ in range(d_conv)]
 
         self._step_count = 0
 
-    def _selective_params(
-        self, x: float, idx: int
-    ) -> tuple[float, list[float], list[float]]:
+    def _selective_params(self, x: float, idx: int) -> tuple[float, list[float], list[float]]:
         """Compute input-dependent dt, B, C for position idx."""
         dt = self.dt_proj[idx] if idx < len(self.dt_proj) else self.dt_proj[0]
         B = self.B_proj[idx] if idx < len(self.B_proj) else self.B_proj[0]
         C = self.C_proj[idx] if idx < len(self.C_proj) else self.C_proj[0]
         return dt, B, C
 
-    def _discretize(
-        self, dt: float, A_log: list[float], B: list[float]
-    ) -> tuple[list[float], list[float]]:
+    def _discretize(self, dt: float, A_log: list[float], B: list[float]) -> tuple[list[float], list[float]]:
         """Discretize continuous parameters using ZOH."""
         A = [math.exp(a) for a in A_log]  # diagonal A
         dA = [math.exp(a * dt) for a in A_log]  # discretized A
         dB = [
-            (math.exp(a * dt) - 1) / a * b if abs(a) > 1e-6 else dt * b
-            for a, b in zip(A, B, strict=False)
+            (math.exp(a * dt) - 1) / a * b if abs(a) > 1e-6 else dt * b for a, b in zip(A, B, strict=False)
         ]  # discretized B
         return dA, dB
 
@@ -161,12 +150,8 @@ class MambaBlock:
 class MambaStacked:
     """Multi-layer stacked Mamba model."""
 
-    def __init__(
-        self, num_layers: int = 4, d_model: int = 512, d_state: int = 16
-    ) -> None:
-        self.layers = [
-            MambaBlock(d_model=d_model, d_state=d_state) for _ in range(num_layers)
-        ]
+    def __init__(self, num_layers: int = 4, d_model: int = 512, d_state: int = 16) -> None:
+        self.layers = [MambaBlock(d_model=d_model, d_state=d_state) for _ in range(num_layers)]
         self.num_layers = num_layers
 
     def forward(self, x: list[float]) -> list[float]:

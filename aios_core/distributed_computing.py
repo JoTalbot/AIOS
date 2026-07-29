@@ -138,13 +138,9 @@ class DistributedComputing:
         self.tasks[task.task_id] = task
         return task.task_id
 
-    def submit_with_capability(
-        self, func: Callable, capability: str, *args: Any, **kwargs: Any
-    ) -> str:
+    def submit_with_capability(self, func: Callable, capability: str, *args: Any, **kwargs: Any) -> str:
         """Submit a task requiring a specific capability."""
-        task = DistributedTask(
-            func=func, args=args, kwargs=kwargs, required_capability=capability
-        )
+        task = DistributedTask(func=func, args=args, kwargs=kwargs, required_capability=capability)
         self.tasks[task.task_id] = task
         return task.task_id
 
@@ -158,9 +154,7 @@ class DistributedComputing:
 
         # Find suitable worker (least-loaded)
         candidates = [
-            w
-            for w in self.workers.values()
-            if w.is_available() and w.has_capability(task.required_capability)
+            w for w in self.workers.values() if w.is_available() and w.has_capability(task.required_capability)
         ]
         if not candidates:
             return None
@@ -193,9 +187,7 @@ class DistributedComputing:
             if task.assigned_worker:
                 worker = self.workers.get(task.assigned_worker)
                 if worker:
-                    worker.active_tasks = [
-                        t for t in worker.active_tasks if t != task_id
-                    ]
+                    worker.active_tasks = [t for t in worker.active_tasks if t != task_id]
                     worker.completed_count += 1
             return result
         except Exception as e:
@@ -205,9 +197,7 @@ class DistributedComputing:
             if task.assigned_worker:
                 worker = self.workers.get(task.assigned_worker)
                 if worker:
-                    worker.active_tasks = [
-                        t for t in worker.active_tasks if t != task_id
-                    ]
+                    worker.active_tasks = [t for t in worker.active_tasks if t != task_id]
                     worker.failed_count += 1
             raise
 
@@ -243,9 +233,7 @@ class DistributedComputing:
 
     # ── Sharding ─────────────────────────────────────────────────
 
-    def shard_task(
-        self, func: Callable, data: list[Any], shard_size: int = 10
-    ) -> list[str]:
+    def shard_task(self, func: Callable, data: list[Any], shard_size: int = 10) -> list[str]:
         """Split data into shards and submit as separate tasks."""
         task_ids = []
         for i in range(0, len(data), shard_size):
@@ -266,7 +254,5 @@ class DistributedComputing:
             "workers": len(self.workers),
             "tasks": len(self.tasks),
             "by_status": by_status,
-            "available_workers": sum(
-                1 for w in self.workers.values() if w.is_available()
-            ),
+            "available_workers": sum(1 for w in self.workers.values() if w.is_available()),
         }

@@ -118,9 +118,7 @@ class BCIInterface:
         """Map decoded intent to system command."""
         return self._command_map.get(intent, "unknown")
 
-    def filter_signal(
-        self, signal: dict[str, Any], cutoff: float = 0.05
-    ) -> dict[str, Any]:
+    def filter_signal(self, signal: dict[str, Any], cutoff: float = 0.05) -> dict[str, Any]:
         """Apply adaptive filter to signal."""
         sample = signal.get("sample", [])
         # Low-pass filter: remove high-frequency noise

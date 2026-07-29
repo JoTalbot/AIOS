@@ -60,9 +60,7 @@ class AIOS_Orchestrator:
     def register_worker_pool(self, pool: WorkerPool) -> None:
         self.worker_pools.append(pool)
 
-    def create_plan(
-        self, goal: str, capabilities: list[str], nodes: list[str], workers: list[str]
-    ) -> ExecutionPlan:
+    def create_plan(self, goal: str, capabilities: list[str], nodes: list[str], workers: list[str]) -> ExecutionPlan:
         plan = ExecutionPlan(
             plan_id=f"plan_{len(self.execution_plans)}",
             goal=goal,

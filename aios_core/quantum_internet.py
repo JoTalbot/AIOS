@@ -87,9 +87,9 @@ class QuantumInternet:
         path: list[str] = [source]
         current = source
         while current != destination:
-            neighbors = [
-                b for a, b in self.links if a == current and b not in visited
-            ] + [a for a, b in self.links if b == current and a not in visited]
+            neighbors = [b for a, b in self.links if a == current and b not in visited] + [
+                a for a, b in self.links if b == current and a not in visited
+            ]
             if not neighbors:
                 return []
             current = neighbors[0]
@@ -103,15 +103,9 @@ class QuantumInternet:
             return 0.0
         return round(sum(self._fidelity_log) / len(self._fidelity_log), 3)
 
-    def quantum_key_distribution(
-        self, node_a: str, node_b: str, key_length: int = 128
-    ) -> dict[str, Any]:
+    def quantum_key_distribution(self, node_a: str, node_b: str, key_length: int = 128) -> dict[str, Any]:
         """Distribute a quantum key between two nodes."""
-        fidelity = (
-            self.nodes[node_a].entangled_pairs.get(node_b, 0.0)
-            if node_a in self.nodes
-            else 0.0
-        )
+        fidelity = self.nodes[node_a].entangled_pairs.get(node_b, 0.0) if node_a in self.nodes else 0.0
         success = fidelity > 0.8
         return {
             "source": node_a,

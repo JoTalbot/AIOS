@@ -71,9 +71,7 @@ def run_autonomous_cycle(goal: str = "observe_application"):
     orchestrator.register_node(AIOS_Node("node_main", "planner"))
     orchestrator.register_node(AIOS_Node("node_worker_01", "android_testing"))
     orchestrator.register_mcp_module(MCP_Module("mcp_demo_01", "external_access", ["cap_obs_01"]))
-    orchestrator.register_worker_pool(
-        WorkerPool("pool_demo_01", "node_worker_01", "testing_worker", 3)
-    )
+    orchestrator.register_worker_pool(WorkerPool("pool_demo_01", "node_worker_01", "testing_worker", 3))
 
     plan = orchestrator.create_plan(
         goal=goal,
@@ -81,9 +79,7 @@ def run_autonomous_cycle(goal: str = "observe_application"):
         nodes=["node_main", "node_worker_01"],
         workers=["pool_demo_01"],
     )
-    print(
-        f"[ORCHESTRATOR] Plan created: {plan.plan_id} | Nodes: {plan.assigned_nodes} | Status: {plan.status}"
-    )
+    print(f"[ORCHESTRATOR] Plan created: {plan.plan_id} | Nodes: {plan.assigned_nodes} | Status: {plan.status}")
 
     # 6. Agent evolves (adds new capability from proposal)
     agent.evolve(

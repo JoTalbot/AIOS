@@ -40,9 +40,7 @@ class PromCollector:
     def launch_search(self, query: str) -> dict:
         """Open Prom app and navigate to search."""
         self.adb.open_app()
-        self.adb.run(
-            f"am start -a android.intent.action.VIEW -d '{self.search_deep_link(query)}'"
-        )
+        self.adb.run(f"am start -a android.intent.action.VIEW -d '{self.search_deep_link(query)}'")
         return {"code": 0, "action": "search", "query": query}
 
     def collect(self, query=None, max_cards=50, filename="screen.xml") -> list[AdCard]:
@@ -54,11 +52,7 @@ class PromCollector:
             if len(all_cards) >= max_cards:
                 break
             self.adb.dump_ui(filename)
-            xml_text = (
-                Path(filename).read_text(encoding="utf-8")
-                if Path(filename).exists()
-                else ""
-            )
+            xml_text = Path(filename).read_text(encoding="utf-8") if Path(filename).exists() else ""
             new_cards = self.parser.parse(xml_text, query=query)
             added = 0
             for card in new_cards:
@@ -91,7 +85,5 @@ class PromCollector:
         return {
             "collected": len(cards),
             "new": len(cards),
-            "cards": [
-                {"title": c.title, "price": c.price, "url": c.url} for c in cards
-            ],
+            "cards": [{"title": c.title, "price": c.price, "url": c.url} for c in cards],
         }

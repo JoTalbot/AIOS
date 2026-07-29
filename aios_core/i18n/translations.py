@@ -1,4 +1,3 @@
-
 TRANSLATIONS = {
     "en": {
         "dashboard_title": "AIOS Dashboard",
@@ -6,7 +5,7 @@ TRANSLATIONS = {
         "metrics": "Metrics",
         "chat": "Agent Chat",
         "editor": "Template Editor",
-        "api_docs": "API Docs"
+        "api_docs": "API Docs",
     },
     "uk": {
         "dashboard_title": "Панель керування AIOS",
@@ -14,7 +13,7 @@ TRANSLATIONS = {
         "metrics": "Метрики",
         "chat": "Чат агентів",
         "editor": "Редактор шаблонів",
-        "api_docs": "Документація API"
+        "api_docs": "Документація API",
     },
     "ru": {
         "dashboard_title": "Панель управления AIOS",
@@ -22,9 +21,10 @@ TRANSLATIONS = {
         "metrics": "Метрики",
         "chat": "Чат агентов",
         "editor": "Редактор шаблонов",
-        "api_docs": "Документация API"
-    }
+        "api_docs": "Документация API",
+    },
 }
+
 
 def t(lang: str, key: str) -> str:
     return TRANSLATIONS.get(lang, TRANSLATIONS["en"]).get(key, key)

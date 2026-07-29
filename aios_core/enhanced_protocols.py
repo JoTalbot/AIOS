@@ -89,17 +89,13 @@ class ProtocolAdapter(ABC):
             self.active_connections.append(connection)
             self.logger.info(f"Connection added. Total: {len(self.active_connections)}")
         else:
-            self.logger.warning(
-                f"Connection limit reached: {self.config.max_connections}"
-            )
+            self.logger.warning(f"Connection limit reached: {self.config.max_connections}")
 
     def remove_connection(self, connection: Any) -> None:
         """Remove active connection."""
         if connection in self.active_connections:
             self.active_connections.remove(connection)
-            self.logger.info(
-                f"Connection removed. Total: {len(self.active_connections)}"
-            )
+            self.logger.info(f"Connection removed. Total: {len(self.active_connections)}")
 
 
 class GrpcAdapter(ProtocolAdapter):
@@ -270,9 +266,7 @@ class WebSocketAdapter(ProtocolAdapter):
         """Start WebSocket server."""
         try:
             # WebSocket will be handled by Starlette app
-            self.logger.info(
-                f"WebSocket adapter ready for {self.config.host}:{self.config.port}"
-            )
+            self.logger.info(f"WebSocket adapter ready for {self.config.host}:{self.config.port}")
             return True
         except Exception as e:
             self.logger.error(f"Failed to start WebSocket adapter: {e!s}")
@@ -340,9 +334,7 @@ class MqttAdapter(ProtocolAdapter):
             # In production, use asyncio-mqtt
             import asyncio_mqtt
 
-            self.client = asyncio_mqtt.Client(
-                hostname=self.config.host, port=self.config.port, keepalive=60
-            )
+            self.client = asyncio_mqtt.Client(hostname=self.config.host, port=self.config.port, keepalive=60)
 
             await self.client.__aenter__()
             self.logger.info(f"MQTT connected to {self.config.host}:{self.config.port}")
@@ -427,9 +419,7 @@ class ProtocolManager:
         self.adapters: dict[ProtocolType, ProtocolAdapter] = {}
         self.logger = logging.getLogger("aios.protocol_manager")
 
-    def add_adapter(
-        self, protocol_type: ProtocolType, adapter: ProtocolAdapter
-    ) -> None:
+    def add_adapter(self, protocol_type: ProtocolType, adapter: ProtocolAdapter) -> None:
         """Add protocol adapter."""
         self.adapters[protocol_type] = adapter
         self.logger.info(f"Added {protocol_type.value} adapter")
@@ -466,9 +456,7 @@ def create_protocol_app(protocol_manager: ProtocolManager) -> Starlette:
     async def grpc_status_endpoint(request: Request) -> JSONResponse:
         """Get gRPC adapter status."""
         if ProtocolType.GRPC not in protocol_manager.adapters:
-            return JSONResponse(
-                {"error": "gRPC adapter not available"}, status_code=503
-            )
+            return JSONResponse({"error": "gRPC adapter not available"}, status_code=503)
 
         adapter = protocol_manager.adapters[ProtocolType.GRPC]
         return JSONResponse(
@@ -482,9 +470,7 @@ def create_protocol_app(protocol_manager: ProtocolManager) -> Starlette:
     async def amqp_status_endpoint(request: Request) -> JSONResponse:
         """Get AMQP adapter status."""
         if ProtocolType.AMQP not in protocol_manager.adapters:
-            return JSONResponse(
-                {"error": "AMQP adapter not available"}, status_code=503
-            )
+            return JSONResponse({"error": "AMQP adapter not available"}, status_code=503)
 
         adapter = protocol_manager.adapters[ProtocolType.AMQP]
         return JSONResponse(
@@ -498,9 +484,7 @@ def create_protocol_app(protocol_manager: ProtocolManager) -> Starlette:
     async def websocket_status_endpoint(request: Request) -> JSONResponse:
         """Get WebSocket adapter status."""
         if ProtocolType.WEBSOCKET not in protocol_manager.adapters:
-            return JSONResponse(
-                {"error": "WebSocket adapter not available"}, status_code=503
-            )
+            return JSONResponse({"error": "WebSocket adapter not available"}, status_code=503)
 
         adapter = protocol_manager.adapters[ProtocolType.WEBSOCKET]
         return JSONResponse(
@@ -514,9 +498,7 @@ def create_protocol_app(protocol_manager: ProtocolManager) -> Starlette:
     async def mqtt_status_endpoint(request: Request) -> JSONResponse:
         """Get MQTT adapter status."""
         if ProtocolType.MQTT not in protocol_manager.adapters:
-            return JSONResponse(
-                {"error": "MQTT adapter not available"}, status_code=503
-            )
+            return JSONResponse({"error": "MQTT adapter not available"}, status_code=503)
 
         adapter = protocol_manager.adapters[ProtocolType.MQTT]
         return JSONResponse(
@@ -574,9 +556,7 @@ def setup_protocol_support() -> None:
     protocol_manager.add_adapter(ProtocolType.GRPC, grpc_adapter)
 
     # Add AMQP adapter
-    amqp_config = ProtocolConfig(
-        protocol_type=ProtocolType.AMQP, host="localhost", port=5672, max_connections=50
-    )
+    amqp_config = ProtocolConfig(protocol_type=ProtocolType.AMQP, host="localhost", port=5672, max_connections=50)
     amqp_adapter = AmqpAdapter(amqp_config)
     protocol_manager.add_adapter(ProtocolType.AMQP, amqp_adapter)
 

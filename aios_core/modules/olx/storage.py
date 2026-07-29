@@ -195,25 +195,15 @@ class OLXStorage:
     def _migrate_v1(self) -> None:
         """Add v2 columns to databases created before sightings existed."""
         with self._lock, self._conn:
-            existing = {
-                row[1] for row in self._conn.execute("PRAGMA table_info(olx_ads)")
-            }
+            existing = {row[1] for row in self._conn.execute("PRAGMA table_info(olx_ads)")}
             for column, ddl in _V1_MIGRATION_COLUMNS.items():
                 if column not in existing:
                     self._conn.execute(f"ALTER TABLE olx_ads ADD COLUMN {column} {ddl}")
             # Backfill presence timestamps for pre-v2 rows.
-            self._conn.execute(
-                "UPDATE olx_ads SET first_seen_at = collected_at "
-                "WHERE first_seen_at IS NULL"
-            )
-            self._conn.execute(
-                "UPDATE olx_ads SET last_seen_at = collected_at "
-                "WHERE last_seen_at IS NULL"
-            )
+            self._conn.execute("UPDATE olx_ads SET first_seen_at = collected_at WHERE first_seen_at IS NULL")
+            self._conn.execute("UPDATE olx_ads SET last_seen_at = collected_at WHERE last_seen_at IS NULL")
 
-    def save_ads_with_new(
-        self, cards: list[AdCard], seen_at: str | None = None
-    ) -> tuple[int, list[str]]:
+    def save_ads_with_new(self, cards: list[AdCard], seen_at: str | None = None) -> tuple[int, list[str]]:
         """Like :meth:`save_ads`, but also returns the *new* fingerprints."""
         now = seen_at or datetime.now(UTC).isoformat()
         new_fingerprints: list[str] = []
@@ -297,9 +287,7 @@ class OLXStorage:
         seen = set(seen_fingerprints)
         changed = 0
         with self._lock, self._conn:
-            rows = self._conn.execute(
-                "SELECT fingerprint, is_active FROM olx_ads WHERE query = ?", (query,)
-            ).fetchall()
+            rows = self._conn.execute("SELECT fingerprint, is_active FROM olx_ads WHERE query = ?", (query,)).fetchall()
             for row in rows:
                 should_be_active = row["fingerprint"] in seen
                 if bool(row["is_active"]) != should_be_active:
@@ -423,8 +411,7 @@ class OLXStorage:
         now = seen_at or datetime.now(UTC).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
-                "INSERT OR IGNORE INTO olx_seen (fingerprint, kind, ref, first_seen_at) "
-                "VALUES (?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO olx_seen (fingerprint, kind, ref, first_seen_at) VALUES (?, ?, ?, ?)",
                 (fingerprint, kind or "ad", ref, now),
             )
             return cursor.rowcount > 0
@@ -466,9 +453,7 @@ class OLXStorage:
             )
             return cursor.lastrowid
 
-    def audit_list(
-        self, limit: int = 100, action: str | None = None
-    ) -> list[dict[str, object]]:
+    def audit_list(self, limit: int = 100, action: str | None = None) -> list[dict[str, object]]:
         """Последние записи audit-log (новые первыми)."""
         sql = "SELECT * FROM olx_audit"
         params: list = []
@@ -481,9 +466,7 @@ class OLXStorage:
             rows = self._conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
 
-    def enqueue_outbox(
-        self, chat_key: str, text: str, interlocutor: str | None = None
-    ) -> int:
+    def enqueue_outbox(self, chat_key: str, text: str, interlocutor: str | None = None) -> int:
         """Queue a reply draft; returns the outbox row id."""
         now = datetime.now(UTC).isoformat()
         with self._lock, self._conn:
@@ -517,15 +500,12 @@ class OLXStorage:
             rows = self._conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
 
-    def outbox_mark(
-        self, outbox_id: int, status: str, result: str | None = None
-    ) -> bool:
+    def outbox_mark(self, outbox_id: int, status: str, result: str | None = None) -> bool:
         """Transition an outbox row (pending → sent/failed/cancelled)."""
         sent_at = datetime.now(UTC).isoformat() if status == "sent" else None
         with self._lock, self._conn:
             cursor = self._conn.execute(
-                "UPDATE olx_outbox SET status = ?, sent_at = COALESCE(?, sent_at), "
-                "result = ? WHERE id = ?",
+                "UPDATE olx_outbox SET status = ?, sent_at = COALESCE(?, sent_at), result = ? WHERE id = ?",
                 (status, sent_at, result, outbox_id),
             )
         if cursor.rowcount > 0:
@@ -656,17 +636,13 @@ class OLXStorage:
     def subscriptions_list(self) -> list[dict[str, object]]:
         """Execute subscriptions list."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT * FROM olx_subscriptions ORDER BY id"
-            ).fetchall()
+            rows = self._conn.execute("SELECT * FROM olx_subscriptions ORDER BY id").fetchall()
         return [dict(row) for row in rows]
 
     def subscription_remove(self, subscription_id: int) -> bool:
         """Execute subscription remove."""
         with self._lock, self._conn:
-            cursor = self._conn.execute(
-                "DELETE FROM olx_subscriptions WHERE id = ?", (subscription_id,)
-            )
+            cursor = self._conn.execute("DELETE FROM olx_subscriptions WHERE id = ?", (subscription_id,))
             return cursor.rowcount > 0
 
     def subscription_touch(self, subscription_id: int) -> None:
@@ -691,17 +667,13 @@ class OLXStorage:
     def favorite_remove(self, fingerprint: str) -> bool:
         """Execute favorite remove."""
         with self._lock, self._conn:
-            cursor = self._conn.execute(
-                "DELETE FROM olx_favorites WHERE fingerprint = ?", (fingerprint,)
-            )
+            cursor = self._conn.execute("DELETE FROM olx_favorites WHERE fingerprint = ?", (fingerprint,))
             return cursor.rowcount > 0
 
     def favorites_list(self) -> list[str]:
         """Execute favorites list."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT fingerprint FROM olx_favorites ORDER BY added_at"
-            ).fetchall()
+            rows = self._conn.execute("SELECT fingerprint FROM olx_favorites ORDER BY added_at").fetchall()
         return [row[0] for row in rows]
 
     # ---- Competitor links (own ad <-> similar market ad) ----
@@ -768,13 +740,8 @@ class OLXStorage:
     def profile_all(self) -> dict[str, dict[str, str | None]]:
         """All stored profile fields with their update timestamps."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT * FROM olx_profile_kv ORDER BY key"
-            ).fetchall()
-        return {
-            row["key"]: {"value": row["value"], "updated_at": row["updated_at"]}
-            for row in rows
-        }
+            rows = self._conn.execute("SELECT * FROM olx_profile_kv ORDER BY key").fetchall()
+        return {row["key"]: {"value": row["value"], "updated_at": row["updated_at"]} for row in rows}
 
     # ---- Export ----
 
@@ -783,8 +750,7 @@ class OLXStorage:
         extra: dict[str, dict[str, object]] = {}
         with self._lock:
             for row in self._conn.execute(
-                "SELECT fingerprint, first_seen_at, last_seen_at, "
-                "sightings_count, is_active FROM olx_ads"
+                "SELECT fingerprint, first_seen_at, last_seen_at, sightings_count, is_active FROM olx_ads"
             ):
                 extra[row["fingerprint"]] = dict(row)
         items: list[dict[str, object]] = []

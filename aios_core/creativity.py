@@ -48,12 +48,7 @@ class Idea:
 
     def creativity_score(self) -> float:
         """Combined creativity score (weighted average)."""
-        return (
-            0.4 * self.novelty
-            + 0.3 * self.usefulness
-            + 0.2 * self.surprise
-            + 0.1 * self.feasibility
-        )
+        return 0.4 * self.novelty + 0.3 * self.usefulness + 0.2 * self.surprise + 0.1 * self.feasibility
 
     def risk_score(self) -> float:
         """Risk score (high novelty = higher risk)."""
@@ -119,11 +114,7 @@ class CreativityEngine:
 
         # Build description from domain knowledge
         keywords = domain_obj.keywords if domain_obj.keywords else [domain]
-        base = (
-            domain_obj.base_concepts
-            if domain_obj.base_concepts
-            else ["approach", "method", "solution"]
-        )
+        base = domain_obj.base_concepts if domain_obj.base_concepts else ["approach", "method", "solution"]
         description = f"Novel {random.choice(base)} combining {random.choice(keywords)} and {random.choice(keywords) if len(keywords) > 1 else domain}"
 
         # Compute novelty based on divergence parameter and randomness
@@ -155,9 +146,7 @@ class CreativityEngine:
         self.ideas.append(idea)
         return idea
 
-    def divergent_search(
-        self, domain: str, count: int = 5, constraints: list[str] | None = None
-    ) -> list[Idea]:
+    def divergent_search(self, domain: str, count: int = 5, constraints: list[str] | None = None) -> list[Idea]:
         """Generate multiple diverse ideas (divergent thinking)."""
         ideas = []
         for _ in range(count):
@@ -181,9 +170,7 @@ class CreativityEngine:
         """Evaluate risk score of an idea."""
         return idea.risk_score()
 
-    def rank_ideas(
-        self, ideas: list[Idea] | None = None, limit: int = 10
-    ) -> list[Idea]:
+    def rank_ideas(self, ideas: list[Idea] | None = None, limit: int = 10) -> list[Idea]:
         """Rank ideas by creativity score."""
         pool = ideas or self.ideas
         ranked = sorted(pool, key=lambda i: i.creativity_score(), reverse=True)
@@ -230,9 +217,7 @@ class CreativityEngine:
             return 0.5
 
         avg_novelty = sum(i.novelty for i in reference_ideas) / len(reference_ideas)
-        avg_usefulness = sum(i.usefulness for i in reference_ideas) / len(
-            reference_ideas
-        )
+        avg_usefulness = sum(i.usefulness for i in reference_ideas) / len(reference_ideas)
 
         # Surprise = deviation from average
         novelty_deviation = abs(idea.novelty - avg_novelty)
@@ -244,14 +229,8 @@ class CreativityEngine:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
-        avg_novelty = (
-            sum(i.novelty for i in self.ideas) / len(self.ideas) if self.ideas else 0.0
-        )
-        avg_usefulness = (
-            sum(i.usefulness for i in self.ideas) / len(self.ideas)
-            if self.ideas
-            else 0.0
-        )
+        avg_novelty = sum(i.novelty for i in self.ideas) / len(self.ideas) if self.ideas else 0.0
+        avg_usefulness = sum(i.usefulness for i in self.ideas) / len(self.ideas) if self.ideas else 0.0
         return {
             "ideas_generated": len(self.ideas),
             "domains": len(self.domains),

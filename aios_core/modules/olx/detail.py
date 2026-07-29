@@ -60,9 +60,7 @@ class AdDetail:
 class AdDetailParser:
     """Parses the open ad screen into an :class:`AdDetail`."""
 
-    def parse(
-        self, xml_source: str | Path | ET.Element, url: str | None = None
-    ) -> AdDetail:
+    def parse(self, xml_source: str | Path | ET.Element, url: str | None = None) -> AdDetail:
         """Parse an ad detail XML dump into structured data."""
         if isinstance(xml_source, ET.Element):
             root = xml_source
@@ -153,10 +151,7 @@ class AdDetailParser:
             param = _PARAM_RE.match(raw)
             if param and len(raw) < 80:
                 key = normalize_text(param.group(1))
-                if (
-                    key.lower() not in {"стан", "состояние"}
-                    or "стан" not in detail.params
-                ):
+                if key.lower() not in {"стан", "состояние"} or "стан" not in detail.params:
                     detail.params[key] = normalize_text(param.group(2))
                 continue
             leftovers.append(raw)

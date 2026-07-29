@@ -83,9 +83,7 @@ class TikTokDetailParser(AdDetailParser):
             detail.hashtags.extend(tags)
 
         # Extract product tags
-        product_pattern = (
-            r'<node[^>]*resource-id="[^"]*product[^"]*"[^>]*text="([^"]*)"'
-        )
+        product_pattern = r'<node[^>]*resource-id="[^"]*product[^"]*"[^>]*text="([^"]*)"'
         product_texts = re.findall(product_pattern, xml, re.IGNORECASE)
         detail.product_tags = product_texts
 

@@ -53,10 +53,13 @@ class Category:
     def product(self, a: Any, b: Any) -> tuple[Any, Callable, Callable]:
         """Compute categorical product (pair + projections)."""
         pair = (a, b)
+
         def proj_a(p):
             return p[0] if isinstance(p, tuple) else a
+
         def proj_b(p):
             return p[1] if isinstance(p, tuple) else b
+
         self.add_object(pair)
         self.add_morphism(pair, a, proj_a)
         self.add_morphism(pair, b, proj_b)
@@ -65,10 +68,13 @@ class Category:
     def coproduct(self, a: Any, b: Any) -> tuple[Any, Callable, Callable]:
         """Compute categorical coproduct (tagged union + injections)."""
         tagged = f"Either({a}, {b})"
+
         def inj_a(x):
             return ("left", x) if x == a else ("right", x)
+
         def inj_b(x):
             return ("right", x) if x == b else ("left", x)
+
         self.add_object(tagged)
         self.add_morphism(a, tagged, inj_a)
         self.add_morphism(b, tagged, inj_b)

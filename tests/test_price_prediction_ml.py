@@ -21,12 +21,14 @@ from aios_core.price_prediction_ml import (
 
 # ─── Helper ───
 
+
 def _make_history(prices: list[float]) -> list[PricePoint]:
     """Create PricePoint history from price list."""
     return [PricePoint(day=i, price=p) for i, p in enumerate(prices)]
 
 
 # ─── Polynomial fitting ───
+
 
 class TestPolynomialFit:
     """Tests for _fit_polynomial and _gauss_solve."""
@@ -99,6 +101,7 @@ class TestPolynomialFit:
 
 # ─── Trend detection ───
 
+
 class TestTrendDetection:
     """Tests for _detect_trend."""
 
@@ -129,6 +132,7 @@ class TestTrendDetection:
 
 
 # ─── SMA ───
+
 
 class TestSimpleMovingAverage:
     """Tests for SimpleMovingAverage."""
@@ -164,6 +168,7 @@ class TestSimpleMovingAverage:
 
 # ─── WMA ───
 
+
 class TestWeightedMovingAverage:
     """Tests for WeightedMovingAverage."""
 
@@ -184,6 +189,7 @@ class TestWeightedMovingAverage:
 
 
 # ─── EMA ───
+
 
 class TestExponentialMovingAverage:
     """Tests for ExponentialMovingAverage."""
@@ -219,6 +225,7 @@ class TestExponentialMovingAverage:
 
 
 # ─── Polynomial predictor ───
+
 
 class TestPolynomialPredictor:
     """Tests for PolynomialPredictor."""
@@ -260,6 +267,7 @@ class TestPolynomialPredictor:
 
 # ─── Ensemble predictor ───
 
+
 class TestEnsemblePredictor:
     """Tests for EnsemblePredictor."""
 
@@ -292,6 +300,7 @@ class TestEnsemblePredictor:
 
 
 # ─── PricePredictionEngine ───
+
 
 class TestPricePredictionEngine:
     """Tests for the high-level PricePredictionEngine."""

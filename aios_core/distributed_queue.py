@@ -138,9 +138,7 @@ class DistributedQueue:
         max_retries: int = 3,
     ) -> Task:
         """Enqueue a new task with priority."""
-        task = Task(
-            name=name, payload=payload, priority=priority, max_retries=max_retries
-        )
+        task = Task(name=name, payload=payload, priority=priority, max_retries=max_retries)
         self._queue.append(task)
         self._task_map[task.id] = task
         # Sort queue by priority (highest first)
@@ -185,9 +183,7 @@ class DistributedQueue:
         if task.worker_id:
             worker = self._workers.get(task.worker_id)
             if worker:
-                worker.assigned_tasks = [
-                    t for t in worker.assigned_tasks if t != task_id
-                ]
+                worker.assigned_tasks = [t for t in worker.assigned_tasks if t != task_id]
                 worker.completed_tasks += 1
 
     def fail(self, task_id: str, error: str = "") -> None:
@@ -203,9 +199,7 @@ class DistributedQueue:
         if task.worker_id:
             worker = self._workers.get(task.worker_id)
             if worker:
-                worker.assigned_tasks = [
-                    t for t in worker.assigned_tasks if t != task_id
-                ]
+                worker.assigned_tasks = [t for t in worker.assigned_tasks if t != task_id]
                 worker.failed_tasks += 1
 
         if task.can_retry():

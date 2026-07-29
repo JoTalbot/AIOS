@@ -57,12 +57,17 @@ class TelegramAPI:
         result = self._request("getUpdates", {"offset": offset, "timeout": 30})
         return result.get("result", [])
 
-    def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML",
-                     disable_web_page_preview: bool = True) -> dict:
+    def send_message(
+        self, chat_id: int, text: str, parse_mode: str = "HTML", disable_web_page_preview: bool = True
+    ) -> dict:
         return self._request(
             "sendMessage",
-            {"chat_id": chat_id, "text": text[:4000], "parse_mode": parse_mode,
-             "disable_web_page_preview": disable_web_page_preview},
+            {
+                "chat_id": chat_id,
+                "text": text[:4000],
+                "parse_mode": parse_mode,
+                "disable_web_page_preview": disable_web_page_preview,
+            },
         )
 
 
@@ -73,13 +78,16 @@ class TelegramAPI:
 
 def _safe(fn):
     """Wrapper — catch all exceptions, return error string."""
+
     def wrapper(*a, **kw):
         try:
             return fn(*a, **kw)
         except Exception as exc:
             import traceback
+
             traceback.print_exc()
             return f"❌ Ошибка: {exc}"
+
     return wrapper
 
 
@@ -112,9 +120,7 @@ def cmd_stats() -> str:
     orch_stats = orch.stats()
     bu_health = bm.health_report()
 
-    tables_info = "\n".join(
-        f"    <code>{t}</code>: {c} строк" for t, c in sorted(db_stats.get("tables", {}).items())
-    )
+    tables_info = "\n".join(f"    <code>{t}</code>: {c} строк" for t, c in sorted(db_stats.get("tables", {}).items()))
     return (
         f"📊 <b>Статистика AIOS</b>\n\n"
         f"🗄️ <b>База данных</b>\n"
@@ -142,6 +148,7 @@ def cmd_platforms() -> str:
 
 def _get_ads_db():
     import sqlite3
+
     db_path = os.environ.get("AIOS_OLX_HTTP_DB", "/root/AIOS/data/olx_http.sqlite")
     if not Path(db_path).exists():
         return None, f"⚠️ База OLX не найдена по пути {db_path}"
@@ -167,9 +174,7 @@ def cmd_olx(args: str = "") -> str:
             "SELECT MIN(price_value), MAX(price_value), AVG(price_value) FROM ads "
             "WHERE price_value > 0 AND price_currency='UAH'"
         ).fetchone()
-        last_run = conn.execute(
-            "SELECT ts, parsed FROM collection_runs ORDER BY ts DESC LIMIT 1"
-        ).fetchone()
+        last_run = conn.execute("SELECT ts, parsed FROM collection_runs ORDER BY ts DESC LIMIT 1").fetchone()
         qlines = "\n".join(f"  • <code>{q['query']}</code>: {q['cnt']}" for q in queries)
         return (
             f"🛒 <b>OLX Статистика</b>\n\n"
@@ -188,6 +193,7 @@ def cmd_olx(args: str = "") -> str:
 @_safe
 def cmd_olx_sub(args: str, chat_id: int, username: str | None, first_name: str | None) -> str:
     import olx_alerts
+
     parts = args.strip().split()
     if not parts:
         return "ℹ️ Использование: <code>/olx_sub iPhone 5000 20000</code>\n(запрос [мин_цена макс_цена])"
@@ -207,8 +213,9 @@ def cmd_olx_sub(args: str, chat_id: int, username: str | None, first_name: str |
     if not query:
         return "❌ Укажите поисковый запрос."
     subs = olx_alerts.init_subs_db()
-    olx_alerts.subscribe_chat(subs, chat_id, query, username=username, first_name=first_name,
-                              min_price=min_p, max_price=max_p)
+    olx_alerts.subscribe_chat(
+        subs, chat_id, query, username=username, first_name=first_name, min_price=min_p, max_price=max_p
+    )
     filter_txt = ""
     if min_p or max_p:
         filter_txt = f"\n💵 Фильтр: {int(min_p) if min_p else 0} – {int(max_p) if max_p else '∞'} грн"
@@ -218,6 +225,7 @@ def cmd_olx_sub(args: str, chat_id: int, username: str | None, first_name: str |
 @_safe
 def cmd_olx_unsub(args: str, chat_id: int) -> str:
     import olx_alerts
+
     query = args.strip() or None
     subs = olx_alerts.init_subs_db()
     olx_alerts.unsubscribe_chat(subs, chat_id, query)
@@ -229,6 +237,7 @@ def cmd_olx_unsub(args: str, chat_id: int) -> str:
 @_safe
 def cmd_olx_list(chat_id: int) -> str:
     import olx_alerts
+
     subs = olx_alerts.init_subs_db()
     items = olx_alerts.list_subscriptions(subs, chat_id)
     if not items:
@@ -256,22 +265,24 @@ def cmd_olx_latest(args: str, chat_id: int) -> str:
     try:
         if query:
             rows = conn.execute(
-                "SELECT * FROM ads WHERE query=? AND active=1 ORDER BY collected_at DESC LIMIT ?",
-                (query, n)).fetchall()
+                "SELECT * FROM ads WHERE query=? AND active=1 ORDER BY collected_at DESC LIMIT ?", (query, n)
+            ).fetchall()
         else:
             # Use first subscribed query
             import olx_alerts
+
             subs = olx_alerts.init_subs_db()
             items = olx_alerts.list_subscriptions(subs, chat_id)
             if not items:
                 return "ℹ️ Укажите запрос: <code>/olx_latest iPhone</code> или подпишитесь через /olx_sub"
             query = items[0]["query"]
             rows = conn.execute(
-                "SELECT * FROM ads WHERE query=? AND active=1 ORDER BY collected_at DESC LIMIT ?",
-                (query, n)).fetchall()
+                "SELECT * FROM ads WHERE query=? AND active=1 ORDER BY collected_at DESC LIMIT ?", (query, n)
+            ).fetchall()
         if not rows:
             return f"📭 Нет объявлений по запросу «{query}»"
         import olx_alerts
+
         stats = olx_alerts.compute_price_stats(conn, query)
         out = [f"🛒 <b>Последние объявления</b> «{query}»:\n"]
         for r in rows:
@@ -288,7 +299,7 @@ def cmd_olx_latest(args: str, chat_id: int) -> str:
             title = (ad.get("title") or "(без назви)")[:80]
             url = ad.get("url") or "#"
             city = ad.get("city") or "?"
-            out.append(f"• <a href=\"{url}\">{title}</a>\n  {price_str} · 📍{city}")
+            out.append(f'• <a href="{url}">{title}</a>\n  {price_str} · 📍{city}')
         return "\n".join(out)
     finally:
         conn.close()
@@ -307,6 +318,7 @@ def cmd_olx_analytics(args: str) -> str:
         return err
     try:
         import olx_alerts
+
         stats = olx_alerts.compute_price_stats(conn, query)
         if not stats:
             return f"📭 Нет данных по запросу «{query}». Попробуйте сначала собрать."
@@ -314,19 +326,23 @@ def cmd_olx_analytics(args: str) -> str:
         cheapest = conn.execute(
             "SELECT title, price_value, url, city FROM ads "
             "WHERE query=? AND active=1 AND price_currency='UAH' AND price_value>0 "
-            "ORDER BY price_value ASC LIMIT 5", (query,)).fetchall()
-        out = [f"📊 <b>AI-аналитика цен</b> «{query}»:\n",
-               f"  📦 Объявлений в выборке: <b>{stats.count}</b>",
-               f"  💸 Мин: <b>{int(stats.min_p):,} грн</b>",
-               f"  📈 Макс: <b>{int(stats.max_p):,} грн</b>",
-               f"  ⚖️ Медиана: <b>{int(stats.median):,} грн</b>",
-               f"  📉 P10 (очень дёшево): <b>{int(stats.p10):,} грн</b>",
-               f"  📈 P90 (очень дорого): <b>{int(stats.p90):,} грн</b>",
-               f"  🧮 Средняя: <b>{stats.avg:,.0f} грн</b>\n",
-               "🔥 <b>ТОП-5 самых дешёвых:</b>"]
+            "ORDER BY price_value ASC LIMIT 5",
+            (query,),
+        ).fetchall()
+        out = [
+            f"📊 <b>AI-аналитика цен</b> «{query}»:\n",
+            f"  📦 Объявлений в выборке: <b>{stats.count}</b>",
+            f"  💸 Мин: <b>{int(stats.min_p):,} грн</b>",
+            f"  📈 Макс: <b>{int(stats.max_p):,} грн</b>",
+            f"  ⚖️ Медиана: <b>{int(stats.median):,} грн</b>",
+            f"  📉 P10 (очень дёшево): <b>{int(stats.p10):,} грн</b>",
+            f"  📈 P90 (очень дорого): <b>{int(stats.p90):,} грн</b>",
+            f"  🧮 Средняя: <b>{stats.avg:,.0f} грн</b>\n",
+            "🔥 <b>ТОП-5 самых дешёвых:</b>",
+        ]
         for r in cheapest:
             title = (r["title"] or "")[:55]
-            out.append(f"  • <a href=\"{r['url']}\">{title}</a> — {int(r['price_value']):,} грн ({r['city']})")
+            out.append(f'  • <a href="{r["url"]}">{title}</a> — {int(r["price_value"]):,} грн ({r["city"]})')
         return "\n".join(out).replace(",", " ")
     finally:
         conn.close()
@@ -353,6 +369,7 @@ def cmd_help() -> str:
 # ---------------------------------------------------------------------------
 # Main polling loop
 # ---------------------------------------------------------------------------
+
 
 def parse_command(text: str) -> tuple[str, str]:
     """Split '/command args' into (command, args)."""

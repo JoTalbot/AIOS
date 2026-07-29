@@ -87,9 +87,7 @@ class SafetyDashboard:
             if value > threshold:
                 metric_penalty += (value - threshold) * 0.5
         metric_penalty = min(0.3, metric_penalty)  # Cap metric penalty
-        self.safety_score = round(
-            max(0.0, min(1.0, 1.0 - incident_penalty - metric_penalty)), 3
-        )
+        self.safety_score = round(max(0.0, min(1.0, 1.0 - incident_penalty - metric_penalty)), 3)
 
     def get_dashboard(self) -> dict[str, Any]:
         """Get dashboard data (backward-compatible)."""
@@ -97,15 +95,9 @@ class SafetyDashboard:
             "safety_score": round(self.safety_score, 3),
             "metrics": self.metrics,
             "recent_incidents": self.incidents[-5:],
-            "status": "healthy"
-            if self.safety_score > 0.8
-            else ("warning" if self.safety_score > 0.5 else "critical"),
-            "active_alerts": len(
-                [a for a in self._alerts if a.get("value", 0) > a.get("threshold", 1)]
-            ),
-            "compliance_status": "compliant"
-            if self.safety_score > 0.7
-            else "non-compliant",
+            "status": "healthy" if self.safety_score > 0.8 else ("warning" if self.safety_score > 0.5 else "critical"),
+            "active_alerts": len([a for a in self._alerts if a.get("value", 0) > a.get("threshold", 1)]),
+            "compliance_status": "compliant" if self.safety_score > 0.7 else "non-compliant",
         }
 
     def trend_report(self, metric: str, window: int = 10) -> dict[str, Any]:
@@ -114,11 +106,7 @@ class SafetyDashboard:
         if len(history) < 2:
             return {"metric": metric, "trend": "insufficient_data"}
         recent = history[-window:]
-        trend = (
-            "improving"
-            if recent[-1] > recent[0]
-            else ("declining" if recent[-1] < recent[0] else "stable")
-        )
+        trend = "improving" if recent[-1] > recent[0] else ("declining" if recent[-1] < recent[0] else "stable")
         return {
             "metric": metric,
             "trend": trend,
@@ -159,11 +147,7 @@ class SafetyDashboard:
         cov = sum((a - mean_a) * (b - mean_b) for a, b in zip(a_vals, b_vals, strict=False)) / min_len
         std_a = math.sqrt(sum((a - mean_a) ** 2 for a in a_vals) / min_len)
         std_b = math.sqrt(sum((b - mean_b) ** 2 for b in b_vals) / min_len)
-        correlation = (
-            round(cov / max(1e-10, std_a * std_b), 3)
-            if std_a > 0 and std_b > 0
-            else 0.0
-        )
+        correlation = round(cov / max(1e-10, std_a * std_b), 3) if std_a > 0 and std_b > 0 else 0.0
         return {"metric_a": metric_a, "metric_b": metric_b, "correlation": correlation}
 
     def snapshot(self) -> dict[str, Any]:

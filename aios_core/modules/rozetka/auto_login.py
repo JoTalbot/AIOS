@@ -103,9 +103,7 @@ class RozetkaAutoLogin:
                 return LoginState.LOGIN_SCREEN_FOUND
 
         # Check if already logged in (no login markers, but user profile visible)
-        if "profile" in xml_dump.lower() and not any(
-            m in xml_dump for m in LOGIN_SCREEN_MARKERS
-        ):
+        if "profile" in xml_dump.lower() and not any(m in xml_dump for m in LOGIN_SCREEN_MARKERS):
             return LoginState.LOGIN_SUCCESS
 
         return LoginState.APP_OPENED
@@ -169,9 +167,7 @@ class RozetkaAutoLogin:
         # Fill credentials (scaffold — actual ADB input commands require calibration)
         if email and password:
             result.state = LoginState.CREDENTIALS_ENTERED
-            result.message = (
-                "Credentials entered (scaffold — full input requires calibration)"
-            )
+            result.message = "Credentials entered (scaffold — full input requires calibration)"
         else:
             result.message = "No credentials provided"
 

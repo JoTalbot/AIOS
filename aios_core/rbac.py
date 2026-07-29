@@ -60,9 +60,7 @@ class Permission:
         """Parse 'resource:action' into Permission."""
         parts = perm_str.split(":")
         if len(parts) != 2:
-            raise ValueError(
-                f"Invalid permission format: '{perm_str}' — expected 'resource:action'"
-            )
+            raise ValueError(f"Invalid permission format: '{perm_str}' — expected 'resource:action'")
         return cls(resource=parts[0], action=parts[1])
 
     def matches(self, other: Permission) -> bool:
@@ -155,9 +153,7 @@ class RoleHierarchy:
         """Register a role in the hierarchy."""
         self.roles[role.name] = role
 
-    def resolve_permissions(
-        self, role_name: str, visited: set[str] | None = None, depth: int = 0
-    ) -> set[Permission]:
+    def resolve_permissions(self, role_name: str, visited: set[str] | None = None, depth: int = 0) -> set[Permission]:
         """Resolve all permissions for a role, including inherited.
 
         Uses DFS up to MAX_DEPTH to prevent circular inheritance.
@@ -179,16 +175,12 @@ class RoleHierarchy:
 
         # Add inherited permissions from each parent
         for parent_name in role.parent_roles:
-            parent_perms = self.resolve_permissions(
-                parent_name, visited.copy(), depth + 1
-            )
+            parent_perms = self.resolve_permissions(parent_name, visited.copy(), depth + 1)
             all_perms |= parent_perms
 
         return all_perms
 
-    def all_ancestors(
-        self, role_name: str, visited: set[str] | None = None
-    ) -> list[str]:
+    def all_ancestors(self, role_name: str, visited: set[str] | None = None) -> list[str]:
         """Return list of all ancestor role names."""
         visited = visited or set()
         if role_name in visited:
@@ -319,9 +311,7 @@ class RBACEngine:
                     perm_set.add(p)
         role = Role(name=name, permissions=perm_set, description=description)
         self.hierarchy.register(role)
-        self._audit(
-            "create_role", {"role": name, "permissions": [str(p) for p in perm_set]}
-        )
+        self._audit("create_role", {"role": name, "permissions": [str(p) for p in perm_set]})
         return role
 
     def delete_role(self, name: str) -> None:
@@ -344,9 +334,7 @@ class RBACEngine:
         role.add_permission(perm)
         self._audit("add_permission", {"role": role_name, "permission": str(perm)})
 
-    def remove_permission_from_role(
-        self, role_name: str, perm: str | Permission
-    ) -> None:
+    def remove_permission_from_role(self, role_name: str, perm: str | Permission) -> None:
         """Remove a permission from a role."""
         role = self._get_role(role_name)
         if isinstance(perm, str):
@@ -370,9 +358,7 @@ class RBACEngine:
 
     # ── Permission Sets ────────────────────────────────────────────
 
-    def create_permission_set(
-        self, name: str, permissions: list[str | Permission] | None = None
-    ) -> PermissionSet:
+    def create_permission_set(self, name: str, permissions: list[str | Permission] | None = None) -> PermissionSet:
         """Create a named permission set."""
         if name in self.permission_sets:
             raise ValueError(f"Permission set '{name}' already exists")
@@ -414,17 +400,11 @@ class RBACEngine:
 
         # Check mutually exclusive constraint
         current_roles = self.get_user_roles(user_id)
-        for role_a, role_b in self.constraints.get(
-            ConstraintKind.MUTUALLY_EXCLUSIVE, []
-        ):
+        for role_a, role_b in self.constraints.get(ConstraintKind.MUTUALLY_EXCLUSIVE, []):
             if role_name == role_a and role_b in current_roles:
-                raise ValueError(
-                    f"Roles '{role_a}' and '{role_b}' are mutually exclusive"
-                )
+                raise ValueError(f"Roles '{role_a}' and '{role_b}' are mutually exclusive")
             if role_name == role_b and role_a in current_roles:
-                raise ValueError(
-                    f"Roles '{role_a}' and '{role_b}' are mutually exclusive"
-                )
+                raise ValueError(f"Roles '{role_a}' and '{role_b}' are mutually exclusive")
 
         # Check max roles per user constraint
         max_roles = self.constraints.get(ConstraintKind.MAX_ROLES_PER_USER, 0)
@@ -446,11 +426,7 @@ class RBACEngine:
 
     def revoke_role(self, user_id: str, role_name: str) -> None:
         """Revoke a role from a user."""
-        self.assignments = [
-            a
-            for a in self.assignments
-            if not (a.user_id == user_id and a.role_name == role_name)
-        ]
+        self.assignments = [a for a in self.assignments if not (a.user_id == user_id and a.role_name == role_name)]
         self._audit("revoke_role", {"user": user_id, "role": role_name})
 
     def get_user_roles(self, user_id: str) -> list[str]:
@@ -558,9 +534,7 @@ class RBACEngine:
 
     # ── Audit ──────────────────────────────────────────────────────
 
-    def get_audit_log(
-        self, user_id: str | None = None, limit: int = 100
-    ) -> list[dict[str, Any]]:
+    def get_audit_log(self, user_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
         """Return audit events, optionally filtered by user_id."""
         events = [e for e in self.audit_log if e.get("user") == user_id] if user_id else self.audit_log
         return events[-limit:]
@@ -575,12 +549,8 @@ class RBACEngine:
             "user_assignments": len(self.assignments),
             "policies": len(self.policies),
             "constraints": {
-                "mutually_exclusive_pairs": len(
-                    self.constraints.get(ConstraintKind.MUTUALLY_EXCLUSIVE, [])
-                ),
-                "max_roles_per_user": self.constraints.get(
-                    ConstraintKind.MAX_ROLES_PER_USER, 0
-                ),
+                "mutually_exclusive_pairs": len(self.constraints.get(ConstraintKind.MUTUALLY_EXCLUSIVE, [])),
+                "max_roles_per_user": self.constraints.get(ConstraintKind.MAX_ROLES_PER_USER, 0),
             },
             "audit_events": len(self.audit_log),
         }

@@ -37,9 +37,7 @@ class PlatformsModulesMixin:
                     )
                 )
             storage = self._platform_storage(platform, request)
-            result = OwnAdsTracker(storage).record_snapshot(
-                ads, seen_at=body.get("seen_at")
-            )
+            result = OwnAdsTracker(storage).record_snapshot(ads, seen_at=body.get("seen_at"))
             result["platform"] = platform
             return JSONResponse(result)
         except Exception as exc:
@@ -243,9 +241,7 @@ class PlatformsModulesMixin:
                     )
                 )
             storage = self._platform_storage(platform, request)
-            _inserted, new_fps = storage.save_ads_with_new(
-                cards, seen_at=body.get("seen_at")
-            )
+            _inserted, new_fps = storage.save_ads_with_new(cards, seen_at=body.get("seen_at"))
             return JSONResponse(
                 {
                     "platform": platform,
@@ -263,9 +259,7 @@ class PlatformsModulesMixin:
             return JSONResponse({"error": "unknown platform"}, status_code=404)
         platform = request.path_params["platform"]
         query = request.query_params.get("query")
-        limit = self._bounded_int(
-            request.query_params.get("limit"), default=100, maximum=1000
-        )
+        limit = self._bounded_int(request.query_params.get("limit"), default=100, maximum=1000)
         storage = self._platform_storage(platform, request)
         ads = storage.get_ads(query=query, limit=limit)
         return JSONResponse(
@@ -305,9 +299,7 @@ class PlatformsModulesMixin:
                 from aios_core.platforms import get_platform, resolve_profile
 
                 descriptor = get_platform(platform)
-                profile = resolve_profile(
-                    platform, profile_name or None, store=self.profile_store
-                )
+                profile = resolve_profile(platform, profile_name or None, store=self.profile_store)
                 storage = descriptor.make_storage(profile.db_path)
             self._module_storages[cache_key] = storage
         return storage
@@ -315,9 +307,7 @@ class PlatformsModulesMixin:
     async def _profiles_set_default(self, request: Request) -> JSONResponse:
         """Mark {name} as the default profile of {platform}."""
         body = await request.json()
-        profile = self.profile_store.set_default(
-            request.path_params["platform"], body.get("name")
-        )
+        profile = self.profile_store.set_default(request.path_params["platform"], body.get("name"))
         if profile is None:
             return JSONResponse({"error": "profile not found"}, status_code=404)
         return JSONResponse(profile.to_dict())
@@ -328,17 +318,13 @@ class PlatformsModulesMixin:
 
     async def _profiles_remove(self, request: Request) -> JSONResponse:
         """Delete a profile (its storage file is kept untouched)."""
-        removed = self.profile_store.remove(
-            request.path_params["platform"], request.path_params["name"]
-        )
+        removed = self.profile_store.remove(request.path_params["platform"], request.path_params["name"])
         self._olx_profile_storages.pop(request.path_params["name"], None)
         return JSONResponse({"removed": removed})
 
     async def _profiles_show(self, request: Request) -> JSONResponse:
         """One profile by path {platform}/{name}."""
-        profile = self.profile_store.get(
-            request.path_params["platform"], request.path_params["name"]
-        )
+        profile = self.profile_store.get(request.path_params["platform"], request.path_params["name"])
         if profile is None:
             return JSONResponse({"error": "profile not found"}, status_code=404)
         return JSONResponse(profile.to_dict())
@@ -365,14 +351,7 @@ class PlatformsModulesMixin:
     async def _profiles_list(self, request: Request) -> JSONResponse:
         """List profiles, optionally filtered by ?platform=."""
         return JSONResponse(
-            {
-                "profiles": [
-                    p.to_dict()
-                    for p in self.profile_store.list(
-                        request.query_params.get("platform")
-                    )
-                ]
-            }
+            {"profiles": [p.to_dict() for p in self.profile_store.list(request.query_params.get("platform"))]}
         )
 
     async def _platform_hints(self, request: Request) -> JSONResponse:

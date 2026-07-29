@@ -1,6 +1,5 @@
 """Tests for FederationManager v4.0-alpha"""
 
-
 from aios_core.federation_manager import Database, FederationManager, NodeStatus
 
 
@@ -17,9 +16,7 @@ def test_register_remote_node():
     db = Database(":memory:")
     fm = FederationManager(db=db)
 
-    node = fm.register_node(
-        name="remote-node-1", endpoint="http://10.0.0.5:8000", capabilities=["memory", "reasoning"]
-    )
+    node = fm.register_node(name="remote-node-1", endpoint="http://10.0.0.5:8000", capabilities=["memory", "reasoning"])
 
     assert node.node_id is not None
     assert node.status == NodeStatus.ONLINE

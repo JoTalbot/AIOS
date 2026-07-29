@@ -135,9 +135,7 @@ class TransferLearning:
         # Combine
         return round(feature_sim * 0.7 + task_sim * 0.3, 4)
 
-    def find_similar_domains(
-        self, target: str, limit: int = 5
-    ) -> list[tuple[str, float]]:
+    def find_similar_domains(self, target: str, limit: int = 5) -> list[tuple[str, float]]:
         """Find domains similar to the target."""
         similarities = []
         for source in self.domains:
@@ -153,9 +151,7 @@ class TransferLearning:
         """Transfer knowledge from source to target (backward-compatible)."""
         source = self.knowledge_base.get(source_domain, {})
         # Simple transfer: copy relevant knowledge
-        transferred = {
-            k: v for k, v in source.items() if "general" in k or target_domain in k
-        }
+        transferred = {k: v for k, v in source.items() if "general" in k or target_domain in k}
         return {"transferred": transferred, "success": len(transferred) > 0}
 
     def full_transfer(self, source: str, target: str) -> TransferResult:
@@ -194,9 +190,7 @@ class TransferLearning:
         self._transfer_history.append(result)
         return result
 
-    def selective_transfer(
-        self, source: str, target: str, features: list[str]
-    ) -> TransferResult:
+    def selective_transfer(self, source: str, target: str, features: list[str]) -> TransferResult:
         """Selective transfer: only transfer specified features."""
         src_perf = self.domains.get(source, DomainConfig(name=source)).performance
         tgt_perf = self.domains.get(target, DomainConfig(name=target)).performance
@@ -206,13 +200,7 @@ class TransferLearning:
         transferred = {k: v for k, v in source_knowledge.items() if k in features}
 
         similarity = self.domain_similarity(source, target)
-        improvement = (
-            similarity
-            * len(transferred)
-            / max(len(source_knowledge), 1)
-            * (src_perf - tgt_perf)
-            * 0.2
-        )
+        improvement = similarity * len(transferred) / max(len(source_knowledge), 1) * (src_perf - tgt_perf) * 0.2
         negative = improvement < 0
 
         new_perf = tgt_perf + improvement
@@ -256,10 +244,7 @@ class TransferLearning:
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
         avg_improvement = (
-            (
-                sum(r.improvement for r in self._transfer_history)
-                / len(self._transfer_history)
-            )
+            (sum(r.improvement for r in self._transfer_history) / len(self._transfer_history))
             if self._transfer_history
             else 0.0
         )

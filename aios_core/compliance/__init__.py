@@ -158,11 +158,7 @@ class ComplianceFramework:
                     rule_violations.append(rule.name)
 
         all_missing = missing + rule_violations
-        score_val = (
-            ((len(required) - len(all_missing)) / len(required) * 100)
-            if required
-            else 100.0
-        )
+        score_val = ((len(required) - len(all_missing)) / len(required) * 100) if required else 100.0
 
         # Record violations
         for missing_item in all_missing:
@@ -201,9 +197,7 @@ class ComplianceFramework:
             "score": score_val,
         }
 
-    def check_rules(
-        self, context: dict[str, Any], policy: str | None = None
-    ) -> list[Violation]:
+    def check_rules(self, context: dict[str, Any], policy: str | None = None) -> list[Violation]:
         """Check all registered rules against context."""
         new_violations: list[Violation] = []
         for rule in self.rules.values():
@@ -237,9 +231,7 @@ class ComplianceFramework:
                 return True
         return False
 
-    def get_violations(
-        self, policy: str | None = None, unresolved_only: bool = False
-    ) -> list[Violation]:
+    def get_violations(self, policy: str | None = None, unresolved_only: bool = False) -> list[Violation]:
         """Return violations, optionally filtered."""
         result = self.violations
         if policy:

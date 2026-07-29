@@ -1,4 +1,5 @@
 """Tests for aios_core/agent_architecture.py"""
+
 from __future__ import annotations
 
 from aios_core.agent_architecture import AdvancedAgent, AgentMemory, AgentOrchestrator
@@ -41,12 +42,14 @@ class TestAdvancedAgent:
     def test_add_tool(self):
         agent = AdvancedAgent(name="a", system_prompt="test")
         from aios_core.agent_architecture import Tool
+
         tool = Tool(name="search", description="Search web", func=lambda q: f"results for {q}")
         agent.add_tool(tool)
 
     def test_list_tools(self):
         agent = AdvancedAgent(name="a", system_prompt="test")
         from aios_core.agent_architecture import Tool
+
         tool = Tool(name="t1", description="d1", func=lambda: "ok")
         agent.add_tool(tool)
         tools = agent.list_tools()
@@ -55,6 +58,7 @@ class TestAdvancedAgent:
     def test_use_tool(self):
         agent = AdvancedAgent(name="a", system_prompt="test")
         from aios_core.agent_architecture import Tool
+
         tool = Tool(name="echo", description="Echo", func=lambda: "ok")
         agent.add_tool(tool)
         result = agent.use_tool("echo")

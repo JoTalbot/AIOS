@@ -18,6 +18,6 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 user_id=user_id,
                 action=f"{request.method} {request.url.path}",
                 ip_address=request.client.host if request.client else None,
-                user_agent=request.headers.get("user-agent")
+                user_agent=request.headers.get("user-agent"),
             )
         return response

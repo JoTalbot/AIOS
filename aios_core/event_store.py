@@ -209,9 +209,7 @@ class EventStore:
 
     # ── Projections ─────────────────────────────────────────────
 
-    def register_projection(
-        self, name: str, handler: Callable[[Event, dict[str, Any]], dict[str, Any]]
-    ) -> Projection:
+    def register_projection(self, name: str, handler: Callable[[Event, dict[str, Any]], dict[str, Any]]) -> Projection:
         """Register a projection handler."""
         proj = Projection(name=name, handler=handler)
         self.projections[name] = proj

@@ -1,4 +1,5 @@
 """Tests for aios_core/emotional_intelligence.py"""
+
 from __future__ import annotations
 
 import pytest

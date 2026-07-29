@@ -1,6 +1,5 @@
 """Tests for Android RPA Bridge - Real Android App Integration"""
 
-
 import pytest
 
 from aios_core.android_rpa_bridge import AndroidRPADeviceEmulator, AndroidRPAManager
@@ -127,9 +126,7 @@ class TestAndroidRPABridge:
         """Test auto-authentication when not authenticated."""
         emulator = AndroidRPADeviceEmulator()
 
-        emulator.execute_ui_action(
-            package_name="ua.slando", action_name="search", params={"query": "test"}
-        )
+        emulator.execute_ui_action(package_name="ua.slando", action_name="search", params={"query": "test"})
 
         # Should auto-authenticate
         assert "ua.slando" in emulator.authenticated_sessions
@@ -318,9 +315,7 @@ class TestAndroidRPAIntegration:
 
         profiles = {}
         for package, credentials in apps:
-            profile = manager.convert_app_to_working_api(
-                package, credentials, user_id=f"user_{package}"
-            )
+            profile = manager.convert_app_to_working_api(package, credentials, user_id=f"user_{package}")
             profiles[package] = profile
 
             # Test basic functionality

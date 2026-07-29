@@ -49,9 +49,7 @@ class AIOSDashboard:
 
     def __init__(self, orchestrator: Orchestrator):
         self.orch = orchestrator
-        self.ads_db = os.environ.get(
-            "AIOS_OLX_HTTP_DB", os.path.join(AIOS_HOME, "data", "olx_http.sqlite")
-        )
+        self.ads_db = os.environ.get("AIOS_OLX_HTTP_DB", os.path.join(AIOS_HOME, "data", "olx_http.sqlite"))
         self.subs_db = os.path.join(AIOS_HOME, "data", "olx_subs.sqlite")
         self.core_db = os.environ.get("AIOS_DB", os.path.join(AIOS_HOME, "aios.sqlite"))
         self._started_monotonic = time.monotonic()
@@ -125,30 +123,37 @@ class AIOSDashboard:
         return JSONResponse(stats)
 
     async def api_health(self, request: Request) -> JSONResponse:
-        return JSONResponse({
-            "status": "ok",
-            "version": self.orch.version,
-            "time": datetime.now(UTC).isoformat(),
-        })
+        return JSONResponse(
+            {
+                "status": "ok",
+                "version": self.orch.version,
+                "time": datetime.now(UTC).isoformat(),
+            }
+        )
 
     # ---------- Services management ----------
     def _svc_status(self, name: str) -> dict:
         try:
             r = subprocess.run(
                 ["systemctl", "is-active", name],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             active = r.stdout.strip()
             r2 = subprocess.run(
                 ["systemctl", "is-enabled", name],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             enabled = r2.stdout.strip()
             uptime = ""
             r3 = subprocess.run(
-                ["systemctl", "show", name, "-p", "ActiveEnterTimestamp",
-                 "--value"],
-                capture_output=True, text=True, timeout=5,
+                ["systemctl", "show", name, "-p", "ActiveEnterTimestamp", "--value"],
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             uptime = r3.stdout.strip()
             cpu = 0.0
@@ -157,13 +162,17 @@ class AIOSDashboard:
                 try:
                     rp = subprocess.run(
                         ["systemctl", "show", name, "-p", "MainPID", "--value"],
-                        capture_output=True, text=True, timeout=5,
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
                     )
                     pid = int(rp.stdout.strip() or 0)
                     if pid:
                         usage = subprocess.run(
                             ["ps", "-p", str(pid), "-o", "%cpu=,rss="],
-                            capture_output=True, text=True, timeout=5,
+                            capture_output=True,
+                            text=True,
+                            timeout=5,
                         ).stdout.split()
                         if len(usage) >= 2:
                             cpu = round(float(usage[0]), 1)
@@ -171,13 +180,16 @@ class AIOSDashboard:
                 except Exception:
                     pass
             return {
-                "name": name, "active": active == "active",
-                "state": active, "enabled": enabled == "enabled",
-                "since": uptime, "cpu": cpu, "mem": mem,
+                "name": name,
+                "active": active == "active",
+                "state": active,
+                "enabled": enabled == "enabled",
+                "since": uptime,
+                "cpu": cpu,
+                "mem": mem,
             }
         except Exception as e:
-            return {"name": name, "active": False, "state": "error",
-                    "enabled": False, "since": "", "error": str(e)}
+            return {"name": name, "active": False, "state": "error", "enabled": False, "since": "", "error": str(e)}
 
     async def api_services(self, request: Request) -> JSONResponse:
         result = []
@@ -189,16 +201,21 @@ class AIOSDashboard:
         # Also emulator
         try:
             adb = os.environ.get("ADB", "/opt/android-sdk/platform-tools/adb")
-            r = subprocess.run([adb, "devices"], capture_output=True,
-                               text=True, timeout=5)
+            r = subprocess.run([adb, "devices"], capture_output=True, text=True, timeout=5)
             emu_online = "emulator-5554\tdevice" in r.stdout
         except Exception:
             emu_online = False
-        result.append({
-            "name": "emulator", "label": "Android Emulator (OLX)",
-            "port": 5554, "active": emu_online, "state": "online" if emu_online else "offline",
-            "enabled": True, "since": "",
-        })
+        result.append(
+            {
+                "name": "emulator",
+                "label": "Android Emulator (OLX)",
+                "port": 5554,
+                "active": emu_online,
+                "state": "online" if emu_online else "offline",
+                "enabled": True,
+                "since": "",
+            }
+        )
         return JSONResponse({"services": result})
 
     async def api_service_action(self, request: Request) -> JSONResponse:
@@ -214,8 +231,7 @@ class AIOSDashboard:
         if name not in allowed_names:
             return JSONResponse({"ok": False, "error": "unknown service"}, status_code=404)
         try:
-            subprocess.run(["systemctl", action, name], capture_output=True,
-                           text=True, timeout=15)
+            subprocess.run(["systemctl", action, name], capture_output=True, text=True, timeout=15)
             return JSONResponse({"ok": True})
         except Exception as e:
             return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -233,13 +249,16 @@ class AIOSDashboard:
             try:
                 proc = subprocess.Popen(
                     ["journalctl", "-u", name, "-n", str(n), "--no-pager"],
-                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
                 )
                 for line in proc.stdout:
                     yield line
                 proc.wait()
             except Exception as e:
                 yield f"--- error: {e}\n"
+
         return StreamingResponse(gen(), media_type="text/plain; charset=utf-8")
 
     # ---------- OLX HTTP collector ----------
@@ -251,40 +270,44 @@ class AIOSDashboard:
             conn.row_factory = sqlite3.Row
             try:
                 total = conn.execute("SELECT COUNT(*) FROM ads").fetchone()[0]
-                active = conn.execute(
-                    "SELECT COUNT(*) FROM ads WHERE active=1"
-                ).fetchone()[0]
-                queries = [r[0] for r in conn.execute(
-                    "SELECT query FROM ads WHERE active=1 "
-                    "GROUP BY query ORDER BY COUNT(*) DESC").fetchall()]
+                active = conn.execute("SELECT COUNT(*) FROM ads WHERE active=1").fetchone()[0]
+                queries = [
+                    r[0]
+                    for r in conn.execute(
+                        "SELECT query FROM ads WHERE active=1 GROUP BY query ORDER BY COUNT(*) DESC"
+                    ).fetchall()
+                ]
                 last_run = conn.execute(
-                    "SELECT ts, parsed, inserted, deactivated "
-                    "FROM collection_runs ORDER BY ts DESC LIMIT 1"
+                    "SELECT ts, parsed, inserted, deactivated FROM collection_runs ORDER BY ts DESC LIMIT 1"
                 ).fetchone()
                 price_row = conn.execute(
                     "SELECT AVG(price_value), MIN(price_value), MAX(price_value) "
                     "FROM ads WHERE price_value>0 AND price_currency='UAH'"
                 ).fetchone()
                 new_1h = conn.execute(
-                    "SELECT COUNT(*) FROM ads WHERE first_seen >= "
-                    "datetime('now','-1 hour')").fetchone()[0]
+                    "SELECT COUNT(*) FROM ads WHERE first_seen >= datetime('now','-1 hour')"
+                ).fetchone()[0]
                 new_24h = conn.execute(
-                    "SELECT COUNT(*) FROM ads WHERE first_seen >= "
-                    "datetime('now','-1 day')").fetchone()[0]
-                return JSONResponse({
-                    "available": True,
-                    "source": "http",
-                    "ads_total": total, "ads_active": active,
-                    "new_1h": new_1h, "new_24h": new_24h,
-                    "queries_tracked": queries,
-                    "last_run_ts": last_run["ts"] if last_run else None,
-                    "last_run_parsed": last_run["parsed"] if last_run else 0,
-                    "last_run_inserted": last_run["inserted"] if last_run else 0,
-                    "last_run_deactivated": last_run["deactivated"] if last_run else 0,
-                    "price_avg": price_row[0],
-                    "price_min": price_row[1],
-                    "price_max": price_row[2],
-                })
+                    "SELECT COUNT(*) FROM ads WHERE first_seen >= datetime('now','-1 day')"
+                ).fetchone()[0]
+                return JSONResponse(
+                    {
+                        "available": True,
+                        "source": "http",
+                        "ads_total": total,
+                        "ads_active": active,
+                        "new_1h": new_1h,
+                        "new_24h": new_24h,
+                        "queries_tracked": queries,
+                        "last_run_ts": last_run["ts"] if last_run else None,
+                        "last_run_parsed": last_run["parsed"] if last_run else 0,
+                        "last_run_inserted": last_run["inserted"] if last_run else 0,
+                        "last_run_deactivated": last_run["deactivated"] if last_run else 0,
+                        "price_avg": price_row[0],
+                        "price_min": price_row[1],
+                        "price_max": price_row[2],
+                    }
+                )
             finally:
                 conn.close()
         except Exception as e:
@@ -327,22 +350,24 @@ class AIOSDashboard:
                 order = "price_value IS NULL, price_value DESC"
             else:
                 order = "first_seen DESC, collected_at DESC"
-            total = conn.execute(
-                f"SELECT COUNT(*) FROM ads WHERE {wsql}", params
-            ).fetchone()[0]
+            total = conn.execute(f"SELECT COUNT(*) FROM ads WHERE {wsql}", params).fetchone()[0]
             rows = conn.execute(
-                f"SELECT * FROM ads WHERE {wsql} ORDER BY {order} "
-                f"LIMIT ? OFFSET ?", [*params, limit, offset]
+                f"SELECT * FROM ads WHERE {wsql} ORDER BY {order} LIMIT ? OFFSET ?", [*params, limit, offset]
             ).fetchall()
             out = []
             for r in rows:
                 d = dict(r)
                 d["photos"] = json.loads(d.pop("photos_json") or "[]")
                 out.append(d)
-            return JSONResponse({
-                "ads": out, "total": total, "page": page,
-                "limit": limit, "pages": (total + limit - 1) // limit,
-            })
+            return JSONResponse(
+                {
+                    "ads": out,
+                    "total": total,
+                    "page": page,
+                    "limit": limit,
+                    "pages": (total + limit - 1) // limit,
+                }
+            )
         finally:
             conn.close()
 
@@ -357,12 +382,9 @@ class AIOSDashboard:
                 "FROM ads WHERE active=1 AND price_currency='UAH' "
                 "GROUP BY query ORDER BY cnt DESC"
             ).fetchall()
-            return JSONResponse({
-                "queries": [
-                    {"query": r[0], "count": r[1], "avg": r[2], "min": r[3], "max": r[4]}
-                    for r in rows
-                ]
-            })
+            return JSONResponse(
+                {"queries": [{"query": r[0], "count": r[1], "avg": r[2], "min": r[3], "max": r[4]} for r in rows]}
+            )
         finally:
             conn.close()
 
@@ -376,20 +398,27 @@ class AIOSDashboard:
             # Price distribution (buckets)
             if not query:
                 return JSONResponse({"available": False, "error": "query required"})
-            vals = [r[0] for r in conn.execute(
-                "SELECT price_value FROM ads WHERE query=? AND active=1 "
-                "AND price_currency='UAH' AND price_value>0 "
-                "AND price_value < (SELECT AVG(price_value)*5 FROM ads "
-                "                  WHERE query=? AND active=1 AND price_currency='UAH')",
-                (query, query)).fetchall()]
+            vals = [
+                r[0]
+                for r in conn.execute(
+                    "SELECT price_value FROM ads WHERE query=? AND active=1 "
+                    "AND price_currency='UAH' AND price_value>0 "
+                    "AND price_value < (SELECT AVG(price_value)*5 FROM ads "
+                    "                  WHERE query=? AND active=1 AND price_currency='UAH')",
+                    (query, query),
+                ).fetchall()
+            ]
             if not vals:
                 return JSONResponse({"available": False, "error": "no data"})
             vals.sort()
             n = len(vals)
+
             def pct(p):
                 k = (n - 1) * p
-                f = int(k); c = min(f + 1, n - 1)
+                f = int(k)
+                c = min(f + 1, n - 1)
                 return vals[f] + (vals[c] - vals[f]) * (k - f)
+
             # Histogram: 20 buckets between p1 and p99
             lo, hi = pct(0.05), pct(0.95)
             if hi <= lo:
@@ -400,58 +429,81 @@ class AIOSDashboard:
                     idx = min(19, int((v - lo) / (hi - lo) * 19.99))
                     buckets[idx] += 1
             bucket_labels = [
-                f"{int(lo + (hi-lo)*i/20):,}-{int(lo + (hi-lo)*(i+1)/20):,}"
-                for i in range(20)
+                f"{int(lo + (hi - lo) * i / 20):,}-{int(lo + (hi - lo) * (i + 1) / 20):,}" for i in range(20)
             ]
             # Top 10 cheapest
-            cheapest = [dict(r) for r in conn.execute(
-                "SELECT id, title, price_value, url, city, user_name, business "
-                "FROM ads WHERE query=? AND active=1 AND price_currency='UAH' "
-                "AND price_value>0 ORDER BY price_value ASC LIMIT 10", (query,))]
+            cheapest = [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT id, title, price_value, url, city, user_name, business "
+                    "FROM ads WHERE query=? AND active=1 AND price_currency='UAH' "
+                    "AND price_value>0 ORDER BY price_value ASC LIMIT 10",
+                    (query,),
+                )
+            ]
             # Most expensive (top 5)
-            pricy = [dict(r) for r in conn.execute(
-                "SELECT id, title, price_value, url, city FROM ads "
-                "WHERE query=? AND active=1 AND price_currency='UAH' "
-                "AND price_value>0 ORDER BY price_value DESC LIMIT 5", (query,))]
+            pricy = [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT id, title, price_value, url, city FROM ads "
+                    "WHERE query=? AND active=1 AND price_currency='UAH' "
+                    "AND price_value>0 ORDER BY price_value DESC LIMIT 5",
+                    (query,),
+                )
+            ]
             # New in last 24h
             new_count = conn.execute(
-                "SELECT COUNT(*) FROM ads WHERE query=? AND active=1 "
-                "AND first_seen >= datetime('now','-1 day')", (query,)).fetchone()[0]
+                "SELECT COUNT(*) FROM ads WHERE query=? AND active=1 AND first_seen >= datetime('now','-1 day')",
+                (query,),
+            ).fetchone()[0]
             # City distribution top 8
-            cities = [{"city": r[0], "count": r[1]} for r in conn.execute(
-                "SELECT city, COUNT(*) c FROM ads WHERE query=? AND active=1 "
-                "AND city IS NOT NULL GROUP BY city ORDER BY c DESC LIMIT 8",
-                (query,)).fetchall()]
+            cities = [
+                {"city": r[0], "count": r[1]}
+                for r in conn.execute(
+                    "SELECT city, COUNT(*) c FROM ads WHERE query=? AND active=1 "
+                    "AND city IS NOT NULL GROUP BY city ORDER BY c DESC LIMIT 8",
+                    (query,),
+                ).fetchall()
+            ]
             # Business vs private
             biz = conn.execute(
-                "SELECT business, COUNT(*) FROM ads WHERE query=? AND active=1 "
-                "GROUP BY business", (query,)).fetchall()
+                "SELECT business, COUNT(*) FROM ads WHERE query=? AND active=1 GROUP BY business", (query,)
+            ).fetchall()
             biz_count = dict(biz)
             # New over time (per day, last 7 days — using first_seen)
-            daily_new = [{"day": r[0], "count": r[1]} for r in conn.execute(
-                "SELECT date(first_seen), COUNT(*) FROM ads WHERE query=? "
-                "AND first_seen >= datetime('now','-7 day') "
-                "GROUP BY date(first_seen) ORDER BY date(first_seen)",
-                (query,)).fetchall()]
-            return JSONResponse({
-                "available": True,
-                "query": query,
-                "count": n,
-                "min": vals[0], "max": vals[-1],
-                "avg": sum(vals) / n,
-                "median": pct(0.5),
-                "p10": pct(0.10), "p25": pct(0.25),
-                "p75": pct(0.75), "p90": pct(0.90),
-                "p95": pct(0.95),
-                "histogram": {"labels": bucket_labels, "counts": buckets},
-                "cheapest": cheapest,
-                "priciest": pricy,
-                "new_24h": new_count,
-                "cities": cities,
-                "business_count": biz_count.get(1, 0),
-                "private_count": biz_count.get(0, 0),
-                "daily_new": daily_new,
-            })
+            daily_new = [
+                {"day": r[0], "count": r[1]}
+                for r in conn.execute(
+                    "SELECT date(first_seen), COUNT(*) FROM ads WHERE query=? "
+                    "AND first_seen >= datetime('now','-7 day') "
+                    "GROUP BY date(first_seen) ORDER BY date(first_seen)",
+                    (query,),
+                ).fetchall()
+            ]
+            return JSONResponse(
+                {
+                    "available": True,
+                    "query": query,
+                    "count": n,
+                    "min": vals[0],
+                    "max": vals[-1],
+                    "avg": sum(vals) / n,
+                    "median": pct(0.5),
+                    "p10": pct(0.10),
+                    "p25": pct(0.25),
+                    "p75": pct(0.75),
+                    "p90": pct(0.90),
+                    "p95": pct(0.95),
+                    "histogram": {"labels": bucket_labels, "counts": buckets},
+                    "cheapest": cheapest,
+                    "priciest": pricy,
+                    "new_24h": new_count,
+                    "cities": cities,
+                    "business_count": biz_count.get(1, 0),
+                    "private_count": biz_count.get(0, 0),
+                    "daily_new": daily_new,
+                }
+            )
         finally:
             conn.close()
 
@@ -460,8 +512,7 @@ class AIOSDashboard:
         if unauthorized := self._require_control(request):
             return unauthorized
         try:
-            subprocess.run(["systemctl", "restart", "aios-olx-collector"],
-                           capture_output=True, timeout=10)
+            subprocess.run(["systemctl", "restart", "aios-olx-collector"], capture_output=True, timeout=10)
             return JSONResponse({"ok": True})
         except Exception as e:
             return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -473,18 +524,19 @@ class AIOSDashboard:
         conn = sqlite3.connect(f"file:{self.subs_db}?mode=ro", uri=True)
         conn.row_factory = sqlite3.Row
         try:
-            tables = {row[0] for row in conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()}
+            tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
             if not {"subscriptions", "subscribers"}.issubset(tables):
                 return JSONResponse({"subscriptions": [], "chats": 0})
-            subs = [dict(r) for r in conn.execute(
-                "SELECT s.chat_id, s.query, s.min_price, s.max_price, s.created_at, "
-                "sub.username, sub.first_name FROM subscriptions s "
-                "JOIN subscribers sub ON sub.chat_id=s.chat_id "
-                "ORDER BY s.query, s.chat_id").fetchall()]
-            chat_count = conn.execute(
-                "SELECT COUNT(*) FROM subscribers WHERE enabled=1").fetchone()[0]
+            subs = [
+                dict(r)
+                for r in conn.execute(
+                    "SELECT s.chat_id, s.query, s.min_price, s.max_price, s.created_at, "
+                    "sub.username, sub.first_name FROM subscriptions s "
+                    "JOIN subscribers sub ON sub.chat_id=s.chat_id "
+                    "ORDER BY s.query, s.chat_id"
+                ).fetchall()
+            ]
+            chat_count = conn.execute("SELECT COUNT(*) FROM subscribers WHERE enabled=1").fetchone()[0]
             return JSONResponse({"subscriptions": subs, "chats": chat_count})
         finally:
             conn.close()
@@ -498,15 +550,16 @@ class AIOSDashboard:
         action = body.get("action")
         sys_path = Path(__file__).resolve().parent.parent.parent
         import sys as _sys
+
         if str(sys_path) not in _sys.path:
             _sys.path.insert(0, str(sys_path))
         import olx_alerts
+
         conn = olx_alerts.init_subs_db(self.subs_db)
         if action == "add" and query:
             olx_alerts.subscribe_chat(
-                conn, int(chat_id), query,
-                min_price=body.get("min_price"),
-                max_price=body.get("max_price"))
+                conn, int(chat_id), query, min_price=body.get("min_price"), max_price=body.get("max_price")
+            )
             return JSONResponse({"ok": True})
         if action == "remove":
             olx_alerts.unsubscribe_chat(conn, int(chat_id), query or None)
@@ -545,13 +598,19 @@ class AIOSDashboard:
                     info = {"serial": serial, "status": "online"}
                     # Props (model)
                     rc, model, _ = self._adb("shell", "getprop", "ro.product.model", serial=serial, timeout=5)
-                    _rc2, android, _ = self._adb("shell", "getprop", "ro.build.version.release", serial=serial, timeout=5)
-                    _rc3, _pkg, _ = self._adb("shell", "dumpsys", "window", "|", "grep", "mCurrentFocus", serial=serial, timeout=5)
+                    _rc2, android, _ = self._adb(
+                        "shell", "getprop", "ro.build.version.release", serial=serial, timeout=5
+                    )
+                    _rc3, _pkg, _ = self._adb(
+                        "shell", "dumpsys", "window", "|", "grep", "mCurrentFocus", serial=serial, timeout=5
+                    )
                     # dumpsys window mCurrentFocus does not work with pipe via list args
                     info["model"] = model.strip()
                     info["android"] = android.strip()
                     # Foreground app via simpler cmd
-                    _rc4, fore, _ = self._adb("shell", "cmd", "activity", "get-foreground-activity", serial=serial, timeout=5)
+                    _rc4, fore, _ = self._adb(
+                        "shell", "cmd", "activity", "get-foreground-activity", serial=serial, timeout=5
+                    )
                     info["foreground"] = fore.strip() if rc == 0 else ""
                     devs.append(info)
             # Screenshot dir
@@ -569,14 +628,16 @@ class AIOSDashboard:
             return JSONResponse({"ok": False, "error": "no device"}, status_code=404)
         try:
             import base64
+
             shot_dir = Path(AIOS_HOME) / "screenshots"
             shot_dir.mkdir(parents=True, exist_ok=True)
             ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-            fn = shot_dir / f"shot_{serial.replace(':','_')}_{ts}.png"
+            fn = shot_dir / f"shot_{serial.replace(':', '_')}_{ts}.png"
             # screencap -p outputs png to stdout
             r = subprocess.run(
                 [self.ADB, "-s", serial, "exec-out", "screencap", "-p"],
-                capture_output=True, timeout=15,
+                capture_output=True,
+                timeout=15,
             )
             if r.returncode != 0 or not r.stdout:
                 # Fallback: pull
@@ -587,9 +648,9 @@ class AIOSDashboard:
                 data = r.stdout
                 fn.write_bytes(data)
             b64 = base64.b64encode(data).decode()
-            return JSONResponse({"ok": True, "serial": serial,
-                                 "ts": ts, "size": len(data),
-                                 "image": "data:image/png;base64," + b64})
+            return JSONResponse(
+                {"ok": True, "serial": serial, "ts": ts, "size": len(data), "image": "data:image/png;base64," + b64}
+            )
         except subprocess.TimeoutExpired:
             return JSONResponse({"ok": False, "error": "screenshot timeout"}, status_code=504)
         except Exception as e:
@@ -608,16 +669,25 @@ class AIOSDashboard:
                 x, y = int(body["x"]), int(body["y"])
                 c, o, e = self._adb("shell", "input", "tap", str(x), str(y), serial=serial)
             elif action == "swipe":
-                c, o, e = self._adb("shell", "input", "swipe",
-                                    str(int(body["x1"])), str(int(body["y1"])),
-                                    str(int(body["x2"])), str(int(body["y2"])),
-                                    str(int(body.get("duration", 300))), serial=serial)
+                c, o, e = self._adb(
+                    "shell",
+                    "input",
+                    "swipe",
+                    str(int(body["x1"])),
+                    str(int(body["y1"])),
+                    str(int(body["x2"])),
+                    str(int(body["y2"])),
+                    str(int(body.get("duration", 300))),
+                    serial=serial,
+                )
             elif action == "text":
                 text = body.get("text", "")
                 # Use adb_type.py helper that base64-encodes (handles $, quotes, spaces)
                 import importlib.util
+
                 spec = importlib.util.spec_from_file_location(
-                    "adb_type", str(Path(__file__).resolve().parents[1] / "adb_type.py"))
+                    "adb_type", str(Path(__file__).resolve().parents[1] / "adb_type.py")
+                )
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
                 ok = mod.type_text(serial, text)
@@ -630,12 +700,12 @@ class AIOSDashboard:
                 if not cmd or ";" in cmd or "|" in cmd or "&&" in cmd or "rm -rf" in cmd:
                     return JSONResponse({"ok": False, "error": "dangerous chars blocked"})
                 c, o, e = self._adb("shell", *cmd.split(), serial=serial, timeout=15)
-                return JSONResponse({"ok": c == 0, "serial": serial, "stdout": o, "stderr": e,
-                                     "exit": c})
+                return JSONResponse({"ok": c == 0, "serial": serial, "stdout": o, "stderr": e, "exit": c})
             elif action == "launch":
                 pkg = body.get("package", "ua.slando")
-                c, o, e = self._adb("shell", "monkey", "-p", pkg,
-                                    "-c", "android.intent.category.LAUNCHER", "1", serial=serial)
+                c, o, e = self._adb(
+                    "shell", "monkey", "-p", pkg, "-c", "android.intent.category.LAUNCHER", "1", serial=serial
+                )
             elif action == "home":
                 c, o, e = self._adb("shell", "input", "keyevent", "3", serial=serial)
             elif action == "back":
@@ -647,16 +717,21 @@ class AIOSDashboard:
             elif action == "uidump":
                 # Pull UI hierarchy XML
                 self._adb("shell", "uiautomator", "dump", "/sdcard/ui.xml", serial=serial, timeout=60)
-                r = subprocess.run([self.ADB, "-s", serial, "exec-out", "cat", "/sdcard/ui.xml"],
-                                   capture_output=True, timeout=15)
+                r = subprocess.run(
+                    [self.ADB, "-s", serial, "exec-out", "cat", "/sdcard/ui.xml"], capture_output=True, timeout=15
+                )
                 if r.returncode != 0 or len(r.stdout) < 50:
-                    subprocess.run([self.ADB, "-s", serial, "pull", "/sdcard/ui.xml", "/tmp/uidump.xml"],
-                                   capture_output=True, timeout=10)
+                    subprocess.run(
+                        [self.ADB, "-s", serial, "pull", "/sdcard/ui.xml", "/tmp/uidump.xml"],
+                        capture_output=True,
+                        timeout=10,
+                    )
                     xml = Path("/tmp/uidump.xml").read_text(encoding="utf-8", errors="replace")
                 else:
                     xml = r.stdout.decode("utf-8", errors="replace")
                 # Parse clickable nodes for overlay
                 import xml.etree.ElementTree as ET
+
                 nodes = []
                 try:
                     root = ET.fromstring(xml)
@@ -668,22 +743,24 @@ class AIOSDashboard:
                                 coords = bb.strip("[]").split("][")
                                 x1, y1 = map(int, coords[0].split(","))
                                 x2, y2 = map(int, coords[1].split(","))
-                                nodes.append({
-                                    "text": (a.get("text") or a.get("content-desc") or "")[:80],
-                                    "class": (a.get("class") or "").split(".")[-1],
-                                    "bounds": bb,
-                                    "x": (x1+x2)//2, "y": (y1+y2)//2,
-                                    "clickable": a.get("clickable") == "true",
-                                    "checkable": a.get("checkable") == "true",
-                                    "checked": a.get("checked") == "true",
-                                    "scrollable": a.get("scrollable") == "true",
-                                })
+                                nodes.append(
+                                    {
+                                        "text": (a.get("text") or a.get("content-desc") or "")[:80],
+                                        "class": (a.get("class") or "").split(".")[-1],
+                                        "bounds": bb,
+                                        "x": (x1 + x2) // 2,
+                                        "y": (y1 + y2) // 2,
+                                        "clickable": a.get("clickable") == "true",
+                                        "checkable": a.get("checkable") == "true",
+                                        "checked": a.get("checked") == "true",
+                                        "scrollable": a.get("scrollable") == "true",
+                                    }
+                                )
                             except Exception:
                                 pass
                 except ET.ParseError:
                     pass
-                return JSONResponse({"ok": True, "serial": serial,
-                                     "xml": xml[:200000], "nodes": nodes[:500]})
+                return JSONResponse({"ok": True, "serial": serial, "xml": xml[:200000], "nodes": nodes[:500]})
             else:
                 return JSONResponse({"ok": False, "error": f"unknown action: {action}"}, status_code=400)
             return JSONResponse({"ok": c == 0, "serial": serial, "stdout": o[-1000:], "stderr": e[-1000:], "exit": c})
@@ -704,7 +781,9 @@ class AIOSDashboard:
                 return JSONResponse({"ok": c == 0, "stdout": o, "stderr": e})
             if action == "list_packages":
                 c, o, e = self._adb("shell", "pm", "list", "packages", "-3", serial="emulator-5554", timeout=15)
-                pkgs = sorted([ln.replace("package:", "").strip() for ln in o.splitlines() if ln.startswith("package:")])
+                pkgs = sorted(
+                    [ln.replace("package:", "").strip() for ln in o.splitlines() if ln.startswith("package:")]
+                )
                 return JSONResponse({"ok": True, "packages": pkgs})
         except Exception as e:
             return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -726,21 +805,24 @@ class AIOSDashboard:
             async def _run_and_save():
                 study = AndroidAutoStudy(device_id=device_id)
                 result = await study.run_study(package, scenario, custom_steps, max_duration_sec)
-                self._auto_study_save_history({
-                    "study_id": result.study_id,
-                    "device_id": device_id,
-                    "package": result.package,
-                    "scenario": result.scenario_name,
-                    "status": result.status.value,
-                    "steps_completed": result.steps_completed,
-                    "steps_total": result.steps_total,
-                    "failure_rate": result.failure_rate,
-                    "started_at": result.started_at,
-                    "completed_at": result.completed_at,
-                    "error": result.error,
-                })
+                self._auto_study_save_history(
+                    {
+                        "study_id": result.study_id,
+                        "device_id": device_id,
+                        "package": result.package,
+                        "scenario": result.scenario_name,
+                        "status": result.status.value,
+                        "steps_completed": result.steps_completed,
+                        "steps_total": result.steps_total,
+                        "failure_rate": result.failure_rate,
+                        "started_at": result.started_at,
+                        "completed_at": result.completed_at,
+                        "error": result.error,
+                    }
+                )
 
             import asyncio
+
             task = asyncio.create_task(_run_and_save())
             self._background_tasks.add(task)
             task.add_done_callback(self._background_tasks.discard)
@@ -777,7 +859,13 @@ class AIOSDashboard:
         # A more robust solution would involve storing results (e.g., in DB or file)
         # or managing a single instance of AndroidAutoStudy.
         # For now, return a placeholder indicating the limitation.
-        return JSONResponse({"ok": False, "message": "Study results retrieval is not yet implemented for persistence.", "current_status": self.api_auto_study_status(request)})
+        return JSONResponse(
+            {
+                "ok": False,
+                "message": "Study results retrieval is not yet implemented for persistence.",
+                "current_status": self.api_auto_study_status(request),
+            }
+        )
 
     async def api_auto_study_current(self, request: Request) -> JSONResponse:
         """Get the status of the current auto-study run."""
@@ -787,7 +875,7 @@ class AIOSDashboard:
         # If not, this will create a new instance, but get_status() should work.
         try:
             # If `self.auto_study` were a persistent instance: study = self.auto_study
-            study = AndroidAutoStudy() # Using a temporary instance for status check
+            study = AndroidAutoStudy()  # Using a temporary instance for status check
             status = study.get_status()
             return JSONResponse(status)
         except Exception as e:
@@ -824,11 +912,13 @@ class AIOSDashboard:
                 with self._scheduler_lock:
                     self._scheduler_active = True
                     self._scheduler_stop.clear()
+
                 def _loop():
                     study = AndroidAutoStudy(device_id=device_id)
                     while not self._scheduler_stop.is_set():
                         try:
                             import asyncio
+
                             asyncio.run(study.run_study(package, scenario))
                         except Exception:
                             pass
@@ -838,6 +928,7 @@ class AIOSDashboard:
                             time.sleep(1)
                     with self._scheduler_lock:
                         self._scheduler_active = False
+
                 __import__("threading").Thread(target=_loop, daemon=True).start()
                 return JSONResponse({"ok": True, "message": "Scheduler started"})
             if action == "stop":
@@ -860,7 +951,16 @@ class AIOSDashboard:
     def _auto_study_save_history(self, item: dict | str) -> None:
         try:
             if isinstance(item, str):
-                item = {"study_id": "unknown", "status": "failed", "error": item, "package": "ua.slando", "scenario": "unknown", "steps_completed": 0, "steps_total": 0, "failure_rate": 1.0}
+                item = {
+                    "study_id": "unknown",
+                    "status": "failed",
+                    "error": item,
+                    "package": "ua.slando",
+                    "scenario": "unknown",
+                    "steps_completed": 0,
+                    "steps_total": 0,
+                    "failure_rate": 1.0,
+                }
             elif hasattr(item, "package"):
                 item = {
                     "study_id": getattr(item, "study_id", "unknown"),
@@ -925,44 +1025,111 @@ class AIOSDashboard:
             files = sorted(self.CONSTITUTION_DIR.glob("ARTICLE-*.md"))
         except Exception:
             files = []
-        roman_to_idx = {"I":1,"II":2,"III":3,"IV":4,"V":5,"VI":6,"VII":7,"VIII":8,"IX":9,"X":10,
-                        "XI":11,"XII":12,"XIII":13,"XIV":14,"XV":15,"XVI":16,"XVII":17,"XVIII":18,"XIX":19,"XX":20,
-                        "XXI":21,"XXII":22,"XXIII":23,"XXIV":24,"XXV":25,"XXVI":26,"XXVII":27,"XXVIII":28,"XXIX":29,"XXX":30,
-                        "XXXI":31,"XXXII":32,"XXXIII":33,"XXXIV":34,"XXXV":35,"XXXVI":36,"XXXVII":37,"XXXVIII":38,"XXXIX":39,"XL":40,
-                        "XLI":41,"XLII":42,"XLIII":43,"XLIV":44,"XLV":45,"XLVI":46,"XLVII":47,"XLVIII":48,"XLIX":49,"L":50,
-                        "LI":51,"LII":52,"LIII":53,"LIV":54,"LV":55,"LVI":56,"LVII":57,"LVIII":58,"LIX":59,"LX":60,
-                        "LXI":61,"LXII":62,"LXIII":63,"LXIV":64,"LXV":65,"LXVI":66,"LXVII":67}
+        roman_to_idx = {
+            "I": 1,
+            "II": 2,
+            "III": 3,
+            "IV": 4,
+            "V": 5,
+            "VI": 6,
+            "VII": 7,
+            "VIII": 8,
+            "IX": 9,
+            "X": 10,
+            "XI": 11,
+            "XII": 12,
+            "XIII": 13,
+            "XIV": 14,
+            "XV": 15,
+            "XVI": 16,
+            "XVII": 17,
+            "XVIII": 18,
+            "XIX": 19,
+            "XX": 20,
+            "XXI": 21,
+            "XXII": 22,
+            "XXIII": 23,
+            "XXIV": 24,
+            "XXV": 25,
+            "XXVI": 26,
+            "XXVII": 27,
+            "XXVIII": 28,
+            "XXIX": 29,
+            "XXX": 30,
+            "XXXI": 31,
+            "XXXII": 32,
+            "XXXIII": 33,
+            "XXXIV": 34,
+            "XXXV": 35,
+            "XXXVI": 36,
+            "XXXVII": 37,
+            "XXXVIII": 38,
+            "XXXIX": 39,
+            "XL": 40,
+            "XLI": 41,
+            "XLII": 42,
+            "XLIII": 43,
+            "XLIV": 44,
+            "XLV": 45,
+            "XLVI": 46,
+            "XLVII": 47,
+            "XLVIII": 48,
+            "XLIX": 49,
+            "L": 50,
+            "LI": 51,
+            "LII": 52,
+            "LIII": 53,
+            "LIV": 54,
+            "LV": 55,
+            "LVI": 56,
+            "LVII": 57,
+            "LVIII": 58,
+            "LIX": 59,
+            "LX": 60,
+            "LXI": 61,
+            "LXII": 62,
+            "LXIII": 63,
+            "LXIV": 64,
+            "LXV": 65,
+            "LXVI": 66,
+            "LXVII": 67,
+        }
         for f in files:
             try:
                 text = f.read_text(encoding="utf-8", errors="replace")
                 m = self._numeral_re.match(f.name)
-                numeral = m.group(1) if m else f.stem.replace("ARTICLE-","")
-                number = roman_to_idx.get(numeral, len(out)+1)
+                numeral = m.group(1) if m else f.stem.replace("ARTICLE-", "")
+                number = roman_to_idx.get(numeral, len(out) + 1)
                 # Extract title from first "# Article N — Title" or "# Article X — Title"
                 title = f"Constitutional Principle {number}"
                 m2 = _re.search(r"^#\s*Article\s+[A-Z0-9IVXLCDM]+\s*[—–-]\s*(.+)$", text, _re.M)
                 if m2:
                     title = m2.group(1).strip()
                 # Extract status / level / scope if present
-                status = "Active"; level = "Constitutional"; scope = "System-wide"; valid = True
+                status = "Active"
+                level = "Constitutional"
+                scope = "System-wide"
+                valid = True
                 for line in text.splitlines()[:30]:
                     if line.lower().startswith("status:"):
-                        status = line.split(":",1)[1].strip()
-                        valid = ("immutable" in status.lower() or "active" in status.lower())
+                        status = line.split(":", 1)[1].strip()
+                        valid = "immutable" in status.lower() or "active" in status.lower()
                     if line.lower().startswith("level:"):
-                        level = line.split(":",1)[1].strip()
+                        level = line.split(":", 1)[1].strip()
                     if line.lower().startswith("scope:"):
-                        scope = line.split(":",1)[1].strip()
-                out.append({
-                    "number": number,
-                    "numeral": numeral,
-                    "title": title,
-                    "filename": f.name,
-                    "status": status,
-                    "level": level,
-                    "scope": scope,
-                    "valid": valid,
-                })
+                        scope = line.split(":", 1)[1].strip()
+                out.append(
+                    {
+                        "number": number,
+                        "numeral": numeral,
+                        "title": title,
+                        "filename": f.name,
+                        "status": status,
+                        "level": level,
+                        "scope": scope,
+                        "valid": valid,
+                    }
+                )
             except Exception:
                 continue
         out.sort(key=lambda x: x["number"])
@@ -996,25 +1163,27 @@ class AIOSDashboard:
     async def api_safety(self, request: Request) -> JSONResponse:
         try:
             s = self.orch.stats()
-            pol = s.get("subsystems",{}).get("policy",{})
-            vs = pol.get("validation_summary",{})
-            tot = vs.get("total_validations",0) or 1
-            invalid = vs.get("invalid",0)
+            pol = s.get("subsystems", {}).get("policy", {})
+            vs = pol.get("validation_summary", {})
+            tot = vs.get("total_validations", 0) or 1
+            invalid = vs.get("invalid", 0)
             safety_score = max(0.0, min(1.0, 1.0 - (invalid / tot))) if tot > 0 else 1.0
         except Exception:
             safety_score = 1.0
-        return JSONResponse({
-            "safety_score": safety_score,
-            "status": "healthy" if safety_score > 0.9 else "warning",
-            "metrics": {
-                "harm_score": 0.02,
-                "bias_score": 0.05,
-                "deception_score": 0.01,
-                "policy_rejections": 0,
-            },
-            "recent_incidents": [],
-            "thresholds": {"harm_score":0.3,"bias_score":0.4,"deception_score":0.2},
-        })
+        return JSONResponse(
+            {
+                "safety_score": safety_score,
+                "status": "healthy" if safety_score > 0.9 else "warning",
+                "metrics": {
+                    "harm_score": 0.02,
+                    "bias_score": 0.05,
+                    "deception_score": 0.01,
+                    "policy_rejections": 0,
+                },
+                "recent_incidents": [],
+                "thresholds": {"harm_score": 0.3, "bias_score": 0.4, "deception_score": 0.2},
+            }
+        )
 
     async def api_agents(self, request: Request) -> JSONResponse:
         # Derive from orchestrator stats when possible; fallback to roster.
@@ -1023,12 +1192,46 @@ class AIOSDashboard:
             n_agents = s.get("active_agents", 3) or 3
         except Exception:
             n_agents = 3
-        return JSONResponse([
-            {"agent_id":"orch","name":"Orchestrator","role":"Core Scheduler","autonomy_level":5,"autonomy_label":"Self-Directed","status":"executing","completed_tasks":s.get("total_steps_executed",0) if 's' in dir() else 0},
-            {"agent_id":"policy","name":"Policy Engine","role":"Constitutional Veto","autonomy_level":3,"autonomy_label":"Guarded","status":"idle","completed_tasks":0},
-            {"agent_id":"olx","name":"OLX Collector","role":"Marketplace Agent","autonomy_level":2,"autonomy_label":"Supervised","status":"executing","completed_tasks":0},
-            {"agent_id":"tg","name":"Telegram Bot","role":"Subscriber Notifier","autonomy_level":2,"autonomy_label":"Supervised","status":"idle","completed_tasks":0},
-        ][:max(3,n_agents)])
+        return JSONResponse(
+            [
+                {
+                    "agent_id": "orch",
+                    "name": "Orchestrator",
+                    "role": "Core Scheduler",
+                    "autonomy_level": 5,
+                    "autonomy_label": "Self-Directed",
+                    "status": "executing",
+                    "completed_tasks": s.get("total_steps_executed", 0) if "s" in dir() else 0,
+                },
+                {
+                    "agent_id": "policy",
+                    "name": "Policy Engine",
+                    "role": "Constitutional Veto",
+                    "autonomy_level": 3,
+                    "autonomy_label": "Guarded",
+                    "status": "idle",
+                    "completed_tasks": 0,
+                },
+                {
+                    "agent_id": "olx",
+                    "name": "OLX Collector",
+                    "role": "Marketplace Agent",
+                    "autonomy_level": 2,
+                    "autonomy_label": "Supervised",
+                    "status": "executing",
+                    "completed_tasks": 0,
+                },
+                {
+                    "agent_id": "tg",
+                    "name": "Telegram Bot",
+                    "role": "Subscriber Notifier",
+                    "autonomy_level": 2,
+                    "autonomy_label": "Supervised",
+                    "status": "idle",
+                    "completed_tasks": 0,
+                },
+            ][: max(3, n_agents)]
+        )
 
     async def api_models(self, request: Request) -> JSONResponse:
         stages = self._model_stages()
@@ -1043,10 +1246,12 @@ class AIOSDashboard:
             if request.method == "POST":
                 body = await request.json()
                 message = body.get("message", "")
-                return JSONResponse({
-                    "status": "ok",
-                    "message": f"Echo: {message}" if message else "No message provided",
-                })
+                return JSONResponse(
+                    {
+                        "status": "ok",
+                        "message": f"Echo: {message}" if message else "No message provided",
+                    }
+                )
             return JSONResponse({"status": "ok", "message": "Chat is ready"})
         except Exception as e:
             return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
@@ -1100,41 +1305,77 @@ class AIOSDashboard:
     async def api_knowledge_graph(self, request: Request) -> JSONResponse:
         try:
             s = self.orch.stats()
-            pol = s.get("subsystems",{}).get("policy",{}).get("constitution",{})
-            mem = s.get("subsystems",{}).get("memory",{})
+            pol = s.get("subsystems", {}).get("policy", {}).get("constitution", {})
+            mem = s.get("subsystems", {}).get("memory", {})
         except Exception:
-            pol = {}; mem = {}
-        articles = pol.get("total_articles",67)
-        rules = pol.get("total_rules",1320)
-        mem_total = mem.get("total",0)
+            pol = {}
+            mem = {}
+        articles = pol.get("total_articles", 67)
+        rules = pol.get("total_rules", 1320)
+        mem_total = mem.get("total", 0)
         nodes = [
-            {"id":"orchestrator","label":"AIOS Core Orchestrator","type":"agent","detail":"Central event loop · task scheduler"},
-            {"id":"policy","label":f"Constitution Engine ({articles} articles)","type":"rule","detail":f"{rules} rules · MUST/MUST NOT/MAY/SHOULD"},
-            {"id":"memory","label":"Vector & Event Memory","type":"memory","detail":f"{mem_total} memory items · SQLite-backed"},
-            {"id":"ml","label":"Price & Risk Models","type":"model","detail":"p10/p90 assessor · predictive risk"},
-            {"id":"olx","label":"OLX Collector","type":"agent","detail":"HTTP polling · 10 queries · 30min interval"},
-            {"id":"android","label":"Android Fleet (ADB)","type":"agent","detail":"emulator-5554 · OLX logged-in snapshot"},
-            {"id":"telegram","label":"Telegram Bot","type":"agent","detail":"@AIOScontrol_bot · subscriptions & alerts"},
-            {"id":"mcp","label":"MCP Server","type":"agent","detail":"Model Context Protocol bridge"},
-            {"id":"api","label":"REST API :8500","type":"agent","detail":"Bearer-authenticated public API"},
+            {
+                "id": "orchestrator",
+                "label": "AIOS Core Orchestrator",
+                "type": "agent",
+                "detail": "Central event loop · task scheduler",
+            },
+            {
+                "id": "policy",
+                "label": f"Constitution Engine ({articles} articles)",
+                "type": "rule",
+                "detail": f"{rules} rules · MUST/MUST NOT/MAY/SHOULD",
+            },
+            {
+                "id": "memory",
+                "label": "Vector & Event Memory",
+                "type": "memory",
+                "detail": f"{mem_total} memory items · SQLite-backed",
+            },
+            {
+                "id": "ml",
+                "label": "Price & Risk Models",
+                "type": "model",
+                "detail": "p10/p90 assessor · predictive risk",
+            },
+            {
+                "id": "olx",
+                "label": "OLX Collector",
+                "type": "agent",
+                "detail": "HTTP polling · 10 queries · 30min interval",
+            },
+            {
+                "id": "android",
+                "label": "Android Fleet (ADB)",
+                "type": "agent",
+                "detail": "emulator-5554 · OLX logged-in snapshot",
+            },
+            {
+                "id": "telegram",
+                "label": "Telegram Bot",
+                "type": "agent",
+                "detail": "@AIOScontrol_bot · subscriptions & alerts",
+            },
+            {"id": "mcp", "label": "MCP Server", "type": "agent", "detail": "Model Context Protocol bridge"},
+            {"id": "api", "label": "REST API :8500", "type": "agent", "detail": "Bearer-authenticated public API"},
         ]
         edges = [
-            {"source":"orchestrator","target":"policy","relation":"VETO_BY"},
-            {"source":"orchestrator","target":"memory","relation":"PERSISTS_TO"},
-            {"source":"orchestrator","target":"ml","relation":"EVALUATES_BY"},
-            {"source":"orchestrator","target":"olx","relation":"SCHEDULES"},
-            {"source":"orchestrator","target":"android","relation":"DRIVES"},
-            {"source":"orchestrator","target":"telegram","relation":"NOTIFIES_VIA"},
-            {"source":"orchestrator","target":"mcp","relation":"EXPOSES"},
-            {"source":"orchestrator","target":"api","relation":"EXPOSES"},
-            {"source":"olx","target":"memory","relation":"WRITES"},
-            {"source":"android","target":"memory","relation":"REPORTS"},
-            {"source":"olx","target":"ml","relation":"FEATURES_FOR"},
-            {"source":"policy","target":"olx","relation":"PERMITS"},
-            {"source":"policy","target":"android","relation":"PERMITS"},
-            {"source":"ml","target":"telegram","relation":"TRIGGERS"},
+            {"source": "orchestrator", "target": "policy", "relation": "VETO_BY"},
+            {"source": "orchestrator", "target": "memory", "relation": "PERSISTS_TO"},
+            {"source": "orchestrator", "target": "ml", "relation": "EVALUATES_BY"},
+            {"source": "orchestrator", "target": "olx", "relation": "SCHEDULES"},
+            {"source": "orchestrator", "target": "android", "relation": "DRIVES"},
+            {"source": "orchestrator", "target": "telegram", "relation": "NOTIFIES_VIA"},
+            {"source": "orchestrator", "target": "mcp", "relation": "EXPOSES"},
+            {"source": "orchestrator", "target": "api", "relation": "EXPOSES"},
+            {"source": "olx", "target": "memory", "relation": "WRITES"},
+            {"source": "android", "target": "memory", "relation": "REPORTS"},
+            {"source": "olx", "target": "ml", "relation": "FEATURES_FOR"},
+            {"source": "policy", "target": "olx", "relation": "PERMITS"},
+            {"source": "policy", "target": "android", "relation": "PERMITS"},
+            {"source": "ml", "target": "telegram", "relation": "TRIGGERS"},
         ]
-        return JSONResponse({"nodes":nodes,"edges":edges})
+        return JSONResponse({"nodes": nodes, "edges": edges})
 
     @staticmethod
     def _timestamp_ms(value: str | None) -> int:
@@ -1180,12 +1421,10 @@ class AIOSDashboard:
         trend = [0] * 12
         try:
             conn = sqlite3.connect(f"file:{self.ads_db}?mode=ro", uri=True)
-            actions = conn.execute(
-                "SELECT COUNT(*) FROM ads WHERE first_seen >= datetime('now','-1 day')"
-            ).fetchone()[0]
-            runs = conn.execute(
-                "SELECT parsed FROM collection_runs ORDER BY ts DESC LIMIT 12"
-            ).fetchall()
+            actions = conn.execute("SELECT COUNT(*) FROM ads WHERE first_seen >= datetime('now','-1 day')").fetchone()[
+                0
+            ]
+            runs = conn.execute("SELECT parsed FROM collection_runs ORDER BY ts DESC LIMIT 12").fetchall()
             trend = [int(row[0] or 0) for row in reversed(runs)]
             trend = [0] * (12 - len(trend)) + trend
             conn.close()
@@ -1200,14 +1439,21 @@ class AIOSDashboard:
         rows = []
         for ident, name, package_name, status, emoji, color, region in inventory:
             is_olx = ident == "olx"
-            rows.append({
-                "id": ident, "name": name, "package": package_name,
-                "status": status, "emoji": emoji, "color": color,
-                "profiles": devices if is_olx else 0,
-                "actionsToday": actions if is_olx else 0,
-                "successRate": 100.0 if is_olx and actions else 0.0,
-                "region": region, "trend": trend if is_olx else [0] * 12,
-            })
+            rows.append(
+                {
+                    "id": ident,
+                    "name": name,
+                    "package": package_name,
+                    "status": status,
+                    "emoji": emoji,
+                    "color": color,
+                    "profiles": devices if is_olx else 0,
+                    "actionsToday": actions if is_olx else 0,
+                    "successRate": 100.0 if is_olx and actions else 0.0,
+                    "region": region,
+                    "trend": trend if is_olx else [0] * 12,
+                }
+            )
         return JSONResponse({"platforms": rows})
 
     async def api_audit(self, request: Request) -> JSONResponse:
@@ -1225,25 +1471,38 @@ class AIOSDashboard:
             try:
                 audit_rows = conn.execute(
                     "SELECT id,event_type,data,timestamp,agent_id,decision FROM audit_events "
-                    "ORDER BY timestamp DESC LIMIT ?", (limit,)
+                    "ORDER BY timestamp DESC LIMIT ?",
+                    (limit,),
                 ).fetchall()
                 for row in audit_rows:
                     decision = (row["decision"] or "").lower()
-                    severity = "critical" if decision in ("deny", "blocked", "rejected") else "warning" if decision in ("review", "warning") else "success" if decision in ("allow", "approved") else "info"
+                    severity = (
+                        "critical"
+                        if decision in ("deny", "blocked", "rejected")
+                        else "warning"
+                        if decision in ("review", "warning")
+                        else "success"
+                        if decision in ("allow", "approved")
+                        else "info"
+                    )
                     try:
                         payload = json.loads(row["data"] or "{}")
                         detail = json.dumps(payload, ensure_ascii=False, default=str)
                     except Exception:
                         detail = str(row["data"] or "")
-                    result.append({
-                        "id": str(row["id"]), "ts": self._timestamp_ms(row["timestamp"]),
-                        "type": self._audit_type(row["event_type"] or "system"),
-                        "actor": row["agent_id"] or "aios", "action": row["event_type"] or "audit_event",
-                        "detail": detail[:500], "severity": severity,
-                    })
+                    result.append(
+                        {
+                            "id": str(row["id"]),
+                            "ts": self._timestamp_ms(row["timestamp"]),
+                            "type": self._audit_type(row["event_type"] or "system"),
+                            "actor": row["agent_id"] or "aios",
+                            "action": row["event_type"] or "audit_event",
+                            "detail": detail[:500],
+                            "severity": severity,
+                        }
+                    )
                 event_rows = conn.execute(
-                    "SELECT id,event_type,source,data,timestamp FROM events "
-                    "ORDER BY timestamp DESC LIMIT ?", (limit,)
+                    "SELECT id,event_type,source,data,timestamp FROM events ORDER BY timestamp DESC LIMIT ?", (limit,)
                 ).fetchall()
                 for row in event_rows:
                     try:
@@ -1251,12 +1510,17 @@ class AIOSDashboard:
                         detail = json.dumps(payload, ensure_ascii=False, default=str)
                     except Exception:
                         detail = str(row["data"] or "")
-                    result.append({
-                        "id": str(row["id"]), "ts": self._timestamp_ms(row["timestamp"]),
-                        "type": self._audit_type(row["event_type"] or "system"),
-                        "actor": row["source"] or "event_bus", "action": row["event_type"] or "event",
-                        "detail": detail[:500], "severity": "info",
-                    })
+                    result.append(
+                        {
+                            "id": str(row["id"]),
+                            "ts": self._timestamp_ms(row["timestamp"]),
+                            "type": self._audit_type(row["event_type"] or "system"),
+                            "actor": row["source"] or "event_bus",
+                            "action": row["event_type"] or "event",
+                            "detail": detail[:500],
+                            "severity": "info",
+                        }
+                    )
             finally:
                 conn.close()
         except Exception as exc:
@@ -1266,9 +1530,33 @@ class AIOSDashboard:
 
     def _base_models(self) -> list[dict]:
         return [
-            {"name":"policy_guard","version":"1.0.0","framework":"rule","stage":"production","sha256":"constitution-67","eval_metrics":{"recall":1.0,"precision":1.0},"size_mb":0.2},
-            {"name":"price_assessor","version":"2.0.0","framework":"statistics","stage":"production","sha256":"p10-p90-v2","eval_metrics":{"mad_uah":350},"size_mb":1.1},
-            {"name":"android_driver","version":"0.9.0","framework":"adb","stage":"staging","sha256":"adb-v1","eval_metrics":{"tap_accuracy":0.98},"size_mb":0.4},
+            {
+                "name": "policy_guard",
+                "version": "1.0.0",
+                "framework": "rule",
+                "stage": "production",
+                "sha256": "constitution-67",
+                "eval_metrics": {"recall": 1.0, "precision": 1.0},
+                "size_mb": 0.2,
+            },
+            {
+                "name": "price_assessor",
+                "version": "2.0.0",
+                "framework": "statistics",
+                "stage": "production",
+                "sha256": "p10-p90-v2",
+                "eval_metrics": {"mad_uah": 350},
+                "size_mb": 1.1,
+            },
+            {
+                "name": "android_driver",
+                "version": "0.9.0",
+                "framework": "adb",
+                "stage": "staging",
+                "sha256": "adb-v1",
+                "eval_metrics": {"tap_accuracy": 0.98},
+                "size_mb": 0.4,
+            },
         ]
 
     def _model_stages(self) -> dict:
@@ -1325,7 +1613,9 @@ class AIOSDashboard:
         if action == "verify":
             backup_id = str(body.get("backup_id", ""))
             valid = self._backup_manager.verify_backup(backup_id)
-            return JSONResponse({"ok": valid, "backup_id": backup_id, "verified": valid}, status_code=200 if valid else 422)
+            return JSONResponse(
+                {"ok": valid, "backup_id": backup_id, "verified": valid}, status_code=200 if valid else 422
+            )
         return JSONResponse({"ok": False, "error": "unsupported backup action"}, status_code=400)
 
     async def ws_dashboard(self, ws: WebSocket):
@@ -1333,8 +1623,8 @@ class AIOSDashboard:
         try:
             while True:
                 msg = await ws.receive_text()
-                if msg == 'ping':
-                    await ws.send_text('pong')
+                if msg == "ping":
+                    await ws.send_text("pong")
         except Exception:
             pass
         finally:
@@ -1352,8 +1642,7 @@ class AIOSDashboard:
             Route("/api/olx/analytics", self.api_olx_analytics),
             Route("/api/olx/collect", self.api_olx_trigger_collect, methods=["POST"]),
             Route("/api/services", self.api_services),
-            Route("/api/services/{name}/action", self.api_service_action,
-                  methods=["POST"]),
+            Route("/api/services/{name}/action", self.api_service_action, methods=["POST"]),
             Route("/api/services/{name}/logs", self.api_service_logs),
             Route("/api/subs", self.api_subs),
             Route("/api/subs/action", self.api_subs_action, methods=["POST"]),
@@ -1386,7 +1675,6 @@ class AIOSDashboard:
             Route("/api/audit", self.api_audit),
             Route("/api/backups", self.api_backups, methods=["GET", "POST"]),
             WebSocketRoute("/ws/dashboard", self.ws_dashboard),
-
         ]
         return Starlette(routes=routes)
 

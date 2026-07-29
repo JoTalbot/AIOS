@@ -1,4 +1,5 @@
 """Tests for aios_core/scraping_strategy_templates.py"""
+
 from __future__ import annotations
 
 import pytest

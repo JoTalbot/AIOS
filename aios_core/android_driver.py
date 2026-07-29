@@ -281,9 +281,7 @@ class AppiumDriverWrapper(AndroidDriver):
     def _require_appium(self) -> Any:
         """Raise if no Appium driver is bound."""
         if self._appium is None:
-            raise RuntimeError(
-                "No Appium driver attached — provide one or use ADBDriver"
-            )
+            raise RuntimeError("No Appium driver attached — provide one or use ADBDriver")
         return self._appium
 
     # ---- Lifecycle ----
@@ -312,9 +310,7 @@ class AppiumDriverWrapper(AndroidDriver):
         """Get UI context via Appium page source."""
         driver = self._require_appium()
         xml = driver.page_source
-        return UIContext(
-            xml=xml, package=self.capabilities.package, current_activity=""
-        )
+        return UIContext(xml=xml, package=self.capabilities.package, current_activity="")
 
     def screenshot(self, path: str) -> bool:
         """Screenshot via Appium."""
@@ -400,9 +396,7 @@ class DriverPool:
         if strategy == "round_robin":
             device_id = min(self._dispatch_counts, key=self._dispatch_counts.get)
         elif strategy == "least_used":
-            device_id = min(
-                self._dispatch_counts, key=lambda k: self._dispatch_counts[k]
-            )
+            device_id = min(self._dispatch_counts, key=lambda k: self._dispatch_counts[k])
         else:
             device_id = next(iter(self._drivers))
 

@@ -23,7 +23,9 @@ class ConnectionManager:
                 disconnected.add(conn)
         self.active_connections -= disconnected
 
+
 manager = ConnectionManager()
+
 
 async def metrics_broadcast_loop(get_metrics_func):
     while True:

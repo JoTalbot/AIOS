@@ -164,13 +164,9 @@ class ChaosTester:
     def _inject_action(self, action: ChaosAction, scenario: ChaosScenario) -> None:
         """Execute a single chaos action."""
         if action == ChaosAction.LATENCY_INJECTION:
-            logger.info(
-                "Injecting %dms latency on '%s'", scenario.latency_ms, scenario.target
-            )
+            logger.info("Injecting %dms latency on '%s'", scenario.latency_ms, scenario.target)
         elif action == ChaosAction.ERROR_INJECTION:
-            logger.info(
-                "Injecting error '%s' on '%s'", scenario.error_message, scenario.target
-            )
+            logger.info("Injecting error '%s' on '%s'", scenario.error_message, scenario.target)
         elif action == ChaosAction.NETWORK_PARTITION:
             logger.info("Injecting network partition on '%s'", scenario.target)
         elif action == ChaosAction.CPU_STRESS:

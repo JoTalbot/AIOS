@@ -573,9 +573,7 @@ description: demo platform from YAML
         adb = descriptor.make_adb(serial="emulator-1")
         assert adb.serial == "emulator-1"
         assert adb.package == "ua.demo.market"
-        assert (
-            resolve_profile("demo-market", store=ProfileStore(":memory:")).db_path == "demo.sqlite"
-        )
+        assert resolve_profile("demo-market", store=ProfileStore(":memory:")).db_path == "demo.sqlite"
     finally:
         from aios_core.platforms import descriptor as descriptor_mod
 
@@ -585,9 +583,7 @@ description: demo platform from YAML
 def test_catalog_platforms_list_and_missing_fields(tmp_path):
     listing = tmp_path / "multi.yaml"
     listing.write_text(
-        "platforms:\n"
-        "  - {name: app-one, android_package: ua.one}\n"
-        "  - {name: app-two, android_package: ua.two}\n",
+        "platforms:\n  - {name: app-one, android_package: ua.one}\n  - {name: app-two, android_package: ua.two}\n",
         encoding="utf-8",
     )
     from aios_core.platforms import descriptor as descriptor_mod
@@ -651,9 +647,7 @@ def test_mcp_olx_tools_profile_scoping(tmp_path, monkeypatch):
         )
         # tools/list рекламирует параметр profile.
         listed = json.loads(
-            gateway.handle_request(
-                json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
-            )
+            gateway.handle_request(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}))
         )
         stats_tool = next(t for t in listed["result"]["tools"] if t["name"] == "olx_market_stats")
         assert "profile" in stats_tool["inputSchema"]["properties"]

@@ -1,4 +1,5 @@
 """Tests for aios_core/android_test_generator.py"""
+
 from __future__ import annotations
 
 import pytest

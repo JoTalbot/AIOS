@@ -696,9 +696,7 @@ class TestRuntimePolicy(unittest.TestCase):
 
     def test_stats(self):
         # Ensure at least one execution exists (self-contained)
-        self.runtime.request_execution(
-            {"goal": "stats-setup", "scope": "monitoring", "risk": "low", "audit_log": True}
-        )
+        self.runtime.request_execution({"goal": "stats-setup", "scope": "monitoring", "risk": "low", "audit_log": True})
         stats = self.runtime.stats()
         self.assertEqual(stats["version"], "9.0.0")
         self.assertGreater(stats["total_executions"], 0)
@@ -707,9 +705,7 @@ class TestRuntimePolicy(unittest.TestCase):
     def test_audit_logging(self):
         """Verify audit events are recorded."""
         # Ensure at least one decision was logged (self-contained)
-        self.runtime.request_execution(
-            {"goal": "audit-setup", "scope": "monitoring", "risk": "low", "audit_log": True}
-        )
+        self.runtime.request_execution({"goal": "audit-setup", "scope": "monitoring", "risk": "low", "audit_log": True})
         events = self.runtime.audit.query("execution_decision")
         self.assertGreater(len(events), 0)
         event = events[-1]

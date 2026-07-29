@@ -1,4 +1,5 @@
 """Tests for aios_core/health_checks.py"""
+
 from __future__ import annotations
 
 import pytest
@@ -23,13 +24,13 @@ class TestHealthCheckRegistry:
         registry.register("ok_service", check_fn=lambda: True)
         result = registry.run_check("ok_service")
         assert result is not None
-        assert hasattr(result, 'status') or isinstance(result, dict)
+        assert hasattr(result, "status") or isinstance(result, dict)
 
     def test_run_check_unhealthy(self, registry):
         registry.register("bad_service", check_fn=lambda: False)
         result = registry.run_check("bad_service")
         assert result is not None
-        assert hasattr(result, 'status') or isinstance(result, dict)
+        assert hasattr(result, "status") or isinstance(result, dict)
 
     def test_run_all(self, registry):
         registry.register("a", check_fn=lambda: True)

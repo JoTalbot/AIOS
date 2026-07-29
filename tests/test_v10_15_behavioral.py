@@ -1229,14 +1229,17 @@ class TestWebhookMetrics:
 
     def test_WebhookManager_exists(self):
         import aios_core.webhook_metrics as m
+
         assert hasattr(m, "WebhookManager")
 
     def test_get_webhook_prometheus_text_exists(self):
         import aios_core.webhook_metrics as m
+
         assert hasattr(m, "get_webhook_prometheus_text")
 
     def test_register_webhook_metrics_exists(self):
         import aios_core.webhook_metrics as m
+
         assert hasattr(m, "register_webhook_metrics")
 
 
@@ -1269,4 +1272,3 @@ class TestWebSocketManager:
     def test_disconnect_by_id_callable(self):
         obj = WebSocketManager()
         assert hasattr(obj, "disconnect_by_id")
-

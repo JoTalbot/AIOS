@@ -81,9 +81,7 @@ class AIOSClient:
 
     async def evaluate(self, action: dict) -> dict:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.post(
-                self._url("/api/v1/evaluate"), json=action, headers=self.headers
-            )
+            resp = await client.post(self._url("/api/v1/evaluate"), json=action, headers=self.headers)
             resp.raise_for_status()
             return resp.json()
 
@@ -107,9 +105,7 @@ class AIOSClient:
 
     # --- Memory ---
 
-    async def memory_store(
-        self, content: dict, category: str = "operational", tags: list[str] | None = None
-    ) -> dict:
+    async def memory_store(self, content: dict, category: str = "operational", tags: list[str] | None = None) -> dict:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(
                 self._url("/api/v1/memory"),
@@ -131,9 +127,7 @@ class AIOSClient:
 
     # --- Knowledge Graph ---
 
-    async def kg_add_node(
-        self, label: str, node_type: str = "entity", properties: dict | None = None
-    ) -> dict:
+    async def kg_add_node(self, label: str, node_type: str = "entity", properties: dict | None = None) -> dict:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(
                 self._url("/api/v1/kg/nodes"),
@@ -145,9 +139,7 @@ class AIOSClient:
 
     async def kg_query(self, query: str) -> dict:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.get(
-                self._url("/api/v1/kg/query"), params={"q": query}, headers=self.headers
-            )
+            resp = await client.get(self._url("/api/v1/kg/query"), params={"q": query}, headers=self.headers)
             resp.raise_for_status()
             return resp.json()
 
@@ -161,17 +153,13 @@ class AIOSClient:
 
     async def android_device_status(self, device_id: str) -> dict:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.get(
-                self._url(f"/api/v1/android/devices/{device_id}"), headers=self.headers
-            )
+            resp = await client.get(self._url(f"/api/v1/android/devices/{device_id}"), headers=self.headers)
             resp.raise_for_status()
             return resp.json()
 
     async def apps_list(self, platform: str = "") -> dict:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.get(
-                self._url("/api/v1/apps"), params={"platform": platform}, headers=self.headers
-            )
+            resp = await client.get(self._url("/api/v1/apps"), params={"platform": platform}, headers=self.headers)
             resp.raise_for_status()
             return resp.json()
 
@@ -272,17 +260,12 @@ class AIOSClient:
 
     # --- WebSocket helpers ---
 
-    async def watch_events(
-        self, on_event: Callable[[dict], None], channels: list[str] | None = None
-    ):
+    async def watch_events(self, on_event: Callable[[dict], None], channels: list[str] | None = None):
         """Watch events via WebSocket."""
         try:
             import websockets
 
-            uri = (
-                self.base_url.replace("http://", "ws://").replace("https://", "wss://")
-                + "/ws/events"
-            )
+            uri = self.base_url.replace("http://", "ws://").replace("https://", "wss://") + "/ws/events"
             async with websockets.connect(uri, extra_headers=self.headers) as ws:
                 if channels:
                     await ws.send(json.dumps({"subscribe": channels}))

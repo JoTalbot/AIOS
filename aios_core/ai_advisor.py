@@ -180,20 +180,14 @@ class AISalesAdvisor:
             price_reason = advice.reason if advice else "состояние и рыночная цена"
 
         # Render draft
-        context_text = self._build_context_text(
-            item_context, memory_snippets, inbox_context
-        )
+        context_text = self._build_context_text(item_context, memory_snippets, inbox_context)
 
         rendered = self.templates.render(
             platform,
             template_name,
             item_title=item_context.get("title", "товару"),
             buyer_price=self._extract_price(original_message) or "вашу цену",
-            seller_price=(
-                f"{suggested_price:.0f}"
-                if suggested_price
-                else f"{item_context.get('price', '')}"
-            ),
+            seller_price=(f"{suggested_price:.0f}" if suggested_price else f"{item_context.get('price', '')}"),
             reason=price_reason,
             details=item_context.get("description", "")[:200],
             price=item_context.get("price", ""),
@@ -234,9 +228,7 @@ class AISalesAdvisor:
             recipient=recipient,
             original_message=original_message,
             draft_reply=full_reply,
-            confidence=self._estimate_confidence(
-                original_message, item_context, memory_snippets
-            ),
+            confidence=self._estimate_confidence(original_message, item_context, memory_snippets),
             reasoning=f"Intent={intent}, template={template_name}, context_items={len(context_used) + len(inbox_context)}",
             requires_approval=True,
             suggested_price=suggested_price,
@@ -247,9 +239,7 @@ class AISalesAdvisor:
         self._drafts[draft_id] = draft
         return draft
 
-    def summarize_inbox(
-        self, platform: str, messages: list[dict[str, Any]]
-    ) -> InboxSummary:
+    def summarize_inbox(self, platform: str, messages: list[dict[str, Any]]) -> InboxSummary:
         """Summarize inbox - for operator dashboard."""
         total = len(messages)
         unread = sum(1 for m in messages if not m.get("read", True))
@@ -259,20 +249,13 @@ class AISalesAdvisor:
         for m in messages:
             sender = m.get("sender", "unknown")
             by_sender[sender] = by_sender.get(sender, 0) + 1
-            if any(
-                k in m.get("text", "").lower()
-                for k in ["срочно", "urgent", "сегодня", "куплю", "оплачу"]
-            ):
+            if any(k in m.get("text", "").lower() for k in ["срочно", "urgent", "сегодня", "куплю", "оплачу"]):
                 urgent.append(m)
 
         sentiment = "neutral"
         if total > 0:
             positive_keywords = ["спасибо", "куплю", "беру", "отлично"]
-            pos_count = sum(
-                1
-                for m in messages
-                if any(k in m.get("text", "").lower() for k in positive_keywords)
-            )
+            pos_count = sum(1 for m in messages if any(k in m.get("text", "").lower() for k in positive_keywords))
             if pos_count / total > 0.5:
                 sentiment = "positive"
             elif len(urgent) > total * 0.3:
@@ -340,7 +323,9 @@ class AISalesAdvisor:
                 reason = f"Цена ниже рынка, можно повысить до {suggested:.0f} и сохранить конкурентность"
             else:
                 suggested = current_price * 0.98
-                reason = f"Цена немного выше среднего ({avg_market:.0f}), легкая коррекция к {suggested:.0f} ускорит продажу"
+                reason = (
+                    f"Цена немного выше среднего ({avg_market:.0f}), легкая коррекция к {suggested:.0f} ускорит продажу"
+                )
             confidence = 0.75
 
         return PriceAdvice(
@@ -351,9 +336,7 @@ class AISalesAdvisor:
             reason=reason,
             confidence=confidence,
             market_data={
-                "avg_market": (
-                    sum(market_samples) / len(market_samples) if market_samples else 0
-                ),
+                "avg_market": (sum(market_samples) / len(market_samples) if market_samples else 0),
                 "samples": len(market_samples),
             },
             history_used=[],
@@ -364,11 +347,7 @@ class AISalesAdvisor:
     def _classify_intent(self, text: str) -> str:
         t = text.lower()
         if any(k in t for k in ["сколько", "цена", "uah", "грн", "$", "торг"]):
-            return (
-                "price_negotiation"
-                if any(k in t for k in ["торг", "скидк", "дешевл"])
-                else "price"
-            )
+            return "price_negotiation" if any(k in t for k in ["торг", "скидк", "дешевл"]) else "price"
         if any(k in t for k in ["есть", "наличии", "доступен"]):
             return "availability"
         if any(k in t for k in ["встрет", "забрать", "где", "когда", "достав"]):
@@ -403,9 +382,7 @@ class AISalesAdvisor:
             parts.append(f"последних {len(inbox_ctx)} сообщений в диалоге")
         return " ".join(parts) if parts else "готов уточнить детали"
 
-    def _estimate_confidence(
-        self, original: str, item_ctx: dict[str, Any], memory_snippets: list[Any]
-    ) -> float:
+    def _estimate_confidence(self, original: str, item_ctx: dict[str, Any], memory_snippets: list[Any]) -> float:
         score = 0.5
         if item_ctx.get("title"):
             score += 0.1

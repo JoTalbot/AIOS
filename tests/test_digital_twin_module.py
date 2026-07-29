@@ -1,4 +1,5 @@
 """Tests for aios_core/digital_twin.py"""
+
 from __future__ import annotations
 
 import pytest

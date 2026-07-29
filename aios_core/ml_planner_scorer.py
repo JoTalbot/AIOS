@@ -100,8 +100,7 @@ class MLPlannerScorer:
 
         return {
             "parallelism": len(layers) / max(1, total_steps),
-            "avg_dependencies": sum(len(s.dependencies) for s in plan.steps)
-            / max(1, total_steps),
+            "avg_dependencies": sum(len(s.dependencies) for s in plan.steps) / max(1, total_steps),
             "step_diversity": unique_types / 10.0,
             "has_evolution": any(s.step_type == "evolve" for s in plan.steps),
             "has_memory": any(s.step_type == "memory" for s in plan.steps),
@@ -244,18 +243,15 @@ class MLPlannerScorer:
             "relative_improvement": round(delta / max(0.001, abs(ml_b)) * 100, 2),
             "feature_comparison": {
                 "parallelism_delta": round(
-                    score_a["ml_features"]["parallelism"]
-                    - score_b["ml_features"]["parallelism"],
+                    score_a["ml_features"]["parallelism"] - score_b["ml_features"]["parallelism"],
                     3,
                 ),
                 "diversity_delta": round(
-                    score_a["ml_features"]["step_diversity"]
-                    - score_b["ml_features"]["step_diversity"],
+                    score_a["ml_features"]["step_diversity"] - score_b["ml_features"]["step_diversity"],
                     3,
                 ),
                 "goal_coverage_delta": round(
-                    score_a["ml_features"]["goal_coverage"]
-                    - score_b["ml_features"]["goal_coverage"],
+                    score_a["ml_features"]["goal_coverage"] - score_b["ml_features"]["goal_coverage"],
                     3,
                 ),
             },
@@ -282,9 +278,7 @@ class MLPlannerScorer:
         if not features["has_memory"]:
             suggestions.append("Add memory step for persistent state")
         if features["goal_coverage"] < 0.5:
-            suggestions.append(
-                "Increase goal coverage — more steps should address stated goals"
-            )
+            suggestions.append("Increase goal coverage — more steps should address stated goals")
         if features["novelty"] < 0.2:
             suggestions.append("Add diverse step types for novelty")
         if features["plan_length"] > 0.8:
@@ -320,9 +314,7 @@ class MLPlannerScorer:
         """Return recent score history."""
         return self._score_history[-limit:]
 
-    def detect_regression(
-        self, window: int = 10, threshold: float = 0.15
-    ) -> dict[str, Any]:
+    def detect_regression(self, window: int = 10, threshold: float = 0.15) -> dict[str, Any]:
         """Detect score regression in recent history.
 
         Returns regression info if average recent scores drop below

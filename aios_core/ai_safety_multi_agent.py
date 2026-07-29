@@ -39,21 +39,13 @@ class MultiAgentSafety:
     ) -> bool:
         """Detect conflict (backward-compatible)."""
         conflict = (
-            "harm" in str(action_a)
-            or "harm" in str(action_b)
-            or action_a.get("goal") == action_b.get("opposing_goal")
+            "harm" in str(action_a) or "harm" in str(action_b) or action_a.get("goal") == action_b.get("opposing_goal")
         )
-        self.agent_interactions.append(
-            {"agents": (agent_a, agent_b), "conflict": conflict}
-        )
+        self.agent_interactions.append({"agents": (agent_a, agent_b), "conflict": conflict})
         if conflict:
-            self._trust_matrix[(agent_a, agent_b)] = max(
-                0.0, self._trust_matrix.get((agent_a, agent_b), 0.5) - 0.1
-            )
+            self._trust_matrix[(agent_a, agent_b)] = max(0.0, self._trust_matrix.get((agent_a, agent_b), 0.5) - 0.1)
         else:
-            self._trust_matrix[(agent_a, agent_b)] = min(
-                1.0, self._trust_matrix.get((agent_a, agent_b), 0.5) + 0.05
-            )
+            self._trust_matrix[(agent_a, agent_b)] = min(1.0, self._trust_matrix.get((agent_a, agent_b), 0.5) + 0.05)
         return conflict
 
     def resolve_conflict(self, conflict: dict[str, Any]) -> dict[str, Any]:
@@ -71,12 +63,7 @@ class MultiAgentSafety:
             "agents": agents,
             "goal": shared_goal,
             "trust_level": round(
-                sum(
-                    self._trust_matrix.get((a, b), 0.5)
-                    for a in agents
-                    for b in agents
-                    if a != b
-                )
+                sum(self._trust_matrix.get((a, b), 0.5) for a in agents for b in agents if a != b)
                 / max(len(agents) * (len(agents) - 1), 1),
                 2,
             ),
@@ -96,24 +83,16 @@ class MultiAgentSafety:
     def emergent_risk_assessment(self) -> dict[str, Any]:
         """Assess emergent risks from multi-agent interactions."""
         total_conflicts = sum(1 for i in self.agent_interactions if i.get("conflict"))
-        risk_level = (
-            "high"
-            if total_conflicts > 5
-            else ("medium" if total_conflicts > 2 else "low")
-        )
+        risk_level = "high" if total_conflicts > 5 else ("medium" if total_conflicts > 2 else "low")
         return {
             "total_interactions": len(self.agent_interactions),
             "conflicts": total_conflicts,
             "risk_level": risk_level,
             "coalitions": len(self._coalitions),
-            "avg_trust": round(
-                sum(self._trust_matrix.values()) / max(len(self._trust_matrix), 1), 2
-            ),
+            "avg_trust": round(sum(self._trust_matrix.values()) / max(len(self._trust_matrix), 1), 2),
         }
 
-    def coordination_protocol(
-        self, agents: list[str], protocol_type: str = "democratic"
-    ) -> dict[str, Any]:
+    def coordination_protocol(self, agents: list[str], protocol_type: str = "democratic") -> dict[str, Any]:
         """Define coordination protocol for agent group."""
         protocols = {
             "democratic": {"voting": True, "consensus_threshold": 0.6},
@@ -149,9 +128,7 @@ class MultiAgentSafety:
         """Full multi-agent safety audit report."""
         return {
             "total_interactions": len(self.agent_interactions),
-            "conflicts_detected": sum(
-                1 for i in self.agent_interactions if i.get("conflict")
-            ),
+            "conflicts_detected": sum(1 for i in self.agent_interactions if i.get("conflict")),
             "trust_network": self.trust_network_analysis(),
             "coalitions": len(self._coalitions),
             "safety_boundaries": len(self._safety_boundaries),

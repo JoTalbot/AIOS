@@ -1,4 +1,5 @@
 """Tests for aios_core/webhook_manager.py"""
+
 from __future__ import annotations
 
 import pytest
@@ -16,7 +17,9 @@ class TestWebhookManager:
         assert manager is not None
 
     def test_register(self, manager):
-        result = manager.register(name="test_hook", url="https://example.com/hook", events=["task.completed", "alert.fired"])
+        result = manager.register(
+            name="test_hook", url="https://example.com/hook", events=["task.completed", "alert.fired"]
+        )
         assert result is not None
 
     def test_unregister(self, manager):

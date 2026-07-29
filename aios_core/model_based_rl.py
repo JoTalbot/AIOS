@@ -54,21 +54,14 @@ class DynamicsModel:
         best_sim = -1.0
         best_trans = None
         for trans in self.transitions:
-            sim = sum(
-                1
-                for k in state
-                if k in trans.state and str(state[k]) == str(trans.state[k])
-            )
+            sim = sum(1 for k in state if k in trans.state and str(state[k]) == str(trans.state[k]))
             sim /= max(len(state), 1)
             if sim > best_sim:
                 best_sim = sim
                 best_trans = trans
 
         if best_trans:
-            return {
-                k: v * 0.95 + best_trans.next_state.get(k, v) * 0.05
-                for k, v in state.items()
-            }
+            return {k: v * 0.95 + best_trans.next_state.get(k, v) * 0.05 for k, v in state.items()}
         return {k: v * 0.9 for k, v in state.items()}
 
     def predict_reward(self, state: dict[str, Any], action: Any) -> float:
@@ -119,9 +112,7 @@ class ModelBasedRL:
         done: bool = False,
     ) -> None:
         """Collect real environment experience."""
-        trans = TransitionRecord(
-            state=state, action=action, reward=reward, next_state=next_state, done=done
-        )
+        trans = TransitionRecord(state=state, action=action, reward=reward, next_state=next_state, done=done)
         self._experience.append(trans)
         self.dynamics.transitions.append(trans)
 
@@ -163,9 +154,7 @@ class ModelBasedRL:
         best_plan = max(plans, key=lambda p: p[-1].get("total_reward", 0))
         return best_plan[:horizon]
 
-    def imagine_rollout(
-        self, initial_state: dict[str, Any], horizon: int = 10
-    ) -> list[dict[str, Any]]:
+    def imagine_rollout(self, initial_state: dict[str, Any], horizon: int = 10) -> list[dict[str, Any]]:
         """Generate an imagined rollout from the dynamics model."""
         trajectory = []
         state = dict(initial_state)

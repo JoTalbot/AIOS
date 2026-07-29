@@ -54,11 +54,7 @@ class AgentMemory:
 
         # Remove promoted items from short-term
         promoted_keys = {k for k, c in freq.items() if c >= threshold}
-        self.short_term = [
-            item
-            for item in self.short_term
-            if item.get("key", str(item)) not in promoted_keys
-        ]
+        self.short_term = [item for item in self.short_term if item.get("key", str(item)) not in promoted_keys]
         return promoted
 
     def add_episodic(self, episode: dict) -> None:
@@ -162,12 +158,7 @@ class AdvancedAgent:
         """Break a goal into sub-goals using heuristics."""
         # Simple decomposition: split by conjunction words
         subgoals: list[str] = []
-        parts = (
-            goal.replace(" and ", "|")
-            .replace(" then ", "|")
-            .replace(" after ", "|")
-            .split("|")
-        )
+        parts = goal.replace(" and ", "|").replace(" then ", "|").replace(" after ", "|").split("|")
         subgoals = [part.strip() for part in parts]
         if not subgoals:
             subgoals = [goal]
@@ -268,9 +259,7 @@ class AdvancedAgent:
         """Self-reflect on goal progress and completed steps."""
         completed = len(self.completed_steps)
         total = len(self.plan)
-        tool_calls = sum(
-            1 for s in self.completed_steps if s.get("tool_result") is not None
-        )
+        tool_calls = sum(1 for s in self.completed_steps if s.get("tool_result") is not None)
 
         progress = completed / max(1, total)
         reflection = f"Reflection: {completed}/{total} steps completed ({progress:.0%}). Tool calls: {tool_calls}."
@@ -338,9 +327,7 @@ class AgentOrchestrator:
         """Remove an agent from the orchestrator."""
         return self.agents.pop(agent_id, None) is not None
 
-    def send_message(
-        self, from_id: str, to_id: str, content: str, topic: str = ""
-    ) -> dict[str, Any]:
+    def send_message(self, from_id: str, to_id: str, content: str, topic: str = "") -> dict[str, Any]:
         """Send a message between agents."""
         if from_id not in self.agents or to_id not in self.agents:
             return {"success": False, "error": "Agent not found"}
@@ -364,7 +351,11 @@ class AgentOrchestrator:
 
     def delegate_task(self, task: str, required_tool: str = "") -> AdvancedAgent | None:
         """Find and return the best agent for a task based on tool availability."""
-        candidates = [agent for agent in self.agents.values() if (required_tool and required_tool in agent.tools) or not required_tool]
+        candidates = [
+            agent
+            for agent in self.agents.values()
+            if (required_tool and required_tool in agent.tools) or not required_tool
+        ]
 
         if not candidates:
             return None

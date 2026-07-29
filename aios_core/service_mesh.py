@@ -116,9 +116,7 @@ class ServiceMesh:
         weight: int = 100,
     ) -> ServiceInstance:
         """Register a service instance."""
-        instance = ServiceInstance(
-            name=name, endpoint=endpoint, metadata=metadata or {}, weight=weight
-        )
+        instance = ServiceInstance(name=name, endpoint=endpoint, metadata=metadata or {}, weight=weight)
         self.services[name] = instance
         return instance
 
@@ -158,13 +156,9 @@ class ServiceMesh:
 
     # ── Traffic Routing ──────────────────────────────────────────
 
-    def add_route(
-        self, source: str, targets: dict[str, int], name: str | None = None
-    ) -> TrafficRule:
+    def add_route(self, source: str, targets: dict[str, int], name: str | None = None) -> TrafficRule:
         """Add a traffic splitting rule."""
-        rule = TrafficRule(
-            name=name or f"{source}_route", source=source, targets=targets
-        )
+        rule = TrafficRule(name=name or f"{source}_route", source=source, targets=targets)
         self.routes.append(rule)
         return rule
 

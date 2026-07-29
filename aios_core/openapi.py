@@ -134,8 +134,6 @@ def generate_openapi_spec() -> dict[str, Any]:
     builder = OpenAPISpec()
     builder.add_endpoint("/health", "get", "Health check", {"200": "OK"})
     builder.add_endpoint("/api/v1/stats", "get", "System statistics", {"200": "Stats"})
-    builder.add_endpoint(
-        "/api/v1/tasks", "post", "Create task", {"201": "Task created"}
-    )
+    builder.add_endpoint("/api/v1/tasks", "post", "Create task", {"201": "Task created"})
     builder.add_security_scheme("BearerAuth", {"type": "http", "scheme": "bearer"})
     return builder.generate_spec()

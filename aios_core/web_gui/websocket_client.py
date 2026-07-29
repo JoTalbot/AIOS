@@ -28,15 +28,15 @@ class DashboardWebSocket:
                 httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client,
                 client.stream("GET", self.url) as response,
             ):
-                    async for line in response.aiter_text():
-                        if line.startswith("{"):
-                            try:
-                                data = json.loads(line)
-                                event = data.get("event", "message")
-                                for callback in self._listeners.get(event, []):
-                                    callback(data)
-                            except Exception:
-                                pass
+                async for line in response.aiter_text():
+                    if line.startswith("{"):
+                        try:
+                            data = json.loads(line)
+                            event = data.get("event", "message")
+                            for callback in self._listeners.get(event, []):
+                                callback(data)
+                        except Exception:
+                            pass
         except Exception:
             pass
 

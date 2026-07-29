@@ -150,14 +150,9 @@ def write_parser(
     parser_path = module_dir / "card_parser.py"
 
     if not dry_run and not init_path.exists():
-        raise ValueError(
-            f"module not scaffolded: {module_dir} (run aios platforms scaffold first)"
-        )
+        raise ValueError(f"module not scaffolded: {module_dir} (run aios platforms scaffold first)")
     if parser_path.exists() and not overwrite:
-        raise ValueError(
-            f"file already exists: {parser_path} (use overwrite/force "
-            "to regenerate after re-calibration)"
-        )
+        raise ValueError(f"file already exists: {parser_path} (use overwrite/force to regenerate after re-calibration)")
 
     files: dict[str, str] = {
         str(parser_path): generate_parser_source(
@@ -168,11 +163,7 @@ def write_parser(
     }
 
     init_content: str | None = None
-    import_line = (
-        f"from .card_parser import "
-        f"{_class_name(platform_name)}{_PARSER_CLASS_SUFFIX}  "
-        f"{_INIT_IMPORT_MARK}\n"
-    )
+    import_line = f"from .card_parser import {_class_name(platform_name)}{_PARSER_CLASS_SUFFIX}  {_INIT_IMPORT_MARK}\n"
     if init_path.exists():
         current = init_path.read_text(encoding="utf-8")
         if _INIT_IMPORT_MARK not in current:

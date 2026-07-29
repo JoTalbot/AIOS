@@ -103,9 +103,7 @@ class QuantumGravitySimulator:
             "schwarzschild_radius": rs,
             "hawking_temperature": hawking_temp,
             "entropy_estimate": entropy,
-            "information_capacity_bits": round(
-                entropy / (math.log(2) * self.PLANCK_LENGTH**2), 0
-            ),
+            "information_capacity_bits": round(entropy / (math.log(2) * self.PLANCK_LENGTH**2), 0),
             "evaporation_time_estimate": round(mass**3 * 8e-17, 2),
         }
 
@@ -116,11 +114,7 @@ class QuantumGravitySimulator:
         edges = []
         for spin in spins:
             round(
-                spin
-                * self.PLANCK_LENGTH**2
-                * 8
-                * math.pi
-                * math.sqrt(spin * (spin + 1)),
+                spin * self.PLANCK_LENGTH**2 * 8 * math.pi * math.sqrt(spin * (spin + 1)),
                 2,
             )
             edges.append(
@@ -168,9 +162,7 @@ class QuantumGravitySimulator:
             "cft_coupling": round(random.uniform(0.1, 0.5), 3),
         }
 
-    def gravitational_wave(
-        self, frequency_hz: float = 100.0, amplitude: float = 1e-21
-    ) -> dict[str, Any]:
+    def gravitational_wave(self, frequency_hz: float = 100.0, amplitude: float = 1e-21) -> dict[str, Any]:
         """Simulate quantum-coherent gravitational wave."""
         wave = {
             "frequency_hz": frequency_hz,
@@ -178,9 +170,7 @@ class QuantumGravitySimulator:
             "quantum_coherent": random.random() > 0.5,
             "photon_number": round(amplitude * 1e40 / frequency_hz, 0),
             "interferometer_sensitivity": round(amplitude * 2, 24),
-            "source_type": random.choice(
-                ["binary_merger", "supernova", "cosmic_string"]
-            ),
+            "source_type": random.choice(["binary_merger", "supernova", "cosmic_string"]),
         }
         self._gravitational_waves.append(wave)
         return wave
@@ -195,18 +185,14 @@ class QuantumGravitySimulator:
                         "x": i * self.PLANCK_LENGTH,
                         "y": j * self.PLANCK_LENGTH,
                         "topology_change": random.random() > 0.9,
-                        "wormhole_probability": round(
-                            random.uniform(1e-100, 1e-50), 100
-                        ),
+                        "wormhole_probability": round(random.uniform(1e-100, 1e-50), 100),
                     }
                 )
         return {
             "resolution": resolution,
             "planck_cells": len(cells),
             "topology_changes": sum(1 for c in cells if c["topology_change"]),
-            "foam_density": round(
-                sum(1 for c in cells if c["topology_change"]) / len(cells), 3
-            ),
+            "foam_density": round(sum(1 for c in cells if c["topology_change"]) / len(cells), 3),
         }
 
     def stats(self) -> dict[str, Any]:

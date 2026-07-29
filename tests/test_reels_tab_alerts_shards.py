@@ -159,9 +159,7 @@ def test_reels_driver_for_yaml_and_defaults(tmp_path):
                     "parser_hints": {
                         "navigation": {
                             "reels_tab": {
-                                "rid_markers": [
-                                    {"resource_id": "com.instagram.android:id/video_tab"}
-                                ],
+                                "rid_markers": [{"resource_id": "com.instagram.android:id/video_tab"}],
                                 "text_markers": ["Кліпси"],
                             }
                         }
@@ -348,9 +346,7 @@ def test_cli_reels_open_tab_and_webhook(tmp_path, capsys, monkeypatch, instagram
     assert recorder.events[0][1] == "video-new"
 
 
-def test_cli_reels_open_tab_missing_tab_reports_error(
-    tmp_path, capsys, monkeypatch, instagram_registered
-):
+def test_cli_reels_open_tab_missing_tab_reports_error(tmp_path, capsys, monkeypatch, instagram_registered):
     from aios_cli import main
 
     _write_yaml(tmp_path, {})
@@ -465,11 +461,7 @@ def test_cron_plan_shard_map_groups_by_host(tmp_path, capsys, monkeypatch):
     assert "# === host:" in plan
     # Строка autopilot профиля main — под заголовком его sticky-хоста:
     lines = plan.splitlines()
-    auto_idx = next(
-        i
-        for i, line in enumerate(lines)
-        if "instagram autopilot" in line and "instagram-main" in line
-    )
+    auto_idx = next(i for i, line in enumerate(lines) if "instagram autopilot" in line and "instagram-main" in line)
     header = next(lines[i] for i in range(auto_idx, -1, -1) if lines[i].startswith("# === host:"))
     assert f"host: {expected}" in header
     assert "pool monitor — запускать на каждом хосте" in plan

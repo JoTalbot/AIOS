@@ -63,9 +63,7 @@ class DevicePool:
         # По умолчанию — постоянный файл data/devices.sqlite, чтобы пул
         # переживал перезапуски CLI-процессов; ":memory:" — для тестов.
         """Initialize DevicePool."""
-        self.db_path = db_path or os.environ.get(
-            "AIOS_DEVICES_DB", "data/devices.sqlite"
-        )
+        self.db_path = db_path or os.environ.get("AIOS_DEVICES_DB", "data/devices.sqlite")
         if self.db_path != ":memory:":
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
@@ -115,32 +113,25 @@ class DevicePool:
     def limit(self, key: str, default: int | None = None) -> int | None:
         """Значение квоты или default."""
         with self._lock:
-            row = self._conn.execute(
-                "SELECT value FROM pool_limits WHERE key = ?", (key,)
-            ).fetchone()
+            row = self._conn.execute("SELECT value FROM pool_limits WHERE key = ?", (key,)).fetchone()
         return int(row["value"]) if row else default
 
     def limits(self) -> dict[str, int]:
         """Все установленные квоты."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT key, value FROM pool_limits ORDER BY key"
-            ).fetchall()
+            rows = self._conn.execute("SELECT key, value FROM pool_limits ORDER BY key").fetchall()
         return {row["key"]: int(row["value"]) for row in rows}
 
     def count_avds(self) -> int:
         """Сколько устройств пула — auto-созданные AVD (есть avd_name)."""
         with self._lock:
-            row = self._conn.execute(
-                "SELECT COUNT(*) AS c FROM devices WHERE avd_name IS NOT NULL"
-            ).fetchone()
+            row = self._conn.execute("SELECT COUNT(*) AS c FROM devices WHERE avd_name IS NOT NULL").fetchone()
         return int(row["c"])
 
     def _busy_platform(self, platform: str) -> int:
         with self._lock:
             row = self._conn.execute(
-                "SELECT COUNT(*) AS c FROM devices "
-                "WHERE status = ? AND profile_key LIKE ?",
+                "SELECT COUNT(*) AS c FROM devices WHERE status = ? AND profile_key LIKE ?",
                 (STATUS_BUSY, f"{platform}:%"),
             ).fetchone()
         return int(row["c"])
@@ -159,8 +150,7 @@ class DevicePool:
         now = self._now()
         with self._lock, self._conn:
             existing = self._conn.execute(
-                "SELECT id FROM pool_waitlist "
-                "WHERE profile_key = ? AND status = 'waiting'",
+                "SELECT id FROM pool_waitlist WHERE profile_key = ? AND status = 'waiting'",
                 (profile_key,),
             ).fetchone()
             if existing is not None:
@@ -177,8 +167,7 @@ class DevicePool:
         """Снимает профиль с очереди. True, если запись была."""
         with self._lock, self._conn:
             cursor = self._conn.execute(
-                "UPDATE pool_waitlist SET status = 'cancelled' "
-                "WHERE profile_key = ? AND status = 'waiting'",
+                "UPDATE pool_waitlist SET status = 'cancelled' WHERE profile_key = ? AND status = 'waiting'",
                 (profile_key,),
             )
             return bool(cursor.rowcount)
@@ -208,8 +197,7 @@ class DevicePool:
                 continue
             with self._lock, self._conn:
                 self._conn.execute(
-                    "UPDATE pool_waitlist SET status = 'served', "
-                    "served_serial = ?, served_at = ? WHERE id = ?",
+                    "UPDATE pool_waitlist SET status = 'served', served_serial = ?, served_at = ? WHERE id = ?",
                     (record["serial"], self._now(), entry["id"]),
                 )
             entry = dict(entry, status="served", served_serial=record["serial"])
@@ -224,14 +212,10 @@ class DevicePool:
         """
         now = self._now()
         with self._lock, self._conn:
-            existing = self._conn.execute(
-                "SELECT 1 FROM devices WHERE serial = ?", (serial,)
-            ).fetchone()
+            existing = self._conn.execute("SELECT 1 FROM devices WHERE serial = ?", (serial,)).fetchone()
             max_devices = self.limit("max_devices")
             if existing is None and max_devices is not None:
-                total = self._conn.execute(
-                    "SELECT COUNT(*) AS c FROM devices"
-                ).fetchone()["c"]
+                total = self._conn.execute("SELECT COUNT(*) AS c FROM devices").fetchone()["c"]
                 if total >= max_devices:
                     raise ValueError(f"pool quota reached: max_devices={max_devices}")
             self._conn.execute(
@@ -252,17 +236,13 @@ class DevicePool:
     def get(self, serial: str) -> dict | None:
         """Запись об устройстве или None."""
         with self._lock:
-            row = self._conn.execute(
-                "SELECT * FROM devices WHERE serial = ?", (serial,)
-            ).fetchone()
+            row = self._conn.execute("SELECT * FROM devices WHERE serial = ?", (serial,)).fetchone()
         return dict(row) if row else None
 
     def status(self) -> list[dict]:
         """Все устройства пула (по serial)."""
         with self._lock:
-            rows = self._conn.execute(
-                "SELECT * FROM devices ORDER BY serial"
-            ).fetchall()
+            rows = self._conn.execute("SELECT * FROM devices ORDER BY serial").fetchall()
         return [dict(row) for row in rows]
 
     def heartbeat(self, serial: str) -> bool:
@@ -301,9 +281,7 @@ class DevicePool:
         platform = profile_key.split(":", 1)[0]
         with self._lock, self._conn:
             if serial is not None:
-                row = self._conn.execute(
-                    "SELECT * FROM devices WHERE serial = ?", (serial,)
-                ).fetchone()
+                row = self._conn.execute("SELECT * FROM devices WHERE serial = ?", (serial,)).fetchone()
                 if row is None:
                     raise ValueError(f"device '{serial}' is not registered")
                 if row["status"] == STATUS_BUSY and row["profile_key"] != profile_key:
@@ -312,10 +290,7 @@ class DevicePool:
                     return None
                 if row["status"] != STATUS_BUSY:
                     busy_cap = self.limit(f"max_busy:{platform}")
-                    if (
-                        busy_cap is not None
-                        and self._busy_platform(platform) >= busy_cap
-                    ):
+                    if busy_cap is not None and self._busy_platform(platform) >= busy_cap:
                         return None
                 chosen = row["serial"]
             else:
@@ -326,8 +301,7 @@ class DevicePool:
                 ).fetchone()
                 if held is not None:
                     self._conn.execute(
-                        "UPDATE devices SET leased_at = ?, last_heartbeat = ? "
-                        "WHERE serial = ?",
+                        "UPDATE devices SET leased_at = ?, last_heartbeat = ? WHERE serial = ?",
                         (now, now, held["serial"]),
                     )
                     self._sync_profile_store(held["serial"], profile_key, profile_store)
@@ -336,16 +310,14 @@ class DevicePool:
                 if busy_cap is not None and self._busy_platform(platform) >= busy_cap:
                     return None
                 row = self._conn.execute(
-                    "SELECT * FROM devices WHERE status = ? "
-                    "ORDER BY COALESCE(leased_at, created_at) ASC LIMIT 1",
+                    "SELECT * FROM devices WHERE status = ? ORDER BY COALESCE(leased_at, created_at) ASC LIMIT 1",
                     (STATUS_IDLE,),
                 ).fetchone()
                 if row is None:
                     return None
                 chosen = row["serial"]
             self._conn.execute(
-                "UPDATE devices SET status = ?, profile_key = ?, leased_at = ?, "
-                "last_heartbeat = ? WHERE serial = ?",
+                "UPDATE devices SET status = ?, profile_key = ?, leased_at = ?, last_heartbeat = ? WHERE serial = ?",
                 (STATUS_BUSY, profile_key, now, now, chosen),
             )
         self._sync_profile_store(chosen, profile_key, profile_store)
@@ -388,8 +360,7 @@ class DevicePool:
                 (STATUS_OFFLINE, cutoff),
             ).fetchall()
             self._conn.execute(
-                "UPDATE devices SET status = ?, profile_key = NULL "
-                "WHERE status != ? AND last_heartbeat < ?",
+                "UPDATE devices SET status = ?, profile_key = NULL WHERE status != ? AND last_heartbeat < ?",
                 (STATUS_OFFLINE, STATUS_OFFLINE, cutoff),
             )
         reaped = [row["serial"] for row in rows]

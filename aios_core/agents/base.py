@@ -9,6 +9,7 @@ class AgentState:
     current_agent: str
     result: dict[str, Any] = None
 
+
 class BaseAgent:
     def __init__(self, name: str):
         self.name = name

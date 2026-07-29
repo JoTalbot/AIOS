@@ -30,9 +30,7 @@ class RozetkaFavorites:
             min_drop_pct: Minimum price drop percentage for favorite alerts.
         """
         self.storage = storage
-        self.price_tracker = price_tracker or RozetkaPriceTracker(
-            storage, min_drop_pct=min_drop_pct
-        )
+        self.price_tracker = price_tracker or RozetkaPriceTracker(storage, min_drop_pct=min_drop_pct)
         self.min_drop_pct = min_drop_pct
 
     def add(self, fingerprint: str) -> bool:

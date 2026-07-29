@@ -106,9 +106,7 @@ class MultiAgentRL:
         # Compute rewards based on mode
         if self.mode == "cooperative":
             # All agents benefit from cooperation
-            coop_count = sum(
-                1 for a in actions.values() if a in ("cooperate", "share", "help")
-            )
+            coop_count = sum(1 for a in actions.values() if a in ("cooperate", "share", "help"))
             base_reward = 1.0 + coop_count * 0.5
             for agent_id in actions:
                 rewards[agent_id] = base_reward
@@ -131,12 +129,7 @@ class MultiAgentRL:
 
         # Create episode result
         coop_ratio = (
-            (
-                sum(1 for a in actions.values() if a in ("cooperate", "share", "help"))
-                / len(actions)
-            )
-            if actions
-            else 0.0
+            (sum(1 for a in actions.values() if a in ("cooperate", "share", "help")) / len(actions)) if actions else 0.0
         )
 
         result = EpisodeResult(
@@ -153,9 +146,7 @@ class MultiAgentRL:
 
     # ── Communication ──────────────────────────────────────────────
 
-    def send_message(
-        self, from_agent: str, to_agent: str, content: str, msg_type: str = "info"
-    ) -> dict[str, Any]:
+    def send_message(self, from_agent: str, to_agent: str, content: str, msg_type: str = "info") -> dict[str, Any]:
         """Send a message between agents."""
         msg = {
             "from": from_agent,
@@ -169,9 +160,7 @@ class MultiAgentRL:
 
     def get_messages(self, agent_id: str, limit: int = 10) -> list[dict[str, Any]]:
         """Get messages for an agent."""
-        relevant = [
-            m for m in self.messages if m["to"] == agent_id or m["from"] == agent_id
-        ]
+        relevant = [m for m in self.messages if m["to"] == agent_id or m["from"] == agent_id]
         return relevant[-limit:]
 
     # ── Team Metrics ────────────────────────────────────────────────
@@ -181,9 +170,7 @@ class MultiAgentRL:
         if not self.agents:
             return 0.0
         coop = sum(a.cooperation_count for a in self.agents.values())
-        total = sum(
-            a.cooperation_count + a.defection_count for a in self.agents.values()
-        )
+        total = sum(a.cooperation_count + a.defection_count for a in self.agents.values())
         return coop / total if total > 0 else 0.0
 
     def avg_reward(self) -> float:

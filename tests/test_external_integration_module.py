@@ -1,4 +1,5 @@
 """Tests for aios_core/external_integration.py"""
+
 from __future__ import annotations
 
 from aios_core.external_integration import ExternalIntegrationAPI, IntegrationMetrics

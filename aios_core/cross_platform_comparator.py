@@ -106,9 +106,7 @@ class ComparisonGroup:
             "products": [p.__dict__ for p in self.products],
             "lowest_price": self.lowest_price,
             "highest_price": self.highest_price,
-            "average_price": round(self.average_price, 2)
-            if self.average_price
-            else None,
+            "average_price": round(self.average_price, 2) if self.average_price else None,
             "spread_pct": round(self.spread_pct, 2) if self.spread_pct else None,
             "best_platform": self.best_platform,
             "created_at": self.created_at,
@@ -181,9 +179,7 @@ class CrossPlatformComparator:
 
         return self._group_products(all_products)
 
-    def compare_product(
-        self, fingerprint: str, platform: str
-    ) -> ComparisonGroup | None:
+    def compare_product(self, fingerprint: str, platform: str) -> ComparisonGroup | None:
         """Find the same product on other platforms.
 
         Args:
@@ -248,9 +244,7 @@ class CrossPlatformComparator:
         group_id = f"cmp_{hash(source_ad.title.lower()) % 100000}"
         return ComparisonGroup(group_id=group_id, products=products)
 
-    def _group_products(
-        self, products: list[CrossPlatformProduct]
-    ) -> list[ComparisonGroup]:
+    def _group_products(self, products: list[CrossPlatformProduct]) -> list[ComparisonGroup]:
         """Group products by title similarity across platforms."""
         groups: list[ComparisonGroup] = []
         used: set[int] = set()
@@ -273,15 +267,11 @@ class CrossPlatformComparator:
 
             if len(group_products) >= 2:
                 group_id = f"cmp_{hash(p1.title.lower()) % 100000}"
-                groups.append(
-                    ComparisonGroup(group_id=group_id, products=group_products)
-                )
+                groups.append(ComparisonGroup(group_id=group_id, products=group_products))
 
         return groups
 
-    def arbitrage_opportunities(
-        self, min_spread_pct: float = 10.0
-    ) -> list[ComparisonGroup]:
+    def arbitrage_opportunities(self, min_spread_pct: float = 10.0) -> list[ComparisonGroup]:
         """Find arbitrage opportunities where spread ≥ min_spread_pct.
 
         Args:
@@ -291,6 +281,4 @@ class CrossPlatformComparator:
             ComparisonGroups with sufficient spread for arbitrage.
         """
         all_groups = self.compare()
-        return [
-            g for g in all_groups if g.spread_pct and g.spread_pct >= min_spread_pct
-        ]
+        return [g for g in all_groups if g.spread_pct and g.spread_pct >= min_spread_pct]

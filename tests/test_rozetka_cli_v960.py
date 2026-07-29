@@ -25,13 +25,31 @@ def test_rozetka_price_tracker_drops():
     from aios_core.modules.rozetka import RozetkaStorage
 
     storage = RozetkaStorage(":memory:")
-    card1 = AdCard(title="Phone", price=30000.0, currency="UAH", city="Kyiv",
-                   published_text="today", is_top=False, url="https://rozetka.ua/phone",
-                   ad_id="r-phone", query="test", raw_texts=["Phone"])
+    card1 = AdCard(
+        title="Phone",
+        price=30000.0,
+        currency="UAH",
+        city="Kyiv",
+        published_text="today",
+        is_top=False,
+        url="https://rozetka.ua/phone",
+        ad_id="r-phone",
+        query="test",
+        raw_texts=["Phone"],
+    )
     storage.save_ads([card1])
-    card2 = AdCard(title="Phone", price=27000.0, currency="UAH", city="Kyiv",
-                   published_text="today", is_top=False, url="https://rozetka.ua/phone",
-                   ad_id="r-phone", query="test", raw_texts=["Phone"])
+    card2 = AdCard(
+        title="Phone",
+        price=27000.0,
+        currency="UAH",
+        city="Kyiv",
+        published_text="today",
+        is_top=False,
+        url="https://rozetka.ua/phone",
+        ad_id="r-phone",
+        query="test",
+        raw_texts=["Phone"],
+    )
     storage.save_ads([card2])
 
     _make_args(
@@ -45,6 +63,7 @@ def test_rozetka_price_tracker_drops():
     # The CLI uses _resolve_rozetka_db which may fail with :memory: for profile resolution
     # So we test the price tracker directly
     from aios_core.modules.rozetka import RozetkaPriceTracker
+
     tracker = RozetkaPriceTracker(storage, min_drop_pct=5.0)
     alerts = tracker.detect_drops()
     assert len(alerts) >= 1
@@ -57,9 +76,18 @@ def test_rozetka_price_tracker_track():
     from aios_core.modules.rozetka import RozetkaPriceTracker, RozetkaStorage
 
     storage = RozetkaStorage(":memory:")
-    card = AdCard(title="Phone", price=30000.0, currency="UAH", city="Kyiv",
-                  published_text="today", is_top=False, url="https://rozetka.ua/phone",
-                  ad_id="r-phone-track", query="test", raw_texts=["Phone"])
+    card = AdCard(
+        title="Phone",
+        price=30000.0,
+        currency="UAH",
+        city="Kyiv",
+        published_text="today",
+        is_top=False,
+        url="https://rozetka.ua/phone",
+        ad_id="r-phone-track",
+        query="test",
+        raw_texts=["Phone"],
+    )
     storage.save_ads([card])
 
     tracker = RozetkaPriceTracker(storage)

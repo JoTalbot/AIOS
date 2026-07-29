@@ -44,12 +44,8 @@ class HonestAI:
 
     def train_on_honesty(self, prompt: str, honest_response: str) -> None:
         """Store a training pair (backward-compatible)."""
-        self.honesty_training_data.append(
-            {"prompt": prompt, "honest_response": honest_response}
-        )
-        self._examples.append(
-            HonestyExample(prompt=prompt, honest_response=honest_response)
-        )
+        self.honesty_training_data.append({"prompt": prompt, "honest_response": honest_response})
+        self._examples.append(HonestyExample(prompt=prompt, honest_response=honest_response))
         logger.info("Added honesty training example: %s", prompt[:50])
 
     def evaluate_honesty(self, response: str, ground_truth: str) -> float:
@@ -59,9 +55,7 @@ class HonestAI:
             return 1.0
         # Partial match scoring
         score = self._compute_similarity(response, ground_truth)
-        self.violations.append(
-            {"response": response, "ground_truth": ground_truth, "score": score}
-        )
+        self.violations.append({"response": response, "ground_truth": ground_truth, "score": score})
         self._calibration_scores.append(score)
         return round(score, 2)
 
@@ -78,9 +72,7 @@ class HonestAI:
         if not self._calibration_scores:
             return {"avg_calibration": 0.0, "perfect_count": 0}
         return {
-            "avg_calibration": round(
-                sum(self._calibration_scores) / len(self._calibration_scores), 3
-            ),
+            "avg_calibration": round(sum(self._calibration_scores) / len(self._calibration_scores), 3),
             "perfect_count": sum(1 for s in self._calibration_scores if s == 1.0),
             "total_evaluations": len(self._calibration_scores),
         }
@@ -92,9 +84,7 @@ class HonestAI:
             "temptation": temptation,
             "resisted": random.random() > 0.3,
             "honesty_score": round(
-                random.uniform(0.7, 1.0)
-                if random.random() > 0.3
-                else random.uniform(0.2, 0.5),
+                random.uniform(0.7, 1.0) if random.random() > 0.3 else random.uniform(0.2, 0.5),
                 2,
             ),
         }
@@ -106,9 +96,7 @@ class HonestAI:
         accuracy = evidence.get("accuracy", 0.5)
         transparency = evidence.get("transparency", 0.5)
         uncertainty_acknowledgment = evidence.get("uncertainty_ack", 0.0)
-        return round(
-            0.5 * accuracy + 0.3 * transparency + 0.2 * uncertainty_acknowledgment, 2
-        )
+        return round(0.5 * accuracy + 0.3 * transparency + 0.2 * uncertainty_acknowledgment, 2)
 
     def transparency_audit(self, responses: list[str]) -> dict[str, Any]:
         """Audit responses for transparency markers."""

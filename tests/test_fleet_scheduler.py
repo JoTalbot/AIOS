@@ -16,6 +16,7 @@ from aios_core.fleet_scheduler import (
 
 # ─── FleetDevice ───
 
+
 class TestFleetDevice:
     """Tests for FleetDevice dataclass."""
 
@@ -85,6 +86,7 @@ class TestFleetDevice:
 
 # ─── FleetTask ───
 
+
 class TestFleetTask:
     """Tests for FleetTask dataclass."""
 
@@ -98,8 +100,11 @@ class TestFleetTask:
     def test_task_duration(self) -> None:
         """Completed task → duration computed."""
         task = FleetTask(
-            task_id="t1", platform="olx", action="collect",
-            started_at=100.0, completed_at=115.0,
+            task_id="t1",
+            platform="olx",
+            action="collect",
+            started_at=100.0,
+            completed_at=115.0,
         )
         assert task.duration == 15.0
 
@@ -119,6 +124,7 @@ class TestFleetTask:
 
 
 # ─── FleetScheduler ───
+
 
 class TestFleetScheduler:
     """Tests for FleetScheduler."""
@@ -385,6 +391,7 @@ class TestFleetScheduler:
 
 
 # ─── Integration ───
+
 
 class TestFleetSchedulerIntegration:
     """Integration tests for full fleet workflow."""

@@ -37,9 +37,7 @@ class RetentionLayer:
         [xi * w for xi, w in zip(x, self._weights_k, strict=False)]
         proj_v = [xi * w for xi, w in zip(x, self._weights_v, strict=False)]
         # Decay-weighted aggregation
-        new_state = [
-            (s * self.gamma + qk * v) for s, qk, v in zip(self.state, proj_q, proj_v, strict=False)
-        ]
+        new_state = [(s * self.gamma + qk * v) for s, qk, v in zip(self.state, proj_q, proj_v, strict=False)]
         self.state = new_state
         return new_state
 
@@ -49,21 +47,15 @@ class RetentionLayer:
         [xi * w for xi, w in zip(x, self._weights_k, strict=False)]
         proj_v = [xi * w for xi, w in zip(x, self._weights_v, strict=False)]
         # RNN-style: state = gamma * state + q * k^T * v (simplified to element-wise)
-        self.state = [
-            s * self.gamma + q * v for s, q, v in zip(self.state, proj_q, proj_v, strict=False)
-        ]
+        self.state = [s * self.gamma + q * v for s, q, v in zip(self.state, proj_q, proj_v, strict=False)]
         return list(self.state)
 
-    def chunkwise_inference(
-        self, chunks: list[list[float]], chunk_size: int = 8
-    ) -> list[float]:
+    def chunkwise_inference(self, chunks: list[list[float]], chunk_size: int = 8) -> list[float]:
         """Chunk-wise inference: process in chunks for efficiency."""
         all_outputs: list[float] = []
         for chunk in chunks:
             for xi in chunk:
-                out = self.recurrent_retention(
-                    xi if isinstance(xi, list) else [xi] * self.dim
-                )
+                out = self.recurrent_retention(xi if isinstance(xi, list) else [xi] * self.dim)
                 all_outputs.extend(out[:chunk_size])
         return all_outputs[: self.dim]
 

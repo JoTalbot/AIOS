@@ -35,9 +35,7 @@ class APKFunctionConverter:
 
         for comp in exported_components:
             comp_name = comp.get("name", "UnknownComponent")
-            comp_type = comp.get(
-                "type", "activity"
-            )  # "activity", "service", "receiver", "provider"
+            comp_type = comp.get("type", "activity")  # "activity", "service", "receiver", "provider"
             intent_filter = comp.get("intent_filter", "android.intent.action.MAIN")
 
             # Formulate AIOS Capability name and API route
@@ -96,9 +94,7 @@ class APKFunctionConverter:
 
     def stats(self) -> dict[str, Any]:
         """Return statistics dict."""
-        total_caps = sum(
-            p["total_converted_capabilities"] for p in self.converted_profiles.values()
-        )
+        total_caps = sum(p["total_converted_capabilities"] for p in self.converted_profiles.values())
         return {
             "total_profiles": len(self.converted_profiles),
             "total_converted_capabilities": total_caps,

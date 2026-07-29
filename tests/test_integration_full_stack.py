@@ -1,4 +1,5 @@
 """Full stack integration — all major components."""
+
 from aios_core.event_bus import EventBus
 from aios_core.knowledge_graph import KnowledgeGraph
 from aios_core.memory_manager import MemoryManager

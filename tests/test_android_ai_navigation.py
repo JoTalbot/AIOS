@@ -27,9 +27,7 @@ class TestAIScreenClassifier:
         ]
         mock_parser_cls.return_value = mock_parser
         classifier = AIScreenClassifier()
-        result = classifier.classify(
-            "<uiclass><element text='test'/><element text='another'/></uiclass>"
-        )
+        result = classifier.classify("<uiclass><element text='test'/><element text='another'/></uiclass>")
         assert isinstance(result, ScreenEmbedding)
         assert result.name == "unknown"
 

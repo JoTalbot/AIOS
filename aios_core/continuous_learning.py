@@ -111,11 +111,7 @@ class ContinuousLearning:
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics (backward-compatible)."""
-        avg_perf = (
-            (sum(self.performance_history) / len(self.performance_history))
-            if self.performance_history
-            else 0
-        )
+        avg_perf = (sum(self.performance_history) / len(self.performance_history)) if self.performance_history else 0
         return {
             "experiences": len(self.knowledge_base),
             "avg_performance": round(avg_perf, 4),

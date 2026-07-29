@@ -24,9 +24,7 @@ logger = logging.getLogger(__name__)
 class SimulationScenario:
     """Registered scenario descriptor."""
 
-    def __init__(
-        self, name: str, func: Callable, params_schema: dict[str, Any] | None = None
-    ) -> None:
+    def __init__(self, name: str, func: Callable, params_schema: dict[str, Any] | None = None) -> None:
         self.name = name
         self.func = func
         self.params_schema = params_schema or {}
@@ -67,9 +65,7 @@ class SimulationEngine:
             self._dependencies[scenario] = []
         self._dependencies[scenario].append(depends_on)
 
-    def run(
-        self, scenario_name: str, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def run(self, scenario_name: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Run a single scenario (backward-compatible)."""
         if scenario_name not in self.scenarios:
             return {"error": "Scenario not found"}
@@ -88,9 +84,7 @@ class SimulationEngine:
             self._results_log.append(output)
             return output
 
-    def monte_carlo(
-        self, scenario_name: str, runs: int = 100, params: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def monte_carlo(self, scenario_name: str, runs: int = 100, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Monte Carlo simulation (backward-compatible + enhanced)."""
         results: list[Any] = []
         for _ in range(runs):
@@ -99,11 +93,7 @@ class SimulationEngine:
                 results.append(res.get("result", 0))
         if not results:
             return {"runs": runs, "average": 0, "min": 0, "max": 0}
-        avg = (
-            sum(results) / len(results)
-            if isinstance(results[0], (int, float))
-            else None
-        )
+        avg = sum(results) / len(results) if isinstance(results[0], (int, float)) else None
         nums = results if all(isinstance(r, (int, float)) for r in results) else []
         output: dict[str, Any] = {
             "runs": runs,

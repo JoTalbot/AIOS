@@ -42,9 +42,7 @@ class Curriculum:
     - Task sequencing
     """
 
-    def __init__(
-        self, mastery_threshold: int = 5, schedule_type: str = "linear"
-    ) -> None:
+    def __init__(self, mastery_threshold: int = 5, schedule_type: str = "linear") -> None:
         self.stages: list[CurriculumStage] = []
         self.current_stage: int = 0
         self.mastery_threshold = mastery_threshold
@@ -126,17 +124,11 @@ class Curriculum:
         stages = []
         for i in range(num_stages):
             if self.schedule_type == "linear":
-                difficulty = (
-                    min_difficulty + (max_difficulty - min_difficulty) * i / num_stages
-                )
+                difficulty = min_difficulty + (max_difficulty - min_difficulty) * i / num_stages
             elif self.schedule_type == "exponential":
-                difficulty = min_difficulty * (max_difficulty / min_difficulty) ** (
-                    i / num_stages
-                )
+                difficulty = min_difficulty * (max_difficulty / min_difficulty) ** (i / num_stages)
             else:
-                difficulty = (
-                    min_difficulty + (max_difficulty - min_difficulty) * i / num_stages
-                )
+                difficulty = min_difficulty + (max_difficulty - min_difficulty) * i / num_stages
             stage = CurriculumStage(name=f"stage_{i}", difficulty=round(difficulty, 4))
             stages.append(stage)
         self.stages = stages

@@ -30,7 +30,9 @@ class CircuitBreaker:
                 if self.failures >= self.failure_threshold:
                     self.state = "OPEN"
                 raise e
+
         return wrapper
+
 
 cb_llm = CircuitBreaker(failure_threshold=3, recovery_timeout=30)
 cb_platform = CircuitBreaker(failure_threshold=5, recovery_timeout=60)

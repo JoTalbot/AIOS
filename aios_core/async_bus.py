@@ -34,15 +34,11 @@ class AsyncMiddleware:
     to post-process results or log completions.
     """
 
-    async def before_emit(
-        self, event: str, payload: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    async def before_emit(self, event: str, payload: dict[str, Any]) -> dict[str, Any] | None:
         """Transform *payload* before emission.  Return ``None`` to suppress."""
         return payload
 
-    async def after_emit(
-        self, event: str, payload: dict[str, Any], elapsed_ms: float
-    ) -> None:
+    async def after_emit(self, event: str, payload: dict[str, Any], elapsed_ms: float) -> None:
         """Post-process hook called after all handlers complete."""
 
 
@@ -185,9 +181,7 @@ class AsyncEventBus:
                     except Exception:
                         self._error_count += 1
 
-            await asyncio.gather(
-                *(_safe_call(h) for h in handlers), return_exceptions=True
-            )
+            await asyncio.gather(*(_safe_call(h) for h in handlers), return_exceptions=True)
 
         elapsed = (time.monotonic() - start) * 1000.0
         self._emit_count += 1
@@ -200,9 +194,7 @@ class AsyncEventBus:
                 pass  # middleware after-hooks must not break emission
 
         # History
-        self._history.append(
-            {"event": event, "payload": payload, "elapsed_ms": round(elapsed, 3)}
-        )
+        self._history.append({"event": event, "payload": payload, "elapsed_ms": round(elapsed, 3)})
         if len(self._history) > self._history_size:
             self._history = self._history[-self._history_size :]
 
@@ -220,9 +212,7 @@ class AsyncEventBus:
             await self.emit(record["event"], record["payload"])
         return len(events)
 
-    def get_history(
-        self, event: str | None = None, limit: int = 50
-    ) -> list[dict[str, Any]]:
+    def get_history(self, event: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         """Return recent history, optionally filtered by *event* name."""
         filtered = [r for r in self._history if r["event"] == event] if event else self._history
         return filtered[-limit:]

@@ -1,6 +1,5 @@
 """Basic tests for AIOS Database/Storage layer."""
 
-
 import contextlib
 
 from aios_core.storage import Database

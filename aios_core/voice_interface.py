@@ -87,9 +87,7 @@ class VoiceInterface:
 
     # ── Command Registration ────────────────────────────────────────
 
-    def register_command(
-        self, intent: str, handler: Any, description: str = ""
-    ) -> None:
+    def register_command(self, intent: str, handler: Any, description: str = "") -> None:
         """Register a command handler for an intent."""
         self._commands[intent] = {"handler": handler, "description": description}
 
@@ -166,9 +164,7 @@ class VoiceInterface:
             target = command.parameters.get("to", command.parameters.get("for", "task"))
             response = f"Executing action for {target}."
         elif command.intent == "query":
-            target = command.parameters.get(
-                "about", command.parameters.get("for", "information")
-            )
+            target = command.parameters.get("about", command.parameters.get("for", "information"))
             response = f"Here is the information about {target}."
         elif command.intent == "config":
             response = "Configuration updated successfully."

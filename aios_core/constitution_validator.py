@@ -141,8 +141,7 @@ class ConstitutionValidator:
                         valid=False,
                         category="risk",
                         code="invalid_risk_level",
-                        message=f"Invalid risk level '{risk}'. "
-                        f"Must be one of: {valid_levels}",
+                        message=f"Invalid risk level '{risk}'. Must be one of: {valid_levels}",
                         severity="error",
                     )
                 )
@@ -186,8 +185,7 @@ class ConstitutionValidator:
                     valid=False,
                     category="principle",
                     code="memory_separation_violation",
-                    message="Personal memory MUST NOT be shared "
-                    "(Principle 3: Memory Separation)",
+                    message="Personal memory MUST NOT be shared (Principle 3: Memory Separation)",
                     severity="error",
                 )
             )
@@ -217,8 +215,7 @@ class ConstitutionValidator:
                         valid=True,
                         category="principle",
                         code="federation_logging",
-                        message="Federation actions should enable offline logging "
-                        "(Principle 4: Federated Operation)",
+                        message="Federation actions should enable offline logging (Principle 4: Federated Operation)",
                         severity="warning",
                     )
                 )
@@ -233,8 +230,7 @@ class ConstitutionValidator:
                         valid=False,
                         category="principle",
                         code="invalid_evolution_stage",
-                        message=f"Invalid evolution stage '{stage}'. "
-                        f"Valid stages: {evo_stages}",
+                        message=f"Invalid evolution stage '{stage}'. Valid stages: {evo_stages}",
                         severity="error",
                     )
                 )
@@ -269,8 +265,7 @@ class ConstitutionValidator:
                                 valid=True,
                                 category="policy",
                                 code="security_access_control",
-                                message="Security policy requires access control — "
-                                "agent_id field is missing",
+                                message="Security policy requires access control — agent_id field is missing",
                                 severity="warning",
                                 policy_name="security_policy",
                             )
@@ -297,8 +292,7 @@ class ConstitutionValidator:
                                 valid=False,
                                 category="policy",
                                 code="security_least_privilege",
-                                message="Security policy: least privilege rule "
-                                "forbids unlimited authority",
+                                message="Security policy: least privilege rule forbids unlimited authority",
                                 severity="error",
                                 policy_name="security_policy",
                             )
@@ -354,9 +348,9 @@ class ConstitutionValidator:
         # Federation policy
         fed = self.policies.get_federation_policy()
         if fed and action.get("action_type") in ("federate", "sync"):
-            if self.policies.is_rule_enabled(
-                "federation_policy", "verified_nodes_only"
-            ) and not action.get("node_verified"):
+            if self.policies.is_rule_enabled("federation_policy", "verified_nodes_only") and not action.get(
+                "node_verified"
+            ):
                 results.append(
                     ValidationResult(
                         valid=True,
@@ -370,9 +364,7 @@ class ConstitutionValidator:
 
         return results
 
-    def _validate_constitution_relevance(
-        self, action: dict, relevant_rules: list[dict]
-    ) -> list[ValidationResult]:
+    def _validate_constitution_relevance(self, action: dict, relevant_rules: list[dict]) -> list[ValidationResult]:
         """Flag constitution rules that may be relevant to the action."""
         results = []
 

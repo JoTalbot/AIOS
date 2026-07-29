@@ -189,9 +189,7 @@ class TestBackupRestoreIntegration:
         """Test backup rotation with multiple backups."""
         backup_dir = tmp_path / "backups"
 
-        manager = BackupManager(
-            db_path=production_db, backup_dir=str(backup_dir), max_backups=3, retention_days=30
-        )
+        manager = BackupManager(db_path=production_db, backup_dir=str(backup_dir), max_backups=3, retention_days=30)
 
         # Create 5 backups
         backup_ids = []
@@ -262,9 +260,7 @@ class TestBackupRestoreIntegration:
 
         # Simulate concurrent access
         conn = sqlite3.connect(production_db)
-        conn.execute(
-            "INSERT INTO tasks VALUES ('concurrent-task', 'running', '2026-07-23', '2026-07-23', '{}')"
-        )
+        conn.execute("INSERT INTO tasks VALUES ('concurrent-task', 'running', '2026-07-23', '2026-07-23', '{}')")
 
         # Create backup while connection is open
         metadata = manager.create_backup(label="concurrent-test")

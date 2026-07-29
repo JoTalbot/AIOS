@@ -117,7 +117,7 @@ class MultiTenantManager:
     def get_execution_context(self, execution_id: str) -> str | None:
         """Get the bound tenant_id for a context."""
         return self.active_contexts.get(execution_id)
-        
+
     def clear_execution_context(self, execution_id: str) -> None:
         """Clear execution context bindings."""
         self.active_contexts.pop(execution_id, None)
@@ -127,7 +127,7 @@ class MultiTenantManager:
         active_tenant = self.get_execution_context(execution_id)
         if active_tenant is None:
             return True
-            
+
         if active_tenant != resource_tenant_id:
             raise PermissionError(
                 f"Data Isolation Breach: Context bound to tenant '{active_tenant}' "

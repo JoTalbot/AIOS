@@ -44,13 +44,9 @@ class DevicePool:
         self.waitlist: list[WaitlistEntry] = []
         self.emulator_bin = emulator_bin
 
-    def register(
-        self, serial: str, avd_name: str | None = None, auto_restart: bool = True
-    ) -> DeviceRecord:
+    def register(self, serial: str, avd_name: str | None = None, auto_restart: bool = True) -> DeviceRecord:
         """Register a device in the pool with optional AVD name."""
-        self.devices[serial] = DeviceRecord(
-            serial=serial, avd_name=avd_name or serial, auto_restart=auto_restart
-        )
+        self.devices[serial] = DeviceRecord(serial=serial, avd_name=avd_name or serial, auto_restart=auto_restart)
         return self.devices[serial]
 
     def _restart_emulator(self, record: DeviceRecord) -> bool:
@@ -137,6 +133,4 @@ class DevicePool:
 
     def enqueue(self, profile: str, priority: int = 0) -> None:
         """Enqueue a profile on the device waitlist."""
-        self.waitlist.append(
-            WaitlistEntry(profile=profile, priority=priority, requested_at=time.time())
-        )
+        self.waitlist.append(WaitlistEntry(profile=profile, priority=priority, requested_at=time.time()))

@@ -113,9 +113,7 @@ class GraphNeuralNetwork:
 
     # ── Message Passing ──────────────────────────────────────────────
 
-    def _aggregate(
-        self, messages: list[list[float]], method: str = "mean"
-    ) -> list[float]:
+    def _aggregate(self, messages: list[list[float]], method: str = "mean") -> list[float]:
         """Aggregate messages from neighbors."""
         if not messages:
             return [0.0] * self.hidden_dim
@@ -153,11 +151,7 @@ class GraphNeuralNetwork:
         n_layers = num_layers or len(self._gnn_layers)
 
         for layer_idx in range(n_layers):
-            layer = (
-                self._gnn_layers[layer_idx]
-                if layer_idx < len(self._gnn_layers)
-                else GNNLayer(name=f"l{layer_idx}")
-            )
+            layer = self._gnn_layers[layer_idx] if layer_idx < len(self._gnn_layers) else GNNLayer(name=f"l{layer_idx}")
             new_embeddings = {}
 
             for node_id, current_emb in self.embeddings.items():
@@ -191,9 +185,7 @@ class GraphNeuralNetwork:
 
                 # Dropout (simplified: zero out random elements)
                 if layer.dropout > 0:
-                    activated = [
-                        v if random.random() > layer.dropout else 0.0 for v in activated
-                    ]
+                    activated = [v if random.random() > layer.dropout else 0.0 for v in activated]
 
                 new_embeddings[node_id] = activated
 

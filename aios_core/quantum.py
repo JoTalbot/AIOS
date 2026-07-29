@@ -100,14 +100,14 @@ class QuantumCircuit:
         state = [complex(1, 0), complex(0, 0)]  # |00>
         for gate in self.gates:
             state = gate.apply(state)
-            
+
             # Apply depolarizing noise channel
             if self.noise_factor > 0:
                 if random.random() < self.noise_factor:
                     # Randomize state slightly (depolarize)
                     state = [complex(random.random(), random.random()) for _ in state]
-                    norm = math.sqrt(sum(abs(c)**2 for c in state))
-                    state = [c/norm for c in state] if norm > 0 else state
+                    norm = math.sqrt(sum(abs(c) ** 2 for c in state))
+                    state = [c / norm for c in state] if norm > 0 else state
 
         self._state = state
         return state
@@ -119,7 +119,7 @@ class QuantumCircuit:
         total = sum(probs)
         if total == 0:
             return {"0": shots}
-            
+
         probs_norm = [p / total for p in probs]
         counts: dict[str, int] = {}
         for _ in range(shots):
@@ -163,17 +163,22 @@ class QuantumCircuit:
             "qubits": self.qubits,
             "gates": len(self.gates),
             "state_size": len(self._state),
-            "noise_factor": self.noise_factor
+            "noise_factor": self.noise_factor,
         }
 
 
 class QuantumErrorMitigation:
     """True Quantum Error Mitigation (QEM) pipeline for AIOS."""
-    
+
     def __init__(self, base_noise: float = 0.05):
         self.base_noise = base_noise
-        
-    def zero_noise_extrapolation(self, circuit_builder: Callable[[float], QuantumCircuit], expectation_func: Callable[[dict[str, int]], float], scale_factors: list[float] = [1.0, 2.0, 3.0]) -> float:
+
+    def zero_noise_extrapolation(
+        self,
+        circuit_builder: Callable[[float], QuantumCircuit],
+        expectation_func: Callable[[dict[str, int]], float],
+        scale_factors: list[float] = [1.0, 2.0, 3.0],
+    ) -> float:
         """ZNE: Run circuit at amplified noise levels, then extrapolate back to zero noise."""
         results = []
         for scale in scale_factors:
@@ -182,22 +187,22 @@ class QuantumErrorMitigation:
             counts = circ.measure(shots=2000)
             val = expectation_func(counts)
             results.append((scale, val))
-            
+
         # Richardson Extrapolation (Linear fit for simplicity)
         # y = mx + c  => we want c (where x=0)
         x_sum = sum(x for x, y in results)
         y_sum = sum(y for x, y in results)
-        xy_sum = sum(x*y for x, y in results)
+        xy_sum = sum(x * y for x, y in results)
         x2_sum = sum(x**2 for x, y in results)
         n = len(results)
-        
-        denominator = (n * x2_sum - x_sum**2)
+
+        denominator = n * x2_sum - x_sum**2
         if denominator == 0:
             return results[0][1]
-            
+
         m = (n * xy_sum - x_sum * y_sum) / denominator
         c = (y_sum - m * x_sum) / n
-        
+
         return c
 
     def readout_error_mitigation(self, counts: dict[str, int], confusion_matrix: list[list[float]]) -> dict[str, float]:
@@ -208,19 +213,19 @@ class QuantumErrorMitigation:
         if len(confusion_matrix) == 2:
             det = confusion_matrix[0][0] * confusion_matrix[1][1] - confusion_matrix[0][1] * confusion_matrix[1][0]
             if det == 0:
-                return {k: v/sum(counts.values()) for k, v in counts.items()}
-                
+                return {k: v / sum(counts.values()) for k, v in counts.items()}
+
             inv = [
-                [confusion_matrix[1][1]/det, -confusion_matrix[0][1]/det],
-                [-confusion_matrix[1][0]/det, confusion_matrix[0][0]/det]
+                [confusion_matrix[1][1] / det, -confusion_matrix[0][1] / det],
+                [-confusion_matrix[1][0] / det, confusion_matrix[0][0] / det],
             ]
-            
+
             total = max(1, sum(counts.values()))
-            p_meas = [counts.get("00", 0)/total, counts.get("01", 0)/total]
-            
-            p_true_0 = inv[0][0]*p_meas[0] + inv[0][1]*p_meas[1]
-            p_true_1 = inv[1][0]*p_meas[0] + inv[1][1]*p_meas[1]
-            
+            p_meas = [counts.get("00", 0) / total, counts.get("01", 0) / total]
+
+            p_true_0 = inv[0][0] * p_meas[0] + inv[0][1] * p_meas[1]
+            p_true_1 = inv[1][0] * p_meas[0] + inv[1][1] * p_meas[1]
+
             # constrain
             p_true_0 = max(0.0, min(1.0, p_true_0))
             p_true_1 = max(0.0, min(1.0, p_true_1))
@@ -228,10 +233,10 @@ class QuantumErrorMitigation:
             if norm > 0:
                 p_true_0 /= norm
                 p_true_1 /= norm
-                
+
             return {"00": p_true_0, "01": p_true_1}
-            
-        return {k: v/sum(counts.values()) for k, v in counts.items()}
+
+        return {k: v / sum(counts.values()) for k, v in counts.items()}
 
 
 class QuantumInspiredOptimizer:
@@ -240,9 +245,7 @@ class QuantumInspiredOptimizer:
     def __init__(self, temperature: float = 100.0) -> None:
         self.temperature = temperature
 
-    def optimize(
-        self, solution: list, cost_func: Callable, iterations: int = 1000
-    ) -> tuple[list, float]:
+    def optimize(self, solution: list, cost_func: Callable, iterations: int = 1000) -> tuple[list, float]:
         """Quantum-inspired annealing."""
         current = solution[:]
         current_cost = cost_func(current)

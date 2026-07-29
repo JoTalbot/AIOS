@@ -3,6 +3,7 @@
 Fast, emulator-independent, uses https://www.olx.ua/api/v1/offers/
 Emulator stays reserved for interactive tasks (login/posting/chats).
 """
+
 import argparse
 import json
 import logging
@@ -16,8 +17,10 @@ from pathlib import Path
 
 import httpx
 
-UA = ("Mozilla/5.0 (Linux; Android 15; Pixel 7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+UA = (
+    "Mozilla/5.0 (Linux; Android 15; Pixel 7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+)
 API = "https://www.olx.ua/api/v1/offers/"
 
 log = logging.getLogger("olx-http-collector")
@@ -72,8 +75,7 @@ def extract_price(offer: dict):
     for p in offer.get("params", []):
         if p.get("key") == "price":
             v = p.get("value") or {}
-            return (v.get("value"), v.get("currency"), v.get("label"),
-                    1 if v.get("negotiable") else 0)
+            return (v.get("value"), v.get("currency"), v.get("label"), 1 if v.get("negotiable") else 0)
     return (None, None, None, 0)
 
 
@@ -86,33 +88,40 @@ def parse_offer(offer: dict, query: str, is_new_ad: bool) -> tuple:
     promo = offer.get("promotion") or {}
     now = datetime.now(UTC).isoformat()
     return (
-        offer["id"], query, offer.get("url"), offer.get("title"),
-        price, cur, label, neg,
-        city, region,
+        offer["id"],
+        query,
+        offer.get("url"),
+        offer.get("title"),
+        price,
+        cur,
+        label,
+        neg,
+        city,
+        region,
         re.sub(r"<[^>]+>", " ", offer.get("description") or ""),
         (offer.get("category") or {}).get("type") if offer.get("category") else None,
         json.dumps([ph.get("link", "") for ph in (offer.get("photos") or [])[:10]]),
-        user.get("id"), user.get("name"),
+        user.get("id"),
+        user.get("name"),
         1 if offer.get("business") else 0,
         1 if offer.get("offer_type") == "new" else 0,
         1 if promo.get("highlighted") else 0,
         1 if promo.get("urgent") else 0,
         1 if promo.get("top_ad") else 0,
-        offer.get("created_time"), offer.get("last_refresh_time"),
+        offer.get("created_time"),
+        offer.get("last_refresh_time"),
         now if is_new_ad else None,  # first_seen
         now,  # collected_at
     )
 
 
 def fetch_page(client: httpx.Client, query: str, offset: int, limit: int = 50) -> dict:
-    r = client.get(API, params={"query": query, "offset": offset, "limit": limit},
-                   timeout=20.0)
+    r = client.get(API, params={"query": query, "offset": offset, "limit": limit}, timeout=20.0)
     r.raise_for_status()
     return r.json()
 
 
-def cycle(client: httpx.Client, conn: sqlite3.Connection, queries: list[str],
-          max_cards_per_query: int = 300) -> dict:
+def cycle(client: httpx.Client, conn: sqlite3.Connection, queries: list[str], max_cards_per_query: int = 300) -> dict:
     stats = {"parsed": 0, "inserted": 0, "deactivated": 0, "new_ads": 0}
     cur = conn.cursor()
     now = datetime.now(UTC).isoformat()
@@ -140,8 +149,7 @@ def cycle(client: httpx.Client, conn: sqlite3.Connection, queries: list[str],
                     continue
                 seen.add(oid)
                 # Check if ad is brand-new to DB
-                existing = cur.execute(
-                    "SELECT 1 FROM ads WHERE id=?", (oid,)).fetchone()
+                existing = cur.execute("SELECT 1 FROM ads WHERE id=?", (oid,)).fetchone()
                 is_new = existing is None
                 if is_new:
                     new_ad_ids.add(oid)
@@ -180,7 +188,7 @@ def cycle(client: httpx.Client, conn: sqlite3.Connection, queries: list[str],
                         collected_at=excluded.collected_at,
                         active=1
                     """,
-                    rows
+                    rows,
                 )
                 conn.commit()
                 # executemany rowcount is unreliable across sqlite versions; count new ads by len of new-set delta
@@ -201,8 +209,7 @@ def cycle(client: httpx.Client, conn: sqlite3.Connection, queries: list[str],
             deact = cur.rowcount
         else:
             deact = 0
-        log.info("   collected=%d, updated=%d, new=%d, deactivated=%d",
-                 len(seen), total_inserted, query_new, deact)
+        log.info("   collected=%d, updated=%d, new=%d, deactivated=%d", len(seen), total_inserted, query_new, deact)
         stats["parsed"] += len(seen)
         stats["inserted"] += total_inserted
         stats["deactivated"] += deact
@@ -210,7 +217,8 @@ def cycle(client: httpx.Client, conn: sqlite3.Connection, queries: list[str],
     stats["new_ads"] = len(new_ad_ids)
     cur.execute(
         "INSERT INTO collection_runs(ts,queries,parsed,inserted,deactivated) VALUES (?,?,?,?,?)",
-        (now, json.dumps(queries), stats["parsed"], stats["inserted"], stats["deactivated"]))
+        (now, json.dumps(queries), stats["parsed"], stats["inserted"], stats["deactivated"]),
+    )
     conn.commit()
     stats["cycle_ts"] = now
     return stats
@@ -221,22 +229,32 @@ def main():
     ap.add_argument("--daemon", action="store_true")
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--interval", type=int, default=1800)
-    ap.add_argument("--db", default=os.environ.get("AIOS_OLX_HTTP_DB",
-                                                    "/root/AIOS/data/olx_http.sqlite"))
+    ap.add_argument("--db", default=os.environ.get("AIOS_OLX_HTTP_DB", "/root/AIOS/data/olx_http.sqlite"))
     ap.add_argument("--max-cards", type=int, default=300)
-    ap.add_argument("--no-alerts", action="store_true",
-                    help="Do not send Telegram alerts even if token is set")
-    ap.add_argument("--queries", nargs="+",
-                    default=["iPhone", "PlayStation 5", "квартира Київ",
-                             "RTX 4090", "MacBook", "Galaxy S24",
-                             "авто бу", "велосипед", "дитячі речі", "робота Київ"])
+    ap.add_argument("--no-alerts", action="store_true", help="Do not send Telegram alerts even if token is set")
+    ap.add_argument(
+        "--queries",
+        nargs="+",
+        default=[
+            "iPhone",
+            "PlayStation 5",
+            "квартира Київ",
+            "RTX 4090",
+            "MacBook",
+            "Galaxy S24",
+            "авто бу",
+            "велосипед",
+            "дитячі речі",
+            "робота Київ",
+        ],
+    )
     args = ap.parse_args()
 
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[logging.FileHandler("/root/AIOS/logs/olx_collector.log"),
-                  logging.StreamHandler(sys.stdout)])
+        handlers=[logging.FileHandler("/root/AIOS/logs/olx_collector.log"), logging.StreamHandler(sys.stdout)],
+    )
     Path("/root/AIOS/logs").mkdir(parents=True, exist_ok=True)
 
     # Ensure runs meta table exists
@@ -258,6 +276,7 @@ def main():
         try:
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             import olx_alerts
+
             alerts_module = olx_alerts
             subs_conn = olx_alerts.init_subs_db()
             log.info("Telegram alerts enabled (subs db ready)")
@@ -266,16 +285,22 @@ def main():
             alerts_module = None
 
     with httpx.Client(headers={"User-Agent": UA, "Accept-Language": "uk-UA,uk,en;q=0.9"}) as client:
-        log.info("Starting OLX collector (daemon=%s interval=%ss queries=%s max_cards=%d db=%s)",
-                 args.daemon, args.interval, args.queries, args.max_cards, args.db)
+        log.info(
+            "Starting OLX collector (daemon=%s interval=%ss queries=%s max_cards=%d db=%s)",
+            args.daemon,
+            args.interval,
+            args.queries,
+            args.max_cards,
+            args.db,
+        )
         previous_cycle_ts = None
         if args.once or not args.daemon:
             s = cycle(client, conn, args.queries, args.max_cards)
             print(json.dumps(s, indent=2, ensure_ascii=False))
             if alerts_module and subs_conn and tg_token:
                 alerts_module.send_cycle_alerts(
-                    conn, subs_conn, tg_token, args.queries,
-                    s["cycle_ts"], previous_cycle_ts)
+                    conn, subs_conn, tg_token, args.queries, s["cycle_ts"], previous_cycle_ts
+                )
             return
         while True:
             try:
@@ -283,8 +308,8 @@ def main():
                 if alerts_module and subs_conn and tg_token:
                     try:
                         alerts_module.send_cycle_alerts(
-                            conn, subs_conn, tg_token, args.queries,
-                            s["cycle_ts"], previous_cycle_ts)
+                            conn, subs_conn, tg_token, args.queries, s["cycle_ts"], previous_cycle_ts
+                        )
                     except Exception as e:
                         log.exception("Alerts failed: %s", e)
                 previous_cycle_ts = s["cycle_ts"]

@@ -197,9 +197,7 @@ class CircuitBreaker:
                 self.metrics.record_trip()
             raise
 
-    def add_listener(
-        self, listener: Callable[[CircuitState, CircuitState], None]
-    ) -> None:
+    def add_listener(self, listener: Callable[[CircuitState, CircuitState], None]) -> None:
         """Add a state change listener."""
         self._listeners.append(listener)
 
@@ -239,4 +237,3 @@ class CircuitBreaker:
 
 class CircuitOpenError(Exception):
     """Raised when circuit breaker is OPEN and no fallback is provided."""
-

@@ -1,4 +1,5 @@
 """Tests for aios_core/enhanced_logging.py"""
+
 from __future__ import annotations
 
 import pytest

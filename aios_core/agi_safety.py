@@ -63,23 +63,17 @@ class AGISafety:
         """Check alignment (backward-compatible)."""
         action_str = str(action).lower()
         if "harm" in action_str:
-            violation = SafetyViolation(
-                action=action, reason="potential_harm", severity=0.9
-            )
+            violation = SafetyViolation(action=action, reason="potential_harm", severity=0.9)
             self.violations.append(violation)
             logger.warning("Alignment violation: %s", violation.reason)
             return False
         if "deception" in action_str:
-            violation = SafetyViolation(
-                action=action, reason="deception_risk", severity=0.7
-            )
+            violation = SafetyViolation(action=action, reason="deception_risk", severity=0.7)
             self.violations.append(violation)
             return False
         return True
 
-    def impact_regularization(
-        self, action_impact: float, threshold: float = 0.1
-    ) -> bool:
+    def impact_regularization(self, action_impact: float, threshold: float = 0.1) -> bool:
         """Impact regularization (backward-compatible)."""
         safe = action_impact < threshold
         if not safe:
@@ -146,11 +140,7 @@ class AGISafety:
         """Generate comprehensive safety audit."""
         violation_severities = [v.severity for v in self.violations]
         max_severity = max(violation_severities) if violation_severities else 0.0
-        avg_severity = (
-            sum(violation_severities) / len(violation_severities)
-            if violation_severities
-            else 0.0
-        )
+        avg_severity = sum(violation_severities) / len(violation_severities) if violation_severities else 0.0
         return {
             "checks_available": len(self.safety_checks),
             "violations": len(self.violations),

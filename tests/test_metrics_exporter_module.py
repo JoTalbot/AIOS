@@ -1,4 +1,5 @@
 """Tests for aios_core/metrics_exporter.py"""
+
 from __future__ import annotations
 
 import pytest

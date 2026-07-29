@@ -63,9 +63,7 @@ class Qubit:
 class QuantumGate:
     """Record of a gate operation."""
 
-    def __init__(
-        self, gate_type: str, targets: list[int], params: dict[str, float] | None = None
-    ) -> None:
+    def __init__(self, gate_type: str, targets: list[int], params: dict[str, float] | None = None) -> None:
         self.gate_type = gate_type
         self.targets = targets
         self.params = params or {}

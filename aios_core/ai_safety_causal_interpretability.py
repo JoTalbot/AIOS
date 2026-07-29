@@ -73,9 +73,7 @@ class CausalInterpretability:
         self._stored_graphs.append(graph)
         return result
 
-    def intervene(
-        self, graph: dict[str, Any], variable: str, value: Any
-    ) -> dict[str, Any]:
+    def intervene(self, graph: dict[str, Any], variable: str, value: Any) -> dict[str, Any]:
         """Record an intervention (backward-compatible)."""
         effects: dict[str, Any] = {}
         # Propagate intervention through edges
@@ -83,16 +81,12 @@ class CausalInterpretability:
         for src, tgt in edges:
             if src == variable:
                 effects[tgt] = (
-                    round(value * random.uniform(0.3, 0.8), 2)
-                    if isinstance(value, (int, float))
-                    else "changed"
+                    round(value * random.uniform(0.3, 0.8), 2) if isinstance(value, (int, float)) else "changed"
                 )
         graph["interventions"][variable] = {"value": value, "effects": effects}
         return {"intervention": variable, "effect": "measured", "effects": effects}
 
-    def counterfactual(
-        self, graph: dict[str, Any], variable: str, counterfactual_value: Any
-    ) -> dict[str, Any]:
+    def counterfactual(self, graph: dict[str, Any], variable: str, counterfactual_value: Any) -> dict[str, Any]:
         """Compute counterfactual outcome."""
         factual = graph.get("interventions", {}).get(variable, {})
         return {
@@ -101,9 +95,7 @@ class CausalInterpretability:
             "difference": "significant" if random.random() > 0.3 else "minor",
         }
 
-    def mediation_analysis(
-        self, graph: dict[str, Any], treatment: str, outcome: str, mediator: str
-    ) -> dict[str, Any]:
+    def mediation_analysis(self, graph: dict[str, Any], treatment: str, outcome: str, mediator: str) -> dict[str, Any]:
         """Mediation analysis: direct vs indirect effects."""
         direct_effect = round(random.uniform(0.2, 0.5), 2)
         indirect_effect = round(random.uniform(0.3, 0.7), 2)
@@ -114,9 +106,7 @@ class CausalInterpretability:
             "direct_effect": direct_effect,
             "indirect_effect": indirect_effect,
             "total_effect": round(direct_effect + indirect_effect, 2),
-            "mediation_ratio": round(
-                indirect_effect / (direct_effect + indirect_effect), 2
-            ),
+            "mediation_ratio": round(indirect_effect / (direct_effect + indirect_effect), 2),
         }
 
     def attribute_effect(self, graph: dict[str, Any], outcome: str) -> dict[str, float]:
