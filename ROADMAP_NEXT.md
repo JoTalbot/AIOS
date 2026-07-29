@@ -1,5 +1,13 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.7.0 ✅ (2026-07-29)
+- ✅ Scheduling Policies — `min_energy` / `min_latency` / `balanced` (взвешенный нормализованный бленд) / `ai_optimized`; выбор на планировщик / на план / на диспетч; диспетчи записывают `scheduling_policy`, report с `policy_dispatches`; API принимает `"policy"` (неизвестная → 400)
+- ✅ SubstrateAIManager оживлён — Q-learning реально управляет маршрутизацией: `ai_optimized` выбирает argmax Q среди кандидатов (холодная таблица → min_energy tie-break, `ai_q_value` в плане); обучение автоматическое после каждого исполнения движка; мёртвый хук `pass` в движке заменён контролируемым детерминированным путём
+- ✅ Dispatch Analytics — `engine.analytics(limit)` (по-субстратные счётчики, энергия, средняя латентность, доля энергии %) + `GET /api/substrate/analytics` + панель с барами в substrate-дашборде + селектор политики в форме планирования
+- ✅ 16 новых тестов (scheduler_policies 11 + substrate_analytics 5)
+
+**~4129 tests, 0 failures**
+
 ## v11.6.0 ✅ (2026-07-29)
 - ✅ Agent Memory Persistence — `snapshot()`/`restore()`/`save()` (атомарная запись tmp+rename)/`load()`; полная точность полей (confidence, decay, timestamps, access, priority, metadata), страховка id-счётчика от коллизий, версионный формат; сжатый индекс — перестраиваемое производное
 - ✅ Keyword Memory Search — `search(query, limit, pools)` (токен-скоринг, тай-брейк по strength, pool-фильтры incl. archive); UI: панель Recall Search на `/memory` (режимы keyword/compressed)
@@ -520,6 +528,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 11.4.0 | 2026-07-29 | ~4066 | Memory Deduplication Engine, Energy-Aware Substrate Scheduler, живой Agent Memory dashboard, VPS emulator-скрипт починен |
 | 11.5.0 | 2026-07-29 | ~4089 | Adaptive Compression Tuner, cold-storage Memory Archive, Scheduler-панель в Substrate dashboard, эмуляторная цепочка CI зелёная end-to-end |
 | 11.6.0 | 2026-07-29 | ~4113 | Memory Persistence (snapshot/save/load), keyword search + recall API, lifecycle endpoints, decay counter fix |
+| 11.7.0 | 2026-07-29 | ~4129 | Scheduling policies (4), AI-manager Q-learning в маршрутизации, dispatch analytics + панель |
 
 ---
 

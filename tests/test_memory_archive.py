@@ -1,4 +1,4 @@
-"""Tests for the cold-storage memory archive + its dashboard APIs (v11.6.0)."""
+"""Tests for the cold-storage memory archive + its dashboard APIs (v11.7.0)."""
 
 from __future__ import annotations
 
@@ -162,4 +162,4 @@ def test_memory_page_has_archive_wiring(client):
     resp = client.get("/memory")
     assert resp.status_code == 200
     assert "archived-total" in resp.text
-    assert "v11.6.0" in resp.text
+    assert "v11.7.0" in resp.text

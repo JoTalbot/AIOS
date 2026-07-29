@@ -389,6 +389,44 @@ class SubstrateConvergenceEngine:
         }
 
     # ------------------------------------------------------------------
+    # Dispatch analytics (v11.7.0)
+    # ------------------------------------------------------------------
+
+    def analytics(self, limit: int | None = None) -> dict[str, Any]:
+        """Aggregated dispatch analytics over (recent) history.
+
+        Per-substrate dispatch counts, energy sums, average estimated
+        latency and each substrate's share of total energy. ``limit``
+        restricts the window to the newest N dispatches.
+        """
+        history = self.dispatch_history[-limit:] if limit else list(self.dispatch_history)
+
+        per_substrate: dict[str, dict[str, Any]] = {}
+        for record in history:
+            name = record["selected_substrate"]
+            stats = per_substrate.setdefault(
+                name,
+                {"dispatches": 0, "energy_cost": 0.0, "latency_ms_sum": 0.0},
+            )
+            stats["dispatches"] += 1
+            stats["energy_cost"] += record.get("energy_cost", 0.0)
+            stats["latency_ms_sum"] += record.get("estimated_latency_ms", 0.0)
+
+        total_energy = sum(s["energy_cost"] for s in per_substrate.values())
+        energy_share_pct: dict[str, float] = {}
+        for name, stats in per_substrate.items():
+            stats["avg_latency_ms"] = round(stats.pop("latency_ms_sum") / stats["dispatches"], 4)
+            stats["energy_cost"] = round(stats["energy_cost"], 4)
+            energy_share_pct[name] = round(100.0 * stats["energy_cost"] / total_energy, 2) if total_energy > 0 else 0.0
+
+        return {
+            "total_dispatches": len(history),
+            "window_limit": limit,
+            "per_substrate": per_substrate,
+            "energy_share_pct": energy_share_pct,
+        }
+
+    # ------------------------------------------------------------------
     # Benchmarking
     # ------------------------------------------------------------------
 

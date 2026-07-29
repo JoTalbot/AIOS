@@ -1751,16 +1751,29 @@ class AIOSDashboard:
             return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
 
         scheduler = _get_energy_scheduler()
-        task = {k: v for k, v in body.items() if k != "execute"}
-        if body.get("execute"):
-            return JSONResponse(scheduler.dispatch(task))
-        plan = scheduler.plan(task)
+        task = {k: v for k, v in body.items() if k not in ("execute", "policy")}
+        policy = body.get("policy")
+        try:
+            if body.get("execute"):
+                return JSONResponse(scheduler.dispatch(task, policy=policy))
+            plan = scheduler.plan(task, policy=policy)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
         plan["scheduler_report"] = scheduler.report()
         return JSONResponse(plan)
 
     async def api_substrate_scheduler(self, request: Request) -> JSONResponse:
         """Energy-aware scheduler aggregate report (v11.5.0)."""
         return JSONResponse(_get_energy_scheduler().report())
+
+    async def api_substrate_analytics(self, request: Request) -> JSONResponse:
+        """Aggregated dispatch analytics (v11.7.0)."""
+        try:
+            limit = int(request.query_params.get("limit", "0"))
+        except ValueError:
+            limit = 0
+        limit = max(0, min(limit, 10000))
+        return JSONResponse(_get_substrate_engine().analytics(limit=limit or None))
 
     # ------------------------------------------------------------------
     # Agent Memory dashboard (live, v11.4.0)
@@ -1915,6 +1928,7 @@ class AIOSDashboard:
             Route("/api/substrate/history", self.api_substrate_history),
             Route("/api/substrate/schedule", self.api_substrate_schedule, methods=["POST"]),
             Route("/api/substrate/scheduler", self.api_substrate_scheduler),
+            Route("/api/substrate/analytics", self.api_substrate_analytics),
             Route("/api/memory/stats", self.api_memory_stats),
             Route("/api/memory/patterns", self.api_memory_patterns),
             Route("/api/memory/compression", self.api_memory_compression),
