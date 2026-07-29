@@ -375,23 +375,38 @@ class EnergyAwareScheduler:
     # Reporting
     # ------------------------------------------------------------------
 
-    def report(self) -> dict[str, Any]:
-        """Aggregate energy/savings report across all dispatches."""
-        spent = sum(d["energy_cost"] for d in self._dispatches)
-        saved = sum(d["energy_saved"] for d in self._dispatches)
-        fallbacks = sum(1 for d in self._dispatches if d["policy"] == "fallback")
+    def report(self, window_seconds: float | None = None) -> dict[str, Any]:
+        """Aggregate energy/savings report across dispatches.
+
+        Args:
+            window_seconds: optional sliding window (v11.10.0) — only
+                dispatches newer than now-window are aggregated. Must be
+                positive. The rolling budget, being window-based already,
+                always reflects its own window regardless of this filter.
+        """
+        if window_seconds is not None and window_seconds <= 0:
+            raise ValueError("window_seconds must be positive")
+        dispatches = self._dispatches
+        if window_seconds is not None:
+            cutoff = time.time() - window_seconds
+            dispatches = [d for d in dispatches if d["timestamp"] >= cutoff]
+
+        spent = sum(d["energy_cost"] for d in dispatches)
+        saved = sum(d["energy_saved"] for d in dispatches)
+        fallbacks = sum(1 for d in dispatches if d["policy"] == "fallback")
         per_policy: dict[str, int] = {}
-        for dispatch in self._dispatches:
+        for dispatch in dispatches:
             name = dispatch.get("scheduling_policy", self.policy)
             per_policy[name] = per_policy.get(name, 0) + 1
         return {
-            "dispatches": len(self._dispatches),
+            "dispatches": len(dispatches),
             "fallback_dispatches": fallbacks,
             "energy_spent_total": round(spent, 4),
             "energy_saved_vs_baseline": round(saved, 4),
             "savings_pct": round(100.0 * saved / (spent + saved), 2) if (spent + saved) > 0 else 0.0,
             "policy": self.policy,
             "policy_dispatches": per_policy,
+            "window_seconds": window_seconds,
             "latency_budget_ms": self.latency_budget_ms,
             "energy_budget": self.energy_budget.to_dict() if self.energy_budget else None,
         }

@@ -132,7 +132,7 @@
 <body>
 
     <header>
-        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.9.0</span></h1>
+        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.10.0</span></h1>
         <div style="color: #94a3b8; font-size: 0.9rem;" id="live-indicator">Live Workload Router — data: /api/substrate/*</div>
     </header>
 
@@ -193,6 +193,7 @@
                 <div class="stat-row"><span class="stat-label">Energy Saved vs Baseline</span><span class="stat-value" style="color: var(--success)" id="sch-saved">0</span></div>
                 <div class="stat-row"><span class="stat-label">Savings</span><span class="stat-value" style="color: var(--success)" id="sch-pct">0%</span></div>
                 <div class="stat-row"><span class="stat-label">Budget Remaining</span><span class="stat-value" id="sch-budget">—</span></div>
+                <div class="stat-row"><span class="stat-label">Last Hour (disp / spent)</span><span class="stat-value" id="sch-window">—</span></div>
             </div>
         </div>
 
@@ -358,7 +359,7 @@
                 : `${plan.selected_substrate}: ${plan.expected_energy} Wh vs baseline ${plan.baseline_substrate}: ${plan.baseline_energy} Wh → saves ${plan.expected_savings} Wh`;
         }
 
-        function renderHealth(data) {
+        function renderHealth(data, alerts) {
             const scoreEl = document.getElementById('health-score');
             const statusEl = document.getElementById('health-status');
             scoreEl.innerText = data.score === null ? '—' : data.score;
@@ -368,6 +369,12 @@
             const lines = Object.entries(data.components || {}).map(([name, c]) =>
                 c.available ? `${name}: ${c.score}` : `${name}: n/a`
             );
+            if (alerts && !alerts.ok) {
+                lines.push(`⚠ ${alerts.alert_count} SLO alert(s), worst: ${alerts.worst_severity}`);
+                statusEl.innerText = data.status + ' ⚠';
+            } else if (alerts) {
+                lines.push('no SLO alerts');
+            }
             document.getElementById('health-detail').innerText = lines.length ? lines.join(' · ') : 'no components';
         }
 
@@ -397,13 +404,15 @@
 
         async function refresh() {
             try {
-                const [stats, mesh, history, scheduler, analytics, health] = await Promise.all([
+                const [stats, mesh, history, scheduler, analytics, health, schedulerHour, alerts] = await Promise.all([
                     fetch('/api/substrate/stats').then(r => r.json()),
                     fetch('/api/substrate/mesh').then(r => r.json()),
                     fetch('/api/substrate/history?limit=30').then(r => r.json()),
                     fetch('/api/substrate/scheduler').then(r => r.json()),
                     fetch('/api/substrate/analytics').then(r => r.json()),
                     fetch('/api/health/score').then(r => r.json()),
+                    fetch('/api/substrate/scheduler?window=3600').then(r => r.json()),
+                    fetch('/api/health/alerts').then(r => r.json()),
                 ]);
                 document.getElementById('val-dispatches').innerText = (stats.total_dispatches ?? 0).toLocaleString();
                 document.getElementById('val-queued').innerText = stats.queued_tasks ?? 0;
@@ -414,7 +423,9 @@
                 renderHistory(history.history || []);
                 renderSchedulerReport(scheduler);
                 renderAnalytics(analytics);
-                renderHealth(health);
+                renderHealth(health, alerts);
+                document.getElementById('sch-window').innerText =
+                    (schedulerHour.dispatches ?? 0) + ' / ' + (schedulerHour.energy_spent_total ?? 0) + ' Wh';
                 document.getElementById('live-indicator').innerText = 'Live Workload Router — connected';
             } catch (err) {
                 document.getElementById('live-indicator').innerText = 'Live Workload Router — reconnecting…';

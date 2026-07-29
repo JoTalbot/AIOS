@@ -1,5 +1,13 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.10.0 ✅ (2026-07-29)
+- ✅ Dedup Merge Preview — `preview_dedup()`: dry-run точной merge-политики (absorbed ids, проекции access/confidence/strength, счётчики пулов после мёрджа) без изменения состояния; без порога берёт тюнерский дефолт; `POST /api/memory/dedup/preview` + кнопка Preview на панели дубликатов
+- ✅ Windowed Scheduler Report — `report(window_seconds=)` агрегирует только диспетчи внутри скользящего окна (positive-валидация); `?window=` в API (400 на мусоре, клэмп до года); стат Last Hour в панели планировщика
+- ✅ SLO Alerts — `evaluate_health_alerts()`: агрегат и каждый доступный компонент против warn/critical порогов (0 ≤ critical < warning ≤ 100); ok/alert_count/worst_severity + per-subject сообщения; `GET /api/health/alerts`; сводка алертов в health-панели
+- ✅ 26 новых тестов (slo_alerts 11 + dedup_preview 9 + scheduler_window 6)
+
+**~4209 tests, 0 failures**
+
 ## v11.9.0 ✅ (2026-07-29)
 - ✅ Dedup Threshold Auto-Tuner — `tune_dedup_threshold()` сканирует кандидатов (0.80–0.98), скоринг `duplicates × avg_similarity`, тай-брейк в консервативную сторону; `apply` сохраняет рекомендацию как дефолт (`dedup_stats()["threshold"]`, персистится в снапшотах, используется `/api/memory/duplicates` без явного параметра); ничего не мёрджится; `POST /api/memory/dedup/tune` + кнопка Tune на панели дубликатов
 - ✅ History CSV Export — `engine.export_history_csv(limit)` (RFC-4180, UTC ISO8601, квотинг csv-модулем) + `GET /api/substrate/history/export` (attachment) + ссылка Export CSV на панели роутера
@@ -547,6 +555,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 11.7.0 | 2026-07-29 | ~4129 | Scheduling policies (4), AI-manager Q-learning в маршрутизации, dispatch analytics + панель |
 | 11.8.0 | 2026-07-29 | ~4156 | Batch dispatch forecasting + forecast API/панель, memory snapshot save/load APIs + панель, Prometheus /api/metrics export |
 | 11.9.0 | 2026-07-29 | ~4183 | Dedup threshold auto-tuner (+apply, persist), history CSV export, aggregate health score API + панель |
+| 11.10.0 | 2026-07-29 | ~4209 | Dedup merge preview (dry-run) API, windowed scheduler report, SLO alerts на health score |
 
 ---
 

@@ -842,6 +842,65 @@ class AgentMemorySystem:
         }
         return dict(self._dedup_report)
 
+    def preview_dedup(
+        self,
+        threshold: float | None = None,
+        pool: str = "all",
+    ) -> dict[str, Any]:
+        """Dry-run the dedup merge plan WITHOUT merging anything (v11.10.0).
+
+        Applies the exact merge policy of deduplicate() (strongest entry
+        survives; absorbs access counts, best confidence and latest
+        access) and reports what WOULD happen: per-group projections and
+        post-merge pool counts. With threshold=None the system's (possibly
+        tuner-set) default dedup_threshold is used.
+
+        Returns:
+            Preview dict: threshold, groups, would_remove, counts_after
+            and per-group merge plans with projected representative stats.
+        """
+        effective = self._dedup_threshold if threshold is None else float(threshold)
+        groups, by_id = self._duplicate_groups(effective, pool)
+
+        long_term_ids = {e.memory_id for e in self._long_term}
+        episodic_ids = {e.memory_id for e in self._episodic}
+        absorbed_lt = absorbed_ep = 0
+
+        plans: list[dict[str, Any]] = []
+        for group in groups:
+            rep = by_id[group.representative_id]
+            absorbed = [by_id[mid] for mid in group.absorbed_ids() if mid in by_id]
+            for entry in absorbed:
+                if entry.memory_id in long_term_ids:
+                    absorbed_lt += 1
+                elif entry.memory_id in episodic_ids:
+                    absorbed_ep += 1
+            plans.append(
+                {
+                    "representative_id": rep.memory_id,
+                    "absorbed_ids": [a.memory_id for a in absorbed],
+                    "avg_similarity": round(group.avg_similarity, 4),
+                    "projected": {
+                        "access_count": rep.access_count + sum(a.access_count for a in absorbed),
+                        "confidence": max([rep.confidence, *(a.confidence for a in absorbed)]),
+                        "strength": rep.strength,
+                    },
+                }
+            )
+
+        return {
+            "dry_run": True,
+            "threshold": effective,
+            "pool": pool,
+            "groups": len(plans),
+            "would_remove": absorbed_lt + absorbed_ep,
+            "counts_after": {
+                "long_term": len(self._long_term) - absorbed_lt,
+                "episodic": len(self._episodic) - absorbed_ep,
+            },
+            "plans": plans,
+        }
+
     def dedup_stats(self) -> dict[str, Any]:
         """Deduplication summary: last report + lifetime removal count."""
         return {
