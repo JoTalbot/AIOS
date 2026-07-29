@@ -95,7 +95,7 @@
 </head>
 <body>
     <header>
-        <h1>🧠 Agent Memory <span class="version">v11.7.0</span></h1>
+        <h1>🧠 Agent Memory <span class="version">v11.8.0</span></h1>
         <div class="timestamp"><span class="live-dot"></span>Live · <span id="last-update">—</span></div>
     </header>
 
@@ -161,6 +161,20 @@
                 <div class="stat-row"><span class="stat-label">Archive dead memories</span>
                     <button onclick="runLifecycle('/api/memory/archive/run', {})" class="lc-btn">Run</button></div>
                 <div style="color:#64748b;font-size:0.85rem;font-family:'Consolas',monospace" id="lifecycle-result">—</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Snapshot Persistence</h2>
+            <div class="stat-group">
+                <div class="stat-row"><span class="stat-label">Snapshot path</span>
+                    <input id="snap-path" placeholder="~/.aios/memory_snapshot.json" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:58%;font-family:monospace"></div>
+                <div class="stat-row"><span class="stat-label">Atomic save / full restore</span>
+                    <span>
+                        <button onclick="runSnapshot('save')" class="lc-btn">Save</button>
+                        <button onclick="runSnapshot('load')" class="lc-btn" style="background:var(--success)">Load</button>
+                    </span></div>
+                <div style="color:#64748b;font-size:0.85rem;font-family:'Consolas',monospace" id="snapshot-result">POST /api/memory/snapshot/save · /api/memory/snapshot/load</div>
             </div>
         </div>
     </div>
@@ -254,6 +268,24 @@ async function runLifecycle(url, payload) {
         const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const data = await r.json();
         out.textContent = url.split('/').pop() + ' → ' + JSON.stringify(data).slice(0, 220);
+        refreshAll();
+    } catch (e) {
+        out.textContent = 'request failed';
+    }
+}
+
+async function runSnapshot(action) {
+    const path = document.getElementById('snap-path').value.trim();
+    const out = document.getElementById('snapshot-result');
+    out.textContent = action + '…';
+    try {
+        const r = await fetch('/api/memory/snapshot/' + action, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(path ? { path } : {}),
+        });
+        const data = await r.json();
+        out.textContent = action + ' → ' + JSON.stringify(data).slice(0, 220);
         refreshAll();
     } catch (e) {
         out.textContent = 'request failed';

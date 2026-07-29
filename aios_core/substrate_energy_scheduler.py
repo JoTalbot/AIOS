@@ -1,4 +1,4 @@
-"""Energy-Aware Substrate Scheduling (v11.4.0) — policies + AI wiring (v11.7.0).
+"""Energy-Aware Substrate Scheduling (v11.4.0) — policies + AI wiring (v11.7.0) + batch forecasting (v11.8.0).
 
 Policy layer on top of ``SubstrateConvergenceEngine``. Where the engine
 balances affinity, efficiency and load, this scheduler optimizes according
@@ -292,6 +292,84 @@ class EnergyAwareScheduler:
             }
         )
         return result
+
+    # ------------------------------------------------------------------
+    # Batch forecasting (v11.8.0)
+    # ------------------------------------------------------------------
+
+    # Hard cap so a forecast call stays cheap even over the wire.
+    FORECAST_MAX_TASKS = 1000
+
+    def forecast(self, tasks: list[dict[str, Any]], policy: str | None = None) -> dict[str, Any]:
+        """Simulate a batch of dispatches without executing anything.
+
+        Each task is planned in order against the CURRENT engine state;
+        the rolling energy budget is projected cumulatively, so a task
+        that would be affordable on its own is flagged
+        ``projected_budget_exceeded`` once the earlier tasks in the batch
+        have consumed the remaining window.
+
+        Nothing is executed, recorded or learned: the dispatch report,
+        the rolling budget and the engine history are all untouched.
+
+        Args:
+            tasks: ordered list of task dicts (category, compute_units).
+            policy: override for the scheduler's default policy.
+
+        Returns:
+            Forecast dict: per-task plans with affordability flags and
+            the projected window usage after the batch.
+        """
+        policy = policy or self.policy
+        self._check_policy(policy)
+        if not isinstance(tasks, list):
+            raise ValueError("tasks must be a list of task dicts")
+        if len(tasks) > self.FORECAST_MAX_TASKS:
+            raise ValueError(f"tasks exceeds the {self.FORECAST_MAX_TASKS}-task forecast limit")
+        for index, task in enumerate(tasks):
+            if not isinstance(task, dict):
+                raise ValueError(f"tasks[{index}] must be a dict")
+
+        spent_now = self.energy_budget.spent() if self.energy_budget else 0.0
+        limit = self.energy_budget.limit if self.energy_budget else None
+        projected = 0.0
+        plans: list[dict[str, Any]] = []
+
+        for index, task in enumerate(tasks):
+            plan = self.plan(task, policy=policy)
+            expected = plan["expected_energy"]
+            affordable = plan["selected_substrate"] is not None
+            violations = list(plan["violations"])
+            if affordable and limit is not None and spent_now + projected + expected > limit:
+                violations.append("projected_budget_exceeded")
+                affordable = False
+            if affordable:
+                projected += expected
+            plans.append(
+                {
+                    "index": index,
+                    "task_id": plan["task_id"],
+                    "selected_substrate": plan["selected_substrate"],
+                    "expected_energy": expected,
+                    "expected_latency_ms": plan["expected_latency_ms"],
+                    "affordable": affordable,
+                    "violations": violations,
+                    "cumulative_energy": round(projected, 6),
+                }
+            )
+
+        return {
+            "policy": policy,
+            "tasks_total": len(tasks),
+            "tasks_affordable": sum(1 for entry in plans if entry["affordable"]),
+            "projected_energy": round(projected, 6),
+            "window_spent_now": round(spent_now, 6),
+            "window_limit": limit,
+            "window_remaining_after": (
+                round(max(0.0, limit - spent_now - projected), 6) if limit is not None else None
+            ),
+            "plans": plans,
+        }
 
     # ------------------------------------------------------------------
     # Reporting
