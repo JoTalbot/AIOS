@@ -117,17 +117,25 @@ jobs:
           yes | sdkmanager --licenses > /dev/null
           set -o pipefail
 
-          # Install packages
+          # Install packages (unmuted on purpose: previous silent failures were undebuggable)
           sdkmanager "platform-tools" "emulator" "platforms;android-${API_LEVEL}" \
             "system-images;android-${API_LEVEL};${ABI}" \
-            "build-tools;35.0.0" > /dev/null
+            "build-tools;35.0.0"
+
+          echo "=== installed packages (sanity) ==="
+          sdkmanager --list_installed | grep -Ei "system-images|platforms|emulator" || true
+
+          # Pin AVD storage location so avdmanager and the config.ini writer agree
+          export ANDROID_SDK_HOME="$HOME"
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
 
           # Create 3 AVDs for parallel calibration
           for i in 1 2 3; do
             AVD="AIOS_${i}"
             echo "no" | avdmanager create avd -n "${AVD}" \
               -k "system-images;android-${API_LEVEL};${ABI}" \
-              -d "pixel" --force > /dev/null
+              -d "pixel" --force
 
             # Config for faster boot
             cat > ~/.android/avd/${AVD}.avd/config.ini <<EOF
