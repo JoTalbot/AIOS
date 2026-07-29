@@ -168,6 +168,10 @@ class AgentMemorySystem:
         self._dedup_report: dict[str, Any] = {}
         self._dedup_removed_total: int = 0
 
+        # Cold-storage archive (Memory Lifecycle, v11.5.0)
+        self._archive: list[MemoryEntry] = []
+        self._archive_report: dict[str, Any] = {}
+
     def _next_id(self) -> str:
         """Generate unique memory ID."""
         self._counter += 1
@@ -535,8 +539,18 @@ class AgentMemorySystem:
     # ── Agent Memory Optimization (vector compression, v11.3.0) ─────────
 
     def _ensure_compressor(self, target_dim: int = 64) -> None:
-        """Lazily build text vectoriser + compressor (import guarded)."""
+        """Lazily build text vectoriser + compressor (import guarded).
+
+        Recreates the compressor (keeping the vectorizer) when a different
+        ``target_dim`` is requested — e.g. by optimize_storage_adaptive.
+        """
         if self._vectorizer is not None and self._compressor is not None:
+            if self._compressor.target_dim == target_dim:
+                return
+            from aios_core.memory_compression import VectorCompressor
+
+            self._compressor = VectorCompressor(target_dim=target_dim)
+            self._compressor.fit(self._vectorizer.dim)
             return
         try:
             from aios_core.memory_compression import HashingVectorizer, VectorCompressor
@@ -586,6 +600,50 @@ class AgentMemorySystem:
             "compressed_at": time.time(),
         }
         return dict(self._compression_report)
+
+    def optimize_storage_adaptive(
+        self,
+        min_overlap: float = 0.8,
+        top_k: int = 5,
+        dims: list[int] | None = None,
+        probes: int = 8,
+    ) -> dict[str, Any]:
+        """Compress with an adaptively chosen dimension (v11.5.0).
+
+        Probes recall-ranking stability per candidate dim (dense vs
+        compressed top-k overlap) via ``AdaptiveTuner`` and stores the
+        index at the smallest dim meeting ``min_overlap``. The adaptive
+        report persists inside ``compression_stats()["adaptive"]``.
+
+        With fewer than two memories there is nothing to probe — falls
+        back to the default 64 dimensions.
+        """
+        from .memory_compression import AdaptiveTuner
+
+        entries = {e.memory_id: self._entry_text(e) for e in [*self._long_term, *self._episodic]}
+        if len(entries) < 2:
+            report = self.optimize_storage()
+            report["adaptive"] = {
+                "selected_dim": 64,
+                "scores": {},
+                "skipped": "not_enough_entries",
+                "entries": len(entries),
+            }
+            self._compression_report["adaptive"] = report["adaptive"]
+            return report
+
+        self._ensure_compressor()  # need the vectorizer for probes
+        tuner = AdaptiveTuner(
+            self._vectorizer,
+            dims=dims,
+            min_overlap=min_overlap,
+            top_k=top_k,
+        )
+        selection = tuner.select(entries, probes=probes)
+        report = self.optimize_storage(target_dim=selection["selected_dim"])
+        report["adaptive"] = selection
+        self._compression_report["adaptive"] = selection
+        return report
 
     def recall_compressed(
         self,
@@ -743,6 +801,65 @@ class AgentMemorySystem:
             "last_report": dict(self._dedup_report),
         }
 
+    # ------------------------------------------------------------------
+    # Cold-storage archive (Memory Lifecycle, v11.5.0)
+    # ------------------------------------------------------------------
+
+    def archive_dead(
+        self,
+        min_strength: float = 0.05,
+        min_age_days: float = 1.0,
+    ) -> dict[str, Any]:
+        """Move dead long-term memories into the cold-storage archive.
+
+        An entry is "dead" when its decayed strength is below
+        ``min_strength`` AND it is at least ``min_age_days`` old. Archived
+        entries leave the active pool AND the compressed index (they no
+        longer appear in recall()/recall_compressed()) but stay inspectable
+        via ``archived()``. Short-term and episodic pools are untouched —
+        archival targets the long-term layer only.
+
+        Returns:
+            Archival report (count, ids, thresholds).
+        """
+        if min_strength < 0:
+            raise ValueError("min_strength must be >= 0")
+        if min_age_days < 0:
+            raise ValueError("min_age_days must be >= 0")
+
+        moved: list[MemoryEntry] = []
+        keep: list[MemoryEntry] = []
+        for entry in self._long_term:
+            if entry.strength < min_strength and entry.age_days >= min_age_days:
+                moved.append(entry)
+            else:
+                keep.append(entry)
+
+        self._long_term = keep
+        self._archive.extend(moved)
+        for entry in moved:
+            self._compressed.pop(entry.memory_id, None)
+
+        self._archive_report = {
+            "archived": len(moved),
+            "archived_ids": [e.memory_id for e in moved],
+            "min_strength": min_strength,
+            "min_age_days": min_age_days,
+            "archived_at": time.time(),
+        }
+        return dict(self._archive_report)
+
+    def archive_stats(self) -> dict[str, Any]:
+        """Archive summary: lifetime count + last archival report."""
+        return {
+            "archived_total": len(self._archive),
+            "last_report": dict(self._archive_report),
+        }
+
+    def archived(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Most recently archived entries (newest last), serialised."""
+        return [e.to_dict() for e in self._archive[-max(0, limit) :]]
+
     def stats(self) -> dict[str, Any]:
         """Memory system statistics.
 
@@ -774,4 +891,5 @@ class AgentMemorySystem:
             "last_consolidation": self._last_consolidation,
             "compression": self.compression_stats(),
             "dedup": self.dedup_stats(),
+            "archive": self.archive_stats(),
         }

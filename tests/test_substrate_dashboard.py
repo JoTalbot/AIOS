@@ -13,14 +13,16 @@ from aios_core.dashboard import create_dashboard
 
 @pytest.fixture()
 def client():
-    # Fresh convergence engine for every test (module-level singleton)
+    # Fresh convergence engine + energy scheduler for every test (module singletons)
     dashboard_module._substrate_engine = None
+    dashboard_module._energy_scheduler = None
     orch = MagicMock()
     orch.stats.return_value = {"total_steps_executed": 0}
-    orch.version = "11.3.0"
+    orch.version = "11.5.0"
     app = create_dashboard(orch)
     yield TestClient(app)
     dashboard_module._substrate_engine = None
+    dashboard_module._energy_scheduler = None
 
 
 def test_substrate_page_served(client):
@@ -83,3 +85,39 @@ def test_substrate_history_limit_validation(client):
     # non-numeric limit falls back to default instead of 500-ing
     fallback = client.get("/api/substrate/history?limit=abc")
     assert fallback.status_code == 200
+
+
+# ------------------------------------------------------------------
+# Energy Scheduler panel + report endpoint (v11.5.0)
+# ------------------------------------------------------------------
+
+
+def test_substrate_page_has_scheduler_panel(client):
+    resp = client.get("/substrate")
+    assert resp.status_code == 200
+    assert "v11.5.0" in resp.text
+    assert "sch-dispatches" in resp.text
+    assert "/api/substrate/scheduler" in resp.text
+    assert "/api/substrate/schedule" in resp.text  # plan form wiring
+
+
+def test_scheduler_report_endpoint(client):
+    rep = client.get("/api/substrate/scheduler").json()
+    assert rep["dispatches"] == 0
+    assert rep["fallback_dispatches"] == 0
+    assert rep["energy_spent_total"] == 0
+    assert rep["energy_saved_vs_baseline"] == 0
+    assert rep["savings_pct"] == 0.0
+    # Dashboard scheduler carries a rolling energy budget (100 units / hour)
+    budget = rep["energy_budget"]
+    assert budget["limit"] == 100.0
+    assert budget["remaining"] == pytest.approx(100.0)
+
+
+def test_scheduler_report_reflects_dispatches(client):
+    sched = dashboard_module._get_energy_scheduler()
+    sched.dispatch({"id": "r1", "category": "signal", "compute_units": 2})
+    rep = client.get("/api/substrate/scheduler").json()
+    assert rep["dispatches"] == 1
+    assert rep["energy_spent_total"] > 0
+    assert rep["energy_budget"]["spent"] > 0

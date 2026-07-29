@@ -132,7 +132,7 @@
 <body>
 
     <header>
-        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.3.0</span></h1>
+        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.5.0</span></h1>
         <div style="color: #94a3b8; font-size: 0.9rem;" id="live-indicator">Live Workload Router — data: /api/substrate/*</div>
     </header>
 
@@ -171,6 +171,34 @@
         <h2>Live Dispatch Router</h2>
         <div class="log-container" id="log-window">
             <!-- Real dispatch history from /api/substrate/history -->
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="panel">
+            <h2>Energy Scheduler Report</h2>
+            <div class="stat-group">
+                <div class="stat-row"><span class="stat-label">Policy Dispatches</span><span class="stat-value" id="sch-dispatches">0</span></div>
+                <div class="stat-row"><span class="stat-label">Fallback Dispatches</span><span class="stat-value" id="sch-fallbacks">0</span></div>
+                <div class="stat-row"><span class="stat-label">Energy Spent</span><span class="stat-value" id="sch-spent">0</span></div>
+                <div class="stat-row"><span class="stat-label">Energy Saved vs Baseline</span><span class="stat-value" style="color: var(--success)" id="sch-saved">0</span></div>
+                <div class="stat-row"><span class="stat-label">Savings</span><span class="stat-value" style="color: var(--success)" id="sch-pct">0%</span></div>
+                <div class="stat-row"><span class="stat-label">Budget Remaining</span><span class="stat-value" id="sch-budget">—</span></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Energy-Aware Plan (dry-run)</h2>
+            <div class="stat-group">
+                <div class="stat-row"><span class="stat-label">Category</span>
+                    <input id="plan-category" value="general" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:150px;font-family:monospace"></div>
+                <div class="stat-row"><span class="stat-label">Compute Units</span>
+                    <input id="plan-units" type="number" value="1" min="1" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:80px;font-family:monospace"></div>
+                <div class="stat-row">
+                    <button onclick="runPlan()" style="background:var(--accent);color:#0f172a;border:none;border-radius:6px;padding:8px 18px;font-weight:600;cursor:pointer">Plan</button>
+                    <span id="plan-result" class="stat-value" style="font-size:0.95rem">—</span></div>
+                <div style="color:#64748b;font-size:0.85rem" id="plan-detail">POST /api/substrate/schedule — nothing is executed on dry-run.</div>
+            </div>
         </div>
     </div>
 
@@ -234,12 +262,41 @@
             while (logWindow.children.length > 50) logWindow.removeChild(logWindow.lastChild);
         }
 
+        function renderSchedulerReport(rep) {
+            document.getElementById('sch-dispatches').innerText = rep.dispatches ?? 0;
+            document.getElementById('sch-fallbacks').innerText = rep.fallback_dispatches ?? 0;
+            document.getElementById('sch-spent').innerText = (rep.energy_spent_total ?? 0).toFixed(4);
+            document.getElementById('sch-saved').innerText = (rep.energy_saved_vs_baseline ?? 0).toFixed(4);
+            document.getElementById('sch-pct').innerText = (rep.savings_pct ?? 0) + '%';
+            document.getElementById('sch-budget').innerText =
+                rep.energy_budget ? rep.energy_budget.remaining + ' / ' + rep.energy_budget.limit : '—';
+        }
+
+        async function runPlan() {
+            const category = document.getElementById('plan-category').value || 'general';
+            const units = parseInt(document.getElementById('plan-units').value || '1', 10);
+            const resp = await fetch('/api/substrate/schedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: 'ui-plan-' + Date.now(), category, compute_units: units }),
+            });
+            const plan = await resp.json();
+            const m = plan.selected_substrate ? meta(plan.selected_substrate) : null;
+            const result = document.getElementById('plan-result');
+            result.innerText = m ? m.name : 'no route';
+            result.style.color = m ? m.color : 'var(--danger)';
+            document.getElementById('plan-detail').innerText = plan.constraint_violation
+                ? 'Constraint violation: ' + (plan.violations || []).join(', ') + ' — engine fallback would route it.'
+                : `${plan.selected_substrate}: ${plan.expected_energy} Wh vs baseline ${plan.baseline_substrate}: ${plan.baseline_energy} Wh → saves ${plan.expected_savings} Wh`;
+        }
+
         async function refresh() {
             try {
-                const [stats, mesh, history] = await Promise.all([
+                const [stats, mesh, history, scheduler] = await Promise.all([
                     fetch('/api/substrate/stats').then(r => r.json()),
                     fetch('/api/substrate/mesh').then(r => r.json()),
                     fetch('/api/substrate/history?limit=30').then(r => r.json()),
+                    fetch('/api/substrate/scheduler').then(r => r.json()),
                 ]);
                 document.getElementById('val-dispatches').innerText = (stats.total_dispatches ?? 0).toLocaleString();
                 document.getElementById('val-queued').innerText = stats.queued_tasks ?? 0;
@@ -248,6 +305,7 @@
                 document.getElementById('val-failover').innerText = failovers;
                 renderSubstrates(mesh.substrates || {});
                 renderHistory(history.history || []);
+                renderSchedulerReport(scheduler);
                 document.getElementById('live-indicator').innerText = 'Live Workload Router — connected';
             } catch (err) {
                 document.getElementById('live-indicator').innerText = 'Live Workload Router — reconnecting…';

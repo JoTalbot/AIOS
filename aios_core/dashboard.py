@@ -1758,6 +1758,10 @@ class AIOSDashboard:
         plan["scheduler_report"] = scheduler.report()
         return JSONResponse(plan)
 
+    async def api_substrate_scheduler(self, request: Request) -> JSONResponse:
+        """Energy-aware scheduler aggregate report (v11.5.0)."""
+        return JSONResponse(_get_energy_scheduler().report())
+
     # ------------------------------------------------------------------
     # Agent Memory dashboard (live, v11.4.0)
     # ------------------------------------------------------------------
@@ -1789,6 +1793,43 @@ class AIOSDashboard:
         threshold = min(1.0, max(0.01, threshold))
         return JSONResponse({"threshold": threshold, "groups": _get_memory_system().find_duplicates(threshold)})
 
+    async def api_memory_archive(self, request: Request) -> JSONResponse:
+        """Cold-storage archive contents (v11.5.0)."""
+        try:
+            limit = int(request.query_params.get("limit", "20"))
+        except ValueError:
+            limit = 20
+        limit = max(1, min(limit, 200))
+        system = _get_memory_system()
+        return JSONResponse(
+            {
+                "archived_total": system.archive_stats()["archived_total"],
+                "entries": system.archived(limit=limit),
+            }
+        )
+
+    async def api_memory_archive_run(self, request: Request) -> JSONResponse:
+        """Move dead memories to cold storage (v11.5.0).
+
+        Optional JSON body: {"min_strength": 0.05, "min_age_days": 1.0}.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        try:
+            min_strength = float(body.get("min_strength", 0.05))
+            min_age_days = float(body.get("min_age_days", 1.0))
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "min_strength and min_age_days must be numbers"}, status_code=400)
+        try:
+            report = _get_memory_system().archive_dead(min_strength=min_strength, min_age_days=min_age_days)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(report)
+
     def create_app(self) -> Starlette:
         routes = [
             Route("/", self.index),
@@ -1799,10 +1840,13 @@ class AIOSDashboard:
             Route("/api/substrate/energy", self.api_substrate_energy),
             Route("/api/substrate/history", self.api_substrate_history),
             Route("/api/substrate/schedule", self.api_substrate_schedule, methods=["POST"]),
+            Route("/api/substrate/scheduler", self.api_substrate_scheduler),
             Route("/api/memory/stats", self.api_memory_stats),
             Route("/api/memory/patterns", self.api_memory_patterns),
             Route("/api/memory/compression", self.api_memory_compression),
             Route("/api/memory/duplicates", self.api_memory_duplicates),
+            Route("/api/memory/archive", self.api_memory_archive),
+            Route("/api/memory/archive/run", self.api_memory_archive_run, methods=["POST"]),
             Route("/api/stats", self.api_stats),
             Route("/health", self.api_health),
             Route("/api/health", self.api_health),
