@@ -106,4 +106,4 @@ No migration required. Update `pip install aios==9.7.0`.
 - TikTok full agent, WhatsApp/Viber/FB full agents
 - Multi-account fleet scheduler
 - Production dashboard React v3
-- See [ROADMAP_NEXT.md](ROADMAP_NEXT.md) for full roadmap
+- See [ROADMAP_NEXT.md](https://github.com/JoTalbot/AIOS/blob/main/ROADMAP_NEXT.md) for full roadmap

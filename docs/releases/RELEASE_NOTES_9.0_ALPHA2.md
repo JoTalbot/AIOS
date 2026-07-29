@@ -57,4 +57,4 @@ python -m build            # dist/aios-9.0.0a2-*.{whl,tar.gz}
 ```
 
 Base platform notes: [RELEASE_NOTES_9.0.md](RELEASE_NOTES_9.0.md).
-Full delta: [CHANGELOG.md](CHANGELOG.md).
+Full delta: [CHANGELOG.md](../CHANGELOG.md).

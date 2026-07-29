@@ -149,4 +149,4 @@ No migration required. Update `pip install aios==9.5.0`.
 
 ## Next: v9.6.0
 - Rozetka price tracker, autowatch, favorites, auto-login scaffold
-- See [ROADMAP_NEXT.md](ROADMAP_NEXT.md) for full roadmap
+- See [ROADMAP_NEXT.md](https://github.com/JoTalbot/AIOS/blob/main/ROADMAP_NEXT.md) for full roadmap

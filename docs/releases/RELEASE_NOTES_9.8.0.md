@@ -126,4 +126,4 @@ No migration required. Update `pip install aios==9.8.0`.
 ## Next: v9.9.0
 - Price prediction ML, notification routing (Telegram/Slack/email)
 - Seller reputation, image comparison, geospatial heatmap
-- See [ROADMAP_NEXT.md](ROADMAP_NEXT.md) for full roadmap
+- See [ROADMAP_NEXT.md](https://github.com/JoTalbot/AIOS/blob/main/ROADMAP_NEXT.md) for full roadmap

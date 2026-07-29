@@ -1,6 +1,6 @@
 # Changelog
 
-> **Note:** The canonical changelog is [`../CHANGELOG.md`](../CHANGELOG.md)
+> **Note:** The canonical changelog is [CHANGELOG.md в корне репозитория](https://github.com/JoTalbot/AIOS/blob/main/CHANGELOG.md)
 > in the repository root. This document provides a condensed summary by
 > major version milestone.
 

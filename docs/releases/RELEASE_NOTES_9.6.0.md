@@ -102,4 +102,4 @@ No migration required. Update `pip install aios==9.6.0`.
 - Multi-market cross-platform (OLX ↔ Rozetka price comparison)
 - AI advisor: cross-platform recommendation engine
 - Vector search / semantic product matching
-- See [ROADMAP_NEXT.md](ROADMAP_NEXT.md) for full roadmap
+- See [ROADMAP_NEXT.md](https://github.com/JoTalbot/AIOS/blob/main/ROADMAP_NEXT.md) for full roadmap
