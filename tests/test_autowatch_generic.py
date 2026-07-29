@@ -338,12 +338,17 @@ async def messenger_client(tmp_path):
 
     load_catalog_file(os.path.join(_PROJECT_ROOT, "platforms", "instagram.yaml"))
     store = ProfileStore(":memory:")
+    # Bogus serials: эти тесты описывают поведение БЕЗ устройства
+    # (flush → честный "failed"). Привязка к несуществующему serial делает
+    # это детерминированным даже когда к раннеру подключён живой эмулятор
+    # (integration-job full-ci-cd поднимает emulator-5554 в той же сессии).
     store.add(
         Profile(
             platform="instagram",
             name="main",
             db_path=str(tmp_path / "instagram-main.sqlite"),
             is_default=True,
+            device_serial="emulator-9999",
         )
     )
     store.add(
@@ -351,6 +356,7 @@ async def messenger_client(tmp_path):
             platform="instagram",
             name="second",
             db_path=str(tmp_path / "instagram-second.sqlite"),
+            device_serial="emulator-9999",
         )
     )
     api = AIOSAPI(
