@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.8.0] — 2026-07-29 — Persistence APIs + Batch Forecasting + Prometheus Metrics
+
+### Added
+- **Dispatch Forecasting** (`EnergyAwareScheduler.forecast(tasks, policy=)`):
+  simulate a batch of up to 1000 dispatches against the current engine
+  state with CUMULATIVE rolling-budget projection — a task affordable on
+  its own is flagged `projected_budget_exceeded` once earlier tasks have
+  consumed the window. Pure dry-run: report, budget and engine history
+  are untouched. API: `POST /api/substrate/forecast` (`{"tasks": [...],
+  "policy": optional}` → per-task plans + projected window usage;
+  400 on invalid payloads). The `/substrate` page gains a Dispatch
+  Forecast panel (JSON batch editor + per-task projection list).
+- **Memory snapshot endpoints**: `POST /api/memory/snapshot/save` and
+  `POST /api/memory/snapshot/load` wrap the v11.6 persistence engine
+  (atomic writes, format-versioned full restore replacing live state).
+  Optional `{"path"}` (default `~/.aios/memory_snapshot.json`); missing
+  files → 404, corrupt/wrong-format files → 400. The `/memory` page gains
+  a Snapshot Persistence panel.
+- **Prometheus metrics export** (`aios_core/metrics_export.py`):
+  `render_prometheus()` renders the live memory system, convergence
+  engine and energy scheduler in the Prometheus text exposition format
+  (label escaping, finite-value guarding, HELP/TYPE headers). Served at
+  `GET /api/metrics` (`text/plain; version=0.0.4`) with `aios_info`
+  build gauge, per-pool/`platform`/archive memory gauges, dedup and
+  compression counters, per-substrate engine analytics series and the
+  full scheduler counter/budget set.
+- **Tests**: 27 new — `test_dispatch_forecast.py` (14),
+  `test_metrics_export.py` (7), `test_memory_snapshot_api.py` (6).
+
 ## [11.7.0] — 2026-07-29 — Scheduling Policies + AI-Manager Wiring + Dispatch Analytics
 
 ### Added

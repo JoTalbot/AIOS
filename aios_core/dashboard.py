@@ -22,7 +22,7 @@ from typing import Any
 
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse, StreamingResponse
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocket
 
@@ -33,6 +33,8 @@ from .orchestrator import Orchestrator
 _DASHBOARD_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "index.html"
 _SUBSTRATE_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "substrate.html"
 _MEMORY_HTML_PATH = Path(__file__).resolve().parent.parent / "dashboard" / "memory.html"
+# Default on-disk location for the memory snapshot endpoints (v11.8.0)
+_MEMORY_SNAPSHOT_PATH = Path.home() / ".aios" / "memory_snapshot.json"
 
 # Shared Substrate Convergence engine for the live /substrate dashboard (v11.3.0)
 _substrate_engine: Any = None
@@ -1775,6 +1777,30 @@ class AIOSDashboard:
         limit = max(0, min(limit, 10000))
         return JSONResponse(_get_substrate_engine().analytics(limit=limit or None))
 
+    async def api_substrate_forecast(self, request: Request) -> JSONResponse:
+        """Dry-run forecast of a batch of dispatches (v11.8.0).
+
+        POST body: {"tasks": [{...}, ...], "policy": optional}. Tasks are
+        planned in order against current engine state with cumulative
+        budget projection; nothing is executed.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if "tasks" not in body:
+            return JSONResponse({"error": "body must include a 'tasks' list"}, status_code=400)
+        policy = body.get("policy")
+        if policy is not None and not isinstance(policy, str):
+            return JSONResponse({"error": "policy must be a string"}, status_code=400)
+        try:
+            forecast = _get_energy_scheduler().forecast(body["tasks"], policy=policy)
+        except (ValueError, TypeError, AttributeError) as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(forecast)
+
     # ------------------------------------------------------------------
     # Agent Memory dashboard (live, v11.4.0)
     # ------------------------------------------------------------------
@@ -1917,6 +1943,80 @@ class AIOSDashboard:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(report)
 
+    # ------------------------------------------------------------------
+    # Memory persistence (v11.8.0) + Prometheus metrics export
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def _snapshot_path_from(request: Request) -> str | JSONResponse:
+        """Extract an optional snapshot path from a JSON body."""
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        path = body.get("path")
+        if path is None:
+            path = str(_MEMORY_SNAPSHOT_PATH)
+        if not isinstance(path, str) or not path.strip():
+            return JSONResponse({"error": "path must be a non-empty string"}, status_code=400)
+        return path.strip()
+
+    async def api_memory_snapshot_save(self, request: Request) -> JSONResponse:
+        """Persist the live memory system to disk (atomic write, v11.8.0).
+
+        Optional JSON body: {"path": "..."}; defaults to
+        ~/.aios/memory_snapshot.json.
+        """
+        path = await self._snapshot_path_from(request)
+        if isinstance(path, JSONResponse):
+            return path
+        system = _get_memory_system()
+        try:
+            report = system.save(path)
+        except OSError as exc:
+            return JSONResponse({"error": f"snapshot save failed: {exc}"}, status_code=500)
+        stats = system.stats()
+        report["totals"] = {
+            "short_term": stats["short_term_count"],
+            "long_term": stats["long_term_count"],
+            "episodic": stats["episodic_count"],
+            "patterns": stats["pattern_count"],
+            "archived": stats["archive"]["archived_total"],
+        }
+        return JSONResponse(report)
+
+    async def api_memory_snapshot_load(self, request: Request) -> JSONResponse:
+        """Restore the live memory system from a snapshot on disk (v11.8.0).
+
+        Optional JSON body: {"path": "..."} (same default as save).
+        Loading REPLACES the current in-memory state.
+        """
+        path = await self._snapshot_path_from(request)
+        if isinstance(path, JSONResponse):
+            return path
+        if not Path(path).is_file():
+            return JSONResponse({"error": f"snapshot not found: {path}"}, status_code=404)
+        try:
+            report = _get_memory_system().load(path)
+        except (OSError, ValueError, KeyError) as exc:
+            return JSONResponse({"error": f"snapshot load failed: {exc}"}, status_code=400)
+        return JSONResponse(report)
+
+    async def api_metrics(self, request: Request) -> PlainTextResponse:
+        """Prometheus text exposition of the live AIOS state (v11.8.0)."""
+        from . import __version__
+        from .metrics_export import PROMETHEUS_MEDIA_TYPE, render_prometheus
+
+        text = render_prometheus(
+            memory_system=_get_memory_system(),
+            engine=_get_substrate_engine(),
+            scheduler=_get_energy_scheduler(),
+            version=__version__,
+        )
+        return PlainTextResponse(text, media_type=PROMETHEUS_MEDIA_TYPE)
+
     def create_app(self) -> Starlette:
         routes = [
             Route("/", self.index),
@@ -1929,6 +2029,7 @@ class AIOSDashboard:
             Route("/api/substrate/schedule", self.api_substrate_schedule, methods=["POST"]),
             Route("/api/substrate/scheduler", self.api_substrate_scheduler),
             Route("/api/substrate/analytics", self.api_substrate_analytics),
+            Route("/api/substrate/forecast", self.api_substrate_forecast, methods=["POST"]),
             Route("/api/memory/stats", self.api_memory_stats),
             Route("/api/memory/patterns", self.api_memory_patterns),
             Route("/api/memory/compression", self.api_memory_compression),
@@ -1939,6 +2040,9 @@ class AIOSDashboard:
             Route("/api/memory/consolidate", self.api_memory_consolidate, methods=["POST"]),
             Route("/api/memory/decay", self.api_memory_decay, methods=["POST"]),
             Route("/api/memory/compression/optimize-adaptive", self.api_memory_optimize_adaptive, methods=["POST"]),
+            Route("/api/memory/snapshot/save", self.api_memory_snapshot_save, methods=["POST"]),
+            Route("/api/memory/snapshot/load", self.api_memory_snapshot_load, methods=["POST"]),
+            Route("/api/metrics", self.api_metrics),
             Route("/api/stats", self.api_stats),
             Route("/health", self.api_health),
             Route("/api/health", self.api_health),

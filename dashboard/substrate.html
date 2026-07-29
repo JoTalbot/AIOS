@@ -132,7 +132,7 @@
 <body>
 
     <header>
-        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.7.0</span></h1>
+        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.8.0</span></h1>
         <div style="color: #94a3b8; font-size: 0.9rem;" id="live-indicator">Live Workload Router — data: /api/substrate/*</div>
     </header>
 
@@ -205,6 +205,27 @@
                     <button onclick="runPlan()" style="background:var(--accent);color:#0f172a;border:none;border-radius:6px;padding:8px 18px;font-weight:600;cursor:pointer">Plan</button>
                     <span id="plan-result" class="stat-value" style="font-size:0.95rem">—</span></div>
                 <div style="color:#64748b;font-size:0.85rem" id="plan-detail">POST /api/substrate/schedule — nothing is executed on dry-run.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="panel">
+            <h2>Dispatch Forecast (dry-run batch)</h2>
+            <div class="stat-group">
+                <textarea id="forecast-tasks" rows="3" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:8px;font-family:monospace;width:100%">[{"id":"f1","category":"general","compute_units":10},{"id":"f2","category":"vision","compute_units":25}]</textarea>
+                <div class="stat-row"><span class="stat-label">Policy</span>
+                    <span>
+                        <select id="forecast-policy" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px;font-family:monospace">
+                            <option value="">(default)</option>
+                            <option value="min_energy">min_energy</option>
+                            <option value="min_latency">min_latency</option>
+                            <option value="balanced">balanced</option>
+                            <option value="ai_optimized">ai_optimized</option>
+                        </select>
+                        <button onclick="runForecast()" style="background:var(--accent);color:#0f172a;border:none;border-radius:6px;padding:7px 16px;font-weight:600;cursor:pointer">Forecast</button>
+                    </span></div>
+                <div id="forecast-result" style="color:#94a3b8;font-size:0.88rem;font-family:'Consolas',monospace">POST /api/substrate/forecast — nothing is executed.</div>
             </div>
         </div>
     </div>
@@ -326,6 +347,30 @@
             document.getElementById('plan-detail').innerText = plan.constraint_violation
                 ? 'Constraint violation: ' + (plan.violations || []).join(', ') + ' — engine fallback would route it.'
                 : `${plan.selected_substrate}: ${plan.expected_energy} Wh vs baseline ${plan.baseline_substrate}: ${plan.baseline_energy} Wh → saves ${plan.expected_savings} Wh`;
+        }
+
+        async function runForecast() {
+            const out = document.getElementById('forecast-result');
+            let tasks;
+            try {
+                tasks = JSON.parse(document.getElementById('forecast-tasks').value);
+            } catch (e) {
+                out.innerText = 'invalid JSON: ' + e.message;
+                return;
+            }
+            const policy = document.getElementById('forecast-policy').value;
+            const body = policy ? { tasks, policy } : { tasks };
+            const resp = await fetch('/api/substrate/forecast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            const data = await resp.json();
+            if (data.error) { out.innerText = 'error: ' + data.error; return; }
+            const lines = (data.plans || []).slice(0, 6).map(p =>
+                `#${p.index} ${p.task_id} → ${p.selected_substrate || 'no route'} (${p.expected_energy} Wh, cum ${p.cumulative_energy})${p.violations.length ? ' ⚠ ' + p.violations.join(',') : ''}`
+            );
+            out.innerText = `policy ${data.policy}: ${data.tasks_affordable}/${data.tasks_total} affordable · projected ${data.projected_energy} Wh · window left ${data.window_remaining_after}\n` + lines.join('\n');
         }
 
         async function refresh() {

@@ -1,5 +1,13 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.8.0 ✅ (2026-07-29)
+- ✅ Dispatch Forecasting — `EnergyAwareScheduler.forecast(tasks, policy=)`: dry-run прогон батча до 1000 задач с КУМУЛЯТИВНОЙ проекцией rolling-бюджета (`projected_budget_exceeded` при перерасходе окна ранними задачами); ничего не исполняется и не записывается; `POST /api/substrate/forecast` + панель Dispatch Forecast на `/substrate`
+- ✅ Memory Snapshot APIs — `POST /api/memory/snapshot/save` / `load` поверх движка v11.6 (атомарная запись, версионный формат, полная замена живого состояния); дефолтный путь `~/.aios/memory_snapshot.json`, 404/400 на отсутствующих/битых файлах + панель Snapshot Persistence на `/memory`
+- ✅ Prometheus Metrics Export — `aios_core/metrics_export.py`: `render_prometheus()` (экранирование лейблов, guard от non-finite, HELP/TYPE) + `GET /api/metrics` (`text/plain; version=0.0.4`) — `aios_info`, memory/далее dedup/compression gauges, по-субстратные серии движка, счётчики и бюджет планировщика
+- ✅ 27 новых тестов (dispatch_forecast 14 + metrics_export 7 + memory_snapshot_api 6)
+
+**~4156 tests, 0 failures**
+
 ## v11.7.0 ✅ (2026-07-29)
 - ✅ Scheduling Policies — `min_energy` / `min_latency` / `balanced` (взвешенный нормализованный бленд) / `ai_optimized`; выбор на планировщик / на план / на диспетч; диспетчи записывают `scheduling_policy`, report с `policy_dispatches`; API принимает `"policy"` (неизвестная → 400)
 - ✅ SubstrateAIManager оживлён — Q-learning реально управляет маршрутизацией: `ai_optimized` выбирает argmax Q среди кандидатов (холодная таблица → min_energy tie-break, `ai_q_value` в плане); обучение автоматическое после каждого исполнения движка; мёртвый хук `pass` в движке заменён контролируемым детерминированным путём
@@ -529,6 +537,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 11.5.0 | 2026-07-29 | ~4089 | Adaptive Compression Tuner, cold-storage Memory Archive, Scheduler-панель в Substrate dashboard, эмуляторная цепочка CI зелёная end-to-end |
 | 11.6.0 | 2026-07-29 | ~4113 | Memory Persistence (snapshot/save/load), keyword search + recall API, lifecycle endpoints, decay counter fix |
 | 11.7.0 | 2026-07-29 | ~4129 | Scheduling policies (4), AI-manager Q-learning в маршрутизации, dispatch analytics + панель |
+| 11.8.0 | 2026-07-29 | ~4156 | Batch dispatch forecasting + forecast API/панель, memory snapshot save/load APIs + панель, Prometheus /api/metrics export |
 
 ---
 
