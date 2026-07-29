@@ -1,5 +1,13 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.9.0 ✅ (2026-07-29)
+- ✅ Dedup Threshold Auto-Tuner — `tune_dedup_threshold()` сканирует кандидатов (0.80–0.98), скоринг `duplicates × avg_similarity`, тай-брейк в консервативную сторону; `apply` сохраняет рекомендацию как дефолт (`dedup_stats()["threshold"]`, персистится в снапшотах, используется `/api/memory/duplicates` без явного параметра); ничего не мёрджится; `POST /api/memory/dedup/tune` + кнопка Tune на панели дубликатов
+- ✅ History CSV Export — `engine.export_history_csv(limit)` (RFC-4180, UTC ISO8601, квотинг csv-модулем) + `GET /api/substrate/history/export` (attachment) + ссылка Export CSV на панели роутера
+- ✅ Aggregate Health Score — `compute_health_score()`: флот субстратов 0.4 + эффективность планировщика 0.3 + жизненность памяти 0.3, недоступные компоненты ренормализуют веса; статусы healthy/degraded/critical/no_data; `GET /api/health/score` + панель System Health Score на `/substrate`
+- ✅ 27 новых тестов (dedup_tuning 11 + health_score 10 + history_export 6)
+
+**~4183 tests, 0 failures**
+
 ## v11.8.0 ✅ (2026-07-29)
 - ✅ Dispatch Forecasting — `EnergyAwareScheduler.forecast(tasks, policy=)`: dry-run прогон батча до 1000 задач с КУМУЛЯТИВНОЙ проекцией rolling-бюджета (`projected_budget_exceeded` при перерасходе окна ранними задачами); ничего не исполняется и не записывается; `POST /api/substrate/forecast` + панель Dispatch Forecast на `/substrate`
 - ✅ Memory Snapshot APIs — `POST /api/memory/snapshot/save` / `load` поверх движка v11.6 (атомарная запись, версионный формат, полная замена живого состояния); дефолтный путь `~/.aios/memory_snapshot.json`, 404/400 на отсутствующих/битых файлах + панель Snapshot Persistence на `/memory`
@@ -538,6 +546,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 11.6.0 | 2026-07-29 | ~4113 | Memory Persistence (snapshot/save/load), keyword search + recall API, lifecycle endpoints, decay counter fix |
 | 11.7.0 | 2026-07-29 | ~4129 | Scheduling policies (4), AI-manager Q-learning в маршрутизации, dispatch analytics + панель |
 | 11.8.0 | 2026-07-29 | ~4156 | Batch dispatch forecasting + forecast API/панель, memory snapshot save/load APIs + панель, Prometheus /api/metrics export |
+| 11.9.0 | 2026-07-29 | ~4183 | Dedup threshold auto-tuner (+apply, persist), history CSV export, aggregate health score API + панель |
 
 ---
 

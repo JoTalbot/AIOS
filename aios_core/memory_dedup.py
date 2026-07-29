@@ -23,7 +23,11 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .memory_compression import CompressedVector, VectorCompressor
 
-__all__ = ["DuplicateGroup", "MemoryDeduplicator"]
+__all__ = ["DEFAULT_TUNING_CANDIDATES", "DuplicateGroup", "MemoryDeduplicator", "tune_dedup_threshold"]
+
+#: Candidate thresholds scanned by tune_dedup_threshold() when the caller
+#: does not provide its own list.
+DEFAULT_TUNING_CANDIDATES = (0.80, 0.85, 0.90, 0.92, 0.95, 0.98)
 
 
 @dataclass
@@ -152,3 +156,81 @@ class MemoryDeduplicator:
 
         groups.sort(key=lambda g: (-g.size, g.representative_id))
         return groups
+
+
+def tune_dedup_threshold(
+    vectors: dict[str, CompressedVector],
+    compressor: VectorCompressor,
+    score: dict[str, float] | None = None,
+    candidates: list[float] | None = None,
+) -> dict[str, Any]:
+    """Scan candidate similarity thresholds and recommend the best one
+    (v11.9.0).
+
+    The full union-find clustering runs once per candidate; every run is
+    scored as ``duplicates * avg_similarity`` — merge as many duplicates
+    as possible, but weight the merge by intra-group confidence. Ties
+    break toward the HIGHER threshold (merging is irreversible, so equal
+    quality prefers the more conservative cut-off). When no candidate
+    finds any duplicates, the DEFAULT_THRESHOLD is kept.
+
+    Args:
+        vectors: memory_id -> CompressedVector index.
+        compressor: fitted compressor used for cosine similarity.
+        score: optional memory_id -> strength for representative choice.
+        candidates: thresholds to scan (defaults to
+            DEFAULT_TUNING_CANDIDATES); each must be in (0.0, 1.0].
+
+    Returns:
+        Report dict: recommended_threshold, per-candidate stats,
+        duplicates found at the recommendation and a human rationale.
+    """
+    raw = list(DEFAULT_TUNING_CANDIDATES if candidates is None else candidates)
+    if not raw:
+        raise ValueError("candidates must be a non-empty list of thresholds")
+    validated: list[float] = []
+    for cand in raw:
+        value = float(cand)
+        if not 0.0 < value <= 1.0:
+            raise ValueError(f"candidate threshold {cand!r} must be in (0.0, 1.0]")
+        validated.append(value)
+    thresholds = sorted(set(validated))
+
+    rows: list[dict[str, Any]] = []
+    for threshold in thresholds:
+        groups = MemoryDeduplicator(threshold=threshold).find_groups(vectors, compressor, score=score)
+        duplicates = sum(g.size - 1 for g in groups)
+        avg_sim = sum(g.avg_similarity for g in groups) / len(groups) if groups else 0.0
+        rows.append(
+            {
+                "threshold": threshold,
+                "groups": len(groups),
+                "duplicates": duplicates,
+                "avg_similarity": round(avg_sim, 4),
+                "score": round(duplicates * avg_sim, 6),
+            }
+        )
+
+    productive = [row for row in rows if row["duplicates"] > 0]
+    if not productive:
+        recommended = MemoryDeduplicator.DEFAULT_THRESHOLD
+        duplicates_found = 0
+        rationale = "no duplicates at any candidate; keeping the default threshold"
+    else:
+        best = max(productive, key=lambda row: (row["score"], row["threshold"]))
+        recommended = best["threshold"]
+        duplicates_found = best["duplicates"]
+        rationale = (
+            f"best merge score {best['score']} at threshold {recommended} "
+            f"({best['duplicates']} duplicates in {best['groups']} groups, "
+            f"avg similarity {best['avg_similarity']})"
+        )
+
+    return {
+        "recommended_threshold": recommended,
+        "default_threshold": MemoryDeduplicator.DEFAULT_THRESHOLD,
+        "signatures_scanned": len(vectors),
+        "duplicates_found": duplicates_found,
+        "rationale": rationale,
+        "candidates": rows,
+    }

@@ -132,7 +132,7 @@
 <body>
 
     <header>
-        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.8.0</span></h1>
+        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.9.0</span></h1>
         <div style="color: #94a3b8; font-size: 0.9rem;" id="live-indicator">Live Workload Router — data: /api/substrate/*</div>
     </header>
 
@@ -159,6 +159,15 @@
             </div>
         </div>
 
+        <div class="panel">
+            <h2>System Health Score</h2>
+            <div class="stat-group">
+                <div class="stat-row"><span class="stat-label">Aggregate (0–100)</span><span class="stat-value" id="health-score">—</span></div>
+                <div class="stat-row"><span class="stat-label">Status</span><span class="stat-value" id="health-status">—</span></div>
+                <div id="health-detail" style="font-size:0.85rem;color:#64748b;font-family:'Consolas',monospace;line-height:1.7">GET /api/health/score</div>
+            </div>
+        </div>
+
         <div class="panel" style="grid-column: span 2;">
             <h2>Substrate Mesh Health</h2>
             <div class="substrate-grid" id="substrate-container">
@@ -168,7 +177,7 @@
     </div>
 
     <div class="panel">
-        <h2>Live Dispatch Router</h2>
+        <h2>Live Dispatch Router <a href="/api/substrate/history/export" download style="float:right;font-size:0.85rem;color:var(--accent);text-decoration:none">⬇ Export CSV</a></h2>
         <div class="log-container" id="log-window">
             <!-- Real dispatch history from /api/substrate/history -->
         </div>
@@ -349,6 +358,19 @@
                 : `${plan.selected_substrate}: ${plan.expected_energy} Wh vs baseline ${plan.baseline_substrate}: ${plan.baseline_energy} Wh → saves ${plan.expected_savings} Wh`;
         }
 
+        function renderHealth(data) {
+            const scoreEl = document.getElementById('health-score');
+            const statusEl = document.getElementById('health-status');
+            scoreEl.innerText = data.score === null ? '—' : data.score;
+            const colors = { healthy: 'var(--success)', degraded: 'var(--warning)', critical: 'var(--danger)', no_data: '#64748b' };
+            statusEl.innerText = data.status;
+            statusEl.style.color = colors[data.status] || '#64748b';
+            const lines = Object.entries(data.components || {}).map(([name, c]) =>
+                c.available ? `${name}: ${c.score}` : `${name}: n/a`
+            );
+            document.getElementById('health-detail').innerText = lines.length ? lines.join(' · ') : 'no components';
+        }
+
         async function runForecast() {
             const out = document.getElementById('forecast-result');
             let tasks;
@@ -375,12 +397,13 @@
 
         async function refresh() {
             try {
-                const [stats, mesh, history, scheduler, analytics] = await Promise.all([
+                const [stats, mesh, history, scheduler, analytics, health] = await Promise.all([
                     fetch('/api/substrate/stats').then(r => r.json()),
                     fetch('/api/substrate/mesh').then(r => r.json()),
                     fetch('/api/substrate/history?limit=30').then(r => r.json()),
                     fetch('/api/substrate/scheduler').then(r => r.json()),
                     fetch('/api/substrate/analytics').then(r => r.json()),
+                    fetch('/api/health/score').then(r => r.json()),
                 ]);
                 document.getElementById('val-dispatches').innerText = (stats.total_dispatches ?? 0).toLocaleString();
                 document.getElementById('val-queued').innerText = stats.queued_tasks ?? 0;
@@ -391,6 +414,7 @@
                 renderHistory(history.history || []);
                 renderSchedulerReport(scheduler);
                 renderAnalytics(analytics);
+                renderHealth(health);
                 document.getElementById('live-indicator').innerText = 'Live Workload Router — connected';
             } catch (err) {
                 document.getElementById('live-indicator').innerText = 'Live Workload Router — reconnecting…';

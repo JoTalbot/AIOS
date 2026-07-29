@@ -22,7 +22,7 @@ from typing import Any
 
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, StreamingResponse
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response, StreamingResponse
 from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocket
 
@@ -1801,6 +1801,32 @@ class AIOSDashboard:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(forecast)
 
+    async def api_substrate_history_export(self, request: Request) -> Response:
+        """Dispatch history as a downloadable CSV file (v11.9.0)."""
+        try:
+            limit = int(request.query_params.get("limit", "0"))
+        except ValueError:
+            limit = 0
+        limit = max(0, min(limit, 100000))
+        csv_text = _get_substrate_engine().export_history_csv(limit=limit or None)
+        return Response(
+            csv_text,
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="substrate_dispatch_history.csv"'},
+        )
+
+    async def api_health_score(self, request: Request) -> JSONResponse:
+        """Aggregate 0..100 system health score (v11.9.0)."""
+        from .health_score import compute_health_score
+
+        return JSONResponse(
+            compute_health_score(
+                memory_system=_get_memory_system(),
+                engine=_get_substrate_engine(),
+                scheduler=_get_energy_scheduler(),
+            )
+        )
+
     # ------------------------------------------------------------------
     # Agent Memory dashboard (live, v11.4.0)
     # ------------------------------------------------------------------
@@ -1824,13 +1850,22 @@ class AIOSDashboard:
         return JSONResponse(_get_memory_system().compression_stats())
 
     async def api_memory_duplicates(self, request: Request) -> JSONResponse:
-        """Near-duplicate groups detected in the compressed index."""
-        try:
-            threshold = float(request.query_params.get("threshold", "0.92"))
-        except ValueError:
-            threshold = 0.92
-        threshold = min(1.0, max(0.01, threshold))
-        return JSONResponse({"threshold": threshold, "groups": _get_memory_system().find_duplicates(threshold)})
+        """Near-duplicate groups detected in the compressed index.
+
+        Without an explicit ?threshold= the system's (possibly tuner-set)
+        default dedup_threshold is used (v11.9.0).
+        """
+        system = _get_memory_system()
+        raw = request.query_params.get("threshold")
+        if raw is None:
+            threshold = system.dedup_threshold
+        else:
+            try:
+                threshold = float(raw)
+            except ValueError:
+                threshold = 0.92
+            threshold = min(1.0, max(0.01, threshold))
+        return JSONResponse({"threshold": threshold, "groups": system.find_duplicates(threshold)})
 
     async def api_memory_archive(self, request: Request) -> JSONResponse:
         """Cold-storage archive contents (v11.5.0)."""
@@ -2004,6 +2039,36 @@ class AIOSDashboard:
             return JSONResponse({"error": f"snapshot load failed: {exc}"}, status_code=400)
         return JSONResponse(report)
 
+    async def api_memory_dedup_tune(self, request: Request) -> JSONResponse:
+        """Auto-tune the near-duplicate threshold (v11.9.0).
+
+        Optional body: {"candidates": [0.9, ...], "pool": "all",
+        "apply": true}. Never merges anything; apply stores the
+        recommendation as the system's default dedup threshold.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        pool = body.get("pool", "all")
+        if pool not in ("all", "long_term", "episodic"):
+            return JSONResponse({"error": "pool must be one of: all, long_term, episodic"}, status_code=400)
+        candidates = body.get("candidates")
+        if candidates is not None:
+            if not isinstance(candidates, list) or not candidates:
+                return JSONResponse({"error": "candidates must be a non-empty list of thresholds"}, status_code=400)
+            if not all(isinstance(c, (int, float)) and not isinstance(c, bool) for c in candidates):
+                return JSONResponse({"error": "candidates must be numbers in (0.0, 1.0]"}, status_code=400)
+        try:
+            report = _get_memory_system().tune_dedup_threshold(
+                pool=pool, candidates=candidates, apply=bool(body.get("apply", False))
+            )
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(report)
+
     async def api_metrics(self, request: Request) -> PlainTextResponse:
         """Prometheus text exposition of the live AIOS state (v11.8.0)."""
         from . import __version__
@@ -2026,6 +2091,7 @@ class AIOSDashboard:
             Route("/api/substrate/mesh", self.api_substrate_mesh),
             Route("/api/substrate/energy", self.api_substrate_energy),
             Route("/api/substrate/history", self.api_substrate_history),
+            Route("/api/substrate/history/export", self.api_substrate_history_export),
             Route("/api/substrate/schedule", self.api_substrate_schedule, methods=["POST"]),
             Route("/api/substrate/scheduler", self.api_substrate_scheduler),
             Route("/api/substrate/analytics", self.api_substrate_analytics),
@@ -2034,6 +2100,7 @@ class AIOSDashboard:
             Route("/api/memory/patterns", self.api_memory_patterns),
             Route("/api/memory/compression", self.api_memory_compression),
             Route("/api/memory/duplicates", self.api_memory_duplicates),
+            Route("/api/memory/dedup/tune", self.api_memory_dedup_tune, methods=["POST"]),
             Route("/api/memory/archive", self.api_memory_archive),
             Route("/api/memory/archive/run", self.api_memory_archive_run, methods=["POST"]),
             Route("/api/memory/recall", self.api_memory_recall),
@@ -2043,6 +2110,7 @@ class AIOSDashboard:
             Route("/api/memory/snapshot/save", self.api_memory_snapshot_save, methods=["POST"]),
             Route("/api/memory/snapshot/load", self.api_memory_snapshot_load, methods=["POST"]),
             Route("/api/metrics", self.api_metrics),
+            Route("/api/health/score", self.api_health_score),
             Route("/api/stats", self.api_stats),
             Route("/health", self.api_health),
             Route("/api/health", self.api_health),

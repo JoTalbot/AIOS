@@ -13,8 +13,11 @@ Features:
 - Workload profiling and substrate benchmarking
 """
 
+import csv
+import io
 import time
 from collections import defaultdict
+from datetime import UTC, datetime
 from typing import Any
 
 __all__ = ["SubstrateConvergenceEngine", "SubstrateType"]
@@ -425,6 +428,51 @@ class SubstrateConvergenceEngine:
             "per_substrate": per_substrate,
             "energy_share_pct": energy_share_pct,
         }
+
+    # ------------------------------------------------------------------
+    # Dispatch history CSV export (v11.9.0)
+    # ------------------------------------------------------------------
+
+    HISTORY_CSV_FIELDS = (
+        "task_id",
+        "timestamp_iso",
+        "selected_substrate",
+        "energy_cost",
+        "estimated_latency_ms",
+        "execution_time_ms",
+        "substrate_health",
+        "efficiency_gflops_per_watt",
+    )
+
+    def export_history_csv(self, limit: int | None = None) -> str:
+        """Render the dispatch history as CSV (v11.9.0).
+
+        Args:
+            limit: restrict to the newest N dispatches (None = all).
+
+        Returns:
+            RFC-4180 CSV text: header row + one row per dispatch in
+            chronological order, quoting handled by the csv module
+            (task ids may contain commas/quotes/newlines).
+        """
+        history = self.dispatch_history[-limit:] if limit else list(self.dispatch_history)
+        buffer = io.StringIO()
+        writer = csv.writer(buffer, lineterminator="\n")
+        writer.writerow(self.HISTORY_CSV_FIELDS)
+        for record in history:
+            writer.writerow(
+                (
+                    record.get("task_id", ""),
+                    datetime.fromtimestamp(record.get("timestamp", 0.0), UTC).isoformat(),
+                    record.get("selected_substrate", ""),
+                    record.get("energy_cost", 0.0),
+                    record.get("estimated_latency_ms", 0.0),
+                    record.get("execution_time_ms", 0.0),
+                    record.get("substrate_health", 0.0),
+                    record.get("efficiency_gflops_per_watt", 0.0),
+                )
+            )
+        return buffer.getvalue()
 
     # ------------------------------------------------------------------
     # Benchmarking

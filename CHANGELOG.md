@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.9.0] — 2026-07-29 — Dedup Auto-Tuner + History CSV Export + Health Score
+
+### Added
+- **Dedup Threshold Auto-Tuner** (`tune_dedup_threshold` in
+  `aios_core/memory_dedup.py` + `AgentMemorySystem.tune_dedup_threshold`):
+  scans candidate thresholds (default 0.80–0.98) against the compressed
+  index, scores each as `duplicates × avg_similarity` (confidence-weighted
+  merge count), ties break toward the HIGHER threshold; no duplicates
+  anywhere keeps the 0.92 default. `apply=True` stores the recommendation
+  as the system's default `dedup_threshold` (exposed in `dedup_stats()`,
+  PERSISTED in snapshots, used by `GET /api/memory/duplicates` when no
+  explicit `?threshold=` is passed). Tuning never merges anything. API:
+  `POST /api/memory/dedup/tune` (`candidates`/`pool`/`apply`, 400 on
+  invalid input). Memory dashboard gains a Tune button on the
+  Near-Duplicate Groups panel.
+- **Dispatch history CSV export**: `SubstrateConvergenceEngine.export_history_csv(limit)`
+  renders RFC-4180 CSV (header + chronological rows, csv-module quoting,
+  UTC ISO8601 timestamps); `GET /api/substrate/history/export?limit=`
+  serves it as an attachment (`substrate_dispatch_history.csv`); the
+  Live Dispatch Router panel has an Export CSV link.
+- **Aggregate health score** (`aios_core/health_score.py`):
+  `compute_health_score()` blends substrate fleet vitality (0.4),
+  scheduler efficiency (0.3 — 60% savings, 40% non-fallback, dropped when
+  no dispatches) and memory vitality (0.3 — strength-weighted) into a
+  0..100 score with per-component breakdown and status
+  (healthy ≥ 80 / degraded ≥ 50 / critical / no_data); unavailable
+  components renormalize instead of punishing cold systems. Served at
+  `GET /api/health/score` and shown as a System Health Score panel on the
+  `/substrate` dashboard.
+- **Tests**: 27 new — `test_dedup_tuning.py` (11),
+  `test_health_score.py` (10), `test_history_export.py` (6).
+
 ## [11.8.0] — 2026-07-29 — Persistence APIs + Batch Forecasting + Prometheus Metrics
 
 ### Added
