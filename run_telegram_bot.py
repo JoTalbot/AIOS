@@ -117,12 +117,20 @@ def cmd_start() -> str:
 MAIN_MENU_KEYBOARD = {
     "inline_keyboard": [
         [
+            {"text": "🧠 Кодер", "callback_data": "menu_coder"},
             {"text": "📊 Статистика", "callback_data": "menu_stats"},
-            {"text": "📱 Платформы", "callback_data": "menu_platforms"},
         ],
         [
             {"text": "🛒 OLX", "callback_data": "menu_olx"},
-            {"text": "🧠 Агент-кодер", "callback_data": "menu_coder"},
+            {"text": "📱 Платформы", "callback_data": "menu_platforms"},
+        ],
+        [
+            {"text": "🖥️ Сервер", "callback_data": "menu_server"},
+            {"text": "🐳 Docker", "callback_data": "menu_docker"},
+        ],
+        [
+            {"text": "🔑 API Ключи", "callback_data": "menu_keys"},
+            {"text": "📋 Логи", "callback_data": "menu_logs"},
         ],
         [
             {"text": "❓ Помощь", "callback_data": "menu_help"},
@@ -134,25 +142,50 @@ CODER_MENU_KEYBOARD = {
     "inline_keyboard": [
         [
             {"text": "📋 Статус", "callback_data": "coder_status"},
+            {"text": "📦 Бэклог", "callback_data": "coder_backlog"},
+        ],
+        [
+            {"text": "⚖️ Балансер", "callback_data": "coder_balancer"},
+            {"text": "📜 Git", "callback_data": "coder_git_status"},
+        ],
+        [
             {"text": "🔍 Review Bot", "callback_data": "coder_review_bot"},
-        ],
-        [
             {"text": "🔍 Review Collector", "callback_data": "coder_review_collector"},
-            {"text": "🔍 Review Coder", "callback_data": "coder_review_self"},
         ],
         [
-            {"text": "✨ Генерация кода", "callback_data": "coder_gen_prompt"},
+            {"text": "🔍 Review Coder", "callback_data": "coder_review_self"},
+            {"text": "🔍 Review Orch", "callback_data": "coder_review_orch"},
+        ],
+        [
+            {"text": "✨ Написать код", "callback_data": "coder_gen_prompt"},
             {"text": "🔧 Исправить баг", "callback_data": "coder_fix_prompt"},
         ],
         [
-            {"text": "📜 Git Status", "callback_data": "coder_git_status"},
             {"text": "🚀 Push", "callback_data": "coder_git_push"},
+            {"text": "🔄 Перезапуск", "callback_data": "coder_restart"},
         ],
         [
-            {"text": "◀️ Назад", "callback_data": "menu_back"},
+            {"text": "◀️ Главное меню", "callback_data": "menu_back"},
         ],
     ]
 }
+
+OLX_MENU_KEYBOARD = {
+    "inline_keyboard": [
+        [
+            {"text": "📊 Статистика", "callback_data": "olx_stats"},
+            {"text": "📋 Подписки", "callback_data": "olx_list"},
+        ],
+        [
+            {"text": "🆕 Последние", "callback_data": "olx_latest"},
+            {"text": "📈 Аналитика", "callback_data": "olx_analytics"},
+        ],
+        [
+            {"text": "◀️ Главное меню", "callback_data": "menu_back"},
+        ],
+    ]
+}
+
 
 
 @_safe
@@ -562,7 +595,12 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
         reply = cmd_platforms()
 
     elif data == "menu_olx":
+        reply = "\U0001f6d2 <b>OLX</b>\n\n\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435:"
+        keyboard = OLX_MENU_KEYBOARD
+
+    elif data == "olx_stats":
         reply = cmd_olx("")
+        keyboard = OLX_MENU_KEYBOARD
 
     elif data == "menu_help":
         reply = cmd_help()
