@@ -893,12 +893,12 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
 
     # Try GitHub Models first (free!), then balancer
     gh_key = _os.environ.get("GITHUB_API_KEY", "")
-            if not gh_key:
-                try:
-                    with open('/app/data/.github_token') as f:
-                        gh_key = f.read().strip()
-                except:
-                    pass
+    if not gh_key:
+        try:
+            with open("/app/data/.github_token") as f:
+                gh_key = f.read().strip()
+        except Exception:
+            pass
     endpoints = []
     if gh_key:
         endpoints.append({
