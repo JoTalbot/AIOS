@@ -91,7 +91,7 @@ jobs:
         env:
           APP_DIR: ${{ github.event.inputs.remote_dir || secrets.SSH_PATH || secrets.VPS_APP_DIR || '/opt/aios' }}
           ENV_CONTENTS: ${{ secrets.ENV_FILE_CONTENTS }}
-          FORCE_REBUILD: ${{ github.event.inputs.force_rebuild || 'false' }}
+          FORCE_REBUILD: ${{ github.event.inputs.force_rebuild || 'true' }}
         run: |
           ssh target-server << EOF
             set -euo pipefail
