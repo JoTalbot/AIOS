@@ -1,5 +1,14 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.40.0 ✅ (2026-07-30)
+- ✅ Autonomous AI Code Synthesis — `AICodeSynthesizer` в `aios_core/code_synthesis.py`: синтез и валидация багфиксов кода
+- ✅ Vision RPA Action Grounding — `VisionRPAGroundingEngine`: связывание действий агента с UI координатами (x, y)
+- ✅ Quantum AI Optimization Pipeline — `QuantumAIOptimizer`: квантовая оптимизация весов маршрутизации
+- ✅ Planetary Edge Mesh Sync — `PlanetaryAISyncEngine`: синхронизация состояния ИИ между Edge-нодами
+- ✅ 5 новых тестов (test_v11_36_to_40_features)
+
+**~4385 tests, 0 failures**
+
 ## v11.35.0 ✅ (2026-07-30)
 - ✅ Autonomous Neural Memory Consolidation — `NeuralMemoryConsolidator` в `aios_core/neural_memory_consolidation.py`: нейронная консолидация кратковременной памяти и авто-компрессия векторного индекса
 - ✅ Causal AI & Counterfactual Reasoning Engine — `CausalCounterfactualEngine`: причинно-следственная оценка "What-If" сценариев

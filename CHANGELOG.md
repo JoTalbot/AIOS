@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.40.0] — 2026-07-30 — Frontier AI Executive Operations Suite (v11.36.0 - v11.40.0)
+
+### Added
+- **Autonomous AI Code Synthesis & Self-Patching (`AICodeSynthesizer`)**:
+  - `AICodeSynthesizer` in `aios_core/code_synthesis.py` analyzes error traces and synthesizes formal code bugfix patches.
+- **Vision RPA Action Grounding Engine (`VisionRPAGroundingEngine`)**:
+  - `VisionRPAGroundingEngine` in `aios_core/vision_rpa_grounding.py` grounds natural language RPA actions to exact UI element IDs and (x, y) click coordinates.
+- **Quantum-Classical Hybrid AI Optimization Pipeline (`QuantumAIOptimizer`)**:
+  - `QuantumAIOptimizer` in `aios_core/quantum_ai_pipeline.py` optimizes routing weights using variational quantum circuit simulation.
+- **Planetary Edge Mesh AI Synchronization (`PlanetaryAISyncEngine`)**:
+  - `PlanetaryAISyncEngine` in `aios_core/planetary_ai_sync.py` synchronizes state ledgers across geographical edge mesh nodes.
+- **REST API & Developer SDK Integration**:
+  - Added REST API endpoints `/api/ai/code/synthesize-patch`, `/api/ai/perception/ground-action`, `/api/ai/quantum/optimize-weights`, `/api/ai/planetary/sync`.
+  - Added SDK methods `ai_synthesize_patch()`, `ai_ground_rpa_action()`, `ai_quantum_optimize_weights()`, and `ai_planetary_sync()`.
+
 ## [11.35.0] — 2026-07-30 — Next-Gen AI Integration Suite (v11.31.0 - v11.35.0)
 
 ### Added
