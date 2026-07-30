@@ -72,68 +72,26 @@ class LLMClient:
         self.config = config
 
     def chat(self, messages: list[dict], system: str = "") -> str:
-        """Send chat completion with multi-provider fallback."""
-        all_messages = []
+        """Send chat completion with multi-provider fallback via LLMBalancer."""
+        from aios_core.llm_balancer import LLMBalancer
+
+        balancer = LLMBalancer()
+        prompt_messages = []
         if system:
-            all_messages.append({"role": "system", "content": system})
-        all_messages.extend(messages)
+            prompt_messages.append({"role": "system", "content": system})
+        prompt_messages.extend(messages)
 
-        # Build endpoint list. Runtime keys are stored outside the image in
-        # /app/data/.llm_keys.json (or <repo>/data on the host).
-        endpoints = []
-        key_files = [Path("/app/data/.llm_keys.json"), Path(self.config.repo_path) / "data/.llm_keys.json"]
-        seen_keys = set()
-        for key_file in key_files:
-            try:
-                key_data = json.loads(key_file.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                continue
-            for key in key_data.get("openrouter", []):
-                if key and key not in seen_keys:
-                    endpoints.append({
-                        "url": "https://openrouter.ai/api/v1/chat/completions",
-                        "key": key,
-                        "model": "mistralai/mistral-small-3.2-24b-instruct",
-                        "name": "OpenRouter",
-                    })
-                    seen_keys.add(key)
-
-        gh_key = os.environ.get("GITHUB_API_KEY", "")
-        if gh_key and gh_key not in seen_keys:
-            endpoints.append({
-                "url": "https://models.inference.ai.azure.com/chat/completions",
-                "key": gh_key,
-                "model": "gpt-4.1-mini",
-                "name": "GitHub",
-            })
-            seen_keys.add(gh_key)
-        if self.config.llm_api_key and self.config.llm_api_key not in seen_keys:
-            endpoints.append({
-                "url": self.config.llm_base_url.rstrip("/") + "/chat/completions",
-                "key": self.config.llm_api_key,
-                "model": self.config.llm_model,
-                "name": "Config",
-            })
-
-        for ep in endpoints:
-            try:
-                payload = json.dumps({
-                    "model": ep["model"],
-                    "messages": all_messages,
-                    "max_tokens": self.config.max_tokens,
-                    "temperature": self.config.temperature,
-                }).encode()
-                req = urllib.request.Request(ep["url"], data=payload, headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {ep['key']}",
-                })
-                with urllib.request.urlopen(req, timeout=120) as resp:
-                    data = json.loads(resp.read())
-                if "choices" in data and data["choices"]:
-                    return data["choices"][0]["message"]["content"]
-            except Exception as e:
-                log.warning(f"{ep['name']} failed: {e}")
-                continue
+        try:
+            response = balancer.chat(
+                messages=prompt_messages,
+                model=self.config.llm_model,
+                max_tokens=self.config.max_tokens,
+                temperature=self.config.temperature,
+            )
+            if response and not response.startswith("⚠️"):
+                return response
+        except Exception as e:
+            log.warning(f"LLMBalancer failed: {e}")
 
         raise ValueError("Все LLM endpoints недоступны. Проверьте ключи и квоту провайдера.")
 
