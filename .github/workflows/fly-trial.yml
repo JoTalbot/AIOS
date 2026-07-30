@@ -1,0 +1,61 @@
+name: Deploy Fly.io Trial
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fly-trial.yml"
+      - "Dockerfile.fly"
+      - "fly.toml"
+      - "requirements-fly.txt"
+      - "aios_core/p2p_network.py"
+      - "aios_core/llm_swarm_debate.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fly-trial-deploy
+  cancel-in-progress: true
+
+jobs:
+  check-token:
+    name: Проверка токена Fly.io
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.token.outputs.configured }}
+    steps:
+      - name: Проверить FLY_API_TOKEN
+        id: token
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [ -n "$FLY_API_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "FLY_API_TOKEN не настроен — деплой пропущен."
+          fi
+
+  deploy:
+    name: Развернуть облегчённый AIOS
+    needs: check-token
+    if: needs.check-token.outputs.configured == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Получить исходный код
+        uses: actions/checkout@v4
+
+      - name: Установить flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Выполнить remote deploy
+        run: flyctl deploy --remote-only --config fly.toml
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Проверить статус приложения
+        run: flyctl status --app aios-test
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
