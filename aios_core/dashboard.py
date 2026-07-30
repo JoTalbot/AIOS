@@ -186,18 +186,18 @@ class AIOSDashboard:
 
     # ---------- Pages ----------
     async def index(self, request: Request) -> HTMLResponse:
-        """Serve the redesigned control plane by default; keep legacy UIs available."""
+        """Serve full AdminLTE control plane by default; React UI at ?v=react."""
         v = request.query_params.get("v", "").lower()
-        if v in ("adminlte", "2", "new2", "full"):
-            alt = Path(__file__).resolve().parent.parent / "dashboard" / "index_adminlte.html"
-            if alt.exists():
-                return HTMLResponse(alt.read_text(encoding="utf-8"))
-        if not v or v in ("react", "webui", "tsx", "new-react"):
+        if v in ("react", "tsx", "new-react"):
             alt = Path(__file__).resolve().parent.parent / "dashboard" / "index_react.html"
             if alt.exists():
                 return HTMLResponse(alt.read_text(encoding="utf-8"))
         if v in ("4", "v4", "simple", "old", "legacy") and _DASHBOARD_HTML_PATH.exists():
             return HTMLResponse(_DASHBOARD_HTML_PATH.read_text(encoding="utf-8"))
+        # Default view: index_adminlte.html
+        alt = Path(__file__).resolve().parent.parent / "dashboard" / "index_adminlte.html"
+        if alt.exists():
+            return HTMLResponse(alt.read_text(encoding="utf-8"))
         if _DASHBOARD_HTML_PATH.exists():
             return HTMLResponse(_DASHBOARD_HTML_PATH.read_text(encoding="utf-8"))
         return HTMLResponse("<h1>Dashboard HTML missing</h1>", status_code=500)
