@@ -15,7 +15,7 @@ __all__ = ["OpenAPIGenerator"]
 try:
     from aios_core import __version__ as _AIOS_VERSION
 except Exception:  # pragma: no cover - docs tooling standalone
-    _AIOS_VERSION = "15.0.0"
+    _AIOS_VERSION = "16.0.0"
 
 
 class OpenAPIGenerator:

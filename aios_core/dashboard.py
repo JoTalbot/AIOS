@@ -2503,6 +2503,30 @@ class AIOSDashboard:
         res = evaluator.evaluate_model_alignment(test_prompts=body["prompts"], model_outputs=body["outputs"])
         return JSONResponse(res)
 
+    async def api_adapters_execute(self, request: Request) -> JSONResponse:
+        """Execute action via Universal Platform Adapter (API, Web, IoT, ARM, Router, Quantum, Blockchain) (v16.0.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "platform_type" not in body or "action" not in body:
+            return JSONResponse({"error": "request body must include 'platform_type' and 'action'"}, status_code=400)
+
+        from .adapters import adapter_registry
+
+        res = adapter_registry.execute_platform_action(
+            platform_type=str(body["platform_type"]),
+            action=str(body["action"]),
+            params=body.get("params", {}),
+        )
+        return JSONResponse(res)
+
+    async def api_adapters_stats(self, request: Request) -> JSONResponse:
+        """Get Universal Platform Adapter execution statistics (v16.0.0)."""
+        from .adapters import adapter_registry
+
+        return JSONResponse(adapter_registry.registry_stats())
+
     async def api_governance_guard_evaluate(self, request: Request) -> JSONResponse:
         """Real-time pre-execution safety guard check for an agent action (v11.23.0)."""
         try:
@@ -3242,6 +3266,8 @@ class AIOSDashboard:
             Route("/api/ai/grand-epoch/status", self.api_ai_grand_epoch_status, methods=["GET"]),
             Route("/api/ai/universal/status", self.api_ai_universal_status, methods=["GET"]),
             Route("/api/ai/infinite/status", self.api_ai_infinite_status, methods=["GET"]),
+            Route("/api/adapters/execute", self.api_adapters_execute, methods=["POST"]),
+            Route("/api/adapters/stats", self.api_adapters_stats, methods=["GET"]),
             Route("/api/ai/neuromorphic/process-spikes", self.api_ai_neuromorphic_process_spikes, methods=["POST"]),
             Route("/api/ai/formal/prove-invariant", self.api_ai_formal_prove_invariant, methods=["POST"]),
             Route("/api/ai/blockchain/record-proof", self.api_ai_blockchain_record_proof, methods=["POST"]),

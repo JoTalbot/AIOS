@@ -581,6 +581,24 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    # --- Universal Platform Execution Adapters (API, Web, IoT, ARM, Router, Quantum, Blockchain) (v16.0.0) ---
+
+    async def execute_adapter_action(self, platform_type: str, action: str, params: dict | None = None) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/adapters/execute"),
+                json={"platform_type": platform_type, "action": action, "params": params or {}},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def get_adapter_stats(self) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.get(self._url("/api/adapters/stats"), headers=self.headers)
+            resp.raise_for_status()
+            return resp.json()
+
     # --- Sovereign AI Neuromorphic, Formal Verification, Blockchain & Multi-Species Ethics (v11.41–v11.45) ---
 
     async def ai_process_spiking_events(self, spikes: list[float], threshold: float = 0.5) -> dict:
@@ -905,6 +923,12 @@ class AIOSClientSync:
 
     def ai_get_infinite_status(self, *a, **kw):
         return self._run(self._async.ai_get_infinite_status(*a, **kw))
+
+    def execute_adapter_action(self, *a, **kw):
+        return self._run(self._async.execute_adapter_action(*a, **kw))
+
+    def get_adapter_stats(self, *a, **kw):
+        return self._run(self._async.get_adapter_stats(*a, **kw))
 
     def ai_process_spiking_events(self, *a, **kw):
         return self._run(self._async.ai_process_spiking_events(*a, **kw))
