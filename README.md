@@ -36,3 +36,6 @@ JoTalbot | jo.talbot@gmail.com
 
 ## License
 MIT License
+
+## Octopus Telemetry & Ops Update (v16.2+)
+AIOS now includes the advanced `octopus_obs` (Grafana dashboards, Prometheus alerts) and `octopus_ops` (Fly.io stack configurations, Execution Policies) enabling massive batch processing of parallel agent waves.
