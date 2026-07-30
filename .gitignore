@@ -84,3 +84,4 @@ apk/**
 *.token
 .env
 .env.local
+*.json
