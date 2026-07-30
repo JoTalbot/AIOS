@@ -38,7 +38,7 @@ class CoderConfig:
     """Configuration for MetaCognitiveCoder."""
     llm_api_key: str = ""
     llm_base_url: str = "https://openrouter.ai/api/v1"
-    llm_model: str = "deepseek/deepseek-chat-v3-0324"
+    llm_model: str = "meta-llama/llama-4-maverick"
     repo_path: str = "/root/AIOS"
     max_tokens: int = 4096
     temperature: float = 0.2
@@ -51,7 +51,7 @@ class CoderConfig:
         return cls(
             llm_api_key=os.environ.get("OPENROUTER_API_KEY") or os.environ.get("LLM_API_KEY", ""),
             llm_base_url=os.environ.get("LLM_BASE_URL", "https://openrouter.ai/api/v1"),
-            llm_model=os.environ.get("LLM_MODEL", "deepseek/deepseek-chat-v3-0324"),
+            llm_model=os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick"),
             repo_path=os.environ.get("AIOS_REPO_PATH", "/root/AIOS"),
             auto_commit=os.environ.get("AIOS_AUTO_COMMIT", "").lower() in ("1", "true"),
             auto_push=os.environ.get("AIOS_AUTO_PUSH", "").lower() in ("1", "true"),
