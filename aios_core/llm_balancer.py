@@ -91,6 +91,17 @@ class LLMBalancer:
                 "gpt-4.1-mini",
             ],
         },
+        "github": {
+            "base_url": "https://models.inference.ai.azure.com/chat/completions",
+            "models": [
+                "gpt-4.1",
+                "gpt-4.1-mini",
+                "gpt-4o",
+                "gpt-4o-mini",
+                "DeepSeek-R1",
+                "Phi-4",
+            ],
+        },
         "deepseek": {
             "base_url": "https://api.deepseek.com/chat/completions",
             "models": [
@@ -117,6 +128,8 @@ class LLMBalancer:
             "mistralai/mistral-small-3.2-24b-instruct",
             "gpt-4o-mini",
             "deepseek/deepseek-chat-v3-0324",
+            "gpt-4.1-mini",
+            "DeepSeek-R1",
             "glm-4.5-flash",
             "deepseek-chat",
         ],
@@ -214,6 +227,24 @@ class LLMBalancer:
                 models=self.PROVIDERS["openai"]["models"],
             )
 
+        # GitHub Models keys (free!)
+        gh_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"GITHUB_API_KEY_{i}", "")
+            if k:
+                gh_keys.append(APIKey(key=k, provider="github"))
+        gk = os.environ.get("GITHUB_API_KEY", "")
+        if gk and not any(k.key == gk for k in gh_keys):
+            gh_keys.append(APIKey(key=gk, provider="github"))
+
+        if gh_keys:
+            self.providers["github"] = Provider(
+                name="github",
+                base_url=self.PROVIDERS["github"]["base_url"],
+                keys=gh_keys,
+                models=self.PROVIDERS["github"]["models"],
+            )
+
         # DeepSeek keys
         ds_keys = []
         for i in range(1, 10):
@@ -287,15 +318,22 @@ class LLMBalancer:
         last_error = ""
 
         for try_model in models_to_try:
-            # Try ALL available keys across ALL providers for this model
+            # Try ALL available keys across COMPATIBLE providers
             keys_tried = 0
             max_keys_to_try = sum(len(p.keys) for p in self.providers.values())
 
             while keys_tried < max_keys_to_try:
-                # Get next available key (round-robin across providers)
+                # Get next available key from a provider that supports this model
                 best_provider = None
                 best_key = None
                 for prov_name, provider in self.providers.items():
+                    # Check if this provider supports the model
+                    model_supported = (
+                        try_model in provider.models or
+                        prov_name == "openrouter"  # OpenRouter supports everything
+                    )
+                    if not model_supported:
+                        continue
                     k = provider.get_next_key()
                     if k:
                         best_provider = provider
