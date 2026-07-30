@@ -110,13 +110,120 @@ def git_cmd(*args) -> str:
     except:
         return ""
 
+# ---------------------------------------------------------------------------
+# Backlog (persistent task queue)
+# ---------------------------------------------------------------------------
+BACKLOG_FILE = os.path.join(REPO_PATH, "data", "coder_backlog.json")
+
+def load_backlog() -> dict:
+    """Load coder backlog (tasks, history, stats)."""
+    if os.path.exists(BACKLOG_FILE):
+        try:
+            with open(BACKLOG_FILE, "r") as f:
+                return json.load(f)
+        except:
+            pass
+    return {"tasks": [], "history": [], "completed": 0, "failed": 0, "cycle_count": 0}
+
+def save_backlog(backlog: dict):
+    """Save coder backlog."""
+    os.makedirs(os.path.dirname(BACKLOG_FILE), exist_ok=True)
+    with open(BACKLOG_FILE, "w") as f:
+        json.dump(backlog, f, ensure_ascii=False, indent=2)
+
+
 def get_project_context() -> dict:
-    return {
+    """Deep scan of project state for intelligent analysis."""
+    ctx = {
         "git_status": git_cmd("status", "--short") or "clean",
-        "git_log": git_cmd("log", "-5", "--oneline", "--no-decorate") or "no commits",
+        "git_log": git_cmd("log", "-10", "--oneline", "--no-decorate") or "no commits",
         "branch": git_cmd("branch", "--show-current") or "main",
-        "files": len(git_cmd("status", "--short").split("\n")) if git_cmd("status", "--short") else 0,
     }
+
+    # Count modified files
+    status_lines = [l for l in ctx["git_status"].split("\n") if l.strip()]
+    ctx["modified_files"] = len(status_lines)
+
+    # Scan for TODO/FIXME/HACK in Python files
+    todos = []
+    try:
+        for root, dirs, files in os.walk(REPO_PATH):
+            dirs[:] = [d for d in dirs if d not in {"__pycache__", ".git", "node_modules", "chroma_db", ".venv", "backups"}]
+            for f in files:
+                if f.endswith(".py"):
+                    fpath = os.path.join(root, f)
+                    try:
+                        with open(fpath, "r", encoding="utf-8", errors="ignore") as fp:
+                            for i, line in enumerate(fp, 1):
+                                for tag in ["TODO", "FIXME", "HACK", "XXX", "BUG"]:
+                                    if tag in line.upper():
+                                        rel = os.path.relpath(fpath, REPO_PATH)
+                                        todos.append(f"{rel}:{i} {tag}: {line.strip()[:80]}")
+                                        if len(todos) >= 15:
+                                            break
+                                if len(todos) >= 15:
+                                    break
+                    except:
+                        pass
+                if len(todos) >= 15:
+                    break
+            if len(todos) >= 15:
+                break
+    except:
+        pass
+    ctx["todos"] = todos
+
+    # Find recently modified Python files (top 15)
+    recent_files = []
+    try:
+        result = subprocess.run(
+            ["find", REPO_PATH, "-name", "*.py", "-not", "-path", "*/__pycache__/*",
+             "-not", "-path", "*/.git/*", "-not", "-path", "*/chroma_db/*",
+             "-mtime", "-1", "-type", "f"],
+            capture_output=True, text=True, timeout=10
+        )
+        for line in result.stdout.strip().split("\n")[:15]:
+            if line.strip():
+                recent_files.append(os.path.relpath(line.strip(), REPO_PATH))
+    except:
+        pass
+    ctx["recent_files"] = recent_files
+
+    # Count Python files and total lines
+    total_files = 0
+    total_lines = 0
+    try:
+        result = subprocess.run(
+            ["find", REPO_PATH, "-name", "*.py", "-not", "-path", "*/__pycache__/*",
+             "-not", "-path", "*/.git/*", "-type", "f"],
+            capture_output=True, text=True, timeout=10
+        )
+        py_files = [l for l in result.stdout.strip().split("\n") if l.strip()]
+        total_files = len(py_files)
+        for fp in py_files[:50]:
+            try:
+                with open(fp, "r", encoding="utf-8", errors="ignore") as f:
+                    total_lines += sum(1 for _ in f)
+            except:
+                pass
+    except:
+        pass
+    ctx["total_files"] = total_files
+    ctx["total_lines"] = total_lines
+
+    # Check test coverage (count test files)
+    test_files = []
+    try:
+        result = subprocess.run(
+            ["find", REPO_PATH, "-name", "test_*.py", "-o", "-name", "*_test.py"],
+            capture_output=True, text=True, timeout=10
+        )
+        test_files = [l for l in result.stdout.strip().split("\n") if l.strip()]
+    except:
+        pass
+    ctx["test_files"] = len(test_files)
+
+    return ctx
 
 
 # ---------------------------------------------------------------------------
@@ -127,77 +234,141 @@ def get_project_context() -> dict:
 _cycle_count = 0
 _previous_issues = []
 
-def phase_analyze(llm: LLMClient, ctx: dict) -> dict:
-    """Phase 1: LLM analyzes project state."""
+def phase_analyze(llm: LLMClient, ctx: dict, backlog: dict) -> dict:
+    """Phase 1: Deep intelligent analysis of project state."""
     system = (
-        "Ты — AIOS Coder Orchestrator, автономный AI-разработчик. "
-        "Анализируй проект и давай конкретные рекомендации. Отвечай на русском."
+        "Ты — AIOS Coder Orchestrator, автономный senior AI-разработчик. "
+        "Твоя задача — непрерывно развивать проект. "
+        "Анализируй код глубоко: ищи баги, незакрытые TODO, отсутствующие тесты, "
+        "плохую архитектуру, проблемы безопасности. "
+        "Отвечай на русском. Всегда будь конкретен — указывай файлы и функции."
     )
 
+    # Build detailed context
+    todos_text = "\n".join(ctx.get("todos", [])[:10]) or "Нет TODO"
+    recent_text = "\n".join(ctx.get("recent_files", [])[:10]) or "Нет изменений"
+    history_text = "\n".join(
+        f"- {h.get('description', '?')[:60]} ({h.get('status', '?')})" 
+        for h in backlog.get("history", [])[-5:]
+    ) or "История пуста"
+    pending_tasks = "\n".join(
+        f"- [{t.get('priority', '?')}] {t.get('description', '?')[:60]}" 
+        for t in backlog.get("tasks", [])[:5]
+    ) or "Нет задач в бэклоге"
+
     prompt = (
-        f"Проанализируй состояние проекта AIOS.\n\n"
-        f"Git status:\n{ctx['git_status']}\n\n"
-        f"Последние коммиты:\n{ctx['git_log']}\n\n"
-        f"Ветка: {ctx['branch']}, изменённых файлов: {ctx['files']}\n\n"
+        f"Глубокий анализ проекта AIOS.\n\n"
+        f"=== Статистика ===\n"
+        f"Python файлов: {ctx.get('total_files', '?')}, строк кода: ~{ctx.get('total_lines', '?')}\n"
+        f"Тестов: {ctx.get('test_files', 0)}, изменённых файлов: {ctx.get('modified_files', 0)}\n"
+        f"Ветка: {ctx.get('branch', '?')}\n\n"
+        f"=== Git log (последние 10) ===\n{ctx.get('git_log', '?')}\n\n"
+        f"=== TODO/FIXME в коде ({len(ctx.get('todos', []))}) ===\n{todos_text}\n\n"
+        f"=== Недавно изменённые файлы ===\n{recent_text}\n\n"
+        f"=== Бэклог задач ===\n{pending_tasks}\n\n"
+        f"=== История последних действий ===\n{history_text}\n\n"
         f"Верни JSON (строго, без markdown):\n"
         f'{{\n'
         f'  "health_score": <1-10>,\n'
-        f'  "summary": "<1-2 предложения о состоянии>",\n'
-        f'  "issues": ["<проблема 1>", "<проблема 2>"],\n'
-        f'  "opportunities": ["<что можно улучшить>"],\n'
-        f'  "priority_task": "<самая важная задача сейчас>"\n'
+        f'  "summary": "<2-3 предложения: что происходит с проектом>",\n'
+        f'  "issues": ["<конкретная проблема с указанием файла>"],\n'
+        f'  "opportunities": ["<что можно улучшить прямо сейчас>"],\n'
+        f'  "priority_task": "<самая важная задача — конкретное действие>",\n'
+        f'  "new_tasks": ["<новая задача для бэклога>"]\n'
         f'}}'
     )
 
     response = llm.chat([{"role": "user", "content": prompt}], system=system)
 
-    # Parse JSON from response
     try:
-        # Try to extract JSON
         if "{" in response:
             start = response.index("{")
             end = response.rindex("}") + 1
-            return json.loads(response[start:end])
+            result = json.loads(response[start:end])
+            # Add new tasks to backlog
+            new_tasks = result.get("new_tasks", [])
+            for task_desc in new_tasks[:3]:
+                if task_desc and task_desc not in [t.get("description") for t in backlog.get("tasks", [])]:
+                    backlog["tasks"].append({
+                        "description": task_desc,
+                        "priority": "medium",
+                        "created": datetime.now(timezone.utc).isoformat(),
+                        "status": "pending",
+                    })
+            return result
     except (json.JSONDecodeError, ValueError):
         pass
 
     return {
         "health_score": 5,
-        "summary": response[:200],
+        "summary": response[:200] if response else "Analysis failed",
         "issues": [],
         "opportunities": [],
-        "priority_task": "Продолжить мониторинг",
+        "priority_task": "Продолжить развитие",
     }
 
 
-def phase_plan(llm: LLMClient, analysis: dict, ctx: dict) -> dict:
-    """Phase 2: LLM creates action plan."""
-    issues = analysis.get("issues", [])
-    priority = analysis.get("priority_task", "")
-
-    if not issues and not priority:
-        return {"action": "monitor", "description": "Всё ок, мониторинг", "file": "", "code_needed": False}
-
+def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict:
+    """Phase 2: Intelligent planning with backlog awareness."""
     system = (
-        "Ты — AI-архитектор автономной системы. Составь план действий. "
-        "АГРЕССИВНО предлагай улучшения кодом — добавляй функции, исправляй баги, "
-        "улучшай документацию, добавляй тесты, оптимизируй. "
-        "Почти всегда code_needed должен быть true. "
-        "Указывай конкретный файл и конкретную инструкцию что изменить. "
+        "Ты — автономный senior AI-разработчик. Ты ОБЯЗАН предложить улучшение кодом. "
+        "Выбирай задачи из бэклога или создавай новые. "
+        "НИКОГДА не возвращай code_needed: false. "
+        "Каждый цикл должен делать проект лучше. "
         "Отвечай JSON без markdown."
     )
 
+    # Get real file list
+    real_files = []
+    for root, dirs, files in os.walk(REPO_PATH):
+        dirs[:] = [d for d in dirs if d not in {"__pycache__", ".git", "node_modules", "chroma_db", ".venv", "backups"}]
+        for f in files:
+            if f.endswith(".py"):
+                rel = os.path.relpath(os.path.join(root, f), REPO_PATH)
+                real_files.append(rel)
+                if len(real_files) >= 40:
+                    break
+        if len(real_files) >= 40:
+            break
+    files_list = "\n".join("  - " + f for f in real_files[:35])
+
+    # Check backlog for pending tasks
+    pending = [t for t in backlog.get("tasks", []) if t.get("status") == "pending"]
+    backlog_text = ""
+    if pending:
+        backlog_text = "\n".join(f"  {i+1}. {t['description']}" for i, t in enumerate(pending[:5]))
+
+    todos_text = "\n".join(ctx.get("todos", [])[:5]) or "Нет"
+    issues_text = json.dumps(analysis.get("issues", []), ensure_ascii=False)
+    priority = analysis.get("priority_task", "")
+
     prompt = (
-        f"На основе анализа проекта, составь план:\n\n"
-        f"Проблемы: {json.dumps(issues, ensure_ascii=False)}\n"
-        f"Приоритет: {priority}\n\n"
+        f"Ты — автономный кодер. Составь план на этот цикл.\n\n"
+        f"Проблемы: {issues_text}\n"
+        f"Приоритет: {priority}\n"
+        f"TODO в коде:\n{todos_text}\n\n"
+    )
+
+    if backlog_text:
+        prompt += f"Задачи в бэклоге:\n{backlog_text}\n\n"
+
+    prompt += (
+        f"Файлы проекта:\n{files_list}\n\n"
+        f"ПРАВИЛА:\n"
+        f"1. code_needed ВСЕГДА true\n"
+        f"2. Выбери ОДИН конкретный файл из списка\n"
+        f"3. Дай ТОЧНУЮ инструкцию что добавить/исправить\n"
+        f"4. Если есть задача в бэклоге — бери её\n"
+        f"5. Если нет — найди TODO/FIXME и исправь\n"
+        f"6. Если нет TODO — улучши документацию, добавь тест, оптимизируй\n\n"
         f"Верни JSON:\n"
         f'{{\n'
-        f'  "action": "fix|refactor|monitor|review",\n'
+        f'  "action": "fix|refactor|feature|test|docs",\n'
         f'  "description": "<что делаем и зачем>",\n'
-        f'  "file": "<путь к файлу если нужен код>",\n'
-        f'  "code_needed": true/false,\n'
-        f'  "instruction": "<инструкция для кодера если code_needed>"\n'
+        f'  "file": "<путь из списка>",\n'
+        f'  "code_needed": true,\n'
+        f'  "instruction": "<точная инструкция для кодера>",\n'
+        f'  "backlog_task": "<номер задачи из бэклога если берёшь оттуда, иначе null>"\n'
         f'}}'
     )
 
@@ -207,11 +378,34 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict) -> dict:
         if "{" in response:
             start = response.index("{")
             end = response.rindex("}") + 1
-            return json.loads(response[start:end])
+            plan = json.loads(response[start:end])
+
+            # Mark backlog task as in-progress if taken
+            task_idx = plan.get("backlog_task")
+            if task_idx is not None:
+                try:
+                    idx = int(task_idx) - 1
+                    if 0 <= idx < len(backlog.get("tasks", [])):
+                        backlog["tasks"][idx]["status"] = "in_progress"
+                except:
+                    pass
+
+            # Ensure code_needed is always True
+            plan["code_needed"] = True
+            return plan
     except:
         pass
 
-    return {"action": "monitor", "description": priority or "Мониторинг", "file": "", "code_needed": False}
+    # Fallback: pick a random file with TODO and suggest fixing it
+    todo_files = list(set(t.split(":")[0] for t in ctx.get("todos", [])))
+    target = todo_files[0] if todo_files else (real_files[0] if real_files else "aios_core/__init__.py")
+    return {
+        "action": "refactor",
+        "description": "Improve code quality",
+        "file": target,
+        "code_needed": True,
+        "instruction": "Review this file and improve code quality: add type hints, fix any issues, improve docstrings",
+    }
 
 
 def phase_code(plan: dict) -> dict:
@@ -458,13 +652,15 @@ def run_cycle():
     # Phase 1: Analyze
     print("  [1/5] ANALYZE — анализ проекта...")
     ctx = get_project_context()
-    analysis = phase_analyze(llm, ctx)
+    backlog = load_backlog()
+    backlog["cycle_count"] = backlog.get("cycle_count", 0) + 1
+    analysis = phase_analyze(llm, ctx, backlog)
     print(f"    Health: {analysis.get('health_score', '?')}/10")
     print(f"    Issues: {len(analysis.get('issues', []))}")
 
     # Phase 2: Plan
     print("  [2/5] PLAN — составление плана...")
-    plan = phase_plan(llm, analysis, ctx)
+    plan = phase_plan(llm, analysis, ctx, backlog)
     print(f"    Action: {plan.get('action', '?')}")
     print(f"    Code needed: {plan.get('code_needed', False)}")
 
@@ -484,6 +680,25 @@ def run_cycle():
     print(f"    Status: {commit_result.get('status', '?')}")
 
     # Build and send report
+    # Save backlog with history
+    history_entry = {
+        "cycle": backlog["cycle_count"],
+        "action": plan.get("action", "?"),
+        "file": plan.get("file", "?"),
+        "description": plan.get("description", "?")[:80],
+        "status": commit_result.get("status", "skipped"),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    backlog["history"].append(history_entry)
+    backlog["history"] = backlog["history"][-50:]  # keep last 50
+    if commit_result.get("status") == "pushed":
+        backlog["completed"] = backlog.get("completed", 0) + 1
+        # Remove completed task from backlog
+        backlog["tasks"] = [t for t in backlog.get("tasks", []) if t.get("status") != "in_progress"]
+    elif commit_result.get("status") == "skipped" and code_result.get("status") == "error":
+        backlog["failed"] = backlog.get("failed", 0) + 1
+    save_backlog(backlog)
+
     report = build_report(_cycle_count, ctx, analysis, plan, code_result, validation, commit_result)
     print(f"\n  Sending report ({len(report)} chars)...")
     if tg_send(report):

@@ -9,26 +9,36 @@ Changes:
 - Added git version control capabilities
 - Implemented self-contained structure with testing block
 - Moved from root to tools/run_coder_orchestrator.py
+- Added type hints and improved docstrings
 """
 
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, Any
 
 __all__ = ["CoderOrchestrator", "run_orchestrator", "get_git_version"]
 
 @dataclass
 class CoderOrchestrator:
-    """Class representing a coder orchestrator."""
+    """Class representing a coder orchestrator.
+
+    Attributes:
+        name: The name of the orchestrator.
+        config: Configuration dictionary for the orchestrator.
+        version: Version of the orchestrator, defaults to "1.0.0".
+    """
 
     name: str
-    config: dict
+    config: Dict[str, Any]
     version: str = "1.0.0"
 
     def run(self) -> None:
-        """Run the coder orchestrator with the given configuration."""
+        """Run the coder orchestrator with the given configuration.
+
+        Prints the orchestrator name and its configuration.
+        """
         print(f"Running orchestrator {self.name} with config: {self.config}")
 
 def run_orchestrator(orchestrator: CoderOrchestrator) -> None:
@@ -57,14 +67,19 @@ def get_git_version(file_path: Path) -> Optional[str]:
             check=True,
         )
         return result.stdout.strip()
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
+        # Root cause: This exception occurs when the git command fails, typically because the directory is not a git repository
+        print(f"Error getting git version: {e}", file=sys.stderr)
         return None
     except Exception as e:
         print(f"Error getting git version: {e}", file=sys.stderr)
         return None
 
 def main() -> None:
-    """Main function for testing the module."""
+    """Main function for testing the module.
+
+    Creates an example orchestrator, runs it, and checks the git version.
+    """
     # Example usage
     orchestrator = CoderOrchestrator(
         name="Test Orchestrator",
