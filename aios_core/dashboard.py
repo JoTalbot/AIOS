@@ -2348,6 +2348,13 @@ class AIOSDashboard:
         nexus = AIOSSingularityNexus()
         return JSONResponse(nexus.get_singularity_status())
 
+    async def api_ai_omnipresent_status(self, request: Request) -> JSONResponse:
+        """Get AIOS v12.0.0 Omnipresent Nexus status."""
+        from .omnipresent_nexus import AIOSOmnipresentNexus
+
+        nexus = AIOSOmnipresentNexus()
+        return JSONResponse(nexus.get_omnipresent_status())
+
     async def api_ai_neuromorphic_process_spikes(self, request: Request) -> JSONResponse:
         """Process STDP spiking neural network impulse events (v11.41.0)."""
         try:
@@ -3210,6 +3217,7 @@ class AIOSDashboard:
             Route("/api/ai/quantum/optimize-weights", self.api_ai_quantum_optimize_weights, methods=["POST"]),
             Route("/api/ai/planetary/sync", self.api_ai_planetary_sync, methods=["POST"]),
             Route("/api/ai/singularity/status", self.api_ai_singularity_status, methods=["GET"]),
+            Route("/api/ai/omnipresent/status", self.api_ai_omnipresent_status, methods=["GET"]),
             Route("/api/ai/neuromorphic/process-spikes", self.api_ai_neuromorphic_process_spikes, methods=["POST"]),
             Route("/api/ai/formal/prove-invariant", self.api_ai_formal_prove_invariant, methods=["POST"]),
             Route("/api/ai/blockchain/record-proof", self.api_ai_blockchain_record_proof, methods=["POST"]),

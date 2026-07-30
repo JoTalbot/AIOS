@@ -549,6 +549,14 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    # --- Omnipresent Architecture Grand Nexus Suite (v11.71–v12.0.0) ---
+
+    async def ai_get_omnipresent_status(self) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.get(self._url("/api/ai/omnipresent/status"), headers=self.headers)
+            resp.raise_for_status()
+            return resp.json()
+
     # --- Sovereign AI Neuromorphic, Formal Verification, Blockchain & Multi-Species Ethics (v11.41–v11.45) ---
 
     async def ai_process_spiking_events(self, spikes: list[float], threshold: float = 0.5) -> dict:
@@ -861,6 +869,9 @@ class AIOSClientSync:
 
     def ai_get_singularity_status(self, *a, **kw):
         return self._run(self._async.ai_get_singularity_status(*a, **kw))
+
+    def ai_get_omnipresent_status(self, *a, **kw):
+        return self._run(self._async.ai_get_omnipresent_status(*a, **kw))
 
     def ai_process_spiking_events(self, *a, **kw):
         return self._run(self._async.ai_process_spiking_events(*a, **kw))
