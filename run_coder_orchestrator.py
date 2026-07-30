@@ -99,12 +99,10 @@ def get_coder():
     global _coder_mod
     if _coder_mod:
         return _coder_mod
-    spec = importlib.util.spec_from_file_location(
-        "meta_coder", os.path.join(REPO_PATH, "aios_core/meta_cognitive_self_coder.py")
-    )
+    path = os.path.join(REPO_PATH, "aios_core", "meta_cognitive_self_coder.py")
+    spec = importlib.util.spec_from_file_location("meta_coder", path)
     mod = importlib.util.module_from_spec(spec)
-    mod.__name__ = "aios_core.meta_cognitive_self_coder"
-    sys.modules[mod.__name__] = mod
+    sys.modules["meta_coder"] = mod
     spec.loader.exec_module(mod)
     _coder_mod = mod
     return mod
@@ -433,7 +431,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="AIOS Coder Orchestrator")
     parser.add_argument("--once", action="store_true", help="Run once and exit")
-    parser.add_argument("--interval", type=int, default=120, help="Cycle interval (default: 120s)")
+    parser.add_argument("--interval", type=int, default=40, help="Cycle interval (default: 40s)")
     args = parser.parse_args()
 
     print(f"🧠 AIOS Coder Orchestrator v1.0")
