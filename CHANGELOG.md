@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.17.0] — 2026-07-30 — Forecast Metrics Export + Policy Auto-Tuner + Memory Health Telemetry
+
+### Added
+- **Substrate Energy Forecast Metrics Export (`EnergyAwareScheduler.export_forecast_metrics`)**:
+  - `export_forecast_metrics(tasks, policy)` translates batch forecast simulations into Prometheus gauge metrics dict (`aios_forecast_tasks_total`, `aios_forecast_projected_energy`, `aios_forecast_savings_vs_baseline`, etc.) for pre-dispatch observability.
+- **Policy A/B Auto-Tuner (`EnergyAwareScheduler.recommend_optimal_policy` & `auto_tune_policy`)**:
+  - `recommend_optimal_policy(tasks_sample)` evaluates recent workload dispatches or provided task samples across all policies (`min_energy`, `min_latency`, `balanced`, `ai_optimized`) using the A/B matrix and recommends the optimal energy-saving policy.
+  - `auto_tune_policy(tasks_sample)` dynamically updates the active policy to the recommended choice.
+- **Advanced Memory Health Telemetry (`AgentMemorySystem.memory_health_report`)**:
+  - `memory_health_report()` computes fragmentation ratio, average entry strength, archive pressure score (0..100), and composite memory vitality score (0..100).
+
 ## [11.16.0] — 2026-07-30 — Dynamic Policy Auto-Throttling + Retention Maintenance Engine + Snapshot Auto-Pruning
 
 ### Added

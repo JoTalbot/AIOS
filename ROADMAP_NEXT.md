@@ -1,5 +1,13 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.17.0 ✅ (2026-07-30)
+- ✅ Forecast Metrics Export — `EnergyAwareScheduler.export_forecast_metrics(tasks, policy)`: экспорт результатов симуляции батча задач в формат метрик Prometheus до реального выполнения
+- ✅ Policy Auto-Tuner — `recommend_optimal_policy()` и `auto_tune_policy()`: авто-подбор и переключение политики маршрутизации планировщика на основе A/B сравнения истории выполнения
+- ✅ Advanced Memory Health Telemetry — `AgentMemorySystem.memory_health_report()`: метрики фрагментации памяти, силы воспоминаний, давления архива и итоговой витальности (0..100)
+- ✅ 3 новых интеграционных теста (test_v11_17_features)
+
+**~4348 tests, 0 failures**
+
 ## v11.16.0 ✅ (2026-07-30)
 - ✅ Dynamic Policy Auto-Throttling — `EnergyAwareScheduler.configure_throttle(enabled, threshold)`: автоматическое понижение политики планирования до `min_energy` при превышении порога давления бюджета энергии (дефолт 0.8), защита от нарушений лимита
 - ✅ Retention Maintenance Engine — `RetentionMaintenanceEngine` в `aios_core/retention.py`: единый межсистемный движок фоновой очистки истории (Engine history + Scheduler dispatches + Memory archive) за один вызов `run_maintenance_cycle()`

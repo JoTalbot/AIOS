@@ -801,3 +801,70 @@ class EnergyAwareScheduler:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         return payload
+
+    def export_forecast_metrics(
+        self,
+        tasks: list[dict[str, Any]],
+        policy: str | None = None,
+    ) -> dict[str, Any]:
+        """Convert forecast simulation into Prometheus gauge metrics dict (v11.17.0)."""
+        fc = self.forecast(tasks, policy=policy)
+        return {
+            "aios_forecast_tasks_total": fc["tasks_total"],
+            "aios_forecast_affordable_tasks": fc["tasks_affordable"],
+            "aios_forecast_projected_energy": fc["projected_energy"],
+            "aios_forecast_window_limit": fc["window_limit"] or 0.0,
+        }
+
+    def recommend_optimal_policy(
+        self,
+        tasks_sample: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Recommend the optimal policy for workload sample (v11.17.0).
+
+        If no tasks_sample is provided, constructs sample tasks from
+        recent dispatch history (_dispatches). Uses compare_policies() to
+        evaluate projected energy and returns recommended policy.
+        """
+        if not tasks_sample:
+            if not self._dispatches:
+                return {
+                    "current_policy": self.policy,
+                    "recommended_policy": self.policy,
+                    "reason": "no dispatches or sample available; keeping current policy",
+                    "sample_size": 0,
+                }
+            tasks_sample = [
+                {
+                    "id": d.get("task_id", f"sample_{i}"),
+                    "category": d.get("category", "general"),
+                    "compute_units": d.get("compute_units", 1),
+                }
+                for i, d in enumerate(self._dispatches[-50:])
+            ]
+
+        matrix = self.compare_policies(tasks_sample, reference_policy=self.policy)
+        rec = matrix["recommended_policy"]
+        return {
+            "current_policy": self.policy,
+            "recommended_policy": rec,
+            "sample_size": len(tasks_sample),
+            "projected_savings_vs_current": matrix["matrix"].get(rec, {}).get("energy_delta_vs_reference", 0.0),
+            "comparison_matrix": matrix,
+        }
+
+    def auto_tune_policy(
+        self,
+        tasks_sample: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Apply recommended optimal policy dynamically (v11.17.0)."""
+        recommendation = self.recommend_optimal_policy(tasks_sample)
+        old_policy = self.policy
+        new_policy = recommendation["recommended_policy"]
+        self.policy = new_policy
+        return {
+            "old_policy": old_policy,
+            "new_policy": new_policy,
+            "changed": old_policy != new_policy,
+            "recommendation": recommendation,
+        }
