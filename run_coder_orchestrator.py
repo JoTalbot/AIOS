@@ -431,7 +431,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="AIOS Coder Orchestrator")
     parser.add_argument("--once", action="store_true", help="Run once and exit")
-    parser.add_argument("--interval", type=int, default=40, help="Cycle interval (default: 40s)")
+    parser.add_argument("--interval", type=int, default=20, help="Cycle interval (default: 20s)")
     args = parser.parse_args()
 
     print(f"🧠 AIOS Coder Orchestrator v1.0")
