@@ -1,7 +1,7 @@
 # AIOS — экономная конфигурация для пробного аккаунта Fly.io.
 # Пробная машина работает по запросу и останавливается при отсутствии трафика.
 app = "jotalbot-aios-trial-2026"
-primary_region = "waw"
+primary_region = "arn"
 
 kill_signal = "SIGINT"
 kill_timeout = "5s"
