@@ -1,17 +1,78 @@
 """Seed core AIOS database with realistic data for dashboard display (V3 schema)."""
 
 import json
+import os
 import sqlite3
 import uuid
 from datetime import UTC, datetime, timedelta
 
-DB_PATH = "/root/AIOS/aios.sqlite"
+DB_PATH = os.environ.get("AIOS_DB_PATH", "/app/data/aios.sqlite")
 
 
-def seed():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+def init_schema(conn):
     cur = conn.cursor()
+    cur.executescript("""
+    CREATE TABLE IF NOT EXISTS tasks (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        status TEXT NOT NULL,
+        agent_id TEXT,
+        authority TEXT,
+        risk_level TEXT,
+        steps_data TEXT,
+        current_step_index INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        started_at TEXT,
+        completed_at TEXT,
+        error TEXT,
+        metadata TEXT
+    );
+    CREATE TABLE IF NOT EXISTS memory_items (
+        id TEXT PRIMARY KEY,
+        category TEXT NOT NULL,
+        content TEXT NOT NULL,
+        tags TEXT,
+        source TEXT,
+        confidence REAL DEFAULT 1.0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT,
+        access_count INTEGER DEFAULT 0,
+        metadata TEXT,
+        owner_id TEXT
+    );
+    CREATE TABLE IF NOT EXISTS evolution_records (
+        id TEXT PRIMARY KEY,
+        evolution_type TEXT NOT NULL,
+        proposed_at TEXT NOT NULL,
+        status TEXT DEFAULT 'proposed'
+    );
+    CREATE TABLE IF NOT EXISTS audit_events (
+        id TEXT PRIMARY KEY,
+        event_type TEXT NOT NULL,
+        data TEXT,
+        timestamp TEXT NOT NULL,
+        agent_id TEXT,
+        decision TEXT
+    );
+    """)
+    conn.commit()
+
+
+def seed(db_file=None):
+    target_db = db_file or DB_PATH
+    os.makedirs(os.path.dirname(target_db), exist_ok=True)
+    conn = sqlite3.connect(target_db)
+    conn.row_factory = sqlite3.Row
+
+    init_schema(conn)
+
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) as count FROM tasks")
+    if cur.fetchone()["count"] > 0:
+        print(f"Database {target_db} already contains tasks, skipping seed.")
+        conn.close()
+        return
 
     now = datetime.now(UTC)
 
@@ -172,7 +233,7 @@ def seed():
 
     conn.commit()
     conn.close()
-    print("Seeded: tasks, memory_items, evolution_records, audit_events")
+    print(f"Seeded DB at {target_db}: tasks, memory_items, evolution_records, audit_events")
 
 
 if __name__ == "__main__":
