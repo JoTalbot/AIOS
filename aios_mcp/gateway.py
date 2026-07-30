@@ -176,6 +176,9 @@ class MCPGateway:
         self._register_builtin_tools()
         self._register_builtin_resources()
         self._register_builtin_prompts()
+        
+        # Load external integrations like Octopus MCPs
+        self._load_octopus_mcp_configs()
 
         # State
         self._initialized = False
@@ -665,6 +668,34 @@ class MCPGateway:
     # ------------------------------------------------------------------
     # Request handling
     # ------------------------------------------------------------------
+
+    def _load_octopus_mcp_configs(self):
+        """Auto-load Octopus MCP JSON configs if they exist."""
+        import json
+        mcp_dir = os.path.join(_PROJECT_ROOT, "integrations", "octopus_mcp")
+        if not os.path.isdir(mcp_dir):
+            return
+            
+        for file in os.listdir(mcp_dir):
+            if file.endswith(".json"):
+                path = os.path.join(mcp_dir, file)
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        config = json.load(f)
+                    
+                    # Register tools from config if "tools" array is present
+                    # (This is a simplified loader mapping JSON metadata to ToolDefinition)
+                    for t in config.get("tools", []):
+                        self.tools.register(
+                            ToolDefinition(
+                                name=t.get("name", "unknown_tool"),
+                                description=t.get("description", ""),
+                                inputSchema=t.get("inputSchema", {"type": "object", "properties": {}}),
+                                handler=lambda call: {"result": "Unimplemented auto-loaded tool proxy", "call": call.arguments}
+                            )
+                        )
+                except Exception as e:
+                    print(f"Warning: Failed to load MCP config {file}: {e}")
 
     def handle_request(self, raw: str) -> str | None:
         """Handle a single JSON-RPC 2.0 request string.

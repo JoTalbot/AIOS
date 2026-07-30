@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
-SKILLS_BASE = Path(os.path.expanduser("~/agents/-Octopus/skills"))
+SKILLS_BASE = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 CATEGORIES = ["core", "dr", "loader", "marketplace", "mcp", "memory", "meta", "research", "swarm"]
 
 
