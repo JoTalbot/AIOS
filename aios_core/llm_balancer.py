@@ -75,6 +75,22 @@ class LLMBalancer:
                 "deepseek/deepseek-chat-v3-0324",
             ],
         },
+        "gemini": {
+            "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+            "models": [
+                "gemini-2.0-flash",
+                "gemini-2.5-flash",
+                "gemini-2.5-pro",
+            ],
+        },
+        "openai": {
+            "base_url": "https://api.openai.com/v1/chat/completions",
+            "models": [
+                "gpt-4o-mini",
+                "gpt-4o",
+                "gpt-4.1-mini",
+            ],
+        },
         "zai": {
             "base_url": "https://api.z.ai/api/v1/chat/completions",
             "models": [
@@ -89,16 +105,37 @@ class LLMBalancer:
     # Fallback chain: if primary model fails, try these
     MODEL_FALLBACKS = {
         "meta-llama/llama-4-maverick": [
+            "gemini-2.0-flash",
             "mistralai/mistral-small-3.2-24b-instruct",
+            "gpt-4o-mini",
             "deepseek/deepseek-chat-v3-0324",
             "glm-4.5-flash",
         ],
+        "gemini-2.0-flash": [
+            "gemini-2.5-flash",
+            "meta-llama/llama-4-maverick",
+            "gpt-4o-mini",
+            "mistralai/mistral-small-3.2-24b-instruct",
+        ],
+        "gemini-2.5-flash": [
+            "gemini-2.0-flash",
+            "meta-llama/llama-4-maverick",
+            "gpt-4o-mini",
+        ],
+        "gpt-4o-mini": [
+            "gpt-4o",
+            "gemini-2.0-flash",
+            "meta-llama/llama-4-maverick",
+        ],
         "mistralai/mistral-small-3.2-24b-instruct": [
             "meta-llama/llama-4-maverick",
+            "gemini-2.0-flash",
+            "gpt-4o-mini",
             "glm-4.5-flash",
         ],
         "glm-4.5-flash": [
             "glm-4.7-flash",
+            "gemini-2.0-flash",
             "meta-llama/llama-4-maverick",
         ],
     }
@@ -130,6 +167,42 @@ class LLMBalancer:
                 base_url=self.PROVIDERS["openrouter"]["base_url"],
                 keys=or_keys,
                 models=self.PROVIDERS["openrouter"]["models"],
+            )
+
+        # Gemini keys
+        gem_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"GEMINI_API_KEY_{i}", "")
+            if k:
+                gem_keys.append(APIKey(key=k, provider="gemini"))
+        gk = os.environ.get("GEMINI_API_KEY", "")
+        if gk and not any(k.key == gk for k in gem_keys):
+            gem_keys.append(APIKey(key=gk, provider="gemini"))
+
+        if gem_keys:
+            self.providers["gemini"] = Provider(
+                name="gemini",
+                base_url=self.PROVIDERS["gemini"]["base_url"],
+                keys=gem_keys,
+                models=self.PROVIDERS["gemini"]["models"],
+            )
+
+        # OpenAI keys
+        oai_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"OPENAI_API_KEY_{i}", "")
+            if k:
+                oai_keys.append(APIKey(key=k, provider="openai"))
+        ok = os.environ.get("OPENAI_API_KEY", "")
+        if ok and not any(k.key == ok for k in oai_keys):
+            oai_keys.append(APIKey(key=ok, provider="openai"))
+
+        if oai_keys:
+            self.providers["openai"] = Provider(
+                name="openai",
+                base_url=self.PROVIDERS["openai"]["base_url"],
+                keys=oai_keys,
+                models=self.PROVIDERS["openai"]["models"],
             )
 
         # Z.ai keys
