@@ -7,7 +7,7 @@ articles and YAML policies. Replaces the v2.1.1 hardcoded stub.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from .constitution_loader import ConstitutionLoader
 from .policy_loader import PolicyLoader
@@ -36,7 +36,7 @@ class ValidationReport:
     errors: list[ValidationResult] = field(default_factory=list)
     warnings: list[ValidationResult] = field(default_factory=list)
     checked_rules_count: int = 0
-    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class ConstitutionValidator:

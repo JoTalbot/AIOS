@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 from .constitution_loader import ConstitutionLoader
@@ -32,7 +32,7 @@ class EvaluationContext:
 
     action: dict
     evaluation_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
-    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     constitution_hits: list[dict] = field(default_factory=list)
     policy_hits: list[dict] = field(default_factory=list)
     violations: list[dict] = field(default_factory=list)
@@ -52,7 +52,7 @@ class Decision:
     violations: list[dict] = field(default_factory=list)
     requirements: list[dict] = field(default_factory=list)
     policy_actions: list[dict] = field(default_factory=list)
-    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     matched_articles: list[str] = field(default_factory=list)
     matched_policies: list[str] = field(default_factory=list)
 

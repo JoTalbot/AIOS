@@ -13,7 +13,7 @@ Uses storage data (OLXStorage and subclasses) for geospatial analysis.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from aios_core.modules.olx.storage import OLXStorage
 
@@ -53,7 +53,7 @@ class PriceHeatmap:
     priciest_city: str | None = None
     priciest_avg: float | None = None
     national_avg: float | None = None
-    generated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    generated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""

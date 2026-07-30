@@ -8,7 +8,7 @@ Persists to evolution_records table in SQLite.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 __all__ = ["EvolutionManager"]
@@ -57,7 +57,7 @@ class EvolutionManager:
             The proposal dict with id and stage info.
         """
         proposal_id = self.db.new_id() if self.db else "no-db"
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         proposal = {
             "id": proposal_id,
@@ -176,11 +176,11 @@ class EvolutionManager:
                 """UPDATE evolution_records
                    SET status = 'approved', completed_at = ?
                    WHERE id = ?""",
-                (datetime.now(UTC).isoformat(), proposal_id),
+                (datetime.now(timezone.utc).isoformat(), proposal_id),
             )
 
         proposal["status"] = "approved"
-        proposal["completed_at"] = datetime.now(UTC).isoformat()
+        proposal["completed_at"] = datetime.now(timezone.utc).isoformat()
         return proposal
 
     def reject(self, proposal_id: str, reason: str = "") -> dict:
@@ -204,12 +204,12 @@ class EvolutionManager:
                 """UPDATE evolution_records
                    SET status = 'rejected', completed_at = ?
                    WHERE id = ?""",
-                (datetime.now(UTC).isoformat(), proposal_id),
+                (datetime.now(timezone.utc).isoformat(), proposal_id),
             )
 
         proposal["status"] = "rejected"
         proposal["rejection_reason"] = reason
-        proposal["completed_at"] = datetime.now(UTC).isoformat()
+        proposal["completed_at"] = datetime.now(timezone.utc).isoformat()
         return proposal
 
     def get_proposal(self, proposal_id: str) -> dict | None:
@@ -376,7 +376,7 @@ class EvolutionManager:
 
         from datetime import datetime, timedelta
 
-        cutoff = datetime.now(UTC) - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         cutoff_iso = cutoff.isoformat()
 
         # We need the ``updated_at`` column, but evolution_records only
@@ -391,7 +391,7 @@ class EvolutionManager:
             (cutoff_iso,),
         )
 
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         result: list[dict] = []
         for row in rows:
             proposal = self._row_to_dict(row)
@@ -400,7 +400,7 @@ class EvolutionManager:
                 try:
                     proposed_dt = datetime.fromisoformat(proposed_str)
                     if proposed_dt.tzinfo is None:
-                        proposed_dt = proposed_dt.replace(tzinfo=UTC)
+                        proposed_dt = proposed_dt.replace(tzinfo=timezone.utc)
                     age = (now - proposed_dt).total_seconds() / 3600
                     proposal["stuck_hours"] = round(age, 2)
                 except (ValueError, TypeError):

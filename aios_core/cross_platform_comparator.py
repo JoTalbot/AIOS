@@ -15,7 +15,7 @@ Provides actionable recommendations:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 from aios_core.modules.olx.storage import OLXStorage
@@ -52,7 +52,7 @@ class ComparisonGroup:
 
     group_id: str
     products: list[CrossPlatformProduct] = field(default_factory=list)
-    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     @property
     def prices(self) -> list[float]:

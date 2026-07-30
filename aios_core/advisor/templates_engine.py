@@ -10,7 +10,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -23,8 +23,8 @@ except ImportError:
 
 
 def _utc_now() -> datetime:
-    """Timezone-aware UTC now (dataclass defaults)."""
-    return datetime.now(UTC)
+    """Timezone-aware timezone.utc now (dataclass defaults)."""
+    return datetime.now(timezone.utc)
 
 
 @dataclass
@@ -138,7 +138,7 @@ class TemplateEngine:
     def _generate_id(self, name: str) -> str:
         """Генерация уникального ID шаблона."""
         slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
-        timestamp = int(datetime.now(UTC).timestamp())
+        timestamp = int(datetime.now(timezone.utc).timestamp())
         short_hash = hashlib.md5(f"{name}{timestamp}".encode()).hexdigest()[:6]
         return f"tpl_{slug}_{short_hash}"
 
@@ -193,7 +193,7 @@ class TemplateEngine:
             if hasattr(template, key):
                 setattr(template, key, value)
 
-        template.updated_at = datetime.now(UTC)
+        template.updated_at = datetime.now(timezone.utc)
         template.version += 1
 
         self._save_template(template)
@@ -329,7 +329,7 @@ class AdvisorTemplateIntegration:
 
         return {
             "status": "success",
-            "draft_id": f"draft_{template.id}_{int(datetime.now(UTC).timestamp())}",
+            "draft_id": f"draft_{template.id}_{int(datetime.now(timezone.utc).timestamp())}",
             "template_id": template.id,
             "template_name": template.name,
             "rendered_text": rendered,

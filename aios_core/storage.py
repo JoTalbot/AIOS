@@ -11,7 +11,7 @@ import threading
 import uuid
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .config import AIOSConfig, load_config
@@ -263,7 +263,7 @@ class Database:
             self._migrate(conn, current, _SCHEMA_VERSION)
             conn.execute(
                 "INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?, ?)",
-                (_SCHEMA_VERSION, datetime.now(UTC).isoformat()),
+                (_SCHEMA_VERSION, datetime.now(timezone.utc).isoformat()),
             )
             conn.commit()
 
@@ -358,8 +358,8 @@ class Database:
 
     @staticmethod
     def now_iso() -> str:
-        """Return the current UTC timestamp as an ISO-8601 string."""
-        return datetime.now(UTC).isoformat()
+        """Return the current timezone.utc timestamp as an ISO-8601 string."""
+        return datetime.now(timezone.utc).isoformat()
 
     @staticmethod
     def to_json(data: Any) -> str:

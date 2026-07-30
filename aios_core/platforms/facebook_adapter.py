@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .base import IncomingMessage, PlatformAdapter, SentMessage
@@ -26,11 +26,11 @@ class FacebookAdapter(PlatformAdapter):
     async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
         # TODO: POST /{page_id}/messages (Send API)
         return SentMessage(
-            message_id=f"fb_{int(datetime.now(UTC).timestamp())}",
+            message_id=f"fb_{int(datetime.now(timezone.utc).timestamp())}",
             platform="facebook",
             recipient_id=recipient_id,
             text=text,
-            timestamp=datetime.now(UTC),
+            timestamp=datetime.now(timezone.utc),
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

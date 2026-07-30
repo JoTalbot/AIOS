@@ -17,7 +17,7 @@ import hashlib
 import os
 import sqlite3
 import threading
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Self
 
@@ -63,7 +63,7 @@ class ShardRouter:
 
     @staticmethod
     def _now() -> str:
-        return datetime.now(UTC).isoformat()
+        return datetime.now(timezone.utc).isoformat()
 
     # ------------------------------------------------------------------ #
     # хосты                                                                #

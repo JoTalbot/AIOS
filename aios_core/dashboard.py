@@ -18,7 +18,7 @@ import secrets
 import sqlite3
 import subprocess
 import time
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -291,7 +291,7 @@ class AIOSDashboard:
             {
                 "status": "ok",
                 "version": self.orch.version,
-                "time": datetime.now(UTC).isoformat(),
+                "time": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -797,7 +797,7 @@ class AIOSDashboard:
 
             shot_dir = Path(AIOS_HOME) / "screenshots"
             shot_dir.mkdir(parents=True, exist_ok=True)
-            ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+            ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             fn = shot_dir / f"shot_{serial.replace(':', '_')}_{ts}.png"
             # screencap -p outputs png to stdout
             r = subprocess.run(
@@ -1603,14 +1603,14 @@ class AIOSDashboard:
     @staticmethod
     def _timestamp_ms(value: str | None) -> int:
         if not value:
-            return int(datetime.now(UTC).timestamp() * 1000)
+            return int(datetime.now(timezone.utc).timestamp() * 1000)
         try:
             parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
             if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=UTC)
+                parsed = parsed.replace(tzinfo=timezone.utc)
             return int(parsed.timestamp() * 1000)
         except Exception:
-            return int(datetime.now(UTC).timestamp() * 1000)
+            return int(datetime.now(timezone.utc).timestamp() * 1000)
 
     @staticmethod
     def _audit_type(event_type: str) -> str:

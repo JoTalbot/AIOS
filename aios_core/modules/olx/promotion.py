@@ -10,7 +10,7 @@ explicit human confirmation. Execution is DRY-RUN by default and requires
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from statistics import median
 
 from .adb import ADBController
@@ -173,7 +173,7 @@ class RepostPlanner:
         now: datetime | None = None,
     ) -> RepostDecision:
         """Decide whether to repost based on ad metrics."""
-        now = now or datetime.now(UTC)
+        now = now or datetime.now(timezone.utc)
         age_days = max(
             0.0,
             (now - datetime.fromisoformat(first_seen_at)).total_seconds() / 86400.0,

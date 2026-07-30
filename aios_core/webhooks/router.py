@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -40,7 +40,7 @@ async def instagram_webhook(request: Request):
             "sender_id": messaging["sender"]["id"],
             "text": messaging["message"].get("text", ""),
             "message_id": messaging["message"]["mid"],
-            "timestamp": datetime.fromtimestamp(messaging["timestamp"], tz=UTC),
+            "timestamp": datetime.fromtimestamp(messaging["timestamp"], tz=timezone.utc),
         }
         for entry in data.get("entry", [])
         for messaging in entry.get("messaging", [])

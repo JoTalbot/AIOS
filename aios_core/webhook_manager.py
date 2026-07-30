@@ -19,7 +19,7 @@ import json
 import threading
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any
 
@@ -61,7 +61,7 @@ class WebhookTarget:
 
     def __post_init__(self) -> None:
         if not self.created_at:
-            self.created_at = datetime.now(UTC).isoformat()
+            self.created_at = datetime.now(timezone.utc).isoformat()
 
     def matches_event(self, event: str) -> bool:
         """Check if this target should receive the event."""
@@ -174,7 +174,7 @@ class WebhookManager:
         """
         payload = WebhookPayload(
             event=event,
-            timestamp=datetime.now(UTC).isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             source=source,
             data=data,
             severity=severity,
@@ -327,7 +327,7 @@ class WebhookManager:
     def export_config(self, path: str) -> int:
         """Export webhook configuration to file."""
         config = {
-            "exported_at": datetime.now(UTC).isoformat(),
+            "exported_at": datetime.now(timezone.utc).isoformat(),
             "targets": [t.to_dict() for t in self.targets.values()],
         }
         with open(path, "w") as f:

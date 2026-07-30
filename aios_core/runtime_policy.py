@@ -7,7 +7,7 @@ persistent AuditLogger and ApprovalManager backed by SQLite.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from .approval_manager import ApprovalManager
 from .audit_logger import AuditLogger
@@ -82,7 +82,7 @@ class RuntimePolicy:
                 - audit_id: Audit log event ID
                 - approval_id: Approval request ID (if REVIEW)
         """
-        timestamp = datetime.now(UTC).isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
 
         # Step 1: Validate
         validation = self.validator.validate(agent_action)

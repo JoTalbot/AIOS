@@ -8,7 +8,7 @@ ad: who's cheaper, who's new in the niche, and where you rank by price.
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .analytics import _tokenize
@@ -128,7 +128,7 @@ class CompetitiveWatch:
         """
         if candidates is None:
             candidates = self.storage.get_ads(active_only=True)
-        now = seen_at or datetime.now(UTC).isoformat()
+        now = seen_at or datetime.now(timezone.utc).isoformat()
         new_links = 0
         per_own: dict[str, dict[str, object]] = {}
 
@@ -175,7 +175,7 @@ class CompetitiveWatch:
 
         Returns counts and the parsed portfolio.
         """
-        now = seen_at or datetime.now(UTC).isoformat()
+        now = seen_at or datetime.now(timezone.utc).isoformat()
         query = derive_query(my_ad.title)
         portfolio = parse_seller_ads(
             xml_source,

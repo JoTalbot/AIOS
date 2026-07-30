@@ -4,7 +4,7 @@ own-promote DRY-RUN, and human-like pacing.
 
 import json
 import random
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import pytest
@@ -40,8 +40,8 @@ def _claimed_job(db, claimed_at):
 
 def test_requeue_stale_returns_old_claims(tmp_path):
     db = _seed_db(tmp_path)
-    old = (datetime.now(UTC) - timedelta(seconds=900)).isoformat()
-    fresh = (datetime.now(UTC) - timedelta(seconds=10)).isoformat()
+    old = (datetime.now(timezone.utc) - timedelta(seconds=900)).isoformat()
+    fresh = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
     stale_id = _claimed_job(db, old)
     fresh_id = _claimed_job(db, fresh)
     with ShardJobs(db) as jobs:
@@ -79,7 +79,7 @@ def test_cli_jobs_stats_and_requeue(tmp_path, capsys, monkeypatch):
 
     db = _seed_db(tmp_path)
     monkeypatch.setenv("AIOS_SHARDS_DB", db)
-    old = (datetime.now(UTC) - timedelta(seconds=3600)).isoformat()
+    old = (datetime.now(timezone.utc) - timedelta(seconds=3600)).isoformat()
     _claimed_job(db, old)
     main(["shards", "jobs", "--stats"])
     stats = json.loads(capsys.readouterr().out)
@@ -289,7 +289,7 @@ def test_cli_autopilot_promote_step(tmp_path, capsys, monkeypatch):
     # Зрелый пост с почти нулевыми просмотрами → stagnant:
     db = tmp_path / "ig.sqlite"
     storage = InstagramStorage(str(db))
-    old = (datetime.now(UTC) - timedelta(days=7)).isoformat()
+    old = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
     storage.upsert_own_ad(
         OwnAd(
             title="Старий пост",

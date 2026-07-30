@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class AuditRecord:
         metadata: dict[str, Any] | None = None,
         prev_hash: str = "",
     ) -> None:
-        self.timestamp = datetime.now(UTC).isoformat()
+        self.timestamp = datetime.now(timezone.utc).isoformat()
         self.action = action
         self.actor = actor
         self.resource = resource

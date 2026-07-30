@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 __all__ = ["ReasoningChain", "ReasoningEngine", "ReasoningStep"]
@@ -37,7 +37,7 @@ class ReasoningChain:
     steps: list[ReasoningStep] = field(default_factory=list)
     conclusion: str = ""
     overall_confidence: float = 0.0
-    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class ReasoningEngine:

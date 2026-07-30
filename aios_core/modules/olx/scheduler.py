@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import threading
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Self
 
 from .collector import OLXCollector
@@ -54,7 +54,7 @@ class CollectionScheduler:
             inserted = self.storage.save_ads(cards)
             deactivated = self.storage.sync_activity(query, [card.fingerprint for card in cards])
             record: dict[str, object] = {
-                "ts": datetime.now(UTC).isoformat(),
+                "ts": datetime.now(timezone.utc).isoformat(),
                 "query": query,
                 "parsed": len(cards),
                 "inserted": inserted,

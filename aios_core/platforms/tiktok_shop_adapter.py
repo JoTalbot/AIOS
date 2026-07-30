@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from .base import IncomingMessage, PlatformAdapter, SentMessage
 
@@ -15,11 +15,11 @@ class TiktokShopAdapter(PlatformAdapter):
 
     async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
         return SentMessage(
-            message_id=f"tiktok_shop_{int(datetime.now(UTC).timestamp())}",
+            message_id=f"tiktok_shop_{int(datetime.now(timezone.utc).timestamp())}",
             platform="tiktok_shop",
             recipient_id=recipient_id,
             text=text,
-            timestamp=datetime.now(UTC),
+            timestamp=datetime.now(timezone.utc),
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

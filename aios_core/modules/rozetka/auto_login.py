@@ -14,7 +14,7 @@ UI element mapping from calibration.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 from aios_core.modules.olx.adb import ADBController
@@ -39,7 +39,7 @@ class LoginResult:
 
     state: LoginState = LoginState.NOT_STARTED
     message: str = ""
-    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     session_id: str | None = None
     retry_count: int = 0
 
@@ -190,6 +190,6 @@ class RozetkaAutoLogin:
         return {
             "platform": "rozetka",
             "login_state": state.value,
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "package": self.package,
         }

@@ -1,6 +1,6 @@
 import hashlib
 from collections import defaultdict
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -16,7 +16,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         ip = request.client.host if request.client else "unknown"
         key = hashlib.md5(ip.encode()).hexdigest()
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         self.requests[key] = [t for t in self.requests[key] if t > now - timedelta(seconds=self.window_seconds)]
         if len(self.requests[key]) >= self.max_requests:
             return JSONResponse(status_code=429, content={"error": "Too many requests"})

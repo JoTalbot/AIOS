@@ -12,7 +12,7 @@ Two kinds of output:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from statistics import median
 
 from .analytics import RecommendationEngine
@@ -91,7 +91,7 @@ class StrategyAdvisor:
         now: datetime | None = None,
     ) -> list[ActionAdvice]:
         """Return recommended actions for owned ads."""
-        now = now or datetime.now(UTC)
+        now = now or datetime.now(timezone.utc)
         planner = RepostPlanner(min_age_days=min_age_days, min_views_per_day=min_views_per_day)
         advice: list[ActionAdvice] = []
 

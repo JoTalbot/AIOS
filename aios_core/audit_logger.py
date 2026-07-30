@@ -8,7 +8,7 @@ time range, and decision.
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
 from .storage import Database
@@ -198,7 +198,7 @@ class AuditLogger:
 
     def cleanup(self, retention_days: int = 90) -> int:
         """Delete events older than retention_days. Returns deleted count."""
-        cutoff = (datetime.now(UTC) - timedelta(days=retention_days)).isoformat()
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
 
         if self.db:
             cursor = self.db.execute("DELETE FROM audit_events WHERE timestamp < ?", (cutoff,))

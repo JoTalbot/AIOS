@@ -7,7 +7,7 @@ with Rozetka-specific extensions.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from aios_core.modules.rozetka.collector import RozetkaCollector
 from aios_core.modules.rozetka.price_tracker import RozetkaPriceTracker
@@ -64,7 +64,7 @@ class RozetkaAutoWatch:
         """
         report: dict[str, object] = {
             "platform": "rozetka",
-            "started_at": datetime.now(UTC).isoformat(),
+            "started_at": datetime.now(timezone.utc).isoformat(),
         }
 
         # Step 1: Collect
@@ -91,12 +91,12 @@ class RozetkaAutoWatch:
         fav_alerts = self._favorite_alerts()
         report["favorite_alerts"] = fav_alerts
 
-        report["completed_at"] = datetime.now(UTC).isoformat()
+        report["completed_at"] = datetime.now(timezone.utc).isoformat()
         return report
 
     def _find_stagnant(self) -> list[dict[str, object]]:
         """Find products not seen for min_age_days or longer."""
-        cutoff = datetime.now(UTC).timestamp() - self.min_age_days * 86400
+        cutoff = datetime.now(timezone.utc).timestamp() - self.min_age_days * 86400
         ads = self.storage.get_ads()
         stagnant: list[dict[str, object]] = []
         for ad in ads:

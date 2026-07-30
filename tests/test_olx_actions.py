@@ -2,7 +2,7 @@
 repost planning, notifications and MCP tool integration."""
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from aios_core.modules.olx import (
     AdCard,
@@ -27,7 +27,7 @@ from aios_core.modules.olx import (
 )
 from tests.test_olx_agent import SAMPLE_XML, FakeADB
 
-NOW = datetime(2026, 7, 21, 15, 0, 0, tzinfo=UTC)
+NOW = datetime(2026, 7, 21, 15, 0, 0, tzinfo=timezone.utc)
 
 DETAIL_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <hierarchy rotation="0">
