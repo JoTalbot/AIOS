@@ -1,5 +1,27 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.23.0 ✅ (2026-07-30)
+- ✅ Real-Time Safety Guard — `AgentSafetyComplianceGuard` в `aios_core/ai_governance.py`: пре-исполнительная проверка действий агентов на риски, причинение вреда и обман, блокировка опасных действий
+- ✅ Autonomous Safety Audit Engine — `AutonomousSafetyAuditEngine`: комплексный расчет индекса соответствия безопасности (Governance Compliance Index 0..100)
+- ✅ REST API & SDK Integration — эндпоинты `/api/governance/guard/evaluate`, `/api/governance/audit/run`, `/api/governance/compliance/score` и методы SDK
+- ✅ 3 новых теста (test_v11_23_features)
+
+**~4368 tests, 0 failures**
+
+## v11.22.0 ✅ (2026-07-30)
+- ✅ Multi-Provider LLM Router — `LLMRouter` в `aios_core/llm_router.py`: маршрутизация запросов между OpenAI, Anthropic, Gemini, DeepSeek, Ollama/vLLM с автоматическими цепочками фоллбеков
+- ✅ RAG Context Augmentation — `ContextAugmenter` в `aios_core/rag_augmentation.py`: динамическое обогащение промптов из памяти, векторного хранилища и Knowledge Graph
+- ✅ Swarm Multi-Model Consensus — `SwarmConsensusEngine` в `aios_core/swarm_consensus.py`: консенсус мульти-модельного роя и расчёт согласия
+- ✅ 4 новых теста (test_v11_22_features)
+
+**~4365 tests, 0 failures**
+
+## v11.21.0 ✅ (2026-07-30)
+- ✅ Adaptive Substrate Self-Healing — `AdaptiveSelfHealingSubstrateEngine` в `aios_core/self_healing.py`: обнаружение аномалий и авто-самовосстановление субстратов
+- ✅ 3 новых теста (test_v11_21_features)
+
+**~4361 tests, 0 failures**
+
 ## v11.20.0 ✅ (2026-07-30)
 - ✅ Developer Python SDK Expansion — Обновлен публичный SDK (`sdk/aios_sdk.py`), добавлены методы клиенту `AIOSClient` и `AIOSClientSync` для управления троттлингом, авто-тюнингом политик, здоровьем памяти и запуском ретенции
 - ✅ Official Release Notes — Создана официальная документация релизов `RELEASE_NOTES_11.16.0.md` — `RELEASE_NOTES_11.20.0.md` в `docs/releases/`

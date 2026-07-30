@@ -2102,6 +2102,50 @@ class AIOSDashboard:
         res = engine.evaluate_consensus(prompt=str(body["prompt"]), model=body.get("model", "default-model"))
         return JSONResponse(res)
 
+    async def api_governance_guard_evaluate(self, request: Request) -> JSONResponse:
+        """Real-time pre-execution safety guard check for an agent action (v11.23.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "action" not in body:
+            return JSONResponse({"error": "request body must include 'action' dict"}, status_code=400)
+
+        from .ai_governance import AgentSafetyComplianceGuard
+
+        guard = AgentSafetyComplianceGuard()
+        res = guard.evaluate_action_safety(action=body["action"], tenant_id=body.get("tenant_id"))
+        return JSONResponse(res)
+
+    async def api_governance_audit_run(self, request: Request) -> JSONResponse:
+        """Run comprehensive multi-pillar autonomous safety audit (v11.23.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or not body.get("confirm"):
+            return JSONResponse({"error": "request body must include confirm: true guard"}, status_code=400)
+
+        from .ai_governance import AutonomousSafetyAuditEngine
+
+        auditor = AutonomousSafetyAuditEngine(
+            memory_system=_get_memory_system(),
+            scheduler=_get_energy_scheduler(),
+        )
+        res = auditor.run_full_safety_audit()
+        return JSONResponse(res)
+
+    async def api_governance_compliance_score(self, request: Request) -> JSONResponse:
+        """Get overall governance compliance score and status (v11.23.0)."""
+        from .ai_governance import AutonomousSafetyAuditEngine
+
+        auditor = AutonomousSafetyAuditEngine(
+            memory_system=_get_memory_system(),
+            scheduler=_get_energy_scheduler(),
+        )
+        res = auditor.run_full_safety_audit()
+        return JSONResponse(res)
+
     async def api_memory_health(self, request: Request) -> JSONResponse:
         """Get advanced memory health & vitality telemetry (v11.19.0)."""
         mem = _get_memory_system()
@@ -2776,6 +2820,9 @@ class AIOSDashboard:
             Route("/api/ai/generate", self.api_ai_generate, methods=["POST"]),
             Route("/api/ai/augment", self.api_ai_augment, methods=["POST"]),
             Route("/api/ai/consensus", self.api_ai_consensus, methods=["POST"]),
+            Route("/api/governance/guard/evaluate", self.api_governance_guard_evaluate, methods=["POST"]),
+            Route("/api/governance/audit/run", self.api_governance_audit_run, methods=["POST"]),
+            Route("/api/governance/compliance/score", self.api_governance_compliance_score, methods=["GET"]),
             Route("/api/substrate/schedule", self.api_substrate_schedule, methods=["POST"]),
             Route("/api/substrate/scheduler", self.api_substrate_scheduler),
             Route("/api/substrate/analytics", self.api_substrate_analytics),
