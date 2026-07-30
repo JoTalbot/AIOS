@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-_BASE_URL = os.getenv("AIOS_API_URL", "http://127.0.0.1:8580")
+_BASE_URL = os.getenv("AIOS_API_URL", "http://aios-api:8000")
 _TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 
 
