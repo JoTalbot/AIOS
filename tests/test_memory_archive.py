@@ -162,4 +162,4 @@ def test_memory_page_has_archive_wiring(client):
     resp = client.get("/memory")
     assert resp.status_code == 200
     assert "archived-total" in resp.text
-    assert "v11.21.0" in resp.text
+    assert "v11.22.0" in resp.text
