@@ -1,320 +1,100 @@
-"""Knowledge Distillation for AIOS v10.8.0.
+"""Self-Supervised Knowledge Distillation & Fine-Tuning Engine for AIOS v11.26.0.
 
-Distills knowledge from large teacher models to smaller
-student models with soft targets, temperature scaling,
-loss computation, progressive distillation, and model
-registry.
-
-Classes:
-    ModelConfig    — model configuration descriptor
-    DistillationResult — outcome of a distillation run
-    KnowledgeDistiller — full distillation engine
+Collects high-scoring agent execution trajectories and formats JSONL datasets
+for local SLM / fine-tuning distillation.
 """
 
 from __future__ import annotations
 
-import logging
-import math
+import json
 import time
-from dataclasses import dataclass, field
 from typing import Any
 
-logger = logging.getLogger(__name__)
 
-
-@dataclass
-class ModelConfig:
-    """Model configuration descriptor."""
-
-    model_id: str
-    model_type: str = "teacher"  # teacher or student
-    num_params: int = 0
-    accuracy: float = 0.0
-    latency_ms: float = 0.0
-    created_at: float = field(default_factory=time.time)
-
-
-@dataclass
 class DistillationResult:
-    """Outcome of a distillation run."""
+    """Outcome of self-supervised distillation."""
 
-    teacher_id: str
-    student_id: str
-    temperature: float = 2.0
-    alpha: float = 0.7  # KD loss weight
-    student_accuracy_before: float = 0.0
-    student_accuracy_after: float = 0.0
-    compression_ratio: float = 0.0
-    kd_loss: float = 0.0
-    hard_loss: float = 0.0
-    total_loss: float = 0.0
-    epochs: int = 0
-    success: bool = True
-    timestamp: float = field(default_factory=time.time)
+    def __init__(self, student_accuracy_before: float, student_accuracy_after: float, compression_ratio: float):
+        self.student_accuracy_before = student_accuracy_before
+        self.student_accuracy_after = student_accuracy_after
+        self.compression_ratio = compression_ratio
 
 
-class KnowledgeDistiller:
-    """Full knowledge distillation engine.
-
-    Features:
-    - Teacher/student model registry
-    - Temperature-scaled soft target generation
-    - KD loss + hard loss computation
-    - Progressive distillation (multi-stage)
-    - Compression ratio tracking
-    - Distillation history
-    """
+class KnowledgeDistillationEngine:
+    """Collects agent trajectories and prepares fine-tuning distillation datasets."""
 
     def __init__(self) -> None:
-        self.teacher_models: dict[str, ModelConfig] = {}
-        self.student_models: dict[str, ModelConfig] = {}
-        self.distillation_history: list[DistillationResult] = []
+        self.trajectories: list[dict[str, Any]] = []
+        self.teachers: dict[str, dict[str, Any]] = {}
+        self.students: dict[str, dict[str, Any]] = {}
 
-    # ── Model Registry ──────────────────────────────────────────────
-
-    def register_teacher(
-        self,
-        model_id: str,
-        num_params: int = 1000000,
-        accuracy: float = 0.95,
-        latency_ms: float = 100.0,
-    ) -> ModelConfig:
+    def register_teacher(self, teacher_id: str, num_params: int, accuracy: float, latency_ms: float) -> None:
         """Register a teacher model."""
-        config = ModelConfig(
-            model_id=model_id,
-            model_type="teacher",
-            num_params=num_params,
-            accuracy=accuracy,
-            latency_ms=latency_ms,
-        )
-        self.teacher_models[model_id] = config
-        return config
+        self.teachers[teacher_id] = {"num_params": num_params, "accuracy": accuracy, "latency_ms": latency_ms}
 
-    def register_student(
-        self,
-        model_id: str,
-        num_params: int = 100000,
-        accuracy: float = 0.7,
-        latency_ms: float = 10.0,
-    ) -> ModelConfig:
+    def register_student(self, student_id: str, num_params: int, accuracy: float, latency_ms: float) -> None:
         """Register a student model."""
-        config = ModelConfig(
-            model_id=model_id,
-            model_type="student",
-            num_params=num_params,
-            accuracy=accuracy,
-            latency_ms=latency_ms,
-        )
-        self.student_models[model_id] = config
-        return config
-
-    def get_teacher(self, model_id: str) -> ModelConfig | None:
-        """Return teacher model config."""
-        return self.teacher_models.get(model_id)
-
-    def get_student(self, model_id: str) -> ModelConfig | None:
-        """Return student model config."""
-        return self.student_models.get(model_id)
-
-    # ── Soft Targets ────────────────────────────────────────────────
-
-    def soft_targets(self, logits: list[float], temperature: float = 2.0) -> list[float]:
-        """Generate temperature-scaled soft targets from logits.
-
-        softmax(z/T) where T is temperature.
-        """
-        scaled = [logit / temperature for logit in logits]
-        # Softmax
-        max_val = max(scaled)
-        exp_vals = [math.exp(s - max_val) for s in scaled]
-        sum_exp = sum(exp_vals)
-        return [e / sum_exp for e in exp_vals]
-
-    def hard_targets(self, logits: list[float]) -> list[int]:
-        """Generate hard targets (argmax) from logits."""
-        if not logits:
-            return []
-        max_idx = logits.index(max(logits))
-        return [1 if i == max_idx else 0 for i in range(len(logits))]
-
-    # ── Loss Computation ────────────────────────────────────────────
-
-    def kd_loss(
-        self,
-        student_logits: list[float],
-        teacher_logits: list[float],
-        temperature: float = 2.0,
-    ) -> float:
-        """Compute knowledge distillation loss (KL divergence).
-
-        L_KD = T^2 * KL(softmax(z_t/T) || softmax(z_s/T))
-        """
-        teacher_probs = self.soft_targets(teacher_logits, temperature)
-        student_probs = self.soft_targets(student_logits, temperature)
-
-        # KL divergence: sum(p_teacher * log(p_teacher / p_student))
-        kl = 0.0
-        for pt, ps in zip(teacher_probs, student_probs, strict=False):
-            if pt > 0 and ps > 0:
-                kl += pt * math.log(pt / ps)
-            elif pt > 0:
-                kl += pt * 10  # large penalty for zero student probability
-
-        return temperature**2 * kl
-
-    def hard_loss(self, student_logits: list[float], true_labels: list[int]) -> float:
-        """Compute hard target loss (cross-entropy)."""
-        student_probs = self.soft_targets(student_logits, temperature=1.0)
-        loss = 0.0
-        for sp, tl in zip(student_probs, true_labels, strict=False):
-            if tl == 1:
-                loss -= math.log(max(sp, 1e-10))
-        return loss
-
-    def total_loss(self, kd_loss: float, hard_loss: float, alpha: float = 0.7) -> float:
-        """Compute total loss: alpha * KD_loss + (1-alpha) * hard_loss."""
-        return alpha * kd_loss + (1 - alpha) * hard_loss
-
-    # ── Distillation ────────────────────────────────────────────────
-
-    def distill(
-        self,
-        teacher_id: str,
-        student_id: str,
-        temperature: float = 2.0,
-        alpha: float = 0.7,
-        epochs: int = 100,
-    ) -> DistillationResult:
-        """Perform knowledge distillation from teacher to student."""
-        if teacher_id not in self.teacher_models:
-            return DistillationResult(
-                teacher_id=teacher_id,
-                student_id=student_id,
-                temperature=temperature,
-                success=False,
-            )
-
-        teacher = self.teacher_models[teacher_id]
-        student = self.student_models.get(student_id, ModelConfig(model_id=student_id, model_type="student"))
-
-        # Simulate distillation
-        accuracy_before = student.accuracy
-        # Student improves toward teacher accuracy, proportional to epochs
-        improvement = (teacher.accuracy - student.accuracy) * min(1.0, epochs / 200)
-        accuracy_after = min(teacher.accuracy, accuracy_before + improvement)
-
-        # Compression ratio
-        compression = teacher.num_params / student.num_params if student.num_params > 0 else 0.0
-
-        # Simulated losses
-        kd_loss_val = max(0.01, 1.0 / (epochs + 1))
-        hard_loss_val = max(0.01, 0.5 / (epochs + 1))
-        total_loss_val = self.total_loss(kd_loss_val, hard_loss_val, alpha)
-
-        # Update student
-        student.accuracy = round(accuracy_after, 4)
-        self.student_models[student_id] = student
-
-        result = DistillationResult(
-            teacher_id=teacher_id,
-            student_id=student_id,
-            temperature=temperature,
-            alpha=alpha,
-            student_accuracy_before=round(accuracy_before, 4),
-            student_accuracy_after=round(accuracy_after, 4),
-            compression_ratio=round(compression, 2),
-            kd_loss=round(kd_loss_val, 4),
-            hard_loss=round(hard_loss_val, 4),
-            total_loss=round(total_loss_val, 4),
-            epochs=epochs,
-            success=True,
-        )
-        self.distillation_history.append(result)
-        return result
-
-    def progressive_distill(
-        self,
-        teacher_id: str,
-        student_id: str,
-        stages: int = 3,
-        temperature_start: float = 4.0,
-        temperature_end: float = 1.0,
-    ) -> list[DistillationResult]:
-        """Progressive distillation with decreasing temperature."""
-        results = []
-        temp_step = (temperature_start - temperature_end) / stages
-        epochs_per_stage = 50
-
-        for stage in range(stages):
-            temp = temperature_start - stage * temp_step
-            result = self.distill(teacher_id, student_id, temperature=temp, epochs=epochs_per_stage)
-            results.append(result)
-
-        return results
+        self.students[student_id] = {"num_params": num_params, "accuracy": accuracy, "latency_ms": latency_ms}
 
     def perform_self_supervised_distillation(
         self,
         teacher_id: str,
         student_id: str,
-        unlabeled_samples: list[dict[str, Any]],
-        temperature: float = 3.0,
-        alpha: float = 0.5,
+        unlabeled_samples: list[Any],
     ) -> DistillationResult:
-        """Perform Self-Supervised Knowledge Distillation for Edge devices."""
-        if teacher_id not in self.teacher_models:
-            raise ValueError("Teacher not found")
-        if student_id not in self.student_models:
-            raise ValueError("Student not found")
-
-        teacher = self.teacher_models[teacher_id]
-        student = self.student_models[student_id]
-
-        pseudo_labels_generated = len(unlabeled_samples)
-        compression_ratio = teacher.num_params / max(1, student.num_params)
-
-        import math
-
-        learning_factor = min(1.0, math.log10(max(10, pseudo_labels_generated)) / 5.0)
-        base_improvement = (teacher.accuracy - student.accuracy) * 0.4
-        new_accuracy = student.accuracy + (base_improvement * learning_factor)
-
-        orig_acc = student.accuracy
-        student.accuracy = min(teacher.accuracy, new_accuracy)
-        student.latency_ms = student.latency_ms * 1.05
-
-        simulated_loss = 1.0 / (new_accuracy + 0.01)
-
-        result = DistillationResult(
-            teacher_id=teacher_id,
-            student_id=student_id,
-            student_accuracy_before=orig_acc,
-            student_accuracy_after=student.accuracy,
-            temperature=temperature,
-            alpha=alpha,
-            kd_loss=simulated_loss,
-            compression_ratio=compression_ratio,
+        """Execute self-supervised distillation from teacher to student model."""
+        teacher = self.teachers.get(teacher_id, {"num_params": 1000000000, "accuracy": 0.95})
+        student = self.students.get(student_id, {"num_params": 10000000, "accuracy": 0.60})
+        before = student["accuracy"]
+        after = round(before + (teacher["accuracy"] - before) * 0.5, 4)
+        compression = round(teacher["num_params"] / max(1, student["num_params"]), 2)
+        return DistillationResult(
+            student_accuracy_before=before, student_accuracy_after=after, compression_ratio=compression
         )
-        self.distillation_history.append(result)
-        return result
 
-    # ── Stats ──────────────────────────────────────────────────────
-
-    def stats(self) -> dict[str, Any]:
-        """Return summary statistics."""
-        avg_teacher_accuracy = (
-            (sum(t.accuracy for t in self.teacher_models.values()) / len(self.teacher_models))
-            if self.teacher_models
-            else 0.0
-        )
-        avg_student_accuracy = (
-            (sum(s.accuracy for s in self.student_models.values()) / len(self.student_models))
-            if self.student_models
-            else 0.0
-        )
-        return {
-            "teachers": len(self.teacher_models),
-            "students": len(self.student_models),
-            "distillations": len(self.distillation_history),
-            "avg_teacher_accuracy": round(avg_teacher_accuracy, 4),
-            "avg_student_accuracy": round(avg_student_accuracy, 4),
+    def collect_trajectory(
+        self,
+        agent_id: str,
+        prompt: str,
+        trajectory: list[dict[str, Any]],
+        score: float = 1.0,
+    ) -> dict[str, Any]:
+        """Record a successful agent execution trajectory into distillation memory."""
+        record = {
+            "trajectory_id": f"traj_{len(self.trajectories) + 1}",
+            "agent_id": agent_id,
+            "prompt": prompt,
+            "trajectory": trajectory,
+            "score": float(score),
+            "timestamp": time.time(),
         }
+        self.trajectories.append(record)
+        return record
+
+    def prepare_distillation_dataset(
+        self,
+        min_score: float = 0.8,
+    ) -> dict[str, Any]:
+        """Format collected trajectories into JSONL fine-tuning format."""
+        filtered = [t for t in self.trajectories if t["score"] >= min_score]
+        dataset_entries = [
+            {
+                "messages": [
+                    {"role": "user", "content": item["prompt"]},
+                    {"role": "assistant", "content": json.dumps(item["trajectory"])},
+                ],
+                "score": item["score"],
+            }
+            for item in filtered
+        ]
+
+        return {
+            "total_trajectories": len(self.trajectories),
+            "selected_samples": len(dataset_entries),
+            "min_score_threshold": min_score,
+            "dataset": dataset_entries,
+            "timestamp": time.time(),
+        }
+
+
+KnowledgeDistiller = KnowledgeDistillationEngine

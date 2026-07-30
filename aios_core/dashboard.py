@@ -2102,6 +2102,130 @@ class AIOSDashboard:
         res = engine.evaluate_consensus(prompt=str(body["prompt"]), model=body.get("model", "default-model"))
         return JSONResponse(res)
 
+    async def api_ai_plan_decompose(self, request: Request) -> JSONResponse:
+        """Decompose goal into TaskGraph (v11.24.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "goal" not in body:
+            return JSONResponse({"error": "request body must include 'goal' string"}, status_code=400)
+
+        from .ai_planner import AITaskPlanner
+
+        planner = AITaskPlanner()
+        res = planner.decompose_goal(goal=str(body["goal"]), context=body.get("context"))
+        return JSONResponse(res)
+
+    async def api_ai_plan_correct(self, request: Request) -> JSONResponse:
+        """Generate corrective plan steps upon failure (v11.24.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "failed_step_id" not in body or "error_context" not in body:
+            return JSONResponse(
+                {"error": "request body must include failed_step_id and error_context"}, status_code=400
+            )
+
+        from .ai_planner import AITaskPlanner
+
+        planner = AITaskPlanner()
+        res = planner.self_correct_plan(
+            failed_step_id=str(body["failed_step_id"]),
+            error_context=str(body["error_context"]),
+            current_plan=body.get("current_plan", {}),
+        )
+        return JSONResponse(res)
+
+    async def api_ai_graph_rag_query(self, request: Request) -> JSONResponse:
+        """Query GraphRAG combining vector chunks & knowledge graph entities (v11.25.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "query" not in body:
+            return JSONResponse({"error": "request body must include 'query' string"}, status_code=400)
+
+        from .graph_rag import GraphRAGEngine
+
+        rag = GraphRAGEngine()
+        res = rag.query_graph_rag(query=str(body["query"]), top_k=body.get("top_k", 3))
+        return JSONResponse(res)
+
+    async def api_ai_distillation_collect(self, request: Request) -> JSONResponse:
+        """Collect trajectory for knowledge distillation (v11.26.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "agent_id" not in body or "prompt" not in body:
+            return JSONResponse({"error": "request body must include agent_id and prompt"}, status_code=400)
+
+        from .knowledge_distillation import KnowledgeDistillationEngine
+
+        dist = KnowledgeDistillationEngine()
+        res = dist.collect_trajectory(
+            agent_id=str(body["agent_id"]),
+            prompt=str(body["prompt"]),
+            trajectory=body.get("trajectory", []),
+            score=body.get("score", 1.0),
+        )
+        return JSONResponse(res)
+
+    async def api_ai_distillation_dataset(self, request: Request) -> JSONResponse:
+        """Format dataset for fine-tuning distillation (v11.26.0)."""
+        from .knowledge_distillation import KnowledgeDistillationEngine
+
+        dist = KnowledgeDistillationEngine()
+        res = dist.prepare_distillation_dataset()
+        return JSONResponse(res)
+
+    async def api_ai_perception_ui(self, request: Request) -> JSONResponse:
+        """Multimodal UI element OCR and perception (v11.27.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "screenshot" not in body:
+            return JSONResponse({"error": "request body must include 'screenshot'"}, status_code=400)
+
+        from .multimodal_perception import MultimodalPerceptionEngine
+
+        perc = MultimodalPerceptionEngine()
+        res = perc.process_visual_ui(screenshot_b64_or_path=str(body["screenshot"]), query=body.get("query", ""))
+        return JSONResponse(res)
+
+    async def api_ai_swarm_federated_aggregate(self, request: Request) -> JSONResponse:
+        """Aggregate swarm node federated insights (v11.28.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "nodes" not in body:
+            return JSONResponse({"error": "request body must include 'nodes' list"}, status_code=400)
+
+        from .swarm_federated import SwarmFederatedEngine
+
+        fed = SwarmFederatedEngine()
+        res = fed.aggregate_swarm_insights(nodes_insights=body["nodes"])
+        return JSONResponse(res)
+
+    async def api_ai_prompt_optimize(self, request: Request) -> JSONResponse:
+        """Self-evolving prompt optimization (v11.29.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "prompt" not in body:
+            return JSONResponse({"error": "request body must include 'prompt' string"}, status_code=400)
+
+        from .prompt_optimizer import SelfEvolvingPromptOptimizer
+
+        opt = SelfEvolvingPromptOptimizer()
+        res = opt.optimize_prompt(initial_prompt=str(body["prompt"]), evaluation_metric=body.get("metric", "accuracy"))
+        return JSONResponse(res)
+
     async def api_governance_guard_evaluate(self, request: Request) -> JSONResponse:
         """Real-time pre-execution safety guard check for an agent action (v11.23.0)."""
         try:
@@ -2820,6 +2944,14 @@ class AIOSDashboard:
             Route("/api/ai/generate", self.api_ai_generate, methods=["POST"]),
             Route("/api/ai/augment", self.api_ai_augment, methods=["POST"]),
             Route("/api/ai/consensus", self.api_ai_consensus, methods=["POST"]),
+            Route("/api/ai/plan/decompose", self.api_ai_plan_decompose, methods=["POST"]),
+            Route("/api/ai/plan/correct", self.api_ai_plan_correct, methods=["POST"]),
+            Route("/api/ai/graph-rag/query", self.api_ai_graph_rag_query, methods=["POST"]),
+            Route("/api/ai/distillation/collect", self.api_ai_distillation_collect, methods=["POST"]),
+            Route("/api/ai/distillation/dataset", self.api_ai_distillation_dataset, methods=["POST"]),
+            Route("/api/ai/perception/ui", self.api_ai_perception_ui, methods=["POST"]),
+            Route("/api/ai/swarm/federated/aggregate", self.api_ai_swarm_federated_aggregate, methods=["POST"]),
+            Route("/api/ai/prompt/optimize", self.api_ai_prompt_optimize, methods=["POST"]),
             Route("/api/governance/guard/evaluate", self.api_governance_guard_evaluate, methods=["POST"]),
             Route("/api/governance/audit/run", self.api_governance_audit_run, methods=["POST"]),
             Route("/api/governance/compliance/score", self.api_governance_compliance_score, methods=["GET"]),
