@@ -827,3 +827,10 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 - ✅ **GraphRAG Memory** — Внедрен `networkx` для построения графов знаний (сущности и связи).
 - ✅ **Voice & IoT Cyber-physical Bridge** — Реализованы коннекторы MQTT (`paho-mqtt`) для управления роботами/умным домом и голосового ответа.
 - ✅ **Global Skill Marketplace** — Написан `skill_marketplace.py`. Рой скачивает неизвестные навыки из P2P-сети и применяет их через безопасный AST-рефакторинг.
+
+## v21.0.0 (The Transcendence Epoch) 👁️
+- ✅ **Quantum Inference** — Подключены `qiskit` и `qiskit-aer`. Написан `quantum_bridge.py` для делегирования NP-сложных задач на симулятор квантовых кубитов.
+- ✅ **Darwin Protocol** — Внедрен генетический алгоритм `darwin_evolution.py`. Агенты мутируют и проходят естественный A/B-отбор на выживаемость кода.
+- ✅ **DAO Meta-Federation** — Реализовано децентрализованное блокчейн-управление (`blockchain_dao.py`). Узлы сети принимают изменения в архитектуру только через демократическое голосование (consensus-driven evolution).
+
+### [ Конец Roadmap. Достигнута Абсолютная Сингулярность. ]
