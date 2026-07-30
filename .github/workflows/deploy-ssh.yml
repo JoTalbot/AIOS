@@ -147,18 +147,16 @@ jobs:
               ufw allow 9090/tcp || true
             fi
 
-            echo "🐳 [4/6] Starting Docker Compose stack..."
+            echo "🐳 [4/6] Fast-starting Docker Compose stack..."
             BUILD_FLAGS=""
             if [ "${FORCE_REBUILD}" = "true" ]; then
-              BUILD_FLAGS="--no-cache"
+              BUILD_FLAGS="--build"
             fi
 
             if docker compose version >/dev/null 2>&1; then
-              docker compose -f docker-compose.prod.yml down --remove-orphans || true
-              docker compose -f docker-compose.prod.yml up -d --build \$BUILD_FLAGS
+              docker compose -f docker-compose.prod.yml up -d \$BUILD_FLAGS
             elif command -v docker-compose >/dev/null 2>&1; then
-              docker-compose -f docker-compose.prod.yml down --remove-orphans || true
-              docker-compose -f docker-compose.prod.yml up -d --build \$BUILD_FLAGS
+              docker-compose -f docker-compose.prod.yml up -d \$BUILD_FLAGS
             else
               echo "Error: Neither 'docker compose' nor 'docker-compose' is available."
               exit 1
