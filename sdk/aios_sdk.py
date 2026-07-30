@@ -541,6 +541,48 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    # --- Sovereign AI Neuromorphic, Formal Verification, Blockchain & Multi-Species Ethics (v11.41–v11.45) ---
+
+    async def ai_process_spiking_events(self, spikes: list[float], threshold: float = 0.5) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/neuromorphic/process-spikes"),
+                json={"spikes": spikes, "threshold": threshold},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_prove_invariant(self, action_code: str, invariant: str = "no_unauthorized_state_mutation") -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/formal/prove-invariant"),
+                json={"action_code": action_code, "invariant": invariant},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_record_blockchain_proof(self, state_hash: str, signature: str = "") -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/blockchain/record-proof"),
+                json={"state_hash": state_hash, "signature": signature},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_evaluate_alignment(self, intent: str, action_plan: list[dict] | None = None) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/ethics/evaluate-alignment"),
+                json={"intent": intent, "action_plan": action_plan or []},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
     # --- AI Governance, Safety Guard & Compliance Audit (v11.23.0) ---
 
     async def evaluate_action_safety(self, action: dict, tenant_id: str | None = None) -> dict:
@@ -766,6 +808,18 @@ class AIOSClientSync:
 
     def ai_planetary_sync(self, *a, **kw):
         return self._run(self._async.ai_planetary_sync(*a, **kw))
+
+    def ai_process_spiking_events(self, *a, **kw):
+        return self._run(self._async.ai_process_spiking_events(*a, **kw))
+
+    def ai_prove_invariant(self, *a, **kw):
+        return self._run(self._async.ai_prove_invariant(*a, **kw))
+
+    def ai_record_blockchain_proof(self, *a, **kw):
+        return self._run(self._async.ai_record_blockchain_proof(*a, **kw))
+
+    def ai_evaluate_alignment(self, *a, **kw):
+        return self._run(self._async.ai_evaluate_alignment(*a, **kw))
 
     def evaluate_action_safety(self, *a, **kw):
         return self._run(self._async.evaluate_action_safety(*a, **kw))

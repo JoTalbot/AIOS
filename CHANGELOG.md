@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.45.0] — 2026-07-30 — Sovereign Agentic Super-Intelligence Architecture (v11.41.0 - v11.45.0)
+
+### Added
+- **Neuromorphic Spiking Consciousness Bridge (`NeuromorphicSpikingBridge`)**:
+  - `NeuromorphicSpikingBridge` in `aios_core/neuromorphic_bridge.py` simulates STDP spiking neural network plasticity for impulse processing.
+- **Autonomous Universal Invariant Prover (`FormalInvariantProverEngine`)**:
+  - `FormalInvariantProverEngine` in `aios_core/formal_invariant_prover.py` provides mathematical proof verification for action code against safety invariants.
+- **Sovereign Cross-Chain Blockchain Proof Ledger (`BlockchainProofLedger`)**:
+  - `BlockchainProofLedger` in `aios_core/blockchain_ledger.py` records immutable cryptographic state proof hashes on a blockchain ledger.
+- **Multi-Species Ethics & Alignment Core (`MultiSpeciesAlignmentCore`)**:
+  - `MultiSpeciesAlignmentCore` in `aios_core/multi_species_alignment.py` evaluates human alignment and ecosystem safety constraints.
+- **REST API & Developer SDK Integration**:
+  - Added REST API endpoints `/api/ai/neuromorphic/process-spikes`, `/api/ai/formal/prove-invariant`, `/api/ai/blockchain/record-proof`, `/api/ai/ethics/evaluate-alignment`.
+  - Added SDK methods `ai_process_spiking_events()`, `ai_prove_invariant()`, `ai_record_blockchain_proof()`, and `ai_evaluate_alignment()`.
+
 ## [11.40.0] — 2026-07-30 — Frontier AI Executive Operations Suite (v11.36.0 - v11.40.0)
 
 ### Added

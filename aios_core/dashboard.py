@@ -2341,6 +2341,69 @@ class AIOSDashboard:
         res = sync_eng.synchronize_mesh_state(node_states=body["node_states"])
         return JSONResponse(res)
 
+    async def api_ai_neuromorphic_process_spikes(self, request: Request) -> JSONResponse:
+        """Process STDP spiking neural network impulse events (v11.41.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "spikes" not in body:
+            return JSONResponse({"error": "request body must include 'spikes' list"}, status_code=400)
+
+        from .neuromorphic_bridge import NeuromorphicSpikingBridge
+
+        bridge = NeuromorphicSpikingBridge()
+        res = bridge.process_spiking_events(spikes=body["spikes"], threshold=body.get("threshold", 0.5))
+        return JSONResponse(res)
+
+    async def api_ai_formal_prove_invariant(self, request: Request) -> JSONResponse:
+        """Perform formal mathematical proof verification (v11.42.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "action_code" not in body:
+            return JSONResponse({"error": "request body must include 'action_code' string"}, status_code=400)
+
+        from .formal_invariant_prover import FormalInvariantProverEngine
+
+        prover = FormalInvariantProverEngine()
+        res = prover.prove_invariant(
+            action_code=str(body["action_code"]),
+            safety_invariant=body.get("invariant", "no_unauthorized_state_mutation"),
+        )
+        return JSONResponse(res)
+
+    async def api_ai_blockchain_record_proof(self, request: Request) -> JSONResponse:
+        """Record state proof hash on cross-chain blockchain proof ledger (v11.43.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "state_hash" not in body:
+            return JSONResponse({"error": "request body must include 'state_hash' string"}, status_code=400)
+
+        from .blockchain_ledger import BlockchainProofLedger
+
+        ledger = BlockchainProofLedger()
+        res = ledger.record_state_proof(state_hash=str(body["state_hash"]), signature=body.get("signature", ""))
+        return JSONResponse(res)
+
+    async def api_ai_ethics_evaluate_alignment(self, request: Request) -> JSONResponse:
+        """Evaluate action plan against multi-species ethics & alignment (v11.44.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "intent" not in body:
+            return JSONResponse({"error": "request body must include 'intent' string"}, status_code=400)
+
+        from .multi_species_alignment import MultiSpeciesAlignmentCore
+
+        core = MultiSpeciesAlignmentCore()
+        res = core.evaluate_alignment_ethics(intent=str(body["intent"]), action_plan=body.get("action_plan", []))
+        return JSONResponse(res)
+
     async def api_governance_guard_evaluate(self, request: Request) -> JSONResponse:
         """Real-time pre-execution safety guard check for an agent action (v11.23.0)."""
         try:
@@ -3075,6 +3138,10 @@ class AIOSDashboard:
             Route("/api/ai/perception/ground-action", self.api_ai_perception_ground_action, methods=["POST"]),
             Route("/api/ai/quantum/optimize-weights", self.api_ai_quantum_optimize_weights, methods=["POST"]),
             Route("/api/ai/planetary/sync", self.api_ai_planetary_sync, methods=["POST"]),
+            Route("/api/ai/neuromorphic/process-spikes", self.api_ai_neuromorphic_process_spikes, methods=["POST"]),
+            Route("/api/ai/formal/prove-invariant", self.api_ai_formal_prove_invariant, methods=["POST"]),
+            Route("/api/ai/blockchain/record-proof", self.api_ai_blockchain_record_proof, methods=["POST"]),
+            Route("/api/ai/ethics/evaluate-alignment", self.api_ai_ethics_evaluate_alignment, methods=["POST"]),
             Route("/api/governance/guard/evaluate", self.api_governance_guard_evaluate, methods=["POST"]),
             Route("/api/governance/audit/run", self.api_governance_audit_run, methods=["POST"]),
             Route("/api/governance/compliance/score", self.api_governance_compliance_score, methods=["GET"]),
