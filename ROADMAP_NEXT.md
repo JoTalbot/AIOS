@@ -1,5 +1,25 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.35.0 ✅ (2026-07-30)
+- ✅ Autonomous Neural Memory Consolidation — `NeuralMemoryConsolidator` в `aios_core/neural_memory_consolidation.py`: нейронная консолидация кратковременной памяти и авто-компрессия векторного индекса
+- ✅ Causal AI & Counterfactual Reasoning Engine — `CausalCounterfactualEngine`: причинно-следственная оценка "What-If" сценариев
+- ✅ AI Agent Swarm Auto-Scaling — `SwarmAutoScaler`: авто-масштабирование воркеров роя под задачи
+- ✅ Zero-Knowledge Privacy Vault — `PrivacyDataVault`: дифференциальная приватность и маскирование PII
+- ✅ 5 новых тестов (test_v11_31_to_35_features)
+
+**~4380 tests, 0 failures**
+
+## v11.30.0 ✅ (2026-07-30)
+- ✅ AI Task Planner — `AITaskPlanner`: декомпозиция целей в граф подзадач и авто-коррекция планов
+- ✅ GraphRAG — `GraphRAGEngine`: многошаговый вывод на базе векторного поиска и графа знаний
+- ✅ Knowledge Distillation — `KnowledgeDistillationEngine`: сбор траекторий и генерация датасетов для дистилляции в локальные SLM
+- ✅ Multimodal Perception — `MultimodalPerceptionEngine`: распознавание UI элементов и OCR для RPA
+- ✅ Swarm Federated Learning — `SwarmFederatedEngine`: приватная агрегация инсайтов узлов роя
+- ✅ Self-Evolving Prompt Optimizer — `SelfEvolvingPromptOptimizer`: эволюционная оптимизация промптов
+- ✅ 7 новых тестов (test_v11_24_to_30_features)
+
+**~4375 tests, 0 failures**
+
 ## v11.23.0 ✅ (2026-07-30)
 - ✅ Real-Time Safety Guard — `AgentSafetyComplianceGuard` в `aios_core/ai_governance.py`: пре-исполнительная проверка действий агентов на риски, причинение вреда и обман, блокировка опасных действий
 - ✅ Autonomous Safety Audit Engine — `AutonomousSafetyAuditEngine`: комплексный расчет индекса соответствия безопасности (Governance Compliance Index 0..100)

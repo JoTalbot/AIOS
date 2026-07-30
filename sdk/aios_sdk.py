@@ -458,6 +458,47 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    # --- Next-Gen Neural Memory, Causal AI, Swarm Auto-Scale & Privacy Vault (v11.31–v11.35) ---
+
+    async def ai_consolidate_neural_memory(self) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/memory/consolidate-neural"),
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_evaluate_what_if(self, action: dict, alternatives: list[dict] | None = None) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/causal/what-if"),
+                json={"action": action, "alternatives": alternatives},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_autoscale_swarm(self, pending_tasks: list[dict]) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/swarm/autoscale"),
+                json={"pending_tasks": pending_tasks},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_mask_privacy_payload(self, payload: dict) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/privacy/mask"),
+                json={"payload": payload},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
     # --- AI Governance, Safety Guard & Compliance Audit (v11.23.0) ---
 
     async def evaluate_action_safety(self, action: dict, tenant_id: str | None = None) -> dict:
@@ -659,6 +700,18 @@ class AIOSClientSync:
 
     def ai_optimize_prompt(self, *a, **kw):
         return self._run(self._async.ai_optimize_prompt(*a, **kw))
+
+    def ai_consolidate_neural_memory(self, *a, **kw):
+        return self._run(self._async.ai_consolidate_neural_memory(*a, **kw))
+
+    def ai_evaluate_what_if(self, *a, **kw):
+        return self._run(self._async.ai_evaluate_what_if(*a, **kw))
+
+    def ai_autoscale_swarm(self, *a, **kw):
+        return self._run(self._async.ai_autoscale_swarm(*a, **kw))
+
+    def ai_mask_privacy_payload(self, *a, **kw):
+        return self._run(self._async.ai_mask_privacy_payload(*a, **kw))
 
     def evaluate_action_safety(self, *a, **kw):
         return self._run(self._async.evaluate_action_safety(*a, **kw))

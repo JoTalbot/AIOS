@@ -2226,6 +2226,61 @@ class AIOSDashboard:
         res = opt.optimize_prompt(initial_prompt=str(body["prompt"]), evaluation_metric=body.get("metric", "accuracy"))
         return JSONResponse(res)
 
+    async def api_ai_memory_consolidate_neural(self, request: Request) -> JSONResponse:
+        """Consolidate short-term memory and compact vector index (v11.31.0)."""
+        from .neural_memory_consolidation import NeuralMemoryConsolidator
+
+        consolidator = NeuralMemoryConsolidator()
+        res = consolidator.consolidate_and_compact(memory_system=_get_memory_system())
+        return JSONResponse(res)
+
+    async def api_ai_causal_what_if(self, request: Request) -> JSONResponse:
+        """Evaluate causal impact and counterfactual scenario (v11.32.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "action" not in body:
+            return JSONResponse({"error": "request body must include 'action' dict"}, status_code=400)
+
+        from .causal_counterfactual import CausalCounterfactualEngine
+
+        causal = CausalCounterfactualEngine()
+        res = causal.evaluate_what_if(action=body["action"], alternative_scenarios=body.get("alternatives"))
+        return JSONResponse(res)
+
+    async def api_ai_swarm_autoscale(self, request: Request) -> JSONResponse:
+        """Auto-scale swarm agent roles based on pending workload (v11.33.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "pending_tasks" not in body:
+            return JSONResponse({"error": "request body must include 'pending_tasks' list"}, status_code=400)
+
+        from .agent_swarm import AgentSwarm
+        from .swarm_auto_scaler import SwarmAutoScaler
+
+        swarm = AgentSwarm(name="dashboard_swarm")
+        scaler = SwarmAutoScaler(swarm=swarm)
+        res = scaler.auto_scale_swarm_roles(pending_tasks=body["pending_tasks"])
+        return JSONResponse(res)
+
+    async def api_ai_privacy_mask(self, request: Request) -> JSONResponse:
+        """Redact PII and apply differential privacy masking (v11.34.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "payload" not in body:
+            return JSONResponse({"error": "request body must include 'payload' dict"}, status_code=400)
+
+        from .privacy_data_vault import PrivacyDataVault
+
+        vault = PrivacyDataVault()
+        res = vault.mask_sensitive_payload(payload=body["payload"])
+        return JSONResponse(res)
+
     async def api_governance_guard_evaluate(self, request: Request) -> JSONResponse:
         """Real-time pre-execution safety guard check for an agent action (v11.23.0)."""
         try:
@@ -2952,6 +3007,10 @@ class AIOSDashboard:
             Route("/api/ai/perception/ui", self.api_ai_perception_ui, methods=["POST"]),
             Route("/api/ai/swarm/federated/aggregate", self.api_ai_swarm_federated_aggregate, methods=["POST"]),
             Route("/api/ai/prompt/optimize", self.api_ai_prompt_optimize, methods=["POST"]),
+            Route("/api/ai/memory/consolidate-neural", self.api_ai_memory_consolidate_neural, methods=["POST"]),
+            Route("/api/ai/causal/what-if", self.api_ai_causal_what_if, methods=["POST"]),
+            Route("/api/ai/swarm/autoscale", self.api_ai_swarm_autoscale, methods=["POST"]),
+            Route("/api/ai/privacy/mask", self.api_ai_privacy_mask, methods=["POST"]),
             Route("/api/governance/guard/evaluate", self.api_governance_guard_evaluate, methods=["POST"]),
             Route("/api/governance/audit/run", self.api_governance_audit_run, methods=["POST"]),
             Route("/api/governance/compliance/score", self.api_governance_compliance_score, methods=["GET"]),

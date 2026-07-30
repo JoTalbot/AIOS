@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.35.0] — 2026-07-30 — Next-Gen AI Integration Suite (v11.31.0 - v11.35.0)
+
+### Added
+- **Autonomous Neural Memory Consolidation (`NeuralMemoryConsolidator`)**:
+  - `NeuralMemoryConsolidator` in `aios_core/neural_memory_consolidation.py` scans short-term memories, clusters patterns into long-term vector index, and compacts noise.
+- **Causal AI & Counterfactual Reasoning Engine (`CausalCounterfactualEngine`)**:
+  - `CausalCounterfactualEngine` in `aios_core/causal_counterfactual.py` evaluates "What-If" scenarios and causal risks before agent execution.
+- **AI Agent Swarm Auto-Scaling (`SwarmAutoScaler`)**:
+  - `SwarmAutoScaler` in `aios_core/swarm_auto_scaler.py` dynamically scales worker agents and adjusts role distributions matching pending task demand.
+- **Zero-Knowledge AI Safety Guard & Differential Privacy Vault (`PrivacyDataVault`)**:
+  - `PrivacyDataVault` in `aios_core/privacy_data_vault.py` redacts PII (emails, IPs) and applies differential privacy masking prior to LLM API dispatches.
+- **REST API & Developer SDK Integration**:
+  - Added REST API endpoints `/api/ai/memory/consolidate-neural`, `/api/ai/causal/what-if`, `/api/ai/swarm/autoscale`, `/api/ai/privacy/mask`.
+  - Added SDK methods `ai_consolidate_neural_memory()`, `ai_evaluate_what_if()`, `ai_autoscale_swarm()`, and `ai_mask_privacy_payload()`.
+
+## [11.30.0] — 2026-07-30 — Multi-Step AI Implementation Suite (v11.24.0 - v11.30.0)
+
+### Added
+- **AI Task Planner & Multi-Step Agentic Reasoning (`AITaskPlanner`)**:
+  - Goal decomposition & self-correcting plan generation.
+- **GraphRAG & Entity Memory Fusion Engine (`GraphRAGEngine`)**:
+  - Fusing vector embeddings and KnowledgeGraph entity triples.
+- **Self-Supervised Knowledge Distillation (`KnowledgeDistillationEngine`)**:
+  - Trajectory collection & JSONL dataset generator.
+- **Multimodal Agent Perception (`MultimodalPerceptionEngine`)**:
+  - UI element OCR, bounding boxes & RPA action detection.
+- **Swarm Federated Learning (`SwarmFederatedEngine`)**:
+  - Privacy-preserving swarm federated insight aggregation.
+- **Self-Evolving Prompt Optimizer (`SelfEvolvingPromptOptimizer`)**:
+  - Iterative prompt optimization against target metrics.
+
 ## [11.23.0] — 2026-07-30 — Autonomous Agent Governance + Real-Time Safety Guard + Compliance Audit Engine
 
 ### Added
