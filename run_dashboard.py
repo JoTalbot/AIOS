@@ -5,15 +5,25 @@ import os
 
 import uvicorn
 
-from aios_core.container import container
-from aios_core.dashboard import create_dashboard
+
+def auto_seed_db():
+    try:
+        from seed_dashboard_data import seed
+        seed()
+    except Exception as e:
+        print(f"⚠️ Auto-seed info: {e}")
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default=os.environ.get("AIOS_DASH_HOST", "0.0.0.0"))
-    parser.add_argument("--port", default=int(os.environ.get("AIOS_DASH_PORT", "8580")), type=int)
+    parser.add_argument("--port", default=int(os.environ.get("AIOS_DASH_PORT", "8080")), type=int)
     args = parser.parse_args()
+
+    auto_seed_db()
+
+    from aios_core.container import container
+    from aios_core.dashboard import create_dashboard
 
     container.db()
     orch = container.orchestrator()
@@ -29,6 +39,10 @@ _app = None
 def _get_app():
     global _app
     if _app is None:
+        auto_seed_db()
+        from aios_core.container import container
+        from aios_core.dashboard import create_dashboard
+
         container.db()
         orch = container.orchestrator()
         _app = create_dashboard(orch)
