@@ -48,11 +48,14 @@ class CoderConfig:
 
     @classmethod
     def from_env(cls) -> CoderConfig:
+        # In Docker the repository is mounted at /app; on the host this module
+        # lives directly below the repository root. Never assume /root/AIOS.
+        repo_default = str(Path(__file__).resolve().parents[1])
         return cls(
             llm_api_key=os.environ.get("OPENROUTER_API_KEY") or os.environ.get("LLM_API_KEY", ""),
             llm_base_url=os.environ.get("LLM_BASE_URL", "https://openrouter.ai/api/v1"),
-            llm_model=os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick"),
-            repo_path=os.environ.get("AIOS_REPO_PATH", "/root/AIOS"),
+            llm_model=os.environ.get("LLM_MODEL") or "mistralai/mistral-small-3.2-24b-instruct",
+            repo_path=os.environ.get("AIOS_REPO_PATH") or repo_default,
             auto_commit=os.environ.get("AIOS_AUTO_COMMIT", "").lower() in ("1", "true"),
             auto_push=os.environ.get("AIOS_AUTO_PUSH", "").lower() in ("1", "true"),
         )
@@ -75,19 +78,38 @@ class LLMClient:
             all_messages.append({"role": "system", "content": system})
         all_messages.extend(messages)
 
-        # Build endpoint list: GitHub first (free!), then configured endpoint
-        gh_key = os.environ.get("GITHUB_API_KEY", "")
+        # Build endpoint list. Runtime keys are stored outside the image in
+        # /app/data/.llm_keys.json (or <repo>/data on the host).
         endpoints = []
-        if gh_key:
+        key_files = [Path("/app/data/.llm_keys.json"), Path(self.config.repo_path) / "data/.llm_keys.json"]
+        seen_keys = set()
+        for key_file in key_files:
+            try:
+                key_data = json.loads(key_file.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            for key in key_data.get("openrouter", []):
+                if key and key not in seen_keys:
+                    endpoints.append({
+                        "url": "https://openrouter.ai/api/v1/chat/completions",
+                        "key": key,
+                        "model": "mistralai/mistral-small-3.2-24b-instruct",
+                        "name": "OpenRouter",
+                    })
+                    seen_keys.add(key)
+
+        gh_key = os.environ.get("GITHUB_API_KEY", "")
+        if gh_key and gh_key not in seen_keys:
             endpoints.append({
                 "url": "https://models.inference.ai.azure.com/chat/completions",
                 "key": gh_key,
                 "model": "gpt-4.1-mini",
                 "name": "GitHub",
             })
-        if self.config.llm_api_key:
+            seen_keys.add(gh_key)
+        if self.config.llm_api_key and self.config.llm_api_key not in seen_keys:
             endpoints.append({
-                "url": self.config.llm_base_url + "/chat/completions",
+                "url": self.config.llm_base_url.rstrip("/") + "/chat/completions",
                 "key": self.config.llm_api_key,
                 "model": self.config.llm_model,
                 "name": "Config",
@@ -113,7 +135,7 @@ class LLMClient:
                 log.warning(f"{ep['name']} failed: {e}")
                 continue
 
-        raise ValueError("All LLM endpoints failed")
+        raise ValueError("Все LLM endpoints недоступны. Проверьте ключи и квоту провайдера.")
 
 
 
