@@ -791,3 +791,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 - ✅ **Foundational Directives Imported** — 80+ core constitutional instructions and global plans (e.g. `ROADMAP_1000_2026-06-19.md`, `WAVE_PLAN_SHAREDINTEGRATIONS.md`) migrated to `octopus_instructions/`.
 - ✅ **Master Roadmaps Synchronized** — Complex cross-functional `octopus/roadmap` states migrated to `octopus_roadmap/`.
 
+
+## v16.4.0 ✅ (2026-07-30)
+- ✅ **Final Octopus Codebase Sweep** — `projects/`, `services/`, `swarm/`, and `tests/` moved into AIOS (`octopus_*` prefix).
+- ✅ **Complete Coverage** — Disaster Recovery (DR) config loaders, automated testing scripts (`test_watchdog_restart_strategy.py`, `test_storage_live_read_proof.py`), and Arena Router Chat services are now part of the AIOS ecosystem.
