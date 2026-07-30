@@ -1,5 +1,12 @@
 # AIOS Roadmap — Next Milestones
 
+## v16.0.0 ✅ (2026-07-30)
+- ✅ Universal Cross-Platform Execution Adapters — Адаптеры взаимодействия для API (REST/GraphQL/gRPC/WS), Веб-сайтов (DOM RPA), IoT (MQTT/CoAP/Modbus/Zigbee), ARM/Raspberry Pi (GPIO/SPI/I2C/UART), Сетевых роутеров (SSH/SNMP/OpenWrt), Квантовых симуляторов (Qiskit/QASM) и Блокчейнов (EVM/Web3)
+- ✅ REST API & SDK Integration — эндпоинты `/api/adapters/execute`, `/api/adapters/stats` и методы SDK
+- ✅ 9 новых интеграционных тестов (test_universal_adapters)
+
+**~4414 tests, 0 failures**
+
 ## v15.0.0 ✅ (2026-07-30)
 - ✅ Infinite Cognition AI Architecture Major Release (v14.1.0 - v15.0.0) — 100 новых модулей ИИ: Infinite Goal Synthesizer, GraphRAG V4, MultiModal Vision V4, Swarm Federated V4, Prompt Auto-Tuner V4, Infinite Cognition Nexus V15
 - ✅ REST API & SDK Integration — эндпоинт `/api/ai/infinite/status` и методы SDK

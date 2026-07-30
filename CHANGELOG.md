@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [16.0.0] — 2026-07-30 — AIOS Universal Cross-Platform Execution Adapters Major Release
+
+### Added
+- **Universal Cross-Platform Execution Adapters (`aios_core/adapters/`)**:
+  - `APIAdapter`: Universal REST, GraphQL, gRPC, and WebSocket execution.
+  - `WebAdapter`: Headless browser, DOM element scraping, and web RPA.
+  - `IoTAdapter`: MQTT topic publishing, CoAP, Modbus, and Zigbee sensor/actuator control.
+  - `ARMEmbeddedAdapter`: ARM Cortex / Raspberry Pi GPIO pin I/O and Serial UART/SPI/I2C.
+  - `RouterNetworkAdapter`: Router SSH, SNMP, OpenWrt ubus, and NETCONF network configuration.
+  - `QuantumAdapter`: Quantum circuit execution over Qiskit, Cirq, and OpenQASM hardware simulators.
+  - `BlockchainNodeAdapter`: Web3/EVM smart contract interaction and transaction execution.
+  - `UniversalAdapterRegistry`: Master registry routing execution through any platform adapter.
+- **REST API & Developer SDK Integration**:
+  - `POST /api/adapters/execute` & `GET /api/adapters/stats`.
+  - Python SDK methods `execute_adapter_action()` & `get_adapter_stats()`.
+
 ## [15.0.0] — 2026-07-30 — AIOS Infinite Cognition Architecture Major Release (v14.1.0 - v15.0.0)
 
 ### Added
