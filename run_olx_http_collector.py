@@ -12,17 +12,29 @@ import re
 import sqlite3
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
 
 UA = (
-    "Mozilla/5.0 (Linux; Android 15; Pixel 7) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 )
+
 API = "https://www.olx.ua/api/v1/offers/"
 
+HEADERS = {
+    "User-Agent": UA,
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "uk-UA,uk;q=0.9,en;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "Referer": "https://www.olx.ua/",
+}
 log = logging.getLogger("olx-http-collector")
 
 
@@ -86,7 +98,7 @@ def parse_offer(offer: dict, query: str, is_new_ad: bool) -> tuple:
     region = loc.get("region", {}).get("name") if isinstance(loc.get("region"), dict) else loc.get("region")
     user = offer.get("user") or {}
     promo = offer.get("promotion") or {}
-    now = datetime.now(UTC).isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     return (
         offer["id"],
         query,
@@ -115,16 +127,45 @@ def parse_offer(offer: dict, query: str, is_new_ad: bool) -> tuple:
     )
 
 
-def fetch_page(client: httpx.Client, query: str, offset: int, limit: int = 50) -> dict:
-    r = client.get(API, params={"query": query, "offset": offset, "limit": limit}, timeout=20.0)
-    r.raise_for_status()
-    return r.json()
+def fetch_page(client: httpx.Client, query: str, offset: int, limit: int = 50, max_retries: int = 3) -> dict:
+    """Fetch OLX page with retry and exponential backoff."""
+    import time, random
+    for attempt in range(max_retries):
+        try:
+            if attempt > 0:
+                delay = (2 ** attempt) + random.uniform(0, 1)
+                log.info(f"Retry {attempt}/{max_retries}, waiting {delay:.1f}s...")
+                time.sleep(delay)
+            
+            r = client.get(API, params={"query": query, "offset": offset, "limit": limit}, timeout=20.0)
+            
+            if r.status_code == 403:
+                log.warning(f"403 Forbidden (attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    continue
+                r.raise_for_status()
+            
+            r.raise_for_status()
+            return r.json()
+            
+        except httpx.HTTPStatusError as e:
+            if attempt == max_retries - 1:
+                raise
+            log.warning(f"HTTP error (attempt {attempt + 1}/{max_retries}): {e}")
+            continue
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise
+            log.warning(f"Error (attempt {attempt + 1}/{max_retries}): {e}")
+            continue
+    
+    return {}
 
 
 def cycle(client: httpx.Client, conn: sqlite3.Connection, queries: list[str], max_cards_per_query: int = 300) -> dict:
     stats = {"parsed": 0, "inserted": 0, "deactivated": 0, "new_ads": 0}
     cur = conn.cursor()
-    now = datetime.now(UTC).isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     new_ad_ids: set[int] = set()
     for q in queries:
         log.info("=== Query: %s ===", q)
@@ -284,7 +325,7 @@ def main():
             log.warning("Alerts init failed: %s", e)
             alerts_module = None
 
-    with httpx.Client(headers={"User-Agent": UA, "Accept-Language": "uk-UA,uk,en;q=0.9"}) as client:
+    with httpx.Client(headers=HEADERS) as client:
         log.info(
             "Starting OLX collector (daemon=%s interval=%ss queries=%s max_cards=%d db=%s)",
             args.daemon,
