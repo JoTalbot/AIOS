@@ -2355,6 +2355,13 @@ class AIOSDashboard:
         nexus = AIOSOmnipresentNexus()
         return JSONResponse(nexus.get_omnipresent_status())
 
+    async def api_ai_grand_epoch_status(self, request: Request) -> JSONResponse:
+        """Get AIOS v13.0.0 Grand Epoch status."""
+        from .grand_epoch_nexus_v13 import AIOSGrandEpochNexusV13
+
+        nexus = AIOSGrandEpochNexusV13()
+        return JSONResponse(nexus.get_v13_grand_epoch_status())
+
     async def api_ai_neuromorphic_process_spikes(self, request: Request) -> JSONResponse:
         """Process STDP spiking neural network impulse events (v11.41.0)."""
         try:
@@ -3218,6 +3225,7 @@ class AIOSDashboard:
             Route("/api/ai/planetary/sync", self.api_ai_planetary_sync, methods=["POST"]),
             Route("/api/ai/singularity/status", self.api_ai_singularity_status, methods=["GET"]),
             Route("/api/ai/omnipresent/status", self.api_ai_omnipresent_status, methods=["GET"]),
+            Route("/api/ai/grand-epoch/status", self.api_ai_grand_epoch_status, methods=["GET"]),
             Route("/api/ai/neuromorphic/process-spikes", self.api_ai_neuromorphic_process_spikes, methods=["POST"]),
             Route("/api/ai/formal/prove-invariant", self.api_ai_formal_prove_invariant, methods=["POST"]),
             Route("/api/ai/blockchain/record-proof", self.api_ai_blockchain_record_proof, methods=["POST"]),
