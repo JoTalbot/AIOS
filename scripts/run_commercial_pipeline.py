@@ -27,7 +27,19 @@ def execute_commercial_mission():
     swarm_decision = swarm.start_debate(topic)
     
     print("\n[Phase 3] Отправка результатов оператору...")
-    tg.send_message("@aios_operator", f"Нашёлся отличный проект! Вердикт роя: {swarm_decision}")
+    # Пытаемся отправить по юзернейму (работает для публичных каналов)
+    result = tg.send_message("@FainaBaru", f"Нашёлся отличный проект! Вердикт роя: {swarm_decision}")
+    
+    # Если это приватный юзер, Telegram API выдаст ошибку (нужен numeric chat_id).
+    # Берем ID из последних сообщений боту как запасной вариант.
+    if result.get("status") == "failed":
+        print("⚠️ Отправка по юзернейму не удалась. Поиск числового Chat ID...")
+        chat_id = tg.get_latest_chat_id()
+        if chat_id:
+            tg.send_message(chat_id, f"Нашёлся отличный проект! Вердикт роя: {swarm_decision}")
+        else:
+            print("❌ Chat ID не найден. Напишите боту @AIOScontrol_bot 'Привет', чтобы он вас запомнил!")
+            
     print("\n✅ Миссия успешно завершена. Рой ожидает новых приказов.")
 
 if __name__ == "__main__":
