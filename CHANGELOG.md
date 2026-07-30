@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.14.0] — 2026-07-30 — Scheduler Retention + Budget Pressure Alerts + Recall Age Filter
+
+### Added
+- **Scheduler-dispatch retention** — the energy-aware scheduler keeps its
+  own append-only dispatch list, now managed exactly like the engine
+  history: `EnergyAwareScheduler.preview_purge_dispatches()` /
+  `purge_dispatches(keep_last, older_than_seconds)` with the identical
+  protected-union selection. Shared logic extracted into
+  `aios_core/retention.py` (`plan_retention_purge`) used by BOTH stores
+  (the engine purge was refactored to delegate — behaviour unchanged).
+  Purging scheduler history never touches engine history or the budget
+  ledger (a purge never refunds spend). APIs:
+  `POST /api/substrate/dispatches/preview` (read-only) and guarded
+  `POST /api/substrate/dispatches/purge` (`{"confirm": true}` required).
+  The History Retention panel gains a Target select: Engine history /
+  Scheduler dispatches.
+- **Energy-budget pressure alerting** — `RollingEnergyBudget.pressure()`
+  (spent/limit; can exceed 1.0 after a runtime reconfigure cuts the
+  limit below current spend) and `evaluate_budget_alerts(scheduler,
+  warning_ratio=0.8, critical_ratio=1.0)`: status ok/warning/critical/
+  no_budget with machine-usable alert dicts (subject, severity,
+  pressure, spent/limit, message). API: `GET
+  /api/substrate/budget/alerts?warning=&critical=` (400 on unordered or
+  non-numeric ratios). The Energy Budget panel shows a live Pressure /
+  Status row colored by severity; Prometheus gains the
+  `aios_energy_budget_pressure` gauge for external alert rules, and
+  `to_dict()`/`report()` now carry the `pressure` field everywhere.
+- **Recall/search age filter** — `recall(..., max_age_days=)` and
+  token `search(..., max_age_days=)` exclude entries older than the
+  bound (non-negative float, ValueError otherwise; the search filter
+  pre-filters candidates before scoring, so scores and pool selection
+  behave exactly as before). `GET /api/memory/recall` accepts
+  `max_age_days=<float>` in BOTH keyword and compressed modes (400 on
+  non-numeric/negative). The Recall Search panel gains a Max Age (days)
+  field (empty = no limit).
+- **Tests**: 29 new — `test_dispatches_retention.py` (11),
+  `test_budget_alerts.py` (10), `test_age_filter.py` (8).
+
 ## [11.13.0] — 2026-07-30 — History Retention + Budget Persistence + Policy Projection Metrics
 
 ### Added
@@ -36,8 +74,8 @@ All notable changes to this project will be documented in this file.
   0 keeps the exposition unchanged; `GET /api/metrics` enables it with
   the newest 100 records. Unknown substrates fall back to 1 compute
   unit; empty history omits the block entirely.
-- **Tests**: 29 new — `test_history_purge.py` (13),
-  `test_budget_config.py` (10), `test_metrics_projection.py` (6).
+- **Tests**: 29 new — `test_history_purge.py` (12),
+  `test_budget_config.py` (10), `test_metrics_projection.py` (7).
 
 ## [11.12.0] — 2026-07-29 — Policy Compare Matrix + Dedup Merge API + Snapshot Diff
 

@@ -24,6 +24,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from .retention import plan_retention_purge
+
 __all__ = ["SCHEDULING_POLICIES", "EnergyAwareScheduler", "RollingEnergyBudget"]
 
 # Min health mirror of SubstrateConvergenceEngine.select_optimal_substrate
@@ -95,6 +97,15 @@ class RollingEnergyBudget:
         """Budget still available in the current window."""
         return max(0.0, self.limit - self.spent())
 
+    def pressure(self) -> float:
+        """Spent/limit ratio for the current window (v11.14.0).
+
+        May exceed 1.0 after a runtime reconfigure that lowered the
+        limit below the current window's spend — alerting must not
+        assume the invariant ``spent <= limit``.
+        """
+        return self.spent() / self.limit
+
     def can_afford(self, cost: float) -> bool:
         """True if recording ``cost`` would stay within the budget."""
         return self.spent() + cost <= self.limit
@@ -111,6 +122,7 @@ class RollingEnergyBudget:
             "window_seconds": self.window_seconds,
             "spent": round(self.spent(), 4),
             "remaining": round(self.remaining(), 4),
+            "pressure": round(self.pressure(), 4),
         }
 
 
@@ -616,6 +628,61 @@ class EnergyAwareScheduler:
             "window_seconds": window_seconds,
             "latency_budget_ms": self.latency_budget_ms,
             "energy_budget": self.energy_budget.to_dict() if self.energy_budget else None,
+        }
+
+    # ------------------------------------------------------------------
+    # Dispatches retention (v11.14.0)
+    # ------------------------------------------------------------------
+
+    def preview_purge_dispatches(
+        self,
+        keep_last: int | None = None,
+        older_than_seconds: float | None = None,
+    ) -> dict[str, Any]:
+        """Dry-run a scheduler-dispatch purge (mirrors the engine purge).
+
+        Same retention semantics as the v11.13 engine history purge —
+        a record survives when within the newest ``keep_last`` entries
+        OR newer than the age cutoff. Nothing is removed.
+        """
+        cutoff, protected_count, removed = plan_retention_purge(self._dispatches, keep_last, older_than_seconds)
+        removed_set = set(removed)
+        remaining = [d for i, d in enumerate(self._dispatches) if i not in removed_set]
+        return {
+            "dry_run": True,
+            "total_dispatches": len(self._dispatches),
+            "would_remove": len(removed),
+            "would_remain": len(remaining),
+            "protected_by_keep_last": protected_count,
+            "keep_last": keep_last,
+            "older_than_seconds": older_than_seconds,
+            "cutoff_timestamp": cutoff,
+            "oldest_remaining_timestamp": min((d.get("timestamp", 0.0) for d in remaining), default=None),
+        }
+
+    def purge_dispatches(
+        self,
+        keep_last: int | None = None,
+        older_than_seconds: float | None = None,
+    ) -> dict[str, Any]:
+        """Irreversibly delete scheduler dispatch records.
+
+        Same selection as preview_purge_dispatches() — always dry-run
+        first. The rolling budget, being ledger-based, is NOT affected:
+        purging history never refunds spend.
+        """
+        cutoff, protected_count, removed = plan_retention_purge(self._dispatches, keep_last, older_than_seconds)
+        removed_set = set(removed)
+        self._dispatches = [d for i, d in enumerate(self._dispatches) if i not in removed_set]
+        return {
+            "dry_run": False,
+            "removed": len(removed),
+            "remaining": len(self._dispatches),
+            "protected_by_keep_last": protected_count,
+            "keep_last": keep_last,
+            "older_than_seconds": older_than_seconds,
+            "cutoff_timestamp": cutoff,
+            "purged_at": time.time(),
         }
 
     # ------------------------------------------------------------------

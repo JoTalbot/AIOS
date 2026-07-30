@@ -162,6 +162,14 @@ def _render_scheduler(lines: list[str], scheduler: Any) -> None:
         _sample(lines, "aios_scheduler_budget", budget["limit"], {"field": "limit"})
         _sample(lines, "aios_scheduler_budget", budget["spent"], {"field": "spent"})
         _sample(lines, "aios_scheduler_budget", budget["remaining"], {"field": "remaining"})
+        if budget.get("pressure") is not None:
+            _header(
+                lines,
+                "aios_energy_budget_pressure",
+                "Rolling budget spent/limit ratio (>1 after a reconfigure below current spend; v11.14.0).",
+                "gauge",
+            )
+            _sample(lines, "aios_energy_budget_pressure", budget["pressure"])
 
 
 def _render_policy_projection(lines: list[str], scheduler: Any, engine: Any, max_records: int) -> None:

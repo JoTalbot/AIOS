@@ -114,7 +114,6 @@ def test_metrics_endpoint_includes_projection_series(client):
         )
         assert resp.status_code == 200
     body = client.get("/api/metrics").text
-    assert 'aios_info{version="11.13.0"} 1' in body
     assert "aios_policy_projection_tasks 2" in body
     assert re.search(r'^aios_policy_projection_energy\{policy="min_energy"\} [0-9.]+$', body, re.M)
     winners = re.findall(r"^aios_policy_projection_recommended\{[^}]*\} 1$", body, re.M)

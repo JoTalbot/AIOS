@@ -20,6 +20,8 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from typing import Any
 
+from .retention import plan_retention_purge
+
 __all__ = ["SubstrateConvergenceEngine", "SubstrateType"]
 
 
@@ -475,31 +477,8 @@ class SubstrateConvergenceEngine:
         return buffer.getvalue()
 
     # ------------------------------------------------------------------
-    # History retention (v11.13.0)
+    # History retention (v11.13.0; shared selection in retention.py since v11.14.0)
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def _validate_purge_args(
-        keep_last: int | None,
-        older_than_seconds: float | None,
-    ) -> float | None:
-        """Validate retention criteria; return the age cutoff (or None)."""
-        if keep_last is None and older_than_seconds is None:
-            raise ValueError("at least one retention criterion (keep_last or older_than_seconds) is required")
-        if keep_last is not None:
-            if isinstance(keep_last, bool) or not isinstance(keep_last, int):
-                raise ValueError("keep_last must be an integer")
-            if keep_last < 0:
-                raise ValueError("keep_last must be >= 0")
-        if older_than_seconds is not None:
-            try:
-                window = float(older_than_seconds)
-            except (TypeError, ValueError):
-                raise ValueError("older_than_seconds must be a number") from None
-            if window <= 0:
-                raise ValueError("older_than_seconds must be positive")
-            return time.time() - window
-        return None
 
     def _purge_plan(
         self,
@@ -514,19 +493,7 @@ class SubstrateConvergenceEngine:
         but the newest N records; ``older_than_seconds`` alone drops
         records older than the cutoff.
         """
-        cutoff = self._validate_purge_args(keep_last, older_than_seconds)
-        total = len(self.dispatch_history)
-        protected: set[int] = set()
-        if keep_last:
-            protected = set(range(max(0, total - keep_last), total))
-        removed: list[int] = []
-        for index, record in enumerate(self.dispatch_history):
-            if index in protected:
-                continue
-            if cutoff is not None and record.get("timestamp", 0.0) >= cutoff:
-                continue
-            removed.append(index)
-        return cutoff, len(protected), removed
+        return plan_retention_purge(self.dispatch_history, keep_last, older_than_seconds)
 
     def preview_purge_history(
         self,

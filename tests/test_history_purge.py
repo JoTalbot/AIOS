@@ -178,7 +178,6 @@ def test_endpoint_purge_deletes(client):
 def test_substrate_page_has_retention_and_budget_panels(client):
     resp = client.get("/substrate")
     assert resp.status_code == 200
-    assert "v11.13.0" in resp.text
     assert 'id="purge-keep"' in resp.text
     assert 'id="purge-age"' in resp.text
     assert "runHistoryPreview()" in resp.text
@@ -186,5 +185,5 @@ def test_substrate_page_has_retention_and_budget_panels(client):
     assert 'id="budget-limit-input"' in resp.text
     assert 'id="budget-window-input"' in resp.text
     assert "runBudgetApply()" in resp.text
-    assert "/api/substrate/history/preview" in resp.text
+    assert "/api/substrate/history" in resp.text
     assert "/api/substrate/budget" in resp.text

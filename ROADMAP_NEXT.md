@@ -1,5 +1,13 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.14.0 ✅ (2026-07-30)
+- ✅ Scheduler Retention — `preview_purge_dispatches()/purge_dispatches(...)`: симметрия с engine-ретенцией v11.13; общая логика вынесена в `aios_core/retention.py` (`plan_retention_purge`), engine-пурж делегирует ей; пурж scheduler-истории не трогает engine-историю и budget-ledger (не возвращает траты); `POST /api/substrate/dispatches/{preview,purge}` + селект Target (Engine history / Scheduler dispatches) на панели History Retention
+- ✅ Budget Pressure Alerts — `RollingEnergyBudget.pressure()` (spent/limit; >1 после уменьшения лимита ниже текущих трат) + `evaluate_budget_alerts()` (статусы ok/warning/critical/no_budget, 0<=warn<crit); `GET /api/substrate/budget/alerts?warning=&critical=`, live-строка Pressure/Status с цветом на панели Energy Budget, gauge `aios_energy_budget_pressure` в `/api/metrics`, поле `pressure` везде в to_dict/report
+- ✅ Recall/Search Age Filter — `recall()/search(..., max_age_days=)` исключают записи старше границы (пре-фильтр до скоринга → скоринг не меняется); `GET /api/memory/recall?max_age_days=` работает в обоих режимах (keyword + compressed пост-фильтр), 400 на нечисло/минус; поле Max Age (days) в панели Recall Search
+- ✅ 29 новых тестов (dispatches_retention 11 + budget_alerts 10 + age_filter 8)
+
+**~4313 tests, 0 failures**
+
 ## v11.13.0 ✅ (2026-07-30)
 - ✅ History Retention — `preview_purge_history()/purge_history(keep_last, older_than_seconds)`: выживает запись из свежих N ИЛИ новее cutoff; preview dry-runит точные критерии мутатора (would_remove/would_remain, защищённые, cutoff, старейший выживший); `POST /api/substrate/history/preview` (read-only) + охраняемый `POST /api/substrate/history/purge` с `{"confirm": true}`; панель History Retention (Preview + красная Purge)
 - ✅ Budget Reconfigure + Persistence — `configure_budget(limit, window_seconds)`: замена rolling-бюджета на живую с переносом трат, попадающих в новое окно (accounting не сбрасывается тихо); `save_budget()/load_energy_budget()` (format-тег 1, None для отсутствующего файла, ValueError для битого); `POST /api/substrate/budget` применяет и персистит в `~/.aios/energy_budget.json`, дашборд сидит планировщик из файла при старте; панель Energy Budget с live-состоянием и формой Apply
@@ -581,6 +589,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 11.9.0 | 2026-07-29 | ~4183 | Dedup threshold auto-tuner (+apply, persist), history CSV export, aggregate health score API + панель |
 | 11.10.0 | 2026-07-29 | ~4209 | Dedup merge preview (dry-run) API, windowed scheduler report, SLO alerts на health score |
 | 11.11.0 | 2026-07-29 | ~4233 | Replay drift analysis (CSV/JSON), archive dry-run preview, health/SLO series в Prometheus |
+| 11.14.0 | 2026-07-30 | ~4313 | Scheduler-dispatch retention (shared plan), budget pressure alerts + metric, recall/search age filter |
 | 11.13.0 | 2026-07-30 | ~4284 | History retention preview+guarded purge, budget reconfigure+persistence, policy-projection metrics |
 | 11.12.0 | 2026-07-29 | ~4255 | Policy compare matrix (A/B), guarded dedup merge API + UI, snapshot diff live-vs-file |
 
