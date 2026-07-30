@@ -821,3 +821,9 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 - ✅ **Vector 4 (Immortality Protocol)** — Успешно пройден Chaos Engineering тест (`run_chaos_healing.py`). Система обнаруживает фатальные исключения в коде и сама их переписывает.
 - ✅ **Vector 5 (Matrix Dashboard)** — Поднят WebSocket шлюз (`operator_dashboard_api.py`) для трансляции потока "мыслей" агентов напрямую в React-интерфейс пользователя.
 
+
+## v20.0.0 (Ecosystem & Economic Singularity) 🌌
+- ✅ **Web3 Self-Funding** — Подключена библиотека `web3`. Написан `crypto_wallet.py` для автономного управления бюджетом агента.
+- ✅ **GraphRAG Memory** — Внедрен `networkx` для построения графов знаний (сущности и связи).
+- ✅ **Voice & IoT Cyber-physical Bridge** — Реализованы коннекторы MQTT (`paho-mqtt`) для управления роботами/умным домом и голосового ответа.
+- ✅ **Global Skill Marketplace** — Написан `skill_marketplace.py`. Рой скачивает неизвестные навыки из P2P-сети и применяет их через безопасный AST-рефакторинг.
