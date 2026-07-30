@@ -33,6 +33,7 @@ __all__ = [
     "run_orchestrator",
     "get_git_version",
     "report_technical_debt",
+    "determine_project_root",
     "main",
 ]
 
