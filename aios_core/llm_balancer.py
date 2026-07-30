@@ -187,11 +187,26 @@ class LLMBalancer:
         last_error = ""
 
         for try_model in models_to_try:
-            # Find providers that support this model
-            for prov_name, provider in self.providers.items():
-                api_key = provider.get_next_key()
-                if not api_key:
-                    continue
+            # Try ALL available keys across ALL providers for this model
+            keys_tried = 0
+            max_keys_to_try = sum(len(p.keys) for p in self.providers.values())
+
+            while keys_tried < max_keys_to_try:
+                # Get next available key (round-robin across providers)
+                best_provider = None
+                best_key = None
+                for prov_name, provider in self.providers.items():
+                    k = provider.get_next_key()
+                    if k:
+                        best_provider = provider
+                        best_key = k
+                        break
+
+                if not best_key or not best_provider:
+                    break
+
+                keys_tried += 1
+                prov_name = best_provider.name
 
                 try:
                     payload = json.dumps({
@@ -202,11 +217,11 @@ class LLMBalancer:
                     }).encode()
 
                     req = urllib.request.Request(
-                        provider.base_url,
+                        best_provider.base_url,
                         data=payload,
                         headers={
                             "Content-Type": "application/json",
-                            "Authorization": f"Bearer {api_key.key}",
+                            "Authorization": f"Bearer {best_key.key}",
                             "HTTP-Referer": "https://github.com/JoTalbot/AIOS",
                             "X-Title": "AIOS Coder Orchestrator",
                         },
@@ -217,8 +232,8 @@ class LLMBalancer:
 
                     # Success!
                     self._provider_stats[prov_name] = self._provider_stats.get(prov_name, 0) + 1
+                    print(f"  [Balancer] OK: {prov_name}/{try_model} key={best_key.key[:8]}...")
 
-                    # Z.ai returns different format
                     if "choices" in data:
                         return data["choices"][0]["message"]["content"]
                     elif "data" in data and "choices" in data["data"]:
@@ -226,35 +241,30 @@ class LLMBalancer:
                     elif "result" in data:
                         return data["result"]
                     else:
-                        # Try to extract any text
                         return json.dumps(data)[:500]
 
                 except urllib.error.HTTPError as e:
-                    error_body = ""
-                    try:
-                        error_body = e.read().decode()[:200]
-                    except:
-                        pass
-
-                    last_error = f"{prov_name}/{try_model}: HTTP {e.code}"
+                    last_error = f"{prov_name}/{try_model}: HTTP {e.code} key={best_key.key[:8]}"
                     print(f"  [Balancer] {last_error}")
 
                     if e.code in (402, 429):
-                        # Rate limit or no credits — cool down this key
-                        provider.mark_key_error(api_key, f"HTTP {e.code}", cooldown=300)
+                        best_provider.mark_key_error(best_key, f"HTTP {e.code}", cooldown=300)
+                        continue  # try next key
                     elif e.code == 404:
-                        # Model not found on this provider — skip
-                        break
+                        break  # model not on this provider, try next model
                     elif e.code >= 500:
-                        provider.mark_key_error(api_key, f"HTTP {e.code}", cooldown=60)
+                        best_provider.mark_key_error(best_key, f"HTTP {e.code}", cooldown=60)
+                        continue
                     elif e.code == 401:
-                        provider.mark_key_error(api_key, "Auth failed", cooldown=600)
-                    continue
+                        best_provider.mark_key_error(best_key, "Auth failed", cooldown=600)
+                        continue
+                    else:
+                        continue
 
                 except Exception as e:
-                    last_error = f"{prov_name}/{try_model}: {str(e)[:80]}"
+                    last_error = f"{prov_name}/{try_model}: {str(e)[:60]}"
                     print(f"  [Balancer] {last_error}")
-                    provider.mark_key_error(api_key, str(e)[:50], cooldown=60)
+                    best_provider.mark_key_error(best_key, str(e)[:50], cooldown=60)
                     continue
 
         self._total_errors += 1
