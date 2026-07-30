@@ -93,7 +93,7 @@ def test_analytics_endpoint_shape(client):
 def test_substrate_page_has_analytics_panel(client):
     resp = client.get("/substrate")
     assert resp.status_code == 200
-    assert "v11.23.0" in resp.text
+    assert "v11.30.0" in resp.text
     assert "/api/substrate/analytics" in resp.text
     assert "analytics-bars" in resp.text
     assert "Dispatch Analytics" in resp.text

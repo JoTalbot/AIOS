@@ -371,6 +371,93 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    # --- AI Task Planner, GraphRAG, Distillation, Perception & Swarm Federated (v11.24–v11.30) ---
+
+    async def ai_decompose_goal(self, goal: str, context: dict | None = None) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/plan/decompose"),
+                json={"goal": goal, "context": context},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_correct_plan(self, failed_step_id: str, error_context: str, current_plan: dict | None = None) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/plan/correct"),
+                json={
+                    "failed_step_id": failed_step_id,
+                    "error_context": error_context,
+                    "current_plan": current_plan or {},
+                },
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_query_graph_rag(self, query: str, top_k: int = 3) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/graph-rag/query"),
+                json={"query": query, "top_k": top_k},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_collect_trajectory(
+        self, agent_id: str, prompt: str, trajectory: list[dict], score: float = 1.0
+    ) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/distillation/collect"),
+                json={"agent_id": agent_id, "prompt": prompt, "trajectory": trajectory, "score": score},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_prepare_distillation_dataset(self) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/distillation/dataset"),
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_process_visual_ui(self, screenshot: str, query: str = "") -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/perception/ui"),
+                json={"screenshot": screenshot, "query": query},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_aggregate_swarm_insights(self, nodes: list[dict]) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/swarm/federated/aggregate"),
+                json={"nodes": nodes},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_optimize_prompt(self, prompt: str, metric: str = "accuracy") -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/prompt/optimize"),
+                json={"prompt": prompt, "metric": metric},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
     # --- AI Governance, Safety Guard & Compliance Audit (v11.23.0) ---
 
     async def evaluate_action_safety(self, action: dict, tenant_id: str | None = None) -> dict:
@@ -548,6 +635,30 @@ class AIOSClientSync:
 
     def ai_consensus(self, *a, **kw):
         return self._run(self._async.ai_consensus(*a, **kw))
+
+    def ai_decompose_goal(self, *a, **kw):
+        return self._run(self._async.ai_decompose_goal(*a, **kw))
+
+    def ai_correct_plan(self, *a, **kw):
+        return self._run(self._async.ai_correct_plan(*a, **kw))
+
+    def ai_query_graph_rag(self, *a, **kw):
+        return self._run(self._async.ai_query_graph_rag(*a, **kw))
+
+    def ai_collect_trajectory(self, *a, **kw):
+        return self._run(self._async.ai_collect_trajectory(*a, **kw))
+
+    def ai_prepare_distillation_dataset(self, *a, **kw):
+        return self._run(self._async.ai_prepare_distillation_dataset(*a, **kw))
+
+    def ai_process_visual_ui(self, *a, **kw):
+        return self._run(self._async.ai_process_visual_ui(*a, **kw))
+
+    def ai_aggregate_swarm_insights(self, *a, **kw):
+        return self._run(self._async.ai_aggregate_swarm_insights(*a, **kw))
+
+    def ai_optimize_prompt(self, *a, **kw):
+        return self._run(self._async.ai_optimize_prompt(*a, **kw))
 
     def evaluate_action_safety(self, *a, **kw):
         return self._run(self._async.evaluate_action_safety(*a, **kw))
