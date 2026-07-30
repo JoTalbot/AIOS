@@ -81,7 +81,7 @@ services:
   aios-dashboard:
     build: .
     container_name: aios-dashboard
-    command: ["python", "run_dashboard.py", "--port", "8080"]
+    command: ["python", "run_dashboard_nicegui.py"]
     ports:
       - "8080:8080"
       - "8580:8080"
