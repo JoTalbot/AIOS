@@ -535,6 +535,17 @@ MAX_HISTORY = 20  # keep last 20 messages per chat
 
 def _handle_button(api: TelegramAPI, chat_id: int, data: str) -> None:
     """Handle button press by action name."""
+    try:
+        _handle_button_inner(api, chat_id, data)
+    except Exception as e:
+        print(f"  [BTN CRASH] {data}: {e}")
+        import traceback; traceback.print_exc()
+        try:
+            api.send_message(chat_id, "Error: " + str(e)[:200])
+        except:
+            pass
+
+def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
     reply = None
     keyboard = None
 
@@ -757,10 +768,13 @@ def _handle_button(api: TelegramAPI, chat_id: int, data: str) -> None:
             else:
                 api.send_message(chat_id, reply)
         except Exception as e:
+            print(f"  [BTN SEND ERR] {data}: {e}")
             try:
-                api.send_message(chat_id, reply)
-            except:
-                pass
+                api.send_message(chat_id, str(reply)[:3900], parse_mode="")
+            except Exception as e2:
+                print(f"  [BTN SEND ERR2] {e2}")
+    else:
+        print(f"  [BTN] no reply generated for: {data}")
 
 
 def _handle_callback(api: TelegramAPI, upd: dict) -> None:
@@ -904,10 +918,17 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
 
     messages = [{"role": "system", "content": system}] + _chat_history[chat_id]
 
-    # LLM endpoints
+    # LLM endpoints: use the shared multi-provider balancer first.
+    # It loads runtime keys from /app/data/.llm_keys.json and performs
+    # round-robin/fallback across providers and keys.
+    _balancer = None
+    try:
+        from aios_core.llm_balancer import LLMBalancer as _LLMBalancer
+        _balancer = _LLMBalancer()
+    except Exception as _e:
+        print(f"  [LLM] balancer init failed: {_e}")
 
-
-    # Load keys from file (no secrets in code)
+    # Legacy direct endpoints remain as a last-resort compatibility fallback.
     endpoints = []
     try:
         with open("/app/data/.llm_keys.json") as _kf:
@@ -926,28 +947,43 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
     # Tool loop: up to 3 command iterations
     for iteration in range(4):
         response = None
-        for url, key, model in endpoints:
+        if _balancer is not None:
             try:
-                payload = _json.dumps({
-                    "model": model,
-                    "messages": messages,
-                    "max_tokens": 2000,
-                    "temperature": 0.3,
-                }).encode()
-                req = _urllib.Request(url, data=payload, headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + key,
-                })
-                with _urllib.urlopen(req, timeout=90) as resp:
-                    data = _json.loads(resp.read())
-                if "choices" in data and data["choices"]:
-                    response = data["choices"][0]["message"]["content"]
-                    break
-            except Exception:
-                continue
+                response = _balancer.chat(
+                    messages[1:],
+                    model=_os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick"),
+                    system=system,
+                    max_tokens=2000,
+                    temperature=0.3,
+                )
+                print(f"  [LLM] balancer response ({len(response or '')} chars)")
+            except Exception as _e:
+                print(f"  [LLM] balancer failed: {_e}")
+        if response:
+            pass
+        else:
+            for url, key, model in endpoints:
+                try:
+                    payload = _json.dumps({
+                        "model": model,
+                        "messages": messages,
+                        "max_tokens": 2000,
+                        "temperature": 0.3,
+                    }).encode()
+                    req = _urllib.Request(url, data=payload, headers={
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + key,
+                    })
+                    with _urllib.urlopen(req, timeout=90) as resp:
+                        data = _json.loads(resp.read())
+                    if "choices" in data and data["choices"]:
+                        response = data["choices"][0]["message"]["content"]
+                        break
+                except Exception:
+                    continue
 
-        if not response:
-            return "LLM temporarily unavailable."
+            if not response:
+                return "LLM temporarily unavailable."
 
         # Check if LLM wants to run a command
         cmd_match = _re.search(r"<cmd>(.*?)</cmd>", response, _re.DOTALL)
