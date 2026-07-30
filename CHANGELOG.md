@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.19.0] — 2026-07-30 — Dashboard Server REST API Endpoints for v11.16–v11.18 Features
+
+### Added
+- **REST API Auto-Throttle Endpoint (`GET / POST /api/substrate/budget/throttle`)**:
+  - Exposes `EnergyAwareScheduler.configure_throttle` settings over HTTP JSON REST API.
+- **REST API Policy Auto-Tune Endpoint (`POST /api/substrate/policy/autotune`)**:
+  - Exposes `EnergyAwareScheduler.auto_tune_policy` recommendation & dynamic application endpoint.
+- **REST API Memory Health Telemetry Endpoint (`GET /api/memory/health`)**:
+  - Exposes `AgentMemorySystem.memory_health_report` vitality score, fragmentation ratio, and archive pressure.
+- **REST API Snapshot Pruning Endpoint (`POST /api/memory/snapshot/prune`)**:
+  - Exposes `AgentMemorySystem.prune_rotated_snapshots` for backup snapshot TTL cleanup.
+- **REST API Retention Maintenance Engine Endpoint (`POST /api/retention/maintenance/run`)**:
+  - Exposes guarded `RetentionMaintenanceEngine.run_maintenance_cycle` execution (`confirm: true`).
+
 ## [11.18.0] — 2026-07-30 — Multi-Tenant Energy Budget Allocation + Swarm Workload Balancing
 
 ### Added
