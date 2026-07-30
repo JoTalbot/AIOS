@@ -136,6 +136,17 @@ jobs:
               fi
             fi
 
+            echo "🛡️ [3.5/6] Ensuring Firewall ports are open (UFW)..."
+            if command -v ufw >/dev/null 2>&1; then
+              ufw allow 22/tcp || true
+              ufw allow 8000/tcp || true
+              ufw allow 8080/tcp || true
+              ufw allow 8580/tcp || true
+              ufw allow 8471/tcp || true
+              ufw allow 3000/tcp || true
+              ufw allow 9090/tcp || true
+            fi
+
             echo "🐳 [4/6] Starting Docker Compose stack..."
             BUILD_FLAGS=""
             if [ "${FORCE_REBUILD}" = "true" ]; then

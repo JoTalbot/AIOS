@@ -79,11 +79,12 @@ if command -v ufw >/dev/null 2>&1; then
     ufw allow 22/tcp || true
     ufw allow 8000/tcp || true # AIOS API
     ufw allow 8080/tcp || true # AIOS Dashboard
+    ufw allow 8580/tcp || true # AIOS Dashboard
     ufw allow 8471/tcp || true # AIOS MCP
     ufw allow 3000/tcp || true # Grafana
     ufw allow 9090/tcp || true # Prometheus
     echo "y" | ufw enable || true
-    echo -e "${GREEN}Firewall configured for AIOS ports (22, 8000, 8080, 8471, 3000, 9090).${NC}"
+    echo -e "${GREEN}Firewall configured for AIOS ports (22, 8000, 8080, 8580, 8471, 3000, 9090).${NC}"
 fi
 
 echo -e "${GREEN}==================================================${NC}"
