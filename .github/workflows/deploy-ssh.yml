@@ -23,29 +23,18 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       configured: ${{ steps.check.outputs.configured }}
-      host: ${{ steps.check.outputs.host }}
-      user: ${{ steps.check.outputs.user }}
-      port: ${{ steps.check.outputs.port }}
-      app_dir: ${{ steps.check.outputs.app_dir }}
     steps:
       - name: Verify SSH secrets exist
         id: check
         env:
           SSH_HOST: ${{ secrets.SSH_HOST || secrets.VPS_HOST }}
           SSH_KEY: ${{ secrets.SSH_KEY || secrets.VPS_SSH_KEY }}
-          SSH_USER: ${{ secrets.SSH_USER || secrets.VPS_USERNAME || 'root' }}
-          SSH_PORT: ${{ secrets.SSH_PORT || secrets.VPS_PORT || '22' }}
-          SSH_PATH: ${{ secrets.SSH_PATH || secrets.VPS_APP_DIR || '/opt/aios' }}
         run: |
           if [ -z "$SSH_HOST" ] || [ -z "$SSH_KEY" ]; then
             echo "::warning::SSH deploy secrets (SSH_HOST, SSH_KEY) are not configured in GitHub Secrets. SSH deployment skipped."
             echo "configured=false" >> "$GITHUB_OUTPUT"
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
-            echo "host=$SSH_HOST" >> "$GITHUB_OUTPUT"
-            echo "user=$SSH_USER" >> "$GITHUB_OUTPUT"
-            echo "port=$SSH_PORT" >> "$GITHUB_OUTPUT"
-            echo "app_dir=$SSH_PATH" >> "$GITHUB_OUTPUT"
           fi
 
   deploy:
@@ -65,14 +54,14 @@ jobs:
           known_hosts: 'placeholder'
           config: |
             Host target-server
-              HostName ${{ needs.check-secrets.outputs.host }}
-              User ${{ needs.check-secrets.outputs.user }}
-              Port ${{ needs.check-secrets.outputs.port }}
+              HostName ${{ secrets.SSH_HOST || secrets.VPS_HOST }}
+              User ${{ secrets.SSH_USER || secrets.VPS_USERNAME || 'root' }}
+              Port ${{ secrets.SSH_PORT || secrets.VPS_PORT || '22' }}
               StrictHostKeyChecking no
 
       - name: Deploy codebase and start stack via SSH
         env:
-          APP_DIR: ${{ github.event.inputs.remote_dir || needs.check-secrets.outputs.app_dir }}
+          APP_DIR: ${{ github.event.inputs.remote_dir || secrets.SSH_PATH || secrets.VPS_APP_DIR || '/opt/aios' }}
           ENV_CONTENTS: ${{ secrets.ENV_FILE_CONTENTS }}
           FORCE_REBUILD: ${{ github.event.inputs.force_rebuild || 'false' }}
         run: |
