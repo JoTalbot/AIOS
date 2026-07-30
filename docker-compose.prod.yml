@@ -19,6 +19,17 @@ services:
       AIOS_DEVICES_DB: /app/data/devices.sqlite
       AIOS_SHARDS_DB: /app/data/shards.sqlite
       AIOS_OLX_DB: /app/data/olx.sqlite
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      LLM_API_KEY: ${LLM_API_KEY:-${OPENROUTER_API_KEY:-}}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.ai/api/v1}
+      LLM_MODEL: ${LLM_MODEL:-anthropic/claude-3.5-sonnet}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      AIOS_TELEGRAM_TOKEN: ${AIOS_TELEGRAM_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}
+      OLX_CLIENT_ID: ${OLX_CLIENT_ID:-}
+      OLX_CLIENT_SECRET: ${OLX_CLIENT_SECRET:-}
+      OLX_ACCESS_TOKEN: ${OLX_ACCESS_TOKEN:-}
+      OLX_WEBHOOK_SECRET: ${OLX_WEBHOOK_SECRET:-}
       PYTHONUNBUFFERED: "1"
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
@@ -101,6 +112,10 @@ services:
       AIOS_PROFILES_DB: /app/data/profiles.sqlite
       AIOS_DEVICES_DB: /app/data/devices.sqlite
       AIOS_WEBHOOK_URL: ${AIOS_WEBHOOK_URL:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      OLX_CLIENT_ID: ${OLX_CLIENT_ID:-}
       PYTHONUNBUFFERED: "1"
     volumes:
       - .:/app
@@ -122,13 +137,19 @@ services:
     build: .
     container_name: aios-telegram-bot
     command: ["python", "run_telegram_bot.py"]
-    profiles: [bot]
     environment:
-      AIOS_TELEGRAM_TOKEN: ${AIOS_TELEGRAM_TOKEN:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      AIOS_TELEGRAM_TOKEN: ${AIOS_TELEGRAM_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      LLM_API_KEY: ${LLM_API_KEY:-${OPENROUTER_API_KEY:-}}
+      OLX_CLIENT_ID: ${OLX_CLIENT_ID:-}
       AIOS_DB_PATH: /app/data/aios.sqlite
       AIOS_PROFILES_DB: /app/data/profiles.sqlite
       AIOS_OLX_DB: /app/data/olx.sqlite
+      PYTHONUNBUFFERED: "1"
     volumes:
+      - .:/app
       - aios-data:/app/data
       - aios-logs:/app/logs
     restart: unless-stopped
