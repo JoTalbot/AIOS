@@ -1,0 +1,45 @@
+name: Sync GitHub Models key
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Trust server
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 167.233.95.7 >> ~/.ssh/known_hosts
+
+      - name: Transfer GitHub Models key and restart bot
+        env:
+          GITHUB_API_KEY: ${{ secrets.GITHUB_API_KEY }}
+        run: |
+          test -n "$GITHUB_API_KEY"
+          printf '%s\n' "$GITHUB_API_KEY" | ssh root@167.233.95.7 'umask 077; cat > /root/.github_models_key'
+          ssh root@167.233.95.7 '
+            set -eu
+            for dir in /root/AIOS /opt/aios; do
+              if [ -d "$dir" ]; then
+                touch "$dir/.env"
+                chmod 600 "$dir/.env"
+                sed -i "/^GITHUB_API_KEY=/d" "$dir/.env"
+                printf "GITHUB_API_KEY=%s\n" "$(cat /root/.github_models_key)" >> "$dir/.env"
+              fi
+            done
+            rm -f /root/.github_models_key
+            if [ -f /opt/aios/docker-compose.yml ]; then
+              cd /opt/aios
+              docker compose up -d --force-recreate aios-telegram-bot
+            elif [ -f /root/AIOS/docker-compose.yml ]; then
+              cd /root/AIOS
+              docker compose up -d --force-recreate aios-telegram-bot
+            fi
+            echo "GitHub Models key synchronized"
+          '
