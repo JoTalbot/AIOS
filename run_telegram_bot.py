@@ -565,6 +565,7 @@ def parse_command(text: str) -> tuple[str, str]:
 
 # State storage for callback interactions (chat_id -> pending action)
 _pending_actions: dict[int, str] = {}
+_paused = False
 
 
 def _handle_callback(api: TelegramAPI, upd: dict) -> None:
@@ -686,9 +687,13 @@ def run_bot(token: str) -> None:
             for upd in updates:
                 offset = upd["update_id"] + 1
 
-                # Handle callback queries (button presses)
+                # Handle callback queries (button presses) — always process even when paused
                 if "callback_query" in upd:
                     _handle_callback(api, upd)
+                    continue
+
+                # Skip messages if paused
+                if _paused:
                     continue
 
                 msg = upd.get("message", {})
