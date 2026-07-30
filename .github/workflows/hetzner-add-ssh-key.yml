@@ -1,8 +1,8 @@
-name: Enable Hetzner Root Password SSH
+name: Add SSH Key to Hetzner Server
 
-# Включает root/password SSH через одноразовую загрузку Hetzner Rescue.
-# Операция перезагружает сервер. Итоговый пароль передаётся только в
-# зашифрованном artifact и никогда не выводится в публичные логи.
+# Добавляет постоянный SSH-ключ в Hetzner Project и на существующий сервер.
+# Для доступа к диску используется одноразовый Rescue-ключ, который удаляется
+# после операции. Парольный SSH-вход явно отключается.
 on:
   workflow_dispatch:
     inputs:
@@ -11,8 +11,17 @@ on:
         required: true
         default: "aios"
         type: string
+      key_name:
+        description: "Имя постоянного ключа в Hetzner Project"
+        required: true
+        default: "aios-user-ed25519"
+        type: string
+      public_key:
+        description: "Публичный SSH-ключ ed25519"
+        required: true
+        type: string
       confirmation:
-        description: "Для подтверждения перезагрузки введите ENABLE"
+        description: "Для подтверждения перезагрузки введите ADD"
         required: true
         type: string
 
@@ -20,44 +29,40 @@ permissions:
   contents: read
 
 concurrency:
-  group: hetzner-enable-root-password-ssh
+  group: hetzner-add-ssh-key
   cancel-in-progress: false
 
 jobs:
-  enable-password-ssh:
-    name: Включить root/password SSH
+  add-key:
+    name: Добавить SSH-ключ и отключить парольный вход
     runs-on: ubuntu-latest
     steps:
-      - name: Проверить подтверждение и секреты
+      - name: Проверить подтверждение и API-токен
         env:
           CONFIRMATION: ${{ inputs.confirmation }}
           HETZNER_API: ${{ secrets.HERTZNER_API }}
-          RESULT_KEY: ${{ secrets.HETZNER_RESULT_KEY }}
         run: |
-          if [ "$CONFIRMATION" != "ENABLE" ]; then
-            echo "Операция не подтверждена: требуется значение ENABLE." >&2
+          if [ "$CONFIRMATION" != "ADD" ]; then
+            echo "Операция не подтверждена: требуется значение ADD." >&2
             exit 1
           fi
           if [ -z "$HETZNER_API" ]; then
             echo "Секрет HERTZNER_API не настроен." >&2
             exit 1
           fi
-          if [ -z "$RESULT_KEY" ]; then
-            echo "Временный секрет HETZNER_RESULT_KEY не настроен." >&2
-            exit 1
-          fi
 
-      - name: Включить Rescue и перезагрузить сервер
+      - name: Подготовить ключи и загрузить Hetzner Rescue
         env:
           HETZNER_API: ${{ secrets.HERTZNER_API }}
-          SERVER_NAME: ${{ inputs.server_name }}
+          SERVER_NAME_INPUT: ${{ inputs.server_name }}
+          KEY_NAME_INPUT: ${{ inputs.key_name }}
+          PUBLIC_KEY_INPUT: ${{ inputs.public_key }}
         run: |
           python3 - <<'PY'
+          import base64
           import json
           import os
           import re
-          import secrets
-          import string
           import subprocess
           import time
           import urllib.error
@@ -66,20 +71,40 @@ jobs:
           from pathlib import Path
 
           token = os.environ["HETZNER_API"]
-          server_name = os.environ["SERVER_NAME"].strip()
+          server_name = os.environ["SERVER_NAME_INPUT"].strip()
+          key_name = os.environ["KEY_NAME_INPUT"].strip()
+          public_key = " ".join(os.environ["PUBLIC_KEY_INPUT"].strip().split())
           api_base = "https://api.hetzner.cloud/v1"
-          pattern = re.compile(
+
+          hostname_pattern = re.compile(
               r"^(?=.{1,63}$)[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?$"
           )
-          if not pattern.fullmatch(server_name):
+          key_name_pattern = re.compile(r"^[a-zA-Z0-9._-]{1,64}$")
+          if not hostname_pattern.fullmatch(server_name):
               raise SystemExit("Некорректное имя сервера.")
+          if not key_name_pattern.fullmatch(key_name):
+              raise SystemExit("Некорректное имя SSH-ключа.")
 
-          def api_request(method, path, payload=None):
+          parts = public_key.split()
+          if len(parts) < 2 or parts[0] != "ssh-ed25519":
+              raise SystemExit("Ожидается публичный ключ формата ssh-ed25519.")
+          try:
+              decoded = base64.b64decode(parts[1], validate=True)
+          except ValueError as error:
+              raise SystemExit("Некорректная Base64-часть публичного ключа.") from error
+          if len(decoded) < 32:
+              raise SystemExit("Публичный SSH-ключ слишком короткий.")
+          key_material = f"{parts[0]} {parts[1]}"
+          Path("/tmp/aios-user-key.pub").write_text(
+              key_material + "\n", encoding="utf-8"
+          )
+
+          def api_request(method, path, payload=None, expect_json=True):
               data = None
               headers = {
                   "Authorization": f"Bearer {token}",
                   "Accept": "application/json",
-                  "User-Agent": "AIOS-Hetzner-SSH-Configurator/1.0",
+                  "User-Agent": "AIOS-Hetzner-SSH-Key-Manager/1.0",
               }
               if payload is not None:
                   data = json.dumps(payload).encode("utf-8")
@@ -89,6 +114,8 @@ jobs:
               )
               try:
                   with urllib.request.urlopen(request, timeout=60) as response:
+                      if not expect_json:
+                          return {"status": response.status}
                       return json.load(response)
               except urllib.error.HTTPError as error:
                   detail = error.read().decode("utf-8", errors="replace")
@@ -107,6 +134,21 @@ jobs:
                   time.sleep(2)
               raise TimeoutError(f"Hetzner action {action_id} timed out.")
 
+          def list_all(path, collection):
+              items = []
+              page = 1
+              while True:
+                  payload = api_request("GET", f"{path}?page={page}&per_page=50")
+                  items.extend(payload.get(collection, []))
+                  next_page = (
+                      payload.get("meta", {})
+                      .get("pagination", {})
+                      .get("next_page")
+                  )
+                  if not next_page:
+                      return items
+                  page = int(next_page)
+
           query = urllib.parse.quote(server_name, safe="")
           matches = api_request(
               "GET", f"/servers?name={query}&per_page=50"
@@ -121,9 +163,23 @@ jobs:
           if not ipv4:
               raise SystemExit("У сервера отсутствует публичный IPv4.")
 
-          # Создаём одноразовый SSH-ключ специально для Rescue. Это надёжнее
-          # временного Rescue-пароля и не требует постоянного приватного ключа
-          # в GitHub Secrets.
+          # Добавляем пользовательский ключ в Hetzner Project идемпотентно.
+          project_keys = list_all("/ssh_keys", "ssh_keys")
+          persistent_key = None
+          for existing in project_keys:
+              existing_parts = (existing.get("public_key") or "").split()
+              existing_material = " ".join(existing_parts[:2])
+              if existing_material == key_material:
+                  persistent_key = existing
+                  break
+          if persistent_key is None:
+              persistent_key = api_request(
+                  "POST",
+                  "/ssh_keys",
+                  {"name": key_name, "public_key": key_material},
+              )["ssh_key"]
+
+          # Одноразовый ключ нужен только для автоматизации Rescue.
           private_key = Path("/tmp/hetzner-rescue-ephemeral")
           subprocess.run(
               [
@@ -138,23 +194,27 @@ jobs:
               ],
               check=True,
           )
-          public_key = private_key.with_suffix(".pub").read_text(
+          ephemeral_public = private_key.with_suffix(".pub").read_text(
               encoding="utf-8"
           ).strip()
-          key_name = (
+          ephemeral_name = (
               f"aios-rescue-{os.environ.get('GITHUB_RUN_ID', 'manual')}-"
               f"{os.environ.get('GITHUB_RUN_ATTEMPT', '1')}"
           )
           ephemeral_key = api_request(
-              "POST", "/ssh_keys", {"name": key_name, "public_key": public_key}
+              "POST",
+              "/ssh_keys",
+              {"name": ephemeral_name, "public_key": ephemeral_public},
           )["ssh_key"]
 
-          # Сохраняем ID сразу: cleanup удалит ключ даже при последующей ошибке.
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
               env_file.write(f"SERVER_ID={server['id']}\n")
               env_file.write(f"SERVER_NAME={server_name}\n")
               env_file.write(f"SERVER_IP={ipv4}\n")
               env_file.write(f"RESCUE_SSH_KEY_ID={ephemeral_key['id']}\n")
+              env_file.write(f"PERSISTENT_SSH_KEY_ID={persistent_key['id']}\n")
+              env_file.write(f"PERSISTENT_SSH_KEY_NAME={persistent_key['name']}\n")
+              env_file.write(f"PERSISTENT_SSH_KEY_FINGERPRINT={persistent_key['fingerprint']}\n")
 
           rescue = api_request(
               "POST",
@@ -162,39 +222,16 @@ jobs:
               {"type": "linux64", "ssh_keys": [ephemeral_key["id"]]},
           )
           wait_action(rescue["action"]["id"])
-
-          alphabet = string.ascii_letters + string.digits
-          new_password = "".join(secrets.choice(alphabet) for _ in range(20))
-          print(f"::add-mask::{new_password}")
-          Path("/tmp/hetzner-new-root-password").write_text(
-              new_password, encoding="utf-8"
-          )
-          Path("/tmp/hetzner-new-root-password").chmod(0o600)
-          Path("/tmp/hetzner-ssh-context.json").write_text(
-              json.dumps(
-                  {"server_id": server["id"], "server_name": server_name, "ipv4": ipv4}
-              ),
-              encoding="utf-8",
-          )
-
           reboot = api_request(
               "POST", f"/servers/{server['id']}/actions/reboot", {}
           )
           wait_action(reboot["action"]["id"])
-          print("Rescue включён с одноразовым SSH-ключом; сервер перезагружен.")
+          print("Постоянный ключ зарегистрирован; Rescue загружается.")
           PY
 
-      - name: Установить SSH-клиент для парольной авторизации
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq sshpass
-
-      - name: Настроить установленную Ubuntu из Rescue
+      - name: Добавить ключ на системный диск
         run: |
           set -euo pipefail
-          # Rescue получает новый временный host key после перезагрузки. Не
-          # сохраняем ключ предыдущей ОС, иначе ранняя попытка подключения
-          # блокирует все последующие попытки из-за host key mismatch.
           SSH_OPTIONS=(
             -i /tmp/hetzner-rescue-ephemeral
             -o IdentitiesOnly=yes
@@ -209,7 +246,7 @@ jobs:
           rescue_ready=0
           for attempt in {1..36}; do
             if ssh "${SSH_OPTIONS[@]}" root@"$SERVER_IP" \
-              'test -x /usr/sbin/chroot-prepare' >/dev/null 2>&1; then
+              'command -v chroot-prepare >/dev/null' >/dev/null 2>&1; then
               rescue_ready=1
               break
             fi
@@ -221,8 +258,8 @@ jobs:
           fi
 
           scp "${SSH_OPTIONS[@]}" \
-            /tmp/hetzner-new-root-password \
-            root@"$SERVER_IP":/tmp/aios-new-root-password
+            /tmp/aios-user-key.pub \
+            root@"$SERVER_IP":/tmp/aios-user-key.pub
 
           ssh "${SSH_OPTIONS[@]}" root@"$SERVER_IP" 'bash -s' <<'REMOTE'
           set -euo pipefail
@@ -243,34 +280,45 @@ jobs:
           fi
 
           chroot-prepare "$MOUNT_POINT"
+          install -d -m 0700 "$MOUNT_POINT/root/.ssh"
+          touch "$MOUNT_POINT/root/.ssh/authorized_keys"
+          chmod 0600 "$MOUNT_POINT/root/.ssh/authorized_keys"
+          USER_KEY=$(awk '{print $1 " " $2}' /tmp/aios-user-key.pub)
+          if ! grep -Fqx "$USER_KEY" "$MOUNT_POINT/root/.ssh/authorized_keys"; then
+            printf '%s\n' "$USER_KEY" >>"$MOUNT_POINT/root/.ssh/authorized_keys"
+          fi
+          chown -R 0:0 "$MOUNT_POINT/root/.ssh"
+
+          # Явно оставляем только ключевую аутентификацию root.
+          rm -f "$MOUNT_POINT/etc/ssh/sshd_config.d/00-aios-password-auth.conf"
           mkdir -p "$MOUNT_POINT/etc/ssh/sshd_config.d"
-          cat >"$MOUNT_POINT/etc/ssh/sshd_config.d/00-aios-password-auth.conf" <<'CONFIG'
-          PasswordAuthentication yes
-          PermitRootLogin yes
+          cat >"$MOUNT_POINT/etc/ssh/sshd_config.d/00-aios-key-only.conf" <<'CONFIG'
+          PasswordAuthentication no
+          PermitRootLogin prohibit-password
           KbdInteractiveAuthentication no
           CONFIG
-          chmod 0644 "$MOUNT_POINT/etc/ssh/sshd_config.d/00-aios-password-auth.conf"
-
+          chmod 0644 "$MOUNT_POINT/etc/ssh/sshd_config.d/00-aios-key-only.conf"
           if ! grep -Eq '^Include[[:space:]]+/etc/ssh/sshd_config\.d/\*\.conf' \
             "$MOUNT_POINT/etc/ssh/sshd_config"; then
             sed -i '1i Include /etc/ssh/sshd_config.d/*.conf' \
               "$MOUNT_POINT/etc/ssh/sshd_config"
           fi
 
-          NEW_PASSWORD=$(cat /tmp/aios-new-root-password)
-          printf 'root:%s\n' "$NEW_PASSWORD" | chroot "$MOUNT_POINT" /usr/sbin/chpasswd
-          unset NEW_PASSWORD
           mkdir -p "$MOUNT_POINT/run/sshd"
           chroot "$MOUNT_POINT" /usr/sbin/sshd -t
-          rm -f /tmp/aios-new-root-password
+          EFFECTIVE=$(chroot "$MOUNT_POINT" /usr/sbin/sshd -T)
+          printf '%s\n' "$EFFECTIVE" | grep -Eq '^passwordauthentication no$'
+          printf '%s\n' "$EFFECTIVE" | grep -Eq \
+            '^permitrootlogin (without-password|prohibit-password)$'
+          grep -Fqx "$USER_KEY" "$MOUNT_POINT/root/.ssh/authorized_keys"
+          unset USER_KEY EFFECTIVE
+          rm -f /tmp/aios-user-key.pub
           sync
           umount -R "$MOUNT_POINT" || true
-          echo "Конфигурация установленной Ubuntu обновлена."
+          echo "Публичный ключ добавлен; парольный SSH-вход отключён."
           REMOTE
 
       - name: Отключить Rescue и загрузить сервер с диска
-        # Гарантированно возвращаем сервер к системному диску даже при ошибке
-        # настройки, чтобы узел не оставался в Rescue.
         if: always()
         env:
           HETZNER_API: ${{ secrets.HERTZNER_API }}
@@ -294,7 +342,7 @@ jobs:
               headers = {
                   "Authorization": f"Bearer {token}",
                   "Accept": "application/json",
-                  "User-Agent": "AIOS-Hetzner-SSH-Configurator/1.0",
+                  "User-Agent": "AIOS-Hetzner-SSH-Key-Manager/1.0",
               }
               if payload is not None:
                   data = json.dumps(payload).encode("utf-8")
@@ -331,7 +379,7 @@ jobs:
           print("Rescue отключён; сервер загружается с системного диска.")
           PY
 
-      - name: Удалить одноразовый SSH-ключ Rescue
+      - name: Удалить одноразовый Rescue-ключ
         if: always()
         env:
           HETZNER_API: ${{ secrets.HERTZNER_API }}
@@ -351,7 +399,7 @@ jobs:
               headers={
                   "Authorization": f"Bearer {os.environ['HETZNER_API']}",
                   "Accept": "application/json",
-                  "User-Agent": "AIOS-Hetzner-SSH-Configurator/1.0",
+                  "User-Agent": "AIOS-Hetzner-SSH-Key-Manager/1.0",
               },
           )
           try:
@@ -363,86 +411,29 @@ jobs:
           except urllib.error.HTTPError as error:
               if error.code != 404:
                   raise
-          print("Одноразовый SSH-ключ Rescue удалён из Hetzner.")
+          print("Одноразовый Rescue-ключ удалён.")
           PY
 
-      - name: Проверить вход root по паролю
+      - name: Проверить доступность SSH
         run: |
           set -euo pipefail
-          SSH_OPTIONS=(
-            -o StrictHostKeyChecking=no
-            -o UserKnownHostsFile=/dev/null
-            -o LogLevel=ERROR
-            -o ConnectTimeout=10
-            -o PreferredAuthentications=password
-            -o PubkeyAuthentication=no
-          )
-          password_login_ok=0
           for attempt in {1..36}; do
-            if sshpass -f /tmp/hetzner-new-root-password \
-              ssh "${SSH_OPTIONS[@]}" root@"$SERVER_IP" \
-              'test "$(id -u)" = "0"' >/dev/null 2>&1; then
-              password_login_ok=1
-              break
+            if timeout 5 bash -c "</dev/tcp/$SERVER_IP/22" 2>/dev/null; then
+              echo "SSH-порт доступен."
+              echo "Сервер: $SERVER_NAME ($SERVER_IP)"
+              echo "Hetzner SSH key: $PERSISTENT_SSH_KEY_NAME"
+              echo "Fingerprint: $PERSISTENT_SSH_KEY_FINGERPRINT"
+              exit 0
             fi
             sleep 5
           done
-          if [ "$password_login_ok" -ne 1 ]; then
-            echo "Сервер загрузился, но парольный SSH-вход не прошёл проверку." >&2
-            exit 1
-          fi
-          echo "Парольный SSH-вход root успешно проверен."
+          echo "SSH-порт не стал доступен после перезагрузки." >&2
+          exit 1
 
-      - name: Подготовить и зашифровать результат
-        env:
-          RESULT_KEY: ${{ secrets.HETZNER_RESULT_KEY }}
-        run: |
-          python3 - <<'PY'
-          import datetime
-          import json
-          import os
-          from pathlib import Path
-
-          result = {
-              "generated_at": datetime.datetime.now(datetime.UTC).isoformat(),
-              "server": {
-                  "id": int(os.environ["SERVER_ID"]),
-                  "name": os.environ["SERVER_NAME"],
-                  "ipv4": os.environ["SERVER_IP"],
-              },
-              "username": "root",
-              "root_password": Path("/tmp/hetzner-new-root-password").read_text(
-                  encoding="utf-8"
-              ),
-              "password_ssh_verified": True,
-          }
-          Path("/tmp/hetzner-password-ssh-result.json").write_text(
-              json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
-          )
-          PY
-          openssl enc -aes-256-cbc -pbkdf2 -salt \
-            -in /tmp/hetzner-password-ssh-result.json \
-            -out /tmp/hetzner-password-ssh-result.enc \
-            -pass env:RESULT_KEY
-          rm -f /tmp/hetzner-password-ssh-result.json
-
-      - name: Загрузить зашифрованный результат
-        uses: actions/upload-artifact@v4
-        with:
-          name: hetzner-password-ssh-result-encrypted
-          path: /tmp/hetzner-password-ssh-result.enc
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Удалить временные пароли с runner
+      - name: Удалить временные файлы runner
         if: always()
         run: |
           rm -f \
             /tmp/hetzner-rescue-ephemeral \
             /tmp/hetzner-rescue-ephemeral.pub \
-            /tmp/hetzner-new-root-password \
-            /tmp/hetzner-ssh-context.json \
-            /tmp/hetzner-password-ssh-result.json \
-            /tmp/hetzner-password-ssh-result.enc \
-            /tmp/hetzner-rescue-known-hosts \
-            /tmp/hetzner-system-known-hosts
+            /tmp/aios-user-key.pub
