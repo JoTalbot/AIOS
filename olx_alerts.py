@@ -16,7 +16,7 @@ import statistics
 import urllib.request
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 log = logging.getLogger("olx-alerts")
@@ -70,7 +70,7 @@ def subscribe_chat(
     min_price: float | None = None,
     max_price: float | None = None,
 ):
-    now = datetime.now(UTC).isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     conn.execute(
         "INSERT OR IGNORE INTO subscribers(chat_id,username,first_name,subscribed_at,enabled) VALUES (?,?,?,?,1)",
         (chat_id, username, first_name, now),
@@ -110,7 +110,7 @@ def all_enabled_chats_for_query(conn: sqlite3.Connection, query: str) -> list[in
 def mark_sent(conn: sqlite3.Connection, chat_id: int, ad_id: int, query: str):
     conn.execute(
         "INSERT OR IGNORE INTO sent_alerts(chat_id,ad_id,query,sent_at) VALUES (?,?,?,?)",
-        (chat_id, ad_id, query, datetime.now(UTC).isoformat()),
+        (chat_id, ad_id, query, datetime.now(timezone.utc).isoformat()),
     )
     conn.commit()
 
