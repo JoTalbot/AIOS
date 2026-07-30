@@ -18,6 +18,7 @@ import urllib.request
 import urllib.error
 import threading
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 @dataclass
