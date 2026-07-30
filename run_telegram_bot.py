@@ -905,20 +905,23 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
     messages = [{"role": "system", "content": system}] + _chat_history[chat_id]
 
     # LLM endpoints
-    gh_key = _os.environ.get("GITHUB_API_KEY", "")
-    if not gh_key:
-        try:
-            with open("/app/data/.github_token") as f:
-                gh_key = f.read().strip()
-        except Exception:
-            pass
 
+
+    # Load keys from file (no secrets in code)
     endpoints = []
-    if gh_key:
-        endpoints.append(("https://models.inference.ai.azure.com/chat/completions", gh_key, "gpt-4.1-mini"))
-    or_key = _os.environ.get("OPENROUTER_API_KEY", "")
-    if or_key:
-        endpoints.append(("https://openrouter.ai/api/v1/chat/completions", or_key, "mistralai/mistral-small-3.2-24b-instruct"))
+    try:
+        with open("/app/data/.llm_keys.json") as _kf:
+            _keys = _json.load(_kf)
+        for _k in _keys.get("openrouter", []):
+            endpoints.append(("https://openrouter.ai/api/v1/chat/completions", _k, "mistralai/mistral-small-3.2-24b-instruct"))
+        for _k in _keys.get("gemini", []):
+            endpoints.append(("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", _k, "gemini-2.0-flash"))
+    except Exception:
+        pass
+    if not endpoints:
+        _ork = _os.environ.get("OPENROUTER_API_KEY", "")
+        if _ork:
+            endpoints.append(("https://openrouter.ai/api/v1/chat/completions", _ork, "mistralai/mistral-small-3.2-24b-instruct"))
 
     # Tool loop: up to 3 command iterations
     for iteration in range(4):
@@ -1094,10 +1097,23 @@ def run_bot(token: str) -> None:
 
                     # Regular chat message — send to LLM
                     llm_reply = _llm_chat(chat_id, text)
+                    print(f"  [LLM] reply ({len(llm_reply or '')} chars): {(llm_reply or '')[:100]}")
                     if llm_reply:
-                        llm_reply = llm_reply.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                        api.send_message(chat_id, llm_reply)
-                        print(f"  -> LLM chat (chat {chat_id})")
+                        # Remove any remaining cmd tags
+                        import re as _re2
+                        llm_reply = _re2.sub(r'<cmd>.*?</cmd>', '', llm_reply, flags=_re2.DOTALL).strip()
+                        # Escape HTML but preserve code blocks
+                        llm_reply = llm_reply.replace("&", "&amp;")
+                        try:
+                            api.send_message(chat_id, llm_reply[:3900])
+                            print(f"  -> LLM sent (chat {chat_id})")
+                        except Exception as send_err:
+                            # Retry without parse_mode
+                            try:
+                                api.send_message(chat_id, llm_reply[:3900], parse_mode='')
+                                print(f"  -> LLM sent plain (chat {chat_id})")
+                            except Exception as e2:
+                                print(f"  [ERR] send failed: {e2}")
                     continue
 
                 reply = None
