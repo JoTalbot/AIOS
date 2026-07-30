@@ -12,7 +12,7 @@ import builtins
 import os
 import sqlite3
 import threading
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Self
 
@@ -90,7 +90,7 @@ class ProfileStore:
 
     def add(self, profile: Profile) -> Profile:
         """Создаёт профиль. Ошибка, если ``platform:name`` уже занят."""
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             try:
                 self._conn.execute(
@@ -153,7 +153,7 @@ class ProfileStore:
         patch = {k: v for k, v in fields.items() if k in allowed}
         if not patch:
             return self.get(platform, name)
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         assignments = ", ".join(f"{key} = ?" for key in sorted(patch))
         values = [int(v) if key == "is_default" else v for key, v in sorted(patch.items())]
         with self._lock, self._conn:
@@ -180,7 +180,7 @@ class ProfileStore:
         """Делает профиль дефолтом платформы (снимая флаг с остальных)."""
         if self.get(platform, name) is None:
             return None
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             self._set_default_locked(platform, name, now)
         return self.get(platform, name)

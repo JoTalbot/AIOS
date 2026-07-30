@@ -14,7 +14,7 @@ Supports 4 channels:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -83,7 +83,7 @@ class NotificationMessage:
     severity: Severity = Severity.INFO
     platform: str | None = None
     data: dict[str, object] = field(default_factory=dict)
-    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> dict[str, object]:
         """Serialize to dict."""

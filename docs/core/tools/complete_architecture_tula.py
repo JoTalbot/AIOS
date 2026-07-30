@@ -6,7 +6,7 @@ TULA — Architecture Module Analysis Tool
 
 import argparse
 import os
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 
 def scan(directory):
@@ -41,7 +41,7 @@ def generate_report(directory):
     report_path = os.path.join(directory, "ARCHITECTURE_REPORT.md")
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("# Отчёт TULA — Архитектура AIOS\n\n")
-        f.write(f"Дата: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Дата: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"Директория: {directory}\n")
         f.write(f"Модулей найдено: {len(modules)} (ожидается 27)\n\n")
         for name, info in sorted(modules.items()):

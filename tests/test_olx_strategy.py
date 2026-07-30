@@ -2,7 +2,7 @@
 advisor and the fresh-server bootstrap/doctor tooling."""
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from aios_core.modules.olx import (
     ACTION_EDIT_PRICE,
@@ -19,7 +19,7 @@ from aios_core.modules.olx import (
     title_similarity,
 )
 
-NOW = datetime(2026, 7, 21, 15, 0, 0, tzinfo=UTC)
+NOW = datetime(2026, 7, 21, 15, 0, 0, tzinfo=timezone.utc)
 
 PROFILE_XML = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <hierarchy rotation="0">

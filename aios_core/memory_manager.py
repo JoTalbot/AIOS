@@ -10,7 +10,7 @@ All data persisted to SQLite with search, tagging, and TTL.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .storage import Database
@@ -67,7 +67,7 @@ class MemoryManager:
         if ttl_seconds is not None:
             from datetime import timedelta
 
-            expires_at = (datetime.now(UTC) + timedelta(seconds=ttl_seconds)).isoformat()
+            expires_at = (datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)).isoformat()
 
         if self.db:
             self.db.execute(

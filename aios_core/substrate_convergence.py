@@ -17,7 +17,7 @@ import csv
 import io
 import time
 from collections import defaultdict
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .retention import plan_retention_purge
@@ -465,7 +465,7 @@ class SubstrateConvergenceEngine:
             writer.writerow(
                 (
                     record.get("task_id", ""),
-                    datetime.fromtimestamp(record.get("timestamp", 0.0), UTC).isoformat(),
+                    datetime.fromtimestamp(record.get("timestamp", 0.0), timezone.utc).isoformat(),
                     record.get("selected_substrate", ""),
                     record.get("energy_cost", 0.0),
                     record.get("estimated_latency_ms", 0.0),

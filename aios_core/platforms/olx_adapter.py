@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .base import IncomingMessage, PlatformAdapter, SentMessage
@@ -23,7 +23,7 @@ class OLXAdapter(PlatformAdapter):
 
     async def _ensure_token(self):
         """Обновить OAuth2 токен если нужно."""
-        if self.access_token and self._token_expires and datetime.now(UTC) < self._token_expires:
+        if self.access_token and self._token_expires and datetime.now(timezone.utc) < self._token_expires:
             return
 
         # TODO: Реальный OAuth2 flow
@@ -39,7 +39,7 @@ class OLXAdapter(PlatformAdapter):
         #     )
         #     data = response.json()
         #     self.access_token = data["access_token"]
-        #     self._token_expires = datetime.now(UTC) + timedelta(seconds=data["expires_in"])
+        #     self._token_expires = datetime.now(timezone.utc) + timedelta(seconds=data["expires_in"])
 
     async def receive_messages(self, since: datetime | None = None) -> list[IncomingMessage]:
         """Получить новые сообщения из OLX threads."""
@@ -70,11 +70,11 @@ class OLXAdapter(PlatformAdapter):
         #     )
 
         return SentMessage(
-            message_id=f"olx_{int(datetime.now(UTC).timestamp())}",
+            message_id=f"olx_{int(datetime.now(timezone.utc).timestamp())}",
             platform="olx",
             recipient_id=recipient_id,
             text=text,
-            timestamp=datetime.now(UTC),
+            timestamp=datetime.now(timezone.utc),
         )
 
     async def mark_as_read(self, message_id: str) -> bool:

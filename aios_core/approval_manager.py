@@ -6,7 +6,7 @@ Supports UUID-based IDs, timeout expiration, and rich querying.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from .storage import Database
 
@@ -173,7 +173,7 @@ class ApprovalManager:
             return
         from datetime import timedelta
 
-        cutoff = (datetime.now(UTC) - timedelta(seconds=self.timeout_seconds)).isoformat()
+        cutoff = (datetime.now(timezone.utc) - timedelta(seconds=self.timeout_seconds)).isoformat()
         now = Database.now_iso()
         self.db.execute(
             """UPDATE approvals

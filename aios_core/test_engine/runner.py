@@ -175,4 +175,4 @@ class TestRunner:
 def _now_iso() -> str:
     from datetime import datetime
 
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()

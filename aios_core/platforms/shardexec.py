@@ -20,7 +20,7 @@ import sqlite3
 import subprocess
 import threading
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Self
 
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS shard_heartbeats (
 
 
 def _now() -> str:
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 class ShardJobs:
@@ -179,7 +179,7 @@ class ShardJobs:
         """
         from datetime import datetime as _dt
 
-        now_dt = _dt.fromisoformat(now) if now else _dt.now(UTC)
+        now_dt = _dt.fromisoformat(now) if now else _dt.now(timezone.utc)
         moved: list[dict] = []
         with self._lock, self._conn:
             for job in self.list(status="claimed"):
@@ -203,7 +203,7 @@ class ShardJobs:
         """Глубина очереди и счётчики по статусам (+зависшие claim'ы)."""
         from datetime import datetime as _dt
 
-        now_dt = _dt.fromisoformat(now) if now else _dt.now(UTC)
+        now_dt = _dt.fromisoformat(now) if now else _dt.now(timezone.utc)
         counts: dict[str, int] = {}
         with self._lock:
             for row in self._conn.execute("SELECT status, COUNT(*) AS n FROM shard_jobs GROUP BY status").fetchall():

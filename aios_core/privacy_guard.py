@@ -11,7 +11,7 @@ Core Principle 3 (Memory Separation) enforcement:
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 
 class PrivacyGuard:
@@ -90,7 +90,7 @@ class PrivacyGuard:
         """
         result = self._check_rules(memory_category, action, agent_id)
         log_entry = {
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "agent_id": agent_id,
             "memory_category": memory_category,
             "action": action,
@@ -131,7 +131,7 @@ class PrivacyGuard:
             }
             self._access_log.append(
                 {
-                    "timestamp": datetime.now(UTC).isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "agent_id": target,
                     "memory_category": data_classification,
                     "action": "share",
@@ -164,7 +164,7 @@ class PrivacyGuard:
 
         self._access_log.append(
             {
-                "timestamp": datetime.now(UTC).isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "agent_id": target,
                 "memory_category": data_classification,
                 "action": "share",

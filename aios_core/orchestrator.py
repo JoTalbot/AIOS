@@ -18,7 +18,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any
 
@@ -108,7 +108,7 @@ class Task:
     risk_level: str = "medium"
     steps: list[TaskStep] = field(default_factory=list)
     current_step_index: int = -1
-    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     started_at: str = None
     completed_at: str = None
     error: str = None
@@ -312,12 +312,12 @@ class Orchestrator:
 
         task.status = TaskStatus.RUNNING
         self.events.emit("task_started", "orchestrator", {"task_id": task.id, "name": task.name})
-        task.started_at = datetime.now(UTC).isoformat()
+        task.started_at = datetime.now(timezone.utc).isoformat()
 
         for i, step in enumerate(task.steps):
             task.current_step_index = i
             step.status = StepStatus.RUNNING
-            step.started_at = datetime.now(UTC).isoformat()
+            step.started_at = datetime.now(timezone.utc).isoformat()
 
             try:
                 # Constitutional check for this step
@@ -389,12 +389,12 @@ class Orchestrator:
                 break
 
             finally:
-                step.completed_at = datetime.now(UTC).isoformat()
+                step.completed_at = datetime.now(timezone.utc).isoformat()
                 self._log_execution(task, step)
 
         if task.status == TaskStatus.RUNNING:
             task.status = TaskStatus.COMPLETED
-            task.completed_at = datetime.now(UTC).isoformat()
+            task.completed_at = datetime.now(timezone.utc).isoformat()
             self.events.emit(
                 "task_completed",
                 "orchestrator",
@@ -481,7 +481,7 @@ class Orchestrator:
                 "step_type": step.step_type,
                 "status": step.status.value,
                 "error": step.error,
-                "timestamp": datetime.now(UTC).isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
         # Also persist to audit log

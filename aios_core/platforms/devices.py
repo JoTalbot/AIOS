@@ -19,7 +19,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import threading
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Self
 
@@ -85,7 +85,7 @@ class DevicePool:
 
     @staticmethod
     def _now() -> str:
-        return datetime.now(UTC).isoformat()
+        return datetime.now(timezone.utc).isoformat()
 
     # ------------------------------------------------------------------ #
     # реестр                                                               #
@@ -353,7 +353,7 @@ class DevicePool:
         Returns:
             Список serial-ов, переведённых в offline.
         """
-        cutoff = (datetime.now(UTC) - timedelta(seconds=max_silence_s)).isoformat()
+        cutoff = (datetime.now(timezone.utc) - timedelta(seconds=max_silence_s)).isoformat()
         with self._lock, self._conn:
             rows = self._conn.execute(
                 "SELECT serial FROM devices WHERE status != ? AND last_heartbeat < ?",

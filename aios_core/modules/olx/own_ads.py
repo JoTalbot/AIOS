@@ -6,7 +6,7 @@ import hashlib
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .text_utils import normalize_text, parse_price
@@ -143,7 +143,7 @@ class OwnAdsTracker:
 
     def record_snapshot(self, ads: list[OwnAd], seen_at: str | None = None) -> dict[str, object]:
         """Persist one snapshot of all own ads; reports counter deltas."""
-        now = seen_at or datetime.now(UTC).isoformat()
+        now = seen_at or datetime.now(timezone.utc).isoformat()
         result: dict[str, object] = {"recorded": len(ads), "new": 0, "deltas": {}}
         for ad in ads:
             is_new = self.storage.upsert_own_ad(ad, seen_at=now)
@@ -168,7 +168,7 @@ class OwnAdsTracker:
         now: datetime | None = None,
     ) -> list[dict[str, object]]:
         """Listings old enough to judge but getting too few views per day."""
-        now = now or datetime.now(UTC)
+        now = now or datetime.now(timezone.utc)
         report: list[dict[str, object]] = []
         for row in self.storage.own_ads(status="active"):
             first_seen = row.get("first_seen_at")

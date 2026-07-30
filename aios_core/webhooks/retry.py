@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -30,7 +30,7 @@ class WebhookRetryHandler:
                 "args": str(args),
                 "kwargs": str(kwargs),
                 "error": error,
-                "timestamp": datetime.now(UTC).isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "retry_count": self.max_retries,
             }
         )

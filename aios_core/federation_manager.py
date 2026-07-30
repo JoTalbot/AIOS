@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import StrEnum
 
 from .storage import Database
@@ -82,7 +82,7 @@ class FederationManager:
             name=f"AIOS-{self.local_node_id}",
             endpoint="http://localhost:8000",
             status=NodeStatus.ONLINE,
-            last_seen=datetime.now(UTC).isoformat(),
+            last_seen=datetime.now(timezone.utc).isoformat(),
             capabilities=["orchestration", "memory", "evolution", "constitution"],
             version="3.1.0",
         )
@@ -104,7 +104,7 @@ class FederationManager:
             name=name,
             endpoint=endpoint,
             status=NodeStatus.ONLINE,
-            last_seen=datetime.now(UTC).isoformat(),
+            last_seen=datetime.now(timezone.utc).isoformat(),
             capabilities=capabilities or [],
             version=version,
         )
@@ -137,7 +137,7 @@ class FederationManager:
     def heartbeat(self, node_id: str) -> bool:
         """Update last_seen timestamp for a node."""
         if node_id in self._nodes:
-            self._nodes[node_id].last_seen = datetime.now(UTC).isoformat()
+            self._nodes[node_id].last_seen = datetime.now(timezone.utc).isoformat()
             self._nodes[node_id].status = NodeStatus.ONLINE
             self._persist_node(self._nodes[node_id])
             return True

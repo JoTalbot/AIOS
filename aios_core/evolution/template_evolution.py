@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,7 +39,7 @@ class TemplateEvolution:
             return {"status": "not_found"}
         template.content = variant.content
         template.version += 1
-        template.updated_at = datetime.now(UTC)
+        template.updated_at = datetime.now(timezone.utc)
         variant.is_active = False
         await self.db.commit()
         return {"status": "promoted", "new_version": template.version}

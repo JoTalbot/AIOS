@@ -6,7 +6,7 @@ Uses RozetkaStorage for persistence and RozetkaCollector for data gathering.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from aios_core.modules.rozetka.storage import RozetkaStorage
 
@@ -116,7 +116,7 @@ class RozetkaPriceTracker:
                         new_price=new_price,
                         url=ad.url,
                         drop_pct=drop_pct,
-                        seen_at=latest.get("seen_at", datetime.now(UTC).isoformat()),
+                        seen_at=latest.get("seen_at", datetime.now(timezone.utc).isoformat()),
                     )
                 )
 

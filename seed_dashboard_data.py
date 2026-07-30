@@ -4,7 +4,7 @@ import json
 import os
 import sqlite3
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 DB_PATH = os.environ.get("AIOS_DB_PATH", "/app/data/aios.sqlite")
 
@@ -74,7 +74,7 @@ def seed(db_file=None):
         conn.close()
         return
 
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
 
     # --- Seed tasks ---
     task_statuses = [

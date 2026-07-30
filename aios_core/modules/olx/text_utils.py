@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 # Space-like characters OLX uses inside price strings.
 _SPACE_RE = re.compile(r"[    -   　]+")
@@ -121,7 +121,7 @@ def parse_published(text: str | None, now: datetime | None = None) -> str | None
     raw = normalize_text(text)
     if not raw:
         return None
-    now = now or datetime.now(UTC)
+    now = now or datetime.now(timezone.utc)
 
     match = _TODAY_RE.search(raw)
     if match:

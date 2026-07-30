@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import StrEnum
 
 
@@ -124,7 +124,7 @@ class TestReport:
     """Comprehensive test report across multiple suites."""
 
     report_id: str = ""
-    generated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    generated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     total_suites: int = 0
     total_tests: int = 0

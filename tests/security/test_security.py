@@ -194,12 +194,12 @@ class TestSecretsManagement:
 
     def test_expired_keys_rejected(self):
         """Test expired keys are rejected."""
-        from datetime import UTC, datetime, timedelta
+        from datetime import datetime, timezone, timedelta
 
         from aios_core.secret_manager import APIKey
 
         # Create expired key
-        expired_at = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+        expired_at = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
         key = APIKey(
             key="aios_test",
             subject="user",

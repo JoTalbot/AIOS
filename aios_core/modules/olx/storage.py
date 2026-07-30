@@ -19,7 +19,7 @@ import io
 import json
 import sqlite3
 import threading
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Self
 
@@ -205,7 +205,7 @@ class OLXStorage:
 
     def save_ads_with_new(self, cards: list[AdCard], seen_at: str | None = None) -> tuple[int, list[str]]:
         """Like :meth:`save_ads`, but also returns the *new* fingerprints."""
-        now = seen_at or datetime.now(UTC).isoformat()
+        now = seen_at or datetime.now(timezone.utc).isoformat()
         new_fingerprints: list[str] = []
         inserted = 0
         with self._lock, self._conn:
@@ -408,7 +408,7 @@ class OLXStorage:
         """
         if not fingerprint:
             return False
-        now = seen_at or datetime.now(UTC).isoformat()
+        now = seen_at or datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 "INSERT OR IGNORE INTO olx_seen (fingerprint, kind, ref, first_seen_at) VALUES (?, ?, ?, ?)",
@@ -440,12 +440,12 @@ class OLXStorage:
             action: точечное имя действия (``outbox.enqueue`` и т.п.).
             detail: человекочитаемый контекст (без секретов!).
             ref: ссылка на сущность (id строки, fingerprint...).
-            at: ISO-метка времени (по умолчанию — сейчас, UTC).
+            at: ISO-метка времени (по умолчанию — сейчас, timezone.utc).
 
         Returns:
             id вставленной строки.
         """
-        stamp = at or datetime.now(UTC).isoformat()
+        stamp = at or datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 "INSERT INTO olx_audit (at, action, detail, ref) VALUES (?, ?, ?, ?)",
@@ -468,7 +468,7 @@ class OLXStorage:
 
     def enqueue_outbox(self, chat_key: str, text: str, interlocutor: str | None = None) -> int:
         """Queue a reply draft; returns the outbox row id."""
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 """
@@ -502,7 +502,7 @@ class OLXStorage:
 
     def outbox_mark(self, outbox_id: int, status: str, result: str | None = None) -> bool:
         """Transition an outbox row (pending → sent/failed/cancelled)."""
-        sent_at = datetime.now(UTC).isoformat() if status == "sent" else None
+        sent_at = datetime.now(timezone.utc).isoformat() if status == "sent" else None
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 "UPDATE olx_outbox SET status = ?, sent_at = COALESCE(?, sent_at), result = ? WHERE id = ?",
@@ -524,7 +524,7 @@ class OLXStorage:
         ``ad`` is an OwnAd-like object with title/price/currency/url/ad_id/
         status/views/*/fingerprint. Returns True when the ad is new.
         """
-        now = seen_at or datetime.now(UTC).isoformat()
+        now = seen_at or datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 """
@@ -621,7 +621,7 @@ class OLXStorage:
         city: str | None = None,
     ) -> int:
         """Save a named search subscription (filters for new-ad alerts)."""
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 """
@@ -647,7 +647,7 @@ class OLXStorage:
 
     def subscription_touch(self, subscription_id: int) -> None:
         """Execute subscription touch."""
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             self._conn.execute(
                 "UPDATE olx_subscriptions SET last_checked_at = ? WHERE id = ?",
@@ -656,7 +656,7 @@ class OLXStorage:
 
     def favorite_add(self, fingerprint: str) -> bool:
         """Execute favorite add."""
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 "INSERT OR IGNORE INTO olx_favorites (fingerprint, added_at) VALUES (?, ?)",
@@ -686,7 +686,7 @@ class OLXStorage:
         seen_at: str | None = None,
     ) -> bool:
         """Record/refresh an own↔competitor relation. True when it is new."""
-        now = seen_at or datetime.now(UTC).isoformat()
+        now = seen_at or datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 """
@@ -725,7 +725,7 @@ class OLXStorage:
 
     def profile_set(self, key: str, value: str | None) -> None:
         """Execute profile set."""
-        now = datetime.now(UTC).isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self._lock, self._conn:
             self._conn.execute(
                 """

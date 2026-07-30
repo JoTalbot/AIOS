@@ -7,7 +7,7 @@ Supports pattern extraction, recommendations, and task completion recording.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import TYPE_CHECKING
 
 __all__ = ["LearningEngine"]
@@ -68,7 +68,7 @@ class LearningEngine:
             content={
                 "type": "learning_experience",
                 "experience": experience,
-                "recorded_at": datetime.now(UTC).isoformat(),
+                "recorded_at": datetime.now(timezone.utc).isoformat(),
             },
             category="operational",
             tags=all_tags,
@@ -186,7 +186,7 @@ class LearningEngine:
         if self.memory is None:
             return []
 
-        cutoff = datetime.now(UTC) - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         cutoff_iso = cutoff.isoformat()
 
         memories = self.memory.search(
@@ -370,7 +370,7 @@ class LearningEngine:
             )
 
         # --- Factor 2: Time-of-day ---
-        current_hour = datetime.now(UTC).hour
+        current_hour = datetime.now(timezone.utc).hour
         temporal_data = self.analyze_temporal_patterns()
         temporal_rate: float | None = None
         for td in temporal_data:
