@@ -1,3 +1,4 @@
+nicegui
 # AIOS Core Dependencies Production
 python-dateutil
 PyYAML
