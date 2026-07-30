@@ -499,6 +499,48 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    # --- Frontier AI Code Synthesis, Vision RPA Grounding, Quantum AI & Planetary Sync (v11.36–v11.40) ---
+
+    async def ai_synthesize_patch(self, error_log: str, source_code: str) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/code/synthesize-patch"),
+                json={"error_log": error_log, "source_code": source_code},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_ground_rpa_action(self, action_description: str) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/perception/ground-action"),
+                json={"action_description": action_description},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_quantum_optimize_weights(self, weights: list[float]) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/quantum/optimize-weights"),
+                json={"weights": weights},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_planetary_sync(self, node_states: list[dict]) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/planetary/sync"),
+                json={"node_states": node_states},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
     # --- AI Governance, Safety Guard & Compliance Audit (v11.23.0) ---
 
     async def evaluate_action_safety(self, action: dict, tenant_id: str | None = None) -> dict:
@@ -712,6 +754,18 @@ class AIOSClientSync:
 
     def ai_mask_privacy_payload(self, *a, **kw):
         return self._run(self._async.ai_mask_privacy_payload(*a, **kw))
+
+    def ai_synthesize_patch(self, *a, **kw):
+        return self._run(self._async.ai_synthesize_patch(*a, **kw))
+
+    def ai_ground_rpa_action(self, *a, **kw):
+        return self._run(self._async.ai_ground_rpa_action(*a, **kw))
+
+    def ai_quantum_optimize_weights(self, *a, **kw):
+        return self._run(self._async.ai_quantum_optimize_weights(*a, **kw))
+
+    def ai_planetary_sync(self, *a, **kw):
+        return self._run(self._async.ai_planetary_sync(*a, **kw))
 
     def evaluate_action_safety(self, *a, **kw):
         return self._run(self._async.evaluate_action_safety(*a, **kw))

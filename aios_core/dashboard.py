@@ -2281,6 +2281,66 @@ class AIOSDashboard:
         res = vault.mask_sensitive_payload(payload=body["payload"])
         return JSONResponse(res)
 
+    async def api_ai_code_synthesize_patch(self, request: Request) -> JSONResponse:
+        """Synthesize code patch for error log (v11.36.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "error_log" not in body or "source_code" not in body:
+            return JSONResponse({"error": "request body must include 'error_log' and 'source_code'"}, status_code=400)
+
+        from .code_synthesis import AICodeSynthesizer
+
+        synth = AICodeSynthesizer()
+        res = synth.synthesize_patch(error_log=str(body["error_log"]), source_code=str(body["source_code"]))
+        return JSONResponse(res)
+
+    async def api_ai_perception_ground_action(self, request: Request) -> JSONResponse:
+        """Ground action description to UI click coordinates (v11.37.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "action_description" not in body:
+            return JSONResponse({"error": "request body must include 'action_description'"}, status_code=400)
+
+        from .vision_rpa_grounding import VisionRPAGroundingEngine
+
+        grounder = VisionRPAGroundingEngine()
+        res = grounder.ground_action_to_coordinates(action_description=str(body["action_description"]))
+        return JSONResponse(res)
+
+    async def api_ai_quantum_optimize_weights(self, request: Request) -> JSONResponse:
+        """Optimize routing weights via hybrid quantum variational circuit (v11.38.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "weights" not in body:
+            return JSONResponse({"error": "request body must include 'weights' list"}, status_code=400)
+
+        from .quantum_ai_pipeline import QuantumAIOptimizer
+
+        q_opt = QuantumAIOptimizer()
+        res = q_opt.optimize_routing_weights(weights=body["weights"])
+        return JSONResponse(res)
+
+    async def api_ai_planetary_sync(self, request: Request) -> JSONResponse:
+        """Synchronize AI state ledger across planetary edge mesh nodes (v11.39.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "node_states" not in body:
+            return JSONResponse({"error": "request body must include 'node_states' list"}, status_code=400)
+
+        from .planetary_ai_sync import PlanetaryAISyncEngine
+
+        sync_eng = PlanetaryAISyncEngine()
+        res = sync_eng.synchronize_mesh_state(node_states=body["node_states"])
+        return JSONResponse(res)
+
     async def api_governance_guard_evaluate(self, request: Request) -> JSONResponse:
         """Real-time pre-execution safety guard check for an agent action (v11.23.0)."""
         try:
@@ -3011,6 +3071,10 @@ class AIOSDashboard:
             Route("/api/ai/causal/what-if", self.api_ai_causal_what_if, methods=["POST"]),
             Route("/api/ai/swarm/autoscale", self.api_ai_swarm_autoscale, methods=["POST"]),
             Route("/api/ai/privacy/mask", self.api_ai_privacy_mask, methods=["POST"]),
+            Route("/api/ai/code/synthesize-patch", self.api_ai_code_synthesize_patch, methods=["POST"]),
+            Route("/api/ai/perception/ground-action", self.api_ai_perception_ground_action, methods=["POST"]),
+            Route("/api/ai/quantum/optimize-weights", self.api_ai_quantum_optimize_weights, methods=["POST"]),
+            Route("/api/ai/planetary/sync", self.api_ai_planetary_sync, methods=["POST"]),
             Route("/api/governance/guard/evaluate", self.api_governance_guard_evaluate, methods=["POST"]),
             Route("/api/governance/audit/run", self.api_governance_audit_run, methods=["POST"]),
             Route("/api/governance/compliance/score", self.api_governance_compliance_score, methods=["GET"]),
