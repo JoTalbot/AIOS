@@ -15,6 +15,8 @@ import logging
 import time
 from typing import Any
 
+from aios_core.substrate_energy_scheduler import RollingEnergyBudget
+
 logger = logging.getLogger(__name__)
 
 
@@ -184,3 +186,64 @@ class MultiTenantManager:
 
 
 multi_tenant = MultiTenantManager()
+
+
+class MultiTenantBudgetAllocator:
+    """Manages multi-tenant rolling energy budget allocation and enforcement (v11.18.0)."""
+
+    def __init__(self, global_limit: float = 1000.0, window_seconds: float = 3600.0) -> None:
+        self.global_limit = float(global_limit)
+        self.window_seconds = float(window_seconds)
+        self.global_budget = RollingEnergyBudget(limit=global_limit, window_seconds=window_seconds)
+        self.tenant_budgets: dict[str, RollingEnergyBudget] = {}
+
+    def allocate_tenant_budget(
+        self,
+        tenant_id: str,
+        limit: float,
+        window_seconds: float | None = None,
+    ) -> RollingEnergyBudget:
+        """Allocate a dedicated rolling energy budget for a tenant."""
+        window = float(window_seconds) if window_seconds is not None else self.window_seconds
+        budget = RollingEnergyBudget(limit=limit, window_seconds=window)
+        self.tenant_budgets[tenant_id] = budget
+        return budget
+
+    def get_tenant_budget(self, tenant_id: str) -> RollingEnergyBudget | None:
+        """Get assigned budget for tenant_id."""
+        return self.tenant_budgets.get(tenant_id)
+
+    def can_afford(self, tenant_id: str, cost: float) -> bool:
+        """Check if both tenant budget and global budget can afford cost."""
+        if not self.global_budget.can_afford(cost):
+            return False
+        tenant_b = self.get_tenant_budget(tenant_id)
+        return not (tenant_b is not None and not tenant_b.can_afford(cost))
+
+    def record_spend(self, tenant_id: str, cost: float) -> dict[str, Any]:
+        """Record an actual energy spend for tenant_id and global ledger."""
+        cost = float(cost)
+        self.global_budget.record(cost)
+        tenant_b = self.get_tenant_budget(tenant_id)
+        if tenant_b is not None:
+            tenant_b.record(cost)
+
+        return {
+            "tenant_id": tenant_id,
+            "cost": cost,
+            "global_remaining": round(self.global_budget.remaining(), 4),
+            "tenant_remaining": round(tenant_b.remaining(), 4) if tenant_b else None,
+            "tenant_pressure": round(tenant_b.pressure(), 4) if tenant_b else None,
+        }
+
+    def tenant_energy_report(self) -> dict[str, Any]:
+        """Aggregate report of energy usage across all tenants."""
+        tenants_data = {}
+        for tid, tb in self.tenant_budgets.items():
+            tenants_data[tid] = tb.to_dict()
+
+        return {
+            "global_budget": self.global_budget.to_dict(),
+            "tenants_count": len(self.tenant_budgets),
+            "tenant_budgets": tenants_data,
+        }

@@ -1,5 +1,12 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.18.0 ✅ (2026-07-30)
+- ✅ Multi-Tenant Energy Budget Allocation — `MultiTenantBudgetAllocator` в `aios_core/multitenancy.py`: распределение и контроль лимитов энергии по тенантам с глобальным капом
+- ✅ Swarm Workload Balancing — `SwarmWorkloadBalancer` в `aios_core/agent_swarm.py`: балансировка задач между агентами роя с учётом требуемых способностей и интеграцией с планировщиком субстратов
+- ✅ 2 новых интеграционных теста (test_v11_18_features)
+
+**~4350 tests, 0 failures**
+
 ## v11.17.0 ✅ (2026-07-30)
 - ✅ Forecast Metrics Export — `EnergyAwareScheduler.export_forecast_metrics(tasks, policy)`: экспорт результатов симуляции батча задач в формат метрик Prometheus до реального выполнения
 - ✅ Policy Auto-Tuner — `recommend_optimal_policy()` и `auto_tune_policy()`: авто-подбор и переключение политики маршрутизации планировщика на основе A/B сравнения истории выполнения
