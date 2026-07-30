@@ -339,6 +339,38 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    # --- AI Multi-LLM, RAG & Swarm Consensus (v11.22.0) ---
+
+    async def ai_generate(self, prompt: str, provider: str = "mock", model: str = "default-model") -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/generate"),
+                json={"prompt": prompt, "provider": provider, "model": model},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_augment(self, prompt: str, top_k: int = 3) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/augment"),
+                json={"prompt": prompt, "top_k": top_k},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_consensus(self, prompt: str, model: str = "default-model") -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/consensus"),
+                json={"prompt": prompt, "model": model},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
     # --- WebSocket helpers ---
 
     async def watch_events(self, on_event: Callable[[dict], None], channels: list[str] | None = None):
@@ -479,6 +511,15 @@ class AIOSClientSync:
 
     def run_self_healing(self, *a, **kw):
         return self._run(self._async.run_self_healing(*a, **kw))
+
+    def ai_generate(self, *a, **kw):
+        return self._run(self._async.ai_generate(*a, **kw))
+
+    def ai_augment(self, *a, **kw):
+        return self._run(self._async.ai_augment(*a, **kw))
+
+    def ai_consensus(self, *a, **kw):
+        return self._run(self._async.ai_consensus(*a, **kw))
 
 
 # Example: "agent in 30 lines"

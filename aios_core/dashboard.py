@@ -2033,6 +2033,75 @@ class AIOSDashboard:
         res = healer.run_anomaly_healing_cycle()
         return JSONResponse(res)
 
+    async def api_ai_generate(self, request: Request) -> JSONResponse:
+        """Execute LLM generation via multi-provider router with fallbacks (v11.22.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "prompt" not in body:
+            return JSONResponse({"error": "request body must include 'prompt' string"}, status_code=400)
+
+        from .llm_router import LLMMessage, LLMProvider, LLMRequest, LLMRouter
+
+        prompt = str(body["prompt"])
+        provider_str = body.get("provider", "mock")
+        try:
+            provider = LLMProvider(provider_str)
+        except ValueError:
+            provider = LLMProvider.MOCK
+
+        router = LLMRouter(energy_budget=_get_energy_scheduler().energy_budget)
+        llm_req = LLMRequest(
+            messages=[LLMMessage(role="user", content=prompt)],
+            provider=provider,
+            model=body.get("model", "default-model"),
+        )
+        resp = router.generate(llm_req)
+        return JSONResponse(
+            {
+                "content": resp.content,
+                "provider": resp.provider.value,
+                "model": resp.model,
+                "tokens_used": resp.tokens_used,
+                "estimated_cost": resp.estimated_cost,
+                "latency_ms": resp.latency_ms,
+                "fallback_occurred": resp.fallback_occurred,
+            }
+        )
+
+    async def api_ai_augment(self, request: Request) -> JSONResponse:
+        """Enrich prompt with RAG context from memory, vector store, and KG (v11.22.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "prompt" not in body:
+            return JSONResponse({"error": "request body must include 'prompt' string"}, status_code=400)
+
+        from .rag_augmentation import ContextAugmenter
+
+        augmenter = ContextAugmenter(memory_system=_get_memory_system())
+        res = augmenter.augment_prompt(prompt=str(body["prompt"]), top_k=body.get("top_k", 3))
+        return JSONResponse(res)
+
+    async def api_ai_consensus(self, request: Request) -> JSONResponse:
+        """Run multi-model swarm consensus loop across AI providers (v11.22.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "prompt" not in body:
+            return JSONResponse({"error": "request body must include 'prompt' string"}, status_code=400)
+
+        from .llm_router import LLMRouter
+        from .swarm_consensus import SwarmConsensusEngine
+
+        router = LLMRouter(energy_budget=_get_energy_scheduler().energy_budget)
+        engine = SwarmConsensusEngine(router=router)
+        res = engine.evaluate_consensus(prompt=str(body["prompt"]), model=body.get("model", "default-model"))
+        return JSONResponse(res)
+
     async def api_memory_health(self, request: Request) -> JSONResponse:
         """Get advanced memory health & vitality telemetry (v11.19.0)."""
         mem = _get_memory_system()
@@ -2704,6 +2773,9 @@ class AIOSDashboard:
             Route("/api/substrate/budget/throttle", self.api_substrate_budget_throttle, methods=["GET", "POST"]),
             Route("/api/substrate/policy/autotune", self.api_substrate_policy_autotune, methods=["POST"]),
             Route("/api/substrate/self-healing/run", self.api_substrate_self_healing_run, methods=["POST"]),
+            Route("/api/ai/generate", self.api_ai_generate, methods=["POST"]),
+            Route("/api/ai/augment", self.api_ai_augment, methods=["POST"]),
+            Route("/api/ai/consensus", self.api_ai_consensus, methods=["POST"]),
             Route("/api/substrate/schedule", self.api_substrate_schedule, methods=["POST"]),
             Route("/api/substrate/scheduler", self.api_substrate_scheduler),
             Route("/api/substrate/analytics", self.api_substrate_analytics),
