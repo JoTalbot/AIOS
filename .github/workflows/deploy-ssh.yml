@@ -96,7 +96,7 @@ jobs:
           ssh target-server << EOF
             set -euo pipefail
 
-            echo "🚀 [1/5] Synchronizing repository in ${APP_DIR}..."
+            echo "🚀 [1/6] Synchronizing repository in ${APP_DIR}..."
             mkdir -p "${APP_DIR}"
             if [ -d "${APP_DIR}/.git" ]; then
               cd "${APP_DIR}"
@@ -109,7 +109,8 @@ jobs:
               git checkout ${{ github.sha }} || git checkout main
             fi
 
-            echo "⚙️ [2/5] Configuring .env environment..."
+            echo "⚙️ [2/6] Configuring .env environment..."
+            cd "${APP_DIR}"
             if [ -n "${ENV_CONTENTS:-}" ]; then
               echo "${ENV_CONTENTS}" > .env
             elif [ ! -f .env ]; then
@@ -122,7 +123,20 @@ jobs:
               echo "GRAFANA_PASSWORD=\$GRAFANA_PASS" >> .env
             fi
 
-            echo "🐳 [3/5] Starting Docker Compose stack..."
+            echo "🔧 [3/6] Ensuring Docker & Docker Compose are installed on target server..."
+            if ! command -v docker >/dev/null 2>&1 || (! docker compose version >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1); then
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq || true
+              apt-get install -y -qq curl ca-certificates gnupg git || true
+              if ! command -v docker >/dev/null 2>&1; then
+                curl -fsSL https://get.docker.com | sh
+              fi
+              if ! docker compose version >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1; then
+                apt-get install -y -qq docker-compose-plugin || apt-get install -y -qq docker-compose || true
+              fi
+            fi
+
+            echo "🐳 [4/6] Starting Docker Compose stack..."
             BUILD_FLAGS=""
             if [ "${FORCE_REBUILD}" = "true" ]; then
               BUILD_FLAGS="--no-cache"
@@ -131,16 +145,19 @@ jobs:
             if docker compose version >/dev/null 2>&1; then
               docker compose -f docker-compose.prod.yml down --remove-orphans || true
               docker compose -f docker-compose.prod.yml up -d --build \$BUILD_FLAGS
-            else
+            elif command -v docker-compose >/dev/null 2>&1; then
               docker-compose -f docker-compose.prod.yml down --remove-orphans || true
               docker-compose -f docker-compose.prod.yml up -d --build \$BUILD_FLAGS
+            else
+              echo "Error: Neither 'docker compose' nor 'docker-compose' is available."
+              exit 1
             fi
 
-            echo "🩺 [4/5] Checking container status & health..."
+            echo "🩺 [5/6] Checking container status & health..."
             sleep 10
             curl -f http://localhost:8000/health || exit 1
 
-            echo "✅ Deployment completed successfully!"
+            echo "✅ [6/6] Deployment completed successfully!"
             if docker compose version >/dev/null 2>&1; then
               docker compose -f docker-compose.prod.yml ps
             else
