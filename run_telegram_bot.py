@@ -115,75 +115,38 @@ def cmd_start() -> str:
     return "🤖 <b>AIOS Control Panel</b>\n\nВыберите раздел:"
 
 MAIN_MENU_KEYBOARD = {
-    "inline_keyboard": [
-        [
-            {"text": "🧠 Кодер", "callback_data": "menu_coder"},
-            {"text": "📊 Статистика", "callback_data": "menu_stats"},
-        ],
-        [
-            {"text": "🛒 OLX", "callback_data": "menu_olx"},
-            {"text": "📱 Платформы", "callback_data": "menu_platforms"},
-        ],
-        [
-            {"text": "🖥️ Сервер", "callback_data": "menu_server"},
-            {"text": "🐳 Docker", "callback_data": "menu_docker"},
-        ],
-        [
-            {"text": "🔑 API Ключи", "callback_data": "menu_keys"},
-            {"text": "📋 Логи", "callback_data": "menu_logs"},
-        ],
-        [
-            {"text": "❓ Помощь", "callback_data": "menu_help"},
-        ],
-    ]
+    "keyboard": [
+        [{"text": "🧠 Кодер"}, {"text": "📊 Статистика"}],
+        [{"text": "🛒 OLX"}, {"text": "📱 Платформы"}],
+        [{"text": "🖥 Сервер"}, {"text": "🐳 Docker"}],
+        [{"text": "🔑 API Ключи"}, {"text": "📋 Логи"}],
+        [{"text": "🤖 Бот"}, {"text": "❓ Помощь"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
 }
 
 CODER_MENU_KEYBOARD = {
-    "inline_keyboard": [
-        [
-            {"text": "📋 Статус", "callback_data": "coder_status"},
-            {"text": "📦 Бэклог", "callback_data": "coder_backlog"},
-        ],
-        [
-            {"text": "⚖️ Балансер", "callback_data": "coder_balancer"},
-            {"text": "📜 Git", "callback_data": "coder_git_status"},
-        ],
-        [
-            {"text": "🔍 Review Bot", "callback_data": "coder_review_bot"},
-            {"text": "🔍 Review Collector", "callback_data": "coder_review_collector"},
-        ],
-        [
-            {"text": "🔍 Review Coder", "callback_data": "coder_review_self"},
-            {"text": "🔍 Review Orch", "callback_data": "coder_review_orch"},
-        ],
-        [
-            {"text": "✨ Написать код", "callback_data": "coder_gen_prompt"},
-            {"text": "🔧 Исправить баг", "callback_data": "coder_fix_prompt"},
-        ],
-        [
-            {"text": "🚀 Push", "callback_data": "coder_git_push"},
-            {"text": "🔄 Перезапуск", "callback_data": "coder_restart"},
-        ],
-        [
-            {"text": "◀️ Главное меню", "callback_data": "menu_back"},
-        ],
-    ]
+    "keyboard": [
+        [{"text": "📋 Статус"}, {"text": "📦 Бэклог"}],
+        [{"text": "⚖️ Балансер"}, {"text": "📜 Git"}],
+        [{"text": "🔍 Review Bot"}, {"text": "🔍 Review Coder"}],
+        [{"text": "✨ Написать код"}, {"text": "🔧 Исправить"}],
+        [{"text": "🚀 Push"}, {"text": "🔄 Перезапуск"}],
+        [{"text": "◀️ Меню"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
 }
 
 OLX_MENU_KEYBOARD = {
-    "inline_keyboard": [
-        [
-            {"text": "📊 Статистика", "callback_data": "olx_stats"},
-            {"text": "📋 Подписки", "callback_data": "olx_list"},
-        ],
-        [
-            {"text": "🆕 Последние", "callback_data": "olx_latest"},
-            {"text": "📈 Аналитика", "callback_data": "olx_analytics"},
-        ],
-        [
-            {"text": "◀️ Главное меню", "callback_data": "menu_back"},
-        ],
-    ]
+    "keyboard": [
+        [{"text": "📊 OLX Стат"}, {"text": "📋 Подписки"}],
+        [{"text": "🆕 Последние"}, {"text": "📈 Аналитика"}],
+        [{"text": "◀️ Меню"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
 }
 
 
@@ -570,6 +533,236 @@ _chat_history: dict[int, list[dict]] = {}  # chat_id -> message history
 MAX_HISTORY = 20  # keep last 20 messages per chat
 
 
+def _handle_button(api: TelegramAPI, chat_id: int, data: str) -> None:
+    """Handle button press by action name."""
+    reply = None
+    keyboard = None
+
+    if data == "menu_back":
+        reply = chr(127899) + " <b>AIOS Control Panel</b>" + chr(10) + chr(10) + chr(129504) + " Koder 24/7"
+        keyboard = MAIN_MENU_KEYBOARD
+    elif data == "menu_stats":
+        reply = cmd_stats()
+    elif data == "menu_platforms":
+        reply = cmd_platforms()
+    elif data == "menu_help":
+        reply = cmd_help()
+    elif data == "menu_coder":
+        reply = chr(129504) + " <b>Koder</b>" + chr(10) + chr(10) + "Vyberite deistvie:"
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "menu_olx":
+        reply = chr(128722) + " <b>OLX</b>"
+        keyboard = OLX_MENU_KEYBOARD
+    elif data == "menu_bot":
+        reply = chr(129302) + " <b>Bot</b>"
+        keyboard = BOT_MENU_KEYBOARD
+    elif data == "menu_server":
+        import subprocess as _sp
+        try:
+            uptime = _sp.run(["uptime", "-p"], capture_output=True, text=True, timeout=5).stdout.strip()
+            mem = _sp.run(["free", "-h"], capture_output=True, text=True, timeout=5).stdout
+            lines = [chr(128421) + " <b>Server</b>", "", chr(9201) + " " + uptime, ""]
+            for l in mem.strip().split(chr(10))[:2]:
+                lines.append(chr(128190) + " " + l.strip())
+            reply = chr(10).join(lines)
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+    elif data == "menu_docker":
+        import subprocess as _sp
+        try:
+            ps = _sp.run(["docker", "ps", "--format", "{{.Names}}: {{.Status}}"], capture_output=True, text=True, timeout=10)
+            lines = [chr(128051) + " <b>Docker</b>", ""]
+            for l in ps.stdout.strip().split(chr(10)):
+                if l:
+                    name, st = (l.split(": ", 1) if ": " in l else (l, ""))
+                    em = chr(9989) if "Up" in st else chr(10060)
+                    lines.append(em + " <b>" + name + "</b> " + st)
+            reply = chr(10).join(lines)
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+    elif data == "menu_keys":
+        import importlib.util as _iu, sys as _sys, os as _os
+        try:
+            spec = _iu.spec_from_file_location("lb_k", "/app/aios_core/llm_balancer.py")
+            mod = _iu.module_from_spec(spec)
+            _sys.modules["lb_k"] = mod
+            spec.loader.exec_module(mod)
+            b = mod.LLMBalancer()
+            s = b.status()
+            total_k = sum(p.get("keys_total", 0) for p in s.get("providers", {}).values())
+            avail_k = sum(p.get("keys_available", 0) for p in s.get("providers", {}).values())
+            lines = [chr(128273) + " <b>API Keys</b> (" + str(avail_k) + "/" + str(total_k) + ")", ""]
+            for pn, pd in s.get("providers", {}).items():
+                a = pd.get("keys_available", 0)
+                t = pd.get("keys_total", 0)
+                bar = chr(128994) * a + chr(128308) * (t - a)
+                lines.append("<b>" + pn.upper() + "</b> " + bar + " " + str(a) + "/" + str(t))
+            reply = chr(10).join(lines)
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+    elif data == "menu_logs":
+        import subprocess as _sp
+        try:
+            logs = _sp.run(["tail", "-15", "/root/AIOS/logs/coder_orchestrator.log"], capture_output=True, text=True, timeout=5)
+            t = logs.stdout.strip() or "Empty"
+            reply = chr(128203) + " <b>Logs</b>" + chr(10) + chr(10) + "<pre>" + t[:3000].replace("<", "&lt;") + "</pre>"
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+    elif data == "coder_status":
+        reply = cmd_coder_status()
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_backlog":
+        import json as _j
+        try:
+            with open("/app/data/coder_backlog.json") as f:
+                bl = _j.load(f)
+            lines = [chr(128230) + " <b>Backlog</b>", ""]
+            lines.append("Cycles: " + str(bl.get("cycle_count", 0)))
+            lines.append(chr(9989) + " Done: " + str(bl.get("completed", 0)))
+            lines.append(chr(10060) + " Failed: " + str(bl.get("failed", 0)))
+            tasks = bl.get("tasks", [])
+            if tasks:
+                lines.append("")
+                lines.append("<b>Tasks:</b>")
+                for i, t in enumerate(tasks[:5], 1):
+                    lines.append("  " + str(i) + ". " + t.get("description", "?")[:60])
+            hist = bl.get("history", [])
+            if hist:
+                lines.append("")
+                lines.append("<b>History (last 5):</b>")
+                for h in hist[-5:]:
+                    em = chr(9989) if h.get("status") == "pushed" else chr(9208)
+                    lines.append("  " + em + " " + h.get("description", "?")[:50])
+            reply = chr(10).join(lines)
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_balancer":
+        import importlib.util as _iu, sys as _sys
+        try:
+            spec = _iu.spec_from_file_location("lb_b", "/app/aios_core/llm_balancer.py")
+            mod = _iu.module_from_spec(spec)
+            _sys.modules["lb_b"] = mod
+            spec.loader.exec_module(mod)
+            b = mod.LLMBalancer()
+            s = b.status()
+            lines = [chr(9878) + " <b>Balancer</b>", ""]
+            lines.append("Requests: " + str(s.get("total_requests", 0)))
+            lines.append("Errors: " + str(s.get("total_errors", 0)))
+            lines.append("")
+            for pn, pd in s.get("providers", {}).items():
+                a = pd.get("keys_available", 0)
+                t = pd.get("keys_total", 0)
+                em = chr(9989) if a > 0 else chr(10060)
+                lines.append(em + " <b>" + pn.upper() + "</b>: " + str(a) + "/" + str(t))
+            reply = chr(10).join(lines)
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_git_status":
+        try:
+            mod = _get_coder_module()
+            coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
+            gs = coder.git.status()
+            reply = chr(128220) + " <b>Git</b>" + chr(10) + chr(10) + (gs or chr(9989) + " Clean")
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_git_push":
+        try:
+            mod = _get_coder_module()
+            coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
+            ok, out = coder.git.push()
+            reply = chr(128640) + " " + ("Pushed" if ok else out[:200])
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_review_bot":
+        reply = cmd_code_review("run_telegram_bot.py")
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_review_self":
+        reply = cmd_code_review("aios_core/meta_cognitive_self_coder.py")
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "coder_gen_prompt":
+        _pending_actions[chat_id] = "gen_code"
+        reply = chr(9997) + " <b>Send description of what to generate</b>"
+    elif data == "coder_fix_prompt":
+        _pending_actions[chat_id] = "fix_bug"
+        reply = chr(128295) + " <b>Send: filename bug_description</b>"
+    elif data == "coder_restart":
+        import subprocess as _sp
+        try:
+            _sp.run(["systemctl", "restart", "aios-auto-coder"], timeout=10)
+            reply = chr(128260) + " <b>Orchestrator restarted!</b>"
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = CODER_MENU_KEYBOARD
+    elif data == "olx_stats":
+        reply = cmd_olx("")
+        keyboard = OLX_MENU_KEYBOARD
+    elif data == "olx_list":
+        reply = cmd_olx_list(chat_id)
+        keyboard = OLX_MENU_KEYBOARD
+    elif data == "olx_latest":
+        reply = cmd_olx_latest("", chat_id)
+        keyboard = OLX_MENU_KEYBOARD
+    elif data == "olx_analytics":
+        reply = "Use: <code>/olx_analytics query</code>"
+        keyboard = OLX_MENU_KEYBOARD
+    elif data == "bot_start":
+        import subprocess as _sp
+        try:
+            _sp.run(["docker", "compose", "-f", "/root/AIOS/docker-compose.prod.yml", "start", "aios-telegram-bot"], timeout=15)
+            reply = chr(9654) + " <b>Bot started!</b>"
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = BOT_MENU_KEYBOARD
+    elif data == "bot_pause":
+        global _paused
+        _paused = not _paused
+        if _paused:
+            reply = chr(9208) + " <b>Bot paused</b>" + chr(10) + "Messages skipped. Press again to resume."
+        else:
+            reply = chr(9654) + " <b>Bot resumed!</b>"
+        keyboard = BOT_MENU_KEYBOARD
+    elif data == "bot_restart":
+        import subprocess as _sp
+        try:
+            _sp.run(["docker", "compose", "-f", "/root/AIOS/docker-compose.prod.yml", "restart", "aios-telegram-bot"], timeout=30)
+            reply = chr(9989) + " <b>Bot restarted!</b>"
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = BOT_MENU_KEYBOARD
+    elif data == "bot_stop":
+        import subprocess as _sp
+        try:
+            api.send_message(chat_id, chr(9209) + " <b>Bot stopping...</b>")
+            _sp.run(["docker", "compose", "-f", "/root/AIOS/docker-compose.prod.yml", "stop", "aios-telegram-bot"], timeout=30)
+        except:
+            pass
+        return
+    elif data == "bot_status":
+        import subprocess as _sp
+        try:
+            ps = _sp.run(["docker", "ps", "-a", "--filter", "name=aios-telegram-bot", "--format", "{{.Status}}"], capture_output=True, text=True, timeout=5)
+            reply = chr(128202) + " <b>Bot Status</b>" + chr(10) + chr(10) + (ps.stdout.strip() or "Not found")
+        except Exception as e:
+            reply = chr(10060) + " " + str(e)
+        keyboard = BOT_MENU_KEYBOARD
+
+    if reply:
+        try:
+            if keyboard:
+                api.send_message(chat_id, reply, reply_markup=keyboard)
+            else:
+                api.send_message(chat_id, reply)
+        except Exception as e:
+            try:
+                api.send_message(chat_id, reply)
+            except:
+                pass
+
+
 def _handle_callback(api: TelegramAPI, upd: dict) -> None:
     """Handle inline button callbacks."""
     cb = upd.get("callback_query", {})
@@ -722,6 +915,46 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
         return "Error: " + str(e)
 
 
+# Button text -> action mapping
+BUTTON_ACTIONS = {
+    # Main menu
+    "🧠 Кодер": "menu_coder",
+    "📊 Статистика": "menu_stats",
+    "🛒 OLX": "menu_olx",
+    "📱 Платформы": "menu_platforms",
+    "🖥 Сервер": "menu_server",
+    "🐳 Docker": "menu_docker",
+    "🔑 API Ключи": "menu_keys",
+    "📋 Логи": "menu_logs",
+    "🤖 Бот": "menu_bot",
+    "❓ Помощь": "menu_help",
+    "◀️ Меню": "menu_back",
+    # Coder menu
+    "📋 Статус": "coder_status",
+    "📦 Бэклог": "coder_backlog",
+    "⚖️ Балансер": "coder_balancer",
+    "📜 Git": "coder_git_status",
+    "🔍 Review Bot": "coder_review_bot",
+    "🔍 Review Coder": "coder_review_self",
+    "✨ Написать код": "coder_gen_prompt",
+    "🔧 Исправить": "coder_fix_prompt",
+    "🚀 Push": "coder_git_push",
+    "🔄 Перезапуск": "coder_restart",
+    # OLX menu
+    "📊 OLX Стат": "olx_stats",
+    "📋 Подписки": "olx_list",
+    "🆕 Последние": "olx_latest",
+    "📈 Аналитика": "olx_analytics",
+    # Bot menu
+    "▶️ Старт": "bot_start",
+    "⏸️ Пауза": "bot_pause",
+    "🔄 Рестарт": "bot_restart",
+    "⏹️ Стоп": "bot_stop",
+    "📊 Статус бота": "bot_status",
+}
+
+
+
 def run_bot(token: str) -> None:
     api = TelegramAPI(token)
     offset = 0
@@ -768,8 +1001,11 @@ def run_bot(token: str) -> None:
 
                 cmd, args = parse_command(text)
                 if not cmd.startswith("/"):
-                    # Not a command — send to LLM chat
-                    if chat_id in _pending_actions:
+                    # Check if it is a button press
+                    btn_action = BUTTON_ACTIONS.get(text)
+
+                    # Handle pending actions first
+                    if chat_id in _pending_actions and not btn_action:
                         action = _pending_actions.pop(chat_id)
                         reply = None
                         if action == "gen_code":
@@ -780,11 +1016,15 @@ def run_bot(token: str) -> None:
                             api.send_message(chat_id, reply)
                         continue
 
+                    if btn_action:
+                        # Handle button press same as callback
+                        _handle_button(api, chat_id, btn_action)
+                        print(f"  -> button {btn_action} (chat {chat_id})")
+                        continue
+
                     # Regular chat message — send to LLM
-                    api.send_message(chat_id, chr(9203) + " <i>Dumayu...</i>")
                     llm_reply = _llm_chat(chat_id, text)
                     if llm_reply:
-                        # Escape HTML
                         llm_reply = llm_reply.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                         api.send_message(chat_id, llm_reply)
                         print(f"  -> LLM chat (chat {chat_id})")
