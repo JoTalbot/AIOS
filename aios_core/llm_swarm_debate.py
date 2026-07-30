@@ -1,5 +1,5 @@
 """
-LLM Swarm Debate Controller (Vector 2: ChromaDB Deep RAG Activated)
+LLM Swarm Debate Controller (Vector 2: ChromaDB Deep RAG + OpenRouter)
 Интеграция реальных LLM-моделей и векторной памяти в процесс дебатов Роя.
 """
 import os
@@ -21,7 +21,7 @@ except Exception as e:
     print(f"ChromaDB Init Error: {e}")
 
 class SwarmAgent:
-    def __init__(self, name: str, role: str, system_prompt: str, model: str = "gpt-3.5-turbo"):
+    def __init__(self, name: str, role: str, system_prompt: str, model: str = "openrouter/openai/gpt-4o-mini"):
         self.name = name
         self.role = role
         self.system_prompt = system_prompt
@@ -48,9 +48,13 @@ class SwarmAgent:
         full_context = context + rag_context
         self.memory.append({"role": "user", "content": full_context})
         
-        if LITELLM_AVAILABLE and os.environ.get("OPENAI_API_KEY"):
+        # Проверяем наличие ключа OpenRouter (или OpenAI как резервного)
+        api_key_available = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPENAI_API_KEY")
+        
+        if LITELLM_AVAILABLE and api_key_available:
             print(f"📡 [LLM Call -> {self.model}] Ожидание ответа от {self.name}...")
-            response = completion(model=self.model, messages=self.memory)
+            # Ставим max_tokens, чтобы обойти ошибку кредитов OpenRouter для бесплатного аккаунта
+            response = completion(model=self.model, messages=self.memory, max_tokens=250)
             reply = response.choices[0].message.content
         else:
             print(f"⚠️ [Mock LLM] API Ключ не найден, использую заглушку для {self.name}...")
@@ -67,14 +71,15 @@ class SwarmAgent:
 
 class LLMSwarm:
     def __init__(self):
+        # Подключаем Мульти-модельный рой через OpenRouter
         self.agents = {
-            "architect": SwarmAgent("Nexus", "Architect", "Ты Архитектор AIOS."),
-            "security": SwarmAgent("Shield", "Security", "Ты Страж. Отклоняй небезопасное."),
-            "developer": SwarmAgent("Coder", "Developer", "Ты Кодер.")
+            "architect": SwarmAgent("Nexus", "Architect", "Ты Архитектор AIOS. Планируй новые системы коротко и ясно.", model="openrouter/anthropic/claude-3-haiku"),
+            "security": SwarmAgent("Shield", "Security", "Ты Страж. Отклоняй небезопасное. Отвечай кратко.", model="openrouter/openai/gpt-4o-mini"),
+            "developer": SwarmAgent("Coder", "Developer", "Ты Кодер. Решай задачу. Пиши код коротко.", model="openrouter/meta-llama/llama-3.1-8b-instruct")
         }
 
     def start_debate(self, topic: str) -> str:
-        print(f"\n💬 --- ЗАПУСК ДЕБАТОВ (С ПАМЯТЬЮ): {topic} ---\n")
+        print(f"\n💬 --- ЗАПУСК ДЕБАТОВ (С ПАМЯТЬЮ И OPENROUTER): {topic} ---\n")
         arch_idea = self.agents["architect"].generate_response(topic)
         print(f"🤖 [Architect] Nexus: {arch_idea}\n")
         sec_review = self.agents["security"].generate_response(f"Проверь идею: {arch_idea}")
