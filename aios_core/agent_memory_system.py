@@ -291,6 +291,7 @@ class AgentMemorySystem:
         memory_type: MemoryType | None = None,
         min_strength: float = 0.1,
         limit: int = 20,
+        max_age_days: float | None = None,
     ) -> list[MemoryEntry]:
         """Retrieve relevant memories.
 
@@ -301,10 +302,20 @@ class AgentMemorySystem:
             memory_type: Filter by memory type.
             min_strength: Minimum memory strength threshold.
             limit: Maximum results.
+            max_age_days: Optional upper bound on entry age in days
+                (v11.14.0); entries older than this are skipped. Must be
+                non-negative when given.
 
         Returns:
             List of matching MemoryEntry sorted by strength.
         """
+        if max_age_days is not None:
+            try:
+                max_age_days = float(max_age_days)
+            except (TypeError, ValueError):
+                raise ValueError("max_age_days must be a number") from None
+            if max_age_days < 0:
+                raise ValueError("max_age_days must be >= 0")
         all_memories = []
 
         pools = []
@@ -324,6 +335,8 @@ class AgentMemorySystem:
                 if action and entry.action != action:
                     continue
                 if result and entry.result != result:
+                    continue
+                if max_age_days is not None and entry.age_days > max_age_days:
                     continue
                 if entry.strength < min_strength:
                     continue
@@ -695,6 +708,7 @@ class AgentMemorySystem:
         query: str,
         limit: int = 20,
         pools: str = "all",
+        max_age_days: float | None = None,
     ) -> list[dict[str, Any]]:
         """Token-based keyword search across memory entries (no vectors).
 
@@ -707,10 +721,20 @@ class AgentMemorySystem:
             limit: max results.
             pools: "all" (short+long+episodic), "short_term", "long_term",
                 "episodic" or "archive" (cold storage from v11.5.0).
+            max_age_days: Optional upper bound on entry age in days
+                (v11.14.0); older entries are excluded before scoring.
+                Must be non-negative when given.
 
         Returns:
             [{**entry.to_dict(), "score"}] sorted by score then strength.
         """
+        if max_age_days is not None:
+            try:
+                max_age_days = float(max_age_days)
+            except (TypeError, ValueError):
+                raise ValueError("max_age_days must be a number") from None
+            if max_age_days < 0:
+                raise ValueError("max_age_days must be >= 0")
         tokens = [t for t in re.split(r"\W+", query.lower()) if t]
         if not tokens:
             return []
@@ -725,6 +749,9 @@ class AgentMemorySystem:
             candidates = list(self._archive)
         else:
             candidates = [*self._short_term, *self._long_term, *self._episodic]
+
+        if max_age_days is not None:
+            candidates = [e for e in candidates if e.age_days <= max_age_days]
 
         scored: list[tuple[float, MemoryEntry]] = []
         for entry in candidates:

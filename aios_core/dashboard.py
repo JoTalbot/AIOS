@@ -1922,6 +1922,84 @@ class AIOSDashboard:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(result)
 
+    async def api_substrate_dispatches_preview(self, request: Request) -> JSONResponse:
+        """Dry-run scheduler-dispatch retention (v11.14.0).
+
+        POST body: {"keep_last": optional int, "older_than_seconds":
+        optional number} — at least one criterion required. Read-only
+        mirror of the engine history preview: purging scheduler history
+        never touches engine history or the rolling budget ledger.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        try:
+            result = _get_energy_scheduler().preview_purge_dispatches(
+                keep_last=body.get("keep_last"),
+                older_than_seconds=body.get("older_than_seconds"),
+            )
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(result)
+
+    async def api_substrate_dispatches_purge(self, request: Request) -> JSONResponse:
+        """Irreversibly purge scheduler dispatch records (v11.14.0).
+
+        The body MUST include {"confirm": true}. Note: the rolling
+        budget ledger is unaffected — purging never refunds spend.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if body.get("confirm") is not True:
+            return JSONResponse(
+                {
+                    "error": 'dispatches purge is irreversible — pass {"confirm": true} '
+                    "(dry-run available at /api/substrate/dispatches/preview)"
+                },
+                status_code=400,
+            )
+        try:
+            result = _get_energy_scheduler().purge_dispatches(
+                keep_last=body.get("keep_last"),
+                older_than_seconds=body.get("older_than_seconds"),
+            )
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(result)
+
+    async def api_substrate_budget_alerts(self, request: Request) -> JSONResponse:
+        """Rolling-budget pressure alerts (v11.14.0).
+
+        Optional ?warning=<ratio>&critical=<ratio> override the defaults
+        (0.8/1.0); invalid or unordered ratios -> 400. status is one of
+        ok / warning / critical / no_budget.
+        """
+        from .slo_alerts import evaluate_budget_alerts
+
+        raw_warning = request.query_params.get("warning")
+        raw_critical = request.query_params.get("critical")
+        try:
+            warning = float(raw_warning) if raw_warning is not None else 0.8
+            critical = float(raw_critical) if raw_critical is not None else 1.0
+        except ValueError:
+            return JSONResponse({"error": "warning/critical must be numbers"}, status_code=400)
+        try:
+            report = evaluate_budget_alerts(
+                scheduler=_get_energy_scheduler(),
+                warning_ratio=warning,
+                critical_ratio=critical,
+            )
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(report)
+
     async def api_substrate_budget(self, request: Request) -> JSONResponse:
         """Reconfigure the rolling energy budget at runtime (v11.13.0).
 
@@ -2071,7 +2149,11 @@ class AIOSDashboard:
 
     async def api_memory_recall(self, request: Request) -> JSONResponse:
         """Recall memories by free text: mode=keyword (token search) or
-        mode=compressed (similarity over the v11.3 index)."""
+        mode=compressed (similarity over the v11.3 index).
+
+        Optional max_age_days=<float> (v11.14.0) excludes entries older
+        than the bound in BOTH modes; non-numeric/negative -> 400.
+        """
         query = (request.query_params.get("q") or "").strip()
         if not query:
             return JSONResponse({"error": "query parameter 'q' is required"}, status_code=400)
@@ -2082,11 +2164,24 @@ class AIOSDashboard:
             top_k = 5
         top_k = max(1, min(top_k, 50))
 
+        raw_age = request.query_params.get("max_age_days")
+        max_age_days = None
+        if raw_age is not None:
+            try:
+                max_age_days = float(raw_age)
+            except ValueError:
+                return JSONResponse({"error": "max_age_days must be a number"}, status_code=400)
+            if max_age_days < 0:
+                return JSONResponse({"error": "max_age_days must be >= 0"}, status_code=400)
+
         system = _get_memory_system()
         if mode == "keyword":
-            results = system.search(query, limit=top_k)
+            results = system.search(query, limit=top_k, max_age_days=max_age_days)
         elif mode == "compressed":
-            results = [e.to_dict() for e in system.recall_compressed(query, top_k=top_k, pool="all")]
+            entries = system.recall_compressed(query, top_k=top_k, pool="all")
+            if max_age_days is not None:
+                entries = [e for e in entries if e.age_days <= max_age_days]
+            results = [e.to_dict() for e in entries]
         else:
             return JSONResponse({"error": f"unknown mode {mode!r} (keyword|compressed)"}, status_code=400)
         return JSONResponse({"query": query, "mode": mode, "top_k": top_k, "results": results})
@@ -2414,7 +2509,10 @@ class AIOSDashboard:
             Route("/api/substrate/history/export", self.api_substrate_history_export),
             Route("/api/substrate/history/preview", self.api_substrate_history_preview, methods=["POST"]),
             Route("/api/substrate/history/purge", self.api_substrate_history_purge, methods=["POST"]),
+            Route("/api/substrate/dispatches/preview", self.api_substrate_dispatches_preview, methods=["POST"]),
+            Route("/api/substrate/dispatches/purge", self.api_substrate_dispatches_purge, methods=["POST"]),
             Route("/api/substrate/budget", self.api_substrate_budget, methods=["POST"]),
+            Route("/api/substrate/budget/alerts", self.api_substrate_budget_alerts),
             Route("/api/substrate/schedule", self.api_substrate_schedule, methods=["POST"]),
             Route("/api/substrate/scheduler", self.api_substrate_scheduler),
             Route("/api/substrate/analytics", self.api_substrate_analytics),

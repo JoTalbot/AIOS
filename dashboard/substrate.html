@@ -132,7 +132,7 @@
 <body>
 
     <header>
-        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.13.0</span></h1>
+        <h1>🌌 AIOS Substrate Convergence <span class="version">v11.14.0</span></h1>
         <div style="color: #94a3b8; font-size: 0.9rem;" id="live-indicator">Live Workload Router — data: /api/substrate/*</div>
     </header>
 
@@ -255,6 +255,7 @@
                 <div class="stat-row"><span class="stat-label">Limit (cost units)</span><span class="stat-value" id="budget-limit-view">—</span></div>
                 <div class="stat-row"><span class="stat-label">Window</span><span class="stat-value" id="budget-window-view">—</span></div>
                 <div class="stat-row"><span class="stat-label">Spent / Remaining</span><span class="stat-value" id="budget-spent-view">—</span></div>
+                <div class="stat-row"><span class="stat-label">Pressure / Status</span><span class="stat-value" id="budget-pressure-view">—</span></div>
                 <div class="stat-row"><span class="stat-label">New Limit</span>
                     <input id="budget-limit-input" type="number" min="0.0001" step="any" placeholder="e.g. 150" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:110px;font-family:monospace"></div>
                 <div class="stat-row"><span class="stat-label">New Window (s, optional)</span>
@@ -269,6 +270,11 @@
         <div class="panel">
             <h2>History Retention</h2>
             <div class="stat-group">
+                <div class="stat-row"><span class="stat-label">Target</span>
+                    <select id="purge-target" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px;font-family:monospace">
+                        <option value="history">Engine history</option>
+                        <option value="dispatches">Scheduler dispatches</option>
+                    </select></div>
                 <div class="stat-row"><span class="stat-label">Keep Last N</span>
                     <input id="purge-keep" type="number" min="0" step="1" placeholder="optional" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;width:110px;font-family:monospace"></div>
                 <div class="stat-row"><span class="stat-label">Older Than (s)</span>
@@ -277,7 +283,7 @@
                         <button onclick="runHistoryPreview()" style="background:var(--accent);color:#0f172a;border:none;border-radius:6px;padding:7px 16px;font-weight:600;cursor:pointer">Preview</button>
                         <button onclick="runHistoryPurge()" style="background:var(--danger);color:#0f172a;border:none;border-radius:6px;padding:7px 16px;font-weight:600;cursor:pointer">Purge</button>
                     </span></div>
-                <div id="purge-result" style="color:#64748b;font-size:0.85rem;font-family:'Consolas',monospace;white-space:pre-line">POST /api/substrate/history/preview — dry-run first; purge is irreversible.</div>
+                <div id="purge-result" style="color:#64748b;font-size:0.85rem;font-family:'Consolas',monospace;white-space:pre-line">POST /api/substrate/{history|dispatches}/preview — dry-run first; purge is irreversible.</div>
             </div>
         </div>
     </div>
@@ -390,27 +396,35 @@
             return body;
         }
 
+        function purgeTargetBase() {
+            return document.getElementById('purge-target').value === 'dispatches'
+                ? '/api/substrate/dispatches'
+                : '/api/substrate/history';
+        }
+
         async function runHistoryPreview() {
             const out = document.getElementById('purge-result');
             out.innerText = 'previewing…';
-            const resp = await fetch('/api/substrate/history/preview', {
+            const resp = await fetch(purgeTargetBase() + '/preview', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(purgeCriteria()),
             });
             const data = await resp.json();
             if (data.error) { out.innerText = 'error: ' + data.error; return; }
-            out.innerText = `dry-run: would remove ${data.would_remove}/${data.total_records} record(s), keep ${data.would_remain}` +
+            const total = data.total_records ?? data.total_dispatches ?? 0;
+            out.innerText = `dry-run: would remove ${data.would_remove}/${total} record(s), keep ${data.would_remain}` +
                 (data.oldest_remaining_timestamp ? `\noldest survivor: ${new Date(data.oldest_remaining_timestamp * 1000).toISOString()}` : '\nno survivors');
         }
 
         async function runHistoryPurge() {
             const out = document.getElementById('purge-result');
-            if (!confirm('Irreversibly DELETE dispatch history under these criteria?')) return;
+            const target = purgeTargetBase().endsWith('dispatches') ? 'scheduler dispatches' : 'dispatch history';
+            if (!confirm('Irreversibly DELETE ' + target + ' under these criteria?')) return;
             out.innerText = 'purging…';
             const body = purgeCriteria();
             body.confirm = true;
-            const resp = await fetch('/api/substrate/history/purge', {
+            const resp = await fetch(purgeTargetBase() + '/purge', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
@@ -550,7 +564,7 @@
 
         async function refresh() {
             try {
-                const [stats, mesh, history, scheduler, analytics, health, schedulerHour, alerts] = await Promise.all([
+                const [stats, mesh, history, scheduler, analytics, health, schedulerHour, alerts, budgetAlerts] = await Promise.all([
                     fetch('/api/substrate/stats').then(r => r.json()),
                     fetch('/api/substrate/mesh').then(r => r.json()),
                     fetch('/api/substrate/history?limit=30').then(r => r.json()),
@@ -559,6 +573,7 @@
                     fetch('/api/health/score').then(r => r.json()),
                     fetch('/api/substrate/scheduler?window=3600').then(r => r.json()),
                     fetch('/api/health/alerts').then(r => r.json()),
+                    fetch('/api/substrate/budget/alerts').then(r => r.json()),
                 ]);
                 document.getElementById('val-dispatches').innerText = (stats.total_dispatches ?? 0).toLocaleString();
                 document.getElementById('val-queued').innerText = stats.queued_tasks ?? 0;
@@ -568,6 +583,16 @@
                 renderSubstrates(mesh.substrates || {});
                 renderHistory(history.history || []);
                 renderSchedulerReport(scheduler);
+                const pressureEl = document.getElementById('budget-pressure-view');
+                if (budgetAlerts && budgetAlerts.available) {
+                    pressureEl.innerText = budgetAlerts.pressure + ' / ' + budgetAlerts.status;
+                    pressureEl.style.color =
+                        budgetAlerts.status === 'critical' ? 'var(--danger)' :
+                        budgetAlerts.status === 'warning' ? 'var(--warning)' : 'var(--success)';
+                } else {
+                    pressureEl.innerText = '—';
+                    pressureEl.style.color = '';
+                }
                 renderAnalytics(analytics);
                 renderHealth(health, alerts);
                 document.getElementById('sch-window').innerText =
