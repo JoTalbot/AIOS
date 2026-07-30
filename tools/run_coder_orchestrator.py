@@ -28,14 +28,12 @@ from typing import Dict, List, Optional, Any, Tuple
 
 from code_todo_scanner import scan_todo_tags  # New module for scanning TODO tags
 
-
 __all__ = [
     "CoderOrchestrator",
     "run_orchestrator",
     "get_git_version",
     "report_technical_debt",
 ]
-
 
 @dataclass
 class CoderOrchestrator:
@@ -58,7 +56,6 @@ class CoderOrchestrator:
         """
         print(f"Running orchestrator {self.name} with config: {self.config}")
 
-
 def run_orchestrator(orchestrator: CoderOrchestrator) -> None:
     """Run a given coder orchestrator.
 
@@ -66,7 +63,6 @@ def run_orchestrator(orchestrator: CoderOrchestrator) -> None:
         orchestrator: The orchestrator to run.
     """
     orchestrator.run()
-
 
 def get_git_version(file_path: Path) -> Optional[str]:
     """Get the git version of a file.
@@ -93,7 +89,6 @@ def get_git_version(file_path: Path) -> Optional[str]:
     except Exception as e:
         logging.error(f"Error getting git version: {e}")
         return None
-
 
 def report_technical_debt(
     entries: List[Tuple[Path, int, str]],
@@ -132,7 +127,6 @@ def report_technical_debt(
     notification = f"Technical debt scan completed with {len(entries)} issues found."
     if logger:
         logger.info(notification)
-
 
 def main() -> None:
     """Main function for testing the module.
@@ -178,7 +172,6 @@ def main() -> None:
 
     # Report technical debt
     report_technical_debt(technical_debt_entries, to_console=True, logger=logger)
-
 
 if __name__ == "__main__":
     main()
