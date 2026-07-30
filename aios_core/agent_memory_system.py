@@ -22,6 +22,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from .retention import plan_retention_purge
+
 
 class MemoryType(Enum):
     """Types of agent memory."""
@@ -1088,6 +1090,88 @@ class AgentMemorySystem:
         return [e.to_dict() for e in self._archive[-max(0, limit) :]]
 
     # ------------------------------------------------------------------
+    # Archive retention (v11.15.0)
+    # ------------------------------------------------------------------
+
+    def _archive_purge_plan(
+        self,
+        keep_last: int | None,
+        older_than_days: float | None,
+    ) -> tuple[float | None, int, list[int]]:
+        """Shared selection for archive preview/purge.
+
+        Semantics mirror the history purges (v11.13/v11.14): an archived
+        entry survives when it is within the newest ``keep_last`` entries
+        OR younger than ``older_than_days`` (entry age, not archival
+        date). The day-based age is converted to seconds for the shared
+        planner, which keys off entry.created_at.
+        """
+        seconds = None
+        if older_than_days is not None:
+            try:
+                seconds = float(older_than_days) * 86400.0
+            except (TypeError, ValueError):
+                raise ValueError("older_than_days must be a number") from None
+        return plan_retention_purge(
+            self._archive,
+            keep_last=keep_last,
+            older_than_seconds=seconds,
+            timestamp_of=lambda e: e.created_at,
+            age_criterion_name="older_than_days",
+        )
+
+    def preview_archive_purge(
+        self,
+        keep_last: int | None = None,
+        older_than_days: float | None = None,
+    ) -> dict[str, Any]:
+        """Dry-run an archive purge under the exact purge criteria.
+
+        Nothing is removed; reports would_remove/would_remain and the
+        age of the oldest survivor so the operator can calibrate.
+        """
+        cutoff, protected_count, removed = self._archive_purge_plan(keep_last, older_than_days)
+        removed_set = set(removed)
+        remaining = [e for i, e in enumerate(self._archive) if i not in removed_set]
+        return {
+            "dry_run": True,
+            "archived_total": len(self._archive),
+            "would_remove": len(removed),
+            "would_remain": len(remaining),
+            "protected_by_keep_last": protected_count,
+            "keep_last": keep_last,
+            "older_than_days": older_than_days,
+            "cutoff_timestamp": cutoff,
+            "oldest_remaining_age_days": (round(max(e.age_days for e in remaining), 4) if remaining else None),
+        }
+
+    def purge_archive(
+        self,
+        keep_last: int | None = None,
+        older_than_days: float | None = None,
+    ) -> dict[str, Any]:
+        """Irreversibly delete cold-storage archive entries.
+
+        Same selection as preview_archive_purge() — always dry-run first.
+        Purged entries are gone for good (not returned to active pools).
+        """
+        cutoff, protected_count, removed = self._archive_purge_plan(keep_last, older_than_days)
+        removed_set = set(removed)
+        purged_ids = [e.memory_id for i, e in enumerate(self._archive) if i in removed_set]
+        self._archive = [e for i, e in enumerate(self._archive) if i not in removed_set]
+        return {
+            "dry_run": False,
+            "removed": len(purged_ids),
+            "removed_ids": purged_ids,
+            "remaining": len(self._archive),
+            "protected_by_keep_last": protected_count,
+            "keep_last": keep_last,
+            "older_than_days": older_than_days,
+            "cutoff_timestamp": cutoff,
+            "purged_at": time.time(),
+        }
+
+    # ------------------------------------------------------------------
     # Persistence (snapshot export/import, v11.6.0)
     # ------------------------------------------------------------------
 
@@ -1218,17 +1302,85 @@ class AgentMemorySystem:
             "patterns": len(self._patterns),
         }
 
-    def save(self, path: str) -> dict[str, Any]:
-        """Atomically write the snapshot to ``path`` (tmp file + rename)."""
+    #: Upper bound for save() rotation depth (defensive; v11.15.0).
+    SNAPSHOT_MAX_ROTATED = 50
+
+    @staticmethod
+    def _rotated_path(target: Any, index: int) -> Any:
+        """``snap.json`` at rotation depth i -> ``snap.<i>.json``."""
+        return target.with_name(f"{target.stem}.{index}{target.suffix}")
+
+    def save(self, path: str, keep_rotated: int = 0) -> dict[str, Any]:
+        """Atomically write the snapshot to ``path`` (tmp file + rename).
+
+        With ``keep_rotated`` > 0 (v11.15.0) the previous live file is
+        first rotated to ``<stem>.1<suffix>``, older rotations shift to
+        .2, .3, ... and anything beyond ``keep_rotated`` generations is
+        deleted — the directory keeps the live file plus at most
+        ``keep_rotated`` rotated backups.
+        """
         import json
         from pathlib import Path
 
+        if isinstance(keep_rotated, bool) or not isinstance(keep_rotated, int):
+            raise ValueError("keep_rotated must be an integer")
+        if not 0 <= keep_rotated <= self.SNAPSHOT_MAX_ROTATED:
+            raise ValueError(f"keep_rotated must be between 0 and {self.SNAPSHOT_MAX_ROTATED}")
+
         target = Path(path)
         target.parent.mkdir(parents=True, exist_ok=True)
+
+        dropped: list[str] = []
+        rotated = 0
+        if keep_rotated > 0:
+            oldest = self._rotated_path(target, keep_rotated)
+            if oldest.exists():
+                oldest.unlink()
+                dropped.append(str(oldest))
+            for index in range(keep_rotated - 1, 0, -1):
+                younger = self._rotated_path(target, index)
+                if younger.exists():
+                    younger.replace(self._rotated_path(target, index + 1))
+                    rotated += 1
+            if target.exists():
+                target.replace(self._rotated_path(target, 1))
+                rotated += 1
+
         tmp = target.with_suffix(target.suffix + ".tmp")
         tmp.write_text(json.dumps(self.snapshot(), ensure_ascii=False), encoding="utf-8")
         tmp.replace(target)
-        return {"saved": str(target)}
+        report: dict[str, Any] = {"saved": str(target)}
+        if keep_rotated > 0:
+            report["rotation"] = {"keep_rotated": keep_rotated, "rotated": rotated, "dropped": dropped}
+        return report
+
+    @staticmethod
+    def list_snapshot_files(path: str) -> list[dict[str, Any]]:
+        """List the live snapshot and existing rotations next to it (v11.15.0).
+
+        Returns one entry per existing file, ordered live first then by
+        rotation depth: {"path", "rotation" (0 = live), "size_bytes",
+        "modified_at"}. Missing rotations simply do not appear.
+        """
+        from pathlib import Path
+
+        target = Path(path)
+        files: list[tuple[int, Any]] = []
+        if target.exists():
+            files.append((0, target))
+        for index in range(1, AgentMemorySystem.SNAPSHOT_MAX_ROTATED + 1):
+            rotated = AgentMemorySystem._rotated_path(target, index)
+            if rotated.exists():
+                files.append((index, rotated))
+        return [
+            {
+                "path": str(item),
+                "rotation": index,
+                "size_bytes": item.stat().st_size,
+                "modified_at": item.stat().st_mtime,
+            }
+            for index, item in files
+        ]
 
     def load(self, path: str) -> dict[str, Any]:
         """Load a snapshot written by :meth:`save` (replaces current state)."""
