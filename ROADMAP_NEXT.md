@@ -1,5 +1,12 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.20.0 ✅ (2026-07-30)
+- ✅ Developer Python SDK Expansion — Обновлен публичный SDK (`sdk/aios_sdk.py`), добавлены методы клиенту `AIOSClient` и `AIOSClientSync` для управления троттлингом, авто-тюнингом политик, здоровьем памяти и запуском ретенции
+- ✅ Official Release Notes — Создана официальная документация релизов `RELEASE_NOTES_11.16.0.md` — `RELEASE_NOTES_11.20.0.md` в `docs/releases/`
+- ✅ 3 новых интеграционных теста (test_v11_20_features)
+
+**~4358 tests, 0 failures**
+
 ## v11.19.0 ✅ (2026-07-30)
 - ✅ REST API Endpoints — Добавлены эндпоинты дашборда для управления авто-троттлингом (`/api/substrate/budget/throttle`), авто-тюнингом политик (`/api/substrate/policy/autotune`), здоровьем памяти (`/api/memory/health`), очисткой бэкапов (`/api/memory/snapshot/prune`) и запуском ретенции (`/api/retention/maintenance/run`)
 - ✅ 5 новых интеграционных тестов (test_v11_19_features)

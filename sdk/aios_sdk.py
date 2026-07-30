@@ -258,6 +258,77 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    # --- Energy, Substrate & Retention (v11.16–v11.19) ---
+
+    async def get_throttle_config(self) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.get(self._url("/api/substrate/budget/throttle"), headers=self.headers)
+            resp.raise_for_status()
+            return resp.json()
+
+    async def configure_throttle(self, enabled: bool = True, threshold: float = 0.8) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/substrate/budget/throttle"),
+                json={"enabled": enabled, "threshold": threshold},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def auto_tune_policy(self, tasks_sample: list[dict] | None = None) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            payload = {"tasks": tasks_sample} if tasks_sample else {}
+            resp = await client.post(
+                self._url("/api/substrate/policy/autotune"),
+                json=payload,
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def get_memory_health(self) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.get(self._url("/api/memory/health"), headers=self.headers)
+            resp.raise_for_status()
+            return resp.json()
+
+    async def prune_snapshots(self, path: str | None = None, max_age_days: float = 30.0, keep_last: int = 5) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            payload = {"max_age_days": max_age_days, "keep_last": keep_last}
+            if path:
+                payload["path"] = path
+            resp = await client.post(
+                self._url("/api/memory/snapshot/prune"),
+                json=payload,
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def run_retention_maintenance(
+        self,
+        keep_last_history: int = 1000,
+        keep_last_dispatches: int = 1000,
+        keep_last_archive: int = 500,
+        older_than_seconds: float = 604800.0,
+    ) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            payload = {
+                "confirm": True,
+                "keep_last_history": keep_last_history,
+                "keep_last_dispatches": keep_last_dispatches,
+                "keep_last_archive": keep_last_archive,
+                "older_than_seconds": older_than_seconds,
+            }
+            resp = await client.post(
+                self._url("/api/retention/maintenance/run"),
+                json=payload,
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
     # --- WebSocket helpers ---
 
     async def watch_events(self, on_event: Callable[[dict], None], channels: list[str] | None = None):
@@ -376,6 +447,25 @@ class AIOSClientSync:
 
     def advisor_price_advice(self, *a, **kw):
         return self._run(self._async.advisor_price_advice(*a, **kw))
+
+    # Energy, Substrate & Retention (v11.16–v11.19)
+    def get_throttle_config(self, *a, **kw):
+        return self._run(self._async.get_throttle_config(*a, **kw))
+
+    def configure_throttle(self, *a, **kw):
+        return self._run(self._async.configure_throttle(*a, **kw))
+
+    def auto_tune_policy(self, *a, **kw):
+        return self._run(self._async.auto_tune_policy(*a, **kw))
+
+    def get_memory_health(self, *a, **kw):
+        return self._run(self._async.get_memory_health(*a, **kw))
+
+    def prune_snapshots(self, *a, **kw):
+        return self._run(self._async.prune_snapshots(*a, **kw))
+
+    def run_retention_maintenance(self, *a, **kw):
+        return self._run(self._async.run_retention_maintenance(*a, **kw))
 
 
 # Example: "agent in 30 lines"

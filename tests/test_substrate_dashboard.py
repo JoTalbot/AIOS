@@ -95,7 +95,7 @@ def test_substrate_history_limit_validation(client):
 def test_substrate_page_has_scheduler_panel(client):
     resp = client.get("/substrate")
     assert resp.status_code == 200
-    assert "v11.19.0" in resp.text
+    assert "v11.20.0" in resp.text
     assert "sch-dispatches" in resp.text
     assert "/api/substrate/scheduler" in resp.text
     assert "/api/substrate/schedule" in resp.text  # plan form wiring
