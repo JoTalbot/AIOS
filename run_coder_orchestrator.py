@@ -21,6 +21,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -52,43 +53,33 @@ def tg_send(text: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# LLM Client
+# LLM Balancer (multi-provider, multi-key)
 # ---------------------------------------------------------------------------
+_balancer = None
+
+def get_balancer():
+    global _balancer
+    if _balancer is None:
+        # Load balancer module
+        spec = importlib.util.spec_from_file_location(
+            "llm_balancer", os.path.join(REPO_PATH, "aios_core", "llm_balancer.py")
+        )
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["llm_balancer"] = mod
+        spec.loader.exec_module(mod)
+        _balancer = mod.LLMBalancer()
+    return _balancer
+
+
 class LLMClient:
+    """Wrapper around LLMBalancer for backward compatibility."""
     def __init__(self):
-        self.api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("LLM_API_KEY", "")
-        self.base_url = os.environ.get("LLM_BASE_URL", "https://openrouter.ai/api/v1")
-        self.model = os.environ.get("LLM_MODEL", "deepseek/deepseek-chat-v3-0324")
+        self.balancer = get_balancer()
+        self.api_key = "balancer"  # always available
+        self.model = os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick")
 
     def chat(self, messages: list, system: str = "") -> str:
-        if not self.api_key:
-            return "LLM_API_KEY not configured"
-        all_msgs = []
-        if system:
-            all_msgs.append({"role": "system", "content": system})
-        all_msgs.extend(messages)
-        payload = json.dumps({
-            "model": self.model,
-            "messages": all_msgs,
-            "max_tokens": 2000,
-            "temperature": 0.3,
-        }).encode()
-        req = urllib.request.Request(
-            f"{self.base_url}/chat/completions",
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}",
-                "HTTP-Referer": "https://github.com/JoTalbot/AIOS",
-                "X-Title": "AIOS Coder Orchestrator",
-            },
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                data = json.loads(resp.read())
-                return data["choices"][0]["message"]["content"]
-        except Exception as e:
-            return f"LLM Error: {e}"
+        return self.balancer.chat(messages, model=self.model, system=system)
 
 
 # ---------------------------------------------------------------------------
@@ -228,27 +219,85 @@ def phase_code(plan: dict) -> dict:
     if not plan.get("code_needed") or not plan.get("file"):
         return {"status": "skipped", "reason": "Code not needed"}
 
-    mod = get_coder()
-    coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
+    try:
+        mod = get_coder()
+    except Exception as e:
+        print(f"    [CODE] Failed to load coder module: {e}")
+        return {"status": "error", "error": f"Module load: {e}"}
+
+    try:
+        config = mod.CoderConfig.from_env()
+        # Force model from orchestrator env
+        config.llm_model = os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick")
+        config.llm_api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("LLM_API_KEY", "")
+        config.llm_base_url = os.environ.get("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+        config.repo_path = REPO_PATH
+        config.max_tokens = 1500  # conserve credits
+        coder = mod.MetaCognitiveCoder(config)
+    except Exception as e:
+        print(f"    [CODE] Failed to init coder: {e}")
+        return {"status": "error", "error": f"Init: {e}"}
 
     file_path = plan["file"]
     instruction = plan.get("instruction", plan.get("description", ""))
 
+    # Clean file path
+    file_path = file_path.lstrip("/").lstrip("./")
+    # Restrict to project directories
+    allowed_prefixes = ["aios_core/", "scripts/", "tools/", "tests/", "skills/", "platforms/", "docs/"]
+    if not any(file_path.startswith(p) for p in allowed_prefixes):
+        # If LLM hallucinated path, put it in tools/
+        file_path = "tools/" + os.path.basename(file_path)
+    # Must be .py
+    if not file_path.endswith(".py"):
+        file_path += ".py"
+
+    print(f"    [CODE] File: {file_path}")
+    print(f"    [CODE] Instruction: {instruction[:80]}")
+
     try:
         full_path = os.path.join(REPO_PATH, file_path)
         if os.path.exists(full_path):
+            print(f"    [CODE] Refactoring existing file...")
             change = coder.refactor_file(file_path, instruction)
         else:
+            print(f"    [CODE] Generating new file...")
             change = coder.generate_code(instruction, target_path=file_path)
 
-        return {
+        result = {
             "status": "success" if change.safe else "unsafe",
             "file": file_path,
             "code_length": len(change.new_code) if change.new_code else 0,
             "safe": change.safe,
             "warnings": change.warnings,
         }
+        print(f"    [CODE] Result: {result['status']}, {result['code_length']} chars")
+        return result
+    except urllib.error.HTTPError as e:
+        if e.code == 402:
+            print(f"    [CODE] 402 Payment Required — trying fallback model...")
+            try:
+                config.llm_model = "mistralai/mistral-small-3.2-24b-instruct"
+                coder2 = mod.MetaCognitiveCoder(config)
+                full_path = os.path.join(REPO_PATH, file_path)
+                if os.path.exists(full_path):
+                    change = coder2.refactor_file(file_path, instruction)
+                else:
+                    change = coder2.generate_code(instruction, target_path=file_path)
+                return {
+                    "status": "success" if change.safe else "unsafe",
+                    "file": file_path,
+                    "code_length": len(change.new_code) if change.new_code else 0,
+                    "safe": change.safe,
+                    "warnings": change.warnings,
+                    "fallback": True,
+                }
+            except Exception as e2:
+                return {"status": "error", "error": f"Fallback also failed: {e2}"}
+        return {"status": "error", "error": str(e)}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "error": str(e)}
 
 
@@ -317,7 +366,11 @@ def build_report(cycle_num: int, ctx: dict, analysis: dict, plan: dict,
                  code_result: dict, validation: dict, commit_result: dict) -> str:
     """Build human-readable report."""
     now = datetime.now(timezone.utc).strftime("%H:%M UTC")
-    health = analysis.get("health_score", "?")
+    health_raw = analysis.get("health_score", 5)
+    try:
+        health = int(health_raw)
+    except (TypeError, ValueError):
+        health = 5
     health_emoji = "🟢" if health >= 8 else "🟡" if health >= 5 else "🔴"
 
     lines = []
