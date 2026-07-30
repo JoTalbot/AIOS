@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.16.0] — 2026-07-30 — Dynamic Policy Auto-Throttling + Retention Maintenance Engine + Snapshot Auto-Pruning
+
+### Added
+- **Dynamic Policy Auto-Throttling (`EnergyAwareScheduler`)**:
+  - `configure_throttle(enabled=True, threshold=0.8)` allows automatic routing policy downgrade.
+  - When energy budget pressure reaches or exceeds `threshold` (default 0.8), dispatches dynamically downgrade from high-energy policies (`ai_optimized`, `balanced`, `min_latency`) to `min_energy` policy to conserve budget and prevent `energy_budget_exceeded` violations.
+  - Dispatches report `"requested_policy"`, `"effective_policy"`, and `"throttled": True/False`.
+- **Retention Maintenance Engine (`RetentionMaintenanceEngine`)**:
+  - `RetentionMaintenanceEngine` in `aios_core/retention.py` provides unified, multi-store background retention cleanup across Substrate Engine history, Scheduler dispatches, and Memory Archive.
+  - `run_maintenance_cycle()` executes maintenance purges in a single call and returns a unified status report.
+- **Snapshot Auto-Pruning (`AgentMemorySystem.prune_rotated_snapshots`)**:
+  - `prune_rotated_snapshots(path, max_age_days=30, keep_last=5)` automatically cleans up rotated backup snapshot files (`.1.json`, `.2.json`, etc.) exceeding age or depth limits, protecting the live snapshot file.
+- **Audit & Code Quality Enhancements**:
+  - Enhanced retention planner accessor fallbacks supporting custom objects with `timestamp` or `created_at` attributes.
+  - Corrected Prometheus histogram bucket export calculations in `MetricsExporter.export()`.
+
 ## [11.15.0] — 2026-07-30 — Archive Retention + Budget Roll-Up Alerts + Snapshot Rotation
 
 ### Added

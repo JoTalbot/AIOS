@@ -1382,6 +1382,48 @@ class AgentMemorySystem:
             for index, item in files
         ]
 
+    @staticmethod
+    def prune_rotated_snapshots(
+        path: str,
+        max_age_days: float | None = 30.0,
+        keep_last: int | None = 5,
+    ) -> dict[str, Any]:
+        """Prune rotated snapshot files based on age or retention depth (v11.16.0).
+
+        Protects the live file (rotation 0) and the newest ``keep_last``
+        rotations, deleting rotations older than ``max_age_days`` or beyond
+        ``keep_last``.
+        """
+        import time
+        from pathlib import Path
+
+        target = Path(path)
+        existing = AgentMemorySystem.list_snapshot_files(str(target))
+        rotations = [e for e in existing if e["rotation"] > 0]
+
+        now = time.time()
+        age_cutoff = (now - max_age_days * 86400.0) if max_age_days is not None else None
+
+        pruned: list[str] = []
+        for idx, item in enumerate(rotations):
+            too_old = age_cutoff is not None and item["modified_at"] < age_cutoff
+            beyond_keep = keep_last is not None and idx >= keep_last
+            if too_old or beyond_keep:
+                p = Path(item["path"])
+                if p.exists():
+                    try:
+                        p.unlink()
+                        pruned.append(item["path"])
+                    except OSError:
+                        pass
+
+        return {
+            "path": str(target),
+            "rotations_found": len(rotations),
+            "pruned_count": len(pruned),
+            "pruned_files": pruned,
+        }
+
     def load(self, path: str) -> dict[str, Any]:
         """Load a snapshot written by :meth:`save` (replaces current state)."""
         import json

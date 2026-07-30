@@ -1,5 +1,14 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.16.0 ✅ (2026-07-30)
+- ✅ Dynamic Policy Auto-Throttling — `EnergyAwareScheduler.configure_throttle(enabled, threshold)`: автоматическое понижение политики планирования до `min_energy` при превышении порога давления бюджета энергии (дефолт 0.8), защита от нарушений лимита
+- ✅ Retention Maintenance Engine — `RetentionMaintenanceEngine` в `aios_core/retention.py`: единый межсистемный движок фоновой очистки истории (Engine history + Scheduler dispatches + Memory archive) за один вызов `run_maintenance_cycle()`
+- ✅ Snapshot Auto-Pruning — `AgentMemorySystem.prune_rotated_snapshots(path, max_age_days, keep_last)`: автоматическая очистка устаревших ротированных снапшотов с сохранением рабочего файла
+- ✅ Audit & Precision Enhancements — Исправлен расчёт кумулятивных бакетов гистограмм Prometheus в `MetricsExporter`, расширена устойчивость `plan_retention_purge` к кастомным объектам и строковым датам
+- ✅ 7 новых тестов (v11_16_features + audit_enhancements)
+
+**~4345 tests, 0 failures**
+
 ## v11.15.0 ✅ (2026-07-30)
 - ✅ Archive Retention — `preview_archive_purge()/purge_archive(keep_last, older_than_days)`: третье хранилище в retention-истории (engine v11.13 → scheduler v11.14 → архив памяти); возраст в ДНЯХ, конверсия в shared planner (получил акцессор `timestamp_of` и именованный критерий); пурж удаляет, НЕ возвращает в активные пулы; `POST /api/memory/archive/purge/{preview,}` + контролы на панели Memory Lifecycle
 - ✅ Budget Roll-Up Alerts — `evaluate_health_alerts()` теперь включает pressure-алерты бюджета (subject "energy_budget") в единый отчёт: alert_count/worst_severity/ok учитывают бюджет, подотчёт под ключём `budget`; спокойный/отсутствующий бюджет → поведение бит-в-бит прежнее; `GET /api/health/alerts` и gauge `aios_slo_alerts{severity}` автоматически покрывают исчерпание бюджета
