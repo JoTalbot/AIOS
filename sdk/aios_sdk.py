@@ -573,6 +573,14 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    # --- Infinite Cognition Architecture Suite (v14.1–v15.0.0) ---
+
+    async def ai_get_infinite_status(self) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.get(self._url("/api/ai/infinite/status"), headers=self.headers)
+            resp.raise_for_status()
+            return resp.json()
+
     # --- Sovereign AI Neuromorphic, Formal Verification, Blockchain & Multi-Species Ethics (v11.41–v11.45) ---
 
     async def ai_process_spiking_events(self, spikes: list[float], threshold: float = 0.5) -> dict:
@@ -894,6 +902,9 @@ class AIOSClientSync:
 
     def ai_get_universal_status(self, *a, **kw):
         return self._run(self._async.ai_get_universal_status(*a, **kw))
+
+    def ai_get_infinite_status(self, *a, **kw):
+        return self._run(self._async.ai_get_infinite_status(*a, **kw))
 
     def ai_process_spiking_events(self, *a, **kw):
         return self._run(self._async.ai_process_spiking_events(*a, **kw))

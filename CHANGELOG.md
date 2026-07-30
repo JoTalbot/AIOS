@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [15.0.0] — 2026-07-30 — AIOS Infinite Cognition Architecture Major Release (v14.1.0 - v15.0.0)
+
+### Added
+- **100-Step Infinite Cognition AI Architecture Suite (v14.1.0 - v15.0.0)**:
+  - `InfiniteGoalSynthesizer` (`v14.1.0`): Infinite goal hierarchy synthesizer.
+  - `GraphRAGQueryEngineV4` (`v14.2.0`): GraphRAG query engine V4.
+  - `MultiModalVisionProcessorV4` (`v14.3.0`): MultiModal vision processor V4.
+  - `SwarmFederatedOptimizerV4` (`v14.4.0`): Swarm federated optimizer V4.
+  - `PromptAutoTunerV4` (`v14.5.0`): Prompt auto-tuner V4.
+  - `AIOSInfiniteCognitionNexusV15` (`v15.0.0`): Infinite Cognition Major Release Orchestrator V15.0.0.
+- **REST API & Developer SDK Integration**:
+  - `GET /api/ai/infinite/status` & SDK method `ai_get_infinite_status()`.
+
 ## [14.0.0] — 2026-07-30 — AIOS Universal Singularity Architecture Major Release (v13.1.0 - v14.0.0)
 
 ### Added

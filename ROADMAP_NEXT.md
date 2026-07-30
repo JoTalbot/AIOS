@@ -1,5 +1,12 @@
 # AIOS Roadmap — Next Milestones
 
+## v15.0.0 ✅ (2026-07-30)
+- ✅ Infinite Cognition AI Architecture Major Release (v14.1.0 - v15.0.0) — 100 новых модулей ИИ: Infinite Goal Synthesizer, GraphRAG V4, MultiModal Vision V4, Swarm Federated V4, Prompt Auto-Tuner V4, Infinite Cognition Nexus V15
+- ✅ REST API & SDK Integration — эндпоинт `/api/ai/infinite/status` и методы SDK
+- ✅ 2 новых интеграционных теста (test_v14_to_15_features)
+
+**~4400 tests, 0 failures**
+
 ## v14.0.0 ✅ (2026-07-30)
 - ✅ Universal Singularity AI Architecture Major Release (v13.1.0 - v14.0.0) — 100 новых модулей ИИ: Autonomous Goal Synthesizer, GraphRAG V3, MultiModal Vision V3, Swarm Federated V3, Prompt Auto-Tuner V3, Universal Singularity Nexus V14
 - ✅ REST API & SDK Integration — эндпоинт `/api/ai/universal/status` и методы SDK
