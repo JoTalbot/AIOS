@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.18.0] — 2026-07-30 — Multi-Tenant Energy Budget Allocation + Swarm Workload Balancing
+
+### Added
+- **Multi-Tenant Energy Budget Allocation (`MultiTenantBudgetAllocator`)**:
+  - `MultiTenantBudgetAllocator` in `aios_core/multitenancy.py` manages tenant-level rolling energy budgets (`allocate_tenant_budget`) alongside a global energy budget cap.
+  - Enforces quota affordability (`can_afford`) and tracks spend per tenant with aggregate reporting (`tenant_energy_report`).
+- **Swarm Workload Balancing (`SwarmWorkloadBalancer`)**:
+  - `SwarmWorkloadBalancer` in `aios_core/agent_swarm.py` distributes task batches across active swarm agents based on capability requirements, agent workload, and reputation.
+  - Integrates with `EnergyAwareScheduler` to route assigned tasks through energy-aware substrate policies.
+  - Provides workload efficiency reporting (`efficiency_report`).
+
 ## [11.17.0] — 2026-07-30 — Forecast Metrics Export + Policy Auto-Tuner + Memory Health Telemetry
 
 ### Added

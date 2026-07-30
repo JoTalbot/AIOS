@@ -257,3 +257,81 @@ class AgentSwarm:
             "messages": len(self.messages),
             "leader": self._leader_id,
         }
+
+
+class SwarmWorkloadBalancer:
+    """Balances swarm agent workloads and routes task energy substrate dispatches (v11.18.0)."""
+
+    def __init__(self, swarm: AgentSwarm, scheduler: Any = None) -> None:
+        self.swarm = swarm
+        self.scheduler = scheduler
+        self.assignment_history: list[dict[str, Any]] = []
+
+    def balance_and_assign_tasks(
+        self,
+        tasks: list[dict[str, Any]],
+        policy: str | None = None,
+    ) -> dict[str, Any]:
+        """Distribute tasks across active swarm workers matching capabilities & energy policies."""
+        active_workers = [a for a in self.swarm.agents.values() if a.active and a.role != AgentRole.OBSERVER]
+        if not active_workers:
+            return {
+                "assigned_count": 0,
+                "unassigned_count": len(tasks),
+                "assignments": [],
+                "reason": "no active worker agents available",
+            }
+
+        assignments: list[dict[str, Any]] = []
+        unassigned: list[dict[str, Any]] = []
+        agent_loads: dict[str, int] = {a.id: (1 if a.current_task else 0) for a in active_workers}
+
+        for task in tasks:
+            req_cap = task.get("capability_required")
+            eligible = [
+                a for a in active_workers if req_cap is None or req_cap in a.capabilities or "all" in a.capabilities
+            ]
+            if not eligible:
+                unassigned.append(task)
+                continue
+
+            target_agent = min(
+                eligible,
+                key=lambda a: (agent_loads[a.id], -a.reputation),
+            )
+
+            dispatch_result = None
+            if self.scheduler is not None:
+                dispatch_result = self.scheduler.dispatch(task, policy=policy)
+
+            entry = {
+                "task_id": task.get("id", f"task_{len(assignments)}"),
+                "agent_id": target_agent.id,
+                "agent_name": target_agent.name,
+                "dispatch": dispatch_result,
+                "timestamp": time.time(),
+            }
+            assignments.append(entry)
+            self.assignment_history.append(entry)
+            agent_loads[target_agent.id] += 1
+            target_agent.current_task = task.get("id")
+
+        return {
+            "assigned_count": len(assignments),
+            "unassigned_count": len(unassigned),
+            "assignments": assignments,
+            "unassigned": unassigned,
+            "agent_loads": agent_loads,
+        }
+
+    def efficiency_report(self) -> dict[str, Any]:
+        """Calculate swarm workload distribution and energy efficiency report."""
+        active = [a for a in self.swarm.agents.values() if a.active]
+        total_assignments = len(self.assignment_history)
+
+        return {
+            "total_agents": len(self.swarm.agents),
+            "active_agents": len(active),
+            "total_assignments": total_assignments,
+            "avg_assignments_per_agent": round(total_assignments / max(1, len(active)), 2),
+        }
