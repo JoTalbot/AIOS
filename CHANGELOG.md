@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.20.0] — 2026-07-30 — Python Developer SDK Client Expansion + Official Release Notes Documentation
+
+### Added
+- **Developer Python SDK Client Expansion (`sdk/aios_sdk.py`)**:
+  - Added async methods to `AIOSClient` and synchronous mirrors to `AIOSClientSync`:
+    - `get_throttle_config()` & `configure_throttle()`
+    - `auto_tune_policy()`
+    - `get_memory_health()`
+    - `prune_snapshots()`
+    - `run_retention_maintenance()`
+- **Official Release Notes Documentation (`docs/releases/`)**:
+  - Created official release notes Markdown documents for releases v11.16.0 through v11.20.0 under `docs/releases/`.
+
 ## [11.19.0] — 2026-07-30 — Dashboard Server REST API Endpoints for v11.16–v11.18 Features
 
 ### Added
