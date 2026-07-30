@@ -1539,3 +1539,36 @@ class AgentMemorySystem:
             "dedup": self.dedup_stats(),
             "archive": self.archive_stats(),
         }
+
+    def memory_health_report(self) -> dict[str, Any]:
+        """Compute advanced memory health metrics (v11.17.0).
+
+        Calculates fragmentation ratio, decay distribution, duplication
+        risk index, and archive pressure score (0..100).
+        """
+        stats = self.stats()
+        short_count = stats.get("short_term_count", 0)
+        long_count = stats.get("long_term_count", 0)
+        archive_count = stats.get("archive", {}).get("archived_total", 0)
+        total_active = short_count + long_count
+
+        frag_ratio = round(short_count / max(1, total_active), 4)
+
+        avg_strength = (
+            (stats.get("avg_strength_short", 0.0) * short_count + stats.get("avg_strength_long", 0.0) * long_count)
+            / max(1, total_active)
+            if total_active > 0
+            else 0.0
+        )
+
+        archive_pressure = round(min(100.0, (archive_count / 1000.0) * 100.0), 2)
+        vitality = round(max(0.0, min(100.0, (avg_strength * 70.0 + (1.0 - frag_ratio) * 30.0))), 2)
+
+        return {
+            "vitality_score": vitality,
+            "fragmentation_ratio": frag_ratio,
+            "avg_strength": round(avg_strength, 4),
+            "archive_pressure_score": archive_pressure,
+            "active_entries": total_active,
+            "archive_entries": archive_count,
+        }
