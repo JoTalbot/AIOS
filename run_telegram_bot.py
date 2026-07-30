@@ -566,6 +566,8 @@ def parse_command(text: str) -> tuple[str, str]:
 # State storage for callback interactions (chat_id -> pending action)
 _pending_actions: dict[int, str] = {}
 _paused = False
+_chat_history: dict[int, list[dict]] = {}  # chat_id -> message history
+MAX_HISTORY = 20  # keep last 20 messages per chat
 
 
 def _handle_callback(api: TelegramAPI, upd: dict) -> None:
@@ -674,6 +676,52 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
     print(f"  → callback {data} (chat {chat_id})")
 
 
+def _llm_chat(chat_id: int, user_text: str) -> str:
+    """Send message to LLM with chat history context."""
+    import json as _json, importlib.util as _iu, os as _os
+
+    # Load balancer
+    try:
+        spec = _iu.spec_from_file_location("lb_chat", "/app/aios_core/llm_balancer.py")
+        mod = _iu.module_from_spec(spec)
+        import sys as _sys
+        _sys.modules["lb_chat"] = mod
+        spec.loader.exec_module(mod)
+        balancer = mod.LLMBalancer()
+    except Exception as e:
+        return "LLM not available: " + str(e)
+
+    # Get or create chat history
+    if chat_id not in _chat_history:
+        _chat_history[chat_id] = []
+
+    # Add user message
+    _chat_history[chat_id].append({"role": "user", "content": user_text})
+
+    # Trim history
+    if len(_chat_history[chat_id]) > MAX_HISTORY * 2:
+        _chat_history[chat_id] = _chat_history[chat_id][-MAX_HISTORY * 2:]
+
+    system = (
+        "You are AIOS Hermes — an intelligent AI assistant embedded in the AIOS control panel. "
+        "You help with coding, system administration, project management, and general questions. "
+        "You have access to the AIOS project at /root/AIOS (Python, Docker, systemd). "
+        "Answer concisely and helpfully. Use Russian when the user writes in Russian. "
+        "You can write code, explain concepts, debug issues, and give advice."
+    )
+
+    try:
+        model = _os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick")
+        response = balancer.chat(_chat_history[chat_id], model=model, system=system, max_tokens=1500)
+
+        # Add assistant response to history
+        _chat_history[chat_id].append({"role": "assistant", "content": response})
+
+        return response
+    except Exception as e:
+        return "Error: " + str(e)
+
+
 def run_bot(token: str) -> None:
     api = TelegramAPI(token)
     offset = 0
@@ -720,6 +768,26 @@ def run_bot(token: str) -> None:
 
                 cmd, args = parse_command(text)
                 if not cmd.startswith("/"):
+                    # Not a command — send to LLM chat
+                    if chat_id in _pending_actions:
+                        action = _pending_actions.pop(chat_id)
+                        reply = None
+                        if action == "gen_code":
+                            reply = cmd_code_generate(text)
+                        elif action == "fix_bug":
+                            reply = cmd_code_fix(text)
+                        if reply:
+                            api.send_message(chat_id, reply)
+                        continue
+
+                    # Regular chat message — send to LLM
+                    api.send_message(chat_id, chr(9203) + " <i>Dumayu...</i>")
+                    llm_reply = _llm_chat(chat_id, text)
+                    if llm_reply:
+                        # Escape HTML
+                        llm_reply = llm_reply.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                        api.send_message(chat_id, llm_reply)
+                        print(f"  -> LLM chat (chat {chat_id})")
                     continue
 
                 reply = None
