@@ -273,24 +273,35 @@ def phase_validate(code_result: dict) -> dict:
     return {"status": "passed"}
 
 
-def phase_commit(code_result: dict, plan: dict) -> dict:
-    """Phase 5: Commit and push if code was generated."""
-    if code_result.get("status") != "success":
-        return {"status": "skipped"}
+def phase_commit(code_result: dict, plan: dict, validation: dict) -> dict:
+    """Phase 5: Commit and push if full cycle passed (code + validate OK)."""
+    code_ok = code_result.get("status") == "success"
+    val_ok = validation.get("status") == "passed"
 
+    if not code_ok:
+        return {"status": "skipped", "reason": "No code generated"}
+
+    if not val_ok:
+        return {"status": "skipped", "reason": "Validation failed — not safe to push"}
+
+    # Full cycle passed — commit and push!
     file_path = code_result.get("file", "")
     desc = plan.get("description", "auto-code")[:60]
 
     git_cmd("add", file_path)
-    commit_result = git_cmd("commit", "-m", f"auto-coder: {desc}")
+    commit_out = git_cmd("commit", "-m", f"auto-coder: {desc}")
 
-    if "nothing to commit" in commit_result.lower():
+    if "nothing to commit" in commit_out.lower():
         return {"status": "nothing_to_commit"}
 
-    push_result = git_cmd("push", "origin", "main")
-    pushed = "error" not in push_result.lower() and push_result != ""
+    push_out = git_cmd("push", "origin", "main")
+    pushed = push_out != "" and "error" not in push_out.lower()
 
-    return {"status": "pushed" if pushed else "commit_only", "commit": commit_result[:100]}
+    return {
+        "status": "pushed" if pushed else "commit_only",
+        "commit": commit_out[:100],
+        "full_cycle": True,
+    }
 
 
 def build_report(cycle_num: int, ctx: dict, analysis: dict, plan: dict,
@@ -348,7 +359,8 @@ def build_report(cycle_num: int, ctx: dict, analysis: dict, plan: dict,
     # Commit
     commit_status = commit_result.get("status", "skipped")
     if commit_status == "pushed":
-        lines.append(f"🚀 <b>Git:</b> закоммичено и запушено")
+        full = " (полный цикл ✅)" if commit_result.get("full_cycle") else ""
+        lines.append(f"🚀 <b>Git:</b> закоммичено и запушено{full}")
     elif commit_status == "commit_only":
         lines.append(f"📝 <b>Git:</b> закоммичено (push не удался)")
     elif commit_status == "nothing_to_commit":
@@ -400,7 +412,7 @@ def run_cycle():
 
     # Phase 5: Commit
     print("  [5/5] COMMIT — деплой...")
-    commit_result = phase_commit(code_result, plan)
+    commit_result = phase_commit(code_result, plan, validation)
     print(f"    Status: {commit_result.get('status', '?')}")
 
     # Build and send report
@@ -421,7 +433,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="AIOS Coder Orchestrator")
     parser.add_argument("--once", action="store_true", help="Run once and exit")
-    parser.add_argument("--interval", type=int, default=300, help="Cycle interval (default: 300s)")
+    parser.add_argument("--interval", type=int, default=120, help="Cycle interval (default: 120s)")
     args = parser.parse_args()
 
     print(f"🧠 AIOS Coder Orchestrator v1.0")
