@@ -672,12 +672,14 @@ class AIOSDashboard:
             conn.close()
 
     async def api_olx_trigger_collect(self, request: Request) -> JSONResponse:
-        """Kick off one collection cycle by restarting the collector service."""
+        """Kick off one collection cycle in background."""
         if unauthorized := self._require_control(request):
             return unauthorized
         try:
-            subprocess.run(["systemctl", "restart", "aios-olx-collector"], capture_output=True, timeout=10)
-            return JSONResponse({"ok": True})
+            subprocess.Popen(["python3", "run_olx_http_collector.py", "--once"], cwd=str(Path(__file__).resolve().parent.parent))
+            with contextlib.suppress(Exception):
+                subprocess.run(["systemctl", "restart", "aios-olx-collector"], capture_output=True, timeout=5)
+            return JSONResponse({"ok": True, "message": "OLX collector cycle started successfully!"})
         except Exception as e:
             return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
