@@ -85,7 +85,6 @@ def get_git_version(file_path: Path) -> Optional[str]:
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        # Root cause: This exception occurs when the git command fails, typically because the directory is not a git repository
         logging.error(f"Error getting git version: {e}")
         return None
     except Exception as e:
