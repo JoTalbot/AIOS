@@ -583,6 +583,48 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    # --- Cognitive Fabric Cyber-Defense, DNA Code Mutation, Category Theory & Alignment (v11.46–v11.50) ---
+
+    async def ai_evaluate_cyber_defense(self, activity_logs: list[dict]) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/swarm/cyber-defense"),
+                json={"activity_logs": activity_logs},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_mutate_genome_code(self, genome_code: str, mutation_rate: float = 0.05) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/dna/mutate"),
+                json={"genome_code": genome_code, "mutation_rate": mutation_rate},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_map_category_morphisms(self, category_a: list[str], category_b: list[str]) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/category/map-morphisms"),
+                json={"category_a": category_a, "category_b": category_b},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def ai_evaluate_model_alignment(self, prompts: list[str], outputs: list[str]) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/ai/alignment/auto-evaluate"),
+                json={"prompts": prompts, "outputs": outputs},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
     # --- AI Governance, Safety Guard & Compliance Audit (v11.23.0) ---
 
     async def evaluate_action_safety(self, action: dict, tenant_id: str | None = None) -> dict:
@@ -820,6 +862,18 @@ class AIOSClientSync:
 
     def ai_evaluate_alignment(self, *a, **kw):
         return self._run(self._async.ai_evaluate_alignment(*a, **kw))
+
+    def ai_evaluate_cyber_defense(self, *a, **kw):
+        return self._run(self._async.ai_evaluate_cyber_defense(*a, **kw))
+
+    def ai_mutate_genome_code(self, *a, **kw):
+        return self._run(self._async.ai_mutate_genome_code(*a, **kw))
+
+    def ai_map_category_morphisms(self, *a, **kw):
+        return self._run(self._async.ai_map_category_morphisms(*a, **kw))
+
+    def ai_evaluate_model_alignment(self, *a, **kw):
+        return self._run(self._async.ai_evaluate_model_alignment(*a, **kw))
 
     def evaluate_action_safety(self, *a, **kw):
         return self._run(self._async.evaluate_action_safety(*a, **kw))
