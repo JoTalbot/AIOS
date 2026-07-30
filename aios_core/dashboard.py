@@ -1974,6 +1974,94 @@ class AIOSDashboard:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(result)
 
+    async def api_substrate_budget_throttle(self, request: Request) -> JSONResponse:
+        """GET or POST energy budget policy auto-throttle settings (v11.19.0)."""
+        scheduler = _get_energy_scheduler()
+        if request.method == "POST":
+            try:
+                body = await request.json()
+            except Exception:
+                return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+            if not isinstance(body, dict):
+                return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+            enabled = body.get("enabled", True)
+            threshold = body.get("threshold", 0.8)
+            try:
+                res = scheduler.configure_throttle(enabled=enabled, threshold=threshold)
+            except ValueError as exc:
+                return JSONResponse({"error": str(exc)}, status_code=400)
+            return JSONResponse(res)
+        return JSONResponse(
+            {
+                "auto_throttle_enabled": scheduler.auto_throttle_enabled,
+                "throttle_threshold": scheduler.throttle_threshold,
+            }
+        )
+
+    async def api_substrate_policy_autotune(self, request: Request) -> JSONResponse:
+        """Auto-tune scheduler policy based on workload sample (v11.19.0)."""
+        scheduler = _get_energy_scheduler()
+        sample = None
+        if request.method == "POST":
+            try:
+                body = await request.json()
+                if isinstance(body, dict) and "tasks" in body:
+                    sample = body["tasks"]
+            except Exception:
+                pass
+        try:
+            res = scheduler.auto_tune_policy(tasks_sample=sample)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(res)
+
+    async def api_memory_health(self, request: Request) -> JSONResponse:
+        """Get advanced memory health & vitality telemetry (v11.19.0)."""
+        mem = _get_memory_system()
+        return JSONResponse(mem.memory_health_report())
+
+    async def api_memory_snapshot_prune(self, request: Request) -> JSONResponse:
+        """Prune rotated backup snapshots (v11.19.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        path = body.get("path", str(_MEMORY_SNAPSHOT_PATH))
+        max_age_days = body.get("max_age_days", 30.0)
+        keep_last = body.get("keep_last", 5)
+        try:
+            from aios_core.agent_memory_system import AgentMemorySystem
+
+            res = AgentMemorySystem.prune_rotated_snapshots(path, max_age_days=max_age_days, keep_last=keep_last)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(res)
+
+    async def api_retention_maintenance_run(self, request: Request) -> JSONResponse:
+        """Run unified retention maintenance cycle across all stores (v11.19.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or not body.get("confirm"):
+            return JSONResponse({"error": "request body must include confirm: true guard"}, status_code=400)
+        from .retention import RetentionMaintenanceEngine
+
+        maint = RetentionMaintenanceEngine(
+            engine=_get_substrate_engine(),
+            scheduler=_get_energy_scheduler(),
+            memory_system=_get_memory_system(),
+        )
+        res = maint.run_maintenance_cycle(
+            keep_last_history=body.get("keep_last_history", 1000),
+            keep_last_dispatches=body.get("keep_last_dispatches", 1000),
+            keep_last_archive=body.get("keep_last_archive", 500),
+            older_than_seconds=body.get("older_than_seconds", 604800.0),
+        )
+        return JSONResponse(res)
+
     async def api_substrate_budget_alerts(self, request: Request) -> JSONResponse:
         """Rolling-budget pressure alerts (v11.14.0).
 
@@ -2595,6 +2683,8 @@ class AIOSDashboard:
             Route("/api/substrate/dispatches/purge", self.api_substrate_dispatches_purge, methods=["POST"]),
             Route("/api/substrate/budget", self.api_substrate_budget, methods=["POST"]),
             Route("/api/substrate/budget/alerts", self.api_substrate_budget_alerts),
+            Route("/api/substrate/budget/throttle", self.api_substrate_budget_throttle, methods=["GET", "POST"]),
+            Route("/api/substrate/policy/autotune", self.api_substrate_policy_autotune, methods=["POST"]),
             Route("/api/substrate/schedule", self.api_substrate_schedule, methods=["POST"]),
             Route("/api/substrate/scheduler", self.api_substrate_scheduler),
             Route("/api/substrate/analytics", self.api_substrate_analytics),
@@ -2602,6 +2692,7 @@ class AIOSDashboard:
             Route("/api/substrate/compare", self.api_substrate_compare, methods=["POST"]),
             Route("/api/substrate/replay", self.api_substrate_replay, methods=["POST"]),
             Route("/api/memory/stats", self.api_memory_stats),
+            Route("/api/memory/health", self.api_memory_health, methods=["GET"]),
             Route("/api/memory/patterns", self.api_memory_patterns),
             Route("/api/memory/compression", self.api_memory_compression),
             Route("/api/memory/duplicates", self.api_memory_duplicates),
@@ -2621,6 +2712,8 @@ class AIOSDashboard:
             Route("/api/memory/snapshot/load", self.api_memory_snapshot_load, methods=["POST"]),
             Route("/api/memory/snapshot/diff", self.api_memory_snapshot_diff, methods=["POST"]),
             Route("/api/memory/snapshot/list", self.api_memory_snapshot_list),
+            Route("/api/memory/snapshot/prune", self.api_memory_snapshot_prune, methods=["POST"]),
+            Route("/api/retention/maintenance/run", self.api_retention_maintenance_run, methods=["POST"]),
             Route("/api/metrics", self.api_metrics),
             Route("/api/health/score", self.api_health_score),
             Route("/api/health/alerts", self.api_health_alerts),

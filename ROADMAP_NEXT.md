@@ -1,5 +1,11 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.19.0 ✅ (2026-07-30)
+- ✅ REST API Endpoints — Добавлены эндпоинты дашборда для управления авто-троттлингом (`/api/substrate/budget/throttle`), авто-тюнингом политик (`/api/substrate/policy/autotune`), здоровьем памяти (`/api/memory/health`), очисткой бэкапов (`/api/memory/snapshot/prune`) и запуском ретенции (`/api/retention/maintenance/run`)
+- ✅ 5 новых интеграционных тестов (test_v11_19_features)
+
+**~4355 tests, 0 failures**
+
 ## v11.18.0 ✅ (2026-07-30)
 - ✅ Multi-Tenant Energy Budget Allocation — `MultiTenantBudgetAllocator` в `aios_core/multitenancy.py`: распределение и контроль лимитов энергии по тенантам с глобальным капом
 - ✅ Swarm Workload Balancing — `SwarmWorkloadBalancer` в `aios_core/agent_swarm.py`: балансировка задач между агентами роя с учётом требуемых способностей и интеграцией с планировщиком субстратов
