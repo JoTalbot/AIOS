@@ -4,9 +4,10 @@ Production-ready AI orchestration platform with 10+ platform integrations, auton
 
 ## Features
 - Self-evolving templates with A/B testing
+- Massive Skills Library (240+ Octopus integrated skills)
 - RAG-powered knowledge base (ChromaDB)
 - ML conversion prediction
-- 10 platform adapters (OLX, Instagram, WhatsApp, TikTok, etc.)
+- 10+ platform adapters including Octopus MCPs (Browser Vision, Telegram Control, Arena Router)
 - Enterprise security (JWT, API keys, audit logs)
 - Kubernetes-ready with HPA and TLS
 - Real-time observability (Prometheus, Grafana, Jaeger)

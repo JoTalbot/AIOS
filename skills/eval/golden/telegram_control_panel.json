@@ -1,0 +1,9 @@
+{
+  "id": "telegram_control_panel",
+  "vector": "telegram",
+  "skill": "meta/skill-telegram-control-panel",
+  "prompt": "Покажи статус Telegram control-панели и доступные кнопки управления.",
+  "expected": "Должен вернуть статус бота и список команд/кнопок.",
+  "expected_keys": ["status", "buttons", "score"],
+  "fixtures": null
+}
