@@ -71,3 +71,5 @@ networkx==3.3
 paho-mqtt==2.1.0
 qiskit==1.1.0
 qiskit-aer==0.14.2
+torch
+snntorch
