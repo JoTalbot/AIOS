@@ -33,6 +33,7 @@ __all__ = [
     "run_orchestrator",
     "get_git_version",
     "report_technical_debt",
+    "main",
 ]
 
 @dataclass
@@ -128,6 +129,19 @@ def report_technical_debt(
     if logger:
         logger.info(notification)
 
+def determine_project_root(file_path: Path) -> Path:
+    """Determine the project root directory based on the given file path.
+
+    Args:
+        file_path: Path to the file to determine the project root from.
+
+    Returns:
+        The project root directory.
+    """
+    if file_path.parent.name == "tools":
+        return file_path.parent.parent
+    return file_path.parent
+
 def main() -> None:
     """Main function for testing the module.
 
@@ -158,10 +172,7 @@ def main() -> None:
         logger.warning("Could not determine git version.")
 
     # Determine project root directory
-    if file_path.parent.name == "tools":
-        project_root = file_path.parent.parent
-    else:
-        project_root = file_path.parent
+    project_root = determine_project_root(file_path)
 
     # Scan for technical debt tags automatically on startup using new module
     try:
