@@ -60,7 +60,7 @@ class Provider:
         key.last_error = error
         key.error_count += 1
         key.cooldown_until = time.time() + cooldown
-        print(f"  [Balancer] Key {key.key[:8]}... cooled down {cooldown}s: {error}")
+        print(f"  [Balancer] {key.provider} key cooled down {cooldown}s: {error}")
 
 
 class LLMBalancer:
@@ -399,7 +399,7 @@ class LLMBalancer:
 
                     # Success!
                     self._provider_stats[prov_name] = self._provider_stats.get(prov_name, 0) + 1
-                    print(f"  [Balancer] OK: {prov_name}/{try_model} key={best_key.key[:8]}...")
+                    print(f"  [Balancer] OK: {prov_name}/{try_model}")
 
                     if "choices" in data and data["choices"]:
                         return data["choices"][0]["message"]["content"]
@@ -414,7 +414,7 @@ class LLMBalancer:
                         continue
 
                 except urllib.error.HTTPError as e:
-                    last_error = f"{prov_name}/{try_model}: HTTP {e.code} key={best_key.key[:8]}"
+                    last_error = f"{prov_name}/{try_model}: HTTP {e.code}"
                     print(f"  [Balancer] {last_error}")
 
                     if e.code in (402, 429):
@@ -438,7 +438,7 @@ class LLMBalancer:
                     continue
 
         self._total_errors += 1
-        return f"LLM Error: all providers failed. Last: {last_error}"
+        return "⚠️ Все LLM-провайдеры временно недоступны. Проверьте квоты и API-ключи."
 
     def status(self) -> dict:
         """Return balancer status."""
