@@ -287,17 +287,15 @@ class MetricsExporter:
                 seen_hist_names.add(name)
 
             if values:
-                # Bucket counts
-                cumulative = 0
+                # Bucket counts (sum(1 for v in values if v <= boundary) is already cumulative)
                 for boundary in buckets:
                     count = sum(1 for v in values if v <= boundary)
-                    cumulative += count
                     label_part = key.split("{")[1] if "{" in key else ""
                     if label_part:
                         label_part = label_part.rstrip("}") + f',le="{boundary}"'
-                        lines.append(f"{name}{{{label_part}}} {cumulative}")
+                        lines.append(f"{name}{{{label_part}}} {count}")
                     else:
-                        lines.append(f'{name}_bucket{{le="{boundary}"}} {cumulative}')
+                        lines.append(f'{name}_bucket{{le="{boundary}"}} {count}')
                 # +Inf
                 lines.append(f'{name}_bucket{{le="+Inf"}} {len(values)}')
                 lines.append(f"{key}_count {len(values)}")
