@@ -870,8 +870,9 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
 
 
 def _llm_chat(chat_id: int, user_text: str) -> str:
-    """Send message to LLM with chat history. Uses GitHub Models (free) first."""
+    """LLM chat with root system access. Uses tool-calling pattern."""
     import json as _json, urllib.request as _urllib, os as _os
+    import subprocess as _sp, re as _re
 
     # Get or create chat history
     if chat_id not in _chat_history:
@@ -882,16 +883,28 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
         _chat_history[chat_id] = _chat_history[chat_id][-MAX_HISTORY * 2:]
 
     system = (
-        "You are AIOS Hermes, an intelligent AI assistant. "
-        "Help with coding, sysadmin, project management, and general questions. "
-        "The AIOS project is at /root/AIOS (Python, Docker, systemd). "
-        "Answer concisely. Use Russian when user writes in Russian. "
-        "You can write code, explain, debug, advise."
+        "You are AIOS Hermes — an AI assistant with FULL ROOT ACCESS to the server.\n"
+        "Server: Ubuntu Linux, Python 3.10, Docker, systemd.\n"
+        "Project: /root/AIOS (AIOS — autonomous AI coding platform).\n\n"
+        "You can execute commands using <cmd> tags. Examples:\n"
+        "<cmd>ls -la /root/AIOS</cmd>\n"
+        "<cmd>docker ps</cmd>\n"
+        "<cmd>systemctl status aios-auto-coder</cmd>\n"
+        "<cmd>cat /root/AIOS/run_telegram_bot.py | head -50</cmd>\n"
+        "<cmd>tail -20 /root/AIOS/logs/coder_orchestrator.log</cmd>\n\n"
+        "Rules:\n"
+        "- Use <cmd>...</cmd> to run shell commands (one per response)\n"
+        "- After seeing command output, explain results to user\n"
+        "- You can read/write files, manage services, install packages\n"
+        "- Be careful with destructive commands (rm -rf, etc)\n"
+        "- Answer in the same language as the user (Russian/English)\n"
+        "- Be concise and helpful\n"
+        "- If user asks to fix/code something — do it directly"
     )
 
     messages = [{"role": "system", "content": system}] + _chat_history[chat_id]
 
-    # Try GitHub Models first (free!), then balancer
+    # LLM endpoints
     gh_key = _os.environ.get("GITHUB_API_KEY", "")
     if not gh_key:
         try:
@@ -899,42 +912,75 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
                 gh_key = f.read().strip()
         except Exception:
             pass
+
     endpoints = []
     if gh_key:
-        endpoints.append({
-            "url": "https://models.inference.ai.azure.com/chat/completions",
-            "key": gh_key, "model": "gpt-4.1-mini",
-        })
-    # Fallback: balancer
+        endpoints.append(("https://models.inference.ai.azure.com/chat/completions", gh_key, "gpt-4.1-mini"))
     or_key = _os.environ.get("OPENROUTER_API_KEY", "")
     if or_key:
-        endpoints.append({
-            "url": "https://openrouter.ai/api/v1/chat/completions",
-            "key": or_key, "model": "mistralai/mistral-small-3.2-24b-instruct",
-        })
+        endpoints.append(("https://openrouter.ai/api/v1/chat/completions", or_key, "mistralai/mistral-small-3.2-24b-instruct"))
 
-    for ep in endpoints:
-        try:
-            payload = _json.dumps({
-                "model": ep["model"],
-                "messages": messages,
-                "max_tokens": 1500,
-                "temperature": 0.4,
-            }).encode()
-            req = _urllib.Request(ep["url"], data=payload, headers={
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + ep["key"],
-            })
-            with _urllib.urlopen(req, timeout=60) as resp:
-                data = _json.loads(resp.read())
-            if "choices" in data and data["choices"]:
-                reply = data["choices"][0]["message"]["content"]
-                _chat_history[chat_id].append({"role": "assistant", "content": reply})
-                return reply
-        except Exception:
+    # Tool loop: up to 3 command iterations
+    for iteration in range(4):
+        response = None
+        for url, key, model in endpoints:
+            try:
+                payload = _json.dumps({
+                    "model": model,
+                    "messages": messages,
+                    "max_tokens": 2000,
+                    "temperature": 0.3,
+                }).encode()
+                req = _urllib.Request(url, data=payload, headers={
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + key,
+                })
+                with _urllib.urlopen(req, timeout=90) as resp:
+                    data = _json.loads(resp.read())
+                if "choices" in data and data["choices"]:
+                    response = data["choices"][0]["message"]["content"]
+                    break
+            except Exception:
+                continue
+
+        if not response:
+            return "LLM temporarily unavailable."
+
+        # Check if LLM wants to run a command
+        cmd_match = _re.search(r"<cmd>(.*?)</cmd>", response, _re.DOTALL)
+        if cmd_match and iteration < 3:
+            cmd = cmd_match.group(1).strip()
+            # Execute command
+            try:
+                result = _sp.run(
+                    cmd, shell=True, capture_output=True, text=True,
+                    timeout=30, cwd="/root/AIOS"
+                )
+                output = result.stdout + result.stderr
+                if not output.strip():
+                    output = "(no output, exit code: " + str(result.returncode) + ")"
+                # Trim long output
+                if len(output) > 3000:
+                    output = output[:3000] + "\n... (truncated)"
+            except _sp.TimeoutExpired:
+                output = "Command timed out (30s limit)"
+            except Exception as e:
+                output = "Error: " + str(e)
+
+            # Add assistant response and tool output to history
+            messages.append({"role": "assistant", "content": response})
+            messages.append({"role": "user", "content": "Command output:\n```\n" + output + "\n```\nContinue helping the user."})
             continue
+        else:
+            # Final response — no more commands
+            _chat_history[chat_id].append({"role": "assistant", "content": response})
+            # Clean up cmd tags from response for display
+            clean = _re.sub(r"<cmd>.*?</cmd>", "", response, flags=_re.DOTALL).strip()
+            return clean if clean else response
 
-    return "LLM temporarily unavailable. Try again in a moment."
+    # Max iterations reached
+    _chat_history[chat_id].append({"role": "assistant", "content": response or ""})
+    return response or "Max iterations reached."
 
 
 
