@@ -91,6 +91,14 @@ class LLMBalancer:
                 "gpt-4.1-mini",
             ],
         },
+        "deepseek": {
+            "base_url": "https://api.deepseek.com/chat/completions",
+            "models": [
+                "deepseek-chat",
+                "deepseek-reasoner",
+                "deepseek-coder",
+            ],
+        },
         "zai": {
             "base_url": "https://api.z.ai/api/v1/chat/completions",
             "models": [
@@ -110,6 +118,7 @@ class LLMBalancer:
             "gpt-4o-mini",
             "deepseek/deepseek-chat-v3-0324",
             "glm-4.5-flash",
+            "deepseek-chat",
         ],
         "gemini-2.0-flash": [
             "gemini-2.5-flash",
@@ -203,6 +212,24 @@ class LLMBalancer:
                 base_url=self.PROVIDERS["openai"]["base_url"],
                 keys=oai_keys,
                 models=self.PROVIDERS["openai"]["models"],
+            )
+
+        # DeepSeek keys
+        ds_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"DEEPSEEK_API_KEY_{i}", "")
+            if k:
+                ds_keys.append(APIKey(key=k, provider="deepseek"))
+        dk = os.environ.get("DEEPSEEK_API_KEY", "")
+        if dk and not any(k.key == dk for k in ds_keys):
+            ds_keys.append(APIKey(key=dk, provider="deepseek"))
+
+        if ds_keys:
+            self.providers["deepseek"] = Provider(
+                name="deepseek",
+                base_url=self.PROVIDERS["deepseek"]["base_url"],
+                keys=ds_keys,
+                models=self.PROVIDERS["deepseek"]["models"],
             )
 
         # Z.ai keys
