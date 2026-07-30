@@ -189,4 +189,6 @@ def run() -> None:
 
     # === END AI Advisor Metrics ===
 
-    ui.run(title="AIOS Dashboard", favicon="🤖", port=8080, reload=False)
+    dash_host = os.environ.get("AIOS_DASH_HOST", "0.0.0.0")
+    dash_port = int(os.environ.get("AIOS_DASH_PORT", "8080"))
+    ui.run(title="AIOS Pure-Python Dashboard", favicon="🤖", host=dash_host, port=dash_port, reload=False)
