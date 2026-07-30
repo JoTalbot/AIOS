@@ -326,7 +326,6 @@ def phase_validate(code_result: dict) -> dict:
 def phase_commit(code_result: dict, plan: dict, validation: dict) -> dict:
     """Phase 5: Commit and push — full autonomous access."""
     code_ok = code_result.get("status") in ("success", "unsafe")
-    val_ok = validation.get("status") in ("passed", "skipped")
 
     if not code_ok:
         return {"status": "skipped", "reason": "No code generated"}
@@ -335,25 +334,32 @@ def phase_commit(code_result: dict, plan: dict, validation: dict) -> dict:
     desc = plan.get("description", "auto-code")[:80]
     action = plan.get("action", "update")
 
-    # Git add + commit
-    git_cmd("add", file_path)
-    git_cmd("add", "-A")  # catch any side effects
+    # Git add all changes
+    git_cmd("add", "-A")
+
+    # Check if there is something to commit
+    status_out = git_cmd("status", "--porcelain")
+    if not status_out.strip():
+        return {"status": "nothing_to_commit", "full_cycle": True}
+
+    # Commit
     commit_msg = f"auto-coder({action}): {desc}"
     commit_out = git_cmd("commit", "-m", commit_msg)
+    print(f"    [COMMIT] {commit_out[:80]}")
 
     if "nothing to commit" in commit_out.lower():
         return {"status": "nothing_to_commit", "full_cycle": True}
 
-    # Always push
+    # Push
     push_out = git_cmd("push", "origin", "main")
-    pushed = push_out != "" and "error" not in push_out.lower()
+    print(f"    [PUSH] {push_out[:80]}")
+    pushed = "error" not in push_out.lower()
 
     if not pushed:
-        # Retry once
         import time
-        time.sleep(2)
+        time.sleep(3)
         push_out = git_cmd("push", "origin", "main")
-        pushed = push_out != "" and "error" not in push_out.lower()
+        pushed = "error" not in push_out.lower()
 
     return {
         "status": "pushed" if pushed else "commit_only",
