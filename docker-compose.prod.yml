@@ -68,10 +68,13 @@ services:
   aios-dashboard:
     build: .
     container_name: aios-dashboard
-    command: ["python", "run_dashboard.py"]
-    ports: ["8080:8080"]
+    command: ["python", "run_dashboard.py", "--port", "8080"]
+    ports:
+      - "8080:8080"
+      - "8580:8080"
     environment:
       AIOS_API_KEYS: ${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
+      AIOS_DASH_PORT: "8080"
       AIOS_PROFILES_DB: /app/data/profiles.sqlite
     volumes: [aios-data:/app/data]
     depends_on:
