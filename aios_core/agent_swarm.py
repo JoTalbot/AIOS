@@ -335,3 +335,13 @@ class SwarmWorkloadBalancer:
             "total_assignments": total_assignments,
             "avg_assignments_per_agent": round(total_assignments / max(1, len(active)), 2),
         }
+
+# --- OCTOPUS SWARM INTEGRATION ---
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+try:
+    from octopus_swarm.ops.restart_policy import SwarmRestartPolicy
+    from octopus_swarm.ops.storage_live_read_proof import StorageLiveReadProof
+    OCTOPUS_SWARM_ACTIVE = True
+except ImportError:
+    OCTOPUS_SWARM_ACTIVE = False

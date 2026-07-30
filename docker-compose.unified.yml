@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # AIOS Главное Ядро и API
+  aios_backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - CONSTITUTION_MODE=STRICT
+
+  # Фронтенд: Arena Router Chat (Из Octopus)
+  aios_frontend:
+    build: 
+      context: ./octopus_services/arena-router-chat
+    ports:
+      - "3000:3000"
+    depends_on:
+      - aios_backend
+
+  # Обсервабилити: Prometheus (Метрики Роя)
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./octopus_obs/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  # Обсервабилити: Grafana (Дашборды)
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin

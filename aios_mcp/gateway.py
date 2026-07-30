@@ -42,6 +42,8 @@ from .protocol import (
 from .resources import ResourceDefinition, ResourceRegistry
 from .tools import ToolDefinition, ToolRegistry
 
+import sys
+
 # Default constitution/policy dirs relative to project root
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
