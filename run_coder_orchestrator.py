@@ -232,6 +232,8 @@ def get_project_context() -> dict:
 
 # Track cycle state
 _cycle_count = 0
+_consecutive_errors = 0
+MAX_ERRORS = 5
 _previous_issues = []
 
 def phase_analyze(llm: LLMClient, ctx: dict, backlog: dict) -> dict:
@@ -655,6 +657,22 @@ def run_cycle():
     backlog = load_backlog()
     backlog["cycle_count"] = backlog.get("cycle_count", 0) + 1
     analysis = phase_analyze(llm, ctx, backlog)
+    # Track consecutive LLM errors
+    global _consecutive_errors
+    _asum = str(analysis.get("summary", ""))
+    if "LLM Error" in _asum or _asum.startswith("error"):
+        _consecutive_errors += 1
+        print(f"  [WARN] Errors: {_consecutive_errors}/{MAX_ERRORS}")
+        if _consecutive_errors >= MAX_ERRORS:
+            _stop = chr(9940) + " <b>AUTO-STOP: " + str(MAX_ERRORS) + " errors in a row!</b>"
+            _stop += chr(10) + "LLM not responding."
+            _stop += chr(10) + "<code>systemctl start aios-auto-coder</code>"
+            tg_send(_stop)
+            import subprocess as _sp3
+            _sp3.run(["systemctl", "stop", "aios-auto-coder"], timeout=10)
+            sys.exit(1)
+    else:
+        _consecutive_errors = 0
     print(f"    Health: {analysis.get('health_score', '?')}/10")
     print(f"    Issues: {len(analysis.get('issues', []))}")
 
