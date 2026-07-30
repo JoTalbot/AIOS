@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.23.0] — 2026-07-30 — Autonomous Agent Governance + Real-Time Safety Guard + Compliance Audit Engine
+
+### Added
+- **Real-Time Pre-Execution Safety Guard (`AgentSafetyComplianceGuard`)**:
+  - `AgentSafetyComplianceGuard` in `aios_core/ai_governance.py` evaluates agent actions pre-execution for harm, deception, and policy risks.
+  - Automatically blocks critical/high-risk actions and logs accountability records.
+- **Autonomous Safety Audit Engine (`AutonomousSafetyAuditEngine`)**:
+  - `AutonomousSafetyAuditEngine` calculates composite Governance Compliance Index (0..100) combining policy audits, memory vitality, and energy budget statuses.
+- **REST API & Developer SDK Integration**:
+  - Added REST API endpoints `POST /api/governance/guard/evaluate`, `POST /api/governance/audit/run`, `GET /api/governance/compliance/score`.
+  - Added Developer SDK methods `evaluate_action_safety()`, `run_safety_audit()`, and `get_compliance_score()`.
+
+## [11.22.0] — 2026-07-30 — Multi-Provider LLM Router + RAG Context Augmentation + Swarm Multi-Model Consensus
+
+### Added
+- **Multi-Provider LLM Router & Fallback Matrix (`LLMRouter`)**:
+  - Added `LLMRouter` in `aios_core/llm_router.py` supporting OpenAI, Anthropic, Gemini, DeepSeek, Ollama/vLLM, and Mock.
+- **RAG & Neural Context Augmentation (`ContextAugmenter`)**:
+  - Added `ContextAugmenter` in `aios_core/rag_augmentation.py` for prompt enrichment from memory, vector store, and knowledge graph.
+- **Multi-Model Swarm Consensus Engine (`SwarmConsensusEngine`)**:
+  - Added `SwarmConsensusEngine` in `aios_core/swarm_consensus.py` for multi-model response querying and consensus decision scoring.
+
+## [11.21.0] — 2026-07-30 — Adaptive Substrate Self-Healing Engine
+
+### Added
+- **Adaptive Substrate Self-Healing Engine (`AdaptiveSelfHealingSubstrateEngine`)**:
+  - Added `AdaptiveSelfHealingSubstrateEngine` in `aios_core/self_healing.py` for anomaly detection and automated substrate capacity adjustment/deactivation.
+
 ## [11.20.0] — 2026-07-30 — Python Developer SDK Client Expansion + Official Release Notes Documentation
 
 ### Added

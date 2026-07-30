@@ -371,6 +371,34 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    # --- AI Governance, Safety Guard & Compliance Audit (v11.23.0) ---
+
+    async def evaluate_action_safety(self, action: dict, tenant_id: str | None = None) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/governance/guard/evaluate"),
+                json={"action": action, "tenant_id": tenant_id},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def run_safety_audit(self) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/governance/audit/run"),
+                json={"confirm": True},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def get_compliance_score(self) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.get(self._url("/api/governance/compliance/score"), headers=self.headers)
+            resp.raise_for_status()
+            return resp.json()
+
     # --- WebSocket helpers ---
 
     async def watch_events(self, on_event: Callable[[dict], None], channels: list[str] | None = None):
@@ -520,6 +548,15 @@ class AIOSClientSync:
 
     def ai_consensus(self, *a, **kw):
         return self._run(self._async.ai_consensus(*a, **kw))
+
+    def evaluate_action_safety(self, *a, **kw):
+        return self._run(self._async.evaluate_action_safety(*a, **kw))
+
+    def run_safety_audit(self, *a, **kw):
+        return self._run(self._async.run_safety_audit(*a, **kw))
+
+    def get_compliance_score(self, *a, **kw):
+        return self._run(self._async.get_compliance_score(*a, **kw))
 
 
 # Example: "agent in 30 lines"

@@ -236,3 +236,108 @@ class AIGovernance:
             "transparency_events": len(self._transparency_records),
             "accountability_events": len(self._accountability_log),
         }
+
+
+class AgentSafetyComplianceGuard:
+    """Real-time pre-execution safety and policy compliance guard for AI actions (v11.23.0)."""
+
+    def __init__(self, governance: AIGovernance | None = None) -> None:
+        self.governance = governance or AIGovernance()
+        self.evaluations_count = 0
+        self.blocked_count = 0
+
+    def evaluate_action_safety(
+        self,
+        action: dict[str, Any],
+        tenant_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Evaluate action against risk, safety constraints, and governance policies."""
+        self.evaluations_count += 1
+        risk = self.governance.assess_risk(action)
+
+        violations = list(risk.get("violations", []))
+        risk_level = risk.get("risk_level", "low")
+
+        blocked = risk_level in ("high", "critical") and (
+            "harm_risk" in risk.get("risk_factors", []) or "deception_risk" in risk.get("risk_factors", [])
+        )
+
+        if blocked:
+            self.blocked_count += 1
+            violations.append(f"action_blocked_by_guard: risk_level={risk_level}")
+
+        self.governance.log_accountability(
+            agent_id=str(action.get("agent_id", "anonymous_agent")),
+            action=str(action.get("name", "unnamed_action")),
+            outcome="blocked" if blocked else "allowed",
+            decision_reason=f"risk_score={risk.get('risk_score')}",
+        )
+
+        return {
+            "allowed": not blocked,
+            "blocked": blocked,
+            "risk_score": risk.get("risk_score", 0.0),
+            "risk_level": risk_level,
+            "risk_factors": risk.get("risk_factors", []),
+            "violations": violations,
+            "tenant_id": tenant_id,
+            "timestamp": time.time(),
+        }
+
+
+class AutonomousSafetyAuditEngine:
+    """Periodic & autonomous safety auditor across AIOS subsystems (v11.23.0)."""
+
+    def __init__(
+        self,
+        governance: AIGovernance | None = None,
+        memory_system: Any = None,
+        scheduler: Any = None,
+    ) -> None:
+        self.governance = governance or AIGovernance()
+        self.memory_system = memory_system
+        self.scheduler = scheduler
+        self.audit_history: list[dict[str, Any]] = []
+
+    def run_full_safety_audit(
+        self,
+        governance: AIGovernance | None = None,
+        memory_system: Any = None,
+        scheduler: Any = None,
+    ) -> dict[str, Any]:
+        """Run comprehensive multi-pillar AI safety and compliance audit."""
+        gov = governance or self.governance
+        mem = memory_system or self.memory_system
+        sched = scheduler or self.scheduler
+
+        gov_stats = gov.stats()
+        audit_score = gov_stats.get("avg_audit_score", 1.0) * 100.0
+
+        mem_score = 100.0
+        if mem is not None and hasattr(mem, "memory_health_report"):
+            try:
+                m_report = mem.memory_health_report()
+                mem_score = m_report.get("vitality_score", 100.0)
+            except Exception:
+                pass
+
+        budget_ok = True
+        if sched is not None and hasattr(sched, "energy_budget") and sched.energy_budget:
+            budget_ok = sched.energy_budget.pressure() < 1.0
+
+        composite_index = round(0.5 * audit_score + 0.4 * mem_score + (10.0 if budget_ok else 0.0), 2)
+        composite_index = min(100.0, max(0.0, composite_index))
+
+        status = "compliant" if composite_index >= 80.0 else "degraded" if composite_index >= 50.0 else "non_compliant"
+
+        result = {
+            "compliance_index": composite_index,
+            "status": status,
+            "governance_score": round(audit_score, 2),
+            "memory_vitality_score": round(mem_score, 2),
+            "budget_status": "ok" if budget_ok else "over_budget",
+            "active_policies": gov_stats.get("active_policies", 0),
+            "timestamp": time.time(),
+        }
+        self.audit_history.append(result)
+        return result
