@@ -1,7 +1,7 @@
 # AIOS Architecture Documentation
 
 > **AIOS (AI Operating System)** — Self-Evolving Distributed Operating System for Application Intelligence
-> **Version:** 9.0.0 | **Runtime:** Octopus Runtime | **Constitution:** 67 Articles, 1,320 Rules
+> **Version:** 16.1.0 | **Runtime:** Octopus Runtime | **Constitution:** 67 Articles, 1,320 Rules
 
 ---
 
@@ -10,6 +10,8 @@
 1. [Overview](#overview)
 2. [Constitutional Governance](#constitutional-governance)
 3. [Core Subsystems](#core-subsystems)
+4. [Octopus Integration Layer (Skills & MCP)](#octopus-integration-layer)
+5. [Execution Pipeline](#execution-pipeline)
 4. [Execution Pipeline](#execution-pipeline)
 5. [API Layers](#api-layers)
 6. [Persistence Layer](#persistence-layer)

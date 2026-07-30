@@ -1,5 +1,14 @@
 # AIOS Roadmap — Next Milestones
 
+## v16.1.0 ✅ (2026-07-30)
+- ✅ **Octopus Integration Complete (10-Stage Pipeline)** 
+- ✅ Massive Skills Library — 240+ Octopus skills migrated to AIOS (`core`, `swarm`, `memory`, etc.).
+- ✅ RAG DB Indexing — Playbooks, Proposals, and Research documents automatically indexed for `aios_core`.
+- ✅ Model Context Protocol (MCP) Expansion — `browser_vision`, `telegram_control`, and `arena_router` dynamically loaded by `aios_mcp/gateway.py`.
+- ✅ Test Coverage Updated — Added `test_octopus_integration.py` for continuous validation of module paths and configs.
+
+# AIOS Roadmap — Next Milestones
+
 ## v16.0.0 ✅ (2026-07-30)
 - ✅ Universal Cross-Platform Execution Adapters — Адаптеры взаимодействия для API (REST/GraphQL/gRPC/WS), Веб-сайтов (DOM RPA), IoT (MQTT/CoAP/Modbus/Zigbee), ARM/Raspberry Pi (GPIO/SPI/I2C/UART), Сетевых роутеров (SSH/SNMP/OpenWrt), Квантовых симуляторов (Qiskit/QASM) и Блокчейнов (EVM/Web3)
 - ✅ REST API & SDK Integration — эндпоинты `/api/adapters/execute`, `/api/adapters/stats` и методы SDK
