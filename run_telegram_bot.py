@@ -870,49 +870,73 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
 
 
 def _llm_chat(chat_id: int, user_text: str) -> str:
-    """Send message to LLM with chat history context."""
-    import json as _json, importlib.util as _iu, os as _os
-
-    # Load balancer
-    try:
-        spec = _iu.spec_from_file_location("lb_chat", "/app/aios_core/llm_balancer.py")
-        mod = _iu.module_from_spec(spec)
-        import sys as _sys
-        _sys.modules["lb_chat"] = mod
-        spec.loader.exec_module(mod)
-        balancer = mod.LLMBalancer()
-    except Exception as e:
-        return "LLM not available: " + str(e)
+    """Send message to LLM with chat history. Uses GitHub Models (free) first."""
+    import json as _json, urllib.request as _urllib, os as _os
 
     # Get or create chat history
     if chat_id not in _chat_history:
         _chat_history[chat_id] = []
 
-    # Add user message
     _chat_history[chat_id].append({"role": "user", "content": user_text})
-
-    # Trim history
     if len(_chat_history[chat_id]) > MAX_HISTORY * 2:
         _chat_history[chat_id] = _chat_history[chat_id][-MAX_HISTORY * 2:]
 
     system = (
-        "You are AIOS Hermes — an intelligent AI assistant embedded in the AIOS control panel. "
-        "You help with coding, system administration, project management, and general questions. "
-        "You have access to the AIOS project at /root/AIOS (Python, Docker, systemd). "
-        "Answer concisely and helpfully. Use Russian when the user writes in Russian. "
-        "You can write code, explain concepts, debug issues, and give advice."
+        "You are AIOS Hermes, an intelligent AI assistant. "
+        "Help with coding, sysadmin, project management, and general questions. "
+        "The AIOS project is at /root/AIOS (Python, Docker, systemd). "
+        "Answer concisely. Use Russian when user writes in Russian. "
+        "You can write code, explain, debug, advise."
     )
 
-    try:
-        model = _os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick")
-        response = balancer.chat(_chat_history[chat_id], model=model, system=system, max_tokens=1500)
+    messages = [{"role": "system", "content": system}] + _chat_history[chat_id]
 
-        # Add assistant response to history
-        _chat_history[chat_id].append({"role": "assistant", "content": response})
+    # Try GitHub Models first (free!), then balancer
+    gh_key = _os.environ.get("GITHUB_API_KEY", "")
+            if not gh_key:
+                try:
+                    with open('/app/data/.github_token') as f:
+                        gh_key = f.read().strip()
+                except:
+                    pass
+    endpoints = []
+    if gh_key:
+        endpoints.append({
+            "url": "https://models.inference.ai.azure.com/chat/completions",
+            "key": gh_key, "model": "gpt-4.1-mini",
+        })
+    # Fallback: balancer
+    or_key = _os.environ.get("OPENROUTER_API_KEY", "")
+    if or_key:
+        endpoints.append({
+            "url": "https://openrouter.ai/api/v1/chat/completions",
+            "key": or_key, "model": "mistralai/mistral-small-3.2-24b-instruct",
+        })
 
-        return response
-    except Exception as e:
-        return "Error: " + str(e)
+    for ep in endpoints:
+        try:
+            payload = _json.dumps({
+                "model": ep["model"],
+                "messages": messages,
+                "max_tokens": 1500,
+                "temperature": 0.4,
+            }).encode()
+            req = _urllib.Request(ep["url"], data=payload, headers={
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + ep["key"],
+            })
+            with _urllib.urlopen(req, timeout=60) as resp:
+                data = _json.loads(resp.read())
+            if "choices" in data and data["choices"]:
+                reply = data["choices"][0]["message"]["content"]
+                _chat_history[chat_id].append({"role": "assistant", "content": reply})
+                return reply
+        except Exception:
+            continue
+
+    return "LLM temporarily unavailable. Try again in a moment."
+
+
 
 
 # Button text -> action mapping
