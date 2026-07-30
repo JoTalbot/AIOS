@@ -1,15 +1,7 @@
 name: Deploy Fly.io Trial
 
+# Только ручной запуск, чтобы изменения в main не расходовали Fly.io Trial.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/fly-trial.yml"
-      - "Dockerfile.fly"
-      - "fly.toml"
-      - "requirements-fly.txt"
-      - "aios_core/p2p_network.py"
-      - "aios_core/llm_swarm_debate.py"
   workflow_dispatch:
 
 permissions:

@@ -48,11 +48,12 @@
 2. Откройте репозиторий GitHub:
    `Settings → Secrets and variables → Actions → New repository secret`.
 3. Создайте секрет `FLY_API_TOKEN` и вставьте полученный токен.
-4. Workflow `.github/workflows/fly-trial.yml` будет автоматически запускаться
-   только при изменении Fly-профиля. Его также можно запустить вручную через
+4. Запустите workflow вручную:
    `Actions → Deploy Fly.io Trial → Run workflow`.
 
-Если секрет отсутствует, workflow корректно пропускает деплой.
+Автоматический деплой при push намеренно отключён, чтобы обычные изменения в
+`main` не расходовали ограниченное время Fly.io Trial. Если секрет отсутствует,
+workflow корректно пропускает деплой.
 
 ## OpenRouter
 
