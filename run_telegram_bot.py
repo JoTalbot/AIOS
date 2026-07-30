@@ -50,7 +50,7 @@ class TelegramAPI:
         url = f"{self._base}/{method}"
         body = json.dumps(data or {}).encode()
         req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=90) as resp:
             return json.loads(resp.read())
 
     def get_updates(self, offset: int = 0) -> list[dict]:
@@ -1163,8 +1163,10 @@ def run_bot(token: str) -> None:
             print("\n👋 Бот остановлен.")
             break
         except Exception as exc:
+            if "timed out" in str(exc).lower() or "timeout" in str(exc).lower():
+                continue  # normal for long polling
             print(f"⚠️ Ошибка polling: {exc}")
-            time.sleep(5)
+            time.sleep(3)
 
 
 # ---------------------------------------------------------------------------
