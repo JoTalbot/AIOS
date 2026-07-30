@@ -19,7 +19,7 @@
 
 ## Что развёртывается
 
-- приложение: `aios-test`;
+- приложение: `jotalbot-aios-trial-2026`;
 - регион: `waw` (Варшава);
 - машина: `shared`, 1 vCPU, 512 МБ RAM;
 - автозапуск при HTTP-запросе;
@@ -29,20 +29,27 @@
 
 Точки входа после деплоя:
 
-- `https://aios-test.fly.dev/` — информация о сервисе;
-- `https://aios-test.fly.dev/health` — health check;
-- `https://aios-test.fly.dev/docs` — Swagger UI;
-- `https://aios-test.fly.dev/api/p2p/discover` — discovery узла;
-- `POST https://aios-test.fly.dev/api/swarm/debate` — запрос к LLM-рою.
+- `https://jotalbot-aios-trial-2026.fly.dev/` — информация о сервисе;
+- `https://jotalbot-aios-trial-2026.fly.dev/health` — health check;
+- `https://jotalbot-aios-trial-2026.fly.dev/docs` — Swagger UI;
+- `https://jotalbot-aios-trial-2026.fly.dev/api/p2p/discover` — discovery узла;
+- `POST https://jotalbot-aios-trial-2026.fly.dev/api/swarm/debate` — запрос к LLM-рою.
 
 ## Безопасная настройка GitHub Actions
 
 Не передавайте Fly.io-токен в коммитах, issue или сообщениях.
 
-1. В Fly.io создайте ограниченный deploy token для приложения `aios-test`:
+1. Если приложение ещё не создано, сформируйте временный org-scoped token —
+   workflow сможет создать приложение автоматически:
 
    ```bash
-   fly tokens create deploy -a aios-test
+   fly tokens create org --name "AIOS GitHub deploy" --expiry 24h
+   ```
+
+   После первого деплоя рекомендуется заменить его ограниченным токеном приложения:
+
+   ```bash
+   fly tokens create deploy -a jotalbot-aios-trial-2026
    ```
 
 2. Откройте репозиторий GitHub:
@@ -60,7 +67,7 @@ workflow корректно пропускает деплой.
 Для реальных ответов роя добавьте ключ как Fly secret:
 
 ```bash
-fly secrets set OPENROUTER_API_KEY="..." -a aios-test
+fly secrets set OPENROUTER_API_KEY="..." -a jotalbot-aios-trial-2026
 ```
 
 Если ключ отсутствует, `/api/swarm/debate` работает в безопасном mock-режиме.
@@ -69,7 +76,7 @@ fly secrets set OPENROUTER_API_KEY="..." -a aios-test
 Пример запроса:
 
 ```bash
-curl -X POST "https://aios-test.fly.dev/api/swarm/debate" \
+curl -X POST "https://jotalbot-aios-trial-2026.fly.dev/api/swarm/debate" \
   -H "Content-Type: application/json" \
   -d '{"topic":"Предложи план проверки нового API"}'
 ```
