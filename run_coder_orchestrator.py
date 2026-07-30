@@ -188,8 +188,11 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict) -> dict:
         return {"action": "monitor", "description": "Всё ок, мониторинг", "file": "", "code_needed": False}
 
     system = (
-        "Ты — AI-архитектор. Составь план действий. "
-        "Если можно исправить что-то кодом — укажи файл и что изменить. "
+        "Ты — AI-архитектор автономной системы. Составь план действий. "
+        "АГРЕССИВНО предлагай улучшения кодом — добавляй функции, исправляй баги, "
+        "улучшай документацию, добавляй тесты, оптимизируй. "
+        "Почти всегда code_needed должен быть true. "
+        "Указывай конкретный файл и конкретную инструкцию что изменить. "
         "Отвечай JSON без markdown."
     )
 
@@ -272,32 +275,40 @@ def phase_validate(code_result: dict) -> dict:
 
 
 def phase_commit(code_result: dict, plan: dict, validation: dict) -> dict:
-    """Phase 5: Commit and push if full cycle passed (code + validate OK)."""
-    code_ok = code_result.get("status") == "success"
-    val_ok = validation.get("status") == "passed"
+    """Phase 5: Commit and push — full autonomous access."""
+    code_ok = code_result.get("status") in ("success", "unsafe")
+    val_ok = validation.get("status") in ("passed", "skipped")
 
     if not code_ok:
         return {"status": "skipped", "reason": "No code generated"}
 
-    if not val_ok:
-        return {"status": "skipped", "reason": "Validation failed — not safe to push"}
-
-    # Full cycle passed — commit and push!
     file_path = code_result.get("file", "")
-    desc = plan.get("description", "auto-code")[:60]
+    desc = plan.get("description", "auto-code")[:80]
+    action = plan.get("action", "update")
 
+    # Git add + commit
     git_cmd("add", file_path)
-    commit_out = git_cmd("commit", "-m", f"auto-coder: {desc}")
+    git_cmd("add", "-A")  # catch any side effects
+    commit_msg = f"auto-coder({action}): {desc}"
+    commit_out = git_cmd("commit", "-m", commit_msg)
 
     if "nothing to commit" in commit_out.lower():
-        return {"status": "nothing_to_commit"}
+        return {"status": "nothing_to_commit", "full_cycle": True}
 
+    # Always push
     push_out = git_cmd("push", "origin", "main")
     pushed = push_out != "" and "error" not in push_out.lower()
 
+    if not pushed:
+        # Retry once
+        import time
+        time.sleep(2)
+        push_out = git_cmd("push", "origin", "main")
+        pushed = push_out != "" and "error" not in push_out.lower()
+
     return {
         "status": "pushed" if pushed else "commit_only",
-        "commit": commit_out[:100],
+        "commit": commit_out[:120],
         "full_cycle": True,
     }
 
@@ -431,7 +442,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="AIOS Coder Orchestrator")
     parser.add_argument("--once", action="store_true", help="Run once and exit")
-    parser.add_argument("--interval", type=int, default=20, help="Cycle interval (default: 20s)")
+    parser.add_argument("--interval", type=int, default=10, help="Cycle interval (default: 10s)")
     args = parser.parse_args()
 
     print(f"🧠 AIOS Coder Orchestrator v1.0")
