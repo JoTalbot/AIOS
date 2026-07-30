@@ -170,7 +170,22 @@ class LLMBalancer:
         self._provider_stats: dict[str, int] = {}
 
     def _load_from_env(self):
-        """Load providers and keys from environment variables."""
+        """Load providers and keys from env plus the external runtime registry."""
+        # Import runtime keys without putting secrets in source code or images.
+        # The registry is mounted at /app/data in Docker and lives in data/ on host.
+        for key_file in (Path("/app/data/.llm_keys.json"), Path(__file__).resolve().parents[1] / "data/.llm_keys.json"):
+            try:
+                runtime = json.loads(key_file.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            env_prefix = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "zai": "ZAI_API_KEY", "github": "GITHUB_API_KEY"}
+            for provider, keys in runtime.items():
+                prefix = env_prefix.get(provider)
+                if not prefix or not isinstance(keys, list):
+                    continue
+                for index, key in enumerate(keys, 1):
+                    if key and not os.environ.get(f"{prefix}_{index}"):
+                        os.environ[f"{prefix}_{index}"] = str(key)
         # OpenRouter keys
         or_keys = []
         # Primary key
