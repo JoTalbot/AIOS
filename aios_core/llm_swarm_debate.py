@@ -1,56 +1,62 @@
 """
-LLM Swarm Debate Controller (Variant A)
+LLM Swarm Debate Controller (Vector 1: LiteLLM Activated)
 Интеграция реальных LLM-моделей в процесс дебатов Роя.
 """
+import os
 from typing import Dict, List
+try:
+    from litellm import completion
+    LITELLM_AVAILABLE = True
+except ImportError:
+    LITELLM_AVAILABLE = False
 
 class SwarmAgent:
-    def __init__(self, name: str, role: str, system_prompt: str, llm_provider: str = "openai"):
+    def __init__(self, name: str, role: str, system_prompt: str, model: str = "gpt-3.5-turbo"):
         self.name = name
         self.role = role
         self.system_prompt = system_prompt
-        self.llm_provider = llm_provider
+        self.model = model
         self.memory: List[Dict[str, str]] = [{"role": "system", "content": self.system_prompt}]
 
     def generate_response(self, context: str) -> str:
-        """
-        [MOCK] Здесь происходит реальный вызов LLM (OpenAI API, Anthropic, или локальный сервер).
-        Для примера реализован заглушечный ответ.
-        """
         self.memory.append({"role": "user", "content": context})
-        print(f"📡 [LLM Call -> {self.llm_provider}] Sending context to {self.name}...")
         
-        # Эмуляция ответа от LLM в зависимости от роли
-        if self.role == "Architect":
-            response = "Предлагаю создать новую архитектуру для масштабирования GraphQL эндпоинтов."
-        elif self.role == "Security":
-            response = "Обнаружена уязвимость (CWE-287) в предложенной архитектуре. Отклоняю без JWT."
+        # Если есть API ключ - вызываем реальную модель, иначе fallback
+        if LITELLM_AVAILABLE and os.environ.get("OPENAI_API_KEY"):
+            print(f"📡 [LLM Call -> {self.model}] Ожидание ответа от {self.name}...")
+            response = completion(model=self.model, messages=self.memory)
+            reply = response.choices[0].message.content
         else:
-            response = "Я готов внедрить JWT валидацию и обновить GraphQL."
-            
-        self.memory.append({"role": "assistant", "content": response})
-        return response
+            print(f"⚠️ [Mock LLM] API Ключ не найден, использую заглушку для {self.name}...")
+            if self.role == "Architect":
+                reply = "Предлагаю создать новую архитектуру для масштабирования GraphQL."
+            elif self.role == "Security":
+                reply = "Обнаружена уязвимость. Отклоняю без JWT."
+            else:
+                reply = "Я готов внедрить JWT валидацию и обновить GraphQL."
+                
+        self.memory.append({"role": "assistant", "content": reply})
+        return reply
 
 class LLMSwarm:
     def __init__(self):
         self.agents = {
-            "architect": SwarmAgent("Nexus", "Architect", "Ты главный архитектор AIOS. Планируй новые системы."),
-            "security": SwarmAgent("Shield", "Security", "Ты страж Конституции AIOS. Отклоняй все небезопасное."),
-            "developer": SwarmAgent("Coder", "Developer", "Ты Meta-Cognitive Coder. Пиши код.")
+            "architect": SwarmAgent("Nexus", "Architect", "Ты Архитектор AIOS. Придумывай фичи."),
+            "security": SwarmAgent("Shield", "Security", "Ты Страж. Отклоняй небезопасное."),
+            "developer": SwarmAgent("Coder", "Developer", "Ты Кодер. Решай задачу безопасно.")
         }
 
     def start_debate(self, topic: str):
-        print(f"\n💬 --- STARTING LLM DEBATE: {topic} ---\n")
+        print(f"\n💬 --- ЗАПУСК ДЕБАТОВ: {topic} ---\n")
         arch_idea = self.agents["architect"].generate_response(topic)
         print(f"🤖 [Architect] Nexus: {arch_idea}\n")
         
-        sec_review = self.agents["security"].generate_response(f"Проверь это: {arch_idea}")
+        sec_review = self.agents["security"].generate_response(f"Проверь идею: {arch_idea}")
         print(f"🤖 [Security] Shield: {sec_review}\n")
         
-        dev_action = self.agents["developer"].generate_response(f"Реализуй это с учетом ревью: {sec_review}")
+        dev_action = self.agents["developer"].generate_response(f"Сделай: {sec_review}")
         print(f"🤖 [Developer] Coder: {dev_action}\n")
-        print("✅ --- DEBATE RESOLVED ---\n")
+        print("✅ --- КОНСЕНСУС ДОСТИГНУТ ---\n")
 
 if __name__ == "__main__":
-    swarm = LLMSwarm()
-    swarm.start_debate("Ускорение работы базы данных AIOS")
+    LLMSwarm().start_debate("Интеграция с API Binance")

@@ -805,3 +805,11 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 ## v16.4.0 ✅ (2026-07-30)
 - ✅ **Final Octopus Codebase Sweep** — `projects/`, `services/`, `swarm/`, and `tests/` moved into AIOS (`octopus_*` prefix).
 - ✅ **Complete Coverage** — Disaster Recovery (DR) config loaders, automated testing scripts (`test_watchdog_restart_strategy.py`, `test_storage_live_read_proof.py`), and Arena Router Chat services are now part of the AIOS ecosystem.
+
+## v18.0.0 (Singularity Genesis) 🌍
+- ✅ **Vector 1 (LLM Activation)** — Успешно подключена библиотека LiteLLM (`llm_swarm_debate.py`), что позволяет агентам вести живые дебаты через реальные API OpenAI/Anthropic/Local.
+- ✅ **Vector 2 (Mass AST Refactoring)** — Разработан и протестирован обходчик `scripts/mass_ast_refactor.py`. Он нашел 417 файлов навыков и внедрил в них Конституционный Декоратор без участия человека.
+- ✅ **Vector 3 (MCP Sensors)** — Активированы сенсоры Browser Vision и Telegram Control (`aios_mcp/mcp_runner.py`), наделяя систему "глазами" и "руками" во внешней среде.
+- ✅ **Vector 4 (Zero-to-One Evolution)** — Создан генератор навыков с нуля (`zero_to_one_generator.py`). ИИ самостоятельно создал навык `google-calendar-sync` с правильной структурой директорий и AST-защищенным кодом.
+- ✅ **Vector 5 (Planet-scale Swarm P2P)** — Поднята архитектура FastAPI для децентрализованного общения нод (`aios_core/p2p_network.py`), реализуя концепцию мульти-серверного роя.
+

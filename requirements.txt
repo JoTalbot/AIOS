@@ -63,3 +63,6 @@ stripe>=7.0.0
 httpx2>=2.0.0
 chromadb==0.4.24
 pytest==8.2.2
+litellm==1.40.0
+fastapi==0.111.0
+uvicorn==0.30.1
