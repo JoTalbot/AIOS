@@ -1,0 +1,18 @@
+# fly.toml app configuration file generated for aios-skynet
+app = "aios-skynet-swarm"
+primary_region = "fra" # Франкфурт (ближе всего к Европе/Киеву)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8000"
+  CONSTITUTION_MODE = "STRICT"
+  # Токены (СЕКРЕТЫ) не пишутся сюда, они добавляются через fly secrets
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false # Отключаем автостоп, чтобы коммерческий цикл работал в фоне всегда
+  auto_start_machines = true
+  min_machines_running = 1
