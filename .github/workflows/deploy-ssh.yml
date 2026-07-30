@@ -47,17 +47,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_KEY || secrets.VPS_SSH_KEY }}
-          known_hosts: 'placeholder'
-          config: |
-            Host target-server
-              HostName ${{ secrets.SSH_HOST || secrets.VPS_HOST }}
-              User ${{ secrets.SSH_USER || secrets.VPS_USERNAME || 'root' }}
-              Port ${{ secrets.SSH_PORT || secrets.VPS_PORT || '22' }}
-              StrictHostKeyChecking no
+      - name: Setup SSH Key & Config
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY || secrets.VPS_SSH_KEY }}
+          SSH_HOST_VAL: ${{ secrets.SSH_HOST || secrets.VPS_HOST }}
+          SSH_USER_VAL: ${{ secrets.SSH_USER || secrets.VPS_USERNAME || 'root' }}
+          SSH_PORT_VAL: ${{ secrets.SSH_PORT || secrets.VPS_PORT || '22' }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          
+          # Normalize line endings and fix escaped \n in secret
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' | sed 's/\\n/\n/g' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          cat << EOF > ~/.ssh/config
+          Host target-server
+            HostName ${SSH_HOST_VAL}
+            User ${SSH_USER_VAL}
+            Port ${SSH_PORT_VAL}
+            IdentityFile ~/.ssh/id_rsa
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+          EOF
+          chmod 600 ~/.ssh/config
 
       - name: Deploy codebase and start stack via SSH
         env:
