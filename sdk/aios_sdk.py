@@ -541,6 +541,14 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    # --- Singularity Architecture Grand Nexus Suite (v11.51–v11.70) ---
+
+    async def ai_get_singularity_status(self) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.get(self._url("/api/ai/singularity/status"), headers=self.headers)
+            resp.raise_for_status()
+            return resp.json()
+
     # --- Sovereign AI Neuromorphic, Formal Verification, Blockchain & Multi-Species Ethics (v11.41–v11.45) ---
 
     async def ai_process_spiking_events(self, spikes: list[float], threshold: float = 0.5) -> dict:
@@ -850,6 +858,9 @@ class AIOSClientSync:
 
     def ai_planetary_sync(self, *a, **kw):
         return self._run(self._async.ai_planetary_sync(*a, **kw))
+
+    def ai_get_singularity_status(self, *a, **kw):
+        return self._run(self._async.ai_get_singularity_status(*a, **kw))
 
     def ai_process_spiking_events(self, *a, **kw):
         return self._run(self._async.ai_process_spiking_events(*a, **kw))
