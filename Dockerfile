@@ -1,23 +1,25 @@
+# Dockerfile для AIOS v22.0.0 (Fly.io Deployment)
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Установка системных зависимостей
-RUN apt-get update && apt-get install -y --no-install-recommends     gcc     && rm -rf /var/lib/apt/lists/*
+# Установка системных зависимостей для тяжелых ML-библиотек (Torch, Qiskit, ChromaDB)
+RUN apt-get update && apt-get install -y \
+    gcc g++ build-essential curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Копирование зависимостей
+# Копирование и установка зависимостей
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копирование кода
+# Копирование всего исходного кода
 COPY . .
 
-# Создание директорий для данных
-RUN mkdir -p /app/data/templates /app/data/metrics
+# Права на исполнение скриптов
+RUN chmod +x scripts/*.py scripts/*.sh
 
-EXPOSE 8080
+# Открываем порт для Fly.io HTTP-роутера
+EXPOSE 8000
 
-COPY scripts/entrypoint.sh /app/
-RUN chmod +x /app/entrypoint.sh
-ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Точка входа в систему
+CMD ["bash", "scripts/fly_entrypoint.sh"]
