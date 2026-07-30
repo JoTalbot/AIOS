@@ -2,7 +2,8 @@
 Run Coder Orchestrator Module
 
 This module provides functionality to run and manage coder orchestrators.
-It includes version control capabilities using git.
+It includes version control capabilities using git and a full-featured
+scanner for technical debt tags in Python files.
 
 Changes:
 - Initial creation of the module with basic functionality
@@ -11,6 +12,11 @@ Changes:
 - Moved from root to tools/run_coder_orchestrator.py
 - Added type hints and improved docstrings
 - Added technical debt scanning functionality integrated with logging and notification
+- Refactored technical debt scanning into separate module code_todo_scanner.py
+- Replaced scanning code with call to code_todo_scanner.scan_todo_tags
+- Added error handling and logging
+- Implemented automatic scanning of all Python files for technical debt tags on startup
+- Added structured collection and reporting of technical debt entries
 """
 
 import logging
@@ -20,7 +26,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 
-__all__ = ["CoderOrchestrator", "run_orchestrator", "get_git_version", "scan_technical_debt", "report_technical_debt"]
+from code_todo_scanner import scan_todo_tags  # New module for scanning TODO tags
+
+
+__all__ = [
+    "CoderOrchestrator",
+    "run_orchestrator",
+    "get_git_version",
+    "report_technical_debt",
+]
 
 
 @dataclass
@@ -79,46 +93,6 @@ def get_git_version(file_path: Path) -> Optional[str]:
     except Exception as e:
         logging.error(f"Error getting git version: {e}")
         return None
-
-
-def scan_technical_debt(
-    root_path: Path,
-) -> List[Tuple[Path, int, str]]:
-    """Scan all Python files in the project for technical debt tags.
-
-    Searches for tags: TODO, FIXME, HACK, XXX, BUG in comments.
-
-    Args:
-        root_path: The root directory of the project to scan.
-
-    Returns:
-        A list of tuples containing:
-            - Path to the file containing the tag
-            - Line number where the tag was found
-            - The full comment text containing the tag
-    """
-    tags = {"TODO", "FIXME", "HACK", "XXX", "BUG"}
-    results: List[Tuple[Path, int, str]] = []
-
-    try:
-        for py_file in root_path.rglob("*.py"):
-            try:
-                with py_file.open("r", encoding="utf-8") as f:
-                    for line_num, line in enumerate(f, start=1):
-                        stripped_line = line.strip()
-                        # Check if line contains a comment with any of the tags
-                        if "#" in stripped_line:
-                            comment_index = stripped_line.find("#")
-                            comment_text = stripped_line[comment_index + 1 :].strip()
-                            # Check if any tag is in the comment text (case-insensitive)
-                            if any(tag in comment_text.upper() for tag in tags):
-                                results.append((py_file, line_num, comment_text))
-            except (OSError, UnicodeDecodeError) as e:
-                logging.warning(f"Could not read file {py_file}: {e}")
-    except Exception as e:
-        logging.error(f"Error scanning files: {e}")
-
-    return results
 
 
 def report_technical_debt(
@@ -190,10 +164,17 @@ def main() -> None:
         logger.warning("Could not determine git version.")
 
     # Determine project root directory
-    project_root = file_path.parent.parent if file_path.parent.name == "tools" else file_path.parent
+    if file_path.parent.name == "tools":
+        project_root = file_path.parent.parent
+    else:
+        project_root = file_path.parent
 
-    # Scan for technical debt tags
-    technical_debt_entries = scan_technical_debt(project_root)
+    # Scan for technical debt tags automatically on startup using new module
+    try:
+        technical_debt_entries = scan_todo_tags([project_root])
+    except Exception as e:
+        logger.error(f"Failed to scan technical debt tags: {e}")
+        technical_debt_entries = []
 
     # Report technical debt
     report_technical_debt(technical_debt_entries, to_console=True, logger=logger)
