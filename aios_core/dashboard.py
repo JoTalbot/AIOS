@@ -2015,6 +2015,24 @@ class AIOSDashboard:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(res)
 
+    async def api_substrate_self_healing_run(self, request: Request) -> JSONResponse:
+        """Run substrate anomaly detection self-healing cycle (v11.21.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or not body.get("confirm"):
+            return JSONResponse({"error": "request body must include confirm: true guard"}, status_code=400)
+
+        from .anomaly_detection import AnomalyDetector
+        from .self_healing import AdaptiveSelfHealingSubstrateEngine
+
+        engine = _get_substrate_engine()
+        detector = AnomalyDetector()
+        healer = AdaptiveSelfHealingSubstrateEngine(engine=engine, anomaly_detector=detector)
+        res = healer.run_anomaly_healing_cycle()
+        return JSONResponse(res)
+
     async def api_memory_health(self, request: Request) -> JSONResponse:
         """Get advanced memory health & vitality telemetry (v11.19.0)."""
         mem = _get_memory_system()
@@ -2685,6 +2703,7 @@ class AIOSDashboard:
             Route("/api/substrate/budget/alerts", self.api_substrate_budget_alerts),
             Route("/api/substrate/budget/throttle", self.api_substrate_budget_throttle, methods=["GET", "POST"]),
             Route("/api/substrate/policy/autotune", self.api_substrate_policy_autotune, methods=["POST"]),
+            Route("/api/substrate/self-healing/run", self.api_substrate_self_healing_run, methods=["POST"]),
             Route("/api/substrate/schedule", self.api_substrate_schedule, methods=["POST"]),
             Route("/api/substrate/scheduler", self.api_substrate_scheduler),
             Route("/api/substrate/analytics", self.api_substrate_analytics),

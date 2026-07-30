@@ -329,6 +329,16 @@ class AIOSClient:
             resp.raise_for_status()
             return resp.json()
 
+    async def run_self_healing(self) -> dict:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                self._url("/api/substrate/self-healing/run"),
+                json={"confirm": True},
+                headers=self.headers,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
     # --- WebSocket helpers ---
 
     async def watch_events(self, on_event: Callable[[dict], None], channels: list[str] | None = None):
@@ -466,6 +476,9 @@ class AIOSClientSync:
 
     def run_retention_maintenance(self, *a, **kw):
         return self._run(self._async.run_retention_maintenance(*a, **kw))
+
+    def run_self_healing(self, *a, **kw):
+        return self._run(self._async.run_self_healing(*a, **kw))
 
 
 # Example: "agent in 30 lines"

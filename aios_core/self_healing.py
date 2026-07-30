@@ -272,3 +272,75 @@ class SelfHealing:
             "success_rate": success_count / len(self.recovery_history) if self.recovery_history else 0.0,
             "health_checks": len(self.health_monitor.checks),
         }
+
+
+class AdaptiveSelfHealingSubstrateEngine:
+    """Anomaly-driven substrate self-healing and adaptive capacity regulator (v11.21.0)."""
+
+    def __init__(
+        self,
+        engine: Any = None,
+        anomaly_detector: Any = None,
+    ) -> None:
+        self.engine = engine
+        self.anomaly_detector = anomaly_detector
+        self.healing_history: list[dict[str, Any]] = []
+
+    def run_anomaly_healing_cycle(
+        self,
+        engine: Any = None,
+        anomaly_detector: Any = None,
+    ) -> dict[str, Any]:
+        """Scan registered substrates for latency/failure anomalies and execute recovery actions."""
+        target_engine = engine or self.engine
+        target_detector = anomaly_detector or self.anomaly_detector
+
+        if target_engine is None:
+            return {"anomalies_detected": 0, "healed_substrates": 0, "actions": [], "reason": "no engine provided"}
+
+        substrates = getattr(target_engine, "substrates", {})
+        actions: list[dict[str, Any]] = []
+        anomalies_found = 0
+
+        for sub_id, sub in list(substrates.items()):
+            if not sub.get("active", True):
+                continue
+
+            health = sub.get("health", 1.0)
+            latency = sub.get("latency_base_ms", 10.0)
+            failure_rate = sub.get("failure_rate", 0.0)
+
+            is_anomaly = False
+            if target_detector is not None and hasattr(target_detector, "is_anomaly"):
+                is_anomaly = target_detector.is_anomaly(
+                    latency, f"substrate_{sub_id}_latency"
+                ) or target_detector.is_anomaly(failure_rate, f"substrate_{sub_id}_failure")
+
+            if health < 0.5 or failure_rate > 0.3 or is_anomaly:
+                anomalies_found += 1
+                action_type = "cap_reduction"
+                if failure_rate > 0.5 or health < 0.3:
+                    action_type = "deactivate"
+                    sub["active"] = False
+                elif failure_rate > 0.2 or is_anomaly:
+                    action_type = "cap_reduction"
+                    sub["capacity"] = max(1, int(sub.get("capacity", 10) * 0.5))
+
+                entry = {
+                    "substrate": sub_id,
+                    "action": action_type,
+                    "health": health,
+                    "failure_rate": failure_rate,
+                    "latency": latency,
+                    "timestamp": time.time(),
+                }
+                actions.append(entry)
+                self.healing_history.append(entry)
+
+        return {
+            "timestamp": time.time(),
+            "substrates_checked": len(substrates),
+            "anomalies_detected": anomalies_found,
+            "healed_substrates": len(actions),
+            "actions": actions,
+        }
