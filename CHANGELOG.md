@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [13.0.0] — 2026-07-30 — AIOS Grand Epoch Architecture Major Release (v12.1.0 - v13.0.0)
+
+### Added
+- **50-Step Grand Epoch AI Architecture Suite (v12.1.0 - v13.0.0)**:
+  - `NeuralKnowledgeGraphEngine` (`v12.1.0`): Neural knowledge graph engine.
+  - `AgentBehavioralPredictor` (`v12.2.0`): Agent behavioral predictor.
+  - `AutonomousTaskGraphExecutor` (`v12.3.0`): Autonomous task graph executor.
+  - `DifferentialPrivacyVaultV3` (`v12.4.0`): Differential privacy vault V3.
+  - `MultiAgentSwarmConsensusV3` (`v12.5.0`): Swarm consensus V3.
+  - `SelfHealingPipelineV2` (`v12.6.0`): Self-healing pipeline V2.
+  - `QuantumAnnealingSchedulerV2` (`v12.7.0`): Quantum annealing V2.
+  - `TopologicalDataCompressorV2` (`v12.8.0`): Topological compressor V2.
+  - `CategoryTheoryMapperV2` (`v12.9.0`): Category theory mapper V2.
+  - `ActiveInferenceEngineV2` (`v12.10.0`): Active inference V2.
+  - `AIOSGrandEpochNexusV13` (`v13.0.0`): Grand Epoch Major Release Orchestrator V13.0.0.
+- **REST API & Developer SDK Integration**:
+  - `GET /api/ai/grand-epoch/status` & SDK method `ai_get_grand_epoch_status()`.
+
 ## [12.0.0] — 2026-07-30 — AIOS Omnipresent Architecture Major Release (v11.71.0 - v12.0.0)
 
 ### Added

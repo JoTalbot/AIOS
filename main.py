@@ -27,7 +27,7 @@ platform_registry.register_adapter("viber")
 orchestrator = AdvisorOrchestrator(advisor, telegram_bot, platform_registry)
 
 # FastAPI приложение
-app = FastAPI(title="AIOS", version="12.0.0")
+app = FastAPI(title="AIOS", version="13.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # Подключаем вебхуки
