@@ -2143,6 +2143,59 @@ class AIOSDashboard:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(preview)
 
+    async def api_memory_archive_purge_preview(self, request: Request) -> JSONResponse:
+        """Dry-run a cold-storage ARCHIVE purge (v11.15.0).
+
+        Optional JSON body: {"keep_last": int, "older_than_days": float}
+        — at least one criterion required. Read-only: reports what
+        POST /api/memory/archive/purge would delete (entry age counts,
+        not the archival date).
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        try:
+            preview = _get_memory_system().preview_archive_purge(
+                keep_last=body.get("keep_last"),
+                older_than_days=body.get("older_than_days"),
+            )
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(preview)
+
+    async def api_memory_archive_purge(self, request: Request) -> JSONResponse:
+        """Irreversibly purge archived memories from cold storage (v11.15.0).
+
+        The body MUST include {"confirm": true}; keep_last /
+        older_than_days criteria work exactly like the preview endpoint.
+        Purged entries are gone for good — not moved back to active pools.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if body.get("confirm") is not True:
+            return JSONResponse(
+                {
+                    "error": 'archive purge is irreversible — pass {"confirm": true} '
+                    "(dry-run available at /api/memory/archive/purge/preview)"
+                },
+                status_code=400,
+            )
+        try:
+            report = _get_memory_system().purge_archive(
+                keep_last=body.get("keep_last"),
+                older_than_days=body.get("older_than_days"),
+            )
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(report)
+
     # ------------------------------------------------------------------
     # Memory recall search + lifecycle (v11.6.0)
     # ------------------------------------------------------------------
@@ -2257,15 +2310,29 @@ class AIOSDashboard:
     async def api_memory_snapshot_save(self, request: Request) -> JSONResponse:
         """Persist the live memory system to disk (atomic write, v11.8.0).
 
-        Optional JSON body: {"path": "..."}; defaults to
-        ~/.aios/memory_snapshot.json.
+        Optional JSON body: {"path": "...", "keep_rotated": N}; defaults
+        to ~/.aios/memory_snapshot.json with no rotation. keep_rotated>0
+        (v11.15.0) rotates the previous live file to <stem>.1<suffix>,
+        shifting older rotations and dropping anything beyond N.
         """
         path = await self._snapshot_path_from(request)
         if isinstance(path, JSONResponse):
             return path
+        keep_rotated = 0
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        if isinstance(body, dict) and "keep_rotated" in body:
+            raw = body.get("keep_rotated")
+            if isinstance(raw, bool) or not isinstance(raw, int):
+                return JSONResponse({"error": "keep_rotated must be an integer"}, status_code=400)
+            keep_rotated = raw
         system = _get_memory_system()
         try:
-            report = system.save(path)
+            report = system.save(path, keep_rotated=keep_rotated)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
         except OSError as exc:
             return JSONResponse({"error": f"snapshot save failed: {exc}"}, status_code=500)
         stats = system.stats()
@@ -2277,6 +2344,18 @@ class AIOSDashboard:
             "archived": stats["archive"]["archived_total"],
         }
         return JSONResponse(report)
+
+    async def api_memory_snapshot_list(self, request: Request) -> JSONResponse:
+        """List the live snapshot file and its rotations (v11.15.0).
+
+        Optional ?path=... (same default as save). Read-only: existing
+        files only, ordered live first then by rotation depth.
+        """
+        from aios_core.agent_memory_system import AgentMemorySystem
+
+        path = (request.query_params.get("path") or "").strip() or str(_MEMORY_SNAPSHOT_PATH)
+        files = AgentMemorySystem.list_snapshot_files(path)
+        return JSONResponse({"path": path, "file_count": len(files), "files": files})
 
     async def api_memory_snapshot_load(self, request: Request) -> JSONResponse:
         """Restore the live memory system from a snapshot on disk (v11.8.0).
@@ -2369,7 +2448,10 @@ class AIOSDashboard:
         """SLO alerts derived from the aggregate health score (v11.10.0).
 
         Optional ?warn=&critical= thresholds (defaults 80/50); requires
-        0 <= critical < warning <= 100, otherwise 400.
+        0 <= critical < warning <= 100, otherwise 400. Since v11.15.0
+        rolling-budget pressure alerts (subject "energy_budget") roll up
+        into this report — including worst_severity and alert_count —
+        with the full sub-report under the "budget" key.
         """
         from .slo_alerts import evaluate_health_alerts
 
@@ -2529,6 +2611,8 @@ class AIOSDashboard:
             Route("/api/memory/archive", self.api_memory_archive),
             Route("/api/memory/archive/run", self.api_memory_archive_run, methods=["POST"]),
             Route("/api/memory/archive/preview", self.api_memory_archive_preview, methods=["POST"]),
+            Route("/api/memory/archive/purge/preview", self.api_memory_archive_purge_preview, methods=["POST"]),
+            Route("/api/memory/archive/purge", self.api_memory_archive_purge, methods=["POST"]),
             Route("/api/memory/recall", self.api_memory_recall),
             Route("/api/memory/consolidate", self.api_memory_consolidate, methods=["POST"]),
             Route("/api/memory/decay", self.api_memory_decay, methods=["POST"]),
@@ -2536,6 +2620,7 @@ class AIOSDashboard:
             Route("/api/memory/snapshot/save", self.api_memory_snapshot_save, methods=["POST"]),
             Route("/api/memory/snapshot/load", self.api_memory_snapshot_load, methods=["POST"]),
             Route("/api/memory/snapshot/diff", self.api_memory_snapshot_diff, methods=["POST"]),
+            Route("/api/memory/snapshot/list", self.api_memory_snapshot_list),
             Route("/api/metrics", self.api_metrics),
             Route("/api/health/score", self.api_health_score),
             Route("/api/health/alerts", self.api_health_alerts),

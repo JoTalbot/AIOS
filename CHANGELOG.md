@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [11.15.0] — 2026-07-30 — Archive Retention + Budget Roll-Up Alerts + Snapshot Rotation
+
+### Added
+- **Cold-storage archive retention**
+  (`AgentMemorySystem.preview_archive_purge()` /
+  `purge_archive(keep_last, older_than_days)`): the third store joins
+  the retention story (engine history v11.13, scheduler dispatches
+  v11.14, memory archive now) with the identical protected-union
+  selection — entry age in DAYS this time, converted for the shared
+  `plan_retention_purge` (which gained a `timestamp_of` accessor and a
+  caller-named age criterion so validation errors name your parameter).
+  Purged entries are deleted, NOT moved back to active pools. APIs:
+  `POST /api/memory/archive/purge/preview` (read-only) and guarded
+  `POST /api/memory/archive/purge` (`{"confirm": true}`). The Memory
+  Lifecycle panel gains Purge archive controls (keep/older inputs +
+  Preview + red Purge).
+- **Budget pressure in unified health alerts** —
+  `evaluate_health_alerts(..., budget_warning_ratio=0.8,
+  budget_critical_ratio=1.0)` now rolls `evaluate_budget_alerts` into
+  the SAME report: subject "energy_budget" appears in `alerts`,
+  `alert_count`, `worst_severity` and `ok`, with the full sub-report
+  under the new `budget` key. No-budget schedulers and calm budgets
+  produce byte-identical previous results. `GET /api/health/alerts`
+  carries it; the `aios_slo_alerts{severity}` gauges count budget
+  alerts automatically; one scrape now covers health pillars AND
+  budget exhaustion. Dedicated endpoint stays available:
+  `GET /api/substrate/budget/alerts`.
+- **Snapshot rotation** — `save(path, keep_rotated=N)` rotates the
+  previous live file to `<stem>.1<suffix>`, shifting older rotations
+  and dropping generations beyond N (0 = off, the previous behaviour;
+  validated int 0..50). `AgentMemorySystem.list_snapshot_files(path)`
+  enumerates the live file + existing rotations (ordering, sizes,
+  mtimes; gap-tolerant). APIs: `POST /api/memory/snapshot/save`
+  accepts `keep_rotated` (400 on bad input, rotation report included)
+  and read-only `GET /api/memory/snapshot/list?path=`. The Snapshot
+  Persistence panel gains a Keep rotated input + List button; every
+  rotation is a fully loadable snapshot.
+- **Tests**: 26 new — `test_archive_purge.py` (9),
+  `test_health_rollup.py` (8), `test_snapshot_rotation.py` (9).
+
 ## [11.14.0] — 2026-07-30 — Scheduler Retention + Budget Pressure Alerts + Recall Age Filter
 
 ### Added

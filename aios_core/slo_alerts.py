@@ -45,6 +45,8 @@ def evaluate_health_alerts(
     scheduler: Any = None,
     warning: float = DEFAULT_SLO_WARNING,
     critical: float = DEFAULT_SLO_CRITICAL,
+    budget_warning_ratio: float = DEFAULT_BUDGET_WARNING_RATIO,
+    budget_critical_ratio: float = DEFAULT_BUDGET_CRITICAL_RATIO,
 ) -> dict[str, Any]:
     """Compare the live health score against SLO thresholds.
 
@@ -54,10 +56,15 @@ def evaluate_health_alerts(
         warning: scores strictly BELOW this raise a warning alert.
         critical: scores strictly BELOW this raise a critical alert.
             Must be lower than warning.
+        budget_warning_ratio/budget_critical_ratio: rolling-budget
+            pressure ratios alerting alongside the health pillars
+            (v11.15.0). Budget alerts carry subject "energy_budget";
+            the "budget" sub-report is included in the return dict.
 
     Returns:
         {"ok", "alert_count", "worst_severity", "thresholds", "alerts",
-        "score", "status"} — ok=True iff no alert fired.
+        "score", "status", "budget"} — ok=True iff no alert fired
+        (budget alerts included since v11.15.0).
     """
     warning = float(warning)
     critical = float(critical)
@@ -93,6 +100,14 @@ def evaluate_health_alerts(
         if component["available"]:
             evaluate(name, component["score"])
 
+    # Budget pressure rolls up into the unified report (v11.15.0).
+    budget_report = evaluate_budget_alerts(
+        scheduler=scheduler,
+        warning_ratio=budget_warning_ratio,
+        critical_ratio=budget_critical_ratio,
+    )
+    alerts.extend(budget_report["alerts"])
+
     worst = None
     if alerts:
         worst = max(alerts, key=lambda a: _SEVERITY_ORDER[a["severity"]])["severity"]
@@ -106,6 +121,7 @@ def evaluate_health_alerts(
         "score": score,
         "status": health["status"],
         "evaluated": health["evaluated"],
+        "budget": budget_report,
     }
 
 

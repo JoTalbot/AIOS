@@ -1,5 +1,13 @@
 # AIOS Roadmap — Next Milestones
 
+## v11.15.0 ✅ (2026-07-30)
+- ✅ Archive Retention — `preview_archive_purge()/purge_archive(keep_last, older_than_days)`: третье хранилище в retention-истории (engine v11.13 → scheduler v11.14 → архив памяти); возраст в ДНЯХ, конверсия в shared planner (получил акцессор `timestamp_of` и именованный критерий); пурж удаляет, НЕ возвращает в активные пулы; `POST /api/memory/archive/purge/{preview,}` + контролы на панели Memory Lifecycle
+- ✅ Budget Roll-Up Alerts — `evaluate_health_alerts()` теперь включает pressure-алерты бюджета (subject "energy_budget") в единый отчёт: alert_count/worst_severity/ok учитывают бюджет, подотчёт под ключём `budget`; спокойный/отсутствующий бюджет → поведение бит-в-бит прежнее; `GET /api/health/alerts` и gauge `aios_slo_alerts{severity}` автоматически покрывают исчерпание бюджета
+- ✅ Snapshot Rotation — `save(path, keep_rotated=N)`: прежний live-файл → `<stem>.1<suffix>`, сдвиг старших, удаление за границей N (0=выкл=старое поведение, валидация 0..50); `list_snapshot_files()` (порядок, размеры, mtime, толерантность к дырам); эндпоинты: save принимает `keep_rotated`, `GET /api/memory/snapshot/list?path=`; каждая ротация — полноценно загружаемый снапшот; UI: Keep rotated + List
+- ✅ 26 новых тестов (archive_purge 9 + health_rollup 8 + snapshot_rotation 9)
+
+**~4339 tests, 0 failures**
+
 ## v11.14.0 ✅ (2026-07-30)
 - ✅ Scheduler Retention — `preview_purge_dispatches()/purge_dispatches(...)`: симметрия с engine-ретенцией v11.13; общая логика вынесена в `aios_core/retention.py` (`plan_retention_purge`), engine-пурж делегирует ей; пурж scheduler-истории не трогает engine-историю и budget-ledger (не возвращает траты); `POST /api/substrate/dispatches/{preview,purge}` + селект Target (Engine history / Scheduler dispatches) на панели History Retention
 - ✅ Budget Pressure Alerts — `RollingEnergyBudget.pressure()` (spent/limit; >1 после уменьшения лимита ниже текущих трат) + `evaluate_budget_alerts()` (статусы ok/warning/critical/no_budget, 0<=warn<crit); `GET /api/substrate/budget/alerts?warning=&critical=`, live-строка Pressure/Status с цветом на панели Energy Budget, gauge `aios_energy_budget_pressure` в `/api/metrics`, поле `pressure` везде в to_dict/report
@@ -589,6 +597,7 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 | 11.9.0 | 2026-07-29 | ~4183 | Dedup threshold auto-tuner (+apply, persist), history CSV export, aggregate health score API + панель |
 | 11.10.0 | 2026-07-29 | ~4209 | Dedup merge preview (dry-run) API, windowed scheduler report, SLO alerts на health score |
 | 11.11.0 | 2026-07-29 | ~4233 | Replay drift analysis (CSV/JSON), archive dry-run preview, health/SLO series в Prometheus |
+| 11.15.0 | 2026-07-30 | ~4339 | Archive purge retention, budget roll-up in health alerts, snapshot rotation keep_rotated |
 | 11.14.0 | 2026-07-30 | ~4313 | Scheduler-dispatch retention (shared plan), budget pressure alerts + metric, recall/search age filter |
 | 11.13.0 | 2026-07-30 | ~4284 | History retention preview+guarded purge, budget reconfigure+persistence, policy-projection metrics |
 | 11.12.0 | 2026-07-29 | ~4255 | Policy compare matrix (A/B), guarded dedup merge API + UI, snapshot diff live-vs-file |
