@@ -14,4 +14,4 @@ Usage::
 from sdk.aios_sdk import AIOSClient, AIOSClientSync
 
 __all__ = ["AIOSClient", "AIOSClientSync"]
-__version__ = "11.45.0"
+__version__ = "11.50.0"

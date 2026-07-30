@@ -2404,6 +2404,70 @@ class AIOSDashboard:
         res = core.evaluate_alignment_ethics(intent=str(body["intent"]), action_plan=body.get("action_plan", []))
         return JSONResponse(res)
 
+    async def api_ai_swarm_cyber_defense(self, request: Request) -> JSONResponse:
+        """Scan activity logs and apply zero-day threat mitigations (v11.46.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "activity_logs" not in body:
+            return JSONResponse({"error": "request body must include 'activity_logs' list"}, status_code=400)
+
+        from .swarm_cyber_defense import SwarmCyberDefenseEngine
+
+        defense = SwarmCyberDefenseEngine()
+        res = defense.evaluate_and_mitigate_threats(activity_logs=body["activity_logs"])
+        return JSONResponse(res)
+
+    async def api_ai_dna_mutate(self, request: Request) -> JSONResponse:
+        """Apply synthetic DNA mutation to code structures (v11.47.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "genome_code" not in body:
+            return JSONResponse({"error": "request body must include 'genome_code' string"}, status_code=400)
+
+        from .dna_code_mutation import DNACodeMutationEngine
+
+        mutator = DNACodeMutationEngine()
+        res = mutator.mutate_genome_code(
+            genome_code=str(body["genome_code"]), mutation_rate=body.get("mutation_rate", 0.05)
+        )
+        return JSONResponse(res)
+
+    async def api_ai_category_map_morphisms(self, request: Request) -> JSONResponse:
+        """Map category-theoretic morphisms between concept sets (v11.48.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "category_a" not in body or "category_b" not in body:
+            return JSONResponse(
+                {"error": "request body must include 'category_a' and 'category_b' lists"}, status_code=400
+            )
+
+        from .category_theory_mapper import CategoryTheoryMapper
+
+        mapper = CategoryTheoryMapper()
+        res = mapper.map_morphisms(category_a=body["category_a"], category_b=body["category_b"])
+        return JSONResponse(res)
+
+    async def api_ai_alignment_auto_evaluate(self, request: Request) -> JSONResponse:
+        """Automatically evaluate model output alignment and safety (v11.49.0)."""
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+        if not isinstance(body, dict) or "prompts" not in body or "outputs" not in body:
+            return JSONResponse({"error": "request body must include 'prompts' and 'outputs' lists"}, status_code=400)
+
+        from .alignment_auto_evaluator import AlignmentAutoEvaluator
+
+        evaluator = AlignmentAutoEvaluator()
+        res = evaluator.evaluate_model_alignment(test_prompts=body["prompts"], model_outputs=body["outputs"])
+        return JSONResponse(res)
+
     async def api_governance_guard_evaluate(self, request: Request) -> JSONResponse:
         """Real-time pre-execution safety guard check for an agent action (v11.23.0)."""
         try:
@@ -3142,6 +3206,10 @@ class AIOSDashboard:
             Route("/api/ai/formal/prove-invariant", self.api_ai_formal_prove_invariant, methods=["POST"]),
             Route("/api/ai/blockchain/record-proof", self.api_ai_blockchain_record_proof, methods=["POST"]),
             Route("/api/ai/ethics/evaluate-alignment", self.api_ai_ethics_evaluate_alignment, methods=["POST"]),
+            Route("/api/ai/swarm/cyber-defense", self.api_ai_swarm_cyber_defense, methods=["POST"]),
+            Route("/api/ai/dna/mutate", self.api_ai_dna_mutate, methods=["POST"]),
+            Route("/api/ai/category/map-morphisms", self.api_ai_category_map_morphisms, methods=["POST"]),
+            Route("/api/ai/alignment/auto-evaluate", self.api_ai_alignment_auto_evaluate, methods=["POST"]),
             Route("/api/governance/guard/evaluate", self.api_governance_guard_evaluate, methods=["POST"]),
             Route("/api/governance/audit/run", self.api_governance_audit_run, methods=["POST"]),
             Route("/api/governance/compliance/score", self.api_governance_compliance_score, methods=["GET"]),
