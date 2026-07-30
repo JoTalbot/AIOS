@@ -330,18 +330,34 @@ class LLMBalancer:
                     with urllib.request.urlopen(req, timeout=120) as resp:
                         data = json.loads(resp.read())
 
+                    # Check for application-level errors (Z.ai style)
+                    if isinstance(data, dict):
+                        if data.get("success") is False or (data.get("code") and data["code"] not in (0, 200, None)):
+                            err_msg = data.get("msg") or data.get("message") or str(data.get("code"))
+                            print(f"  [Balancer] {prov_name} app-error: {err_msg}")
+                            best_provider.mark_key_error(best_key, f"app-error: {err_msg}", cooldown=300)
+                            continue
+                        if "error" in data:
+                            err_msg = data["error"].get("message", str(data["error"]))[:60]
+                            print(f"  [Balancer] {prov_name} error: {err_msg}")
+                            best_provider.mark_key_error(best_key, f"error: {err_msg}", cooldown=300)
+                            continue
+
                     # Success!
                     self._provider_stats[prov_name] = self._provider_stats.get(prov_name, 0) + 1
                     print(f"  [Balancer] OK: {prov_name}/{try_model} key={best_key.key[:8]}...")
 
-                    if "choices" in data:
+                    if "choices" in data and data["choices"]:
                         return data["choices"][0]["message"]["content"]
-                    elif "data" in data and "choices" in data["data"]:
+                    elif "data" in data and isinstance(data["data"], dict) and "choices" in data["data"]:
                         return data["data"]["choices"][0]["message"]["content"]
                     elif "result" in data:
-                        return data["result"]
+                        return str(data["result"])
                     else:
-                        return json.dumps(data)[:500]
+                        # Unknown format — skip this key
+                        print(f"  [Balancer] {prov_name}: unknown response format")
+                        best_provider.mark_key_error(best_key, "unknown format", cooldown=60)
+                        continue
 
                 except urllib.error.HTTPError as e:
                     last_error = f"{prov_name}/{try_model}: HTTP {e.code} key={best_key.key[:8]}"
