@@ -143,6 +143,8 @@ class EnergyAwareScheduler:
         self.energy_budget = energy_budget
         self.policy = policy
         self.balanced_weights = balanced_weights
+        self.auto_throttle_enabled: bool = False
+        self.throttle_threshold: float = 0.8
         self._dispatches: list[dict[str, Any]] = []
 
     @staticmethod
@@ -242,6 +244,31 @@ class EnergyAwareScheduler:
             )
         return result
 
+    def configure_throttle(
+        self,
+        enabled: bool = True,
+        threshold: float = 0.8,
+    ) -> dict[str, Any]:
+        """Configure dynamic budget policy auto-throttling (v11.16.0).
+
+        When enabled and energy budget pressure reaches/exceeds threshold,
+        dispatches dynamically downgrade to 'min_energy' policy to prevent
+        budget exhaustion violations.
+        """
+        try:
+            thresh_val = float(threshold)
+        except (TypeError, ValueError):
+            raise ValueError("threshold must be a number") from None
+        if not 0.0 <= thresh_val <= 1.0:
+            raise ValueError("threshold must be between 0.0 and 1.0")
+
+        self.auto_throttle_enabled = bool(enabled)
+        self.throttle_threshold = thresh_val
+        return {
+            "auto_throttle_enabled": self.auto_throttle_enabled,
+            "throttle_threshold": self.throttle_threshold,
+        }
+
     def plan(self, task: dict[str, Any], policy: str | None = None) -> dict[str, Any]:
         """Dry-run routing decision for a task (nothing is executed).
 
@@ -253,8 +280,17 @@ class EnergyAwareScheduler:
             Plan dict: selected substrate, expected energy/latency, the
             engine baseline choice, and any constraint violations.
         """
-        policy = policy or self.policy
-        self._check_policy(policy)
+        requested_policy = policy or self.policy
+        self._check_policy(requested_policy)
+
+        effective_policy = requested_policy
+        throttled = False
+        if self.auto_throttle_enabled and self.energy_budget is not None:
+            if self.energy_budget.pressure() >= self.throttle_threshold:
+                effective_policy = "min_energy"
+                throttled = True
+
+        policy = effective_policy
         task_id = task.get("id", "task")
         category = task.get("category", "general")
         candidates = self.candidates(task)
@@ -285,6 +321,9 @@ class EnergyAwareScheduler:
         result = {
             "task_id": task_id,
             "policy": policy,
+            "requested_policy": requested_policy,
+            "effective_policy": effective_policy,
+            "throttled": throttled,
             "selected_substrate": selected["substrate"] if selected else None,
             "expected_energy": selected["expected_energy"] if selected else None,
             "expected_latency_ms": selected["expected_latency_ms"] if selected else None,
