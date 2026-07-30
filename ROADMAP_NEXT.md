@@ -785,3 +785,9 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 - **Эмуляторная цепочка → ручной запуск**: между джобами состояние эмулятора не передаётся (каждая джоба — новая VM), калибровка требует живых APK/apkeep и реальных UI маркетплейсов. setup-emulators / calibrate-platforms / integration-tests переведены на workflow_dispatch (с заметкой о необходимом self-emulator-рефакторе); push-линия: lint+unit + GA-симуляция + нотифай — зелёные
 - **Деплои по гейтам секретов**: VPS (`DOCKERHUB_*`/`VPS_*`), AWS (`AWS_ROLE_ARN` repo-var), production SSH (`SSH_PRIVATE_KEY`/`SSH_KNOWN_HOSTS`) — без конфигурации skipped-зелёные, с конфигурацией активируются автоматически
 - **Итог**: все 10 workflow на `main` зелёные на одном коммите (21/21 check-run success/skipped)
+
+## v16.3.0 ✅ (2026-07-30)
+- ✅ **Octopus Core Engine Merged** — `autopilot`, `api`, and `lib` (Python node/storage helpers) migrated into `AIOS/octopus_core`.
+- ✅ **Foundational Directives Imported** — 80+ core constitutional instructions and global plans (e.g. `ROADMAP_1000_2026-06-19.md`, `WAVE_PLAN_SHAREDINTEGRATIONS.md`) migrated to `octopus_instructions/`.
+- ✅ **Master Roadmaps Synchronized** — Complex cross-functional `octopus/roadmap` states migrated to `octopus_roadmap/`.
+
