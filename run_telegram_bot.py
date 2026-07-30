@@ -58,17 +58,36 @@ class TelegramAPI:
         return result.get("result", [])
 
     def send_message(
-        self, chat_id: int, text: str, parse_mode: str = "HTML", disable_web_page_preview: bool = True
+        self, chat_id: int, text: str, parse_mode: str = "HTML", disable_web_page_preview: bool = True,
+        reply_markup: dict | None = None,
     ) -> dict:
-        return self._request(
-            "sendMessage",
-            {
-                "chat_id": chat_id,
-                "text": text[:4000],
-                "parse_mode": parse_mode,
-                "disable_web_page_preview": disable_web_page_preview,
-            },
-        )
+        payload = {
+            "chat_id": chat_id,
+            "text": text[:4000],
+            "parse_mode": parse_mode,
+            "disable_web_page_preview": disable_web_page_preview,
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        return self._request("sendMessage", payload)
+
+    def answer_callback(self, callback_query_id: str, text: str = "") -> dict:
+        return self._request("answerCallbackQuery", {
+            "callback_query_id": callback_query_id,
+            "text": text[:200],
+        })
+
+    def edit_message(self, chat_id: int, message_id: int, text: str,
+                     parse_mode: str = "HTML", reply_markup: dict | None = None) -> dict:
+        payload = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": text[:4000],
+            "parse_mode": parse_mode,
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        return self._request("editMessageText", payload)
 
 
 # ---------------------------------------------------------------------------
@@ -93,20 +112,47 @@ def _safe(fn):
 
 @_safe
 def cmd_start() -> str:
-    return (
-        "🤖 <b>AIOS Telegram Bot</b>\n\n"
-        "Команды:\n"
-        "  /stats  — статистика системы\n"
-        "  /status — сводка по платформам\n"
-        "  /olx    — статистика OLX\n"
-        "  /olx_sub &lt;запрос&gt; [min max] — подписка на новые объявления\n"
-        "  /olx_unsub [запрос] — отписка\n"
-        "  /olx_list — список моих подписок\n"
-        "  /olx_latest &lt;запрос&gt; [N] — последние объявления\n"
-        "  /olx_analytics &lt;запрос&gt; — аналитика цен (AI)\n"
-        "  /help   — помощь\n\n"
-        "<i>v9.3.2 · JoTalbot/AIOS · Dashboard: https://api.autosklo.org.ua/aios/</i>"
-    )
+    return "🤖 <b>AIOS Control Panel</b>\n\nВыберите раздел:"
+
+MAIN_MENU_KEYBOARD = {
+    "inline_keyboard": [
+        [
+            {"text": "📊 Статистика", "callback_data": "menu_stats"},
+            {"text": "📱 Платформы", "callback_data": "menu_platforms"},
+        ],
+        [
+            {"text": "🛒 OLX", "callback_data": "menu_olx"},
+            {"text": "🧠 Агент-кодер", "callback_data": "menu_coder"},
+        ],
+        [
+            {"text": "❓ Помощь", "callback_data": "menu_help"},
+        ],
+    ]
+}
+
+CODER_MENU_KEYBOARD = {
+    "inline_keyboard": [
+        [
+            {"text": "📋 Статус", "callback_data": "coder_status"},
+            {"text": "🔍 Review Bot", "callback_data": "coder_review_bot"},
+        ],
+        [
+            {"text": "🔍 Review Collector", "callback_data": "coder_review_collector"},
+            {"text": "🔍 Review Coder", "callback_data": "coder_review_self"},
+        ],
+        [
+            {"text": "✨ Генерация кода", "callback_data": "coder_gen_prompt"},
+            {"text": "🔧 Исправить баг", "callback_data": "coder_fix_prompt"},
+        ],
+        [
+            {"text": "📜 Git Status", "callback_data": "coder_git_status"},
+            {"text": "🚀 Push", "callback_data": "coder_git_push"},
+        ],
+        [
+            {"text": "◀️ Назад", "callback_data": "menu_back"},
+        ],
+    ]
+}
 
 
 @_safe
@@ -373,15 +419,23 @@ def cmd_help() -> str:
 # ---------------------------------------------------------------------------
 
 
+_coder_mod = None
+
 def _get_coder_module():
     """Load MetaCognitiveCoder module."""
+    global _coder_mod
+    if _coder_mod is not None:
+        return _coder_mod
     import importlib.util, sys
+    mod_name = "aios_core.meta_cognitive_self_coder"
     spec = importlib.util.spec_from_file_location(
-        "meta_coder", "/app/aios_core/meta_cognitive_self_coder.py"
+        mod_name, "/app/aios_core/meta_cognitive_self_coder.py"
     )
     mod = importlib.util.module_from_spec(spec)
-    sys.modules["aios_core.meta_cognitive_self_coder"] = mod
+    mod.__name__ = mod_name
+    sys.modules[mod_name] = mod
     spec.loader.exec_module(mod)
+    _coder_mod = mod
     return mod
 
 
@@ -476,11 +530,116 @@ def parse_command(text: str) -> tuple[str, str]:
     return cmd, args
 
 
+# State storage for callback interactions (chat_id -> pending action)
+_pending_actions: dict[int, str] = {}
+
+
+def _handle_callback(api: TelegramAPI, upd: dict) -> None:
+    """Handle inline button callbacks."""
+    cb = upd.get("callback_query", {})
+    cb_id = cb.get("id", "")
+    data = cb.get("data", "")
+    msg = cb.get("message", {})
+    chat_id = msg.get("chat", {}).get("id")
+    msg_id = msg.get("message_id")
+
+    if not chat_id or not data:
+        return
+
+    api.answer_callback(cb_id, "⏳ Обрабатываю...")
+
+    reply = None
+    keyboard = None
+
+    if data == "menu_back":
+        reply = "🤖 <b>AIOS Control Panel</b>\n\nВыберите раздел:"
+        keyboard = MAIN_MENU_KEYBOARD
+
+    elif data == "menu_stats":
+        reply = cmd_stats()
+
+    elif data == "menu_platforms":
+        reply = cmd_platforms()
+
+    elif data == "menu_olx":
+        reply = cmd_olx("")
+
+    elif data == "menu_help":
+        reply = cmd_help()
+
+    elif data == "menu_coder":
+        reply = "🧠 <b>Агент-кодер MetaCognitiveCoder</b>\n\nУправление автономным кодером:"
+        keyboard = CODER_MENU_KEYBOARD
+
+    elif data == "coder_status":
+        reply = cmd_coder_status()
+        keyboard = CODER_MENU_KEYBOARD
+
+    elif data == "coder_review_bot":
+        api.edit_message(chat_id, msg_id, "⏳ <i>Анализирую run_telegram_bot.py...</i>")
+        reply = cmd_code_review("run_telegram_bot.py")
+        keyboard = CODER_MENU_KEYBOARD
+
+    elif data == "coder_review_collector":
+        api.edit_message(chat_id, msg_id, "⏳ <i>Анализирую run_olx_http_collector.py...</i>")
+        reply = cmd_code_review("run_olx_http_collector.py")
+        keyboard = CODER_MENU_KEYBOARD
+
+    elif data == "coder_review_self":
+        api.edit_message(chat_id, msg_id, "⏳ <i>Анализирую meta_cognitive_self_coder.py...</i>")
+        reply = cmd_code_review("aios_core/meta_cognitive_self_coder.py")
+        keyboard = CODER_MENU_KEYBOARD
+
+    elif data == "coder_gen_prompt":
+        _pending_actions[chat_id] = "gen_code"
+        reply = "✏️ <b>Генерация кода</b>\n\nОтправьте описание что нужно создать:\n\n<i>Например: Create a function that parses CSV files and returns summary stats</i>"
+
+    elif data == "coder_fix_prompt":
+        _pending_actions[chat_id] = "fix_bug"
+        reply = "🔧 <b>Исправление бага</b>\n\nОтправьте в формате:\n<code>file.py описание бага</code>\n\n<i>Например: run_telegram_bot.py бот падает при команде /stats</i>"
+
+    elif data == "coder_git_status":
+        try:
+            mod = _get_coder_module()
+            coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
+            git_status = coder.git.status()
+            if git_status:
+                lines = git_status.split("\n")[:20]
+                reply = "📜 <b>Git Status</b>\n\n" + "\n".join("  " + l for l in lines)
+            else:
+                reply = "📜 <b>Git Status</b>\n\n  ✅ Working tree clean"
+        except Exception as e:
+            reply = "❌ Ошибка: " + str(e)
+        keyboard = CODER_MENU_KEYBOARD
+
+    elif data == "coder_git_push":
+        try:
+            mod = _get_coder_module()
+            coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
+            ok, out = coder.git.push()
+            reply = "🚀 <b>Git Push</b>\n\n  " + ("✅ Pushed" if ok else "❌ " + out[:200])
+        except Exception as e:
+            reply = "❌ Ошибка: " + str(e)
+        keyboard = CODER_MENU_KEYBOARD
+
+    if reply:
+        try:
+            if keyboard:
+                api.send_message(chat_id, reply, reply_markup=keyboard)
+            else:
+                api.send_message(chat_id, reply)
+        except Exception as e:
+            # If edit fails, send new message
+            api.send_message(chat_id, reply)
+
+    print(f"  → callback {data} (chat {chat_id})")
+
+
 def run_bot(token: str) -> None:
     api = TelegramAPI(token)
     offset = 0
 
-    print("🤖 AIOS Telegram Bot запущен (v9.3.2 with OLX alerts)")
+    print("🤖 AIOS Telegram Bot запущен (v10.0 with inline menu)")
     print("   Ожидание сообщений...\n")
 
     while True:
@@ -488,6 +647,12 @@ def run_bot(token: str) -> None:
             updates = api.get_updates(offset)
             for upd in updates:
                 offset = upd["update_id"] + 1
+
+                # Handle callback queries (button presses)
+                if "callback_query" in upd:
+                    _handle_callback(api, upd)
+                    continue
+
                 msg = upd.get("message", {})
                 chat_id = msg.get("chat", {}).get("id")
                 username = msg.get("from", {}).get("username")
@@ -496,13 +661,30 @@ def run_bot(token: str) -> None:
 
                 if not chat_id or not text:
                     continue
+
+                # Handle pending actions from inline buttons
+                if chat_id in _pending_actions:
+                    action = _pending_actions.pop(chat_id)
+                    reply = None
+                    if action == "gen_code":
+                        reply = cmd_code_generate(text)
+                    elif action == "fix_bug":
+                        reply = cmd_code_fix(text)
+                    if reply:
+                        api.send_message(chat_id, reply)
+                        print(f"  → action {action} (chat {chat_id})")
+                    continue
+
                 cmd, args = parse_command(text)
                 if not cmd.startswith("/"):
                     continue
 
                 reply = None
-                if cmd == "/start":
+                keyboard = None
+
+                if cmd == "/start" or cmd == "/menu":
                     reply = cmd_start()
+                    keyboard = MAIN_MENU_KEYBOARD
                 elif cmd == "/stats":
                     reply = cmd_stats()
                 elif cmd in ("/status", "/platforms"):
@@ -522,7 +704,8 @@ def run_bot(token: str) -> None:
                 elif cmd == "/help":
                     reply = cmd_help()
                 elif cmd == "/coder":
-                    reply = cmd_coder_status()
+                    reply = "🧠 <b>Агент-кодер MetaCognitiveCoder</b>\n\nУправление автономным кодером:"
+                    keyboard = CODER_MENU_KEYBOARD
                 elif cmd == "/code":
                     reply = cmd_code_generate(args)
                 elif cmd == "/review":
@@ -530,10 +713,13 @@ def run_bot(token: str) -> None:
                 elif cmd == "/fix":
                     reply = cmd_code_fix(args)
                 else:
-                    reply = "ℹ️ Неизвестная команда. /help для списка."
+                    reply = "ℹ️ Неизвестная команда. Напишите /menu для навигации."
 
                 if reply:
-                    api.send_message(chat_id, reply)
+                    if keyboard:
+                        api.send_message(chat_id, reply, reply_markup=keyboard)
+                    else:
+                        api.send_message(chat_id, reply)
                     print(f"  → ответил на {cmd} (chat {chat_id})")
 
         except KeyboardInterrupt:
