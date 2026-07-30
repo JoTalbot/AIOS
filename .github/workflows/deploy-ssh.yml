@@ -28,7 +28,7 @@ jobs:
         id: check
         env:
           SSH_HOST: ${{ secrets.SSH_HOST || secrets.VPS_HOST }}
-          SSH_KEY: ${{ secrets.SSH_KEY || secrets.VPS_SSH_KEY }}
+          SSH_KEY: ${{ secrets.SSH_KEY || secrets.VPS_SSH_KEY || secrets.SSH_PRIVATE_KEY }}
         run: |
           if [ -z "$SSH_HOST" ] || [ -z "$SSH_KEY" ]; then
             echo "::warning::SSH deploy secrets (SSH_HOST, SSH_KEY) are not configured in GitHub Secrets. SSH deployment skipped."
@@ -49,17 +49,32 @@ jobs:
 
       - name: Setup SSH Key & Config
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY || secrets.VPS_SSH_KEY }}
+          RAW_KEY: ${{ secrets.SSH_KEY || secrets.VPS_SSH_KEY || secrets.SSH_PRIVATE_KEY }}
           SSH_HOST_VAL: ${{ secrets.SSH_HOST || secrets.VPS_HOST }}
           SSH_USER_VAL: ${{ secrets.SSH_USER || secrets.VPS_USERNAME || 'root' }}
           SSH_PORT_VAL: ${{ secrets.SSH_PORT || secrets.VPS_PORT || '22' }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          
-          # Normalize line endings and fix escaped \n in secret
-          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' | sed 's/\\n/\n/g' > ~/.ssh/id_rsa
+
+          KEY_STR="${RAW_KEY}"
+          KEY_STR=$(echo "$KEY_STR" | tr -d '\r' | sed 's/\\n/\n/g')
+
+          if ! echo "$KEY_STR" | grep -q "BEGIN"; then
+            TRY_B64=$(echo "$RAW_KEY" | base64 -d 2>/dev/null || true)
+            if echo "$TRY_B64" | grep -q "BEGIN"; then
+              KEY_STR="$TRY_B64"
+            fi
+          fi
+
+          printf '%s\n' "$KEY_STR" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+
+          if ! ssh-keygen -l -f ~/.ssh/id_rsa >/dev/null 2>&1; then
+            echo "::error::SSH key in GitHub Secrets could not be parsed by OpenSSH."
+            echo "::error::Please ensure you copy the entire private key (including -----BEGIN ... PRIVATE KEY----- and -----END ... PRIVATE KEY-----)."
+            exit 1
+          fi
 
           cat << EOF > ~/.ssh/config
           Host target-server
