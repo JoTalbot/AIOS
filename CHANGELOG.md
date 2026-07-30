@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [14.0.0] — 2026-07-30 — AIOS Universal Singularity Architecture Major Release (v13.1.0 - v14.0.0)
+
+### Added
+- **100-Step Universal Singularity AI Architecture Suite (v13.1.0 - v14.0.0)**:
+  - `AutonomousGoalSynthesizer` (`v13.1.0`): Autonomous meta-goal synthesizer.
+  - `GraphRAGQueryEngineV3` (`v13.2.0`): GraphRAG query engine V3.
+  - `MultiModalVisionProcessorV3` (`v13.3.0`): MultiModal vision processor V3.
+  - `SwarmFederatedOptimizerV3` (`v13.4.0`): Swarm federated optimizer V3.
+  - `PromptAutoTunerV3` (`v13.5.0`): Prompt auto-tuner V3.
+  - `AIOSSingularityUniversalNexusV14` (`v14.0.0`): Universal Singularity Major Release Orchestrator V14.0.0.
+- **REST API & Developer SDK Integration**:
+  - `GET /api/ai/universal/status` & SDK method `ai_get_universal_status()`.
+
 ## [13.0.0] — 2026-07-30 — AIOS Grand Epoch Architecture Major Release (v12.1.0 - v13.0.0)
 
 ### Added
