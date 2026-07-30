@@ -19,13 +19,22 @@ cd AIOS
 docker-compose up -d
 ```
 
+### SSH Server Deployment
+To deploy AIOS to a VPS / dedicated server via SSH:
+```bash
+./scripts/deploy_ssh.sh <SSH_HOST> [SSH_USER] [SSH_PORT] [REMOTE_DIR] [BRANCH]
+```
+See [DEPLOY_SSH_RU.md](DEPLOY_SSH_RU.md) for full setup instructions (GitHub Actions & SSH scripts).
+
 Access:
 - Dashboard: http://localhost:8080
 - API Docs: http://localhost:8080/docs
 - Grafana: http://localhost:3000
 
 ## Documentation
-- [Deployment Guide](docs/deployment_guide.md)
+- [Deployment Guide (RU)](DEPLOY_GUIDE_RU.md)
+- [SSH Deployment Guide (RU)](DEPLOY_SSH_RU.md)
+- [Deployment Guide (EN)](docs/deployment_guide.md)
 - [Evolution Engine](docs/evolution.md)
 - [ML & RAG](docs/ml_and_recommendations.md)
 - [Security](docs/security.md)
