@@ -69,37 +69,53 @@ class LLMClient:
         self.config = config
 
     def chat(self, messages: list[dict], system: str = "") -> str:
-        """Send chat completion request."""
-        if not self.config.llm_api_key:
-            raise ValueError("LLM_API_KEY not configured")
-
+        """Send chat completion with multi-provider fallback."""
         all_messages = []
         if system:
             all_messages.append({"role": "system", "content": system})
         all_messages.extend(messages)
 
-        payload = json.dumps({
-            "model": self.config.llm_model,
-            "messages": all_messages,
-            "max_tokens": self.config.max_tokens,
-            "temperature": self.config.temperature,
-        }).encode()
+        # Build endpoint list: GitHub first (free!), then configured endpoint
+        gh_key = os.environ.get("GITHUB_API_KEY", "")
+        endpoints = []
+        if gh_key:
+            endpoints.append({
+                "url": "https://models.inference.ai.azure.com/chat/completions",
+                "key": gh_key,
+                "model": "gpt-4.1-mini",
+                "name": "GitHub",
+            })
+        if self.config.llm_api_key:
+            endpoints.append({
+                "url": self.config.llm_base_url + "/chat/completions",
+                "key": self.config.llm_api_key,
+                "model": self.config.llm_model,
+                "name": "Config",
+            })
 
-        req = urllib.request.Request(
-            f"{self.config.llm_base_url}/chat/completions",
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.config.llm_api_key}",
-                "HTTP-Referer": "https://github.com/JoTalbot/AIOS",
-                "X-Title": "AIOS MetaCognitiveCoder",
-            },
-        )
+        for ep in endpoints:
+            try:
+                payload = json.dumps({
+                    "model": ep["model"],
+                    "messages": all_messages,
+                    "max_tokens": self.config.max_tokens,
+                    "temperature": self.config.temperature,
+                }).encode()
+                req = urllib.request.Request(ep["url"], data=payload, headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {ep['key']}",
+                })
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    data = json.loads(resp.read())
+                if "choices" in data and data["choices"]:
+                    return data["choices"][0]["message"]["content"]
+            except Exception as e:
+                log.warning(f"{ep['name']} failed: {e}")
+                continue
 
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            data = json.loads(resp.read())
+        raise ValueError("All LLM endpoints failed")
 
-        return data["choices"][0]["message"]["content"]
+
 
 
 # ---------------------------------------------------------------------------
@@ -509,13 +525,25 @@ class MetaCognitiveCoder:
 
     @staticmethod
     def _extract_code(response: str) -> str:
-        """Extract code block from LLM response."""
-        if "```python" in response:
-            start = response.index("```python") + len("```python")
-            end = response.index("```", start)
-            return response[start:end].strip()
-        if "```" in response:
-            start = response.index("```") + 3
-            end = response.index("```", start)
-            return response[start:end].strip()
-        return response.strip()
+        if not response:
+            return ""
+        bt3 = chr(96) * 3
+        bt3py = bt3 + "python"
+        if bt3py in response:
+            start = response.index(bt3py) + len(bt3py)
+            try:
+                end = response.index(bt3, start)
+                return response[start:end].strip()
+            except ValueError:
+                return response[start:].strip()
+        if bt3 in response:
+            start = response.index(bt3) + 3
+            try:
+                end = response.index(bt3, start)
+                return response[start:end].strip()
+            except ValueError:
+                return response[start:].strip()
+        stripped = response.strip()
+        if stripped.startswith(("import ", "from ", "def ", "class ", "\"\"\"", "#", "@")):
+            return stripped
+        return stripped
