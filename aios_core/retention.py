@@ -75,7 +75,14 @@ def plan_retention_purge(
     if timestamp_of is None:
 
         def timestamp_of(record: Any) -> float:
-            return record.get("timestamp", 0.0)
+            if isinstance(record, dict):
+                val = record.get("timestamp", record.get("created_at", 0.0))
+            else:
+                val = getattr(record, "timestamp", getattr(record, "created_at", 0.0))
+            try:
+                return float(val)
+            except (TypeError, ValueError):
+                return 0.0
 
     total = len(records)
     protected: set[int] = set()
