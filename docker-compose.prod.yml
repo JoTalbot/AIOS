@@ -22,6 +22,7 @@ services:
       PYTHONUNBUFFERED: "1"
       PYTHONDONTWRITEBYTECODE: "1"
     volumes:
+      - .:/app
       - aios-data:/app/data
       - aios-logs:/app/logs
     restart: unless-stopped
@@ -51,6 +52,7 @@ services:
       AIOS_DEVICES_DB: /app/data/devices.sqlite
       PYTHONUNBUFFERED: "1"
     volumes:
+      - .:/app
       - aios-data:/app/data
       - aios-logs:/app/logs
     depends_on:
@@ -76,7 +78,9 @@ services:
       AIOS_API_KEYS: ${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
       AIOS_DASH_PORT: "8080"
       AIOS_PROFILES_DB: /app/data/profiles.sqlite
-    volumes: [aios-data:/app/data]
+    volumes:
+      - .:/app
+      - aios-data:/app/data
     depends_on:
       aios-api: {condition: service_healthy}
     restart: unless-stopped
@@ -99,6 +103,7 @@ services:
       AIOS_WEBHOOK_URL: ${AIOS_WEBHOOK_URL:-}
       PYTHONUNBUFFERED: "1"
     volumes:
+      - .:/app
       - aios-data:/app/data
       - aios-logs:/app/logs
     depends_on:
