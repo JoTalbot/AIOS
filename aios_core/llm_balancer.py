@@ -11,6 +11,7 @@ LLM Balancer — автоматическая балансировка межд�
   3. Fallback-модели если основная недоступна
   4. Кэширование "мёртвых" ключей на 5 минут
 """
+import contextlib
 import json
 import os
 import time
@@ -18,6 +19,19 @@ import urllib.request
 import urllib.error
 import threading
 from dataclasses import dataclass, field
+from pathlib import Path
+
+for _env_path in (Path(__file__).resolve().parents[1] / ".env",):
+    if _env_path.exists():
+        for _line in _env_path.read_text(encoding="utf-8").splitlines():
+            _line = _line.strip()
+            if not _line or _line.startswith("#") or "=" not in _line:
+                continue
+            _key, _, _value = _line.partition("=")
+            _key = _key.strip()
+            _value = _value.strip().strip('"').strip("'")
+            if _key and _key not in os.environ:
+                os.environ[_key] = _value
 
 
 @dataclass
@@ -59,7 +73,7 @@ class Provider:
         key.last_error = error
         key.error_count += 1
         key.cooldown_until = time.time() + cooldown
-        print(f"  [Balancer] Key {key.key[:8]}... cooled down {cooldown}s: {error}")
+        print(f"  [Balancer] {key.provider} key cooled down {cooldown}s: {error}")
 
 
 class LLMBalancer:
@@ -91,15 +105,13 @@ class LLMBalancer:
                 "gpt-4.1-mini",
             ],
         },
-        "github": {
-            "base_url": "https://models.inference.ai.azure.com/chat/completions",
+        "groq": {
+            "base_url": "https://api.groq.com/openai/v1/chat/completions",
             "models": [
-                "gpt-4.1",
-                "gpt-4.1-mini",
-                "gpt-4o",
-                "gpt-4o-mini",
-                "DeepSeek-R1",
-                "Phi-4",
+                "llama-3.3-70b-versatile",
+                "llama-3.1-8b-instant",
+                "mixtral-8x7b-32768",
+                "gemma2-9b-it",
             ],
         },
         "deepseek": {
@@ -117,6 +129,14 @@ class LLMBalancer:
                 "glm-4.7-flash",
                 "glm-4.5",
                 "glm-5",
+            ],
+        },
+        "cerebras": {
+            "base_url": "https://api.cerebras.ai/v1/chat/completions",
+            "models": [
+                "llama-3.3-70b",
+                "llama-3.1-8b",
+                "gemma-2-9b",
             ],
         },
     }
@@ -160,6 +180,90 @@ class LLMBalancer:
             "gemini-2.0-flash",
             "meta-llama/llama-4-maverick",
         ],
+        "deepseek-chat": [
+            "deepseek-reasoner",
+            "meta-llama/llama-4-maverick",
+            "gpt-4o-mini",
+            "glm-4.5-flash",
+        ],
+        "deepseek/deepseek-chat-v3-0324": [
+            "deepseek-chat",
+            "meta-llama/llama-4-maverick",
+            "mistralai/mistral-small-3.2-24b-instruct",
+            "gpt-4o-mini",
+        ],
+        "gpt-4o": [
+            "gpt-4o-mini",
+            "gemini-2.0-flash",
+            "meta-llama/llama-4-maverick",
+            "glm-4.5-flash",
+        ],
+        "gpt-4.1-mini": [
+            "gpt-4o-mini",
+            "gemini-2.0-flash",
+            "meta-llama/llama-4-maverick",
+        ],
+        "deepseek-reasoner": [
+            "deepseek-chat",
+            "meta-llama/llama-4-maverick",
+            "gpt-4o-mini",
+        ],
+        "deepseek-coder": [
+            "deepseek-chat",
+            "meta-llama/llama-4-maverick",
+            "gpt-4o-mini",
+        ],
+        "glm-4.5": [
+            "glm-4.5-flash",
+            "glm-4.7-flash",
+            "meta-llama/llama-4-maverick",
+        ],
+        "glm-4.7-flash": [
+            "glm-4.5-flash",
+            "gemini-2.0-flash",
+            "meta-llama/llama-4-maverick",
+        ],
+        "glm-5": [
+            "glm-4.7-flash",
+            "glm-4.5-flash",
+            "gemini-2.0-flash",
+            "meta-llama/llama-4-maverick",
+        ],
+        "llama-3.3-70b-versatile": [
+            "llama-3.1-8b-instant",
+            "meta-llama/llama-4-maverick",
+            "gemini-2.0-flash",
+        ],
+        "llama-3.1-8b-instant": [
+            "llama-3.3-70b-versatile",
+            "meta-llama/llama-4-maverick",
+            "gemini-2.0-flash",
+        ],
+        "mixtral-8x7b-32768": [
+            "llama-3.1-8b-instant",
+            "mistralai/mistral-small-3.2-24b-instruct",
+            "meta-llama/llama-4-maverick",
+        ],
+        "gemma2-9b-it": [
+            "llama-3.1-8b-instant",
+            "gemini-2.0-flash",
+            "meta-llama/llama-4-maverick",
+        ],
+        "gemini-2.5-pro": [
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "meta-llama/llama-4-maverick",
+            "gpt-4o-mini",
+        ],
+        "gpt-3.5-turbo": [
+            "meta-llama/llama-4-maverick",
+            "mistralai/mistral-small-3.2-24b-instruct",
+            "deepseek/deepseek-chat-v3-0324",
+            "llama-3.1-8b-instant",
+            "glm-4.5-flash",
+            "gemini-2.0-flash",
+            "gpt-4o-mini",
+        ],
     }
 
     def __init__(self):
@@ -170,17 +274,32 @@ class LLMBalancer:
         self._provider_stats: dict[str, int] = {}
 
     def _load_from_env(self):
-        """Load providers and keys from environment variables."""
+        """Load providers and keys from env plus the external runtime registry."""
+        # Import runtime keys without putting secrets in source code or images.
+        # The registry is mounted at /app/data in Docker and lives in data/ on host.
+        for key_file in (Path("/app/data/.llm_keys.json"), Path(__file__).resolve().parents[1] / "data/.llm_keys.json"):
+            try:
+                runtime = json.loads(key_file.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            env_prefix = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "zai": "ZAI_API_KEY", "cerebras": "CEREBRAS_API_KEY"}
+            for provider, keys in runtime.items():
+                prefix = env_prefix.get(provider)
+                if not prefix or not isinstance(keys, list):
+                    continue
+                for index, key in enumerate(keys, 1):
+                    if key and not os.environ.get(f"{prefix}_{index}"):
+                        os.environ[f"{prefix}_{index}"] = str(key)
         # OpenRouter keys
         or_keys = []
         # Primary key
         pk = os.environ.get("OPENROUTER_API_KEY", "")
         if pk:
             or_keys.append(APIKey(key=pk, provider="openrouter"))
-        # Additional keys from env
+        # Additional keys from env with value dedup
         for i in range(1, 10):
             k = os.environ.get(f"OPENROUTER_API_KEY_{i}", "")
-            if k:
+            if k and not any(ek.key == k for ek in or_keys):
                 or_keys.append(APIKey(key=k, provider="openrouter"))
 
         if or_keys:
@@ -227,22 +346,21 @@ class LLMBalancer:
                 models=self.PROVIDERS["openai"]["models"],
             )
 
-        # GitHub Models keys (free!)
-        gh_keys = []
+        groq_keys = []
         for i in range(1, 10):
-            k = os.environ.get(f"GITHUB_API_KEY_{i}", "")
+            k = os.environ.get(f"GROQ_API_KEY_{i}", "")
             if k:
-                gh_keys.append(APIKey(key=k, provider="github"))
-        gk = os.environ.get("GITHUB_API_KEY", "")
-        if gk and not any(k.key == gk for k in gh_keys):
-            gh_keys.append(APIKey(key=gk, provider="github"))
+                groq_keys.append(APIKey(key=k, provider="groq"))
+        gqk = os.environ.get("GROQ_API_KEY", "")
+        if gqk and not any(k.key == gqk for k in groq_keys):
+            groq_keys.append(APIKey(key=gqk, provider="groq"))
 
-        if gh_keys:
-            self.providers["github"] = Provider(
-                name="github",
-                base_url=self.PROVIDERS["github"]["base_url"],
-                keys=gh_keys,
-                models=self.PROVIDERS["github"]["models"],
+        if groq_keys:
+            self.providers["groq"] = Provider(
+                name="groq",
+                base_url=self.PROVIDERS["groq"]["base_url"],
+                keys=groq_keys,
+                models=self.PROVIDERS["groq"]["models"],
             )
 
         # DeepSeek keys
@@ -280,6 +398,24 @@ class LLMBalancer:
                 base_url=self.PROVIDERS["zai"]["base_url"],
                 keys=zai_keys,
                 models=self.PROVIDERS["zai"]["models"],
+            )
+
+        # Cerebras keys
+        cerebras_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"CEREBRAS_API_KEY_{i}", "")
+            if k:
+                cerebras_keys.append(APIKey(key=k, provider="cerebras"))
+        ck = os.environ.get("CEREBRAS_API_KEY", "")
+        if ck and not any(k.key == ck for k in cerebras_keys):
+            cerebras_keys.append(APIKey(key=ck, provider="cerebras"))
+
+        if cerebras_keys:
+            self.providers["cerebras"] = Provider(
+                name="cerebras",
+                base_url=self.PROVIDERS["cerebras"]["base_url"],
+                keys=cerebras_keys,
+                models=self.PROVIDERS["cerebras"]["models"],
             )
 
     def add_key(self, provider: str, key: str):
@@ -383,7 +519,7 @@ class LLMBalancer:
 
                     # Success!
                     self._provider_stats[prov_name] = self._provider_stats.get(prov_name, 0) + 1
-                    print(f"  [Balancer] OK: {prov_name}/{try_model} key={best_key.key[:8]}...")
+                    print(f"  [Balancer] OK: {prov_name}/{try_model}")
 
                     if "choices" in data and data["choices"]:
                         return data["choices"][0]["message"]["content"]
@@ -398,7 +534,7 @@ class LLMBalancer:
                         continue
 
                 except urllib.error.HTTPError as e:
-                    last_error = f"{prov_name}/{try_model}: HTTP {e.code} key={best_key.key[:8]}"
+                    last_error = f"{prov_name}/{try_model}: HTTP {e.code}"
                     print(f"  [Balancer] {last_error}")
 
                     if e.code in (402, 429):
@@ -406,13 +542,24 @@ class LLMBalancer:
                         continue  # try next key
                     elif e.code == 404:
                         break  # model not on this provider, try next model
-                    elif e.code >= 500:
-                        best_provider.mark_key_error(best_key, f"HTTP {e.code}", cooldown=60)
-                        continue
                     elif e.code == 401:
                         best_provider.mark_key_error(best_key, "Auth failed", cooldown=600)
                         continue
+                    elif e.code == 403:
+                        body = ""
+                        with contextlib.suppress(Exception):
+                            body = e.read().decode(errors="replace")
+                        label = "HTTP 403" + (f" / {body.split(':',1)[0][:80]}" if body else "")
+                        cooldown = 900 if "1010" in body else 600
+                        best_provider.mark_key_error(best_key, label, cooldown=cooldown)
+                        continue
+                    elif e.code >= 500:
+                        best_provider.mark_key_error(best_key, f"HTTP {e.code}", cooldown=60)
+                        continue
                     else:
+                        last_error = f"{prov_name}/{try_model}: HTTP {e.code}"
+                        print(f"  [Balancer] {last_error}")
+                        best_provider.mark_key_error(best_key, f"HTTP {e.code}", cooldown=300)
                         continue
 
                 except Exception as e:
@@ -422,7 +569,7 @@ class LLMBalancer:
                     continue
 
         self._total_errors += 1
-        return f"LLM Error: all providers failed. Last: {last_error}"
+        return "⚠️ Все LLM-провайдеры временно недоступны. Проверьте квоты и API-ключи."
 
     def status(self) -> dict:
         """Return balancer status."""
