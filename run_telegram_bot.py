@@ -35,6 +35,18 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+_env_path = Path(__file__).resolve().parent / ".env"
+if _env_path.exists():
+    for _line in _env_path.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if not _line or _line.startswith("#") or "=" not in _line:
+            continue
+        _key, _, _value = _line.partition("=")
+        _key = _key.strip()
+        _value = _value.strip().strip('\"').strip("'")
+        if _key and _key not in os.environ:
+            os.environ[_key] = _value
+
 # ---------------------------------------------------------------------------
 # Telegram API helpers (zero-dependency)
 # ---------------------------------------------------------------------------
@@ -535,6 +547,17 @@ MAX_HISTORY = 20  # keep last 20 messages per chat
 
 def _handle_button(api: TelegramAPI, chat_id: int, data: str) -> None:
     """Handle button press by action name."""
+    try:
+        _handle_button_inner(api, chat_id, data)
+    except Exception as e:
+        print(f"  [BTN CRASH] {data}: {e}")
+        import traceback; traceback.print_exc()
+        try:
+            api.send_message(chat_id, "Error: " + str(e)[:200])
+        except:
+            pass
+
+def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
     reply = None
     keyboard = None
 
@@ -757,10 +780,13 @@ def _handle_button(api: TelegramAPI, chat_id: int, data: str) -> None:
             else:
                 api.send_message(chat_id, reply)
         except Exception as e:
+            print(f"  [BTN SEND ERR] {data}: {e}")
             try:
-                api.send_message(chat_id, reply)
-            except:
-                pass
+                api.send_message(chat_id, str(reply)[:3900], parse_mode="")
+            except Exception as e2:
+                print(f"  [BTN SEND ERR2] {e2}")
+    else:
+        print(f"  [BTN] no reply generated for: {data}")
 
 
 def _handle_callback(api: TelegramAPI, upd: dict) -> None:
@@ -869,6 +895,37 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
     print(f"  → callback {data} (chat {chat_id})")
 
 
+def _llm_status() -> str:
+    """Return LLM provider status without consuming credits."""
+    import importlib.util as _iu, sys as _sys
+    try:
+        spec = _iu.spec_from_file_location("lb_s", "/app/aios_core/llm_balancer.py")
+        mod = _iu.module_from_spec(spec)
+        _sys.modules["lb_s"] = mod
+        spec.loader.exec_module(mod)
+        b = mod.LLMBalancer()
+        s = b.status()
+        lines = [chr(128268) + " <b>LLM Providers</b>", ""]
+        lines.append("Requests: " + str(s.get("total_requests", 0)))
+        lines.append("Errors: " + str(s.get("total_errors", 0)))
+        lines.append("")
+        for pn, pd in s.get("providers", {}).items():
+            a = pd.get("keys_available", 0)
+            t = pd.get("keys_total", 0)
+            em = chr(9989) if a > 0 else chr(10060)
+            lines.append(em + " <b>" + pn.upper() + "</b>: " + str(a) + "/" + str(t) + " keys")
+            for kk, vv in pd.items():
+                if kk.startswith("key_"):
+                    avail = vv.get("available", False)
+                    errs = vv.get("errors", 0)
+                    last = vv.get("last_error", "")
+                    status_em = chr(9989) if avail else chr(10060)
+                    lines.append("   " + status_em + " " + kk + " errors=" + str(errs) + ("" if not last else " last=" + last[:40]))
+        return "\n".join(lines)
+    except Exception as e:
+        return chr(10060) + " " + str(e)
+
+
 def _llm_chat(chat_id: int, user_text: str) -> str:
     """LLM chat with root system access. Uses tool-calling pattern."""
     import json as _json, urllib.request as _urllib, os as _os
@@ -904,10 +961,17 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
 
     messages = [{"role": "system", "content": system}] + _chat_history[chat_id]
 
-    # LLM endpoints
+    # LLM endpoints: use the shared multi-provider balancer first.
+    # It loads runtime keys from /app/data/.llm_keys.json and performs
+    # round-robin/fallback across providers and keys.
+    _balancer = None
+    try:
+        from aios_core.llm_balancer import LLMBalancer as _LLMBalancer
+        _balancer = _LLMBalancer()
+    except Exception as _e:
+        print(f"  [LLM] balancer init failed: {_e}")
 
-
-    # Load keys from file (no secrets in code)
+    # Legacy direct endpoints remain as a last-resort compatibility fallback.
     endpoints = []
     try:
         with open("/app/data/.llm_keys.json") as _kf:
@@ -926,28 +990,43 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
     # Tool loop: up to 3 command iterations
     for iteration in range(4):
         response = None
-        for url, key, model in endpoints:
+        if _balancer is not None:
             try:
-                payload = _json.dumps({
-                    "model": model,
-                    "messages": messages,
-                    "max_tokens": 2000,
-                    "temperature": 0.3,
-                }).encode()
-                req = _urllib.Request(url, data=payload, headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + key,
-                })
-                with _urllib.urlopen(req, timeout=90) as resp:
-                    data = _json.loads(resp.read())
-                if "choices" in data and data["choices"]:
-                    response = data["choices"][0]["message"]["content"]
-                    break
-            except Exception:
-                continue
+                response = _balancer.chat(
+                    messages[1:],
+                    model=_os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick"),
+                    system=system,
+                    max_tokens=2000,
+                    temperature=0.3,
+                )
+                print(f"  [LLM] balancer response ({len(response or '')} chars)")
+            except Exception as _e:
+                print(f"  [LLM] balancer failed: {_e}")
+        if response:
+            pass
+        else:
+            for url, key, model in endpoints:
+                try:
+                    payload = _json.dumps({
+                        "model": model,
+                        "messages": messages,
+                        "max_tokens": 2000,
+                        "temperature": 0.3,
+                    }).encode()
+                    req = _urllib.Request(url, data=payload, headers={
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + key,
+                    })
+                    with _urllib.urlopen(req, timeout=90) as resp:
+                        data = _json.loads(resp.read())
+                    if "choices" in data and data["choices"]:
+                        response = data["choices"][0]["message"]["content"]
+                        break
+                except Exception:
+                    continue
 
-        if not response:
-            return "LLM temporarily unavailable."
+            if not response:
+                return "LLM temporarily unavailable."
 
         # Check if LLM wants to run a command
         cmd_match = _re.search(r"<cmd>(.*?)</cmd>", response, _re.DOTALL)
@@ -1143,6 +1222,8 @@ def run_bot(token: str) -> None:
                 elif cmd == "/coder":
                     reply = "🧠 <b>Агент-кодер MetaCognitiveCoder</b>\n\nУправление автономным кодером:"
                     keyboard = CODER_MENU_KEYBOARD
+                elif cmd == "/llm_status":
+                    reply = _llm_status()
                 elif cmd == "/code":
                     reply = cmd_code_generate(args)
                 elif cmd == "/review":
@@ -1174,9 +1255,9 @@ def run_bot(token: str) -> None:
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    TOKEN = os.environ.get("AIOS_TELEGRAM_TOKEN")
+    TOKEN = os.environ.get("AIOS_TELEGRAM_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN")
     if not TOKEN:
-        print("❌ Установите AIOS_TELEGRAM_TOKEN")
+        print("❌ Установите AIOS_TELEGRAM_TOKEN или TELEGRAM_BOT_TOKEN")
         sys.exit(1)
 
     run_bot(TOKEN)
