@@ -368,6 +368,9 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
                            "run_telegram_bot.py", "tools/run_telegram_bot.py",
                            "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"):
                     continue  # protected auto-coder internals
+                # Focus the coder on the real kernel code only (aios_core/).
+                if not rel.startswith("aios_core/"):
+                    continue
                 real_files.append(rel)
                 if len(real_files) >= 40:
                     break
@@ -416,7 +419,7 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
         f"ПРАВИЛА:\n"
         f"1. code_needed ВСЕГДА true\n"
         f"2. Выбери ОДИН конкретный файл из списка\n"
-        f"3. ПРИОРИТЕТ — файлы из aios_core/ (реальные модули ядра), затем tools/ и tests/\n"
+        f"3. РАБОТАЙ ТОЛЬКО с файлами из aios_core/ (реальные модули ядра). НЕ выбирай tools/, octopus_core/, корневые скрипты.\n"
         f"4. ИЗБЕГАЙ корневых скриптов-раннеров и entry-point файлов — работай с библиотечным кодом\n"
         f"5. Дай ТОЧНУЮ, осмысленную инструкцию: добавь функцию/тест/фикс с конкретным поведением\n"
         f"6. НЕ создавай новый модуль, если можно улучшить существующий — рефакторинг предпочтительнее\n"
