@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import os
 import sys
+from typing import List, Dict, Any
 
+import nicegui
 from nicegui import ui
 
 from .api_client import (
@@ -37,6 +39,7 @@ from .views import (
 
 @ui.page("/")
 def index() -> None:
+    """Main page of the AIOS dashboard."""
     ui.dark_mode().enable()
     with ui.header().classes("items-center justify-between bg-primary text-white"):
         ui.label("AIOS Dashboard").classes("text-h5 font-bold")
@@ -102,10 +105,12 @@ def index() -> None:
 
 
 def auto_study_page() -> None:
+    """Auto-study page of the AIOS dashboard."""
     ui.label("Android Auto-Study").classes("text-h6")
     status = ui.label("Loading...").classes("text-body1")
 
     async def refresh_status() -> None:
+        """Refresh auto-study status."""
         try:
             data = await get_auto_study_status()
             status.set_text(
@@ -120,6 +125,7 @@ def auto_study_page() -> None:
     ui.button("Refresh status", on_click=refresh_status).props("flat")
 
     async def start_study() -> None:
+        """Start auto-study."""
         pkg = package_input.value or "ua.slando"
         scn = scenario_input.value or "basic_explore"
         try:
@@ -137,6 +143,7 @@ def auto_study_page() -> None:
     ui.label("History").classes("text-h6")
 
     async def load_history() -> None:
+        """Load auto-study history."""
         try:
             data = await get_auto_study_history()
             history = data.get("history", [])
@@ -165,9 +172,11 @@ def auto_study_page() -> None:
 
 
 def devices_page() -> None:
+    """Devices page of the AIOS dashboard."""
     ui.label("Android Devices").classes("text-h6")
 
     async def load_devices() -> None:
+        """Load devices."""
         try:
             data = await get_android_devices()
             devices = data.get("devices", [])
@@ -181,6 +190,7 @@ def devices_page() -> None:
 
 
 def run() -> None:
+    """Run the AIOS dashboard."""
     try:
         from aios_core.advisor.templates_engine import TemplateEngine
         from aios_core.dashboard_views.views.advisor_templates_view import render_advisor_templates_view
@@ -209,3 +219,39 @@ def run() -> None:
     dash_port = int(os.environ.get("AIOS_DASH_PORT", "8080"))
     print(f"🌐 Launching AIOS Pure-Python Dashboard on http://{dash_host}:{dash_port}")
     ui.run(title="AIOS Pure-Python Dashboard", favicon="🤖", host=dash_host, port=dash_port, reload=False, root=index)
+
+
+# Test suite for authentication and protected endpoints
+import unittest
+from unittest.mock import Mock
+from nicegui import ui
+from .api_client import get_auto_study_status, start_auto_study
+
+class TestAuthentication(unittest.TestCase):
+    def test_authentication(self):
+        # Mock authentication
+        ui.auth = Mock(return_value=True)
+
+        # Test protected endpoint
+        response = ui.get("/api/protected")
+        self.assertEqual(response.status_code, 200)
+
+        # Test unauthenticated endpoint
+        response = ui.get("/api/unprotected")
+        self.assertEqual(response.status_code, 401)
+
+    def test_start_auto_study(self):
+        # Mock authentication
+        ui.auth = Mock(return_value=True)
+
+        # Test protected endpoint
+        response = ui.post("/api/protected/auto-study", json={"package": "ua.slando", "scenario": "basic_explore"})
+        self.assertEqual(response.status_code, 200)
+
+        # Test unauthenticated endpoint
+        response = ui.post("/api/unprotected/auto-study", json={"package": "ua.slando", "scenario": "basic_explore"})
+        self.assertEqual(response.status_code, 401)
+
+
+if __name__ == "__main__":
+    unittest.main(argv=[sys.argv[0]])
