@@ -140,7 +140,7 @@ def get_project_context() -> dict:
         "branch": git_cmd("branch", "--show-current") or "main",
     }
     # Keep protected auto-coder internals out of the LLM-visible git history.
-    _protected_log = ("run_coder_orchestrator", "run_telegram_bot", "llm_balancer", "meta_cognitive_self_coder")
+    _protected_log = ("run_coder_orchestrator", "run_auto_coder", "run_telegram_bot", "llm_balancer", "meta_cognitive_self_coder")
     _log_lines = [ln for ln in ctx["git_log"].splitlines() if not any(p in ln for p in _protected_log)]
     ctx["git_log"] = "\n".join(_log_lines[-10:]) or "no commits"
 
@@ -161,6 +161,7 @@ def get_project_context() -> dict:
                             rel = os.path.relpath(fpath, REPO_PATH)
                             # Never surface protected auto-coder internals as TODO targets.
                             if rel in ("run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
+                                       "run_auto_coder.py", "tools/run_auto_coder.py",
                                        "run_telegram_bot.py", "tools/run_telegram_bot.py",
                                        "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"):
                                 continue
@@ -196,6 +197,7 @@ def get_project_context() -> dict:
             capture_output=True, text=True, timeout=10
         )
         _protected = {"run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
+                      "run_auto_coder.py", "tools/run_auto_coder.py",
                       "run_telegram_bot.py", "tools/run_telegram_bot.py",
                       "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"}
         for line in result.stdout.strip().split("\n")[:15]:
@@ -310,7 +312,12 @@ def phase_analyze(llm: LLMClient, ctx: dict, backlog: dict) -> dict:
             result = json.loads(response[start:end])
             # Add new tasks to backlog
             new_tasks = result.get("new_tasks", [])
+            _prot_kw = ("run_coder_orchestrator", "run_auto_coder", "run_telegram_bot",
+                        "llm_balancer", "meta_cognitive")
             for task_desc in new_tasks[:3]:
+                _tl = str(task_desc or "").lower()
+                if any(k in _tl for k in _prot_kw):
+                    continue  # skip tasks that would point back at protected files
                 if task_desc and task_desc not in [t.get("description") for t in backlog.get("tasks", [])]:
                     backlog["tasks"].append({
                         "description": task_desc,
@@ -357,6 +364,7 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
             if f.endswith(".py"):
                 rel = os.path.relpath(os.path.join(root, f), REPO_PATH)
                 if rel in ("run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
+                           "run_auto_coder.py", "tools/run_auto_coder.py",
                            "run_telegram_bot.py", "tools/run_telegram_bot.py",
                            "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"):
                     continue  # protected auto-coder internals
@@ -392,9 +400,12 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
         f"ПРАВИЛА:\n"
         f"1. code_needed ВСЕГДА true\n"
         f"2. Выбери ОДИН конкретный файл из списка\n"
-        f"3. Дай ТОЧНУЮ инструкцию что добавить/исправить\n"
-        f"4. Если есть задача в бэклоге — бери её\n"
-        f"5. Если нет — найди TODO/FIXME и исправь\n"
+        f"3. ПРИОРИТЕТ — файлы из aios_core/ (реальные модули ядра), затем tools/ и tests/\n"
+        f"4. ИЗБЕГАЙ корневых скриптов-раннеров и entry-point файлов — работай с библиотечным кодом\n"
+        f"5. Дай ТОЧНУЮ, осмысленную инструкцию: добавь функцию/тест/фикс с конкретным поведением\n"
+        f"6. НЕ создавай новый модуль, если можно улучшить существующий — рефакторинг предпочтительнее\n"
+        f"7. Если есть задача в бэклоге — бери её\n"
+        f"8. Если нет — найди TODO/FIXME в aios_core/ и исправь\n"
         f"6. Если нет TODO — улучши документацию, добавь тест, оптимизируй\n\n"
         f"Верни JSON:\n"
         f'{{\n'
@@ -434,6 +445,7 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
     # Fallback: pick a random file with TODO and suggest fixing it
     todo_files = list(set(t.split(":")[0] for t in ctx.get("todos", [])))
     protected = {"run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
+                 "run_auto_coder.py", "tools/run_auto_coder.py",
                  "run_telegram_bot.py", "tools/run_telegram_bot.py",
                  "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"}
     todo_files = [t for t in todo_files if t not in protected]
