@@ -45,6 +45,18 @@ async def health_check():
     return {"status": "healthy", "platforms": platform_registry.list_platforms()}
 
 
+@app.get("/api/stats", tags=["System"], include_in_schema=False)
+async def dashboard_system_stats():
+    """Lightweight host metrics used by the NiceGUI dashboard overview."""
+    import psutil
+
+    return {
+        "cpu": f"{psutil.cpu_percent(interval=None):.1f}%",
+        "memory": f"{psutil.virtual_memory().percent:.1f}%",
+        "disk": f"{psutil.disk_usage('/').percent:.1f}%",
+    }
+
+
 # Интеграция NiceGUI с FastAPI
 
 from aios_core.agents.orchestrator import MultiAgentOrchestrator
