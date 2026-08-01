@@ -1,0 +1,35 @@
+name: Configure Cloudflare Origin Security
+
+on:
+  workflow_dispatch:
+    inputs:
+      ssl_mode:
+        description: Cloudflare SSL mode
+        required: true
+        default: strict
+        type: choice
+        options: [strict, full]
+
+permissions:
+  contents: read
+
+jobs:
+  configure-ssl:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_DNS_API_TOKEN }}
+      ZONE_NAME: autosklo.org.ua
+      SSL_MODE: ${{ inputs.ssl_mode }}
+    steps:
+      - name: Validate token
+        run: test -n "$CF_API_TOKEN" || { echo "Missing CLOUDFLARE_DNS_API_TOKEN"; exit 1; }
+      - name: Set Cloudflare SSL mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers=(-H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json")
+          zone=$(curl --fail-with-body -sS "${headers[@]}" "https://api.cloudflare.com/client/v4/zones?name=${ZONE_NAME}&status=active")
+          zone_id=$(jq -r '.result[0].id // empty' <<<"$zone")
+          test -n "$zone_id" || { echo "Zone not found"; exit 1; }
+          curl --fail-with-body -sS -X PATCH "${headers[@]}" --data "{\"value\":\"${SSL_MODE}\"}" "https://api.cloudflare.com/client/v4/zones/${zone_id}/settings/ssl" >/dev/null
+          echo "Cloudflare SSL mode set to ${SSL_MODE}"
