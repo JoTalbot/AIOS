@@ -654,6 +654,27 @@ class CoreHandlersMixin:
     async def _stats(self, request: Request) -> JSONResponse:
         return JSONResponse(self.orchestrator.stats())
 
+    async def _dashboard_health_overview(self, request: Request) -> JSONResponse:
+        """Operational overview for the authenticated dashboard."""
+        import psutil
+        import urllib.request
+        def probe(url: str) -> str:
+            try:
+                with urllib.request.urlopen(url, timeout=3) as response:
+                    return "ok" if 200 <= response.status < 400 else f"http {response.status}"
+            except Exception:
+                return "unavailable"
+        disk = psutil.disk_usage("/")
+        return JSONResponse({
+            "services": [
+                {"name": "AIOS API", "status": "ok"},
+                {"name": "MCP Gateway", "status": probe("http://aios-mcp:8471/health")},
+            ],
+            "cpu_percent": psutil.cpu_percent(interval=None),
+            "memory_percent": psutil.virtual_memory().percent,
+            "disk_percent": disk.percent,
+        })
+
     async def _dashboard_system_stats(self, request: Request) -> JSONResponse:
         """Return host utilization for the NiceGUI overview dashboard."""
         import psutil
