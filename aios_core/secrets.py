@@ -164,7 +164,21 @@ def main() -> None:
     secret_security_checker.add_secret_path(get_secret_paths()[0])
     scan_and_store_secrets_with_security_check()
 
+def scan_secrets_with_gitguardian() -> None:
+    """Scan for secrets in the repository with GitGuardian and store them in SecretsManager."""
+    secret_scanner = get_secret_scanner("gitguardian")
+    result = secret_scanner.scan_secrets()
+    if result.secrets_found:
+        print(f"Secrets found with GitGuardian: {result.secrets_found}")
+        await secrets.store_secrets(result.secrets_found)
+
+def scan_secrets_with_secretscanner() -> None:
+    """Scan for secrets in the repository with SecretScanner and store them in SecretsManager."""
+    secret_scanner = get_secret_scanner("secretscanner")
+    result = secret_scanner.scan_secrets()
+    if result.secrets_found:
+        print(f"Secrets found with SecretScanner: {result.secrets_found}")
+        await secrets.store_secrets(result.secrets_found)
+
 if __name__ == "__main__":
     main()
-
-__all__ = ["SecretsManager", "SecretVersion", "RotationPolicy", "secrets", "SecretScanner", "SecretsScanner", "get_supported_scanners", "get_secret_scanner", "SecretScannerFactory", "scan_and_store_secrets_with_security_check", "get_secret_paths"]
