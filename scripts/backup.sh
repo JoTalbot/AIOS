@@ -55,6 +55,18 @@ if tar -czf "$CHROMA" -C /root/AIOS chroma_db 2>/dev/null; then
   log "  OK chroma_db tarball"
 fi
 
+# --- Secrets & config backup (critical: API keys, env, compose) ---
+SECRETS_TAR="$BK/${DATE}__secrets-config.tar.gz"
+if tar -czf "$SECRETS_TAR" \
+   -C /root/AIOS \
+   .env .env.example docker-compose.prod.yml \
+   -C /etc/aios \
+   aios-auto-coder.env aios-telegram-bot.env 2>>"$LOG"; then
+  log "  OK secrets+config tarball"
+else
+  log "  WARN secrets+config partial ($SECRETS_TAR)"
+fi
+
 # --- Rotate: delete old backups ---
 DEL=$(find "$BK" -type f -mtime +"$KEEP" -delete 2>>"$LOG" | wc -l)
 log "  Rotation: removed old files > ${KEEP}d"
