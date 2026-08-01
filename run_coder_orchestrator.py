@@ -381,9 +381,25 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
 
     # Check backlog for pending tasks
     pending = [t for t in backlog.get("tasks", []) if t.get("status") == "pending"]
+
+    # Auto-prioritize tasks by keyword: security > bugs/fixes > features > tests/docs.
+    _prio_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    def _task_rank(t):
+        d = str(t.get("description", "")).lower()
+        t_prio = _prio_rank.get(t.get("priority", "medium"), 2)
+        if any(k in d for k in ("security", "vulnerab", "xss", "injection", "secret", "auth", "credential")):
+            return (0, t_prio)
+        if any(k in d for k in ("bug", "fix", "error", "crash", "exception", "broken")):
+            return (1, t_prio)
+        if any(k in d for k in ("test", "coverage", "doc")):
+            return (3, t_prio)
+        return (2, t_prio)
+
+    pending_sorted = sorted(pending, key=_task_rank)
     backlog_text = ""
-    if pending:
-        backlog_text = "\n".join(f"  {i+1}. {t['description']}" for i, t in enumerate(pending[:5]))
+    if pending_sorted:
+        backlog_text = "\n".join(
+            f"  {i+1}. [{_task_rank(t)[0]}] {t['description']}" for i, t in enumerate(pending_sorted[:6]))
 
     todos_text = "\n".join(ctx.get("todos", [])[:5]) or "Нет"
     issues_text = json.dumps(analysis.get("issues", []), ensure_ascii=False)
@@ -544,8 +560,18 @@ def phase_code(plan: dict) -> dict:
 
     try:
         config = mod.CoderConfig.from_env()
-        # Force model from orchestrator env
-        config.llm_model = os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick")
+        # Route model by task complexity: heavy tasks -> stronger model.
+        _instr = str(plan.get("instruction", "")) + " " + str(plan.get("description", ""))
+        _instr_l = _instr.lower()
+        _heavy = any(k in _instr_l for k in (
+            "security", "vulnerab", "encryption", "crypto", "auth", "permission",
+            "concurrency", "async", "thread", "refactor large", "rewrite",
+        ))
+        _action = plan.get("action", "")
+        if _heavy or _action in ("feature", "refactor"):
+            config.llm_model = os.environ.get("LLM_MODEL_HEAVY", "gpt-4o")
+        else:
+            config.llm_model = os.environ.get("LLM_MODEL", "gpt-4o-mini")
         config.llm_api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("LLM_API_KEY", "")
         if config.llm_api_key and config.llm_api_key.startswith("sk-or-"):
             config.llm_base_url = "https://openrouter.ai/api/v1"
@@ -669,9 +695,20 @@ def phase_validate(code_result: dict) -> dict:
             try:
                 with open(full_path, "r") as f:
                     compile(f.read(), full_path, "exec")
-                return {"status": "passed"}
             except SyntaxError as e:
                 return {"status": "failed", "reason": f"Syntax error: {e}"}
+
+            # Lint gate (non-blocking): run ruff on the changed file if available.
+            _warnings = list(code_result.get("warnings") or [])
+            try:
+                import subprocess as _sp
+                _ruff = _sp.run(["/opt/aios/.venv/bin/ruff", "check", "--select", "E,F", full_path],
+                                capture_output=True, text=True, timeout=30)
+                if _ruff.returncode != 0:
+                    _warnings.append(f"ruff: {_ruff.stdout.strip()[:200]}")
+            except Exception:
+                pass
+            return {"status": "passed", "warnings": _warnings}
 
     return {"status": "passed"}
 
