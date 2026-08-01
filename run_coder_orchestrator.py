@@ -492,6 +492,10 @@ def phase_code(plan: dict) -> dict:
     BLACKLIST = {
         "tools/run_coder_orchestrator.py",
         "run_coder_orchestrator.py",
+        "run_auto_coder.py",
+        "tools/run_auto_coder.py",
+        "run_telegram_bot.py",
+        "tools/run_telegram_bot.py",
         "aios_core/llm_balancer.py",
         "aios_core/meta_cognitive_self_coder.py",
     }
