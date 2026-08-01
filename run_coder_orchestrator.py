@@ -15,6 +15,7 @@ AIOS Coder Orchestrator — единый цикл автономной разр�
   - Telegram (отчёты)
 """
 import importlib.util
+import re
 import json
 import os
 import subprocess
@@ -510,12 +511,18 @@ def phase_code(plan: dict) -> dict:
 
     # Clean file path
     file_path = file_path.lstrip("/").lstrip("./")
-    # Restrict to project directories
+    # Sanitize: strip "file.py:NN" / "file.py:NN,MM" artifacts the LLM builds
+    # from "path:line" TODO markers, and stray digits/punctuation.
+    file_path = re.sub(r":\d+[,\s\d]*", "", file_path)  # remove :NN / :NN,MM
+    file_path = re.sub(r"[^\w./-]+", "_", file_path)     # replace weird chars
+    # Restrict to aios_core/ (real kernel code); fall back to aios_core/
     allowed_prefixes = ["aios_core/", "scripts/", "tools/", "tests/", "skills/", "platforms/", "docs/"]
     if not any(file_path.startswith(p) for p in allowed_prefixes):
-        # If LLM hallucinated path, put it in tools/
-        file_path = "tools/" + os.path.basename(file_path)
-    # Must be .py
+        # If LLM hallucinated path, point into aios_core/ (not tools/)
+        file_path = "aios_core/" + os.path.basename(file_path)
+    # Must be exactly one .py suffix
+    while file_path.endswith(".py.py"):
+        file_path = file_path[:-3]
     if not file_path.endswith(".py"):
         file_path += ".py"
 
