@@ -840,7 +840,7 @@ class CoreHandlersMixin:
             data = item.to_dict()
             data.update({"label": item.backup_id.removeprefix("backup_").split("_", 2)[-1], "size_mb": round(item.size_bytes / 1048576, 3), "verified": manager.verify_backup(item.backup_id)})
             backups.append(data)
-        return JSONResponse({"backups": backups, "count": len(backups)})
+        return JSONResponse({"backups": backups, "count": len(backups), "retention": {"max_backups": manager.max_backups, "retention_days": manager.retention_days}})
 
     async def _health(self, request: Request) -> JSONResponse:
         try:
