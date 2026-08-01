@@ -541,13 +541,35 @@ def parse_command(text: str) -> tuple[str, str]:
 
 # State storage for callback interactions (chat_id -> pending action)
 _pending_actions: dict[int, str] = {}
+_pending_confirmations: dict[int, str] = {}
+DANGEROUS_CALLBACKS = {"coder_git_push", "coder_restart", "bot_restart", "bot_stop"}
 _paused = False
 _chat_history: dict[int, list[dict]] = {}  # chat_id -> message history
 MAX_HISTORY = 20  # keep last 20 messages per chat
 
 
 def _handle_button(api: TelegramAPI, chat_id: int, data: str) -> None:
-    """Handle button press by action name."""
+    """Handle a callback, requiring an explicit second click for dangerous actions."""
+    if data in DANGEROUS_CALLBACKS:
+        _pending_confirmations[chat_id] = data
+        api.send_message(
+            chat_id,
+            "⚠️ <b>Подтвердите опасное действие</b>",
+            reply_markup={"inline_keyboard": [[
+                {"text": "✅ Подтвердить", "callback_data": "confirm_dangerous"},
+                {"text": "✖️ Отмена", "callback_data": "cancel_dangerous"},
+            ]]},
+        )
+        return
+    if data == "cancel_dangerous":
+        _pending_confirmations.pop(chat_id, None)
+        api.send_message(chat_id, "Действие отменено.")
+        return
+    if data == "confirm_dangerous":
+        data = _pending_confirmations.pop(chat_id, "")
+        if not data:
+            api.send_message(chat_id, "Нет ожидающего действия для подтверждения.")
+            return
     try:
         _handle_button_inner(api, chat_id, data)
     except Exception as e:
