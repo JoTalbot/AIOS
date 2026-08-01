@@ -22,7 +22,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class SecurityPolicy:
     name: str
     threat_type: str
     level: ThreatLevel = ThreatLevel.MEDIUM
-    check_fn: Callable[[dict[str, Any]], bool] | None = None
+    check_fn: Optional[Callable[[dict[str, Any]], bool]] = None
     action: str = "log"  # log, block, alert
 
 
@@ -75,7 +75,7 @@ class AdvancedSecurity:
     def __init__(self) -> None:
         self.threats: list[ThreatEvent] = []
         self.policies: dict[str, SecurityPolicy] = {}
-        self.api_keys: dict[str, dict[str, Any]] = {}  # key → {name, created, expires, active}
+        self.api_keys: dict[str, dict[str, Any]] = {}  # key → {name, created_at, expires_at, active}
         self._rate_counters: dict[str, list[float]] = {}  # ip → timestamps
         self._brute_force_threshold: int = 10  # requests per 60s
         self._xss_patterns: list[str] = [r"<script", r"javascript:", r"on\w+="]
@@ -95,29 +95,25 @@ class AdvancedSecurity:
         """Detect threats using policies and built-in checks."""
         detected = False
 
-        # Built-in: suspicious IP
         ip = request.get("ip", "")
         if ip in ("0.0.0.0", "127.0.0.1"):
             self._record("suspicious_ip", ThreatLevel.MEDIUM, {"ip": ip}, source=ip)
             detected = True
 
-        # Built-in: brute-force detection
         if self._check_brute_force(ip):
             self._record("brute_force", ThreatLevel.HIGH, {"ip": ip}, source=ip)
             detected = True
 
-        # Built-in: XSS detection
         body = request.get("body", "")
-        if isinstance(body, str) and self._detect_xss(body):
-            self._record("xss_attempt", ThreatLevel.HIGH, {"input": body[:50]}, source=ip)
-            detected = True
+        if isinstance(body, str):
+            if self._detect_xss(body):
+                self._record("xss_attempt", ThreatLevel.HIGH, {"input": body[:50]}, source=ip)
+                detected = True
 
-        # Built-in: SQL injection detection
-        if isinstance(body, str) and self._detect_injection(body):
-            self._record("sql_injection", ThreatLevel.CRITICAL, {"input": body[:50]}, source=ip)
-            detected = True
+            if self._detect_injection(body):
+                self._record("sql_injection", ThreatLevel.CRITICAL, {"input": body[:50]}, source=ip)
+                detected = True
 
-        # Custom policies
         for policy in self.policies.values():
             if policy.check_fn and policy.check_fn(request):
                 self._record(policy.threat_type, policy.level, request, source=ip)
@@ -149,11 +145,8 @@ class AdvancedSecurity:
     def sanitize(self, text: str) -> str:
         """Remove XSS and injection patterns from input."""
         result = text
-        # Remove HTML tags
         result = re.sub(r"<[^>]+>", "", result)
-        # Remove javascript
         result = re.sub(r"javascript:", "", result, flags=re.IGNORECASE)
-        # Remove event handlers
         result = re.sub(r"on\w+=", "", result, flags=re.IGNORECASE)
         return result.strip()
 
@@ -177,10 +170,11 @@ class AdvancedSecurity:
     def generate_api_key(self, name: str = "", expires_in: float = 0) -> str:
         """Generate a cryptographically random API key."""
         key = secrets.token_urlsafe(32)
+        now = time.time()
         self.api_keys[key] = {
             "name": name,
-            "created_at": time.time(),
-            "expires_at": time.time() + expires_in if expires_in > 0 else None,
+            "created_at": now,
+            "expires_at": now + expires_in if expires_in > 0 else None,
             "active": True,
         }
         return key
@@ -192,7 +186,10 @@ class AdvancedSecurity:
             return False
         if not info["active"]:
             return False
-        return not (info["expires_at"] and time.time() > info["expires_at"])
+        expires_at = info.get("expires_at")
+        if expires_at is not None and time.time() > expires_at:
+            return False
+        return True
 
     def revoke_api_key(self, key: str) -> None:
         """Revoke an API key."""
@@ -200,13 +197,13 @@ class AdvancedSecurity:
         if info:
             info["active"] = False
 
-    def rotate_api_key(self, old_key: str) -> str | None:
+    def rotate_api_key(self, old_key: str) -> Optional[str]:
         """Rotate: revoke old key, generate new."""
         info = self.api_keys.get(old_key)
         if info is None:
             return None
         info["active"] = False
-        new_key = self.generate_api_key(name=info["name"])
+        new_key = self.generate_api_key(name=info.get("name", ""))
         return new_key
 
     # ── Threat Management ────────────────────────────────────────
@@ -214,18 +211,20 @@ class AdvancedSecurity:
     def resolve_threat(self, threat_type: str, source: str = "") -> int:
         """Mark matching threats as resolved."""
         count = 0
-        for t in self.threats:
-            if t.threat_type == threat_type and not t.resolved:
-                if source and t.source != source:
+        for threat in self.threats:
+            if threat.threat_type == threat_type and not threat.resolved:
+                if source and threat.source != source:
                     continue
-                t.resolved = True
+                threat.resolved = True
                 count += 1
         return count
 
-    def get_threats(self, level: ThreatLevel | None = None, unresolved_only: bool = False) -> list[ThreatEvent]:
+    def get_threats(
+        self, level: Optional[ThreatLevel] = None, unresolved_only: bool = False
+    ) -> list[ThreatEvent]:
         """Query threats."""
         result = self.threats
-        if level:
+        if level is not None:
             result = [t for t in result if t.level == level]
         if unresolved_only:
             result = [t for t in result if not t.resolved]
@@ -241,18 +240,21 @@ class AdvancedSecurity:
         source: str = "",
     ) -> None:
         """Record a threat event."""
-        self.threats.append(ThreatEvent(threat_type=threat_type, level=level, details=details, source=source))
+        self.threats.append(
+            ThreatEvent(threat_type=threat_type, level=level, details=details, source=source)
+        )
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
         by_type: dict[str, int] = {}
-        for t in self.threats:
-            by_type[t.threat_type] = by_type.get(t.threat_type, 0) + 1
-        unresolved = sum(1 for t in self.threats if not t.resolved)
+        for threat in self.threats:
+            by_type[threat.threat_type] = by_type.get(threat.threat_type, 0) + 1
+        unresolved = sum(1 for threat in self.threats if not threat.resolved)
+        active_keys = sum(1 for key_info in self.api_keys.values() if key_info.get("active"))
         return {
             "threats_detected": len(self.threats),
             "unresolved": unresolved,
             "by_type": by_type,
             "api_keys": len(self.api_keys),
-            "active_keys": sum(1 for v in self.api_keys.values() if v["active"]),
+            "active_keys": active_keys,
         }
