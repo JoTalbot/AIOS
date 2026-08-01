@@ -28,6 +28,11 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-asyncio ruff
 
+    - name: Validate Python compilation and Compose configuration
+      run: |
+        python -m compileall -q aios_core aios_cli run_telegram_bot.py run_coder_orchestrator.py
+        AIOS_API_KEYS={ci:subject:ci} GRAFANA_PASSWORD=ci docker compose -f docker-compose.prod.yml config -q
+
     - name: Lint with Ruff
       run: |
         ruff check .
