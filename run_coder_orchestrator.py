@@ -623,6 +623,24 @@ def build_report(cycle_num: int, ctx: dict, analysis: dict, plan: dict,
     lines.append(f"<i>{now}</i>")
     lines.append("")
 
+    # Put a plain-language outcome first, before technical diagnostics.
+    action = plan.get("action", "monitor")
+    description = str(plan.get("description", "")).strip() or "проверил состояние проекта"
+    code_status = code_result.get("status", "skipped")
+    validation_status = validation.get("status", "skipped")
+    if code_status == "success" and validation_status == "passed":
+        human_summary = f"В этом цикле кодер выполнил работу: {description}. Изменения проверены успешно."
+    elif code_status == "success":
+        human_summary = f"Кодер внёс изменения: {description}. Проверка требует внимания: {validation.get('reason', 'нет итогового статуса')}."
+    elif code_status == "error":
+        human_summary = f"Кодер пытался выполнить задачу «{description}», но столкнулся с ошибкой: {code_result.get('error', 'неизвестная ошибка')}."
+    elif action == "monitor":
+        human_summary = "Кодер проверил проект; изменений в этом цикле не потребовалось."
+    else:
+        human_summary = f"Кодер проанализировал задачу: {description}. Изменения в код не вносились."
+    lines.append(f"<b>Кратко:</b> {human_summary}")
+    lines.append("")
+
     # Health
     lines.append(f"{health_emoji} <b>Здоровье проекта: {health}/10</b>")
     lines.append(f"  {analysis.get('summary', '')}")

@@ -56,6 +56,18 @@ class TodoScanner:
         pattern = r'\[(.*?)\]'
         return re.findall(pattern, text)
 
+    def _extract_comments(self, text: str) -> List[str]:
+        """Extracts TODO/FIXME/HACK comments from the given text.
+
+        Args:
+            text (str): The text to extract comments from.
+
+        Returns:
+            List[str]: A list of extracted comments.
+        """
+        pattern = r'(TODO|FIXME|HACK).*'
+        return re.findall(pattern, text, re.IGNORECASE)
+
     def find_tags(self) -> str:
         """Finds todo items in the directory and returns their tags in JSON format.
 
@@ -76,30 +88,22 @@ class TodoScanner:
         Returns:
             List[str]: A list of found TODO/FIXME/HACK comments.
         """
-        comments = []
-        for root, dirs, files in os.walk(self.path):
-            for file in files:
-                if file.endswith(('.txt', '.md', '.markdown')):
-                    file_path = os.path.join(root, file)
-                    try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            text = f.read()
-                            comments.extend(self._extract_comments(text))
-                    except Exception as e:
-                        print(f"Error reading file {file_path}: {e}")
-        return comments
-
-    def _extract_comments(self, text: str) -> List[str]:
-        """Extracts TODO/FIXME/HACK comments from the given text.
-
-        Args:
-            text (str): The text to extract comments from.
-
-        Returns:
-            List[str]: A list of extracted comments.
-        """
-        pattern = r'(TODO|FIXME|HACK).*'
-        return re.findall(pattern, text, re.IGNORECASE)
+        try:
+            comments = []
+            for root, dirs, files in os.walk(self.path):
+                for file in files:
+                    if file.endswith(('.txt', '.md', '.markdown')):
+                        file_path = os.path.join(root, file)
+                        try:
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                text = f.read()
+                                comments.extend(self._extract_comments(text))
+                        except Exception as e:
+                            print(f"Error reading file {file_path}: {e}")
+            return comments
+        except Exception as e:
+            print(f"Error: {e}")
+            return []
 
 def find_tags(path: str) -> str:
     """Finds todo items in the given directory and returns their tags in JSON format.
@@ -124,6 +128,23 @@ def find_todo_comments(path: str) -> List[str]:
     """
     scanner = TodoScanner(path)
     return scanner.find_todo_comments()
+
+def test_scan_for_tags(files: List[str]) -> None:
+    """Tests the scan_for_tags function.
+
+    Args:
+        files (List[str]): A list of file paths to test.
+    """
+    for file in files:
+        try:
+            with open(file, 'r', encoding='utf-8') as f:
+                text = f.read()
+                scanner = TodoScanner(os.path.dirname(file))
+                tags = scanner.find_tags()
+                expected_tags = json.loads(text)
+                self.assertEqual(tags, json.dumps(expected_tags))
+        except Exception as e:
+            print(f"Error testing file {file}: {e}")
 
 class TestTodoScanner(unittest.TestCase):
     """Tests the TodoScanner class."""
