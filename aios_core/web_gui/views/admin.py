@@ -19,6 +19,10 @@ async def _verify_backup(backup_id: str) -> dict:
     return await post("/api/backups", json={"action": "verify", "backup_id": backup_id})
 
 
+async def _test_restore(backup_id: str) -> dict:
+    return await post("/api/backups", json={"action": "test_restore", "backup_id": backup_id})
+
+
 def render() -> None:
     ui.label("Admin").classes("text-h6")
 
@@ -60,8 +64,17 @@ def render() -> None:
         ui.notify(res)
         await load_backups()
 
+    async def do_test_restore() -> None:
+        if not backup_table.rows:
+            ui.notify("No backup available", type="warning")
+            return
+        backup_id = backup_table.rows[0].get("id")
+        res = await _test_restore(backup_id)
+        ui.notify("Restore test passed" if res.get("ok") else str(res), type="positive" if res.get("ok") else "negative")
+
     with ui.row():
         ui.button("Refresh backups", on_click=load_backups).props("flat")
         ui.button("Create backup", on_click=do_create_backup).props("color=positive")
+        ui.button("Test latest restore", on_click=do_test_restore).props("flat")
 
     backup_table.on("rowClick", lambda e: do_verify_backup(e.args.get("id")))
