@@ -650,6 +650,67 @@ class CoreHandlersMixin:
             }
         )
 
+    async def _dashboard_memories(self, request: Request) -> JSONResponse:
+        """Dashboard-safe view of memory records."""
+        try:
+            items = self.memory.search(query="", limit=100, requester_id="dashboard", is_admin=True)
+        except Exception:
+            items = []
+        return JSONResponse({"items": items, "count": len(items)})
+
+    async def _dashboard_fleet(self, request: Request) -> JSONResponse:
+        records = self.device_pool.status() if self.device_pool is not None else []
+        fleet = [
+            {"device_id": item.get("serial", item.get("device_id", "unknown")),
+             "status": item.get("status", "unknown"), "package": item.get("package", "")}
+            for item in records
+        ]
+        return JSONResponse({"fleet": fleet})
+
+    async def _dashboard_processes(self, request: Request) -> JSONResponse:
+        tasks = self.orchestrator.list_tasks()
+        return JSONResponse({"processes": [
+            {"id": item.get("id", item.get("task_id", "")), "name": item.get("name", ""),
+             "status": item.get("status", ""), "agent_id": item.get("agent_id", ""),
+             "created_at": item.get("created_at", "")}
+            for item in tasks
+        ]})
+
+    async def _dashboard_workflows(self, request: Request) -> JSONResponse:
+        tasks = self.orchestrator.list_tasks()
+        return JSONResponse({"workflows": [
+            {"id": item.get("id", item.get("task_id", "")), "name": item.get("name", ""),
+             "status": item.get("status", ""), "steps": item.get("steps", 0),
+             "created_at": item.get("created_at", "")}
+            for item in tasks
+        ]})
+
+    async def _dashboard_chat(self, request: Request) -> JSONResponse:
+        if request.method == "POST":
+            body = await request.json()
+            self._dashboard_chat_message = str(body.get("message", "")).strip()
+        message = getattr(self, "_dashboard_chat_message", "")
+        return JSONResponse({"status": "ready", "message": message})
+
+    async def _dashboard_olx_queries(self, request: Request) -> JSONResponse:
+        try:
+            ads = self._olx_db(request).get_ads(limit=1000)
+            queries = sorted({getattr(ad, "query", None) or ad.to_dict().get("query") for ad in ads})
+            rows = [{"query": query, "status": "collected", "last_run": ""} for query in queries if query]
+        except Exception:
+            rows = []
+        return JSONResponse({"queries": rows})
+
+    async def _dashboard_olx_analytics(self, request: Request) -> JSONResponse:
+        try:
+            report = (await self._olx_stats(request)).body
+            import json
+            data = json.loads(report)
+            total = data.get("total_ads", 0)
+        except Exception:
+            total = 0
+        return JSONResponse({"total": total, "success": total, "failed": 0})
+
     # ---------- Web dashboard helpers (services / auto-study / backups) ----------
 
     async def _services(self, request: Request) -> JSONResponse:
