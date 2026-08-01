@@ -319,6 +319,19 @@ class LLMBalancer:
         self._total_requests = 0
         self._total_errors = 0
         self._provider_stats: dict[str, int] = {}
+        self._cache: dict[str, str] = {}
+        self._cache_max = int(os.environ.get("LLM_CACHE_MAX", "256"))
+        # Smart provider priority per task_type (fast/cheap first => token economy).
+        self.task_priority = {
+            # Simple/chat: fast cheap models first
+            "chat": ["groq", "mistral", "cohere", "openrouter", "openai", "gemini"],
+            # Coding: capable models
+            "code": ["groq", "mistral", "cohere", "openrouter", "openai", "gemini"],
+            # Analysis/long: robust providers
+            "analysis": ["openrouter", "groq", "mistral", "openai", "gemini", "cohere"],
+            # Default
+            "general": ["groq", "mistral", "cohere", "openrouter", "openai", "gemini"],
+        }
 
     def _load_from_env(self):
         """Load providers and keys from env plus the external runtime registry."""
@@ -549,12 +562,19 @@ class LLMBalancer:
         self.providers[provider].keys.append(api_key)
 
     def chat(self, messages: list[dict], model: str = "", system: str = "",
-             max_tokens: int = 2000, temperature: float = 0.3) -> str:
+             max_tokens: int = 2000, temperature: float = 0.3,
+             task_type: str = "general") -> str:
         """Send chat request with automatic balancing and failover."""
         self._total_requests += 1
 
         if not model:
             model = os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick")
+
+        # Token-economy cache: identical (system, messages) => reuse previous answer.
+        if os.environ.get("LLM_CACHE", "1") == "1":
+            _key = str((system or "", [tuple(sorted(m.items())) for m in messages if isinstance(m, dict) and "role" in m and "content" in m]))
+            if _key in self._cache:
+                return self._cache[_key]
 
         # Build model try list (primary + fallbacks)
         models_to_try = [model]
@@ -583,12 +603,20 @@ class LLMBalancer:
                     os.environ.get("LOCAL_LLM", "") == "1"
                     and "local" in self.providers
                 )
+                # Smart ordering: task priority (fast/cheap first), then known providers
+                _prio = self.task_priority.get(task_type, self.task_priority["general"])
+                _providers = []
+                for _n in _prio:
+                    if _n in self.providers:
+                        _providers.append((_n, self.providers[_n]))
+                # Append any providers not in priority list
+                for _n, _pr in self.providers.items():
+                    if _n not in _prio:
+                        _providers.append((_n, _pr))
                 if _local_first:
                     _providers = [("local", self.providers["local"])] + [
-                        (n, pr) for n, pr in self.providers.items() if n != "local"
+                        (n, pr) for n, pr in _providers if n != "local"
                     ]
-                else:
-                    _providers = list(self.providers.items())
 
                 for prov_name, provider in _providers:
                     # Check if this provider supports the model
@@ -657,7 +685,12 @@ class LLMBalancer:
 
                     if "choices" in data and data["choices"]:
                         _c = data["choices"][0]["message"]["content"]
-                        return _c if isinstance(_c, str) else ""
+                        _out = _c if isinstance(_c, str) else ""
+                        if _out and os.environ.get("LLM_CACHE", "1") == "1":
+                            _key = str((system or "", [tuple(sorted(m.items())) for m in messages if isinstance(m, dict) and "role" in m and "content" in m]))
+                            if len(self._cache) < self._cache_max:
+                                self._cache[_key] = _out
+                        return _out
                     elif "data" in data and isinstance(data["data"], dict) and "choices" in data["data"]:
                         return data["data"]["choices"][0]["message"]["content"]
                     elif "message" in data and isinstance(data.get("message"), dict):
