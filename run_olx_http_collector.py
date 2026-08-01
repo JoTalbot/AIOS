@@ -139,6 +139,7 @@ def fetch_page(client: httpx.Client, query: str, offset: int, limit: int = 50, m
                 time.sleep(delay)
             
             import subprocess as _sp
+            import json as _json
             _url = API + "?" + "&".join(
                 f"{k}={urllib.parse.quote(str(v))}"
                 for k, v in [("query", query), ("offset", offset), ("limit", limit)]
@@ -148,13 +149,10 @@ def fetch_page(client: httpx.Client, query: str, offset: int, limit: int = 50, m
                  "-H", "Accept: application/json, text/plain, */*", _url],
                 capture_output=True, text=True,
             )
-            import json as _json
-            try:
-                r = type("R", (), {"status_code": 200})()
-                _data = _json.loads(_cur.stdout)
-            except Exception:
-                r = type("R", (), {"status_code": 502})()
-                raise httpx.HTTPStatusError("Bad response", request=None, response=r)
+            if _cur.returncode != 0 or not _cur.stdout.strip():
+                raise httpx.HTTPStatusError("curl failed/empty", request=None, response=type("R", (), {"status_code": 502})())
+            _data = _json.loads(_cur.stdout)
+            return _data
             
             if r.status_code == 403:
                 log.warning(f"403 Forbidden (attempt {attempt + 1}/{max_retries})")
