@@ -15,6 +15,7 @@ from pathlib import Path
 PROJECT = Path("/root/AIOS")
 ENV_PATH = PROJECT / ".env"
 STATE_PATH = Path("/var/lib/aios-health-alert/state.json")
+HISTORY_PATH = PROJECT / "data" / "health_alert_history.json"
 
 
 def env_values() -> dict[str, str]:
@@ -78,10 +79,17 @@ def main() -> int:
     previous = json.loads(STATE_PATH.read_text()) if STATE_PATH.exists() else {}
     changed = {name: value for name, value in current.items() if previous.get(name) != value}
     failed = [name for name, value in current.items() if not value]
+    event = None
     if failed and changed:
+        event = {"status": "alert", "failed": failed, "checks": current, "timestamp": int(time.time())}
         notify(env, "🔴 AIOS health alert: " + ", ".join(failed))
     elif previous and not failed and any(previous.get(name) is False for name in current):
+        event = {"status": "restored", "failed": [], "checks": current, "timestamp": int(time.time())}
         notify(env, "🟢 AIOS health restored: all checks are OK")
+    if event:
+        history = json.loads(HISTORY_PATH.read_text()) if HISTORY_PATH.exists() else []
+        HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        HISTORY_PATH.write_text(json.dumps((history + [event])[-100:]))
     STATE_PATH.write_text(json.dumps(current, sort_keys=True))
     print(json.dumps(current, sort_keys=True))
     # Alert state is persisted and reported via Telegram; the timer itself must
