@@ -58,305 +58,105 @@ _STATUS_RE = re.compile(r"\*\*Status:\*\*\s*(.+)", re.IGNORECASE)
 _LEVEL_RE = re.compile(r"\*\*Level:\*\*\s*(.+)", re.IGNORECASE)
 _SCOPE_RE = re.compile(r"\*\*Scope:\*\*\s*(.+)", re.IGNORECASE)
 
-# Patterns for section headers: "# 1. Title" or "## 1. Title"
-_SECTION_HEADER_RE = re.compile(r"^#{1,3}\s+(\d+)\.\s+(.+)$")
-
-# Patterns for obligation keywords
-_MUST_NOT_RE = re.compile(r"\bMUST\s+NOT\b", re.IGNORECASE)
-_MUST_RE = re.compile(r"\bMUST\b(?!\s+NOT\b)", re.IGNORECASE)
-_MAY_RE = re.compile(r"\bMAY\b(?!\s+NOT\b)", re.IGNORECASE)
-_SHOULD_NOT_RE = re.compile(r"\bSHOULD\s+NOT\b", re.IGNORECASE)
-_SHOULD_RE = re.compile(r"\bSHOULD\b(?!\s+NOT\b)", re.IGNORECASE)
-
-# Article filename pattern: ARTICLE-I-IDENTITY.md, ARTICLE-XXXII-SECURITY.md
-_ARTICLE_FILENAME_RE = re.compile(r"ARTICLE-(?P<roman>[IVXLCDM]+)-(?P<name>[\w-]+)\.md", re.IGNORECASE)
-
-
-def _roman_to_int(roman: str) -> int:
-    """Convert a Roman numeral string to an integer."""
-    roman = roman.upper()
-    values = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
-    total = 0
-    prev = 0
-    for ch in reversed(roman):
-        val = values.get(ch, 0)
-        if val < prev:
-            total -= val
-        else:
-            total += val
-        prev = val
-    return total
-
-
-def _detect_obligation(text: str) -> ObligationLevel:
-    """Detect the strongest obligation keyword in a line of text.
-
-    Priority: MUST NOT > MUST > SHOULD NOT > SHOULD > MAY
-    """
-    if _MUST_NOT_RE.search(text):
-        return ObligationLevel.MUST_NOT
-    if _MUST_RE.search(text):
-        return ObligationLevel.MUST
-    if _SHOULD_NOT_RE.search(text):
-        return ObligationLevel.SHOULD_NOT
-    if _SHOULD_RE.search(text):
-        return ObligationLevel.SHOULD
-    if _MAY_RE.search(text):
-        return ObligationLevel.MAY
-    return ObligationLevel.UNKNOWN
-
-
-def _parse_article_id(filename: str) -> tuple[str, str, int] | None:
-    """Extract article ID, name, and numeric index from filename."""
-    match = _ARTICLE_FILENAME_RE.match(os.path.basename(filename))
-    if not match:
-        return None
-    roman = match.group("roman")
-    name = match.group("name").replace("-", " ").title()
-    num = _roman_to_int(roman)
-    return (roman, name, num)
-
-
-def _extract_bullet_items(text: str) -> list[str]:
-    """Extract bullet point items from markdown text."""
-    items = []
-    for line in text.split("\n"):
-        stripped = line.strip()
-        if stripped.startswith(("- ", "* ")):
-            items.append(stripped[2:].strip())
-    return items
-
-
-def _parse_article(filepath: str) -> Article | None:
-    """Parse a single constitutional article from a markdown file."""
-    id_info = _parse_article_id(filepath)
-    if id_info is None:
-        return None
-
-    roman, name, _num = id_info
-    article_id = f"ARTICLE-{roman}"
-
-    with open(filepath, encoding="utf-8") as f:
-        content = f.read()
-
-    # Extract metadata from the first few lines
-    status = "Unknown"
-    level = "Unknown"
-    scope = "General"
-
-    for line in content.split("\n")[:15]:
-        m = _STATUS_RE.search(line)
-        if m:
-            status = m.group(1).strip()
-        m = _LEVEL_RE.search(line)
-        if m:
-            level = m.group(1).strip()
-        m = _SCOPE_RE.search(line)
-        if m:
-            scope = m.group(1).strip()
-
-    # Parse sections and extract rules
-    sections = []
-    rules = []
-    current_section_num = 0
-    current_section_title = ""
-
-    for line in content.split("\n"):
-        section_match = _SECTION_HEADER_RE.match(line)
-        if section_match:
-            current_section_num = int(section_match.group(1))
-            current_section_title = section_match.group(2).strip()
-            sections.append(
-                {
-                    "number": current_section_num,
-                    "title": current_section_title,
-                }
-            )
-            continue
-
-        # Extract rules from lines with obligation keywords
-        stripped = line.strip()
-        if not stripped or stripped.startswith(("#", "---")):
-            continue
-
-        obligation = _detect_obligation(stripped)
-        if obligation != ObligationLevel.UNKNOWN:
-            rule = ConstitutionalRule(
-                article_id=article_id,
-                article_title=name,
-                section_number=current_section_num,
-                section_title=current_section_title,
-                obligation=obligation,
-                text=stripped,
-                status=status,
-                scope=scope,
-                raw_line=line,
-            )
-            rules.append(rule)
-
-    return Article(
-        article_id=article_id,
-        title=name,
-        status=status,
-        level=level,
-        scope=scope,
-        sections=sections,
-        rules=rules,
-        raw_content=content,
-    )
+# Patterns for extracting keywords from rule text
+_KEYWORD_PATTERN = re.compile(r"\b[A-Z][A-Za-z]{3,}\b", re.IGNORECASE)
 
 
 class ConstitutionLoader:
-    """Loads and indexes all constitutional articles from a directory.
-
-    Provides structured access to articles, rules, and obligation-based queries.
-    """
-
-    def __init__(self, constitution_dir: str | None = None):
-        """Initialize loader.
-
-        Args:
-            constitution_dir: Path to directory containing ARTICLE-*.md files.
-                             If None, uses default path relative to this module.
-        """
-        if constitution_dir is None:
-            this_dir = Path(__file__).resolve().parent.parent
-            constitution_dir = str(this_dir / "docs" / "constitution")
-
+    def __init__(self, constitution_dir: str):
         self.constitution_dir = constitution_dir
-        self.articles: dict[str, Article] = {}
-        self.rules: list[ConstitutionalRule] = []
-        self._rules_by_obligation: dict[ObligationLevel, list[ConstitutionalRule]] = {
-            level: [] for level in ObligationLevel
-        }
-        self._rules_by_article: dict[str, list[ConstitutionalRule]] = {}
-        self._rules_by_keyword: dict[str, list[ConstitutionalRule]] = {}
+        self.articles = {}
+        self.rules = []
 
-        self._load_all()
+    def load_constitution(self):
+        for root, dirs, files in os.walk(self.constitution_dir):
+            for file in files:
+                if file.endswith(".md"):
+                    article_path = os.path.join(root, file)
+                    with open(article_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                        self.parse_article(content, article_path)
 
-    def _load_all(self):
-        """Load and parse all article files from the constitution directory."""
-        if not os.path.isdir(self.constitution_dir):
-            raise FileNotFoundError(f"Constitution directory not found: {self.constitution_dir}")
+    def parse_article(self, content: str, article_path: str):
+        title_match = re.search(r"## (.+)", content)
+        if title_match:
+            title = title_match.group(1).strip("# ")
+        else:
+            title = "Untitled"
 
-        filenames = sorted(os.listdir(self.constitution_dir))
-        article_files = [f for f in filenames if _ARTICLE_FILENAME_RE.match(f)]
+        level_match = re.search(r"\*\*Level:\*\*\s*(.+)", content)
+        scope_match = re.search(r"\*\*Scope:\*\*\s*(.+)", content)
 
-        for filename in article_files:
-            filepath = os.path.join(self.constitution_dir, filename)
-            article = _parse_article(filepath)
-            if article is not None:
-                self.articles[article.article_id] = article
-                self.rules.extend(article.rules)
-                self._rules_by_article[article.article_id] = article.rules
+        article_id = f"ARTICLE-{title.lower().replace(' ', '-')}"
+        article = Article(
+            article_id=article_id,
+            title=title,
+            status="Draft",
+            level=level_match.group(1) if level_match else "Unknown",
+            scope=scope_match.group(1) if scope_match else "Unknown",
+        )
 
-                for rule in article.rules:
-                    self._rules_by_obligation[rule.obligation].append(rule)
+        self.articles[article_id] = article
 
-                    # Index by significant keywords in rule text
-                    for keyword in self._extract_keywords(rule.text):
-                        self._rules_by_keyword.setdefault(keyword, []).append(rule)
+        for line in content.split("\n"):
+            if line.startswith("##"):
+                continue
+            match = re.search(r"### (.+)", line)
+            if match:
+                section_title = match.group(1).strip("# ")
+                section_number = len(article.sections) + 1
+                article.sections.append({"title": section_title, "number": section_number})
+                continue
 
-        # Build keyword index
-        self._build_keyword_index()
+            match = self._extract_keywords(line)
+            if match:
+                for keyword in match:
+                    rule_text = line.strip(keyword)
+                    rule = ConstitutionalRule(
+                        article_id=article_id,
+                        article_title=title,
+                        section_number=len(article.sections),
+                        section_title=section_title,
+                        obligation="UNKNOWN",
+                        text=rule_text,
+                        status="Draft",
+                        scope="Unknown",
+                        raw_line=line,
+                    )
+                    self.rules.append(rule)
+                    article.rules.append(rule)
 
-    def _extract_keywords(self, text: str) -> list[str]:
-        """Extract significant keywords from rule text for indexing."""
-        # Extract capitalized words that are likely domain terms
-        keywords = re.findall(r"\b[A-Z][A-Za-z]{3,}\b", text)
-        # Filter out common words
-        stop_words = {
-            "MUST",
-            "MAY",
-            "SHOULD",
-            "Every",
-            "When",
-            "Before",
-            "After",
-            "This",
-            "That",
-            "These",
-            "Those",
-            "Which",
-            "Where",
-            "What",
-            "Each",
-            "Both",
-            "Such",
-            "From",
-            "With",
-            "Have",
-            "Being",
-            "AIOS",
-            "The",
-            "For",
-            "And",
-            "Not",
-            "But",
-            "Are",
-            "Can",
-            "Has",
-            "Its",
-            "New",
-            "All",
-            "Any",
-            "How",
-            "Who",
-            "Why",
-            "Security",
-            "Evolution",
-            "Autonomy",
-            "Constitutional",
-            "Constitution",
-            "Article",
-            "End",
-            "Final",
-        }
-        return [kw for kw in keywords if kw not in stop_words and len(kw) > 3]
-
-    def _build_keyword_index(self):
-        """Build a comprehensive keyword-to-rules index."""
-        self._rules_by_keyword = {}
-        for rule in self.rules:
-            for keyword in self._extract_keywords(rule.text):
-                self._rules_by_keyword.setdefault(keyword, []).append(rule)
+    def _extract_keywords(self, line: str) -> list[str]:
+        return [kw for kw in self._keyword_pattern.findall(line) if len(kw) > 3]
 
     # --- Query API ---
 
     def get_article(self, article_id: str) -> Article | None:
-        """Get a parsed article by its ID (e.g. 'ARTICLE-V')."""
         return self.articles.get(article_id)
 
     def get_rules(self, obligation: ObligationLevel | None = None) -> list[ConstitutionalRule]:
-        """Get rules, optionally filtered by obligation level."""
         if obligation is None:
             return list(self.rules)
-        return list(self._rules_by_obligation.get(obligation, []))
+        return [rule for rule in self._rules_by_obligation.get(obligation, [])]
 
     def get_must_rules(self) -> list[ConstitutionalRule]:
-        """Get all MUST rules (mandatory requirements)."""
         return self.get_rules(ObligationLevel.MUST)
 
     def get_must_not_rules(self) -> list[ConstitutionalRule]:
-        """Get all MUST NOT rules (prohibitions)."""
         return self.get_rules(ObligationLevel.MUST_NOT)
 
     def get_may_rules(self) -> list[ConstitutionalRule]:
-        """Get all MAY rules (permissions)."""
         return self.get_rules(ObligationLevel.MAY)
 
     def get_should_rules(self) -> list[ConstitutionalRule]:
-        """Get all SHOULD rules (recommendations)."""
         return self.get_rules(ObligationLevel.SHOULD)
 
     def search_rules(self, keyword: str) -> list[ConstitutionalRule]:
-        """Search rules by keyword in text."""
         keyword_upper = keyword.upper()
         results = [rule for rule in self.rules if keyword_upper in rule.text.upper()]
         return results
 
     def rules_for_topic(self, topic: str) -> list[ConstitutionalRule]:
-        """Find rules related to a topic using keyword index."""
         results = []
         seen = set()
         # Direct keyword match
