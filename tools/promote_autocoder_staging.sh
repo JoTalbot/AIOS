@@ -5,8 +5,8 @@ set -euo pipefail
 PROD_DIR="${AIOS_PROD_DIR:-/root/AIOS}"
 STAGING_DIR="${AIOS_STAGING_DIR:-/root/AIOS-autocoder}"
 
-[[ -d "$PROD_DIR/.git" ]] || { echo "Production worktree not found: $PROD_DIR" >&2; exit 1; }
-[[ -d "$STAGING_DIR/.git" ]] || { echo "Staging worktree not found: $STAGING_DIR" >&2; exit 1; }
+[[ -e "$PROD_DIR/.git" ]] || { echo "Production worktree not found: $PROD_DIR" >&2; exit 1; }
+[[ -e "$STAGING_DIR/.git" ]] || { echo "Staging worktree not found: $STAGING_DIR" >&2; exit 1; }
 
 branch=$(git -C "$STAGING_DIR" branch --show-current)
 [[ "$branch" == "auto/coder-staging" ]] || { echo "Unexpected staging branch: $branch" >&2; exit 1; }
