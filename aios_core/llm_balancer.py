@@ -534,7 +534,7 @@ class LLMBalancer:
             import urllib.request as _ur
             try:
                 with _ur.urlopen("http://localhost:11434/api/tags", timeout=2) as _r:
-                    _installed = {m["name"] for m in _r.json().get("models", [])}
+                    _installed = {m["name"] for m in json.loads(_r.read().decode("utf-8", "ignore")).get("models", [])}
             except Exception:
                 _installed = set()
             local_keys = [APIKey(key="local", provider="local")]
