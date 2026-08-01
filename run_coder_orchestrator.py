@@ -28,7 +28,7 @@ from pathlib import Path
 
 # Optional web-research & skill toolkit for the coder (best-effort import).
 try:
-    from aios_core.coder_research import web_research, list_skills, use_skill as _coder_use_skill
+    from aios_core.coder_research import web_research, list_skills, use_skill as _coder_use_skill, route_to_skill
     _RESEARCH_OK = True
 except Exception:
     web_research = None
@@ -388,6 +388,20 @@ def _maybe_research(topic: str) -> str:
         n = len(res.get("results", []))
         if n:
             print(f"    [RESEARCH] topic='{topic[:50]}' -> {n} web results")
+            # Telegram report on research activity (throttled to avoid spam).
+            try:
+                _tg_ctx = {"last": time.time()}
+                if time.time() - _tg_ctx.get("last", 0) > 600:
+                    _tg_ctx["last"] = time.time()
+                    _top = res.get("results", [])[0] if res.get("results") else {}
+                    tg_send(
+                        "🔍 <b>AIOS Coder: веб-исследование</b>\n"
+                        f"Тема: <code>{topic[:80]}</code>\n"
+                        f"Результатов: {n}\n"
+                        f"Топ: {_top.get('title', '')[:80]}"
+                    )
+            except Exception:
+                pass
         return "\n".join(lines) if lines else ""
     except Exception as e:
         print(f"    [RESEARCH] failed for '{topic[:40]}': {e}")
@@ -610,6 +624,30 @@ def _pick_real_target(hint: str) -> str:
     except Exception:
         return ""
 
+def _auto_use_skill(plan: dict) -> str:
+    """Route the task to a matching skill, run it, and return its output."""
+    if not _RESEARCH_OK:
+        return ""
+    try:
+        desc = plan.get("description", "")
+        action = plan.get("action", "")
+        route = route_to_skill(desc, action)
+        skill = route.get("skill")
+        if not skill:
+            return ""
+        # Run the skill (best-effort); capture output.
+        res = _coder_use_skill(skill, params=str(desc)[:100], timeout=90)
+        out = (res.get("stdout") or res.get("error") or "").strip()
+        tag = "OK" if res.get("ok") else "EMPTY"
+        print(f"    [SKILL] routed '{action}/{desc[:40]}' -> {skill} ({tag})")
+        if out:
+            return f"[skill:{skill}]\n{out[:1500]}"
+        return ""
+    except Exception as e:
+        print(f"    [SKILL] error: {e}")
+        return ""
+
+
 def phase_code(plan: dict) -> dict:
     """Phase 3: Execute coding action if needed."""
     if not plan.get("code_needed") or not plan.get("file"):
@@ -652,6 +690,10 @@ def phase_code(plan: dict) -> dict:
 
     file_path = plan["file"]
     instruction = plan.get("instruction", plan.get("description", ""))
+    # Auto-run a matching skill and append its output to the instruction context.
+    _skill_ctx = _auto_use_skill(plan)
+    if _skill_ctx:
+        instruction = instruction + "\n\n[Контекст от скилла]\n" + _skill_ctx
 
     # Clean file path
     file_path = file_path.lstrip("/").lstrip("./")

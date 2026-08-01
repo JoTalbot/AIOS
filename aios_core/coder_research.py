@@ -156,3 +156,64 @@ if __name__ == "__main__":
     for x in r["results"][:3]:
         print(" -", x["title"][:50], "|", x["url"][:50])
     print("skills:", len(list_skills()))
+
+
+# --- Skill routing (map a task type to the best matching skill) ---
+
+_SKILL_INDEX_CACHE = None
+_SKILL_INDEX_TIME = 0.0
+
+
+def _load_skill_index(force=False):
+    global _SKILL_INDEX_CACHE, _SKILL_INDEX_TIME
+    now = time.time()
+    if not force and _SKILL_INDEX_CACHE is not None and (now - _SKILL_INDEX_TIME) < 300:
+        return _SKILL_INDEX_CACHE
+    index = []
+    if os.path.isdir(SKILLS_DIR):
+        for root, _dirs, files in os.walk(SKILLS_DIR):
+            if "SKILL.md" not in files:
+                continue
+            path = os.path.join(root, "SKILL.md")
+            rel = os.path.relpath(root, SKILLS_DIR)
+            text = ""
+            try:
+                text = open(path, encoding="utf-8", errors="ignore").read()[:3000]
+            except Exception:
+                pass
+            index.append({"name": rel, "text": text.lower()})
+    _SKILL_INDEX_CACHE, _SKILL_INDEX_TIME = index, now
+    return index
+
+
+_TASK_KEYWORDS = {
+    "fix": ["bug", "fix", "error", "crash", "exception", "broken", "repair"],
+    "refactor": ["refactor", "clean", "duplic", "dead code", "optimiz", "improve"],
+    "security": ["security", "vulnerab", "xss", "injection", "secret", "auth", "credential", "audit"],
+    "test": ["test", "coverage", "pytest", "unit test", "integration test"],
+    "docs": ["doc", "documentation", "readme", "comment"],
+    "review": ["review", "antipattern", "code review"],
+    "backup": ["backup", "restore", "disaster"],
+    "research": ["research", "web search", "search", "competitive", "analysis"],
+    "performance": ["performance", "latency", "throughput", "benchmark"],
+}
+
+
+def route_to_skill(task_desc, action=""):
+    task = (str(action) + " " + str(task_desc)).lower()
+    keywords = []
+    for key, words in _TASK_KEYWORDS.items():
+        if action == key or any(k in task for k in words):
+            keywords.extend(words)
+    keywords = list(dict.fromkeys(keywords))
+    if not keywords:
+        return {"skill": None, "score": 0, "reason": "no keywords matched"}
+    best, best_score = None, 0
+    for sk in _load_skill_index():
+        text = sk["text"]
+        score = sum(1 for kw in keywords if kw in text)
+        if score > best_score:
+            best_score, best = score, sk["name"]
+    if best_score <= 0:
+        return {"skill": None, "score": 0, "reason": "no skill matched keywords"}
+    return {"skill": best, "score": best_score, "reason": "matched %d keyword(s)" % best_score}
