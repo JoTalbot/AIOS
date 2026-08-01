@@ -597,6 +597,11 @@ def phase_commit(code_result: dict, plan: dict, validation: dict) -> dict:
     if "nothing to commit" in commit_out.lower():
         return {"status": "nothing_to_commit", "full_cycle": True}
 
+    # Push is opt-in. Production agents must not publish changes merely because
+    # they were able to create a local commit.
+    if os.environ.get("AIOS_AUTO_PUSH", "false").lower() not in {"1", "true", "yes"}:
+        return {"status": "commit_only", "commit": commit_out[:120], "full_cycle": True}
+
     # Push to current branch
     branch = git_cmd("branch", "--show-current") or "main"
     push_out = git_cmd("push", "origin", branch)
