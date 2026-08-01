@@ -59,5 +59,40 @@ class AiolxHttpCollectorTest(unittest.TestCase):
         result = self.collector.handle_error(error)
         self.assertEqual(result, str(error))
 
+    def test_parse_response(self):
+        """
+        Test the correctness of parsing the HTTP server response.
+        Verifies that the parsing result matches the expected data structure.
+        """
+        test_cases = [
+            {
+                'name': 'success_response',
+                'status_code': 200,
+                'json_data': {'data': [1, 2, 3], 'status': 'ok'},
+                'expected': {'data': [1, 2, 3], 'status': 'ok'}
+            },
+            {
+                'name': 'empty_response',
+                'status_code': 200,
+                'json_data': {},
+                'expected': {}
+            },
+            {
+                'name': 'string_response',
+                'status_code': 200,
+                'json_data': {'message': 'hello'},
+                'expected': {'message': 'hello'}
+            }
+        ]
+
+        for case in test_cases:
+            with self.subTest(case=case['name']):
+                mock_response = unittest.mock.Mock()
+                mock_response.status_code = case['status_code']
+                mock_response.json.return_value = case['json_data']
+
+                result = self.collector.parse_response(mock_response)
+                self.assertEqual(result, case['expected'])
+
 if __name__ == '__main__':
     unittest.main()
