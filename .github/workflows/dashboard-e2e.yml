@@ -1,0 +1,50 @@
+name: Dashboard Browser E2E
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dashboard-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AIOS_API_KEYS: '{"ci":{"subject":"ci","roles":["admin"]}}'
+      GRAFANA_PASSWORD: ci-only-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Start API and Dashboard
+        run: |
+          docker compose -f docker-compose.prod.yml up -d --build aios-api aios-dashboard
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8080/ && break
+            sleep 5
+          done
+      - name: Install browser test tools
+        run: |
+          python -m pip install --upgrade pip pytest playwright
+          python -m playwright install --with-deps chromium
+      - name: Run dashboard smoke test
+        env:
+          AIOS_DASHBOARD_URL: http://127.0.0.1:8080
+        run: pytest tests/e2e/test_dashboard_browser.py -q
+      - name: Collect Docker diagnostics on failure
+        if: failure()
+        run: docker compose -f docker-compose.prod.yml logs --no-color > dashboard-e2e-docker.log
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-e2e-diagnostics
+          path: dashboard-e2e-docker.log
+          if-no-files-found: ignore
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker-compose.prod.yml down -v
