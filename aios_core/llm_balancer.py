@@ -319,6 +319,21 @@ class LLMBalancer:
             "gemini-2.0-flash",
             "gpt-4o-mini",
         ],
+        # Local Ollama models -> cloud/HF fallback chain (used when local LLM is down).
+        "qwen2.5-coder:1.5b": [
+            "google/gemma-3-27b-it",
+            "meta-llama/Llama-3.3-70B-Instruct",
+            "Qwen/Qwen3-30B-A3B-Instruct",
+            "meta-llama/llama-4-maverick",
+            "gpt-4o-mini",
+        ],
+        "qwen2.5-coder:7b": [
+            "google/gemma-3-27b-it",
+            "meta-llama/Llama-3.3-70B-Instruct",
+            "Qwen/Qwen3-30B-A3B-Instruct",
+            "meta-llama/llama-4-maverick",
+            "gpt-4o-mini",
+        ],
     }
 
     def __init__(self):
