@@ -8,18 +8,20 @@ and detailed result collection.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Optional
+from dataclasses import dataclass
+from datetime import datetime, timezone
 
 if TYPE_CHECKING:
     from ..storage import Database
-
-from datetime import UTC, timezone
 
 from .models import (
     TestCase,
     TestResult,
     TestStatus,
     TestSuiteResult,
+    TestCategory,
+    TestSeverity,
 )
 
 
@@ -124,7 +126,7 @@ class TestRunner:
 
         return result
 
-    def run_suite(self, suite_name: str, cases: list[TestCase]) -> TestSuiteResult:
+    def run_suite(self, suite_name: str, cases: List[TestCase]) -> TestSuiteResult:
         """Run a list of test cases as a named suite."""
         suite = TestSuiteResult(suite_name=suite_name)
         suite.started_at = _now_iso()
@@ -164,7 +166,7 @@ class TestRunner:
 
         return suite
 
-    def stats(self) -> dict:
+    def stats(self) -> Dict[str, int]:
         """Return statistics dict."""
         return {
             "tests_run": self._run_count,
@@ -173,6 +175,79 @@ class TestRunner:
 
 
 def _now_iso() -> str:
-    from datetime import datetime
-
     return datetime.now(timezone.utc).isoformat()
+
+
+@dataclass
+class TestResult:
+    """Represents a single test result."""
+
+    test_name: str
+    category: TestCategory
+    severity: TestSeverity
+    expected_decision: str
+    evaluation: Dict[str, str]
+    actual_decision: str
+    status: TestStatus
+    message: str
+    retry_count: int
+    error: str
+    started_at: str
+    completed_at: str
+    duration_ms: float
+
+
+@dataclass
+class TestSuiteResult:
+    """Represents a suite of test results."""
+
+    suite_name: str
+    started_at: str
+    completed_at: str
+    total: int
+    passed: int
+    failed: int
+    errors: int
+    skipped: int
+    status: TestStatus
+    results: List[TestResult]
+    by_category: Dict[TestCategory, int]
+    by_severity: Dict[TestSeverity, int]
+    duration_ms: float
+
+
+if __name__ == "__main__":
+    import unittest
+
+    class TestRunnerTestCase(unittest.TestCase):
+        def test_run_case(self):
+            runner = TestRunner(constitution_dir=".", policies_dir=".", db=None)
+            case = TestCase(
+                name="test_deny_unknown_agent",
+                action={"goal": "test", "scope": "test", "risk": "low", "audit_log": True, "agent_id": "unknown", "authority": "user"},
+                expected_decision="DENY",
+                category=TestCategory.SECURITY,
+            )
+            result = runner.run_case(case)
+            self.assertEqual(result.status, TestStatus.PASSED)
+
+        def test_run_suite(self):
+            runner = TestRunner(constitution_dir=".", policies_dir=".", db=None)
+            cases = [
+                TestCase(
+                    name="test_deny_unknown_agent",
+                    action={"goal": "test", "scope": "test", "risk": "low", "audit_log": True, "agent_id": "unknown", "authority": "user"},
+                    expected_decision="DENY",
+                    category=TestCategory.SECURITY,
+                ),
+                TestCase(
+                    name="test_allow_known_agent",
+                    action={"goal": "test", "scope": "test", "risk": "low", "audit_log": True, "agent_id": "known", "authority": "user"},
+                    expected_decision="ALLOW",
+                    category=TestCategory.SECURITY,
+                ),
+            ]
+            suite_result = runner.run_suite("security_tests", cases)
+            self.assertEqual(suite_result.status, TestStatus.PASSED)
+
+    unittest.main()
