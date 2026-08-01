@@ -471,7 +471,15 @@ def phase_code(plan: dict) -> dict:
     if file_path in BLACKLIST:
         from datetime import datetime as _dt
         _stamp = _dt.now().strftime("%H%M%S")
-        _base = (instruction or "new_module")[:24].replace(" ", "_").replace("/", "_").strip("_") or "new_module"
+        _stop = {"create", "add", "new", "the", "a", "an", "file", "function", "method", "write", "generate", "this", "that", "with", "and", "for", "in", "of", "to"}
+        _words = []
+        for _tok in (instruction or "").lower().replace("'", " ").replace("`", " ").split():
+            _w = "".join(ch for ch in _tok if ch.isalpha())
+            if _w and _w not in _stop and _w not in _words:
+                _words.append(_w)
+            if len(_words) >= 3:
+                break
+        _base = "_".join(_words) if _words else "new_module"
         file_path = f"tools/aios_{_base}_{_stamp}.py"
         print(f"    [CODE] Protected file -> generating new module instead")
 
