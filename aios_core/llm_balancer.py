@@ -575,7 +575,20 @@ class LLMBalancer:
                 # Get next available key from a provider that supports this model
                 best_provider = None
                 best_key = None
-                for prov_name, provider in self.providers.items():
+                # Build an ordered provider list. When LOCAL_LLM is on and the model
+                # is installed locally, try 'local' FIRST (before cloud/OpenRouter).
+                _local_first = (
+                    os.environ.get("LOCAL_LLM", "") == "1"
+                    and "local" in self.providers
+                )
+                if _local_first:
+                    _providers = [("local", self.providers["local"])] + [
+                        (n, pr) for n, pr in self.providers.items() if n != "local"
+                    ]
+                else:
+                    _providers = list(self.providers.items())
+
+                for prov_name, provider in _providers:
                     # Check if this provider supports the model
                     model_supported = (
                         try_model in provider.models or
