@@ -97,3 +97,4 @@ backups/dashboard/
 
 # Runtime vector database
 chroma_db/
+config.txt
