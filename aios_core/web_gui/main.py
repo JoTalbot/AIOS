@@ -32,6 +32,7 @@ from .views import (
     services,
     swarm,
     workflows,
+    system_health,
 )
 
 # Enable dark mode globally
@@ -64,6 +65,7 @@ def index() -> None:
         ui.tab("Processes", icon="settings_applications")
         ui.tab("Swarm", icon="group")
         ui.tab("Workflows", icon="account_tree")
+        ui.tab("System Health", icon="monitor_heart")
 
     with ui.tab_panels(tabs, value="Overview").classes("w-full"):
         with ui.tab_panel("Overview"):
@@ -102,6 +104,8 @@ def index() -> None:
             swarm.render()
         with ui.tab_panel("Workflows"):
             workflows.render()
+        with ui.tab_panel("System Health"):
+            system_health.render()
 
 
 def auto_study_page() -> None:

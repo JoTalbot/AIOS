@@ -37,6 +37,7 @@ def register_routes(api) -> list:
         Route("/api/v1/stats", api._stats),
         # Legacy dashboard endpoint; retains CPU, memory and disk fields.
         Route("/api/stats", api._dashboard_system_stats),
+        Route("/api/system-health", api._dashboard_health_overview),
         # Compatibility routes for the NiceGUI dashboard.  Keep these while
         # older dashboard views are migrated to the v1 API namespace.
         Route("/api/services", api._services),
