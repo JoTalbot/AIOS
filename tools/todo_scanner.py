@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import List, Dict
 import unittest
 
-__all__ = ['TodoScanner', 'find_tags']
+__all__ = ['TodoScanner', 'find_tags', 'find_todo_comments']
 
 @dataclass
 class TodoItem:
@@ -129,23 +129,6 @@ def find_todo_comments(path: str) -> List[str]:
     scanner = TodoScanner(path)
     return scanner.find_todo_comments()
 
-def test_scan_for_tags(files: List[str]) -> None:
-    """Tests the scan_for_tags function.
-
-    Args:
-        files (List[str]): A list of file paths to test.
-    """
-    for file in files:
-        try:
-            with open(file, 'r', encoding='utf-8') as f:
-                text = f.read()
-                scanner = TodoScanner(os.path.dirname(file))
-                tags = scanner.find_tags()
-                expected_tags = json.loads(text)
-                self.assertEqual(tags, json.dumps(expected_tags))
-        except Exception as e:
-            print(f"Error testing file {file}: {e}")
-
 class TestTodoScanner(unittest.TestCase):
     """Tests the TodoScanner class."""
 
@@ -189,6 +172,23 @@ class TestTodoScanner(unittest.TestCase):
         comments = find_todo_comments(path)
         self.assertIsInstance(comments, list)
         self.assertEqual(comments, [])
+
+def test_scan_for_tags(files: List[str]) -> None:
+    """Tests the scan_for_tags function.
+
+    Args:
+        files (List[str]): A list of file paths to test.
+    """
+    for file in files:
+        try:
+            with open(file, 'r', encoding='utf-8') as f:
+                text = f.read()
+                scanner = TodoScanner(os.path.dirname(file))
+                tags = scanner.find_tags()
+                expected_tags = json.loads(text)
+                self.assertEqual(tags, json.dumps(expected_tags))
+        except Exception as e:
+            print(f"Error testing file {file}: {e}")
 
 if __name__ == '__main__':
     unittest.main(argv=[os.path.basename(__file__)])
