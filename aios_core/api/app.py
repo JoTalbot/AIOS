@@ -230,9 +230,15 @@ class AIOSAPI(OLXHandlersMixin, DevicesShardsMixin, PlatformsModulesMixin, CoreH
                 # Same-origin by default. Configure a deliberate allow-list at the reverse proxy.
                 Middleware(
                     CORSMiddleware,
-                    allow_origins=[],
+                    allow_origins=[
+                        "http://167.233.95.7:8080",
+                        "http://localhost:8080",
+                        "http://127.0.0.1:8080",
+                        "http://localhost:8580",
+                    ],
+                    allow_credentials=True,
                     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-                    allow_headers=["Authorization", "Content-Type"],
+                    allow_headers=["*"],
                 ),
             ],
         )
