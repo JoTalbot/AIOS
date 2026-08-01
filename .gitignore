@@ -85,3 +85,7 @@ apk/**
 .env
 .env.local
 *.json
+
+# backup/temp (never commit)
+*.bak
+*.bak.*
