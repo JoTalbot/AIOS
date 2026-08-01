@@ -12,6 +12,7 @@ Reuses existing AISalesAdvisor + TemplateRegistry infrastructure.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 
 from aios_core.ai_advisor import AISalesAdvisor
 from aios_core.cross_platform_comparator import CrossPlatformComparator
@@ -153,7 +154,7 @@ class AICrossPlatformAdvisor:
         """Predict future price using simple linear regression on sighting history.
 
         Args:
-            storage: Storage instance with sighting data.
+            storage: Storage instance with pricing data.
             fingerprint: Product fingerprint.
             horizon_days: Number of days to predict ahead.
 
