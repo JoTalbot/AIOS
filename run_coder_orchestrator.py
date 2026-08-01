@@ -26,6 +26,15 @@ import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Optional web-research & skill toolkit for the coder (best-effort import).
+try:
+    from aios_core.coder_research import web_research, list_skills, use_skill as _coder_use_skill
+    _RESEARCH_OK = True
+except Exception:
+    web_research = None
+    list_skills = lambda: []
+    _RESEARCH_OK = False
+
 REPO_PATH = os.environ.get("AIOS_REPO_PATH", "/root/AIOS")
 TG_TOKEN = os.environ.get("AIOS_TELEGRAM_TOKEN", "")
 TG_CHAT_ID = os.environ.get("AIOS_AUTO_CODER_CHAT_ID") or os.environ.get("TELEGRAM_CHAT_ID", "")
@@ -367,6 +376,27 @@ def phase_analyze(llm: LLMClient, ctx: dict, backlog: dict) -> dict:
     }
 
 
+def _maybe_research(topic: str) -> str:
+    """Do a quick web research on a topic and return a compact summary string."""
+    if not _RESEARCH_OK or not web_research or not topic:
+        return ""
+    try:
+        res = web_research(topic, max_results=4)
+        lines = []
+        for r in res.get("results", [])[:4]:
+            lines.append(f"- {r.get('title','')[:70]} ({r.get('url','')[:70]})")
+        return "\n".join(lines) if lines else ""
+    except Exception:
+        return ""
+
+
+def _list_skill_names() -> str:
+    try:
+        return ", ".join(list_skills()[:12]) if _RESEARCH_OK else ""
+    except Exception:
+        return ""
+
+
 def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict:
     """Phase 2: Intelligent planning with backlog awareness."""
     system = (
@@ -440,6 +470,10 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
             if not any(rt in ln for rt in _recent_targets)
         ) or files_list
 
+    # Optional web research on the priority topic (best-effort, may be empty).
+    _research_hint = _maybe_research(str(priority or "")[:80]) if priority else ""
+    _skill_hint = _list_skill_names()
+
     prompt = (
         f"Ты — автономный кодер. Составь план на этот цикл.\n\n"
         f"Проблемы: {issues_text}\n"
@@ -450,6 +484,11 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
 
     if backlog_text:
         prompt += f"Задачи в бэклоге:\n{backlog_text}\n\n"
+
+    if _research_hint:
+        prompt += f"📡 Актуальная информация из интернета по теме:\n{_research_hint}\n\n"
+    if _skill_hint:
+        prompt += f"🧩 Доступные скиллы проекта (можно использовать через coder_research.use_skill): {_skill_hint}\n\n"
 
     prompt += (
         f"Файлы проекта:\n{_files_list}\n\n"
