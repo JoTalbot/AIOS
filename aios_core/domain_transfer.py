@@ -27,12 +27,28 @@ class ZeroShotDomainTransfer:
             dict[str, Any]: A dictionary containing the transfer details including the source and target domains,
                           adapted payload, transfer accuracy, and timestamp.
         """
-        result = {
-            "source_domain": source_domain,
-            "target_domain": target_domain,
-            "adapted_payload": {**knowledge_payload, "domain": target_domain},
-            "transfer_accuracy": 0.91,
-            "timestamp": time.time(),
-        }
-        self.history.append(result)
-        return result
+        try:
+            result = {
+                "source_domain": source_domain,
+                "target_domain": target_domain,
+                "adapted_payload": {**knowledge_payload, "domain": target_domain},
+                "transfer_accuracy": 0.91,
+                "timestamp": time.time(),
+            }
+            self.history.append(result)
+            return result
+        except Exception as e:
+            print(f"Error during knowledge transfer: {e}")
+            return {"error": str(e)}
+
+# Example usage
+if __name__ == "__main__":
+    zdt = ZeroShotDomainTransfer()
+    source_domain = "example.com"
+    target_domain = "example.org"
+    knowledge_payload = {
+        "title": "Sample Title",
+        "content": "This is a sample content.",
+    }
+    transfer_result = zdt.transfer_knowledge(source_domain, target_domain, knowledge_payload)
+    print(transfer_result)
