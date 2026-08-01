@@ -2,7 +2,7 @@
 echo "🌌 Запуск AIOS REST API (dashboard + full API)..."
 
 # 1. Запускаем полный REST API (все роуты: stats, services, devices, ...) на 8000
-#    auth_required=False: внутри закрытой docker-сети (dashboard/mcp/autopilot)
+#    auth_required=False + api_keys={}: внутри закрытой docker-сети (dashboard/mcp/autopilot)
 echo "🚀 Поднятие REST API на 0.0.0.0:8000..."
 PYTHONPATH=/app python3 -c "
 import sys, os
@@ -14,6 +14,7 @@ app = create_app(
     constitution_dir='/app/docs/constitution',
     policies_dir='/app/policies',
     auth_required=False,
+    api_keys={},
 )
 uvicorn.run(app, host='0.0.0.0', port=8000, log_level='info')
 " &
