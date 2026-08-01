@@ -94,3 +94,6 @@ apk/**
 backups/ops-fix-*/
 # Runtime dashboard database backups
 backups/dashboard/
+
+# Runtime vector database
+chroma_db/

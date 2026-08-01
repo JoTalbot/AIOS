@@ -573,10 +573,19 @@ def phase_commit(code_result: dict, plan: dict, validation: dict) -> dict:
     action = plan.get("action", "update")
 
     # Git add all changes
-    git_cmd("add", "-A")
+    # Stage only source changes. Runtime data, credentials and unrelated files
+    # must never be swept into an autonomous commit.
+    allowed_prefixes = ("aios_core/", "aios_cli/", "scripts/", "tools/", "tests/", "skills/", "platforms/", "docs/", ".github/", "run_")
+    changed = [line[3:] for line in git_cmd("status", "--porcelain").splitlines() if len(line) > 3]
+    safe_paths = [path for path in changed if path.startswith(allowed_prefixes) and not path.startswith(("run_telegram_bot.py",))]
+    blocked_paths = sorted(set(changed) - set(safe_paths))
+    if blocked_paths:
+        print(f"    [COMMIT] excluded non-source paths: {', '.join(blocked_paths[:5])}")
+    if safe_paths:
+        git_cmd("add", "--", *safe_paths)
 
-    # Check if there is something to commit
-    status_out = git_cmd("status", "--porcelain")
+    # Check if there is something staged to commit.
+    status_out = git_cmd("diff", "--cached", "--name-only")
     if not status_out.strip():
         return {"status": "nothing_to_commit", "full_cycle": True}
 
