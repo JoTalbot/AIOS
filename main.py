@@ -135,7 +135,7 @@ import json
 from fastapi.responses import Response
 from strawberry.fastapi import GraphQLRouter
 
-from aios_core.dashboard.views.jobs_dashboard_view import render_jobs_dashboard_view
+from aios_core.dashboard_views.jobs_dashboard_view import render_jobs_dashboard_view
 from aios_core.data_manager import data_manager
 from aios_core.graphql.schema import schema
 
@@ -166,7 +166,7 @@ async def import_json(data: dict):
 from aios_core.ab_testing.bandit import bandit
 from aios_core.api.v1.router import v1_router
 from aios_core.api.v2.router import v2_router
-from aios_core.dashboard.views.dead_letter_view import render_dead_letter_view
+from aios_core.dashboard_views.dead_letter_view import render_dead_letter_view
 from aios_core.webhooks.retry import retry_handler
 
 app.include_router(v1_router)
@@ -246,7 +246,7 @@ async def evo_stats():
     return evolution_orchestrator.log
 
 
-from aios_core.dashboard.views.evolution_view import render_evolution_view
+from aios_core.dashboard_views.evolution_view import render_evolution_view
 from aios_core.observability.evolution_metrics import record_self_heal
 
 
@@ -290,7 +290,7 @@ async def get_template_recommendations(template_id: str):
 
 
 from aios_core.agents.negotiation import negotiation_agent
-from aios_core.dashboard.views.mobile_pwa import render_mobile_pwa_view
+from aios_core.dashboard_views.mobile_pwa import render_mobile_pwa_view
 from aios_core.plugins.example_avito import AvitoPlugin
 from aios_core.plugins.registry import plugin_registry
 from aios_core.tenancy.billing import billing_service
@@ -320,7 +320,7 @@ def mobile_page():
 
 
 from aios_core.agents.voice_agent import voice_agent
-from aios_core.dashboard.views.marketplace_view import render_marketplace_view
+from aios_core.dashboard_views.marketplace_view import render_marketplace_view
 from aios_core.tenancy.branding import branding_manager
 from aios_core.tenancy.stripe_service import stripe_service
 
@@ -355,7 +355,7 @@ def branding_page():
 from aios_core.agents.workflow import sales_workflow
 from aios_core.compliance.data_export import data_exporter
 from aios_core.compliance.pii_masker import pii_masker
-from aios_core.dashboard.views.onboarding_view import render_onboarding_view
+from aios_core.dashboard_views.onboarding_view import render_onboarding_view
 from aios_core.onboarding.flows import onboarding_flow
 
 
@@ -384,8 +384,8 @@ ui.run_with(app, title="AIOS Dashboard", port=8080, reload=False)
 # Импорт страниц NiceGUI (должен быть после ui.run_with)
 from aios_core.advisor.metrics_collector import MetricsCollector
 from aios_core.advisor.templates_engine import TemplateEngine
-from aios_core.dashboard.views.advisor_templates_view import render_advisor_templates_view
-from aios_core.dashboard.views.metrics_view import render_metrics_view
+from aios_core.dashboard_views.advisor_templates_view import render_advisor_templates_view
+from aios_core.dashboard_views.metrics_view import render_metrics_view
 
 template_engine = TemplateEngine(storage_path="data/templates")
 metrics_collector = MetricsCollector(storage_path="data/metrics")
