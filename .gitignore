@@ -89,3 +89,6 @@ apk/**
 # backup/temp (never commit)
 *.bak
 *.bak.*
+
+# Transient operational backups (may contain deployment configuration)
+backups/ops-fix-*/
