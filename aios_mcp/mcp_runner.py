@@ -11,7 +11,10 @@ class BrowserVisionSensor:
         return {"title": "Real Lead Data", "content": "Контракт на $5,000 найден."}
 
 class TelegramControlSensor:
-    def __init__(self, token="8374235817:AAEz9uIDV1K2gvV8YcidBXj8OMIx46c5-4o"):
+    def __init__(self, token=None):
+        if token is None:
+            import os
+            token = os.environ.get("AIOS_TELEGRAM_TOKEN", "")
         self.token = token
         self.api_url = f"https://api.telegram.org/bot{self.token}"
 
