@@ -1,0 +1,38 @@
+name: Configure Cloudflare WAF Rate Limits
+
+on:
+  workflow_dispatch:
+    inputs:
+      requests_per_minute:
+        description: Maximum requests per source IP per minute
+        required: true
+        default: "120"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  configure-rate-limit:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_WAF_API_TOKEN }}
+      ZONE_NAME: autosklo.org.ua
+      LIMIT: ${{ inputs.requests_per_minute }}
+    steps:
+      - name: Validate WAF token
+        run: test -n "$CF_API_TOKEN" || { echo "Missing CLOUDFLARE_WAF_API_TOKEN"; exit 1; }
+      - name: Upsert dashboard rate-limit rule
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers=(-H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json")
+          zones=$(curl --fail-with-body -sS "${headers[@]}" "https://api.cloudflare.com/client/v4/zones?name=${ZONE_NAME}&status=active")
+          zone_id=$(jq -r '.result[0].id // empty' <<<"$zones")
+          test -n "$zone_id" || { echo "Zone not found"; exit 1; }
+          endpoint="https://api.cloudflare.com/client/v4/zones/${zone_id}/rulesets/phases/http_ratelimit/entrypoint"
+          current=$(curl --fail-with-body -sS "${headers[@]}" "$endpoint")
+          rule=$(jq -nc --argjson limit "$LIMIT" '{action:"block",expression:"(http.host eq \"api.autosklo.org.ua\")",description:"AIOS dashboard: per-IP rate limit",enabled:true,ratelimit:{characteristics:["ip.src"],period:60,requests_per_period:$limit,mitigation_timeout:60}}')
+          rules=$(jq --argjson rule "$rule" '[.result.rules[]? | select(.description != "AIOS dashboard: per-IP rate limit")] + [$rule]' <<<"$current")
+          curl --fail-with-body -sS -X PUT "${headers[@]}" --data "$(jq -nc --argjson rules "$rules" '{rules:$rules}')" "$endpoint" >/dev/null
+          echo "Rate-limit rule configured"
