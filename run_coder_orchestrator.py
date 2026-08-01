@@ -190,9 +190,14 @@ def get_project_context() -> dict:
              "-mtime", "-1", "-type", "f"],
             capture_output=True, text=True, timeout=10
         )
+        _protected = {"run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
+                      "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"}
         for line in result.stdout.strip().split("\n")[:15]:
             if line.strip():
-                recent_files.append(os.path.relpath(line.strip(), REPO_PATH))
+                rel = os.path.relpath(line.strip(), REPO_PATH)
+                if rel in _protected:
+                    continue  # protected auto-coder internals
+                recent_files.append(rel)
     except:
         pass
     ctx["recent_files"] = recent_files
