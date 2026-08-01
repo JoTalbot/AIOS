@@ -631,8 +631,11 @@ class LLMBalancer:
                         },
                     )
 
-                    with urllib.request.urlopen(req, timeout=120) as resp:
-                        data = json.loads(resp.read())
+                    import requests as _req_lib
+                    _resp = _req_lib.post(best_provider.base_url, json=json.loads(payload),
+                                          headers=req.headers, timeout=120)
+                    _resp.raise_for_status()
+                    data = _resp.json()
 
                     # Check for application-level errors (Z.ai style)
                     if isinstance(data, dict):
@@ -663,41 +666,39 @@ class LLMBalancer:
                         best_provider.mark_key_error(best_key, "unknown format", cooldown=60)
                         continue
 
-                except urllib.error.HTTPError as e:
-                    last_error = f"{prov_name}/{try_model}: HTTP {e.code}"
-                    print(f"  [Balancer] {last_error}")
-
-                    if e.code in (402, 429):
-                        cd = 300 if e.code == 402 else 60
-                        best_provider.mark_key_error(best_key, f"HTTP {e.code}", cooldown=cd)
-                        continue  # try next key
-                    elif e.code == 404:
-                        break  # model not on this provider, try next model
-                    elif e.code == 401:
-                        best_provider.mark_key_error(best_key, "Auth failed", cooldown=600)
-                        continue
-                    elif e.code == 403:
-                        body = ""
-                        with contextlib.suppress(Exception):
-                            body = e.read().decode(errors="replace")
-                        label = "HTTP 403" + (f" / {body.split(':',1)[0][:80]}" if body else "")
-                        cooldown = 900 if "1010" in body else 600
-                        best_provider.mark_key_error(best_key, label, cooldown=cooldown)
-                        continue
-                    elif e.code >= 500:
-                        best_provider.mark_key_error(best_key, f"HTTP {e.code}", cooldown=60)
-                        continue
-                    else:
-                        last_error = f"{prov_name}/{try_model}: HTTP {e.code}"
-                        print(f"  [Balancer] {last_error}")
-                        best_provider.mark_key_error(best_key, f"HTTP {e.code}", cooldown=300)
-                        continue
-
                 except Exception as e:
+                    # Handle HTTP-status errors from requests/httpx (status_code attr)
+                    _code = getattr(getattr(e, "response", None), "status_code", None) or getattr(e, "code", None)
+                    if _code:
+                        code = int(_code)
+                        last_error = f"{prov_name}/{try_model}: HTTP {code}"
+                        print(f"  [Balancer] {last_error}")
+                        if code in (402, 429):
+                            cd = 300 if code == 402 else 60
+                            best_provider.mark_key_error(best_key, f"HTTP {code}", cooldown=cd)
+                            continue
+                        elif code == 404:
+                            break  # model not on this provider, try next model
+                        elif code == 401:
+                            best_provider.mark_key_error(best_key, "Auth failed", cooldown=600)
+                            continue
+                        elif code == 403:
+                            body = str(getattr(getattr(e, "response", None), "text", "") or "")
+                            label = "HTTP 403" + (f" / {body.split(':',1)[0][:80]}" if body else "")
+                            cooldown = 900 if "1010" in body else 600
+                            best_provider.mark_key_error(best_key, label, cooldown=cooldown)
+                            continue
+                        elif code >= 500:
+                            best_provider.mark_key_error(best_key, f"HTTP {code}", cooldown=60)
+                            continue
+                        else:
+                            best_provider.mark_key_error(best_key, f"HTTP {code}", cooldown=300)
+                            continue
                     last_error = f"{prov_name}/{try_model}: {str(e)[:60]}"
                     print(f"  [Balancer] {last_error}")
                     best_provider.mark_key_error(best_key, str(e)[:50], cooldown=60)
                     continue
+
 
         self._total_errors += 1
         return "⚠️ Все LLM-провайдеры временно недоступны. Проверьте квоты и API-ключи."
