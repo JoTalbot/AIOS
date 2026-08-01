@@ -87,6 +87,7 @@ class LLMClient:
                 model=self.config.llm_model,
                 max_tokens=self.config.max_tokens,
                 temperature=self.config.temperature,
+                task_type="code",
             )
             if response and not response.startswith("⚠️"):
                 return response

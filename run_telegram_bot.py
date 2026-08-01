@@ -1018,6 +1018,7 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
                     system=system,
                     max_tokens=2000,
                     temperature=0.3,
+                    task_type="chat",
                 )
                 print(f"  [LLM] balancer response ({len(response or '')} chars)")
             except Exception as _e:
