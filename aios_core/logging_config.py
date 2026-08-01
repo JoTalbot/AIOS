@@ -1,7 +1,7 @@
 """Structured JSON Logging Configuration for AIOS.
 
 Formats all logs into standard JSON with automatic trace_id, span_id,
-agent_id, and constitutional_status fields for production logging aggregation.
+agent_id, and constitutional_status fields for production logging.
 
 Features:
 - JSON and human-readable formatting
@@ -17,7 +17,6 @@ Features:
 import json
 import logging
 import sys
-import time
 from contextvars import ContextVar
 from logging.handlers import RotatingFileHandler
 from typing import Any
@@ -39,7 +38,7 @@ _ctx_constitutional_status: ContextVar[str] = ContextVar("constitutional_status"
 _ctx_task_id: ContextVar[str] = ContextVar("task_id", default="")
 
 # Sensitive field patterns to sanitize
-_SENSITIVE_FIELDS = frozenset(
+SENSITIVE_FIELDS = frozenset(
     {
         "password",
         "token",
@@ -245,32 +244,28 @@ class BufferedHandler(logging.Handler):
             for record in self._buffer:
                 self._target.emit(record)
             self._target.flush()
-        self._buffer.clear()
-        self._last_flush = time.time()
+        else:
+            super().flush()
+
+    def close(self) -> None:
+        """Close the handler, flushing any remaining logs."""
+        self.flush()
+        super().close()
 
 
 def setup_logging(
     level: str = "INFO",
-    log_file: str = "aios.log",
+    log_file: str = "app.log",
     json_format: bool = True,
-    max_bytes: int = 10 * 1024 * 1024,
+    max_bytes: int = 10 * 1024 * 1024,  # 10 MB
     backup_count: int = 5,
     buffer_size: int = 0,
     module_levels: dict[str, str] | None = None,
 ) -> logging.Logger:
-    """Configure structured logging for AIOS.
-
-    Args:
-        level: Global log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
-        log_file: Path to the rotating log file.
-        json_format: Use JSON formatter if True, human-readable otherwise.
-        max_bytes: Maximum log file size before rotation.
-        backup_count: Number of backup log files to keep.
-        buffer_size: If >0, use a BufferedHandler wrapping the file handler.
-        module_levels: Per-module log level overrides (e.g. {"aios_core.storage": "DEBUG"}).
-    """
+    """Configure the logger with specified settings."""
     if module_levels is None:
         module_levels = {}
+
     logger = logging.getLogger("aios")
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
     logger.handlers.clear()
