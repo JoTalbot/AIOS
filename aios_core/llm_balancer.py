@@ -87,6 +87,9 @@ class LLMBalancer:
                 "meta-llama/llama-4-maverick",
                 "mistralai/mistral-small-3.2-24b-instruct",
                 "deepseek/deepseek-chat-v3-0324",
+                "openai/gpt-oss-20b:free",
+                "cohere/north-mini-code:free",
+                "google/gemma-4-31b-it:free",
             ],
         },
         "gemini": {
@@ -131,10 +134,24 @@ class LLMBalancer:
                 "glm-5",
             ],
         },
+        "cerebras": {
+            "base_url": "https://api.cerebras.ai/v1/chat/completions",
+            "models": [
+                "llama-3.3-70b",
+                "llama-3.1-8b",
+                "gemma-2-9b",
+            ],
+        },
     }
 
     # Fallback chain: if primary model fails, try these
     MODEL_FALLBACKS = {
+        "openai/gpt-oss-20b:free": [
+            "cohere/north-mini-code:free",
+            "google/gemma-4-31b-it:free",
+            "nvidia/nemotron-3-super-120b-a12b:free",
+            "poolside/laguna-s-2.1:free",
+        ],
         "meta-llama/llama-4-maverick": [
             "gemini-2.0-flash",
             "mistralai/mistral-small-3.2-24b-instruct",
@@ -252,6 +269,9 @@ class LLMBalancer:
             "mistralai/mistral-small-3.2-24b-instruct",
             "deepseek/deepseek-chat-v3-0324",
             "llama-3.1-8b-instant",
+            "glm-4.5-flash",
+            "gemini-2.0-flash",
+            "gpt-4o-mini",
         ],
     }
 
@@ -271,7 +291,7 @@ class LLMBalancer:
                 runtime = json.loads(key_file.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
-            env_prefix = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "zai": "ZAI_API_KEY"}
+            env_prefix = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "zai": "ZAI_API_KEY", "cerebras": "CEREBRAS_API_KEY"}
             for provider, keys in runtime.items():
                 prefix = env_prefix.get(provider)
                 if not prefix or not isinstance(keys, list):
@@ -387,6 +407,24 @@ class LLMBalancer:
                 base_url=self.PROVIDERS["zai"]["base_url"],
                 keys=zai_keys,
                 models=self.PROVIDERS["zai"]["models"],
+            )
+
+        # Cerebras keys
+        cerebras_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"CEREBRAS_API_KEY_{i}", "")
+            if k:
+                cerebras_keys.append(APIKey(key=k, provider="cerebras"))
+        ck = os.environ.get("CEREBRAS_API_KEY", "")
+        if ck and not any(k.key == ck for k in cerebras_keys):
+            cerebras_keys.append(APIKey(key=ck, provider="cerebras"))
+
+        if cerebras_keys:
+            self.providers["cerebras"] = Provider(
+                name="cerebras",
+                base_url=self.PROVIDERS["cerebras"]["base_url"],
+                keys=cerebras_keys,
+                models=self.PROVIDERS["cerebras"]["models"],
             )
 
     def add_key(self, provider: str, key: str):
@@ -509,7 +547,8 @@ class LLMBalancer:
                     print(f"  [Balancer] {last_error}")
 
                     if e.code in (402, 429):
-                        best_provider.mark_key_error(best_key, f"HTTP {e.code}", cooldown=300)
+                        cd = 300 if e.code == 402 else 60
+                        best_provider.mark_key_error(best_key, f"HTTP {e.code}", cooldown=cd)
                         continue  # try next key
                     elif e.code == 404:
                         break  # model not on this provider, try next model

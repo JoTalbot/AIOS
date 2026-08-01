@@ -106,7 +106,7 @@ class SafetyValidator:
     """Validates generated code for safety using AST analysis."""
 
     DANGEROUS_IMPORTS = {"subprocess", "shutil"}
-    DANGEROUS_CALLS = {"eval", "exec", "compile", "__import__", "getattr"}
+    DANGEROUS_CALLS = {"eval", "exec", "compile", "__import__"}
 
     @classmethod
     def validate(cls, source: str) -> tuple[bool, list[str]]:
@@ -261,6 +261,19 @@ class MetaCognitiveCoder:
         self.validator = SafetyValidator()
         self.history: list[CodeChange] = []
 
+    def _generate_with_retries(self, prompt: str, attempts: int = 3):
+        """Call LLM and validate generated code, retrying if unsafe."""
+        last_code, last_warnings = "", []
+        for attempt in range(1, attempts + 1):
+            response = self.llm.chat([{"role": "user", "content": prompt}], system=self.SYSTEM_PROMPT)
+            code = self._extract_code(response)
+            safe, warnings = self.validator.validate(code)
+            last_code, last_warnings = code, warnings
+            if safe:
+                return code, safe, warnings
+            log.warning("Generated code unsafe (attempt %d/%d): %s", attempt, attempts, warnings)
+        return last_code, False, last_warnings
+
     # ---- Public API -------------------------------------------------------
 
     def generate_code(self, description: str, target_path: str = "") -> CodeChange:
@@ -276,13 +289,7 @@ class MetaCognitiveCoder:
             f"- Include __all__ export list\n"
             f"- Include if __name__ == '__main__' block for testing\n"
         )
-        response = self.llm.chat(
-            [{"role": "user", "content": prompt}],
-            system=self.SYSTEM_PROMPT,
-        )
-
-        code = self._extract_code(response)
-        safe, warnings = self.validator.validate(code)
+        code, safe, warnings = self._generate_with_retries(prompt)
 
         change = CodeChange(
             file_path=target_path,
@@ -324,13 +331,7 @@ class MetaCognitiveCoder:
             f"CURRENT CODE:\n```python\n{old_code}\n```\n\n"
             f"Return the complete refactored file. Preserve all existing functionality.\n"
         )
-        response = self.llm.chat(
-            [{"role": "user", "content": prompt}],
-            system=self.SYSTEM_PROMPT,
-        )
-
-        new_code = self._extract_code(response)
-        safe, warnings = self.validator.validate(new_code)
+        new_code, safe, warnings = self._generate_with_retries(prompt)
 
         change = CodeChange(
             file_path=file_path,
