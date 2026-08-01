@@ -483,34 +483,53 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
 def _pick_real_target(hint: str) -> str:
     """Return a real existing aios_core/ module for the coder to refactor.
 
-    Uses the hint to find a similarly-named existing file, otherwise returns
-    the next aios_core/ module in a stable rotation so cycles always do real work.
+    Prefers files that actually contain TODO/FIXME/HACK markers (real work),
+    then rotates across aios_core/ avoiding files recently targeted (from
+    backlog history), so cycles keep doing fresh real work instead of looping.
     """
     try:
-        if hint and hint.startswith("aios_core/"):
-            base = os.path.basename(hint).replace(".py", "")
-            for root, _dirs, files in os.walk(REPO_PATH):
-                for fn in files:
-                    if fn.endswith(".py") and base and base in fn:
-                        rel = os.path.relpath(os.path.join(root, fn), REPO_PATH)
-                        if rel.startswith("aios_core/"):
-                            return rel
-        # Rotation: pick a real aios_core/ file not recently used.
-        import time
-        candidates = []
+        protected = {"aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py",
+                     "aios_core/__init__.py"}
+        # Files recently handled (from backlog history) to avoid re-looping.
+        recent = set()
+        try:
+            bl = json.load(open(BACKLOG_FILE, encoding="utf-8"))
+            for h in bl.get("history", [])[-12:]:
+                f = h.get("file")
+                if f:
+                    recent.add(f)
+        except Exception:
+            pass
+
+        # Scan aios_core/ for existing .py files, optionally with TODO markers.
+        plain, with_todo = [], []
         for root, _dirs, files in os.walk(os.path.join(REPO_PATH, "aios_core")):
             for fn in files:
-                if fn.endswith(".py") and not fn.startswith("__"):
-                    rel = os.path.relpath(os.path.join(root, fn), REPO_PATH)
-                    if rel not in ("aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"):
-                        candidates.append(rel)
-        if candidates:
-            candidates.sort()
-            idx = int(time.time()) % len(candidates)
-            return candidates[idx]
+                if not fn.endswith(".py") or fn.startswith("__"):
+                    continue
+                rel = os.path.relpath(os.path.join(root, fn), REPO_PATH)
+                if rel in protected:
+                    continue
+                # Prefer files with real TODO/FIXME/HACK markers.
+                try:
+                    txt = open(os.path.join(root, fn), encoding="utf-8", errors="ignore").read()
+                    has_marker = any(t in txt for t in ("TODO", "FIXME", "HACK", "XXX", "BUG"))
+                except Exception:
+                    has_marker = False
+                (with_todo if has_marker else plain).append(rel)
+
+        pool = with_todo or plain
+        if not pool:
+            return ""
+        # Filter out recently-handled files.
+        fresh = [f for f in pool if f not in recent]
+        pool = fresh or pool
+        import time
+        pool.sort()
+        idx = int(time.time()) % len(pool)
+        return pool[idx]
     except Exception:
-        pass
-    return ""
+        return ""
 
 def phase_code(plan: dict) -> dict:
     """Phase 3: Execute coding action if needed."""
