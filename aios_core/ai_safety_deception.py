@@ -1,9 +1,8 @@
 """AI Deception Detection and Prevention for AIOS v10.10.0.
 
-Deception detection: output consistency checking, reward
-hacking detection, observability gaming, sandbox testing,
-behavioral analysis, strategic deception scoring, and
-intervention protocols.
+Deception detection: output consistency checking, reward hacking detection,
+observability gaming, sandbox testing, behavioral analysis, strategic deception scoring,
+and intervention protocols.
 
 Classes:
     DeceptionIndicator — single deception signal
