@@ -35,6 +35,18 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+_env_path = Path(__file__).resolve().parent / ".env"
+if _env_path.exists():
+    for _line in _env_path.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if not _line or _line.startswith("#") or "=" not in _line:
+            continue
+        _key, _, _value = _line.partition("=")
+        _key = _key.strip()
+        _value = _value.strip().strip('\"').strip("'")
+        if _key and _key not in os.environ:
+            os.environ[_key] = _value
+
 # ---------------------------------------------------------------------------
 # Telegram API helpers (zero-dependency)
 # ---------------------------------------------------------------------------
@@ -883,6 +895,37 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
     print(f"  → callback {data} (chat {chat_id})")
 
 
+def _llm_status() -> str:
+    """Return LLM provider status without consuming credits."""
+    import importlib.util as _iu, sys as _sys
+    try:
+        spec = _iu.spec_from_file_location("lb_s", "/app/aios_core/llm_balancer.py")
+        mod = _iu.module_from_spec(spec)
+        _sys.modules["lb_s"] = mod
+        spec.loader.exec_module(mod)
+        b = mod.LLMBalancer()
+        s = b.status()
+        lines = [chr(128268) + " <b>LLM Providers</b>", ""]
+        lines.append("Requests: " + str(s.get("total_requests", 0)))
+        lines.append("Errors: " + str(s.get("total_errors", 0)))
+        lines.append("")
+        for pn, pd in s.get("providers", {}).items():
+            a = pd.get("keys_available", 0)
+            t = pd.get("keys_total", 0)
+            em = chr(9989) if a > 0 else chr(10060)
+            lines.append(em + " <b>" + pn.upper() + "</b>: " + str(a) + "/" + str(t) + " keys")
+            for kk, vv in pd.items():
+                if kk.startswith("key_"):
+                    avail = vv.get("available", False)
+                    errs = vv.get("errors", 0)
+                    last = vv.get("last_error", "")
+                    status_em = chr(9989) if avail else chr(10060)
+                    lines.append("   " + status_em + " " + kk + " errors=" + str(errs) + ("" if not last else " last=" + last[:40]))
+        return "\n".join(lines)
+    except Exception as e:
+        return chr(10060) + " " + str(e)
+
+
 def _llm_chat(chat_id: int, user_text: str) -> str:
     """LLM chat with root system access. Uses tool-calling pattern."""
     import json as _json, urllib.request as _urllib, os as _os
@@ -897,23 +940,13 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
         _chat_history[chat_id] = _chat_history[chat_id][-MAX_HISTORY * 2:]
 
     system = (
-        "You are AIOS Hermes — an AI assistant with FULL ROOT ACCESS to the server.\n"
-        "Server: Ubuntu Linux, Python 3.10, Docker, systemd.\n"
-        "Project: /root/AIOS (AIOS — autonomous AI coding platform).\n\n"
-        "You can execute commands using <cmd> tags. Examples:\n"
-        "<cmd>ls -la /root/AIOS</cmd>\n"
-        "<cmd>docker ps</cmd>\n"
-        "<cmd>systemctl status aios-auto-coder</cmd>\n"
-        "<cmd>cat /root/AIOS/run_telegram_bot.py | head -50</cmd>\n"
-        "<cmd>tail -20 /root/AIOS/logs/coder_orchestrator.log</cmd>\n\n"
-        "Rules:\n"
-        "- Use <cmd>...</cmd> to run shell commands (one per response)\n"
-        "- After seeing command output, explain results to user\n"
-        "- You can read/write files, manage services, install packages\n"
-        "- Be careful with destructive commands (rm -rf, etc)\n"
-        "- Answer in the same language as the user (Russian/English)\n"
-        "- Be concise and helpful\n"
-        "- If user asks to fix/code something — do it directly"
+        "You are AIOS Hermes, an assistant with FULL ROOT ACCESS on this Ubuntu/Docker server.\n"
+        "Project: /root/AIOS.\n"
+        "To run a shell command, output it in <cmd>...</cmd> tags (one per response).\n"
+        "Read files with <cmd>cat ...</cmd>, list with <cmd>ls ...</cmd>, manage services with <cmd>systemctl ...</cmd>.\n"
+        "You may read/write files, manage services, install packages.\n"
+        "Avoid destructive commands (rm -rf).\n"
+        "Answer in the user language (RU/EN). Be concise. If asked to code/fix - do it directly.\n"
     )
 
     messages = [{"role": "system", "content": system}] + _chat_history[chat_id]
@@ -1179,6 +1212,8 @@ def run_bot(token: str) -> None:
                 elif cmd == "/coder":
                     reply = "🧠 <b>Агент-кодер MetaCognitiveCoder</b>\n\nУправление автономным кодером:"
                     keyboard = CODER_MENU_KEYBOARD
+                elif cmd == "/llm_status":
+                    reply = _llm_status()
                 elif cmd == "/code":
                     reply = cmd_code_generate(args)
                 elif cmd == "/review":
@@ -1210,9 +1245,9 @@ def run_bot(token: str) -> None:
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    TOKEN = os.environ.get("AIOS_TELEGRAM_TOKEN")
+    TOKEN = os.environ.get("AIOS_TELEGRAM_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN")
     if not TOKEN:
-        print("❌ Установите AIOS_TELEGRAM_TOKEN")
+        print("❌ Установите AIOS_TELEGRAM_TOKEN или TELEGRAM_BOT_TOKEN")
         sys.exit(1)
 
     run_bot(TOKEN)
