@@ -171,6 +171,7 @@ class LLMBalancer:
             "base_url": os.environ.get("LOCAL_LLM_BASE_URL", "http://localhost:11434/v1/chat/completions"),
             "models": [
                 "qwen2.5-coder:14b",
+                "qwen2.5-coder:1.5b",
                 "qwen2.5-coder:7b",
                 "deepseek-coder:6.7b",
                 "qwen2.5-coder:32b",
