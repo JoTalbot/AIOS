@@ -89,7 +89,6 @@ services:
     environment:
       AIOS_API_KEYS: ${AIOS_API_KEYS:?Set AIOS_API_KEYS in .env}
       AIOS_DASH_PORT: "8080"
-      AIOS_API_URL: http://167.233.95.7:8000
       AIOS_PROFILES_DB: /app/data/profiles.sqlite
     volumes:
       - .:/app
