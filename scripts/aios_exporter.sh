@@ -34,6 +34,17 @@ render_metrics() {
     else
       echo "aios_coder_service_up 0"
     fi
+    # auto-promote activity metrics (from auto_promote.log)
+    local ap_log="/root/AIOS/logs/auto_promote.log"
+    local promotes=$(grep -c "auto-promote complete" "$ap_log" 2>/dev/null || echo 0)
+    local blocked=$(grep -c "BLOCKED" "$ap_log" 2>/dev/null || echo 0)
+    echo "aios_auto_promotes_total $promotes"
+    echo "aios_auto_promote_blocked_total $blocked"
+    # coder backlog stats
+    if [ -f "/root/AIOS-autocoder/data/coder_backlog.json" ]; then
+      local cycles=$(python3 -c "import json;print(json.load(open('/root/AIOS-autocoder/data/coder_backlog.json')).get('cycle_count',0))" 2>/dev/null || echo 0)
+      echo "aios_coder_cycles_total $cycles"
+    fi
   } > "$OUT_DIR/aios_service.prom"
 }
 
