@@ -124,6 +124,45 @@ def _safe(fn):
 
 
 @_safe
+def _local_api_json(path: str) -> dict:
+    """Read a trusted local AIOS API endpoint for Telegram status commands."""
+    with urllib.request.urlopen(f"http://127.0.0.1:8000{path}", timeout=10) as response:
+        return json.loads(response.read())
+
+
+@_safe
+def cmd_system_health() -> str:
+    data = _local_api_json("/api/system-health")
+    lines = ["❤️ <b>System Health</b>", ""]
+    lines.append(f"CPU: {data.get('cpu_percent')}%")
+    lines.append(f"RAM: {data.get('memory_percent')}%")
+    lines.append(f"Disk: {data.get('disk_percent')}%")
+    for service in data.get("services", []):
+        mark = "✅" if service.get("status") == "ok" else "❌"
+        lines.append(f"{mark} {service.get('name')}: {service.get('status')}")
+    return "\n".join(lines)
+
+
+@_safe
+def cmd_last_backup() -> str:
+    data = _local_api_json("/api/backups")
+    backups = data.get("backups", [])
+    if not backups:
+        return "💾 <b>Backup</b>\n\nЛокальных копий пока нет."
+    item = backups[0]
+    return "💾 <b>Last Backup</b>\n\n" + f"ID: <code>{item.get('backup_id', item.get('id'))}</code>\n" + f"Created: {item.get('created_at', '—')}\n" + f"Verified: {'✅' if item.get('verified') else '❌'}"
+
+
+@_safe
+def cmd_alert_history() -> str:
+    path = Path("/var/lib/aios-health-alert/state.json")
+    if not path.exists():
+        return "🚨 <b>Alert History</b>\n\nНет сохранённых health-check данных."
+    state = json.loads(path.read_text())
+    failed = [name for name, value in state.items() if not value]
+    return "🚨 <b>Alert History</b>\n\n" + ("✅ Текущие проверки в норме" if not failed else "❌ Проблемы: " + ", ".join(failed))
+
+
 def cmd_start() -> str:
     return "🤖 <b>AIOS Control Panel</b>\n\nВыберите раздел:"
 
@@ -584,7 +623,13 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
     reply = None
     keyboard = None
 
-    if data == "menu_back":
+    if data == "system_health":
+        reply = cmd_system_health()
+    elif data == "last_backup":
+        reply = cmd_last_backup()
+    elif data == "alert_history":
+        reply = cmd_alert_history()
+    elif data == "menu_back":
         reply = chr(127899) + " <b>AIOS Control Panel</b>" + chr(10) + chr(10) + chr(129504) + " Koder 24/7"
         keyboard = MAIN_MENU_KEYBOARD
     elif data == "menu_stats":
@@ -1157,6 +1202,9 @@ BUTTON_ACTIONS = {
     "🔄 Рестарт": "bot_restart",
     "⏹️ Стоп": "bot_stop",
     "📊 Статус бота": "bot_status",
+    "❤️ Health": "system_health",
+    "💾 Backup": "last_backup",
+    "🚨 Alerts": "alert_history",
 }
 
 
