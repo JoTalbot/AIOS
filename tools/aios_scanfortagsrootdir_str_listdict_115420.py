@@ -37,7 +37,7 @@ _TAG_REGEX = re.compile(r"\b(TODO|FIXME|HACK|XXX|BUG)\b(.*)")
 
 def scan_for_tags(root_dir: str) -> List[Dict[str, str | int]]:
     """
-    Walk through all .py files under ``root_dir`` and collect occurrences
+    Walk through all files under ``root_dir`` and collect occurrences
     of the tags TODO, FIXME, HACK, XXX, and BUG.
 
     Parameters
@@ -61,22 +61,23 @@ def scan_for_tags(root_dir: str) -> List[Dict[str, str | int]]:
         logger.error("Provided root_dir '%s' is not a directory.", root_dir)
         return entries
 
-    for py_file in root_path.rglob("*.py"):
+    for file in root_path.rglob("*"):
         try:
-            with py_file.open(encoding="utf-8") as f:
-                for line_no, line in enumerate(f, start=1):
-                    for match in _TAG_REGEX.finditer(line):
-                        tag, text = match.group(1), match.group(2).strip()
-                        entries.append(
-                            {
-                                "file": str(py_file.relative_to(root_path)),
-                                "line_number": line_no,
-                                "tag": tag,
-                                "text": text,
-                            }
-                        )
+            if file.is_file() and file.suffix in [".py", ".txt", ".md"]:
+                with file.open(encoding="utf-8") as f:
+                    for line_no, line in enumerate(f, start=1):
+                        for match in _TAG_REGEX.finditer(line):
+                            tag, text = match.group(1), match.group(2).strip()
+                            entries.append(
+                                {
+                                    "file": str(file.relative_to(root_path)),
+                                    "line_number": line_no,
+                                    "tag": tag,
+                                    "text": text,
+                                }
+                            )
         except (OSError, UnicodeDecodeError) as exc:
-            logger.warning("Could not read file '%s': %s", py_file, exc)
+            logger.warning("Could not read file '%s': %s", file, exc)
 
     return entries
 
@@ -117,21 +118,12 @@ def run_report() -> None:
     logger.info("No tags found. Exiting with status 0.")
     sys.exit(0)
 
-# --------------------------------------------------------------------------- #
-# Placeholder for existing TODO/FIXME/HACK code at lines 147‑161
-# --------------------------------------------------------------------------- #
-# The following section used to be a no‑op placeholder. It has been updated
-# to invoke the new tag scanning functionality before deployment.
-# --------------------------------------------------------------------------- #
-
 # Example placeholder (lines 147‑161):
 # def placeholder_function():
 #     """
 #     This function previously did nothing. It now triggers the tag scan.
 #     """
 #     run_report()
-
-# --------------------------------------------------------------------------- #
 
 if __name__ == "__main__":
     # Simple test harness: run the report when executed directly.
