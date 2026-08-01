@@ -33,11 +33,11 @@ from .views import (
 )
 
 # Enable dark mode globally
-ui.dark_mode().enable()
 
 
 @ui.page("/")
 def index() -> None:
+    ui.dark_mode().enable()
     with ui.header().classes("items-center justify-between bg-primary text-white"):
         ui.label("AIOS Dashboard").classes("text-h5 font-bold")
         ui.link("API (FastAPI)", "http://127.0.0.1:8000/docs", new_tab=True).classes("text-white")
