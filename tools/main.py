@@ -129,6 +129,29 @@ class TestOctopusCore(unittest.TestCase):
     def test_module2(self):
         self.assertTrue(get_temp_module_coverage('octopus_core.module2')['TestModule'].isinstance(bool))
 
+    def test_get_module_coverage(self):
+        module_path = create_temp_module('test_module', 'test_module')
+        coverage = get_module_coverage(module_path)
+        self.assertIsInstance(coverage, dict)
+        shutil.rmtree(os.path.dirname(module_path))
+
+    def test_get_octopus_core_coverage(self):
+        coverage_reports = get_octopus_core_coverage()
+        self.assertIsInstance(coverage_reports, list)
+        for report in coverage_reports:
+            self.assertIsInstance(report, CoverageReport)
+
+    def test_get_octopus_core_coverage_with_temp_modules(self):
+        coverage_reports = get_octopus_core_coverage_with_temp_modules()
+        self.assertIsInstance(coverage_reports, list)
+        for report in coverage_reports:
+            self.assertIsInstance(report, CoverageReport)
+
+    def test_run_tests(self):
+        module_path = create_temp_module('test_module', 'test_module')
+        run_tests(module_path)
+        shutil.rmtree(os.path.dirname(module_path))
+
 def check_coverage(coverage_reports: List[CoverageReport]) -> None:
     """
     Check if all functions in octopus_core modules are covered.
