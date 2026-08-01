@@ -63,7 +63,53 @@ class SecretsScanner:
             print(f"Secrets found with {result.scanner_used}: {result.secrets_found}")
             await self.secrets_manager.store_secrets(result.secrets_found)
 
+def get_supported_scanners() -> list[str]:
+    """Get list of supported secret scanners.
+
+    Returns:
+        list[str]: List of supported scanner names.
+    """
+    return list(self.scanners.keys())
+
+def get_secret_scanner(scanner_name: str) -> SecretScanner:
+    """Get instance of secret scanner.
+
+    Args:
+        scanner_name (str): Name of the scanner to use.
+
+    Returns:
+        SecretScanner: Instance of secret scanner.
+    """
+    if scanner_name not in self.scanners:
+        raise ValueError(f"Unsupported scanner: {scanner_name}")
+    return self.scanners[scanner_name]()
+
+class SecretScannerFactory:
+    """Factory for creating secret scanners."""
+
+    def __init__(self):
+        self.scanners = {
+            "gitguardian": gitguardian.GitGuardian,
+            "secretscanner": secretscanner.SecretScanner
+        }
+
+    def get_secret_scanner(self, scanner_name: str) -> SecretScanner:
+        """Get instance of secret scanner.
+
+        Args:
+            scanner_name (str): Name of the scanner to use.
+
+        Returns:
+            SecretScanner: Instance of secret scanner.
+        """
+        if scanner_name not in self.scanners:
+            raise ValueError(f"Unsupported scanner: {scanner_name}")
+        return SecretScanner(self.scanners[scanner_name]())
+
 # A convenience instance named 'secrets' (as some callers expect).
 secrets = SecretsManager()
 
-__all__ = ["SecretsManager", "SecretVersion", "RotationPolicy", "secrets", "SecretScanner", "SecretsScanner"]
+# A convenience instance of SecretScannerFactory (as some callers expect).
+secret_scanner_factory = SecretScannerFactory()
+
+__all__ = ["SecretsManager", "SecretVersion", "RotationPolicy", "secrets", "SecretScanner", "SecretsScanner", "get_supported_scanners", "get_secret_scanner", "SecretScannerFactory"]
