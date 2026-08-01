@@ -21,7 +21,7 @@ __all__ = ["AISafetyScientist"]
 
 
 class AISafetyScientist:
-    """Automated AI safety research system (backward-compatible)."""
+    """Automated AI safety research system."""
 
     def __init__(self) -> None:
         self.hypotheses: list[dict[str, Any]] = []
@@ -30,7 +30,7 @@ class AISafetyScientist:
         self._papers: list[dict[str, Any]] = []
 
     def generate_hypothesis(self, topic: str) -> dict[str, Any]:
-        """Generate hypothesis (backward-compatible)."""
+        """Generate hypothesis."""
         hypothesis = {
             "topic": topic,
             "hypothesis": f"AI systems exhibit {topic} under certain conditions",
@@ -42,7 +42,7 @@ class AISafetyScientist:
         return hypothesis
 
     def design_experiment(self, hypothesis: dict[str, Any]) -> dict[str, Any]:
-        """Design experiment (backward-compatible)."""
+        """Design experiment."""
         experiment = {
             "hypothesis": hypothesis,
             "design": "controlled experiment",
@@ -104,7 +104,7 @@ class AISafetyScientist:
         }
 
     def stats(self) -> dict[str, Any]:
-        """Return statistics dict (backward-compatible)."""
+        """Return statistics dict."""
         return {
             "hypotheses": len(self.hypotheses),
             "experiments": len(self.experiments),
