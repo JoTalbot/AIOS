@@ -47,8 +47,11 @@ def render() -> None:
         ]
 
     async def restart_service(name: str) -> None:
-        await _service_action(name, "restart")
-        ui.notify(f"Restarted {name}")
+        result = await _service_action(name, "restart")
+        if result.get("ok"):
+            ui.notify(f"Restarted {name}", type="positive")
+        else:
+            ui.notify(f"Restart failed for {name}: {result.get('error', 'unknown error')}", type="negative")
         await load_services()
 
     ui.button("Refresh services", on_click=load_services).props("flat")
