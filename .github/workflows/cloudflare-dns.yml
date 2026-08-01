@@ -1,0 +1,58 @@
+name: Configure Cloudflare DNS
+
+on:
+  workflow_dispatch:
+    inputs:
+      record_name:
+        description: Fully-qualified DNS name
+        required: true
+        default: api.autosklo.org.ua
+        type: string
+      ipv4:
+        description: IPv4 address for the A record
+        required: true
+        default: 167.233.95.7
+        type: string
+      proxied:
+        description: Enable Cloudflare proxy
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  upsert-a-record:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      ZONE_NAME: autosklo.org.ua
+      RECORD_NAME: ${{ inputs.record_name }}
+      RECORD_IP: ${{ inputs.ipv4 }}
+      RECORD_PROXIED: ${{ inputs.proxied }}
+    steps:
+      - name: Validate required secret
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "Missing repository secret CLOUDFLARE_API_TOKEN"; exit 1; }
+
+      - name: Create or update proxied A record
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers=(-H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json")
+          zone=$(curl --fail-with-body -sS "${headers[@]}" "https://api.cloudflare.com/client/v4/zones?name=${ZONE_NAME}&status=active")
+          zone_id=$(jq -r '.result[0].id // empty' <<<"$zone")
+          test -n "$zone_id" || { echo "Active Cloudflare zone not found: $ZONE_NAME"; exit 1; }
+
+          existing=$(curl --fail-with-body -sS "${headers[@]}" "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records?type=A&name=${RECORD_NAME}")
+          record_id=$(jq -r '.result[0].id // empty' <<<"$existing")
+          payload=$(jq -nc --arg type A --arg name "$RECORD_NAME" --arg content "$RECORD_IP" --argjson proxied "$RECORD_PROXIED" '{type:$type,name:$name,content:$content,ttl:1,proxied:$proxied}')
+
+          if [[ -n "$record_id" ]]; then
+            curl --fail-with-body -sS -X PUT "${headers[@]}" --data "$payload" "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records/${record_id}" >/dev/null
+            echo "Updated A record ${RECORD_NAME} -> ${RECORD_IP}"
+          else
+            curl --fail-with-body -sS -X POST "${headers[@]}" --data "$payload" "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records" >/dev/null
+            echo "Created A record ${RECORD_NAME} -> ${RECORD_IP}"
+          fi
