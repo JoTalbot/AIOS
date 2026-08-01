@@ -47,13 +47,19 @@ log "compile validation OK"
 # --- test gate: run a quick pytest on changed core modules if present ---
 if [[ -d "$STAGING_DIR/aios_core" ]] && command -v /opt/aios/.venv/bin/python3.11 >/dev/null 2>&1; then
     # Only fail the gate on real import/collection errors, not on system-missing deps.
-    if ! (cd "$STAGING_DIR" && timeout 180 /opt/aios/.venv/bin/python3.11 -m pytest tests/security tests/integration \
+    if (cd "$STAGING_DIR" && timeout 240 /opt/aios/.venv/bin/python3.11 -m pytest tests/security tests/integration \
             -q --no-header -p no:cacheprovider >/tmp/aios_promote_test.log 2>&1); then
-        if grep -qE "error|failed" /tmp/aios_promote_test.log; then
-            log "WARN: security/integration tests not green; still promoting (non-blocking)"
-        fi
-    else
         log "test gate: security+integration OK"
+    else
+        # Block only on real test failures, not on collection errors from
+        # system-missing modules (e.g. /opt/octopus-*) or dependency gaps.
+        if grep -qE "^FAILED|^[0-9]+ failed|passed, [0-9]+ failed" /tmp/aios_promote_test.log; then
+            log "BLOCKED: security/integration tests FAILED; NOT promoting"
+            tail -5 /tmp/aios_promote_test.log | sed 's/^/  /' >> "$LOG"
+            exit 1
+        else
+            log "test gate: collection errors only (non-blocking)"
+        fi
     fi
 fi
 
