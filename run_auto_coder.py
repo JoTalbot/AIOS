@@ -246,6 +246,8 @@ def run_cycle():
     report_lines = []
     report_lines.append(f"🧠 <b>Auto-Coder — {now}</b>")
     report_lines.append("")
+    report_lines.append("<b>Кратко:</b> Кодер проверил изменения и состояние проекта; подробности и найденные риски — ниже.")
+    report_lines.append("")
     report_lines.append(f"<b>📋 Анализ проекта:</b>")
     report_lines.append(analysis)
 
