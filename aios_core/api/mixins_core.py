@@ -750,10 +750,31 @@ class CoreHandlersMixin:
         return JSONResponse({"ok": True, "package": body.get("package", ""), "scenario": body.get("scenario", "")})
 
     async def _backups(self, request: Request) -> JSONResponse:
-        import os, glob
+        """Create, verify and list dashboard SQLite backups."""
+        from aios_core.backup_manager import BackupManager
+
+        db_path = os.environ.get("AIOS_MAIN_DB", "/app/data/aios.sqlite")
+        manager = BackupManager(db_path=db_path, backup_dir="/app/backups/dashboard", compress=True)
+        if request.method == "POST":
+            body = await request.json()
+            action = body.get("action")
+            if action == "create":
+                label = "".join(c for c in str(body.get("label", "dashboard")) if c.isalnum() or c in "-_")[:40]
+                metadata = manager.create_backup(label=label)
+                verified = manager.verify_backup(metadata.backup_id)
+                return JSONResponse({"ok": verified, "backup": metadata.to_dict(), "verified": verified}, status_code=201)
+            if action == "verify":
+                backup_id = str(body.get("backup_id", ""))
+                if not backup_id:
+                    return JSONResponse({"error": "backup_id is required"}, status_code=400)
+                return JSONResponse({"ok": manager.verify_backup(backup_id), "backup_id": backup_id})
+            return JSONResponse({"error": "unsupported backup action"}, status_code=400)
+
         backups = []
-        for f in sorted(glob.glob("/app/backups/daily/*") + glob.glob("/root/AIOS/backups/daily/*"))[-20:]:
-            backups.append({"id": os.path.basename(f), "path": f, "size": os.path.getsize(f) if os.path.isfile(f) else 0})
+        for item in manager.list_backups():
+            data = item.to_dict()
+            data.update({"label": item.backup_id.removeprefix("backup_").split("_", 2)[-1], "size_mb": round(item.size_bytes / 1048576, 3), "verified": manager.verify_backup(item.backup_id)})
+            backups.append(data)
         return JSONResponse({"backups": backups, "count": len(backups)})
 
     async def _health(self, request: Request) -> JSONResponse:
