@@ -30,23 +30,23 @@ async def post(path: str, json: dict | None = None) -> Any:
 
 
 async def get_stats() -> dict:
-    return await get("/api/stats")
+    return await get("/api/v1/stats")
 
 
 async def get_services() -> dict:
-    return await get("/api/services")
+    return await get("/api/v1/services")
 
 
 async def service_action(service: str, action: str) -> dict:
-    return await post("/api/service/action", json={"service": service, "action": action})
+    return await post("/api/v1/service/action", json={"service": service, "action": action})
 
 
 async def get_android_devices() -> dict:
-    return await get("/api/android/devices")
+    return await get("/api/v1/android/devices")
 
 
 async def get_auto_study_status() -> dict:
-    return await get("/api/auto-study/status")
+    return await get("/api/v1/auto-study/status")
 
 
 async def start_auto_study(package: str = "ua.slando", scenario: str = "basic_explore") -> dict:
@@ -57,40 +57,40 @@ async def start_auto_study(package: str = "ua.slando", scenario: str = "basic_ex
 
 
 async def get_auto_study_history() -> dict:
-    return await get("/api/auto-study/history")
+    return await get("/api/v1/auto-study/history")
 
 
 async def get_backups() -> dict:
-    return await get("/api/backups")
+    return await get("/api/v1/backups")
 
 
 async def create_backup(label: str = "dashboard") -> dict:
-    return await post("/api/backups", json={"action": "create", "label": label})
+    return await post("/api/v1/backups", json={"action": "create", "label": label})
 
 
 async def verify_backup(backup_id: str) -> dict:
-    return await post("/api/backups", json={"action": "verify", "backup_id": backup_id})
+    return await post("/api/v1/backups", json={"action": "verify", "backup_id": backup_id})
 
 
 async def get_constitution() -> dict:
-    return await get("/api/constitution")
+    return await get("/api/v1/constitution")
 
 
 async def get_constitution_article(number: int) -> dict:
-    return await get(f"/api/constitution/{number}")
+    return await get(f"/api/v1/constitution/{number}")
 
 
 async def get_knowledge_graph() -> dict:
-    return await get("/api/knowledge-graph")
+    return await get("/api/v1/knowledge-graph")
 
 
 async def get_models() -> dict:
-    return await get("/api/models")
+    return await get("/api/v1/models")
 
 
 async def cycle_model_stage(name: str, stage: str) -> dict:
-    return await post(f"/api/models/{name}/stage", json={"stage": stage})
+    return await post(f"/api/v1/models/{name}/stage", json={"stage": stage})
 
 
 async def get_agents() -> dict:
-    return await get("/api/agents")
+    return await get("/api/v1/agents")
