@@ -3,18 +3,30 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, Dict
 
 
 class ZeroShotDomainTransfer:
     """Zero-shot knowledge transfer across distinct problem domains."""
 
     def __init__(self) -> None:
-        self.history: list[dict[str, Any]] = []
+        self.history: list[Dict[str, Any]] = []
 
     def transfer_knowledge(
         self, source_domain: str, target_domain: str, knowledge_payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
+        """
+        Transfer knowledge from a source domain to a target domain.
+
+        Args:
+            source_domain (str): The domain of the original knowledge.
+            target_domain (str): The domain into which the knowledge will be transferred.
+            knowledge_payload (dict[str, Any]): The payload containing the knowledge to be transferred.
+
+        Returns:
+            dict[str, Any]: A dictionary containing the transfer details including the source and target domains,
+                          adapted payload, transfer accuracy, and timestamp.
+        """
         result = {
             "source_domain": source_domain,
             "target_domain": target_domain,
