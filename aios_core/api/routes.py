@@ -35,6 +35,12 @@ def register_routes(api) -> list:
         Route("/metrics", api._metrics),
         # Stats & Web UI endpoints
         Route("/api/v1/stats", api._stats),
+        Route("/api/v1/services", api._services),
+        Route("/api/v1/service/action", api._service_action, methods=["POST"]),
+        Route("/api/v1/auto-study/status", api._auto_study_status),
+        Route("/api/v1/auto-study/history", api._auto_study_history),
+        Route("/api/v1/auto-study", api._auto_study_start, methods=["POST"]),
+        Route("/api/v1/backups", api._backups),
         Route("/api/v1/constitution", api._ui_constitution),
         Route("/api/v1/safety", api._ui_safety),
         Route("/api/v1/knowledge-graph", api._ui_knowledge_graph),

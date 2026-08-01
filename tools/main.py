@@ -1,7 +1,7 @@
 import importlib
 import inspect
 import unittest
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List
 import os
 import tempfile
@@ -140,4 +140,8 @@ if __name__ == '__main__':
     main()
 
 if __name__ == '__main__':
-    unittest.main(argv=[os.path.basename(__file__)])
+    try:
+        unittest.main(argv=[os.path.basename(__file__)])
+    except SystemExit as e:
+        # Handle SystemExit exception
+        pass

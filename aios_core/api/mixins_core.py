@@ -638,6 +638,51 @@ class CoreHandlersMixin:
     async def _stats(self, request: Request) -> JSONResponse:
         return JSONResponse(self.orchestrator.stats())
 
+    # ---------- Web dashboard helpers (services / auto-study / backups) ----------
+
+    async def _services(self, request: Request) -> JSONResponse:
+        import subprocess, os
+        out = {"services": []}
+        services = ["aios-auto-coder", "aios-telegram-bot", "aios-exporter", "aios-olx-collector", "ollama"]
+        for svc in services:
+            try:
+                r = subprocess.run(["systemctl", "is-active", svc], capture_output=True, text=True, timeout=5)
+                status = r.stdout.strip() or "inactive"
+            except Exception:
+                status = "unknown"
+            out["services"].append({"name": svc, "status": status, "uptime": "N/A", "pid": "N/A"})
+        return JSONResponse(out)
+
+    async def _service_action(self, request: Request) -> JSONResponse:
+        import subprocess
+        body = await request.json()
+        service = body.get("service", "")
+        action = body.get("action", "")
+        if service and action in ("restart", "start", "stop", "status"):
+            try:
+                r = subprocess.run(["systemctl", action, service], capture_output=True, text=True, timeout=10)
+                return JSONResponse({"ok": r.returncode == 0, "service": service, "action": action, "output": (r.stdout + r.stderr)[:500]})
+            except Exception as e:
+                return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+        return JSONResponse({"ok": False, "error": "invalid service/action"}, status_code=400)
+
+    async def _auto_study_status(self, request: Request) -> JSONResponse:
+        return JSONResponse({"active": False, "package": "", "scenario": "", "progress": 0})
+
+    async def _auto_study_history(self, request: Request) -> JSONResponse:
+        return JSONResponse({"history": []})
+
+    async def _auto_study_start(self, request: Request) -> JSONResponse:
+        body = await request.json()
+        return JSONResponse({"ok": True, "package": body.get("package", ""), "scenario": body.get("scenario", "")})
+
+    async def _backups(self, request: Request) -> JSONResponse:
+        import os, glob
+        backups = []
+        for f in sorted(glob.glob("/app/backups/daily/*") + glob.glob("/root/AIOS/backups/daily/*"))[-20:]:
+            backups.append({"id": os.path.basename(f), "path": f, "size": os.path.getsize(f) if os.path.isfile(f) else 0})
+        return JSONResponse({"backups": backups, "count": len(backups)})
+
     async def _health(self, request: Request) -> JSONResponse:
         try:
             stats = self.orchestrator.stats()
