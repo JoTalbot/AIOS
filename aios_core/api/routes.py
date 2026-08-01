@@ -44,6 +44,7 @@ def register_routes(api) -> list:
         Route("/api/backups", api._backups, methods=["GET", "POST"]),
         Route("/api/audit", api._audit_query),
         Route("/api/constitution", api._ui_constitution),
+        Route("/api/constitution/{number}", api._dashboard_constitution_article),
         Route("/api/knowledge-graph", api._ui_knowledge_graph),
         Route("/api/models", api._ui_models),
         Route("/api/agents", api._ui_agents),

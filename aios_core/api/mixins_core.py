@@ -635,6 +635,22 @@ class CoreHandlersMixin:
                 ]
             )
 
+    async def _dashboard_constitution_article(self, request: Request) -> JSONResponse:
+        """Return the source text for a constitution article selected in the dashboard."""
+        from pathlib import Path
+        from tools.complete_constitution_tula import scan_constitution
+
+        try:
+            number = int(request.path_params["number"])
+            const_dir = getattr(self.orchestrator.policy.engine, "constitution_dir", None) or os.path.join(_PROJECT_ROOT, "docs", "constitution")
+            article = scan_constitution(Path(const_dir)).get(number)
+            if not article:
+                return JSONResponse({"error": "Article not found"}, status_code=404)
+            path = Path(const_dir) / article["filename"]
+            return JSONResponse({"number": number, "body": path.read_text(encoding="utf-8")})
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "Invalid article number"}, status_code=400)
+
     async def _stats(self, request: Request) -> JSONResponse:
         return JSONResponse(self.orchestrator.stats())
 
