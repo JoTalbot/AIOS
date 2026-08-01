@@ -208,4 +208,4 @@ def run() -> None:
     dash_host = os.environ.get("AIOS_DASH_HOST", "0.0.0.0")
     dash_port = int(os.environ.get("AIOS_DASH_PORT", "8080"))
     print(f"🌐 Launching AIOS Pure-Python Dashboard on http://{dash_host}:{dash_port}")
-    ui.run(title="AIOS Pure-Python Dashboard", favicon="🤖", host=dash_host, port=dash_port, reload=False, root=index)
+    ui.run(title="AIOS Pure-Python Dashboard", favicon="🤖", host=dash_host, port=dash_port, reload=False)
