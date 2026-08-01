@@ -1138,6 +1138,25 @@ BUTTON_ACTIONS = {
 
 
 
+def _allowed_chat_ids() -> set[int]:
+    """Return the explicit Telegram operator allowlist from the environment."""
+    raw = os.environ.get("TELEGRAM_CHAT_ID", "")
+    allowed: set[int] = set()
+    for value in raw.split(","):
+        try:
+            allowed.add(int(value.strip()))
+        except ValueError:
+            continue
+    return allowed
+
+
+def _is_authorized_chat(chat_id: object) -> bool:
+    try:
+        return int(chat_id) in _allowed_chat_ids()
+    except (TypeError, ValueError):
+        return False
+
+
 def run_bot(token: str) -> None:
     api = TelegramAPI(token)
     offset = 0
@@ -1153,6 +1172,10 @@ def run_bot(token: str) -> None:
 
                 # Handle callback queries (button presses) — always process even when paused
                 if "callback_query" in upd:
+                    callback_chat = upd.get("callback_query", {}).get("message", {}).get("chat", {}).get("id")
+                    if not _is_authorized_chat(callback_chat):
+                        print(f"  [SECURITY] ignored callback from unauthorized chat {callback_chat}")
+                        continue
                     _handle_callback(api, upd)
                     continue
 
@@ -1167,6 +1190,9 @@ def run_bot(token: str) -> None:
                 text = (msg.get("text") or "").strip()
 
                 if not chat_id or not text:
+                    continue
+                if not _is_authorized_chat(chat_id):
+                    print(f"  [SECURITY] ignored message from unauthorized chat {chat_id}")
                     continue
 
                 # Handle pending actions from inline buttons
