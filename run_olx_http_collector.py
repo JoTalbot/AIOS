@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
+import urllib.parse
 
 UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -137,7 +138,23 @@ def fetch_page(client: httpx.Client, query: str, offset: int, limit: int = 50, m
                 log.info(f"Retry {attempt}/{max_retries}, waiting {delay:.1f}s...")
                 time.sleep(delay)
             
-            r = client.get(API, params={"query": query, "offset": offset, "limit": limit}, timeout=20.0)
+            import subprocess as _sp
+            _url = API + "?" + "&".join(
+                f"{k}={urllib.parse.quote(str(v))}"
+                for k, v in [("query", query), ("offset", offset), ("limit", limit)]
+            )
+            _cur = _sp.run(
+                ["curl", "-s", "-m", "25", "-A", UA, "-H", "Referer: https://www.olx.ua/",
+                 "-H", "Accept: application/json, text/plain, */*", _url],
+                capture_output=True, text=True,
+            )
+            import json as _json
+            try:
+                r = type("R", (), {"status_code": 200})()
+                _data = _json.loads(_cur.stdout)
+            except Exception:
+                r = type("R", (), {"status_code": 502})()
+                raise httpx.HTTPStatusError("Bad response", request=None, response=r)
             
             if r.status_code == 403:
                 log.warning(f"403 Forbidden (attempt {attempt + 1}/{max_retries})")
