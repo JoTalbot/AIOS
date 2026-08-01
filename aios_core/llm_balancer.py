@@ -167,6 +167,14 @@ class LLMBalancer:
                 "Qwen/Qwen2.5-7B-Instruct-Turbo",
             ],
         },
+        "huggingface": {
+            "base_url": "https://router.huggingface.co/v1/chat/completions",
+            "models": [
+                "meta-llama/Llama-3.3-70B-Instruct",
+                "google/gemma-3-27b-it",
+                "Qwen/Qwen3-30B-A3B-Instruct",
+            ],
+        },
         "local": {
             "base_url": os.environ.get("LOCAL_LLM_BASE_URL", "http://localhost:11434/v1/chat/completions"),
             "models": [
@@ -324,13 +332,13 @@ class LLMBalancer:
         # Smart provider priority per task_type (fast/cheap first => token economy).
         self.task_priority = {
             # Simple/chat: fast cheap models first
-            "chat": ["groq", "mistral", "cohere", "openrouter", "openai", "gemini"],
+            "chat": ["groq", "mistral", "cohere", "openrouter", "openai", "huggingface", "gemini"],
             # Coding: capable models
-            "code": ["groq", "mistral", "cohere", "openrouter", "openai", "gemini"],
+            "code": ["groq", "mistral", "cohere", "openrouter", "openai", "huggingface", "gemini"],
             # Analysis/long: robust providers
-            "analysis": ["openrouter", "groq", "mistral", "openai", "gemini", "cohere"],
+            "analysis": ["openrouter", "groq", "mistral", "openai", "huggingface", "gemini", "cohere"],
             # Default
-            "general": ["groq", "mistral", "cohere", "openrouter", "openai", "gemini"],
+            "general": ["groq", "mistral", "cohere", "openrouter", "openai", "huggingface", "gemini"],
         }
 
     def _load_from_env(self):
@@ -342,7 +350,7 @@ class LLMBalancer:
                 runtime = json.loads(key_file.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
-            env_prefix = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "zai": "ZAI_API_KEY", "cerebras": "CEREBRAS_API_KEY", "mistral": "MISTRAL_API_KEY", "cohere": "COHERE_API_KEY", "together": "TOGETHER_API_KEY"}
+            env_prefix = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "zai": "ZAI_API_KEY", "cerebras": "CEREBRAS_API_KEY", "mistral": "MISTRAL_API_KEY", "cohere": "COHERE_API_KEY", "together": "TOGETHER_API_KEY", "huggingface": "HUGGINGFACE_API_KEY"}
             for provider, keys in runtime.items():
                 prefix = env_prefix.get(provider)
                 if not prefix or not isinstance(keys, list):
@@ -404,6 +412,24 @@ class LLMBalancer:
                 base_url=self.PROVIDERS["openai"]["base_url"],
                 keys=oai_keys,
                 models=self.PROVIDERS["openai"]["models"],
+            )
+
+        # HuggingFace keys
+        hf_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"HUGGINGFACE_API_KEY_{i}", "")
+            if k:
+                hf_keys.append(APIKey(key=k, provider="huggingface"))
+        hf0 = os.environ.get("HUGGINGFACE_API_KEY", "")
+        if hf0 and not any(k.key == hf0 for k in hf_keys):
+            hf_keys.append(APIKey(key=hf0, provider="huggingface"))
+
+        if hf_keys:
+            self.providers["huggingface"] = Provider(
+                name="huggingface",
+                base_url=self.PROVIDERS["huggingface"]["base_url"],
+                keys=hf_keys,
+                models=self.PROVIDERS["huggingface"]["models"],
             )
 
         groq_keys = []
