@@ -642,7 +642,7 @@ class CoreHandlersMixin:
 
         try:
             number = int(request.path_params["number"])
-            const_dir = getattr(self.orchestrator.policy.engine, "constitution_dir", None) or os.path.join(_PROJECT_ROOT, "docs", "constitution")
+            const_dir = getattr(self.orchestrator.policy.engine, "constitution_dir", None) or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "docs", "constitution")
             article = scan_constitution(Path(const_dir)).get(number)
             if not article:
                 return JSONResponse({"error": "Article not found"}, status_code=404)
