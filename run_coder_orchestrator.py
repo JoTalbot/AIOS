@@ -136,9 +136,13 @@ def get_project_context() -> dict:
     """Deep scan of project state for intelligent analysis."""
     ctx = {
         "git_status": git_cmd("status", "--short") or "clean",
-        "git_log": git_cmd("log", "-10", "--oneline", "--no-decorate") or "no commits",
+        "git_log": git_cmd("log", "-20", "--oneline", "--no-decorate") or "no commits",
         "branch": git_cmd("branch", "--show-current") or "main",
     }
+    # Keep protected auto-coder internals out of the LLM-visible git history.
+    _protected_log = ("run_coder_orchestrator", "llm_balancer", "meta_cognitive_self_coder")
+    _log_lines = [ln for ln in ctx["git_log"].splitlines() if not any(p in ln for p in _protected_log)]
+    ctx["git_log"] = "\n".join(_log_lines[-10:]) or "no commits"
 
     # Count modified files
     status_lines = [l for l in ctx["git_status"].split("\n") if l.strip()]
