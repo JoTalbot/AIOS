@@ -345,6 +345,9 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
         for f in files:
             if f.endswith(".py"):
                 rel = os.path.relpath(os.path.join(root, f), REPO_PATH)
+                if rel in ("run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
+                           "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"):
+                    continue  # protected auto-coder internals
                 real_files.append(rel)
                 if len(real_files) >= 40:
                     break
@@ -418,6 +421,9 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
 
     # Fallback: pick a random file with TODO and suggest fixing it
     todo_files = list(set(t.split(":")[0] for t in ctx.get("todos", [])))
+    protected = {"run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
+                 "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"}
+    todo_files = [t for t in todo_files if t not in protected]
     target = todo_files[0] if todo_files else (real_files[0] if real_files else "aios_core/__init__.py")
     return {
         "action": "refactor",
