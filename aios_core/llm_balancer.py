@@ -142,6 +142,31 @@ class LLMBalancer:
                 "gemma-2-9b",
             ],
         },
+        "mistral": {
+            "base_url": "https://api.mistral.ai/v1/chat/completions",
+            "models": [
+                "mistral-small-latest",
+                "mistral-medium-latest",
+                "open-mistral-7b",
+                "codestral-latest",
+            ],
+        },
+        "cohere": {
+            "base_url": "https://api.cohere.ai/v2/chat",
+            "models": [
+                "command-r",
+                "command-r-plus",
+                "command-r7b-12-2024",
+            ],
+        },
+        "together": {
+            "base_url": "https://api.together.xyz/v1/chat/completions",
+            "models": [
+                "meta-llama/Meta-Llama-3-70B-Instruct-Turbo",
+                "mistralai/Mistral-7B-Instruct-v0.3",
+                "Qwen/Qwen2.5-7B-Instruct-Turbo",
+            ],
+        },
     }
 
     # Fallback chain: if primary model fails, try these
@@ -151,6 +176,8 @@ class LLMBalancer:
             "google/gemma-4-31b-it:free",
             "nvidia/nemotron-3-super-120b-a12b:free",
             "poolside/laguna-s-2.1:free",
+            "meta-llama/Meta-Llama-3-70B-Instruct-Turbo",
+            "mistralai/mistral-small-3.2-24b-instruct",
         ],
         "meta-llama/llama-4-maverick": [
             "gemini-2.0-flash",
@@ -291,7 +318,7 @@ class LLMBalancer:
                 runtime = json.loads(key_file.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
-            env_prefix = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "zai": "ZAI_API_KEY", "cerebras": "CEREBRAS_API_KEY"}
+            env_prefix = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "zai": "ZAI_API_KEY", "cerebras": "CEREBRAS_API_KEY", "mistral": "MISTRAL_API_KEY", "cohere": "COHERE_API_KEY", "together": "TOGETHER_API_KEY"}
             for provider, keys in runtime.items():
                 prefix = env_prefix.get(provider)
                 if not prefix or not isinstance(keys, list):
@@ -425,6 +452,57 @@ class LLMBalancer:
                 base_url=self.PROVIDERS["cerebras"]["base_url"],
                 keys=cerebras_keys,
                 models=self.PROVIDERS["cerebras"]["models"],
+            )
+
+        # Mistral keys
+        mistral_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"MISTRAL_API_KEY_{i}", "")
+            if k:
+                mistral_keys.append(APIKey(key=k, provider="mistral"))
+        mk = os.environ.get("MISTRAL_API_KEY", "")
+        if mk and not any(k.key == mk for k in mistral_keys):
+            mistral_keys.append(APIKey(key=mk, provider="mistral"))
+        if mistral_keys:
+            self.providers["mistral"] = Provider(
+                name="mistral",
+                base_url=self.PROVIDERS["mistral"]["base_url"],
+                keys=mistral_keys,
+                models=self.PROVIDERS["mistral"]["models"],
+            )
+
+        # Cohere keys
+        cohere_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"COHERE_API_KEY_{i}", "")
+            if k:
+                cohere_keys.append(APIKey(key=k, provider="cohere"))
+        ck = os.environ.get("COHERE_API_KEY", "")
+        if ck and not any(k.key == ck for k in cohere_keys):
+            cohere_keys.append(APIKey(key=ck, provider="cohere"))
+        if cohere_keys:
+            self.providers["cohere"] = Provider(
+                name="cohere",
+                base_url=self.PROVIDERS["cohere"]["base_url"],
+                keys=cohere_keys,
+                models=self.PROVIDERS["cohere"]["models"],
+            )
+
+        # Together keys
+        together_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"TOGETHER_API_KEY_{i}", "")
+            if k:
+                together_keys.append(APIKey(key=k, provider="together"))
+        tk = os.environ.get("TOGETHER_API_KEY", "")
+        if tk and not any(k.key == tk for k in together_keys):
+            together_keys.append(APIKey(key=tk, provider="together"))
+        if together_keys:
+            self.providers["together"] = Provider(
+                name="together",
+                base_url=self.PROVIDERS["together"]["base_url"],
+                keys=together_keys,
+                models=self.PROVIDERS["together"]["models"],
             )
 
     def add_key(self, provider: str, key: str):
