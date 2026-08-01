@@ -190,5 +190,29 @@ def test_scan_for_tags(files: List[str]) -> None:
         except Exception as e:
             print(f"Error testing file {file}: {e}")
 
+def nothing_to_commit(path: str) -> bool:
+    """Checks if there are any changes in the given directory.
+
+    Args:
+        path (str): The path to the directory to check.
+
+    Returns:
+        bool: True if there are no changes, False otherwise.
+    """
+    # Fixing the bug: checking if the directory exists before trying to access it
+    if not os.path.exists(path):
+        return True  # If the directory does not exist, there are no changes
+    try:
+        # Checking if the directory is a Git repository
+        git_dir = os.path.join(path, '.git')
+        if not os.path.exists(git_dir):
+            return True  # If it's not a Git repository, there are no changes
+        # Running the Git status command to check for changes
+        output = os.popen(f"git -C {path} status --porcelain").read()
+        return output.strip() == ''  # If there are no changes, the output will be empty
+    except Exception as e:
+        print(f"Error checking for changes in directory {path}: {e}")
+        return True  # If there's an error, assume there are no changes
+
 if __name__ == '__main__':
     unittest.main(argv=[os.path.basename(__file__)])
