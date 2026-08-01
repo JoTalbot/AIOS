@@ -654,6 +654,15 @@ class CoreHandlersMixin:
     async def _stats(self, request: Request) -> JSONResponse:
         return JSONResponse(self.orchestrator.stats())
 
+    async def _dashboard_alert_history(self, request: Request) -> JSONResponse:
+        path = "/app/data/health_alert_history.json"
+        try:
+            with open(path) as history_file:
+                events = json.load(history_file)
+        except (OSError, ValueError):
+            events = []
+        return JSONResponse({"events": events[-50:]})
+
     async def _dashboard_health_overview(self, request: Request) -> JSONResponse:
         """Operational overview for the authenticated dashboard."""
         import psutil
