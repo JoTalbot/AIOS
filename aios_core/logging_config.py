@@ -260,12 +260,7 @@ def setup_logging(
     max_bytes: int = 10 * 1024 * 1024,  # 10 MB
     backup_count: int = 5,
     buffer_size: int = 0,
-    module_levels: dict[str, str] | None = None,
 ) -> logging.Logger:
-    """Configure the logger with specified settings."""
-    if module_levels is None:
-        module_levels = {}
-
     logger = logging.getLogger("aios")
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
     logger.handlers.clear()
@@ -296,7 +291,7 @@ def setup_logging(
         logger.addHandler(file_handler)
 
     # Per-module level overrides
-    for module_name, module_level in module_levels.items():
+    for module_name, module_level in getattr(__name__, "LOG_LEVELS", {}).items():
         module_logger = logging.getLogger(module_name)
         module_logger.setLevel(getattr(logging, module_level.upper(), logging.INFO))
 
