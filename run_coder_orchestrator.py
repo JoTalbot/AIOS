@@ -471,9 +471,10 @@ def phase_code(plan: dict) -> dict:
     if file_path in BLACKLIST:
         from datetime import datetime as _dt
         _stamp = _dt.now().strftime("%H%M%S")
-        _stop = {"create", "add", "new", "the", "a", "an", "file", "function", "method", "write", "generate", "this", "that", "with", "and", "for", "in", "of", "to"}
+        _stop = {"create", "add", "new", "the", "a", "an", "file", "function", "method", "write", "generate", "this", "that", "with", "and", "for", "in", "of", "to", "str", "list", "dict", "int", "bool", "tuple", "set", "return", "args", "kwargs", "param", "params", "root", "dir", "path", "text", "data", "listof"}
         _words = []
-        for _tok in (instruction or "").lower().replace("'", " ").replace("`", " ").split():
+        _norm = (instruction or "").lower().replace("'", " ").replace("`", " ")
+        for _tok in _norm.replace("_", " ").replace("-", " ").split():
             _w = "".join(ch for ch in _tok if ch.isalpha())
             if _w and _w not in _stop and _w not in _words:
                 _words.append(_w)
