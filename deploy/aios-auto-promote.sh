@@ -45,7 +45,7 @@ fi
 log "compile validation OK"
 
 # --- test gate: run a quick pytest on changed core modules if present ---
-if [[ -f "$STAGING_DIR/aios_core" ]] && command -v /opt/aios/.venv/bin/python3.11 >/dev/null 2>&1; then
+if [[ -d "$STAGING_DIR/aios_core" ]] && command -v /opt/aios/.venv/bin/python3.11 >/dev/null 2>&1; then
     # Only fail the gate on real import/collection errors, not on system-missing deps.
     if ! (cd "$STAGING_DIR" && timeout 180 /opt/aios/.venv/bin/python3.11 -m pytest tests/security tests/integration \
             -q --no-header -p no:cacheprovider >/tmp/aios_promote_test.log 2>&1); then
