@@ -33,9 +33,10 @@ import time
 import urllib.request
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+PROJECT_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
-_env_path = Path(__file__).resolve().parent / ".env"
+_env_path = PROJECT_ROOT / ".env"
 if _env_path.exists():
     for _line in _env_path.read_text(encoding="utf-8").splitlines():
         _line = _line.strip()
@@ -437,7 +438,7 @@ def _get_coder_module():
     import importlib.util, sys
     mod_name = "aios_core.meta_cognitive_self_coder"
     spec = importlib.util.spec_from_file_location(
-        mod_name, "/app/aios_core/meta_cognitive_self_coder.py"
+        mod_name, str(PROJECT_ROOT / "aios_core" / "meta_cognitive_self_coder.py")
     )
     mod = importlib.util.module_from_spec(spec)
     mod.__name__ = mod_name
@@ -606,7 +607,7 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
     elif data == "menu_keys":
         import importlib.util as _iu, sys as _sys, os as _os
         try:
-            spec = _iu.spec_from_file_location("lb_k", "/app/aios_core/llm_balancer.py")
+            spec = _iu.spec_from_file_location("lb_k", str(PROJECT_ROOT / "aios_core" / "llm_balancer.py"))
             mod = _iu.module_from_spec(spec)
             _sys.modules["lb_k"] = mod
             spec.loader.exec_module(mod)
@@ -637,7 +638,7 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
     elif data == "coder_backlog":
         import json as _j
         try:
-            with open("/app/data/coder_backlog.json") as f:
+            with open(PROJECT_ROOT / "data" / "coder_backlog.json") as f:
                 bl = _j.load(f)
             lines = [chr(128230) + " <b>Backlog</b>", ""]
             lines.append("Cycles: " + str(bl.get("cycle_count", 0)))
@@ -663,7 +664,7 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
     elif data == "coder_balancer":
         import importlib.util as _iu, sys as _sys
         try:
-            spec = _iu.spec_from_file_location("lb_b", "/app/aios_core/llm_balancer.py")
+            spec = _iu.spec_from_file_location("lb_b", str(PROJECT_ROOT / "aios_core" / "llm_balancer.py"))
             mod = _iu.module_from_spec(spec)
             _sys.modules["lb_b"] = mod
             spec.loader.exec_module(mod)
@@ -899,7 +900,7 @@ def _llm_status() -> str:
     """Return LLM provider status without consuming credits."""
     import importlib.util as _iu, sys as _sys
     try:
-        spec = _iu.spec_from_file_location("lb_s", "/app/aios_core/llm_balancer.py")
+        spec = _iu.spec_from_file_location("lb_s", str(PROJECT_ROOT / "aios_core" / "llm_balancer.py"))
         mod = _iu.module_from_spec(spec)
         _sys.modules["lb_s"] = mod
         spec.loader.exec_module(mod)
@@ -994,7 +995,7 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
     # Legacy direct endpoints remain as a last-resort compatibility fallback.
     endpoints = []
     try:
-        with open("/app/data/.llm_keys.json") as _kf:
+        with open(PROJECT_ROOT / "data" / ".llm_keys.json") as _kf:
             _keys = _json.load(_kf)
         for _k in _keys.get("openrouter", []):
             endpoints.append(("https://openrouter.ai/api/v1/chat/completions", _k, "mistralai/mistral-small-3.2-24b-instruct"))
