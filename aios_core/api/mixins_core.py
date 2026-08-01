@@ -638,6 +638,18 @@ class CoreHandlersMixin:
     async def _stats(self, request: Request) -> JSONResponse:
         return JSONResponse(self.orchestrator.stats())
 
+    async def _dashboard_system_stats(self, request: Request) -> JSONResponse:
+        """Return host utilization for the NiceGUI overview dashboard."""
+        import psutil
+
+        return JSONResponse(
+            {
+                "cpu": f"{psutil.cpu_percent(interval=None):.1f}%",
+                "memory": f"{psutil.virtual_memory().percent:.1f}%",
+                "disk": f"{psutil.disk_usage('/').percent:.1f}%",
+            }
+        )
+
     # ---------- Web dashboard helpers (services / auto-study / backups) ----------
 
     async def _services(self, request: Request) -> JSONResponse:

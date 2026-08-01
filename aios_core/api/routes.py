@@ -35,6 +35,8 @@ def register_routes(api) -> list:
         Route("/metrics", api._metrics),
         # Stats & Web UI endpoints
         Route("/api/v1/stats", api._stats),
+        # Legacy dashboard endpoint; retains CPU, memory and disk fields.
+        Route("/api/stats", api._dashboard_system_stats),
         Route("/api/v1/services", api._services),
         Route("/api/v1/service/action", api._service_action, methods=["POST"]),
         Route("/api/v1/auto-study/status", api._auto_study_status),
