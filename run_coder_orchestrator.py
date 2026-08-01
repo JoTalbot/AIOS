@@ -569,16 +569,19 @@ def phase_code(plan: dict) -> dict:
         ))
         _action = plan.get("action", "")
         if _heavy or _action in ("feature", "refactor"):
-            config.llm_model = os.environ.get("LLM_MODEL_HEAVY", "gpt-4o")
+            # Heavy tasks: same stable model but allow more tokens for depth.
+            config.llm_model = os.environ.get("LLM_MODEL_HEAVY", "gpt-4o-mini")
+            config.max_tokens = int(os.environ.get("LLM_MAX_TOKENS_HEAVY", "6000"))
         else:
             config.llm_model = os.environ.get("LLM_MODEL", "gpt-4o-mini")
+            config.max_tokens = int(os.environ.get("LLM_MAX_TOKENS", "4000"))
         config.llm_api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("LLM_API_KEY", "")
         if config.llm_api_key and config.llm_api_key.startswith("sk-or-"):
             config.llm_base_url = "https://openrouter.ai/api/v1"
         else:
             config.llm_base_url = os.environ.get("LLM_BASE_URL", config.llm_base_url)
         config.repo_path = REPO_PATH
-        config.max_tokens = 4000  # enough for full-file refactor
+        # max_tokens already set by model routing above; keep as-is.
         coder = mod.MetaCognitiveCoder(config)
     except Exception as e:
         print(f"    [CODE] Failed to init coder: {e}")
