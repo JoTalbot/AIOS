@@ -167,6 +167,32 @@ class LLMBalancer:
                 "Qwen/Qwen2.5-7B-Instruct-Turbo",
             ],
         },
+        "airforce": {
+            "base_url": "https://api.airforce/v1/chat/completions",
+            "models": [
+                "gpt-4o-mini",
+                "gpt-4o",
+                "claude-sonnet-4.6-rp",
+                "llama-4-scout-17b-16e-instruct",
+                "mistral-small-3.1-24b-instruct",
+                "kimi-k3",
+            ],
+        },
+        "aimlapi": {
+            "base_url": "https://api.aimlapi.com/v1/chat/completions",
+            "models": [
+                "gpt-4o-mini",
+                "gpt-4o",
+                "meta-llama/Llama-3.3-70B-Instruct",
+            ],
+        },
+        "ibm": {
+            "base_url": "https://us-south.ml.cloud.ibm.com/ml/v1/chat/completions",
+            "models": [
+                "meta-llama/llama-3-3-70b-instruct",
+                "ibm/granite-3-3-8b-instruct",
+            ],
+        },
         "huggingface": {
             "base_url": "https://router.huggingface.co/v1/chat/completions",
             "models": [
@@ -319,6 +345,17 @@ class LLMBalancer:
             "gemini-2.0-flash",
             "gpt-4o-mini",
         ],
+        # gpt-4o-mini: prefer external, fall back to local when rate-limited/empty.
+        "gpt-4o-mini": [
+            "gpt-4o",
+            "qwen2.5-coder:1.5b",
+            "google/gemma-3-27b-it",
+        ],
+        "gpt-4o": [
+            "gpt-4o-mini",
+            "qwen2.5-coder:1.5b",
+            "google/gemma-3-27b-it",
+        ],
         # Local Ollama models -> cloud/HF fallback chain (used when local LLM is down).
         "qwen2.5-coder:1.5b": [
             "google/gemma-3-27b-it",
@@ -347,13 +384,13 @@ class LLMBalancer:
         # Smart provider priority per task_type (fast/cheap first => token economy).
         self.task_priority = {
             # Simple/chat: fast cheap models first
-            "chat": ["groq", "mistral", "cohere", "openrouter", "openai", "huggingface", "gemini"],
+            "chat": ["airforce", "openrouter", "groq", "mistral", "cohere", "openai", "huggingface", "aimlapi", "gemini"],
             # Coding: capable models
-            "code": ["groq", "mistral", "cohere", "openrouter", "openai", "huggingface", "gemini"],
+            "code": ["airforce", "openrouter", "groq", "mistral", "cohere", "openai", "huggingface", "aimlapi", "gemini"],
             # Analysis/long: robust providers
-            "analysis": ["openrouter", "groq", "mistral", "openai", "huggingface", "gemini", "cohere"],
+            "analysis": ["airforce", "openrouter", "groq", "mistral", "openai", "huggingface", "aimlapi", "gemini", "cohere"],
             # Default
-            "general": ["groq", "mistral", "cohere", "openrouter", "openai", "huggingface", "gemini"],
+            "general": ["airforce", "openrouter", "groq", "mistral", "cohere", "openai", "huggingface", "aimlapi", "gemini"],
         }
 
     def _load_from_env(self):
@@ -365,7 +402,7 @@ class LLMBalancer:
                 runtime = json.loads(key_file.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
-            env_prefix = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "zai": "ZAI_API_KEY", "cerebras": "CEREBRAS_API_KEY", "mistral": "MISTRAL_API_KEY", "cohere": "COHERE_API_KEY", "together": "TOGETHER_API_KEY", "huggingface": "HUGGINGFACE_API_KEY"}
+            env_prefix = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "zai": "ZAI_API_KEY", "cerebras": "CEREBRAS_API_KEY", "mistral": "MISTRAL_API_KEY", "cohere": "COHERE_API_KEY", "together": "TOGETHER_API_KEY", "huggingface": "HUGGINGFACE_API_KEY", "airforce": "AIRFORCE_API_KEY", "aimlapi": "AIMLAPI_API_KEY", "ibm": "IBM_API_KEY"}
             for provider, keys in runtime.items():
                 prefix = env_prefix.get(provider)
                 if not prefix or not isinstance(keys, list):
@@ -445,6 +482,57 @@ class LLMBalancer:
                 base_url=self.PROVIDERS["huggingface"]["base_url"],
                 keys=hf_keys,
                 models=self.PROVIDERS["huggingface"]["models"],
+            )
+
+        # Airforce keys (OpenAI-compatible, free tier)
+        air_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"AIRFORCE_API_KEY_{i}", "")
+            if k:
+                air_keys.append(APIKey(key=k, provider="airforce"))
+        air0 = os.environ.get("AIRFORCE_API_KEY", "")
+        if air0 and not any(k.key == air0 for k in air_keys):
+            air_keys.append(APIKey(key=air0, provider="airforce"))
+        if air_keys:
+            self.providers["airforce"] = Provider(
+                name="airforce",
+                base_url=self.PROVIDERS["airforce"]["base_url"],
+                keys=air_keys,
+                models=self.PROVIDERS["airforce"]["models"],
+            )
+
+        # AIMLAPI keys
+        aim_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"AIMLAPI_API_KEY_{i}", "")
+            if k:
+                aim_keys.append(APIKey(key=k, provider="aimlapi"))
+        aim0 = os.environ.get("AIMLAPI_API_KEY", "")
+        if aim0 and not any(k.key == aim0 for k in aim_keys):
+            aim_keys.append(APIKey(key=aim0, provider="aimlapi"))
+        if aim_keys:
+            self.providers["aimlapi"] = Provider(
+                name="aimlapi",
+                base_url=self.PROVIDERS["aimlapi"]["base_url"],
+                keys=aim_keys,
+                models=self.PROVIDERS["aimlapi"]["models"],
+            )
+
+        # IBM watsonx keys
+        ibm_keys = []
+        for i in range(1, 10):
+            k = os.environ.get(f"IBM_API_KEY_{i}", "")
+            if k:
+                ibm_keys.append(APIKey(key=k, provider="ibm"))
+        ibm0 = os.environ.get("IBM_API_KEY", "")
+        if ibm0 and not any(k.key == ibm0 for k in ibm_keys):
+            ibm_keys.append(APIKey(key=ibm0, provider="ibm"))
+        if ibm_keys:
+            self.providers["ibm"] = Provider(
+                name="ibm",
+                base_url=self.PROVIDERS["ibm"]["base_url"],
+                keys=ibm_keys,
+                models=self.PROVIDERS["ibm"]["models"],
             )
 
         groq_keys = []
