@@ -1019,7 +1019,12 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
                 return "LLM temporarily unavailable."
 
         # Check if LLM wants to run a command
-        cmd_match = _re.search(r"<cmd>(.*?)</cmd>", response, _re.DOTALL)
+        cmd_match = None
+        for _p in (r"<cmd>(.*?)</cmd>", r"```cmd\n(.*?)```", r"\[cmd\](.*?)\[/cmd\]"):
+            _m = _re.search(_p, response, _re.DOTALL)
+            if _m:
+                cmd_match = _m
+                break
         if cmd_match and iteration < 3:
             cmd = cmd_match.group(1).strip()
             # Execute command
@@ -1047,7 +1052,10 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
             # Final response — no more commands
             _chat_history[chat_id].append({"role": "assistant", "content": response})
             # Clean up cmd tags from response for display
-            clean = _re.sub(r"<cmd>.*?</cmd>", "", response, flags=_re.DOTALL).strip()
+            clean = _re.sub(r"<cmd>.*?</cmd>", "", response, flags=_re.DOTALL)
+            clean = _re.sub(r"```cmd\n.*?```", "", clean, flags=_re.DOTALL)
+            clean = _re.sub(r"\[cmd\].*?\[/cmd\]", "", clean, flags=_re.DOTALL)
+            clean = clean.strip()
             return clean if clean else response
 
     # Max iterations reached
@@ -1170,7 +1178,8 @@ def run_bot(token: str) -> None:
                     if llm_reply:
                         # Remove any remaining cmd tags
                         import re as _re2
-                        llm_reply = _re2.sub(r'<cmd>.*?</cmd>', '', llm_reply, flags=_re2.DOTALL).strip()
+                        llm_reply = _re2.sub(r'<cmd>.*?</cmd>', '', llm_reply, flags=_re2.DOTALL)
+                        llm_reply = _re2.sub(r'```cmd\n.*?```', '', llm_reply, flags=_re2.DOTALL).strip()
                         # Escape HTML but preserve code blocks
                         llm_reply = llm_reply.replace("&", "&amp;")
                         try:
