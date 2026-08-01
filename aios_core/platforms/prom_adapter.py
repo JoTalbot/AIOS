@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Dict
 
 from .base import IncomingMessage, PlatformAdapter, SentMessage
 
