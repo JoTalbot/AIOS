@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, Dict
 
 
 class MultiAgentDebateEngine:
     """Multi-agent adversarial debate and hypothesis verification engine."""
 
     def __init__(self) -> None:
-        self.history: list[dict[str, Any]] = []
+        self.history: list[Dict[str, Any]] = []
 
-    def run_debate(self, topic: str, rounds: int = 3) -> dict[str, Any]:
+    def run_debate(self, topic: str, rounds: int = 3) -> Dict[str, Any]:
         result = {
             "topic": topic,
             "rounds_debated": rounds,

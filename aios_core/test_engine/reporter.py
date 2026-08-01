@@ -84,9 +84,14 @@ class TestReporter:
 
         if report.failures:
             lines.append(f"\n{len(report.failures)} FAILURES:")
-            for f in report.failures[:10]:
-                lines.append(f"  - {f['suite']}::{f['test']}: {f['message']}")  # noqa: PERF401
-
+            for i, f in enumerate(report.failures, 1):
+                lines.append(
+                    f"\n{i}. {f['suite']}::{f['test']}\n"
+                    f"   Status: {f['status']}\n"
+                    f"   Expected: {f['expected']}\n"
+                    f"   Actual: {f['actual']}\n"
+                    f"   Message: {f['message']}"
+                )
         return "\n".join(lines)
 
     def failures_text(self, report: TestReport) -> str:
