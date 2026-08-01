@@ -1,15 +1,16 @@
 """Tests for run_telegram_bot.py"""
 
-import unittest
+import pytest
 from unittest.mock import Mock, patch
 from pathlib import Path
 import sys
 from run_telegram_bot import send_message, process_update, handle_command, handle_message, process_command
 
-class TestRunTelegramBot(unittest.TestCase):
+class TestRunTelegramBot:
     """Tests for run_telegram_bot.py"""
 
-    def setUp(self):
+    @pytest.fixture(autouse=True)
+    def setup(self):
         """Setup before each test"""
         self.mock_bot = Mock()
         self.mock_update = Mock()
@@ -50,12 +51,21 @@ class TestRunTelegramBot(unittest.TestCase):
         process_command(self.mock_bot, command)
         mock_bot.process_command.assert_called_once_with(command)
 
+    @patch('sys.argv', ['run_telegram_bot.py', '--test'])
     def test_main(self):
         """Test main function"""
-        with patch('sys.argv', ['run_telegram_bot.py', '--test']):
-            with self.assertRaises(SystemExit):
-                sys.modules['run_telegram_bot'].main()
+        with pytest.raises(SystemExit):
+            sys.modules['run_telegram_bot'].main()
+
+def pytest_runtest_setup(item):
+    """Setup pytest"""
+    if item.config.option.collectonly:
+        item.config.hook.pytest_collectreport(report=item)
+
+def pytest_runtest_teardown(item):
+    """Teardown pytest"""
+    if item.config.option.collectonly:
+        item.config.hook.pytest_collectreport(report=item)
 
 if __name__ == '__main__':
-    unittest.main(argv=['first-arg-is-ignored'], exit=False)
-    __all__ = ['TestRunTelegramBot']
+    pytest.main(['-v', '--capture=no'])
