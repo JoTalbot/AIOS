@@ -814,6 +814,25 @@ class CoreHandlersMixin:
                 if not backup_id:
                     return JSONResponse({"error": "backup_id is required"}, status_code=400)
                 return JSONResponse({"ok": manager.verify_backup(backup_id), "backup_id": backup_id})
+            if action == "test_restore":
+                import sqlite3
+                import tempfile
+                backup_id = str(body.get("backup_id", ""))
+                if not backup_id:
+                    return JSONResponse({"error": "backup_id is required"}, status_code=400)
+                fd, target = tempfile.mkstemp(prefix="aios-restore-check-", suffix=".sqlite")
+                os.close(fd)
+                try:
+                    restored = manager.restore_backup(backup_id, target)
+                    if not restored:
+                        return JSONResponse({"ok": False, "backup_id": backup_id, "error": "restore failed"}, status_code=400)
+                    connection = sqlite3.connect(target)
+                    connection.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()
+                    connection.close()
+                    return JSONResponse({"ok": True, "backup_id": backup_id, "restored": True})
+                finally:
+                    if os.path.exists(target):
+                        os.unlink(target)
             return JSONResponse({"error": "unsupported backup action"}, status_code=400)
 
         backups = []
