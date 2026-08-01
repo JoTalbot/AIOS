@@ -195,6 +195,7 @@ services:
     volumes:
       - ./deploy/monitoring/grafana-production.json:/var/lib/grafana/dashboards/aios-production.json:ro
       - ./deploy/monitoring/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/aios.yml:ro
+      - ./deploy/monitoring/datasources/prometheus.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
       - grafana-data:/var/lib/grafana
     depends_on: [prometheus]
     restart: unless-stopped
