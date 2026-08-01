@@ -21,46 +21,32 @@ class SecretScannerResult:
 class SecretScanner:
     """Class for scanning secrets in CI pipeline."""
 
-    def __init__(self):
-        self.scanners = {
-            "gitguardian": gitguardian.GitGuardian,
-            "secretscanner": secretscanner.SecretScanner
-        }
+    def __init__(self, scanner: object):
+        self.scanner = scanner
 
-    async def scan_secrets(self, scanner_name: str = "gitguardian") -> SecretScannerResult:
+    async def scan_secrets(self) -> SecretScannerResult:
         """Scan for secrets in the repository.
-
-        Args:
-            scanner_name (str, optional): Name of the scanner to use. Defaults to "gitguardian".
 
         Returns:
             SecretScannerResult: Result of secret scanning.
         """
-        if scanner_name not in self.scanners:
-            raise ValueError(f"Unsupported scanner: {scanner_name}")
-
-        scanner = self.scanners[scanner_name]()
         try:
-            secrets_found = await scanner.scan()
-            return SecretScannerResult(secrets_found, scanner_name)
+            secrets_found = await self.scanner.scan()
+            return SecretScannerResult(secrets_found, type(self.scanner).__name__)
         except Exception as e:
-            print(f"Error scanning secrets with {scanner_name}: {e}")
-            return SecretScannerResult([], scanner_name)
+            print(f"Error scanning secrets with {type(self.scanner).__name__}: {e}")
+            return SecretScannerResult([], type(self.scanner).__name__)
 
 class SecretsScanner:
     """Class for scanning secrets in CI pipeline and integrating with SecretsManager."""
 
-    def __init__(self):
-        self.secret_scanner = SecretScanner()
-        self.secrets_manager = SecretsManager()
+    def __init__(self, secret_scanner: SecretScanner, secrets_manager: SecretsManager):
+        self.secret_scanner = secret_scanner
+        self.secrets_manager = secrets_manager
 
-    async def scan_and_store_secrets(self, scanner_name: str = "gitguardian") -> None:
-        """Scan for secrets in the repository and store them in SecretsManager.
-
-        Args:
-            scanner_name (str, optional): Name of the scanner to use. Defaults to "gitguardian".
-        """
-        result = await self.secret_scanner.scan_secrets(scanner_name)
+    async def scan_and_store_secrets(self) -> None:
+        """Scan for secrets in the repository and store them in SecretsManager."""
+        result = await self.secret_scanner.scan_secrets()
         if result.secrets_found:
             print(f"Secrets found with {result.scanner_used}: {result.secrets_found}")
             await self.secrets_manager.store_secrets(result.secrets_found)
@@ -157,7 +143,7 @@ def scan_and_store_secrets_with_security_check(scanner_name: str = "gitguardian"
         scanner_name (str, optional): Name of the scanner to use. Defaults to "gitguardian".
     """
     secret_scanner = get_secret_scanner(scanner_name)
-    result = secret_scanner.scan_secrets(scanner_name)
+    result = secret_scanner.scan_secrets()
     if result.secrets_found:
         print(f"Secrets found with {result.scanner_used}: {result.secrets_found}")
         for secret in result.secrets_found:
