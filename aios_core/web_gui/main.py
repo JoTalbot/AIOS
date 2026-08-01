@@ -183,7 +183,7 @@ def devices_page() -> None:
 def run() -> None:
     try:
         from aios_core.advisor.templates_engine import TemplateEngine
-        from aios_core.dashboard_views.advisor_templates_view import render_advisor_templates_view
+        from aios_core.dashboard_views.views.advisor_templates_view import render_advisor_templates_view
 
         template_engine = TemplateEngine(storage_path="data/templates")
 
@@ -195,7 +195,7 @@ def run() -> None:
 
     try:
         from aios_core.advisor.metrics_collector import MetricsCollector
-        from aios_core.dashboard_views.metrics_view import render_metrics_view
+        from aios_core.dashboard_views.views.metrics_view import render_metrics_view
 
         metrics_collector = MetricsCollector(storage_path="data/metrics")
 
