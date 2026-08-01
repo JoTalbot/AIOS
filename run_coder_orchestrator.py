@@ -472,10 +472,14 @@ def phase_code(plan: dict) -> dict:
         from datetime import datetime as _dt
         _stamp = _dt.now().strftime("%H%M%S")
         _stop = {"create", "add", "new", "the", "a", "an", "file", "function", "method", "write", "generate", "this", "that", "with", "and", "for", "in", "of", "to", "str", "list", "dict", "int", "bool", "tuple", "set", "return", "args", "kwargs", "param", "params", "root", "dir", "path", "text", "data", "listof"}
+        _TR = {"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ё":"e","ж":"zh","з":"z","и":"i","й":"y",
+               "к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f",
+               "х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"sch","ъ":"","ы":"y","ь":"","э":"e","ю":"yu","я":"ya"}
         _words = []
         _norm = (instruction or "").lower().replace("'", " ").replace("`", " ")
         for _tok in _norm.replace("_", " ").replace("-", " ").split():
-            _w = "".join(ch for ch in _tok if ch.isalpha())
+            _w = "".join(_TR.get(c, c) for c in _tok)
+            _w = "".join(ch for ch in _w if ch.isalpha())
             if _w and _w not in _stop and _w not in _words:
                 _words.append(_w)
             if len(_words) >= 3:
