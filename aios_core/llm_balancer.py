@@ -154,8 +154,8 @@ class LLMBalancer:
         "cohere": {
             "base_url": "https://api.cohere.ai/v2/chat",
             "models": [
-                "command-r",
-                "command-r-plus",
+                "command-a-03-2025",
+                "command-r-08-2024",
                 "command-r7b-12-2024",
             ],
         },
@@ -281,8 +281,9 @@ class LLMBalancer:
             "gemini-2.0-flash",
         ],
         "llama-3.1-8b-instant": [
+            "mistral-small-latest",
+            "command-r-08-2024",
             "llama-3.3-70b-versatile",
-            "meta-llama/llama-4-maverick",
             "gemini-2.0-flash",
         ],
         "mixtral-8x7b-32768": [
@@ -655,9 +656,15 @@ class LLMBalancer:
                     print(f"  [Balancer] OK: {prov_name}/{try_model}")
 
                     if "choices" in data and data["choices"]:
-                        return data["choices"][0]["message"]["content"]
+                        _c = data["choices"][0]["message"]["content"]
+                        return _c if isinstance(_c, str) else ""
                     elif "data" in data and isinstance(data["data"], dict) and "choices" in data["data"]:
                         return data["data"]["choices"][0]["message"]["content"]
+                    elif "message" in data and isinstance(data.get("message"), dict):
+                        _mc = data["message"].get("content")
+                        if isinstance(_mc, list):
+                            return "".join(x.get("text", "") for x in _mc if isinstance(x, dict))
+                        return str(_mc or "")
                     elif "result" in data:
                         return str(data["result"])
                     else:
