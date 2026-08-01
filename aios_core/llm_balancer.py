@@ -74,7 +74,7 @@ class Provider:
         key.error_count += 1
         key.cooldown_until = time.time() + cooldown
         print(f"  [Balancer] {key.provider} key cooled down {cooldown}s: {error}")
-
+    installed: set = field(default_factory=set)
 
 class LLMBalancer:
     """Auto-balancing LLM client across multiple providers and keys."""
@@ -165,6 +165,15 @@ class LLMBalancer:
                 "meta-llama/Meta-Llama-3-70B-Instruct-Turbo",
                 "mistralai/Mistral-7B-Instruct-v0.3",
                 "Qwen/Qwen2.5-7B-Instruct-Turbo",
+            ],
+        },
+        "local": {
+            "base_url": os.environ.get("LOCAL_LLM_BASE_URL", "http://localhost:11434/v1/chat/completions"),
+            "models": [
+                "qwen2.5-coder:14b",
+                "qwen2.5-coder:7b",
+                "deepseek-coder:6.7b",
+                "qwen2.5-coder:32b",
             ],
         },
     }
@@ -505,6 +514,23 @@ class LLMBalancer:
                 models=self.PROVIDERS["together"]["models"],
             )
 
+        # Local (Ollama) - enabled only if LOCAL_LLM=1 and Ollama is reachable
+        if os.environ.get("LOCAL_LLM", "") == "1":
+            import urllib.request as _ur
+            try:
+                with _ur.urlopen("http://localhost:11434/api/tags", timeout=2) as _r:
+                    _installed = {m["name"] for m in _r.json().get("models", [])}
+            except Exception:
+                _installed = set()
+            local_keys = [APIKey(key="local", provider="local")]
+            self.providers["local"] = Provider(
+                name="local",
+                base_url=self.PROVIDERS["local"]["base_url"],
+                keys=local_keys,
+                models=self.PROVIDERS["local"]["models"],
+                installed=_installed,
+            )
+
     def add_key(self, provider: str, key: str):
         """Dynamically add an API key."""
         if provider not in self.providers:
@@ -554,6 +580,9 @@ class LLMBalancer:
                     model_supported = (
                         try_model in provider.models or
                         prov_name == "openrouter"  # OpenRouter supports everything
+                        or (prov_name == "local" and
+                            (try_model in getattr(provider, "installed", set()) or
+                             any(try_model in i for i in getattr(provider, "installed", set()))))
                     )
                     if not model_supported:
                         continue
