@@ -2,7 +2,7 @@
 """
 aios_scanfortagsrootdir_str_listdict_115420.py
 
-This module is part of the CI pipeline. It scans all Python files in the
+This module is part of the CI pipeline. It scans all files in the
 project root for the tags TODO, FIXME, HACK, XXX, and BUG, generates a
 JSON report, and exits with a non‑zero status if any tags are found.
 The script should be run before deployment to ensure code quality.
@@ -63,19 +63,21 @@ def scan_for_tags(root_dir: str) -> List[Dict[str, str | int]]:
 
     for file in root_path.rglob("*"):
         try:
-            if file.is_file() and file.suffix in [".py", ".txt", ".md"]:
-                with file.open(encoding="utf-8") as f:
-                    for line_no, line in enumerate(f, start=1):
-                        for match in _TAG_REGEX.finditer(line):
-                            tag, text = match.group(1), match.group(2).strip()
-                            entries.append(
-                                {
-                                    "file": str(file.relative_to(root_path)),
-                                    "line_number": line_no,
-                                    "tag": tag,
-                                    "text": text,
-                                }
-                            )
+            if file.is_file():
+                # Support for .env, .ini, and other configuration files
+                if file.suffix in [".py", ".txt", ".md", ".env", ".ini"]:
+                    with file.open(encoding="utf-8") as f:
+                        for line_no, line in enumerate(f, start=1):
+                            for match in _TAG_REGEX.finditer(line):
+                                tag, text = match.group(1), match.group(2).strip()
+                                entries.append(
+                                    {
+                                        "file": str(file.relative_to(root_path)),
+                                        "line_number": line_no,
+                                        "tag": tag,
+                                        "text": text,
+                                    }
+                                )
         except (OSError, UnicodeDecodeError) as exc:
             logger.warning("Could not read file '%s': %s", file, exc)
 
