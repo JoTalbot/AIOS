@@ -51,7 +51,7 @@ async def get_auto_study_status() -> dict:
 
 async def start_auto_study(package: str = "ua.slando", scenario: str = "basic_explore") -> dict:
     return await post(
-        "/api/auto-study",
+        "/api/v1/auto-study",
         json={"package": package, "scenario": scenario},
     )
 
