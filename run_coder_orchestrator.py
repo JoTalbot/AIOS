@@ -385,18 +385,34 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
     issues_text = json.dumps(analysis.get("issues", []), ensure_ascii=False)
     priority = analysis.get("priority_task", "")
 
+    # Memory: avoid re-picking files already targeted in the last N cycles.
+    _recent_targets = []
+    for _h in (backlog.get("history", []) or [])[-8:]:
+        _f = _h.get("file")
+        if _f and _f not in _recent_targets:
+            _recent_targets.append(_f)
+    _recent_text = ", ".join(_recent_targets) if _recent_targets else "нет"
+    _files_list = files_list
+    if _recent_targets:
+        # Filter recently-handled files out of the candidate list.
+        _files_list = "\n".join(
+            ln for ln in files_list.split("\n")
+            if not any(rt in ln for rt in _recent_targets)
+        ) or files_list
+
     prompt = (
         f"Ты — автономный кодер. Составь план на этот цикл.\n\n"
         f"Проблемы: {issues_text}\n"
         f"Приоритет: {priority}\n"
         f"TODO в коде:\n{todos_text}\n\n"
+        f"⚠️ Уже обработаны недавно (НЕ выбирай их): {_recent_text}\n\n"
     )
 
     if backlog_text:
         prompt += f"Задачи в бэклоге:\n{backlog_text}\n\n"
 
     prompt += (
-        f"Файлы проекта:\n{files_list}\n\n"
+        f"Файлы проекта:\n{_files_list}\n\n"
         f"ПРАВИЛА:\n"
         f"1. code_needed ВСЕГДА true\n"
         f"2. Выбери ОДИН конкретный файл из списка\n"
