@@ -105,9 +105,9 @@ def get_coder():
 def git_cmd(*args) -> str:
     try:
         r = subprocess.run(["git"] + list(args), cwd=REPO_PATH,
-                           capture_output=True, text=True, timeout=15)
-        return r.stdout.strip()
-    except:
+                           capture_output=True, text=True, timeout=20)
+        return (r.stdout + r.stderr).strip()
+    except Exception:
         return ""
 
 # ---------------------------------------------------------------------------
@@ -235,6 +235,8 @@ _cycle_count = 0
 _consecutive_errors = 0
 MAX_ERRORS = 5
 _previous_issues = []
+_last_llm_error_cycle = 0
+_LLM_ERROR_COOLDOWN_CYCLES = 60  # ~10 min at 10s interval
 
 def phase_analyze(llm: LLMClient, ctx: dict, backlog: dict) -> dict:
     """Phase 1: Deep intelligent analysis of project state."""
@@ -300,6 +302,14 @@ def phase_analyze(llm: LLMClient, ctx: dict, backlog: dict) -> dict:
             return result
     except (json.JSONDecodeError, ValueError):
         pass
+    except Exception as e:
+        return {
+            "health_score": 0,
+            "summary": f"LLM Error: {e}",
+            "issues": [],
+            "opportunities": [],
+            "priority_task": "Продолжить развитие",
+        }
 
     return {
         "health_score": 5,
@@ -426,9 +436,12 @@ def phase_code(plan: dict) -> dict:
         # Force model from orchestrator env
         config.llm_model = os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick")
         config.llm_api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("LLM_API_KEY", "")
-        config.llm_base_url = os.environ.get("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+        if config.llm_api_key and config.llm_api_key.startswith("sk-or-"):
+            config.llm_base_url = "https://openrouter.ai/api/v1"
+        else:
+            config.llm_base_url = os.environ.get("LLM_BASE_URL", config.llm_base_url)
         config.repo_path = REPO_PATH
-        config.max_tokens = 1500  # conserve credits
+        config.max_tokens = 4000  # enough for full-file refactor
         coder = mod.MetaCognitiveCoder(config)
     except Exception as e:
         print(f"    [CODE] Failed to init coder: {e}")
@@ -447,6 +460,20 @@ def phase_code(plan: dict) -> dict:
     # Must be .py
     if not file_path.endswith(".py"):
         file_path += ".py"
+
+    # Protected internal files: never rewrite these (would break the pipeline).
+    BLACKLIST = {
+        "tools/run_coder_orchestrator.py",
+        "run_coder_orchestrator.py",
+        "aios_core/llm_balancer.py",
+        "aios_core/meta_cognitive_self_coder.py",
+    }
+    if file_path in BLACKLIST:
+        from datetime import datetime as _dt
+        _stamp = _dt.now().strftime("%H%M%S")
+        _base = (instruction or "new_module")[:24].replace(" ", "_").replace("/", "_").strip("_") or "new_module"
+        file_path = f"tools/aios_{_base}_{_stamp}.py"
+        print(f"    [CODE] Protected file -> generating new module instead")
 
     print(f"    [CODE] File: {file_path}")
     print(f"    [CODE] Instruction: {instruction[:80]}")
@@ -468,6 +495,8 @@ def phase_code(plan: dict) -> dict:
             "warnings": change.warnings,
         }
         print(f"    [CODE] Result: {result['status']}, {result['code_length']} chars")
+        if result.get("warnings"):
+            print(f"    [CODE] Warnings: {result['warnings']}")
         return result
     except urllib.error.HTTPError as e:
         if e.code == 402:
@@ -546,15 +575,16 @@ def phase_commit(code_result: dict, plan: dict, validation: dict) -> dict:
     if "nothing to commit" in commit_out.lower():
         return {"status": "nothing_to_commit", "full_cycle": True}
 
-    # Push
-    push_out = git_cmd("push", "origin", "main")
+    # Push to current branch
+    branch = git_cmd("branch", "--show-current") or "main"
+    push_out = git_cmd("push", "origin", branch)
     print(f"    [PUSH] {push_out[:80]}")
     pushed = "error" not in push_out.lower()
 
     if not pushed:
         import time
         time.sleep(3)
-        push_out = git_cmd("push", "origin", "main")
+        push_out = git_cmd("push", "origin", branch)
         pushed = "error" not in push_out.lower()
 
     return {
@@ -636,9 +666,32 @@ def build_report(cycle_num: int, ctx: dict, analysis: dict, plan: dict,
     return "\n".join(lines)
 
 
+def _is_llm_failed_cycle(analysis: dict) -> bool:
+    asum = str(analysis.get("summary", ""))
+    return (
+        "LLM Error" in asum
+        or "Все LLM-провайдеры" in asum
+        or "LLM endpoints недоступны" in asum
+        or asum.startswith("error")
+        or analysis.get("health_score") == 0
+    )
+
+
+def _is_llm_error_str(text: str) -> bool:
+    text = text.lower()
+    return (
+        "Все LLM" in text
+        or "LLM endpoints" in text
+        or "token expired" in text
+        or "payment required" in text
+        or "insufficient" in text
+        or "auth failed" in text
+    )
+
+
 def run_cycle():
     """Execute full orchestrator cycle."""
-    global _cycle_count
+    global _cycle_count, _consecutive_errors, _last_llm_error_cycle
     _cycle_count += 1
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
@@ -651,50 +704,112 @@ def run_cycle():
         tg_send("❌ <b>Coder Orchestrator</b>\n\nLLM API ключ не настроен")
         return
 
-    # Phase 1: Analyze
-    print("  [1/5] ANALYZE — анализ проекта...")
     ctx = get_project_context()
     backlog = load_backlog()
     backlog["cycle_count"] = backlog.get("cycle_count", 0) + 1
-    analysis = phase_analyze(llm, ctx, backlog)
-    # Track consecutive LLM errors
-    global _consecutive_errors
-    _asum = str(analysis.get("summary", ""))
-    if "LLM Error" in _asum or _asum.startswith("error"):
+
+    # Phase 1: Analyze
+    print("  [1/5] ANALYZE — анализ проекта...")
+    try:
+        analysis = phase_analyze(llm, ctx, backlog)
+    except Exception as e:
+        print(f"  [WARN] Phase 1 failed: {e}")
+        analysis = {"health_score": 0, "summary": f"error:{e}", "issues": [], "opportunities": [], "priority_task": "", "new_tasks": []}
+
+    if _is_llm_failed_cycle(analysis):
         _consecutive_errors += 1
-        print(f"  [WARN] Errors: {_consecutive_errors}/{MAX_ERRORS}")
+        _last_llm_error_cycle = _cycle_count
+        print(f"  [WARN] LLM unavailable. Errors: {_consecutive_errors}/{MAX_ERRORS}")
         if _consecutive_errors >= MAX_ERRORS:
-            _stop = chr(9940) + " <b>AUTO-STOP: " + str(MAX_ERRORS) + " errors in a row!</b>"
-            _stop += chr(10) + "LLM not responding."
-            _stop += chr(10) + "<code>systemctl start aios-auto-coder</code>"
+            _stop = (
+                chr(9940)
+                + " <b>AUTO-STOP: "
+                + str(MAX_ERRORS)
+                + " errors in a row!</b>\n"
+                + "LLM not responding.\n"
+                + "<code>systemctl start aios-auto-coder</code>"
+            )
             tg_send(_stop)
             import subprocess as _sp3
             _sp3.run(["systemctl", "stop", "aios-auto-coder"], timeout=10)
             sys.exit(1)
-    else:
-        _consecutive_errors = 0
+        _wait = 600
+        print(f"  [BACKOFF] Waiting {_wait}s before next cycle")
+        if _consecutive_errors == 1 or _consecutive_errors % 10 == 0:
+            tg_send(
+                chr(9888) + " <b>Coder Orchestrator</b>\n\n"
+                "LLM временно недоступен. Цикл пропущен.\n"
+                "Проверьте ключи: /llm_status"
+            )
+        time.sleep(_wait)
+        return
+    _consecutive_errors = 0
+
     print(f"    Health: {analysis.get('health_score', '?')}/10")
     print(f"    Issues: {len(analysis.get('issues', []))}")
 
     # Phase 2: Plan
     print("  [2/5] PLAN — составление плана...")
-    plan = phase_plan(llm, analysis, ctx, backlog)
+    try:
+        plan = phase_plan(llm, analysis, ctx, backlog)
+    except Exception as e:
+        print(f"  [WARN] Phase 2 failed: {e}")
+        plan = {"action": "monitor", "description": "LLM unavailable", "file": "", "code_needed": False, "instruction": ""}
     print(f"    Action: {plan.get('action', '?')}")
     print(f"    Code needed: {plan.get('code_needed', False)}")
 
     # Phase 3: Code
     print("  [3/5] CODE — генерация/рефакторинг...")
-    code_result = phase_code(plan)
+    try:
+        code_result = phase_code(plan)
+    except Exception as e:
+        print(f"  [WARN] Phase 3 failed: {e}")
+        code_result = {"status": "error", "error": str(e), "file": plan.get("file", "")}
     print(f"    Status: {code_result.get('status', '?')}")
+    if code_result.get("status") == "error" and _is_llm_error_str(code_result.get("error", "")):
+        _consecutive_errors += 1
+        _last_llm_error_cycle = _cycle_count
+        if _consecutive_errors >= MAX_ERRORS:
+            _stop = (
+                chr(9940)
+                + " <b>AUTO-STOP: "
+                + str(MAX_ERRORS)
+                + " errors in a row!</b>\n"
+                + "LLM not responding.\n"
+                + "<code>systemctl start aios-auto-coder</code>"
+            )
+            tg_send(_stop)
+            import subprocess as _sp3
+            _sp3.run(["systemctl", "stop", "aios-auto-coder"], timeout=10)
+            sys.exit(1)
+        _wait = 600
+        print(f"  [BACKOFF] LLM error in code phase. Waiting {_wait}s before next cycle")
+        if _consecutive_errors == 1 or _consecutive_errors % 10 == 0:
+            tg_send(
+                chr(9888) + " <b>Coder Orchestrator</b>\n\n"
+                "LLM временно недоступен. Цикл пропущен.\n"
+                "Проверьте ключи: /llm_status"
+            )
+        time.sleep(_wait)
+        return
+    _consecutive_errors = 0
 
     # Phase 4: Validate
     print("  [4/5] VALIDATE — проверка...")
-    validation = phase_validate(code_result)
+    try:
+        validation = phase_validate(code_result)
+    except Exception as e:
+        print(f"  [WARN] Phase 4 failed: {e}")
+        validation = {"status": "failed", "reason": str(e)}
     print(f"    Status: {validation.get('status', '?')}")
 
     # Phase 5: Commit
     print("  [5/5] COMMIT — деплой...")
-    commit_result = phase_commit(code_result, plan, validation)
+    try:
+        commit_result = phase_commit(code_result, plan, validation)
+    except Exception as e:
+        print(f"  [WARN] Phase 5 failed: {e}")
+        commit_result = {"status": "skipped", "reason": str(e)}
     print(f"    Status: {commit_result.get('status', '?')}")
 
     # Build and send report
@@ -734,7 +849,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="AIOS Coder Orchestrator")
     parser.add_argument("--once", action="store_true", help="Run once and exit")
-    parser.add_argument("--interval", type=int, default=10, help="Cycle interval (default: 10s)")
+    parser.add_argument("--interval", type=int, default=60, help="Cycle interval (default: 60s = 1min)")
     args = parser.parse_args()
 
     print(f"🧠 AIOS Coder Orchestrator v1.0")
