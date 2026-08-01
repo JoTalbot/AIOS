@@ -4,16 +4,12 @@ from __future__ import annotations
 
 from nicegui import ui
 
-from ..api_client import get, post
+from ..api_client import get
 
 
 async def _get_models() -> list[dict]:
     data = await get("/api/models")
     return data if isinstance(data, list) else data.get("models", [])
-
-
-async def _cycle_model_stage(name: str, stage: str) -> dict:
-    return await post(f"/api/models/{name}/stage", json={"stage": stage})
 
 
 def render() -> None:
@@ -46,17 +42,7 @@ def render() -> None:
             for m in models
         ]
 
-    async def cycle_stage(name: str) -> None:
-        models = await _get_models()
-        model = next((m for m in models if m.get("name") == name), None)
-        if not model:
-            return
-        current = model.get("stage", "staging")
-        next_stage = "production" if current == "staging" else "archived" if current == "production" else "staging"
-        await _cycle_model_stage(name, next_stage)
-        message_label.set_text(f"{name} moved to {next_stage}")
-        await load_models()
 
     ui.button("Refresh models", on_click=load_models).props("flat")
 
-    model_table.on("rowClick", lambda e: cycle_stage(e.args.get("name")))
+    ui.label("Реестр моделей доступен только для просмотра: изменение этапа требует подключённого Model Registry.").classes("text-caption text-warning")

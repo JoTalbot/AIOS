@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import time
 from typing import TYPE_CHECKING, Dict, List, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from unittest import TestCase, main
 
 if TYPE_CHECKING:
     from ..storage import Database
@@ -19,9 +20,9 @@ from .models import (
     TestCase,
     TestResult,
     TestStatus,
-    TestSuiteResult,
     TestCategory,
     TestSeverity,
+    ConstitutionEngine,
 )
 
 
@@ -50,8 +51,6 @@ class TestRunner:
         db: Database | None = None,
     ):
         """Initialize TestRunner."""
-        from ..constitution_engine import ConstitutionEngine
-
         self.engine = ConstitutionEngine(constitution_dir, policies_dir)
         self.db = db
         self._run_count = 0
@@ -72,7 +71,7 @@ class TestRunner:
             expected_decision=case.expected_decision,
         )
 
-        result.started_at = _now_iso()
+        result.started_at = self._now_iso()
         start = time.monotonic()
 
         # Use action dict directly — test cases must provide their own fields.
@@ -120,7 +119,7 @@ class TestRunner:
                 result.error = last_error
                 result.message = f"Execution error: {last_error}"
 
-        result.completed_at = _now_iso()
+        result.completed_at = self._now_iso()
         result.duration_ms = (time.monotonic() - start) * 1000
         self._run_count += 1
 
@@ -129,7 +128,7 @@ class TestRunner:
     def run_suite(self, suite_name: str, cases: List[TestCase]) -> TestSuiteResult:
         """Run a list of test cases as a named suite."""
         suite = TestSuiteResult(suite_name=suite_name)
-        suite.started_at = _now_iso()
+        suite.started_at = self._now_iso()
         start = time.monotonic()
         suite.total = len(cases)
 
@@ -154,7 +153,7 @@ class TestRunner:
         else:
             suite.status = TestStatus.PASSED if suite.failed == 0 else TestStatus.FAILED
 
-        suite.completed_at = _now_iso()
+        suite.completed_at = self._now_iso()
         suite.duration_ms = (time.monotonic() - start) * 1000
 
         # Build breakdowns
@@ -173,9 +172,8 @@ class TestRunner:
             "engine_version": self.engine.version,
         }
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    def _now_iso(self) -> str:
+        return datetime.now(timezone.utc).isoformat()
 
 
 @dataclass
@@ -216,38 +214,37 @@ class TestSuiteResult:
     duration_ms: float
 
 
-if __name__ == "__main__":
-    import unittest
+class TestRunnerTestCase(TestCase):
+    def test_run_case(self):
+        runner = TestRunner(constitution_dir=".", policies_dir=".", db=None)
+        case = TestCase(
+            name="test_deny_unknown_agent",
+            action={"goal": "test", "scope": "test", "risk": "low", "audit_log": True, "agent_id": "unknown", "authority": "user"},
+            expected_decision="DENY",
+            category=TestCategory.SECURITY,
+        )
+        result = runner.run_case(case)
+        self.assertEqual(result.status, TestStatus.PASSED)
 
-    class TestRunnerTestCase(unittest.TestCase):
-        def test_run_case(self):
-            runner = TestRunner(constitution_dir=".", policies_dir=".", db=None)
-            case = TestCase(
+    def test_run_suite(self):
+        runner = TestRunner(constitution_dir=".", policies_dir=".", db=None)
+        cases = [
+            TestCase(
                 name="test_deny_unknown_agent",
                 action={"goal": "test", "scope": "test", "risk": "low", "audit_log": True, "agent_id": "unknown", "authority": "user"},
                 expected_decision="DENY",
                 category=TestCategory.SECURITY,
-            )
-            result = runner.run_case(case)
-            self.assertEqual(result.status, TestStatus.PASSED)
+            ),
+            TestCase(
+                name="test_allow_known_agent",
+                action={"goal": "test", "scope": "test", "risk": "low", "audit_log": True, "agent_id": "known", "authority": "user"},
+                expected_decision="ALLOW",
+                category=TestCategory.SECURITY,
+            ),
+        ]
+        suite_result = runner.run_suite("security_tests", cases)
+        self.assertEqual(suite_result.status, TestStatus.PASSED)
 
-        def test_run_suite(self):
-            runner = TestRunner(constitution_dir=".", policies_dir=".", db=None)
-            cases = [
-                TestCase(
-                    name="test_deny_unknown_agent",
-                    action={"goal": "test", "scope": "test", "risk": "low", "audit_log": True, "agent_id": "unknown", "authority": "user"},
-                    expected_decision="DENY",
-                    category=TestCategory.SECURITY,
-                ),
-                TestCase(
-                    name="test_allow_known_agent",
-                    action={"goal": "test", "scope": "test", "risk": "low", "audit_log": True, "agent_id": "known", "authority": "user"},
-                    expected_decision="ALLOW",
-                    category=TestCategory.SECURITY,
-                ),
-            ]
-            suite_result = runner.run_suite("security_tests", cases)
-            self.assertEqual(suite_result.status, TestStatus.PASSED)
 
-    unittest.main()
+if __name__ == "__main__":
+    main()
