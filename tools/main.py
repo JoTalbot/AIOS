@@ -129,15 +129,32 @@ class TestOctopusCore(unittest.TestCase):
     def test_module2(self):
         self.assertTrue(get_temp_module_coverage('octopus_core.module2')['TestModule'].isinstance(bool))
 
+def check_coverage(coverage_reports: List[CoverageReport]) -> None:
+    """
+    Check if all functions in octopus_core modules are covered.
+
+    Args:
+    coverage_reports (List[CoverageReport]): Coverage reports for octopus_core modules.
+    """
+    uncovered_functions = []
+    for report in coverage_reports:
+        module_name = report.module_name
+        coverage = report.coverage
+        if not coverage:
+            uncovered_functions.append(module_name)
+
+    if uncovered_functions:
+        print("Uncovered functions:")
+        for module_name in uncovered_functions:
+            print(f"- {module_name}")
+
 def main():
     """Main function."""
     if __name__ == '__main__':
         coverage_reports = get_octopus_core_coverage()
         for report in coverage_reports:
             print(f"Module: {report.module_name}, Coverage: {report.coverage}")
-
-if __name__ == '__main__':
-    main()
+        check_coverage(coverage_reports)
 
 if __name__ == '__main__':
     try:
