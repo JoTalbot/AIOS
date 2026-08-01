@@ -385,8 +385,12 @@ def _maybe_research(topic: str) -> str:
         lines = []
         for r in res.get("results", [])[:4]:
             lines.append(f"- {r.get('title','')[:70]} ({r.get('url','')[:70]})")
+        n = len(res.get("results", []))
+        if n:
+            print(f"    [RESEARCH] topic='{topic[:50]}' -> {n} web results")
         return "\n".join(lines) if lines else ""
-    except Exception:
+    except Exception as e:
+        print(f"    [RESEARCH] failed for '{topic[:40]}': {e}")
         return ""
 
 
