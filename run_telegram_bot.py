@@ -1044,10 +1044,12 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
             except Exception as e:
                 output = "Error: " + str(e)
 
-            # Add assistant response and tool output to history
-            messages.append({"role": "assistant", "content": response})
-            messages.append({"role": "user", "content": "Command output:\n```\n" + output + "\n```\nContinue helping the user."})
-            continue
+            # Return the command output directly to the user.
+            # (Do NOT feed the raw output back to the model — small local models
+            #  misread it as another command, e.g. "Sat" from `date`.)
+            _chat_history[chat_id].append({"role": "assistant", "content": response})
+            _chat_history[chat_id].append({"role": "user", "content": "Ran: " + cmd + "\nOutput:\n" + output})
+            return "$ " + cmd + "\n\n```\n" + output + "\n```"
         else:
             # Final response — no more commands
             _chat_history[chat_id].append({"role": "assistant", "content": response})
