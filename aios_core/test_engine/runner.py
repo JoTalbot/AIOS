@@ -22,8 +22,8 @@ from .models import (
     TestStatus,
     TestCategory,
     TestSeverity,
-    ConstitutionEngine,
 )
+from ..constitution_engine import ConstitutionEngine
 
 
 class TestRunner:
