@@ -54,16 +54,6 @@ class GraphNeuralNetwork:
         self._gnn_layers: list[GNNLayer] = []
         self._layer_counter = 0
 
-        # Initialize default layers
-        for i in range(layers):
-            self._gnn_layers.append(
-                GNNLayer(
-                    name=f"layer_{i}",
-                    aggregation="mean",
-                    activation="relu" if i < layers - 1 else "none",
-                )
-            )
-
     # ── Node Management ──────────────────────────────────────────────
 
     def add_node(self, node_id: str, features: list[float], label: str = "") -> None:
@@ -211,28 +201,23 @@ class GraphNeuralNetwork:
                 if labeled_emb:
                     sim = self._cosine_similarity(emb, labeled_emb)
                     if sim > best_sim:
-                        best_sim = sim
                         best_label = label
-            return best_label
+                        best_sim = sim
 
-        return "class_0"
+        return best_label
 
-    def classify_all(self) -> dict[str, str]:
-        """Classify all unlabeled nodes."""
-        results = {}
-        for node_id in self.embeddings:
-            if node_id not in self.node_labels:
-                results[node_id] = self.classify_node(node_id)
-        return results
+    # ── Edge Feature Integration ──────────────────────────────────────
 
-    # ── Graph Pooling ────────────────────────────────────────────────
+    def integrate_edge_features(self) -> None:
+        """Integrate edge features into node embeddings."""
+        for src, dst in self.edges:
+            if (src, dst) not in self.edge_features:
+                continue
+            emb = self.embeddings[src]
+            edge_emb = self.edge_features[(src, dst)]
+            self.embeddings[src] = [e + ee for e, ee in zip(emb, edge_emb)]
 
-    def _cosine_similarity(self, a: list[float], b: list[float]) -> float:
-        """Cosine similarity between two vectors."""
-        dot = sum(x * y for x, y in zip(a, b, strict=False))
-        na = math.sqrt(sum(x * x for x in a))
-        nb = math.sqrt(sum(x * x for x in b))
-        return dot / (na * nb) if na > 0 and nb > 0 else 0.0
+    # ── Graph Pooling ──────────────────────────────────────────────
 
     def graph_pool(self, method: str = "mean") -> list[float]:
         """Graph-level pooling (readout function)."""
@@ -253,7 +238,7 @@ class GraphNeuralNetwork:
             n = len(all_embs)
             return [sum(e[d] for e in all_embs) / n for d in range(dim)]
 
-    # ── Stats ──────────────────────────────────────────────────────
+    # ── Stats ──────────────────────────────────────────────
 
     def stats(self) -> dict[str, Any]:
         """Return summary statistics."""
