@@ -662,7 +662,7 @@ class LLMBalancer:
 
                     import requests as _req_lib
                     _resp = _req_lib.post(best_provider.base_url, json=json.loads(payload),
-                                          headers=req.headers, timeout=120)
+                                          headers=req.headers, timeout=300)
                     _resp.raise_for_status()
                     data = _resp.json()
 
