@@ -45,7 +45,25 @@ class SecretScanner:
             print(f"Error scanning secrets with {scanner_name}: {e}")
             return SecretScannerResult([], scanner_name)
 
+class SecretsScanner:
+    """Class for scanning secrets in CI pipeline and integrating with SecretsManager."""
+
+    def __init__(self):
+        self.secret_scanner = SecretScanner()
+        self.secrets_manager = SecretsManager()
+
+    async def scan_and_store_secrets(self, scanner_name: str = "gitguardian") -> None:
+        """Scan for secrets in the repository and store them in SecretsManager.
+
+        Args:
+            scanner_name (str, optional): Name of the scanner to use. Defaults to "gitguardian".
+        """
+        result = await self.secret_scanner.scan_secrets(scanner_name)
+        if result.secrets_found:
+            print(f"Secrets found with {result.scanner_used}: {result.secrets_found}")
+            await self.secrets_manager.store_secrets(result.secrets_found)
+
 # A convenience instance named 'secrets' (as some callers expect).
 secrets = SecretsManager()
 
-__all__ = ["SecretsManager", "SecretVersion", "RotationPolicy", "secrets", "SecretScanner"]
+__all__ = ["SecretsManager", "SecretVersion", "RotationPolicy", "secrets", "SecretScanner", "SecretsScanner"]
