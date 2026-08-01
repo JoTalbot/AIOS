@@ -44,3 +44,15 @@ jobs:
       env:
         LLM_API_KEY: "test_dummy_key"
         OLX_WEBHOOK_SECRET: "test_secret"
+
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Scan tracked repository history for secrets
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
