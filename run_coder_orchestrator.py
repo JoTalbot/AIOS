@@ -985,6 +985,30 @@ def run_cycle():
     else:
         print("  ❌ Failed to send report")
 
+    # --- Enhanced alerts ---
+    _cs = code_result.get("status", "skipped")
+    _vs = validation.get("status", "skipped")
+    _ms = commit_result.get("status", "skipped")
+    try:
+        if _cs == "error":
+            tg_send(
+                "🚨 <b>AIOS Coder: ОШИБКА</b>\n"
+                f"Фаза CODE завершилась ошибкой:\n<code>{code_result.get('error','')[:300]}</code>"
+            )
+        elif _vs == "failed":
+            tg_send(
+                "⚠️ <b>AIOS Coder: Валидация не прошла</b>\n"
+                f"{validation.get('reason','')[:200]}"
+            )
+        elif _ms in ("pushed", "commit_only"):
+            tg_send(
+                "🚀 <b>AIOS Coder: новый коммит</b>\n"
+                f"Файл: <code>{code_result.get('file','?')}</code>\n"
+                f"Статус: {_ms}"
+            )
+    except Exception:
+        pass
+
     print(f"[{now}] Cycle #{_cycle_count} complete")
 
 
