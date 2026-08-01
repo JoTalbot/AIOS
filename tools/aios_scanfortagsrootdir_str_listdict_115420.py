@@ -118,13 +118,6 @@ def run_report() -> None:
     logger.info("No tags found. Exiting with status 0.")
     sys.exit(0)
 
-# Example placeholder (lines 147‑161):
-# def placeholder_function():
-#     """
-#     This function previously did nothing. It now triggers the tag scan.
-#     """
-#     run_report()
-
 if __name__ == "__main__":
     # Simple test harness: run the report when executed directly.
     run_report()
