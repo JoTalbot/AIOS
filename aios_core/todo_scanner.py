@@ -17,13 +17,17 @@ class TodoScanner:
 
     def scan(self) -> List[TodoItem]:
         """Scan the target path for TODO/FIXME/HACK items."""
-        todo_items = []
-        for file in self.path.rglob('*.py'):
-            with open(file, 'r') as f:
-                for line_number, line in enumerate(f, start=1):
-                    if 'TODO' in line or 'FIXME' in line or 'HACK' in line:
-                        todo_items.append(TodoItem(line_number, line.strip()))
-        return todo_items
+        try:
+            todo_items = []
+            for file in self.path.rglob('*.py'):
+                with open(file, 'r') as f:
+                    for line_number, line in enumerate(f, start=1):
+                        if any(keyword in line for keyword in ['TODO', 'FIXME', 'HACK']):
+                            todo_items.append(TodoItem(line_number, line.strip()))
+            return todo_items
+        except FileNotFoundError:
+            # Handle the case when the path does not exist
+            return []
 
 def test_todo_scanner():
     """Test the todo_scanner.scan() function."""
