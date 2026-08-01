@@ -124,7 +124,25 @@ def load_backlog() -> dict:
                 return json.load(f)
         except:
             pass
-    return {"tasks": [], "history": [], "completed": 0, "failed": 0, "cycle_count": 0}
+    return {"tasks": [], "history": [], "completed": 0, "failed": 0, "cycle_count": 0, "lessons": []}
+
+
+def _extract_lesson(action: str, desc: str, err: str) -> str:
+    """Build a short self-learning lesson from a failed coder cycle."""
+    err_txt = str(err or "")[:200].replace("\n", " ")
+    return f"[{action}] {str(desc or '')[:60]} -> {err_txt or 'unknown error'}"
+
+
+def _add_lesson(backlog: dict, lesson: str):
+    """Append a lesson (deduped, capped) to the backlog for future cycles."""
+    if not lesson:
+        return
+    lessons = backlog.setdefault("lessons", [])
+    lesson = lesson[:300]
+    if lesson not in lessons:
+        lessons.append(lesson)
+        backlog["lessons"] = lessons[-30:]  # keep last 30 lessons
+
 
 def save_backlog(backlog: dict):
     """Save coder backlog."""
@@ -277,6 +295,7 @@ def phase_analyze(llm: LLMClient, ctx: dict, backlog: dict) -> dict:
         f"- {h.get('description', '?')[:60]} ({h.get('status', '?')})" 
         for h in backlog.get("history", [])[-5:]
     ) or "История пуста"
+    lessons_text = "\n".join(f"- {l}" for l in backlog.get("lessons", [])[-8:]) or "Уроков пока нет"
     pending_tasks = "\n".join(
         f"- [{t.get('priority', '?')}] {t.get('description', '?')[:60]}" 
         for t in backlog.get("tasks", [])[:5]
@@ -292,6 +311,7 @@ def phase_analyze(llm: LLMClient, ctx: dict, backlog: dict) -> dict:
         f"=== TODO/FIXME в коде ({len(ctx.get('todos', []))}) ===\n{todos_text}\n\n"
         f"=== Недавно изменённые файлы ===\n{recent_text}\n\n"
         f"=== Бэклог задач ===\n{pending_tasks}\n\n"
+        f"=== Уроки из прошлых ошибок (НЕ повторяй их) ===\n{lessons_text}\n\n"
         f"=== История последних действий ===\n{history_text}\n\n"
         f"Верни JSON (строго, без markdown):\n"
         f'{{\n'
@@ -1035,6 +1055,20 @@ def run_cycle():
         backlog["tasks"] = [t for t in backlog.get("tasks", []) if t.get("status") != "in_progress"]
     elif commit_result.get("status") == "skipped" and code_result.get("status") == "error":
         backlog["failed"] = backlog.get("failed", 0) + 1
+        # Self-learning: capture the failure as a lesson for future cycles.
+        _add_lesson(
+            backlog,
+            _extract_lesson(
+                plan.get("action", "code"),
+                plan.get("description", ""),
+                code_result.get("error", "unknown error"),
+            ),
+        )
+    elif validation.get("status") == "failed":
+        _add_lesson(
+            backlog,
+            _extract_lesson("validate", plan.get("description", ""), validation.get("reason", "")),
+        )
     save_backlog(backlog)
 
     report = build_report(_cycle_count, ctx, analysis, plan, code_result, validation, commit_result)
