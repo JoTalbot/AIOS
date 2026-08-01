@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..storage import Database
 
-from datetime import UTC
+from datetime import UTC, timezone
 
 from .models import (
     TestCase,
