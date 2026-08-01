@@ -140,7 +140,7 @@ def get_project_context() -> dict:
         "branch": git_cmd("branch", "--show-current") or "main",
     }
     # Keep protected auto-coder internals out of the LLM-visible git history.
-    _protected_log = ("run_coder_orchestrator", "llm_balancer", "meta_cognitive_self_coder")
+    _protected_log = ("run_coder_orchestrator", "run_telegram_bot", "llm_balancer", "meta_cognitive_self_coder")
     _log_lines = [ln for ln in ctx["git_log"].splitlines() if not any(p in ln for p in _protected_log)]
     ctx["git_log"] = "\n".join(_log_lines[-10:]) or "no commits"
 
@@ -161,6 +161,7 @@ def get_project_context() -> dict:
                             rel = os.path.relpath(fpath, REPO_PATH)
                             # Never surface protected auto-coder internals as TODO targets.
                             if rel in ("run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
+                                       "run_telegram_bot.py", "tools/run_telegram_bot.py",
                                        "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"):
                                 continue
                             for i, line in enumerate(fp, 1):
@@ -195,6 +196,7 @@ def get_project_context() -> dict:
             capture_output=True, text=True, timeout=10
         )
         _protected = {"run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
+                      "run_telegram_bot.py", "tools/run_telegram_bot.py",
                       "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"}
         for line in result.stdout.strip().split("\n")[:15]:
             if line.strip():
@@ -355,6 +357,7 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
             if f.endswith(".py"):
                 rel = os.path.relpath(os.path.join(root, f), REPO_PATH)
                 if rel in ("run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
+                           "run_telegram_bot.py", "tools/run_telegram_bot.py",
                            "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"):
                     continue  # protected auto-coder internals
                 real_files.append(rel)
@@ -431,6 +434,7 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
     # Fallback: pick a random file with TODO and suggest fixing it
     todo_files = list(set(t.split(":")[0] for t in ctx.get("todos", [])))
     protected = {"run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
+                 "run_telegram_bot.py", "tools/run_telegram_bot.py",
                  "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"}
     todo_files = [t for t in todo_files if t not in protected]
     target = todo_files[0] if todo_files else (real_files[0] if real_files else "aios_core/__init__.py")
@@ -584,7 +588,7 @@ def phase_commit(code_result: dict, plan: dict, validation: dict) -> dict:
     # must never be swept into an autonomous commit.
     allowed_prefixes = ("aios_core/", "aios_cli/", "scripts/", "tools/", "tests/", "skills/", "platforms/", "docs/", ".github/", "run_")
     changed = [line[3:] for line in git_cmd("status", "--porcelain").splitlines() if len(line) > 3]
-    safe_paths = [path for path in changed if path.startswith(allowed_prefixes) and not path.startswith(("run_telegram_bot.py",))]
+    safe_paths = [path for path in changed if path.startswith(allowed_prefixes) and not path.startswith(("run_telegram_bot.py", "tools/run_telegram_bot.py"))]
     blocked_paths = sorted(set(changed) - set(safe_paths))
     if blocked_paths:
         print(f"    [COMMIT] excluded non-source paths: {', '.join(blocked_paths[:5])}")
