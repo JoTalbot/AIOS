@@ -26,7 +26,7 @@ jobs:
   upsert-a-record:
     runs-on: ubuntu-latest
     env:
-      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_DNS_API_TOKEN }}
       ZONE_NAME: autosklo.org.ua
       RECORD_NAME: ${{ inputs.record_name }}
       RECORD_IP: ${{ inputs.ipv4 }}
@@ -34,7 +34,7 @@ jobs:
     steps:
       - name: Validate required secret
         run: |
-          test -n "$CF_API_TOKEN" || { echo "Missing repository secret CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_API_TOKEN" || { echo "Missing repository secret CLOUDFLARE_DNS_API_TOKEN"; exit 1; }
 
       - name: Create or update proxied A record
         shell: bash
