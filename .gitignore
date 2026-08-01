@@ -92,3 +92,5 @@ apk/**
 
 # Transient operational backups (may contain deployment configuration)
 backups/ops-fix-*/
+# Runtime dashboard database backups
+backups/dashboard/
