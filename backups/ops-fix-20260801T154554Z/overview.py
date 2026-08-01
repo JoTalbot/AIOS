@@ -30,7 +30,7 @@ def render() -> None:
 
     async def load_stats() -> None:
         try:
-            data = await get("/api/v1/stats")
+            data = await get("/api/stats")
             cpu = data.get("cpu", "N/A")
             memory = data.get("memory", "N/A")
             disk = data.get("disk", "N/A")
