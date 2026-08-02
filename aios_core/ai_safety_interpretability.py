@@ -137,6 +137,8 @@ class SafetyInterpretability:
                 "suggestions": []
             }
 
+            # Scan project files for technical debt markers (TODO/FIXME/HACK/XXX)
+            # This analysis helps identify security-critical code areas needing review
             for pattern in todo_patterns:
                 for file_path in root_path.rglob("*.py"):
                     if any(part.startswith('.') or part == 'venv' for part in file_path.parts):
@@ -162,6 +164,10 @@ class SafetyInterpretability:
 
                                     if severity == "high":
                                         report["critical_issues"].append(f"{file_path}:{line_num}")
+
+                        # Verify context handling for safety checks
+                        # Ensure pattern matching correctly identifies security-critical markers
+                        # in complex code structures and nested conditions
 
                     except (UnicodeDecodeError, PermissionError) as e:
                         logger.debug(f"Skipping file {file_path}: {str(e)}")
