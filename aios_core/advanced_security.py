@@ -1,66 +1,5 @@
+import requests
 from typing import Dict, Any
-import hashlib
-import hmac
-import time
-import json
-
-def generate_nonce() -> str:
-    """
-    Generates a nonce for secure authentication.
-
-    Returns:
-    str: A unique nonce.
-    """
-    return str(int(time.time() * 1000))
-
-def generate_token(nonce: str, secret_key: str) -> str:
-    """
-    Generates a token for secure authentication.
-
-    Args:
-    nonce (str): The nonce to use.
-    secret_key (str): The secret key to use.
-
-    Returns:
-    str: A secure token.
-    """
-    return hmac.new(secret_key.encode(), nonce.encode(), hashlib.sha256).hexdigest()
-
-def authenticate_request(request: Dict[str, Any], secret_key: str) -> bool:
-    """
-    Authenticates a request using the provided token and nonce.
-
-    Args:
-    request (Dict[str, Any]): The request to authenticate.
-    secret_key (str): The secret key to use.
-
-    Returns:
-    bool: True if the request is authenticated, False otherwise.
-    """
-    nonce = request.get("nonce")
-    token = request.get("token")
-    if nonce and token:
-        expected_token = generate_token(nonce, secret_key)
-        return hmac.compare_digest(token, expected_token)
-    return False
-
-def secure_authorization(api_key: str, api_secret: str, request: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Secures an API request using the provided API key and secret.
-
-    Args:
-    api_key (str): The API key to use.
-    api_secret (str): The API secret to use.
-    request (Dict[str, Any]): The request to secure.
-
-    Returns:
-    Dict[str, Any]: The secured request.
-    """
-    nonce = generate_nonce()
-    token = generate_token(nonce, api_secret)
-    request["nonce"] = nonce
-    request["token"] = token
-    return request
 
 def refactor_hack_comments(code: str) -> str:
     """
@@ -83,22 +22,6 @@ def refactor_hack_comments(code: str) -> str:
             refactored_lines.append(line)
     return '\n'.join(refactored_lines)
 
-def detect_hack_solutions(code: str) -> Dict[str, Any]:
-    """
-    Detects HACK solutions in the given code.
-
-    Args:
-    code (str): The code to analyze.
-
-    Returns:
-    Dict[str, Any]: A dictionary containing the detected HACK solutions.
-    """
-    hack_solutions = {}
-    lines = code.split('\n')
-    for i, line in enumerate(lines):
-        if '# HACK:' in line:
-            hack_solutions[f'line_{i+1}'] = line.strip()
-    return hack_solutions
 
 def replace_hack_solutions(code: str, solutions: Dict[str, Any]) -> str:
     """
@@ -122,27 +45,76 @@ def replace_hack_solutions(code: str, solutions: Dict[str, Any]) -> str:
             refactored_lines.append(line)
     return '\n'.join(refactored_lines)
 
-def secure_api_v2_batch(code: str, api_key: str, api_secret: str) -> str:
+
+def detect_hack_solutions(code: str) -> Dict[str, Any]:
     """
-    Secures the API v2 batch code by replacing HACK solutions with secure solutions.
+    Detects HACK solutions in the given code.
 
     Args:
-    code (str): The code to secure.
-    api_key (str): The API key to use.
-    api_secret (str): The API secret to use.
+    code (str): The code to analyze.
 
     Returns:
-    str: The secured code.
+    Dict[str, Any]: A dictionary containing the detected HACK solutions.
     """
-    solutions = detect_hack_solutions(code)
-    refactored_code = replace_hack_solutions(code, solutions)
+    hack_solutions = {}
+    lines = code.split('\n')
+    for i, line in enumerate(lines):
+        if '# HACK:' in line:
+            hack_solutions[f'line_{i+1}'] = line.strip()
+    return hack_solutions
+
+
+def secure_api_request(url: str, token: str, params: Dict[str, Any] = {}) -> requests.Response:
+    """
+    Makes a secure GET request to the given URL with the provided token.
+
+    Args:
+    url (str): The URL to make the request to.
+    token (str): The token to include in the URL.
+    params (Dict[str, Any], optional): Additional parameters to include in the request. Defaults to {}.
+
+    Returns:
+    requests.Response: The response from the server.
+    """
+    # Include the token in the URL
+    url_with_token = f"{url}?token={token}"
+    
+    # Make the GET request
+    response = requests.get(url_with_token, params=params)
+    
+    return response
+
+
+def refactor_octopus_core_api_v2_batch(code: str) -> str:
+    """
+    Refactors the octopus_core/api_v2_batch.py code to use the secure_api_request function.
+
+    Args:
+    code (str): The code to refactor.
+
+    Returns:
+    str: The refactored code.
+    """
+    # Detect HACK solutions in the code
+    hack_solutions = detect_hack_solutions(code)
+    
+    # Refactor the code to use the secure_api_request function
+    refactored_code = code
+    for solution in hack_solutions.values():
+        # Replace the HACK solution with a call to the secure_api_request function
+        refactored_code = refactored_code.replace(solution, f"secure_api_request('{solution.split('?')[0]}', '{solution.split('?token=')[1]}')")
+    
     return refactored_code
 
-# Example usage:
-api_key = "your_api_key"
-api_secret = "your_api_secret"
+
+# Example usage
 code = """
-# HACK: Insecure solution
+# HACK: Make a GET request to the API
+response = requests.get('https://example.com/api/endpoint?token=abc123')
+
+# HACK: Make another GET request to the API
+response = requests.get('https://example.com/api/another_endpoint?token=abc123')
 """
-secured_code = secure_api_v2_batch(code, api_key, api_secret)
-print(secured_code)
+
+refactored_code = refactor_octopus_core_api_v2_batch(code)
+print(refactored_code)
