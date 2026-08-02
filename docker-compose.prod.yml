@@ -33,6 +33,8 @@ services:
       OLX_WEBHOOK_SECRET: ${OLX_WEBHOOK_SECRET:-}
       PYTHONUNBUFFERED: "1"
       PYTHONDONTWRITEBYTECODE: "1"
+      LOCAL_LLM: "1"
+      LOCAL_LLM_BASE_URL: http://172.18.0.1:11434/v1/chat/completions
     volumes:
       - .:/app
       - aios-data:/app/data
