@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-
 class CodeQualityChecker:
     """Code quality checker using ruff + mypy.
 
@@ -42,16 +41,16 @@ class CodeRefactorer:
         Returns:
         str: The refactored code.
         """
-        lines = code.split("\n")
+        lines = code.split('\n')
         refactored_lines = []
         for line in lines:
-            if "# HACK:" in line:
+            if '# HACK:' in line:
                 # Replace HACK comment with a normal comment
-                refactored_line = line.replace("# HACK:", "#")
+                refactored_line = line.replace('# HACK:', '#')
                 refactored_lines.append(refactored_line)
             else:
                 refactored_lines.append(line)
-        return "\n".join(refactored_lines)
+        return '\n'.join(refactored_lines)
 
     def refactor_get_requests(self, code: str) -> str:
         """
@@ -63,16 +62,16 @@ class CodeRefactorer:
         Returns:
         str: The refactored code.
         """
-        lines = code.split("\n")
+        lines = code.split('\n')
         refactored_lines = []
         for line in lines:
-            if "requests.get(" in line:
+            if 'requests.get(' in line:
                 # Replace GET request with a POST request
-                refactored_line = line.replace("requests.get(", "requests.post(")
+                refactored_line = line.replace('requests.get(', 'requests.post(')
                 refactored_lines.append(refactored_line)
             else:
                 refactored_lines.append(line)
-        return "\n".join(refactored_lines)
+        return '\n'.join(refactored_lines)
 
 
 class NeuralCodeSynthesizerV2:
