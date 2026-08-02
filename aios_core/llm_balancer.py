@@ -75,9 +75,14 @@ class Provider:
     _key_index: int = 0
     _lock: threading.Lock = field(default_factory=threading.Lock)
     installed: set = field(default_factory=set)
+    # v2.4: лимит у провайдера аккаунт-уровневый (groq: 4 ключа = 1 аккаунт) —
+    # когда падает последний стоящий ключ, не долбимся в провайдера ещё 240с.
+    account_cooldown_until: float = 0.0
 
     def get_next_key(self) -> APIKey | None:
         with self._lock:
+            if time.time() < self.account_cooldown_until:
+                return None
             available = [k for k in self.keys if k.is_available]
             if not available:
                 return None
@@ -106,6 +111,14 @@ class Provider:
                 cd = cooldown
             key.cooldown_until = time.time() + cd
             print(f"  [Balancer] {key.provider} key cooled down {cd}s: {error} (errors={key.error_count})")
+        # v2.4: если после этой ошибки не осталось доступных ключей — это лимит
+        # аккаунта, а не ключа. Ставим аккаунт-куulдаun и не тратим HTTP-вызовы.
+        if not any(k.is_available for k in self.keys):
+            _now = time.time()
+            if self.account_cooldown_until < _now:
+                self.account_cooldown_until = _now + 240
+                print(f"  [Balancer] {self.name}: все {len(self.keys)} ключ(а) в cooldown "
+                      f"(лимит аккаунта) — провайдер пропускается 240с")
 
 
 class LLMBalancer:
