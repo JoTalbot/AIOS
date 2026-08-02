@@ -1146,7 +1146,7 @@ def run_cycle():
     history_entry = {
         "cycle": backlog["cycle_count"],
         "action": plan.get("action", "?"),
-        "file": plan.get("file", "?"),
+        "file": code_result.get("file") or plan.get("file", "?"),
         "description": plan.get("description", "?")[:80],
         "status": commit_result.get("status", "skipped"),
         "timestamp": datetime.now(timezone.utc).isoformat(),
