@@ -75,7 +75,17 @@ def is_protected(rel_path: str) -> bool:
     if rel.startswith("./"):
         rel = rel[2:]
     rel = rel.lstrip("/")
-    return any(fnmatch.fnmatch(rel, pat) or fnmatch.fnmatch("/" + rel, pat) for pat in PROTECTED_PATTERNS)
+    # v3.6: basename-матч — дубликат protected-файла внутри пакета
+    # (aios_core/run_coder_orchestrator_v3_1.py, инцидент 02.08) тоже под защитой.
+    # Побочный эффект: __init__.py защищён везде (это плюс: два инцидента ломали import).
+    base = rel.rsplit("/", 1)[-1]
+    return any(
+        fnmatch.fnmatch(rel, pat)
+        or fnmatch.fnmatch("/" + rel, pat)
+        or fnmatch.fnmatch(base, pat)
+        or fnmatch.fnmatch(base, pat.rsplit("/", 1)[-1])
+        for pat in PROTECTED_PATTERNS
+    )
 
 
 def _trivial_body(node: ast.AST) -> bool:
