@@ -264,6 +264,19 @@ def setup_logging(
     backup_count: int = 5,
     buffer_size: int = 0,
 ) -> logging.Logger:
+    """Sets up logging configuration.
+
+    Args:
+        level: The logging level (e.g., "DEBUG", "INFO").
+        log_file: The path to the log file.
+        json_format: Whether to use JSON formatting.
+        max_bytes: The maximum size of the log file before rotation.
+        backup_count: The number of backup log files to keep.
+        buffer_size: The size of the buffer for BufferedHandler.
+
+    Returns:
+        The configured logger.
+    """
     logger = logging.getLogger("aios")
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
 
