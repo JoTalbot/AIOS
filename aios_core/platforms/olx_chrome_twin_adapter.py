@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import os
 import asyncio
+import shutil
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 from pathlib import Path
@@ -40,15 +42,91 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
         default_config = {
             "profile": "default",
             "user_data_dir": "data/chrome_twin/default",
-            "headless": True,  # For server, but can be False for debugging
+            "headless": False,  # сервер использует xvfb-run
             "slow_mo": 200
         }
         default_config.update(config or {})
         super().__init__(config=default_config)
+
+        # Профиль создан системным Google Chrome — используем тот же бинарник
+        self.executable_path = self.config.get("executable_path") or next(
+            (c for c in ("/usr/bin/google-chrome-stable", "/usr/bin/google-chrome",
+                         "/usr/bin/chromium-browser", "/usr/bin/chromium") if os.path.exists(c)),
+            shutil.which("google-chrome-stable") or None)
         
         self.olx_login = self.config.get("olx_login") or os.getenv("OLX_LOGIN") or "959052288"
         self.olx_url = "https://www.olx.ua/"
         self.is_logged_in = False
+
+    async def _ensure_browser(self):
+        """Запустить системный Chrome с профилем (корректная проверка контекста)."""
+        if self._page and self._context:
+            return self._page
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError:
+            raise RuntimeError("Playwright не установлен")
+        self._playwright = await async_playwright().start()
+        kwargs = dict(
+            user_data_dir=str(Path(self.user_data_dir).resolve()),
+            headless=self.headless,
+            slow_mo=self.slow_mo,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+            ],
+            viewport={"width": 1440, "height": 900},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        )
+        if self.executable_path:
+            kwargs["executable_path"] = self.executable_path
+        self._context = await self._playwright.chromium.launch_persistent_context(**kwargs)
+        self._browser = self._context
+        self._page = self._context.pages[0] if len(self._context.pages) > 0 else await self._context.new_page()
+        return self._page
+
+    async def account_info(self) -> dict:
+        """Информация аккаунта OLX: имя и количество объявлений (read-only)."""
+        page = await self._ensure_browser()
+        try:
+            await page.goto(f"{self.olx_url}uk/myaccount/", wait_until="domcontentloaded", timeout=45000)
+            await page.wait_for_timeout(5000)
+            body = await page.inner_text("body")
+            lines = [l.strip() for l in body.splitlines() if l.strip()]
+            # имя — строка после первого "Ваш профіль" (это имя аккаунта)
+            name = None
+            for i, l in enumerate(lines):
+                if "Ваш профіль" in l or "Ваш профиль" in l:
+                    for j in range(i + 1, min(i + 4, len(lines))):
+                        nxt = lines[j]
+                        if nxt and "профіль" not in nxt.lower() and "профиль" not in nxt.lower() \
+                                and len(nxt) < 60:
+                            name = nxt
+                            break
+                    break
+            # количество объявлений: "Оголошення" + число рядом
+            ads_count = None
+            m = re.search(r"Оголошення\s*(\d+)", body, re.IGNORECASE)
+            if m:
+                ads_count = int(m.group(1))
+            # баланс
+            balance = None
+            m2 = re.search(r"рахунок[^\d]*(\d[\d\s.,]*)\s*грн", body, re.IGNORECASE)
+            if m2:
+                balance = m2.group(1).strip()
+            shot = f"/tmp/aios_acct_olx_{int(__import__('time').time())}.png"
+            try:
+                await page.screenshot(path=shot)
+            except Exception:
+                shot = None
+            return {"status": "ok", "login": self.olx_login, "name": name,
+                    "ads_count": ads_count, "balance": balance, "screenshot": shot}
+        except Exception as e:
+            return {"status": "error", "error": str(e)[:300]}
 
     async def health_check(self) -> bool:
         """Check if Chrome profile with Google account exists and OLX accessible"""

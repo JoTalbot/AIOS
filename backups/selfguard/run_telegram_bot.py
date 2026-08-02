@@ -261,7 +261,8 @@ OLX_MENU_KEYBOARD = {
 ACCOUNTS_MENU_KEYBOARD = {
     "keyboard": [
         [{"text": "🌐 Google"}, {"text": "📸 Instagram"}],
-        [{"text": "◀️ Меню"}],
+        [{"text": "📘 Facebook"}, {"text": "🎵 TikTok"}],
+        [{"text": "🛒 OLX"}, {"text": "◀️ Меню"}],
     ],
     "resize_keyboard": True,
     "one_time_keyboard": False,
@@ -628,6 +629,39 @@ def _acct_send_result(api, chat_id: int, data: dict, intro: str) -> None:
             api.send_photo(chat_id, shot, caption=data.get("caption", ""))
         except Exception as e:
             print(f"  [ACCT] send_photo failed: {e}")
+
+
+def _run_acct_cmd(api, chat_id: int, args: list, kind: str) -> None:
+    """Универсальный запуск команд аккаунтов (facebook/tiktok/olx)."""
+    data = _run_account_control(args)
+    if data.get("status") != "ok":
+        api.send_message(chat_id, f"❌ {data.get('error', 'ошибка')}")
+        return
+    if kind == "facebook":
+        f = data.get("facebook", {})
+        txt = (f"📘 <b>Facebook</b>\n👤 Имя: {_esc_tg(f.get('name'))}\n"
+               f"👥 Друзья: {f.get('friends') or '?'}\n"
+               f"📍 {_esc_tg(f.get('city') or '—')}\n"
+               f"ℹ️ {_esc_tg(f.get('bio') or 'без описания')}\n"
+               f"🔗 {f.get('profile_url')}\n🔔 Уведомлений: {f.get('notifications') or 0}")
+    elif kind == "tiktok":
+        p = data.get("tiktok", {})
+        txt = (f"🎵 <b>TikTok</b>\n👤 Имя: {_esc_tg(p.get('name') or p.get('username'))}\n"
+               f"👥 Подписчики: {p.get('followers') or 0} · 🔄 Подписки: {p.get('following') or 0}\n"
+               f"❤️ Лайки: {p.get('likes') or 0}\nℹ️ {_esc_tg(p.get('bio') or '—')}\n"
+               f"🔗 {p.get('profile_url')}")
+    elif kind == "olx":
+        o = data.get("olx", {})
+        txt = (f"🛒 <b>OLX</b>\n👤 Имя: {_esc_tg(o.get('name') or '?')}\n"
+               f"📄 Объявлений: {o.get('ads_count') or 0}\n"
+               f"💰 Баланс: {o.get('balance') or 0} грн\n🔑 Логин: {o.get('login')}")
+    else:
+        txt = str(data)[:300]
+    _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                     "screenshot": data.get("screenshot") or
+                                     (data.get("facebook") or data.get("tiktok") or data.get("olx") or {}).get("screenshot"),
+                                     "caption": {"facebook": "📘 Facebook", "tiktok": "🎵 TikTok",
+                                                 "olx": "🛒 OLX"}.get(kind, "")}, "")
 
 
 def _acct_google(api, chat_id: int, kind: str, extra: str = "") -> None:
@@ -1002,7 +1036,8 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     g_words = ("почт", "gmail", "email", "письм", "календар", "calendar", "диск",
                "drive", "гугл", "google", "юху", "аккаунт гугл", "google аккаунт",
                "непрочитан", "кто я", "google", "событ", "расписан", "документ",
-               "поиск", "найди", "недел", "файл", "скачай", "ответь", "прочитай письмо")
+               "поиск", "найди", "недел", "файл", "скачай", "ответь", "прочитай письмо",
+               "фейсбук", "facebook", "тикток", "tiktok", "олх", "olx", "объявлен")
     is_ig = any(w in t for w in ig_words)
     is_g = any(w in t for w in g_words)
     if not is_ig and not is_g:
@@ -1197,6 +1232,75 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                                           f"{(r.stderr or r.stdout or '?')[-250:]}")
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка дайджеста: {e}")
+        return True
+
+    # ---- Facebook ----
+    if any(w in t for w in ("фейсбук", "facebook", "фб", "fb ")) and not any(w in t for w in ("директ", "сообщен")):
+        if any(w in t for w in ("лента", "новости", "новости", "посты", "пост", "feed")):
+            api.send_message(chat_id, "⏳ Открываю ленту Facebook…")
+            data = _run_account_control(["facebook", "feed", "5"])
+            if data.get("status") == "ok":
+                feed = data.get("feed") or []
+                if feed:
+                    txt = "📰 <b>Лента Facebook</b>:\n\n" + "\n\n".join(
+                        f"• {_esc_tg(x.get('text', ''))[:300]}" for x in feed[:5])
+                    api.send_message(chat_id, txt)
+                else:
+                    api.send_message(chat_id, "📰 Лента пуста (не удалось распарсить).")
+            else:
+                api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        else:
+            api.send_message(chat_id, "⏳ Захожу в Facebook…")
+            data = _run_account_control(["facebook", "profile"])
+            if data.get("status") == "ok":
+                f = data.get("facebook", {})
+                txt = (f"📘 <b>Facebook</b>\n"
+                       f"👤 Имя: {_esc_tg(f.get('name'))}\n"
+                       f"🔗 {f.get('profile_url')}\n"
+                       f"🔔 Уведомлений: {f.get('notifications') or 0}")
+                _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                                 "screenshot": f.get("screenshot"),
+                                                 "caption": "📘 Facebook"}, "")
+            else:
+                api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+
+    # ---- TikTok ----
+    if any(w in t for w in ("тикток", "tiktok", "тик ток", "тт ")):
+        api.send_message(chat_id, "⏳ Захожу в TikTok…")
+        data = _run_account_control(["tiktok", "profile"])
+        if data.get("status") == "ok":
+            p = data.get("tiktok", {})
+            txt = (f"🎵 <b>TikTok</b>\n"
+                   f"👤 Имя: {_esc_tg(p.get('name') or p.get('username'))}\n"
+                   f"👥 Подписчики: {p.get('followers') or 0}\n"
+                   f"🔄 Подписки: {p.get('following') or 0}\n"
+                   f"❤️ Лайки: {p.get('likes') or 0}\n"
+                   f"ℹ️ {_esc_tg(p.get('bio') or 'без описания')}\n"
+                   f"🔗 {p.get('profile_url')}")
+            _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                             "screenshot": p.get("screenshot"),
+                                             "caption": "🎵 TikTok"}, "")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+
+    # ---- OLX ----
+    if any(w in t for w in ("олх", "olx", "объявлен", "объявлени")):
+        api.send_message(chat_id, "⏳ Захожу в OLX…")
+        data = _run_account_control(["olx", "profile"])
+        if data.get("status") == "ok":
+            o = data.get("olx", {})
+            txt = (f"🛒 <b>OLX</b>\n"
+                   f"👤 Имя: {_esc_tg(o.get('name') or '?')}\n"
+                   f"📄 Объявлений: {o.get('ads_count') or 0}\n"
+                   f"💰 Баланс: {o.get('balance') or 0} грн\n"
+                   f"🔑 Логин: {o.get('login')}")
+            _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                             "screenshot": o.get("screenshot"),
+                                             "caption": "🛒 OLX"}, "")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
         return True
 
     # ---- Google ----
@@ -1423,7 +1527,8 @@ def cmd_accounts() -> str:
             "• «проверь мою почту» / «сколько непрочитанных» / «найди письмо …»\n"
             "• «кто я в гугле» · «события на сегодня» · «добавь событие …»\n"
             "• «создай документ …» · «покажи календарь» · «отправь письмо …»\n"
-            "• «мой инстаграм» · «мои посты» · «лайкни <ссылка>»\n"
+            "• «мой инстаграм» · «директ» · «лайкни <ссылка>»\n"
+            "• «покажи фейсбук» · «тикток» · «олх» / «мои объявления»\n"
             "• «подпишись на @…» / «отпишись от @…»\n\n"
             "Или выберите раздел:")
 
@@ -1642,6 +1747,21 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
     elif data == "accounts_back":
         reply = cmd_accounts()
         keyboard = ACCOUNTS_MENU_KEYBOARD
+    elif data == "accounts_facebook":
+        reply = None
+        keyboard = None
+        api.send_message(chat_id, "⏳ Facebook…")
+        _run_acct_cmd(api, chat_id, ["facebook", "profile"], "facebook")
+    elif data == "accounts_tiktok":
+        reply = None
+        keyboard = None
+        api.send_message(chat_id, "⏳ TikTok…")
+        _run_acct_cmd(api, chat_id, ["tiktok", "profile"], "tiktok")
+    elif data == "accounts_olx":
+        reply = None
+        keyboard = None
+        api.send_message(chat_id, "⏳ OLX…")
+        _run_acct_cmd(api, chat_id, ["olx", "profile"], "olx")
     elif data == "google_whoami":
         reply = None
         keyboard = None
@@ -2270,6 +2390,9 @@ BUTTON_ACTIONS = {
     "🌐 Аккаунты": "menu_accounts",
     "🌐 Google": "accounts_google",
     "📸 Instagram": "accounts_instagram",
+    "📘 Facebook": "accounts_facebook",
+    "🎵 TikTok": "accounts_tiktok",
+    "🛒 OLX": "accounts_olx",
     "◀️ Аккаунты": "accounts_back",
     # Google menu
     "✉️ Непрочитанные": "google_unread",
@@ -2575,6 +2698,50 @@ def run_bot(token: str) -> None:
                     else:
                         reply = cmd_google("")
                         keyboard = GOOGLE_MENU_KEYBOARD
+                elif cmd in ("/fb", "/facebook"):
+                    reply = None
+                    keyboard = None
+                    api.send_message(chat_id, "⏳ Facebook…")
+                    data = _run_account_control(["facebook", "profile"])
+                    if data.get("status") == "ok":
+                        f = data.get("facebook", {})
+                        txt = (f"📘 <b>Facebook</b>\n👤 {_esc_tg(f.get('name'))}\n"
+                               f"🔗 {f.get('profile_url')}\n🔔 Уведомлений: {f.get('notifications') or 0}")
+                        _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                                         "screenshot": f.get("screenshot"),
+                                                         "caption": "📘 Facebook"}, "")
+                    else:
+                        api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+                elif cmd == "/tiktok":
+                    reply = None
+                    keyboard = None
+                    api.send_message(chat_id, "⏳ TikTok…")
+                    data = _run_account_control(["tiktok", "profile"])
+                    if data.get("status") == "ok":
+                        p = data.get("tiktok", {})
+                        txt = (f"🎵 <b>TikTok</b>\n👤 {_esc_tg(p.get('name') or p.get('username'))}\n"
+                               f"👥 Подписчики: {p.get('followers') or 0} · 🔄 Подписки: {p.get('following') or 0}\n"
+                               f"❤️ Лайки: {p.get('likes') or 0}\n🔗 {p.get('profile_url')}")
+                        _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                                         "screenshot": p.get("screenshot"),
+                                                         "caption": "🎵 TikTok"}, "")
+                    else:
+                        api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+                elif cmd == "/olx_account":
+                    reply = None
+                    keyboard = None
+                    api.send_message(chat_id, "⏳ OLX…")
+                    data = _run_account_control(["olx", "profile"])
+                    if data.get("status") == "ok":
+                        o = data.get("olx", {})
+                        txt = (f"🛒 <b>OLX</b>\n👤 {_esc_tg(o.get('name') or '?')}\n"
+                               f"📄 Объявлений: {o.get('ads_count') or 0}\n"
+                               f"💰 Баланс: {o.get('balance') or 0} грн")
+                        _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                                         "screenshot": o.get("screenshot"),
+                                                         "caption": "🛒 OLX"}, "")
+                    else:
+                        api.send_message(chat_id, f"❌ {data.get('error', '?')}")
                 elif cmd == "/instagram":
                     if args.strip():
                         sub_a = args.strip().lower().split()[0]

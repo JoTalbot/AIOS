@@ -5,6 +5,7 @@ from __future__ import annotations
 from .base import PlatformAdapter
 from .ebay_adapter import EbayAdapter
 from .facebook_adapter import FacebookAdapter
+from .facebook_chrome_twin_adapter import FacebookChromeTwinAdapter
 from .instagram_adapter import InstagramAdapter
 from .instagram_emulator_adapter import InstagramEmulatorAdapter
 from .chrome_twin_adapter import ChromeTwinAdapter
@@ -14,6 +15,7 @@ from .linkedin_adapter import LinkedinAdapter
 from .olx_adapter import OLXAdapter
 from .prom_adapter import PromAdapter
 from .tiktok_adapter import TiktokAdapter
+from .tiktok_chrome_twin_adapter import TiktokChromeTwinAdapter
 from .tiktok_shop_adapter import TiktokShopAdapter
 from .viber_adapter import ViberAdapter
 from .whatsapp_adapter import WhatsAppAdapter
@@ -33,9 +35,11 @@ class PlatformRegistry:
             "instagram_chrome_twin": InstagramChromeTwinAdapter,
             "prom": PromAdapter,
             "facebook": FacebookAdapter,
+            "facebook_chrome_twin": FacebookChromeTwinAdapter,
             "viber": ViberAdapter,
             "whatsapp": WhatsAppAdapter,
             "tiktok": TiktokAdapter,
+            "tiktok_chrome_twin": TiktokChromeTwinAdapter,
             "linkedin": LinkedinAdapter,
             "ebay": EbayAdapter,
             "tiktok_shop": TiktokShopAdapter,

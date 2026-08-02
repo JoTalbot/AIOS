@@ -594,8 +594,11 @@ _DRIVE_NOISE = ("перейти к основному контенту", "быс
 
 
 def _is_drive_date(text: str) -> bool:
-    return bool(re.search(r"^\d{1,2}\s+[а-я]+\\.?|^\d{1,2}\s+\w+\s+\d{4}", text.lower())) or \
-           bool(re.fullmatch(r"[\w.]{2,9}", text) and re.search(r"июл|авг|сен|окт|ноя|дек|янв|фев|мар|апр|мая|июн", text.lower()))
+    low = text.lower()
+    months = ("янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек")
+    if any(m in low for m in months):
+        return True
+    return bool(re.fullmatch(r"\d{1,2}\s+\w{2,12}\.?(?:\s+\d{4})?", low))
 
 
 async def google_drive_list(limit: int = 20) -> dict:
@@ -1141,8 +1144,99 @@ async def instagram_dm_new(username: str, text: str, confirm: bool) -> dict:
         await a.close()
 
 
+# --------------------------------------------------------------------------
+# Facebook / TikTok / OLX (Chrome Twin)
+# --------------------------------------------------------------------------
+
+async def _fb_adapter():
+    from aios_core.platforms.facebook_chrome_twin_adapter import FacebookChromeTwinAdapter
+    return FacebookChromeTwinAdapter()
+
+
+async def _tt_adapter():
+    from aios_core.platforms.tiktok_chrome_twin_adapter import TiktokChromeTwinAdapter
+    return TiktokChromeTwinAdapter()
+
+
+async def _olx_adapter():
+    from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+    return OLXChromeTwinAdapter(config={"olx_login": os.getenv("OLX_LOGIN", "959052288")})
+
+
+async def facebook_profile() -> dict:
+    a = await _fb_adapter()
+    try:
+        login = await a.check_login()
+        if not login.get("logged_in"):
+            return {"status": "error", "error": "Facebook не залогинен", "login": login}
+        info = await a.get_profile_info()
+        notif = await a.get_notifications_count()
+        info["notifications"] = notif
+        info["logged_in"] = True
+        return {"status": "ok", "facebook": info}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def facebook_feed(limit: int = 5) -> dict:
+    a = await _fb_adapter()
+    try:
+        login = await a.check_login()
+        if not login.get("logged_in"):
+            return {"status": "error", "error": "Facebook не залогинен"}
+        feed = await a.get_feed(limit)
+        return {"status": "ok", "feed": feed}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def tiktok_profile() -> dict:
+    a = await _tt_adapter()
+    try:
+        login = await a.check_login()
+        if not login.get("logged_in"):
+            return {"status": "error", "error": "TikTok не залогинен", "login": login}
+        info = await a.get_profile_info()
+        info["logged_in"] = True
+        return {"status": "ok", "tiktok": info}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def tiktok_feed(limit: int = 5) -> dict:
+    a = await _tt_adapter()
+    try:
+        login = await a.check_login()
+        if not login.get("logged_in"):
+            return {"status": "error", "error": "TikTok не залогинен"}
+        feed = await a.get_feed(limit)
+        return {"status": "ok", "feed": feed}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def olx_profile() -> dict:
+    a = await _olx_adapter()
+    try:
+        info = await a.account_info()
+        if info.get("status") != "ok":
+            return info
+        return {"status": "ok", "olx": info}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
 async def instagram_follow(username: str, action: str, confirm: bool) -> dict:
-    """Подписаться/отписаться. action: follow|unfollow."""
     a = await _instagram_adapter()
     try:
         page = await a._ensure_browser()
@@ -1293,6 +1387,22 @@ def main():
     igdn.add_argument("text")
     igdn.add_argument("--confirm", action="store_true")
 
+    fb = sub.add_parser("facebook")
+    fbg = fb.add_subparsers(dest="action", required=True)
+    fbg.add_parser("profile")
+    fbf = fbg.add_parser("feed")
+    fbf.add_argument("n", nargs="?", type=int, default=5)
+
+    tt = sub.add_parser("tiktok")
+    ttg = tt.add_subparsers(dest="action", required=True)
+    ttg.add_parser("profile")
+    ttf = ttg.add_parser("feed")
+    ttf.add_argument("n", nargs="?", type=int, default=5)
+
+    olx = sub.add_parser("olx")
+    olxg = olx.add_subparsers(dest="action", required=True)
+    olxg.add_parser("profile")
+
     args = parser.parse_args()
 
     try:
@@ -1352,6 +1462,19 @@ def main():
                 out(asyncio.run(instagram_dm_send(args.thread, args.text, args.confirm)))
             elif args.action == "dm_new":
                 out(asyncio.run(instagram_dm_new(args.username, args.text, args.confirm)))
+        elif args.account == "facebook":
+            if args.action == "profile":
+                out(asyncio.run(facebook_profile()))
+            elif args.action == "feed":
+                out(asyncio.run(facebook_feed(args.n)))
+        elif args.account == "tiktok":
+            if args.action == "profile":
+                out(asyncio.run(tiktok_profile()))
+            elif args.action == "feed":
+                out(asyncio.run(tiktok_feed(args.n)))
+        elif args.account == "olx":
+            if args.action == "profile":
+                out(asyncio.run(olx_profile()))
     except Exception as e:
         out({"status": "error", "error": str(e)[:400]})
 

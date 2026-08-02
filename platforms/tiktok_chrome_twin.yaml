@@ -1,0 +1,19 @@
+name: tiktok_chrome_twin
+android_package: com.android.chrome
+agent_module: aios_core.platforms.tiktok_chrome_twin_adapter
+storage_class: null
+adb_class: null
+default_locale: uk-UA
+description: "TikTok via Chrome Twin — сессия в профиле data/chrome_twin/default/. Read-only: профиль, подписчики, лайки, видео."
+legacy_default_db: tiktok_chrome_twin_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: false
+    messenger: false
+    collector: true
+    actions_per_hour: 60
+    note: "TikTok Chrome Twin: read-only (профиль, счётчики, лента)."
+  browser:
+    user_data_dir: "data/chrome_twin/default"
+    headless: false
+    slow_mo: 120

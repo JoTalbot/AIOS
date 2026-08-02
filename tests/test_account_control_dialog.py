@@ -164,6 +164,46 @@ def test_calendar_add_flow(monkeypatch):
     assert any("Событие создано" in x for x in api2.messages)
 
 
+def test_facebook_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "facebook" and args[1] == "profile":
+            return {"status": "ok", "facebook": {"name": "qililip",
+                                                 "profile_url": "https://www.facebook.com/qililip",
+                                                 "notifications": 2}}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "покажи фейсбук") is True
+    assert any("Facebook" in x for x in api.messages)
+
+
+def test_tiktok_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "tiktok" and args[1] == "profile":
+            return {"status": "ok", "tiktok": {"username": "jotalbotkubik",
+                                               "name": "Jo Talbot565", "followers": 2,
+                                               "following": 1, "likes": 0}}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "тикток") is True
+    assert any("TikTok" in x for x in api.messages)
+
+
+def test_olx_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "olx" and args[1] == "profile":
+            return {"status": "ok", "olx": {"name": "[PRIVATE_CONTACT]", "ads_count": 1, "balance": "0"}}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "покажи олх") is True
+    assert any("OLX" in x for x in api.messages)
+
+
 def test_ig_like_flow(monkeypatch):
     def fake_run(args):
         if args[:3] == ["instagram", "like", url] and "--confirm" not in args:
