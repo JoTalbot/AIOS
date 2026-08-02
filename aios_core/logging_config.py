@@ -18,10 +18,10 @@ import json
 import logging
 import sys
 import time
+from contextlib import AbstractContextManager
 from contextvars import ContextVar
 from logging.handlers import RotatingFileHandler
-from typing import Any
-from urllib.parse import urlparse, parse_qs
+from typing import Any, Dict, List, Optional, Union
 
 from .tracing import tracer
 
@@ -33,6 +33,7 @@ __all__ = [
     "set_log_context",
     "setup_logging",
     "safe_get_request",
+    "LogContextManager",
 ]
 
 # Context variables for dynamic injection
@@ -60,7 +61,13 @@ def set_log_context(
     constitutional_status: str = "",
     task_id: str = "",
 ) -> None:
-    """Set context variables that are automatically injected into all log records."""
+    """Set context variables that are automatically injected into all log records.
+
+    Args:
+        agent_id: Identifier for the agent generating logs
+        constitutional_status: Current constitutional status of the agent
+        task_id: Identifier for the current task being processed
+    """
     if agent_id:
         _ctx_agent_id.set(agent_id)
     if constitutional_status:
@@ -77,11 +84,18 @@ def clear_log_context() -> None:
 
 
 def _sanitize(data: Any) -> Any:
-    """Sanitize sensitive fields from data structures."""
+    """Sanitize sensitive fields from data structures.
+
+    Args:
+        data: Input data structure to sanitize
+
+    Returns:
+        Sanitized data structure with sensitive fields redacted
+    """
     if isinstance(data, dict):
-        sanitized = {}
+        sanitized: Dict[str, Any] = {}
         for key, value in data.items():
-            if any(s in key.lower() for s in _SENSITIVE_FIELDS):
+            if any(s in key.lower() for s in SENSITIVE_FIELDS):
                 sanitized[key] = "***REDACTED***"
             else:
                 sanitized[key] = _sanitize(value)
@@ -95,15 +109,22 @@ class JSONFormatter(logging.Formatter):
     """JSON Formatter for structured production logging.
 
     Automatically injects trace_id, span_id, agent_id, constitutional_status,
-    and task_id from context variables.  Sanitizes sensitive fields.
+    and task_id from context variables. Sanitizes sensitive fields.
     """
 
     def format(self, record: logging.LogRecord) -> str:
-        """Format a log record as JSON."""
+        """Format a log record as JSON.
+
+        Args:
+            record: LogRecord to format
+
+        Returns:
+            JSON string representation of the log record
+        """
         current_span = tracer.get_current_span()
 
         # Build structured data
-        log_data: dict[str, Any] = {
+        log_data: Dict[str, Any] = {
             "timestamp": time.time(),
             "iso_time": self.formatTime(record, self.datefmt),
             "level": record.levelname,
@@ -119,7 +140,7 @@ class JSONFormatter(logging.Formatter):
         }
 
         # Inject extra fields from the record
-        extra_fields = {
+        extra_fields: Dict[str, Any] = {
             k: v
             for k, v in record.__dict__.items()
             if k
@@ -163,7 +184,7 @@ class JSONFormatter(logging.Formatter):
 class HumanFormatter(logging.Formatter):
     """Human-readable formatter with color-like markers for terminal output."""
 
-    COLORS = {
+    COLORS: Dict[str, str] = {
         "DEBUG": "\033[36m",
         "INFO": "\033[32m",
         "WARNING": "\033[33m",
@@ -172,7 +193,14 @@ class HumanFormatter(logging.Formatter):
     }
 
     def format(self, record: logging.LogRecord) -> str:
-        """Format in readable style."""
+        """Format in readable style.
+
+        Args:
+            record: LogRecord to format
+
+        Returns:
+            Human-readable string representation of the log record
+        """
         agent = _ctx_agent_id.get()
         task = _ctx_task_id.get()
         prefix = f"[{record.levelname}] {record.name}"
@@ -194,13 +222,24 @@ class LogMiddleware:
         app = Starlette(middleware=[LogMiddleware()])
     """
 
-    def __init__(self, app: Any, logger_name: str = "aios"):
-        """Initialize LogMiddleware."""
+    def __init__(self, app: Any, logger_name: str = "aios") -> None:
+        """Initialize LogMiddleware.
+
+        Args:
+            app: ASGI application
+            logger_name: Name of the logger to use
+        """
         self.app = app
         self.logger_name = logger_name
 
-    async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
-        """Process ASGI request with log context injection."""
+    async def __call__(self, scope: Dict[str, Any], receive: Any, send: Any) -> None:
+        """Process ASGI request with log context injection.
+
+        Args:
+            scope: ASGI scope dictionary
+            receive: ASGI receive channel
+            send: ASGI send channel
+        """
         if scope["type"] in ("http", "websocket"):
             path = scope.get("path", "")
             method = scope.get("method", "")
@@ -224,18 +263,28 @@ class BufferedHandler(logging.Handler):
         self,
         buffer_size: int = 100,
         flush_interval: float = 5.0,
-        target: logging.Handler | None = None,
-    ):
-        """Initialize BufferedHandler."""
+        target: Optional[logging.Handler] = None,
+    ) -> None:
+        """Initialize BufferedHandler.
+
+        Args:
+            buffer_size: Maximum number of records to buffer
+            flush_interval: Maximum time in seconds before flushing
+            target: Target handler to flush to
+        """
         super().__init__()
-        self._buffer: list[logging.LogRecord] = []
+        self._buffer: List[logging.LogRecord] = []
         self._buffer_size = buffer_size
         self._flush_interval = flush_interval
         self._target = target
         self._last_flush = time.time()
 
     def emit(self, record: logging.LogRecord) -> None:
-        """Buffer the record; flush when buffer is full or interval elapsed."""
+        """Buffer the record; flush when buffer is full or interval elapsed.
+
+        Args:
+            record: LogRecord to buffer
+        """
         self._buffer.append(record)
         now = time.time()
         if len(self._buffer) >= self._buffer_size or (now - self._last_flush) >= self._flush_interval:
