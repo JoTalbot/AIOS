@@ -181,3 +181,27 @@ docker compose -f docker-compose.prod.yml up -d aios-api
 Это аварийный режим — при рабочих облаках (groq/mistral/zai) локалка не используется
 (последняя в приоритете). При ограниченной памяти сменить порядок fallback на 1.5b можно
 в `PROVIDERS["local"]["models"]` + `--force-snapshot`.
+
+## Обновление v3.5 (02.08.2026, план из RESEARCH_AUTOCODERS_RU.md)
+
+**Гейты качества (п.2/6/8):**
+- `scripts/pytest_gate.py <file>` — таргетные тесты файла + сравнение с чистым HEAD
+  в git-worktree; блокирует только НОВЫЕ падения; встроен в phase_validate.
+  Тюнинг: `AIOS_PYTEST_GATE_TIMEOUT` (240с).
+- Бюджет цикла в LLMClient: `AIOS_CYCLE_MAX_LLM_CALLS` (60), `AIOS_CYCLE_MAX_SECONDS`
+  (900) — BudgetExceeded обрывает цикл до генерации (экономия ключей при 429).
+- CI: `.github/workflows/auto-gate.yml` — protected-gate (`scripts/ci_protected_gate.py`),
+  compile-gate, no-secrets-gate для PR в main; bypass для ops — `[ops]` в заголовке PR.
+
+**Контекст (п.3/7):** `aios_core/repomap.py` (AST-карта 744 модулей в промпт
+планировщика, кэш `data/.repomap.json`); `_window_file` в autocoder_v3 (файлы >15К —
+outline + топ-5 релевантных функций); `AIOS_PLANNER_MODEL`/`AIOS_CODER_MODEL` —
+оверрайд моделей фаз.
+
+**Знания (п.4/5/9):** 420 SKILL.md по стандарту agentskills.io (`scripts/skill_lint.py`);
+`skills/coder/` — боевые уроки; тела скиллов подмешиваются в генерацию
+(`skill_bodies_for`); Context7-доки в планировщике; `scripts/sync_gh_issues.py`
++ `aios-gh-issues.timer` (04:15, метка `auto-coder`); `scripts/memory_to_skills.py`
++ `aios-memory-skills.timer` (пн 04:00) — кластеры ошибок → auto-lesson-скиллы.
+
+Тесты: `scripts/test_agents_md.py`, `test_batch_b.py`, `test_batch_c.py`.
