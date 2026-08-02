@@ -1,179 +1,183 @@
 groups:
-  - name: aios-production-alerts
-    interval: 30s
-    rules:
-      # Critical: Ban detected - immediate action required
-      - alert: BanDetected
-        expr: aios_production_bans_total > 0
-        for: 0s
-        labels:
-          severity: critical
-          component: production
-        annotations:
-          summary: "🚨 BAN DETECTED - Production autopilot banned!"
-          description: "Total bans: {{ $value }}. Immediately reduce Aph, increase jitter, check compliance. Profile: {{ $labels.profile }}"
-          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#ban-recovery"
-
-      # Warning: Success rate below 90% for 15 minutes
-      - alert: LowSuccessRateWarning
-        expr: aios_production_success_rate < 0.90
-        for: 15m
-        labels:
-          severity: warning
-          component: production
-        annotations:
-          summary: "⚠️ Success rate below 90% for 15m"
-          description: "Current success rate: {{ $value | humanizePercentage }}. Check pacing, device health, compliance blocks. Profile: {{ $labels.profile }}"
-          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#success-rate-recovery"
-
-      # Critical: Success rate below 50% for 5 minutes (imminent ban risk)
-      - alert: LowSuccessRateCritical
-        expr: aios_production_success_rate < 0.50
-        for: 5m
-        labels:
-          severity: critical
-          component: production
-        annotations:
-          summary: "🔴 Success rate below 50% - IMMINENT BAN RISK"
-          description: "Current success rate: {{ $value | humanizePercentage }}. Pause autopilot, investigate device/app state immediately. Profile: {{ $labels.profile }}"
-          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#critical-recovery"
-
-      # Warning: High predictive risk score
-      - alert: HighPredictiveRisk
-        expr: aios_production_risk_score > 0.7
-        for: 10m
-        labels:
-          severity: warning
-          component: production
-        annotations:
-          summary: "⚠️ High predictive risk score > 0.7"
-          description: "Device {{ $labels.device }} shows elevated failure risk. Consider recalibration or device rotation."
-          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#predictive-maintenance"
-
-      # Critical: Device offline
-      - alert: DeviceOffline
-        expr: aios_devices{state="offline"} > 0
-        for: 2m
-        labels:
-          severity: critical
-          component: fleet
-        annotations:
-          summary: "📱 Device offline: {{ $labels.serial }}"
-          description: "Device {{ $labels.serial }} (AVD: {{ $labels.avd }}) has been offline for 2m. Check emulator health or replace device."
-
-      # Warning: No free devices for a platform
-      - alert: NoFreeDevices
-        expr: aios_devices{state="free"} == 0
-        for: 5m
-        labels:
-          severity: warning
-          component: fleet
-        annotations:
-          summary: "⚠️ No free devices available"
-          description: "All devices busy or offline. Consider adding more emulators or checking waitlist. Platform: {{ $labels.platform }}"
-          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#device-pool-scaling"
-
-      # Warning: Compliance blocked actions
-      - alert: ComplianceBlocked
-        expr: increase(aios_compliance_blocks_total[5m]) > 10
-        for: 5m
-        labels:
-          severity: warning
-          component: compliance
-        annotations:
-          summary: "⚠️ High compliance block rate"
-          description: "{{ $value }} actions blocked by compliance guard in 5m. Check platform compliance YAML and ToS decisions. Platform: {{ $labels.platform }}"
-          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#compliance-tuning"
-
-      # Info: GA progress tracking
-      - alert: GAProgress
-        expr: aios_production_cycles_total < 336
-        for: 0s
-        labels:
-          severity: info
-          component: production
-        annotations:
-          summary: "📊 GA Progress: {{ $value }}/336 cycles"
-          description: "Target: 336 cycles (14 days × 24 cycles/day) for GA. Current: {{ $value }} cycles. Profiles: {{ $labels.profile }}"
-          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#ga-criteria"
-
-      # Warning: Drift events spike
-      - alert: DriftEventsSpike
-        expr: increase(aios_drift_events_total[1h]) > 20
-        for: 5m
-        labels:
-          severity: warning
-          component: calibration
-        annotations:
-          summary: "⚠️ Marker drift spike detected"
-          description: "{{ $value }} drift events in 1h. Platform: {{ $labels.platform }}. Run marker-check and recalibrate."
-          runbook_url: "https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#drift-recovery"
-
-      # Warning: Cycle duration too high
-      - alert: CycleDurationHigh
-        expr: aios_cycle_duration_seconds > 300
-        for: 10m
-        labels:
-          severity: warning
-          component: production
-        annotations:
-          summary: "⚠️ Cycle duration > 5 minutes"
-          description: "Cycle for profile {{ $labels.profile }} taking {{ $value }}s. Check device performance, app responsiveness, or reduce batch size."
-
-      # Info: Cards collected rate
-      - alert: LowCardsCollected
-        expr: rate(aios_cards_collected_total[1h]) < 10
-        for: 30m
-        labels:
-          severity: info
-          component: collection
-        annotations:
-          summary: "📊 Low card collection rate"
-          description: "Collecting {{ $value | humanize }}/hr cards. Platform: {{ $labels.platform }}. Check search queries, app state, or increase max_cards."
-
-  - name: aios-infrastructure-alerts
-    interval: 60s
-    rules:
-      # AWS EKS Node CPU High
-      - alert: EKSHighCPUUsage
-        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
-        for: 10m
-        labels:
-          severity: warning
-          component: infrastructure
-        annotations:
-          summary: "⚠️ High CPU usage on EKS node {{ $labels.instance }}"
-          description: "CPU usage has exceeded 85% for 10 minutes. Consider scaling EKS node group."
-
-      # AWS RDS PostgreSQL High Connections
-      - alert: RDSHighConnections
-        expr: pg_stat_activity_count > 400
-        for: 5m
-        labels:
-          severity: warning
-          component: database
-        annotations:
-          summary: "⚠️ High DB Connections"
-          description: "PostgreSQL active connections > 400. Check API connection pooling or potential connection leaks."
-
-      # AWS ElastiCache Redis High Memory
-      - alert: RedisHighMemory
-        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
-        for: 10m
-        labels:
-          severity: warning
-          component: cache
-        annotations:
-          summary: "⚠️ High Redis Memory Usage"
-          description: "Redis memory utilization > 85%. Eiction policies might start dropping important task queues."
-
-      # AIOS API Pod Crash Loop
-      - alert: APIPodCrashLoop
-        expr: rate(kube_pod_container_status_restarts_total{container="aios"}[15m]) > 0.2
-        for: 10m
-        labels:
-          severity: critical
-          component: api
-        annotations:
-          summary: "🚨 AIOS API Pod CrashLoopBackOff"
-          description: "API pods are restarting frequently. Check pod logs immediately."
+- name: aios-production-alerts
+  interval: 30s
+  rules:
+  - alert: BanDetected
+    expr: aios_production_bans_total > 0
+    for: 0s
+    labels:
+      severity: critical
+      component: production
+    annotations:
+      summary: 🚨 BAN DETECTED - Production autopilot banned!
+      description: 'Total bans: {{ $value }}. Immediately reduce Aph, increase jitter,
+        check compliance. Profile: {{ $labels.profile }}'
+      runbook_url: https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#ban-recovery
+  - alert: LowSuccessRateWarning
+    expr: aios_production_success_rate < 0.90
+    for: 15m
+    labels:
+      severity: warning
+      component: production
+    annotations:
+      summary: ⚠️ Success rate below 90% for 15m
+      description: 'Current success rate: {{ $value | humanizePercentage }}. Check
+        pacing, device health, compliance blocks. Profile: {{ $labels.profile }}'
+      runbook_url: https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#success-rate-recovery
+  - alert: LowSuccessRateCritical
+    expr: aios_production_success_rate < 0.50
+    for: 5m
+    labels:
+      severity: critical
+      component: production
+    annotations:
+      summary: 🔴 Success rate below 50% - IMMINENT BAN RISK
+      description: 'Current success rate: {{ $value | humanizePercentage }}. Pause
+        autopilot, investigate device/app state immediately. Profile: {{ $labels.profile
+        }}'
+      runbook_url: https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#critical-recovery
+  - alert: HighPredictiveRisk
+    expr: aios_production_risk_score > 0.7
+    for: 10m
+    labels:
+      severity: warning
+      component: production
+    annotations:
+      summary: ⚠️ High predictive risk score > 0.7
+      description: Device {{ $labels.device }} shows elevated failure risk. Consider
+        recalibration or device rotation.
+      runbook_url: https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#predictive-maintenance
+  - alert: DeviceOffline
+    expr: aios_devices{state="offline"} > 0
+    for: 2m
+    labels:
+      severity: critical
+      component: fleet
+    annotations:
+      summary: '📱 Device offline: {{ $labels.serial }}'
+      description: 'Device {{ $labels.serial }} (AVD: {{ $labels.avd }}) has been
+        offline for 2m. Check emulator health or replace device.'
+  - alert: NoFreeDevices
+    expr: aios_devices{state="free"} == 0
+    for: 5m
+    labels:
+      severity: warning
+      component: fleet
+    annotations:
+      summary: ⚠️ No free devices available
+      description: 'All devices busy or offline. Consider adding more emulators or
+        checking waitlist. Platform: {{ $labels.platform }}'
+      runbook_url: https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#device-pool-scaling
+  - alert: ComplianceBlocked
+    expr: increase(aios_compliance_blocks_total[5m]) > 10
+    for: 5m
+    labels:
+      severity: warning
+      component: compliance
+    annotations:
+      summary: ⚠️ High compliance block rate
+      description: '{{ $value }} actions blocked by compliance guard in 5m. Check
+        platform compliance YAML and ToS decisions. Platform: {{ $labels.platform
+        }}'
+      runbook_url: https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#compliance-tuning
+  - alert: GAProgress
+    expr: aios_production_cycles_total < 336
+    for: 0s
+    labels:
+      severity: info
+      component: production
+    annotations:
+      summary: '📊 GA Progress: {{ $value }}/336 cycles'
+      description: 'Target: 336 cycles (14 days × 24 cycles/day) for GA. Current:
+        {{ $value }} cycles. Profiles: {{ $labels.profile }}'
+      runbook_url: https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#ga-criteria
+  - alert: DriftEventsSpike
+    expr: increase(aios_drift_events_total[1h]) > 20
+    for: 5m
+    labels:
+      severity: warning
+      component: calibration
+    annotations:
+      summary: ⚠️ Marker drift spike detected
+      description: '{{ $value }} drift events in 1h. Platform: {{ $labels.platform
+        }}. Run marker-check and recalibrate.'
+      runbook_url: https://github.com/JoTalbot/AIOS/blob/main/PRODUCTION_EXPLOITATION.md#drift-recovery
+  - alert: CycleDurationHigh
+    expr: aios_cycle_duration_seconds > 300
+    for: 10m
+    labels:
+      severity: warning
+      component: production
+    annotations:
+      summary: ⚠️ Cycle duration > 5 minutes
+      description: Cycle for profile {{ $labels.profile }} taking {{ $value }}s. Check
+        device performance, app responsiveness, or reduce batch size.
+  - alert: LowCardsCollected
+    expr: rate(aios_cards_collected_total[1h]) < 10
+    for: 30m
+    labels:
+      severity: info
+      component: collection
+    annotations:
+      summary: 📊 Low card collection rate
+      description: 'Collecting {{ $value | humanize }}/hr cards. Platform: {{ $labels.platform
+        }}. Check search queries, app state, or increase max_cards.'
+  - alert: DiskSpaceCritical
+    expr: (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 >
+      85
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: Диск >85% занят
+  - alert: AutoCoderStopped
+    expr: aios_coder_service_up == 0
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: Автокодер остановлен
+- name: aios-infrastructure-alerts
+  interval: 60s
+  rules:
+  - alert: EKSHighCPUUsage
+    expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
+      * 100) > 85
+    for: 10m
+    labels:
+      severity: warning
+      component: infrastructure
+    annotations:
+      summary: ⚠️ High CPU usage on EKS node {{ $labels.instance }}
+      description: CPU usage has exceeded 85% for 10 minutes. Consider scaling EKS
+        node group.
+  - alert: RDSHighConnections
+    expr: pg_stat_activity_count > 400
+    for: 5m
+    labels:
+      severity: warning
+      component: database
+    annotations:
+      summary: ⚠️ High DB Connections
+      description: PostgreSQL active connections > 400. Check API connection pooling
+        or potential connection leaks.
+  - alert: RedisHighMemory
+    expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+    for: 10m
+    labels:
+      severity: warning
+      component: cache
+    annotations:
+      summary: ⚠️ High Redis Memory Usage
+      description: Redis memory utilization > 85%. Eiction policies might start dropping
+        important task queues.
+  - alert: APIPodCrashLoop
+    expr: rate(kube_pod_container_status_restarts_total{container="aios"}[15m]) >
+      0.2
+    for: 10m
+    labels:
+      severity: critical
+      component: api
+    annotations:
+      summary: 🚨 AIOS API Pod CrashLoopBackOff
+      description: API pods are restarting frequently. Check pod logs immediately.
