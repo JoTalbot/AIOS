@@ -734,9 +734,38 @@ class CoreHandlersMixin:
     async def _dashboard_chat(self, request: Request) -> JSONResponse:
         if request.method == "POST":
             body = await request.json()
-            self._dashboard_chat_message = str(body.get("message", "")).strip()
+            msg = str(body.get("message", "")).strip()
+            self._dashboard_chat_message = msg
+            # Call LLM balancer for chat
+            try:
+                from aios_core.llm_balancer import LLMBalancer
+                balancer = LLMBalancer()
+                # Use chat task type
+                llm_response = balancer.chat(
+                    [{"role": "user", "content": msg}],
+                    model="llama-3.3-70b-versatile",
+                    system="You are AIOS assistant, helpful AI for code and system management. Answer in Russian, concisely.",
+                    task_type="chat",
+                    max_tokens=500
+                )
+                if llm_response and not llm_response.startswith("⚠️"):
+                    return JSONResponse({"status": "ok", "message": msg, "response": llm_response[:2000], "model": "llama-3.3-70b-versatile"})
+                else:
+                    # Fallback to local
+                    llm_response = balancer.chat(
+                        [{"role": "user", "content": msg}],
+                        model="mistral-small-latest",
+                        task_type="chat",
+                        max_tokens=500
+                    )
+                    return JSONResponse({"status": "ok", "message": msg, "response": llm_response[:2000], "model": "mistral-small-latest"})
+            except Exception as e:
+                print(f"Dashboard chat LLM failed: {e}")
+                import traceback
+                traceback.print_exc()
+                return JSONResponse({"status": "error", "message": msg, "response": f"LLM temporarily unavailable: {e}", "error": str(e)})
         message = getattr(self, "_dashboard_chat_message", "")
-        return JSONResponse({"status": "ready", "message": message})
+        return JSONResponse({"status": "ready", "message": message, "response": ""})
 
     async def _dashboard_olx_queries(self, request: Request) -> JSONResponse:
         try:
