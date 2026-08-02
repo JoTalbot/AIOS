@@ -1096,7 +1096,9 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                "поиск", "найди", "недел", "файл", "скачай", "ответь", "прочитай письмо",
                "фейсбук", "facebook", "тикток", "tiktok", "олх", "olx", "объявлен",
                "контакт", "телефонная книга", "адресная книга", "пром", "prom.ua",
-               "телеграм", "telegram", "в телеге")
+               "телеграм", "telegram", "в телеге", "нова пошт", "нова почт",
+               "новая пошта", "nova poshta", "novaposhta", "ттн", "посилк",
+               "посылк", "відділенн", "отделен")
     is_ig = any(w in t for w in ig_words)
     is_g = any(w in t for w in g_words)
     other_words = ("вайбер", "вибер", "viber", "мессенджер", "messenger",
@@ -1463,6 +1465,63 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
                                              "screenshot": p.get("screenshot"),
                                              "caption": "🎵 TikTok"}, "")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+
+    # ---- Новая Пошта ----
+    np_words = any(w in t for w in ("нова пошт", "нова почт", "новая пошта", "nova poshta",
+                                    "novaposhta", "ттн", "посилк", "посылк", "відділенн",
+                                    "отделен", "нової пошти", "новой почты"))
+    if np_words:
+        # отследить посылку
+        m_ttn = re.search(r"(\d{8,14})", text)
+        if m_ttn:
+            ttn = m_ttn.group(1)
+            phone = ""
+            m_ph = re.search(r"(\+?380\d{9})", text)
+            if m_ph:
+                phone = m_ph.group(1)
+            api.send_message(chat_id, f"⏳ Отслеживаю посылку {ttn}…")
+            data = _run_account_control(["novaposhta", "track", ttn, "--phone", phone])
+            if data.get("status") == "ok":
+                txt = (f"📦 <b>Новая Пошта · {ttn}</b>\n"
+                       f"📍 Статус: {_esc_tg(data.get('tracking_status'))}\n"
+                       f"ℹ️ {_esc_tg(str(data.get('details'))[:250])}")
+                _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                                 "screenshot": data.get("screenshot"),
+                                                 "caption": "📦 Трекинг"}, "")
+            else:
+                api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+            return True
+        # отделения
+        if any(w in t for w in ("відділенн", "отделен", "отделение")):
+            q = re.sub(r"(найди|найти|покажи|отделен\w*|відділенн\w*|где|де)\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
+            if not q:
+                api.send_message(chat_id, "🏢 Напишите «отделение Новой Пошты <город/адрес>»")
+                return True
+            api.send_message(chat_id, "⏳ Ищу отделения…")
+            data = _run_account_control(["novaposhta", "offices", q])
+            if data.get("status") == "ok":
+                offs = data.get("offices") or []
+                if offs:
+                    api.send_message(chat_id, "🏢 <b>Отделения:</b>\n" + "\n".join(
+                        f"• {_esc_tg(o)}" for o in offs[:8]))
+                else:
+                    api.send_message(chat_id, f"🏢 Отделения «{q}» не найдены.")
+            else:
+                api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+            return True
+        # кабинет
+        api.send_message(chat_id, "⏳ Открываю кабинет Новой Пошты…")
+        data = _run_account_control(["novaposhta", "account"])
+        if data.get("status") == "ok":
+            txt = (f"📦 <b>Новая Пошта — кабинет</b>\n"
+                   f"👤 {_esc_tg(data.get('name') or '?')}\n"
+                   f"💰 Баланс: {_esc_tg(data.get('balance') or '—')} грн")
+            _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                             "screenshot": data.get("screenshot"),
+                                             "caption": "📦 Новая Пошта"}, "")
         else:
             api.send_message(chat_id, f"❌ {data.get('error', '?')}")
         return True

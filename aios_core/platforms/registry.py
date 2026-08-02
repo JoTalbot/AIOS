@@ -15,6 +15,7 @@ from .linkedin_adapter import LinkedinAdapter
 from .olx_adapter import OLXAdapter
 from .prom_adapter import PromAdapter
 from .prom_chrome_twin_adapter import PromChromeTwinAdapter
+from .novaposhta_chrome_twin_adapter import NovaPoshtaChromeTwinAdapter
 from .tiktok_adapter import TiktokAdapter
 from .tiktok_chrome_twin_adapter import TiktokChromeTwinAdapter
 from .tiktok_shop_adapter import TiktokShopAdapter
@@ -36,6 +37,7 @@ class PlatformRegistry:
             "instagram_chrome_twin": InstagramChromeTwinAdapter,
             "prom": PromAdapter,
             "prom_chrome_twin": PromChromeTwinAdapter,
+            "novaposhta_chrome_twin": NovaPoshtaChromeTwinAdapter,
             "facebook": FacebookAdapter,
             "facebook_chrome_twin": FacebookChromeTwinAdapter,
             "viber": ViberAdapter,
