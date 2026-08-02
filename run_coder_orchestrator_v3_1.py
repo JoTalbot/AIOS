@@ -68,7 +68,7 @@ def run_once():
         if len(recent_files) >= 2 and recent_files[-1] == recent_files[-2]:
             last_file = recent_files[-1]
             last_status = recent_status[-1]
-            if last_status in ("nothing_to_commit", "skipped", "blocked_validation"):
+            if last_status in ("nothing_to_commit", "skipped", "blocked_validation", "protected_skip"):
                 print(f"  [ANTI-LOOP] Loop detected on {last_file} ({last_status} x2), banning for this cycle")
                 # Remove all todos mentioning this file
                 if "todos" in ctx:
@@ -107,6 +107,22 @@ def run_once():
         from aios_core.self_protection import is_protected
         if is_protected(plan["file"]):
             print(f"  [SELF-PROTECT] План выбрал защищённый файл {plan['file']} — цикл пропущен")
+            # Фиксируем пропуск в истории: anti-loop (выше) забанит эту цель
+            # после 2 повторов, и планировщик перейдёт к продуктивным файлам.
+            try:
+                from datetime import datetime as _dt, timezone as _tz
+                backlog["history"].append({
+                    "cycle": backlog.get("cycle_count", 0),
+                    "action": plan.get("action", "?"),
+                    "file": plan["file"],
+                    "description": plan.get("description", "?")[:80],
+                    "status": "protected_skip",
+                    "timestamp": _dt.now(_tz.utc).isoformat(),
+                })
+                backlog["history"] = backlog["history"][-50:]
+                orch.save_backlog(backlog)
+            except Exception as _bh_err:
+                print(f"  [SELF-PROTECT] backlog save failed: {_bh_err}")
             return
     except Exception as _sp_err:
         print(f"  [SELF-PROTECT] check failed: {_sp_err}")
