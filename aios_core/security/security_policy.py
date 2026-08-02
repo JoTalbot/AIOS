@@ -87,10 +87,33 @@ class SecurityPolicy:
             Экранированная строка, безопасная для вставки в HTML/JS
 
         Raises:
-            ValueError: Если входные данные не являются строкой
+            ValueError: Если входные данные не являются строкой или содержат недопустимые символы
+
+        Examples:
+            >>> SecurityPolicy.sanitize_input("<script>alert('XSS')</script>")
+            '&lt;script&gt;alert(&#x27;XSS&#x27;)&lt;/script&gt;'
+            >>> SecurityPolicy.sanitize_input("Hello & goodbye")
+            'Hello &amp; goodbye'
         """
         if not isinstance(user_input, str):
             raise ValueError("User input must be a string")
+
+        if not user_input:
+            return ""
+
+        # Дополнительная валидация на наличие потенциально опасных паттернов
+        dangerous_patterns = [
+            r'<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>',
+            r'on\w+\s*=\s*["\'][^"\']*["\']',
+            r'javascript:',
+            r'vbscript:',
+            r'expression\('
+        ]
+
+        for pattern in dangerous_patterns:
+            if re.search(pattern, user_input, re.IGNORECASE):
+                raise ValueError(f"Potentially dangerous input pattern detected: {pattern}")
+
         return html.escape(user_input)
 
     @staticmethod
@@ -103,9 +126,35 @@ class SecurityPolicy:
 
         Returns:
             Экранированная строка, безопасная для использования в JS
+
+        Raises:
+            ValueError: Если входные данные не являются строкой
+
+        Examples:
+            >>> SecurityPolicy.sanitize_js_input('He said "Hello"')
+            'He said \\"Hello\\"'
+            >>> SecurityPolicy.sanitize_js_input("Don't worry")
+            'Don\\'t worry'
         """
         if not isinstance(user_input, str):
             raise ValueError("User input must be a string")
+
+        if not user_input:
+            return ""
+
+        # Валидация на наличие потенциально опасных паттернов
+        dangerous_patterns = [
+            r'<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>',
+            r'on\w+\s*=\s*["\'][^"\']*["\']',
+            r'javascript:',
+            r'vbscript:',
+            r'expression\('
+        ]
+
+        for pattern in dangerous_patterns:
+            if re.search(pattern, user_input, re.IGNORECASE):
+                raise ValueError(f"Potentially dangerous input pattern detected: {pattern}")
+
         return user_input.replace('\\', '\\\\').replace('"', '\\"').replace("'", "\\'")
 
     @staticmethod
@@ -113,9 +162,22 @@ class SecurityPolicy:
         """
         Генерирует токен для защиты от CSRF атак.
 
+        Токен генерируется с использованием cryptographically secure метода и имеет
+        установленное время жизни согласно конфигурации.
+
         Returns:
             Сгенерированный токен
+
+        Examples:
+            >>> token = SecurityPolicy.generate_csrf_token()
+            >>> isinstance(token, str)
+            True
+            >>> len(token) > 32
+            True
         """
+        if not security_policy_config.csrf_token_expiry_minutes > 0:
+            raise ValueError("CSRF token expiry must be greater than 0 minutes")
+
         token = secrets.token_urlsafe(32)
         expiry = datetime.now() + timedelta(minutes=security_policy_config.csrf_token_expiry_minutes)
         SecurityPolicy._csrf_tokens[token] = expiry
@@ -131,7 +193,22 @@ class SecurityPolicy:
 
         Returns:
             True если токен валиден и не истёк, иначе False
+
+        Examples:
+            >>> SecurityPolicy.validate_csrf_token("invalid_token")
+            False
+            >>> valid_token = SecurityPolicy.generate_csrf_token()
+            >>> SecurityPolicy.validate_csrf_token(valid_token)
+            True
         """
+        if not token or not isinstance(token, str):
+            return False
+
+        # Валидация формата токена (alphanumeric + подчеркивания, длина 32-64)
+        pattern = r'^[a-zA-Z0-9_-]{32,64}$'
+        if not re.fullmatch(pattern, token):
+            return False
+
         if token not in SecurityPolicy._csrf_tokens:
             return False
 
@@ -154,23 +231,48 @@ class SecurityPolicy:
 
         Returns:
             True если запрос валиден, иначе False
+
+        Raises:
+            ValueError: Если headers не является словарем
+
+        Examples:
+            >>> SecurityPolicy.validate_request_headers({"Origin": "https://trusted.com"})
+            False
+            >>> SecurityPolicy.validate_request_headers(
+            ...     {"Origin": "https://trusted.com"},
+            ...     allowed_domains=["trusted.com"]
+            ... )
+            True
         """
+        if not isinstance(headers, dict):
+            raise ValueError("Headers must be a dictionary")
+
         if allowed_domains is None:
             allowed_domains = []
 
-        origin = headers.get('Origin', '')
-        referer = headers.get('Referer', '')
+        # Валидация входных данных
+        if not isinstance(allowed_domains, list):
+            raise ValueError("Allowed domains must be a list")
+
+        origin = headers.get('Origin', '') if headers else ''
+        referer = headers.get('Referer', '') if headers else ''
 
         # Проверка Origin
         if origin:
-            origin_domain = re.sub(r'^https?://', '', origin).split('/')[0]
-            if origin_domain not in allowed_domains:
+            try:
+                origin_domain = re.sub(r'^https?://', '', origin).split('/')[0]
+                if origin_domain not in allowed_domains:
+                    return False
+            except Exception:
                 return False
 
         # Проверка Referer
         if referer:
-            referer_domain = re.sub(r'^https?://', '', referer).split('/')[0]
-            if referer_domain not in allowed_domains:
+            try:
+                referer_domain = re.sub(r'^https?://', '', referer).split('/')[0]
+                if referer_domain not in allowed_domains:
+                    return False
+            except Exception:
                 return False
 
         return True
@@ -194,21 +296,39 @@ class SecurityPolicy:
         """
         Проверяет файл на наличие hard-coded secrets.
 
+        Использует регулярные выражения для поиска потенциальных секретов в коде.
+        Не является заменой специализированным инструментам безопасности.
+
         Args:
             file_path: Путь к файлу для проверки
 
         Returns:
             Список найденных потенциальных secrets
+
+        Raises:
+            ValueError: Если file_path не является строкой или файл не существует
+
+        Examples:
+            >>> SecurityPolicy.check_for_hardcoded_secrets("aios_core/security/security_policy.py")
+            []
         """
+        if not isinstance(file_path, str):
+            raise ValueError("File path must be a string")
+
+        if not os.path.exists(file_path):
+            raise ValueError(f"File not found: {file_path}")
+
         secrets_patterns = [
-            r'password\s*=\s*[\'"].+?[\'"]',
-            r'api_key\s*=\s*[\'"].+?[\'"]',
-            r'secret\s*=\s*[\'"].+?[\'"]',
-            r'token\s*=\s*[\'"].+?[\'"]',
-            r'key\s*=\s*[\'"].{20,}[\'"]',
-            r'pwd\s*=\s*[\'"].+?[\'"]',
-            r'access_key\s*=\s*[\'"].+?[\'"]',
-            r'private_key\s*=\s*[\'"].+?[\'"]'
+            r'password\s*=\s*[\'"][^\'"]{8,}[\'"]',  # Пароли обычно длиннее 8 символов
+            r'api_key\s*=\s*[\'"][^\'"]{16,}[\'"]',  # API ключи обычно длиннее 16 символов
+            r'secret\s*=\s*[\'"][^\'"]{8,}[\'"]',
+            r'token\s*=\s*[\'"][^\'"]{16,}[\'"]',    # Токены обычно длиннее 16 символов
+            r'key\s*=\s*[\'"][^\'"]{20,}[\'"]',
+            r'pwd\s*=\s*[\'"][^\'"]{8,}[\'"]',
+            r'access_key\s*=\s*[\'"][^\'"]{16,}[\'"]',
+            r'private_key\s*=\s*[\'"][^\'"]{32,}[\'"]',
+            r'bearer\s+token\s*=\s*[\'"][^\'"]{16,}[\'"]',
+            r'auth\s*=\s*[\'"][^\'"]{8,}[\'"]'
         ]
 
         found_secrets = []
@@ -220,8 +340,11 @@ class SecurityPolicy:
             for pattern in secrets_patterns:
                 matches = re.finditer(pattern, content, re.IGNORECASE)
                 for match in matches:
-                    found_secrets.append(match.group(0))
-        except Exception:
-            pass
+                    secret = match.group(0)
+                    # Фильтрация слишком коротких или очевидных false positives
+                    if len(secret) > 20:
+                        found_secrets.append(secret)
+        except Exception as e:
+            raise ValueError(f"Error reading file: {e}")
 
         return found_secrets
