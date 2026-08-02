@@ -157,6 +157,9 @@ class TelegramAPI:
     def send_document(self, chat_id: int, file_path: str, caption: str = "") -> dict:
         return self._multipart("sendDocument", chat_id, "document", file_path, caption)
 
+    def send_voice(self, chat_id: int, voice_path: str, caption: str = "") -> dict:
+        return self._multipart("sendVoice", chat_id, "voice", voice_path, caption)
+
 
 # ---------------------------------------------------------------------------
 # Command handlers — каждая возвращает строку для отправки в чат
@@ -985,6 +988,437 @@ def _run_due_reminders() -> int:
     return len(due)
 
 
+# ---------------------------------------------------------------------------
+# Единый инбокс — продвинутая версия
+# ---------------------------------------------------------------------------
+
+# Последний собранный инбокс по чатам: chat_id -> [items]
+_last_inbox: dict[int, list[dict]] = {}
+INBOX_SCHEDULE_FILE = PROJECT_ROOT / "data" / "inbox_schedule.json"
+
+# Каналы и их эмодзи
+_CHANNELS = {
+    "gmail": ("✉️", "Почта"),
+    "tg": ("✈️", "Telegram"),
+    "ig": ("📸", "Instagram DM"),
+    "messenger": ("💬", "Messenger"),
+    "olx": ("🛒", "OLX"),
+}
+
+
+def _parse_inbox_filters(text: str) -> dict:
+    """Парсинг фильтров инбокса: only_unread, channels."""
+    t = text.lower()
+    filters = {"unread_only": False, "channels": []}
+    if any(w in t for w in ("только непрочитанное", "только непрочитанные", "непрочитанн")):
+        filters["unread_only"] = True
+    if any(w in t for w in ("только почта", "только гмаил", "только gmail")):
+        filters["channels"].append("gmail")
+    if any(w in t for w in ("только телеграм", "только tg", "только телега", "только личка")):
+        filters["channels"].append("tg")
+    if any(w in t for w in ("только инстаграм", "только инст", "только direct", "только ig")):
+        filters["channels"].append("ig")
+    if any(w in t for w in ("только мессенджер", "только messenger", "только фб чат")):
+        filters["channels"].append("messenger")
+    if any(w in t for w in ("только олх", "только olx")):
+        filters["channels"].append("olx")
+    return filters
+
+
+def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
+    """Собрать пункты инбокса. Возвращает (items, summary)."""
+    filters = filters or {}
+    chans = filters.get("channels") or []
+    unread_only = filters.get("unread_only", False)
+    items: list[dict] = []
+    summary_parts: list[str] = []
+
+    def _want(ch: str) -> bool:
+        return (not chans) or ch in chans
+
+    # 1) почта
+    if _want("gmail"):
+        try:
+            g = _run_account_control(["google", "gmail_list", "5"])
+            if g.get("status") == "ok" and g.get("emails"):
+                for e in g["emails"]:
+                    if unread_only and not e.get("unread"):
+                        continue
+                    items.append({
+                        "channel": "gmail",
+                        "ref": e.get("id", ""),
+                        "title": e.get("subject", "(без темы)"),
+                        "preview": (e.get("from") or "") + " · " + (e.get("snippet") or "")[:80],
+                        "unread": bool(e.get("unread")),
+                        "date": (e.get("date") or "")[:22],
+                    })
+                unread_total = g.get("unread_total", 0)
+                if unread_total:
+                    summary_parts.append(f"✉️ {unread_total} непрочитанных писем")
+        except Exception:
+            pass
+
+    # 2) Telegram
+    if _want("tg"):
+        try:
+            tg = _run_account_control(["tg", "dialogs", "10"])
+            if tg.get("status") == "ok" and tg.get("dialogs"):
+                unread_d = [d for d in tg["dialogs"] if d.get("unread")]
+                src = unread_d if unread_only else tg["dialogs"]
+                for d in src[:6]:
+                    items.append({
+                        "channel": "tg",
+                        "ref": d.get("name") or str(d.get("id")),
+                        "title": d.get("name") or "?",
+                        "preview": (d.get("last_msg") or "")[:80],
+                        "unread": bool(d.get("unread")),
+                        "date": "",
+                    })
+                if unread_d:
+                    summary_parts.append(f"✈️ {len(unread_d)} чатов TG с новыми")
+        except Exception:
+            pass
+
+    # 3) Instagram Direct
+    if _want("ig"):
+        try:
+            ig = _run_account_control(["instagram", "dm_list", "6"])
+            if ig.get("status") == "ok" and ig.get("threads"):
+                for d in ig["threads"][:5]:
+                    items.append({
+                        "channel": "ig",
+                        "ref": d.get("name") or "?",
+                        "title": d.get("name") or "?",
+                        "preview": (d.get("preview") or "")[:80],
+                        "unread": True,
+                        "date": "",
+                    })
+                summary_parts.append(f"📸 {len(ig['threads'][:5])} чатов IG Direct")
+        except Exception:
+            pass
+
+    # 4) Messenger
+    if _want("messenger"):
+        try:
+            ms = _run_account_control(["facebook", "messenger_list", "--limit", "6"])
+            if ms.get("status") == "ok" and ms.get("chats"):
+                for c in ms["chats"][:5]:
+                    items.append({
+                        "channel": "messenger",
+                        "ref": c.get("name") or "?",
+                        "title": c.get("name") or "?",
+                        "preview": (c.get("preview") or "")[:80],
+                        "unread": True,
+                        "date": "",
+                    })
+                summary_parts.append(f"💬 {len(ms['chats'][:5])} чатов Messenger")
+        except Exception:
+            pass
+
+    # 5) OLX
+    if _want("olx"):
+        try:
+            olx = _run_account_control(["olx", "profile"])
+            if olx.get("status") == "ok" and olx.get("olx"):
+                o = olx["olx"]
+                items.append({
+                    "channel": "olx",
+                    "ref": o.get("name") or "olx",
+                    "title": f"OLX: {o.get('name') or '?'}",
+                    "preview": f"объявлений: {o.get('ads_count') or 0} · баланс: {o.get('balance') or 0} грн",
+                    "unread": False,
+                    "date": "",
+                })
+        except Exception:
+            pass
+
+    summary = ", ".join(summary_parts) if summary_parts else "нового нет"
+    return items, summary
+
+
+def _format_inbox(items: list[dict], filters: dict | None = None) -> str:
+    """Отформатировать инбокс с нумерацией."""
+    filters = filters or {}
+    head = "📥 <b>Единый инбокс</b>"
+    if filters.get("unread_only"):
+        head += " (только непрочитанное)"
+    if filters.get("channels"):
+        head += f" ({', '.join(filters['channels'])})"
+    lines = [head, ""]
+    for i, it in enumerate(items, 1):
+        em, ch_label = _CHANNELS.get(it["channel"], ("📄", it["channel"]))
+        mark = "🔴 " if it.get("unread") else ""
+        lines.append(f"<b>{i}.</b> {em} {mark}{_esc_tg(it['title'])[:60]}")
+        if it.get("preview"):
+            lines.append(f"     {_esc_tg(it['preview'])[:90]}")
+    lines.append("")
+    lines.append("ℹ️ <i>«ответь на N: …» · «сводка» · «озвучь инбокс» · «всё прочитано»</i>")
+    return "\n".join(lines)
+
+
+def _inbox_keyboard(items: list[dict]) -> dict | None:
+    """Inline-кнопки для быстрых действий."""
+    if not items:
+        return None
+    row = []
+    for it in items[:5]:
+        row.append({"text": str(items.index(it) + 1), "callback_data": f"inbox_read_{items.index(it) + 1}"})
+    kb = {"inline_keyboard": [row,
+                              [{"text": "✅ Всё прочитано", "callback_data": "inbox_readall"},
+                               {"text": "🧠 Сводка", "callback_data": "inbox_summary"}]]}
+    return kb
+
+
+def _inbox_summarize(items: list[dict]) -> str:
+    """Умное резюме инбокса через LLM."""
+    data_lines = []
+    for i, it in enumerate(items, 1):
+        em, ch = _CHANNELS.get(it["channel"], ("", it["channel"]))
+        data_lines.append(f"{i}. [{ch}] {it['title']} — {it['preview'][:100]}")
+    prompt = (
+        "Ты — ассистент, помогающий с единым инбоксом сообщений. "
+        "Ниже нумерованный список новых пунктов из разных каналов (почта, Telegram, Instagram DM, "
+        "Messenger, OLX). Составь КРАТКОЕ резюме на русском (3-6 строк): что самое важное/срочное, "
+        "кому стоит ответить, что проверить. Упомяни номера пунктов. "
+        "Формат: начни с «🧠 Сводка:», потом маркированный список. Без воды.\n\n"
+        + "\n".join(data_lines)
+    )
+    try:
+        text = _llm_chat_direct(prompt)
+        return text or "🧠 Сводка: нового ничего срочного."
+    except Exception:
+        return "🧠 Сводка: не удалось составить (LLM недоступен)."
+
+
+def _llm_chat_direct(prompt: str) -> str:
+    """Одиночный LLM-вызов (без истории), возвращает текст."""
+    import urllib.request as _urllib
+    _b = None
+    try:
+        from aios_core.llm_balancer import LLMBalancer as _LB
+        _b = _LB()
+    except Exception:
+        _b = None
+    if _b is not None:
+        try:
+            r = _b.chat([{"role": "user", "content": prompt}],
+                        model=os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick"),
+                        system="Ты краткий ассистент инбокса. Отвечай на русском.",
+                        max_tokens=400, temperature=0.3, task_type="chat")
+            if r:
+                return r
+        except Exception:
+            pass
+    try:
+        key = os.environ.get("OPENROUTER_API_KEY", "")
+        if key:
+            payload = json.dumps({
+                "model": "mistralai/mistral-small-3.2-24b-instruct",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 400, "temperature": 0.3,
+            }).encode()
+            req = _urllib.Request("https://openrouter.ai/api/v1/chat/completions",
+                                  data=payload, headers={
+                                      "Content-Type": "application/json",
+                                      "Authorization": "Bearer " + key})
+            with _urllib.urlopen(req, timeout=60) as resp:
+                data = json.loads(resp.read())
+            return data["choices"][0]["message"]["content"]
+    except Exception:
+        pass
+    return ""
+
+
+def _inbox_reply(api, chat_id: int, item: dict, body: str) -> None:
+    """Ответить на пункт инбокса в нужный канал."""
+    ch = item.get("channel")
+    ref = item.get("ref")
+    if not body:
+        api.send_message(chat_id, "❌ Укажите текст ответа: «ответь на N: текст»")
+        return
+    if ch == "gmail":
+        # ответить на письмо (email id)
+        if ref.isdigit():
+            _pending_confirm[chat_id] = {"kind": "gmail_reply",
+                                         "data": {"msg_id": ref, "idx": 1, "text": body}}
+            api.send_message(chat_id, f"📧 Ответ на письмо «{_esc_tg(item.get('title'))[:50]}»:\n«{body[:150]}»\n\nОтправить? «да» / «нет»")
+        else:
+            api.send_message(chat_id, "❌ Не удалось определить письмо для ответа.")
+    elif ch == "tg":
+        _pending_confirm[chat_id] = {"kind": "tg_send", "data": {"ref": ref, "text": body}}
+        api.send_message(chat_id, f"✈️ Ответ в Telegram <b>{_esc_tg(ref)}</b>:\n«{body[:150]}»\n\nОтправить? «да» / «нет»")
+    elif ch == "ig":
+        _pending_confirm[chat_id] = {"kind": "dm_send", "data": {"thread": ref, "text": body}}
+        api.send_message(chat_id, f"📸 Ответ в Instagram Direct <b>{_esc_tg(ref)}</b>:\n«{body[:150]}»\n\nОтправить? «да» / «нет»")
+    elif ch == "messenger":
+        _pending_confirm[chat_id] = {"kind": "messenger_send", "data": {"chat": ref, "text": body}}
+        api.send_message(chat_id, f"💬 Ответ в Messenger <b>{_esc_tg(ref)}</b>:\n«{body[:150]}»\n\nОтправить? «да» / «нет»")
+    else:
+        api.send_message(chat_id, "❌ Для этого пункта ответ не поддерживается.")
+
+
+def _inbox_voice(api, chat_id: int, items: list[dict]) -> None:
+    """Озвучить инбокс через gTTS и отправить голосовое."""
+    try:
+        from gtts import gTTS
+    except ImportError:
+        api.send_message(chat_id, "🎙 Озвучка недоступна (gTTS не установлен).")
+        return
+    lines = ["Инбокс. "]
+    for i, it in enumerate(items[:12], 1):
+        lines.append(f"{i}. {it['title']}. {it['preview'][:60]}")
+    text = " ".join(lines)[:1500]
+    try:
+        tts = gTTS(text=text, lang="ru")
+        path = f"/tmp/aios_inbox_voice_{int(time.time())}.mp3"
+        tts.save(path)
+        api.send_voice(chat_id, path, caption="🎙 Инбокс голосом")
+        print(f"  [INBOX] voice sent ({len(text)} chars)")
+    except Exception as e:
+        print(f"  [INBOX] voice err: {e}")
+        api.send_message(chat_id, "🎙 Не удалось озвучить: " + str(e)[:150])
+
+
+def _inbox_search(api, chat_id: int, q: str) -> None:
+    """Поиск по всем каналам."""
+    found = []
+    # почта (полнотекстовый IMAP)
+    try:
+        g = _run_account_control(["google", "gmail_search", q, "5"])
+        if g.get("status") == "ok" and g.get("emails"):
+            for e in g["emails"][:5]:
+                found.append(f"✉️ <b>{_esc_tg(e.get('subject', '?'))}</b>\n   {_esc_tg((e.get('from') or '')[:50])}")
+    except Exception:
+        pass
+    # Telegram (топ диалогов)
+    try:
+        tg = _run_account_control(["tg", "dialogs", "8"])
+        if tg.get("status") == "ok" and tg.get("dialogs"):
+            for d in tg["dialogs"][:6]:
+                name = d.get("name") or ""
+                last = d.get("last_msg") or ""
+                if q.lower() in last.lower() or q.lower() in name.lower():
+                    found.append(f"✈️ <b>{_esc_tg(name)}</b>: {_esc_tg(last[:80])}")
+    except Exception:
+        pass
+    # Instagram DM (топ чатов)
+    try:
+        ig = _run_account_control(["instagram", "dm_list", "6"])
+        if ig.get("status") == "ok" and ig.get("threads"):
+            for d in ig["threads"][:5]:
+                if q.lower() in (d.get("preview") or "").lower() or q.lower() in (d.get("name") or "").lower():
+                    found.append(f"📸 <b>{_esc_tg(d.get('name'))}</b>: {_esc_tg((d.get('preview') or '')[:80])}")
+    except Exception:
+        pass
+    if not found:
+        api.send_message(chat_id, f"🔍 По запросу «{q}» ничего не найдено (или каналы недоступны).")
+    else:
+        api.send_message(chat_id, f"🔍 <b>Найдено по «{q}»:</b>\n\n" + "\n".join(found)[:3900])
+
+
+def _inbox_mark_read(api, chat_id: int) -> None:
+    """Отметить прочитанным (почта через IMAP, TG через userbot)."""
+    done = []
+    # почта: пометить все \Seen
+    try:
+        import run_account_control as _rac
+        pw = _rac.app_password()
+        if pw:
+            import imaplib
+            M = imaplib.IMAP4_SSL("imap.gmail.com", 993)
+            M.login(_rac.GOOGLE_EMAIL, pw)
+            M.select("INBOX")
+            typ, data = M.search(None, "UNSEEN")
+            ids = data[0].split()
+            if ids:
+                M.store(b",".join(ids), "+FLAGS", "\\Seen")
+            M.logout()
+            done.append(f"✉️ почта: {len(ids)} прочитано")
+    except Exception as e:
+        print(f"  [INBOX] mark gmail err: {e}")
+    # Telegram
+    try:
+        r = _run_account_control(["tg", "read", "Saved Messages", "--limit", "1"])
+        if r.get("status") == "ok":
+            done.append("✈️ Telegram: диалоги открыты (пометка частичная)")
+    except Exception:
+        pass
+    api.send_message(chat_id, "✅ Отмечено прочитанным:\n" + "\n".join(done) if done else "ℹ️ Ничего не удалось пометить.")
+
+
+def _inbox_schedule_cmd(api, chat_id: int, text: str) -> None:
+    """Управление расписанием инбокса."""
+    t = text.lower()
+    try:
+        sched = json.loads(INBOX_SCHEDULE_FILE.read_text(encoding="utf-8")) if INBOX_SCHEDULE_FILE.exists() else {}
+    except Exception:
+        sched = {}
+    cur = sched.get(str(chat_id), [])
+    if "отключ" in t or "выключ" in t or "убери" in t:
+        sched[str(chat_id)] = []
+        INBOX_SCHEDULE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        INBOX_SCHEDULE_FILE.write_text(json.dumps(sched, ensure_ascii=False, indent=2), encoding="utf-8")
+        api.send_message(chat_id, "⏰ Расписание инбокса отключено.")
+        return
+    m_time = re.search(r"\b(\d{1,2})[:.](\d{2})\b", t)
+    if not m_time:
+        api.send_message(chat_id, "⏰ Формат: «присылай инбокс в 09:00» или «присылай инбокс вечером в 21:00»")
+        return
+    hh, mm = int(m_time.group(1)), int(m_time.group(2))
+    when = "утром" if hh < 12 else ("днём" if hh < 17 else "вечером")
+    entry = {"time": f"{hh:02d}:{mm:02d}", "label": when}
+    cur = [e for e in cur if e.get("time") != entry["time"]]
+    cur.append(entry)
+    sched[str(chat_id)] = sorted(cur, key=lambda e: e["time"])
+    INBOX_SCHEDULE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    INBOX_SCHEDULE_FILE.write_text(json.dumps(sched, ensure_ascii=False, indent=2), encoding="utf-8")
+    api.send_message(chat_id, f"⏰ Инбокс буду присылать {when} в {entry['time']}. "
+                              f"«отключи инбокс» — убрать расписание.")
+
+
+def _run_due_inbox(token: str) -> int:
+    """Отправить инбокс по расписанию (раз в минуту)."""
+    if not INBOX_SCHEDULE_FILE.exists():
+        return 0
+    try:
+        sched = json.loads(INBOX_SCHEDULE_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return 0
+    now_hhmm = datetime.now().strftime("%H:%M")
+    sent = 0
+    for chat_s, entries in sched.items():
+        for e in entries:
+            if e.get("time") == now_hhmm:
+                chat_id = int(chat_s)
+                # не дублируем: файл last_sent
+                last_file = PROJECT_ROOT / "data" / "inbox_last_sent.json"
+                try:
+                    last = json.loads(last_file.read_text(encoding="utf-8"))
+                except Exception:
+                    last = {}
+                if last.get(str(chat_id)) == now_hhmm:
+                    continue
+                last[str(chat_id)] = now_hhmm
+                last_file.write_text(json.dumps(last), encoding="utf-8")
+                items, _ = _collect_inbox({})
+                if items:
+                    _last_inbox[chat_id] = items
+                    try:
+                        import urllib.request as _urllib
+                        payload = json.dumps({"chat_id": chat_id,
+                                              "text": _format_inbox(items),
+                                              "parse_mode": "HTML"}).encode()
+                        req = _urllib.Request(f"https://api.telegram.org/bot{token}/sendMessage",
+                                              data=payload, headers={"Content-Type": "application/json"})
+                        with _urllib.urlopen(req, timeout=90):
+                            pass
+                        sent += 1
+                        print(f"  [INBOX-SCHED] sent to {chat_id}")
+                    except Exception as ex:
+                        print(f"  [INBOX-SCHED] err: {ex}")
+    return sent
+
+
 def _transcribe_audio(path: str) -> str:
     """Распознать голосовое через Gemini (inline audio). Возвращает текст или ''."""
     import base64
@@ -1206,7 +1640,12 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                    "где что новое", "проверь всё", "напомни", "напоминание",
                    "аналитик", "рост подписчик", "динамика", "статистика аккаунт",
                    "сколько прибавил", "тренд", "запланируй пост", "пост в тикток на",
-                   "пост в инстаграм на", "расписание постов")
+                   "пост в инстаграм на", "расписание постов",
+                   "озвучь инбокс", "озвучь всё", "голосом инбокс", "прочитай инбокс вслух",
+                   "найди во всех", "ищи везде", "найди везде", "поиск по всем",
+                   "отметь всё прочитанным", "всё прочитано", "отметь прочитанным",
+                   "присылай инбокс", "пришли инбокс", "включи инбокс", "отключи инбокс",
+                   "расписание инбокса")
     is_other = any(w in t for w in other_words)
     if not is_ig and not is_g and not is_other and not tg_words:
         return False
@@ -1663,66 +2102,71 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         api.send_message(chat_id, "\n".join(txt))
         return True
 
+    # ---- Расписание инбокса ----
+    if re.match(r"^(присылай|пришли|включи|отключи|выключи|убери)\s+инбокс", t) or \
+       re.match(r"^(включи|отключи)\s+расписание\s+инбокса", t):
+        _inbox_schedule_cmd(api, chat_id, text)
+        return True
+
     # ---- Единый инбокс ----
     if any(w in t for w in ("инбокс", "inbox", "все сообщения", "всё в одном",
                             "сводка сообщений", "где что новое", "проверь всё")):
-        api.send_message(chat_id, "⏳ Собираю всё в одном (почта, TG, IG, Messenger, OLX)… Это может занять ~1-2 мин")
-        parts = []
-        # 1) почта (быстро, IMAP)
-        try:
-            g = _run_account_control(["google", "gmail_list", "4"])
-            if g.get("status") == "ok" and g.get("emails"):
-                lines = [f"✉️ <b>Почта</b> ({g.get('unread_total', 0)} непрочитанных):"]
-                for e in g["emails"][:4]:
-                    lines.append(f"  • {_esc_tg(e.get('subject', '?'))[:60]}")
-                parts.append("\n".join(lines))
-        except Exception:
-            pass
-        # 2) Telegram личка (userbot)
-        try:
-            tg = _run_account_control(["tg", "dialogs", "8"])
-            if tg.get("status") == "ok" and tg.get("dialogs"):
-                unread_d = [d for d in tg["dialogs"] if d.get("unread")]
-                if unread_d:
-                    lines = [f"✈️ <b>Telegram</b> ({len(unread_d)} чатов с новыми):"]
-                    for d in unread_d[:5]:
-                        lines.append(f"  • {_esc_tg(d.get('name'))} 🔴{d.get('unread')}")
-                    parts.append("\n".join(lines))
-        except Exception:
-            pass
-        # 3) Instagram Direct
-        try:
-            ig = _run_account_control(["instagram", "dm_list", "5"])
-            if ig.get("status") == "ok" and ig.get("threads"):
-                lines = ["📸 <b>Instagram Direct</b>:"]
-                for d in ig["threads"][:5]:
-                    lines.append(f"  • {_esc_tg(d.get('name'))} — {_esc_tg((d.get('preview') or '')[:40])}")
-                parts.append("\n".join(lines))
-        except Exception:
-            pass
-        # 4) Messenger
-        try:
-            ms = _run_account_control(["facebook", "messenger_list", "--limit", "5"])
-            if ms.get("status") == "ok" and ms.get("chats"):
-                lines = ["💬 <b>Messenger</b>:"]
-                for c in ms["chats"][:5]:
-                    lines.append(f"  • {_esc_tg(c.get('name'))[:60]}")
-                parts.append("\n".join(lines))
-        except Exception:
-            pass
-        # 5) OLX
-        try:
-            olx = _run_account_control(["olx", "profile"])
-            if olx.get("status") == "ok":
-                o = olx.get("olx", {})
-                parts.append(f"🛒 <b>OLX</b>: {_esc_tg(o.get('name') or '?')} · объявлений: {o.get('ads_count') or 0}")
-        except Exception:
-            pass
-
-        if not parts:
+        filters = _parse_inbox_filters(text)
+        api.send_message(chat_id, "⏳ Собираю инбокс (почта, TG, IG, Messenger, OLX)… ~1 мин")
+        items, summary = _collect_inbox(filters)
+        if not items:
             api.send_message(chat_id, "📭 Везде пусто (или не удалось собрать).")
+            return True
+        _last_inbox[chat_id] = items
+        txt = _format_inbox(items, filters)
+        # умное резюме (если запрошено «сводка» или всегда кратко)
+        if "сводк" in t or "резюме" in t or "кратко" in t or "умн" in t:
+            api.send_message(chat_id, "🧠 Составляю умное резюме…")
+            api.send_message(chat_id, _inbox_summarize(items)[:3900])
         else:
-            api.send_message(chat_id, "📥 <b>Единый инбокс</b>\n\n" + "\n\n".join(parts)[:3900])
+            api.send_message(chat_id, txt, reply_markup=_inbox_keyboard(items))
+            api.send_message(chat_id,
+                             "ℹ️ «сводка» — умное резюме · «ответь на N: …» — ответить\n"
+                             "«озвучь инбокс» — голосом · «инбокс только непрочитанное» — фильтр")
+        return True
+
+    # ---- Ответы из инбокса ----
+    m_reply = re.match(r"^(ответь|reply|отв[её]ть)\s+(?:на\s+)?#?(\d+)\s*:?\s*(.+)$", text, re.IGNORECASE)
+    if m_reply and chat_id in _last_inbox:
+        idx = int(m_reply.group(2))
+        body = m_reply.group(3).strip()
+        if 1 <= idx <= len(_last_inbox[chat_id]):
+            _inbox_reply(api, chat_id, _last_inbox[chat_id][idx - 1], body)
+            return True
+        api.send_message(chat_id, f"❌ Нет пункта №{idx} в последнем инбоксе.")
+        return True
+
+    # ---- Озвучить инбокс ----
+    if any(w in t for w in ("озвучь инбокс", "озвучь всё", "голосом инбокс", "прочитай инбокс вслух")):
+        api.send_message(chat_id, "⏳ Собираю и озвучиваю…")
+        items, summary = _collect_inbox({})
+        if not items:
+            api.send_message(chat_id, "📭 Везде пусто.")
+            return True
+        _last_inbox[chat_id] = items
+        _inbox_voice(api, chat_id, items)
+        return True
+
+    # ---- Поиск по всем каналам ----
+    m_glob = re.match(r"^(найди во всех|ищи везде|найди везде|поиск по всем)\s*(?:чатах|сообщениях|каналах)?\s*:?\s*(.+)$", text, re.IGNORECASE)
+    if m_glob:
+        q = m_glob.group(2).strip()
+        if not q:
+            api.send_message(chat_id, "🔍 «найди во всех чатах <запрос>»")
+            return True
+        api.send_message(chat_id, f"🔍 Ищу «{q}» по почте, TG, IG, Messenger… (может занять 1-2 мин)")
+        _inbox_search(api, chat_id, q)
+        return True
+
+    # ---- Отметить всё прочитанным ----
+    if any(w in t for w in ("отметь всё прочитанным", "отметить все прочитанными", "всё прочитано",
+                            "отметь прочитанным")):
+        _inbox_mark_read(api, chat_id)
         return True
 
     # ---- Напоминания ----
@@ -2719,6 +3163,44 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
     reply = None
     keyboard = None
 
+    # ---- Инбокс: inline-действия ----
+    if data.startswith("inbox_"):
+        _handle_inbox_callback(api, chat_id, msg_id, data)
+        return
+
+def _handle_inbox_callback(api: TelegramAPI, chat_id: int, msg_id: int, data: str) -> None:
+    """Обработка кнопок инбокса: прочитать пункт / всё прочитано / сводка."""
+    items = _last_inbox.get(chat_id, [])
+    if data == "inbox_readall":
+        _inbox_mark_read(api, chat_id)
+        return
+    if data == "inbox_summary":
+        if not items:
+            api.send_message(chat_id, "📭 Нет данных инбокса (соберите «инбокс» заново).")
+            return
+        api.send_message(chat_id, "🧠 Составляю умное резюме…")
+        api.send_message(chat_id, _inbox_summarize(items)[:3900])
+        return
+    if data.startswith("inbox_read_"):
+        try:
+            idx = int(data.split("_")[-1])
+            it = items[idx - 1]
+        except Exception:
+            api.send_message(chat_id, "❌ Не удалось открыть пункт.")
+            return
+        em, ch = _CHANNELS.get(it["channel"], ("", it["channel"]))
+        txt = (f"{em} <b>{_esc_tg(it['title'])[:80]}</b> [{ch}]\n"
+               f"{_esc_tg(it.get('preview') or '')}\n"
+               f"🕐 {it.get('date') or '—'}\n\n"
+               f"Ответить: «ответь на {idx}: текст»")
+        api.send_message(chat_id, txt)
+        return
+
+
+def _handle_callback(api: TelegramAPI, upd: dict) -> None:
+    reply = None
+    keyboard = None
+
     if data == "menu_back":
         reply = "🤖 <b>AIOS Control Panel</b>\n\nВыберите раздел:"
         keyboard = MAIN_MENU_KEYBOARD
@@ -3109,6 +3591,7 @@ def run_bot(token: str) -> None:
     print("   Ожидание сообщений...\n")
 
     _last_reminder_check = 0.0
+    _last_inbox_check = 0.0
 
     while True:
         try:
@@ -3119,6 +3602,14 @@ def run_bot(token: str) -> None:
                 except Exception as _rem_err:
                     print(f"  [REMINDER] check err: {_rem_err}")
                 _last_reminder_check = time.time()
+
+            # проверка расписания инбокса (раз в 60 сек)
+            if time.time() - _last_inbox_check >= 60:
+                try:
+                    _run_due_inbox(token)
+                except Exception as _ib_err:
+                    print(f"  [INBOX] sched err: {_ib_err}")
+                _last_inbox_check = time.time()
 
             updates = api.get_updates(offset)
             for upd in updates:
