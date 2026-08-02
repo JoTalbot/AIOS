@@ -1,13 +1,12 @@
 [Unit]
-Description=AIOS Coder Orchestrator v3 (RAG+Memory+PR)
+Description=AIOS Coder Orchestrator v3.1 (RAGv2 embeddings + Memory + Auto-PR) - 1 min interval
 After=network.target
-Wants=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=/root/AIOS
-ExecStart=/opt/aios/.venv/bin/python3.11 -u /root/AIOS/run_coder_orchestrator_v3.py
-Restart=on-failure
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_coder_orchestrator_v3_1.py --interval 60
+Restart=always
 RestartSec=10
 Environment=PYTHONUNBUFFERED=1
 Environment=HOME=/root
