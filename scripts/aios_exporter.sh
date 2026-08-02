@@ -5,7 +5,7 @@
 # This avoids depending on the API /metrics endpoint.
 
 PORT=9101
-OUT_DIR=/root/AIOS/data/metrics_exporter
+OUT_DIR=/var/lib/docker/volumes/aios_aios-data/_data/metrics_exporter
 mkdir -p "$OUT_DIR"
 
 # Function: check tcp port
