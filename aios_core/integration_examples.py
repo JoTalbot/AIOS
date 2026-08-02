@@ -42,7 +42,9 @@ async def gemini_walk_hack(
         # Send webhook with proper headers and JSON data
         success = await integration_system.send_webhook(url, event, data, headers=headers)
         return success
-    except Exception:
+    except Exception as e:
+        # Log the exception for debugging purposes
+        print(f"An error occurred: {e}")
         # Gracefully handle exceptions and return False on failure
         return False
 
@@ -140,7 +142,7 @@ async def example_basic_usage() -> None:
 
         # Send webhook notification
         success = await integration_system.send_webhook(
-            "webhook_https://httpbin.org/post",
+            "https://httpbin.org/post",
             "user.created",
             {"user_id": "123", "name": "John Doe"},
         )
@@ -393,7 +395,7 @@ async def example_advanced_usage() -> None:
 
         for event, data in events:
             success = await integration_system.send_webhook(
-                "webhook_https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+                "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
                 event,
                 data,
             )
