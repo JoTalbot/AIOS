@@ -87,19 +87,56 @@ class AutocoderV3:
             print(f"  [RAG] Indexed {count} functions")
             self._indexed = True
     
-    def generate_with_rag(self, task_description: str, file_path: str, instruction: str) -> Dict[str, Any]:
-        """Generate code with RAG context and memory"""
+    def generate_with_rag(self, task_description: str, file_path: str, instruction: str, current_content: str = "") -> Dict[str, Any]:
+        """Generate code with RAG context and memory.
+
+        v3.3 diff-mode: если current_content передан (файл существует) — LLM
+        возвращает SEARCH/REPLACE-блоки, а не полный файл. Это исключает
+        «вырождение» файла из-за обрезки ответа по max_tokens.
+        """
         self.ensure_indexed()
-        
+
         # Get RAG context
         rag_context = self.rag.get_context_for_task(task_description, file_path)
-        
+
         # Get memory context
         memory_context = self.memory.get_context_prompt(task_description)
-        
+
         # Get best provider from memory
         best_provider = self.memory.get_best_provider()
-        
+
+        # v3.3: два режима промпта
+        if current_content:
+            requirements = f"""# РЕЖИМ ПРАВКИ СУЩЕСТВУЮЩЕГО ФАЙЛА (важно!):
+Файл УЖЕ существует. НЕ переписывай его целиком.
+Верни ТОЛЬКО блоки правок в точном формате:
+
+<<<<<<< SEARCH
+<точные строки из файла, которые меняем>
+=======
+<новые строки>
+>>>>>>> REPLACE
+
+Правила:
+- SEARCH-блок должен ДОСЛОВНО совпадать с текстом файла (копируй посимвольно из файла ниже,
+  не перепечатывай по памяти; сохраняй отступы и пустые строки)
+- Блоков может быть несколько, применяются сверху вниз; делай отдельный блок на каждое место правки
+- Каждый SEARCH-блок — минимально необходимого размера (1-10 строк оптимально)
+- Никакого текста вне блоков: ни markdown, ни пояснений
+- Type hints и docstrings в новом коде приветствуются
+- Запрещено: eval/exec, удаление существующих функций и классов без необходимости
+
+# Текущее содержимое файла {file_path} ({len(current_content)} символов):
+{current_content[:15000]}
+"""
+        else:
+            requirements = """# Requirements:
+- Write complete, syntactically valid Python 3.11+ code
+- Include type hints, docstrings
+- No eval/exec, no subprocess
+- Return ONLY code in python code block
+"""
+
         # Build enhanced prompt
         enhanced_instruction = f"""
 {rag_context}
@@ -111,28 +148,28 @@ File: {file_path}
 Description: {task_description}
 Instruction: {instruction}
 
-# Requirements:
+{requirements}
+
+# Context notes:
 - Use relevant code context above if applicable
 - Avoid files with high fail rate
 - Use best provider: {best_provider}
-- Write complete, syntactically valid Python 3.11+ code
-- Include type hints, docstrings
-- No eval/exec, no subprocess
-- Return ONLY code in python code block
 """
-        
+
         # Try with best provider first, then fallback
-        models_to_try = [best_provider, "groq", "cerebras", "github"]
+        # v3.3: только живые провайдеры (cerebras/github мертвы — см. проверку 2026-08-02)
+        models_to_try = [best_provider, "groq", "mistral", "zai", "openrouter", "cohere", "airforce"]
         # Map provider to model
         provider_model = {
             "groq": "llama-3.3-70b-versatile",
-            "cerebras": "llama-3.3-70b",
-            "github": "openai/gpt-4o-mini",
             "mistral": "mistral-small-latest",
+            "zai": "glm-4.5-flash",
+            "openrouter": "meta-llama/llama-3.3-70b-instruct:free",
             "cohere": "command-r-08-2024",
+            "airforce": "gpt-4o-mini",
             "gemini": "gemini-2.0-flash",
         }
-        
+
         last_error = ""
         for prov in models_to_try:
             model = provider_model.get(prov, "llama-3.3-70b-versatile")
@@ -145,14 +182,45 @@ Instruction: {instruction}
                     max_tokens=4000
                 )
                 if response and not response.startswith("⚠️"):
-                    # Extract code
+                    # v3.3 diff-mode: сначала ищем SEARCH/REPLACE-блоки
+                    if current_content:
+                        blocks = self._parse_edit_blocks(response)
+                        if blocks:
+                            return {
+                                "ok": True,
+                                "mode": "edits",
+                                "blocks": blocks,
+                                "provider": prov,
+                                "model": model,
+                                "raw": response,
+                                "rag_used": bool(rag_context),
+                                "memory_used": bool(memory_context)
+                            }
+                        # fallback: модель всё же вернула полный файл — старый путь
+                        code = self._extract_code(response)
+                        if code and len(code) > 50:
+                            return {
+                                "ok": True,
+                                "mode": "fullfile",
+                                "code": code,
+                                "provider": prov,
+                                "model": model,
+                                "raw": response,
+                                "rag_used": bool(rag_context),
+                                "memory_used": bool(memory_context)
+                            }
+                        last_error = "no edit blocks and no full file in response"
+                        continue
+                    # new-file mode
                     code = self._extract_code(response)
                     if code and len(code) > 50:
                         return {
                             "ok": True,
+                            "mode": "fullfile",
                             "code": code,
                             "provider": prov,
                             "model": model,
+                            "raw": response,
                             "rag_used": bool(rag_context),
                             "memory_used": bool(memory_context)
                         }
@@ -160,8 +228,91 @@ Instruction: {instruction}
             except Exception as e:
                 last_error = str(e)[:200]
                 continue
-        
+
         return {"ok": False, "error": last_error}
+
+    # ---------- v3.3: SEARCH/REPLACE edit blocks ----------
+
+    def _parse_edit_blocks(self, response: str) -> list[tuple[str, str]]:
+        """Парсит SEARCH/REPLACE-блоки из ответа LLM (aider-формат).
+
+        Формат блока:
+        <<<<<<< SEARCH
+        <строки как в файле>
+        =======
+        <новые строки>
+        >>>>>>> REPLACE
+        """
+        if "<<<<<<< SEARCH" not in response:
+            return []
+        blocks: list[tuple[str, str]] = []
+        lines = response.splitlines()
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            if line.startswith("<<<<<<<") and "SEARCH" in line:
+                search_lines: list[str] = []
+                i += 1
+                while i < len(lines) and not lines[i].strip().startswith("======="):
+                    search_lines.append(lines[i])
+                    i += 1
+                if i >= len(lines):
+                    break
+                i += 1  # пропускаем =======
+                replace_lines: list[str] = []
+                while i < len(lines) and not (lines[i].strip().startswith(">>>>>>>") and "REPLACE" in lines[i].strip()):
+                    replace_lines.append(lines[i])
+                    i += 1
+                i += 1  # пропускаем >>>>>>> REPLACE
+                search = "\n".join(search_lines)
+                if search.strip():
+                    blocks.append((search, "\n".join(replace_lines)))
+            else:
+                i += 1
+        return blocks
+
+    def _find_block_region(self, content_lines: list[str], search_lines: list[str]) -> tuple[int, int] | None:
+        """Ищет SEARCH-блок в файле. Три уровня (после точного совпадения):
+        1) построчное совпадение без хвостовых пробелов,
+        2) то же, но нечувствительно к пустым строкам (LLM часто их проглатывает).
+        Возвращает (start, end) физических строк или None.
+        """
+        # 1. rstrip-совпадение
+        norm = [l.rstrip() for l in search_lines]
+        for start in range(0, max(0, len(content_lines) - len(search_lines)) + 1):
+            if [l.rstrip() for l in content_lines[start:start + len(search_lines)]] == norm:
+                return (start, start + len(search_lines))
+
+        # 2. blank-insensitive: сравниваем только непустые строки
+        nb_idx = [i for i, l in enumerate(content_lines) if l.strip()]
+        nb_content = [content_lines[i].rstrip() for i in nb_idx]
+        nb_search = [l.rstrip() for l in search_lines if l.strip()]
+        if not nb_search:
+            return None
+        for start in range(0, len(nb_content) - len(nb_search) + 1):
+            if nb_content[start:start + len(nb_search)] == nb_search:
+                return (nb_idx[start], nb_idx[start + len(nb_search) - 1] + 1)
+        return None
+
+    def _apply_edit_blocks(self, content: str, blocks: list[tuple[str, str]]) -> tuple[str | None, str]:
+        """Применяет SEARCH/REPLACE-блоки к содержимому файла.
+
+        Точное совпадение, затем умный поиск региона (_find_block_region).
+        Возвращает (новое_содержимое, "") или (None, причина).
+        Сбой любого блока = полный отказ (частичные правки не применяются).
+        """
+        for idx, (search, replace) in enumerate(blocks, 1):
+            if search in content:
+                content = content.replace(search, replace, 1)
+                continue
+            content_lines = content.split("\n")
+            region = self._find_block_region(content_lines, search.split("\n"))
+            if region is None:
+                first = search.splitlines()[0][:60] if search.splitlines() else "?"
+                return None, f"SEARCH-блок #{idx} не найден в файле: {first!r}"
+            content_lines[region[0]:region[1]] = replace.split("\n")
+            content = "\n".join(content_lines)
+        return content, ""
     
     def _extract_code(self, response: str) -> str:
         if not response:
@@ -219,32 +370,62 @@ Instruction: {instruction}
             return False
     
     def run_task(self, task_description: str, file_path: str, instruction: str, create_pr: bool = False) -> Dict[str, Any]:
-        """Run full task: RAG + generate + apply + memory + optional PR"""
+        """Run full task: RAG + generate + apply + memory + optional PR.
+
+        v3.3: для существующих файлов — diff-based правка (SEARCH/REPLACE блоки).
+        Результирующий файл в любом случае проходит check_code_health
+        внутри apply_fix (защита от деградации сохраняется).
+        """
         print(f"  [V3] Task: {task_description[:60]} -> {file_path}")
-        
-        result = self.generate_with_rag(task_description, file_path, instruction)
-        
+
+        full_path = self.repo_path / file_path
+        current = ""
+        try:
+            if full_path.exists() and full_path.is_file():
+                current = full_path.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            current = ""
+
+        result = self.generate_with_rag(task_description, file_path, instruction, current_content=current)
+
         if not result["ok"]:
             self.memory.record_failure(file_path, task_description, result.get("error", "unknown"), result.get("provider", ""))
             return {"status": "failed", "error": result.get("error")}
-        
-        # Apply
-        if not self.apply_fix(file_path, result["code"]):
-            self.memory.record_failure(file_path, task_description, "apply failed", result["provider"])
-            return {"status": "failed", "error": "apply failed"}
-        
+
+        mode = result.get("mode", "fullfile")
+
+        if mode == "edits":
+            new_content, err = self._apply_edit_blocks(current, result["blocks"])
+            if new_content is None:
+                self.memory.record_failure(file_path, task_description, err, result["provider"])
+                return {"status": "failed", "error": err}
+            if new_content == current:
+                self.memory.record_failure(file_path, task_description, "edit blocks made no changes", result["provider"])
+                return {"status": "failed", "error": "no changes"}
+            if not self.apply_fix(file_path, new_content):
+                self.memory.record_failure(file_path, task_description, "apply rejected by self-protection", result["provider"])
+                return {"status": "failed", "error": "apply rejected by self-protection"}
+            code_len = len(new_content) - len(current)
+        else:
+            # fullfile (новый файл или LLM вернула полный текст)
+            if not self.apply_fix(file_path, result["code"]):
+                self.memory.record_failure(file_path, task_description, "apply rejected by self-protection", result["provider"])
+                return {"status": "failed", "error": "apply rejected by self-protection"}
+            code_len = len(result["code"])
+
         # Record success
-        self.memory.record_success(file_path, task_description, instruction, len(result["code"]), result["provider"], skill="")
-        
+        self.memory.record_success(file_path, task_description, instruction, abs(code_len), result["provider"], skill="")
+
         # Optional PR
         pr_result = None
         if create_pr:
             pr_result = self.pr_creator.create_branch_and_pr(file_path, task_description)
-        
+
         return {
             "status": "success",
             "file": file_path,
-            "code_len": len(result["code"]),
+            "code_len": abs(code_len),
+            "mode": mode,
             "provider": result["provider"],
             "model": result["model"],
             "rag_used": result["rag_used"],
