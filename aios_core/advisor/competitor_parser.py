@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import requests
 
 
 class CompetitorPriceParser:
@@ -11,8 +12,8 @@ class CompetitorPriceParser:
         prices = []
         for url in urls:
             # TODO: Реальный HTTP запрос и парсинг BeautifulSoup
-            # response = await httpx.get(url)
-            # price = extract_price(response.text)
+            response = requests.get(url)
+            price = extract_price(response.text)
 
             # Имитация: извлекаем число из URL или возвращаем заглушку
             match = re.search(r"(\d{4,})", url)
