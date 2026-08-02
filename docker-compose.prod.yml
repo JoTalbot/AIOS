@@ -214,6 +214,16 @@ services:
       - --config.file=/etc/alertmanager/alertmanager.yml
     restart: unless-stopped
     networks: [aios-net]
+
+  aios-exporter:
+    image: python:3.11-slim
+    container_name: aios-exporter
+    volumes:
+      - ./deploy/aios-exporter/server.py:/server.py:ro
+      - aios-data:/data:ro
+    command: ["python", "/server.py"]
+    restart: unless-stopped
+    networks: [aios-net]
 volumes:
   aios-data:
   aios-logs:
