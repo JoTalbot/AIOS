@@ -70,6 +70,27 @@ if ! python3 -m compileall -q "$STAGING_DIR/aios_core" "$STAGING_DIR/run_coder_o
 fi
 log "compile validation OK"
 
+# --- API health gate: the staging code must not crash the running API ---
+# (the coder has previously broken MCPGateway and taken the API down).
+if command -v /opt/aios/.venv/bin/python3.11 >/dev/null 2>&1; then
+    # Import the API app modules to surface import-time/startup errors.
+    if (cd "$STAGING_DIR" && timeout 60 /opt/aios/.venv/bin/python3.11 -c "
+import sys; sys.path.insert(0, '.')
+try:
+    from aios_core.api.app import create_app
+    print('API import OK')
+except Exception as e:
+    import traceback; traceback.print_exc()
+    raise SystemExit(1)
+" >/tmp/aios_api_import.log 2>&1); then
+        log "api import gate: OK"
+    else
+        log "BLOCKED: API import/startup fails in staging; NOT promoting"
+        tail -5 /tmp/aios_api_import.log | sed 's/^/  /' >> "$LOG"
+        exit 1
+    fi
+fi
+
 # --- test gate: run a quick pytest on changed core modules if present ---
 if [[ -d "$STAGING_DIR/aios_core" ]] && command -v /opt/aios/.venv/bin/python3.11 >/dev/null 2>&1; then
     # Only fail the gate on real import/collection errors, not on system-missing deps.
