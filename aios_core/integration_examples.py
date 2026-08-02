@@ -7,6 +7,7 @@ import asyncio
 import json
 import time
 from dataclasses import asdict
+from typing import Any, Dict
 
 from .enhanced_integration_system import (
     AlertRule,
@@ -19,6 +20,70 @@ from .enhanced_integration_system import (
     ProtocolType,
     WebhookConfig,
 )
+
+
+async def gemini_walk_hack(
+    integration_system: EnhancedIntegrationSystem, url: str, event: str, data: Dict[str, Any]
+) -> bool:
+    """
+    Corrected function to send a webhook POST request safely.
+
+    Ensures that POST requests are sent with proper JSON headers and data serialization.
+    """
+    try:
+        # Ensure headers include Content-Type application/json
+        webhook_config = next(
+            (wh for wh in integration_system.config.webhook_configs if wh.url == url), None
+        )
+        headers = webhook_config.headers.copy() if webhook_config and webhook_config.headers else {}
+        if "Content-Type" not in headers:
+            headers["Content-Type"] = "application/json"
+
+        # Send webhook with proper headers and JSON data
+        success = await integration_system.send_webhook(url, event, data, headers=headers)
+        return success
+    except Exception:
+        # Gracefully handle exceptions and return False on failure
+        return False
+
+
+async def test_post_request_security() -> None:
+    """
+    Test to verify that POST requests are sent securely with correct headers and data.
+
+    This test mocks sending a webhook and checks that the Content-Type header is set to application/json.
+    """
+    from unittest.mock import AsyncMock
+
+    # Setup a dummy integration system with one webhook config
+    webhook_url = "https://httpbin.org/post"
+    webhook_config = WebhookConfig(
+        url=webhook_url,
+        events=["test.event"],
+        headers={},  # Intentionally empty to test header addition
+        timeout=10,
+        retry_count=1,
+    )
+    config = IntegrationConfig(webhook_configs=[webhook_config])
+    integration_system = EnhancedIntegrationSystem(config)
+
+    # Mock the send_webhook method to capture headers and data
+    async def mock_send_webhook(url: str, event: str, data: Dict[str, Any], headers: Dict[str, str] = None) -> bool:
+        assert url == webhook_url
+        assert event == "test.event"
+        assert headers is not None
+        # Check that Content-Type header is set to application/json
+        assert headers.get("Content-Type") == "application/json"
+        # Check that data is a dict and contains expected keys
+        assert isinstance(data, dict)
+        assert data.get("key") == "value"
+        return True
+
+    integration_system.send_webhook = AsyncMock(side_effect=mock_send_webhook)
+
+    # Call gemini_walk_hack and assert it returns True
+    success = await gemini_walk_hack(integration_system, webhook_url, "test.event", {"key": "value"})
+    assert success, "POST request security test failed"
 
 
 async def example_basic_usage() -> None:
@@ -603,7 +668,7 @@ async def example_deployment_configuration() -> None:
 
 
 async def main() -> None:
-    """Run all examples."""
+    """Run all examples and tests."""
     print("Enhanced Integration System - Examples and Guide")
     print("=" * 50)
 
@@ -619,7 +684,10 @@ async def main() -> None:
     # Run deployment configuration example
     await example_deployment_configuration()
 
-    print("\nAll examples completed successfully!")
+    # Run security test for POST requests
+    await test_post_request_security()
+
+    print("\nAll examples and tests completed successfully!")
 
 
 if __name__ == "__main__":
