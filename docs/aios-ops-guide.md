@@ -107,3 +107,29 @@ docker ps --filter name=aios
 cd /root/AIOS && git rev-list --left-right --count main...origin/main  # 0 0
 ls /root/AIOS-autocoder/tools/aios_*.py | wc -l  # 0
 tail -5 /root/AIOS/logs/auto_promote.log
+
+---
+
+## 13. Защита от поломок (важно!)
+
+Автокодер может создавать баги (однажды сломал MCPGateway → API упал). Для защиты:
+- **API health-гейт** в авто-промоуте: перед промоутом код реально запускается (`create_app` + GET `/health`), при ошибке — `BLOCKED`.
+- Цепочка промоута: `junk check → compile → API health → test gate → merge → push`.
+- Если автокодер сломает импорт API — промоут не произойдёт, main останется чистым.
+
+## 14. Авто-промоут (текущий)
+- Timer: каждые **1 минуту** (`OnCalendar=*:0/1`).
+- Скрипт: `/usr/local/bin/aios-auto-promote.sh`, версия в `deploy/aios-auto-promote.sh`.
+- **Устойчив к параллельному агенту**: подтягивает origin, мержит чужие коммиты, rebase-retry при push.
+- Логи: `/root/AIOS/logs/auto_promote.log`.
+
+## 15. Обслуживание
+- Docker build cache может расти (было 11GB) — очистить: `docker builder prune -f`.
+- Мониторинг диска: `df -h /` (сейчас 40%, 44G свободно).
+- `.bak*` файлы игнорируются git и должны удаляться.
+- Очистка старых бэкапов автоматическая (14 дней).
+
+## 16. Мониторинг автокодера
+- Метрики автокодера: в exporter-файле `/app/data/metrics_exporter/aios_service.prom` (контейнер видит).
+- Дашборд Grafana: "AIOS Autocoder" (uid=aios-autocoder), метрики `aios_cycle_*` через API.
+- Логи циклов: `tail -f /root/AIOS/logs/coder_orchestrator.log`.
