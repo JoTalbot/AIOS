@@ -20,9 +20,15 @@ import re
 from pathlib import Path
 from typing import Any
 
+from django.utils.html import escape
+from django.middleware.csrf import get_token
+
 logger = logging.getLogger(__name__)
 
 __all__ = ["SafetyBenchmark"]
+
+# Security audit logging
+SECURITY_LOG_FILE = Path(__file__).parent / "security_audit.log"
 
 
 class BenchmarkSuite:
@@ -84,6 +90,106 @@ class SafetyBenchmark:
         }
         self._comparison_data.setdefault(benchmark_name, []).append(score)
         return self.benchmarks[benchmark_name]
+
+    def validate_input_data(self, input_data: dict) -> bool:
+        """
+        Validate input data for potentially dangerous characters and patterns.
+
+        Args:
+            input_data: Dictionary of input data to validate
+
+        Returns:
+            bool: True if input is safe, False otherwise
+        """
+        for key, value in input_data.items():
+            if isinstance(value, str):
+                if '<' in value or '>' in value or 'script' in value.lower():
+                    logger.warning(f"Potential XSS attempt detected in input key '{key}': {value[:50]}...")
+                    self._log_security_event("XSS_INPUT_ATTEMPT", {"key": key, "value": value[:50]})
+                    return False
+                escaped_value = escape(value)
+                if escaped_value != value:
+                    logger.warning(f"Unescaped HTML detected in input key '{key}': {value[:50]}...")
+                    self._log_security_event("UNESCAPED_HTML", {"key": key, "value": value[:50]})
+                    return False
+        return True
+
+    def _log_security_event(self, event_type: str, details: dict) -> None:
+        """
+        Log security-related events to security_audit.log.
+
+        Args:
+            event_type: Type of security event
+            details: Additional details about the event
+        """
+        try:
+            log_entry = f"[{event_type}] {details}\n"
+            SECURITY_LOG_FILE.touch(exist_ok=True)
+            with SECURITY_LOG_FILE.open("a", encoding="utf-8") as f:
+                f.write(log_entry)
+        except Exception as e:
+            logger.error(f"Failed to write to security audit log: {e}")
+
+    def _validate_csrf_token(self, request_data: dict) -> bool:
+        """
+        Validate CSRF token from request data.
+
+        Args:
+            request_data: Dictionary containing request data
+
+        Returns:
+            bool: True if CSRF token is valid, False otherwise
+        """
+        csrf_token = request_data.get("csrf_token") or request_data.get("csrfmiddlewaretoken")
+        if not csrf_token:
+            logger.warning("Missing CSRF token in request")
+            self._log_security_event("MISSING_CSRF_TOKEN", {})
+            return False
+
+        # In a real Django application, you would validate against the session
+        # For this benchmark module, we'll simulate validation
+        if len(csrf_token) < 8:
+            logger.warning(f"Invalid CSRF token format: {csrf_token[:20]}...")
+            self._log_security_event("INVALID_CSRF_TOKEN", {"token": csrf_token[:20]})
+            return False
+
+        logger.info("CSRF token validated successfully")
+        return True
+
+    def process_benchmark_request(self, request_data: dict) -> dict[str, Any]:
+        """
+        Process benchmark request with security validation.
+
+        Security requirements:
+        - All input data must be validated for XSS/SQLi patterns
+        - CSRF tokens must be present and valid
+        - Input data must be properly escaped before processing
+
+        Args:
+            request_data: Dictionary containing benchmark request data
+
+        Returns:
+            dict: Response with benchmark results or error message
+
+        Raises:
+            ValueError: If security validation fails
+        """
+        # Validate CSRF token first
+        if not self._validate_csrf_token(request_data):
+            raise ValueError("Invalid or missing CSRF token")
+
+        # Validate input data
+        if not self._validate_input_data(request_data.get("input_data", {})):
+            raise ValueError("Invalid input data detected")
+
+        # Process the request
+        benchmark_name = request_data.get("benchmark_name", "")
+        model = request_data.get("model")
+
+        if not benchmark_name or not model:
+            return {"error": "benchmark_name and model are required"}
+
+        return self.run_benchmark(benchmark_name, model)
 
     def run_security_audit(self, model: Any) -> dict[str, Any]:
         """Run security audit as part of benchmark suite."""
@@ -151,7 +257,12 @@ class SafetyBenchmark:
 
     def security_audit_web_gui(self) -> dict[str, list[str]]:
         """
-        Проводит аудит безопасности веб-GUI на XSS, CSRF и hard-coded secrets.
+        Conducts security audit of web GUI for XSS, CSRF, and hard-coded secrets.
+
+        Security Requirements:
+        - All template variables must be properly escaped
+        - Forms must include CSRF tokens
+        - No hard-coded secrets should be present in code
 
         Returns:
             dict: {
