@@ -43,3 +43,26 @@ jobs:
             echo "❌ в диффе секреты/конфиги — запрещено (AGENTS.md правило 4)"; exit 1
           fi
           echo "✅ секретов в диффе нет"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Ruff (hard gate, E/F)
+        run: |
+          pip install ruff -q
+          files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.py')
+          [ -z "$files" ] && exit 0
+          echo "$files" | xargs ruff check --select E,F
+      - name: Mypy (informational, по бэклогу 02.08)
+        continue-on-error: true
+        run: |
+          pip install mypy -q
+          files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.py')
+          [ -z "$files" ] && exit 0
+          echo "$files" | xargs mypy --ignore-missing-imports --no-error-summary || true

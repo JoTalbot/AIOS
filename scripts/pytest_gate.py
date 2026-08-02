@@ -45,9 +45,13 @@ def find_tests(changed: str) -> list[str]:
     for root, dirs, files in os.walk(tests_root):
         dirs[:] = [d for d in dirs if d not in {"__pycache__", ".git", "e2e", "chaos"}]
         for f in files:
-            if not f.endswith(".py"):
+            if not f.endswith(".py") or not f.startswith("test"):
                 continue
-            if f == f"test_{stem}.py" or f.startswith(f"test_{stem}_") or f == f"{stem}_test.py":
+            # v3.6b: связь по вхождению имени модуля в имя теста —
+            # ловит и test_security_trust_manager.py для trust_manager.py
+            base_stem = os.path.splitext(f)[0]
+            if (f == f"test_{stem}.py" or f.startswith(f"test_{stem}_")
+                    or f == f"{stem}_test.py" or f"_{stem}" in base_stem):
                 out.append(os.path.relpath(os.path.join(root, f), REPO))
     return sorted(out)[:MAX_TEST_FILES]
 

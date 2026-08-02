@@ -92,6 +92,15 @@ class SecurityConfig(BaseModel):
         le=8192
     )
 
+    # fix 02.08: поле отсутствовало, но validate_rsa_key_size на него ссылался
+    # (AttributeError на ключах > min). Дефолт = рекомендуемый потолок 4096.
+    max_rsa_key_size: int = Field(
+        default=4096,
+        description="Recommended maximum RSA key size in bits",
+        ge=1024,
+        le=8192
+    )
+
     trust_levels: list[int] = Field(
         default_factory=lambda: TrustLevel.values(),
         description="List of valid trust level values"
