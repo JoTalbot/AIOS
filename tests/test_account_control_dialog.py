@@ -204,6 +204,66 @@ def test_olx_intent(monkeypatch):
     assert any("OLX" in x for x in api.messages)
 
 
+def test_viber_chats_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "viber" and args[1] == "chats":
+            return {"status": "ok", "chats": [{"name": "Мама"}, {"name": "Коллеги"}]}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "вайбер") is True
+    assert any("Чаты Viber" in x for x in api.messages)
+
+
+def test_viber_send_intent(monkeypatch):
+    def fake_run(args):
+        if args[:3] == ["viber", "send", "Мама"] and "--confirm" not in args:
+            return {"status": "need_confirm"}
+        if "--confirm" in args:
+            return {"status": "sent", "chat": "Мама", "text": "привет"}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "напиши в вайбер Мама: привет") is True
+    assert any("Отправить" in x and "Viber" in x for x in api.messages)
+    api2 = FakeAPI()
+    assert m._handle_account_intent(api2, 1, "да") is True
+    assert any("Viber" in x for x in api2.messages)
+
+
+def test_messenger_send_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "facebook" and args[1] == "messenger_send" and "--confirm" in args:
+            return {"status": "sent", "chat": "Саша", "text": "привет"}
+        return {"status": "need_confirm"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "напиши в мессенджер Саша: привет") is True
+    api2 = FakeAPI()
+    assert m._handle_account_intent(api2, 1, "да") is True
+    assert any("Messenger" in x for x in api2.messages)
+
+
+def test_tiktok_upload_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "tiktok" and args[1] == "upload" and "--confirm" in args:
+            return {"status": "published", "caption": "тест"}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    m._last_video[1] = "/tmp/test_video.mp4"
+    Path("/tmp/test_video.mp4").write_bytes(b"0" * 64)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "опубликуй видео в тикток привет") is True
+    assert any("Публикация в TikTok" in x for x in api.messages)
+    api2 = FakeAPI()
+    assert m._handle_account_intent(api2, 1, "да") is True
+    assert any("опубликовано" in x for x in api2.messages)
+
+
 def test_ig_like_flow(monkeypatch):
     def fake_run(args):
         if args[:3] == ["instagram", "like", url] and "--confirm" not in args:
