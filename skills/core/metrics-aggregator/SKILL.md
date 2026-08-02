@@ -1,3 +1,8 @@
+---
+name: metrics-aggregator
+description: Агрегирование и сбор метрик из различных источников для создания единого view производительности.
+---
+
 # Metrics Aggregator
 
 **Вектор**: quality

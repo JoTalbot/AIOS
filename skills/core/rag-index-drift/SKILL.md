@@ -1,3 +1,8 @@
+---
+name: rag-index-drift
+description: Обнаруживает расхождения (drift) между RAG-индексом и исходными данными.
+---
+
 # SKILL: rag-index-drift
 **Категория:** core
 **Дата создания:** 2026-06-20

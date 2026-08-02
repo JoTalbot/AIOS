@@ -1,3 +1,8 @@
+---
+name: software-reporter
+description: Отчёт об установленном ПО, версиях и обновлениях на ноде.
+---
+
 # SKILL: software-reporter
 **Категория:** core
 **Дата создания:** 2026-06-20

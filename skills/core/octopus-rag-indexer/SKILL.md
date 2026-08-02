@@ -1,3 +1,8 @@
+---
+name: octopus-rag-indexer
+description: Индексация данных и документов для RAG-поиска по памяти.
+---
+
 # SKILL: octopus-rag-indexer
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: skill-version-manager
+description: Управление версиями скиллов: bump, tag, changelog.
+---
+
 # SKILL: skill-version-manager
 **Категория:** core
 **Дата создания:** 2026-06-20

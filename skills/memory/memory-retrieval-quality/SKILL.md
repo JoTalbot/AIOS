@@ -1,3 +1,8 @@
+---
+name: memory-retrieval-quality
+description: Оценка качества извлечения из памяти (RAG recall/precision).
+---
+
 # SKILL: memory-retrieval-quality
 **Категория:** core
 **Дата создания:** 2026-06-20

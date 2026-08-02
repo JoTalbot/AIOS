@@ -1,3 +1,8 @@
+---
+name: octopus-memory-copies-audit
+description: Octopus memory invariant audit: every local memory object MUST have at least
+---
+
 # SKILL: octopus-memory-copies-audit
 **Категория:** core
 **Дата создания:** 2026-06-20

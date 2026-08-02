@@ -1,3 +1,8 @@
+---
+name: audio-pipeline-latency
+description: Измеряет задержку аудио-пайплайна (Whisper/VAD/transcribe) на ноде.
+---
+
 # SKILL: audio-pipeline-latency
 **Категория:** core
 **Дата создания:** 2026-06-20

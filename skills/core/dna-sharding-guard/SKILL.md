@@ -1,3 +1,8 @@
+---
+name: dna-sharding-guard
+description: Erasure coding for Octopus memory DNA. Splits CAS/packstore data into 5 shards
+---
+
 # SKILL: dna-sharding-guard
 **Category:** core
 **Status:** ACTIVE (on-demand + scheduled)

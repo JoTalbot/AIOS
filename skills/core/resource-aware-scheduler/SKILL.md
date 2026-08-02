@@ -1,3 +1,8 @@
+---
+name: resource-aware-scheduler
+description: Планировщик задач с учётом загрузки ресурсов нод.
+---
+
 # SKILL: resource-aware-scheduler
 **Категория:** core
 **Дата создания:** 2026-06-20

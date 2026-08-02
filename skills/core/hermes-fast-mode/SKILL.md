@@ -1,3 +1,8 @@
+---
+name: hermes-fast-mode
+description: Настройка fast mode для Hermes для ускорения работы.
+---
+
 # Hermes Fast Mode
 
 **Вектор**: swarm

@@ -1,3 +1,8 @@
+---
+name: skill-coverage-audit
+description: Аудит покрытия скиллов: пробелы, дубли, заглушки (#31).
+---
+
 # SKILL: skill-coverage-audit
 **Категория:** core
 **Дата создания:** 2026-06-20

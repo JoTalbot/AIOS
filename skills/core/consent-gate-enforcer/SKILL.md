@@ -1,3 +1,8 @@
+---
+name: consent-gate-enforcer
+description: Bounded read-only аудитор consent-гейтов. Реализует инструкцию №18 (суверенитет человека): делает состояние всех consent-гейтов видимым и обнаруживает drift — систему, делающую то, что её гейты запрещают.
+---
+
 # SKILL: consent-gate-enforcer
 **Категория:** core / security / governance
 **Дата создания:** 2026-06-20

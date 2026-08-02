@@ -1,3 +1,8 @@
+---
+name: parallel-replicator
+description: Параллельная репликация данных между нодами для скорости.
+---
+
 # SKILL: parallel-replicator
 **Категория:** meta
 **Дата создания:** 2026-06-20

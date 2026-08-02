@@ -1,3 +1,8 @@
+---
+name: audio-people-extraction
+description: Извлечение people graph из аудио для голосового распознавания.
+---
+
 # Audio People Extraction
 
 **Вектор**: autoheal

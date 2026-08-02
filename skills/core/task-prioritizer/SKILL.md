@@ -1,3 +1,8 @@
+---
+name: task-prioritizer
+description: Приоритизирует задачи по векторам развития и срочности.
+---
+
 # SKILL: task-prioritizer
 **Категория:** core
 **Дата создания:** 2026-06-20

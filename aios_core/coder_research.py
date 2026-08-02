@@ -10,6 +10,7 @@ Everything runs locally on this host.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -148,6 +149,123 @@ def use_skill(skill_name: str, params: str = "", timeout: int = 120) -> dict:
                 "stderr": result.stderr[-1000:], "exit_code": result.returncode}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+def _skill_description(md: str) -> str:
+    """description из YAML-frontmatter; fallback — первая строка раздела 'Описание'."""
+    m = re.match(r"\s*---\n(.*?)\n---", md, re.S)
+    if m:
+        dm = re.search(r"^description:\s*[\"']?(.+?)[\"']?\s*$", m.group(1), re.M)
+        if dm:
+            return dm.group(1).strip()
+    m = re.search(r"##\s*(Описание|Description)\s*\n+(.+)", md)
+    if m:
+        return m.group(2).strip().splitlines()[0][:200]
+    return ""
+
+
+def list_skill_cards(limit: int = 12) -> list[tuple[str, str]]:
+    """[(name, description)] — для промпта планировщика (п.4, progressive disclosure tier-1).
+
+    Приоритет: skills/coder/ (самые релевантные автокодеру), затем остальные.
+    """
+    cards: list[tuple[str, str]] = []
+    try:
+        for root, _dirs, files in os.walk(SKILLS_DIR):
+            if "SKILL.md" not in files:
+                continue
+            rel = os.path.relpath(root, SKILLS_DIR)
+            try:
+                md = open(os.path.join(root, "SKILL.md"), encoding="utf-8", errors="replace").read()
+            except OSError:
+                continue
+            cards.append((rel, _skill_description(md)[:110]))
+    except Exception:
+        return []
+    cards.sort(key=lambda c: (0 if c[0].startswith("coder/") else 1, c[0]))
+    return cards[:limit]
+
+
+def skill_bodies_for(text: str, max_chars: int = 2500, max_skills: int = 2) -> str:
+    """Тела наиболее релевантных скиллов для задачи (п.4, tier-2: грузим по требованию).
+
+    Матч по токенам пути/названия скилла и description против текста задачи.
+    """
+    text_l = (text or "").lower()
+    if not text_l:
+        return ""
+    tokens = set(re.findall(r"[a-zа-яё][\w-]{2,}", text_l))
+    scored: list[tuple[int, str, str]] = []
+    try:
+        for root, _dirs, files in os.walk(SKILLS_DIR):
+            if "SKILL.md" not in files:
+                continue
+            rel = os.path.relpath(root, SKILLS_DIR)
+            try:
+                md = open(os.path.join(root, "SKILL.md"), encoding="utf-8", errors="replace").read()
+            except OSError:
+                continue
+            name_tokens = set(re.findall(r"[a-zа-яё][\w-]{1,}", rel.lower().replace("/", " ")))
+            desc = _skill_description(md).lower()
+            score = len(tokens & name_tokens) * 3
+            score += sum(1 for t in tokens if t in desc)
+            if score > 0:
+                scored.append((score, rel, md))
+    except Exception:
+        return ""
+    parts: list[str] = []
+    used = 0
+    for score, rel, md in sorted(scored, key=lambda x: -x[0])[:max_skills]:
+        body = re.sub(r"^\s*---\n.*?\n---\n*", "", md, flags=re.S).strip()
+        piece = f"### SKILL {rel}\n{body}"
+        if used + len(piece) > max_chars:
+            piece = piece[:max_chars - used]
+        parts.append(piece)
+        used += len(piece)
+        if used >= max_chars:
+            break
+    return "\n\n".join(parts)
+
+
+_CTX7_LIBS = {
+    "pydantic": "pydantic", "fastapi": "fastapi", "requests": "requests",
+    "sqlalchemy": "sqlalchemy", "chromadb": "chroma", "chroma": "chroma",
+    "pytest": "pytest", "aiohttp": "aiohttp", "flask": "flask",
+    "redis": "redis", "celery": "celery", "docker": "docker",
+    "telegram": "python-telegram-bot", "openai": "openai", "onnx": "onnx",
+}
+
+
+def fetch_context7_docs(topic: str, tokens: int = 1500) -> str:
+    """Актуальная документация библиотеки через Context7 (п.5, REST без MCP).
+
+    topic — слово/фраза; если в ней узнаём известную библиотеку (_CTX7_LIBS),
+    возвращаем выжимку доков (llms.txt). Нет сети/совпадений — пустая строка.
+    """
+    if requests is None:
+        return ""
+    tl = (topic or "").lower()
+    lib = next((v for k, v in _CTX7_LIBS.items() if k in tl), "")
+    if not lib:
+        return ""
+    try:
+        s = requests.get("https://context7.com/api/v1/search",
+                         params={"query": lib}, headers=UA, timeout=15)
+        results = (s.json() or {}).get("results") or []
+        if not results:
+            return ""
+        best = max(results, key=lambda r: r.get("trustScore", 0))
+        pid = best.get("id", "")
+        if not pid:
+            return ""
+        d = requests.get(f"https://context7.com{pid}/llms.txt",
+                         params={"tokens": tokens}, headers=UA, timeout=20)
+        text = (d.text or "").strip()
+        if text:
+            return f"Context7 {best.get('title', lib)} ({pid}):\n{text[:2500]}"
+    except Exception:
+        pass
+    return ""
 
 
 if __name__ == "__main__":

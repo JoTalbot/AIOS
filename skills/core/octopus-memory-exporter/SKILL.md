@@ -1,3 +1,8 @@
+---
+name: octopus-memory-exporter
+description: Prometheus exporter for Octopus memory metrics.
+---
+
 # SKILL: octopus-memory-exporter
 **Категория:** core
 **Дата создания:** 2026-06-20

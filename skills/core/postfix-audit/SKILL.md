@@ -1,3 +1,8 @@
+---
+name: postfix-audit
+description: Аудит и мониторинг Postfix mail server для выявления проблем с почтой.
+---
+
 # Postfix Audit
 
 **Вектор**: quality

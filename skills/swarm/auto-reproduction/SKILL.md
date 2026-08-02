@@ -1,3 +1,8 @@
+---
+name: auto-reproduction
+description: Этот скил предназначен для...
+---
+
 # SKILL: auto-reproduction
 
 ## Описание

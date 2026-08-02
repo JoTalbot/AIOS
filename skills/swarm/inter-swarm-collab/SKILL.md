@@ -1,3 +1,8 @@
+---
+name: inter-swarm-collab
+description: Этот скил предназначен для...
+---
+
 # SKILL: inter-swarm-collab
 
 ## Описание

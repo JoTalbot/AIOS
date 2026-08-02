@@ -1,3 +1,8 @@
+---
+name: octopus-memory-gc-dryrun
+description: SELECT ref,key,size_bytes,is_worm,replication_count,COALESCE(tags,'[]'::jsonb),COALESCE(attrs,'{}'::jsonb),created_at
+---
+
 # SKILL: octopus-memory-gc-dryrun
 **Категория:** core
 **Дата создания:** 2026-06-20

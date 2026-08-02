@@ -1,3 +1,8 @@
+---
+name: octopus-alerting
+description: Octopus Alerting Daemon v2 (2026-05-18).
+---
+
 # SKILL: octopus-alerting
 **Категория:** core
 **Дата создания:** 2026-06-20

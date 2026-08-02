@@ -1,3 +1,8 @@
+---
+name: multi-sync-monitor
+description: Мониторинг multi-master active-active синхронизации для выявления рассинхронизаций.
+---
+
 # Multi-Sync Monitor
 
 **Вектор**: quality

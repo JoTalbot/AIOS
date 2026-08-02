@@ -1,3 +1,8 @@
+---
+name: octopus-archive-rotate
+description: Ротация и устаревание архивов памяти по политике retention.
+---
+
 # SKILL: octopus-archive-rotate
 **Категория:** core
 **Дата создания:** 2026-06-20

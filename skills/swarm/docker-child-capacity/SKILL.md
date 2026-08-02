@@ -1,3 +1,8 @@
+---
+name: docker-child-capacity
+description: Проверка capacity для развёртывания docker child-нод.
+---
+
 # SKILL: docker-child-capacity
 **Категория:** core
 **Дата создания:** 2026-06-20

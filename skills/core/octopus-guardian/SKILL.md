@@ -1,3 +1,8 @@
+---
+name: octopus-guardian
+description: Общий guardian: проверка системных инвариантов и safety-условий.
+---
+
 # SKILL: octopus-guardian
 **Категория:** core
 **Дата создания:** 2026-06-20

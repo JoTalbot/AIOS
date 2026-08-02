@@ -1,3 +1,8 @@
+---
+name: roadmap-1000-integration
+description: Интеграция компонентов для roadmap 1000.
+---
+
 # Roadmap 1000 Integration
 
 **Вектор**: quality

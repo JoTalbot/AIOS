@@ -1,3 +1,8 @@
+---
+name: self-bootstrapper-v3
+description: Самозагрузка Octopus на новой ноде из eternal-снимка.
+---
+
 # SKILL: self-bootstrapper-v3
 **Категория:** core
 **Дата создания:** 2026-06-20

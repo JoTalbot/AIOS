@@ -1,3 +1,8 @@
+---
+name: swarm-reasoning
+description: Этот скил предназначен для...
+---
+
 # SKILL: swarm-reasoning
 
 ## Описание

@@ -1,3 +1,8 @@
+---
+name: consensus-heartbeat
+description: Heartbeat для консенсус-протокола роя: liveness-проверка.
+---
+
 # SKILL: consensus-heartbeat
 **Категория:** core
 **Дата создания:** 2026-06-20

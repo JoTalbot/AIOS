@@ -1,3 +1,8 @@
+---
+name: bft-consensus
+description: 1. Загрузить `SKILL.md`, контекст проекта Octopus и последние отчёты по направлению навыка.
+---
+
 # SKILL: bft-consensus
 **Category:** core | **Status:** ACTIVE | **Phase:** 1 A3 + Phase 2
 **Path:** /opt/octopus-bft-consensus.py | **Data:** /var/lib/octopus/bft/

@@ -1,3 +1,8 @@
+---
+name: llm-evaluation-lite
+description: Bounded оценка качества LLM-ответов без отправки данных наружу (read-only).
+---
+
 # SKILL: llm-evaluation-lite
 **Категория:** core
 **Дата создания:** 2026-06-20

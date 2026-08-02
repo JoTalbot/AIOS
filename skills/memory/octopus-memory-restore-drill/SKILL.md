@@ -1,3 +1,8 @@
+---
+name: octopus-memory-restore-drill
+description: Учебный restore-дрилл: проверка восстанавливаемости памяти.
+---
+
 # SKILL: octopus-memory-restore-drill
 **Категория:** core
 **Дата создания:** 2026-06-20

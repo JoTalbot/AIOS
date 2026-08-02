@@ -1,3 +1,8 @@
+---
+name: octopus-events-api
+description: Unified events API — serves event log as JSON.
+---
+
 # SKILL: octopus-events-api
 **Категория:** core
 **Дата создания:** 2026-06-20

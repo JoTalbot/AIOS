@@ -1,3 +1,8 @@
+---
+name: aws-cost-audit
+description: Автоматический аудит AWS расходов для выявления затрат и оптимизации возможностей.
+---
+
 # AWS Cost Audit
 
 **Вектор**: quality

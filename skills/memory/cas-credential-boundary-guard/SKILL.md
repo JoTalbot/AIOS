@@ -1,3 +1,8 @@
+---
+name: cas-credential-boundary-guard
+description: Fail-closed drift guard for CAS credential storage and authentication. It never prints token values.
+---
+
 # SKILL: cas-credential-boundary-guard
 
 **Category:** core / security / CAS

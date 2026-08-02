@@ -1,3 +1,8 @@
+---
+name: octopus-eternal-snapshot
+description: Создание eternal-снимка системы для Disaster Recovery (#19).
+---
+
 # SKILL: octopus-eternal-snapshot
 **Категория:** core
 **Дата создания:** 2026-06-20

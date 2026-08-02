@@ -1,3 +1,8 @@
+---
+name: self-test-generator
+description: Генерирует тесты для скиллов и компонентов автоматически.
+---
+
 # SKILL: self-test-generator
 **Категория:** core
 **Дата создания:** 2026-06-20

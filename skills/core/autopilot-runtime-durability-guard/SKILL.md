@@ -1,3 +1,8 @@
+---
+name: autopilot-runtime-durability-guard
+description: Этот скил предназначен для...
+---
+
 # SKILL: autopilot-runtime-durability-guard
 
 ## Описание

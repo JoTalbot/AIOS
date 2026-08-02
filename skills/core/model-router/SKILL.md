@@ -1,3 +1,8 @@
+---
+name: model-router
+description: Маршрутизирует LLM-запросы между моделями (Ollama/external) по заданным правилам.
+---
+
 # SKILL: model-router
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: market-rate-calculator
+description: Расчёт рыночных курсов и ставок для вектора самообеспечения (#46).
+---
+
 # SKILL: market-rate-calculator
 **Категория:** core
 **Дата создания:** 2026-06-20

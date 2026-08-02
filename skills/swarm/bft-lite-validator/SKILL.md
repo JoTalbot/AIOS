@@ -1,3 +1,8 @@
+---
+name: bft-lite-validator
+description: Валидатор BFT-lite консенсусных сообщений от нод.
+---
+
 # SKILL: bft-lite-validator
 **Категория:** core
 **Дата создания:** 2026-06-20

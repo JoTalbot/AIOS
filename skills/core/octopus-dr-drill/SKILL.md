@@ -1,3 +1,8 @@
+---
+name: octopus-dr-drill
+description: Octopus Disaster-Recovery Drill (vector #8 ПАМЯТЬ).
+---
+
 # SKILL: octopus-dr-drill
 **Категория:** core
 **Дата создания:** 2026-06-20

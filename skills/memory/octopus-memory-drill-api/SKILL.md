@@ -1,3 +1,8 @@
+---
+name: octopus-memory-drill-api
+description: API для запуска restore-дриллов памяти (учебных восстановлений).
+---
+
 # SKILL: octopus-memory-drill-api
 **Категория:** core
 **Дата создания:** 2026-06-20

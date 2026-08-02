@@ -1,3 +1,8 @@
+---
+name: octopus-status-page
+description: Публичный статус-экран роя Octopus. Порт 8080.
+---
+
 # SKILL: octopus-status-page
 **Категория:** core
 **Дата создания:** 2026-06-20

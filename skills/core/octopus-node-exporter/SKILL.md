@@ -1,3 +1,8 @@
+---
+name: octopus-node-exporter
+description: Octopus Node Status Exporter (2026-05-18).
+---
+
 # SKILL: octopus-node-exporter
 **Категория:** core
 **Дата создания:** 2026-06-20

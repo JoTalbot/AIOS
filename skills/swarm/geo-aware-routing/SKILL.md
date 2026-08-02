@@ -1,3 +1,8 @@
+---
+name: geo-aware-routing
+description: Optimizes swarm traffic based on geographic location and latency.
+---
+
 # SKILL: geo-aware-routing
 **Category:** core
 **Status:** ACTIVE (on-demand)

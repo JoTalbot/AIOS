@@ -1,3 +1,8 @@
+---
+name: octopus-disk-monitor
+description: Непрерывный мониторинг дискового пространства нод.
+---
+
 # SKILL: octopus-disk-monitor
 **Категория:** core
 **Дата создания:** 2026-06-20

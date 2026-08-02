@@ -1,3 +1,8 @@
+---
+name: proactive-scaling
+description: Проактивное масштабирование ресурсов на основе прогноза нагрузки.
+---
+
 # SKILL: proactive-scaling
 **Категория:** meta
 **Дата создания:** 2026-06-20

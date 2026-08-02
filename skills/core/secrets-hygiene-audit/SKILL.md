@@ -1,3 +1,8 @@
+---
+name: secrets-hygiene-audit
+description: Аудит гигиены секретов: bounded read-only поиск plaintext-кредов в инструкциях, конфигах, логах и коде. Реализует инструкцию №51 (Secrets Hygiene).
+---
+
 # SKILL: secrets-hygiene-audit
 **Категория:** core / security
 **Дата создания:** 2026-06-20

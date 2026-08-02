@@ -1,3 +1,8 @@
+---
+name: deep-cleanup
+description: Этот скил предназначен для...
+---
+
 # SKILL: deep-cleanup
 
 ## Описание

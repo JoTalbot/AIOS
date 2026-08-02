@@ -1,3 +1,8 @@
+---
+name: partner-memory-indexer
+description: Индексация памяти партнёров для кросс-проектного поиска.
+---
+
 # SKILL: partner-memory-indexer
 **Категория:** research
 **Дата создания:** 2026-06-20

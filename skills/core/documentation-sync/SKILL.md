@@ -1,3 +1,8 @@
+---
+name: documentation-sync
+description: Проверяет синхронизацию документации с фактическим кодом и конфигами.
+---
+
 # SKILL: documentation-sync
 **Категория:** core
 **Дата создания:** 2026-06-20

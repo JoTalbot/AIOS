@@ -1,3 +1,8 @@
+---
+name: people-graph-quality
+description: Проверка качества графа людей (speaker ID, связность).
+---
+
 # SKILL: people-graph-quality
 **Категория:** core
 **Дата создания:** 2026-06-20

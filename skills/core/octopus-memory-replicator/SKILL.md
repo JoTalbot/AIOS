@@ -1,3 +1,8 @@
+---
+name: octopus-memory-replicator
+description: UPDATE memory_records mr
+---
+
 # SKILL: octopus-memory-replicator
 **Категория:** core
 **Дата создания:** 2026-06-20

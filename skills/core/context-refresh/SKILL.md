@@ -1,3 +1,8 @@
+---
+name: context-refresh
+description: Обновление и очистка контекста для предотвращения утечек памяти и устаревания данных.
+---
+
 # Context Refresh
 
 **Вектор**: quality

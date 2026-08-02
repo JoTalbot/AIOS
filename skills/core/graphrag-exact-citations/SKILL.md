@@ -1,3 +1,8 @@
+---
+name: graphrag-exact-citations
+description: Этот скил предназначен для...
+---
+
 # SKILL: graphrag-exact-citations
 
 ## Описание

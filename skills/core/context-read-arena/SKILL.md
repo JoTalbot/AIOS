@@ -1,3 +1,8 @@
+---
+name: context-read-arena
+description: Аудит контекстного чтения для arena agents и проверки согласованности контекста между узлами.
+---
+
 # Context Read Arena
 
 **Вектор**: swarm

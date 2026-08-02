@@ -1,3 +1,8 @@
+---
+name: swarm-discovery-protocol
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: swarm-discovery-protocol
 **Категория:** core
 **Дата создания:** 2026-06-20

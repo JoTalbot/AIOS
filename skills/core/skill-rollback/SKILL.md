@@ -1,3 +1,8 @@
+---
+name: skill-rollback
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: skill-rollback
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: octopus-alert-thresholds
+description: Octopus threshold alerts: deduplicated, no secrets, always exit 0.
+---
+
 # SKILL: octopus-alert-thresholds
 **Категория:** core
 **Дата создания:** 2026-06-20

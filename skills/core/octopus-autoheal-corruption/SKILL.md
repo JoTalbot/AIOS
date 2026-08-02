@@ -1,3 +1,8 @@
+---
+name: octopus-autoheal-corruption
+description: Обнаружение повреждения данных и восстановление после него.
+---
+
 # SKILL: octopus-autoheal-corruption
 **Категория:** core
 **Дата создания:** 2026-06-20

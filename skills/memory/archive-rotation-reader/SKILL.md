@@ -1,3 +1,8 @@
+---
+name: archive-rotation-reader
+description: Аудит ротации архивов памяти: устаревшие, потерянные, невосстановимые.
+---
+
 # SKILL: archive-rotation-reader
 **Категория:** core
 **Дата создания:** 2026-06-20

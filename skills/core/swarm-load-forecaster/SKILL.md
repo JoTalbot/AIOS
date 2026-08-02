@@ -1,3 +1,8 @@
+---
+name: swarm-load-forecaster
+description: Predictive load analysis for the Octopus swarm. Collects real system metrics (CPU load, memory, disk, network), stores time-series history, computes moving averages, detects trends (rising/falling/stable), and forecasts 
+---
+
 # SKILL: swarm-load-forecaster
 **Category:** core  
 **Status:** ACTIVE (systemd timer, 5-min intervals)  

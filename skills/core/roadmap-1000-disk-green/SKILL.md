@@ -1,3 +1,8 @@
+---
+name: roadmap-1000-disk-green
+description: Управление disk, JuiceFS, Garage и bind-mount memory pool.
+---
+
 # Roadmap 1000 Disk Green
 
 **Вектор**: quality

@@ -1,3 +1,8 @@
+---
+name: bft-consensus
+description: Этот скил предназначен для...
+---
+
 # SKILL: bft-consensus
 
 ## Описание

@@ -1,3 +1,8 @@
+---
+name: node-reputation-reader
+description: Read-only чтение репутации нод роя из реестра.
+---
+
 # SKILL: node-reputation-reader
 **Категория:** core
 **Дата создания:** 2026-06-20

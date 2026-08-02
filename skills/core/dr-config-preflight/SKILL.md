@@ -1,3 +1,8 @@
+---
+name: dr-config-preflight
+description: Единый bounded preflight и schema/introspection слой для DR/bootstrap/snapshot/memory scripts.
+---
+
 # SKILL: dr-config-preflight
 **Категория:** core
 **Дата создания:** 2026-06-30

@@ -1,3 +1,8 @@
+---
+name: strict-iter-archive-gate
+description: Создаёт проверенные tar.gz архивы и `ITER_FILES_ARCHIVED.md` markers для завершённых unmarked `parallel_*` wave-runs. Самостоятельно файлы не удаляет.
+---
+
 # SKILL: strict-iter-archive-gate
 
 **Category:** core / storage / durability

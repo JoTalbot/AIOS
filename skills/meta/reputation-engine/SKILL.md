@@ -1,3 +1,8 @@
+---
+name: reputation-engine
+description: Движок расчёта репутации нод по uptime, вкладу и надёжности.
+---
+
 # SKILL: reputation-engine
 **Категория:** meta
 **Дата создания:** 2026-06-20

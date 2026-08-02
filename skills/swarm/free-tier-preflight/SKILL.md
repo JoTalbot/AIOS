@@ -1,3 +1,8 @@
+---
+name: free-tier-preflight
+description: Preflight перед использованием free-tier ресурсов (#09).
+---
+
 # SKILL: free-tier-preflight
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: skill-archive-cleaner
+description: Очистка и архивация устаревших скиллов по политике.
+---
+
 # SKILL: skill-archive-cleaner
 **Категория:** core
 **Дата создания:** 2026-06-20

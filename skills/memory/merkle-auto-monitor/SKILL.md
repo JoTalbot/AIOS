@@ -1,3 +1,8 @@
+---
+name: merkle-auto-monitor
+description: Этот скил предназначен для...
+---
+
 # SKILL: merkle-auto-monitor
 
 ## Описание

@@ -1,3 +1,8 @@
+---
+name: resource-optimizer
+description: Предлагает оптимизации использования CPU/RAM/диска.
+---
+
 # SKILL: resource-optimizer
 **Категория:** core
 **Дата создания:** 2026-06-20

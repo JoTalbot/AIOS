@@ -1,3 +1,8 @@
+---
+name: octopus-archive-rotate
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: octopus-archive-rotate
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: octopus-memory-drill-api
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: octopus-memory-drill-api
 **Категория:** core
 **Дата создания:** 2026-06-20

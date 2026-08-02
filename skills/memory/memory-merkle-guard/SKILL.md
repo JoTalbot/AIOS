@@ -1,3 +1,8 @@
+---
+name: memory-merkle-guard
+description: Проверка Merkle-хэшей целостности памяти по backends.
+---
+
 # SKILL: memory-merkle-guard
 **Категория:** core
 **Дата создания:** 2026-06-20

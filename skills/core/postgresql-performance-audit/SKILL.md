@@ -1,3 +1,8 @@
+---
+name: postgresql-performance-audit
+description: Аудит производительности PostgreSQL для выявления проблем и оптимизации базы данных.
+---
+
 # PostgreSQL Performance Audit
 
 **Вектор**: quality

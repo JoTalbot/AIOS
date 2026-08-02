@@ -1,3 +1,8 @@
+---
+name: octopus-multisync
+description: Multi-master Active-Active синхронизация данных между нодами (#19).
+---
+
 # SKILL: octopus-multisync
 **Категория:** core
 **Дата создания:** 2026-06-20

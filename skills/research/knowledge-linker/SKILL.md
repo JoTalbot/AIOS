@@ -1,3 +1,8 @@
+---
+name: knowledge-linker
+description: Связывание разрозненных знаний в единый граф.
+---
+
 # SKILL: knowledge-linker
 **Категория:** research
 **Дата создания:** 2026-06-20

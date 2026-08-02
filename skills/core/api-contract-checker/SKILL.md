@@ -1,3 +1,8 @@
+---
+name: api-contract-checker
+description: Проверяет соответствие API контрактам: endpoints, схемы запросов/ответов, HTTP-статусы.
+---
+
 # SKILL: api-contract-checker
 **Категория:** core
 **Дата создания:** 2026-06-20

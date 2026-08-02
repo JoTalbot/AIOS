@@ -1,3 +1,8 @@
+---
+name: node-reputation
+description: Tracks node reliability, uptime, and contribution to swarm.
+---
+
 # SKILL: node-reputation
 **Category:** core
 **Status:** ACTIVE (systemd timer, 30-min intervals)

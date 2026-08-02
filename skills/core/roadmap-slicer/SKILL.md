@@ -1,3 +1,8 @@
+---
+name: roadmap-slicer
+description: Нарезает roadmap на bounded-шаги для исполнения автономным агентом.
+---
+
 # SKILL: roadmap-slicer
 **Категория:** core
 **Дата создания:** 2026-06-20

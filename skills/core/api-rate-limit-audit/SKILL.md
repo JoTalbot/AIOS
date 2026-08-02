@@ -1,3 +1,8 @@
+---
+name: api-rate-limit-audit
+description: Аудит rate-limit настроек на публичных API endpoints Octopus.
+---
+
 # SKILL: api-rate-limit-audit
 **Категория:** core
 **Дата создания:** 2026-06-20

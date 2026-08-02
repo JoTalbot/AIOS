@@ -1,3 +1,8 @@
+---
+name: cross-swarm-voting
+description: Голосование между разными swarm'ами для федеративных решений.
+---
+
 # SKILL: cross-swarm-voting
 **Категория:** core
 **Дата создания:** 2026-06-20

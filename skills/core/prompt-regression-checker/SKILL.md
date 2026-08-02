@@ -1,3 +1,8 @@
+---
+name: prompt-regression-checker
+description: Проверяет регрессии в LLM-промптах между версиями.
+---
+
 # SKILL: prompt-regression-checker
 **Категория:** core
 **Дата создания:** 2026-06-20

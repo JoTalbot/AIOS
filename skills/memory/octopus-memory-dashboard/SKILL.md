@@ -1,3 +1,8 @@
+---
+name: octopus-memory-dashboard
+description: Memory Dashboard — simple HTTP dashboard for memory stats.
+---
+
 # SKILL: octopus-memory-dashboard
 **Категория:** core
 **Дата создания:** 2026-06-20

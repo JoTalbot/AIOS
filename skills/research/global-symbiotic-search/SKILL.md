@@ -1,3 +1,8 @@
+---
+name: global-symbiotic-search
+description: Глобальный поиск по партнёрским и симбиотическим данным.
+---
+
 # SKILL: global-symbiotic-search
 **Категория:** research
 **Дата создания:** 2026-06-20

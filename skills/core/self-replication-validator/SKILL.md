@@ -1,3 +1,8 @@
+---
+name: self-replication-validator
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: self-replication-validator
 **Категория:** core
 **Дата создания:** 2026-06-20

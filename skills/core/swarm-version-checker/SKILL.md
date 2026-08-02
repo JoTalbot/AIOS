@@ -1,3 +1,8 @@
+---
+name: swarm-version-checker
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: swarm-version-checker
 **Категория:** core
 **Дата создания:** 2026-06-20

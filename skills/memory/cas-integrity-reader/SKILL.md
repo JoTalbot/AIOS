@@ -1,3 +1,8 @@
+---
+name: cas-integrity-reader
+description: Read-only проверка целостности CAS-объектов (sha256, pack-читаемость).
+---
+
 # SKILL: cas-integrity-reader
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: skill-archive-cleaner
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: skill-archive-cleaner
 **Категория:** core
 **Дата создания:** 2026-06-20

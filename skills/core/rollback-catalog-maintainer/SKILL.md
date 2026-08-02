@@ -1,3 +1,8 @@
+---
+name: rollback-catalog-maintainer
+description: Ведёт каталог rollback-команд для всех изменений.
+---
+
 # SKILL: rollback-catalog-maintainer
 **Категория:** core
 **Дата создания:** 2026-06-20

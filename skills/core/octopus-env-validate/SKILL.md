@@ -1,3 +1,8 @@
+---
+name: octopus-env-validate
+description: Валидация переменных окружения и конфигурационных файлов.
+---
+
 # SKILL: octopus-env-validate
 **Категория:** core
 **Дата создания:** 2026-06-20

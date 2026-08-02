@@ -1,3 +1,8 @@
+---
+name: barter-policy-enforcer
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: barter-policy-enforcer
 **Категория:** core
 **Дата создания:** 2026-06-20

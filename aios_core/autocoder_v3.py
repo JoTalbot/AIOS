@@ -178,6 +178,15 @@ class AutocoderV3:
         # Get memory context
         memory_context = self.memory.get_context_prompt(task_description)
 
+        # v3.5 (п.4): тела релевантных скиллов — progressive disclosure tier-2
+        try:
+            from .coder_research import skill_bodies_for
+            skill_context = skill_bodies_for(f"{task_description} {file_path} {instruction}")
+            if skill_context:
+                print(f"  [SKILLS] подгружены релевантные скиллы ({len(skill_context)} символов)")
+        except Exception:
+            skill_context = ""
+
         # Get best provider from memory
         best_provider = self.memory.get_best_provider()
 
@@ -228,6 +237,8 @@ class AutocoderV3:
 {agents_block}{rag_context}
 
 {memory_context}
+
+{skill_context}
 
 # Task:
 File: {file_path}

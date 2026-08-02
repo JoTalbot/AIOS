@@ -1,3 +1,8 @@
+---
+name: octopus-autoscale-local
+description: Guarded local autoscaler for Octopus child nodes.
+---
+
 # SKILL: octopus-autoscale-local
 **Категория:** core
 **Дата создания:** 2026-06-20

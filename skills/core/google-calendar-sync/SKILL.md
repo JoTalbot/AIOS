@@ -1,3 +1,8 @@
+---
+name: google-calendar-sync
+description: Навык google-calendar-sync проекта AIOS
+---
+
 # google-calendar-sync
 
 **Description:** Автоматическая синхронизация встреч из Google Calendar.

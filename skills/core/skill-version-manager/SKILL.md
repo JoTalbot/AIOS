@@ -1,3 +1,8 @@
+---
+name: skill-version-manager
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: skill-version-manager
 **Категория:** core
 **Дата создания:** 2026-06-20

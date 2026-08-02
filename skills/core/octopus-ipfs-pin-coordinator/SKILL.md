@@ -1,3 +1,8 @@
+---
+name: octopus-ipfs-pin-coordinator
+description: SELECT ref, attrs FROM memory_records
+---
+
 # SKILL: octopus-ipfs-pin-coordinator
 **Категория:** core
 **Дата создания:** 2026-06-20

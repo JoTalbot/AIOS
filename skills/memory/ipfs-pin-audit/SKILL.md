@@ -1,3 +1,8 @@
+---
+name: ipfs-pin-audit
+description: Аудит IPFS-pin'ов: что запиннено, что открепилось, что потеряно.
+---
+
 # SKILL: ipfs-pin-audit
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: cross-swarm-voting
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: cross-swarm-voting
 **Категория:** core
 **Дата создания:** 2026-06-20

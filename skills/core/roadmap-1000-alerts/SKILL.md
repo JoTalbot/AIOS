@@ -1,3 +1,8 @@
+---
+name: roadmap-1000-alerts
+description: Управление alerts/security/voice/disk для roadmap 1000.
+---
+
 # Roadmap 1000 Alerts
 
 **Вектор**: quality

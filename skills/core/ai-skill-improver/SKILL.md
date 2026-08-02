@@ -1,3 +1,8 @@
+---
+name: ai-skill-improver
+description: Анализирует скиллы и генерирует bounded AI-предложения по их улучшению.
+---
+
 # SKILL: ai-skill-improver
 **Категория:** core
 **Дата создания:** 2026-06-20

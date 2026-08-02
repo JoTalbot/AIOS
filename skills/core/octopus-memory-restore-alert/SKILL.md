@@ -1,3 +1,8 @@
+---
+name: octopus-memory-restore-alert
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: octopus-memory-restore-alert
 **Категория:** core
 **Дата создания:** 2026-06-20

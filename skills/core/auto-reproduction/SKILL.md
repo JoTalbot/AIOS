@@ -1,3 +1,8 @@
+---
+name: auto-reproduction
+description: 1. Загрузить `SKILL.md`, контекст проекта Octopus и последние отчёты по направлению навыка.
+---
+
 # SKILL: auto-reproduction
 **Category:** core | **Status:** ACTIVE | **Phase:** 2
 **Path:** /opt/octopus-auto-reproduce.py | **Data:** /var/lib/octopus/reproduce/

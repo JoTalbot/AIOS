@@ -1,3 +1,8 @@
+---
+name: voice-selfhost
+description: Настройка и мониторинг self-hosted голосовых сервисов для замены cloud решений (Google Voice, Notion automation).
+---
+
 # Voice Self-Host
 
 **Вектор**: swarm

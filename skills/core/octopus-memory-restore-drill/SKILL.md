@@ -1,3 +1,8 @@
+---
+name: octopus-memory-restore-drill
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: octopus-memory-restore-drill
 **Категория:** core
 **Дата создания:** 2026-06-20

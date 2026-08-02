@@ -1,3 +1,8 @@
+---
+name: automated-code-review
+description: Автоматический code review для выявления антипаттернов, дублирования кода, потенциальных багов и оптимизационных возможностей.
+---
+
 # Automated Code Review
 
 **Вектор**: quality
