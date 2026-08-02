@@ -124,32 +124,38 @@ class TelegramAPI:
         Path(dest).write_bytes(data)
         return dest
 
-    def send_photo(self, chat_id: int, photo_path: str, caption: str = "") -> dict:
-        """Отправить фото (multipart/form-data)."""
+    def _multipart(self, method: str, chat_id: int, field: str, file_path: str,
+                   caption: str = "") -> dict:
+        """Универсальная отправка файла (photo/document)."""
         import mimetypes
         boundary = "----aios" + str(int(time.time() * 1000))
-        with open(photo_path, "rb") as _f:
-            content = _f.read()
+        content = Path(file_path).read_bytes()
 
         def _field(name: str, value: str) -> bytes:
             return (f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n"
                     f"{value}\r\n").encode()
 
-        fn = Path(photo_path).name
+        fn = Path(file_path).name
         ct = mimetypes.guess_type(fn)[0] or "application/octet-stream"
         body = b"".join([
             _field("chat_id", str(chat_id)),
             _field("caption", caption[:1000]) if caption else b"",
-            (f"--{boundary}\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"{fn}\"\r\n"
+            (f"--{boundary}\r\nContent-Disposition: form-data; name=\"{field}\"; filename=\"{fn}\"\r\n"
              f"Content-Type: {ct}\r\n\r\n").encode(),
             content,
             f"\r\n--{boundary}--\r\n".encode(),
         ])
         req = urllib.request.Request(
-            f"{self._base}/sendPhoto", data=body,
+            f"{self._base}/{method}", data=body,
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=180) as resp:
             return json.loads(resp.read())
+
+    def send_photo(self, chat_id: int, photo_path: str, caption: str = "") -> dict:
+        return self._multipart("sendPhoto", chat_id, "photo", photo_path, caption)
+
+    def send_document(self, chat_id: int, file_path: str, caption: str = "") -> dict:
+        return self._multipart("sendDocument", chat_id, "document", file_path, caption)
 
 
 # ---------------------------------------------------------------------------
@@ -278,8 +284,8 @@ INSTAGRAM_MENU_KEYBOARD = {
     "keyboard": [
         [{"text": "👤 Мой профиль"}, {"text": "📈 Подписчики"}],
         [{"text": "🖼 Мои посты"}, {"text": "📷 Скрин профиля"}],
-        [{"text": "❤️ Лайкнуть"}, {"text": "👤 Подписка"}],
-        [{"text": "◀️ Аккаунты"}],
+        [{"text": "💬 Директ"}, {"text": "❤️ Лайкнуть"}],
+        [{"text": "👤 Подписка"}, {"text": "◀️ Аккаунты"}],
     ],
     "resize_keyboard": True,
     "one_time_keyboard": False,
@@ -557,6 +563,8 @@ def cmd_help() -> str:
 
 # Последнее фото, присланное пользователем (для будущих действий): chat_id -> путь
 _last_photo: dict[int, str] = {}
+# Последние id писем, показанных в чате: chat_id -> [ids...]
+_last_gmail_ids: dict[int, list[str]] = {}
 # Ожидающие подтверждения действий: chat_id -> {"kind": ..., "data": ...}
 _pending_confirm: dict[int, dict] = {}
 
@@ -636,11 +644,15 @@ def _acct_google(api, chat_id: int, kind: str, extra: str = "") -> None:
             api.send_message(chat_id, f"❌ {data.get('error', 'ошибка')}")
     elif kind == "unread":
         data = _run_account_control(["google", "gmail_list", "5", "--unread"])
+        if data.get("status") == "ok":
+            _last_gmail_ids[chat_id] = [e.get("id", "") for e in data.get("emails", [])]
         _acct_send_result(api, chat_id, {"status": data.get("status"),
                                          "error": data.get("error"),
                                          "text": _fmt_gmail_list(data, unread_only=True)}, "")
     elif kind == "list":
         data = _run_account_control(["google", "gmail_list", "5"])
+        if data.get("status") == "ok":
+            _last_gmail_ids[chat_id] = [e.get("id", "") for e in data.get("emails", [])]
         _acct_send_result(api, chat_id, {"status": data.get("status"),
                                          "error": data.get("error"),
                                          "text": _fmt_gmail_list(data)}, "")
@@ -750,6 +762,13 @@ def _acct_instagram(api, chat_id: int, kind: str, extra: str = "") -> None:
         api.send_message(chat_id,
                          "👤 <b>Подписка</b>: напишите\n"
                          "«подпишись на @username» или «отпишись от @username»")
+    elif kind == "dm_prompt":
+        api.send_message(chat_id,
+                         "💬 <b>Директ Instagram</b>\n\n"
+                         "• «директ» — список чатов\n"
+                         "• «покажи чат Серега» — последние сообщения\n"
+                         "• «напиши в директ Серега: привет» — отправить (с подтверждением)\n"
+                         "• «напиши в директ @username: текст» — новый чат")
     else:
         api.send_message(chat_id, "❌ Неизвестная команда Instagram.")
 
@@ -828,6 +847,53 @@ def _llm_extract_calendar(text: str) -> dict:
     return _llm_extract_json(prompt)
 
 
+def _esc_tg(s) -> str:
+    import html
+    return html.escape(str(s or ""))
+
+
+def _transcribe_audio(path: str) -> str:
+    """Распознать голосовое через Gemini (inline audio). Возвращает текст или ''."""
+    import base64
+    import urllib.request as _urllib
+
+    try:
+        data_b64 = base64.b64encode(Path(path).read_bytes()).decode()
+    except Exception:
+        return ""
+
+    keys = [os.environ.get("GEMINI_API_KEY", "")]
+    for i in (1, 2, 3):
+        keys.append(os.environ.get(f"GEMINI_API_KEY_{i}", ""))
+    keys = [k for k in keys if k]
+
+    mime = "audio/ogg" if path.lower().endswith((".ogg", ".oga", ".opus")) else "audio/mpeg"
+    for model in ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite",
+                  "gemini-2.5-flash-lite", "gemini-flash-latest"):
+        for key in keys:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+                payload = json.dumps({
+                    "contents": [{"parts": [
+                        {"inline_data": {"mime_type": mime, "data": data_b64}},
+                        {"text": "Распознай речь дословно. Верни только распознанный текст, без пояснений."},
+                    ]}],
+                }).encode()
+                req = _urllib.Request(url, data=payload,
+                                      headers={"Content-Type": "application/json"})
+                with _urllib.urlopen(req, timeout=60) as resp:
+                    out = json.loads(resp.read())
+                cands = out.get("candidates") or []
+                if cands:
+                    txt = (cands[0].get("content", {}).get("parts") or [{}])[0].get("text", "").strip()
+                    if txt:
+                        return txt
+            except Exception as e:
+                print(f"  [VOICE] {model} err: {str(e)[:120]}")
+                continue
+    return ""
+
+
 def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     """Обработать «человеческое» сообщение про Google/Instagram. True = обработано."""
     t = text.lower()
@@ -898,17 +964,45 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 else:
                     api.send_message(chat_id, f"ℹ️ {data.get('error', st)}")
                 return True
+            if kind == "gmail_reply":
+                d = pend["data"]
+                data = _run_account_control(["google", "gmail_reply", d["msg_id"], d["text"], "--confirm"])
+                if data.get("status") == "sent":
+                    api.send_message(chat_id,
+                                     f"✅ Ответ на письмо №{d['idx']} отправлен:\n📧 {data.get('subject')} → {data.get('to')}")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+                return True
+            if kind == "dm_send":
+                d = pend["data"]
+                data = _run_account_control(["instagram", "dm_send", d["thread"], d["text"], "--confirm"])
+                st = data.get("status")
+                if st == "sent":
+                    api.send_message(chat_id, f"✅ Отправлено <b>{d['thread']}</b> в Direct: «{d['text'][:150]}»")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
+            if kind == "dm_new":
+                d = pend["data"]
+                data = _run_account_control(["instagram", "dm_new", d["username"], d["text"], "--confirm"])
+                st = data.get("status")
+                if st == "sent":
+                    api.send_message(chat_id, f"✅ Отправлено @{d['username']}: «{d['text'][:150]}»")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
     ig_words = ("инста", "instagram", "подписчик", "мой профиль в инст", "мой инст",
                 "мои посты", "профиль инстаграм", "мой instagram", "сторис", "story",
                 "лайк", "like", "подпиш", "отпиш", "подпис", "отпис", "follow",
-                "unfollow", "истори")
+                "unfollow", "истори", "директ", "direct", "сообщен", "переписк", "личн",
+                "чат")
     g_words = ("почт", "gmail", "email", "письм", "календар", "calendar", "диск",
                "drive", "гугл", "google", "юху", "аккаунт гугл", "google аккаунт",
                "непрочитан", "кто я", "google", "событ", "расписан", "документ",
-               "поиск", "найди")
+               "поиск", "найди", "недел", "файл", "скачай", "ответь", "прочитай письмо")
     is_ig = any(w in t for w in ig_words)
     is_g = any(w in t for w in g_words)
     if not is_ig and not is_g:
@@ -916,6 +1010,93 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
 
     # ---- Instagram ----
     if is_ig:
+        # ---- Direct (переписка) ----
+        is_dm = any(w in t for w in ("директ", "direct", "сообщен", "переписк",
+                                     "чат в інст", "чат в инст", "личн", "чат"))
+        if is_dm:
+            send_word = any(w in t for w in ("напиши", "отправь", "ответь", "написать",
+                                             "reply", "напишіть", "відповісти"))
+            read_word = any(w in t for w in ("прочитай", "покажи", "что в", "що в",
+                                             "последние", "новые", "прочитать"))
+            if send_word:
+                body = ""
+                target = ""
+                m_colon = re.search(r":\s*(.+)$", text, re.IGNORECASE)
+                if m_colon:
+                    target = text[:m_colon.start()]
+                    body = m_colon.group(1).strip()
+                else:
+                    rest = re.sub(
+                        r"^(напиши|отправь|ответь|написать|скажи|напишіть|відповісти)"
+                        r"(\s+(в|в\s+директ|директ|direct|личку|сообщение))?\s+",
+                        "", text, flags=re.IGNORECASE)
+                    rest = re.sub(r"^(в|в\s+директ|директ|direct|личку|сообщение)\s+",
+                                  "", rest, flags=re.IGNORECASE)
+                    parts = rest.split(None, 1)
+                    if parts:
+                        target = parts[0].strip(" ,.;:—–")
+                        body = parts[1].strip() if len(parts) > 1 else ""
+                target = re.sub(r"^(в|ответить|написать|сообщение|директ|direct)\s*",
+                                "", target, flags=re.IGNORECASE).strip(" ,.;:—–")
+                if not target or not body:
+                    api.send_message(chat_id,
+                                     "💬 <b>Директ</b>: напишите, например:\n"
+                                     "«напиши в директ Серега: привет, как дела?»\n"
+                                     "или «ответь в директ @username, текст»")
+                    return True
+                if target.startswith("@"):
+                    _pending_confirm[chat_id] = {"kind": "dm_new",
+                                                 "data": {"username": target.lstrip("@"),
+                                                          "text": body}}
+                    api.send_message(chat_id,
+                                     f"💬 Новый чат с <b>@{target.lstrip('@')}</b>:\n"
+                                     f"«{body[:200]}»\n\nПодтвердите: «да» / «нет»")
+                else:
+                    _pending_confirm[chat_id] = {"kind": "dm_send",
+                                                 "data": {"thread": target, "text": body}}
+                    api.send_message(chat_id,
+                                     f"💬 Отправить <b>{target}</b> в Direct:\n"
+                                     f"«{body[:200]}»\n\nПодтвердите: «да» / «нет»")
+                return True
+            if read_word:
+                name = None
+                m = re.search(r"(?:директ|чат|чате|чату|переписке|переписку|сообщениях)[\s,:—–]*([\w\sА-Яа-яЁёІіЇїЄє'’.-]{2,30}?)(?:[.!?]|$)",
+                              text, re.IGNORECASE)
+                if m:
+                    cand = m.group(1).strip()
+                    cand = re.sub(r"^(в|от|с|у|мне|мой|моем|новые|последние|прочитай|покажи)\s+", "", cand,
+                                  flags=re.IGNORECASE).strip()
+                    if len(cand) >= 2:
+                        name = cand
+                api.send_message(chat_id, "⏳ Открываю Direct…")
+                data = _run_account_control(["instagram", "dm_read", name or "Серега Потуроев",
+                                             "--limit", "12"])
+                if data.get("status") == "ok":
+                    msgs = data.get("messages") or []
+                    if not msgs:
+                        api.send_message(chat_id, "💬 В чате нет текстовых сообщений (только системные).")
+                    else:
+                        txt = "💬 <b>Последние сообщения</b>:\n" + "\n".join(
+                            f"• {_esc_tg(m.get('text', ''))}" for m in msgs[-12:])
+                        api.send_message(chat_id, txt)
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+                return True
+            # просто «директ» — список чатов
+            api.send_message(chat_id, "⏳ Загружаю Direct…")
+            data = _run_account_control(["instagram", "dm_list", "10"])
+            if data.get("status") == "ok":
+                threads = data.get("threads") or []
+                if not threads:
+                    api.send_message(chat_id, "💬 В Direct пусто.")
+                else:
+                    txt = "💬 <b>Чаты Direct</b>:\n" + "\n".join(
+                        f"• <b>{_esc_tg(x.get('name', '?'))}</b> — {_esc_tg(x.get('preview', ''))}"
+                        for x in threads)
+                    api.send_message(chat_id, txt)
+            else:
+                api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+            return True
         if any(w in t for w in ("сторис", "story", "истори")):
             api.send_message(chat_id,
                              "📤 <b>Сторис</b>: к сожалению, Instagram web не даёт создавать сторис "
@@ -999,6 +1180,25 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         _acct_instagram(api, chat_id, "profile")
         return True
 
+    # ---- Дайджест / сводка ----
+    if any(w in t for w in ("дайджест", "утренний отчёт", "утренний отчет", "что нового",
+                            "сводка", "сводку", "отчёт за день", "отчет за день",
+                            "сводку за день", "итоги дня")):
+        api.send_message(chat_id, "⏳ Собираю дайджест (почта + календарь + Instagram)…")
+        import subprocess as _sp
+        try:
+            r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_digest.py"),
+                         "--chat", str(chat_id)],
+                        capture_output=True, text=True, timeout=200, cwd=str(PROJECT_ROOT))
+            if "Дайджест отправлен" in (r.stdout or ""):
+                api.send_message(chat_id, "✅ Дайджест отправлен ☀️")
+            else:
+                api.send_message(chat_id, "❌ Не удалось собрать дайджест: "
+                                          f"{(r.stderr or r.stdout or '?')[-250:]}")
+        except Exception as e:
+            api.send_message(chat_id, f"❌ Ошибка дайджеста: {e}")
+        return True
+
     # ---- Google ----
     if any(w in t for w in ("кто я", "какой аккаунт", "кто залогинен")):
         _acct_google(api, chat_id, "whoami")
@@ -1054,10 +1254,116 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             return True
         data = _run_account_control(["google", "gmail_search", q, "5"])
         if data.get("status") == "ok":
+            _last_gmail_ids[chat_id] = [e.get("id", "") for e in data.get("emails", [])]
             if data.get("emails"):
                 api.send_message(chat_id, _fmt_gmail_list(data))
             else:
                 api.send_message(chat_id, f"🔍 По запросу «{q}» писем не найдено.")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+    if any(w in t for w in ("прочитай письмо", "прочитай писмо", "открой письмо",
+                            "открой писмо", "покажи письмо", "покажи писмо")):
+        m = re.search(r"письм[оае]?\s*№?\s*(\d+)", text, re.IGNORECASE)
+        idx = int(m.group(1)) if m else 1
+        ids = _last_gmail_ids.get(chat_id) or []
+        if not ids:
+            # загрузим последние
+            data = _run_account_control(["google", "gmail_list", "5"])
+            if data.get("status") == "ok":
+                ids = [e.get("id", "") for e in data.get("emails", [])]
+                _last_gmail_ids[chat_id] = ids
+        if not ids or idx < 1 or idx > len(ids):
+            api.send_message(chat_id, "❌ Сначала покажите письма («проверь почту»), потом номер.")
+            return True
+        api.send_message(chat_id, "⏳ Читаю письмо…")
+        data = _run_account_control(["google", "gmail_read", ids[idx - 1], "--max", "3000"])
+        if data.get("status") == "ok":
+            txt = (f"📧 <b>{_esc_tg(data.get('subject'))}</b>\n"
+                   f"✉️ {_esc_tg(data.get('from'))}\n"
+                   f"🕐 {_esc_tg(data.get('date'))}\n\n"
+                   f"{_esc_tg(data.get('body'))[:2500]}")
+            api.send_message(chat_id, txt)
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+    if any(w in t for w in ("ответь на письмо", "ответь на писмо", "напиши ответ на письмо",
+                            "ответить на письмо")):
+        m = re.search(r"письм[оае]?\s*№?\s*(\d+)", text, re.IGNORECASE)
+        idx = int(m.group(1)) if m else 1
+        ids = _last_gmail_ids.get(chat_id) or []
+        body = ""
+        m_colon = re.search(r":\s*(.+)$", text, re.IGNORECASE)
+        if m_colon:
+            body = m_colon.group(1).strip()
+        if not ids or idx < 1 or idx > len(ids):
+            api.send_message(chat_id, "❌ Сначала покажите письма, потом номер.")
+            return True
+        if not body:
+            api.send_message(chat_id, "❌ Напишите текст ответа после двоеточия:\n"
+                                      "«ответь на письмо 1: привет, получил, спасибо»")
+            return True
+        _pending_confirm[chat_id] = {"kind": "gmail_reply",
+                                     "data": {"msg_id": ids[idx - 1], "idx": idx, "text": body}}
+        api.send_message(chat_id,
+                         f"📧 Ответ на письмо №{idx}:\n«{body[:200]}»\n\nОтправить? «да» / «нет»")
+        return True
+    if any(w in t for w in ("неделю", "план на неделю", "события на неделю",
+                            "что на неделе", "на неделе")):
+        api.send_message(chat_id, "⏳ Смотрю неделю в календаре…")
+        data = _run_account_control(["google", "calendar_week"])
+        if data.get("status") == "ok":
+            evs = data.get("events") or []
+            if evs:
+                txt = "📅 <b>События на неделю:</b>\n" + "\n".join(f"• {_esc_tg(x)}" for x in evs)
+            else:
+                txt = "📅 На этой неделе событий нет."
+            _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                             "screenshot": data.get("screenshot"),
+                                             "caption": "📅 Неделя"}, "")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+    if any(w in t for w in ("файлы на диске", "что на диске", "список диска",
+                            "файлы в гугл диске", "файлы на гугл диске", "диск список",
+                            "что в гугл диске", "что в google drive")):
+        api.send_message(chat_id, "⏳ Загружаю Google Диск…")
+        data = _run_account_control(["google", "drive_list", "--limit", "15"])
+        if data.get("status") == "ok":
+            files = data.get("files") or []
+            if files:
+                txt = "🗂 <b>Google Диск</b>:\n" + "\n".join(f"• {_esc_tg(f.get('title'))}" for f in files)
+            else:
+                txt = "🗂 На диске пусто."
+            _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                             "screenshot": data.get("screenshot"),
+                                             "caption": "🗂 Диск"}, "")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+    if any(w in t for w in ("скачай файл", "скачай с диска", "загрузи файл с диска",
+                            "скинь файл", "скачай")):
+        ref = text
+        for w in ("скачай файл", "скачай с диска", "загрузи файл с диска", "скинь файл",
+                  "скачай", "файл"):
+            if w.lower() in ref.lower():
+                ref = ref.replace(w, "", 1)
+        ref = ref.strip(" :,;—–«»\"'().")
+        if not ref:
+            api.send_message(chat_id, "🗂 Скажите, какой файл скачать:\n«скачай файл <имя или id>»")
+            return True
+        api.send_message(chat_id, "⏳ Скачиваю с Диска…")
+        data = _run_account_control(["google", "drive_download", ref])
+        if data.get("status") == "ok":
+            path = data.get("path")
+            name = data.get("name") or "файл"
+            if path and os.path.exists(path):
+                try:
+                    api.send_document(chat_id, path, caption=f"🗂 {name}")
+                except Exception as e:
+                    api.send_message(chat_id, f"✅ Скачал, но не смог отправить файл: {e}")
+            else:
+                api.send_message(chat_id, f"✅ Скачал ({data.get('size', '?')} байт), файл: {path}")
         else:
             api.send_message(chat_id, f"❌ {data.get('error', '?')}")
         return True
@@ -1404,6 +1710,10 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
         reply = None
         keyboard = None
         _acct_instagram(api, chat_id, "follow_prompt")
+    elif data == "ig_dm_prompt":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "dm_prompt")
     elif data == "menu_bot":
         reply = chr(129302) + " <b>Bot</b>"
         keyboard = BOT_MENU_KEYBOARD
@@ -1980,6 +2290,7 @@ BUTTON_ACTIONS = {
     "📷 Скрин профиля": "ig_screenshot",
     "❤️ Лайкнуть": "ig_like_prompt",
     "👤 Подписка": "ig_follow_prompt",
+    "💬 Директ": "ig_dm_prompt",
     # Bot menu
     "▶️ Старт": "bot_start",
     "⏸️ Пауза": "bot_pause",
@@ -2048,6 +2359,43 @@ def run_bot(token: str) -> None:
                     continue
                 if not _is_authorized_chat(chat_id):
                     print(f"  [SECURITY] ignored message from unauthorized chat {chat_id}")
+                    continue
+
+                # Голосовое сообщение — распознать и выполнить как команду
+                if (msg.get("voice") or msg.get("audio")) and not text:
+                    try:
+                        fid = (msg.get("voice") or msg.get("audio") or {}).get("file_id", "")
+                        if not fid:
+                            continue
+                        vpath = api.download_file_by_id(fid)
+                        api.send_message(chat_id, "🎙 Распознаю голосовое…")
+                        transcript = _transcribe_audio(vpath)
+                        if not transcript:
+                            api.send_message(chat_id, "😕 Не смог распознать речь. Попробуйте ещё раз.")
+                            continue
+                        api.send_message(chat_id, f"🎙 Услышал: <i>{_esc_tg(transcript[:300])}</i>")
+                        handled = False
+                        try:
+                            handled = _handle_account_intent(api, chat_id, transcript)
+                        except Exception as a_err:
+                            print(f"  [VOICE] intent error: {a_err}")
+                        if not handled:
+                            llm_reply = _llm_chat(chat_id, transcript)
+                            if llm_reply:
+                                try:
+                                    api.send_message(chat_id, llm_reply[:3900])
+                                except Exception:
+                                    try:
+                                        api.send_message(chat_id, llm_reply[:3900], parse_mode="")
+                                    except Exception:
+                                        pass
+                        print(f"  [VOICE] transcript: {transcript[:80]}")
+                    except Exception as v_err:
+                        print(f"  [VOICE] error: {v_err}")
+                        try:
+                            api.send_message(chat_id, f"❌ Ошибка обработки голосового: {v_err}")
+                        except Exception:
+                            pass
                     continue
 
                 # Фото от пользователя — сохранить для будущих действий (сторис и т.п.)
@@ -2164,6 +2512,22 @@ def run_bot(token: str) -> None:
                     reply = cmd_olx_latest(args, chat_id)
                 elif cmd == "/olx_analytics" or cmd == "/analytics":
                     reply = cmd_olx_analytics(args)
+                elif cmd == "/digest":
+                    reply = None
+                    keyboard = None
+                    api.send_message(chat_id, "⏳ Собираю дайджест…")
+                    import subprocess as _sp
+                    try:
+                        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_digest.py"),
+                                     "--chat", str(chat_id)],
+                                    capture_output=True, text=True, timeout=200, cwd=str(PROJECT_ROOT))
+                        if "Дайджест отправлен" in (r.stdout or ""):
+                            api.send_message(chat_id, "✅ Дайджест отправлен ☀️")
+                        else:
+                            api.send_message(chat_id, "❌ Не удалось собрать дайджест: "
+                                                      f"{(r.stderr or r.stdout or '?')[-250:]}")
+                    except Exception as e:
+                        api.send_message(chat_id, f"❌ Ошибка дайджеста: {e}")
                 elif cmd == "/accounts":
                     reply = cmd_accounts()
                     keyboard = ACCOUNTS_MENU_KEYBOARD
