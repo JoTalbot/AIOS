@@ -64,6 +64,23 @@ if git diff main...HEAD --name-only 2>/dev/null | grep -E "$(printf '%s|' "${JUN
 fi
 log "junk check OK"
 
+# --- gitleaks secret scan (block on leaked secrets) ---
+if command -v gitleaks >/dev/null 2>&1; then
+    if (cd "$STAGING_DIR" && timeout 120 gitleaks detect --source . --no-banner >/tmp/aios_gitleaks.log 2>&1); then
+        log "gitleaks scan: clean"
+    else
+        if grep -q "leaks found" /tmp/aios_gitleaks.log 2>/dev/null; then
+            log "BLOCKED: gitleaks found secrets; NOT promoting"
+            tail -5 /tmp/aios_gitleaks.log | sed 's/^/  /' >> "$LOG"
+            exit 1
+        else
+            log "gitleaks scan: no leaks (or scan issue)"
+        fi
+    fi
+else
+    log "gitleaks not installed; skipping secret scan"
+fi
+
 # --- compile validation ---
 if ! python3 -m compileall -q "$STAGING_DIR/aios_core" "$STAGING_DIR/run_coder_orchestrator.py" 2>/dev/null; then
     log "ERROR: compile validation failed; NOT promoting"; exit 1
@@ -149,6 +166,7 @@ if [[ "${AIOS_AUTO_PUSH:-0}" == "1" ]]; then
         if git push origin main >/dev/null 2>&1; then
             pushed=1
             log "pushed main -> origin/main (attempt $attempt)"
+            tg_send "🚀 <b>AIOS: коммиты опубликованы</b>\nmain -> origin/main успешно"
             break
         else
             log "push attempt $attempt rejected; rebasing onto origin/main"
