@@ -1,95 +1,70 @@
-# aios_core/advanced_security.py
-
 from typing import Dict, Any
-import hashlib
-import hmac
-import time
-import secrets
+from aios_core.code_refactorer import detect_hack_solutions, refactor_hack_comments
+from aios_core.orchestrator import params
 
-def generate_nonce() -> str:
+def secure_get_requests(code: str) -> str:
     """
-    Generates a random nonce.
-
-    Returns:
-    str: A random nonce.
-    """
-    return secrets.token_urlsafe(16)
-
-def generate_token(nonce: str, secret_key: str) -> str:
-    """
-    Generates a token based on the given nonce and secret key.
+    Secures GET requests in the given code by replacing them with POST requests.
 
     Args:
-    nonce (str): The nonce to use.
-    secret_key (str): The secret key to use.
+    code (str): The code to secure.
 
     Returns:
-    str: The generated token.
+    str: The secured code.
     """
-    return hmac.new(secret_key.encode(), nonce.encode(), hashlib.sha256).hexdigest()
+    # Detect HACK solutions in the code
+    hack_solutions = detect_hack_solutions(code)
 
-def authenticate_request(request: Dict[str, Any], secret_key: str) -> bool:
+    # Refactor HACK comments in the code
+    refactored_code = refactor_hack_comments(code)
+
+    # Replace GET requests with POST requests
+    secured_code = refactored_code.replace("requests.get(", "requests.post(")
+
+    return secured_code
+
+def check_security_get_requests(code: str) -> Dict[str, Any]:
     """
-    Authenticates a request based on the given secret key.
+    Checks the security of GET requests in the given code.
 
     Args:
-    request (Dict[str, Any]): The request to authenticate.
-    secret_key (str): The secret key to use.
+    code (str): The code to check.
 
     Returns:
-    bool: True if the request is authenticated, False otherwise.
+    Dict[str, Any]: A dictionary containing the security check results.
     """
-    nonce = request.get("nonce")
-    token = request.get("token")
-    if nonce and token:
-        expected_token = generate_token(nonce, secret_key)
-        return hmac.compare_digest(token, expected_token)
-    return False
+    # Initialize the security check results
+    security_check_results = {}
 
-def authorize_request(request: Dict[str, Any], allowed_ips: list[str]) -> bool:
+    # Detect HACK solutions in the code
+    hack_solutions = detect_hack_solutions(code)
+
+    # Check if there are any HACK solutions
+    if hack_solutions:
+        security_check_results["security_risk"] = True
+        security_check_results["hack_solutions"] = hack_solutions
+    else:
+        security_check_results["security_risk"] = False
+
+    return security_check_results
+
+def secure_api_requests(code: str) -> str:
     """
-    Authorizes a request based on the given allowed IPs.
+    Secures API requests in the given code by replacing GET requests with POST requests.
 
     Args:
-    request (Dict[str, Any]): The request to authorize.
-    allowed_ips (list[str]): The list of allowed IPs.
+    code (str): The code to secure.
 
     Returns:
-    bool: True if the request is authorized, False otherwise.
+    str: The secured code.
     """
-    ip = request.get("ip")
-    return ip in allowed_ips
+    # Check the security of GET requests in the code
+    security_check_results = check_security_get_requests(code)
 
-def secure_authenticate_and_authorize(request: Dict[str, Any], secret_key: str, allowed_ips: list[str]) -> bool:
-    """
-    Authenticates and authorizes a request based on the given secret key and allowed IPs.
+    # If there is a security risk, secure the code
+    if security_check_results["security_risk"]:
+        secured_code = secure_get_requests(code)
+    else:
+        secured_code = code
 
-    Args:
-    request (Dict[str, Any]): The request to authenticate and authorize.
-    secret_key (str): The secret key to use.
-    allowed_ips (list[str]): The list of allowed IPs.
-
-    Returns:
-    bool: True if the request is authenticated and authorized, False otherwise.
-    """
-    return authenticate_request(request, secret_key) and authorize_request(request, allowed_ips)
-
-# Example usage:
-secret_key = "my_secret_key"
-allowed_ips = ["192.168.1.1", "192.168.1.2"]
-request = {
-    "nonce": generate_nonce(),
-    "token": generate_token(generate_nonce(), secret_key),
-    "ip": "192.168.1.1"
-}
-if secure_authenticate_and_authorize(request, secret_key, allowed_ips):
-    print("Request is authenticated and authorized")
-else:
-    print("Request is not authenticated or authorized")
-
-# Replace existing HACK solutions in octopus_core/api_v2_batch.py with calls to this function
-# For example:
-# if secure_authenticate_and_authorize(request, secret_key, allowed_ips):
-#     # Process the request
-# else:
-#     # Handle authentication or authorization failure
+    return secured_code
