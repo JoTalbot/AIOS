@@ -1,4 +1,5 @@
 """Tests for Telegram account-control dialogue (Google + Instagram)."""
+import json
 import sys
 from pathlib import Path
 
@@ -381,6 +382,91 @@ def test_tg_read_intent(monkeypatch):
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "прочитай чат в телеге Мама") is True
     assert any("Telegram" in x for x in api.messages)
+
+
+def test_inbox_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "google" and args[1] == "gmail_list":
+            return {"status": "ok", "unread_total": 3, "emails": [{"subject": "Важно"}]}
+        if args[0] == "tg" and args[1] == "dialogs":
+            return {"status": "ok", "dialogs": [{"name": "Мама", "unread": 2}]}
+        if args[0] == "instagram" and args[1] == "dm_list":
+            return {"status": "ok", "threads": [{"name": "Друг", "preview": "Привет"}]}
+        if args[0] == "facebook" and args[1] == "messenger_list":
+            return {"status": "ok", "chats": [{"name": "Саша"}]}
+        if args[0] == "olx" and args[1] == "profile":
+            return {"status": "ok", "olx": {"name": "[PRIVATE_CONTACT]", "ads_count": 1}}
+        return {"status": "error", "error": f"no canned {args}"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "инбокс") is True
+    joined = "\n".join(api.messages)
+    assert "Единый инбокс" in joined
+    assert "Почта" in joined and "Telegram" in joined and "Instagram" in joined
+    assert "Messenger" in joined and "OLX" in joined
+
+
+def test_reminder_intent(monkeypatch):
+    api = FakeAPI()
+    m._save_reminders([])
+    assert m._handle_account_intent(api, 1, "напомни завтра в 15:00 позвонить Мише") is True
+    items = m._load_reminders()
+    assert len(items) == 1
+    assert "позвонить Мише" in items[0]["text"]
+    assert any("Напомню" in x for x in api.messages)
+    m._save_reminders([])
+
+
+def test_reminder_relative(monkeypatch):
+    api = FakeAPI()
+    m._save_reminders([])
+    assert m._handle_account_intent(api, 1, "напомни через 30 минут выпить воды") is True
+    items = m._load_reminders()
+    assert len(items) == 1
+    assert "выпить воды" in items[0]["text"]
+    m._save_reminders([])
+
+
+def test_auto_ttn_detect(monkeypatch):
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "пришла посылка 20451500594547 из Львова") is True
+    assert any("20451500594547" in x for x in api.messages)
+    assert any("отследи" in x for x in api.messages)
+
+
+def test_analytics_intent(monkeypatch, tmp_path):
+    # подменяем analytics_state
+    hist = {"2026-08-01": {"date": "2026-08-01", "instagram_followers": 50, "olx_ads": 1},
+            "2026-08-02": {"date": "2026-08-02", "instagram_followers": 54, "olx_ads": 1}}
+    (m.PROJECT_ROOT / "data").mkdir(parents=True, exist_ok=True)
+    (m.PROJECT_ROOT / "data" / "analytics_state.json").write_text(
+        json.dumps(hist), encoding="utf-8")
+
+    def fake_run(args):
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    import subprocess
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: type("R", (), {"stdout": "", "stderr": "", "returncode": 0})())
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "аналитика") is True
+    joined = "\n".join(api.messages)
+    assert "Instagram подписчики" in joined
+    assert "+4" in joined or "54" in joined
+
+
+def test_post_schedule_intent(monkeypatch):
+    import subprocess
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: type("R", (), {"stdout": "", "stderr": "", "returncode": 0})())
+    api = FakeAPI()
+    qfile = m.PROJECT_ROOT / "data" / "posts_queue.json"
+    if qfile.exists():
+        qfile.unlink()
+    assert m._handle_account_intent(api, 1, "запланируй пост в тикток завтра в 18:00 тест") is True
+    assert any("Запланировано" in x for x in api.messages)
+    if qfile.exists():
+        qfile.unlink()
 
 
 def test_ig_like_flow(monkeypatch):

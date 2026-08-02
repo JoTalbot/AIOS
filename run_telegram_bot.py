@@ -892,6 +892,99 @@ def _esc_tg(s) -> str:
     return html.escape(str(s or ""))
 
 
+# --------------------------------------------------------------- Напоминания
+REMINDERS_FILE = PROJECT_ROOT / "data" / "reminders.json"
+
+
+def _load_reminders() -> list[dict]:
+    try:
+        return json.loads(REMINDERS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def _save_reminders(items: list[dict]) -> None:
+    REMINDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    REMINDERS_FILE.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _handle_reminder(api, chat_id: int, text: str) -> None:
+    """«напомни [завтра/сегодня/в] <HH:MM> <текст>»."""
+    import re as _re
+    text_clean = _re.sub(r"^(напомни|напоминание|remind)\s*:?\s*", "", text, flags=_re.IGNORECASE).strip()
+    # время HH:MM
+    m_time = _re.search(r"\b(\d{1,2})[:.](\d{2})\b", text_clean)
+    # день
+    day_off = 0
+    if any(w in text_clean.lower() for w in ("завтра", "tomorrow")):
+        day_off = 1
+    elif any(w in text_clean.lower() for w in ("послезавтра", "day after")):
+        day_off = 2
+    elif any(w in text_clean.lower() for w in ("сегодня", "today")):
+        day_off = 0
+    elif "через" in text_clean.lower():
+        m_h = _re.search(r"через\s+(\d+)\s*(час|ч|мин|минут)", text_clean.lower())
+        if m_h:
+            n = int(m_h.group(1))
+            unit = m_h.group(2)
+            now = datetime.now()
+            if unit.startswith("ч"):
+                target = now + timedelta(hours=n)
+            else:
+                target = now + timedelta(minutes=n)
+            body = _re.sub(r"через\s+\d+\s*(час|ч|мин|минут)\s*", "", text_clean, flags=_re.IGNORECASE).strip()
+            reminders = _load_reminders()
+            reminders.append({"chat_id": chat_id, "at": target.isoformat(), "text": body})
+            _save_reminders(reminders)
+            api.send_message(chat_id, f"⏰ Напомню через {n} {unit} (в {target.strftime('%H:%M')}): «{body[:100]}»")
+            return
+
+    if not m_time:
+        api.send_message(chat_id, "⏰ Формат: «напомни завтра в 15:00 позвонить Мише»\n"
+                                  "или «напомни через 30 минут выпить воды»")
+        return
+    hh, mm = int(m_time.group(1)), int(m_time.group(2))
+    body = _re.sub(r"\b\d{1,2}[:.]\d{2}\b", "", text_clean).strip()
+    body = _re.sub(r"^(завтра|сегодня|послезавтра|tomorrow|today)\s*", "", body, flags=_re.IGNORECASE).strip()
+    target = datetime.now() + timedelta(days=day_off)
+    target = target.replace(hour=hh, minute=mm, second=0, microsecond=0)
+    reminders = _load_reminders()
+    reminders.append({"chat_id": chat_id, "at": target.isoformat(), "text": body or "(напоминание)"})
+    _save_reminders(reminders)
+    api.send_message(chat_id, f"⏰ Напомню {target.strftime('%d.%m %H:%M')}: «{body[:100]}»")
+
+
+def _run_due_reminders() -> int:
+    """Отправить созревшие напоминания (вызывается по таймеру и при старте бота)."""
+    import urllib.request as _urllib
+    token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("AIOS_TELEGRAM_TOKEN", "")
+    reminders = _load_reminders()
+    if not reminders:
+        return 0
+    now = datetime.now()
+    due = [r for r in reminders if datetime.fromisoformat(r["at"]) <= now]
+    if not due:
+        return 0
+    left = [r for r in reminders if datetime.fromisoformat(r["at"]) > now]
+    for r in due:
+        if not token:
+            continue
+        payload = json.dumps({"chat_id": r["chat_id"],
+                              "text": f"⏰ <b>Напоминание</b>: {_esc_tg(r.get('text', ''))}",
+                              "parse_mode": "HTML"}).encode()
+        try:
+            req = _urllib.Request(f"https://api.telegram.org/bot{token}/sendMessage",
+                                  data=payload, headers={"Content-Type": "application/json"})
+            with _urllib.urlopen(req, timeout=30):
+                pass
+            print(f"  [REMINDER] sent: {r.get('text', '')[:50]}")
+        except Exception as e:
+            print(f"  [REMINDER] err: {e}")
+            left.append(r)  # попробуем ещё раз в следующий цикл
+    _save_reminders(left)
+    return len(due)
+
+
 def _transcribe_audio(path: str) -> str:
     """Распознать голосовое через Gemini (inline audio). Возвращает текст или ''."""
     import base64
@@ -1108,7 +1201,12 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     other_words = ("вайбер", "вибер", "viber", "мессенджер", "messenger",
                    "опубликуй видео", "опубликуй ролик", "опубликуй в тикток",
                    "боту @", "команду боту", "команда боту",
-                   "в телеге", "телеграм", "telegram", "тг")
+                   "в телеге", "телеграм", "telegram", "тг",
+                   "инбокс", "inbox", "все сообщения", "всё в одном", "сводка сообщений",
+                   "где что новое", "проверь всё", "напомни", "напоминание",
+                   "аналитик", "рост подписчик", "динамика", "статистика аккаунт",
+                   "сколько прибавил", "тренд", "запланируй пост", "пост в тикток на",
+                   "пост в инстаграм на", "расписание постов")
     is_other = any(w in t for w in other_words)
     if not is_ig and not is_g and not is_other and not tg_words:
         return False
@@ -1307,6 +1405,39 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ Ошибка дайджеста: {e}")
         return True
 
+    # ---- Планировщик постов ----
+    if any(w in t for w in ("запланируй пост", "запланupyй пост", "пост в тикток на",
+                            "пост в инстаграм на", "расписание постов")):
+        platform = "tiktok" if "тикток" in t or "tiktok" in t else \
+                   ("instagram" if "инстаграм" in t or "instagram" in t or "инст" in t else "tiktok")
+        m_time = re.search(r"\b(\d{1,2})[:.](\d{2})\b", t)
+        if not m_time:
+            api.send_message(chat_id, "📅 Формат: «запланируй пост в тикток завтра в 18:00 описание»")
+            return True
+        hh, mm = int(m_time.group(1)), int(m_time.group(2))
+        day_off = 1 if "завтра" in t else (2 if "послезавтра" in t else 0)
+        target = datetime.now() + timedelta(days=day_off)
+        target = target.replace(hour=hh, minute=mm, second=0, microsecond=0)
+        text = re.sub(r"^(запланируй пост|пост)\s*(в\s+)?(тикток|tiktok|инстаграм|instagram|инст)?\s*(на)?\s*", "", t, flags=re.IGNORECASE)
+        text = re.sub(r"\b\d{1,2}[:.]\d{2}\b", "", text).strip()
+        text = re.sub(r"^(завтра|сегодня|послезавтра)\s*", "", text, flags=re.IGNORECASE).strip()
+        video = _last_video.get(chat_id, "")
+        # очередь
+        qfile = PROJECT_ROOT / "data" / "posts_queue.json"
+        try:
+            q = json.loads(qfile.read_text(encoding="utf-8"))
+        except Exception:
+            q = []
+        q.append({"platform": platform, "at": target.isoformat(), "text": text,
+                  "chat_id": chat_id, "video": video})
+        qfile.parent.mkdir(parents=True, exist_ok=True)
+        qfile.write_text(json.dumps(q, ensure_ascii=False, indent=2), encoding="utf-8")
+        api.send_message(chat_id,
+                         f"📅 Запланировано: {platform} {target.strftime('%d.%m %H:%M')}\n"
+                         f"«{text[:100]}»\n"
+                         f"{'🎬 Видео приложено — опубликуется автоматически' if video and platform == 'tiktok' else 'ℹ️ Придёт напоминание (видео не приложено или не TikTok)'}")
+        return True
+
     # ---- TikTok upload ----
     if any(w in t for w in ("опубликуй видео", "опубликуй ролик", "загрузи видео в тикток",
                             "пости видео в тикток", "опубликуй в тикток")):
@@ -1477,11 +1608,141 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ {data.get('error', '?')}")
         return True
 
+    # ---- Аналитика ----
+    if any(w in t for w in ("аналитик", "рост подписчик", "динамика", "статистика аккаунт",
+                            "сколько прибавил", "тренд")):
+        api.send_message(chat_id, "⏳ Собираю аналитику (IG, TikTok, OLX)…")
+        import subprocess as _sp
+        # обновить снапшот прямо сейчас
+        try:
+            _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_analytics_snapshot.py")],
+                    capture_output=True, text=True, timeout=240, cwd=str(PROJECT_ROOT))
+        except Exception:
+            pass
+        # читаем историю
+        hist = {}
+        try:
+            hist = json.loads((PROJECT_ROOT / "data" / "analytics_state.json").read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        if not hist:
+            api.send_message(chat_id, "📊 Нет данных аналитики ещё. Соберу при следующем прогоне.")
+            return True
+        dates = sorted(hist.keys())
+        today = dates[-1]
+        cur = hist[today]
+        # ищем точку 7 и 30 дней назад
+        def _delta(key):
+            vals = []
+            for d in reversed(dates):
+                v = hist[d].get(key)
+                if v is not None:
+                    vals.append((d, v))
+            cur_v = cur.get(key)
+            if not vals or cur_v is None:
+                return None, None, None
+            # первая запись не раньше, чем сегодня
+            base = vals[-1] if len(vals) > 1 else vals[0]
+            return cur_v, base[1], len(vals) - 1
+
+        txt = [f"📊 <b>Аналитика на {today}</b>"]
+        for label, key in (("👥 Instagram подписчики", "instagram_followers"),
+                           ("🔄 Instagram подписки", "instagram_following"),
+                           ("🎵 TikTok подписчики", "tiktok_followers"),
+                           ("❤️ TikTok лайки", "tiktok_likes"),
+                           ("🛒 OLX объявления", "olx_ads")):
+            cur_v, base_v, n = _delta(key)
+            if cur_v is None:
+                continue
+            line = f"{label}: <b>{cur_v}</b>"
+            if base_v is not None and n and base_v != cur_v:
+                d = cur_v - base_v
+                arrow = "📈" if d > 0 else "📉"
+                line += f" {arrow}{d:+d} (за {n} дн.)"
+            txt.append(line)
+        api.send_message(chat_id, "\n".join(txt))
+        return True
+
+    # ---- Единый инбокс ----
+    if any(w in t for w in ("инбокс", "inbox", "все сообщения", "всё в одном",
+                            "сводка сообщений", "где что новое", "проверь всё")):
+        api.send_message(chat_id, "⏳ Собираю всё в одном (почта, TG, IG, Messenger, OLX)… Это может занять ~1-2 мин")
+        parts = []
+        # 1) почта (быстро, IMAP)
+        try:
+            g = _run_account_control(["google", "gmail_list", "4"])
+            if g.get("status") == "ok" and g.get("emails"):
+                lines = [f"✉️ <b>Почта</b> ({g.get('unread_total', 0)} непрочитанных):"]
+                for e in g["emails"][:4]:
+                    lines.append(f"  • {_esc_tg(e.get('subject', '?'))[:60]}")
+                parts.append("\n".join(lines))
+        except Exception:
+            pass
+        # 2) Telegram личка (userbot)
+        try:
+            tg = _run_account_control(["tg", "dialogs", "8"])
+            if tg.get("status") == "ok" and tg.get("dialogs"):
+                unread_d = [d for d in tg["dialogs"] if d.get("unread")]
+                if unread_d:
+                    lines = [f"✈️ <b>Telegram</b> ({len(unread_d)} чатов с новыми):"]
+                    for d in unread_d[:5]:
+                        lines.append(f"  • {_esc_tg(d.get('name'))} 🔴{d.get('unread')}")
+                    parts.append("\n".join(lines))
+        except Exception:
+            pass
+        # 3) Instagram Direct
+        try:
+            ig = _run_account_control(["instagram", "dm_list", "5"])
+            if ig.get("status") == "ok" and ig.get("threads"):
+                lines = ["📸 <b>Instagram Direct</b>:"]
+                for d in ig["threads"][:5]:
+                    lines.append(f"  • {_esc_tg(d.get('name'))} — {_esc_tg((d.get('preview') or '')[:40])}")
+                parts.append("\n".join(lines))
+        except Exception:
+            pass
+        # 4) Messenger
+        try:
+            ms = _run_account_control(["facebook", "messenger_list", "--limit", "5"])
+            if ms.get("status") == "ok" and ms.get("chats"):
+                lines = ["💬 <b>Messenger</b>:"]
+                for c in ms["chats"][:5]:
+                    lines.append(f"  • {_esc_tg(c.get('name'))[:60]}")
+                parts.append("\n".join(lines))
+        except Exception:
+            pass
+        # 5) OLX
+        try:
+            olx = _run_account_control(["olx", "profile"])
+            if olx.get("status") == "ok":
+                o = olx.get("olx", {})
+                parts.append(f"🛒 <b>OLX</b>: {_esc_tg(o.get('name') or '?')} · объявлений: {o.get('ads_count') or 0}")
+        except Exception:
+            pass
+
+        if not parts:
+            api.send_message(chat_id, "📭 Везде пусто (или не удалось собрать).")
+        else:
+            api.send_message(chat_id, "📥 <b>Единый инбокс</b>\n\n" + "\n\n".join(parts)[:3900])
+        return True
+
+    # ---- Напоминания ----
+    if re.match(r"^(напомни|напоминание|remind)", t):
+        _handle_reminder(api, chat_id, text)
+        return True
+
     # ---- Новая Пошта ----
     np_words = any(w in t for w in ("нова пошт", "нова почт", "новая пошта", "nova poshta",
                                     "novaposhta", "ттн", "посилк", "посылк", "відділенн",
                                     "отделен", "нової пошти", "новой почты"))
     if np_words:
+        # авто-ТТН: 14-значное число в тексте = предложить отследить
+        m_ttn_auto = re.search(r"\b(\d{14})\b", text)
+        if m_ttn_auto and not any(w in t for w in ("отследи", "отследить", "статус", "где")):
+            ttn = m_ttn_auto.group(1)
+            api.send_message(chat_id,
+                             f"📦 Вижу номер посылки <code>{ttn}</code>.\n"
+                             f"Напишите «отследи посылку {ttn}» — покажу статус.")
+            return True
         # отследить посылку
         m_ttn = re.search(r"(\d{8,14})", text)
         if m_ttn:
@@ -2847,8 +3108,18 @@ def run_bot(token: str) -> None:
     print("🤖 AIOS Telegram Bot запущен (v10.0 with inline menu)")
     print("   Ожидание сообщений...\n")
 
+    _last_reminder_check = 0.0
+
     while True:
         try:
+            # проверка созревших напоминаний (раз в 60 сек)
+            if time.time() - _last_reminder_check >= 60:
+                try:
+                    _run_due_reminders()
+                except Exception as _rem_err:
+                    print(f"  [REMINDER] check err: {_rem_err}")
+                _last_reminder_check = time.time()
+
             updates = api.get_updates(offset)
             for upd in updates:
                 offset = upd["update_id"] + 1
