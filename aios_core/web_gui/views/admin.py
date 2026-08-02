@@ -42,7 +42,8 @@ def render() -> None:
     async def load_backups() -> None:
         data = await _get_backups()
         backups = data.get("backups", [])
-        status_label.set_text(f"Backups: {len(backups)}")
+        retention = data.get("retention", {})
+        status_label.set_text(f"Backups: {len(backups)} | Retention: {retention.get('max_backups', '—')} copies / {retention.get('retention_days', '—')} days")
         backup_table.rows = [
             {
                 "id": b.get("id"),

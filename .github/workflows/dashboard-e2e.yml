@@ -34,6 +34,7 @@ jobs:
       - name: Run dashboard smoke test
         env:
           AIOS_DASHBOARD_URL: http://127.0.0.1:8080
+          AIOS_E2E_ARTIFACT_DIR: e2e-artifacts
         run: pytest tests/e2e/test_dashboard_browser.py -q
       - name: Collect Docker diagnostics on failure
         if: failure()
@@ -43,7 +44,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dashboard-e2e-diagnostics
-          path: dashboard-e2e-docker.log
+          path: |
+            dashboard-e2e-docker.log
+            e2e-artifacts/
           if-no-files-found: ignore
       - name: Stop services
         if: always()
