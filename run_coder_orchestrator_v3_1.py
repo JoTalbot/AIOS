@@ -59,17 +59,40 @@ def run_once():
     ctx = orch.get_project_context()
     backlog = orch.load_backlog()
     
-    # Anti-loop: check last 3 history entries, if same file repeated with nothing_to_commit, force different file
+    # Anti-loop v2: check last 5 history, if same file repeated 2x with nothing_to_commit/skipped, ban it
     try:
-        recent_files = [h.get("file") for h in backlog.get("history", [])[-3:]]
-        if len(recent_files) >= 2 and len(set(recent_files[-2:])) == 1:
-            print(f"  [ANTI-LOOP] Detected loop on file {recent_files[-1]}, forcing rotation")
-            # Add to avoid list in ctx
-            if "todos" in ctx:
-                # Filter out todos from looping file
-                ctx["todos"] = [t for t in ctx["todos"] if recent_files[-1] not in t]
+        recent = backlog.get("history", [])[-5:]
+        recent_files = [h.get("file") for h in recent]
+        recent_status = [h.get("status") for h in recent]
+        # Detect loop: same file in last 2 with non-success status
+        if len(recent_files) >= 2 and recent_files[-1] == recent_files[-2]:
+            last_file = recent_files[-1]
+            last_status = recent_status[-1]
+            if last_status in ("nothing_to_commit", "skipped", "blocked_validation"):
+                print(f"  [ANTI-LOOP] Loop detected on {last_file} ({last_status} x2), banning for this cycle")
+                # Remove all todos mentioning this file
+                if "todos" in ctx:
+                    ctx["todos"] = [t for t in ctx["todos"] if last_file not in t]
+                # Also ban from recent_files list in context
+                if "recent_files" in ctx:
+                    ctx["recent_files"] = [f for f in ctx.get("recent_files", []) if f != last_file]
+                # Add to avoid in memory
+                try:
+                    v3.memory.data.setdefault("file_stats", {}).setdefault(last_file, {"fixes":0,"fails":0,"last_fix":""})
+                    v3.memory.data["file_stats"][last_file]["fails"] += 1
+                except Exception:
+                    pass
+        # Also detect if same file appears 3 times in last 5
+        from collections import Counter
+        cnt = Counter(recent_files)
+        for f, c in cnt.items():
+            if c >= 3:
+                print(f"  [ANTI-LOOP] File {f} appears {c} times in last 5, banning")
+                if "todos" in ctx:
+                    ctx["todos"] = [t for t in ctx["todos"] if f not in t]
     except Exception as e:
         print(f"  [ANTI-LOOP] Check failed: {e}")
+        import traceback; traceback.print_exc()
     
     analysis = orch.phase_analyze(llm, ctx, backlog)
     print(f"Health: {analysis.get('health_score')}/10, Issues: {len(analysis.get('issues',[]))}")
