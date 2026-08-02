@@ -25,6 +25,49 @@ class SecurityException(Exception):
         super().__init__(message)
         self.context = context or {}
 
+def sanitize_input(data: str | dict | list) -> str | dict | list:
+    """
+    Санирует входные данные от потенциальных уязвимостей безопасности.
+
+    Args:
+        data: Входные данные для санации (строка, словарь или список).
+
+    Returns:
+        Санированные данные в безопасном формате.
+
+    Raises:
+        SecurityException: Если данные содержат критические угрозы безопасности.
+    """
+    if isinstance(data, str):
+        # Basic XSS sanitization
+        sanitized = (
+            data.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+                .replace("'", "&#39;")
+        )
+        # Additional checks for common injection patterns
+        if any(
+            pattern in sanitized.lower()
+            for pattern in ["<script", "javascript:", "onerror=", "onload=", "eval("]
+        ):
+            raise SecurityException(
+                "Potential XSS or code injection detected in input string",
+                context={"input": sanitized[:100]}
+            )
+        return sanitized
+
+    elif isinstance(data, dict):
+        return {k: sanitize_input(v) for k, v in data.items()}
+
+    elif isinstance(data, list):
+        return [sanitize_input(item) for item in data]
+
+    else:
+        # For other types, return as-is (int, float, bool, None)
+        return data
+
 class SecurityMonitor:
     """
     Core security monitoring class for handling API requests with security best practices.
