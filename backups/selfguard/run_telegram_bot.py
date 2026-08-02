@@ -1101,18 +1101,26 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                "посылк", "відділенн", "отделен")
     is_ig = any(w in t for w in ig_words)
     is_g = any(w in t for w in g_words)
+    # Telegram userbot (личный аккаунт)
+    tg_words = any(w in t for w in ("тг ", "телеграм", "telegram", "в телеге",
+                                    "личный телеграм", "мой телеграм",
+                                    "боту @", "команду боту", "команда боту"))
     other_words = ("вайбер", "вибер", "viber", "мессенджер", "messenger",
                    "опубликуй видео", "опубликуй ролик", "опубликуй в тикток",
-                   "боту @", "команду боту", "команда боту")
+                   "боту @", "команду боту", "команда боту",
+                   "в телеге", "телеграм", "telegram", "тг")
     is_other = any(w in t for w in other_words)
-    if not is_ig and not is_g and not is_other:
+    if not is_ig and not is_g and not is_other and not tg_words:
         return False
 
     # ---- Instagram ----
-    if is_ig:
+    if is_ig and not tg_words:
         # ---- Direct (переписка) ----
+        # «чат» без уточнения — DM только если речь не про Telegram
         is_dm = any(w in t for w in ("директ", "direct", "сообщен", "переписк",
-                                     "чат в інст", "чат в инст", "личн", "чат"))
+                                     "чат в інст", "чат в инст", "личн")) or \
+                ("чат" in t and "телеге" not in t and "телеграм" not in t
+                 and "telegram" not in t and "тг" not in t)
         if is_dm:
             send_word = any(w in t for w in ("напиши", "отправь", "ответь", "написать",
                                              "reply", "напишіть", "відповісти"))
@@ -1543,9 +1551,6 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         return True
 
     # ---- Telegram (личный аккаунт, userbot) ----
-    tg_words = any(w in t for w in ("тг ", "телеграм", "telegram", "в телеге",
-                                    "личный телеграм", "мой телеграм",
-                                    "боту @", "команду боту", "команда боту"))
     if tg_words:
         is_dialog = any(w in t for w in ("чаты", "диалог", "список чатов", "прочитай",
                                          "напиши", "отправь", "боту", "команду боту"))
