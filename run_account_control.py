@@ -1372,6 +1372,20 @@ async def novaposhta_offices(query: str) -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
+async def novaposhta_my_ttns() -> dict:
+    """Собрать ТТН моих входящих посылок из кабинета."""
+    try:
+        from aios_core.platforms.novaposhta_chrome_twin_adapter import NovaPoshtaChromeTwinAdapter
+        a = NovaPoshtaChromeTwinAdapter()
+        try:
+            ttns = await a.get_my_ttns(incoming=True)
+            return {"status": "ok", "ttns": ttns, "count": len(ttns)}
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
 # --------------------------------------------------------------------------
 # Telegram userbot (личный аккаунт)
 # --------------------------------------------------------------------------
@@ -1774,6 +1788,7 @@ def main():
     npg.add_parser("account")
     npo = npg.add_parser("offices")
     npo.add_argument("query")
+    npg.add_parser("my_ttns")
 
     args = parser.parse_args()
 
@@ -1887,6 +1902,8 @@ def main():
                 out(asyncio.run(novaposhta_account()))
             elif args.action == "offices":
                 out(asyncio.run(novaposhta_offices(args.query)))
+            elif args.action == "my_ttns":
+                out(asyncio.run(novaposhta_my_ttns()))
     except Exception as e:
         out({"status": "error", "error": str(e)[:400]})
 

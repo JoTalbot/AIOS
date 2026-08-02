@@ -182,6 +182,21 @@ class NovaPoshtaChromeTwinAdapter(ChromeTwinAdapter):
                     break
         return {"status": "ok", "query": query, "offices": offices}
 
+    async def get_my_ttns(self, incoming: bool = True) -> List[str]:
+        """Собрать ТТН моих посылок из кабинета (входящие/исходящие)."""
+        page = await self._ensure_browser()
+        url = ("https://new.novaposhta.ua/dashboard/invoices-in" if incoming
+               else "https://new.novaposhta.ua/dashboard/invoices-my")
+        await self._goto(page, url)
+        await page.wait_for_timeout(7000)
+        body = ""
+        try:
+            body = await page.inner_text("body")
+        except Exception:
+            pass
+        ttns = list(dict.fromkeys(re.findall(r"\b\d{14}\b", body or "")))
+        return ttns
+
     async def account_info(self) -> Dict[str, Any]:
         """Кабинет Новой Пошты (если залогинен)."""
         page = await self._ensure_browser()
