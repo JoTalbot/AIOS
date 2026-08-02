@@ -1,0 +1,45 @@
+name: auto-pr-gate
+
+# Гейт для PR автокодера (п.6 плана внедрения):
+# 1) protected-файлы не трогаем (канонический список — aios_core/self_protection.py)
+# 2) все изменённые .py компилируются
+# Pytest в CI не гоняем: зависимости проекта тяжёлые (onnxruntime и др.),
+# таргетные тесты проверяются локальным pytest_gate.py на сервере ДО пуша.
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Protected files gate
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if echo "$PR_TITLE" | grep -q "\[ops\]"; then
+            echo "⚠️ bypass: заголовок содержит [ops] (ручная правка)"; exit 0
+          fi
+          python scripts/ci_protected_gate.py origin/${{ github.base_ref }} HEAD
+
+      - name: Compile gate
+        run: |
+          files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '*.py')
+          if [ -z "$files" ]; then echo "нет .py в диффе"; exit 0; fi
+          echo "$files" | xargs python -m py_compile && echo "✅ compile OK"
+
+      - name: No secrets gate
+        run: |
+          if git diff origin/${{ github.base_ref }}...HEAD --name-only | grep -iE "^\.env|\.llm_keys\.json|secret|token|credential"; then
+            echo "❌ в диффе секреты/конфиги — запрещено (AGENTS.md правило 4)"; exit 1
+          fi
+          echo "✅ секретов в диффе нет"
