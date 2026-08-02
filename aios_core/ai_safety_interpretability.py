@@ -11,16 +11,33 @@ Classes:
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 import os
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 __all__ = ["SafetyInterpretability"]
+
+def sanitize_input_data(data: str) -> str:
+    """Sanitize input data to prevent XSS and injection attacks.
+
+    Args:
+        data: Raw input string potentially containing unsafe characters.
+
+    Returns:
+        Sanitized string with escaped HTML/JS characters.
+
+    Raises:
+        ValueError: If input is not a string
+    """
+    if not isinstance(data, str):
+        raise ValueError("Input data must be a string")
+    return html.escape(data)
 
 
 class SafetyCircuit:
@@ -105,6 +122,8 @@ class SafetyInterpretability:
         Raises:
             ValueError: If project_root is not a valid directory
         """
+        # Sanitize project_root input
+        project_root = sanitize_input_data(str(project_root))
         try:
             root_path = Path(project_root)
             if not root_path.is_dir():
@@ -169,7 +188,11 @@ class SafetyInterpretability:
         Raises:
             ValueError: If report is empty or filename is invalid
         """
+        # Sanitize filename input
+        filename = sanitize_input_data(str(filename))
+
         if not report or "total_issues" not in report:
+            logger.warning("Invalid report data received")
             raise ValueError("Invalid report data")
 
         try:
@@ -189,11 +212,20 @@ class SafetyInterpretability:
 
         Returns:
             List[str]: A list of components that make up the safety circuit.
+
+        Raises:
+            ValueError: If behavior is not a valid string
         """
+        # Sanitize behavior input
+        if not isinstance(behavior, str) or not behavior.strip():
+            logger.warning(f"Invalid behavior input: {behavior}")
+            raise ValueError("Behavior must be a non-empty string")
+
+        sanitized_behavior = sanitize_input_data(behavior)
         components = ["attention_head_safety", "mlp_value_head", "output_norm_safety"]
-        circuit = SafetyCircuit(f"circuit_{behavior}", components, importance=random.uniform(0.85, 0.95))
+        circuit = SafetyCircuit(f"circuit_{sanitized_behavior}", components, importance=random.uniform(0.85, 0.95))
         self._discovered_circuits.append(circuit)
-        self.circuits[behavior] = components
+        self.circuits[sanitized_behavior] = components
         return components
 
     def verify_safety_feature(self, circuit: List[str], test_cases: List[Dict[str, Any]]) -> float:
@@ -205,7 +237,14 @@ class SafetyInterpretability:
 
         Returns:
             float: The verification score (between 0 and 1).
+
+        Raises:
+            ValueError: If circuit is invalid
         """
+        if not circuit or not all(isinstance(c, str) for c in circuit):
+            logger.warning(f"Invalid circuit provided: {circuit}")
+            raise ValueError("Circuit must be a non-empty list of strings")
+
         score = round(random.uniform(0.88, 0.96), 2)
         return score
 
@@ -218,14 +257,23 @@ class SafetyInterpretability:
 
         Returns:
             Dict[str, Any]: A dictionary containing the analysis results.
+
+        Raises:
+            ValueError: If task is not a valid string
         """
+        # Sanitize task input
+        if not isinstance(task, str) or not task.strip():
+            logger.warning(f"Invalid task input: {task}")
+            raise ValueError("Task must be a non-empty string")
+
+        sanitized_task = sanitize_input_data(task)
         patterns = {
             "harm_detection": round(random.uniform(0.85, 0.95), 2),
             "refusal_activation": round(random.uniform(0.8, 0.92), 2),
             "safety_norm": round(random.uniform(0.9, 0.98), 2),
         }
         return {
-            "task": task,
+            "task": sanitized_task,
             "patterns": patterns,
             "safety_components": len(self.circuits),
         }
@@ -239,10 +287,17 @@ class SafetyInterpretability:
 
         Returns:
             List[str]: A list of extracted concepts.
+
+        Raises:
+            ValueError: If activation is invalid
         """
+        if not isinstance(activation, list) or not all(isinstance(x, (int, float)) for x in activation):
+            logger.warning(f"Invalid activation vector: {activation}")
+            raise ValueError("Activation must be a list of numbers")
+
         concepts = [f"concept_{i}" for i in range(top_k)]
         for c in concepts:
-            self._concept_bank[c] = "Interpretable concept for safety"
+            self._concept_bank[sanitize_input_data(c)] = "Interpretable concept for safety"
         return concepts
 
     def attention_pattern_analysis(self, model: Any, prompt: str) -> Dict[str, Any]:
@@ -254,9 +309,18 @@ class SafetyInterpretability:
 
         Returns:
             Dict[str, Any]: A dictionary containing the analysis results.
+
+        Raises:
+            ValueError: If prompt is not a valid string
         """
+        # Sanitize prompt input
+        if not isinstance(prompt, str):
+            logger.warning(f"Invalid prompt input type: {type(prompt)}")
+            raise ValueError("Prompt must be a string")
+
+        sanitized_prompt = sanitize_input_data(prompt)
         return {
-            "prompt": prompt,
+            "prompt": sanitized_prompt,
             "safety_attention_heads": random.randint(2, 8),
             "risk_attention_heads": random.randint(0, 2),
             "safety_ratio": round(random.uniform(0.7, 0.95), 2),
@@ -286,6 +350,31 @@ class SafetyInterpretability:
             "discovered_circuits": len(self._discovered_circuits),
             "concepts": len(self._concept_bank),
         }
+
+def validate_security_token(token: Optional[str]) -> bool:
+    """Validate security token against environment variables.
+
+    Args:
+        token: Security token to validate
+
+    Returns:
+        bool: True if token is valid, False otherwise
+    """
+    if not token:
+        logger.warning("Empty security token provided")
+        return False
+
+    expected_token = os.getenv("AI_SAFETY_TOKEN")
+    if not expected_token:
+        logger.warning("AI_SAFETY_TOKEN environment variable not set")
+        return False
+
+    if token != expected_token:
+        logger.warning(f"Invalid security token provided (first 4 chars: {token[:4]})")
+        return False
+
+    logger.info("Security token validated successfully")
+    return True
 
 if __name__ == "__main__":
     interpretability = SafetyInterpretability()
