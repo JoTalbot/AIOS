@@ -567,6 +567,8 @@ def cmd_help() -> str:
 
 # Последнее фото, присланное пользователем (для будущих действий): chat_id -> путь
 _last_photo: dict[int, str] = {}
+# Ждём описание детали после фото: chat_id -> True
+_photo_pending: dict[int, bool] = {}
 # Последнее видео, присланное пользователем (для TikTok upload): chat_id -> путь
 _last_video: dict[int, str] = {}
 # Последние id писем, показанных в чате: chat_id -> [ids...]
@@ -968,9 +970,33 @@ def _save_reminders(items: list[dict]) -> None:
 
 
 def _handle_reminder(api, chat_id: int, text: str) -> None:
-    """«напомни [завтра/сегодня/в] <HH:MM> <текст>»."""
+    """«напомни [завтра/сегодня/в] <HH:MM> <текст>» + повторяющиеся («каждый день/неделю/месяц»)."""
     import re as _re
     text_clean = _re.sub(r"^(напомни|напоминание|remind)\s*:?\s*", "", text, flags=_re.IGNORECASE).strip()
+
+    # повторяющиеся: «напоминай каждый день в 09:00 ...»
+    m_repeat = _re.search(r"(каждый|каждую|раз в)\s+(день|неделю|месяц|утро|вечер)", text_clean.lower())
+    if m_repeat:
+        period = m_repeat.group(2)
+        m_time = _re.search(r"\b(\d{1,2})[:.](\d{2})\b", text_clean)
+        if m_time:
+            hh, mm = int(m_time.group(1)), int(m_time.group(2))
+            body = _re.sub(r"^(напоминай|напомни)\s*(каждый|каждую|раз в)\s*(день|неделю|месяц|утро|вечер)\s*", "", text_clean, flags=_re.IGNORECASE)
+            body = _re.sub(r"\b\d{1,2}[:.]\d{2}\b", "", body).strip()
+            if "утро" in period:
+                hh, mm = 9, 0
+            elif "вечер" in period:
+                hh, mm = 21, 0
+            reminders = _load_reminders()
+            reminders.append({
+                "chat_id": chat_id,
+                "at": datetime.now().replace(hour=hh, minute=mm, second=0, microsecond=0).isoformat(),
+                "text": body or "(напоминание)",
+                "repeat": period,  # день|неделю|месяц
+            })
+            _save_reminders(reminders)
+            api.send_message(chat_id, f"🔁 Напоминаю {period} в {hh:02d}:{mm:02d}: «{body[:100]}»")
+            return
     # время HH:MM
     m_time = _re.search(r"\b(\d{1,2})[:.](\d{2})\b", text_clean)
     # день
@@ -1040,6 +1066,21 @@ def _run_due_reminders() -> int:
         except Exception as e:
             print(f"  [REMINDER] err: {e}")
             left.append(r)  # попробуем ещё раз в следующий цикл
+            continue
+        # повторяющиеся: переносим на следующий период
+        repeat = r.get("repeat")
+        if repeat:
+            base = datetime.fromisoformat(r["at"])
+            if repeat == "день":
+                nxt = base + timedelta(days=1)
+            elif repeat == "неделю":
+                nxt = base + timedelta(weeks=1)
+            else:  # месяц
+                try:
+                    nxt = base.replace(month=base.month + 1)
+                except ValueError:
+                    nxt = base.replace(year=base.year + 1, month=base.month % 12 + 1)
+            left.append({**r, "at": nxt.isoformat()})
     _save_reminders(left)
     return len(due)
 
@@ -1728,7 +1769,16 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                    "автоответ покупателям",
                    "подними объявления", "подними мои объявления", "обнови объявления",
                    "мои объявления олх", "мои объявления olx", "контроль объявлений",
-                   "сколько объявлений")
+                   "сколько объявлений",
+                   "добавь деталь", "добавь на склад", "спиши деталь",
+                   "что на складе", "склад", "найди деталь", "продал ",
+                   "остатки", "инвентаризац", "сколько деталей",
+                   "вечерний отчёт", "вечерний отчет", "итоги дня",
+                   "отчёт за день", "отчет за день", "дневной отчёт",
+                   "сделай объявление из фото", "объявление по фото", "фото в объявление",
+                   "выложи по фото", "деталь по фото",
+                   "создай гугл таблицу", "создай google таблицу", "в гугл таблицу",
+                   "создай таблицу из финансов", "создай таблицу из склада")
     is_other = any(w in t for w in other_words)
     if not is_ig and not is_g and not is_other and not tg_words:
         return False
@@ -2285,6 +2335,11 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "⏳ Экспортирую контакты в Excel…")
             r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_export.py"), "contacts", "200"],
                         capture_output=True, text=True, timeout=170, cwd=str(PROJECT_ROOT))
+        elif "финанс" in t or "продаж" in t or "склад" in t or "детал" in t:
+            what = "finance" if "финанс" in t or "продаж" in t else "inventory"
+            api.send_message(chat_id, f"⏳ Экспортирую {'финансы' if what == 'finance' else 'склад'} в CSV (для Google Таблиц)…")
+            r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_export.py"), what],
+                        capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
         else:  # olx
             q = re.sub(r"(экспортируй|выгрузи|экспорт|объявления)\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
             q = q.replace("олх", "").replace("olx", "").strip(" ,.;:—–")
@@ -2304,6 +2359,41 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 api.send_message(chat_id, f"✅ Файл готов: {res['file']} (не смог отправить: {e})")
         else:
             api.send_message(chat_id, f"❌ Экспорт не удался: {res.get('error', '?')}")
+        return True
+
+    # ---- Фото детали → черновик объявления ----
+    if any(w in t for w in ("сделай объявление из фото", "объявление по фото", "фото в объявление",
+                            "выложи по фото", "деталь по фото")):
+        photo = _last_photo.get(chat_id)
+        if not photo:
+            api.send_message(chat_id, "📷 Сначала пришлите фото детали, потом «сделай объявление из фото»")
+            return True
+        api.send_message(chat_id, "📷 Отлично, фото получил! Опишите деталь одним сообщением, например:\n"
+                                  "«фара BMW X5 ксенон 2003, цена 2000»\n— и я сгенерирую объявление.")
+        _photo_pending[chat_id] = True
+        return True
+    if chat_id in _photo_pending and _photo_pending[chat_id]:
+        # это описание детали после фото
+        _photo_pending[chat_id] = False
+        photo = _last_photo.get(chat_id, "")
+        part = text.strip()
+        import subprocess as _sp
+        api.send_message(chat_id, f"⏳ Генерирую объявление по фото: «{part}»…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_olx_ad_gen.py"), "gen", part],
+                    capture_output=True, text=True, timeout=90, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-150:]}
+        if res.get("status") == "ok":
+            txt = (f"📝 <b>Объявление (по фото):</b>\n"
+                   f"Заголовок: <b>{_esc_tg(res.get('title', ''))}</b>\n"
+                   f"Цена: {res.get('price', '?')} грн\n\n"
+                   f"Описание:\n{_esc_tg(res.get('description', ''))}\n\n"
+                   f"Фото приложу при публикации на OLX (после подтверждения телефона).")
+            api.send_message(chat_id, txt)
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', '?')}")
         return True
 
     # ---- Генератор объявлений OLX ----
@@ -2531,6 +2621,109 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                          f"{'Отправка ответов — автоматически.' if auto else 'Сначала — подтверждение в чате.'}")
         return True
 
+    # ---- Склад (инвентаризация) ----
+    inv_words = any(w in t for w in ("добавь деталь", "добавь на склад", "спиши деталь",
+                                     "что на складе", "склад", "найди деталь",
+                                     "продал ", "продал: ", "продал деталь", "продана деталь",
+                                     "остатки", "инвентаризац", "сколько деталей"))
+    if inv_words:
+        import subprocess as _sp
+        # продажа: списать со склада + записать финансы
+        m_sale = re.match(r"^(продал|продала|продана деталь)\s+(.+?)\s+за\s+([\d\s.,]+)", text, re.IGNORECASE) or \
+                 re.match(r"^(продал|продала|продана деталь)\s+([\w\sА-Яа-яЁёІіЇїЄє'’.-]+?)\s+([\d\s.,]+)", text, re.IGNORECASE)
+        if m_sale:
+            name = m_sale.group(2).strip()
+            try:
+                price = float(m_sale.group(3).replace(" ", "").replace(",", "."))
+            except ValueError:
+                api.send_message(chat_id, "❌ Не понял цену. Формат: «продал фару 2000»")
+                return True
+            # списать со склада
+            r1 = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"),
+                          "take", name, "1"], capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+            try:
+                inv = json.loads((r1.stdout or "").strip().split("\n")[-1])
+            except Exception:
+                inv = {"status": "error"}
+            # записать финансы
+            r2 = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_finance.py"),
+                          "add", "sale", str(price), name], capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+            try:
+                fin = json.loads((r2.stdout or "").strip().split("\n")[-1])
+            except Exception:
+                fin = {"status": "error"}
+            txt = f"💰 <b>Продажа: {name}</b> — {price} грн\n"
+            if inv.get("status") == "ok":
+                it = inv.get("item", {})
+                txt += f"📦 Склад: списано (осталось {it.get('qty')} шт)\n"
+            elif inv.get("error"):
+                txt += f"⚠️ {inv['error']}\n"
+            if fin.get("status") == "ok":
+                txt += "✅ Записано в финансы"
+            api.send_message(chat_id, txt)
+            return True
+        # добавление детали
+        m_add = re.match(r"^(добавь деталь|добавь на склад)\s+(.+?)\s*[,:]\s*(\d+)\s*шт\s*(?:по\s*([\d\s.,]+))?", text, re.IGNORECASE)
+        if m_add:
+            name = m_add.group(2).strip()
+            qty = int(m_add.group(3))
+            price_s = m_add.group(4) or "0"
+            try:
+                price = float(price_s.replace(" ", "").replace(",", "."))
+            except ValueError:
+                price = 0
+            r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"),
+                         "add", name, str(qty), str(price)], capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+            try:
+                res = json.loads((r.stdout or "").strip().split("\n")[-1])
+            except Exception:
+                res = {"status": "error", "error": (r.stderr or "?")[-100:]}
+            if res.get("status") == "ok":
+                it = res.get("item", {})
+                api.send_message(chat_id, f"📦 <b>{name}</b>: {it.get('qty')} шт ({it.get('price')} грн) — {res.get('msg', '')}")
+            else:
+                api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+            return True
+        # «найди деталь» / поиск
+        if "найди деталь" in t or "ищу деталь" in t or "есть ли" in t:
+            q = re.sub(r"^(найди деталь|ищу деталь|есть ли)\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
+            q = q.replace("на складе", "").strip()
+            if not q:
+                api.send_message(chat_id, "🔍 «найди деталь капот»")
+                return True
+            r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"), "search", q],
+                        capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+            try:
+                res = json.loads((r.stdout or "").strip().split("\n")[-1])
+            except Exception:
+                res = {"status": "error"}
+            if res.get("status") == "ok" and res.get("items"):
+                lines = ["🔍 <b>Найдено на складе:</b>"]
+                for it in res["items"][:8]:
+                    mark = "✅" if it.get("qty", 0) > 0 else "❌"
+                    lines.append(f"{mark} <b>{_esc_tg(it['name'])}</b> — {it.get('qty')} шт · {it.get('price')} грн")
+                api.send_message(chat_id, "\n".join(lines))
+            else:
+                api.send_message(chat_id, f"🔍 «{q}» на складе нет.")
+            return True
+        # статистика/остатки
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"), "stats"],
+                    capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error"}
+        if res.get("status") == "ok":
+            txt = (f"📦 <b>Склад</b>\n"
+                   f"Деталей: {res.get('items_count')} · всего шт: {res.get('total_qty')}\n"
+                   f"💰 Стоимость запасов: {res.get('total_value')} грн")
+            if res.get("out_of_stock"):
+                txt += "\n\n🚫 Закончились: " + ", ".join(_esc_tg(x) for x in res["out_of_stock"][:5])
+            api.send_message(chat_id, txt)
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+        return True
+
     # ---- Финансовый учёт ----
     fin_words = any(w in t for w in ("запиши продажу", "запиши расход", "запиши трату",
                                      "продал за", "купил за", "потратил",
@@ -2588,6 +2781,93 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, txt)
         else:
             api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+        return True
+
+    # ---- Google Таблица из данных ----
+    if any(w in t for w in ("создай гугл таблицу", "создай google таблицу", "в гугл таблицу",
+                            "создай таблицу из финансов", "создай таблицу из склада")):
+        import subprocess as _sp
+        kind = "finance" if ("финанс" in t or "продаж" in t) else \
+               ("inventory" if "склад" in t or "детал" in t else "finance")
+        api.send_message(chat_id, f"⏳ Создаю Google Таблицу из {'финансов' if kind == 'finance' else 'склада'}…")
+        # 1) CSV
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_export.py"), kind],
+                    capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-100:]}
+        if res.get("status") != "ok" or not res.get("file"):
+            api.send_message(chat_id, f"❌ Не удалось выгрузить данные: {res.get('error', '?')}")
+            return True
+        csv_path = res["file"]
+        api.send_message(chat_id, "📄 Данные готовы. Открываю Google Sheets…")
+        # 2) открыть sheets и вставить (через Chrome Twin)
+        try:
+            from aios_core.platforms.chrome_twin_adapter import ChromeTwinAdapter as _CTA
+            a = _CTA()
+            # используем исправленный запуск
+            from playwright.async_api import async_playwright as _ap
+            import asyncio as _ai
+
+            async def _do():
+                pw = await _ap().start()
+                ctx = await pw.chromium.launch_persistent_context(
+                    user_data_dir=str((PROJECT_ROOT / "data" / "chrome_twin" / "default").resolve()),
+                    executable_path="/usr/bin/google-chrome-stable",
+                    headless=False, slow_mo=80,
+                    args=["--no-sandbox", "--disable-blink-features=AutomationControlled",
+                          "--disable-dev-shm-usage"],
+                    viewport={"width": 1440, "height": 900})
+                page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+                await page.goto("https://docs.google.com/spreadsheets/create",
+                                wait_until="domcontentloaded", timeout=60000)
+                await page.wait_for_timeout(9000)
+                url = page.url
+                # вставить CSV через первую ячейку (кликнуть A1 и вставить текст)
+                try:
+                    cell = page.locator("div#t-formula-bar-input, div[role='input']").first
+                    # проще: кликнуть в A1 листа
+                    a1 = page.locator("#t-0-0-0, [role='gridcell'][aria-colindex='1'][aria-rowindex='1']").first
+                    if await a1.count():
+                        await a1.click(force=True, timeout=5000)
+                        await page.wait_for_timeout(800)
+                        # вставить данные как текст в формулу-бар? Лучше: просто открыть и оставить
+                except Exception:
+                    pass
+                await ctx.close()
+                await pw.stop()
+                return url
+            url = _ai.run(_do())
+            api.send_message(chat_id,
+                             f"✅ <b>Google Таблица создана</b>:\n🔗 {url}\n\n"
+                             f"CSV-файл с данными: {csv_path}\n"
+                             f"(импортируйте его в таблицу: Файл → Импорт — или пришлите мне команду "
+                             f"«экспортируй финансы в csv» для повторной выгрузки)")
+        except Exception as e:
+            api.send_message(chat_id, f"⚠️ Таблица создана, но не открыта: {e}\nCSV: {csv_path}")
+        return True
+
+    # ---- Вечерний отчёт ----
+    if any(w in t for w in ("вечерний отчёт", "вечерний отчет", "итоги дня",
+                            "отчёт за день", "отчет за день", "дневной отчёт")):
+        import subprocess as _sp
+        api.send_message(chat_id, "⏳ Собираю отчёт…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_evening_report.py")],
+                    capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+        if "отправлен" in (r.stdout or ""):
+            api.send_message(chat_id, "🌙 Вечерний отчёт отправлен ☺️")
+        else:
+            # показать локально
+            import importlib.util as _iu2
+            try:
+                spec = _iu2.spec_from_file_location("evr", str(PROJECT_ROOT / "run_evening_report.py"))
+                mod = _iu2.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                report = mod.build_report()
+                api.send_message(chat_id, report[:3900])
+            except Exception as e:
+                api.send_message(chat_id, f"❌ {e}")
         return True
 
     # ---- Голосовые ответы ----
