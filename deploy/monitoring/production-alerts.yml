@@ -137,6 +137,14 @@ groups:
       severity: critical
     annotations:
       summary: Автокодер остановлен
+  - alert: SystemRAMHigh
+    expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100
+      > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: RAM >85% занята
 - name: aios-infrastructure-alerts
   interval: 60s
   rules:
