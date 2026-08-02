@@ -1,22 +1,18 @@
 """
-LLM Balancer — автоматическая балансировка между провайдерами и ключами.
+LLM Balancer v2.1 — улучшенная балансировка с приоритетом рабочих провайдеров.
 
-Провайдеры:
-  - OpenRouter (OpenAI-compatible)
-  - Z.ai (Zhipu AI, OpenAI-compatible)
-
-Алгоритм:
-  1. Round-robin между ключами одного провайдера
-  2. При 402/429/5xx — переключение на следующий ключ/провайдер
-  3. Fallback-модели если основная недоступна
-  4. Кэширование "мёртвых" ключей на 5 минут
+Исправления:
+- 402 Payment Required = permanent dead (24h cooldown)
+- Приоритет: groq > deepseek > zai > mistral > cohere > gemini > huggingface > airforce > openrouter > local
+- local_first удален, local теперь всегда последний fallback
+- Fallback цепочка: groq/llama, huggingface/gemma-3-27b, qwen2.5-coder:7b вместо 1.5b
+- Экспоненциальный backoff для 429
+- Учет installed моделей для local
 """
-import contextlib
+
 import json
 import os
 import time
-import urllib.request
-import urllib.error
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,9 +38,12 @@ class APIKey:
     last_used: float = 0.0
     error_count: int = 0
     cooldown_until: float = 0.0
+    permanently_dead: bool = False
 
     @property
     def is_available(self) -> bool:
+        if self.permanently_dead:
+            return False
         return time.time() > self.cooldown_until
 
 
@@ -56,30 +55,41 @@ class Provider:
     models: list[str] = field(default_factory=list)
     _key_index: int = 0
     _lock: threading.Lock = field(default_factory=threading.Lock)
+    installed: set = field(default_factory=set)
 
     def get_next_key(self) -> APIKey | None:
         with self._lock:
             available = [k for k in self.keys if k.is_available]
             if not available:
                 return None
-            # Round-robin
-            idx = self._key_index % len(available)
-            self._key_index = idx + 1
-            key = available[idx]
+            # Least recently used + lowest error count
+            available_sorted = sorted(available, key=lambda k: (k.error_count, k.last_used))
+            key = available_sorted[0]
             key.last_used = time.time()
+            # round-robin index update
+            self._key_index = (self._key_index + 1) % len(self.keys)
             return key
 
     def mark_key_error(self, key: APIKey, error: str, cooldown: int = 300):
         key.last_error = error
         key.error_count += 1
-        key.cooldown_until = time.time() + cooldown
-        print(f"  [Balancer] {key.provider} key cooled down {cooldown}s: {error}")
-    installed: set = field(default_factory=set)
+        # Permanent dead for 402
+        if "402" in error or "Payment" in error or "insufficient" in error.lower():
+            key.cooldown_until = time.time() + 86400  # 24h
+            if key.error_count >= 3:
+                key.permanently_dead = True
+            print(f"  [Balancer] {key.provider} key marked DEAD 24h: {error} (errors={key.error_count})")
+        else:
+            # Exponential backoff for 429
+            if "429" in error:
+                cd = min(60 * (2 ** min(key.error_count, 4)), 600)
+            else:
+                cd = cooldown
+            key.cooldown_until = time.time() + cd
+            print(f"  [Balancer] {key.provider} key cooled down {cd}s: {error} (errors={key.error_count})")
+
 
 class LLMBalancer:
-    """Auto-balancing LLM client across multiple providers and keys."""
-
-    # Provider registry
     PROVIDERS = {
         "openrouter": {
             "base_url": "https://openrouter.ai/api/v1/chat/completions",
@@ -139,7 +149,6 @@ class LLMBalancer:
             "models": [
                 "llama-3.3-70b",
                 "llama-3.1-8b",
-                "gemma-2-9b",
             ],
         },
         "mistral": {
@@ -174,8 +183,6 @@ class LLMBalancer:
                 "gpt-4o",
                 "claude-sonnet-4.6-rp",
                 "llama-4-scout-17b-16e-instruct",
-                "mistral-small-3.1-24b-instruct",
-                "kimi-k3",
             ],
         },
         "aimlapi": {
@@ -190,7 +197,6 @@ class LLMBalancer:
             "base_url": "https://us-south.ml.cloud.ibm.com/ml/v1/chat/completions",
             "models": [
                 "meta-llama/llama-3-3-70b-instruct",
-                "ibm/granite-3-3-8b-instruct",
             ],
         },
         "huggingface": {
@@ -204,167 +210,110 @@ class LLMBalancer:
         "local": {
             "base_url": os.environ.get("LOCAL_LLM_BASE_URL", "http://localhost:11434/v1/chat/completions"),
             "models": [
-                "qwen2.5-coder:14b",
+                "qwen2.5-coder:7b",  # prefer 7b over 1.5b
                 "qwen2.5-coder:1.5b",
-                "qwen2.5-coder:7b",
+                "qwen2.5-coder:14b",
                 "deepseek-coder:6.7b",
-                "qwen2.5-coder:32b",
             ],
         },
     }
 
-    # Fallback chain: if primary model fails, try these
     MODEL_FALLBACKS = {
         "openai/gpt-oss-20b:free": [
-            "cohere/north-mini-code:free",
-            "google/gemma-4-31b-it:free",
-            "nvidia/nemotron-3-super-120b-a12b:free",
-            "poolside/laguna-s-2.1:free",
-            "meta-llama/Meta-Llama-3-70B-Instruct-Turbo",
+            "meta-llama/llama-4-maverick",
+            "llama-3.1-8b-instant",
+            "google/gemma-3-27b-it",
             "mistralai/mistral-small-3.2-24b-instruct",
         ],
         "meta-llama/llama-4-maverick": [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
             "gemini-2.0-flash",
             "mistralai/mistral-small-3.2-24b-instruct",
             "gpt-4o-mini",
-            "deepseek/deepseek-chat-v3-0324",
-            "gpt-4.1-mini",
-            "DeepSeek-R1",
-            "glm-4.5-flash",
             "deepseek-chat",
+            "glm-4.5-flash",
         ],
         "gemini-2.0-flash": [
             "gemini-2.5-flash",
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
             "meta-llama/llama-4-maverick",
             "gpt-4o-mini",
-            "mistralai/mistral-small-3.2-24b-instruct",
         ],
         "gemini-2.5-flash": [
             "gemini-2.0-flash",
+            "llama-3.1-8b-instant",
             "meta-llama/llama-4-maverick",
             "gpt-4o-mini",
         ],
+        # gpt-4o-mini: cloud-first, local 7b last
         "gpt-4o-mini": [
-            "gpt-4o",
-            "gemini-2.0-flash",
-            "meta-llama/llama-4-maverick",
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "google/gemma-3-27b-it",
+            "mistral-small-latest",
+            "deepseek-chat",
+            "glm-4.5-flash",
+            "qwen2.5-coder:7b",  # local strong fallback
+        ],
+        "gpt-4o": [
+            "gpt-4o-mini",
+            "llama-3.3-70b-versatile",
+            "google/gemma-3-27b-it",
+            "qwen2.5-coder:7b",
         ],
         "mistralai/mistral-small-3.2-24b-instruct": [
+            "llama-3.1-8b-instant",
             "meta-llama/llama-4-maverick",
             "gemini-2.0-flash",
             "gpt-4o-mini",
-            "glm-4.5-flash",
         ],
         "glm-4.5-flash": [
             "glm-4.7-flash",
+            "deepseek-chat",
+            "llama-3.1-8b-instant",
             "gemini-2.0-flash",
-            "meta-llama/llama-4-maverick",
         ],
         "deepseek-chat": [
             "deepseek-reasoner",
+            "llama-3.1-8b-instant",
             "meta-llama/llama-4-maverick",
             "gpt-4o-mini",
-            "glm-4.5-flash",
         ],
         "deepseek/deepseek-chat-v3-0324": [
             "deepseek-chat",
-            "meta-llama/llama-4-maverick",
-            "mistralai/mistral-small-3.2-24b-instruct",
+            "llama-3.1-8b-instant",
+            "mistral-small-latest",
             "gpt-4o-mini",
-        ],
-        "gpt-4o": [
-            "gpt-4o-mini",
-            "gemini-2.0-flash",
-            "meta-llama/llama-4-maverick",
-            "glm-4.5-flash",
-        ],
-        "gpt-4.1-mini": [
-            "gpt-4o-mini",
-            "gemini-2.0-flash",
-            "meta-llama/llama-4-maverick",
-        ],
-        "deepseek-reasoner": [
-            "deepseek-chat",
-            "meta-llama/llama-4-maverick",
-            "gpt-4o-mini",
-        ],
-        "deepseek-coder": [
-            "deepseek-chat",
-            "meta-llama/llama-4-maverick",
-            "gpt-4o-mini",
-        ],
-        "glm-4.5": [
-            "glm-4.5-flash",
-            "glm-4.7-flash",
-            "meta-llama/llama-4-maverick",
-        ],
-        "glm-4.7-flash": [
-            "glm-4.5-flash",
-            "gemini-2.0-flash",
-            "meta-llama/llama-4-maverick",
-        ],
-        "glm-5": [
-            "glm-4.7-flash",
-            "glm-4.5-flash",
-            "gemini-2.0-flash",
-            "meta-llama/llama-4-maverick",
         ],
         "llama-3.3-70b-versatile": [
             "llama-3.1-8b-instant",
-            "meta-llama/llama-4-maverick",
-            "gemini-2.0-flash",
+            "google/gemma-3-27b-it",
+            "mistral-small-latest",
         ],
         "llama-3.1-8b-instant": [
-            "mistral-small-latest",
-            "command-r-08-2024",
             "llama-3.3-70b-versatile",
+            "mistral-small-latest",
+            "google/gemma-3-27b-it",
             "gemini-2.0-flash",
-        ],
-        "mixtral-8x7b-32768": [
-            "llama-3.1-8b-instant",
-            "mistralai/mistral-small-3.2-24b-instruct",
-            "meta-llama/llama-4-maverick",
-        ],
-        "gemma2-9b-it": [
-            "llama-3.1-8b-instant",
-            "gemini-2.0-flash",
-            "meta-llama/llama-4-maverick",
-        ],
-        "gemini-2.5-pro": [
-            "gemini-2.5-flash",
-            "gemini-2.0-flash",
-            "meta-llama/llama-4-maverick",
-            "gpt-4o-mini",
         ],
         "gpt-3.5-turbo": [
-            "meta-llama/llama-4-maverick",
-            "mistralai/mistral-small-3.2-24b-instruct",
-            "deepseek/deepseek-chat-v3-0324",
             "llama-3.1-8b-instant",
-            "glm-4.5-flash",
-            "gemini-2.0-flash",
-            "gpt-4o-mini",
-        ],
-        # gpt-4o-mini: prefer external, fall back to local when rate-limited/empty.
-        "gpt-4o-mini": [
-            "gpt-4o",
-            "qwen2.5-coder:1.5b",
             "google/gemma-3-27b-it",
+            "mistralai/mistral-small-3.2-24b-instruct",
+            "deepseek-chat",
         ],
-        "gpt-4o": [
-            "gpt-4o-mini",
-            "qwen2.5-coder:1.5b",
-            "google/gemma-3-27b-it",
-        ],
-        # Local Ollama models -> cloud/HF fallback chain (used when local LLM is down).
+        # Local -> cloud fallback
         "qwen2.5-coder:1.5b": [
+            "qwen2.5-coder:7b",
             "google/gemma-3-27b-it",
-            "meta-llama/Llama-3.3-70B-Instruct",
-            "Qwen/Qwen3-30B-A3B-Instruct",
+            "llama-3.1-8b-instant",
             "meta-llama/llama-4-maverick",
             "gpt-4o-mini",
         ],
         "qwen2.5-coder:7b": [
+            "llama-3.1-8b-instant",
             "google/gemma-3-27b-it",
             "meta-llama/Llama-3.3-70B-Instruct",
             "Qwen/Qwen3-30B-A3B-Instruct",
@@ -381,28 +330,21 @@ class LLMBalancer:
         self._provider_stats: dict[str, int] = {}
         self._cache: dict[str, str] = {}
         self._cache_max = int(os.environ.get("LLM_CACHE_MAX", "256"))
-        # Smart provider priority per task_type (fast/cheap first => token economy).
+        # FIXED PRIORITY: groq и deepseek первыми (самые надежные), openrouter и local последними
         self.task_priority = {
-            # Simple/chat: fast cheap models first
-            "chat": ["airforce", "openrouter", "groq", "mistral", "cohere", "openai", "huggingface", "aimlapi", "gemini"],
-            # Coding: capable models
-            "code": ["airforce", "openrouter", "groq", "mistral", "cohere", "openai", "huggingface", "aimlapi", "gemini"],
-            # Analysis/long: robust providers
-            "analysis": ["airforce", "openrouter", "groq", "mistral", "openai", "huggingface", "aimlapi", "gemini", "cohere"],
-            # Default
-            "general": ["airforce", "openrouter", "groq", "mistral", "cohere", "openai", "huggingface", "aimlapi", "gemini"],
+            "chat": ["groq", "deepseek", "zai", "mistral", "cohere", "gemini", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "together", "cerebras", "ibm", "local"],
+            "code": ["groq", "deepseek", "zai", "mistral", "cohere", "huggingface", "gemini", "openai", "airforce", "openrouter", "aimlapi", "together", "cerebras", "ibm", "local"],
+            "analysis": ["groq", "deepseek", "zai", "gemini", "mistral", "huggingface", "openai", "airforce", "openrouter", "cohere", "local"],
+            "general": ["groq", "deepseek", "zai", "mistral", "cohere", "gemini", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "local"],
         }
 
     def _load_from_env(self):
-        """Load providers and keys from env plus the external runtime registry."""
-        # Import runtime keys without putting secrets in source code or images.
-        # The registry is mounted at /app/data in Docker and lives in data/ on host.
         for key_file in (Path("/app/data/.llm_keys.json"), Path(__file__).resolve().parents[1] / "data/.llm_keys.json"):
             try:
                 runtime = json.loads(key_file.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
-            env_prefix = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "zai": "ZAI_API_KEY", "cerebras": "CEREBRAS_API_KEY", "mistral": "MISTRAL_API_KEY", "cohere": "COHERE_API_KEY", "together": "TOGETHER_API_KEY", "huggingface": "HUGGINGFACE_API_KEY", "airforce": "AIRFORCE_API_KEY", "aimlapi": "AIMLAPI_API_KEY", "ibm": "IBM_API_KEY"}
+            env_prefix = {"openrouter": "OPENROUTER_API_KEY", "gemini": "GEMINI_API_KEY", "openai": "OPENAI_API_KEY", "deepseek": "DEEPSEEK_API_KEY", "zai": "ZAI_API_KEY", "cerebras": "CEREBRAS_API_KEY", "mistral": "MISTRAL_API_KEY", "cohere": "COHERE_API_KEY", "together": "TOGETHER_API_KEY", "huggingface": "HUGGINGFACE_API_KEY", "airforce": "AIRFORCE_API_KEY", "aimlapi": "AIMLAPI_API_KEY", "ibm": "IBM_API_KEY", "groq": "GROQ_API_KEY"}
             for provider, keys in runtime.items():
                 prefix = env_prefix.get(provider)
                 if not prefix or not isinstance(keys, list):
@@ -410,273 +352,69 @@ class LLMBalancer:
                 for index, key in enumerate(keys, 1):
                     if key and not os.environ.get(f"{prefix}_{index}"):
                         os.environ[f"{prefix}_{index}"] = str(key)
-        # OpenRouter keys
-        or_keys = []
-        # Primary key
-        pk = os.environ.get("OPENROUTER_API_KEY", "")
-        if pk:
-            or_keys.append(APIKey(key=pk, provider="openrouter"))
-        # Additional keys from env with value dedup
-        for i in range(1, 10):
-            k = os.environ.get(f"OPENROUTER_API_KEY_{i}", "")
-            if k and not any(ek.key == k for ek in or_keys):
-                or_keys.append(APIKey(key=k, provider="openrouter"))
 
-        if or_keys:
-            self.providers["openrouter"] = Provider(
-                name="openrouter",
-                base_url=self.PROVIDERS["openrouter"]["base_url"],
-                keys=or_keys,
-                models=self.PROVIDERS["openrouter"]["models"],
-            )
+        # Generic loader helper
+        def load_keys(prefix, prov_name):
+            keys = []
+            for i in range(1, 10):
+                k = os.environ.get(f"{prefix}_{i}", "")
+                if k:
+                    keys.append(APIKey(key=k, provider=prov_name))
+            base = os.environ.get(prefix, "")
+            if base and not any(k.key == base for k in keys):
+                keys.append(APIKey(key=base, provider=prov_name))
+            if keys and prov_name in self.PROVIDERS:
+                self.providers[prov_name] = Provider(
+                    name=prov_name,
+                    base_url=self.PROVIDERS[prov_name]["base_url"],
+                    keys=keys,
+                    models=self.PROVIDERS[prov_name]["models"],
+                )
 
-        # Gemini keys
-        gem_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"GEMINI_API_KEY_{i}", "")
-            if k:
-                gem_keys.append(APIKey(key=k, provider="gemini"))
-        gk = os.environ.get("GEMINI_API_KEY", "")
-        if gk and not any(k.key == gk for k in gem_keys):
-            gem_keys.append(APIKey(key=gk, provider="gemini"))
+        for p, env_name in [
+            ("openrouter", "OPENROUTER_API_KEY"),
+            ("gemini", "GEMINI_API_KEY"),
+            ("openai", "OPENAI_API_KEY"),
+            ("huggingface", "HUGGINGFACE_API_KEY"),
+            ("airforce", "AIRFORCE_API_KEY"),
+            ("aimlapi", "AIMLAPI_API_KEY"),
+            ("ibm", "IBM_API_KEY"),
+            ("groq", "GROQ_API_KEY"),
+            ("deepseek", "DEEPSEEK_API_KEY"),
+            ("zai", "ZAI_API_KEY"),
+            ("cerebras", "CEREBRAS_API_KEY"),
+            ("mistral", "MISTRAL_API_KEY"),
+            ("cohere", "COHERE_API_KEY"),
+            ("together", "TOGETHER_API_KEY"),
+        ]:
+            load_keys(env_name, p)
 
-        if gem_keys:
-            self.providers["gemini"] = Provider(
-                name="gemini",
-                base_url=self.PROVIDERS["gemini"]["base_url"],
-                keys=gem_keys,
-                models=self.PROVIDERS["gemini"]["models"],
-            )
-
-        # OpenAI keys
-        oai_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"OPENAI_API_KEY_{i}", "")
-            if k:
-                oai_keys.append(APIKey(key=k, provider="openai"))
-        ok = os.environ.get("OPENAI_API_KEY", "")
-        if ok and not any(k.key == ok for k in oai_keys):
-            oai_keys.append(APIKey(key=ok, provider="openai"))
-
-        if oai_keys:
-            self.providers["openai"] = Provider(
-                name="openai",
-                base_url=self.PROVIDERS["openai"]["base_url"],
-                keys=oai_keys,
-                models=self.PROVIDERS["openai"]["models"],
-            )
-
-        # HuggingFace keys
-        hf_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"HUGGINGFACE_API_KEY_{i}", "")
-            if k:
-                hf_keys.append(APIKey(key=k, provider="huggingface"))
-        hf0 = os.environ.get("HUGGINGFACE_API_KEY", "")
-        if hf0 and not any(k.key == hf0 for k in hf_keys):
-            hf_keys.append(APIKey(key=hf0, provider="huggingface"))
-
-        if hf_keys:
-            self.providers["huggingface"] = Provider(
-                name="huggingface",
-                base_url=self.PROVIDERS["huggingface"]["base_url"],
-                keys=hf_keys,
-                models=self.PROVIDERS["huggingface"]["models"],
-            )
-
-        # Airforce keys (OpenAI-compatible, free tier)
-        air_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"AIRFORCE_API_KEY_{i}", "")
-            if k:
-                air_keys.append(APIKey(key=k, provider="airforce"))
-        air0 = os.environ.get("AIRFORCE_API_KEY", "")
-        if air0 and not any(k.key == air0 for k in air_keys):
-            air_keys.append(APIKey(key=air0, provider="airforce"))
-        if air_keys:
-            self.providers["airforce"] = Provider(
-                name="airforce",
-                base_url=self.PROVIDERS["airforce"]["base_url"],
-                keys=air_keys,
-                models=self.PROVIDERS["airforce"]["models"],
-            )
-
-        # AIMLAPI keys
-        aim_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"AIMLAPI_API_KEY_{i}", "")
-            if k:
-                aim_keys.append(APIKey(key=k, provider="aimlapi"))
-        aim0 = os.environ.get("AIMLAPI_API_KEY", "")
-        if aim0 and not any(k.key == aim0 for k in aim_keys):
-            aim_keys.append(APIKey(key=aim0, provider="aimlapi"))
-        if aim_keys:
-            self.providers["aimlapi"] = Provider(
-                name="aimlapi",
-                base_url=self.PROVIDERS["aimlapi"]["base_url"],
-                keys=aim_keys,
-                models=self.PROVIDERS["aimlapi"]["models"],
-            )
-
-        # IBM watsonx keys
-        ibm_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"IBM_API_KEY_{i}", "")
-            if k:
-                ibm_keys.append(APIKey(key=k, provider="ibm"))
-        ibm0 = os.environ.get("IBM_API_KEY", "")
-        if ibm0 and not any(k.key == ibm0 for k in ibm_keys):
-            ibm_keys.append(APIKey(key=ibm0, provider="ibm"))
-        if ibm_keys:
-            self.providers["ibm"] = Provider(
-                name="ibm",
-                base_url=self.PROVIDERS["ibm"]["base_url"],
-                keys=ibm_keys,
-                models=self.PROVIDERS["ibm"]["models"],
-            )
-
-        groq_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"GROQ_API_KEY_{i}", "")
-            if k:
-                groq_keys.append(APIKey(key=k, provider="groq"))
-        gqk = os.environ.get("GROQ_API_KEY", "")
-        if gqk and not any(k.key == gqk for k in groq_keys):
-            groq_keys.append(APIKey(key=gqk, provider="groq"))
-
-        if groq_keys:
-            self.providers["groq"] = Provider(
-                name="groq",
-                base_url=self.PROVIDERS["groq"]["base_url"],
-                keys=groq_keys,
-                models=self.PROVIDERS["groq"]["models"],
-            )
-
-        # DeepSeek keys
-        ds_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"DEEPSEEK_API_KEY_{i}", "")
-            if k:
-                ds_keys.append(APIKey(key=k, provider="deepseek"))
-        dk = os.environ.get("DEEPSEEK_API_KEY", "")
-        if dk and not any(k.key == dk for k in ds_keys):
-            ds_keys.append(APIKey(key=dk, provider="deepseek"))
-
-        if ds_keys:
-            self.providers["deepseek"] = Provider(
-                name="deepseek",
-                base_url=self.PROVIDERS["deepseek"]["base_url"],
-                keys=ds_keys,
-                models=self.PROVIDERS["deepseek"]["models"],
-            )
-
-        # Z.ai keys
-        zai_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"ZAI_API_KEY_{i}", "")
-            if k:
-                zai_keys.append(APIKey(key=k, provider="zai"))
-        # Also check ZAI_API_KEY (single)
-        zk = os.environ.get("ZAI_API_KEY", "")
-        if zk and not any(k.key == zk for k in zai_keys):
-            zai_keys.append(APIKey(key=zk, provider="zai"))
-
-        if zai_keys:
-            self.providers["zai"] = Provider(
-                name="zai",
-                base_url=self.PROVIDERS["zai"]["base_url"],
-                keys=zai_keys,
-                models=self.PROVIDERS["zai"]["models"],
-            )
-
-        # Cerebras keys
-        cerebras_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"CEREBRAS_API_KEY_{i}", "")
-            if k:
-                cerebras_keys.append(APIKey(key=k, provider="cerebras"))
-        ck = os.environ.get("CEREBRAS_API_KEY", "")
-        if ck and not any(k.key == ck for k in cerebras_keys):
-            cerebras_keys.append(APIKey(key=ck, provider="cerebras"))
-
-        if cerebras_keys:
-            self.providers["cerebras"] = Provider(
-                name="cerebras",
-                base_url=self.PROVIDERS["cerebras"]["base_url"],
-                keys=cerebras_keys,
-                models=self.PROVIDERS["cerebras"]["models"],
-            )
-
-        # Mistral keys
-        mistral_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"MISTRAL_API_KEY_{i}", "")
-            if k:
-                mistral_keys.append(APIKey(key=k, provider="mistral"))
-        mk = os.environ.get("MISTRAL_API_KEY", "")
-        if mk and not any(k.key == mk for k in mistral_keys):
-            mistral_keys.append(APIKey(key=mk, provider="mistral"))
-        if mistral_keys:
-            self.providers["mistral"] = Provider(
-                name="mistral",
-                base_url=self.PROVIDERS["mistral"]["base_url"],
-                keys=mistral_keys,
-                models=self.PROVIDERS["mistral"]["models"],
-            )
-
-        # Cohere keys
-        cohere_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"COHERE_API_KEY_{i}", "")
-            if k:
-                cohere_keys.append(APIKey(key=k, provider="cohere"))
-        ck = os.environ.get("COHERE_API_KEY", "")
-        if ck and not any(k.key == ck for k in cohere_keys):
-            cohere_keys.append(APIKey(key=ck, provider="cohere"))
-        if cohere_keys:
-            self.providers["cohere"] = Provider(
-                name="cohere",
-                base_url=self.PROVIDERS["cohere"]["base_url"],
-                keys=cohere_keys,
-                models=self.PROVIDERS["cohere"]["models"],
-            )
-
-        # Together keys
-        together_keys = []
-        for i in range(1, 10):
-            k = os.environ.get(f"TOGETHER_API_KEY_{i}", "")
-            if k:
-                together_keys.append(APIKey(key=k, provider="together"))
-        tk = os.environ.get("TOGETHER_API_KEY", "")
-        if tk and not any(k.key == tk for k in together_keys):
-            together_keys.append(APIKey(key=tk, provider="together"))
-        if together_keys:
-            self.providers["together"] = Provider(
-                name="together",
-                base_url=self.PROVIDERS["together"]["base_url"],
-                keys=together_keys,
-                models=self.PROVIDERS["together"]["models"],
-            )
-
-        # Local (Ollama) - enabled only if LOCAL_LLM=1 and Ollama is reachable
+        # Local Ollama
         if os.environ.get("LOCAL_LLM", "") == "1":
-            import urllib.request as _ur
             try:
+                import urllib.request as _ur
                 with _ur.urlopen("http://localhost:11434/api/tags", timeout=2) as _r:
                     _installed = {m["name"] for m in json.loads(_r.read().decode("utf-8", "ignore")).get("models", [])}
             except Exception:
                 _installed = set()
-            local_keys = [APIKey(key="local", provider="local")]
+            # Filter: only keep models that are actually installed if we have info
+            if _installed:
+                available_models = [m for m in self.PROVIDERS["local"]["models"] if m in _installed or any(m in ins for ins in _installed)]
+                if not available_models:
+                    available_models = list(_installed)[:5]
+            else:
+                available_models = self.PROVIDERS["local"]["models"]
+                _installed = set(self.PROVIDERS["local"]["models"])
+
             self.providers["local"] = Provider(
                 name="local",
                 base_url=self.PROVIDERS["local"]["base_url"],
-                keys=local_keys,
-                models=self.PROVIDERS["local"]["models"],
+                keys=[APIKey(key="local", provider="local")],
+                models=available_models,
                 installed=_installed,
             )
 
     def add_key(self, provider: str, key: str):
-        """Dynamically add an API key."""
         if provider not in self.providers:
             if provider in self.PROVIDERS:
                 self.providers[provider] = Provider(
@@ -687,75 +425,70 @@ class LLMBalancer:
             else:
                 print(f"  [Balancer] Unknown provider: {provider}")
                 return
-        api_key = APIKey(key=key, provider=provider)
-        self.providers[provider].keys.append(api_key)
+        self.providers[provider].keys.append(APIKey(key=key, provider=provider))
 
     def chat(self, messages: list[dict], model: str = "", system: str = "",
              max_tokens: int = 2000, temperature: float = 0.3,
              task_type: str = "general") -> str:
-        """Send chat request with automatic balancing and failover."""
         self._total_requests += 1
 
         if not model:
-            model = os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick")
+            model = os.environ.get("LLM_MODEL", "llama-3.1-8b-instant")
 
-        # Token-economy cache: identical (system, messages) => reuse previous answer.
         if os.environ.get("LLM_CACHE", "1") == "1":
             _key = str((system or "", [tuple(sorted(m.items())) for m in messages if isinstance(m, dict) and "role" in m and "content" in m]))
             if _key in self._cache:
                 return self._cache[_key]
 
-        # Build model try list (primary + fallbacks)
-        models_to_try = [model]
-        fallbacks = self.MODEL_FALLBACKS.get(model, [])
-        models_to_try.extend(fallbacks)
+        models_to_try = [model] + self.MODEL_FALLBACKS.get(model, [])
+        # Deduplicate
+        seen = set()
+        uniq_models = []
+        for m in models_to_try:
+            if m not in seen:
+                uniq_models.append(m)
+                seen.add(m)
+        models_to_try = uniq_models
 
         all_messages = []
         if system:
             all_messages.append({"role": "system", "content": system})
         all_messages.extend(messages)
 
-        last_error = ""
-
         for try_model in models_to_try:
-            # Try ALL available keys across COMPATIBLE providers
-            keys_tried = 0
             max_keys_to_try = sum(len(p.keys) for p in self.providers.values())
+            keys_tried = 0
 
             while keys_tried < max_keys_to_try:
-                # Get next available key from a provider that supports this model
-                best_provider = None
-                best_key = None
-                # Build an ordered provider list. When LOCAL_LLM is on and the model
-                # is installed locally, try 'local' FIRST (before cloud/OpenRouter).
-                _local_first = (
-                    os.environ.get("LOCAL_LLM", "") == "1"
-                    and "local" in self.providers
-                )
-                # Smart ordering: task priority (fast/cheap first), then known providers
+                # Smart provider ordering, NO local_first override
                 _prio = self.task_priority.get(task_type, self.task_priority["general"])
                 _providers = []
                 for _n in _prio:
                     if _n in self.providers:
                         _providers.append((_n, self.providers[_n]))
-                # Append any providers not in priority list
                 for _n, _pr in self.providers.items():
                     if _n not in _prio:
                         _providers.append((_n, _pr))
-                if _local_first:
-                    _providers = [("local", self.providers["local"])] + [
-                        (n, pr) for n, pr in _providers if n != "local"
-                    ]
+
+                best_provider = None
+                best_key = None
 
                 for prov_name, provider in _providers:
-                    # Check if this provider supports the model
-                    model_supported = (
-                        try_model in provider.models or
-                        prov_name == "openrouter"  # OpenRouter supports everything
-                        or (prov_name == "local" and
-                            (try_model in getattr(provider, "installed", set()) or
-                             any(try_model in i for i in getattr(provider, "installed", set()))))
-                    )
+                    # Check model support
+                    if prov_name == "openrouter":
+                        model_supported = True
+                    elif prov_name == "local":
+                        inst = getattr(provider, "installed", set())
+                        model_supported = try_model in inst or try_model in provider.models
+                    else:
+                        model_supported = try_model in provider.models
+                        # For groq etc, also allow openrouter-style fallback models if provider is generic
+                        if not model_supported and prov_name in ("groq", "deepseek", "zai", "mistral"):
+                            # Allow any model if provider is known to be flexible (they will 404 if not)
+                            # But we prefer to only try if model is in list or is common
+                            if try_model in ("gpt-4o-mini", "gpt-4o", "llama-3.1-8b-instant", "llama-3.3-70b-versatile"):
+                                model_supported = True
+
                     if not model_supported:
                         continue
                     k = provider.get_next_key()
@@ -771,31 +504,36 @@ class LLMBalancer:
                 prov_name = best_provider.name
 
                 try:
-                    payload = json.dumps({
+                    import requests as _req_lib
+                    payload = {
                         "model": try_model,
                         "messages": all_messages,
                         "max_tokens": max_tokens,
                         "temperature": temperature,
-                    }).encode()
+                    }
 
-                    req = urllib.request.Request(
-                        best_provider.base_url,
-                        data=payload,
-                        headers={
-                            "Content-Type": "application/json",
-                            "Authorization": f"Bearer {best_key.key}",
-                            "HTTP-Referer": "https://github.com/JoTalbot/AIOS",
-                            "X-Title": "AIOS Coder Orchestrator",
-                        },
-                    )
+                    # Cohere v2 chat uses different format
+                    if prov_name == "cohere":
+                        # Convert to Cohere format: last user message as message, others as chat_history
+                        last_msg = all_messages[-1]["content"] if all_messages else ""
+                        history = [{"role": m["role"], "message": m["content"]} for m in all_messages[:-1]]
+                        payload = {
+                            "model": try_model,
+                            "message": last_msg,
+                            "chat_history": history,
+                        }
 
-                    import requests as _req_lib
-                    _resp = _req_lib.post(best_provider.base_url, json=json.loads(payload),
-                                          headers=req.headers, timeout=300)
+                    headers = {
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {best_key.key}",
+                        "HTTP-Referer": "https://github.com/JoTalbot/AIOS",
+                        "X-Title": "AIOS Coder Orchestrator v2",
+                    }
+
+                    _resp = _req_lib.post(best_provider.base_url, json=payload, headers=headers, timeout=120)
                     _resp.raise_for_status()
                     data = _resp.json()
 
-                    # Check for application-level errors (Z.ai style)
                     if isinstance(data, dict):
                         if data.get("success") is False or (data.get("code") and data["code"] not in (0, 200, None)):
                             err_msg = data.get("msg") or data.get("message") or str(data.get("code"))
@@ -803,59 +541,67 @@ class LLMBalancer:
                             best_provider.mark_key_error(best_key, f"app-error: {err_msg}", cooldown=300)
                             continue
                         if "error" in data:
-                            err_msg = data["error"].get("message", str(data["error"]))[:60]
+                            err_msg = data["error"].get("message", str(data["error"]))[:80]
                             print(f"  [Balancer] {prov_name} error: {err_msg}")
                             best_provider.mark_key_error(best_key, f"error: {err_msg}", cooldown=300)
                             continue
 
-                    # Success!
                     self._provider_stats[prov_name] = self._provider_stats.get(prov_name, 0) + 1
                     print(f"  [Balancer] OK: {prov_name}/{try_model}")
 
+                    # Parse response
+                    content = ""
                     if "choices" in data and data["choices"]:
-                        _c = data["choices"][0]["message"]["content"]
-                        _out = _c if isinstance(_c, str) else ""
-                        if _out and os.environ.get("LLM_CACHE", "1") == "1":
-                            _key = str((system or "", [tuple(sorted(m.items())) for m in messages if isinstance(m, dict) and "role" in m and "content" in m]))
-                            if len(self._cache) < self._cache_max:
-                                self._cache[_key] = _out
-                        return _out
+                        _c = data["choices"][0].get("message", {}).get("content", "")
+                        content = _c if isinstance(_c, str) else ""
                     elif "data" in data and isinstance(data["data"], dict) and "choices" in data["data"]:
-                        return data["data"]["choices"][0]["message"]["content"]
-                    elif "message" in data and isinstance(data.get("message"), dict):
-                        _mc = data["message"].get("content")
-                        if isinstance(_mc, list):
-                            return "".join(x.get("text", "") for x in _mc if isinstance(x, dict))
-                        return str(_mc or "")
+                        content = data["data"]["choices"][0]["message"]["content"]
+                    elif "message" in data:
+                        _mc = data["message"]
+                        if isinstance(_mc, dict):
+                            c = _mc.get("content")
+                            if isinstance(c, list):
+                                content = "".join(x.get("text", "") for x in c if isinstance(x, dict))
+                            else:
+                                content = str(c or "")
+                        else:
+                            content = str(_mc)
+                    elif "text" in data:  # Cohere
+                        content = data.get("text", "")
                     elif "result" in data:
-                        return str(data["result"])
+                        content = str(data["result"])
+
+                    if content:
+                        if os.environ.get("LLM_CACHE", "1") == "1":
+                            _cache_key = str((system or "", [tuple(sorted(m.items())) for m in messages if isinstance(m, dict) and "role" in m and "content" in m]))
+                            if len(self._cache) < self._cache_max:
+                                self._cache[_cache_key] = content
+                        return content
                     else:
-                        # Unknown format — skip this key
-                        print(f"  [Balancer] {prov_name}: unknown response format")
-                        best_provider.mark_key_error(best_key, "unknown format", cooldown=60)
+                        print(f"  [Balancer] {prov_name}: empty response")
+                        best_provider.mark_key_error(best_key, "empty response", cooldown=60)
                         continue
 
                 except Exception as e:
-                    # Handle HTTP-status errors from requests/httpx (status_code attr)
                     _code = getattr(getattr(e, "response", None), "status_code", None) or getattr(e, "code", None)
                     if _code:
                         code = int(_code)
-                        last_error = f"{prov_name}/{try_model}: HTTP {code}"
-                        print(f"  [Balancer] {last_error}")
-                        if code in (402, 429):
-                            cd = 300 if code == 402 else 60
-                            best_provider.mark_key_error(best_key, f"HTTP {code}", cooldown=cd)
+                        print(f"  [Balancer] {prov_name}/{try_model}: HTTP {code}")
+                        if code == 402:
+                            best_provider.mark_key_error(best_key, f"HTTP {code} Payment Required", cooldown=86400)
+                            continue
+                        elif code == 429:
+                            best_provider.mark_key_error(best_key, f"HTTP {code} Rate Limited", cooldown=60)
                             continue
                         elif code == 404:
-                            break  # model not on this provider, try next model
+                            break
                         elif code == 401:
                             best_provider.mark_key_error(best_key, "Auth failed", cooldown=600)
                             continue
                         elif code == 403:
-                            body = str(getattr(getattr(e, "response", None), "text", "") or "")
-                            label = "HTTP 403" + (f" / {body.split(':',1)[0][:80]}" if body else "")
-                            cooldown = 900 if "1010" in body else 600
-                            best_provider.mark_key_error(best_key, label, cooldown=cooldown)
+                            body = str(getattr(getattr(e, "response", None), "text", "") or "")[:100]
+                            cd = 900 if "1010" in body else 600
+                            best_provider.mark_key_error(best_key, f"HTTP {code} {body[:40]}", cooldown=cd)
                             continue
                         elif code >= 500:
                             best_provider.mark_key_error(best_key, f"HTTP {code}", cooldown=60)
@@ -863,17 +609,14 @@ class LLMBalancer:
                         else:
                             best_provider.mark_key_error(best_key, f"HTTP {code}", cooldown=300)
                             continue
-                    last_error = f"{prov_name}/{try_model}: {str(e)[:60]}"
-                    print(f"  [Balancer] {last_error}")
-                    best_provider.mark_key_error(best_key, str(e)[:50], cooldown=60)
+                    print(f"  [Balancer] {prov_name}/{try_model}: {str(e)[:80]}")
+                    best_provider.mark_key_error(best_key, str(e)[:60], cooldown=60)
                     continue
-
 
         self._total_errors += 1
         return "⚠️ Все LLM-провайдеры временно недоступны. Проверьте квоты и API-ключи."
 
     def status(self) -> dict:
-        """Return balancer status."""
         result = {
             "total_requests": self._total_requests,
             "total_errors": self._total_errors,
@@ -884,12 +627,6 @@ class LLMBalancer:
                 "keys_total": len(prov.keys),
                 "keys_available": sum(1 for k in prov.keys if k.is_available),
                 "requests": self._provider_stats.get(name, 0),
-                "models": prov.models,
+                "models": prov.models[:5],
             }
-            for k in prov.keys:
-                result["providers"][name][f"key_{k.key[:8]}"] = {
-                    "available": k.is_available,
-                    "errors": k.error_count,
-                    "last_error": k.last_error,
-                }
         return result
