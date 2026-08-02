@@ -74,19 +74,29 @@ log "compile validation OK"
 # (the coder has previously broken MCPGateway and taken the API down).
 if command -v /opt/aios/.venv/bin/python3.11 >/dev/null 2>&1; then
     # Import the API app modules to surface import-time/startup errors.
-    if (cd "$STAGING_DIR" && timeout 60 /opt/aios/.venv/bin/python3.11 -c "
+    if (cd "$STAGING_DIR" && timeout 90 /opt/aios/.venv/bin/python3.11 -c "
 import sys; sys.path.insert(0, '.')
 try:
     from aios_core.api.app import create_app
-    print('API import OK')
+    # Build the app to force full startup (registries, MCP gateway, etc.).
+    app = create_app(db_path='/tmp/aios_healthcheck.db')
+    # Exercise the health route to be sure it responds.
+    import starlette.testclient as tc
+    client = tc.TestClient(app)
+    r = client.get('/health')
+    if r.status_code != 200:
+        print('HEALTH FAIL status=%s' % r.status_code); raise SystemExit(1)
+    print('API health OK')
+except SystemExit:
+    raise
 except Exception as e:
     import traceback; traceback.print_exc()
     raise SystemExit(1)
 " >/tmp/aios_api_import.log 2>&1); then
-        log "api import gate: OK"
+        log "api health gate: OK"
     else
-        log "BLOCKED: API import/startup fails in staging; NOT promoting"
-        tail -5 /tmp/aios_api_import.log | sed 's/^/  /' >> "$LOG"
+        log "BLOCKED: API startup/health fails in staging; NOT promoting"
+        tail -8 /tmp/aios_api_import.log | sed 's/^/  /' >> "$LOG"
         exit 1
     fi
 fi
