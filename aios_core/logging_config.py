@@ -17,9 +17,11 @@ Features:
 import json
 import logging
 import sys
+import time
 from contextvars import ContextVar
 from logging.handlers import RotatingFileHandler
 from typing import Any
+from urllib.parse import urlparse, parse_qs
 
 from .tracing import tracer
 
@@ -30,6 +32,7 @@ __all__ = [
     "logger",
     "set_log_context",
     "setup_logging",
+    "safe_get_request",
 ]
 
 # Context variables for dynamic injection
@@ -284,6 +287,19 @@ def setup_logging(
         module_logger.setLevel(getattr(logging, module_level.upper(), logging.INFO))
 
     return logger
+
+
+def safe_get_request(url: str) -> dict:
+    """Safely process a GET request and return the response as a dictionary."""
+    try:
+        parsed_url = urlparse(url)
+        query_params = parse_qs(parsed_url.query)
+        # Sanitize query parameters to prevent potential security vulnerabilities
+        sanitized_query_params = {k: v[0] for k, v in query_params.items() if k not in _SENSITIVE_FIELDS}
+        return {"url": url, "query_params": sanitized_query_params}
+    except ValueError as e:
+        logging.error(f"Error processing GET request: {e}")
+        return {"error": str(e)}
 
 
 logger = setup_logging()
