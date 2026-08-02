@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 class SecurityMonitor:
     """
     Core security monitoring class for handling API requests with security best practices.
+    Features enhanced threat detection and response capabilities.
     """
 
     def __init__(self):
@@ -24,6 +25,10 @@ class SecurityMonitor:
         self._sensitive_fields = {
             'token', 'api_key', 'password', 'secret', 'credential',
             'access_token', 'refresh_token', 'bearer'
+        }
+        self._threat_types = {
+            'xss', 'injection', 'csrf', 'ssrf', 'id-theft',
+            'memory-leak', 'dos', 'brute-force', 'replay'
         }
 
     def safe_api_request(
@@ -54,12 +59,28 @@ class SecurityMonitor:
         Raises:
             SecurityException: On validation failures or security violations
         """
-        # Initialize request metadata
+        # Validate input parameters
+        if not isinstance(url, str) or not url.strip():
+            raise SecurityException("URL must be a non-empty string")
+
+        if method.upper() not in ("GET", "POST", "PUT", "DELETE"):
+            raise SecurityException(f"Unsupported HTTP method: {method}")
+
+        if params is not None and not isinstance(params, dict):
+            raise SecurityException("Params must be a dictionary or None")
+
+        if headers is not None and not isinstance(headers, dict):
+            raise SecurityException("Headers must be a dictionary or None")
+
+        if data is not None and not isinstance(data, dict):
+            raise SecurityException("Data must be a dictionary or None")
+        # Initialize request metadata with enhanced security tracking
         request_meta = {
             'original_url': url,
             'method': method.upper(),
             'has_token': bool(token),
-            'timestamp': self.security.get_current_timestamp()
+            'timestamp': self.security.get_current_timestamp(),
+            'security_level': 'enhanced'
         }
 
         try:
@@ -231,26 +252,39 @@ class SecurityMonitor:
             raise SecurityException(f"Request failed: {str(e)}")
 
     def _process_response(self, response: requests.Response) -> Dict[str, Any]:
-        """Process API response with status validation."""
+        """Process API response with status validation and threat detection."""
         try:
+            # Validate response status
             response.raise_for_status()
 
             # Try to parse JSON response
             try:
-                return response.json()
-            except ValueError:
+                json_data = response.json()
+                logger.info(f"✅ Successfully processed response with status {response.status_code}")
+
+                # Check for potential threats in response
+                if isinstance(json_data, dict):
+                    self._check_response_threats(json_data)
+
+                return json_data
+            except ValueError as e:
+                logger.warning(f"⚠️ Non-JSON response received: {str(e)}")
                 return {
                     'status': 'success',
                     'content': response.text,
                     'status_code': response.status_code
                 }
         except requests.HTTPError as e:
+            logger.error(f"❌ HTTP error occurred: {str(e)}")
             return {
                 'error': 'http_error',
                 'status_code': response.status_code,
                 'message': str(e),
                 'response': response.text
             }
+        except Exception as e:
+            logger.error(f"❌ Unexpected error processing response: {str(e)}")
+            raise SecurityException(f"Response processing failed: {str(e)}")
 
     def _log_request(
         self,
@@ -259,7 +293,7 @@ class SecurityMonitor:
         params: Optional[Dict[str, Any]],
         headers: Dict[str, str]
     ) -> None:
-        """Log request details with masked sensitive information."""
+        """Log request details with masked sensitive information and security markers."""
         log_data = meta.copy()
 
         # Mask sensitive headers
@@ -270,10 +304,38 @@ class SecurityMonitor:
         log_data.update({
             'url': url,
             'params': self._mask_params(params) if params else None,
-            'headers': masked_headers
+            'headers': masked_headers,
+            'security_status': 'validated'
         })
 
         logger.info(f"🔒 API Request: {log_data}")
+
+    def _check_response_threats(self, response_data: Dict[str, Any]) -> None:
+        """Check response data for potential security threats."""
+        if not isinstance(response_data, dict):
+            return
+
+        threats = response_data.get('threats', [])
+        if not isinstance(threats, list):
+            logger.warning(f"⚠️ Invalid threats format in response: {type(threats)}")
+            return
+
+        # Filter threats by allowed types and priority
+        filtered_threats = [
+            t for t in threats
+            if isinstance(t, dict) and
+            t.get('type') in self._threat_types and
+            t.get('priority', 0) > 0
+        ]
+
+        if filtered_threats:
+            logger.warning(f"⚠️ Detected {len(filtered_threats)} potential threats in response")
+            for threat in filtered_threats:
+                logger.warning(f"  - Threat type: {threat.get('type')}, priority: {threat.get('priority')}")
+
+        # Check for memory-related issues
+        if response_data.get('memory_usage') and response_data['memory_usage'] > 1000000:  # 1MB threshold
+            logger.warning(f"⚠️ High memory usage detected: {response_data['memory_usage']} bytes")
 
     def _mask_params(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Mask sensitive parameters in logs."""
