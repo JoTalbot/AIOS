@@ -1,4 +1,4 @@
-"""Webhook Router — endpoints для получения входящих сообщений от платформ."""
+"""Webhook Router — endpoints for receiving incoming messages from platforms."""
 
 from __future__ import annotations
 
