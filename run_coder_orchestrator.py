@@ -168,7 +168,7 @@ def get_project_context() -> dict:
         "branch": git_cmd("branch", "--show-current") or "main",
     }
     # Keep protected auto-coder internals out of the LLM-visible git history.
-    _protected_log = ("run_coder_orchestrator", "run_auto_coder", "run_telegram_bot", "llm_balancer", "meta_cognitive_self_coder")
+    _protected_log = ("run_coder_orchestrator", "run_auto_coder", "run_telegram_bot", "api_v2_batch", "llm_balancer", "meta_cognitive_self_coder")
     _log_lines = [ln for ln in ctx["git_log"].splitlines() if not any(p in ln for p in _protected_log)]
     ctx["git_log"] = "\n".join(_log_lines[-10:]) or "no commits"
 
@@ -227,6 +227,8 @@ def get_project_context() -> dict:
         _protected = {"run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
                       "run_auto_coder.py", "tools/run_auto_coder.py",
                       "run_telegram_bot.py", "tools/run_telegram_bot.py",
+                      "aios_core/api_v2_batch.py", "octopus_core/api_v2_batch.py",
+                      "tools/api_v2_batch.py",
                       "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"}
         for line in result.stdout.strip().split("\n")[:15]:
             if line.strip():
