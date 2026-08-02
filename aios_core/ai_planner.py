@@ -6,7 +6,7 @@ Provides LLM-driven task graph decomposition and autonomous self-correcting plan
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, Dict, List
 
 from .llm_router import LLMMessage, LLMProvider, LLMRequest, LLMRouter
 
@@ -15,24 +15,54 @@ class AITaskPlanner:
     """LLM-driven goal decomposition and self-correcting task planner."""
 
     def __init__(self, router: LLMRouter | None = None) -> None:
-        self.router = router or LLMRouter()
-        self.plan_history: list[dict[str, Any]] = []
+        """
+        Initializes the AITaskPlanner with an optional LLMRouter.
 
-    def decompose_goal(
-        self,
-        goal: str,
-        context: dict[str, Any] | None = None,
-        provider: LLMProvider = LLMProvider.MOCK,
-    ) -> dict[str, Any]:
-        """Decompose a high-level goal into a structured TaskGraph with dependencies."""
-        prompt = f"Decompose goal into steps: {goal}. Context: {context or {}}"
+        Args:
+            router: The LLMRouter to use for LLM interactions. If None, a default LLMRouter is created.
+        """
+        self.router = router or LLMRouter()
+        self.plan_history: List[Dict[str, Any]] = []
+
+    def _generate_llm_response(self, prompt: str, provider: LLMProvider) -> LLMRequest:
+        """
+        Helper function to generate an LLM response.
+
+        Args:
+            prompt: The prompt to send to the LLM.
+            provider: The LLM provider to use.
+
+        Returns:
+            The LLM response.
+        """
         req = LLMRequest(
             messages=[LLMMessage(role="user", content=prompt)],
             provider=provider,
         )
-        resp = self.router.generate(req)
+        return self.router.generate(req)
 
-        # Generate structured task graph steps
+    def decompose_goal(
+        self,
+        goal: str,
+        context: Dict[str, Any] | None = None,
+        provider: LLMProvider = LLMProvider.MOCK,
+    ) -> Dict[str, Any]:
+        """
+        Decompose a high-level goal into a structured TaskGraph with dependencies.
+
+        Args:
+            goal: The high-level goal to decompose.
+            context: Optional context to provide to the LLM.
+            provider: The LLM provider to use.
+
+        Returns:
+            A dictionary representing the task graph.
+        """
+        prompt = f"Decompose goal into steps: {goal}. Context: {context or {{}}}"
+        resp = self._generate_llm_response(prompt, provider)
+
+        # Define the task graph steps.  This is currently hardcoded, but could be
+        # dynamically generated from the LLM response in the future.
         steps = [
             {"step_id": "step_1", "description": f"Analyze requirements for: {goal}", "depends_on": []},
             {
@@ -58,16 +88,23 @@ class AITaskPlanner:
         self,
         failed_step_id: str,
         error_context: str,
-        current_plan: dict[str, Any],
+        current_plan: Dict[str, Any],
         provider: LLMProvider = LLMProvider.MOCK,
-    ) -> dict[str, Any]:
-        """Generate corrective replacement steps upon execution failure."""
+    ) -> Dict[str, Any]:
+        """
+        Generate corrective replacement steps upon execution failure.
+
+        Args:
+            failed_step_id: The ID of the step that failed.
+            error_context: The error message or context of the failure.
+            current_plan: The current plan.
+            provider: The LLM provider to use.
+
+        Returns:
+            A dictionary representing the corrected plan.
+        """
         prompt = f"Step {failed_step_id} failed with error: {error_context}. Replan execution."
-        req = LLMRequest(
-            messages=[LLMMessage(role="user", content=prompt)],
-            provider=provider,
-        )
-        resp = self.router.generate(req)
+        resp = self._generate_llm_response(prompt, provider)
 
         corrected_steps = [
             {
