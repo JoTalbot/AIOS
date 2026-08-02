@@ -11,13 +11,22 @@ for env_path in (Path(REPO_PATH) / ".env", Path("/etc/aios/aios-auto-coder.env")
             k,_,v=line.partition("=")
             if k.strip() and k.strip() not in os.environ:
                 os.environ[k.strip()]=v.strip().strip('"').strip("'")
-from aios_core.autocoder_v3_1 import AutocoderV3_1
+
+try:
+    from aios_core.autocoder_v3_1 import AutocoderV3_1
+    print("Using v3.1")
+    V3Class = AutocoderV3_1
+except ImportError as e:
+    print(f"v3.1 import failed {e}, fallback to v3")
+    from aios_core.autocoder_v3 import AutocoderV3
+    V3Class = AutocoderV3
+
 from run_coder_orchestrator import load_backlog, get_project_context, phase_analyze, LLMClient
 import run_coder_orchestrator as orch
 
 def main():
     print("🧠 AIOS Coder Orchestrator v3.1 (RAGv2 embeddings + Memory + Auto-PR + Auto-Merge)")
-    v3 = AutocoderV3_1(REPO_PATH)
+    v3 = V3Class(REPO_PATH)
     v3.ensure_indexed()
     llm = LLMClient()
     ctx = orch.get_project_context()
@@ -34,8 +43,6 @@ def main():
         if validation["status"]=="passed" and result["status"]=="success":
             commit = orch.phase_commit({"status":"success","file":result["file"],"code_length":result["code_len"],"safe":True}, plan, validation)
             print(f"Commit: {commit}")
-            if result.get("pr"):
-                print(f"PR: {result['pr']}")
 
 if __name__ == "__main__":
     main()
