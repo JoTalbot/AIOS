@@ -192,9 +192,25 @@ Instruction: {instruction}
         return stripped[:4000]  # return first 4000 chars as code
     
     def apply_fix(self, file_path: str, new_code: str) -> bool:
-        """Apply fix to file"""
+        """Apply fix to file (v3.2: с защитой от самоповреждения).
+
+        Отказывает, если:
+        - файл в списке самозащиты (оркестратор, балансер, env, compose)
+        - новый код деградировал (заглушка, syntax error, eval/exec, схлопывание)
+        """
         try:
+            from .self_protection import is_protected, check_code_health
+            if is_protected(file_path):
+                print(f"  [V3] PROTECTED: {file_path} — в списке самозащиты, изменение отклонено")
+                return False
             full_path = self.repo_path / file_path
+            old_code = ""
+            if full_path.exists():
+                old_code = full_path.read_text(encoding="utf-8", errors="ignore")
+            healthy, reasons = check_code_health(str(full_path), new_code, old_code=old_code)
+            if not healthy:
+                print(f"  [V3] REJECTED by self-protection: {file_path}: {'; '.join(reasons)[:200]}")
+                return False
             full_path.parent.mkdir(parents=True, exist_ok=True)
             full_path.write_text(new_code, encoding="utf-8")
             return True

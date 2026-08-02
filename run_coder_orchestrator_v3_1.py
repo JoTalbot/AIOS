@@ -101,6 +101,15 @@ def run_once():
     if not plan.get("file"):
         print("No file to fix")
         return
+
+    # SELF-PROTECTION v3.2: не тратим цикл на файлы из списка самозащиты
+    try:
+        from aios_core.self_protection import is_protected
+        if is_protected(plan["file"]):
+            print(f"  [SELF-PROTECT] План выбрал защищённый файл {plan['file']} — цикл пропущен")
+            return
+    except Exception as _sp_err:
+        print(f"  [SELF-PROTECT] check failed: {_sp_err}")
     
     # Run task with RAG
     if HAS_V31:

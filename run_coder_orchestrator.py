@@ -846,6 +846,23 @@ def phase_validate(code_result: dict) -> dict:
             except SyntaxError as e:
                 return {"status": "failed", "reason": f"Syntax error: {e}"}
 
+            # Self-protection v3.2: защищённый файл не должен деградировать относительно HEAD.
+            # При деградации: восстанавливаем рабочую копию из HEAD и блокируем коммит.
+            try:
+                from aios_core.self_protection import is_protected, check_code_health
+                _rel = code_result["file"]
+                if is_protected(_rel):
+                    _new_src = open(full_path, encoding="utf-8").read()
+                    _old_src = git_cmd("show", f"HEAD:{_rel}") or ""
+                    _healthy, _reasons = check_code_health(full_path, _new_src, old_code=_old_src)
+                    if not _healthy:
+                        git_cmd("checkout", "--", _rel)
+                        print(f"    [SELF-PROTECT] {_rel}: деградация ({'; '.join(_reasons)[:120]}), "
+                              f"рабочая копия восстановлена из HEAD, коммит заблокирован")
+                        return {"status": "failed", "reason": "self-protection: " + "; ".join(_reasons)[:150]}
+            except Exception as _sp_err:
+                print(f"    [SELF-PROTECT] check skipped: {_sp_err}")
+
             # Lint gate (non-blocking): run ruff on the changed file if available.
             _warnings = list(code_result.get("warnings") or [])
             try:
