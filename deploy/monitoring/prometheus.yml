@@ -26,3 +26,10 @@ scrape_configs:
           - "172.18.0.2:8000"
         labels:
           service: aios-rest
+
+  - job_name: aios-exporter
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["172.18.0.9:9101"]
+        labels:
+          service: aios-exporter
