@@ -74,36 +74,42 @@ def generate_secure_nonce() -> str:
     return secrets.token_urlsafe(32)
 
 @app.get("/g/{token}", response_class=HTMLResponse)
-def gemini_web_reader_hack(token: str, cmd: str, nonce: str = None):
-    """Secure endpoint for remote command execution with replay attack protection.
+def gemini_web_reader_hack(url: str, token: str) -> Optional[str]:
+    """
+    Secure endpoint for fetching content from Gemini Web Reader with proper authentication.
 
     Args:
+        url: URL to fetch content from
         token: Authentication token
-        cmd: Command to execute
-        nonce: Unique token to prevent replay attacks (auto-generated if not provided)
 
     Returns:
-        HTML response with execution results
+        Content from the response or None on failure
+
+    Raises:
+        ValueError: If URL or token are invalid
     """
-    if token != TOKEN:
-        return "<html><body><h1>Unauthorized</h1></body></html>"
+    if not url or not token:
+        raise ValueError("URL и токен не могут быть пустыми")
 
-    # Generate secure nonce if not provided
-    if nonce is None:
-        nonce = generate_secure_nonce()
+    session = requests.Session()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "User-Agent": "AIOS-Secure-Client/1.0",
+        "Content-Type": "application/json"
+    }
 
-    result = run_cmd(cmd)
-    return f"""<!DOCTYPE html>
-<html><head><title>Octopus Agent Execution</title>
-<meta name="description" content="STDOUT: {result.stdout[:200]}"></head>
-<body>
-<h1>Octopus Remote Execution Report</h1>
-<p><strong>Command:</strong> <code>{cmd}</code></p>
-<p><strong>Nonce:</strong> {nonce}</p>
-<p><strong>Return Code:</strong> {result.returncode}</p>
-<h2>STDOUT</h2><pre style="background:#eee;padding:10px;">{result.stdout}</pre>
-<h2>STDERR</h2><pre style="background:#fee;padding:10px;">{result.stderr}</pre>
-</body></html>"""
+    try:
+        response = session.post(
+            url,
+            headers=headers,
+            timeout=10,
+            verify=True  # SSL verification enabled
+        )
+        response.raise_for_status()
+        return response.text
+    except requests.RequestException as e:
+        logger.error(f"❌ Ошибка при запросе к Gemini Web Reader: {e}")
+        return None
 
 
 PLUGIN_MANIFEST = {
