@@ -1,32 +1,28 @@
+import re
 from typing import Dict, Any
-import requests
 from aios_core.code_refactorer import CodeRefactorer
 
 class AdvancedSecurity:
-    def __init__(self):
+    def __init__(self, code_refactorer: CodeRefactorer):
         """
         Initialize the AdvancedSecurity class.
-        """
-        self.code_refactorer = CodeRefactorer()
-
-    def secure_api_request(self, url: str, data: Dict[str, Any], token: str) -> Dict[str, Any]:
-        """
-        Send a secure API request using POST method and authorization token.
 
         Args:
-        url (str): The API endpoint URL.
-        data (Dict[str, Any]): The request data.
-        token (str): The authorization token.
+        code_refactorer (CodeRefactorer): The code refactorer instance.
+        """
+        self.code_refactorer = code_refactorer
+
+    def detect_hack_solutions(self, code: str) -> Dict[str, Any]:
+        """
+        Detect HACK solutions in the given code.
+
+        Args:
+        code (str): The code to analyze.
 
         Returns:
-        Dict[str, Any]: The API response.
+        Dict[str, Any]: A dictionary containing the detected HACK solutions.
         """
-        headers = {
-            'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json'
-        }
-        response = requests.post(url, headers=headers, json=data)
-        return response.json()
+        return self.code_refactorer.detect_hack_solutions(code)
 
     def refactor_api_v2_batch(self, code: str) -> str:
         """
@@ -53,35 +49,75 @@ class AdvancedSecurity:
                 refactored_lines.append(line)
         return '\n'.join(refactored_lines)
 
-    def detect_hack_solutions(self, code: str) -> Dict[str, Any]:
+    def audit_web_gui_security(self, code: str) -> Dict[str, Any]:
         """
-        Detect HACK solutions in the given code.
+        Audit the web GUI security for XSS/CSRF and other vulnerabilities.
 
         Args:
-        code (str): The code to analyze.
+        code (str): The code to audit.
 
         Returns:
-        Dict[str, Any]: A dictionary containing the detected HACK solutions.
+        Dict[str, Any]: A dictionary containing the audit results.
         """
-        return self.code_refactorer.detect_hack_solutions(code)
+        audit_results = {}
+        # Check for XSS vulnerabilities
+        xss_vulnerabilities = self._check_xss_vulnerabilities(code)
+        audit_results['xss_vulnerabilities'] = xss_vulnerabilities
 
-    def refactor_hack_comments(self, code: str) -> str:
+        # Check for CSRF vulnerabilities
+        csrf_vulnerabilities = self._check_csrf_vulnerabilities(code)
+        audit_results['csrf_vulnerabilities'] = csrf_vulnerabilities
+
+        return audit_results
+
+    def _check_xss_vulnerabilities(self, code: str) -> Dict[str, Any]:
         """
-        Refactor HACK comments in the given code.
+        Check for XSS vulnerabilities in the given code.
 
         Args:
-        code (str): The code to refactor.
+        code (str): The code to check.
 
         Returns:
-        str: The refactored code.
+        Dict[str, Any]: A dictionary containing the XSS vulnerabilities.
         """
-        return self.code_refactorer.refactor_hack_comments(code)
+        xss_vulnerabilities = {}
+        # Use regular expressions to find potential XSS vulnerabilities
+        patterns = [r'\<.*?\>', r'\(.*?\)']
+        for pattern in patterns:
+            matches = re.findall(pattern, code)
+            if matches:
+                xss_vulnerabilities[pattern] = matches
+        return xss_vulnerabilities
+
+    def _check_csrf_vulnerabilities(self, code: str) -> Dict[str, Any]:
+        """
+        Check for CSRF vulnerabilities in the given code.
+
+        Args:
+        code (str): The code to check.
+
+        Returns:
+        Dict[str, Any]: A dictionary containing the CSRF vulnerabilities.
+        """
+        csrf_vulnerabilities = {}
+        # Use regular expressions to find potential CSRF vulnerabilities
+        patterns = [r'\<form.*?\>', r'\(.*?\)']
+        for pattern in patterns:
+            matches = re.findall(pattern, code)
+            if matches:
+                csrf_vulnerabilities[pattern] = matches
+        return csrf_vulnerabilities
 
 # Example usage:
-advanced_security = AdvancedSecurity()
+code_refactorer = CodeRefactorer()
+advanced_security = AdvancedSecurity(code_refactorer)
 code = """
-# HACK: This is a hack solution
-requests.get('https://example.com/api/endpoint')
+# api_v2_batch.py code
+requests.get('https://example.com/api/v2/batch')
+requests.post('https://example.com/api/v2/batch')
 """
 refactored_code = advanced_security.refactor_api_v2_batch(code)
 print(refactored_code)
+
+audit_results = advanced_security.audit_web_gui_security(code)
+print(audit_results)
