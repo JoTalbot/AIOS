@@ -5,7 +5,7 @@
 # This avoids depending on the API /metrics endpoint.
 
 PORT=9101
-OUT_DIR=/root/AIOS/data/metrics_exporter
+OUT_DIR=/var/lib/docker/volumes/aios_aios-data/_data/metrics_exporter
 mkdir -p "$OUT_DIR"
 
 # Function: check tcp port
@@ -34,6 +34,17 @@ render_metrics() {
     else
       echo "aios_coder_service_up 0"
     fi
+    # auto-promote activity metrics (from auto_promote.log)
+    local ap_log="/root/AIOS/logs/auto_promote.log"
+    local promotes=$(grep -c "auto-promote complete" "$ap_log" 2>/dev/null || echo 0)
+    local blocked=$(grep -c "BLOCKED" "$ap_log" 2>/dev/null || echo 0)
+    echo "aios_auto_promotes_total $promotes"
+    echo "aios_auto_promote_blocked_total $blocked"
+    # coder backlog stats
+    if [ -f "/root/AIOS-autocoder/data/coder_backlog.json" ]; then
+      local cycles=$(python3 -c "import json;print(json.load(open('/root/AIOS-autocoder/data/coder_backlog.json')).get('cycle_count',0))" 2>/dev/null || echo 0)
+      echo "aios_coder_cycles_total $cycles"
+    fi
   } > "$OUT_DIR/aios_service.prom"
 }
 
@@ -61,7 +72,7 @@ class H(http.server.BaseHTTPRequestHandler):
             self.send_response(200); self.end_headers(); self.wfile.write(b'ok')
     def log_message(self,*a): pass
 socketserver.TCPServer.allow_reuse_address=True
-with socketserver.TCPServer(('0.0.0.0', int(sys.argv[1]) if len(sys.argv)>1 else 9101), H) as s:
+with socketserver.TCPServer(('127.0.0.1', int(sys.argv[1]) if len(sys.argv)>1 else 9101), H) as s:
     s.serve_forever()
 " "$PORT"
 fi

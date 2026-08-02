@@ -1,0 +1,10 @@
+[Unit]
+Description=Run AIOS auto-promote every 5 minutes
+
+[Timer]
+OnCalendar=*:0/1
+Persistent=true
+RandomizedDelaySec=10
+
+[Install]
+WantedBy=timers.target
