@@ -342,6 +342,31 @@ def test_contacts_search_intent(monkeypatch):
     assert any("Алиса" in x for x in api.messages)
 
 
+def test_novaposhta_track_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "novaposhta" and args[1] == "track":
+            return {"status": "ok", "ttn": args[2], "tracking_status": "Відправлення створено",
+                    "details": "Створено 2026-08-02"}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "отследи посылку 59000392260854") is True
+    assert any("Новая Пошта" in x for x in api.messages)
+
+
+def test_novaposhta_offices_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "novaposhta" and args[1] == "offices":
+            return {"status": "ok", "offices": ["Відділення №1 Київ"]}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "отделение новой почты Киев") is True
+    assert any("Отделения" in x for x in api.messages)
+
+
 def test_ig_like_flow(monkeypatch):
     def fake_run(args):
         if args[:3] == ["instagram", "like", url] and "--confirm" not in args:

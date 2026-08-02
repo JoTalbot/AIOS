@@ -1333,6 +1333,45 @@ async def prom_profile() -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
+async def novaposhta_track(ttn: str, phone: str = "") -> dict:
+    """Отследить посылку Новой Пошты по ТТН."""
+    try:
+        from aios_core.platforms.novaposhta_chrome_twin_adapter import NovaPoshtaChromeTwinAdapter
+        a = NovaPoshtaChromeTwinAdapter()
+        try:
+            return await a.track(ttn, phone)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def novaposhta_account() -> dict:
+    """Кабинет Новой Пошты (если залогинен)."""
+    try:
+        from aios_core.platforms.novaposhta_chrome_twin_adapter import NovaPoshtaChromeTwinAdapter
+        a = NovaPoshtaChromeTwinAdapter()
+        try:
+            return await a.account_info()
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def novaposhta_offices(query: str) -> dict:
+    """Поиск отделений Новой Пошты."""
+    try:
+        from aios_core.platforms.novaposhta_chrome_twin_adapter import NovaPoshtaChromeTwinAdapter
+        a = NovaPoshtaChromeTwinAdapter()
+        try:
+            return await a.warehouses_search(query)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
 # --------------------------------------------------------------------------
 # Telegram userbot (личный аккаунт)
 # --------------------------------------------------------------------------
@@ -1727,6 +1766,15 @@ def main():
     tgb.add_argument("command")
     tgb.add_argument("--confirm", action="store_true")
 
+    np = sub.add_parser("novaposhta")
+    npg = np.add_subparsers(dest="action", required=True)
+    npt = npg.add_parser("track")
+    npt.add_argument("ttn")
+    npt.add_argument("--phone", default="")
+    npg.add_parser("account")
+    npo = npg.add_parser("offices")
+    npo.add_argument("query")
+
     args = parser.parse_args()
 
     try:
@@ -1832,6 +1880,13 @@ def main():
                 out(tg_send(args.ref, args.text, args.confirm))
             elif args.action == "bot":
                 out(tg_bot(args.bot, args.command, args.confirm))
+        elif args.account == "novaposhta":
+            if args.action == "track":
+                out(asyncio.run(novaposhta_track(args.ttn, args.phone)))
+            elif args.action == "account":
+                out(asyncio.run(novaposhta_account()))
+            elif args.action == "offices":
+                out(asyncio.run(novaposhta_offices(args.query)))
     except Exception as e:
         out({"status": "error", "error": str(e)[:400]})
 
