@@ -7,7 +7,11 @@ from typing import Any
 
 
 class AgentEthicsAuditLedger:
-    """Audit ledger for ethical agent decisions."""
+    """Audit ledger for ethical agent decisions tracking and validation.
+
+    This class maintains a record of ethical decisions made by agents,
+    providing audit capabilities and decision tracking for compliance monitoring.
+    """
 
     def __init__(self) -> None:
         self.history: list[dict[str, Any]] = []
