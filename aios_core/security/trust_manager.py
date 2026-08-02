@@ -100,6 +100,8 @@ class SecurityConfig(BaseModel):
     @validator('trust_levels')
     def validate_trust_levels(cls, v: list[int]) -> list[int]:
         """Ensure all trust levels are valid."""
+        if not v:
+            raise ValueError("Trust levels list cannot be empty")
         for level in v:
             if level not in TrustLevel.values():
                 raise ValueError(f"Invalid trust level: {level}")
@@ -112,9 +114,12 @@ class SecurityConfig(BaseModel):
         max_t = values.get('max_timeout')
         min_t = values.get('min_timeout')
 
-        if default and max_t and default > max_t:
+        if default is None or max_t is None or min_t is None:
+            raise ValueError("Timeout values cannot be None")
+
+        if default > max_t:
             raise ValueError("default_timeout cannot exceed max_timeout")
-        if default and min_t and default < min_t:
+        if default < min_t:
             raise ValueError("default_timeout cannot be less than min_timeout")
         return values
 
