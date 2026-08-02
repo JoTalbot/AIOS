@@ -1717,7 +1717,18 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                    "экспортируй", "выгрузи", "экспорт", "в excel", "в эксель",
                    "выгрузить в файл", "включи голосовые ответы", "отвечай голосом",
                    "включи голос", "выключи голосовые ответы", "отвечай текстом",
-                   "выключи голос")
+                   "выключи голос",
+                   "запиши продажу", "запиши расход", "запиши трату", "продал за",
+                   "купил за", "потратил", "сколько заработал", "прибыль", "финанс",
+                   "учет", "учёт", "деньги за неделю", "деньги за месяц",
+                   "мои операции", "операции",
+                   "создай объявление", "создай объявлени", "новое объявление на олх",
+                   "создай объявления", "напиши объявление",
+                   "автоответ олх", "автоответ olx", "автоответ в олх",
+                   "автоответ покупателям",
+                   "подними объявления", "подними мои объявления", "обнови объявления",
+                   "мои объявления олх", "мои объявления olx", "контроль объявлений",
+                   "сколько объявлений")
     is_other = any(w in t for w in other_words)
     if not is_ig and not is_g and not is_other and not tg_words:
         return False
@@ -2295,6 +2306,58 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ Экспорт не удался: {res.get('error', '?')}")
         return True
 
+    # ---- Генератор объявлений OLX ----
+    if any(w in t for w in ("создай объявление", "создай объявлени", "новое объявление на олх",
+                            "создай объявления", "создай объявления из списка",
+                            "напиши объявление")):
+        import subprocess as _sp
+        if "из списка" in t or "массов" in t:
+            body = re.sub(r"^(создай объявления из списка|создай массово)\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
+            if not body:
+                api.send_message(chat_id, "📋 «создай объявления из списка: деталь1; деталь2; деталь3»")
+                return True
+            api.send_message(chat_id, "⏳ Генерирую объявления (по одному, быстро)…")
+            r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_olx_ad_gen.py"),
+                         "gen_many", body], capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT))
+            try:
+                res = json.loads((r.stdout or "").strip().split("\n")[-1])
+            except Exception:
+                res = {"status": "error", "error": (r.stderr or "?")[-150:]}
+            if res.get("status") == "ok":
+                ads = res.get("ads") or []
+                lines = ["📋 <b>Сгенерированные объявления:</b>"]
+                for i, a in enumerate(ads, 1):
+                    lines.append(f"{i}. <b>{_esc_tg(a.get('title', ''))}</b> — {a.get('price', '?')} грн")
+                lines.append("\nСоздать на OLX: «создай объявление: <деталь>» (нужно подтвердить телефон)")
+                api.send_message(chat_id, "\n".join(lines)[:3900])
+            else:
+                api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+            return True
+        # одно объявление
+        part = re.sub(r"^(создай объявление|создай новое объявление|напиши объявление)\s*(на олх)?\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
+        part = part.replace("олх", "").replace("olx", "").strip(" ,.;:—–")
+        if not part:
+            api.send_message(chat_id, "📝 «создай объявление: фара BMW X5 2000 грн»")
+            return True
+        api.send_message(chat_id, "⏳ Генерирую объявление через AI…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_olx_ad_gen.py"), "gen", part],
+                    capture_output=True, text=True, timeout=90, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-150:]}
+        if res.get("status") == "ok":
+            txt = (f"📝 <b>Сгенерировано объявление:</b>\n"
+                   f"Заголовок: <b>{_esc_tg(res.get('title', ''))}</b>\n"
+                   f"Цена: {res.get('price', '?')} грн\n\n"
+                   f"Описание:\n{_esc_tg(res.get('description', ''))}\n\n"
+                   f"Публиковать на OLX? Напишите «опубликуй это объявление» — "
+                   f"но сначала нужно подтвердить телефон в профиле (через VNC).")
+            api.send_message(chat_id, txt)
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+        return True
+
     # ---- Мониторинг цен OLX ----
     if any(w in t for w in ("следи за ценой", "мониторинг цен", "цена на олх", "снизил",
                             "отпишись от цены", "цены на олх", "мои цены")):
@@ -2412,6 +2475,119 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     if any(w in t for w in ("отметь всё прочитанным", "отметить все прочитанными", "всё прочитано",
                             "отметь прочитанным")):
         _inbox_mark_read(api, chat_id)
+        return True
+
+    # ---- Поднятие/контроль объявлений OLX ----
+    if any(w in t for w in ("подними объявления", "подними мои объявления", "обнови объявления",
+                            "мои объявления олх", "мои объявления olx", "контроль объявлений",
+                            "сколько объявлений")):
+        import subprocess as _sp
+        do_boost = "подними" in t or "обнови" in t or "поднять" in t
+        api.send_message(chat_id, "⏳ Открываю кабинет OLX…")
+        args = ["--boost"] if do_boost else []
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_olx_boost.py")] + args,
+                    capture_output=True, text=True, timeout=170, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-200:]}
+        if res.get("status") == "ok":
+            txt = (f"🛒 <b>Объявления OLX</b>\n"
+                   f"Найдено объявлений: {res.get('ads_found') or 0}\n"
+                   f"Кнопок «поднять»: {res.get('refresh_buttons') or 0}")
+            if res.get("boosted"):
+                txt += "\n✅ Первое объявление поднято!"
+            if res.get("ads_preview"):
+                txt += "\n\n" + "\n".join(f"• {_esc_tg(x)}" for x in res["ads_preview"][:5])
+            _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                             "screenshot": res.get("screenshot"),
+                                             "caption": "🛒 Объявления OLX"}, "")
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+        return True
+
+    # ---- Автоответ OLX ----
+    if any(w in t for w in ("автоответ олх", "автоответ olx", "автоответ в олх",
+                            "автоответ покупателям")):
+        cfg_file = PROJECT_ROOT / "data" / "olx_autoreply.json"
+        try:
+            cfg = json.loads(cfg_file.read_text(encoding="utf-8"))
+        except Exception:
+            cfg = {}
+        if "выключ" in t or "отключ" in t:
+            cfg["enabled"] = False
+            cfg_file.parent.mkdir(parents=True, exist_ok=True)
+            cfg_file.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+            api.send_message(chat_id, "🔕 Автоответ OLX выключен.")
+            return True
+        auto = "на автомате" in t
+        cfg["enabled"] = True
+        cfg["auto_send"] = auto
+        cfg_file.parent.mkdir(parents=True, exist_ok=True)
+        cfg_file.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+        api.send_message(chat_id,
+                         f"🔔 Автоответ OLX включён{' (на автомате)' if auto else ''}.\n"
+                         f"При новых сообщениях в OLX-чате бот уведомит и поможет ответить.\n"
+                         f"{'Отправка ответов — автоматически.' if auto else 'Сначала — подтверждение в чате.'}")
+        return True
+
+    # ---- Финансовый учёт ----
+    fin_words = any(w in t for w in ("запиши продажу", "запиши расход", "запиши трату",
+                                     "продал за", "купил за", "потратил",
+                                     "сколько заработал", "прибыль", "финанс", "учет",
+                                     "учёт", "деньги за неделю", "деньги за месяц",
+                                     "мои операции", "операции"))
+    if fin_words:
+        import subprocess as _sp
+        # запись операции
+        m_op = re.match(r"^(запиши продажу|запиши расход|запиши трату|продал за|купил за|потратил)\s+([\d\s.,]+)\s*(.*)$", text, re.IGNORECASE)
+        if m_op:
+            verb = m_op.group(1).lower()
+            kind = "sale" if any(k in verb for k in ("продаж", "продал")) else "expense"
+            try:
+                amount = float(m_op.group(2).replace(" ", "").replace(",", "."))
+            except ValueError:
+                api.send_message(chat_id, "❌ Не понял сумму. Пример: «запиши продажу 2000 фара BMW»")
+                return True
+            desc = m_op.group(3).strip() or ("продажа" if kind == "sale" else "расход")
+            r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_finance.py"),
+                         "add", kind, str(amount), desc],
+                        capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+            try:
+                res = json.loads((r.stdout or "").strip().split("\n")[-1])
+            except Exception:
+                res = {"status": "error", "error": (r.stderr or "?")[-100:]}
+            if res.get("status") == "ok":
+                em = "💰" if kind == "sale" else "📉"
+                api.send_message(chat_id, f"{em} Записал: {desc} — {amount} грн ({'продажа' if kind == 'sale' else 'расход'})")
+            else:
+                api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+            return True
+        # отчёт
+        days = 30
+        m_days = re.search(r"за\s+(неделю|месяц|день)", t)
+        if m_days:
+            if "неделю" in m_days.group(1):
+                days = 7
+            elif "день" in m_days.group(1):
+                days = 1
+            else:
+                days = 30
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_finance.py"), "report", str(days)],
+                    capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": "?"}
+        if res.get("status") == "ok":
+            txt = (f"💰 <b>Финансы за {days} дн.</b>\n"
+                   f"🟢 Продажи: {res.get('sales')} грн\n"
+                   f"🔴 Расходы: {res.get('expenses')} грн\n"
+                   f"📊 Прибыль: <b>{res.get('profit')}</b> грн\n"
+                   f"({res.get('count')} операций)")
+            api.send_message(chat_id, txt)
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', '?')}")
         return True
 
     # ---- Голосовые ответы ----
