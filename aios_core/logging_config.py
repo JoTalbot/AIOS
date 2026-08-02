@@ -316,3 +316,12 @@ def safe_get_request(url: str) -> dict:
 
 
 logger = setup_logging()
+
+def get_logger(name: str) -> "logging.Logger":
+    """Легальный alias logging.getLogger.
+
+    Добавлен 02.08: автокодер неоднократно генерировал
+    `from aios_core.logging_config import get_logger` (2 инцидента за день).
+    Проще предоставить API, чем исправлять галлюцинацию N+1 раз.
+    """
+    return logging.getLogger(name)
