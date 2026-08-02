@@ -8,6 +8,7 @@ Enhanced version of v2 with:
 """
 from __future__ import annotations
 import os
+import re
 import json
 import subprocess
 from pathlib import Path
@@ -99,6 +100,63 @@ class AutocoderV3:
             print(f"  ⚠️ AGENTS.md не прочитан: {e}")
         return ""
 
+    def _window_file(self, content: str, task: str, budget: int = 13000) -> str:
+        """Оконная подача большого файла (п.7, приём Aider).
+
+        Файл влезает в лимит — отдаём целиком. Не влезает — outline всех
+        определений + исходники наиболее релевантных задаче функций/классов.
+        Так LLM видит нужные куски ДОСЛОВНО (для SEARCH-блоков) вместо
+        обрезанного по 15000 символов фрагмента.
+        """
+        if len(content) <= 15000:
+            return content
+        import ast
+        try:
+            tree = ast.parse(content)
+        except SyntaxError:
+            return content[:budget]
+        lines = content.splitlines()
+        defs = []
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) \
+                    and getattr(node, "lineno", None):
+                end = getattr(node, "end_lineno", None) or node.lineno
+                doc = (ast.get_docstring(node) or "")[:200]
+                kind = "class" if isinstance(node, ast.ClassDef) else "def"
+                defs.append({"name": node.name, "kind": kind,
+                             "start": node.lineno, "end": end, "doc": doc})
+        if not defs:
+            return content[:budget]
+        outline = ", ".join(
+            f"{'class ' if d['kind'] == 'class' else ''}{d['name']}:L{d['start']}"
+            for d in defs[:40])
+        header = (f"# ФАЙЛ БОЛЬШОЙ ({len(content)} символов, {len(defs)} определений) — "
+                  f"показаны OUTLINE и релевантные фрагменты:\n# {outline}\n")
+        tokens = set(re.findall(r"[A-Za-zА-Яа-я_][\w]{2,}", task.lower()))
+
+        def _score(d):
+            text = f"{d['name']} {d['doc']}".lower()
+            return sum(1 for t in tokens if t in text)
+
+        body: list[str] = []
+        used = len(header)
+        picked = 0
+        for d in sorted(defs, key=lambda d: (-_score(d), d["start"])):
+            if _score(d) == 0 and picked:
+                continue
+            seg = "\n".join(lines[d["start"] - 1:d["end"]])
+            piece = f"# --- {d['kind']} {d['name']} (строки {d['start']}-{d['end']}) ---\n{seg}"
+            if used + len(piece) > budget:
+                if not picked:
+                    body.append(piece[:budget - used])
+                break
+            body.append(piece)
+            used += len(piece)
+            picked += 1
+            if picked >= 5:
+                break
+        return header + "\n" + "\n\n".join(body)
+
     def ensure_indexed(self):
         if not self._indexed:
             count = self.rag.index_repo(max_files=150)
@@ -125,6 +183,10 @@ class AutocoderV3:
 
         # v3.3: два режима промпта
         if current_content:
+            # v3.5 (п.7): окно файла — полный текст или outline + релевантные куски
+            _file_view = self._window_file(current_content, task_description)
+            _view_note = ("полный файл" if len(_file_view) == len(current_content)
+                          else "окна: OUTLINE + релевантные фрагменты")
             requirements = f"""# РЕЖИМ ПРАВКИ СУЩЕСТВУЮЩЕГО ФАЙЛА (важно!):
 Файл УЖЕ существует. НЕ переписывай его целиком.
 Верни ТОЛЬКО блоки правок в точном формате:
@@ -145,8 +207,8 @@ class AutocoderV3:
 - Запрещено: eval/exec, удаление существующих функций и классов без необходимости
 - Соблюдай правила репозитория из AGENTS.md (приведён выше): минимальные правки, без массовых удалений
 
-# Текущее содержимое файла {file_path} ({len(current_content)} символов):
-{current_content[:15000]}
+# Текущее содержимое файла {file_path} ({len(current_content)} символов; {_view_note}):
+{_file_view}
 """
         else:
             requirements = """# Requirements:
@@ -196,7 +258,8 @@ Instruction: {instruction}
 
         last_error = ""
         for prov in models_to_try:
-            model = provider_model.get(prov, "llama-3.3-70b-versatile")
+            # v3.5 (п.3): AIOS_CODER_MODEL — heavy-оверрайд модели кодера
+            model = os.environ.get("AIOS_CODER_MODEL") or provider_model.get(prov, "llama-3.3-70b-versatile")
             try:
                 # Use balancer
                 response = self.balancer.chat(
