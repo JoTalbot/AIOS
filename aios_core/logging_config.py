@@ -1,7 +1,7 @@
 """Structured JSON Logging Configuration for AIOS.
 
 Formats all logs into standard JSON with automatic trace_id, span_id,
-agent_id, and constitutional_status fields for production logging.
+agent_id, constitutional_status fields for production logging.
 
 Features:
 - JSON and human-readable formatting
