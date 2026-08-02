@@ -321,6 +321,40 @@ class TiktokChromeTwinAdapter(ChromeTwinAdapter):
             pass
         return vids
 
+    async def upload_video(self, video_path: str, caption: str, confirm: bool) -> Dict[str, Any]:
+        """Опубликовать видео в TikTok (web-загрузка tiktok.com/upload)."""
+        if not confirm:
+            return {"status": "need_confirm", "action": "tiktok_upload",
+                    "video": video_path, "caption": (caption or "")[:200]}
+        if not os.path.exists(video_path):
+            return {"status": "error", "error": f"Файл не найден: {video_path}"}
+        page = await self._ensure_browser()
+        await self._goto(page, "upload")
+        await page.wait_for_timeout(6000)
+        try:
+            fi = page.locator("input[type=file]").first
+            await fi.wait_for(state="attached", timeout=12000)
+            await fi.set_input_files(video_path)
+            await page.wait_for_timeout(9000)  # ждём загрузку/обработку
+            # описание
+            cap = page.locator("div[contenteditable=true]").first
+            await cap.wait_for(state="visible", timeout=20000)
+            await cap.click()
+            await page.keyboard.type((caption or "")[:2200], delay=15)
+            await page.wait_for_timeout(1200)
+            await page.screenshot(path="/tmp/tt_upload_ready.png")
+            for name in ("Опублікувати", "Post", "Опубликовать", "Publish"):
+                try:
+                    btn = page.get_by_role("button", name=name).first
+                    await btn.click(timeout=3000)
+                    await page.wait_for_timeout(2500)
+                    return {"status": "published", "caption": (caption or "")[:200]}
+                except Exception:
+                    continue
+            return {"status": "draft", "note": "Видео загружено, кнопка публикации не найдена — проверьте вручную"}
+        except Exception as e:
+            return {"status": "error", "error": str(e)[:300]}
+
     async def get_feed(self, limit: int = 5) -> List[Dict[str, Any]]:
         """Посты ленты «Для вас» (автор + описание)."""
         page = await self._ensure_browser()

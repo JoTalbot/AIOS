@@ -260,6 +260,121 @@ class FacebookChromeTwinAdapter(ChromeTwinAdapter):
         await self._log_action("facebook_get_feed", {"limit": limit}, {"count": len(posts)})
         return posts
 
+    # ---------------------------------------------------------------- Messenger
+    async def _messenger_auth(self, page) -> bool:
+        """Войти в web-messenger (клик «Продовжити як …» если нужно)."""
+        try:
+            await page.goto("https://www.messenger.com/", wait_until="domcontentloaded", timeout=45000)
+        except Exception:
+            pass
+        await page.wait_for_timeout(4000)
+        for sel in ("text=Продовжити як", "text=Continue as", "text=Продолжить как",
+                    "text=Switch account"):
+            try:
+                btn = page.locator(sel).first
+                if await btn.count():
+                    await btn.click(timeout=5000)
+                    await page.wait_for_timeout(5000)
+                    return True
+            except Exception:
+                continue
+        return False
+
+    async def messenger_list(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Список чатов Messenger (из messenger.com)."""
+        page = await self._ensure_browser()
+        await self._messenger_auth(page)
+        await page.wait_for_timeout(5000)
+        chats = []
+        seen = set()
+        try:
+            rows = await page.eval_on_selector_all(
+                "div[role='row'], [data-testid*='threadlist'] div[role='button']",
+                """els => els.map(e => {
+                    const t = (e.innerText || '').trim().replace(/\\s+/g, ' ').slice(0, 150);
+                    return t;
+                }).filter(t => t.length > 1)""")
+            for r in rows or []:
+                if r in seen:
+                    continue
+                seen.add(r)
+                # имя — до служебных меток чата
+                name = re.split(
+                    r"\s*(?:Непрочитанное сообщение|Unread message|Непрочитане повідомлення|"
+                    r"Сообщение недоступно|Вы отправили|отправил\w* вложение|Вы пропустили|"
+                    r"теперь друзья|новий чат|новый чат)", r, flags=re.IGNORECASE)[0].strip()
+                name = name.rstrip(" ·,:")
+                if not name:
+                    continue
+                chats.append({"name": name[:80], "preview": r[:120]})
+                if len(chats) >= limit:
+                    break
+        except Exception:
+            pass
+        return chats
+
+    async def messenger_read(self, chat: str, limit: int = 12) -> List[Dict[str, Any]]:
+        """Открыть чат и прочитать последние сообщения."""
+        page = await self._ensure_browser()
+        await self._messenger_auth(page)
+        await page.wait_for_timeout(4000)
+        # клик по чату
+        try:
+            el = page.locator("div[role='row']", has_text=chat).first
+            await el.wait_for(state="visible", timeout=8000)
+            await el.click(force=True)
+            await page.wait_for_timeout(4000)
+        except Exception:
+            return [{"error": f"Чат «{chat}» не найден в Messenger"}]
+        msgs = []
+        seen = set()
+        try:
+            texts = await page.eval_on_selector_all(
+                "div[dir='auto']",
+                """els => els.map(e => {
+                    if (e.closest('[role="button"], [role="navigation"]')) return null;
+                    const t = (e.textContent || '').trim();
+                    return (t.length > 0 && t.length < 500) ? t : null;
+                }).filter(Boolean)""")
+            for t in texts or []:
+                t = t.strip()
+                if t in seen or not t:
+                    continue
+                seen.add(t)
+                msgs.append({"text": t})
+                if len(msgs) >= limit:
+                    break
+        except Exception:
+            pass
+        return msgs
+
+    async def messenger_send(self, chat: str, text: str, confirm: bool) -> Dict[str, Any]:
+        """Отправить сообщение в чат Messenger."""
+        if not confirm:
+            return {"status": "need_confirm", "action": "messenger_send",
+                    "chat": chat, "text": text[:200]}
+        page = await self._ensure_browser()
+        await self._messenger_auth(page)
+        await page.wait_for_timeout(4000)
+        try:
+            el = page.locator("div[role='row']", has_text=chat).first
+            await el.wait_for(state="visible", timeout=8000)
+            await el.click(force=True)
+            await page.wait_for_timeout(4000)
+        except Exception:
+            return {"status": "error", "error": f"Чат «{chat}» не найден в Messenger"}
+        try:
+            box = page.locator("div[contenteditable='true'][role='textbox'], div[role='textbox'][contenteditable='true']").first
+            await box.wait_for(state="visible", timeout=8000)
+            await box.click()
+            await page.keyboard.type(text, delay=20)
+            await page.wait_for_timeout(400)
+            await page.keyboard.press("Enter")
+            await page.wait_for_timeout(1000)
+            return {"status": "sent", "chat": chat, "text": text[:200]}
+        except Exception as e:
+            return {"status": "error", "error": str(e)[:200]}
+
     async def get_notifications_count(self) -> Optional[int]:
         """Число в бейдже уведомлений (svg с числом в навбаре)."""
         page = await self._ensure_browser()

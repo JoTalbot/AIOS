@@ -564,6 +564,8 @@ def cmd_help() -> str:
 
 # Последнее фото, присланное пользователем (для будущих действий): chat_id -> путь
 _last_photo: dict[int, str] = {}
+# Последнее видео, присланное пользователем (для TikTok upload): chat_id -> путь
+_last_video: dict[int, str] = {}
 # Последние id писем, показанных в чате: chat_id -> [ids...]
 _last_gmail_ids: dict[int, list[str]] = {}
 # Ожидающие подтверждения действий: chat_id -> {"kind": ..., "data": ...}
@@ -576,7 +578,11 @@ def _run_account_control(args: list[str], timeout: int = 160) -> dict:
     py = "/opt/aios/.venv/bin/python"
     helper = str(PROJECT_ROOT / "run_account_control.py")
     # IMAP/SMTP-команды не требуют X; браузерные — требуют xvfb
-    needs_x = not (len(args) >= 2 and args[0] == "google" and args[1] in ("gmail_list", "gmail_send", "gmail_search", "open"))
+    # viber — нативный десктоп на постоянном дисплее :1 (без xvfb)
+    if args and args[0] == "viber":
+        needs_x = False
+    else:
+        needs_x = not (len(args) >= 2 and args[0] == "google" and args[1] in ("gmail_list", "gmail_send", "gmail_search", "open"))
     if needs_x:
         cmd = ["xvfb-run", "-a", "-s", "-screen 0 1440x900x24", py, helper] + args
     else:
@@ -1025,6 +1031,36 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 else:
                     api.send_message(chat_id, f"❌ {data.get('error', st)}")
                 return True
+            if kind == "viber_send":
+                d = pend["data"]
+                data = _run_account_control(["viber", "send", d["chat"], d["text"], "--confirm"])
+                st = data.get("status")
+                if st == "sent":
+                    api.send_message(chat_id, f"✅ Отправлено в Viber <b>{d['chat']}</b>: «{d['text'][:150]}»")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
+            if kind == "messenger_send":
+                d = pend["data"]
+                data = _run_account_control(["facebook", "messenger_send", d["chat"], d["text"], "--confirm"])
+                st = data.get("status")
+                if st == "sent":
+                    api.send_message(chat_id, f"✅ Отправлено в Messenger <b>{d['chat']}</b>: «{d['text'][:150]}»")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
+            if kind == "tiktok_upload":
+                d = pend["data"]
+                data = _run_account_control(["tiktok", "upload", d["video"],
+                                             "--caption", d.get("caption", ""), "--confirm"])
+                st = data.get("status")
+                if st == "published":
+                    api.send_message(chat_id, "🎵 Видео опубликовано в TikTok!")
+                elif st == "draft":
+                    api.send_message(chat_id, f"⚠️ {data.get('note', 'загружено, но не опубликовано')}")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
@@ -1040,7 +1076,10 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                "фейсбук", "facebook", "тикток", "tiktok", "олх", "olx", "объявлен")
     is_ig = any(w in t for w in ig_words)
     is_g = any(w in t for w in g_words)
-    if not is_ig and not is_g:
+    other_words = ("вайбер", "вибер", "viber", "мессенджер", "messenger",
+                   "опубликуй видео", "опубликуй ролик", "опубликуй в тикток")
+    is_other = any(w in t for w in other_words)
+    if not is_ig and not is_g and not is_other:
         return False
 
     # ---- Instagram ----
@@ -1232,6 +1271,125 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                                           f"{(r.stderr or r.stdout or '?')[-250:]}")
         except Exception as e:
             api.send_message(chat_id, f"❌ Ошибка дайджеста: {e}")
+        return True
+
+    # ---- TikTok upload ----
+    if any(w in t for w in ("опубликуй видео", "опубликуй ролик", "загрузи видео в тикток",
+                            "пости видео в тикток", "опубликуй в тикток")):
+        caption = re.sub(r"(опубликуй видео|опубликуй ролик|загрузи видео в тикток|пости видео в тикток|опубликуй в тикток)\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
+        video = _last_video.get(chat_id)
+        if not video:
+            api.send_message(chat_id,
+                             "🎬 Отправьте видео сюда, а потом напишите «опубликуй видео в тикток <описание>».")
+            return True
+        if not os.path.exists(video):
+            api.send_message(chat_id, "❌ Сохранённое видео не найдено. Пришлите видео заново.")
+            return True
+        _pending_confirm[chat_id] = {"kind": "tiktok_upload",
+                                     "data": {"video": video, "caption": caption}}
+        api.send_message(chat_id,
+                         f"🎬 <b>Публикация в TikTok</b>\n"
+                         f"Файл: {os.path.basename(video)}\n"
+                         f"Описание: «{caption[:200] or '—'}»\n\n"
+                         f"Опубликовать? «да» / «нет» (риск: TikTok может запросить проверку)")
+        return True
+
+    # ---- Viber (десктоп) ----
+    if any(w in t for w in ("вайбер", "вибер", "viber")):
+        send_word = any(w in t for w in ("напиши", "отправь", "написать", "ответь"))
+        read_word = any(w in t for w in ("прочитай", "покажи", "что в", "последние"))
+        if send_word:
+            m = re.search(r":\s*(.+)$", text, re.IGNORECASE)
+            body = m.group(1).strip() if m else ""
+            target = re.sub(r"^(напиши|отправь|написать|ответь)(\s+(в|в\s+вайбер|вайбер|viber|вибер))?\s+", "",
+                            text, flags=re.IGNORECASE)
+            target = re.sub(r"^(в|вайбер|viber|вибер)\s+", "", target, flags=re.IGNORECASE)
+            target = target.split(":", 1)[0].strip(" ,.;:—–")
+            if not target or not body:
+                api.send_message(chat_id,
+                                 "💬 <b>Viber</b>: напишите «напиши в вайбер <имя>: <текст>»")
+                return True
+            _pending_confirm[chat_id] = {"kind": "viber_send",
+                                         "data": {"chat": target, "text": body}}
+            api.send_message(chat_id,
+                             f"💬 Отправить <b>{target}</b> в Viber:\n«{body[:200]}»\n\n«да» / «нет»")
+            return True
+        if read_word:
+            m = re.search(r"(?:вайбер|viber|вибер)[\s,:—–]*([\w\sА-Яа-яЁёІіЇїЄє'’.-]{2,30}?)(?:[.!?]|$)", text, re.IGNORECASE)
+            chat = m.group(1).strip() if m else ""
+            api.send_message(chat_id, "⏳ Открываю Viber…")
+            data = _run_account_control(["viber", "read", chat or "Viber"])
+            if data.get("status") == "ok":
+                msgs = data.get("messages") or []
+                if not msgs:
+                    api.send_message(chat_id, "💬 В чате нет распознанных сообщений (или пусто).")
+                else:
+                    api.send_message(chat_id, "💬 <b>Viber</b>:\n" + "\n".join(
+                        f"• {_esc_tg(x.get('text', ''))}" for x in msgs[-12:]))
+            else:
+                api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+            return True
+        # список чатов
+        api.send_message(chat_id, "⏳ Читаю чаты Viber…")
+        data = _run_account_control(["viber", "chats"])
+        if data.get("status") == "ok":
+            chats = data.get("chats") or []
+            if chats:
+                api.send_message(chat_id, "💬 <b>Чаты Viber</b>:\n" + "\n".join(
+                    f"• {_esc_tg(c.get('name'))}" for c in chats[:20]))
+            else:
+                api.send_message(chat_id,
+                                 "💬 Не нашёл чаты (возможно, Viber не залогинен — нужен QR-вход).")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+
+    # ---- Messenger ----
+    if any(w in t for w in ("мессенджер", "messenger", "фейсбук чат", "чат фейсбук")):
+        send_word = any(w in t for w in ("напиши", "отправь", "написать", "ответь"))
+        read_word = any(w in t for w in ("прочитай", "покажи", "что в", "последние"))
+        if send_word:
+            m = re.search(r":\s*(.+)$", text, re.IGNORECASE)
+            body = m.group(1).strip() if m else ""
+            target = re.sub(r"^(напиши|отправь|написать|ответь)(\s+(в|в\s+мессенджер|мессенджер|messenger))?\s+", "",
+                            text, flags=re.IGNORECASE)
+            target = re.sub(r"^(в|мессенджер|messenger)\s+", "", target, flags=re.IGNORECASE)
+            target = target.split(":", 1)[0].strip(" ,.;:—–")
+            if not target or not body:
+                api.send_message(chat_id,
+                                 "💬 <b>Messenger</b>: напишите «напиши в мессенджер <имя>: <текст>»")
+                return True
+            _pending_confirm[chat_id] = {"kind": "messenger_send",
+                                         "data": {"chat": target, "text": body}}
+            api.send_message(chat_id,
+                             f"💬 Отправить <b>{target}</b> в Messenger:\n«{body[:200]}»\n\n«да» / «нет»")
+            return True
+        if read_word:
+            m = re.search(r"(?:мессенджер|messenger)[\s,:—–]*([\w\sА-Яа-яЁёІіЇїЄє'’.-]{2,30}?)(?:[.!?]|$)", text, re.IGNORECASE)
+            chat = m.group(1).strip() if m else ""
+            api.send_message(chat_id, "⏳ Открываю Messenger…")
+            data = _run_account_control(["facebook", "messenger_read", chat or "Chat", "--limit", "12"])
+            if data.get("status") == "ok":
+                msgs = data.get("messages") or []
+                if not msgs:
+                    api.send_message(chat_id, "💬 В чате нет сообщений.")
+                else:
+                    api.send_message(chat_id, "💬 <b>Messenger</b>:\n" + "\n".join(
+                        f"• {_esc_tg(x.get('text', ''))}" for x in msgs[-12:]))
+            else:
+                api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+            return True
+        api.send_message(chat_id, "⏳ Загружаю чаты Messenger…")
+        data = _run_account_control(["facebook", "messenger_list", "--limit", "10"])
+        if data.get("status") == "ok":
+            chats = data.get("chats") or []
+            if chats:
+                api.send_message(chat_id, "💬 <b>Чаты Messenger</b>:\n" + "\n".join(
+                    f"• {_esc_tg(c.get('name'))}" for c in chats[:10]))
+            else:
+                api.send_message(chat_id, "💬 Чатов не нашёл.")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
         return True
 
     # ---- Facebook ----
@@ -2517,6 +2675,27 @@ def run_bot(token: str) -> None:
                         print(f"  [VOICE] error: {v_err}")
                         try:
                             api.send_message(chat_id, f"❌ Ошибка обработки голосового: {v_err}")
+                        except Exception:
+                            pass
+                    continue
+
+                # Видео от пользователя — сохранить для TikTok upload
+                if (msg.get("video") or msg.get("video_note") or msg.get("animation")) and not text:
+                    try:
+                        src = msg.get("video") or msg.get("video_note") or msg.get("animation") or {}
+                        fid = src.get("file_id", "")
+                        if fid:
+                            path = api.download_file_by_id(fid)
+                            _last_video[chat_id] = path
+                            api.send_message(chat_id,
+                                             "🎬 Видео получил! Напишите «опубликуй видео в тикток <описание>» — "
+                                             "и я опубликую его (с подтверждением).")
+                        else:
+                            api.send_message(chat_id, "❌ Не смог получить видео.")
+                    except Exception as v_err:
+                        print(f"  [VIDEO] error: {v_err}")
+                        try:
+                            api.send_message(chat_id, f"❌ Ошибка загрузки видео: {v_err}")
                         except Exception:
                             pass
                     continue

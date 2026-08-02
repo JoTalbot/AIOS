@@ -1144,6 +1144,32 @@ async def instagram_dm_new(username: str, text: str, confirm: bool) -> dict:
         await a.close()
 
 
+# --------------------------------------------------------------- Viber (desktop)
+def viber_chats() -> dict:
+    """Список чатов Viber (OCR окна десктоп-приложения)."""
+    try:
+        import viber_control as vc
+        return vc.chats()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+def viber_read(chat: str, limit: int = 15) -> dict:
+    try:
+        import viber_control as vc
+        return vc.read_chat(chat, limit)
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+def viber_send(chat: str, text: str, confirm: bool) -> dict:
+    try:
+        import viber_control as vc
+        return vc.send_chat(chat, text, confirm)
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
 # --------------------------------------------------------------------------
 # Facebook / TikTok / OLX (Chrome Twin)
 # --------------------------------------------------------------------------
@@ -1194,6 +1220,38 @@ async def facebook_feed(limit: int = 5) -> dict:
         await a.close()
 
 
+async def messenger_list(limit: int = 10) -> dict:
+    a = await _fb_adapter()
+    try:
+        chats = await a.messenger_list(limit)
+        return {"status": "ok", "chats": chats}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def messenger_read(chat: str, limit: int = 12) -> dict:
+    a = await _fb_adapter()
+    try:
+        msgs = await a.messenger_read(chat, limit)
+        return {"status": "ok", "chat": chat, "messages": msgs}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def messenger_send(chat: str, text: str, confirm: bool) -> dict:
+    a = await _fb_adapter()
+    try:
+        return await a.messenger_send(chat, text, confirm)
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
 async def tiktok_profile() -> dict:
     a = await _tt_adapter()
     try:
@@ -1217,6 +1275,16 @@ async def tiktok_feed(limit: int = 5) -> dict:
             return {"status": "error", "error": "TikTok не залогинен"}
         feed = await a.get_feed(limit)
         return {"status": "ok", "feed": feed}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def tiktok_upload(video_path: str, caption: str, confirm: bool) -> dict:
+    a = await _tt_adapter()
+    try:
+        return await a.upload_video(video_path, caption, confirm)
     except Exception as e:
         return {"status": "error", "error": str(e)[:300]}
     finally:
@@ -1392,16 +1460,40 @@ def main():
     fbg.add_parser("profile")
     fbf = fbg.add_parser("feed")
     fbf.add_argument("n", nargs="?", type=int, default=5)
+    fbml = fbg.add_parser("messenger_list")
+    fbml.add_argument("--limit", type=int, default=10)
+    fbmr = fbg.add_parser("messenger_read")
+    fbmr.add_argument("chat")
+    fbmr.add_argument("--limit", type=int, default=12)
+    fbms = fbg.add_parser("messenger_send")
+    fbms.add_argument("chat")
+    fbms.add_argument("text")
+    fbms.add_argument("--confirm", action="store_true")
 
     tt = sub.add_parser("tiktok")
     ttg = tt.add_subparsers(dest="action", required=True)
     ttg.add_parser("profile")
     ttf = ttg.add_parser("feed")
     ttf.add_argument("n", nargs="?", type=int, default=5)
+    ttu = ttg.add_parser("upload")
+    ttu.add_argument("video")
+    ttu.add_argument("--caption", default="")
+    ttu.add_argument("--confirm", action="store_true")
 
     olx = sub.add_parser("olx")
     olxg = olx.add_subparsers(dest="action", required=True)
     olxg.add_parser("profile")
+
+    vb = sub.add_parser("viber")
+    vbg = vb.add_subparsers(dest="action", required=True)
+    vbg.add_parser("chats")
+    vbr = vbg.add_parser("read")
+    vbr.add_argument("chat")
+    vbr.add_argument("--limit", type=int, default=15)
+    vbs = vbg.add_parser("send")
+    vbs.add_argument("chat")
+    vbs.add_argument("text")
+    vbs.add_argument("--confirm", action="store_true")
 
     args = parser.parse_args()
 
@@ -1467,14 +1559,29 @@ def main():
                 out(asyncio.run(facebook_profile()))
             elif args.action == "feed":
                 out(asyncio.run(facebook_feed(args.n)))
+            elif args.action == "messenger_list":
+                out(asyncio.run(messenger_list(args.limit)))
+            elif args.action == "messenger_read":
+                out(asyncio.run(messenger_read(args.chat, args.limit)))
+            elif args.action == "messenger_send":
+                out(asyncio.run(messenger_send(args.chat, args.text, args.confirm)))
         elif args.account == "tiktok":
             if args.action == "profile":
                 out(asyncio.run(tiktok_profile()))
             elif args.action == "feed":
                 out(asyncio.run(tiktok_feed(args.n)))
+            elif args.action == "upload":
+                out(asyncio.run(tiktok_upload(args.video, args.caption, args.confirm)))
         elif args.account == "olx":
             if args.action == "profile":
                 out(asyncio.run(olx_profile()))
+        elif args.account == "viber":
+            if args.action == "chats":
+                out(viber_chats())
+            elif args.action == "read":
+                out(viber_read(args.chat, args.limit))
+            elif args.action == "send":
+                out(viber_send(args.chat, args.text, args.confirm))
     except Exception as e:
         out({"status": "error", "error": str(e)[:400]})
 
