@@ -1,0 +1,32 @@
+name: chrome_twin
+android_package: com.android.chrome
+agent_module: aios_core.platforms.chrome_twin_adapter
+storage_class: aios_core.modules.chrome_twin.storage.ChromeTwinStorage
+adb_class: null
+default_locale: uk-UA
+description: "Chrome Twin — Двойник пользователя в Google Chrome с личным Google аккаунтом. Выполняет любые действия по команде во всех сервисах Google (Gmail, Drive, Docs, Calendar, YouTube и т.д.) и любых сайтах через Playwright."
+legacy_default_db: chrome_twin_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: true
+    messenger: true
+    collector: false
+    actions_per_hour: 1200
+    note: "Chrome Twin: использует реальный Chrome профиль с залогиненным Google аккаунтом. Все действия логируются в data/chrome_twin/<profile>/actions.jsonl"
+  browser:
+    user_data_dir: "data/chrome_twin/default"
+    headless: false
+    slow_mo: 100
+  google_services:
+    - gmail
+    - drive
+    - docs
+    - sheets
+    - calendar
+    - youtube
+    - maps
+    - translate
+    - photos
+    - contacts
+    - meet
+    - keep
