@@ -168,7 +168,12 @@ def run_once():
             "action": plan.get("action","?"),
             "file": result.get("file") or plan.get("file","?"),
             "description": plan.get("description","?")[:80],
-            "status": commit.get("status","skipped"),
+            # v3.6: PR-креатор коммитит сам, phase_commit после него видит чистое
+            # дерево и пишет nothing_to_commit — вводя anti-loop в заблуждение.
+            # PR ok == фактический успех цикла.
+            "status": ("success" if commit.get("status") == "nothing_to_commit"
+                       and isinstance(result.get("pr"), dict) and result["pr"].get("ok")
+                       else commit.get("status","skipped")),
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
         backlog["history"] = backlog["history"][-50:]
