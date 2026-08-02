@@ -1,70 +1,87 @@
 from typing import Dict, Any
-from aios_core.code_refactorer import detect_hack_solutions, refactor_hack_comments
-from aios_core.orchestrator import params
+import requests
+from aios_core.code_refactorer import CodeRefactorer
 
-def secure_get_requests(code: str) -> str:
-    """
-    Secures GET requests in the given code by replacing them with POST requests.
+class AdvancedSecurity:
+    def __init__(self):
+        """
+        Initialize the AdvancedSecurity class.
+        """
+        self.code_refactorer = CodeRefactorer()
 
-    Args:
-    code (str): The code to secure.
+    def secure_api_request(self, url: str, data: Dict[str, Any], token: str) -> Dict[str, Any]:
+        """
+        Send a secure API request using POST method and authorization token.
 
-    Returns:
-    str: The secured code.
-    """
-    # Detect HACK solutions in the code
-    hack_solutions = detect_hack_solutions(code)
+        Args:
+        url (str): The API endpoint URL.
+        data (Dict[str, Any]): The request data.
+        token (str): The authorization token.
 
-    # Refactor HACK comments in the code
-    refactored_code = refactor_hack_comments(code)
+        Returns:
+        Dict[str, Any]: The API response.
+        """
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json'
+        }
+        response = requests.post(url, headers=headers, json=data)
+        return response.json()
 
-    # Replace GET requests with POST requests
-    secured_code = refactored_code.replace("requests.get(", "requests.post(")
+    def refactor_api_v2_batch(self, code: str) -> str:
+        """
+        Refactor the api_v2_batch.py code to use secure API requests.
 
-    return secured_code
+        Args:
+        code (str): The code to refactor.
 
-def check_security_get_requests(code: str) -> Dict[str, Any]:
-    """
-    Checks the security of GET requests in the given code.
+        Returns:
+        str: The refactored code.
+        """
+        lines = code.split('\n')
+        refactored_lines = []
+        for line in lines:
+            if 'requests.get(' in line:
+                # Replace GET request with POST request
+                refactored_line = line.replace('requests.get(', 'requests.post(')
+                refactored_lines.append(refactored_line)
+            elif 'requests.post(' in line:
+                # Add authorization token to POST request
+                refactored_line = line.replace('requests.post(', 'self.secure_api_request(')
+                refactored_lines.append(refactored_line)
+            else:
+                refactored_lines.append(line)
+        return '\n'.join(refactored_lines)
 
-    Args:
-    code (str): The code to check.
+    def detect_hack_solutions(self, code: str) -> Dict[str, Any]:
+        """
+        Detect HACK solutions in the given code.
 
-    Returns:
-    Dict[str, Any]: A dictionary containing the security check results.
-    """
-    # Initialize the security check results
-    security_check_results = {}
+        Args:
+        code (str): The code to analyze.
 
-    # Detect HACK solutions in the code
-    hack_solutions = detect_hack_solutions(code)
+        Returns:
+        Dict[str, Any]: A dictionary containing the detected HACK solutions.
+        """
+        return self.code_refactorer.detect_hack_solutions(code)
 
-    # Check if there are any HACK solutions
-    if hack_solutions:
-        security_check_results["security_risk"] = True
-        security_check_results["hack_solutions"] = hack_solutions
-    else:
-        security_check_results["security_risk"] = False
+    def refactor_hack_comments(self, code: str) -> str:
+        """
+        Refactor HACK comments in the given code.
 
-    return security_check_results
+        Args:
+        code (str): The code to refactor.
 
-def secure_api_requests(code: str) -> str:
-    """
-    Secures API requests in the given code by replacing GET requests with POST requests.
+        Returns:
+        str: The refactored code.
+        """
+        return self.code_refactorer.refactor_hack_comments(code)
 
-    Args:
-    code (str): The code to secure.
-
-    Returns:
-    str: The secured code.
-    """
-    # Check the security of GET requests in the code
-    security_check_results = check_security_get_requests(code)
-
-    # If there is a security risk, secure the code
-    if security_check_results["security_risk"]:
-        secured_code = secure_get_requests(code)
-    else:
-        secured_code = code
-
-    return secured_code
+# Example usage:
+advanced_security = AdvancedSecurity()
+code = """
+# HACK: This is a hack solution
+requests.get('https://example.com/api/endpoint')
+"""
+refactored_code = advanced_security.refactor_api_v2_batch(code)
+print(refactored_code)
