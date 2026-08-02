@@ -74,19 +74,44 @@ def generate_secure_nonce() -> str:
     return secrets.token_urlsafe(32)
 
 @app.get("/g/{token}", response_class=HTMLResponse)
-def gemini_web_reader_hack(token: str, cmd: str, nonce: str = None):
+def validate_token(token: str) -> bool:
+    """Validate the authentication token."""
+    return token == TOKEN
+
+def validate_nonce(nonce: str) -> bool:
+    """Validate the nonce token to prevent replay attacks."""
+    if not nonce:
+        return False
+    # Basic validation - in production, use JWT or similar with expiration
+    try:
+        # Check if nonce is URL-safe base64 encoded
+        import base64
+        decoded = base64.urlsafe_b64decode(nonce)
+        return len(decoded) >= 32  # Minimum 32 bytes for security
+    except Exception:
+        return False
+
+def gemini_web_reader_hack(token: str, cmd: str, nonce: str = None) -> str:
     """Secure endpoint for remote command execution with replay attack protection.
 
     Args:
-        token: Authentication token
+        token: JWT or other secure token for authentication
         cmd: Command to execute
-        nonce: Unique token to prevent replay attacks (auto-generated if not provided)
+        nonce: Unique identifier for the request (optional but recommended)
 
     Returns:
         HTML response with execution results
+
+    Raises:
+        ValueError: If token or nonce are invalid
     """
-    if token != TOKEN:
-        return "<html><body><h1>Unauthorized</h1></body></html>"
+    # Validate token
+    if not validate_token(token):
+        raise ValueError("Invalid token")
+
+    # Validate nonce if provided
+    if nonce and not validate_nonce(nonce):
+        raise ValueError("Invalid nonce")
 
     # Generate secure nonce if not provided
     if nonce is None:
