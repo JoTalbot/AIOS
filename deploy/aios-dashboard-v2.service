@@ -1,0 +1,16 @@
+[Unit]
+Description=AIOS Dashboard v2 Analytics
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/dashboard_v2.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+Environment=HOME=/root
+Environment=PYTHONPATH=/root/AIOS
+
+[Install]
+WantedBy=multi-user.target
