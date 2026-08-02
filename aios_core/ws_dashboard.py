@@ -10,6 +10,7 @@ Uses Starlette/FastAPI WebSocket protocol with JSON message frames.
 from __future__ import annotations
 
 import asyncio
+import bleach
 import html
 import json
 import time
@@ -17,6 +18,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from functools import wraps
 
+from jinja2 import Environment, select_autoescape
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.routing import WebSocketRoute
@@ -198,19 +200,19 @@ async def ws_dashboard_handler(websocket) -> None:
 
 
 def sanitize_input(text: str | None) -> str:
-    """Sanitize user input to prevent XSS attacks.
+    """Sanitize user input to prevent XSS attacks using bleach library.
 
     Args:
         text: Input string to sanitize.
 
     Returns:
-        Sanitized string with HTML special characters escaped.
+        Sanitized string with dangerous HTML tags and attributes removed.
     """
     if text is None:
         return ""
     if not isinstance(text, str):
         return str(text)
-    return html.escape(text)
+    return bleach.clean(text, tags=[], attributes={}, strip=True)
 
 def xss_protect(f):
     """Decorator to automatically sanitize all request inputs to prevent XSS attacks.
@@ -223,7 +225,7 @@ def xss_protect(f):
         if request.query_params:
             sanitized_params = {}
             for key, value in request.query_params.items():
-                sanitized_params[sanitize_input(key)] = sanitize_input(value)
+                sanitized_params[html.escape(key)] = sanitize_input(value)
             request._query_params = sanitized_params  # type: ignore
 
         # Sanitize form data
@@ -231,7 +233,7 @@ def xss_protect(f):
             sanitized_form = {}
             form_data = await request.form()
             for key, value in form_data.items():
-                sanitized_form[sanitize_input(key)] = sanitize_input(value)
+                sanitized_form[html.escape(key)] = sanitize_input(value)
             request._form = sanitized_form  # type: ignore
 
         # Sanitize JSON body if present
@@ -241,13 +243,46 @@ def xss_protect(f):
                 if isinstance(json_data, dict):
                     sanitized_json = {}
                     for key, value in json_data.items():
-                        sanitized_json[sanitize_input(key)] = sanitize_input(str(value))
+                        sanitized_json[html.escape(key)] = sanitize_input(str(value))
                     request._json = sanitized_json  # type: ignore
             except json.JSONDecodeError:
                 pass
 
         return await f(request, *args, **kwargs)
     return decorated_function
+
+# Initialize Jinja2 environment with auto-escaping for template rendering
+env = Environment(
+    autoescape=select_autoescape(['html', 'xml']),
+    trim_blocks=True,
+    lstrip_blocks=True
+)
+
+def render_template(template_name: str, **context) -> str:
+    """
+    Render a Jinja2 template with automatic escaping for security.
+
+    All user-provided data must be sanitized before passing to this function.
+    This function ensures that all template variables are properly escaped
+    to prevent XSS attacks.
+
+    Args:
+        template_name: Name of the template file to render.
+        **context: Variables to pass to the template.
+
+    Returns:
+        Rendered HTML string with all variables properly escaped.
+    """
+    # Apply sanitization to all string values in context
+    sanitized_context = {}
+    for key, value in context.items():
+        if isinstance(value, str):
+            sanitized_context[key] = sanitize_input(value)
+        else:
+            sanitized_context[key] = value
+
+    template = env.get_template(template_name)
+    return template.render(**sanitized_context)
 
 def create_ws_dashboard_app(event_bus: DashboardEventBus | None = None) -> Starlette:
     """Create a Starlette app with WebSocket dashboard endpoint.
