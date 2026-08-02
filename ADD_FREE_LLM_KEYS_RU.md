@@ -68,3 +68,20 @@ PY
 - Free-tier провайдеры имеют **rate-limits** (429). Балансировщик автоматически делает
   cooldown 60с и пробует следующий ключ/провайдер.
 - Для кодовых задач предпочтительны: **OpenRouter free**, **Groq**, **Cerebras**, **Together**, **Mistral**.
+
+## Локальный fallback (Ollama) — добавлено 2026-08-02
+
+Если ВСЕ облачные ключи умерли (402/403/429 у всех провайдеров), LLMBalancer v2.2
+автоматически переключается на локальную Ollama (`aios-coder:7b` → `qwen2.5-coder:7b` → `qwen2.5-coder:1.5b`)
+вместо ошибки «Все LLM-провайдеры недоступны». Работает и для автокодера, и для чата.
+
+- Хост: `LOCAL_LLM=1` уже стоит в `/etc/aios/aios-auto-coder.env` и `/etc/aios/aios-telegram-bot.env`.
+- Docker (aios-api): `LOCAL_LLM=1` + `LOCAL_LLM_BASE_URL=http://172.18.0.1:11434/v1/chat/completions`
+  в `docker-compose.prod.yml`; Ollama слушает `0.0.0.0`, наружу закрыта ufw
+  (открыт только для docker-подсетей 172.17/172.18).
+
+Проверка всех ключей и fallback:
+```bash
+/opt/aios/.venv/bin/python scripts/check_llm_keys.py     # реальная проверка всех ключей
+/opt/aios/.venv/bin/python scripts/test_balancer_e2e.py  # e2e: clouds-dead -> local, cohere, ротация
+```

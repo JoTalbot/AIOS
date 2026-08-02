@@ -1,13 +1,26 @@
 """
-LLM Balancer v2.1 — улучшенная балансировка с приоритетом рабочих провайдеров.
+LLM Balancer v2.2 — улучшенная балансировка с приоритетом рабочих провайдеров.
 
-Исправления:
+Исправления v2.1:
 - 402 Payment Required = permanent dead (24h cooldown)
 - Приоритет: groq > deepseek > zai > mistral > cohere > gemini > huggingface > airforce > openrouter > local
 - local_first удален, local теперь всегда последний fallback
 - Fallback цепочка: groq/llama, huggingface/gemma-3-27b, qwen2.5-coder:7b вместо 1.5b
 - Экспоненциальный backoff для 429
 - Учет installed моделей для local
+
+Исправления v2.2 (2026-08-02, проверка ротации ключей):
+- ГАРАНТИРОВАННЫЙ local-fallback: если ВСЕ облачные провайдеры недоступны,
+  балансер пробует локальную Ollama (aios-coder:7b -> qwen2.5-coder:7b -> 1.5b),
+  а не возвращает ошибку. Работает и для автокодера, и для чата.
+- FIX: cohere переведён на формат v2 API (OpenAI-style messages) — старый
+  формат v1 (message/chat_history) отклонялся с HTTP 422.
+- FIX: local-провайдер добавлена модель aios-coder:7b (fine-tune qwen2.5-coder).
+- LOCAL_LLM: если переменная не задана и процесс не в docker — local
+  включается автоматически при живой Ollama. В docker требуется явный
+  LOCAL_LLM=1 и LOCAL_LLM_BASE_URL=http://172.18.0.1:11434/v1/chat/completions.
+- Проверка Ollama (/api/tags) теперь идёт через LOCAL_LLM_BASE_URL,
+  а не захардкоженный localhost.
 """
 
 import json
@@ -210,6 +223,7 @@ class LLMBalancer:
         "local": {
             "base_url": os.environ.get("LOCAL_LLM_BASE_URL", "http://localhost:11434/v1/chat/completions"),
             "models": [
+                "aios-coder:7b",     # AIOS fine-tune на базе qwen2.5-coder:7b
                 "qwen2.5-coder:7b",  # prefer 7b over 1.5b
                 "qwen2.5-coder:1.5b",
                 "qwen2.5-coder:14b",
@@ -390,29 +404,44 @@ class LLMBalancer:
             load_keys(env_name, p)
 
         # Local Ollama
-        if os.environ.get("LOCAL_LLM", "") == "1":
+        _local_flag = os.environ.get("LOCAL_LLM", "").strip().strip('"').strip("'").lower()
+        _local_explicit = _local_flag in ("1", "true", "yes")
+        _local_disabled = _local_flag in ("0", "false", "no")
+        _in_docker = os.path.exists("/.dockerenv")
+        # Явно включено (LOCAL_LLM=1) -> регистрируем всегда.
+        # Не задано -> авто-включение ТОЛЬКО на хосте (не в docker): в контейнере
+        # localhost указывает на сам контейнер, там нужен явный LOCAL_LLM=1
+        # и LOCAL_LLM_BASE_URL на адрес хоста (например http://172.18.0.1:11434/...).
+        _local_enabled = _local_explicit or (not _local_disabled and not _in_docker)
+        if _local_enabled:
+            _local_base = self.PROVIDERS["local"]["base_url"]
+            _tags_url = _local_base.replace("/v1/chat/completions", "/api/tags")
             try:
                 import urllib.request as _ur
-                with _ur.urlopen("http://localhost:11434/api/tags", timeout=2) as _r:
+                with _ur.urlopen(_tags_url, timeout=2) as _r:
                     _installed = {m["name"] for m in json.loads(_r.read().decode("utf-8", "ignore")).get("models", [])}
+                _reachable = True
             except Exception:
                 _installed = set()
-            # Filter: only keep models that are actually installed if we have info
-            if _installed:
-                available_models = [m for m in self.PROVIDERS["local"]["models"] if m in _installed or any(m in ins for ins in _installed)]
-                if not available_models:
-                    available_models = list(_installed)[:5]
-            else:
-                available_models = self.PROVIDERS["local"]["models"]
-                _installed = set(self.PROVIDERS["local"]["models"])
+                _reachable = False
 
-            self.providers["local"] = Provider(
-                name="local",
-                base_url=self.PROVIDERS["local"]["base_url"],
-                keys=[APIKey(key="local", provider="local")],
-                models=available_models,
-                installed=_installed,
-            )
+            if _reachable or _local_explicit:
+                # Filter: only keep models that are actually installed if we have info
+                if _installed:
+                    available_models = [m for m in self.PROVIDERS["local"]["models"] if m in _installed or any(m in ins for ins in _installed)]
+                    if not available_models:
+                        available_models = list(_installed)[:5]
+                else:
+                    available_models = self.PROVIDERS["local"]["models"]
+                    _installed = set(self.PROVIDERS["local"]["models"])
+
+                self.providers["local"] = Provider(
+                    name="local",
+                    base_url=_local_base,
+                    keys=[APIKey(key="local", provider="local")],
+                    models=available_models,
+                    installed=_installed,
+                )
 
     def add_key(self, provider: str, key: str):
         if provider not in self.providers:
@@ -512,16 +541,9 @@ class LLMBalancer:
                         "temperature": temperature,
                     }
 
-                    # Cohere v2 chat uses different format
-                    if prov_name == "cohere":
-                        # Convert to Cohere format: last user message as message, others as chat_history
-                        last_msg = all_messages[-1]["content"] if all_messages else ""
-                        history = [{"role": m["role"], "message": m["content"]} for m in all_messages[:-1]]
-                        payload = {
-                            "model": try_model,
-                            "message": last_msg,
-                            "chat_history": history,
-                        }
+                    # Cohere v2 API (/v2/chat) принимает OpenAI-style messages,
+                    # старый формат v1 (message/chat_history) отклоняется с 422.
+                    # Ответ Cohere v2 разбирается в общей ветке парсинга ("message" -> content list).
 
                     headers = {
                         "Content-Type": "application/json",
@@ -613,8 +635,59 @@ class LLMBalancer:
                     best_provider.mark_key_error(best_key, str(e)[:60], cooldown=60)
                     continue
 
+        # FINAL SAFETY NET (v2.2): все облачные провайдеры/ключи недоступны —
+        # пробуем локальную Ollama напрямую, минуя fallback-цепочки моделей.
+        # Это гарантирует ответ для автокодера и чата, пока жива Ollama.
+        _local_answer = self._try_local_fallback(all_messages, max_tokens, temperature)
+        if _local_answer:
+            return _local_answer
+
         self._total_errors += 1
         return "⚠️ Все LLM-провайдеры временно недоступны. Проверьте квоты и API-ключи."
+
+    def _try_local_fallback(self, all_messages: list[dict], max_tokens: int, temperature: float) -> str:
+        """Last-resort fallback на локальную Ollama, когда ВСЕ облака умерли.
+
+        Перебирает установленные локальные модели (aios-coder:7b, qwen2.5-coder:7b, 1.5b).
+        Возвращает ответ или пустую строку, если и local недоступен.
+        """
+        provider = self.providers.get("local")
+        if provider is None:
+            return ""
+        import requests as _req_lib
+        for local_model in provider.models:
+            try:
+                print(f"  [Balancer] CLOUDS DOWN -> local fallback: {local_model}")
+                _resp = _req_lib.post(
+                    provider.base_url,
+                    json={
+                        "model": local_model,
+                        "messages": all_messages,
+                        "max_tokens": max_tokens,
+                        "temperature": temperature,
+                        "stream": False,
+                    },
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer local",
+                    },
+                    timeout=300,  # CPU-инференс 7B медленный
+                )
+                _resp.raise_for_status()
+                data = _resp.json()
+                content = ""
+                if "choices" in data and data["choices"]:
+                    _c = data["choices"][0].get("message", {}).get("content", "")
+                    content = _c if isinstance(_c, str) else ""
+                if content.strip():
+                    self._provider_stats["local"] = self._provider_stats.get("local", 0) + 1
+                    print(f"  [Balancer] LOCAL fallback OK: {local_model}")
+                    return content
+                print(f"  [Balancer] LOCAL fallback {local_model}: пустой ответ")
+            except Exception as e:
+                print(f"  [Balancer] LOCAL fallback {local_model} failed: {str(e)[:80]}")
+                continue
+        return ""
 
     def status(self) -> dict:
         result = {
