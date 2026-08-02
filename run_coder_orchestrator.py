@@ -881,6 +881,10 @@ def phase_validate(code_result: dict) -> dict:
 
 def phase_commit(code_result: dict, plan: dict, validation: dict) -> dict:
     """Phase 5: Commit and push — full autonomous access."""
+    # Block commit if validation failed - prevent broken code from being committed
+    if validation.get("status") == "failed":
+        print(f"    [COMMIT] BLOCKED: validation failed ({validation.get('reason','')[:80]}) - not committing")
+        return {"status": "blocked_validation", "reason": validation.get("reason","validation failed")}
     code_ok = code_result.get("status") in ("success", "unsafe")
 
     if not code_ok:
