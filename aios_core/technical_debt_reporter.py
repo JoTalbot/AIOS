@@ -8,9 +8,9 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Dict, Optional, Set, Tuple
 
-from aios_core.logging_config import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)  # fix: стандартный API (галлюцинация get_logger, 2-й раз)
 
 class DebtType(Enum):
     """Типы технического долга."""

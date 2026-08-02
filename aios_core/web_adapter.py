@@ -131,7 +131,7 @@ class WebRequestSchema(BaseModel):
 
         # Remove dangerous attributes from remaining tags
         dangerous_attrs = [
-            'on\w+', 'javascript:', 'expression\(', 'behaviour:',
+            r'on\w+', 'javascript:', r'expression\(', 'behaviour:',
             'style=', 'formaction=', 'srcdoc=', 'dynsrc='
         ]
 
