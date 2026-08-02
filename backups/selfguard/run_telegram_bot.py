@@ -28,9 +28,11 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import re
 import sys
 import time
 import urllib.request
+from datetime import datetime, timedelta
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -57,6 +59,7 @@ class TelegramAPI:
     """Minimal Telegram Bot API client (polling mode)."""
 
     def __init__(self, token: str) -> None:
+        self._token = token
         self._base = f"https://api.telegram.org/bot{token}"
 
     def _request(self, method: str, data: dict | None = None) -> dict:
@@ -101,6 +104,52 @@ class TelegramAPI:
         if reply_markup:
             payload["reply_markup"] = reply_markup
         return self._request("editMessageText", payload)
+
+    def get_file(self, file_id: str) -> dict:
+        """Получить информацию о файле (file_path) по file_id."""
+        return self._request("getFile", {"file_id": file_id}).get("result", {})
+
+    def download_file_by_id(self, file_id: str, dest: str | None = None) -> str:
+        """Скачать файл (фото и т.п.) по file_id в локальный путь; вернуть путь."""
+        info = self.get_file(file_id)
+        path = info.get("file_path", "")
+        if not path:
+            raise ValueError(f"Нет file_path для file_id {file_id}")
+        url = f"https://api.telegram.org/file/bot{self._token}/{path}"
+        with urllib.request.urlopen(url, timeout=90) as resp:
+            data = resp.read()
+        if not dest:
+            ext = Path(path).suffix or ".jpg"
+            dest = f"/tmp/aios_tg_{int(time.time() * 1000)}{ext}"
+        Path(dest).write_bytes(data)
+        return dest
+
+    def send_photo(self, chat_id: int, photo_path: str, caption: str = "") -> dict:
+        """Отправить фото (multipart/form-data)."""
+        import mimetypes
+        boundary = "----aios" + str(int(time.time() * 1000))
+        with open(photo_path, "rb") as _f:
+            content = _f.read()
+
+        def _field(name: str, value: str) -> bytes:
+            return (f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n"
+                    f"{value}\r\n").encode()
+
+        fn = Path(photo_path).name
+        ct = mimetypes.guess_type(fn)[0] or "application/octet-stream"
+        body = b"".join([
+            _field("chat_id", str(chat_id)),
+            _field("caption", caption[:1000]) if caption else b"",
+            (f"--{boundary}\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"{fn}\"\r\n"
+             f"Content-Type: {ct}\r\n\r\n").encode(),
+            content,
+            f"\r\n--{boundary}--\r\n".encode(),
+        ])
+        req = urllib.request.Request(
+            f"{self._base}/sendPhoto", data=body,
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            return json.loads(resp.read())
 
 
 # ---------------------------------------------------------------------------
@@ -170,10 +219,10 @@ MAIN_MENU_KEYBOARD = {
     "keyboard": [
         [{"text": "🧠 Кодер"}, {"text": "📊 Статистика"}],
         [{"text": "🛒 OLX"}, {"text": "📱 Платформы"}],
-        [{"text": "🖥 Сервер"}, {"text": "🐳 Docker"}],
-        [{"text": "❤️ Health"}, {"text": "💾 Backup"}],
-        [{"text": "🚨 Alerts"}, {"text": "🔑 API Ключи"}],
-        [{"text": "📋 Логи"}, {"text": "🤖 Бот"}],
+        [{"text": "🌐 Аккаунты"}, {"text": "🖥 Сервер"}],
+        [{"text": "🐳 Docker"}, {"text": "❤️ Health"}],
+        [{"text": "💾 Backup"}, {"text": "🚨 Alerts"}],
+        [{"text": "🔑 API Ключи"}, {"text": "📋 Логи"}],
         [{"text": "🤖 Бот"}, {"text": "❓ Помощь"}],
     ],
     "resize_keyboard": True,
@@ -198,6 +247,39 @@ OLX_MENU_KEYBOARD = {
         [{"text": "📊 OLX Стат"}, {"text": "📋 Подписки"}],
         [{"text": "🆕 Последние"}, {"text": "📈 Аналитика"}],
         [{"text": "◀️ Меню"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
+ACCOUNTS_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "🌐 Google"}, {"text": "📸 Instagram"}],
+        [{"text": "◀️ Меню"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
+GOOGLE_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "✉️ Непрочитанные"}, {"text": "📥 Последние письма"}],
+        [{"text": "🔍 Поиск письма"}, {"text": "📧 Отправить письмо"}],
+        [{"text": "👤 Кто я"}, {"text": "📅 События"}],
+        [{"text": "➕ Событие"}, {"text": "📄 Документ"}],
+        [{"text": "🗂 Диск"}, {"text": "📷 Скрин почты"}],
+        [{"text": "◀️ Аккаунты"}],
+    ],
+    "resize_keyboard": True,
+    "one_time_keyboard": False,
+}
+
+INSTAGRAM_MENU_KEYBOARD = {
+    "keyboard": [
+        [{"text": "👤 Мой профиль"}, {"text": "📈 Подписчики"}],
+        [{"text": "🖼 Мои посты"}, {"text": "📷 Скрин профиля"}],
+        [{"text": "❤️ Лайкнуть"}, {"text": "👤 Подписка"}],
+        [{"text": "◀️ Аккаунты"}],
     ],
     "resize_keyboard": True,
     "one_time_keyboard": False,
@@ -457,11 +539,607 @@ def cmd_help() -> str:
         "  /olx_list — мои подписки\n"
         "  /olx_latest &lt;запрос&gt; [N] — последние N объявлений\n"
         "  /olx_analytics &lt;запрос&gt; — AI-аналитика цен\n"
-        "  /help — эта справка\n\n"
+        "  /accounts — управление Google и Instagram аккаунтами\n"
+        "  /google — быстрые команды Google (почта, календарь, диск)\n"
+        "  /instagram — быстрые команды Instagram (профиль, посты)\n\n"
+        "<i>Просто напишите боту обычным текстом, например:</i>\n"
+        "  «проверь мою почту» · «сколько непрочитанных» · «кто я в гугле»\n"
+        "  «покажи календарь» · «покажи мой инстаграм» · «мои посты» · «отправь письмо ...»\n\n"
         "<i>Бот работает в polling-режиме. Алерты приходят автоматически после каждого цикла сбора (каждые 30 мин).</i>"
     )
 
 
+
+
+# ---------------------------------------------------------------------------
+# Account control — Google + Instagram через обычный диалог
+# ---------------------------------------------------------------------------
+
+# Последнее фото, присланное пользователем (для будущих действий): chat_id -> путь
+_last_photo: dict[int, str] = {}
+# Ожидающие подтверждения действий: chat_id -> {"kind": ..., "data": ...}
+_pending_confirm: dict[int, dict] = {}
+
+
+def _run_account_control(args: list[str], timeout: int = 160) -> dict:
+    """Запустить run_account_control.py (хелпер управления аккаунтами)."""
+    import subprocess as _sp
+    py = "/opt/aios/.venv/bin/python"
+    helper = str(PROJECT_ROOT / "run_account_control.py")
+    # IMAP/SMTP-команды не требуют X; браузерные — требуют xvfb
+    needs_x = not (len(args) >= 2 and args[0] == "google" and args[1] in ("gmail_list", "gmail_send", "gmail_search", "open"))
+    if needs_x:
+        cmd = ["xvfb-run", "-a", "-s", "-screen 0 1440x900x24", py, helper] + args
+    else:
+        cmd = [py, helper] + args
+    try:
+        r = _sp.run(cmd, capture_output=True, text=True, timeout=timeout, cwd=str(PROJECT_ROOT))
+    except _sp.TimeoutExpired:
+        return {"status": "error", "error": "Превышено время выполнения (браузер может быть занят)"}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:200]}
+    out_txt = (r.stdout or "").strip()
+    if not out_txt:
+        return {"status": "error", "error": (r.stderr or "пустой ответ")[-400:]}
+    try:
+        # JSON может быть последней строкой или всем выводом
+        start = out_txt.find("{")
+        return json.loads(out_txt[start:]) if start >= 0 else {"status": "error", "error": out_txt[-400:]}
+    except Exception:
+        return {"status": "error", "error": out_txt[-400:]}
+
+
+def _fmt_gmail_list(data: dict, unread_only: bool = False) -> str:
+    emails = data.get("emails", [])
+    if not emails:
+        return "📭 Писем не найдено."
+    head = f"📥 <b>{'Непрочитанные' if unread_only else 'Последние'} письма</b>\n"
+    head += f"Всего: {data.get('total', '?')} · 🔴 непрочитанных: {data.get('unread_total', '?')}\n\n"
+    lines = [head]
+    for i, e in enumerate(emails, 1):
+        if "error" in e:
+            lines.append(f"{i}. ❌ {e['error']}")
+            continue
+        mark = "🔴 " if e.get("unread") else ""
+        subj = e.get("subject", "(без темы)")
+        frm = e.get("from", "?")
+        date = (e.get("date") or "")[:22]
+        snip = (e.get("snippet") or "")[:180]
+        lines.append(f"{i}. {mark}<b>{subj}</b>\n   ✉️ {frm}\n   🕐 {date}\n   {snip}")
+    return "\n\n".join(lines)
+
+
+def _acct_send_result(api, chat_id: int, data: dict, intro: str) -> None:
+    if data.get("status") == "error":
+        api.send_message(chat_id, f"❌ {data.get('error', 'неизвестная ошибка')}")
+        return
+    api.send_message(chat_id, intro + (data.get("text", "")), parse_mode="HTML")
+    shot = data.get("screenshot")
+    if shot and os.path.exists(shot):
+        try:
+            api.send_photo(chat_id, shot, caption=data.get("caption", ""))
+        except Exception as e:
+            print(f"  [ACCT] send_photo failed: {e}")
+
+
+def _acct_google(api, chat_id: int, kind: str, extra: str = "") -> None:
+    api.send_message(chat_id, "⏳ Секунду, работаю с Google…")
+    if kind == "whoami":
+        data = _run_account_control(["google", "whoami"])
+        if data.get("status") == "ok":
+            email = data.get("email") or "?"
+            raw = (data.get("raw") or email).replace("\n", " ")
+            api.send_message(chat_id,
+                             f"👤 <b>Google аккаунт в Chrome:</b>\n{raw}\n\n"
+                             f"Почта (IMAP): <code>{email}</code>")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', 'ошибка')}")
+    elif kind == "unread":
+        data = _run_account_control(["google", "gmail_list", "5", "--unread"])
+        _acct_send_result(api, chat_id, {"status": data.get("status"),
+                                         "error": data.get("error"),
+                                         "text": _fmt_gmail_list(data, unread_only=True)}, "")
+    elif kind == "list":
+        data = _run_account_control(["google", "gmail_list", "5"])
+        _acct_send_result(api, chat_id, {"status": data.get("status"),
+                                         "error": data.get("error"),
+                                         "text": _fmt_gmail_list(data)}, "")
+    elif kind == "calendar":
+        data = _run_account_control(["google", "screenshot", "calendar"])
+        _acct_send_result(api, chat_id,
+                          {"status": data.get("status"), "error": data.get("error"),
+                           "text": f"📅 <b>Google Календарь</b>\n{data.get('title', '')}\n{data.get('url', '')}",
+                           "screenshot": data.get("screenshot"),
+                           "caption": "📅 Календарь (скриншот)"}, "")
+    elif kind == "drive":
+        data = _run_account_control(["google", "screenshot", "drive"])
+        _acct_send_result(api, chat_id,
+                          {"status": data.get("status"), "error": data.get("error"),
+                           "text": f"🗂 <b>Google Диск</b>\n{data.get('title', '')}\n{data.get('url', '')}",
+                           "screenshot": data.get("screenshot"),
+                           "caption": "🗂 Диск (скриншот)"}, "")
+    elif kind == "mailshot":
+        data = _run_account_control(["google", "screenshot", "gmail"])
+        _acct_send_result(api, chat_id,
+                          {"status": data.get("status"), "error": data.get("error"),
+                           "text": f"📧 <b>Почта Gmail</b>\n{data.get('title', '')}\n{data.get('url', '')}",
+                           "screenshot": data.get("screenshot"),
+                           "caption": "📧 Gmail (скриншот)"}, "")
+    elif kind == "events":
+        data = _run_account_control(["google", "calendar_events"])
+        if data.get("status") == "ok":
+            evs = data.get("events") or []
+            if evs:
+                text = "📅 <b>События на сегодня:</b>\n" + "\n".join(f"• {e}" for e in evs)
+            else:
+                text = "📅 Событий на сегодня нет."
+            _acct_send_result(api, chat_id, {"status": "ok", "text": text,
+                                             "screenshot": data.get("screenshot"),
+                                             "caption": "📅 Календарь (сегодня)"}, "")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', 'ошибка')}")
+    elif kind == "send_prompt":
+        api.send_message(chat_id,
+                         "📧 <b>Отправка письма</b>\n\n"
+                         "Напишите одним сообщением: <i>кому, тема, текст</i>.\n"
+                         "Например: «отправь письмо ivan@gmail.com, тема Встреча, "
+                         "текст: привет, созвонимся завтра в 15:00»")
+    elif kind == "event_prompt":
+        api.send_message(chat_id,
+                         "📅 <b>Создание события</b>\n\n"
+                         "Напишите, например: «событие Встреча с Мишей завтра в 14:00»,\n"
+                         "или «добавь событие Отчёт 05.08 в 10:30»")
+    elif kind == "search_prompt":
+        api.send_message(chat_id,
+                         "🔍 <b>Поиск в почте</b>\n\n"
+                         "Напишите «найди письмо <запрос>», например «найди письмо от github»")
+    elif kind == "docs_prompt":
+        api.send_message(chat_id,
+                         "📄 <b>Создание документа</b>\n\n"
+                         "Напишите «создай документ, тема <название>, текст: <содержимое>»")
+    else:
+        api.send_message(chat_id, "❌ Неизвестная команда Google.")
+
+
+def _acct_instagram(api, chat_id: int, kind: str, extra: str = "") -> None:
+    api.send_message(chat_id, "⏳ Секунду, захожу в Instagram…")
+    if kind in ("profile", "stats"):
+        data = _run_account_control(["instagram", "profile"])
+        if data.get("status") == "ok":
+            p = data.get("profile", {})
+            text = (f"📸 <b>Instagram: @{p.get('username', '?')}</b>\n"
+                    f"👤 Имя: {p.get('full_name') or '—'}\n"
+                    f"👥 Подписчики: {p.get('followers') or 0}\n"
+                    f"🔄 Подписки: {p.get('following') or 0}\n"
+                    f"📄 Постов: {p.get('posts_count') or 0}\n"
+                    f"ℹ️ {p.get('bio') or 'без описания'}\n"
+                    f"🔗 {p.get('profile_url') or ''}")
+            _acct_send_result(api, chat_id,
+                              {"status": "ok", "text": text,
+                               "screenshot": data.get("screenshot"),
+                               "caption": f"📸 @{p.get('username')}"}, "")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', 'ошибка')}")
+    elif kind == "posts":
+        data = _run_account_control(["instagram", "posts", "5"])
+        if data.get("status") == "ok":
+            posts = data.get("posts") or []
+            if not posts:
+                api.send_message(chat_id,
+                                 f"🖼 <b>@{(data.get('username') or '?')}</b>: постов пока нет.")
+                return
+            lines = [f"🖼 <b>Последние посты @{data.get('username')}</b>:"]
+            for i, p in enumerate(posts, 1):
+                alt = (p.get("alt") or "")[:80]
+                lines.append(f"{i}. <a href=\"{p.get('url')}\">/p/{p.get('code')}</a>  {alt}")
+            api.send_message(chat_id, "\n".join(lines))
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', 'ошибка')}")
+    elif kind == "screenshot":
+        data = _run_account_control(["instagram", "screenshot"])
+        _acct_send_result(api, chat_id,
+                          {"status": data.get("status"), "error": data.get("error"),
+                           "text": f"📸 <b>Instagram</b>: @{data.get('username', '?')}",
+                           "screenshot": data.get("screenshot"),
+                           "caption": "📸 Профиль Instagram"}, "")
+    elif kind == "like_prompt":
+        api.send_message(chat_id,
+                         "❤️ <b>Лайк</b>: пришлите ссылку на пост, например:\n"
+                         "«лайкни https://www.instagram.com/p/CODE/»")
+    elif kind == "follow_prompt":
+        api.send_message(chat_id,
+                         "👤 <b>Подписка</b>: напишите\n"
+                         "«подпишись на @username» или «отпишись от @username»")
+    else:
+        api.send_message(chat_id, "❌ Неизвестная команда Instagram.")
+
+
+def _llm_extract_json(prompt: str) -> dict:
+    """Универсальный LLM-вызов: вернуть JSON из промпта."""
+    import urllib.request as _urllib
+    _b = None
+    try:
+        from aios_core.llm_balancer import LLMBalancer as _LB
+        _b = _LB()
+    except Exception:
+        _b = None
+    response = None
+    if _b is not None:
+        try:
+            response = _b.chat([{"role": "user", "content": prompt}],
+                               model=os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick"),
+                               system="You extract JSON only.", max_tokens=400, temperature=0.0,
+                               task_type="chat")
+        except Exception:
+            response = None
+    if not response:
+        try:
+            key = os.environ.get("OPENROUTER_API_KEY", "")
+            if key:
+                payload = json.dumps({
+                    "model": "mistralai/mistral-small-3.2-24b-instruct",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 400, "temperature": 0.0,
+                }).encode()
+                req = _urllib.Request("https://openrouter.ai/api/v1/chat/completions",
+                                      data=payload, headers={
+                                          "Content-Type": "application/json",
+                                          "Authorization": "Bearer " + key})
+                with _urllib.urlopen(req, timeout=45) as resp:
+                    data = json.loads(resp.read())
+                response = data["choices"][0]["message"]["content"]
+        except Exception:
+            pass
+    if not response:
+        return {}
+    try:
+        start = response.find("{")
+        end = response.rfind("}") + 1
+        if start >= 0 and end > start:
+            return json.loads(response[start:end])
+    except Exception:
+        pass
+    return {}
+
+
+def _llm_extract_gmail(text: str) -> dict:
+    """LLM: извлечь {to, subject, body} из запроса на отправку письма."""
+    prompt = (
+        "Ты — парсер. Извлеки из сообщения данные для письма. "
+        "Верни ТОЛЬКО JSON без пояснений: {\"to\": \"email\", \"subject\": \"тема\", \"body\": \"текст\"}. "
+        "Если адреса нет — to=''. Если темы нет — subject=''. "
+        f"Сообщение: {text}"
+    )
+    return _llm_extract_json(prompt)
+
+
+def _llm_extract_calendar(text: str) -> dict:
+    """LLM: извлечь {title, date, time, desc} из запроса на создание события."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+    prompt = (
+        "Ты — парсер событий календаря. Извлеки из сообщения данные события. "
+        "Верни ТОЛЬКО JSON без пояснений: "
+        "{\"title\": \"название\", \"date\": \"YYYY-MM-DD\", \"time\": \"HH:MM\", \"desc\": \"описание\"}. "
+        f"Сегодня = {today}, завтра = {tomorrow}. Если дата не указана — date='' (значит сегодня). "
+        "Если время не указано — time='' (значит 12:00). Если описания нет — desc=''. "
+        f"Сообщение: {text}"
+    )
+    return _llm_extract_json(prompt)
+
+
+def _handle_account_intent(api, chat_id: int, text: str) -> bool:
+    """Обработать «человеческое» сообщение про Google/Instagram. True = обработано."""
+    t = text.lower()
+
+    # 1) подтверждение/отмена ожидающего действия
+    if chat_id in _pending_confirm:
+        yes = any(w in t for w in ("да", "отправь", "отправляй", "подтверж", "yes", "ага", "го", "ок", "давай"))
+        no = any(w in t for w in ("нет", "отмена", "не надо", "no", "cancel", "стоп", "не отправляй", "не хочу"))
+        if yes or no:
+            pend = _pending_confirm.pop(chat_id)
+            kind = pend.get("kind", "")
+            if no:
+                api.send_message(chat_id, "🚫 Действие отменено.")
+                return True
+            if kind == "gmail":
+                d = pend["data"]
+                data = _run_account_control(["google", "gmail_send", "--to", d["to"],
+                                             "--subject", d["subject"], "--body", d["body"],
+                                             "--confirm"])
+                if data.get("status") == "sent":
+                    api.send_message(chat_id,
+                                     f"✅ Письмо отправлено:\n📧 <b>{d['subject']}</b> → {d['to']}")
+                else:
+                    api.send_message(chat_id, f"❌ Ошибка отправки: {data.get('error', '?')}")
+                return True
+            if kind == "calendar_add":
+                d = pend["data"]
+                data = _run_account_control(["google", "calendar_add",
+                                             "--title", d["title"], "--date", d.get("date", ""),
+                                             "--time", d.get("time", ""), "--desc", d.get("desc", ""),
+                                             "--confirm"])
+                if data.get("status") == "ok":
+                    api.send_message(chat_id,
+                                     f"✅ Событие создано:\n📅 <b>{d['title']}</b>\n"
+                                     f"🕐 {data.get('start', '')} → {data.get('end', '')}\n"
+                                     f"🔗 {data.get('url', '')}")
+                else:
+                    api.send_message(chat_id, f"❌ Ошибка создания события: {data.get('error', '?')}")
+                return True
+            if kind == "ig_like":
+                d = pend["data"]
+                data = _run_account_control(["instagram", "like", d["url"], "--confirm"])
+                st = data.get("status")
+                if st == "liked":
+                    api.send_message(chat_id, f"❤️ Лайк поставлен: {d['url']}")
+                elif st == "already_liked":
+                    api.send_message(chat_id, f"👍 Пост уже лайкнут: {d['url']}")
+                else:
+                    api.send_message(chat_id, f"❌ Ошибка: {data.get('error', st)}")
+                return True
+            if kind == "ig_unlike":
+                d = pend["data"]
+                data = _run_account_control(["instagram", "unlike", d["url"], "--confirm"])
+                st = data.get("status")
+                if st == "unliked":
+                    api.send_message(chat_id, f"💔 Лайк убран: {d['url']}")
+                else:
+                    api.send_message(chat_id, f"ℹ️ {data.get('error', st)}")
+                return True
+            if kind == "ig_follow":
+                d = pend["data"]
+                data = _run_account_control(["instagram", "follow", d["username"],
+                                             "--action", d.get("action", "follow"), "--confirm"])
+                st = data.get("status")
+                if st == "ok":
+                    verb = "подписался на" if d.get("action") == "follow" else "отписался от"
+                    api.send_message(chat_id, f"✅ {verb} @{d['username']}")
+                else:
+                    api.send_message(chat_id, f"ℹ️ {data.get('error', st)}")
+                return True
+            api.send_message(chat_id, "❌ Неизвестный тип действия.")
+            return True
+
+    ig_words = ("инста", "instagram", "подписчик", "мой профиль в инст", "мой инст",
+                "мои посты", "профиль инстаграм", "мой instagram", "сторис", "story",
+                "лайк", "like", "подпиш", "отпиш", "подпис", "отпис", "follow",
+                "unfollow", "истори")
+    g_words = ("почт", "gmail", "email", "письм", "календар", "calendar", "диск",
+               "drive", "гугл", "google", "юху", "аккаунт гугл", "google аккаунт",
+               "непрочитан", "кто я", "google", "событ", "расписан", "документ",
+               "поиск", "найди")
+    is_ig = any(w in t for w in ig_words)
+    is_g = any(w in t for w in g_words)
+    if not is_ig and not is_g:
+        return False
+
+    # ---- Instagram ----
+    if is_ig:
+        if any(w in t for w in ("сторис", "story", "истори")):
+            api.send_message(chat_id,
+                             "📤 <b>Сторис</b>: к сожалению, Instagram web не даёт создавать сторис "
+                             "из браузера (проверено: кнопки «Create»/Story нет ни в desktop, ни в "
+                             "mobile-версии). Сторис можно сделать только в мобильном приложении. "
+                             "А вот лайки, подписки, посты — легко!")
+            return True
+        if any(w in t for w in ("лайк", "like")):
+            urls = re.findall(r"https?://\S+", text) or re.findall(r"/p/[A-Za-z0-9_-]+", text)
+            if not urls:
+                api.send_message(chat_id,
+                                 "❤️ <b>Лайк</b>: пришлите ссылку на пост, например:\n"
+                                 "«лайкни https://www.instagram.com/p/CODE/»")
+                return True
+            url = urls[0] if urls[0].startswith("http") else f"https://www.instagram.com{urls[0]}"
+            data = _run_account_control(["instagram", "like", url])
+            st = data.get("status")
+            if st == "already_liked":
+                api.send_message(chat_id, "👍 Пост уже лайкнут.")
+                return True
+            if st == "need_confirm":
+                _pending_confirm[chat_id] = {"kind": "ig_like", "data": {"url": url}}
+                api.send_message(chat_id, f"❤️ Поставить лайк: {url}\nПодтвердите: «да» / «нет»")
+                return True
+            api.send_message(chat_id, f"❌ {data.get('error', st)}")
+            return True
+        if ("подпиши" in t or "отпиши" in t):
+            action = "unfollow" if "отпиши" in t else "follow"
+            m = re.search(r"@([a-zA-Z0-9_.]+)", text)
+            uname = m.group(1) if m else None
+            if not uname:
+                for w in reversed(re.split(r"[\s,]+", t)):
+                    w = w.strip("@")
+                    if w and not any(k in w for k in ("подпиши", "отпиши", "подпишись", "отпишись",
+                                                      "на", "от", "меня", "пожалуйста", "себя",
+                                                      "надо", "нужно", "подпис", "отпис", "аккаунт")):
+                        uname = w
+                        break
+            if not uname:
+                api.send_message(chat_id,
+                                 "👤 <b>Подписка</b>: укажите username, например\n"
+                                 "«подпишись на @dawnrichard» или «отпишись от @ivan»")
+                return True
+            data = _run_account_control(["instagram", "follow", uname, "--action", action])
+            st = data.get("status")
+            if st in ("already_following", "not_following"):
+                api.send_message(chat_id, f"ℹ️ @{uname}: {data.get('button', st)}")
+                return True
+            if st == "need_confirm":
+                _pending_confirm[chat_id] = {"kind": "ig_follow",
+                                             "data": {"username": uname, "action": action}}
+                verb = "подписаться на" if action == "follow" else "отписаться от"
+                api.send_message(chat_id, f"👤 {verb} @{uname}?\nПодтвердите: «да» / «нет»")
+                return True
+            api.send_message(chat_id, f"ℹ️ {data.get('error', st)}")
+            return True
+        if any(w in t for w in ("скрин", "покажи", "фото")):
+            _acct_instagram(api, chat_id, "screenshot")
+            return True
+        if "пост" in t and "/p/" in text:
+            m = re.search(r"/p/([A-Za-z0-9_-]+)", text)
+            if m:
+                data = _run_account_control(["instagram", "post", m.group(1)])
+                if data.get("status") == "ok":
+                    p = data.get("post", {})
+                    txt = (f"🖼 <b>Пост {p.get('code')}</b>\n"
+                           f"💬 {p.get('caption') or 'без подписи'}\n"
+                           f"❤️ Лайки: {p.get('likes') or '?'}\n"
+                           f"🔗 {p.get('url')}")
+                    _acct_send_result(api, chat_id,
+                                      {"status": "ok", "text": txt,
+                                       "screenshot": data.get("screenshot"),
+                                       "caption": "🖼 Пост"}, "")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+                return True
+        if any(w in t for w in ("пост", "посты", "публикац")):
+            _acct_instagram(api, chat_id, "posts")
+            return True
+        # профиль / статистика / «покажи инсту» / «мой инст»
+        _acct_instagram(api, chat_id, "profile")
+        return True
+
+    # ---- Google ----
+    if any(w in t for w in ("кто я", "какой аккаунт", "кто залогинен")):
+        _acct_google(api, chat_id, "whoami")
+        return True
+    if "непрочитан" in t:
+        _acct_google(api, chat_id, "unread")
+        return True
+    if any(w in t for w in ("события", "событий", "расписание", "что в календаре", "что у меня в календаре", "план на день")):
+        _acct_google(api, chat_id, "events")
+        return True
+    if any(w in t for w in ("добавь событие", "добавь в календарь", "создай событие", "запиши в календарь", "новое событие", "создать событие", "добавь встречу", "создай встречу")):
+        parsed = _llm_extract_calendar(text)
+        title = (parsed.get("title") or "").strip()
+        if not title:
+            api.send_message(chat_id,
+                             "📅 <b>Создание события</b>: напишите, например:\n"
+                             "«событие Встреча с Мишей завтра в 14:00»")
+            return True
+        date = (parsed.get("date") or "").strip()
+        time_str = (parsed.get("time") or "").strip()
+        desc = (parsed.get("desc") or "").strip()
+        data = _run_account_control(["google", "calendar_add", "--title", title,
+                                     "--date", date, "--time", time_str, "--desc", desc])
+        if data.get("status") == "need_confirm":
+            _pending_confirm[chat_id] = {"kind": "calendar_add",
+                                         "data": {"title": title, "date": date,
+                                                  "time": time_str, "desc": desc}}
+            api.send_message(chat_id,
+                             f"📅 <b>Подтвердите создание события:</b>\n{title}\n"
+                             f"🕐 {data.get('start', date + ' ' + time_str)} → {data.get('end', '')}\n\n"
+                             f"«да» — создать, «нет» — отмена")
+            shot = data.get("screenshot")
+            if shot and os.path.exists(shot):
+                try:
+                    api.send_photo(chat_id, shot, caption="📅 Предпросмотр")
+                except Exception:
+                    pass
+            return True
+        api.send_message(chat_id, f"❌ {data.get('error', 'ошибка')}")
+        return True
+    if any(w in t for w in ("найди письмо", "найди письма", "поиск в почте", "поиск писем", "поищи", "найди в почте", "найди на почте")):
+        q = text
+        for w in ("найди письмо", "найди письма", "поиск в почте", "поиск писем",
+                  "поищи", "найди в почте", "найди на почте", "найди", "письма"):
+            if w.lower() in q.lower():
+                q = q.replace(w, "", 1)
+        q = q.strip(" :,;—–«»\"'().")
+        q = re.sub(r"^(от|по|про|на|в|о|из)\s+", "", q).strip()
+        if not q:
+            api.send_message(chat_id,
+                             "🔍 <b>Поиск в почте</b>: напишите «найди письмо <запрос>»,\n"
+                             "например «найди письмо от github»")
+            return True
+        data = _run_account_control(["google", "gmail_search", q, "5"])
+        if data.get("status") == "ok":
+            if data.get("emails"):
+                api.send_message(chat_id, _fmt_gmail_list(data))
+            else:
+                api.send_message(chat_id, f"🔍 По запросу «{q}» писем не найдено.")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+    if any(w in t for w in ("создай документ", "новый документ", "сделай документ", "гугл документ", "документ в гугле", "создай гугл док")):
+        parsed = _llm_extract_gmail(text)
+        title = (parsed.get("subject") or "").strip()
+        content = (parsed.get("body") or "").strip()
+        if not title:
+            m = re.search(r"документ\s+([\w\s-]{2,60}?)(?:[,.;]|$)", text, re.IGNORECASE)
+            if m:
+                title = m.group(1).strip()
+        api.send_message(chat_id, "⏳ Создаю документ…")
+        data = _run_account_control(["google", "docs_create", "--title", title, "--content", content])
+        if data.get("status") == "ok":
+            api.send_message(chat_id, f"📄 <b>Документ создан</b>:\n🔗 {data.get('url')}")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+    if any(w in t for w in ("календар", "calendar")):
+        _acct_google(api, chat_id, "calendar")
+        return True
+    if any(w in t for w in ("диск", "drive", "файл")):
+        _acct_google(api, chat_id, "drive")
+        return True
+    if any(w in t for w in ("отправ", "напиши письмо", "создай письмо")):
+        # извлечь параметры через LLM
+        parsed = _llm_extract_gmail(text)
+        to = (parsed.get("to") or "").strip()
+        if not to:
+            api.send_message(chat_id, "❌ Не нашёл адрес получателя. Напишите, например: "
+                                      "«отправь письмо ivan@gmail.com, тема Встреча, текст: привет»")
+            return True
+        subject = (parsed.get("subject") or "").strip() or "(без темы)"
+        body = (parsed.get("body") or "").strip()
+        _pending_confirm[chat_id] = {"kind": "gmail",
+                                     "data": {"to": to, "subject": subject, "body": body}}
+        api.send_message(chat_id,
+                         f"📧 Готово к отправке:\n📮 Кому: {to}\n📝 Тема: {subject}\n"
+                         f"💬 Текст: {body[:200]}\n\n"
+                         f"Отправить? Напишите «да» — или «нет» для отмены.")
+        return True
+    if any(w in t for w in ("почт", "gmail", "email", "письм")):
+        _acct_google(api, chat_id, "list")
+        return True
+    # по умолчанию — показать меню аккаунтов
+    api.send_message(chat_id,
+                     "🌐 Управление аккаунтами:\n"
+                     "• Google: «проверь почту», «непрочитанные», «кто я», «календарь», «диск», «отправь письмо …»\n"
+                     "• Instagram: «мой инстаграм», «мои посты», «скрин профиля»",
+                     reply_markup=ACCOUNTS_MENU_KEYBOARD)
+    return True
+
+
+def cmd_accounts() -> str:
+    return ("🌐 <b>Управление аккаунтами</b>\n\n"
+            "Можно просто написать обычным текстом, например:\n"
+            "• «проверь мою почту» / «сколько непрочитанных» / «найди письмо …»\n"
+            "• «кто я в гугле» · «события на сегодня» · «добавь событие …»\n"
+            "• «создай документ …» · «покажи календарь» · «отправь письмо …»\n"
+            "• «мой инстаграм» · «мои посты» · «лайкни <ссылка>»\n"
+            "• «подпишись на @…» / «отпишись от @…»\n\n"
+            "Или выберите раздел:")
+
+
+def cmd_google(args: str) -> str:
+    a = args.strip().lower()
+    if not a:
+        return ("🌐 <b>Google</b>\n\nКоманды:\n"
+                "/google whoami · /google unread · /google list\n"
+                "/google search <запрос> · /google calendar · /google drive\n"
+                "/google events · /google mailshot · /google send\n"
+                "Или просто напишите «проверь почту», «события на сегодня», «создай документ …»")
+    return "🌐 Google: укажите подкоманду."
+
+
+def cmd_instagram(args: str) -> str:
+    a = args.strip().lower()
+    if not a:
+        return ("📸 <b>Instagram</b>\n\nКоманды:\n"
+                "/instagram profile · /instagram posts · /instagram screenshot\n"
+                "Или просто напишите «мой инстаграм», «лайкни <ссылка>», «подпишись на @…»")
+    return "📸 Instagram: укажите подкоманду."
 
 
 # ---------------------------------------------------------------------------
@@ -646,6 +1324,86 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
     elif data == "menu_olx":
         reply = chr(128722) + " <b>OLX</b>"
         keyboard = OLX_MENU_KEYBOARD
+    elif data == "menu_accounts":
+        reply = cmd_accounts()
+        keyboard = ACCOUNTS_MENU_KEYBOARD
+    elif data == "accounts_google":
+        reply = "🌐 <b>Google аккаунт</b> (jo.talbot@gmail.com)\n\nВыберите действие — или просто напишите «проверь почту» / «покажи календарь»."
+        keyboard = GOOGLE_MENU_KEYBOARD
+    elif data == "accounts_instagram":
+        reply = "📸 <b>Instagram</b> (@jo.talbot)\n\nВыберите действие — или просто напишите «мой инстаграм» / «мои посты»."
+        keyboard = INSTAGRAM_MENU_KEYBOARD
+    elif data == "accounts_back":
+        reply = cmd_accounts()
+        keyboard = ACCOUNTS_MENU_KEYBOARD
+    elif data == "google_whoami":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "whoami")
+    elif data == "google_unread":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "unread")
+    elif data == "google_list":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "list")
+    elif data == "google_calendar":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "calendar")
+    elif data == "google_drive":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "drive")
+    elif data == "google_mailshot":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "mailshot")
+    elif data == "google_events":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "events")
+    elif data == "google_event_add":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "event_prompt")
+    elif data == "google_search":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "search_prompt")
+    elif data == "google_docs":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "docs_prompt")
+    elif data == "google_send":
+        reply = None
+        keyboard = None
+        _acct_google(api, chat_id, "send_prompt")
+    elif data == "ig_profile":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "profile")
+    elif data == "ig_stats":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "stats")
+    elif data == "ig_posts":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "posts")
+    elif data == "ig_screenshot":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "screenshot")
+    elif data == "ig_like_prompt":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "like_prompt")
+    elif data == "ig_follow_prompt":
+        reply = None
+        keyboard = None
+        _acct_instagram(api, chat_id, "follow_prompt")
     elif data == "menu_bot":
         reply = chr(129302) + " <b>Bot</b>"
         keyboard = BOT_MENU_KEYBOARD
@@ -1198,6 +1956,30 @@ BUTTON_ACTIONS = {
     "📋 Подписки": "olx_list",
     "🆕 Последние": "olx_latest",
     "📈 Аналитика": "olx_analytics",
+    # Accounts menu
+    "🌐 Аккаунты": "menu_accounts",
+    "🌐 Google": "accounts_google",
+    "📸 Instagram": "accounts_instagram",
+    "◀️ Аккаунты": "accounts_back",
+    # Google menu
+    "✉️ Непрочитанные": "google_unread",
+    "📥 Последние письма": "google_list",
+    "🔍 Поиск письма": "google_search",
+    "📧 Отправить письмо": "google_send",
+    "👤 Кто я": "google_whoami",
+    "📅 События": "google_events",
+    "➕ Событие": "google_event_add",
+    "📄 Документ": "google_docs",
+    "📅 Календарь": "google_calendar",
+    "🗂 Диск": "google_drive",
+    "📷 Скрин почты": "google_mailshot",
+    # Instagram menu
+    "👤 Мой профиль": "ig_profile",
+    "📈 Подписчики": "ig_stats",
+    "🖼 Мои посты": "ig_posts",
+    "📷 Скрин профиля": "ig_screenshot",
+    "❤️ Лайкнуть": "ig_like_prompt",
+    "👤 Подписка": "ig_follow_prompt",
     # Bot menu
     "▶️ Старт": "bot_start",
     "⏸️ Пауза": "bot_pause",
@@ -1262,10 +2044,31 @@ def run_bot(token: str) -> None:
                 first_name = msg.get("from", {}).get("first_name")
                 text = (msg.get("text") or "").strip()
 
-                if not chat_id or not text:
+                if not chat_id:
                     continue
                 if not _is_authorized_chat(chat_id):
                     print(f"  [SECURITY] ignored message from unauthorized chat {chat_id}")
+                    continue
+
+                # Фото от пользователя — сохранить для будущих действий (сторис и т.п.)
+                if msg.get("photo") and not text:
+                    try:
+                        file_id = msg["photo"][-1].get("file_id", "")
+                        if file_id:
+                            path = api.download_file_by_id(file_id)
+                            _last_photo[chat_id] = path
+                            api.send_message(chat_id, "📸 Фото получил и сохранил!")
+                        else:
+                            api.send_message(chat_id, "❌ Не смог получить фото.")
+                    except Exception as ph_err:
+                        print(f"  [PHOTO] error: {ph_err}")
+                        try:
+                            api.send_message(chat_id, f"❌ Ошибка загрузки фото: {ph_err}")
+                        except Exception:
+                            pass
+                    continue
+
+                if not text:
                     continue
 
                 # Handle pending actions from inline buttons
@@ -1303,6 +2106,19 @@ def run_bot(token: str) -> None:
                         _handle_button(api, chat_id, btn_action)
                         print(f"  -> button {btn_action} (chat {chat_id})")
                         continue
+
+                    # Natural language control of Google / Instagram accounts
+                    try:
+                        if _handle_account_intent(api, chat_id, text):
+                            print(f"  -> account-intent handled (chat {chat_id})")
+                            continue
+                    except Exception as acct_err:
+                        import traceback as _tb2
+                        _tb2.print_exc()
+                        try:
+                            api.send_message(chat_id, f"❌ Ошибка управления аккаунтом: {acct_err}")
+                        except Exception:
+                            pass
 
                     # Regular chat message — send to LLM
                     llm_reply = _llm_chat(chat_id, text)
@@ -1348,6 +2164,71 @@ def run_bot(token: str) -> None:
                     reply = cmd_olx_latest(args, chat_id)
                 elif cmd == "/olx_analytics" or cmd == "/analytics":
                     reply = cmd_olx_analytics(args)
+                elif cmd == "/accounts":
+                    reply = cmd_accounts()
+                    keyboard = ACCOUNTS_MENU_KEYBOARD
+                elif cmd == "/google":
+                    if args.strip():
+                        sub_a = args.strip().lower().split()[0]
+                        reply = None
+                        keyboard = None
+                        if sub_a in ("whoami",):
+                            _acct_google(api, chat_id, "whoami")
+                        elif sub_a in ("unread", "unseen"):
+                            _acct_google(api, chat_id, "unread")
+                        elif sub_a in ("list", "emails"):
+                            _acct_google(api, chat_id, "list")
+                        elif sub_a in ("calendar", "cal"):
+                            _acct_google(api, chat_id, "calendar")
+                        elif sub_a in ("drive",):
+                            _acct_google(api, chat_id, "drive")
+                        elif sub_a in ("mailshot", "shot"):
+                            _acct_google(api, chat_id, "mailshot")
+                        elif sub_a in ("send",):
+                            _acct_google(api, chat_id, "send_prompt")
+                        elif sub_a in ("events", "event", "cal_events"):
+                            _acct_google(api, chat_id, "events")
+                        elif sub_a in ("event_add", "eventadd"):
+                            _acct_google(api, chat_id, "event_prompt")
+                        elif sub_a in ("docs", "doc"):
+                            _acct_google(api, chat_id, "docs_prompt")
+                        elif sub_a in ("search", "find"):
+                            q = args.strip().split(None, 1)[1] if len(args.strip().split(None, 1)) > 1 else ""
+                            if q:
+                                data = _run_account_control(["google", "gmail_search", q, "5"])
+                                if data.get("status") == "ok":
+                                    api.send_message(chat_id, _fmt_gmail_list(data)
+                                                     if data.get("emails")
+                                                     else f"🔍 По запросу «{q}» писем не найдено.")
+                                else:
+                                    api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+                                reply = None
+                                keyboard = None
+                            else:
+                                reply = cmd_google(args)
+                        else:
+                            reply = cmd_google(args)
+                    else:
+                        reply = cmd_google("")
+                        keyboard = GOOGLE_MENU_KEYBOARD
+                elif cmd == "/instagram":
+                    if args.strip():
+                        sub_a = args.strip().lower().split()[0]
+                        reply = None
+                        keyboard = None
+                        if sub_a in ("profile", "me"):
+                            _acct_instagram(api, chat_id, "profile")
+                        elif sub_a in ("stats", "stat"):
+                            _acct_instagram(api, chat_id, "stats")
+                        elif sub_a in ("posts", "post"):
+                            _acct_instagram(api, chat_id, "posts")
+                        elif sub_a in ("screenshot", "shot"):
+                            _acct_instagram(api, chat_id, "screenshot")
+                        else:
+                            reply = cmd_instagram(args)
+                    else:
+                        reply = cmd_instagram("")
+                        keyboard = INSTAGRAM_MENU_KEYBOARD
                 elif cmd == "/help":
                     reply = cmd_help()
                 elif cmd == "/coder":

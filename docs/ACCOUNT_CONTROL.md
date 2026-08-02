@@ -20,53 +20,39 @@
 |---|---|
 | «проверь мою почту» | последние 5 писем (тема, отправитель, сниппет) |
 | «сколько непрочитанных» | непрочитанные письма |
+| «найди письмо от github» | поиск писем по запросу |
 | «кто я в гугле» | какой Google-аккаунт залогинен в Chrome |
-| «покажи календарь» | скриншот Google Календаря |
-| «покажи диск» | скриншот Google Диска |
-| «покажи почту» (скрин) | скриншот входящих Gmail |
-| «отправь письмо ivan@gmail.com, тема Встреча, текст: привет» | подготовка письма + подтверждение |
-| «да» (после подтверждения) | письмо отправлено |
+| «события на сегодня» | список событий дня + скрин календаря |
+| «добавь событие Встреча завтра в 14:00» | создание события (LLM разбирает название/дату/время) + подтверждение |
+| «покажи календарь» / «покажи диск» | фото-скриншот |
+| «создай документ, тема …, текст: …» | создание Google-документа |
+| «отправь письмо ivan@gmail.com, тема Встреча, текст: привет…» | подготовка письма + подтверждение «да» |
 
 ### Instagram
 | Фраза | Что произойдёт |
 |---|---|
 | «покажи мой инстаграм» | профиль: имя, подписчики, подписки, посты + скрин |
-| «сколько у меня подписчиков» | то же (статистика) |
 | «мои посты» | последние посты |
-| «скрин моего инстаграма» | фото профиля |
+| «лайкни https://www.instagram.com/p/CODE/» | лайк с подтверждением |
+| «подпишись на @username» / «отпишись от @username» | подписка/отписка с подтверждением |
 | «пост /p/CODE/» | детали поста (подпись, лайки) + скрин |
+| «скрин моего инстаграма» | фото профиля |
+
+> **Сторис:** Instagram web не поддерживает создание сторис из браузера
+> (проверено — кнопки «Create»/Story нет ни в desktop, ни в mobile-версии).
+> Сторис можно сделать только в мобильном приложении.
 
 ## Команды и меню
 - `/accounts` — меню аккаунтов (кнопки Google / Instagram)
-- `/google [whoami|unread|list|calendar|drive|mailshot|send]`
+- `/google [whoami|unread|list|search <q>|calendar|drive|events|docs|send|mailshot]`
 - `/instagram [profile|stats|posts|screenshot]`
 - Кнопки в меню «🌐 Аккаунты» в главном меню бота.
 
-## Архитектура
-
-```
-Telegram message
-   │  free text
-   ▼
-_handle_account_intent()          # распознавание намерения (ключевые слова)
-   │
-   ├── Google
-   │     ├── почта: run_account_control.py google gmail_list|gmail_send
-   │     │        (IMAP/SMTP + Google app password из .env)
-   │     └── сервисы/скрины: run_account_control.py google whoami|screenshot <svc>
-   │              (Chrome Twin: системный Google Chrome + профиль data/chrome_twin/default)
-   │
-   └── Instagram
-         └── run_account_control.py instagram profile|posts|post|screenshot
-              (InstagramChromeTwinAdapter: сессия в том же профиле Chrome)
-```
-
-- Письма читаются/отправляются через **IMAP/SMTP** (`imap.gmail.com:993`,
-  `smtp.gmail.com:465`) — это надёжно и не зависит от DOM Gmail.
-- Скриншоты сервисов и Instagram — через браузер под `xvfb-run -a`
-  (Instagram и Google блокируют headless-браузеры).
-- Все операции **read-only** для Instagram (ToS), отправка писем — только
-  после явного подтверждения «да».
+## Безопасность и подтверждения
+- Отправка письма, создание события, лайк, подписка/отписка — **только после
+  явного подтверждения «да»** (иначе «нет» / «отмена»).
+- Instagram — read-only по умолчанию; лайки/подписки — по явной команде.
+- Фото, присланные боту, сохраняются локально (для будущих действий).
 - Один браузер за раз; хелпер чистит lock-файлы профиля перед запуском.
 
 ## Тесты
@@ -77,6 +63,6 @@ python -m pytest tests/test_account_control_dialog.py -v
 
 ## Файлы
 - `run_account_control.py` — хелпер (Google + Instagram), вызывается ботом
-- `run_telegram_bot.py` — диалог, кнопки, отправка фото (`send_photo`)
+- `run_telegram_bot.py` — диалог, кнопки, отправка/скачивание фото (`send_photo`, `download_file_by_id`)
 - `aios_core/platforms/instagram_chrome_twin_adapter.py` — Instagram-адаптер
 - `aios_core/platforms/chrome_twin_adapter.py` — Chrome Twin (Google)
