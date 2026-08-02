@@ -575,6 +575,15 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
     if _agents_md:
         prompt += f"📜 AGENTS.md — правила репозитория (СОБЛЮДАЙ СТРОГО):\n{_agents_md}\n\n"
 
+    # v3.5 (п.7): RepoMap-lite — планировщик выбирает файл, зная его символы
+    try:
+        from aios_core.repomap import map_summary
+        _rm = map_summary(max_chars=1400)
+        if _rm:
+            prompt += f"🗺 RepoMap (модуль -> символы):\n{_rm}\n\n"
+    except Exception:
+        pass
+
     if backlog_text:
         prompt += f"Задачи в бэклоге:\n{backlog_text}\n\n"
 
