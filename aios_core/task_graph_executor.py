@@ -58,6 +58,24 @@ class AutonomousTaskGraphExecutor:
                           if current_file not in t and len(t.strip()) > 0]
         return ctx
 
+    def cleanup_todos_context(self, ctx: dict[str, Any], current_file: str) -> dict[str, Any]:
+        """Clean up TODO items by removing those related to the specified file.
+
+        Args:
+            ctx: The execution context dictionary
+            current_file: The file path to filter TODOs against
+
+        Returns:
+            Updated context with stale TODOs removed
+
+        This method removes all TODO items that contain the specified file path,
+        preventing stale TODOs from affecting new task execution. This is a more
+        general version of filter_todos_by_file that can be used throughout the codebase.
+        """
+        if "todos" in ctx:
+            ctx["todos"] = [t for t in ctx["todos"] if current_file not in t]
+        return ctx
+
     def filter_todos_by_file(self, ctx: dict[str, Any], file: str) -> dict[str, Any]:
         """Filter out TODO items containing the specified file path.
 
@@ -168,13 +186,14 @@ class AutonomousTaskGraphExecutor:
 
         # Apply additional filtering by current file if specified
         if "current_file" in context and context["current_file"]:
+            current_ctx = self.cleanup_todos_context(
+                {"todos": current_ctx.todos},
+                context["current_file"]
+            )
             current_ctx = TaskContext(
                 task_id=current_ctx.task_id,
                 dependencies=current_ctx.dependencies,
-                todos=self.filter_todos_by_file(
-                    {"todos": current_ctx.todos},
-                    context["current_file"]
-                )["todos"],
+                todos=current_ctx.todos,
                 memory=current_ctx.memory,
                 priority=current_ctx.priority
             )
