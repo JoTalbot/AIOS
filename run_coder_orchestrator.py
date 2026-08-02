@@ -28,11 +28,16 @@ from pathlib import Path
 
 # Optional web-research & skill toolkit for the coder (best-effort import).
 try:
-    from aios_core.coder_research import web_research, list_skills, use_skill as _coder_use_skill, route_to_skill
+    from aios_core.coder_research import (web_research, list_skills, use_skill as _coder_use_skill,
+                                          route_to_skill, list_skill_cards, skill_bodies_for,
+                                          fetch_context7_docs)
     _RESEARCH_OK = True
 except Exception:
     web_research = None
     list_skills = lambda: []
+    list_skill_cards = lambda limit=12: []
+    skill_bodies_for = lambda text, max_chars=2500, max_skills=2: ""
+    fetch_context7_docs = lambda topic, tokens=1500: ""
     _RESEARCH_OK = False
 
 REPO_PATH = os.environ.get("AIOS_REPO_PATH", "/root/AIOS")
@@ -448,8 +453,14 @@ def _maybe_research(topic: str) -> str:
 
 
 def _list_skill_names() -> str:
+    """v3.5 (п.4): карточки 'имя — описание' вместо голых имён скиллов."""
     try:
-        return ", ".join(list_skills()[:12]) if _RESEARCH_OK else ""
+        if not _RESEARCH_OK:
+            return ""
+        cards = list_skill_cards(12)
+        if cards:
+            return "\n".join(f"  • {n} — {d}" for n, d in cards)
+        return ", ".join(list_skills()[:12])
     except Exception:
         return ""
 
@@ -590,7 +601,15 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
     if _research_hint:
         prompt += f"📡 Актуальная информация из интернета по теме:\n{_research_hint}\n\n"
     if _skill_hint:
-        prompt += f"🧩 Доступные скиллы проекта (можно использовать через coder_research.use_skill): {_skill_hint}\n\n"
+        prompt += f"🧩 Скиллы проекта (имя — описание; тело подгружается автоматически при генерации):\n{_skill_hint}\n\n"
+
+    # v3.5 (п.5): Context7 — свежая документация библиотеки, если тема её упоминает
+    try:
+        _ctx7 = fetch_context7_docs(f"{priority} {backlog_text}") if _RESEARCH_OK else ""
+        if _ctx7:
+            prompt += f"📚 Актуальная документация (Context7):\n{_ctx7}\n\n"
+    except Exception:
+        pass
 
     prompt += (
         f"Файлы проекта:\n{_files_list}\n\n"

@@ -1,3 +1,8 @@
+---
+name: octopus-image-search
+description: SELECT ref, metadata, 1 - (embedding <=> %s::vector) AS score
+---
+
 # SKILL: octopus-image-search
 **Категория:** core
 **Дата создания:** 2026-06-20

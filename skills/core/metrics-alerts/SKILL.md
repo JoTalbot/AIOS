@@ -1,3 +1,8 @@
+---
+name: metrics-alerts
+description: Мониторинг метрик и предупреждение/alerts для выявления проблем с производительностью и ресурсами.
+---
+
 # Metrics Alerts
 
 **Вектор**: memory

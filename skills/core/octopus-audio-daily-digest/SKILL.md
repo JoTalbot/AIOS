@@ -1,3 +1,8 @@
+---
+name: octopus-audio-daily-digest
+description: Ежедневный дайджест аудио-событий и транскрипций.
+---
+
 # SKILL: octopus-audio-daily-digest
 **Категория:** core
 **Дата создания:** 2026-06-20

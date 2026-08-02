@@ -1,3 +1,8 @@
+---
+name: incident-postmortem-writer
+description: Формирует postmortem-отчёт по инциденту на основе логов и метрик.
+---
+
 # SKILL: incident-postmortem-writer
 **Категория:** core
 **Дата создания:** 2026-06-20

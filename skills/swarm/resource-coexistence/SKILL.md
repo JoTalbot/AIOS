@@ -1,3 +1,8 @@
+---
+name: resource-coexistence
+description: Bounded read-only аудитор coexistence-ресурсов. Реализует инструкцию №18 section 4: тяжёлые сервисы (ollama, ipfs, docker, whisper) обязаны иметь CPU/RAM-лимиты, чтобы человеку всегда оставались ресурсы на общем хосте. Т
+---
+
 # SKILL: resource-coexistence
 **Категория:** swarm / coexistence / operations
 **Дата создания:** 2026-06-20

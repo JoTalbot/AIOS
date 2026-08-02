@@ -1,3 +1,8 @@
+---
+name: voice-audio-graph
+description: Аудит и мониторинг voice audio graph для проверки распознавания голоса.
+---
+
 # Voice Audio Graph
 
 **Вектор**: autoheal

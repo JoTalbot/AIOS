@@ -1,3 +1,8 @@
+---
+name: federated-event-bus
+description: Федеративная шина событий между нодами роя.
+---
+
 # SKILL: federated-event-bus
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: octopus-memory-manifest
+description: Octopus: ежедневный manifest sha256 для каждого backend.
+---
+
 # SKILL: octopus-memory-manifest
 **Категория:** core
 **Дата создания:** 2026-06-20

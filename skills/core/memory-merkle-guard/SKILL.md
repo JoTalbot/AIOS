@@ -1,3 +1,8 @@
+---
+name: memory-merkle-guard
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: memory-merkle-guard
 **Категория:** core
 **Дата создания:** 2026-06-20

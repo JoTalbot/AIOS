@@ -1,3 +1,8 @@
+---
+name: octopus-memory-indexer
+description: Octopus Memory Indexer.
+---
+
 # SKILL: octopus-memory-indexer
 **Категория:** core
 **Дата создания:** 2026-06-20

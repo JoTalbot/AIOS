@@ -1,3 +1,8 @@
+---
+name: orphan-dependency-checker
+description: Обнаружение неиспользуемых и осиротевших зависимостей в проекте.
+---
+
 # SKILL: orphan-dependency-checker
 **Категория:** core
 **Дата создания:** 2026-06-20

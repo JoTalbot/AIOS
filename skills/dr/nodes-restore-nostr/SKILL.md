@@ -1,3 +1,8 @@
+---
+name: nodes-restore-nostr
+description: Восстановление списка и состояния нод через Nostr-протокол.
+---
+
 # SKILL: nodes-restore-nostr
 **Категория:** dr
 **Дата создания:** 2026-06-20

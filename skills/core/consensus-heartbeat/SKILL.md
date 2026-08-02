@@ -1,3 +1,8 @@
+---
+name: consensus-heartbeat
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: consensus-heartbeat
 **Категория:** core
 **Дата создания:** 2026-06-20

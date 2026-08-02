@@ -1,3 +1,8 @@
+---
+name: octopus-vector-search
+description: Standalone vector search service for Octopus Memory.
+---
+
 # SKILL: octopus-vector-search
 **Категория:** core
 **Дата создания:** 2026-06-20

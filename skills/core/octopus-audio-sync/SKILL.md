@@ -1,3 +1,8 @@
+---
+name: octopus-audio-sync
+description: INSERT INTO octopus_image_vectors (ref, source, embedding, metadata)
+---
+
 # SKILL: octopus-audio-sync
 **Категория:** core
 **Дата создания:** 2026-06-20

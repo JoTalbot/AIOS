@@ -1,3 +1,8 @@
+---
+name: geo-latency-resolver
+description: Resolver географической задержки для оптимальной маршрутизации.
+---
+
 # SKILL: geo-latency-resolver
 **Категория:** core
 **Дата создания:** 2026-06-20

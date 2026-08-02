@@ -1,3 +1,8 @@
+---
+name: rollback-readiness
+description: Проверяет готовность системы к безопасному откату изменений.
+---
+
 # SKILL: rollback-readiness
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: orphan-session-drift-guard
+description: Этот скил предназначен для...
+---
+
 # SKILL: orphan-session-drift-guard
 
 ## Описание

@@ -1,3 +1,8 @@
+---
+name: octopus-auto-deploy
+description: Bounded авто-деплой сервисов и обновлений на ноды.
+---
+
 # SKILL: octopus-auto-deploy
 **Категория:** core
 **Дата создания:** 2026-06-20

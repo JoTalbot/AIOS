@@ -1,3 +1,8 @@
+---
+name: swarm-voting
+description: Cross-swarm voting with reputation-weighted consensus.
+---
+
 # SKILL: swarm-voting
 **Category:** core
 **Status:** ACTIVE (systemd timer, 2-hour intervals)

@@ -1,3 +1,8 @@
+---
+name: obsidian-export-quality
+description: Проверяет качество Obsidian-экспорта заметок из памяти Octopus.
+---
+
 # SKILL: obsidian-export-quality
 **Категория:** core
 **Дата создания:** 2026-06-20

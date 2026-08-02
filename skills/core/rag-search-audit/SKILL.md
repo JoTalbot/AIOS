@@ -1,3 +1,8 @@
+---
+name: rag-search-audit
+description: Аудит RAG (Retrieval-Augmented Generation) поиска для проверки качества retrieval и relevance.
+---
+
 # RAG Search Audit
 
 **Вектор**: quality

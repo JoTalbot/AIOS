@@ -1,3 +1,8 @@
+---
+name: network-latency-monitor
+description: Измеряет сетевую задержку между нодами роя.
+---
+
 # SKILL: network-latency-monitor
 **Категория:** core
 **Дата создания:** 2026-06-20

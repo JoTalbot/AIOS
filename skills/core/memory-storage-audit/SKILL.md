@@ -1,3 +1,8 @@
+---
+name: memory-storage-audit
+description: Аудит памяти и хранилища для выявления утечек памяти и неэффективного использования ресурсов.
+---
+
 # Memory Storage Audit
 
 **Вектор**: memory

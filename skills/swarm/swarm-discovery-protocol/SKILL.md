@@ -1,3 +1,8 @@
+---
+name: swarm-discovery-protocol
+description: Протокол обнаружения и регистрации нод в P2P-сети роя.
+---
+
 # SKILL: swarm-discovery-protocol
 **Категория:** core
 **Дата создания:** 2026-06-20

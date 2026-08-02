@@ -1,3 +1,8 @@
+---
+name: octopus-garage-preflight
+description: Preflight-проверка Garage (S3-совместимого хранилища) перед операциями.
+---
+
 # SKILL: octopus-garage-preflight
 **Категория:** core
 **Дата создания:** 2026-06-20

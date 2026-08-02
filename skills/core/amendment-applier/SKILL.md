@@ -1,3 +1,8 @@
+---
+name: amendment-applier
+description: Применяет согласованные правки (amendments) к инструкциям и конфигам с откатом.
+---
+
 # SKILL: amendment-applier
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: resource-barter
+description: Nodes trade resources (CPU, memory, storage, bandwidth) using reputation-based tokens.
+---
+
 # SKILL: resource-barter
 **Category:** core
 **Status:** ACTIVE (systemd timer, 1-hour intervals)

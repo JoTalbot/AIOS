@@ -1,3 +1,8 @@
+---
+name: symbiotic-query
+description: Запросы к симбиотической памяти роя нод.
+---
+
 # SKILL: symbiotic-query
 **Категория:** research
 **Дата создания:** 2026-06-20

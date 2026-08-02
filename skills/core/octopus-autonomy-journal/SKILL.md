@@ -1,3 +1,8 @@
+---
+name: octopus-autonomy-journal
+description: Журнал автономных решений системы для подотчётности человеку (#18).
+---
+
 # SKILL: octopus-autonomy-journal
 **Категория:** core
 **Дата создания:** 2026-06-20

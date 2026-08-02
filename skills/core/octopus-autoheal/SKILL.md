@@ -1,3 +1,8 @@
+---
+name: octopus-autoheal
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: octopus-autoheal
 **Категория:** core
 **Дата создания:** 2026-06-20

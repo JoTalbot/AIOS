@@ -1,3 +1,8 @@
+---
+name: octopus-clip-api
+description: API для работы с клипами и фрагментами медиаданных.
+---
+
 # SKILL: octopus-clip-api
 **Категория:** core
 **Дата создания:** 2026-06-20

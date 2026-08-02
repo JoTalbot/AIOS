@@ -1,3 +1,8 @@
+---
+name: merkle-auto-monitor
+description: Автоматический ежечасный мониторинг целостности памяти через Merkle Master Hash.
+---
+
 # SKILL: merkle-auto-monitor
 Автоматический ежечасный мониторинг целостности памяти через Merkle Master Hash.
 

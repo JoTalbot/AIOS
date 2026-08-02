@@ -1,3 +1,8 @@
+---
+name: octopus-rag-search
+description: Real embedding via Ollama nomic-embed-text (dim=768, matches octopus_vectors HNSW).
+---
+
 # SKILL: octopus-rag-search
 **Категория:** core
 **Дата создания:** 2026-06-20

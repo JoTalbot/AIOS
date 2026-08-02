@@ -1,3 +1,8 @@
+---
+name: dna-shard-audit
+description: Validates integrity of DNA shards across the swarm. Checks SHA256 of each shard
+---
+
 # SKILL: dna-shard-audit
 **Category:** core
 **Status:** ACTIVE (automated via audit mode)

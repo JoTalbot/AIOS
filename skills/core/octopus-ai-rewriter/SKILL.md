@@ -1,3 +1,8 @@
+---
+name: octopus-ai-rewriter
+description: Bounded AI-переписывание текста и кода по заданным правилам и лимитам.
+---
+
 # SKILL: octopus-ai-rewriter
 **Категория:** core
 **Дата создания:** 2026-06-20

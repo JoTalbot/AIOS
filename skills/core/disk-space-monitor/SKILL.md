@@ -1,3 +1,8 @@
+---
+name: disk-space-monitor
+description: Мониторит свободное место на дисках нод роя.
+---
+
 # SKILL: disk-space-monitor
 **Категория:** core
 **Дата создания:** 2026-06-20

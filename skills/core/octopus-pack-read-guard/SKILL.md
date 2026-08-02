@@ -1,3 +1,8 @@
+---
+name: octopus-pack-read-guard
+description: Pack-Read Guard: проверяет, что packed-объекты реально читаются из pack
+---
+
 # SKILL: octopus-pack-read-guard
 **Категория:** core
 **Дата создания:** 2026-06-20

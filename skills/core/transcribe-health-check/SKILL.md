@@ -1,3 +1,8 @@
+---
+name: transcribe-health-check
+description: Проверка здоровья/исправности Transcribe и Whisper для аудио-распознавания.
+---
+
 # Transcribe Health Check
 
 **Вектор**: autoheal

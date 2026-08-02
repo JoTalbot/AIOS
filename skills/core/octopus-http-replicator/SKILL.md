@@ -1,3 +1,8 @@
+---
+name: octopus-http-replicator
+description: SELECT ref, key, mime_type, size_bytes, is_encrypted, is_signed, is_worm,
+---
+
 # SKILL: octopus-http-replicator
 **Категория:** core
 **Дата создания:** 2026-06-20

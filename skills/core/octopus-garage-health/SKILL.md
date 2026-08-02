@@ -1,3 +1,8 @@
+---
+name: octopus-garage-health
+description: Small, no-secret Garage health probe for Octopus alerts/dashboards.
+---
+
 # SKILL: octopus-garage-health
 **Категория:** core
 **Дата создания:** 2026-06-20

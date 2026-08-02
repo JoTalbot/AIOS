@@ -1,3 +1,8 @@
+---
+name: priority-sync-manager
+description: Менеджер приоритетной синхронизации критичных данных.
+---
+
 # SKILL: priority-sync-manager
 **Категория:** meta
 **Дата создания:** 2026-06-20

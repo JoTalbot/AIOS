@@ -1,3 +1,8 @@
+---
+name: rag-search-resurrection
+description: Восстановление и исправление RAG search после поломок для обеспечения поиска.
+---
+
 # RAG Search Resurrection
 
 **Вектор**: quality

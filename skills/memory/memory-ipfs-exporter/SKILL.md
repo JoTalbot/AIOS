@@ -1,3 +1,8 @@
+---
+name: memory-ipfs-exporter
+description: Экспорт объектов памяти в децентрализованное хранилище IPFS.
+---
+
 # SKILL: memory-ipfs-exporter
 **Категория:** core
 **Дата создания:** 2026-06-20

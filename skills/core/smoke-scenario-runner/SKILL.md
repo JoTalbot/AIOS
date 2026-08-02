@@ -1,3 +1,8 @@
+---
+name: smoke-scenario-runner
+description: Прогоняет smoke-сценарии ключевых пользовательских потоков.
+---
+
 # SKILL: smoke-scenario-runner
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: dashboard-ux-review
+description: Аудит UX и доступности веб-дашбордов Octopus.
+---
+
 # SKILL: dashboard-ux-review
 **Категория:** core
 **Дата создания:** 2026-06-20

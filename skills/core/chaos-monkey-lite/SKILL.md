@@ -1,3 +1,8 @@
+---
+name: chaos-monkey-lite
+description: Bounded-внедрение контролируемых сбоев для проверки устойчивости сервисов.
+---
+
 # SKILL: chaos-monkey-lite
 **Категория:** core
 **Дата создания:** 2026-06-20

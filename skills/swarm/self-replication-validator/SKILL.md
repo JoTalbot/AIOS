@@ -1,3 +1,8 @@
+---
+name: self-replication-validator
+description: Валидация безопасности и необходимости self-replication шагов.
+---
+
 # SKILL: self-replication-validator
 **Категория:** core
 **Дата создания:** 2026-06-20

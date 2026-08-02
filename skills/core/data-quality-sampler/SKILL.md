@@ -1,3 +1,8 @@
+---
+name: data-quality-sampler
+description: Сэмплирует и оценивает качество данных в хранилищах памяти.
+---
+
 # SKILL: data-quality-sampler
 **Категория:** core
 **Дата создания:** 2026-06-20

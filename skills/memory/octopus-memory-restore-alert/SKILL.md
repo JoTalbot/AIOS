@@ -1,3 +1,8 @@
+---
+name: octopus-memory-restore-alert
+description: Алерт при сбое restore-операции памяти.
+---
+
 # SKILL: octopus-memory-restore-alert
 **Категория:** core
 **Дата создания:** 2026-06-20

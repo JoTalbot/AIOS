@@ -1,3 +1,8 @@
+---
+name: octopus-dynamic-tools
+description: octopus-dynamic-tools — Phase D5 prep: policies + load-aware scheduler.
+---
+
 # SKILL: octopus-dynamic-tools
 **Категория:** core
 **Дата создания:** 2026-06-20

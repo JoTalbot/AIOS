@@ -1,3 +1,8 @@
+---
+name: swarm-resource-barter
+description: Обмен ресурсами (CPU/storage/bandwidth) между нодами роя.
+---
+
 # SKILL: swarm-resource-barter
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: rag-smoke-alert
+description: Smoke tests и alerts для RAG search для быстрого выявления проблем.
+---
+
 # RAG Smoke Alert
 
 **Вектор**: quality

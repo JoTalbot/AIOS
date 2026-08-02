@@ -1,3 +1,8 @@
+---
+name: federated-event-bus
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: federated-event-bus
 **Категория:** core
 **Дата создания:** 2026-06-20

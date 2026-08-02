@@ -1,3 +1,8 @@
+---
+name: swarm-reasoning
+description: 1. Загрузить `SKILL.md`, контекст проекта Octopus и последние отчёты по направлению навыка.
+---
+
 # SKILL: swarm-reasoning
 **Category:** core | **Status:** ACTIVE | **Phase:** 5
 **Path:** /opt/octopus-swarm-reasoning.py | **Data:** /var/lib/octopus/reasoning/

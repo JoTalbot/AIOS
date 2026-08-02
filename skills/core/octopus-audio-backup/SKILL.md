@@ -1,3 +1,8 @@
+---
+name: octopus-audio-backup
+description: Бэкап аудиофайлов в децентрализованное хранилище (IPFS).
+---
+
 # SKILL: octopus-audio-backup
 **Категория:** core
 **Дата создания:** 2026-06-20

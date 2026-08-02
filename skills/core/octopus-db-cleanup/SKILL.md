@@ -1,3 +1,8 @@
+---
+name: octopus-db-cleanup
+description: Периодическая очистка устаревших offline нод из PostgreSQL.
+---
+
 # SKILL: octopus-db-cleanup
 **Категория:** core
 **Дата создания:** 2026-06-20

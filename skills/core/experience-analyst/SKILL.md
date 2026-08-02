@@ -1,3 +1,8 @@
+---
+name: experience-analyst
+description: Анализирует опыт и логи прошлых итераций, извлекает уроки (#06).
+---
+
 # SKILL: experience-analyst
 **Категория:** core
 **Дата создания:** 2026-06-20

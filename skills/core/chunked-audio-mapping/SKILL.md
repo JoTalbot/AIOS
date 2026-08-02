@@ -1,3 +1,8 @@
+---
+name: chunked-audio-mapping
+description: Chunked mapping для long audio для улучшения STT.
+---
+
 # Chunked Audio Mapping
 
 **Вектор**: autoheal

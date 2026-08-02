@@ -1,3 +1,8 @@
+---
+name: arweave-dna-mirror
+description: Зеркало DNA-данных в Arweave для permanent storage (DR).
+---
+
 # SKILL: arweave-dna-mirror
 **Категория:** dr
 **Дата создания:** 2026-06-20

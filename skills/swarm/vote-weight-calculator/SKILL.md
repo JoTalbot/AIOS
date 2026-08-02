@@ -1,3 +1,8 @@
+---
+name: vote-weight-calculator
+description: Расчёт весов голосов нод (reputation-weighted consensus).
+---
+
 # SKILL: vote-weight-calculator
 **Категория:** core
 **Дата создания:** 2026-06-20

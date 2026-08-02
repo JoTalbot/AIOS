@@ -1,3 +1,8 @@
+---
+name: swarm-consensus-check
+description: Проверка согласованности (consensus) в swarm кластере для выявления рассинхронизации узлов.
+---
+
 # Swarm Consensus Check
 
 **Вектор**: swarm

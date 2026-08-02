@@ -1,3 +1,8 @@
+---
+name: archived-report-resurrection-reconciler
+description: После verified compaction удалённые ITER-файлы могут повторно появиться из-за legacy multisync, который не распространяет удаления. Это увеличивает диск и inode count, хотя проверенный архив уже существует.
+---
+
 # SKILL: archived-report-resurrection-reconciler
 
 **Category:** core / storage / durability

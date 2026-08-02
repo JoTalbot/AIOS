@@ -1,3 +1,8 @@
+---
+name: swarm-discovery
+description: P2P handshake protocol for discovering and registering swarm nodes.
+---
+
 # SKILL: swarm-discovery
 **Category:** core
 **Status:** ACTIVE (systemd timer, 15-min intervals)

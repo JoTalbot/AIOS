@@ -1,3 +1,8 @@
+---
+name: storage-optimization
+description: Оптимизация storage и очистка неиспользуемых данных для освобождения места.
+---
+
 # Storage Optimization
 
 **Вектор**: memory

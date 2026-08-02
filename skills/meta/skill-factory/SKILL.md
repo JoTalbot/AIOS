@@ -1,3 +1,8 @@
+---
+name: skill-factory
+description: 1. Загрузить `SKILL.md`, контекст проекта Octopus и последние отчёты по направлению навыка.
+---
+
 # SKILL: skill-factory
 **Category:** core | **Status:** ACTIVE | **Phase:** 4 + 11
 **Path:** /opt/octopus-skill-factory.py | **Data:** /var/lib/octopus/skill-factory/

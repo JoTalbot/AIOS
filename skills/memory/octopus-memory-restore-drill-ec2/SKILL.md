@@ -1,3 +1,8 @@
+---
+name: octopus-memory-restore-drill-ec2
+description: Octopus: restore-drill для AWS EC2-ноды (через SSH+sha256sum).
+---
+
 # SKILL: octopus-memory-restore-drill-ec2
 **Категория:** core
 **Дата создания:** 2026-06-20

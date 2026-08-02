@@ -1,3 +1,8 @@
+---
+name: octopus-agentmem-vectorizer
+description: Векторизует заметки и объекты памяти для RAG-поиска.
+---
+
 # SKILL: octopus-agentmem-vectorizer
 **Категория:** core
 **Дата создания:** 2026-06-20

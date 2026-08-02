@@ -1,3 +1,8 @@
+---
+name: octopus-cas-api
+description: Octopus unified CAS API (read-only).
+---
+
 # SKILL: octopus-cas-api
 **Категория:** core
 **Дата создания:** 2026-06-20

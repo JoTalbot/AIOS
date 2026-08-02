@@ -1,3 +1,8 @@
+---
+name: skill-factory-ai
+description: AI-генерация новых скиллов из опыта и задач системы.
+---
+
 # SKILL: skill-factory-ai
 **Категория:** meta
 **Дата создания:** 2026-06-20

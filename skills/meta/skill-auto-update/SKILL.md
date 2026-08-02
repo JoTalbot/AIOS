@@ -1,3 +1,8 @@
+---
+name: skill-auto-update
+description: Автообновление скиллов по schedule (AI-proposals, structural repair).
+---
+
 # SKILL: skill-auto-update
 **Категория:** meta
 **Дата создания:** 2026-06-20

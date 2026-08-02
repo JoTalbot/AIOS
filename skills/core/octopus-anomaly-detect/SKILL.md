@@ -1,3 +1,8 @@
+---
+name: octopus-anomaly-detect
+description: Выявляет аномалии в метриках и событиях системы Octopus.
+---
+
 # SKILL: octopus-anomaly-detect
 **Категория:** core
 **Дата создания:** 2026-06-20

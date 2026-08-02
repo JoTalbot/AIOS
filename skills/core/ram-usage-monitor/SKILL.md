@@ -1,3 +1,8 @@
+---
+name: ram-usage-monitor
+description: Мониторинг использования RAM на нодах роя.
+---
+
 # SKILL: ram-usage-monitor
 **Категория:** core
 **Дата создания:** 2026-06-20

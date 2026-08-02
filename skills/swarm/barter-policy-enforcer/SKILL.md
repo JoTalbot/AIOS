@@ -1,3 +1,8 @@
+---
+name: barter-policy-enforcer
+description: Enforcement правил resource-barter между нодами роя.
+---
+
 # SKILL: barter-policy-enforcer
 **Категория:** core
 **Дата создания:** 2026-06-20

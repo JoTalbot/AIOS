@@ -1,3 +1,8 @@
+---
+name: barter-ledger
+description: Ledger транзакций resource-barter: история обмена ресурсами.
+---
+
 # SKILL: barter-ledger
 **Категория:** meta
 **Дата создания:** 2026-06-20

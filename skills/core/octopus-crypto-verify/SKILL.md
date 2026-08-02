@@ -1,3 +1,8 @@
+---
+name: octopus-crypto-verify
+description: Crypto-верификация целостности памяти (v2): packs + loose + pack-read sample.
+---
+
 # SKILL: octopus-crypto-verify
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: skill-integrity-check
+description: Проверка целостности скиллов: структура, тесты, код-валидность.
+---
+
 # SKILL: skill-integrity-check
 **Категория:** core
 **Дата создания:** 2026-06-20

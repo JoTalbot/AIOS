@@ -1,3 +1,8 @@
+---
+name: octopus-memory-coverage-alert
+description: Octopus: alert if memory_copies_audit.json shows coverage < 1.0 or stale.
+---
+
 # SKILL: octopus-memory-coverage-alert
 **Категория:** core
 **Дата создания:** 2026-06-20

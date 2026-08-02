@@ -1,3 +1,8 @@
+---
+name: octopus-alerts-tg
+description: Octopus Prometheus Alerts → Telegram bridge (2026-05-18).
+---
+
 # SKILL: octopus-alerts-tg
 **Категория:** core
 **Дата создания:** 2026-06-20

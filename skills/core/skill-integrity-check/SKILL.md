@@ -1,3 +1,8 @@
+---
+name: skill-integrity-check
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: skill-integrity-check
 **Категория:** core
 **Дата создания:** 2026-06-20

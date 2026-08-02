@@ -1,3 +1,8 @@
+---
+name: chaos-readiness-plan
+description: Оценивает готовность системы к chaos-тестированию и формирует план.
+---
+
 # SKILL: chaos-readiness-plan
 **Категория:** core
 **Дата создания:** 2026-06-20

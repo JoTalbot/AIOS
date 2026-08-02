@@ -1,3 +1,8 @@
+---
+name: octopus-dev-agent
+description: Агент разработки: кодогенерация и bounded-правки по задаче.
+---
+
 # SKILL: octopus-dev-agent
 **Категория:** core
 **Дата создания:** 2026-06-20

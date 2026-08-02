@@ -1,3 +1,8 @@
+---
+name: swarm-reasoning-hub
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: swarm-reasoning-hub
 **Категория:** core
 **Дата создания:** 2026-06-20

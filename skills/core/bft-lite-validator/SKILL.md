@@ -1,3 +1,8 @@
+---
+name: bft-lite-validator
+description: Автоматически сгенерированный навык.
+---
+
 # SKILL: bft-lite-validator
 **Категория:** core
 **Дата создания:** 2026-06-20

@@ -1,3 +1,8 @@
+---
+name: whisper-transcribe-health
+description: Проверка здоровья/исправности Whisper STT и диаризации для выявления проблем с аудио-распознаванием.
+---
+
 # Whisper Transcribe Health Check
 
 **Вектор**: autoheal

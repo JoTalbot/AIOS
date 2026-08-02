@@ -1,3 +1,8 @@
+---
+name: telegram-noise-auditor
+description: Bounded read-only аудитор политики Telegram-шума. Реализует инструкции №28 (единственный push-отправитель — автономный агент) и №32 (постоянная защита от возврата TG-шума). Классифицирует каждый Telegram-related systemd-
+---
+
 # SKILL: telegram-noise-auditor
 **Категория:** core / telegram / governance
 **Дата создания:** 2026-06-20

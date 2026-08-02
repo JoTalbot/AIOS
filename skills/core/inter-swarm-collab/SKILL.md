@@ -1,3 +1,8 @@
+---
+name: inter-swarm-collab
+description: 1. Загрузить `SKILL.md`, контекст проекта Octopus и последние отчёты по направлению навыка.
+---
+
 # SKILL: inter-swarm-collab
 **Category:** core | **Status:** ACTIVE | **Phase:** 11
 **Path:** /opt/octopus-inter-swarm-collab.py | **Data:** /var/lib/octopus/collaboration/

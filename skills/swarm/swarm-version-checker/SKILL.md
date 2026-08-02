@@ -1,3 +1,8 @@
+---
+name: swarm-version-checker
+description: Проверка версий ПО и кода на нодах роя (consistency).
+---
+
 # SKILL: swarm-version-checker
 **Категория:** core
 **Дата создания:** 2026-06-20
