@@ -93,15 +93,30 @@ def get_balancer():
     return _balancer
 
 
+class BudgetExceeded(RuntimeError):
+    """Исчерпан бюджет цикла: лимит LLM-вызовов или таймаут (п.8 плана)."""
+
+
 class LLMClient:
     """Wrapper around LLMBalancer for backward compatibility."""
     def __init__(self):
         self.balancer = get_balancer()
         self.api_key = "balancer"  # always available
         self.model = os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick")
+        # v3.5: бюджет цикла (п.8) — защита от 429-штормов и залипания фаз
+        self.calls = 0
+        self.max_calls = int(os.environ.get("AIOS_CYCLE_MAX_LLM_CALLS", "60"))
+        self.deadline = time.time() + int(os.environ.get("AIOS_CYCLE_MAX_SECONDS", "900"))
 
-    def chat(self, messages: list, system: str = "") -> str:
-        return self.balancer.chat(messages, model=self.model, system=system)
+    def chat(self, messages: list, system: str = "", model: "str | None" = None) -> str:
+        self.calls += 1
+        if self.calls > self.max_calls:
+            raise BudgetExceeded(f"лимит LLM-вызовов цикла ({self.max_calls})")
+        if time.time() > self.deadline:
+            raise BudgetExceeded(f"таймаут цикла "
+                                 f"({os.environ.get('AIOS_CYCLE_MAX_SECONDS', '900')}s)")
+        # v3.5: model override (п.3 heavy/fast) — имя модели из env фазы
+        return self.balancer.chat(messages, model=model or self.model, system=system)
 
 
 # ---------------------------------------------------------------------------
@@ -592,7 +607,8 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
         f'}}'
     )
 
-    response = llm.chat([{"role": "user", "content": prompt}], system=system)
+    response = llm.chat([{"role": "user", "content": prompt}], system=system,
+                        model=os.environ.get("AIOS_PLANNER_MODEL") or None)
 
     try:
         if "{" in response:
@@ -921,6 +937,29 @@ def phase_validate(code_result: dict) -> dict:
 
             # Lint gate (non-blocking): run ruff on the changed file if available.
             _warnings = list(code_result.get("warnings") or [])
+
+            # Pytest gate v3.5 (п.2): таргетные тесты по изменённому файлу.
+            # Отклоняем ТОЛЬКО новые падения (сравнение с чистым HEAD в worktree;
+            # вся логика — scripts/pytest_gate.py, коды: 2=блок, 3/4=warn).
+            try:
+                import subprocess as _pg
+                _gate_timeout = int(os.environ.get("AIOS_PYTEST_GATE_TIMEOUT", "240"))
+                _gate = _pg.run(
+                    ["/opt/aios/.venv/bin/python",
+                     os.path.join(REPO_PATH, "scripts", "pytest_gate.py"), code_result["file"]],
+                    capture_output=True, text=True, timeout=_gate_timeout * 2 + 60, cwd=REPO_PATH,
+                )
+                _gout = (_gate.stdout + _gate.stderr).strip().replace("\n", " | ")
+                if _gate.returncode == 2:
+                    git_cmd("checkout", "--", code_result["file"])
+                    print(f"    [PYTEST-GATE] НОВЫЕ падения тестов — файл откачен: {_gout[-250:]}")
+                    return {"status": "failed", "reason": "pytest-gate new failures: " + _gout[-150:]}
+                elif _gate.returncode not in (0, 3, 4):
+                    print(f"    [PYTEST-GATE] ошибка гейта (non-blocking, rc={_gate.returncode}): {_gout[-150:]}")
+                elif _gout:
+                    _warnings.append("pytest-gate: " + _gout.split(" | ")[-1][:150])
+            except Exception as _pg_err:
+                print(f"    [PYTEST-GATE] skipped: {_pg_err}")
             try:
                 import subprocess as _sp
                 _ruff = _sp.run(["/opt/aios/.venv/bin/ruff", "check", "--select", "E,F", full_path],

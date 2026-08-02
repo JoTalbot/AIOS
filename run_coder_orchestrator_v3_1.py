@@ -95,12 +95,21 @@ def run_once():
         print(f"  [ANTI-LOOP] Check failed: {e}")
         import traceback; traceback.print_exc()
     
-    analysis = orch.phase_analyze(llm, ctx, backlog)
-    print(f"Health: {analysis.get('health_score')}/10, Issues: {len(analysis.get('issues',[]))}")
-    plan = orch.phase_plan(llm, analysis, ctx, backlog)
-    print(f"Plan: {plan.get('description')} -> {plan.get('file')}")
+    # v3.5 (п.8): бюджет цикла — LLMClient выбрасывает BudgetExceeded при
+    # превышении AIOS_CYCLE_MAX_LLM_CALLS / AIOS_CYCLE_MAX_SECONDS.
+    try:
+        analysis = orch.phase_analyze(llm, ctx, backlog)
+        print(f"Health: {analysis.get('health_score')}/10, Issues: {len(analysis.get('issues',[]))}")
+        plan = orch.phase_plan(llm, analysis, ctx, backlog)
+        print(f"Plan: {plan.get('description')} -> {plan.get('file')}")
+    except orch.BudgetExceeded as be:
+        print(f"  [BUDGET] {be} — цикл остановлен до фазы генерации (экономия ключей)")
+        return
     if not plan.get("file"):
         print("No file to fix")
+        return
+    if time.time() > getattr(llm, "deadline", float("inf")):
+        print("  [BUDGET] таймаут цикла после планирования — генерация пропущена")
         return
 
     # SELF-PROTECTION v3.2: не тратим цикл на файлы из списка самозащиты
