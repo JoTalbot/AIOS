@@ -1,0 +1,29 @@
+# Instagram Emulator Platform - Android automation via ADB
+name: instagram_emulator
+android_package: com.instagram.android
+agent_module: aios_core.modules.instagram
+storage_class: aios_core.modules.instagram.storage.InstagramStorage
+adb_class: aios_core.modules.olx.adb.ADBController
+default_locale: uk-UA
+description: "Instagram Emulator — Android automation: feed/Reels collection, Direct messenger, post creation via ADB/UIAutomator. Requires emulator with com.instagram.android installed."
+legacy_default_db: instagram_emulator_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: true
+    messenger: approval-only
+    collector: true
+    actions_per_hour: 60
+    note: "Instagram Emulator: ToS requires careful automation — read-only collection by default, Direct via approval-outbox, posting with --confirm"
+  parser_hints:
+    navigation:
+      reels_tab:
+        rid_markers: ["reels_tab", "clips_tab", "reels"]
+        text_markers: ["reels", "Reels tab"]
+    messenger:
+      bubble_markers:
+        - resource_id: "com.instagram.android:id/row_thread_message"
+        - resource_id: "com.instagram.android:id/direct_text_message"
+      input_markers:
+        - resource_id: "com.instagram.android:id/row_thread_composer_edittext"
+      send_markers:
+        - resource_id: "com.instagram.android:id/row_thread_composer_button_send"

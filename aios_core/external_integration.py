@@ -233,7 +233,7 @@ class ExternalIntegrationAPI:
         """Initialize ExternalIntegrationAPI."""
         self.metrics = IntegrationMetrics()
         self.webhooks: dict[str, WebhookManager] = {}
-        self.graphql = None
+        self.graphql: GraphQLAPI | None = None
         self.message_queues: dict[str, MessageQueueConnector] = {}
         self.logger = logging.getLogger("aios.integration")
 
@@ -262,6 +262,21 @@ class ExternalIntegrationAPI:
 
     async def get_integration_metrics(self) -> dict[str, Any]:
         """Get integration metrics."""
+        graphql_metrics = {
+            "requests": self.metrics.graphql_requests.value if self.graphql else 0,
+            "errors": self.metrics.graphql_errors.value if self.graphql else 0,
+        }
+
+        if self.graphql:
+            graphql_metrics["latency"] = {
+                "avg": self.metrics.api_integration_latency.values[-1]
+                if self.metrics.api_integration_latency.values
+                else 0,
+                "max": max(self.metrics.api_integration_latency.values)
+                if self.metrics.api_integration_latency.values
+                else 0,
+            }
+
         return {
             "webhooks": {
                 name: {
@@ -270,25 +285,10 @@ class ExternalIntegrationAPI:
                 }
                 for name, manager in self.webhooks.items()
             },
-            "graphql": {
-                "requests": self.metrics.graphql_requests.value if self.graphql else 0,
-                "errors": self.metrics.graphql_errors.value if self.graphql else 0,
-            },
+            "graphql": graphql_metrics,
             "message_queue": {
                 name: {"processed": connector.metrics.message_queue_processed.value}
                 for name, connector in self.message_queues.items()
-            },
-            "latency": {
-                "avg": (
-                    self.metrics.api_integration_latency.values[-1]
-                    if self.metrics.api_integration_latency.values
-                    else 0
-                ),
-                "max": (
-                    max(self.metrics.api_integration_latency.values)
-                    if self.metrics.api_integration_latency.values
-                    else 0
-                ),
             },
         }
 

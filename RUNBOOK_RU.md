@@ -205,3 +205,83 @@ outline + топ-5 релевантных функций); `AIOS_PLANNER_MODEL`/
 + `aios-memory-skills.timer` (пн 04:00) — кластеры ошибок → auto-lesson-скиллы.
 
 Тесты: `scripts/test_agents_md.py`, `test_batch_b.py`, `test_batch_c.py`.
+
+## Обновление v3.6 + balancer v2.4 (02.08.2026, второй заход: анти-цикл, ключи, бэклог)
+
+**Анти-цикл автокодера (v3.6):** корень 12×/45мин цикла по одному файлу — правило
+«задача из бэклога» било фильтр свежих файлов. phase_plan отсекает задачи, чей файл
+был в последних 8 циклах истории (правило 0.1 в промпте). `nothing_to_commit` не
+считается падением: PR-creator коммитит сам, поэтому при `pr.ok` в историю пишется
+`success` (была ложная петля неудач по чистому дереву).
+
+**Балансер v2.4 — provider account cooldown:** `Provider.account_cooldown_until` —
+когда последний ключ провайдера уходит в 429-cooldown, провайдер пропускается 240с
+(groq: 4 ключа = 1 аккаунт; раньше ~16 лишних HTTP-запросов за цикл).
+
+**is_protected v3.6:** basename-сравнение с обеих сторон — дубль protected-файла
+внутри пакета тоже блокируется; `__init__.py` защищён везде (намеренный over-block).
+
+**Галлюцинации автокодера при мерже (устранено системно):**
+- `get_logger` из logging_config → легальный алиас `get_logger = logging.getLogger`
+  в `aios_core/logging_config.py` (паттерн возвращался 3 раза в разных ветках).
+- `BaseSettings` из pydantic (v2: pydantic-settings) → ветки скипаются.
+- `class Config` + extra=forbid → 32 ValidationError из чужих .env-переменных →
+  везде `SettingsConfigDict(extra="ignore")`.
+- `max_rsa_key_size` отсутствовало в trust_manager → добавлено (default 4096);
+  поймано новыми `tests/test_security_trust_manager.py` (21 тест).
+
+**Чистка ключей (02.08):** удалено 15 мёртвых: openai×3 (no credits), deepseek×3 (402),
+huggingface×3 (402), aimlapi×3 (403), zai#4 (no permission), openrouter#1 (402), cerebras.
+Бэкап: `backups/key_cleanup_20260802/` + копии в /etc/aios. Живые: groq 4/4 (1 аккаунт —
+429-штормы), mistral 3/3, cohere 3/3, zai 3/4, openrouter 3/4, airforce 2/3; gemini×3
+на месячной квоте (429), ibm (400, конфиг). .env-значения однажды засветились в
+pydantic-трейсбеке (только traceback) — при паранойе ротировать TG-токен + 1 groq-ключ.
+
+**Бэклог:** `scripts/backlog_dedup.py` + `aios-backlog-dedup.timer` (пн 04:30).
+Дедуп: difflib>0.72 по описаниям, Jaccard≥0.5 по словам, фильтр protected/meta-задач.
+Кап `AIOS_BACKLOG_CAP=25`, архив `data/backlog_archive*.json`. История: 131→10 ручной
+чисткой (3 прохода), первый прогон скрипта 45→22.
+
+**Таймеры (первые автозапуски — пн 03.08):** memory-skills 04:00, gh-issues 04:15,
+backlog-dedup 04:30 (все OnCalendar=Mon).
+
+Тесты: `scripts/test_balancer_acct_cd.py`, `tests/test_security_trust_manager.py`,
+`tests/test_security_policy.py` (29 тестов).
+
+## Пакеты мержа auto-веток (journal)
+
+| # | Дата | Веток | main | Итог |
+|---|------|-------|------|------|
+| 2–7 | 02.08 | ~40 | `93082ef5 → ff4072a7` | feature-ветки v3.x; отброшены: 2 rollback-ветки (−2151 строк), gutting main-1323 (−37/+1), main-1236 (await вне async в octopus_core/main.py), 2× дубль runner |
+| 8 | 02.08 | 2 | `ff4072a7 → b1e45419` | security_policy: pydantic-v2 валидаторы + аудит-логирование (+29 новых тестов); external_integration: рефакторинг get_integration_metrics (существующие 8/8) |
+
+Правило пакетов: `systemctl stop aios-auto-coder-v3.service` ДО любых git-операций
+(цикл 60с сгребает незакоммиченное в auto-ветки — 3 гонки зафиксированы), после —
+py_compile + import-smoke изменённых МОДУЛЕЙ (не просто aios_core) + таргетные тесты,
+push, `--force-snapshot`, старт сервиса.
+
+**Security-аудит secrets (02.08, заход 3):** `scripts/secrets_scan_repo.py` — полный
+скан репо на hard-coded ключи (regex-набор из SecurityPolicy + фильтр плейсхолдеров,
+маски в отчёте, exit 1 при находках). Отчёт: `data/security_secrets_scan_YYYYMMDD.md`
+(data/ в gitignore). Первый прогон: 4931 файл, 14 находок → 2 реальные:
+1) TG-токен в `deploy/alertmanager/tg_webhook.py` (живой alerting!) → переведён на
+   env `AIOS_TELEGRAM_TOKEN`, drop-in `aios-alertmanager-webhook.service.d/10-env.conf`.
+   ИНЦИДЕНТ: ExecStart юнита указывал на `/opt/aios/.venv/bin/python3.11`, удалённый
+   при пересборке venv (сейчас python3.12) — сервис жил «на удалённом inode» до первого
+   рестарта. Урок: всегда сверять ExecStart с `ls .venv/bin/` после смены venv.
+2) Дубль TG-токена + RCE (shell=True за веб-эндпоинтом) в мёртвых файлах
+   `octopus_core/gemini_hack.py`, `octopus_core/gemini_tg_hack.py` → удалены (0 ссылок,
+   0 процессов, 0 юнитов). git-история всё ещё содержит токены → ротация через
+   @BotFather остаётся на пользователе. .env не трекается (`*.env` в gitignore).
+
+**Ревью-пакет «security-theater» (02.08, заход 3):** 4 auto-ветки ОТКЛОНЕНЫ после
+ручного диффа: active_inference-1409 (`import Authenticator` — несуществующий класс,
+кирпичит модуль), web_adapter-1410 (extra=forbid на схеме запросов + html.escape всех
+входящих тел + падение на X-XSS-Protection:0 — ломает живой API, sanitize_html реально
+вызывается на строках 186/233), privacy_vault_v3-1413 (мандатный env-ключ в __init__ +
+замена masked→encrypted ломает контракт), security_policy-1400 (regex поверх html.escape,
+задача уже закрыта мержом 1351 + 29 тестами). Правила закреплены в
+`skills/coder/security-hardening-review-rules/SKILL.md` (подмешивается в промпт
+генерации — прицел на снижение класса «security theater»). Гонка со sweep-циклом:
+незакоммиченные scanner/gemini-deleting унесло в auto-ветки — файлы восстановлены,
+дисциплина «stop service перед git» обязательна (нарушена 1 раз сегодня).
