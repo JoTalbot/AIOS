@@ -7,6 +7,7 @@ from .ebay_adapter import EbayAdapter
 from .facebook_adapter import FacebookAdapter
 from .instagram_adapter import InstagramAdapter
 from .instagram_emulator_adapter import InstagramEmulatorAdapter
+from .chrome_twin_adapter import ChromeTwinAdapter
 from .linkedin_adapter import LinkedinAdapter
 from .olx_adapter import OLXAdapter
 from .prom_adapter import PromAdapter
@@ -25,6 +26,7 @@ class PlatformRegistry:
             "olx": OLXAdapter,
             "instagram": InstagramAdapter,
             "instagram_emulator": InstagramEmulatorAdapter,
+            "chrome_twin": ChromeTwinAdapter,
             "prom": PromAdapter,
             "facebook": FacebookAdapter,
             "viber": ViberAdapter,
