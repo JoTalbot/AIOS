@@ -895,6 +895,62 @@ def _esc_tg(s) -> str:
     return html.escape(str(s or ""))
 
 
+# --------------------------------------------------------------- Голосовые ответы
+VOICE_REPLY_FILE = PROJECT_ROOT / "data" / "voice_reply.json"
+
+
+def _voice_enabled(chat_id: int) -> bool:
+    try:
+        return bool(json.loads(VOICE_REPLY_FILE.read_text(encoding="utf-8")).get(str(chat_id), False))
+    except Exception:
+        return False
+
+
+def _set_voice_enabled(chat_id: int, on: bool) -> None:
+    try:
+        cfg = json.loads(VOICE_REPLY_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        cfg = {}
+    cfg[str(chat_id)] = on
+    VOICE_REPLY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    VOICE_REPLY_FILE.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _send_voice_reply(api, chat_id: int, text: str) -> bool:
+    """Озвучить текст через gTTS и отправить голосовое."""
+    try:
+        from gtts import gTTS
+    except ImportError:
+        return False
+    clean = text.replace("<b>", "").replace("</b>", "").replace("<code>", "").replace("</code>", "")
+    clean = clean.replace("&amp;", "и").replace("&lt;", "<").replace("&gt;", ">")[:1500]
+    try:
+        tts = gTTS(text=clean, lang="ru")
+        path = f"/tmp/aios_voice_reply_{int(time.time() * 1000)}.mp3"
+        tts.save(path)
+        api.send_voice(chat_id, path)
+        return True
+    except Exception as e:
+        print(f"  [VOICE-REPLY] err: {e}")
+        return False
+
+
+# --------------------------------------------------------------- Шаблоны
+TEMPLATES_FILE = PROJECT_ROOT / "data" / "templates.json"
+
+
+def _load_templates() -> dict:
+    try:
+        return json.loads(TEMPLATES_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _save_templates(tpl: dict) -> None:
+    TEMPLATES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    TEMPLATES_FILE.write_text(json.dumps(tpl, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 # --------------------------------------------------------------- Напоминания
 REMINDERS_FILE = PROJECT_ROOT / "data" / "reminders.json"
 
@@ -1520,6 +1576,15 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 else:
                     api.send_message(chat_id, f"ℹ️ {data.get('error', st)}")
                 return True
+            if kind == "ig_comment_reply":
+                d = pend["data"]
+                data = _run_account_control(["instagram", "comment_reply", d["code"], d["text"], "--confirm"])
+                st = data.get("status")
+                if st == "sent":
+                    api.send_message(chat_id, f"💬 Комментарий отправлен к <code>{d['code']}</code>: «{d['text'][:120]}»")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
             if kind == "ig_follow":
                 d = pend["data"]
                 data = _run_account_control(["instagram", "follow", d["username"],
@@ -1645,7 +1710,14 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                    "найди во всех", "ищи везде", "найди везде", "поиск по всем",
                    "отметь всё прочитанным", "всё прочитано", "отметь прочитанным",
                    "присылай инбокс", "пришли инбокс", "включи инбокс", "отключи инбокс",
-                   "расписание инбокса")
+                   "расписание инбокса",
+                   "комментари", "коментар", "ответь на комментарий", "ответь в комментар",
+                   "шаблон", "ответь клиенту", "быстрый ответ", "шаблоны",
+                   "следи за ценой", "мониторинг цен", "цена на олх", "снизил",
+                   "экспортируй", "выгрузи", "экспорт", "в excel", "в эксель",
+                   "выгрузить в файл", "включи голосовые ответы", "отвечай голосом",
+                   "включи голос", "выключи голосовые ответы", "отвечай текстом",
+                   "выключи голос")
     is_other = any(w in t for w in other_words)
     if not is_ig and not is_g and not is_other and not tg_words:
         return False
@@ -1875,6 +1947,88 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                          f"📅 Запланировано: {platform} {target.strftime('%d.%m %H:%M')}\n"
                          f"«{text[:100]}»\n"
                          f"{'🎬 Видео приложено — опубликуется автоматически' if video and platform == 'tiktok' else 'ℹ️ Придёт напоминание (видео не приложено или не TikTok)'}")
+        return True
+
+    # ---- Instagram комментарии ----
+    if any(w in t for w in ("комментари", "коментар", "отзывы под постом", "ответь на комментарий",
+                            "ответь в комментар")):
+        m_code = re.search(r"/p/([A-Za-z0-9_-]+)|пост\s*([A-Za-z0-9_-]{6,})", text)
+        code = (m_code.group(1) or m_code.group(2)) if m_code else None
+        if not code:
+            api.send_message(chat_id,
+                             "💬 <b>Комментарии</b>: пришлите ссылку на пост, например\n"
+                             "«покажи комментарии к /p/CODE/»\n"
+                             "или «ответь на комментарий в /p/CODE/: текст»")
+            return True
+        if any(w in t for w in ("ответь на комментарий", "ответь в комментар")):
+            m_body = re.search(r":\s*(.+)$", text, re.IGNORECASE)
+            body = m_body.group(1).strip() if m_body else ""
+            if not body:
+                api.send_message(chat_id, "💬 Напишите текст ответа после двоеточия.")
+                return True
+            _pending_confirm[chat_id] = {"kind": "ig_comment_reply",
+                                         "data": {"code": code, "text": body}}
+            api.send_message(chat_id,
+                             f"💬 Ответить на комментарий к <code>{code}</code>:\n"
+                             f"«{body[:150]}»\n\nОтправить? «да» / «нет»")
+            return True
+        api.send_message(chat_id, "⏳ Читаю комментарии…")
+        data = _run_account_control(["instagram", "comments", code, "--limit", "10"])
+        if data.get("status") == "ok":
+            com = data.get("comments") or []
+            if not com:
+                api.send_message(chat_id, f"💬 У поста <code>{code}</code> комментариев нет.")
+            else:
+                txt = f"💬 <b>Комментарии к /p/{code}/</b>:\n" + "\n".join(
+                    f"• {_esc_tg(c.get('text', ''))[:120]}" for c in com[:10])
+                api.send_message(chat_id, txt)
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+
+    # ---- Шаблоны ответов клиентам ----
+    if any(w in t for w in ("шаблон", "ответь клиенту", "быстрый ответ", "шаблоны")):
+        if "добавь шаблон" in t or "сохрани шаблон" in t or "новый шаблон" in t:
+            m = re.search(r"(?:добавь|сохрани|новый)\s+шаблон\s+([^:]+):\s*(.+)", text, re.IGNORECASE)
+            if m:
+                name = m.group(1).strip()
+                body = m.group(2).strip()
+                tpl = _load_templates()
+                tpl[name] = body
+                _save_templates(tpl)
+                api.send_message(chat_id, f"📝 Шаблон <b>{name}</b> сохранён: «{body[:80]}»")
+            else:
+                api.send_message(chat_id, "📝 Формат: «добавь шаблон гарантия: Здравствуйте! Да, гарантия 14 дней»")
+            return True
+        tpl = _load_templates()
+        if "шаблоны" in t and not tpl:
+            api.send_message(chat_id, "📝 Шаблонов пока нет. «добавь шаблон <имя>: <текст>»")
+            return True
+        # «ответь клиенту <шаблон>» — вставить шаблон в ответ
+        m_use = re.search(r"(?:ответь клиенту|по шаблону|используй шаблон)\s*[\"«']?([\w\s-]+)[\"»']?", text, re.IGNORECASE)
+        if m_use:
+            name = m_use.group(1).strip().lower()
+            found = None
+            for k, v in tpl.items():
+                if k.lower() == name:
+                    found = v
+                    break
+            if not found:
+                # частичное совпадение
+                for k, v in tpl.items():
+                    if name in k.lower() or k.lower() in name:
+                        found = v
+                        break
+            if found:
+                api.send_message(chat_id, f"📝 Шаблон <b>{name}</b>:\n«{found}»\n\n"
+                                          f"Куда отправить? «отправь клиенту в директ …» или укажите канал.")
+            else:
+                api.send_message(chat_id, "📝 Такого шаблона нет. Доступны: " + ", ".join(tpl.keys()))
+            return True
+        if tpl:
+            api.send_message(chat_id, "📝 <b>Шаблоны:</b>\n" + "\n".join(
+                f"• <b>{_esc_tg(k)}</b>: {_esc_tg(v)[:60]}" for k, v in tpl.items()) +
+                "\n\n«ответь клиенту <имя шаблона>» — показать текст")
         return True
 
     # ---- TikTok upload ----
@@ -2108,6 +2262,97 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         _inbox_schedule_cmd(api, chat_id, text)
         return True
 
+    # ---- Экспорт данных ----
+    if any(w in t for w in ("экспортируй", "выгрузи", "экспорт", "в excel", "в эксель",
+                            "выгрузить в файл")):
+        import subprocess as _sp
+        if "почт" in t or "gmail" in t or "письм" in t:
+            api.send_message(chat_id, "⏳ Экспортирую почту в Excel…")
+            r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_export.py"), "gmail", "50"],
+                        capture_output=True, text=True, timeout=90, cwd=str(PROJECT_ROOT))
+        elif "контакт" in t:
+            api.send_message(chat_id, "⏳ Экспортирую контакты в Excel…")
+            r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_export.py"), "contacts", "200"],
+                        capture_output=True, text=True, timeout=170, cwd=str(PROJECT_ROOT))
+        else:  # olx
+            q = re.sub(r"(экспортируй|выгрузи|экспорт|объявления)\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
+            q = q.replace("олх", "").replace("olx", "").strip(" ,.;:—–")
+            api.send_message(chat_id, f"⏳ Экспортирую объявления OLX{' «' + q + '»' if q else ''} в Excel…")
+            r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_export.py"), "olx"] + ([q] if q else []),
+                        capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+        try:
+            out = (r.stdout or "").strip()
+            start = out.find("{")
+            res = json.loads(out[start:]) if start >= 0 else {"error": out[-200:]}
+        except Exception:
+            res = {"error": (r.stderr or "?")[-200:]}
+        if res.get("status") == "ok" and res.get("file") and os.path.exists(res["file"]):
+            try:
+                api.send_document(chat_id, res["file"], caption=f"📑 Экспорт ({res.get('rows', '?')} строк)")
+            except Exception as e:
+                api.send_message(chat_id, f"✅ Файл готов: {res['file']} (не смог отправить: {e})")
+        else:
+            api.send_message(chat_id, f"❌ Экспорт не удался: {res.get('error', '?')}")
+        return True
+
+    # ---- Мониторинг цен OLX ----
+    if any(w in t for w in ("следи за ценой", "мониторинг цен", "цена на олх", "снизил",
+                            "отпишись от цены", "цены на олх", "мои цены")):
+        subs_file = PROJECT_ROOT / "data" / "olx_price_subs.json"
+        try:
+            subs = json.loads(subs_file.read_text(encoding="utf-8"))
+        except Exception:
+            subs = {}
+        if "отпишись от цены" in t or "убери цену" in t:
+            q = re.sub(r"(отпишись от цены|убери цену)\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
+            cur = subs.get(str(chat_id), [])
+            cur = [e for e in cur if e.get("query", "").lower() != q.lower()]
+            subs[str(chat_id)] = cur
+            subs_file.parent.mkdir(parents=True, exist_ok=True)
+            subs_file.write_text(json.dumps(subs, ensure_ascii=False, indent=2), encoding="utf-8")
+            api.send_message(chat_id, f"📉 Отписался от цены «{q}».")
+            return True
+        if "мои цены" in t or ("цены" in t and not any(w in t for w in ("следи", "монитор"))):
+            cur = subs.get(str(chat_id), [])
+            if not cur:
+                api.send_message(chat_id, "📉 Нет подписок на цены. «следи за ценой <запрос>»")
+            else:
+                api.send_message(chat_id, "📉 <b>Подписки на цены:</b>\n" + "\n".join(
+                    f"• {_esc_tg(e.get('query'))} — мин {e.get('last_min') or '?'} грн" for e in cur))
+            return True
+        # добавить подписку
+        q = re.sub(r"(следи за ценой|мониторинг цены|цена на олх)\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
+        if not q:
+            api.send_message(chat_id, "📉 «следи за ценой <запрос>», например: следи за ценой фары BMW X5")
+            return True
+        cur = subs.get(str(chat_id), [])
+        if any(e.get("query", "").lower() == q.lower() for e in cur):
+            api.send_message(chat_id, f"📉 Уже слежу за «{q}».")
+            return True
+        # проверить текущую минимальную цену
+        import subprocess as _sp
+        try:
+            r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_olx_price_alerts.py"),
+                         "--probe", q], capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+        except Exception:
+            r = None
+        cur_min = None
+        if r and r.stdout:
+            try:
+                cur_min = float(r.stdout.strip())
+            except Exception:
+                pass
+        cur.append({"query": q, "last_min": cur_min,
+                    "since": datetime.now().strftime("%Y-%m-%d %H:%M")})
+        subs[str(chat_id)] = cur
+        subs_file.parent.mkdir(parents=True, exist_ok=True)
+        subs_file.write_text(json.dumps(subs, ensure_ascii=False, indent=2), encoding="utf-8")
+        api.send_message(chat_id,
+                         f"📉 Слежу за ценой «{q}»" +
+                         (f". Сейчас минимум: {cur_min} грн" if cur_min else "") +
+                         ".\nУведомлю при снижении >5%. «мои цены» — список, «отпишись от цены <запрос>» — убрать.")
+        return True
+
     # ---- Единый инбокс ----
     if any(w in t for w in ("инбокс", "inbox", "все сообщения", "всё в одном",
                             "сводка сообщений", "где что новое", "проверь всё")):
@@ -2167,6 +2412,16 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     if any(w in t for w in ("отметь всё прочитанным", "отметить все прочитанными", "всё прочитано",
                             "отметь прочитанным")):
         _inbox_mark_read(api, chat_id)
+        return True
+
+    # ---- Голосовые ответы ----
+    if any(w in t for w in ("включи голосовые ответы", "отвечай голосом", "включи голос")):
+        _set_voice_enabled(chat_id, True)
+        api.send_message(chat_id, "🎙 Голосовые ответы ВКЛЮЧЕНЫ — бот будет озвучивать ответы.")
+        return True
+    if any(w in t for w in ("выключи голосовые ответы", "отвечай текстом", "выключи голос")):
+        _set_voice_enabled(chat_id, False)
+        api.send_message(chat_id, "🔇 Голосовые ответы выключены.")
         return True
 
     # ---- Напоминания ----
@@ -3788,6 +4043,9 @@ def run_bot(token: str) -> None:
                                 print(f"  -> LLM sent plain (chat {chat_id})")
                             except Exception as e2:
                                 print(f"  [ERR] send failed: {e2}")
+                        # голосовой ответ, если включён
+                        if _voice_enabled(chat_id):
+                            _send_voice_reply(api, chat_id, llm_reply[:1500])
                     continue
 
                 reply = None

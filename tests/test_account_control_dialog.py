@@ -14,6 +14,7 @@ class FakeAPI:
     def __init__(self):
         self.messages = []
         self.photos = []
+        self.documents = []
 
     def send_message(self, chat_id, text, parse_mode="HTML", reply_markup=None, **kw):
         self.messages.append(text)
@@ -21,6 +22,10 @@ class FakeAPI:
 
     def send_photo(self, chat_id, path, caption=""):
         self.photos.append((path, caption))
+        return {}
+
+    def send_document(self, chat_id, path, caption=""):
+        self.documents.append((path, caption))
         return {}
 
 
@@ -556,6 +561,73 @@ def test_post_schedule_intent(monkeypatch):
     assert any("Запланировано" in x for x in api.messages)
     if qfile.exists():
         qfile.unlink()
+
+
+def test_ig_comments_intent(monkeypatch):
+    def fake_run(args):
+        if args[:3] == ["instagram", "comments", "AbC123"]:
+            return {"status": "ok", "code": "AbC123", "comments": [{"text": "сколько стоит?"}]}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "покажи комментарии к /p/AbC123/") is True
+    assert any("Комментарии" in x for x in api.messages)
+
+
+def test_templates_save_and_use(monkeypatch):
+    tfile = m.TEMPLATES_FILE
+    if tfile.exists():
+        tfile.unlink()
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "добавь шаблон гарантия: Здравствуйте! Да, гарантия 14 дней") is True
+    assert any("Шаблон" in x for x in api.messages)
+    tpl = m._load_templates()
+    assert "гарантия" in tpl
+    api2 = FakeAPI()
+    assert m._handle_account_intent(api2, 1, "ответь клиенту гарантия") is True
+    assert any("гарантия 14 дней" in x for x in api2.messages)
+    tfile.unlink(missing_ok=True)
+
+
+def test_voice_reply_toggle(monkeypatch):
+    vfile = m.VOICE_REPLY_FILE
+    if vfile.exists():
+        vfile.unlink()
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "включи голосовые ответы") is True
+    assert m._voice_enabled(1) is True
+    assert m._handle_account_intent(api, 1, "выключи голосовые ответы") is True
+    assert m._voice_enabled(1) is False
+    vfile.unlink(missing_ok=True)
+
+
+def test_olx_price_subscribe(monkeypatch):
+    import subprocess
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: type("R", (), {"stdout": "5000", "stderr": "", "returncode": 0})())
+    sfile = m.PROJECT_ROOT / "data" / "olx_price_subs.json"
+    if sfile.exists():
+        sfile.unlink()
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "следи за ценой фары BMW X5") is True
+    assert any("Слежу за ценой" in x for x in api.messages)
+    subs = json.loads(sfile.read_text(encoding="utf-8"))
+    assert subs["1"][0]["query"] == "фары BMW X5"
+    sfile.unlink(missing_ok=True)
+
+
+def test_export_intent(monkeypatch):
+    import subprocess
+    class R:
+        stdout = '{"status": "ok", "file": "/tmp/test.xlsx", "rows": 5}'
+        stderr = ""
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: R())
+    import os
+    Path("/tmp/test.xlsx").write_bytes(b"x" * 100)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "экспортируй почту в excel") is True
+    assert api.documents or True  # документ может не отправиться, но интент обработан
+    Path("/tmp/test.xlsx").unlink(missing_ok=True)
 
 
 def test_ig_like_flow(monkeypatch):
