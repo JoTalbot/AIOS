@@ -1,5 +1,8 @@
 from typing import Any, Optional
 from dataclasses import dataclass
+import logging
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class TaskContext:
@@ -52,10 +55,17 @@ class AutonomousTaskGraphExecutor:
         clean execution state in long-running processes.
         """
         if "todos" in ctx:
-            # Filter todos to only include items not related to the current file
-            # This prevents stale TODOs from affecting new task execution
-            ctx["todos"] = [t for t in ctx.get("todos", [])
-                          if current_file not in t and len(t.strip()) > 0]
+            todos = ctx.get("todos", [])
+            if not isinstance(todos, list):
+                logger.warning("Invalid 'todos' type in context, expected list. Resetting.")
+                ctx["todos"] = []
+            else:
+                # Filter todos to only include items not related to the current file
+                # This prevents stale TODOs from affecting new task execution
+                filtered_todos = [t for t in todos if current_file not in t and len(t.strip()) > 0]
+                if len(filtered_todos) != len(todos):
+                    logger.debug(f"Filtered todos for file '{current_file}': removed {len(todos) - len(filtered_todos)} items")
+                ctx["todos"] = filtered_todos
         return ctx
 
     def cleanup_todos_context(self, ctx: dict[str, Any], current_file: str) -> dict[str, Any]:
@@ -73,7 +83,15 @@ class AutonomousTaskGraphExecutor:
         general version of filter_todos_by_file that can be used throughout the codebase.
         """
         if "todos" in ctx:
-            ctx["todos"] = [t for t in ctx["todos"] if current_file not in t]
+            todos = ctx["todos"]
+            if not isinstance(todos, list):
+                logger.warning("Invalid 'todos' type in context, expected list. Resetting.")
+                ctx["todos"] = []
+            else:
+                filtered_todos = [t for t in todos if current_file not in t]
+                if len(filtered_todos) != len(todos):
+                    logger.debug(f"Cleaned todos for file '{current_file}': removed {len(todos) - len(filtered_todos)} items")
+                ctx["todos"] = filtered_todos
         return ctx
 
     def filter_todos_by_file(self, ctx: dict[str, Any], file: str) -> dict[str, Any]:
@@ -91,7 +109,16 @@ class AutonomousTaskGraphExecutor:
         """
         if "todos" not in ctx:
             return ctx
-        ctx["todos"] = [t for t in ctx["todos"] if file not in t]
+
+        todos = ctx["todos"]
+        if not isinstance(todos, list):
+            logger.warning("Invalid 'todos' type in context, expected list. Resetting.")
+            ctx["todos"] = []
+        else:
+            filtered_todos = [t for t in todos if file not in t]
+            if len(filtered_todos) != len(todos):
+                logger.debug(f"Filtered todos by file '{file}': removed {len(todos) - len(filtered_todos)} items")
+            ctx["todos"] = filtered_todos
         return ctx
 
     def _cleanup_stale_contexts(self) -> None:
@@ -176,10 +203,19 @@ class AutonomousTaskGraphExecutor:
         current_ctx = self._active_contexts[root_task_id]
 
         # Filter out stale TODOs before processing
+        todos = current_ctx.todos
+        if not isinstance(todos, list):
+            logger.warning(f"Invalid todos type for task {current_ctx.task_id}, expected list. Resetting.")
+            todos = []
+
+        filtered_todos = [t for t in todos if len(t.strip()) > 0]
+        if len(filtered_todos) != len(todos):
+            logger.debug(f"Filtered empty/invalid todos for task {current_ctx.task_id}: removed {len(todos) - len(filtered_todos)} items")
+
         current_ctx = TaskContext(
             task_id=current_ctx.task_id,
             dependencies=current_ctx.dependencies,
-            todos=[t for t in current_ctx.todos if len(t.strip()) > 0],
+            todos=filtered_todos,
             memory=current_ctx.memory,
             priority=current_ctx.priority
         )
