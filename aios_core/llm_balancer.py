@@ -209,7 +209,7 @@ class LLMBalancer:
         },
         
         "github": {
-            "base_url": "https://models.inference.ai.azure.com/chat/completions",
+            "base_url": "https://models.github.ai/inference/chat/completions",
             "models": [
                 "openai/gpt-4o-mini",
                 "openai/gpt-4o",
