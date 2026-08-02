@@ -207,32 +207,6 @@ class LLMBalancer:
                 "Qwen/Qwen3-30B-A3B-Instruct",
             ],
         },
-        
-        "github": {
-            "base_url": "https://models.github.ai/inference/chat/completions",
-            "models": [
-                "openai/gpt-4o-mini",
-                "openai/gpt-4o",
-                "meta/Meta-Llama-3-70B-Instruct",
-                "mistral-ai/Mistral-small",
-            ],
-        },
-        "nvidia": {
-            "base_url": "https://integrate.api.nvidia.com/v1/chat/completions",
-            "models": [
-                "meta/llama-3.1-8b-instruct",
-                "meta/llama-3.1-70b-instruct",
-                "mistralai/mistral-7b-instruct-v0.3",
-                "google/gemma-2-9b-it",
-            ],
-        },
-        "sambanova": {
-            "base_url": "https://api.sambanova.ai/v1/chat/completions",
-            "models": [
-                "Meta-Llama-3.1-8B-Instruct",
-                "Meta-Llama-3.1-70B-Instruct",
-            ],
-        },
         "local": {
             "base_url": os.environ.get("LOCAL_LLM_BASE_URL", "http://localhost:11434/v1/chat/completions"),
             "models": [
@@ -357,7 +331,7 @@ class LLMBalancer:
         self._cache: dict[str, str] = {}
         self._cache_max = int(os.environ.get("LLM_CACHE_MAX", "256"))
         # FIXED PRIORITY: groq и deepseek первыми (самые надежные), openrouter и local последними
-                        self.task_priority = {
+                self.task_priority = {
             "chat": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "deepseek", "zai", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "ibm", "local"],
             "code": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "huggingface", "gemini", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
             "analysis": ["groq", "cerebras", "github", "gemini", "mistral", "cohere", "together", "nvidia", "huggingface", "openai", "airforce", "openrouter", "local"],
@@ -412,9 +386,6 @@ class LLMBalancer:
             ("mistral", "MISTRAL_API_KEY"),
             ("cohere", "COHERE_API_KEY"),
             ("together", "TOGETHER_API_KEY"),
-            ("github", "GITHUB_API_KEY"),
-            ("nvidia", "NVIDIA_API_KEY"),
-            ("sambanova", "SAMBANOVA_API_KEY"),
         ]:
             load_keys(env_name, p)
 
