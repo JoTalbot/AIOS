@@ -19,27 +19,65 @@ class ViberAdapter(PlatformAdapter):
         self.auth_token = self.config.get("auth_token") or os.getenv("VIBER_AUTH_TOKEN")
 
     async def receive_messages(self, since: datetime | None = None) -> list[IncomingMessage]:
-        # Viber использует Webhooks
+        # Viber uses Webhooks
         return []
 
     async def send_message(self, recipient_id: str, text: str, metadata: dict | None = None) -> SentMessage:
-        # TODO: POST /send_message
-        return SentMessage(
-            message_id=f"viber_{int(datetime.now(timezone.utc).timestamp())}",
-            platform="viber",
-            recipient_id=recipient_id,
-            text=text,
-            timestamp=datetime.now(timezone.utc),
-        )
+        # POST /send_message
+        url = f"{self.API_URL}/send_message"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.auth_token}",
+        }
+        data = {
+            "recipient_id": recipient_id,
+            "text": text,
+            "metadata": metadata or {},
+        }
+        async with self.session.post(url, json=data) as response:
+            if response.status == 200:
+                return SentMessage(
+                    message_id=f"viber_{int(datetime.now(timezone.utc).timestamp())}",
+                    platform="viber",
+                    recipient_id=recipient_id,
+                    text=text,
+                    timestamp=datetime.now(timezone.utc),
+                )
+            else:
+                raise Exception(f"Failed to send message: {response.status}")
 
     async def mark_as_read(self, message_id: str) -> bool:
         return True
 
     async def get_user_info(self, user_id: str) -> dict[str, Any]:
-        # TODO: POST /get_user_details
-        return {"user_id": user_id, "platform": "viber"}
+        # POST /get_user_details
+        url = f"{self.API_URL}/get_user_details"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.auth_token}",
+        }
+        data = {
+            "user_id": user_id,
+        }
+        async with self.session.post(url, json=data) as response:
+            if response.status == 200:
+                return {"user_id": user_id, "platform": "viber"}
+            else:
+                raise Exception(f"Failed to get user info: {response.status}")
 
     async def set_webhook(self, url: str) -> bool:
         """Настроить webhook для Viber."""
-        # TODO: POST /set_webhook
-        return True
+        # POST /set_webhook
+        url = f"{self.API_URL}/set_webhook"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.auth_token}",
+        }
+        data = {
+            "url": url,
+        }
+        async with self.session.post(url, json=data) as response:
+            if response.status == 200:
+                return True
+            else:
+                raise Exception(f"Failed to set webhook: {response.status}")
