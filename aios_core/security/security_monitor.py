@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional, Union
 from urllib.parse import urlparse
 import requests
 from aios_core.advanced_security import AdvancedSecurity
-from aios_core.privacy_vault_v3 import PrivacyVault
+from aios_core.privacy_vault_v3 import DifferentialPrivacyVaultV3 as PrivacyVault  # fix: реальное имя класса (галлюцинация автокодера)
 
 logger = logging.getLogger(__name__)
 
