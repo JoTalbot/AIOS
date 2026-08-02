@@ -7,6 +7,7 @@ def filter_todos_by_file(ctx: Dict[str, Any], excluded_file: str) -> Dict[str, A
     Args:
         ctx: The execution context dictionary containing todos
         excluded_file: File path to filter TODOs against (todos containing this path will be removed)
+                      Also filters items containing 'last_file' or 'f' as indicated in TODO comments
 
     Returns:
         Updated context with filtered todos
@@ -15,7 +16,9 @@ def filter_todos_by_file(ctx: Dict[str, Any], excluded_file: str) -> Dict[str, A
         ValueError: If excluded_file is None or empty string
         TypeError: If ctx is not a dictionary or excluded_file is not a string
 
-    This function removes all TODO items that contain the specified file path in their content,
+    This function removes all TODO items that contain:
+    - The specified file path in their content
+    - The strings 'last_file' or 'f'
     preventing stale TODOs from affecting new task execution. The filtering is case-sensitive.
     """
     if not isinstance(ctx, dict):
@@ -26,7 +29,17 @@ def filter_todos_by_file(ctx: Dict[str, Any], excluded_file: str) -> Dict[str, A
     if "todos" not in ctx:
         return ctx
 
-    ctx["todos"] = [todo for todo in ctx["todos"] if excluded_file not in str(todo)]
+    # Ensure todos is a list
+    if not isinstance(ctx["todos"], list):
+        ctx["todos"] = []
+
+    # Filter todos to remove items containing excluded_file, 'last_file', or 'f'
+    ctx["todos"] = [
+        todo for todo in ctx["todos"]
+        if excluded_file not in str(todo)
+        and 'last_file' not in str(todo)
+        and 'f' not in str(todo)
+    ]
     return ctx
 
 def clean_todos(ctx: Dict[str, Any]) -> Dict[str, Any]:
@@ -46,6 +59,7 @@ def clean_todos(ctx: Dict[str, Any]) -> Dict[str, Any]:
     - None values
     - Whitespace-only strings
     - Strings shorter than 5 characters (likely not meaningful)
+    - Items containing 'last_file' or 'f' (stale TODOs)
     """
     if not isinstance(ctx, dict):
         raise TypeError("Context must be a dictionary")
@@ -53,9 +67,17 @@ def clean_todos(ctx: Dict[str, Any]) -> Dict[str, Any]:
     if "todos" not in ctx:
         return ctx
 
+    # Ensure todos is a list
+    if not isinstance(ctx["todos"], list):
+        ctx["todos"] = []
+
     cleaned = [
         todo for todo in ctx["todos"]
-        if todo and str(todo).strip() and len(str(todo).strip()) >= 5
+        if (todo and
+            str(todo).strip() and
+            len(str(todo).strip()) >= 5 and
+            'last_file' not in str(todo) and
+            'f' not in str(todo))
     ]
     ctx["todos"] = cleaned
     return ctx
