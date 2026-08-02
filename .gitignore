@@ -104,3 +104,4 @@ data/tech_debt_report.json
 *.sqlite-wal
 data/chrome_twin/
 docs/VNC_SETUP.md
+backups/sessions/
