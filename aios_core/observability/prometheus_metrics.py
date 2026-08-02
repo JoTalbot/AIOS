@@ -9,11 +9,7 @@ PROCESSING_TIME = Histogram("aios_processing_seconds", "Processing time")
 
 
 def _read_exporter_metrics() -> str:
-    """Append auto-coder/exporter metrics (aios_service.prom) if available.
-
-    The exporter writes to the shared data volume which the API container
-    sees at /app/data/metrics_exporter/aios_service.prom.
-    """
+    """Append auto-coder/exporter metrics (aios_service.prom) if available."""
     paths = [
         "/app/data/metrics_exporter/aios_service.prom",
         "/root/AIOS/data/metrics_exporter/aios_service.prom",
