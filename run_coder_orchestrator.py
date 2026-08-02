@@ -439,6 +439,35 @@ def _list_skill_names() -> str:
         return ""
 
 
+def _load_agents_md() -> str:
+    """Читает AGENTS.md из корня репо (стандарт agents.md, v3.4).
+
+    Без кэша — файл мал, а свежие правки подхватываются со следующего цикла.
+    """
+    try:
+        p = os.path.join(REPO_PATH, "AGENTS.md")
+        if os.path.isfile(p):
+            with open(p, encoding="utf-8", errors="replace") as fh:
+                text = fh.read(12001)
+            return text[:12000] + ("\n<!-- truncated -->" if len(text) > 12000 else "")
+    except Exception:
+        pass
+    return ""
+
+
+def _is_protected_file(rel_path: str) -> bool:
+    """Каноническая проверка protected-файлов через aios_core.self_protection (v3.4).
+
+    Если импорт недоступен — консервативно считаем файл НЕ protected
+    (старый хардкод-фильтр в phase_plan всё равно работает).
+    """
+    try:
+        from aios_core.self_protection import is_protected
+        return bool(is_protected(rel_path))
+    except Exception:
+        return False
+
+
 def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict:
     """Phase 2: Intelligent planning with backlog awareness."""
     system = (
@@ -461,6 +490,8 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
                            "run_telegram_bot.py", "tools/run_telegram_bot.py",
                            "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"):
                     continue  # protected auto-coder internals
+                if _is_protected_file(rel):
+                    continue  # v3.4: канонический список из self_protection (AGENTS.md)
                 # Focus the coder on the real kernel code only (aios_core/).
                 if not rel.startswith("aios_core/"):
                     continue
@@ -524,6 +555,11 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
         f"⚠️ Уже обработаны недавно (НЕ выбирай их): {_recent_text}\n\n"
     )
 
+    # v3.4: AGENTS.md — конституция репо; планировщик обязан соблюдать её правила
+    _agents_md = _load_agents_md()
+    if _agents_md:
+        prompt += f"📜 AGENTS.md — правила репозитория (СОБЛЮДАЙ СТРОГО):\n{_agents_md}\n\n"
+
     if backlog_text:
         prompt += f"Задачи в бэклоге:\n{backlog_text}\n\n"
 
@@ -535,6 +571,7 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
     prompt += (
         f"Файлы проекта:\n{_files_list}\n\n"
         f"ПРАВИЛА:\n"
+        f"0. Protected-файлы из AGENTS.md НЕ выбирать НИКОГДА. Если задача бэклога требует protected-файл — пропусти её, выбери другую\n"
         f"1. code_needed ВСЕГДА true\n"
         f"2. Выбери ОДИН конкретный файл из списка\n"
         f"3. РАБОТАЙ ТОЛЬКО с файлами из aios_core/ (реальные модули ядра). НЕ выбирай tools/, octopus_core/, корневые скрипты.\n"
