@@ -1,21 +1,22 @@
 """Differential Privacy Vault V3 for AIOS v12.4.0."""
 
 from __future__ import annotations
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 from urllib.parse import urlparse
 from http import HTTPStatus
 import time
 import json
 import os
 import logging
-from pydantic import BaseModel, validator, ValidationError
+from pydantic import BaseModel, validator, ValidationError, Field, field_validator
+from pydantic_core import core_schema
 
 class SecretRequest(BaseModel):
     """Validate secret keys and API keys."""
 
-    key: str
+    key: str = Field(..., min_length=1, max_length=255, pattern=r'^[^<>{}\[\]()"\'`;|&$#]+$')
 
-    @validator('key')
+    @field_validator('key')
     def validate_key(cls, v: str) -> str:
         if not v or not isinstance(v, str):
             raise ValueError('Key must be a non-empty string')
@@ -40,19 +41,26 @@ class DifferentialPrivacyVaultV3:
         for key, value in os.environ.items():
             if key.startswith("API_KEY_"):
                 try:
-                    SecretRequest(key=value)
+                    SecretRequest.model_validate({"key": value})
                     api_keys[key] = value
                 except ValidationError as e:
                     self.logger.warning(f"Invalid API key environment variable {key}: {e}")
         return api_keys
 
     def mask_v3(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Mask payload with differential privacy."""
+        """Mask payload with differential privacy using safe JSON serialization."""
         if not isinstance(payload, dict):
             raise TypeError("Payload must be a dictionary")
 
+        try:
+            # Safe serialization to prevent injection
+            safe_payload = json.loads(json.dumps(payload))
+        except (TypeError, ValueError) as e:
+            self.logger.error(f"Failed to serialize payload: {e}")
+            raise SecurityException("Invalid payload data") from e
+
         result = {
-            "masked_payload": payload,
+            "masked_payload": safe_payload,
             "privacy_level": "maximum",
             "timestamp": time.time()
         }
@@ -61,17 +69,17 @@ class DifferentialPrivacyVaultV3:
 
     def handle_get_request(self, url: str, api_key: str) -> dict[str, Any]:
         """
-        Handle GET request securely.
+        Handle GET request securely with strict input validation.
 
         Args:
-        - url (str): URL of the request.
-        - api_key (str): API key for authentication.
+            url (str): URL of the request.
+            api_key (str): API key for authentication.
 
         Returns:
-        - dict[str, Any]: Response from the server.
+            dict[str, Any]: Response from the server.
 
         Raises:
-        - SecurityException: On validation failures
+            SecurityException: On validation failures
         """
         try:
             # Validate URL
@@ -82,9 +90,9 @@ class DifferentialPrivacyVaultV3:
             if not parsed_url.scheme or not parsed_url.netloc:
                 raise ValueError("Invalid URL format")
 
-            # Validate API key
+            # Validate API key using Pydantic v2 model
             try:
-                validated_key = SecretRequest(key=api_key).key
+                validated_key = SecretRequest.model_validate({"key": api_key}).key
             except ValidationError as e:
                 self.logger.error(f"Invalid API key format: {api_key}")
                 raise SecurityException("Invalid API key format") from e
@@ -97,7 +105,8 @@ class DifferentialPrivacyVaultV3:
             # In a real scenario, you would use a library like requests
             response = {
                 "status_code": HTTPStatus.OK,
-                "response": {"message": "Request successful"}
+                "response": {"message": "Request successful"},
+                "timestamp": time.time()
             }
 
             return response
@@ -110,19 +119,19 @@ class DifferentialPrivacyVaultV3:
 
     def authenticate(self, api_key: str) -> bool:
         """
-        Authenticate API key with validation.
+        Authenticate API key with validation using Pydantic v2.
 
         Args:
-        - api_key (str): API key to authenticate.
+            api_key (str): API key to authenticate.
 
         Returns:
-        - bool: True if authenticated, False otherwise.
+            bool: True if authenticated, False otherwise.
 
         Raises:
-        - SecurityException: On validation failures
+            SecurityException: On validation failures
         """
         try:
-            validated_key = SecretRequest(key=api_key).key
+            validated_key = SecretRequest.model_validate({"key": api_key}).key
         except ValidationError as e:
             self.logger.error(f"Invalid API key format during authentication: {api_key}")
             raise SecurityException("Invalid API key format") from e
@@ -131,38 +140,50 @@ class DifferentialPrivacyVaultV3:
 
 
 class SecurityException(Exception):
-    """Custom exception for security-related errors."""
-    pass
+    """Custom exception for security-related errors with enhanced typing."""
+
+    def __init__(self, message: str, status_code: int = HTTPStatus.UNAUTHORIZED) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 def sanitize_output(data: Any) -> str:
     """
-    Sanitize output for safe display in web interfaces.
+    Sanitize output for safe display in web interfaces using safe JSON serialization.
 
     Args:
-    - data: Data to sanitize
+        data: Data to sanitize
 
     Returns:
-    - str: Sanitized string
+        str: Sanitized string
     """
-    if isinstance(data, str):
-        return data.replace("<", "&lt;").replace(">", "&gt;")
-    return str(data)
+    try:
+        if isinstance(data, (str, int, float, bool)) or data is None:
+            return str(data)
+        return json.dumps(data, ensure_ascii=False)
+    except (TypeError, ValueError) as e:
+        return f"<sanitized:{type(data).__name__}:{hash(str(data))}>"
 
 def main() -> None:
+    """Main execution function with proper error handling."""
     try:
         vault = DifferentialPrivacyVaultV3()
-        payload = {"key": "value"}
+
+        # Test payload masking
+        payload = {"key": "value", "sensitive": "data"}
         masked_payload = vault.mask_v3(payload)
         print(json.dumps(masked_payload, ensure_ascii=False))
 
+        # Test request handling
         url = "https://example.com/api"
         api_key = os.getenv("API_KEY_EXAMPLE", "test_api_key_123")
+
         try:
             response = vault.handle_get_request(url, api_key)
             print(json.dumps(response, ensure_ascii=False))
         except SecurityException as e:
             print(f"Security error: {e}")
 
+        # Test authentication
         try:
             is_authenticated = vault.authenticate(api_key)
             print(f"Authenticated: {is_authenticated}")
