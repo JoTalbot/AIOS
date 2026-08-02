@@ -16,6 +16,16 @@ JUNK_PATTERNS=(
 
 log(){ echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
 
+tg_send(){
+  local txt="$1"
+  local tk="${AIOS_TELEGRAM_TOKEN:-}"
+  local cid="${TELEGRAM_CHAT_ID:-}"
+  [ -n "$tk" ] && [ -n "$cid" ] || return 0
+  curl -s -m 10 -X POST "https://api.telegram.org/bot$tk/sendMessage" \
+    -H "Content-Type: application/json" \
+    -d "{\"chat_id\":$cid,\"text\":$(printf '%s' "$txt" | python3 -c 'import sys,json;print(json.dumps(sys.stdin.read()))'),\"parse_mode\":\"HTML\"}" >/dev/null 2>&1
+}
+
 [[ -e "$PROD_DIR/.git" ]] || { log "ERROR: prod worktree missing"; exit 1; }
 [[ -e "$STAGING_DIR/.git" ]] || { log "ERROR: staging worktree missing"; exit 1; }
 [[ "$(git -C "$STAGING_DIR" branch --show-current)" == "auto/coder-staging" ]] || { log "ERROR: staging not on auto/coder-staging"; exit 1; }
@@ -36,6 +46,7 @@ if [[ -z "$NEW" ]]; then
             log "synced with origin/main (parallel agent): merged"
             if [[ "${AIOS_AUTO_PUSH:-0}" == "1" ]] && git push origin main >/dev/null 2>&1; then
                 log "pushed synced main -> origin/main"
+                tg_send "🔄 <b>AIOS: синхронизировано с параллельным агентом</b>\nСмержены чужие коммиты, main обновлён"
             fi
         else
             log "sync merge with origin failed (conflict); aborting"
