@@ -1144,7 +1144,157 @@ async def instagram_dm_new(username: str, text: str, confirm: bool) -> dict:
         await a.close()
 
 
-# --------------------------------------------------------------- Viber (desktop)
+# --------------------------------------------------------------------------
+# Google Contacts (Chrome Twin)
+# --------------------------------------------------------------------------
+
+_CONTACTS_JS = """els => els.map(e => {
+    const id = e.getAttribute('data-id') || '';
+    const t = (e.innerText || '').trim().replace(/\\s+/g, ' ');
+    const emailM = t.match(/[\\w.+-]+@[\\w-]+\\.[\\w.]+/);
+    const email = emailM ? emailM[0] : null;
+    let name = t.split(' star')[0].replace(/^drag_indicator\\s*/, '').trim();
+    if (email && name.includes(email)) name = name.replace(email, '').trim();
+    name = name.replace(/\\s*(Отправить письмо в новом окне|content_copy|Ещё).*/g, '').trim();
+    return {id, name: name.slice(0, 60), email};
+}).filter(x => x.id && x.id.startsWith('c') && x.name && x.name !== 'drag_indicator')"""
+
+
+async def google_contacts_list(limit: int = 25) -> dict:
+    """Список контактов Google (имена + email из списка)."""
+    a = await _launch_google()
+    try:
+        page = await a._ensure_browser()
+        await page.goto("https://contacts.google.com/", wait_until="domcontentloaded", timeout=45000)
+        await page.wait_for_timeout(8000)
+        items = await page.eval_on_selector_all("[data-id]", _CONTACTS_JS)
+        seen = set()
+        contacts = []
+        for it in items or []:
+            name = it.get("name")
+            if name in seen:
+                continue
+            seen.add(name)
+            contacts.append({"name": name, "email": it.get("email")})
+            if len(contacts) >= limit:
+                break
+        shot = f"{SHOTS}/aios_acct_contacts_{int(time.time())}.png"
+        try:
+            await page.screenshot(path=shot)
+        except Exception:
+            shot = None
+        return {"status": "ok", "contacts": contacts, "count": len(contacts),
+                "screenshot": shot}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def google_contacts_search(query: str, limit: int = 10) -> dict:
+    """Поиск контакта (фильтр списка) + детали: email/телефон."""
+    a = await _launch_google()
+    try:
+        page = await a._ensure_browser()
+        await page.goto("https://contacts.google.com/", wait_until="domcontentloaded", timeout=45000)
+        await page.wait_for_timeout(8000)
+        # поле поиска (вверху справа)
+        try:
+            box = page.locator("input[type='search'], input[placeholder*='Поиск'], input[placeholder*='Search']").first
+            await box.wait_for(state="visible", timeout=8000)
+            await box.fill(query)
+            await page.wait_for_timeout(2500)
+        except Exception:
+            pass
+        items = await page.eval_on_selector_all("[data-id]", _CONTACTS_JS)
+        filtered = []
+        for it in items or []:
+            name = it.get("name") or ""
+            if query.lower() in name.lower() or (it.get("email") or "").lower() in query.lower():
+                filtered.append(it)
+            if len(filtered) >= limit:
+                break
+        if not filtered:
+            # fallback: всё, что видно после поиска
+            filtered = [it for it in (items or [])[:limit]]
+        # детали первого найденного
+        detail = {}
+        if filtered:
+            try:
+                el = page.locator(f"[data-id^='c']:has-text('{filtered[0]['name'][:30]}')").first
+                await el.click(force=True, timeout=5000)
+                await page.wait_for_timeout(2500)
+                detail = await page.evaluate("""() => {
+                    const text = document.body.innerText;
+                    const emails = text.match(/[\\w.+-]+@[\\w-]+\\.[\\w.]+/g) || [];
+                    const phones = text.match(/\\+?[\\d][\\d\\s().-]{7,}/g) || [];
+                    return {emails: [...new Set(emails)].slice(0, 5), phones: [...new Set(phones)].slice(0, 5)};
+                }""")
+            except Exception:
+                pass
+        result = {"status": "ok", "query": query, "contacts": filtered,
+                  "count": len(filtered)}
+        if detail:
+            result["detail"] = detail
+        return result
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def google_contacts_add(name: str, email: str = "", phone: str = "") -> dict:
+    """Создать новый контакт (кнопка «Новый контакт» → форма)."""
+    a = await _launch_google()
+    try:
+        page = await a._ensure_browser()
+        await page.goto("https://contacts.google.com/", wait_until="domcontentloaded", timeout=45000)
+        await page.wait_for_timeout(6000)
+        # кнопка «Новый контакт» (div[aria-label*=Новый контакт])
+        btn = page.locator("div[aria-label*='Новый контакт'], div[aria-label*='New contact'], [data-tooltip*='Новый контакт']").first
+        await btn.wait_for(state="visible", timeout=8000)
+        await btn.click()
+        await page.wait_for_timeout(3000)
+        # поле имени
+        name_input = page.locator("input[placeholder*='Имя'], input[placeholder*='Name'], input[placeholder*=\"Ім'я\"]").first
+        await name_input.wait_for(state="visible", timeout=8000)
+        await name_input.fill(name)
+        if email:
+            em = page.locator("input[placeholder*='Email'], input[type=email]").first
+            try:
+                await em.wait_for(state="visible", timeout=4000)
+                await em.fill(email)
+            except Exception:
+                pass
+        if phone:
+            ph = page.locator("input[placeholder*='Телефон'], input[placeholder*='Phone'], input[type=tel]").first
+            try:
+                await ph.wait_for(state="visible", timeout=4000)
+                await ph.fill(phone)
+            except Exception:
+                pass
+        await page.wait_for_timeout(500)
+        # сохранить: кнопка «Сохранить»
+        for sel in ("button[aria-label*='Сохранить']", "div[aria-label*='Сохранить']",
+                    "button:has-text('Сохранить')", "div:has-text('Сохранить')"):
+            try:
+                sv = page.locator(sel).first
+                await sv.click(timeout=4000)
+                await page.wait_for_timeout(1500)
+                return {"status": "ok", "name": name, "email": email, "phone": phone}
+            except Exception:
+                continue
+        return {"status": "draft", "note": "Форма заполнена, кнопка «Сохранить» не найдена — проверьте вручную",
+                "name": name}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+# --------------------------------------------------------------------------
+# Viber (desktop)
+# --------------------------------------------------------------------------
 def viber_chats() -> dict:
     """Список чатов Viber (OCR окна десктоп-приложения)."""
     try:
@@ -1168,6 +1318,60 @@ def viber_send(chat: str, text: str, confirm: bool) -> dict:
         return vc.send_chat(chat, text, confirm)
     except Exception as e:
         return {"status": "error", "error": str(e)[:300]}
+
+
+async def prom_profile() -> dict:
+    """Prom.ua: информация аккаунта (Chrome Twin)."""
+    try:
+        from aios_core.platforms.prom_chrome_twin_adapter import PromChromeTwinAdapter
+        a = PromChromeTwinAdapter()
+        try:
+            return await a.account_info()
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+# --------------------------------------------------------------------------
+# Telegram userbot (личный аккаунт)
+# --------------------------------------------------------------------------
+
+def _tg_userbot(args: list) -> dict:
+    """Вызвать tg_userbot.py (Telethon, личный Telegram)."""
+    import subprocess
+    r = subprocess.run(["/opt/aios/.venv/bin/python", str(ROOT / "tg_userbot.py")] + args,
+                       capture_output=True, text=True, timeout=90, cwd=str(ROOT))
+    out = (r.stdout or "").strip()
+    start = out.find("{")
+    if start >= 0:
+        try:
+            return json.loads(out[start:])
+        except Exception:
+            pass
+    return {"status": "error", "error": (r.stderr or out)[-300:]}
+
+
+def tg_dialogs(limit: int = 15) -> dict:
+    return _tg_userbot(["dialogs", str(limit)])
+
+
+def tg_read(ref: str, limit: int = 12) -> dict:
+    return _tg_userbot(["read", ref, str(limit)])
+
+
+def tg_send(ref: str, text: str, confirm: bool) -> dict:
+    args = ["send", ref, text]
+    if confirm:
+        args.append("--confirm")
+    return _tg_userbot(args)
+
+
+def tg_bot(bot: str, command: str, confirm: bool) -> dict:
+    args = ["bot", bot, command]
+    if confirm:
+        args.append("--confirm")
+    return _tg_userbot(args)
 
 
 # --------------------------------------------------------------------------
@@ -1422,6 +1626,14 @@ def main():
     gdl.add_argument("--limit", type=int, default=20)
     gdd = gg.add_parser("drive_download")
     gdd.add_argument("file_ref")
+    gcl = gg.add_parser("contacts_list")
+    gcl.add_argument("--limit", type=int, default=25)
+    gcs = gg.add_parser("contacts_search")
+    gcs.add_argument("query")
+    gca = gg.add_parser("contacts_add")
+    gca.add_argument("--name", required=True)
+    gca.add_argument("--email", default="")
+    gca.add_argument("--phone", default="")
 
     ig = sub.add_parser("instagram")
     igg = ig.add_subparsers(dest="action", required=True)
@@ -1495,6 +1707,26 @@ def main():
     vbs.add_argument("text")
     vbs.add_argument("--confirm", action="store_true")
 
+    prom = sub.add_parser("prom")
+    promg = prom.add_subparsers(dest="action", required=True)
+    promg.add_parser("profile")
+
+    tg = sub.add_parser("tg")
+    tgg = tg.add_subparsers(dest="action", required=True)
+    tgd = tgg.add_parser("dialogs")
+    tgd.add_argument("n", nargs="?", type=int, default=15)
+    tgr = tgg.add_parser("read")
+    tgr.add_argument("ref")
+    tgr.add_argument("--limit", type=int, default=12)
+    tgs = tgg.add_parser("send")
+    tgs.add_argument("ref")
+    tgs.add_argument("text")
+    tgs.add_argument("--confirm", action="store_true")
+    tgb = tgg.add_parser("bot")
+    tgb.add_argument("bot")
+    tgb.add_argument("command")
+    tgb.add_argument("--confirm", action="store_true")
+
     args = parser.parse_args()
 
     try:
@@ -1531,6 +1763,12 @@ def main():
                 out(asyncio.run(google_drive_list(args.limit)))
             elif args.action == "drive_download":
                 out(asyncio.run(google_drive_download(args.file_ref)))
+            elif args.action == "contacts_list":
+                out(asyncio.run(google_contacts_list(args.limit)))
+            elif args.action == "contacts_search":
+                out(asyncio.run(google_contacts_search(args.query)))
+            elif args.action == "contacts_add":
+                out(asyncio.run(google_contacts_add(args.name, args.email, args.phone)))
         elif args.account == "instagram":
             if args.action == "profile":
                 out(asyncio.run(instagram_profile()))
@@ -1582,6 +1820,18 @@ def main():
                 out(viber_read(args.chat, args.limit))
             elif args.action == "send":
                 out(viber_send(args.chat, args.text, args.confirm))
+        elif args.account == "prom":
+            if args.action == "profile":
+                out(asyncio.run(prom_profile()))
+        elif args.account == "tg":
+            if args.action == "dialogs":
+                out(tg_dialogs(args.n))
+            elif args.action == "read":
+                out(tg_read(args.ref, args.limit))
+            elif args.action == "send":
+                out(tg_send(args.ref, args.text, args.confirm))
+            elif args.action == "bot":
+                out(tg_bot(args.bot, args.command, args.confirm))
     except Exception as e:
         out({"status": "error", "error": str(e)[:400]})
 

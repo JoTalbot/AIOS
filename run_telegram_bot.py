@@ -1049,6 +1049,27 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 else:
                     api.send_message(chat_id, f"❌ {data.get('error', st)}")
                 return True
+            if kind == "tg_send":
+                d = pend["data"]
+                data = _run_account_control(["tg", "send", d["ref"], d["text"], "--confirm"])
+                st = data.get("status")
+                if st == "sent":
+                    api.send_message(chat_id, f"✅ Отправлено в Telegram <b>{d['ref']}</b>: «{d['text'][:150]}»")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
+            if kind == "tg_bot":
+                d = pend["data"]
+                data = _run_account_control(["tg", "bot", d["bot"], d["command"], "--confirm"])
+                st = data.get("status")
+                if st == "ok":
+                    reply = data.get("reply") or []
+                    txt = f"🤖 <b>@{d['bot']}</b> ответил:\n" + "\n".join(
+                        f"{'🤖' if not x.get('out') else '🙋'} {_esc_tg(x.get('text', ''))}" for x in reply[:3])
+                    api.send_message(chat_id, txt)
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
             if kind == "tiktok_upload":
                 d = pend["data"]
                 data = _run_account_control(["tiktok", "upload", d["video"],
@@ -1073,11 +1094,14 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                "drive", "гугл", "google", "юху", "аккаунт гугл", "google аккаунт",
                "непрочитан", "кто я", "google", "событ", "расписан", "документ",
                "поиск", "найди", "недел", "файл", "скачай", "ответь", "прочитай письмо",
-               "фейсбук", "facebook", "тикток", "tiktok", "олх", "olx", "объявлен")
+               "фейсбук", "facebook", "тикток", "tiktok", "олх", "olx", "объявлен",
+               "контакт", "телефонная книга", "адресная книга", "пром", "prom.ua",
+               "телеграм", "telegram", "в телеге")
     is_ig = any(w in t for w in ig_words)
     is_g = any(w in t for w in g_words)
     other_words = ("вайбер", "вибер", "viber", "мессенджер", "messenger",
-                   "опубликуй видео", "опубликуй ролик", "опубликуй в тикток")
+                   "опубликуй видео", "опубликуй ролик", "опубликуй в тикток",
+                   "боту @", "команду боту", "команда боту")
     is_other = any(w in t for w in other_words)
     if not is_ig and not is_g and not is_other:
         return False
@@ -1443,6 +1467,91 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ {data.get('error', '?')}")
         return True
 
+    # ---- Prom.ua ----
+    if any(w in t for w in ("пром", "prom.ua", "пром юа")):
+        api.send_message(chat_id, "⏳ Захожу в Prom…")
+        data = _run_account_control(["prom", "profile"])
+        if data.get("status") == "ok":
+            txt = (f"🏪 <b>Prom.ua</b>\n"
+                   f"🏬 Магазин: {_esc_tg(data.get('shop') or '?')}\n"
+                   f"📦 Товаров: {data.get('products') or '?'}\n"
+                   f"📋 Заказов: {data.get('orders') or '?'}")
+            _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                             "screenshot": data.get("screenshot"),
+                                             "caption": "🏪 Prom"}, "")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+
+    # ---- Telegram (личный аккаунт, userbot) ----
+    tg_words = any(w in t for w in ("тг ", "телеграм", "telegram", "в телеге",
+                                    "личный телеграм", "мой телеграм",
+                                    "боту @", "команду боту", "команда боту"))
+    if tg_words:
+        is_dialog = any(w in t for w in ("чаты", "диалог", "список чатов", "прочитай",
+                                         "напиши", "отправь", "боту", "команду боту"))
+        if any(w in t for w in ("напиши", "отправь")) and "боту" not in t:
+            m = re.search(r":\s*(.+)$", text, re.IGNORECASE)
+            body = m.group(1).strip() if m else ""
+            target = re.sub(r"^(напиши|отправь)(\s+(в|в\s+телеграм|телеграм|telegram|тг))?\s+", "",
+                            text, flags=re.IGNORECASE)
+            target = re.sub(r"^(в|телеграм|telegram|тг)\s+", "", target, flags=re.IGNORECASE)
+            target = target.split(":", 1)[0].strip(" ,.;:—–")
+            if not target or not body:
+                api.send_message(chat_id,
+                                 "✈️ <b>Telegram</b>: «напиши в телеграм <имя>: <текст>»\n"
+                                 "или «напиши боту @username: <команда>»")
+                return True
+            _pending_confirm[chat_id] = {"kind": "tg_send",
+                                         "data": {"ref": target, "text": body}}
+            api.send_message(chat_id,
+                             f"✈️ Отправить <b>{target}</b> в Telegram:\n«{body[:200]}»\n\n«да» / «нет»")
+            return True
+        if "боту" in t or (any(w in t for w in ("бот ", "команду боту"))):
+            m = re.search(r"@([a-zA-Z0-9_]+)", text)
+            bot = m.group(1) if m else None
+            command = re.sub(r"^(напиши|отправь|команду)\s+боту\s*@?\w*:?\s*", "", text, flags=re.IGNORECASE).strip()
+            if not bot or not command:
+                api.send_message(chat_id,
+                                 "🤖 <b>Команда боту</b>: «напиши боту @BotFather /start»")
+                return True
+            _pending_confirm[chat_id] = {"kind": "tg_bot",
+                                         "data": {"bot": bot, "command": command}}
+            api.send_message(chat_id,
+                             f"🤖 Отправить боту <b>@{bot}</b> команду «{command[:150]}»?\n\n«да» / «нет»")
+            return True
+        # диалоги / чтение
+        if any(w in t for w in ("прочитай", "покажи чат", "что в чате")):
+            m = re.search(r"(?:телеграм|телеге|тг|чате|чату)[\s,:—–]*([\w\sА-Яа-яЁёІіЇїЄє'’.-]{2,30}?)(?:[.!?]|$)", text, re.IGNORECASE)
+            ref = m.group(1).strip() if m else ""
+            api.send_message(chat_id, "⏳ Читаю Telegram…")
+            data = _run_account_control(["tg", "read", ref or "Saved Messages", "--limit", "12"])
+            if data.get("status") == "ok":
+                msgs = data.get("messages") or []
+                if not msgs:
+                    api.send_message(chat_id, "✈️ В чате нет сообщений.")
+                else:
+                    api.send_message(chat_id, "✈️ <b>Telegram</b>:\n" + "\n".join(
+                        f"{'👤' if not x.get('out') else '🙋'} {_esc_tg(x.get('text', ''))}" for x in msgs[-12:]))
+            else:
+                api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+            return True
+        api.send_message(chat_id, "⏳ Загружаю чаты Telegram…")
+        data = _run_account_control(["tg", "dialogs", "15"])
+        if data.get("status") == "ok":
+            dialogs = data.get("dialogs") or []
+            if dialogs:
+                txt = "✈️ <b>Последние чаты Telegram</b>:\n" + "\n".join(
+                    f"• {_esc_tg(d.get('name'))}{' 🤖' if d.get('is_bot') else ''}"
+                    f"{' 🔴' + str(d.get('unread')) if d.get('unread') else ''}"
+                    for d in dialogs[:15])
+                api.send_message(chat_id, txt)
+            else:
+                api.send_message(chat_id, "✈️ Чатов нет. Проверьте вход: нужен TG_API_ID/TG_API_HASH.")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+
     # ---- OLX ----
     if any(w in t for w in ("олх", "olx", "объявлен", "объявлени")):
         api.send_message(chat_id, "⏳ Захожу в OLX…")
@@ -1457,6 +1566,60 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
                                              "screenshot": o.get("screenshot"),
                                              "caption": "🛒 OLX"}, "")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+
+    # ---- Google Contacts ----
+    if any(w in t for w in ("контакт", "телефонная книга", "адресная книга")):
+        if any(w in t for w in ("добавь", "создай", "новый контакт", "запиши контакт")):
+            m_name = re.search(r"контакт\s+([\w\sА-Яа-яЁёІіЇїЄє'’.-]{2,40}?)(?:\s+email\s+([\w.+-]+@[\w-]+\.[\w.]+))?(?:\s+тел[а-я]*\s*([+\d][\d\s().-]{5,})|$)", text, re.IGNORECASE)
+            name = m_name.group(1).strip() if m_name else ""
+            email = m_name.group(2) if m_name and m_name.group(2) else ""
+            phone = m_name.group(3) if m_name and m_name.group(3) else ""
+            if not name:
+                api.send_message(chat_id,
+                                 "👤 <b>Добавление контакта</b>: напишите, например\n"
+                                 "«добавь контакт Иван Иванов email ivan@mail.com тел +380501112233»")
+                return True
+            api.send_message(chat_id, "⏳ Создаю контакт…")
+            data = _run_account_control(["google", "contacts_add", "--name", name,
+                                         "--email", email, "--phone", phone])
+            if data.get("status") == "ok":
+                api.send_message(chat_id, f"✅ Контакт <b>{name}</b> создан в Google Контактах.")
+            else:
+                api.send_message(chat_id, f"⚠️ {data.get('note', data.get('error', '?'))}")
+            return True
+        if any(w in t for w in ("найди", "поиск", "найди контакт")):
+            q = re.sub(r"(найди|поиск|контакт)\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
+            q = re.sub(r"^(в|по)\s+", "", q).strip()
+            if not q:
+                api.send_message(chat_id, "👤 Напишите «найди контакт <имя>»")
+                return True
+            api.send_message(chat_id, "⏳ Ищу контакт…")
+            data = _run_account_control(["google", "contacts_search", q])
+            if data.get("status") == "ok":
+                cons = data.get("contacts") or []
+                if cons:
+                    txt = "👤 <b>Найдено:</b>\n" + "\n".join(
+                        f"• {_esc_tg(c.get('name'))} {_esc_tg('(' + c.get('email') + ')') if c.get('email') else ''}"
+                        for c in cons[:8])
+                    api.send_message(chat_id, txt)
+                else:
+                    api.send_message(chat_id, f"👤 Контакт «{q}» не найден.")
+            else:
+                api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+            return True
+        # просто «контакты»
+        api.send_message(chat_id, "⏳ Загружаю контакты…")
+        data = _run_account_control(["google", "contacts_list", "--limit", "15"])
+        if data.get("status") == "ok":
+            cons = data.get("contacts") or []
+            txt = f"👤 <b>Google Контакты</b> ({data.get('count') or len(cons)}):\n" + "\n".join(
+                f"• {_esc_tg(c.get('name'))}" for c in cons[:15])
+            _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                             "screenshot": data.get("screenshot"),
+                                             "caption": "👤 Контакты"}, "")
         else:
             api.send_message(chat_id, f"❌ {data.get('error', '?')}")
         return True

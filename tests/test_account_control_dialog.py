@@ -264,6 +264,84 @@ def test_tiktok_upload_intent(monkeypatch):
     assert any("опубликовано" in x for x in api2.messages)
 
 
+def test_prom_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "prom" and args[1] == "profile":
+            return {"status": "ok", "shop": "Мой магазин", "products": 12, "orders": 3}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "пром") is True
+    assert any("Prom" in x for x in api.messages)
+
+
+def test_tg_dialogs_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "tg" and args[1] == "dialogs":
+            return {"status": "ok", "dialogs": [
+                {"name": "Мама", "is_bot": False, "unread": 2},
+                {"name": "BotFather", "is_bot": True, "unread": 0}]}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "телеграм") is True
+    assert any("Telegram" in x for x in api.messages)
+
+
+def test_tg_send_intent(monkeypatch):
+    def fake_run(args):
+        if args[:3] == ["tg", "send", "Мама"] and "--confirm" in args:
+            return {"status": "sent", "dialog": "Мама", "text": "привет"}
+        return {"status": "need_confirm"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "напиши в телеграм Мама: привет") is True
+    api2 = FakeAPI()
+    assert m._handle_account_intent(api2, 1, "да") is True
+    assert any("Telegram" in x for x in api2.messages)
+
+
+def test_tg_bot_intent(monkeypatch):
+    def fake_run(args):
+        if args[:3] == ["tg", "bot", "BotFather"] and "--confirm" in args:
+            return {"status": "ok", "reply": [{"out": False, "text": "Привет!"}]}
+        return {"status": "need_confirm"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "напиши боту @BotFather /start") is True
+    api2 = FakeAPI()
+    assert m._handle_account_intent(api2, 1, "да") is True
+    assert any("BotFather" in x for x in api2.messages)
+
+
+def test_contacts_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "google" and args[1] == "contacts_list":
+            return {"status": "ok", "contacts": [{"name": "Алиса"}, {"name": "Мама"}], "count": 2}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "покажи контакты") is True
+    assert any("Google Контакты" in x for x in api.messages)
+
+
+def test_contacts_search_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "google" and args[1] == "contacts_search":
+            return {"status": "ok", "contacts": [{"name": "Алиса", "email": "alisa@x.com"}]}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "найди контакт Алиса") is True
+    assert any("Алиса" in x for x in api.messages)
+
+
 def test_ig_like_flow(monkeypatch):
     def fake_run(args):
         if args[:3] == ["instagram", "like", url] and "--confirm" not in args:
