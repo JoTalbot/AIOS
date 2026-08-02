@@ -105,7 +105,7 @@ class SecurityConfig(BaseModel):
                 raise ValueError(f"Invalid trust level: {level}")
         return v
 
-    @root_validator
+    @root_validator(skip_on_failure=True)  # pydantic v2: обязателен для post-валидации
     def validate_timeouts(cls, values: dict) -> dict:
         """Ensure max_timeout >= default_timeout >= min_timeout."""
         default = values.get('default_timeout')
