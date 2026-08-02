@@ -6,6 +6,7 @@ from .base import PlatformAdapter
 from .ebay_adapter import EbayAdapter
 from .facebook_adapter import FacebookAdapter
 from .instagram_adapter import InstagramAdapter
+from .instagram_emulator_adapter import InstagramEmulatorAdapter
 from .linkedin_adapter import LinkedinAdapter
 from .olx_adapter import OLXAdapter
 from .prom_adapter import PromAdapter
