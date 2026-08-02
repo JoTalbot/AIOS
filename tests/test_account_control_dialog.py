@@ -367,6 +367,18 @@ def test_novaposhta_offices_intent(monkeypatch):
     assert any("Отделения" in x for x in api.messages)
 
 
+def test_tg_read_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "tg" and args[1] == "read":
+            return {"status": "ok", "messages": [{"out": False, "text": "Привет"}, {"out": True, "text": "Здравствуй"}]}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "прочитай чат в телеге Мама") is True
+    assert any("Telegram" in x for x in api.messages)
+
+
 def test_ig_like_flow(monkeypatch):
     def fake_run(args):
         if args[:3] == ["instagram", "like", url] and "--confirm" not in args:
