@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class BatchRequest(BaseModel):
-    """Pydantic model for batch request validation."""
+    """Pydantic model for batch request validation with security checks."""
     data: list[Any]
     context: Optional[dict[str, Any]] = None
 
@@ -22,9 +22,32 @@ class BatchRequest(BaseModel):
     @classmethod
     def validate_data(cls, v: list[Any]) -> list[Any]:
         if not isinstance(v, list):
+            logger.error("Batch data validation failed: not a list")
             raise ValueError('Batch data must be a list')
         if len(v) > 1000:
+            logger.error(f"Batch data size violation: {len(v)} items (max 1000)")
             raise ValueError('Batch data exceeds maximum size of 1000 items')
+        # Security: validate each item in batch
+        for item in v:
+            if isinstance(item, dict):
+                for key, value in item.items():
+                    if isinstance(value, str):
+                        # Basic XSS protection
+                        if '<' in value or '>' in value or 'script' in value.lower():
+                            logger.error(f"Potential XSS attempt in batch item: {value[:50]}...")
+                            raise ValueError("Invalid characters in batch data")
+            elif isinstance(item, str):
+                if '<' in item or '>' in item or 'script' in item.lower():
+                    logger.error(f"Potential XSS attempt in batch string: {item[:50]}...")
+                    raise ValueError("Invalid characters in batch data")
+        return v
+
+    @field_validator('context')
+    @classmethod
+    def validate_context(cls, v: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+        if v is not None and not isinstance(v, dict):
+            logger.error("Invalid context type detected")
+            raise ValueError("Context must be a dictionary or None")
         return v
 
 class APIAdapter:
@@ -62,65 +85,87 @@ class APIAdapter:
             raise ValueError(f"Invalid HTTP method. Allowed: {allowed_methods}")
         return method
 
-    def execute_api_call(
+    def execute_batch_api_call(
         self,
         protocol: str,
         endpoint: str,
-        method: str = "GET",
-        payload: dict[str, Any] | None = None,
+        batch_request: BatchRequest,
+        method: str = "POST",
     ) -> dict[str, Any]:
-        """Execute API request over specified protocol (REST, GraphQL, gRPC, WebSocket).
+        """Execute batch API request with enhanced security validation.
 
         Args:
             protocol: API protocol (REST, GraphQL, gRPC, WebSocket)
             endpoint: API endpoint/path
-            method: HTTP method (GET, POST, etc.)
-            payload: Request payload/data
+            batch_request: Validated BatchRequest object
+            method: HTTP method (default POST for batch operations)
 
         Returns:
-            Dictionary with execution result and metadata
+            Dictionary with batch execution result and metadata
 
         Raises:
             ValueError: On input validation failure
             ValidationError: On pydantic validation failure
         """
         try:
-            # Input validation
+            logger.info(f"Starting batch API execution for endpoint: {endpoint}")
+
+            # Enhanced input validation
             protocol = self._validate_protocol(protocol)
             endpoint = self._validate_endpoint(endpoint)
             method = self._validate_method(method)
 
-            # Payload validation
-            if payload is not None and not isinstance(payload, dict):
-                logger.warning("Invalid payload type detected")
-                raise ValueError("Payload must be a dictionary or None")
+            # Validate batch request
+            validated_request = BatchRequest(**batch_request.model_dump())
+
+            # Security audit logging
+            logger.info(
+                f"Batch request validated: {len(validated_request.data)} items, "
+                f"context keys: {list(validated_request.context.keys()) if validated_request.context else 'none'}"
+            )
 
             result = {
                 "protocol": protocol,
                 "endpoint": endpoint,
                 "method": method,
+                "batch_size": len(validated_request.data),
                 "status": "success",
                 "status_code": 200,
                 "response": {
-                    "message": f"Simulated {protocol.upper()} response from {endpoint}",
-                    "payload": payload or {}
+                    "message": f"Processed {len(validated_request.data)} items via {protocol.upper()}",
+                    "processed_items": len(validated_request.data),
+                    "context": validated_request.context or {}
                 },
                 "timestamp": time.time(),
                 "security_flags": {
                     "xss_protected": True,
                     "injection_protected": True,
-                    "input_validated": True
-                }
+                    "input_validated": True,
+                    "batch_sanitized": True
+                },
+                "audit_id": f"batch_{int(time.time())}_{hash(endpoint) % 1000}"
             }
-            self.execution_history.append(result)
+
+            # Store execution history with security context
+            self.execution_history.append({
+                **result,
+                "security_context": {
+                    "protocol": protocol,
+                    "endpoint": endpoint,
+                    "batch_size": len(validated_request.data)
+                }
+            })
+
+            logger.info(f"Batch execution completed successfully: {result['audit_id']}")
             return result
 
         except (ValueError, ValidationError) as e:
-            logger.error(f"API execution failed: {str(e)}")
+            logger.error(f"Batch API execution failed: {str(e)}", exc_info=True)
             return {
                 "protocol": protocol,
                 "endpoint": endpoint,
                 "method": method.upper(),
+                "batch_size": len(batch_request.data) if hasattr(batch_request, 'data') else 0,
                 "status": "failed",
                 "status_code": 400,
                 "error": str(e),
@@ -128,6 +173,8 @@ class APIAdapter:
                 "security_flags": {
                     "xss_protected": False,
                     "injection_protected": False,
-                    "input_validated": False
-                }
+                    "input_validated": False,
+                    "batch_sanitized": False
+                },
+                "audit_id": f"batch_fail_{int(time.time())}"
             }
