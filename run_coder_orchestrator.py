@@ -825,15 +825,20 @@ def phase_validate(code_result: dict) -> dict:
             except Exception:
                 pass
 
-            # AI review gate (non-blocking, best-effort): ask the LLM to review
-            # the generated code and capture any concerning feedback as warnings.
+            # AI review gate: ask the LLM to review generated code. Blocks on
+            # critical security problems; otherwise records warnings.
             try:
                 _coder_mod = get_coder()
                 _cfg = _coder_mod.CoderConfig.from_env()
                 _cfg.repo_path = REPO_PATH
                 _rev = _coder_mod.MetaCognitiveCoder(_cfg).review_code(code_result.get("file", ""))
-                if _rev and not str(_rev).startswith("File not found"):
-                    _warnings.append("review: " + str(_rev)[:200])
+                _rev_s = str(_rev or "")
+                if _rev_s and not _rev_s.startswith("File not found"):
+                    _warnings.append("review: " + _rev_s[:250])
+                    _crit = ["critical", "vulnerability", "injection", "sql", "eval(", "exec(", "secret leak", "path traversal"]
+                    if any(k in _rev_s.lower() for k in _crit):
+                        print(f"    [REVIEW] BLOCKED critical issue in {code_result.get('file')}")
+                        return {"status": "failed", "reason": "AI review found critical security issue"}
             except Exception:
                 pass
 
