@@ -403,8 +403,11 @@ def test_inbox_intent(monkeypatch):
     assert m._handle_account_intent(api, 1, "инбокс") is True
     joined = "\n".join(api.messages)
     assert "Единый инбокс" in joined
-    assert "Почта" in joined and "Telegram" in joined and "Instagram" in joined
-    assert "Messenger" in joined and "OLX" in joined
+    # пункты сохранены и включают все каналы
+    items = m._last_inbox.get(1, [])
+    chans = {it["channel"] for it in items}
+    assert "gmail" in chans and "tg" in chans and "ig" in chans
+    assert "messenger" in chans and "olx" in chans
 
 
 def test_reminder_intent(monkeypatch):
@@ -426,6 +429,92 @@ def test_reminder_relative(monkeypatch):
     assert len(items) == 1
     assert "выпить воды" in items[0]["text"]
     m._save_reminders([])
+
+
+def test_inbox_reply_by_number(monkeypatch):
+    m._last_inbox[1] = [{"channel": "tg", "ref": "Мама", "title": "Мама", "preview": "привет"}]
+
+    def fake_run(args):
+        if args[:3] == ["tg", "send", "Мама"]:
+            return {"status": "need_confirm"}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "ответь на 1: привет мам") is True
+    assert any("Ответ в Telegram" in x for x in api.messages)
+    m._last_inbox.pop(1, None)
+
+
+def test_inbox_filters(monkeypatch):
+    def fake_run(args):
+        if args[0] == "google" and args[1] == "gmail_list":
+            return {"status": "ok", "unread_total": 1, "emails": [{"id": "1", "subject": "X", "unread": True}]}
+        if args[0] == "tg" and args[1] == "dialogs":
+            return {"status": "ok", "dialogs": [{"name": "М", "unread": 1, "last_msg": "х"}]}
+        if args[0] == "instagram" and args[1] == "dm_list":
+            return {"status": "ok", "threads": []}
+        if args[0] == "facebook" and args[1] == "messenger_list":
+            return {"status": "ok", "chats": []}
+        if args[0] == "olx" and args[1] == "profile":
+            return {"status": "ok", "olx": {"name": "М"}}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "инбокс только непрочитанное") is True
+    joined = "\n".join(api.messages)
+    assert "только непрочитанное" in joined
+    items = m._last_inbox.get(1, [])
+    assert all(it.get("unread") for it in items if it["channel"] in ("gmail", "tg"))
+
+
+def test_inbox_mark_read(monkeypatch):
+    import imaplib
+
+    class FakeM:
+        def __init__(self, *a, **k):
+            self.calls = []
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+        def select(self, *a):
+            return "OK", [None]
+        def search(self, *a):
+            return "OK", [b"1 2 3"]
+        def store(self, *a):
+            self.calls.append(a)
+            return "OK", [None]
+        def logout(self):
+            return None
+
+    monkeypatch.setattr(imaplib, "IMAP4_SSL", lambda *a, **k: FakeM())
+
+    def fake_run(args):
+        if args[0] == "tg":
+            return {"status": "ok", "messages": []}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    import run_account_control as rac
+    monkeypatch.setattr(rac, "app_password", lambda: "fake-pw")
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "отметь всё прочитанным") is True
+    assert any("Отмечено" in x for x in api.messages)
+
+
+def test_inbox_schedule_cmd(monkeypatch):
+    api = FakeAPI()
+    sched_file = m.INBOX_SCHEDULE_FILE
+    if sched_file.exists():
+        sched_file.unlink()
+    assert m._handle_account_intent(api, 1, "присылай инбокс утром в 09:00") is True
+    assert any("Инбокс буду присылать" in x for x in api.messages)
+    assert sched_file.exists()
+    sched = json.loads(sched_file.read_text(encoding="utf-8"))
+    assert sched.get("1") and sched["1"][0]["time"] == "09:00"
+    sched_file.unlink(missing_ok=True)
 
 
 def test_auto_ttn_detect(monkeypatch):
