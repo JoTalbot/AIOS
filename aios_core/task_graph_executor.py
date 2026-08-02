@@ -38,39 +38,37 @@ class AutonomousTaskGraphExecutor:
         self._active_contexts: dict[str, TaskContext] = {}
 
     def _filter_context_todos(self, ctx: dict[str, Any], current_file: str) -> dict[str, Any]:
-        """Filter out TODO items related to the specified file from context.
+        """Фильтрует TODO-элементы, связанные с указанным файлом, из контекста.
 
         Args:
-            ctx: The execution context dictionary
-            current_file: The file path to filter TODOs against
+            ctx: Контекст выполнения в виде словаря
+            current_file: Путь к файлу для фильтрации TODO
 
         Returns:
-            Filtered context with stale TODOs removed
+            Отфильтрованный контекст с удалёнными устаревшими TODO
 
-        This prevents context pollution where TODO items from old files
-        might interfere with current task execution. Critical for maintaining
-        clean execution state in long-running processes.
+        Предотвращает загрязнение контекста устаревшими TODO из старых файлов,
+        что критично для поддержания чистого состояния выполнения в долгоживущих процессах.
         """
         if "todos" in ctx:
-            # Filter todos to only include items not related to the current file
-            # This prevents stale TODOs from affecting new task execution
+            # Удаляем пустые строки и TODO, содержащие путь к текущему файлу
             ctx["todos"] = [t for t in ctx.get("todos", [])
                           if current_file not in t and len(t.strip()) > 0]
         return ctx
 
     def _cleanup_stale_contexts(self) -> None:
-        """Remove contexts that have no active dependencies.
+        """Удаляет контексты задач, у которых нет активных зависимостей.
 
-        Maintains memory efficiency by removing contexts that are no longer
-        needed. Prevents unbounded memory growth in long-running processes.
+        Поддерживает эффективность использования памяти, удаляя ненужные контексты.
+        Предотвращает неограниченный рост памяти в долгоживущих процессах.
         """
-        # Create a set of all active task IDs
+        # Собираем множество всех активных идентификаторов задач
         active_tasks = set()
         for ctx in self._active_contexts.values():
             active_tasks.update(ctx.dependencies)
             active_tasks.add(ctx.task_id)
 
-        # Remove contexts that are no longer referenced
+        # Удаляем контексты, на которые больше никто не ссылается
         stale_contexts = [
             task_id for task_id in self._active_contexts
             if task_id not in active_tasks
@@ -84,26 +82,27 @@ class AutonomousTaskGraphExecutor:
         context: Optional[dict[str, Any]] = None,
         max_depth: int = 100
     ) -> dict[str, Any]:
-        """Execute a task graph starting from the root task.
+        """Выполняет граф задач, начиная с корневой задачи.
 
         Args:
-            root_task_id: The ID of the root task to execute
-            context: Initial execution context
-            max_depth: Maximum recursion depth to prevent stack overflow
+            root_task_id: Идентификатор корневой задачи для выполнения
+            context: Начальный контекст выполнения
+            max_depth: Максимальная глубина рекурсии для предотвращения переполнения стека
 
         Returns:
-            Final execution context after all tasks complete
+            Финальный контекст выполнения после завершения всех задач
 
         Raises:
-            ValueError: If max_depth is exceeded or root task not found
-            RuntimeError: If authentication fails or token validation fails
+            ValueError: Если превышена максимальная глубина или корневая задача не найдена
+            RuntimeError: При ошибке аутентификации или проверки токена
 
-        Note:
-            This method may make HTTP requests to external services using POST/PUT methods
-            with proper authentication headers. All requests include:
-            - Authorization: Bearer <token> header
-            - Data in request body (not URL parameters)
-            - Token validation before execution
+        Примечание:
+            Данный метод может выполнять HTTP-запросы к внешним сервисам с использованием
+            методов POST/PUT и соответствующих заголовков аутентификации.
+            Все запросы включают:
+            - Заголовок Authorization: Bearer <token>
+            - Данные в теле запроса (не в параметрах URL)
+            - Проверку токена перед выполнением
         """
         from aios_core.security.security_validator import validate_token
 
@@ -126,20 +125,21 @@ class AutonomousTaskGraphExecutor:
                 "auth_token": None
             }
 
-        # Initialize root context if not exists
+        # Инициализируем корневой контекст, если он не существует
         if root_task_id not in self._active_contexts:
             self._active_contexts[root_task_id] = TaskContext(
                 task_id=root_task_id,
-                dependencies=set(),
-                todos=context.get("todos", []),
+                dependencies=set(context.get("dependencies", set())),
+                todos=[t for t in context.get("todos", [])
+                      if len(t.strip()) > 0],
                 memory=context.get("memory", []),
                 priority=context.get("priority", 1)
             )
 
-        # Get current context
+        # Получаем текущий контекст
         current_ctx = self._active_contexts[root_task_id]
 
-        # Filter out stale TODOs before processing
+        # Фильтруем устаревшие TODO перед обработкой
         current_ctx = TaskContext(
             task_id=current_ctx.task_id,
             dependencies=current_ctx.dependencies,
@@ -182,14 +182,14 @@ class AutonomousTaskGraphExecutor:
         return execution_result
 
     def add_todo_item(self, task_id: str, todo_text: str) -> None:
-        """Add a TODO item to a task's context.
+        """Добавляет TODO-элемент в контекст задачи.
 
         Args:
-            task_id: The ID of the task to add the TODO to
-            todo_text: The TODO text to add
+            task_id: Идентификатор задачи для добавления TODO
+            todo_text: Текст TODO для добавления
 
         Raises:
-            ValueError: If task_id not found
+            ValueError: Если task_id не найден
         """
         if task_id not in self._active_contexts:
             raise ValueError(f"Task {task_id} not found")
@@ -197,20 +197,20 @@ class AutonomousTaskGraphExecutor:
         self._active_contexts[task_id].todos.append(todo_text)
 
     def get_active_todos(self, task_id: Optional[str] = None) -> list[str]:
-        """Get all active TODO items, optionally filtered by task.
+        """Возвращает все активные TODO-элементы, с возможной фильтрацией по задаче.
 
         Args:
-            task_id: Optional task ID to filter by
+            task_id: Необязательный идентификатор задачи для фильтрации
 
         Returns:
-            List of active TODO items
+            Список активных TODO-элементов
         """
         if task_id:
             if task_id not in self._active_contexts:
                 return []
             return [t for t in self._active_contexts[task_id].todos if len(t.strip()) > 0]
 
-        # Return all active TODOs across all contexts
+        # Возвращаем все активные TODO из всех контекстов
         todos = []
         for ctx in self._active_contexts.values():
             todos.extend([t for t in ctx.todos if len(t.strip()) > 0])
