@@ -168,7 +168,7 @@ def get_project_context() -> dict:
         "branch": git_cmd("branch", "--show-current") or "main",
     }
     # Keep protected auto-coder internals out of the LLM-visible git history.
-    _protected_log = ("run_coder_orchestrator", "run_auto_coder", "run_telegram_bot", "llm_balancer", "meta_cognitive_self_coder")
+    _protected_log = ("run_coder_orchestrator", "run_auto_coder", "run_telegram_bot", "api_v2_batch", "llm_balancer", "meta_cognitive_self_coder")
     _log_lines = [ln for ln in ctx["git_log"].splitlines() if not any(p in ln for p in _protected_log)]
     ctx["git_log"] = "\n".join(_log_lines[-10:]) or "no commits"
 
@@ -227,6 +227,8 @@ def get_project_context() -> dict:
         _protected = {"run_coder_orchestrator.py", "tools/run_coder_orchestrator.py",
                       "run_auto_coder.py", "tools/run_auto_coder.py",
                       "run_telegram_bot.py", "tools/run_telegram_bot.py",
+                      "aios_core/api_v2_batch.py", "octopus_core/api_v2_batch.py",
+                      "tools/api_v2_batch.py",
                       "aios_core/llm_balancer.py", "aios_core/meta_cognitive_self_coder.py"}
         for line in result.stdout.strip().split("\n")[:15]:
             if line.strip():
@@ -823,15 +825,20 @@ def phase_validate(code_result: dict) -> dict:
             except Exception:
                 pass
 
-            # AI review gate (non-blocking, best-effort): ask the LLM to review
-            # the generated code and capture any concerning feedback as warnings.
+            # AI review gate: ask the LLM to review generated code. Blocks on
+            # critical security problems; otherwise records warnings.
             try:
                 _coder_mod = get_coder()
                 _cfg = _coder_mod.CoderConfig.from_env()
                 _cfg.repo_path = REPO_PATH
                 _rev = _coder_mod.MetaCognitiveCoder(_cfg).review_code(code_result.get("file", ""))
-                if _rev and not str(_rev).startswith("File not found"):
-                    _warnings.append("review: " + str(_rev)[:200])
+                _rev_s = str(_rev or "")
+                if _rev_s and not _rev_s.startswith("File not found"):
+                    _warnings.append("review: " + _rev_s[:250])
+                    _crit = ["critical", "vulnerability", "injection", "sql", "eval(", "exec(", "secret leak", "path traversal"]
+                    if any(k in _rev_s.lower() for k in _crit):
+                        print(f"    [REVIEW] BLOCKED critical issue in {code_result.get('file')}")
+                        return {"status": "failed", "reason": "AI review found critical security issue"}
             except Exception:
                 pass
 
