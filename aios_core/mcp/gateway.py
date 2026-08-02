@@ -20,15 +20,14 @@ from __future__ import annotations
 import os
 import sys
 from dataclasses import dataclass
+from typing import Dict, List, Optional
 
-# Ensure AIOS core is importable
-_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if _project_root not in sys.path:
-    sys.path.insert(0, _project_root)
-
+import requests
 from aios_core.runtime_policy import RuntimePolicy
 from aios_core.storage import Database
-
+from aios_core.modules.olx import CompetitorAnalyzer, OLXStorage, PriceTracker, RecommendationEngine
+from aios_core.memory_manager import MemoryManager
+from aios_core.knowledge_graph import KnowledgeGraph
 from .prompts import PromptDefinition, PromptRegistry
 from .protocol import (
     JSONRPCError,
@@ -41,8 +40,6 @@ from .protocol import (
 )
 from .resources import ResourceDefinition, ResourceRegistry
 from .tools import ToolDefinition, ToolRegistry
-
-import requests  # Added for POST requests with authorization
 
 # Default constitution/policy dirs relative to project root
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -58,9 +55,9 @@ class ConstitutionGuard:
     def __init__(self, runtime_policy: RuntimePolicy):
         """Initialize ConstitutionGuard."""
         self.policy = runtime_policy
-        self._call_log: list[dict] = []
+        self._call_log: List[Dict] = []
 
-    def check(self, tool_call: MCPToolCall, tool_def: ToolDefinition | None = None) -> dict:
+    def check(self, tool_call: MCPToolCall, tool_def: ToolDefinition | None = None) -> Dict:
         """Evaluate a tool call against the constitution.
 
         Args:
@@ -106,17 +103,17 @@ class ConstitutionGuard:
             "reason": result.get("reason", ""),
         }
 
-    def approve(self, approval_id: str) -> dict | None:
+    def approve(self, approval_id: str) -> Dict | None:
         """Approve a pending action."""
         return self.policy.approve(approval_id)
 
-    def deny(self, approval_id: str) -> dict | None:
+    def deny(self, approval_id: str) -> Dict | None:
         """Deny a pending action."""
         return self.policy.deny(approval_id)
 
-    def stats(self) -> dict:
+    def stats(self) -> Dict:
         """Constitution guard statistics."""
-        decisions: dict[str, int] = {}
+        decisions: Dict[str, int] = {}
         for entry in self._call_log:
             d = entry.get("decision", "UNKNOWN")
             decisions[d] = decisions.get(d, 0) + 1
@@ -185,7 +182,7 @@ class MCPGateway:
 
         # State
         self._initialized = False
-        self._request_log: list[dict] = []
+        self._request_log: List[Dict] = []
 
     # ------------------------------------------------------------------
     # Built-in tool registration
@@ -438,10 +435,6 @@ class MCPGateway:
         хранилище разрешается через платформенный реестр профилей
         (``AIOS_PROFILES_DB``) и кэшируется по имени.
         """
-        import os
-
-        from aios_core.modules.olx import OLXStorage
-
         if getattr(self, "_olx_storages", None) is None:
             self._olx_storages = {}
         key = profile or ""
@@ -537,7 +530,7 @@ class MCPGateway:
             )
         )
 
-    def _olx_market_stats(self, params: dict) -> dict:
+    def _olx_market_stats(self, params: Dict) -> Dict:
         from aios_core.modules.olx import CompetitorAnalyzer
 
         store = self._olx_store(params.get("profile"))
@@ -545,7 +538,7 @@ class MCPGateway:
         ads = store.get_ads(query=query)
         return CompetitorAnalyzer().analyze(ads, query=query).to_dict()
 
-    def _olx_listing_recommend(self, params: dict) -> dict:
+    def _olx_listing_recommend(self, params: Dict) -> Dict:
         from dataclasses import asdict
 
         from aios_core.modules.olx import AdCard, RecommendationEngine
@@ -563,65 +556,3 @@ class MCPGateway:
             )
         advice = RecommendationEngine().recommend(ads, my_ad=my_ad)
         payload = asdict(advice)
-        payload["text"] = advice.to_text()
-        return payload
-
-    def _olx_price_drops(self, params: dict) -> dict:
-        from aios_core.modules.olx import PriceTracker
-
-        store = self._olx_store(params.get("profile"))
-        tracker = PriceTracker(store)
-        query = params.get("query")
-        return {
-            "drops": [change.to_dict() for change in tracker.price_drops(query=query)],
-            "gone": [ad.to_dict() for ad in tracker.gone_from_feed(query=query)],
-        }
-
-    # ------------------------------------------------------------------
-    # Tool handlers
-    # ------------------------------------------------------------------
-
-    def _handle_memory_store(self, params: dict) -> dict:
-        """Handler for memory store tool."""
-        from aios_core.memory_manager import MemoryManager
-
-        if params.get("category") == "personal":
-            raise PermissionError("Personal memory is available only through the authenticated REST API")
-
-        mm = MemoryManager(db=self.runtime.db)
-        tags = params.get("tags", "")
-        tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
-
-        # MemoryManager.store() expects content as a dict
-        return mm.store(
-            content={"text": params["content"]},
-            category=params["category"],
-            tags=tag_list,
-        )
-
-    def _handle_memory_search(self, params: dict) -> dict:
-        """Handler for memory search tool."""
-        from aios_core.memory_manager import MemoryManager
-
-        if params.get("category") == "personal":
-            raise PermissionError("Personal memory is available only through the authenticated REST API")
-
-        mm = MemoryManager(db=self.runtime.db)
-        results = mm.search(
-            query=params.get("query", ""),
-            category=params.get("category"),
-            limit=params.get("limit", 20),
-        )
-        return {"results": results, "count": len(results)}
-
-    def _handle_knowledge_query(self, params: dict) -> dict:
-        """Handler for knowledge graph query tool."""
-        from aios_core.knowledge_graph import KnowledgeGraph
-
-        kg = KnowledgeGraph(db=self.runtime.db)
-        results = kg.find_nodes(
-            label=params.get("query", ""),
-            node_type=params.get("node_type"),
-            limit=params.get("limit", 20),
-        )
-        return
