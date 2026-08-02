@@ -1,0 +1,168 @@
+{
+  "title": "AIOS LLM Balancer & Tech Debt",
+  "uid": "aios-balancer",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": ["aios", "balancer", "llm", "tech-debt"],
+  "description": "LLM Balancer health, errors per provider, coder cycles, tech debt, security audit",
+  "refresh": "30s",
+  "time": {"from": "now-6h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "title": "Coder Cycles Total",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 4, "w": 3, "x": 0, "y": 0},
+      "targets": [{"expr": "aios_coder_cycles_total", "refId": "A"}]
+    },
+    {
+      "id": 2,
+      "title": "Tasks Pending",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 4, "w": 3, "x": 3, "y": 0},
+      "targets": [{"expr": "aios_coder_tasks_pending", "refId": "A"}],
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 50}]}}}
+    },
+    {
+      "id": 3,
+      "title": "Validation Blocked",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 4, "w": 3, "x": 6, "y": 0},
+      "targets": [{"expr": "aios_coder_validation_blocked_total", "refId": "A"}],
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 5}, {"color": "red", "value": 20}]}}}
+    },
+    {
+      "id": 4,
+      "title": "Validation Passed",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 4, "w": 3, "x": 9, "y": 0},
+      "targets": [{"expr": "aios_coder_validation_passed_total", "refId": "A"}]
+    },
+    {
+      "id": 5,
+      "title": "Coder Service Up",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 4, "w": 3, "x": 12, "y": 0},
+      "targets": [{"expr": "aios_coder_service_up", "refId": "A"}],
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}}
+    },
+    {
+      "id": 6,
+      "title": "Auto Promotes Total",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 4, "w": 3, "x": 15, "y": 0},
+      "targets": [{"expr": "aios_auto_promotes_total", "refId": "A"}]
+    },
+    {
+      "id": 7,
+      "title": "Promote Blocked",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 4, "w": 3, "x": 18, "y": 0},
+      "targets": [{"expr": "aios_auto_promote_blocked_total", "refId": "A"}],
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 50}]}}}
+    },
+    {
+      "id": 8,
+      "title": "Balancer Requests by Provider",
+      "type": "bargauge",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [{"expr": "aios_balancer_requests_total", "refId": "A", "legendFormat": "{{provider}}"}],
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "id": 9,
+      "title": "Balancer Errors by Provider",
+      "type": "bargauge",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "targets": [{"expr": "aios_balancer_errors_total", "refId": "A", "legendFormat": "{{provider}}"}],
+      "fieldConfig": {"defaults": {"unit": "short", "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 50}]}}}
+    },
+    {
+      "id": 10,
+      "title": "Balancer Error Rate Timeseries",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "targets": [{"expr": "aios_balancer_errors_total", "refId": "A", "legendFormat": "{{provider}} errors"}]
+    },
+    {
+      "id": 11,
+      "title": "Balancer Requests Timeseries",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "targets": [{"expr": "aios_balancer_requests_total", "refId": "A", "legendFormat": "{{provider}} OK"}]
+    },
+    {
+      "id": 12,
+      "title": "Tech Debt - Total TODOs",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 4, "w": 3, "x": 0, "y": 20},
+      "targets": [{"expr": "aios_tech_debt_todos_total", "refId": "A"}],
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 30}, {"color": "red", "value": 100}]}}}
+    },
+    {
+      "id": 13,
+      "title": "Tech Debt by Type",
+      "type": "piechart",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 8, "w": 6, "x": 3, "y": 20},
+      "targets": [{"expr": "aios_tech_debt_by_type", "refId": "A", "legendFormat": "{{type}}"}]
+    },
+    {
+      "id": 14,
+      "title": "Complex Functions",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 4, "w": 3, "x": 9, "y": 20},
+      "targets": [{"expr": "aios_tech_debt_complex_functions", "refId": "A"}]
+    },
+    {
+      "id": 15,
+      "title": "Security Issues - Tech Debt Report",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 4, "w": 3, "x": 12, "y": 20},
+      "targets": [{"expr": "aios_tech_debt_security_issues", "refId": "A"}],
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 5}, {"color": "red", "value": 10}]}}}
+    },
+    {
+      "id": 16,
+      "title": "Security XSS Found",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 4, "w": 3, "x": 15, "y": 20},
+      "targets": [{"expr": "aios_security_xss_total", "refId": "A"}]
+    },
+    {
+      "id": 17,
+      "title": "Coder Completed vs Failed",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+      "targets": [
+        {"expr": "aios_coder_completed_total", "refId": "A", "legendFormat": "completed"},
+        {"expr": "aios_coder_failed_total", "refId": "B", "legendFormat": "failed"}
+      ]
+    },
+    {
+      "id": 18,
+      "title": "Service Health",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "gridPos": {"h": 4, "w": 12, "x": 12, "y": 24},
+      "targets": [{"expr": "aios_service_up", "refId": "A", "legendFormat": "{{service}}:{{port}}"}]
+    }
+  ]
+}
