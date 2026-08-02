@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
+import time
 from enum import IntEnum
 from pathlib import Path
 from typing import Optional, Union
@@ -9,6 +12,10 @@ from pydantic import BaseModel, Field, validator, root_validator
 from typing_extensions import Annotated
 
 logger = logging.getLogger(__name__)
+
+BATCH_REQUEST_FIELDS = {"batch_id", "user_id", "timestamp", "signature"}
+BATCH_ID_CACHE = set()
+BATCH_TIMEOUT_SECONDS = 300  # 5 minutes for batch requests
 
 # Constants moved to config/security_constants.py (created below)
 TRUST_LEVEL_LOW = 1
@@ -143,6 +150,7 @@ class TrustManager:
     - Timeout validation for trust decisions
     - Cryptographic parameter validation
     - Secure trust decision logging
+    - Batch request validation and security
     - Configurable security policies
     """
 
@@ -153,6 +161,7 @@ class TrustManager:
             config: Security configuration. If None, uses defaults.
         """
         self.config = config or SecurityConfig()
+        self._batch_id_cache = set()  # Track used batch IDs
         logger.info("TrustManager initialized with config: %s", self.config.dict())
 
     def validate_trust_level(self, level: Union[int, TrustLevel]) -> TrustLevel:
@@ -328,6 +337,129 @@ class TrustManager:
             logger.error("Failed to make trust decision: %s", str(e))
             raise SecurityException(f"Failed to make trust decision: {str(e)}") from e
 
+    def validate_batch_request(self, request_data: dict) -> bool:
+        """Validate batch request structure and security parameters.
+
+        Args:
+            request_data: Dictionary containing batch request data
+
+        Returns:
+            bool: True if request is valid and secure, False otherwise
+
+        Raises:
+            ValueError: If required fields are missing or invalid
+        """
+        try:
+            # Check required fields
+            missing_fields = BATCH_REQUEST_FIELDS - set(request_data.keys())
+            if missing_fields:
+                logger.warning(
+                    "Batch request missing required fields: %s. Request: %s",
+                    missing_fields, request_data
+                )
+                self._log_security_event(
+                    "BATCH_MISSING_FIELDS",
+                    {"missing_fields": list(missing_fields), "request": request_data}
+                )
+                raise ValueError(f"Missing required fields: {missing_fields}")
+
+            # Check for duplicate batch_id
+            batch_id = request_data["batch_id"]
+            if batch_id in self._batch_id_cache:
+                logger.warning("Duplicate batch_id detected: %s", batch_id)
+                self._log_security_event(
+                    "BATCH_DUPLICATE_ID",
+                    {"batch_id": batch_id, "request": request_data}
+                )
+                raise ValueError("Duplicate batch_id detected")
+
+            # Validate timestamp
+            timestamp = request_data["timestamp"]
+            try:
+                timestamp_int = int(timestamp)
+            except (ValueError, TypeError):
+                logger.warning("Invalid timestamp format: %s", timestamp)
+                self._log_security_event(
+                    "BATCH_INVALID_TIMESTAMP",
+                    {"timestamp": timestamp, "request": request_data}
+                )
+                raise ValueError("Invalid timestamp format")
+
+            current_time = int(time.time())
+            time_diff = abs(current_time - timestamp_int)
+
+            if time_diff > BATCH_TIMEOUT_SECONDS:
+                logger.warning(
+                    "Expired timestamp: %s (current: %s, diff: %s)",
+                    timestamp, current_time, time_diff
+                )
+                self._log_security_event(
+                    "BATCH_EXPIRED_TIMESTAMP",
+                    {
+                        "timestamp": timestamp,
+                        "current_time": current_time,
+                        "time_diff": time_diff,
+                        "request": request_data
+                    }
+                )
+                raise ValueError("Timestamp expired")
+
+            # Validate signature if present
+            if "signature" in request_data:
+                secret = os.getenv("BATCH_SIGNATURE_SECRET")
+                if not secret:
+                    logger.error("BATCH_SIGNATURE_SECRET environment variable not set")
+                    raise ValueError("Signature validation not configured")
+
+                expected_signature = hmac.new(
+                    secret.encode(),
+                    msg=str(request_data).encode(),
+                    digestmod=hashlib.sha256
+                ).hexdigest()
+
+                if not hmac.compare_digest(
+                    request_data["signature"],
+                    expected_signature
+                ):
+                    logger.warning("Invalid batch signature")
+                    self._log_security_event(
+                        "BATCH_INVALID_SIGNATURE",
+                        {"request": request_data}
+                    )
+                    raise ValueError("Invalid signature")
+
+            # Add to cache to prevent replay attacks
+            self._batch_id_cache.add(batch_id)
+            logger.info("Valid batch request received: %s", batch_id)
+            return True
+
+        except ValueError as e:
+            logger.warning("Batch request validation failed: %s", str(e))
+            return False
+        except Exception as e:
+            logger.error("Unexpected error during batch validation: %s", str(e))
+            self._log_security_event(
+                "BATCH_VALIDATION_ERROR",
+                {"error": str(e), "request": request_data}
+            )
+            return False
+
+    def _log_security_event(self, event_type: str, details: dict) -> None:
+        """Log security-related events to security_audit.log.
+
+        Args:
+            event_type: Type of security event
+            details: Additional details about the event
+        """
+        try:
+            log_entry = f"[{event_type}] {details}\n"
+            SECURITY_LOG_FILE = Path("logs/security_audit.log")
+            SECURITY_LOG_FILE.parent.mkdir(exist_ok=True)
+            with SECURITY_LOG_FILE.open("a", encoding="utf-8") as f:
+                f.write(log_entry)
+        except Exception as e:
+            logger.error(f"Failed to write to security audit log: {e}")
+
     def update_trust_level(
         self,
         entity_id: str,
@@ -380,3 +512,8 @@ class TrustManager:
 # - test_make_trust_decision_low_level
 # - test_update_trust_level_unauthorized
 # - test_validate_hmac_algorithm_insecure
+# - test_validate_batch_request_valid
+# - test_validate_batch_request_missing_fields
+# - test_validate_batch_request_expired_timestamp
+# - test_validate_batch_request_duplicate_id
+# - test_validate_batch_request_invalid_signature
