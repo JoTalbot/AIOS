@@ -104,9 +104,10 @@ fi
 # --- test gate: run a quick pytest on changed core modules if present ---
 if [[ -d "$STAGING_DIR/aios_core" ]] && command -v /opt/aios/.venv/bin/python3.11 >/dev/null 2>&1; then
     # Only fail the gate on real import/collection errors, not on system-missing deps.
-    if (cd "$STAGING_DIR" && timeout 240 /opt/aios/.venv/bin/python3.11 -m pytest tests/security tests/integration \
+    if (cd "$STAGING_DIR" && timeout 300 /opt/aios/.venv/bin/python3.11 -m pytest tests/security tests/integration \
+            tests/test_api_security.py \
             -q --no-header -p no:cacheprovider >/tmp/aios_promote_test.log 2>&1); then
-        log "test gate: security+integration OK"
+        log "test gate: security+integration+llm+api OK"
     else
         # Block only on real test failures, not on collection errors from
         # system-missing modules (e.g. /opt/octopus-*) or dependency gaps.
