@@ -58,6 +58,19 @@ def run_once():
     llm = LLMClient()
     ctx = orch.get_project_context()
     backlog = orch.load_backlog()
+    
+    # Anti-loop: check last 3 history entries, if same file repeated with nothing_to_commit, force different file
+    try:
+        recent_files = [h.get("file") for h in backlog.get("history", [])[-3:]]
+        if len(recent_files) >= 2 and len(set(recent_files[-2:])) == 1:
+            print(f"  [ANTI-LOOP] Detected loop on file {recent_files[-1]}, forcing rotation")
+            # Add to avoid list in ctx
+            if "todos" in ctx:
+                # Filter out todos from looping file
+                ctx["todos"] = [t for t in ctx["todos"] if recent_files[-1] not in t]
+    except Exception as e:
+        print(f"  [ANTI-LOOP] Check failed: {e}")
+    
     analysis = orch.phase_analyze(llm, ctx, backlog)
     print(f"Health: {analysis.get('health_score')}/10, Issues: {len(analysis.get('issues',[]))}")
     plan = orch.phase_plan(llm, analysis, ctx, backlog)
