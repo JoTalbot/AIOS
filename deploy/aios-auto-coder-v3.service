@@ -1,0 +1,26 @@
+[Unit]
+Description=AIOS Coder Orchestrator v3 (RAG+Memory+PR)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python3.11 -u /root/AIOS/run_coder_orchestrator_v3.py
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+Environment=HOME=/root
+Environment=PYTHONPATH=/root/AIOS
+EnvironmentFile=/etc/aios/aios-auto-coder.env
+Environment=LLM_MODEL=llama-3.3-70b-versatile
+Environment=LLM_MODEL_HEAVY=llama-3.3-70b-versatile
+Environment=LOCAL_LLM=1
+Environment=AIOS_REPO_PATH=/root/AIOS
+Environment=AIOS_AUTO_COMMIT=true
+Environment=AIOS_AUTO_PUSH=false
+StandardOutput=append:/root/AIOS/logs/coder_v3.log
+StandardError=append:/root/AIOS/logs/coder_v3.log
+
+[Install]
+WantedBy=multi-user.target
