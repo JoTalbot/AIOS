@@ -13,13 +13,13 @@ for env_path in (Path(REPO_PATH) / ".env", Path("/etc/aios/aios-auto-coder.env")
                 os.environ[k.strip()]=v.strip().strip('"').strip("'")
 
 try:
-    from aios_core.autocoder_v3_1 import AutocoderV3_1
-    print("Using v3.1")
-    V3Class = AutocoderV3_1
-except ImportError as e:
-    print(f"v3.1 import failed {e}, fallback to v3")
-    from aios_core.autocoder_v3 import AutocoderV3
-    V3Class = AutocoderV3
+    from aios_core.autocoder_v3_1 import AutocoderV3_1 as V3Class
+    print("Using v3.1 with auto-merge")
+    HAS_AUTO_MERGE = True
+except ImportError:
+    from aios_core.autocoder_v3 import AutocoderV3 as V3Class
+    print("Fallback to v3 (no auto-merge)")
+    HAS_AUTO_MERGE = False
 
 from run_coder_orchestrator import load_backlog, get_project_context, phase_analyze, LLMClient
 import run_coder_orchestrator as orch
@@ -36,7 +36,11 @@ def main():
     plan = orch.phase_plan(llm, analysis, ctx, backlog)
     print(f"Plan: {plan.get('description')} -> {plan.get('file')}")
     if plan.get("file"):
-        result = v3.run_task(plan.get("description",""), plan.get("file",""), plan.get("instruction",""), create_pr=True, auto_merge=False)
+        # Handle auto_merge arg depending on class
+        if HAS_AUTO_MERGE:
+            result = v3.run_task(plan.get("description",""), plan.get("file",""), plan.get("instruction",""), create_pr=True, auto_merge=False)
+        else:
+            result = v3.run_task(plan.get("description",""), plan.get("file",""), plan.get("instruction",""), create_pr=True)
         print(f"V3.1 Result: {result}")
         validation = orch.phase_validate({"status":"success" if result["status"]=="success" else "failed", "file": result.get("file",""), "safe": True, "code_length": result.get("code_len",0)})
         print(f"Validation: {validation}")
