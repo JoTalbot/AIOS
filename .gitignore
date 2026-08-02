@@ -99,3 +99,6 @@ backups/dashboard/
 chroma_db/
 config.txt
 backups/daily/
+data/tech_debt_report.json
+*.sqlite-shm
+*.sqlite-wal
