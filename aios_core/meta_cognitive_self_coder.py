@@ -267,10 +267,22 @@ class MetaCognitiveCoder:
         self.history: list[CodeChange] = []
 
     def _generate_with_retries(self, prompt: str, attempts: int = 3):
-        """Call LLM and validate generated code, retrying if unsafe."""
+        """Call LLM and validate generated code, retrying if unsafe.
+
+        On retries the previous warnings are fed back to the LLM so it can
+        actually fix the flagged problems instead of re-generating blindly.
+        """
         last_code, last_warnings = "", []
         for attempt in range(1, attempts + 1):
-            response = self.llm.chat([{"role": "user", "content": prompt}], system=self.SYSTEM_PROMPT)
+            msg = prompt
+            if attempt > 1 and last_warnings:
+                fb = "\n".join(f"- {w}" for w in last_warnings[:6])
+                msg = (prompt +
+                       f"\n\nThe previous code was REJECTED for these reasons:\n{fb}\n"
+                       "Please produce a corrected version that fixes ALL of the above "
+                       "issues (no subprocess/shutil, no eval/exec/__import__, "
+                       "complete and syntactically valid).")
+            response = self.llm.chat([{"role": "user", "content": msg}], system=self.SYSTEM_PROMPT)
             code = self._extract_code(response)
             safe, warnings = self.validator.validate(code)
             last_code, last_warnings = code, warnings
