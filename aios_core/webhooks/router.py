@@ -6,34 +6,80 @@ import hashlib
 import hmac
 import os
 from datetime import datetime, timezone
+from typing import Any
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Route, Router
 
 
-# === Безопасность: проверка подписи ===
 def verify_signature(payload: bytes, signature: str, secret: str) -> bool:
-    """Проверить HMAC-SHA256 подпись webhook."""
+    """
+    Verify HMAC-SHA256 signature of webhook payload.
+
+    Args:
+        payload: Raw request body bytes.
+        signature: Signature from the webhook header.
+        secret: Shared secret key.
+
+    Returns:
+        True if signature is valid, False otherwise.
+    """
     expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
 
-# === Instagram Webhook (Meta) ===
-async def instagram_verify(request: Request):
-    """Instagram verification challenge (GET)."""
+async def instagram_verify(request: Request) -> Response:
+    """
+    Instagram verification challenge (GET).
+
+    Protect against CSRF by verifying token from environment variable.
+
+    Args:
+        request: Incoming HTTP request.
+
+    Returns:
+        JSONResponse with challenge or error.
+    """
     params = request.query_params
-    if params.get("hub.verify_token") == os.getenv("INSTAGRAM_VERIFY_TOKEN"):
-        return JSONResponse({"challenge": params.get("hub.challenge")})
+    verify_token = params.get("hub.verify_token")
+    expected_token = os.getenv("INSTAGRAM_VERIFY_TOKEN")
+    if verify_token and expected_token and verify_token == expected_token:
+        challenge = params.get("hub.challenge")
+        # Return plain text challenge per Instagram spec, wrapped in JSONResponse for consistency
+        return JSONResponse({"challenge": challenge})
     return JSONResponse({"error": "Invalid token"}, status_code=403)
 
 
-async def instagram_webhook(request: Request):
-    """Instagram incoming messages (POST)."""
-    # TODO: Проверка подписи X-Hub-Signature-256
-    data = await request.json()
+async def instagram_webhook(request: Request) -> Response:
+    """
+    Instagram incoming messages (POST).
 
-    # Парсинг Instagram webhook payload
+    Verifies X-Hub-Signature-256 header to prevent XSS/CSRF attacks.
+
+    Args:
+        request: Incoming HTTP request.
+
+    Returns:
+        JSONResponse with processing status.
+    """
+    secret = os.getenv("INSTAGRAM_APP_SECRET")
+    signature_header = request.headers.get("X-Hub-Signature-256", "")
+    body = await request.body()
+
+    if secret:
+        # Signature header format: "sha256=..."
+        if not signature_header.startswith("sha256="):
+            return JSONResponse({"error": "Invalid signature header"}, status_code=401)
+        signature = signature_header.split("=", 1)[1]
+        if not verify_signature(body, signature, secret):
+            return JSONResponse({"error": "Invalid signature"}, status_code=401)
+
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
     messages = [
         {
             "platform": "instagram",
@@ -54,9 +100,18 @@ async def instagram_webhook(request: Request):
     return JSONResponse({"status": "ok", "processed": len(messages)})
 
 
-# === OLX Webhook ===
-async def olx_webhook(request: Request):
-    """OLX incoming messages."""
+async def olx_webhook(request: Request) -> Response:
+    """
+    OLX incoming messages.
+
+    Verifies X-OLX-Signature header to prevent unauthorized requests.
+
+    Args:
+        request: Incoming HTTP request.
+
+    Returns:
+        JSONResponse with processing status.
+    """
     body = await request.body()
     signature = request.headers.get("X-OLX-Signature", "")
     secret = os.getenv("OLX_WEBHOOK_SECRET", "")
@@ -64,34 +119,74 @@ async def olx_webhook(request: Request):
     if secret and not verify_signature(body, signature, secret):
         return JSONResponse({"error": "Invalid signature"}, status_code=401)
 
-    await request.json()
+    try:
+        await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
     # TODO: Парсинг OLX payload и передача в AIAdvisor
 
     return JSONResponse({"status": "ok"})
 
 
-# === Viber Webhook ===
-async def viber_webhook(request: Request):
-    """Viber incoming messages."""
-    data = await request.json()
+async def viber_webhook(request: Request) -> Response:
+    """
+    Viber incoming messages.
+
+    Args:
+        request: Incoming HTTP request.
+
+    Returns:
+        JSONResponse with processing status.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
     if data.get("event") == "message":
         # TODO: Передать в AIAdvisor карточку сообщения
         pass
     return JSONResponse({"status": "ok"})
 
 
-# === WhatsApp (Meta Cloud API) ===
-async def whatsapp_verify(request: Request):
-    """WhatsApp verification challenge."""
+async def whatsapp_verify(request: Request) -> Response:
+    """
+    WhatsApp verification challenge.
+
+    Protect against CSRF by verifying token from environment variable.
+
+    Args:
+        request: Incoming HTTP request.
+
+    Returns:
+        JSONResponse with challenge or error.
+    """
     params = request.query_params
-    if params.get("hub.verify_token") == os.getenv("WHATSAPP_VERIFY_TOKEN"):
-        return JSONResponse(content=params.get("hub.challenge"))
+    verify_token = params.get("hub.verify_token")
+    expected_token = os.getenv("WHATSAPP_VERIFY_TOKEN")
+    if verify_token and expected_token and verify_token == expected_token:
+        challenge = params.get("hub.challenge")
+        # WhatsApp expects plain text response, but JSONResponse is used for consistency
+        return JSONResponse(content=challenge)
     return JSONResponse({"error": "Invalid token"}, status_code=403)
 
 
-async def whatsapp_webhook(request: Request):
-    """WhatsApp incoming messages."""
-    data = await request.json()
+async def whatsapp_webhook(request: Request) -> Response:
+    """
+    WhatsApp incoming messages.
+
+    Args:
+        request: Incoming HTTP request.
+
+    Returns:
+        JSONResponse with processing status.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
     messages = [
         {
             "platform": "whatsapp",
@@ -107,17 +202,43 @@ async def whatsapp_webhook(request: Request):
     return JSONResponse({"status": "ok", "processed": len(messages)})
 
 
-# === Facebook Messenger ===
-async def facebook_verify(request: Request):
+async def facebook_verify(request: Request) -> Response:
+    """
+    Facebook Messenger verification challenge.
+
+    Protect against CSRF by verifying token from environment variable.
+
+    Args:
+        request: Incoming HTTP request.
+
+    Returns:
+        JSONResponse with challenge or error.
+    """
     params = request.query_params
-    if params.get("hub.verify_token") == os.getenv("FACEBOOK_VERIFY_TOKEN"):
-        return JSONResponse(content=params.get("hub.challenge"))
+    verify_token = params.get("hub.verify_token")
+    expected_token = os.getenv("FACEBOOK_VERIFY_TOKEN")
+    if verify_token and expected_token and verify_token == expected_token:
+        challenge = params.get("hub.challenge")
+        # Facebook expects plain text response, but JSONResponse is used for consistency
+        return JSONResponse(content=challenge)
     return JSONResponse({"error": "Invalid token"}, status_code=403)
 
 
-async def facebook_webhook(request: Request):
-    """Facebook Messenger incoming messages."""
-    data = await request.json()
+async def facebook_webhook(request: Request) -> Response:
+    """
+    Facebook Messenger incoming messages.
+
+    Args:
+        request: Incoming HTTP request.
+
+    Returns:
+        JSONResponse with processing status.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
     messages = [
         {
             "platform": "facebook",
@@ -132,7 +253,6 @@ async def facebook_webhook(request: Request):
     return JSONResponse({"status": "ok", "processed": len(messages)})
 
 
-# Starlette Router не поддерживает декораторы — регистрируем маршруты явно.
 router = Router(
     routes=[
         Route("/webhooks/instagram", instagram_verify, methods=["GET"]),
