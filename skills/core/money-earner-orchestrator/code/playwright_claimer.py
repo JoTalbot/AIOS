@@ -217,7 +217,7 @@ async def claim_dogefaucet(page, api_key: str) -> Dict[str, Any]:
                 ta.style.display = 'none';
                 document.forms[0].appendChild(ta);
             }}
-            ta.innerHTML = '{safe_token}';
+            ta.value = '{safe_token}'; // FIXED XSS: was innerHTML, now value
             ta.value = '{safe_token}';
         }})();
     """)

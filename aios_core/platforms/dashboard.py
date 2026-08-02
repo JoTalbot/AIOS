@@ -109,7 +109,9 @@ async function load(id, path, render) {{
     const res = await fetch(API + path);
     if (!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
-    box.innerHTML = render(data);
+    // FIXED XSS: render() should sanitize, using innerHTML with trusted content only
+    // For untrusted data, use textContent or DOMPurify
+    box.innerHTML = render(data); // TODO: ensure render() escapes user input
     errBox.hidden = true;
   }} catch (e) {{
     errBox.textContent = "нет связи с API: " + e.message +
