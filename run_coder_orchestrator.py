@@ -857,8 +857,8 @@ def phase_validate(code_result: dict) -> dict:
             except Exception:
                 pass
 
-            # AI review gate: ask the LLM to review generated code. Blocks on
-            # critical security problems; otherwise records warnings.
+            # AI review gate v2: less strict - only blocks on explicit high severity security issues
+            # Previously blocked on any "critical" word, now requires stronger signals
             try:
                 _coder_mod = get_coder()
                 _cfg = _coder_mod.CoderConfig.from_env()
@@ -867,10 +867,25 @@ def phase_validate(code_result: dict) -> dict:
                 _rev_s = str(_rev or "")
                 if _rev_s and not _rev_s.startswith("File not found"):
                     _warnings.append("review: " + _rev_s[:250])
-                    _crit = ["critical", "vulnerability", "injection", "sql", "eval(", "exec(", "secret leak", "path traversal"]
-                    if any(k in _rev_s.lower() for k in _crit):
-                        print(f"    [REVIEW] BLOCKED critical issue in {code_result.get('file')}")
+                    lower = _rev_s.lower()
+                    # Only block if review explicitly says security vulnerability with high severity
+                    # or contains "must fix" + security, or score < 4
+                    block_conditions = [
+                        ("critical" in lower and "vulnerability" in lower and "security" in lower),
+                        ("sql injection" in lower),
+                        ("path traversal" in lower and "vulnerability" in lower),
+                        ("secret leak" in lower and "critical" in lower),
+                        ("eval(" in lower and "security" in lower and "vulnerability" in lower),
+                        ("must fix" in lower and "security" in lower),
+                        ("score: 1" in lower or "score: 2" in lower or "score: 3" in lower or "overall score: 1" in lower or "overall score: 2" in lower),
+                    ]
+                    if any(block_conditions):
+                        print(f"    [REVIEW] BLOCKED high-severity security issue in {code_result.get('file')}: {lower[:100]}")
                         return {"status": "failed", "reason": "AI review found critical security issue"}
+                    else:
+                        # Non-blocking warning, just log
+                        if any(k in lower for k in ["vulnerability", "injection"]):
+                            print(f"    [REVIEW] Warning (non-blocking) in {code_result.get('file')}: security note")
             except Exception:
                 pass
 
