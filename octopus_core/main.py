@@ -67,43 +67,7 @@ def execute_command_post(req: CommandRequest, x_octopus_token: str = Header(defa
     return run_cmd(req.command)
 
 
-def generate_secure_nonce() -> str:
-    """Safely generate a unique token to prevent replay attacks.
-    Uses cryptographically secure random generator with sufficient entropy.
-    Returns URL-safe base64 encoded string with 32 bytes of entropy (256 bits)."""
-    return secrets.token_urlsafe(32)
-
-@app.get("/g/{token}", response_class=HTMLResponse)
-def gemini_web_reader_hack(token: str, cmd: str, nonce: str = None):
-    """Secure endpoint for remote command execution with replay attack protection.
-
-    Args:
-        token: Authentication token
-        cmd: Command to execute
-        nonce: Unique token to prevent replay attacks (auto-generated if not provided)
-
-    Returns:
-        HTML response with execution results
-    """
-    if token != TOKEN:
-        return "<html><body><h1>Unauthorized</h1></body></html>"
-
-    # Generate secure nonce if not provided
-    if nonce is None:
-        nonce = generate_secure_nonce()
-
-    result = run_cmd(cmd)
-    return f"""<!DOCTYPE html>
-<html><head><title>Octopus Agent Execution</title>
-<meta name="description" content="STDOUT: {result.stdout[:200]}"></head>
-<body>
-<h1>Octopus Remote Execution Report</h1>
-<p><strong>Command:</strong> <code>{cmd}</code></p>
-<p><strong>Nonce:</strong> {nonce}</p>
-<p><strong>Return Code:</strong> {result.returncode}</p>
-<h2>STDOUT</h2><pre style="background:#eee;padding:10px;">{result.stdout}</pre>
-<h2>STDERR</h2><pre style="background:#fee;padding:10px;">{result.stderr}</pre>
-</body></html>"""
+# Удалено по причине уязвимостей безопасности. Используйте стандартные библиотеки для работы с HTTP-запросами
 
 
 PLUGIN_MANIFEST = {
