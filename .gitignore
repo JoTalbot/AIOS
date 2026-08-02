@@ -102,3 +102,5 @@ backups/daily/
 data/tech_debt_report.json
 *.sqlite-shm
 *.sqlite-wal
+data/chrome_twin/
+docs/VNC_SETUP.md
