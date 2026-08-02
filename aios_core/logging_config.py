@@ -263,26 +263,14 @@ def setup_logging(
 ) -> logging.Logger:
     logger = logging.getLogger("aios")
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
-    logger.handlers.clear()
-
-    # Formatter selection
-    formatter = (
-        JSONFormatter()
-        if json_format
-        else HumanFormatter(
-            "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-    )
 
     # Console Handler
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
+    console_handler.setFormatter(JSONFormatter() if json_format else HumanFormatter())
 
     # File Handler (possibly wrapped in BufferedHandler)
     file_handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
-    file_handler.setFormatter(formatter)
+    file_handler.setFormatter(JSONFormatter() if json_format else HumanFormatter())
 
     if buffer_size > 0:
         buffered = BufferedHandler(buffer_size=buffer_size, target=file_handler)
