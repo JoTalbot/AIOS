@@ -63,20 +63,49 @@ if [[ -d "$STAGING_DIR/aios_core" ]] && command -v /opt/aios/.venv/bin/python3.1
     fi
 fi
 
-# --- merge into main ---
+# --- sync with origin (parallel agent may push) ---
 cd "$PROD_DIR"
+git fetch origin main 2>>"$LOG" || true
+log "fetched origin/main: $(git rev-parse --short origin/main)"
+
+# --- merge staging into main ---
 git fetch . auto/coder-staging:refs/remotes/autostaging 2>/dev/null || true
 if ! git merge auto/coder-staging --no-edit >/dev/null 2>&1; then
     log "ERROR: merge conflict; aborting"; git merge --abort 2>/dev/null || true; exit 1
 fi
 log "merged auto/coder-staging into main"
 
-# --- push (opt-in) ---
-if [[ "${AIOS_AUTO_PUSH:-0}" == "1" ]]; then
-    if git push origin main >/dev/null 2>&1; then
-        log "pushed main -> origin/main"
+# --- merge origin/main (parallel work) if diverged ---
+if ! git merge-base --is-ancestor origin/main main; then
+    if git merge origin/main --no-edit >/dev/null 2>&1; then
+        log "merged origin/main (parallel) into local main"
     else
-        log "WARN: push failed; main ahead of origin (retry next cycle)"
+        log "ERROR: conflict with origin/main; aborting"; git merge --abort 2>/dev/null || true; exit 1
+    fi
+fi
+
+# --- push (opt-in) with rebase retry loop ---
+if [[ "${AIOS_AUTO_PUSH:-0}" == "1" ]]; then
+    pushed=0
+    for attempt in 1 2 3; do
+        if git push origin main >/dev/null 2>&1; then
+            pushed=1
+            log "pushed main -> origin/main (attempt $attempt)"
+            break
+        else
+            log "push attempt $attempt rejected; rebasing onto origin/main"
+            git fetch origin main 2>>"$LOG" || true
+            if git rebase origin/main >/dev/null 2>&1; then
+                log "rebased onto origin/main"
+            else
+                log "rebase failed; aborting"
+                git rebase --abort 2>/dev/null || true
+                break
+            fi
+        fi
+    done
+    if [[ "$pushed" != "1" ]]; then
+        log "WARN: push still failing after retries; main ahead of origin"
     fi
 else
     log "AIOS_AUTO_PUSH != 1; committed locally only"
