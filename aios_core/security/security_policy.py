@@ -1,11 +1,14 @@
 import os
+import logging
 from typing import Optional, Dict, Any, List
-from pydantic import Field
+from pydantic import Field, field_validator, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict  # v2: BaseSettings переехал (pydantic-settings 2.14)
 import html
 import secrets
 import re
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 class SecurityPolicyConfig(BaseSettings):
     """Конфигурация политики безопасности через Pydantic.
@@ -19,14 +22,21 @@ class SecurityPolicyConfig(BaseSettings):
         SESSION_COOKIE_SECURE: Включить флаг Secure для сессионных cookies (по умолчанию: true)
         SESSION_COOKIE_HTTPONLY: Включить флаг HttpOnly для сессионных cookies (по умолчанию: true)
         SESSION_COOKIE_SAMESITE: Установить политику SameSite для сессионных cookies (по умолчанию: Lax)
+
+    Raises:
+        ValueError: При невалидных значениях конфигурации
     """
     secret_key: str = Field(
         default_factory=lambda: os.getenv('SECURITY_POLICY_SECRET_KEY', secrets.token_hex(32)),
-        description="Секретный ключ для подписи токенов"
+        description="Секретный ключ для подписи токенов",
+        min_length=32,
+        max_length=128
     )
     csrf_token_expiry_minutes: int = Field(
         default=int(os.getenv('CSRF_TOKEN_EXPIRY_MINUTES', '30')),
-        description="Время жизни CSRF токена в минутах"
+        description="Время жизни CSRF токена в минутах",
+        ge=1,
+        le=1440
     )
     session_cookie_secure: bool = Field(
         default=os.getenv('SESSION_COOKIE_SECURE', 'true').lower() == 'true',
@@ -38,13 +48,40 @@ class SecurityPolicyConfig(BaseSettings):
     )
     session_cookie_samesite: str = Field(
         default=os.getenv('SESSION_COOKIE_SAMESITE', 'Lax'),
-        description="Политика SameSite для сессионных cookies"
+        description="Политика SameSite для сессионных cookies",
+        pattern=r'^(Strict|Lax|None)$'
     )
 
     # v2-стиль; extra="ignore" — иначе чужие переменные из .env валят импорт (32 ошибки)
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-security_policy_config = SecurityPolicyConfig()
+    @field_validator('secret_key')
+    @classmethod
+    def validate_secret_key(cls, v: str) -> str:
+        """Валидирует секретный ключ."""
+        if len(v) < 32:
+            raise ValueError("Secret key must be at least 32 characters long")
+        return v
+
+try:
+    security_policy_config = SecurityPolicyConfig()
+    logger.info("Security policy configuration loaded successfully")
+except Exception as e:
+    logger.error(f"Failed to load security policy configuration: {e}")
+    raise
+
+class CSRFTokenData(BaseModel):
+    """Модель данных для CSRF токена с валидацией."""
+    token: str
+    expiry: datetime
+
+    @field_validator('token')
+    @classmethod
+    def validate_token(cls, v: str) -> str:
+        """Валидирует формат токена."""
+        if not v or len(v) < 32:
+            raise ValueError("Invalid token format")
+        return v
 
 class SecurityPolicy:
     """
@@ -75,6 +112,23 @@ class SecurityPolicy:
 
     _csrf_tokens: Dict[str, datetime] = {}
 
+    @classmethod
+    def _log_security_operation(cls, operation: str, data: Optional[Dict[str, Any]] = None) -> None:
+        """Логирует критические операции безопасности с маскировкой чувствительных данных.
+
+        Args:
+            operation: Название операции
+            data: Дополнительные данные для логирования
+        """
+        log_data = {}
+        if data:
+            for key, value in data.items():
+                if 'token' in key.lower() or 'secret' in key.lower() or 'key' in key.lower():
+                    log_data[key] = f"{value[:4]}...{value[-4:]}" if value else "None"
+                else:
+                    log_data[key] = value
+        logger.info(f"Security operation: {operation}", extra={'data': log_data})
+
     @staticmethod
     def sanitize_input(user_input: str) -> str:
         """
@@ -87,11 +141,19 @@ class SecurityPolicy:
             Экранированная строка, безопасная для вставки в HTML/JS
 
         Raises:
-            ValueError: Если входные данные не являются строкой
+            ValueError: Если входные данные не являются строкой или пустые
         """
         if not isinstance(user_input, str):
+            logger.warning("Invalid input type for sanitization", extra={'type': type(user_input).__name__})
             raise ValueError("User input must be a string")
-        return html.escape(user_input)
+
+        if not user_input.strip():
+            logger.warning("Empty input provided for sanitization")
+            return ""
+
+        result = html.escape(user_input)
+        logger.debug(f"Input sanitized", extra={'input_length': len(user_input), 'output_length': len(result)})
+        return result
 
     @staticmethod
     def sanitize_js_input(user_input: str) -> str:
@@ -103,10 +165,21 @@ class SecurityPolicy:
 
         Returns:
             Экранированная строка, безопасная для использования в JS
+
+        Raises:
+            ValueError: Если входные данные не являются строкой
         """
         if not isinstance(user_input, str):
+            logger.warning("Invalid input type for JS sanitization", extra={'type': type(user_input).__name__})
             raise ValueError("User input must be a string")
-        return user_input.replace('\\', '\\\\').replace('"', '\\"').replace("'", "\\'")
+
+        if not user_input.strip():
+            logger.warning("Empty input provided for JS sanitization")
+            return ""
+
+        result = user_input.replace('\\', '\\\\').replace('"', '\\"').replace("'", "\\'")
+        logger.debug(f"JS input sanitized", extra={'input_length': len(user_input), 'output_length': len(result)})
+        return result
 
     @staticmethod
     def generate_csrf_token() -> str:
@@ -115,11 +188,23 @@ class SecurityPolicy:
 
         Returns:
             Сгенерированный токен
+
+        Raises:
+            RuntimeError: При ошибке генерации токена
         """
-        token = secrets.token_urlsafe(32)
-        expiry = datetime.now() + timedelta(minutes=security_policy_config.csrf_token_expiry_minutes)
-        SecurityPolicy._csrf_tokens[token] = expiry
-        return token
+        try:
+            token = secrets.token_urlsafe(32)
+            expiry = datetime.now() + timedelta(minutes=security_policy_config.csrf_token_expiry_minutes)
+            SecurityPolicy._csrf_tokens[token] = expiry
+
+            logger.info("CSRF token generated", extra={
+                'token_preview': f"{token[:8]}...{token[-8:]}",
+                'expiry_minutes': security_policy_config.csrf_token_expiry_minutes
+            })
+            return token
+        except Exception as e:
+            logger.error("Failed to generate CSRF token", exc_info=True)
+            raise RuntimeError(f"Failed to generate CSRF token: {str(e)}")
 
     @staticmethod
     def validate_csrf_token(token: str) -> bool:
@@ -131,16 +216,30 @@ class SecurityPolicy:
 
         Returns:
             True если токен валиден и не истёк, иначе False
+
+        Raises:
+            ValueError: Если токен не является строкой
         """
+        if not isinstance(token, str):
+            logger.warning("Invalid token type provided", extra={'type': type(token).__name__})
+            raise ValueError("Token must be a string")
+
+        if not token.strip():
+            logger.warning("Empty token provided for validation")
+            return False
+
         if token not in SecurityPolicy._csrf_tokens:
+            logger.debug("Invalid CSRF token", extra={'token_preview': f"{token[:8]}...{token[-8:]}"})
             return False
 
         expiry = SecurityPolicy._csrf_tokens[token]
         if datetime.now() > expiry:
             del SecurityPolicy._csrf_tokens[token]
+            logger.warning("Expired CSRF token detected", extra={'token_preview': f"{token[:8]}...{token[-8:]}"})
             return False
 
         del SecurityPolicy._csrf_tokens[token]
+        logger.info("Valid CSRF token validated", extra={'token_preview': f"{token[:8]}...{token[-8:]}"})
         return True
 
     @staticmethod
