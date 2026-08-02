@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import subprocess
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -248,6 +249,23 @@ class TechnicalDebtReporter:
 
         return report
 
+    def generate_debt_report(self) -> Dict:
+        """
+        Генерирует полный отчёт о техническом долгу и покрытии тестами.
+
+        Returns:
+            Полный структурированный отчёт в формате словаря.
+        """
+        report = {
+            "metadata": {
+                "project_path": str(self.root_path),
+                "generated_at": str(datetime.datetime.now()),
+            },
+            "technical_debt": self.generate_report(),
+            "test_coverage": self.generate_test_coverage_report(),
+        }
+        return report
+
     def _get_suggested_action(self, item: DebtItem) -> str:
         """
         Генерирует рекомендации по устранению долга.
@@ -266,6 +284,81 @@ class TechnicalDebtReporter:
             DebtType.OBSOLETE_FUNCTION.value: "Удалить или заменить на актуальную реализацию"
         }
         return actions.get(item.debt_type.value, "Проверить и принять решение по устранению")
+
+    def generate_test_coverage_report(self) -> Dict:
+        """
+        Генерирует отчёт о покрытии тестами с использованием pytest-cov.
+
+        Returns:
+            Структурированный отчёт о покрытии тестами в формате словаря.
+        """
+        logger.info("Запуск генерации отчёта о покрытии тестами...")
+
+        try:
+            # Запуск pytest с coverage
+            result = subprocess.run(
+                ["pytest", "--cov=aios_core", "--cov-report=json", "--json-report", "-q"],
+                cwd=self.root_path,
+                capture_output=True,
+                text=True,
+                timeout=300
+            )
+
+            if result.returncode != 0:
+                logger.warning(f"pytest вернул код {result.returncode}. Проверьте вывод:")
+                logger.warning(result.stdout)
+                logger.warning(result.stderr)
+                return {"error": "pytest failed", "details": result.stderr}
+
+            # Парсинг JSON отчёта
+            coverage_file = self.root_path / ".coverage.json"
+            if coverage_file.exists():
+                with open(coverage_file, 'r', encoding='utf-8') as f:
+                    coverage_data = json.load(f)
+                os.remove(coverage_file)
+
+                # Формирование структурированного отчёта
+                report = {
+                    "metadata": {
+                        "generated_at": str(datetime.datetime.now()),
+                        "tool": "pytest-cov",
+                        "project_path": str(self.root_path)
+                    },
+                    "summary": {
+                        "total_lines": coverage_data.get("total_lines", 0),
+                        "covered_lines": coverage_data.get("covered_lines", 0),
+                        "percent_covered": round(
+                            (coverage_data.get("covered_lines", 0) / max(1, coverage_data.get("total_lines", 1))) * 100,
+                            2
+                        ),
+                        "missing_lines": coverage_data.get("missing_lines", []),
+                        "packages": {}
+                    }
+                }
+
+                # Добавляем информацию по пакетам
+                for package, data in coverage_data.get("packages", {}).items():
+                    report["summary"]["packages"][package] = {
+                        "total_lines": data.get("total_lines", 0),
+                        "covered_lines": data.get("covered_lines", 0),
+                        "percent_covered": round(
+                            (data.get("covered_lines", 0) / max(1, data.get("total_lines", 1))) * 100,
+                            2
+                        ),
+                        "missing_files": data.get("missing_files", {})
+                    }
+
+                logger.info(f"Отчёт о покрытии тестами успешно сгенерирован. Покрытие: {report['summary']['percent_covered']}%")
+                return report
+
+            return {"error": "coverage file not found", "details": "No .coverage.json generated"}
+
+        except subprocess.TimeoutExpired:
+            logger.error("Время выполнения pytest-cov истекло (300 секунд)")
+            return {"error": "timeout", "details": "pytest-cov execution timed out"}
+        except Exception as e:
+            logger.error(f"Ошибка при генерации отчёта о покрытии: {e}")
+            return {"error": "exception", "details": str(e)}
 
     def export_report(self, output_path: str = None) -> str:
         """
@@ -298,6 +391,18 @@ def main():
     report_path = reporter.export_report()
 
     logger.info(f"Технический долг успешно проанализирован. Отчёт сохранён в {report_path}")
+
+def generate_debt_report() -> Dict:
+    """
+    Функция для генерации полного отчёта о техническом долге и покрытии тестами.
+
+    Returns:
+        Полный структурированный отчёт в формате словаря.
+    """
+    import datetime
+    reporter = TechnicalDebtReporter()
+    reporter.scan_project()
+    return reporter.generate_debt_report()
 
 if __name__ == "__main__":
     import datetime
