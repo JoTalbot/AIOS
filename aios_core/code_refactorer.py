@@ -5,6 +5,9 @@ from typing import Dict, Any, List, Tuple
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# NOTE: Устаревшие обработки todos удалены в рамках рефакторинга
+# Все функции, связанные с обработкой списка todos, были удалены как неиспользуемые
+
 SECURITY_LIMITS = {
     'max_code_length': 10_000_000,  # 10MB
     'max_rules': 100,
