@@ -545,6 +545,21 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
         return (2, t_prio)
 
     pending_sorted = sorted(pending, key=_task_rank)
+
+    # v3.6 (анти-цикл security_monitor, 02.08): задачи про файлы, обработанные
+    # в последних 8 циклах history, считаем выполненными и убираем из выдачи —
+    # иначе правило «бери задачу из бэклога» зацикливает один файл.
+    _recent_stems = {
+        os.path.splitext(os.path.basename(str(_h.get("file", ""))))[0]
+        for _h in (backlog.get("history", []) or [])[-8:]
+        if _h.get("file")
+    }
+    if _recent_stems:
+        pending_sorted = [
+            t for t in pending_sorted
+            if not any(st and st in str(t.get("description", "")) for st in _recent_stems)
+        ]
+
     backlog_text = ""
     if pending_sorted:
         backlog_text = "\n".join(
@@ -615,6 +630,7 @@ def phase_plan(llm: LLMClient, analysis: dict, ctx: dict, backlog: dict) -> dict
         f"Файлы проекта:\n{_files_list}\n\n"
         f"ПРАВИЛА:\n"
         f"0. Protected-файлы из AGENTS.md НЕ выбирать НИКОГДА. Если задача бэклога требует protected-файл — пропусти её, выбери другую\n"
+        f"0.1. Задачи про файлы из списка 'уже обработаны недавно' считай ВЫПОЛНЕННЫМИ — не бери их снова\n"
         f"1. code_needed ВСЕГДА true\n"
         f"2. Выбери ОДИН конкретный файл из списка\n"
         f"3. РАБОТАЙ ТОЛЬКО с файлами из aios_core/ (реальные модули ядра). НЕ выбирай tools/, octopus_core/, корневые скрипты.\n"
@@ -947,11 +963,15 @@ def phase_validate(code_result: dict) -> dict:
             # Self-protection v3.2b: import-smoke для модулей aios_core.
             # Инцидент #2 (c87c3bd4): правка модуля оборвала `import aios_core` целиком
             # (пропал StepStatus) — синтаксис валиден, поэтому прочие проверки это не ловят.
+            # v3.6: импортируем также САМ изменённый модуль — ловим галлюцинированные
+            # import'ы внутри него (инцидент PrivacyVault, security_monitor 02.08).
             if code_result["file"].startswith("aios_core/") and code_result["file"].endswith(".py"):
                 try:
                     import subprocess as _sp2
+                    _mod = code_result["file"][:-3].replace("/", ".")
                     _smoke = _sp2.run(
-                        ["/opt/aios/.venv/bin/python", "-c", "import aios_core"],
+                        ["/opt/aios/.venv/bin/python", "-c",
+                         f"import aios_core, importlib; importlib.import_module('{_mod}')"],
                         capture_output=True, text=True, timeout=90, cwd=REPO_PATH,
                     )
                     if _smoke.returncode != 0:
