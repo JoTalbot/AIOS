@@ -46,20 +46,32 @@ def tg_send(text: str) -> bool:
     if not TG_TOKEN or not TG_CHAT_ID:
         print(f"[WARN] TG not configured")
         return False
-    url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-    data = json.dumps({
-        "chat_id": int(TG_CHAT_ID),
-        "text": text[:4000],
-        "parse_mode": "HTML",
-        "disable_web_page_preview": True,
-    }).encode()
-    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return json.loads(resp.read()).get("ok", False)
-    except Exception as e:
-        print(f"[ERROR] TG send: {e}")
-        return False
+    # Try HTML first, fallback to plain text on 400
+    for parse_mode in ("HTML", None):
+        try:
+            url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
+            payload = {
+                "chat_id": int(TG_CHAT_ID),
+                "text": text[:4000],
+                "disable_web_page_preview": True,
+            }
+            if parse_mode:
+                payload["parse_mode"] = parse_mode
+            data = json.dumps(payload).encode()
+            req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                ok = json.loads(resp.read()).get("ok", False)
+                if ok:
+                    return True
+        except urllib.error.HTTPError as e:
+            if e.code == 400 and parse_mode == "HTML":
+                continue  # retry without HTML
+            print(f"[ERROR] TG send: HTTP {e.code} {e.reason}")
+            return False
+        except Exception as e:
+            print(f"[ERROR] TG send: {e}")
+            return False
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -349,8 +361,18 @@ def phase_analyze(llm: LLMClient, ctx: dict, backlog: dict) -> dict:
             for task_desc in new_tasks[:3]:
                 _tl = str(task_desc or "").lower()
                 if any(k in _tl for k in _prot_kw):
-                    continue  # skip tasks that would point back at protected files
-                if task_desc and task_desc not in [t.get("description") for t in backlog.get("tasks", [])]:
+                    continue
+                # DEDUP: skip similar tasks
+                existing_descs = [t.get("description", "").lower() for t in backlog.get("tasks", [])]
+                # Check exact duplicate
+                if task_desc and task_desc.lower() in existing_descs:
+                    continue
+                # Check fuzzy similarity (first 40 chars)
+                is_similar = any(task_desc.lower()[:40] in ed[:40] or ed[:40] in task_desc.lower()[:40] for ed in existing_descs if len(ed) > 10)
+                if is_similar:
+                    print(f"    [DEDUP] Skip similar task: {task_desc[:40]}")
+                    continue
+                if task_desc and len(task_desc) > 10:
                     backlog["tasks"].append({
                         "description": task_desc,
                         "priority": "medium",
@@ -619,8 +641,13 @@ def _pick_real_target(hint: str) -> str:
         # Filter out recently-handled files.
         fresh = [f for f in pool if f not in recent]
         pool = fresh or pool
-        import time
+        import time, random
         pool.sort()
+        # Use random choice among fresh pool, not time mod (was causing same file)
+        if len(pool) > 1:
+            # Prefer files with TODO markers more strongly, but randomize
+            random.seed(int(time.time()) + hash(tuple(pool)) % 1000)
+            return random.choice(pool[: min(10, len(pool))])
         idx = int(time.time()) % len(pool)
         return pool[idx]
     except Exception:
@@ -699,10 +726,15 @@ def phase_code(plan: dict) -> dict:
 
     # Clean file path
     file_path = file_path.lstrip("/").lstrip("./")
-    # Sanitize: strip "file.py:NN" / "file.py:NN,MM" artifacts the LLM builds
-    # from "path:line" TODO markers, and stray digits/punctuation.
-    file_path = re.sub(r":\d+[,\s\d]*", "", file_path)  # remove :NN / :NN,MM
-    file_path = re.sub(r"[^\w./-]+", "_", file_path)     # replace weird chars
+    # Sanitize: strict validation - only aios_core files
+    # Remove line numbers like file.py:123
+    file_path = re.sub(r":\d+[,\s\d]*", "", file_path)
+    # Only allow alphanumeric, dot, slash, underscore, hyphen
+    file_path = re.sub(r"[^\w./-]+", "_", file_path)
+    # Must be in aios_core and exist, otherwise fallback will handle
+    if ".." in file_path or file_path.startswith("/"):
+        file_path = os.path.basename(file_path)
+        file_path = f"aios_core/{file_path}"
     # Restrict to aios_core/ (real kernel code); fall back to aios_core/
     allowed_prefixes = ["aios_core/", "scripts/", "tools/", "tests/", "skills/", "platforms/", "docs/"]
     if not any(file_path.startswith(p) for p in allowed_prefixes):
