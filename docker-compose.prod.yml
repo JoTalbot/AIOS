@@ -203,6 +203,17 @@ services:
       options: {max-size: "20m", max-file: "3"}
     networks: [aios-net]
 
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: aios-alertmanager
+    ports: ["127.0.0.1:9093:9093"]
+    volumes:
+      - ./deploy/monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+    restart: unless-stopped
+    networks: [aios-net]
 volumes:
   aios-data:
   aios-logs:

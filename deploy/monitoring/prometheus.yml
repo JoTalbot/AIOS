@@ -9,6 +9,12 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["172.18.0.8:9093"]
+
 rule_files:
   - "aios-alerts.yml"
 
