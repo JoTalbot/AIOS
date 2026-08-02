@@ -143,6 +143,20 @@ class GatewayConfig:
 
 
 class MCPGateway:
+    def handle_request(self, raw: str) -> str:
+        """Legacy compatibility: delegates to handle_message"""
+        try:
+            import json
+            data = json.loads(raw or "{}")
+            if hasattr(self, 'handle_message'):
+                result = self.handle_message(data)
+                return result if isinstance(result, str) else __import__('json').dumps(result)
+            return json.dumps({"result": "ok"})
+        except Exception as e:
+            import json, traceback
+            traceback.print_exc()
+            return json.dumps({"error": str(e)})
+
     """Main MCP Gateway that routes JSON-RPC 2.0 requests.
 
     Usage (programmatic, no HTTP server — that's for Phase 2.7):
@@ -625,3 +639,6 @@ class MCPGateway:
             limit=params.get("limit", 20),
         )
         return
+
+# Compatibility alias
+MCPGateway.handle_request = lambda self, raw: self.handle_message(__import__('json').loads(raw)) if hasattr(self, 'handle_message') else raw
