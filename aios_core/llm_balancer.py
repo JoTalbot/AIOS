@@ -207,6 +207,32 @@ class LLMBalancer:
                 "Qwen/Qwen3-30B-A3B-Instruct",
             ],
         },
+        
+        "github": {
+            "base_url": "https://models.inference.ai.azure.com/chat/completions",
+            "models": [
+                "openai/gpt-4o-mini",
+                "openai/gpt-4o",
+                "meta/Meta-Llama-3-70B-Instruct",
+                "mistral-ai/Mistral-small",
+            ],
+        },
+        "nvidia": {
+            "base_url": "https://integrate.api.nvidia.com/v1/chat/completions",
+            "models": [
+                "meta/llama-3.1-8b-instruct",
+                "meta/llama-3.1-70b-instruct",
+                "mistralai/mistral-7b-instruct-v0.3",
+                "google/gemma-2-9b-it",
+            ],
+        },
+        "sambanova": {
+            "base_url": "https://api.sambanova.ai/v1/chat/completions",
+            "models": [
+                "Meta-Llama-3.1-8B-Instruct",
+                "Meta-Llama-3.1-70B-Instruct",
+            ],
+        },
         "local": {
             "base_url": os.environ.get("LOCAL_LLM_BASE_URL", "http://localhost:11434/v1/chat/completions"),
             "models": [
@@ -386,6 +412,9 @@ class LLMBalancer:
             ("mistral", "MISTRAL_API_KEY"),
             ("cohere", "COHERE_API_KEY"),
             ("together", "TOGETHER_API_KEY"),
+            ("github", "GITHUB_API_KEY"),
+            ("nvidia", "NVIDIA_API_KEY"),
+            ("sambanova", "SAMBANOVA_API_KEY"),
         ]:
             load_keys(env_name, p)
 
