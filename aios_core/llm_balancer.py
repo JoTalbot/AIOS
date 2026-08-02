@@ -21,6 +21,12 @@ LLM Balancer v2.2 — улучшенная балансировка с прио�
   LOCAL_LLM=1 и LOCAL_LLM_BASE_URL=http://172.18.0.1:11434/v1/chat/completions.
 - Проверка Ollama (/api/tags) теперь идёт через LOCAL_LLM_BASE_URL,
   а не захардкоженный localhost.
+
+Исправления v2.3 (2026-08-02, запуск автокодера):
+- Маппинг моделей на провайдера: groq-имя "llama-3.3-70b-versatile" больше не
+  уходит на mistral/zai/openrouter (гарантированный HTTP 400) — подставляется
+  родная модель провайдера. Убирает ~15 мёртвых запросов в каждом цикле
+  автокодера и резко снижает потребность в медленном local fallback.
 """
 
 import json
@@ -534,8 +540,17 @@ class LLMBalancer:
 
                 try:
                     import requests as _req_lib
+                    # v2.3: маппинг модели на провайдера. Имя вида
+                    # "llama-3.3-70b-versatile" существует только у groq — mistral/zai/
+                    # openrouter отвечают 400. Подставляем родную модель провайдера.
+                    req_model = try_model
+                    if prov_name == "openrouter":
+                        if "/" not in try_model:
+                            req_model = "meta-llama/llama-3.3-70b-instruct:free"
+                    elif prov_name != "local" and try_model not in provider.models:
+                        req_model = provider.models[0] if provider.models else try_model
                     payload = {
-                        "model": try_model,
+                        "model": req_model,
                         "messages": all_messages,
                         "max_tokens": max_tokens,
                         "temperature": temperature,
@@ -569,7 +584,7 @@ class LLMBalancer:
                             continue
 
                     self._provider_stats[prov_name] = self._provider_stats.get(prov_name, 0) + 1
-                    print(f"  [Balancer] OK: {prov_name}/{try_model}")
+                    print(f"  [Balancer] OK: {prov_name}/{req_model}")
 
                     # Parse response
                     content = ""
