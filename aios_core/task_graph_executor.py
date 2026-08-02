@@ -1,6 +1,8 @@
 from typing import Any, Optional
 from dataclasses import dataclass
 
+# Refs: auto(v3): task_graph_executor.py remove run_coder_orchestrator_v3_1 todos (2024-10-16)
+
 @dataclass
 class TaskContext:
     """Dataclass representing the execution context for a task graph node.
@@ -70,7 +72,7 @@ class AutonomousTaskGraphExecutor:
 
         This method removes all TODO items that contain the specified file path,
         preventing stale TODOs from affecting new task execution. This is a more
-        general version of filter_todos_by_file that can be used throughout the codebase.
+        general version of filter_todos_by_filter_todos_by_file that can be used throughout the codebase.
         """
         if "todos" in ctx:
             ctx["todos"] = [t for t in ctx["todos"] if current_file not in t]
