@@ -1,10 +1,14 @@
-import json, urllib.request, sys
+import json, urllib.request, sys, os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-TG_TOKEN = "8374235817:AAFYRj2DJGcBLfJU7MeHX6CFwbP1AkwsDok"
-TG_CHAT = "588113957"
+# Токен из окружения (security-fix 02.08: hard-coded ключ найден сканером secrets_scan_repo.py)
+TG_TOKEN = os.environ.get("AIOS_TELEGRAM_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TG_CHAT = os.environ.get("TELEGRAM_CHAT_ID", "588113957")
 
 def tg_send(text):
+    if not TG_TOKEN:
+        print("[tg_webhook] TELEGRAM-токен не задан в окружении — алерт пропущен", file=sys.stderr, flush=True)
+        return
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
     data = json.dumps({"chat_id": int(TG_CHAT), "text": text[:4000], "parse_mode": "HTML"}).encode()
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})

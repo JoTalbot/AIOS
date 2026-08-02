@@ -259,3 +259,29 @@ backlog-dedup 04:30 (все OnCalendar=Mon).
 (цикл 60с сгребает незакоммиченное в auto-ветки — 3 гонки зафиксированы), после —
 py_compile + import-smoke изменённых МОДУЛЕЙ (не просто aios_core) + таргетные тесты,
 push, `--force-snapshot`, старт сервиса.
+
+**Security-аудит secrets (02.08, заход 3):** `scripts/secrets_scan_repo.py` — полный
+скан репо на hard-coded ключи (regex-набор из SecurityPolicy + фильтр плейсхолдеров,
+маски в отчёте, exit 1 при находках). Отчёт: `data/security_secrets_scan_YYYYMMDD.md`
+(data/ в gitignore). Первый прогон: 4931 файл, 14 находок → 2 реальные:
+1) TG-токен в `deploy/alertmanager/tg_webhook.py` (живой alerting!) → переведён на
+   env `AIOS_TELEGRAM_TOKEN`, drop-in `aios-alertmanager-webhook.service.d/10-env.conf`.
+   ИНЦИДЕНТ: ExecStart юнита указывал на `/opt/aios/.venv/bin/python3.11`, удалённый
+   при пересборке venv (сейчас python3.12) — сервис жил «на удалённом inode» до первого
+   рестарта. Урок: всегда сверять ExecStart с `ls .venv/bin/` после смены venv.
+2) Дубль TG-токена + RCE (shell=True за веб-эндпоинтом) в мёртвых файлах
+   `octopus_core/gemini_hack.py`, `octopus_core/gemini_tg_hack.py` → удалены (0 ссылок,
+   0 процессов, 0 юнитов). git-история всё ещё содержит токены → ротация через
+   @BotFather остаётся на пользователе. .env не трекается (`*.env` в gitignore).
+
+**Ревью-пакет «security-theater» (02.08, заход 3):** 4 auto-ветки ОТКЛОНЕНЫ после
+ручного диффа: active_inference-1409 (`import Authenticator` — несуществующий класс,
+кирпичит модуль), web_adapter-1410 (extra=forbid на схеме запросов + html.escape всех
+входящих тел + падение на X-XSS-Protection:0 — ломает живой API, sanitize_html реально
+вызывается на строках 186/233), privacy_vault_v3-1413 (мандатный env-ключ в __init__ +
+замена masked→encrypted ломает контракт), security_policy-1400 (regex поверх html.escape,
+задача уже закрыта мержом 1351 + 29 тестами). Правила закреплены в
+`skills/coder/security-hardening-review-rules/SKILL.md` (подмешивается в промпт
+генерации — прицел на снижение класса «security theater»). Гонка со sweep-циклом:
+незакоммиченные scanner/gemini-deleting унесло в auto-ветки — файлы восстановлены,
+дисциплина «stop service перед git» обязательна (нарушена 1 раз сегодня).
