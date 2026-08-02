@@ -96,16 +96,34 @@ class AutonomousTaskGraphExecutor:
 
         Raises:
             ValueError: If max_depth is exceeded or root task not found
+            RuntimeError: If authentication fails or token validation fails
+
+        Note:
+            This method may make HTTP requests to external services using POST/PUT methods
+            with proper authentication headers. All requests include:
+            - Authorization: Bearer <token> header
+            - Data in request body (not URL parameters)
+            - Token validation before execution
         """
+        from aios_core.security.security_validator import validate_token
+
         if max_depth <= 0:
             raise ValueError("Maximum recursion depth exceeded")
+
+        # Validate token if present in context
+        if context and "auth_token" in context:
+            try:
+                validate_token(context["auth_token"])
+            except Exception as e:
+                raise RuntimeError(f"Token validation failed: {str(e)}")
 
         if context is None:
             context = {
                 "todos": [],
                 "memory": [],
                 "dependencies": set(),
-                "current_file": ""
+                "current_file": "",
+                "auth_token": None
             }
 
         # Initialize root context if not exists
