@@ -223,7 +223,7 @@ def solve_captcha(page, debug_arr):
         const out = { fields_set: 0, callbacks_called: 0, called_path: null, errors: [] };
         try {
             const fields = document.querySelectorAll('#g-recaptcha-response, textarea[name^="g-recaptcha-response"]');
-            fields.forEach(f => { f.value = token; f.innerHTML = token; out.fields_set++; });
+            fields.forEach(f => { f.value = token; f.textContent = token; out.fields_set++; }); // FIXED XSS: innerHTML -> textContent
         } catch (e) { out.errors.push('fields: ' + e.message); }
         try {
             const clients = (window.___grecaptcha_cfg && window.___grecaptcha_cfg.clients) || {};

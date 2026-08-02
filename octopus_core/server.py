@@ -252,7 +252,9 @@ code {{ background: #eee; padding: 2px 6px; border-radius: 3px; }}
 setTimeout(function() {{
   var url = "{latest_chat_url}";
   if (url && url.includes("/app/")) {{
-    document.getElementById('redirect-msg').innerHTML = 'Redirecting to: <code>' + url + '</code>';
+    // FIXED XSS: use textContent + escape, not innerHTML with unsanitized url
+    var msgEl = document.getElementById('redirect-msg');
+    if (msgEl) { msgEl.textContent = 'Redirecting to: ' + url; }
     setTimeout(function() {{ window.location.href = url; }}, 2000);
   }}
 }}, 1000);
