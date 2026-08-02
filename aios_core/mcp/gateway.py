@@ -191,6 +191,63 @@ class MCPGateway:
     # Built-in tool registration
     # ------------------------------------------------------------------
 
+    def _register_builtin_resources(self):
+        """Register built-in AIOS resources (constitution/policies overview)."""
+        self.resources.register(
+            ResourceDefinition(
+                uri="aios://constitution/overview",
+                name="Constitution Overview",
+                description="Summary of the AIOS constitutional articles and principles",
+                mime_type="text/plain",
+                provider=lambda: str(self.runtime.engine.constitution.stats()),
+            )
+        )
+        self.resources.register(
+            ResourceDefinition(
+                uri="aios://policies/summary",
+                name="Policy Summary",
+                description="Summary of active AIOS policies",
+                mime_type="text/plain",
+                provider=lambda: str(self.runtime.engine.policies.stats()),
+            )
+        )
+
+    def _register_builtin_prompts(self):
+        """Register built-in AIOS prompt templates."""
+        self.prompts.register(
+            PromptDefinition(
+                name="evaluate_action",
+                description="Template for evaluating a proposed action against the AIOS constitution",
+                arguments=[
+                    {"name": "goal", "description": "The action's goal", "required": True},
+                    {"name": "scope", "description": "The action's scope", "required": True},
+                    {"name": "risk", "description": "Risk level", "required": True},
+                ],
+                template=(
+                    "Evaluate the following proposed action against the AIOS constitution:\n\n"
+                    "Goal: {goal}\nScope: {scope}\nRisk Level: {risk}\n\n"
+                    "Provide your assessment of constitutional compliance."
+                ),
+            )
+        )
+        self.prompts.register(
+            PromptDefinition(
+                name="evolution_proposal",
+                description="Template for proposing a system evolution change",
+                arguments=[
+                    {"name": "component", "description": "Component to evolve", "required": True},
+                    {"name": "change", "description": "Description of the change", "required": True},
+                    {"name": "rationale", "description": "Why this change is needed", "required": True},
+                ],
+                template=(
+                    "Evolution Proposal for AIOS:\n\n"
+                    "Component: {component}\nProposed Change: {change}\nRationale: {rationale}\n\n"
+                    "This proposal must comply with ARTICLE-XXXVI (Controlled Evolution) "
+                    "and pass all constitutional checks before deployment."
+                ),
+            )
+        )
+
     def _register_builtin_tools(self):
         """Register built-in AIOS tools that expose core functionality through MCP."""
 
