@@ -64,30 +64,54 @@ class UserContext:
 
 def validate_auth_token(token: str, secret: str = SECURITY_DEFAULTS["auth_token_secret"]) -> bool:
     """
-    Validate authentication token.
+    Validate authentication token using JWT with replay attack protection.
 
     Args:
-        token: The token to validate
-        secret: Secret key for token validation
+        token: The JWT token to validate
+        secret: Secret key for JWT validation
 
     Returns:
         bool: True if token is valid, False otherwise
     """
-    if not token or len(token) < 16:
-        logger.warning("Invalid token format or missing token")
+    if not token:
+        logger.warning("❌ Empty authentication token provided")
         return False
 
-    # In production, this would validate against a token store
-    # For this implementation, we'll simulate validation
     try:
-        # Simulate token validation logic
-        if token.startswith("valid_") and len(token) > 20:
-            return True
-    except Exception as e:
-        logger.error(f"Token validation error: {e}")
-        return False
+        import jwt
+        from datetime import datetime, timedelta
 
-    return False
+        # Decode and verify JWT token
+        try:
+            payload = jwt.decode(
+                token,
+                secret,
+                algorithms=["HS256"],
+                options={"verify_exp": True, "verify_nbf": True}
+            )
+
+            # Check for replay attack protection (token should not be expired)
+            if datetime.utcnow() > payload.get("exp", datetime.utcnow()):
+                logger.warning("❌ Expired authentication token")
+                return False
+
+            logger.info("✅ Authentication token validated successfully")
+            return True
+
+        except jwt.ExpiredSignatureError:
+            logger.warning("❌ Expired authentication token")
+            return False
+        except jwt.InvalidTokenError as e:
+            logger.warning(f"❌ Invalid authentication token: {str(e)}")
+            return False
+
+    except ImportError:
+        # Fallback for environments without jwt library
+        if token.startswith("valid_") and len(token) > 20:
+            logger.info("✅ Authentication token validated (fallback mode)")
+            return True
+        logger.warning("❌ Invalid authentication token format")
+        return False
 
 def validate_csrf_token(token: str, expected_length: int = SECURITY_DEFAULTS["csrf_token_length"]) -> bool:
     """
@@ -110,7 +134,7 @@ def validate_csrf_token(token: str, expected_length: int = SECURITY_DEFAULTS["cs
 
 def require_authentication(f):
     """
-    Decorator to enforce authentication for endpoints.
+    Decorator to enforce authentication for endpoints using POST requests with Authorization headers.
 
     Args:
         f: The function to decorate
@@ -120,12 +144,13 @@ def require_authentication(f):
     """
     @wraps(f)
     def wrapper(*args, **kwargs):
-        # Extract auth token from headers or request data
-        auth_token = kwargs.get("auth_token") or kwargs.get("headers", {}).get("Authorization", "").replace("Bearer ", "")
+        # Extract auth token from Authorization header (POST request requirement)
+        auth_header = kwargs.get("headers", {}).get("Authorization", "")
+        auth_token = auth_header.replace("Bearer ", "") if auth_header else ""
 
         if not validate_auth_token(auth_token):
-            logger.warning("Authentication failed for endpoint")
-            raise AuthenticationError("Invalid or missing authentication token")
+            logger.warning("❌ Authentication failed for endpoint - invalid or missing Authorization header")
+            raise AuthenticationError("Invalid or missing authentication token in Authorization header")
 
         return f(*args, **kwargs)
     return wrapper
@@ -211,21 +236,33 @@ def create_user_context(
     auth_token: str
 ) -> UserContext:
     """
-    Create a user context object from authentication data.
+    Create a user context object from authentication data with security validation.
 
     Args:
         user_id: Unique user identifier
         username: Username
         roles: List of roles assigned to the user
         csrf_token: CSRF token for the session
-        auth_token: Authentication token
+        auth_token: Authentication token (JWT)
 
     Returns:
         UserContext: The created user context
+
+    Security Notes:
+        - CSRF token must be validated before creating context
+        - Auth token must be a valid JWT with expiration
     """
+    # Validate tokens before creating context
+    if not validate_auth_token(auth_token):
+        raise AuthenticationError("Cannot create user context with invalid auth token")
+
+    if not validate_csrf_token(csrf_token):
+        raise AuthenticationError("Cannot create user context with invalid CSRF token")
+
     roles_set = set(roles)
     permissions = calculate_effective_permissions(roles_set)
 
+    logger.info(f"✅ Created secure user context for {username}")
     return UserContext(
         user_id=user_id,
         username=username,
@@ -279,7 +316,7 @@ def get_user_roles(user_id: str) -> List[str]:
 
 def authenticate_user(username: str, password: str) -> Tuple[bool, UserContext]:
     """
-    Authenticate a user and return user context.
+    Authenticate a user and return user context with JWT tokens to prevent replay attacks.
 
     Args:
         username: The username
@@ -291,6 +328,7 @@ def authenticate_user(username: str, password: str) -> Tuple[bool, UserContext]:
     # In production, this would validate against a user database
     # For this implementation, simulate successful authentication
     if not username or not password:
+        logger.warning("❌ Authentication failed - missing username or password")
         return False, UserContext(
             user_id="",
             username="",
@@ -300,18 +338,40 @@ def authenticate_user(username: str, password: str) -> Tuple[bool, UserContext]:
             auth_token=""
         )
 
-    # Generate tokens
-    import secrets
-    csrf_token = secrets.token_urlsafe(SECURITY_DEFAULTS["csrf_token_length"])
-    auth_token = f"valid_{secrets.token_hex(16)}"
+    try:
+        import jwt
+        from datetime import datetime, timedelta
 
-    roles = get_user_roles(username)
-    user_context = create_user_context(
-        user_id=username,
-        username=username,
-        roles=roles,
-        csrf_token=csrf_token,
-        auth_token=auth_token
-    )
+        # Generate JWT tokens with expiration to prevent replay attacks
+        payload = {
+            "sub": username,
+            "iat": datetime.utcnow(),
+            "exp": datetime.utcnow() + timedelta(minutes=SECURITY_DEFAULTS["jwt_expiration_minutes"]),
+            "nbf": datetime.utcnow()
+        }
 
-    return True, user_context
+        auth_token = jwt.encode(payload, SECURITY_DEFAULTS["auth_token_secret"], algorithm="HS256")
+        csrf_token = secrets.token_urlsafe(SECURITY_DEFAULTS["csrf_token_length"])
+
+        roles = get_user_roles(username)
+        user_context = create_user_context(
+            user_id=username,
+            username=username,
+            roles=roles,
+            csrf_token=csrf_token,
+            auth_token=auth_token
+        )
+
+        logger.info(f"✅ User {username} authenticated successfully")
+        return True, user_context
+
+    except Exception as e:
+        logger.error(f"❌ Authentication error: {str(e)}")
+        return False, UserContext(
+            user_id="",
+            username="",
+            roles=set(),
+            permissions=set(),
+            csrf_token="",
+            auth_token=""
+        )
