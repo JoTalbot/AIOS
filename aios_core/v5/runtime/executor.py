@@ -1,4 +1,6 @@
-class Executor:
+class RuntimeExecutor:
+    """Agent execution runtime foundation."""
+
     def __init__(self):
         self.running = False
 
