@@ -802,6 +802,27 @@ async def instagram_posts(limit: int = 5) -> dict:
         await a.close()
 
 
+async def instagram_comments(code: str, limit: int = 10) -> dict:
+    a = await _instagram_adapter()
+    try:
+        comments = await a.get_post_comments(code, limit)
+        return {"status": "ok", "code": code, "comments": comments}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def instagram_comment_reply(code: str, text: str, confirm: bool) -> dict:
+    a = await _instagram_adapter()
+    try:
+        return await a.reply_to_comment(code, text, confirm)
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
 async def instagram_post(code: str) -> dict:
     a = await _instagram_adapter()
     try:
@@ -1695,6 +1716,13 @@ def main():
     igp.add_argument("n", nargs="?", type=int, default=5)
     igd = igg.add_parser("post")
     igd.add_argument("code")
+    igc = igg.add_parser("comments")
+    igc.add_argument("code")
+    igc.add_argument("--limit", type=int, default=10)
+    igcr = igg.add_parser("comment_reply")
+    igcr.add_argument("code")
+    igcr.add_argument("text")
+    igcr.add_argument("--confirm", action="store_true")
     igg.add_parser("screenshot")
     igl = igg.add_parser("like")
     igl.add_argument("url")
@@ -1839,6 +1867,10 @@ def main():
                 out(asyncio.run(instagram_posts(args.n)))
             elif args.action == "post":
                 out(asyncio.run(instagram_post(args.code)))
+            elif args.action == "comments":
+                out(asyncio.run(instagram_comments(args.code, args.limit)))
+            elif args.action == "comment_reply":
+                out(asyncio.run(instagram_comment_reply(args.code, args.text, args.confirm)))
             elif args.action == "screenshot":
                 out(asyncio.run(instagram_screenshot()))
             elif args.action == "like":

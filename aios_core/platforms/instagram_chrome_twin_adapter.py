@@ -349,6 +349,72 @@ class InstagramChromeTwinAdapter(ChromeTwinAdapter):
         await self._log_action("instagram_get_my_posts", {"limit": limit}, {"count": len(posts)})
         return posts
 
+    async def get_post_comments(self, code: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Комментарии к посту (read-only): автор + текст."""
+        page = await self._ensure_browser()
+        await self._goto_ig(page, f"p/{code}/")
+        await page.wait_for_timeout(5000)
+        comments = []
+        seen = set()
+        try:
+            texts = await page.eval_on_selector_all(
+                "div[dir='auto']",
+                """els => els.map(e => {
+                    if (e.closest('[role="button"]')) return null;
+                    const t = (e.textContent || '').trim().replace(/\\s+/g, ' ');
+                    return (t.length > 3 && t.length < 400) ? t : null;
+                }).filter(Boolean)""")
+            noise = ("подобається", "переглянути", "показати", "переклад", "translate",
+                     "відповісти", "ответить", "сховати", "більше", "переглянути все",
+                     "коментарів ще немає", "почніть розмову", "повідомлення",
+                     "підписники", "підписки", "дописи", "профіль")
+            for t in texts or []:
+                low = t.lower()
+                if any(n in low for n in noise):
+                    continue
+                if len(t) < 4 or t in seen:
+                    continue
+                seen.add(t)
+                comments.append({"text": t})
+                if len(comments) >= limit:
+                    break
+        except Exception:
+            pass
+        await self._log_action("instagram_get_comments", {"code": code}, {"count": len(comments)})
+        return comments
+
+    async def reply_to_comment(self, code: str, text: str, confirm: bool) -> Dict[str, Any]:
+        """Ответить на комментарий (вводит текст в поле комментария и публикует)."""
+        if not confirm:
+            return {"status": "need_confirm", "action": "ig_comment_reply",
+                    "code": code, "text": text[:200]}
+        page = await self._ensure_browser()
+        await self._goto_ig(page, f"p/{code}/")
+        await page.wait_for_timeout(5000)
+        try:
+            # поле комментария: div[contenteditable=true] с placeholder "Додати коментар"
+            box = page.locator("div[contenteditable='true'][role='textbox'], div[contenteditable='true']").first
+            await box.wait_for(state="visible", timeout=10000)
+            await box.click()
+            await page.keyboard.type(text, delay=25)
+            await page.wait_for_timeout(800)
+            # кнопка публикации комментария
+            for name in ("Опублікувати", "Опубликовать", "Post", "Додати"):
+                try:
+                    btn = page.get_by_role("button", name=name).first
+                    if await btn.count():
+                        await btn.click(timeout=3000)
+                        await page.wait_for_timeout(1500)
+                        return {"status": "sent", "code": code, "text": text[:200]}
+                except Exception:
+                    continue
+            # fallback: Enter
+            await page.keyboard.press("Enter")
+            await page.wait_for_timeout(1500)
+            return {"status": "sent", "code": code, "text": text[:200]}
+        except Exception as e:
+            return {"status": "error", "error": str(e)[:300]}
+
     async def get_post_details(self, code: str) -> Dict[str, Any]:
         """Детали поста: подпись, лайки, автор (read-only)."""
         page = await self._ensure_browser()
