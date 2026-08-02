@@ -9,6 +9,7 @@ Classes:
     ThreatEvent    — recorded threat with details
     SecurityPolicy — configurable detection rule
     AdvancedSecurity — full security engine with detection, sanitization, audit
+    Authenticator  — authenticates API requests
 """
 
 from __future__ import annotations
@@ -258,3 +259,43 @@ class AdvancedSecurity:
             "api_keys": len(self.api_keys),
             "active_keys": active_keys,
         }
+
+
+class Authenticator:
+    """Authenticates API requests."""
+
+    def __init__(self, security: AdvancedSecurity) -> None:
+        self.security = security
+
+    def authenticate(self, request: dict[str, Any]) -> bool:
+        """Authenticate API request."""
+        api_key = request.get("api_key")
+        if not api_key:
+            return False
+        return self.security.validate_api_key(api_key)
+
+    def authorize(self, request: dict[str, Any]) -> bool:
+        """Authorize API request."""
+        # Add authorization logic here
+        return True
+
+
+def main() -> None:
+    security = AdvancedSecurity()
+    authenticator = Authenticator(security)
+
+    # Example usage
+    request = {"ip": "127.0.0.1", "body": "Hello, World!", "api_key": security.generate_api_key()}
+    if authenticator.authenticate(request) and authenticator.authorize(request):
+        print("Request is authenticated and authorized")
+    else:
+        print("Request is not authenticated or authorized")
+
+    if security.detect_threat(request):
+        print("Threat detected")
+    else:
+        print("No threat detected")
+
+
+if __name__ == "__main__":
+    main()

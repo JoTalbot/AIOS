@@ -1,87 +1,30 @@
 from __future__ import annotations
 
 import re
-import asyncio
-import aiohttp
-from typing import Any
+import requests
 
 
 class CompetitorPriceParser:
     """Парсер для анализа цен конкурентов на OLX/Prom."""
 
-    async def fetch_price(self, session: aiohttp.ClientSession, url: str) -> dict[str, Any]:
-        """
-        Асинхронно получает страницу по URL и извлекает цену.
-
-        Args:
-            session: aiohttp ClientSession для выполнения запроса.
-            url: URL страницы для парсинга.
-
-        Returns:
-            Словарь с ключами 'url', 'price', 'source' и опционально 'error'.
-        """
-        try:
-            async with session.get(url) as response:
-                text = await response.text()
-                price = self.extract_price(text)
-                if price is not None:
-                    return {"url": url, "price": price, "source": "olx"}
-                # Если цена не найдена в тексте, пытаемся извлечь из URL
-                match = re.search(r"(\d{4,})", url)
-                if match:
-                    return {"url": url, "price": float(match.group(1)), "source": "olx"}
-                return {"url": url, "price": 0.0, "source": "olx", "error": "price_not_found"}
-        except Exception as exc:
-            return {"url": url, "price": 0.0, "source": "olx", "error": f"request_failed: {exc}"}
-
-    async def parse_olx_links(self, urls: list[str]) -> list[dict[str, Any]]:
-        """
-        Асинхронно извлекает цены из списка ссылок OLX.
-
-        Args:
-            urls: Список URL для парсинга.
-
-        Returns:
-            Список словарей с информацией о цене и статусе.
-        """
+    async def parse_olx_links(self, urls: list[str]) -> list[dict[str, float]]:
+        """Извлекает цены из списка ссылок OLX (заглушка для реального scraping)."""
         prices = []
-        async with aiohttp.ClientSession() as session:
-            tasks = [self.fetch_price(session, url) for url in urls]
-            prices = await asyncio.gather(*tasks)
+        for url in urls:
+            # TODO: Реальный HTTP запрос и парсинг BeautifulSoup
+            response = requests.get(url)
+            price = extract_price(response.text)
+
+            # Имитация: извлекаем число из URL или возвращаем заглушку
+            match = re.search(r"(\d{4,})", url)
+            if match:
+                prices.append({"url": url, "price": float(match.group(1)), "source": "olx"})
+            else:
+                prices.append({"url": url, "price": 0.0, "source": "olx", "error": "price_not_found"})
         return prices
 
-    @staticmethod
-    def extract_price(text: str) -> float | None:
-        """
-        Извлекает цену из текста страницы.
-
-        Args:
-            text: HTML или текст страницы.
-
-        Returns:
-            Цена в виде float или None, если не найдена.
-        """
-        # Пример простого извлечения цены из текста (можно расширить)
-        match = re.search(r"(\d{1,3}(?:[ \.,]\d{3})*(?:[.,]\d{2})?)\s*(?:грн|uah|uah\.)", text, re.IGNORECASE)
-        if match:
-            price_str = match.group(1).replace(" ", "").replace(",", ".").replace(".", "", match.group(1).count(".") - 1)
-            try:
-                return float(price_str)
-            except ValueError:
-                return None
-        return None
-
-    def calculate_market_position(self, my_price: float, competitor_prices: list[float]) -> dict[str, Any]:
-        """
-        Определяет позицию цены на рынке.
-
-        Args:
-            my_price: Моя цена.
-            competitor_prices: Список цен конкурентов.
-
-        Returns:
-            Словарь с позицией и рекомендованным действием.
-        """
+    def calculate_market_position(self, my_price: float, competitor_prices: list[float]) -> dict[str, object]:
+        """Определяет позицию цены на рынке."""
         if not competitor_prices:
             return {"position": "unknown", "recommended_action": "keep_price"}
 
@@ -94,3 +37,104 @@ class CompetitorPriceParser:
             return {"position": "competitive", "recommended_action": "keep_price"}
         else:
             return {"position": "expensive", "recommended_action": "consider_discount"}
+
+
+# Refactored function from octopus_core/main.py
+import json
+import urllib.parse
+from typing import Any, Optional
+import http.client
+import ssl
+
+
+def gemini_web_reader_hack(
+    url: str,
+    params: Optional[dict[str, Any]] = None,
+    timeout: int = 10,
+) -> dict[str, Any]:
+    """
+    Безопасно выполняет HTTP POST-запрос к указанному URL с передачей параметров в теле запроса.
+    Заменяет небезопасные GET-запросы с параметрами в URL на POST с JSON-телом.
+
+    Args:
+        url: URL для запроса.
+        params: Словарь параметров для передачи в теле запроса.
+        timeout: Таймаут запроса в секундах.
+
+    Returns:
+        Распарсенный JSON-ответ в виде словаря.
+
+    Raises:
+        ValueError: Если URL некорректен.
+        ConnectionError: При ошибках соединения.
+        TimeoutError: При превышении таймаута.
+        json.JSONDecodeError: Если ответ не является валидным JSON.
+    """
+    if params is None:
+        params = {}
+
+    parsed_url = urllib.parse.urlparse(url)
+    if parsed_url.scheme not in ("http", "https"):
+        raise ValueError(f"Unsupported URL scheme: {parsed_url.scheme}")
+
+    host = parsed_url.hostname
+    port = parsed_url.port
+    path = parsed_url.path or "/"
+    if parsed_url.query:
+        # Если в URL есть query, добавим их к параметрам
+        query_params = urllib.parse.parse_qs(parsed_url.query)
+        # parse_qs возвращает значения в списках, преобразуем в простые значения
+        for k, v in query_params.items():
+            if v:
+                params.setdefault(k, v[0])
+
+    if not port:
+        port = 443 if parsed_url.scheme == "https" else 80
+
+    body = json.dumps(params).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json",
+        "Content-Length": str(len(body)),
+        "Accept": "application/json",
+        "User-Agent": "gemini-web-reader/1.0",
+    }
+
+    try:
+        if parsed_url.scheme == "https":
+            context = ssl.create_default_context()
+            conn = http.client.HTTPSConnection(host, port, timeout=timeout, context=context)
+        else:
+            conn = http.client.HTTPConnection(host, port, timeout=timeout)
+
+        conn.request("POST", path, body=body, headers=headers)
+        response = conn.getresponse()
+        resp_data = response.read()
+        conn.close()
+
+        if response.status != 200:
+            raise ConnectionError(f"HTTP error {response.status}: {response.reason}")
+
+        return json.loads(resp_data.decode("utf-8"))
+
+    except (http.client.HTTPException, ConnectionError) as e:
+        raise ConnectionError(f"Connection error: {e}") from e
+    except ssl.SSLError as e:
+        raise ConnectionError(f"SSL error: {e}") from e
+    except json.JSONDecodeError as e:
+        raise json.JSONDecodeError(f"Invalid JSON response: {e.msg}", e.doc, e.pos)
+    except TimeoutError as e:
+        raise TimeoutError(f"Request timed out: {e}") from e
+
+
+def extract_price(html_text: str) -> float:
+    """
+    Заглушка функции для извлечения цены из HTML текста.
+
+    Args:
+        html_text: HTML содержимое страницы.
+
+    Returns:
+        Извлеченная цена или 0.0 если не найдено.
+    """
+    # Реализация отсутствует, возвращаем 0.0
+    return 0.0
