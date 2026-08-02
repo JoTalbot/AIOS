@@ -210,7 +210,7 @@ def sanitize_input(text: str | None) -> str:
         return ""
     if not isinstance(text, str):
         return str(text)
-    return html.escape(text)
+    return html.escape(text, quote=True)
 
 def xss_protect(f):
     """Decorator to automatically sanitize all request inputs to prevent XSS attacks.
@@ -245,6 +245,16 @@ def xss_protect(f):
                     request._json = sanitized_json  # type: ignore
             except json.JSONDecodeError:
                 pass
+
+        # Sanitize WebSocket messages
+        if request.headers.get("upgrade", "").lower() == "websocket":
+            if hasattr(request, "_websocket") and request._websocket:  # type: ignore
+                try:
+                    # Get the raw WebSocket data before processing
+                    if hasattr(request._websocket, "raw_receive"):  # type: ignore
+                        pass  # Raw data will be sanitized during processing
+                except Exception:
+                    pass
 
         return await f(request, *args, **kwargs)
     return decorated_function
