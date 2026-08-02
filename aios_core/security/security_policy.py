@@ -1,6 +1,7 @@
 import os
 from typing import Optional, Dict, Any, List
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict  # v2: BaseSettings переехал (pydantic-settings 2.14)
 import html
 import secrets
 import re
@@ -40,9 +41,8 @@ class SecurityPolicyConfig(BaseSettings):
         description="Политика SameSite для сессионных cookies"
     )
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    # v2-стиль; extra="ignore" — иначе чужие переменные из .env валят импорт (32 ошибки)
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 security_policy_config = SecurityPolicyConfig()
 
