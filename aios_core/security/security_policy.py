@@ -65,6 +65,35 @@ class SecurityPolicy:
         return html.escape(user_input)
 
     @staticmethod
+    def validate_token_in_headers(token: str) -> bool:
+        """
+        Валидирует токен в заголовках запроса.
+
+        Args:
+            token: Токен для проверки
+
+        Returns:
+            True если токен валиден, иначе False
+
+        Raises:
+            ValueError: Если токен не является строкой
+        """
+        if not isinstance(token, str):
+            raise ValueError("Token must be a string")
+        if not token:
+            return False
+
+        # Проверка формата токена
+        if len(token) < 16:
+            return False
+
+        # Проверка наличия префикса
+        if not token.startswith(('Bearer ', 'Token ', 'ApiKey ')):
+            return False
+
+        return True
+
+    @staticmethod
     def sanitize_js_input(user_input: str) -> str:
         """
         Экранирует пользовательский ввод для безопасного использования в JavaScript.
@@ -78,6 +107,26 @@ class SecurityPolicy:
         if not isinstance(user_input, str):
             raise ValueError("User input must be a string")
         return user_input.replace('\\', '\\\\').replace('"', '\\"').replace("'", "\\'")
+
+    @staticmethod
+    def check_csrf_token(headers: dict) -> bool:
+        """
+        Проверяет CSRF токен в заголовках запроса.
+
+        Args:
+            headers: Словарь заголовков запроса
+
+        Returns:
+            True если CSRF токен валиден, иначе False
+        """
+        if not isinstance(headers, dict):
+            return False
+
+        csrf_token = headers.get('X-CSRF-Token') or headers.get('X-Csrf-Token') or headers.get('Csrf-Token')
+        if not csrf_token:
+            return False
+
+        return SecurityPolicy.validate_csrf_token(csrf_token)
 
     @staticmethod
     def generate_csrf_token() -> str:
@@ -103,6 +152,9 @@ class SecurityPolicy:
         Returns:
             True если токен валиден и не истёк, иначе False
         """
+        if not isinstance(token, str):
+            return False
+
         if token not in SecurityPolicy._csrf_tokens:
             return False
 
