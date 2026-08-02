@@ -11,8 +11,11 @@ Classes:
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import random
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
@@ -85,6 +88,97 @@ class SafetyInterpretability:
         self.circuits: Dict[str, List[str]] = {}
         self._discovered_circuits: List[SafetyCircuit] = []
         self._concept_bank: Dict[str, str] = {}
+
+    def generate_technical_debt_report(self, project_root: str = ".") -> Dict[str, Any]:
+        """Recursively scan project files for TODO/FIXME items and generate a technical debt report.
+
+        Args:
+            project_root: Root directory of the project to scan. Defaults to current directory.
+
+        Returns:
+            Dictionary containing technical debt report with keys:
+            - total_issues: Total number of TODO/FIXME items found
+            - issues_by_file: Dictionary mapping filenames to lists of issues
+            - critical_issues: List of critical issue locations
+            - suggestions: List of improvement suggestions
+
+        Raises:
+            ValueError: If project_root is not a valid directory
+        """
+        try:
+            root_path = Path(project_root)
+            if not root_path.is_dir():
+                raise ValueError(f"Project root {project_root} is not a valid directory")
+
+            todo_patterns = ["TODO", "FIXME", "HACK", "XXX"]
+            report: Dict[str, Any] = {
+                "total_issues": 0,
+                "issues_by_file": {},
+                "critical_issues": [],
+                "suggestions": []
+            }
+
+            for pattern in todo_patterns:
+                for file_path in root_path.rglob("*.py"):
+                    if any(part.startswith('.') or part == 'venv' for part in file_path.parts):
+                        continue
+
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            for line_num, line in enumerate(f, 1):
+                                if pattern in line.upper():
+                                    message = line.strip()
+                                    severity = "high" if pattern in ["FIXME", "HACK"] else "medium"
+
+                                    if file_path not in report["issues_by_file"]:
+                                        report["issues_by_file"][str(file_path)] = []
+
+                                    issue = {
+                                        "line": line_num,
+                                        "message": message,
+                                        "severity": severity
+                                    }
+                                    report["issues_by_file"][str(file_path)].append(issue)
+                                    report["total_issues"] += 1
+
+                                    if severity == "high":
+                                        report["critical_issues"].append(f"{file_path}:{line_num}")
+
+                    except (UnicodeDecodeError, PermissionError) as e:
+                        logger.debug(f"Skipping file {file_path}: {str(e)}")
+                        continue
+
+            if report["total_issues"] > 0:
+                report["suggestions"].append(
+                    f"Приоритизировать задачи в {', '.join(report['issues_by_file'].keys())}"
+                )
+
+            return report
+
+        except Exception as e:
+            logger.error(f"Failed to generate technical debt report: {str(e)}")
+            raise
+
+    def save_report_to_file(self, report: Dict[str, Any], filename: str = "technical_debt_report.json") -> None:
+        """Save technical debt report to a JSON file.
+
+        Args:
+            report: Technical debt report dictionary
+            filename: Output filename. Defaults to 'technical_debt_report.json'
+
+        Raises:
+            ValueError: If report is empty or filename is invalid
+        """
+        if not report or "total_issues" not in report:
+            raise ValueError("Invalid report data")
+
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(report, f, indent=2, ensure_ascii=False)
+            logger.info(f"Technical debt report saved to {filename}")
+        except Exception as e:
+            logger.error(f"Failed to save report to {filename}: {str(e)}")
+            raise
 
     def find_safety_circuit(self, model: Any, behavior: str) -> List[str]:
         """Finds a safety circuit for a given behavior (backward-compatible).
@@ -192,3 +286,21 @@ class SafetyInterpretability:
             "discovered_circuits": len(self._discovered_circuits),
             "concepts": len(self._concept_bank),
         }
+
+if __name__ == "__main__":
+    interpretability = SafetyInterpretability()
+    try:
+        report = interpretability.generate_technical_debt_report()
+        logger.info(f"Generated technical debt report with {report['total_issues']} issues")
+
+        if report["total_issues"] > 0:
+            interpretability.save_report_to_file(report)
+            logger.info("Critical issues found:")
+            for issue in report.get("critical_issues", []):
+                logger.info(f"  - {issue}")
+        else:
+            logger.info("No technical debt issues found")
+
+    except Exception as e:
+        logger.error(f"Error generating technical debt report: {str(e)}")
+        raise
