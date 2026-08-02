@@ -863,6 +863,25 @@ def phase_validate(code_result: dict) -> dict:
             except Exception as _sp_err:
                 print(f"    [SELF-PROTECT] check skipped: {_sp_err}")
 
+            # Self-protection v3.2b: import-smoke для модулей aios_core.
+            # Инцидент #2 (c87c3bd4): правка модуля оборвала `import aios_core` целиком
+            # (пропал StepStatus) — синтаксис валиден, поэтому прочие проверки это не ловят.
+            if code_result["file"].startswith("aios_core/") and code_result["file"].endswith(".py"):
+                try:
+                    import subprocess as _sp2
+                    _smoke = _sp2.run(
+                        ["/opt/aios/.venv/bin/python", "-c", "import aios_core"],
+                        capture_output=True, text=True, timeout=90, cwd=REPO_PATH,
+                    )
+                    if _smoke.returncode != 0:
+                        git_cmd("checkout", "--", code_result["file"])
+                        _err = (_smoke.stderr.strip().splitlines() or ["?"])[-1][:150]
+                        print(f"    [SELF-PROTECT] {code_result['file']} сломал import aios_core: {_err}; "
+                              f"рабочая копия восстановлена из HEAD, коммит заблокирован")
+                        return {"status": "failed", "reason": f"import smoke failed: {_err}"}
+                except Exception as _sm_err:
+                    print(f"    [SELF-PROTECT] import smoke skipped: {_sm_err}")
+
             # Lint gate (non-blocking): run ruff on the changed file if available.
             _warnings = list(code_result.get("warnings") or [])
             try:

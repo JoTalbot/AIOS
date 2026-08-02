@@ -40,7 +40,22 @@ for _env_path in (REPO / ".env", Path("/etc/aios/aios-auto-coder.env")):
             if _k.strip() and _k.strip() not in os.environ:
                 os.environ[_k.strip()] = _v.strip().strip('"').strip("'")
 
-from aios_core.self_protection import WATCH_FILES, check_code_health  # noqa: E402
+# ВАЖНО: загружаем модули защиты НАПРЯМУЮ по пути, минуя aios_core/__init__.py —
+# сторож должен работать даже когда сам пакет сломан (инцидент: orchestrator.py
+# оборвал import aios_core, и это как раз то, что сторож обязан чинить).
+import importlib.util as _iu  # noqa: E402
+
+
+def _load_file_module(name: str, path: Path):
+    spec = _iu.spec_from_file_location(name, str(path))
+    mod = _iu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_sp_mod = _load_file_module("aios_self_protection_direct", REPO / "aios_core" / "self_protection.py")
+WATCH_FILES = _sp_mod.WATCH_FILES
+check_code_health = _sp_mod.check_code_health
 
 TG_TOKEN = os.environ.get("AIOS_TELEGRAM_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TG_CHAT_ID = os.environ.get("AIOS_AUTO_CODER_CHAT_ID") or os.environ.get("TELEGRAM_CHAT_ID", "")

@@ -36,6 +36,10 @@ PROTECTED_PATTERNS = (
     "aios_core/self_protection.py",
     "aios_core/code_rag.py",
     "aios_core/autocoder_memory.py",
+    # Импортная цепочка пакета: инцидент 2026-08-02 #2 — auto-коммит c87c3bd4
+    # сжал orchestrator.py до 14 строк и оборвал import aios_core целиком
+    "aios_core/orchestrator.py",
+    "aios_core/__init__.py",
     # Сторож
     "scripts/selfguard.py",
     # Секреты и инфраструктура
@@ -53,6 +57,8 @@ WATCH_FILES = (
     "run_telegram_bot.py",
     "aios_core/autocoder_v3.py",
     "aios_core/llm_balancer.py",
+    "aios_core/orchestrator.py",
+    "aios_core/__init__.py",
 )
 
 
