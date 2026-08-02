@@ -6,8 +6,9 @@ Provides web browser automation, DOM scraping, form input, and click interaction
 from __future__ import annotations
 
 import html
+import re
 import time
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, field_validator, ValidationError
 
@@ -18,6 +19,7 @@ class WebRequestSchema(BaseModel):
     action: str
     selector: str = ""
     text: str = ""
+    token: Optional[str] = None
 
     @field_validator('url')
     def validate_url(cls, v: str) -> str:
@@ -39,11 +41,37 @@ class WebRequestSchema(BaseModel):
         """Sanitize input strings to prevent XSS."""
         return html.escape(v)
 
+    @field_validator('token')
+    def validate_token(cls, v: Optional[str]) -> Optional[str]:
+        """Validate token format and sanitize for XSS prevention."""
+        if v is None:
+            return v
+        if not re.match(r'^[a-zA-Z0-9_-]+$', v):
+            raise ValueError('Token contains invalid characters')
+        return v
+
 class WebAdapter:
-    """Universal Web Site / DOM automation adapter."""
+    """Universal Web Site / DOM automation adapter with security enhancements."""
 
     def __init__(self) -> None:
         self.execution_history: list[dict[str, Any]] = []
+
+    def _validate_and_sanitize_token(self, token: Optional[str]) -> bool:
+        """Validate token format and check for malicious patterns.
+
+        Args:
+            token: Token to validate
+
+        Returns:
+            bool: True if token is valid, False otherwise
+        """
+        if not token:
+            return False
+        try:
+            WebRequestSchema(token=token)
+            return True
+        except ValidationError:
+            return False
 
     def execute_web_action(
         self,
@@ -51,14 +79,20 @@ class WebAdapter:
         action: str,
         selector: str = "",
         text: str = "",
+        token: Optional[str] = None,
     ) -> dict[str, Any]:
         """Execute browser web automation action (navigate, click, type, scrape).
+
+        IMPORTANT: For security reasons, tokens should be passed in request body/headers,
+        NOT in URL parameters. This method accepts token parameter for backward compatibility
+        but logs a warning when token is provided via URL.
 
         Args:
             url: Target URL (must be http:// or https://)
             action: Type of action to perform (navigate, click, type, scrape)
             selector: CSS selector for the element to interact with
             text: Text to input (for type action)
+            token: Security token for API access (deprecated in URL, use headers/body)
 
         Returns:
             dict: Execution result with status and extracted data
@@ -66,12 +100,31 @@ class WebAdapter:
         Raises:
             ValidationError: If input parameters are invalid
         """
+        # Security check: warn if token is in URL
+        if token and "token=" in url:
+            import warnings
+            warnings.warn(
+                "Security warning: Token detected in URL parameters. "
+                "For security reasons, tokens should be passed in request body or headers.",
+                UserWarning
+            )
+
+        # Validate token if provided
+        if token and not self._validate_and_sanitize_token(token):
+            return {
+                "status": "error",
+                "error": "Invalid token format",
+                "details": "Token must contain only alphanumeric characters, underscores, and hyphens",
+                "timestamp": time.time(),
+            }
+
         try:
             validated_data = WebRequestSchema(
                 url=url,
                 action=action,
                 selector=selector,
-                text=text
+                text=text,
+                token=token
             )
         except ValidationError as e:
             return {
