@@ -27,6 +27,21 @@ fi
 cd "$STAGING_DIR"
 NEW=$(git log main..HEAD --oneline 2>/dev/null || true)
 if [[ -z "$NEW" ]]; then
+    # Even with no coder commits, keep local main in sync with origin so the
+    # parallel external agent's pushes don't let the branches drift apart.
+    cd "$PROD_DIR"
+    git fetch origin main 2>>"$LOG" || true
+    if ! git merge-base --is-ancestor origin/main main 2>/dev/null; then
+        if git merge origin/main --no-edit >/dev/null 2>&1; then
+            log "synced with origin/main (parallel agent): merged"
+            if [[ "${AIOS_AUTO_PUSH:-0}" == "1" ]] && git push origin main >/dev/null 2>&1; then
+                log "pushed synced main -> origin/main"
+            fi
+        else
+            log "sync merge with origin failed (conflict); aborting"
+            git merge --abort 2>/dev/null || true
+        fi
+    fi
     log "no new auto-coder commits to promote"; exit 0
 fi
 log "new commits:\n$NEW"
