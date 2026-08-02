@@ -189,3 +189,38 @@ groups:
     annotations:
       summary: 🚨 AIOS API Pod CrashLoopBackOff
       description: API pods are restarting frequently. Check pod logs immediately.
+
+  - alert: HighBalancerErrors
+    expr: sum(aios_balancer_errors_total) > 100
+    for: 10m
+    labels:
+      severity: warning
+      component: llm-balancer
+    annotations:
+      summary: "⚠️ Высокий уровень ошибок LLM балансировщика"
+      description: "Total balancer errors {{ $value }} за последние минуты. Проверьте ключи: Groq, OpenRouter, Airforce"
+  - alert: BalancerNoHealthyProviders
+    expr: sum(aios_balancer_requests_total) == 0
+    for: 15m
+    labels:
+      severity: critical
+      component: llm-balancer
+    annotations:
+      summary: "🔴 Нет успешных запросов балансировщика"
+      description: "Все провайдеры недоступны 15м, автокодер использует локаль"
+  - alert: TechDebtHigh
+    expr: aios_tech_debt_todos_total > 100
+    for: 0s
+    labels:
+      severity: info
+      component: tech-debt
+    annotations:
+      summary: "📊 Техдолг >100 TODO"
+  - alert: SecurityXSSFound
+    expr: aios_security_xss_total > 0
+    for: 0s
+    labels:
+      severity: warning
+      component: security
+    annotations:
+      summary: "⚠️ Найден XSS"
