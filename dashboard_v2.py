@@ -155,7 +155,7 @@ def v2_dashboard():
         ui.button("Main Dashboard", on_click=lambda: ui.navigate.to("/")).props("flat")
 
 def main():
-    ui.run(title="AIOS Dashboard v2 - Analytics", port=8081, host="0.0.0.0", reload=False)
+    ui.run(title="AIOS Dashboard v2 - Analytics", port=8081, host="127.0.0.1", reload=False)
 
 if __name__ in {"__main__", "__mp_main__"}:
     main()
