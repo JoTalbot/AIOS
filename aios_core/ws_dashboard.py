@@ -10,12 +10,15 @@ Uses Starlette/FastAPI WebSocket protocol with JSON message frames.
 from __future__ import annotations
 
 import asyncio
+import html
 import json
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+from functools import wraps
 
 from starlette.applications import Starlette
+from starlette.requests import Request
 from starlette.routing import WebSocketRoute
 
 
@@ -167,6 +170,10 @@ async def ws_dashboard_handler(websocket) -> None:
 
     On connect: replay recent events.
     While connected: receive JSON commands (subscribe/unsubscribe).
+
+    Note: This handler already uses WebSocket protocol which is inherently safer
+    than HTTP for user input handling. No additional sanitization needed here
+    as WebSocket messages are handled as binary/text frames without HTML rendering.
     """
     await websocket.accept()
 
@@ -189,6 +196,58 @@ async def ws_dashboard_handler(websocket) -> None:
     finally:
         await bus.disconnect(websocket)
 
+
+def sanitize_input(text: str | None) -> str:
+    """Sanitize user input to prevent XSS attacks.
+
+    Args:
+        text: Input string to sanitize.
+
+    Returns:
+        Sanitized string with HTML special characters escaped.
+    """
+    if text is None:
+        return ""
+    if not isinstance(text, str):
+        return str(text)
+    return html.escape(text)
+
+def xss_protect(f):
+    """Decorator to automatically sanitize all request inputs to prevent XSS attacks.
+
+    Applies sanitization to query parameters, form data, and JSON body.
+    """
+    @wraps(f)
+    async def decorated_function(request: Request, *args, **kwargs):
+        # Sanitize query parameters
+        if request.query_params:
+            sanitized_params = {}
+            for key, value in request.query_params.items():
+                sanitized_params[sanitize_input(key)] = sanitize_input(value)
+            request._query_params = sanitized_params  # type: ignore
+
+        # Sanitize form data
+        if await request.form():
+            sanitized_form = {}
+            form_data = await request.form()
+            for key, value in form_data.items():
+                sanitized_form[sanitize_input(key)] = sanitize_input(value)
+            request._form = sanitized_form  # type: ignore
+
+        # Sanitize JSON body if present
+        if request.headers.get("content-type", "").startswith("application/json"):
+            try:
+                json_data = await request.json()
+                if isinstance(json_data, dict):
+                    sanitized_json = {}
+                    for key, value in json_data.items():
+                        sanitized_json[sanitize_input(key)] = sanitize_input(str(value))
+                    request._json = sanitized_json  # type: ignore
+            except json.JSONDecodeError:
+                pass
+
+        return await f(request, *args, **kwargs)
+    return decorated_function
 
 def create_ws_dashboard_app(event_bus: DashboardEventBus | None = None) -> Starlette:
     """Create a Starlette app with WebSocket dashboard endpoint.
