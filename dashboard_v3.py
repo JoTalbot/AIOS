@@ -46,6 +46,20 @@ def _templates() -> dict:
     return _read_json(ROOT / "data" / "templates.json")
 
 
+def _inventory() -> list:
+    try:
+        return json.loads((ROOT / "data" / "inventory.json").read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def _finance() -> list:
+    try:
+        return json.loads((ROOT / "data" / "finance.json").read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
 def _olx_stats() -> dict:
     try:
         conn = sqlite3.connect(str(ROOT / "data" / "olx_http.sqlite"))
@@ -118,6 +132,34 @@ def build() -> None:
                 ui.label(f"• <b>{k}</b>: {v[:60]}").classes("text-sm").props("contenteditable=false")
         else:
             ui.label("Шаблонов пока нет")
+
+    # Склад
+    inv = _inventory()
+    with ui.card().classes("w-full"):
+        ui.label("📦 Склад").classes("text-lg font-bold")
+        if inv:
+            total_qty = sum(x.get("qty", 0) for x in inv)
+            total_val = sum(x.get("qty", 0) * x.get("price", 0) for x in inv)
+            ui.label(f"Деталей: {len(inv)} · всего шт: {total_qty} · запасы: {total_val} грн").classes("text-sm")
+            for x in inv[:12]:
+                mark = "✅" if x.get("qty", 0) > 0 else "❌"
+                ui.label(f"{mark} {x.get('name', '')} — {x.get('qty', 0)} шт · {x.get('price', 0)} грн").classes("text-sm")
+        else:
+            ui.label("Склад пуст")
+
+    # Финансы
+    fin = _finance()
+    with ui.card().classes("w-full"):
+        ui.label("💰 Финансы").classes("text-lg font-bold")
+        if fin:
+            sales = sum(x["amount"] for x in fin if x.get("kind") == "sale")
+            exp = sum(x["amount"] for x in fin if x.get("kind") == "expense")
+            ui.label(f"Продажи: {sales} · Расходы: {exp} · Прибыль: {sales - exp} грн").classes("text-sm")
+            for x in fin[-6:][::-1]:
+                em = "🟢" if x.get("kind") == "sale" else "🔴"
+                ui.label(f"{em} {x.get('date', '')[:16]} — {x.get('desc', '')} — {x.get('amount')} грн").classes("text-sm")
+        else:
+            ui.label("Нет операций")
 
     ui.run(host="127.0.0.1", port=8090, reload=False, show=False)
 

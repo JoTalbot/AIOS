@@ -13,6 +13,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -85,6 +86,38 @@ def export_gmail(n: int = 50) -> dict:
     return {"status": "ok", "file": xl, "rows": len(rows)}
 
 
+def export_finance(days: int = 30) -> dict:
+    """Экспорт финансов в CSV (для Google Sheets)."""
+    OUT.mkdir(parents=True, exist_ok=True)
+    try:
+        items = json.loads((ROOT / "data" / "finance.json").read_text(encoding="utf-8"))
+    except Exception:
+        items = []
+    since = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    recent = [x for x in items if x["date"][:10] >= since]
+    path = OUT / f"finance_{int(time.time())}.csv"
+    with open(path, "w", encoding="utf-8-sig") as f:
+        f.write("Дата;Тип;Сумма;Описание\n")
+        for x in recent:
+            f.write(f"{x['date']};{'продажа' if x['kind']=='sale' else 'расход'};{x['amount']};{x['desc']}\n")
+    return {"status": "ok", "file": str(path), "rows": len(recent)}
+
+
+def export_inventory() -> dict:
+    """Экспорт склада в CSV (для Google Sheets)."""
+    OUT.mkdir(parents=True, exist_ok=True)
+    try:
+        items = json.loads((ROOT / "data" / "inventory.json").read_text(encoding="utf-8"))
+    except Exception:
+        items = []
+    path = OUT / f"inventory_{int(time.time())}.csv"
+    with open(path, "w", encoding="utf-8-sig") as f:
+        f.write("Название;Кол-во;Цена;Категория\n")
+        for x in items:
+            f.write(f"{x.get('name','')};{x.get('qty',0)};{x.get('price',0)};{x.get('category','')}\n")
+    return {"status": "ok", "file": str(path), "rows": len(items)}
+
+
 def export_contacts(n: int = 200) -> dict:
     OUT.mkdir(parents=True, exist_ok=True)
     res = _run_ac(["google", "contacts_list", "--limit", str(n)])
@@ -110,6 +143,11 @@ def main() -> None:
         elif what == "contacts":
             n = int(sys.argv[2]) if len(sys.argv) > 2 else 200
             print(json.dumps(export_contacts(n), ensure_ascii=False))
+        elif what == "finance":
+            days = int(sys.argv[2]) if len(sys.argv) > 2 else 30
+            print(json.dumps(export_finance(days), ensure_ascii=False))
+        elif what == "inventory":
+            print(json.dumps(export_inventory(), ensure_ascii=False))
         else:
             print(json.dumps({"status": "error", "error": f"Неизвестно: {what}"}))
     except Exception as e:
