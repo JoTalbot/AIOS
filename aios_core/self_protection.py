@@ -40,6 +40,10 @@ PROTECTED_PATTERNS = (
     # сжал orchestrator.py до 14 строк и оборвал import aios_core целиком
     "aios_core/orchestrator.py",
     "aios_core/__init__.py",
+    # Инцидент 2026-08-02 #3: поэтапное поедание за утро (756->80 и др.)
+    "octopus_core/api_v2_batch.py",
+    "aios_core/advanced_security.py",
+    "aios_core/inter_swarm.py",
     # Сторож
     "scripts/selfguard.py",
     # Секреты и инфраструктура
@@ -59,6 +63,9 @@ WATCH_FILES = (
     "aios_core/llm_balancer.py",
     "aios_core/orchestrator.py",
     "aios_core/__init__.py",
+    "octopus_core/api_v2_batch.py",
+    "aios_core/advanced_security.py",
+    "aios_core/inter_swarm.py",
 )
 
 
