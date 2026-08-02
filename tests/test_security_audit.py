@@ -4,17 +4,8 @@ import pathlib
 from aios_core.security_audit import SecurityAuditor
 
 def test_audit_xss(tmp_path):
-    # Create file with innerHTML - ensure path does not contain "test" substring for xss check
-    # xss check skips if "test" in str(fpath), so we need to bypass by using tmp dir without test
-    # Instead test via direct content check
-    aud = SecurityAuditor(repo_path=str(tmp_path))
-    # Create file that will be detected
-    f = tmp_path / "bad.py"
-    f.write_text("element.innerHTML = user_input")
-    # Temporarily check logic: audit_xss filters by "test" in path, which would filter tmp_path if it contains test_
-    # So we create a subdir without test
     sub = tmp_path / "src"
-    sub.mkdir()
+    sub.mkdir(exist_ok=True)
     f2 = sub / "evil.py"
     f2.write_text("el.innerHTML = user_input")
     aud2 = SecurityAuditor(repo_path=str(sub))
@@ -23,17 +14,17 @@ def test_audit_xss(tmp_path):
     assert issues[0]["type"] in ("xss", "potential_xss")
 
 def test_audit_secrets(tmp_path):
-    f = tmp_path / "secrets.py"
+    sub = tmp_path / "src"
+    sub.mkdir(exist_ok=True)
+    f = sub / "myfile.py"
     f.write_text("key = 'sk-or-v1-abc123def456ghi789jkl'")
-    aud = SecurityAuditor(repo_path=str(tmp_path))
+    aud = SecurityAuditor(repo_path=str(sub))
     issues = aud.audit_secrets()
     assert isinstance(issues, list)
 
 def test_audit_dangerous_calls(tmp_path):
-    # dangerous_calls only checks aios_core/ prefix in original implementation
-    # So we test by creating aios_core structure inside tmp
     core_dir = tmp_path / "aios_core"
-    core_dir.mkdir()
+    core_dir.mkdir(exist_ok=True)
     f = core_dir / "danger.py"
     f.write_text("eval(user_input)")
     aud = SecurityAuditor(repo_path=str(tmp_path))
@@ -49,7 +40,7 @@ def test_generate_report():
 
 def test_audit_clean_file(tmp_path):
     sub = tmp_path / "src"
-    sub.mkdir()
+    sub.mkdir(exist_ok=True)
     f = sub / "clean.py"
     f.write_text("def add(a,b): return a+b")
     aud = SecurityAuditor(repo_path=str(sub))
