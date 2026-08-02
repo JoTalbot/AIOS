@@ -1168,7 +1168,13 @@ def run_cycle():
     _vs = validation.get("status", "skipped")
     _ms = commit_result.get("status", "skipped")
     try:
-        if _cs == "error":
+        if _cs == "unsafe":
+            tg_send(
+                "⚠️ <b>AIOS Coder: unsafe-генерация</b>\n"
+                f"Файл: <code>{code_result.get('file','?')}</code>\n"
+                f"Причины: {', '.join(code_result.get('warnings', [])[:3])}"
+            )
+        elif _cs == "error":
             tg_send(
                 "🚨 <b>AIOS Coder: ОШИБКА</b>\n"
                 f"Фаза CODE завершилась ошибкой:\n<code>{code_result.get('error','')[:300]}</code>"
