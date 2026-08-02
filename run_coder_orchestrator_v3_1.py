@@ -1,4 +1,5 @@
 import os, sys, time, argparse, json, urllib.request
+import subprocess
 from pathlib import Path
 REPO_PATH = os.environ.get("AIOS_REPO_PATH", "/root/AIOS")
 sys.path.insert(0, REPO_PATH)
@@ -166,6 +167,22 @@ def run_once():
     except Exception as e:
         print(f"Backlog save failed: {e}")
 
+def _git_return_to_main() -> None:
+    """Анти-стекинг: после цикла возвращаем HEAD на main.
+
+    Иначе ветка auto/v3/* нового цикла строится поверх ветки предыдущего цикла,
+    локальный main «отстаёт», а диффы PR раздуваются (проблема 2026-08-02).
+    Ошибки (например, dirty-tree при ручном деплое) не роняют цикл.
+    """
+    try:
+        r = subprocess.run(["git", "checkout", "main"], cwd=REPO_PATH,
+                           capture_output=True, text=True, timeout=20)
+        if r.returncode != 0:
+            print(f"  [GIT] return-to-main пропущен: {r.stderr.strip()[:120]}")
+    except Exception as e:
+        print(f"  [GIT] return-to-main ошибка: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="AIOS Coder v3.1 with interval and TG reports")
     parser.add_argument("--interval", type=int, default=60, help="Interval seconds (default 60s = 1 min)")
@@ -184,6 +201,8 @@ def main():
             except Exception as e:
                 print(f"Cycle error: {e}")
                 import traceback; traceback.print_exc()
+            finally:
+                _git_return_to_main()
             print(f"Sleeping {args.interval}s...")
             time.sleep(args.interval)
 
