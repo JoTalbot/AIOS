@@ -24,6 +24,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Optional
+from urllib.parse import urlparse, parse_qs
 
 logger = logging.getLogger(__name__)
 
@@ -260,6 +261,28 @@ class AdvancedSecurity:
             "active_keys": active_keys,
         }
 
+    def safe_get_request(self, url: str) -> dict[str, Any]:
+        """Safely process a GET request."""
+        try:
+            parsed_url = urlparse(url)
+            query_params = parse_qs(parsed_url.query)
+            request = {
+                "ip": parsed_url.netloc,
+                "body": "",
+                "query_params": query_params,
+            }
+            return request
+        except ValueError as e:
+            logger.error(f"Error parsing URL: {e}")
+            return {}
+
+    def process_get_request(self, url: str) -> bool:
+        """Process a GET request and detect threats."""
+        request = self.safe_get_request(url)
+        if not request:
+            return False
+        return self.detect_threat(request)
+
 
 class Authenticator:
     """Authenticates API requests."""
@@ -295,6 +318,12 @@ def main() -> None:
         print("Threat detected")
     else:
         print("No threat detected")
+
+    url = "http://example.com?param1=value1&param2=value2"
+    if security.process_get_request(url):
+        print("Threat detected in GET request")
+    else:
+        print("No threat detected in GET request")
 
 
 if __name__ == "__main__":
