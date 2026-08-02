@@ -32,7 +32,8 @@ import smtplib
 import subprocess
 import sys
 import time
-from datetime import datetime
+import urllib.parse
+from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -209,6 +210,79 @@ def gmail_list(n: int = 5, unread_only: bool = False) -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
+def _fetch_email_items(M, ids, n: int = 5, unread_only: bool = False) -> list:
+    """Общий загрузчик писем из IMAP-сессии (используется gmail_list / gmail_search)."""
+    items = []
+    for i in reversed(ids[-n:]):
+        try:
+            typ, msg_data = M.fetch(i, "(RFC822 FLAGS)")
+            raw = msg_data[0][1] if msg_data and msg_data[0] else None
+            flags = msg_data[0][0] if msg_data and msg_data[0] else b""
+            if not raw:
+                continue
+            msg = email.message_from_bytes(raw)
+            from_name, from_addr = email.utils.parseaddr(_decode_header(msg.get("From")))
+            subj = _decode_header(msg.get("Subject"))
+            date_raw = msg.get("Date", "")
+            body_text = ""
+            if msg.is_multipart():
+                for part in msg.walk():
+                    if part.get_content_type() == "text/plain":
+                        try:
+                            body_text = part.get_payload(decode=True).decode(
+                                part.get_content_charset() or "utf-8", errors="replace")
+                            break
+                        except Exception:
+                            continue
+            else:
+                try:
+                    body_text = msg.get_payload(decode=True).decode(
+                        msg.get_content_charset() or "utf-8", errors="replace")
+                except Exception:
+                    body_text = str(msg.get_payload())
+            items.append({
+                "id": i.decode(),
+                "from": f"{from_name} <{from_addr}>".strip() if from_name else from_addr,
+                "from_addr": from_addr,
+                "subject": subj or "(без темы)",
+                "date": date_raw,
+                "unread": b"\\Seen" not in flags,
+                "snippet": _clean(body_text, 220),
+            })
+        except Exception as e:
+            items.append({"error": str(e)[:150]})
+    return items
+
+
+def gmail_search(query: str, n: int = 5) -> dict:
+    """Поиск писем по теме/тексту через IMAP."""
+    pw = app_password()
+    if not pw:
+        return {"status": "error", "error": "Google app password не задан в .env"}
+    query = (query or "").strip().strip('"')
+    if not query:
+        return {"status": "error", "error": "Пустой запрос"}
+    try:
+        M = imaplib.IMAP4_SSL("imap.gmail.com", 993)
+        M.login(GOOGLE_EMAIL, pw)
+        M.select("INBOX")
+        ids = []
+        for cmd in (f'OR (SUBJECT "{query}") (BODY "{query}")', f'TEXT "{query}"'):
+            try:
+                typ, data = M.search(None, cmd)
+                if data and data[0]:
+                    ids = data[0].split()
+                    break
+            except Exception:
+                continue
+        total = len(ids)
+        items = _fetch_email_items(M, ids, n=n)
+        M.logout()
+        return {"status": "ok", "query": query, "total": total, "emails": items}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
 def gmail_send(to: str, subject: str, body: str, confirm: bool, dry_run: bool = False) -> dict:
     pw = app_password()
     if not pw:
@@ -323,6 +397,120 @@ async def google_screenshot(service: str) -> dict:
         await a.close()
 
 
+async def google_calendar_events() -> dict:
+    """Список событий на сегодня (day view, aria-labels) + скриншот."""
+    a = await _launch_google()
+    try:
+        page = await a._ensure_browser()
+        await page.goto("https://calendar.google.com/calendar/u/0/r/day",
+                        wait_until="domcontentloaded", timeout=45000)
+        await page.wait_for_timeout(7000)
+        title = await page.title()
+        labels = []
+        try:
+            labels = await page.eval_on_selector_all(
+                "[role='button'][aria-label]",
+                "els => els.map(e => e.getAttribute('aria-label'))")
+        except Exception:
+            pass
+        events = []
+        seen = set()
+        for lab in labels or []:
+            lab = (lab or "").strip()
+            if not lab or not re.search(r"\d{1,2}:\d{2}", lab):
+                continue
+            # пустые слоты: "пт, 2 авг 2026 г., 12:00 – 13:00" без текста события
+            tail = re.sub(r"^.*?\d{1,2}:\d{2}\s*[–—-]\s*\d{1,2}:\d{2}\s*", "", lab).strip()
+            if not tail:
+                continue
+            if lab not in seen:
+                seen.add(lab)
+                events.append(lab)
+        shot = f"{SHOTS}/aios_acct_cal_events_{int(time.time())}.png"
+        await page.screenshot(path=shot)
+        return {"status": "ok", "title": title, "events": events[:30], "screenshot": shot}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def google_calendar_add(title: str, date: str, time_str: str, desc: str,
+                              confirm: bool) -> dict:
+    """Создать событие календаря через eventedit-URL + кнопку «Зберегти»."""
+    a = await _launch_google()
+    try:
+        if not date:
+            date = datetime.now().strftime("%Y-%m-%d")
+        start_dt = datetime.strptime(f"{date} {time_str or '12:00'}", "%Y-%m-%d %H:%M")
+        end_dt = start_dt + timedelta(hours=1)
+        url = ("https://calendar.google.com/calendar/u/0/r/eventedit"
+               f"?text={urllib.parse.quote(title or 'Новая запись')}"
+               f"&dates={start_dt.strftime('%Y%m%dT%H%M%S')}/{end_dt.strftime('%Y%m%dT%H%M%S')}")
+        if desc:
+            url += f"&details={urllib.parse.quote(desc)}"
+        page = await a._ensure_browser()
+        await page.goto(url, wait_until="domcontentloaded", timeout=45000)
+        await page.wait_for_timeout(6000)
+        shot = f"{SHOTS}/aios_acct_cal_add_{int(time.time())}.png"
+        await page.screenshot(path=shot)
+        if not confirm:
+            return {"status": "need_confirm", "title": title, "start": start_dt.isoformat(),
+                    "end": end_dt.isoformat(), "screenshot": shot}
+        saved = False
+        for name in ("Зберегти", "Сохранить", "Save"):
+            try:
+                await page.get_by_role("button", name=name).first.click(timeout=4000)
+                saved = True
+                break
+            except Exception:
+                continue
+        if not saved:
+            return {"status": "error", "error": "Кнопка сохранения не найдена"}
+        await page.wait_for_timeout(4000)
+        return {"status": "ok", "title": title, "start": start_dt.isoformat(),
+                "end": end_dt.isoformat(), "url": page.url}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def google_docs_create(title: str, content: str) -> dict:
+    """Создать Google-документ (содержимое и название)."""
+    a = await _launch_google()
+    try:
+        page = await a._ensure_browser()
+        await page.goto("https://docs.google.com/document/create",
+                        wait_until="domcontentloaded", timeout=45000)
+        await page.wait_for_timeout(9000)
+        url = page.url
+        if content:
+            try:
+                editor = page.locator("div[contenteditable='true']").first
+                await editor.wait_for(state="visible", timeout=15000)
+                await editor.click()
+                await page.keyboard.type(content, delay=5)
+            except Exception:
+                pass
+        if title:
+            try:
+                ti = page.locator(".docs-title-input, input[aria-label*='азвание' i], "
+                                  "input[aria-label*='Name' i]").first
+                await ti.wait_for(state="visible", timeout=8000)
+                await ti.click()
+                await page.keyboard.press("Control+A")
+                await page.keyboard.type(title, delay=5)
+            except Exception:
+                pass
+        await page.wait_for_timeout(2000)
+        return {"status": "ok", "url": url, "title": title, "content_len": len(content or "")}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
 # --------------------------------------------------------------------------
 # Instagram (Chrome Twin адаптер)
 # --------------------------------------------------------------------------
@@ -420,6 +608,154 @@ async def instagram_screenshot() -> dict:
         await a.close()
 
 
+async def _ig_find_like_button(page):
+    """Найти кнопку лайка и вернуть (locator, label)."""
+    for sel in ("svg[aria-label*='Like']", "svg[aria-label*='Лайк']",
+                "svg[aria-label*='Подобає']", "button[aria-label*='Like']",
+                "button[aria-label*='Лайк']", "span[aria-label*='Like']",
+                "span[aria-label*='Лайк']", "span[aria-label*='Подобає']"):
+        try:
+            loc = page.locator(sel).first
+            await loc.wait_for(state="visible", timeout=3500)
+            label = ""
+            try:
+                label = await loc.get_attribute("aria-label") or ""
+            except Exception:
+                pass
+            return loc, label
+        except Exception:
+            continue
+    return None, ""
+
+
+async def instagram_like(url: str, confirm: bool) -> dict:
+    """Лайкнуть пост по URL. Если уже лайкнут — вернёт already_liked."""
+    a = await _instagram_adapter()
+    try:
+        page = await a._ensure_browser()
+        path = url.replace("https://www.instagram.com/", "").lstrip("/") if url.startswith("http") else url.lstrip("/")
+        await a._goto_ig(page, path)
+        await page.wait_for_timeout(3000)
+        loc, label = await _ig_find_like_button(page)
+        if not loc:
+            return {"status": "error", "error": "Кнопка лайка не найдена (пост недоступен или уже лайкнут)"}
+        low = label.lower()
+        already = any(k in low for k in ("unlike", "скасувати подоба", "убрать", "не нравится", "не подоба"))
+        if already:
+            return {"status": "already_liked", "url": url, "label": label}
+        if not confirm:
+            shot = f"{SHOTS}/aios_acct_ig_like_{int(time.time())}.png"
+            try:
+                await page.screenshot(path=shot)
+            except Exception:
+                shot = None
+            return {"status": "need_confirm", "action": "like", "url": url,
+                    "screenshot": shot}
+        await loc.click()
+        await page.wait_for_timeout(1500)
+        return {"status": "liked", "url": url}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def instagram_unlike(url: str, confirm: bool) -> dict:
+    """Убрать лайк с поста."""
+    a = await _instagram_adapter()
+    try:
+        page = await a._ensure_browser()
+        path = url.replace("https://www.instagram.com/", "").lstrip("/") if url.startswith("http") else url.lstrip("/")
+        await a._goto_ig(page, path)
+        await page.wait_for_timeout(3000)
+        loc, label = await _ig_find_like_button(page)
+        if not loc:
+            return {"status": "error", "error": "Кнопка лайка не найдена"}
+        low = label.lower()
+        liked = any(k in low for k in ("unlike", "скасувати подоба", "убрать", "не нравится", "не подоба"))
+        if not liked:
+            return {"status": "not_liked", "url": url}
+        if not confirm:
+            return {"status": "need_confirm", "action": "unlike", "url": url}
+        await loc.click()
+        await page.wait_for_timeout(1500)
+        return {"status": "unliked", "url": url}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def instagram_follow(username: str, action: str, confirm: bool) -> dict:
+    """Подписаться/отписаться. action: follow|unfollow."""
+    a = await _instagram_adapter()
+    try:
+        page = await a._ensure_browser()
+        await a._goto_ig(page, f"{username}/")
+        await page.wait_for_timeout(3000)
+
+        follow_sel = ("button:has-text('Стежити')", "button:has-text('Подписаться')",
+                      "button:has-text('Follow')", "button:has-text('Follow Back')")
+        unfollow_sel = ("button:has-text('Відстежується')", "button:has-text('Відстежуватися')",
+                        "button:has-text('Подписки')", "button:has-text('Following')")
+
+        btn = None
+        cur_state = None
+        for sel in follow_sel if action == "follow" else unfollow_sel:
+            try:
+                b = page.locator(sel).first
+                await b.wait_for(state="visible", timeout=3000)
+                btn = b
+                cur_state = sel
+                break
+            except Exception:
+                continue
+        if not btn:
+            # определить противоположное состояние
+            for sel in (follow_sel if action == "unfollow" else unfollow_sel):
+                try:
+                    b = page.locator(sel).first
+                    await b.wait_for(state="visible", timeout=2500)
+                    btn = b
+                    cur_state = sel
+                    break
+                except Exception:
+                    continue
+            if btn:
+                state_txt = (await btn.text_content() or "").strip()
+                if action == "follow":
+                    return {"status": "already_following", "username": username, "button": state_txt}
+                return {"status": "not_following", "username": username, "button": state_txt}
+            return {"status": "error", "error": "Кнопка подписки не найдена"}
+        state_txt = (await btn.text_content() or "").strip()
+
+        if not confirm:
+            shot = f"{SHOTS}/aios_acct_ig_follow_{int(time.time())}.png"
+            try:
+                await page.screenshot(path=shot)
+            except Exception:
+                shot = None
+            return {"status": "need_confirm", "action": action, "username": username,
+                    "button": state_txt, "screenshot": shot}
+        await btn.click()
+        await page.wait_for_timeout(2000)
+        # при отписке может быть попап подтверждения
+        if action == "unfollow":
+            for name in ("Відписатися", "Отписаться", "Unfollow", "Підтвердити", "Подтвердить"):
+                try:
+                    pop = page.get_by_role("button", name=name).first
+                    await pop.click(timeout=2000)
+                    break
+                except Exception:
+                    continue
+            await page.wait_for_timeout(1500)
+        return {"status": "ok", "action": action, "username": username}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
 # --------------------------------------------------------------------------
 # Main
 # --------------------------------------------------------------------------
@@ -440,10 +776,23 @@ def main():
     gs.add_argument("--body", default="")
     gs.add_argument("--confirm", action="store_true")
     gs.add_argument("--dry-run", action="store_true", dest="dry_run")
+    gsearch = gg.add_parser("gmail_search")
+    gsearch.add_argument("query")
+    gsearch.add_argument("n", nargs="?", type=int, default=5)
     gsc = gg.add_parser("screenshot")
     gsc.add_argument("service", nargs="?")
     gopen = gg.add_parser("open")
     gopen.add_argument("service", nargs="?")
+    gce = gg.add_parser("calendar_events")
+    gca = gg.add_parser("calendar_add")
+    gca.add_argument("--title", required=True)
+    gca.add_argument("--date", default="")
+    gca.add_argument("--time", default="")
+    gca.add_argument("--desc", default="")
+    gca.add_argument("--confirm", action="store_true")
+    gdc = gg.add_parser("docs_create")
+    gdc.add_argument("--title", default="")
+    gdc.add_argument("--content", default="")
 
     ig = sub.add_parser("instagram")
     igg = ig.add_subparsers(dest="action", required=True)
@@ -453,6 +802,16 @@ def main():
     igd = igg.add_parser("post")
     igd.add_argument("code")
     igg.add_parser("screenshot")
+    igl = igg.add_parser("like")
+    igl.add_argument("url")
+    igl.add_argument("--confirm", action="store_true")
+    igu = igg.add_parser("unlike")
+    igu.add_argument("url")
+    igu.add_argument("--confirm", action="store_true")
+    igf = igg.add_parser("follow")
+    igf.add_argument("username")
+    igf.add_argument("--action", choices=["follow", "unfollow"], default="follow")
+    igf.add_argument("--confirm", action="store_true")
 
     args = parser.parse_args()
 
@@ -464,6 +823,8 @@ def main():
                 out(gmail_list(args.n, args.unread))
             elif args.action == "gmail_send":
                 out(gmail_send(args.to, args.subject, args.body, args.confirm, args.dry_run))
+            elif args.action == "gmail_search":
+                out(gmail_search(args.query, args.n))
             elif args.action == "screenshot":
                 service = args.service or "gmail"
                 out(asyncio.run(google_screenshot(service)))
@@ -471,6 +832,13 @@ def main():
                 svc = getattr(args, "service", None) or "gmail"
                 out({"status": "ok", "service": svc,
                      "url": GOOGLE_URLS.get(svc, "unknown")})
+            elif args.action == "calendar_events":
+                out(asyncio.run(google_calendar_events()))
+            elif args.action == "calendar_add":
+                out(asyncio.run(google_calendar_add(args.title, args.date, args.time,
+                                                    args.desc, args.confirm)))
+            elif args.action == "docs_create":
+                out(asyncio.run(google_docs_create(args.title, args.content)))
         elif args.account == "instagram":
             if args.action == "profile":
                 out(asyncio.run(instagram_profile()))
@@ -480,6 +848,12 @@ def main():
                 out(asyncio.run(instagram_post(args.code)))
             elif args.action == "screenshot":
                 out(asyncio.run(instagram_screenshot()))
+            elif args.action == "like":
+                out(asyncio.run(instagram_like(args.url, args.confirm)))
+            elif args.action == "unlike":
+                out(asyncio.run(instagram_unlike(args.url, args.confirm)))
+            elif args.action == "follow":
+                out(asyncio.run(instagram_follow(args.username, args.action, args.confirm)))
     except Exception as e:
         out({"status": "error", "error": str(e)[:400]})
 

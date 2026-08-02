@@ -33,9 +33,15 @@ def _make_canned():
         ("google", "gmail_list", "5", "--unread"): {"status": "ok", "total": 10, "unread_total": 2, "emails": [
             {"id": "2", "from": "B <b@x.com>", "subject": "Срочно", "date": "Sat, 1 Aug 2026",
              "unread": True, "snippet": "важное"}, ]},
+        ("google", "gmail_search", "github", "5"): {"status": "ok", "total": 3, "emails": [
+            {"id": "9", "from": "GitHub <noreply@github.com>", "subject": "Re: PR",
+             "date": "Fri, 31 Jul 2026", "unread": False, "snippet": "комментарий"}, ]},
         ("google", "screenshot", "calendar"): {"status": "ok", "title": "Calendar",
                                                "url": "https://calendar.google.com",
                                                "screenshot": "/tmp/aios_acct_google_calendar_test.png"},
+        ("google", "calendar_events"): {"status": "ok", "title": "Calendar",
+                                        "events": ["Встреча 14:00", "Созвон 16:00"],
+                                        "screenshot": "/tmp/aios_acct_cal_events_test.png"},
         ("instagram", "profile"): {"status": "ok",
                                    "profile": {"username": "jo.talbot", "full_name": "Jo Talbot",
                                                "followers": 54, "following": 159, "posts_count": 0,
@@ -55,8 +61,10 @@ def _fake(monkeypatch):
         return canned.get(tuple(args), {"status": "error", "error": f"no canned {args}"})
 
     monkeypatch.setattr(m, "_run_account_control", fake_run)
-    m._pending_gmail_send.clear()
-    for p in ("/tmp/aios_acct_google_calendar_test.png", "/tmp/aios_acct_ig_test.png"):
+    m._pending_confirm.clear()
+    m._last_photo.clear()
+    for p in ("/tmp/aios_acct_google_calendar_test.png", "/tmp/aios_acct_ig_test.png",
+              "/tmp/aios_acct_cal_events_test.png"):
         Path(p).write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 64)
     yield
 
@@ -85,10 +93,29 @@ def test_instagram_profile_intent():
     assert api.photos, "ожидалось фото профиля"
 
 
-def test_calendar_intent():
+def test_calendar_screenshot_intent():
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "покажи календарь") is True
     assert api.photos
+
+
+def test_calendar_events_intent():
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "события на сегодня") is True
+    assert any("События на сегодня" in x for x in api.messages)
+    assert api.photos, "ожидался скрин календаря"
+
+
+def test_gmail_search_intent():
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "найди письмо от github") is True
+    assert any("Re: PR" in x for x in api.messages)
+
+
+def test_story_intent_not_supported():
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "опубликуй сторис") is True
+    assert any("Сторис" in x for x in api.messages)
 
 
 def test_unrelated_text_not_handled():
@@ -97,15 +124,90 @@ def test_unrelated_text_not_handled():
     assert api.messages == []
 
 
-def test_pending_send_confirmation(monkeypatch):
+def test_pending_gmail_send_confirmation(monkeypatch):
     def fake_run(args):
         if "gmail_send" in args and "--confirm" in args:
             return {"status": "sent", "to": args[3], "subject": "Тема"}
         return {"status": "error", "error": "?"}
 
     monkeypatch.setattr(m, "_run_account_control", fake_run)
-    m._pending_gmail_send[1] = {"to": "a@b.com", "subject": "Тема", "body": "Текст"}
+    m._pending_confirm[1] = {"kind": "gmail",
+                             "data": {"to": "a@b.com", "subject": "Тема", "body": "Текст"}}
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "да, отправь") is True
-    assert 1 not in m._pending_gmail_send
+    assert 1 not in m._pending_confirm
     assert any("Письмо отправлено" in x for x in api.messages)
+
+
+def test_calendar_add_flow(monkeypatch):
+    canned_cal = {"status": "need_confirm", "title": "Встреча", "start": "2026-08-03T14:00:00",
+                  "end": "2026-08-03T15:00:00", "screenshot": "/tmp/aios_acct_cal_add_test.png"}
+    Path("/tmp/aios_acct_cal_add_test.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 64)
+
+    def fake_run(args):
+        if args[0] == "google" and args[1] == "calendar_add" and "--confirm" not in args:
+            return canned_cal
+        if args[0] == "google" and args[1] == "calendar_add" and "--confirm" in args:
+            return {"status": "ok", "title": "Встреча", "start": "2026-08-03T14:00:00",
+                    "end": "2026-08-03T15:00:00", "url": "https://calendar.google.com/"}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    monkeypatch.setattr(m, "_llm_extract_calendar",
+                        lambda t: {"title": "Встреча", "date": "2026-08-03", "time": "14:00", "desc": ""})
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "добавь событие Встреча завтра в 14:00") is True
+    assert any("Подтвердите создание" in x for x in api.messages)
+    # подтверждаем
+    api2 = FakeAPI()
+    assert m._handle_account_intent(api2, 1, "да") is True
+    assert any("Событие создано" in x for x in api2.messages)
+
+
+def test_ig_like_flow(monkeypatch):
+    def fake_run(args):
+        if args[:3] == ["instagram", "like", url] and "--confirm" not in args:
+            return {"status": "need_confirm", "action": "like", "url": url}
+        if "--confirm" in args:
+            return {"status": "liked", "url": url}
+        return {"status": "error", "error": "?"}
+
+    url = "https://www.instagram.com/p/AbC123/"
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, f"лайкни {url}") is True
+    assert any("Поставить лайк" in x for x in api.messages)
+    api2 = FakeAPI()
+    assert m._handle_account_intent(api2, 1, "да") is True
+    assert any("Лайк поставлен" in x for x in api2.messages)
+
+
+def test_ig_follow_flow(monkeypatch):
+    def fake_run(args):
+        if args[:3] == ["instagram", "follow", "dawnrichard"] and "--confirm" not in args:
+            return {"status": "need_confirm", "action": "follow", "username": "dawnrichard"}
+        if "--confirm" in args:
+            return {"status": "ok", "action": "follow", "username": "dawnrichard"}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "подпишись на @dawnrichard") is True
+    assert any("подписаться на @dawnrichard" in x for x in api.messages)
+    api2 = FakeAPI()
+    assert m._handle_account_intent(api2, 1, "да") is True
+    assert any("подписался на @dawnrichard" in x for x in api2.messages)
+
+
+def test_docs_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "google" and args[1] == "docs_create":
+            return {"status": "ok", "url": "https://docs.google.com/document/d/x/"}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    monkeypatch.setattr(m, "_llm_extract_gmail",
+                        lambda t: {"subject": "Тест", "body": "Текст документа"})
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "создай документ") is True
+    assert any("Документ создан" in x for x in api.messages)
