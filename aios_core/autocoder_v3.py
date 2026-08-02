@@ -80,7 +80,25 @@ class AutocoderV3:
         
         # Index repo on init (lazy)
         self._indexed = False
-    
+
+        # v3.4: AGENTS.md — «конституция» репозитория (стандарт agents.md),
+        # подмешивается в промпт генерации, чтобы LLM соблюдала правила репо.
+        self.agents_md = self._load_agents_md()
+
+    def _load_agents_md(self) -> str:
+        """Читает AGENTS.md из корня репо. Обрезает до 12КБ. Пустая строка, если нет."""
+        try:
+            p = self.repo_path / "AGENTS.md"
+            if p.is_file():
+                text = p.read_text(encoding="utf-8", errors="replace")
+                if len(text) > 12000:
+                    text = text[:12000] + "\n<!-- truncated -->"
+                print(f"  📜 AGENTS.md загружен ({len(text)} символов)")
+                return text
+        except Exception as e:
+            print(f"  ⚠️ AGENTS.md не прочитан: {e}")
+        return ""
+
     def ensure_indexed(self):
         if not self._indexed:
             count = self.rag.index_repo(max_files=150)
@@ -125,6 +143,7 @@ class AutocoderV3:
 - Никакого текста вне блоков: ни markdown, ни пояснений
 - Type hints и docstrings в новом коде приветствуются
 - Запрещено: eval/exec, удаление существующих функций и классов без необходимости
+- Соблюдай правила репозитория из AGENTS.md (приведён выше): минимальные правки, без массовых удалений
 
 # Текущее содержимое файла {file_path} ({len(current_content)} символов):
 {current_content[:15000]}
@@ -138,8 +157,13 @@ class AutocoderV3:
 """
 
         # Build enhanced prompt
+        # v3.4: AGENTS.md блок первым — правила модель должна увидеть до контекста и задачи
+        agents_block = (
+            "# AGENTS.md — правила репозитория (СОБЛЮДАЙ СТРОГО, приоритет выше остального):\n"
+            + self.agents_md + "\n\n"
+        ) if getattr(self, "agents_md", "") else ""
         enhanced_instruction = f"""
-{rag_context}
+{agents_block}{rag_context}
 
 {memory_context}
 
