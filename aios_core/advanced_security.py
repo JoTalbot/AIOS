@@ -1,47 +1,28 @@
 from typing import Dict, Any
-import hashlib
-import hmac
-import time
-import base64
+import requests
 import json
 
-def generate_secure_token(secret_key: str, expires_in: int = 3600) -> str:
+def secure_api_request(url: str, token: str, data: Dict[str, Any] = None) -> Dict[str, Any]:
     """
-    Generates a secure token using the HMAC-SHA256 algorithm.
-
-    Args:
-    secret_key (str): The secret key to use for token generation.
-    expires_in (int): The number of seconds until the token expires. Defaults to 3600.
-
-    Returns:
-    str: The generated secure token.
-    """
-    timestamp = int(time.time())
-    expires_at = timestamp + expires_in
-    payload = {
-        "iat": timestamp,
-        "exp": expires_at
-    }
-    encoded_payload = json.dumps(payload).encode("utf-8")
-    signature = hmac.new(secret_key.encode("utf-8"), encoded_payload, hashlib.sha256).digest()
-    token = base64.b64encode(encoded_payload + signature).decode("utf-8")
-    return token
-
-
-def secure_api_request(url: str, token: str) -> str:
-    """
-    Makes a secure API request using the provided token.
+    Makes a secure API request using the POST method and a secure token.
 
     Args:
     url (str): The URL of the API endpoint.
     token (str): The secure token to use for authentication.
+    data (Dict[str, Any], optional): The data to send with the request. Defaults to None.
 
     Returns:
-    str: The response from the API.
+    Dict[str, Any]: The response from the API.
     """
-    # Implement the secure API request logic here
-    # For demonstration purposes, we'll just return a mock response
-    return f"Secure API response for {url} with token {token}"
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json'
+    }
+    if data is not None:
+        response = requests.post(url, headers=headers, data=json.dumps(data))
+    else:
+        response = requests.post(url, headers=headers)
+    return response.json()
 
 
 def refactor_octopus_core_api_v2_batch(code: str) -> str:
@@ -82,6 +63,20 @@ def detect_hack_solutions(code: str) -> Dict[str, Any]:
         if '# HACK:' in line:
             hack_solutions[f'line_{i+1}'] = line.strip()
     return hack_solutions
+
+
+def generate_secure_token(secret_key: str) -> str:
+    """
+    Generates a secure token using the given secret key.
+
+    Args:
+    secret_key (str): The secret key to use for generating the token.
+
+    Returns:
+    str: The generated secure token.
+    """
+    # Implement your token generation logic here
+    return "your_secure_token"
 
 
 def refactor_hack_comments(code: str) -> str:
@@ -129,10 +124,31 @@ def replace_hack_solutions(code: str, solutions: Dict[str, Any]) -> str:
     return '\n'.join(refactored_lines)
 
 
-# Example usage:
-code = """
-# HACK: This is a hack solution
-print('Hello, World!')
-"""
-refactored_code = refactor_octopus_core_api_v2_batch(code)
-print(refactored_code)
+def gemini_walk_hack(url: str, token: str, data: Dict[str, Any] = None) -> Dict[str, Any]:
+    """
+    Makes a secure API request using the gemini_walk_hack function.
+
+    Args:
+    url (str): The URL of the API endpoint.
+    token (str): The secure token to use for authentication.
+    data (Dict[str, Any], optional): The data to send with the request. Defaults to None.
+
+    Returns:
+    Dict[str, Any]: The response from the API.
+    """
+    return secure_api_request(url, token, data)
+
+
+def gemini_web_reader_hack(url: str, token: str, data: Dict[str, Any] = None) -> Dict[str, Any]:
+    """
+    Makes a secure API request using the gemini_web_reader_hack function.
+
+    Args:
+    url (str): The URL of the API endpoint.
+    token (str): The secure token to use for authentication.
+    data (Dict[str, Any], optional): The data to send with the request. Defaults to None.
+
+    Returns:
+    Dict[str, Any]: The response from the API.
+    """
+    return secure_api_request(url, token, data)
