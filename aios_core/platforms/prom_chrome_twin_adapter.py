@@ -120,40 +120,43 @@ class PromChromeTwinAdapter(ChromeTwinAdapter):
         return {"logged_in": logged, "url": url}
 
     async def account_info(self) -> Dict[str, Any]:
-        """Название магазина, количество товаров и заказов."""
+        """Информация аккаунта Prom: роль (покупатель/продавец), заказы покупателя."""
         login = await self.check_login()
         if not login.get("logged_in"):
             return {"status": "error", "error": "Prom не залогинен (войдите через VNC)"}
         page = await self._ensure_browser()
-        await self._goto(page, "https://my.prom.ua/")
+        await self._goto(page, "https://prom.ua/")
         body = ""
         try:
             body = await page.inner_text("body")
         except Exception:
             pass
         lines = [l.strip() for l in body.splitlines() if l.strip()]
-        # название магазина — обычно строка с «магазин»
-        shop = None
-        for l in lines[:40]:
-            low = l.lower()
-            if ("магазин" in low or "кабінет" in low) and len(l) < 60 and not l.isdigit():
-                shop = l
-                break
-        products = None
-        orders = None
-        m = re.search(r"товар[а-я]*\s*[:(]?\s*(\d[\d\s]*)", body, re.IGNORECASE)
-        if m:
-            products = int(re.sub(r"\D", "", m.group(1)))
-        m2 = re.search(r"заказ[а-я]*\s*[:(]?\s*(\d[\d\s]*)", body, re.IGNORECASE)
-        if m2:
-            orders = int(re.sub(r"\D", "", m2.group(1)))
+        # есть ли магазин продавца (my.prom.ua кабинет)
+        seller = "продавати на prom" in body.lower() or "почати продавати" in body.lower()
+        # имя пользователя — после клика «Кабінет» ищем строку, похожую на имя (2 слова с заглавной)
+        user_name = None
+        try:
+            el = page.locator("text=Кабінет").first
+            await el.click(force=True, timeout=4000)
+            await page.wait_for_timeout(2500)
+            body2 = await page.inner_text("body")
+            lines2 = [l.strip() for l in body2.splitlines() if l.strip()]
+            for l in lines2:
+                if re.search(r"\b[А-ЯІЇЄҐ][а-яіїєґ']+\s+[А-ЯІЇЄҐ][а-яіїєґ']+", l) \
+                        and len(l) < 50 and "кабінет" not in l.lower():
+                    user_name = l
+                    break
+        except Exception:
+            pass
         shot = f"/tmp/aios_acct_prom_{int(__import__('time').time())}.png"
         try:
             await page.screenshot(path=shot)
         except Exception:
             shot = None
-        return {"status": "ok", "shop": shop, "products": products, "orders": orders,
-                "screenshot": shot}
+        return {"status": "ok", "account_type": "покупатель (магазин продавца не найден)" if seller
+                else "продавец/пользователь", "user": user_name, "shop": None,
+                "products": None, "orders": None, "screenshot": shot}
 
     async def products(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Последние товары из кабинета (если страница доступна)."""

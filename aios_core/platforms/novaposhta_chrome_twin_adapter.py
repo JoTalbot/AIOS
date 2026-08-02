@@ -212,19 +212,26 @@ class NovaPoshtaChromeTwinAdapter(ChromeTwinAdapter):
     async def account_info(self) -> Dict[str, Any]:
         """Кабинет Новой Пошты (если залогинен)."""
         page = await self._ensure_browser()
-        await self._goto(page, "https://account.novaposhta.ua/")
-        await page.wait_for_timeout(5000)
+        await self._goto(page, "https://new.novaposhta.ua/dashboard/invoices-my")
+        await page.wait_for_timeout(8000)
         body = ""
         try:
             body = await page.inner_text("body")
         except Exception:
             pass
-        if "login" in page.url.lower() or "увійти" in body.lower() or "вход" in body.lower():
-            return {"status": "error", "error": "Кабинет Новой Пошты не залогинен (войдите через VNC)"}
         lines = [l.strip() for l in body.splitlines() if l.strip()]
+        # страница входа: URL login ИЛИ очень короткий текст (без меню кабинета)
+        is_login_page = "login" in page.url.lower() or \
+                        ("увійти" in body.lower() and "мої посилки" not in body.lower()) or \
+                        (len(lines) < 6 and "увійти" in body.lower())
+        if is_login_page:
+            return {"status": "error", "error": "Кабинет Новой Пошты не залогинен (войдите через VNC)"}
+        # ФИО — строка из 3 слов (заглавные или с большой буквы), без служебных слов
         name = None
-        for l in lines[:20]:
-            if l and len(l) < 60 and not l.isdigit() and "фіо" not in l.lower():
+        for l in lines:
+            if re.search(r"\b[А-ЯІЇЄҐ][А-ЯІЇЄҐа-яіїєґ']+\s+[А-ЯІЇЄҐ][А-ЯІЇЄҐа-яіїєґ']+\s+[А-ЯІЇЄҐ][А-ЯІЇЄҐа-яіїєґ']+", l) \
+                    and len(l) < 80 and "пошта" not in l.lower() and "договір" not in l.lower() \
+                    and "посилк" not in l.lower() and "накладн" not in l.lower():
                 name = l
                 break
         balance = None
