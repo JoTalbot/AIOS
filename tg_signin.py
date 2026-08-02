@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Завершение входа в личный Telegram: python tg_signin.py <код>
-(код придёт в Telegram/СМС после запроса, который уже отправлен).
+Завершение входа в личный Telegram.
+  python tg_signin.py <код>            — обычный вход
+  python tg_signin.py <код> <пароль2fa> — вход с 2FA
 """
 import asyncio
 import json
@@ -17,8 +18,9 @@ from telethon.errors import SessionPasswordNeededError  # noqa: E402
 
 async def main() -> None:
     code = sys.argv[1].strip() if len(sys.argv) > 1 else ""
+    pwd = sys.argv[2].strip() if len(sys.argv) > 2 else ""
     if not code:
-        print(json.dumps({"status": "error", "error": "Код не указан: python tg_signin.py <код>"}))
+        print(json.dumps({"status": "error", "error": "python tg_signin.py <код> [пароль2fa]"}))
         return
     client = TelegramClient(str(ROOT / "data" / "tg_userbot"), 7758033,
                             "7c2f1819ceab23fded0dcca82af7a580")
@@ -29,11 +31,18 @@ async def main() -> None:
         await client.disconnect()
         return
     try:
-        await client.sign_in("+380959052288", code)
+        await client.sign_in("+380959052288", code, phone_code_hash="cef489ed0bcaaad5d6")
     except SessionPasswordNeededError:
-        print(json.dumps({"status": "need_2fa", "error": "Включена 2FA — нужен пароль"}))
-        await client.disconnect()
-        return
+        if not pwd:
+            print(json.dumps({"status": "need_2fa", "error": "Нужен пароль 2FA: python tg_signin.py <код> <пароль>"}))
+            await client.disconnect()
+            return
+        try:
+            await client.sign_in(password=pwd)
+        except Exception as e:
+            print(json.dumps({"status": "error", "error": str(e)[:300]}, ensure_ascii=False))
+            await client.disconnect()
+            return
     except Exception as e:
         print(json.dumps({"status": "error", "error": str(e)[:300]}, ensure_ascii=False))
         await client.disconnect()
