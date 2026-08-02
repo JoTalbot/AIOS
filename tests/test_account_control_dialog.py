@@ -630,6 +630,61 @@ def test_export_intent(monkeypatch):
     Path("/tmp/test.xlsx").unlink(missing_ok=True)
 
 
+def test_finance_intent(monkeypatch):
+    import subprocess
+    def fake_run(*a, **k):
+        return type("R", (), {"stdout": '{"status": "ok", "entry": {"kind": "sale", "amount": 2000.0, "desc": "фара", "date": "2026-08-02 23:36"}, "total": 1}', "stderr": "", "returncode": 0})
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "запиши продажу 2000 фара BMW") is True
+    assert any("Записал" in x for x in api.messages)
+
+    def fake_run2(*a, **k):
+        return type("R", (), {"stdout": '{"status": "ok", "days": 30, "sales": 2000, "expenses": 350, "profit": 1650, "count": 2}', "stderr": "", "returncode": 0})
+    monkeypatch.setattr(subprocess, "run", fake_run2)
+    api2 = FakeAPI()
+    assert m._handle_account_intent(api2, 1, "сколько заработал за месяц") is True
+    assert any("Прибыль" in x for x in api2.messages)
+
+
+def test_olx_ad_gen_intent(monkeypatch):
+    import subprocess
+    def fake_run(*a, **k):
+        return type("R", (), {"stdout": '{"status": "ok", "title": "Фара BMW", "description": "Продаю", "price": "2000"}', "stderr": "", "returncode": 0})
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "создай объявление: фара BMW X5") is True
+    joined = "\n".join(api.messages)
+    assert "Сгенерировано объявление" in joined
+    assert "Фара BMW" in joined
+
+
+def test_olx_autoreply_toggle(monkeypatch):
+    cfg_file = m.PROJECT_ROOT / "data" / "olx_autoreply.json"
+    if cfg_file.exists():
+        cfg_file.unlink()
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "включи автоответ OLX") is True
+    assert any("Автоответ OLX включён" in x for x in api.messages)
+    cfg = json.loads(cfg_file.read_text(encoding="utf-8"))
+    assert cfg.get("enabled") is True
+    api2 = FakeAPI()
+    assert m._handle_account_intent(api2, 1, "выключи автоответ OLX") is True
+    cfg2 = json.loads(cfg_file.read_text(encoding="utf-8"))
+    assert cfg2.get("enabled") is False
+    cfg_file.unlink(missing_ok=True)
+
+
+def test_olx_boost_intent(monkeypatch):
+    import subprocess
+    def fake_run(*a, **k):
+        return type("R", (), {"stdout": '{"status": "ok", "ads_found": 3, "refresh_buttons": 1, "boosted": false, "ads_preview": ["Объявление 1"]}', "stderr": "", "returncode": 0})
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "мои объявления олх") is True
+    assert any("Объявления OLX" in x for x in api.messages)
+
+
 def test_ig_like_flow(monkeypatch):
     def fake_run(args):
         if args[:3] == ["instagram", "like", url] and "--confirm" not in args:
