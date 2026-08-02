@@ -40,6 +40,20 @@ class AutonomousTaskGraphExecutor:
         self.history: list[dict[str, Any]] = []
         self._active_contexts: dict[str, TaskContext] = {}
 
+    def _validate_todos_structure(self, todos: Any) -> list[str]:
+        """Validate and normalize TODO list structure.
+
+        Args:
+            todos: The todos data to validate
+
+        Returns:
+            Normalized list of TODO strings
+        """
+        if not isinstance(todos, list):
+            logger.warning("Invalid 'todos' type in context, expected list. Resetting.")
+            return []
+        return [t for t in todos if isinstance(t, str) and len(t.strip()) > 0]
+
     def _filter_context_todos(self, ctx: dict[str, Any], current_file: str) -> dict[str, Any]:
         """Filter out TODO items related to the specified file from context.
 
@@ -55,17 +69,11 @@ class AutonomousTaskGraphExecutor:
         clean execution state in long-running processes.
         """
         if "todos" in ctx:
-            todos = ctx.get("todos", [])
-            if not isinstance(todos, list):
-                logger.warning("Invalid 'todos' type in context, expected list. Resetting.")
-                ctx["todos"] = []
-            else:
-                # Filter todos to only include items not related to the current file
-                # This prevents stale TODOs from affecting new task execution
-                filtered_todos = [t for t in todos if current_file not in t and len(t.strip()) > 0]
-                if len(filtered_todos) != len(todos):
-                    logger.debug(f"Filtered todos for file '{current_file}': removed {len(todos) - len(filtered_todos)} items")
-                ctx["todos"] = filtered_todos
+            todos = self._validate_todos_structure(ctx["todos"])
+            filtered_todos = [t for t in todos if current_file not in t]
+            if len(filtered_todos) != len(todos):
+                logger.debug(f"Filtered todos for file '{current_file}': removed {len(todos) - len(filtered_todos)} items")
+            ctx["todos"] = filtered_todos
         return ctx
 
     def cleanup_todos_context(self, ctx: dict[str, Any], current_file: str) -> dict[str, Any]:
@@ -83,15 +91,11 @@ class AutonomousTaskGraphExecutor:
         general version of filter_todos_by_file that can be used throughout the codebase.
         """
         if "todos" in ctx:
-            todos = ctx["todos"]
-            if not isinstance(todos, list):
-                logger.warning("Invalid 'todos' type in context, expected list. Resetting.")
-                ctx["todos"] = []
-            else:
-                filtered_todos = [t for t in todos if current_file not in t]
-                if len(filtered_todos) != len(todos):
-                    logger.debug(f"Cleaned todos for file '{current_file}': removed {len(todos) - len(filtered_todos)} items")
-                ctx["todos"] = filtered_todos
+            todos = self._validate_todos_structure(ctx["todos"])
+            filtered_todos = [t for t in todos if current_file not in t]
+            if len(filtered_todos) != len(todos):
+                logger.debug(f"Cleaned todos for file '{current_file}': removed {len(todos) - len(filtered_todos)} items")
+            ctx["todos"] = filtered_todos
         return ctx
 
     def filter_todos_by_file(self, ctx: dict[str, Any], file: str) -> dict[str, Any]:
@@ -110,15 +114,11 @@ class AutonomousTaskGraphExecutor:
         if "todos" not in ctx:
             return ctx
 
-        todos = ctx["todos"]
-        if not isinstance(todos, list):
-            logger.warning("Invalid 'todos' type in context, expected list. Resetting.")
-            ctx["todos"] = []
-        else:
-            filtered_todos = [t for t in todos if file not in t]
-            if len(filtered_todos) != len(todos):
-                logger.debug(f"Filtered todos by file '{file}': removed {len(todos) - len(filtered_todos)} items")
-            ctx["todos"] = filtered_todos
+        todos = self._validate_todos_structure(ctx["todos"])
+        filtered_todos = [t for t in todos if file not in t]
+        if len(filtered_todos) != len(todos):
+            logger.debug(f"Filtered todos by file '{file}': removed {len(todos) - len(filtered_todos)} items")
+        ctx["todos"] = filtered_todos
         return ctx
 
     def _cleanup_stale_contexts(self) -> None:
@@ -194,7 +194,7 @@ class AutonomousTaskGraphExecutor:
             self._active_contexts[root_task_id] = TaskContext(
                 task_id=root_task_id,
                 dependencies=set(),
-                todos=context.get("todos", []),
+                todos=self._validate_todos_structure(context.get("todos", [])),
                 memory=context.get("memory", []),
                 priority=context.get("priority", 1)
             )
@@ -203,14 +203,9 @@ class AutonomousTaskGraphExecutor:
         current_ctx = self._active_contexts[root_task_id]
 
         # Filter out stale TODOs before processing
-        todos = current_ctx.todos
-        if not isinstance(todos, list):
-            logger.warning(f"Invalid todos type for task {current_ctx.task_id}, expected list. Resetting.")
-            todos = []
-
-        filtered_todos = [t for t in todos if len(t.strip()) > 0]
-        if len(filtered_todos) != len(todos):
-            logger.debug(f"Filtered empty/invalid todos for task {current_ctx.task_id}: removed {len(todos) - len(filtered_todos)} items")
+        filtered_todos = self._validate_todos_structure(current_ctx.todos)
+        if len(filtered_todos) != len(current_ctx.todos):
+            logger.debug(f"Filtered empty/invalid todos for task {current_ctx.task_id}: removed {len(current_ctx.todos) - len(filtered_todos)} items")
 
         current_ctx = TaskContext(
             task_id=current_ctx.task_id,
@@ -294,10 +289,10 @@ class AutonomousTaskGraphExecutor:
         if task_id:
             if task_id not in self._active_contexts:
                 return []
-            return [t for t in self._active_contexts[task_id].todos if len(t.strip()) > 0]
+            return self._validate_todos_structure(self._active_contexts[task_id].todos)
 
         # Return all active TODOs across all contexts
         todos = []
         for ctx in self._active_contexts.values():
-            todos.extend([t for t in ctx.todos if len(t.strip()) > 0])
+            todos.extend(self._validate_todos_structure(ctx.todos))
         return todos
