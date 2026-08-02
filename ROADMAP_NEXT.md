@@ -814,6 +814,16 @@ docker-compose -f docker-compose.prod.yml --profile bot up -d  # with Telegram
 - ✅ **Vector 5 (Planet-scale Swarm P2P)** — Поднята архитектура FastAPI для децентрализованного общения нод (`aios_core/p2p_network.py`), реализуя концепцию мульти-серверного роя.
 
 
+## v18.1.0 (Agent Autonomy) 🧬
+
+- ✅ **Автономный агент-кодер**: веб-исследование + 419 скиллов + AI-ревью + авто-промоут.
+- ✅ **Самообучение** (lessons из ошибок), auto-route скиллов по типу задачи.
+- ✅ **API health-гейт** в авто-промоуте (защита от поломок).
+- ✅ **Alertmanager → Telegram**: алерты о падении сервисов.
+- ✅ **Метрики автокодера в Prometheus** + Grafana-дашборд.
+- ✅ Устойчивость к параллельному агенту, внешние LLM, бэкапы.
+
+
 ## v19.0.0 (The Skynet Epoch) 🌌
 - ✅ **Vector 1 (Commercial RPA)** — Запущен пайплайн `run_commercial_pipeline.py`. Рой самостоятельно ищет лиды, анализирует их через LLM и отправляет в Telegram.
 - ✅ **Vector 2 (Deep RAG Memory)** — ChromaDB интегрирована в `SwarmAgent`. Агенты получают векторный контекст прошлых дебатов перед каждым новым ответом.
