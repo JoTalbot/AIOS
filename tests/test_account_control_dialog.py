@@ -211,3 +211,45 @@ def test_docs_intent(monkeypatch):
     api = FakeAPI()
     assert m._handle_account_intent(api, 1, "создай документ") is True
     assert any("Документ создан" in x for x in api.messages)
+
+
+def test_dm_list_intent(monkeypatch):
+    def fake_run(args):
+        if args[:3] == ["instagram", "dm_list", "10"]:
+            return {"status": "ok", "threads": [
+                {"name": "Серега Потуроев", "preview": "Привет", "time": "1 год"}]}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "директ") is True
+    assert any("Чаты Direct" in x for x in api.messages)
+
+
+def test_dm_read_intent(monkeypatch):
+    def fake_run(args):
+        if args[0] == "instagram" and args[1] == "dm_read":
+            return {"status": "ok", "messages": [{"text": "привет"}, {"text": "как дела"}]}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "покажи чат Серега") is True
+    assert any("Последние сообщения" in x for x in api.messages)
+
+
+def test_dm_send_intent(monkeypatch):
+    def fake_run(args):
+        if args[:3] == ["instagram", "dm_send", "Серега"] and "--confirm" not in args:
+            return {"status": "need_confirm"}
+        if "--confirm" in args:
+            return {"status": "sent", "thread": "Серега", "text": "привет"}
+        return {"status": "error", "error": "?"}
+
+    monkeypatch.setattr(m, "_run_account_control", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "напиши в директ Серега: привет") is True
+    assert any("Подтвердите" in x for x in api.messages)
+    api2 = FakeAPI()
+    assert m._handle_account_intent(api2, 1, "да") is True
+    assert any("Отправлено" in x for x in api2.messages)

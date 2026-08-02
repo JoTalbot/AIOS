@@ -254,6 +254,110 @@ def _fetch_email_items(M, ids, n: int = 5, unread_only: bool = False) -> list:
     return items
 
 
+def gmail_read(msg_id: str, max_chars: int = 3000) -> dict:
+    """Прочитать полное тело письма по ID (IMAP)."""
+    pw = app_password()
+    if not pw:
+        return {"status": "error", "error": "Google app password не задан в .env"}
+    try:
+        M = imaplib.IMAP4_SSL("imap.gmail.com", 993)
+        M.login(GOOGLE_EMAIL, pw)
+        M.select("INBOX")
+        typ, data = M.fetch(msg_id, "(RFC822 FLAGS)")
+        if not data or not data[0]:
+            return {"status": "error", "error": "Письмо не найдено"}
+        raw = data[0][1]
+        flags = data[0][0]
+        msg = email.message_from_bytes(raw)
+        from_name, from_addr = email.utils.parseaddr(_decode_header(msg.get("From")))
+        body_parts = []
+        if msg.is_multipart():
+            for part in msg.walk():
+                ct = part.get_content_type()
+                if ct == "text/plain":
+                    try:
+                        body_parts.append(part.get_payload(decode=True).decode(
+                            part.get_content_charset() or "utf-8", errors="replace"))
+                    except Exception:
+                        continue
+                elif ct == "text/html" and not body_parts:
+                    try:
+                        body_parts.append(part.get_payload(decode=True).decode(
+                            part.get_content_charset() or "utf-8", errors="replace"))
+                    except Exception:
+                        continue
+        else:
+            try:
+                body_parts.append(msg.get_payload(decode=True).decode(
+                    msg.get_content_charset() or "utf-8", errors="replace"))
+            except Exception:
+                body_parts.append(str(msg.get_payload()))
+        body = "\n".join(body_parts)
+        if "<" in body and ">" in body:
+            body = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", body, flags=re.DOTALL | re.IGNORECASE)
+            body = re.sub(r"<[^>]+>", " ", body)
+        body = re.sub(r"[ \t]+", " ", body)
+        body = re.sub(r"\n\s*\n+", "\n", body).strip()
+        M.logout()
+        return {
+            "status": "ok",
+            "id": msg_id,
+            "from": f"{from_name} <{from_addr}>".strip() if from_name else from_addr,
+            "subject": _decode_header(msg.get("Subject")),
+            "date": msg.get("Date", ""),
+            "unread": b"\\Seen" not in flags,
+            "body": body[:max_chars],
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+def gmail_reply(msg_id: str, text: str, confirm: bool) -> dict:
+    """Ответить на письмо (SMTP с In-Reply-To/References)."""
+    pw = app_password()
+    if not pw:
+        return {"status": "error", "error": "Google app password не задан в .env"}
+    text = (text or "").strip()
+    if not text:
+        return {"status": "error", "error": "Пустой текст ответа"}
+    try:
+        M = imaplib.IMAP4_SSL("imap.gmail.com", 993)
+        M.login(GOOGLE_EMAIL, pw)
+        M.select("INBOX")
+        typ, data = M.fetch(msg_id, "(RFC822)")
+        if not data or not data[0]:
+            return {"status": "error", "error": "Письмо не найдено"}
+        orig = email.message_from_bytes(data[0][1])
+        M.logout()
+        orig_subj = _decode_header(orig.get("Subject")) or "(без темы)"
+        orig_msg_id = orig.get("Message-ID", "")
+        in_reply_to = orig_msg_id
+        refs = (orig.get("References") or "")
+        if refs:
+            refs = f"{refs} {orig_msg_id}".strip()
+        else:
+            refs = orig_msg_id
+        to = orig.get("Reply-To") or orig.get("From")
+        if not confirm:
+            return {"status": "need_confirm", "action": "gmail_reply", "msg_id": msg_id,
+                    "to": to, "subject": f"Re: {orig_subj}", "text": text[:200]}
+        msg = email.message.EmailMessage()
+        msg["From"] = GOOGLE_EMAIL
+        msg["To"] = to
+        msg["Subject"] = f"Re: {orig_subj}"
+        if in_reply_to:
+            msg["In-Reply-To"] = in_reply_to
+        if refs:
+            msg["References"] = refs
+        msg.set_content(text)
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30) as s:
+            s.login(GOOGLE_EMAIL, pw)
+            s.send_message(msg)
+        return {"status": "sent", "to": to, "subject": f"Re: {orig_subj}"}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
 def gmail_search(query: str, n: int = 5) -> dict:
     """Поиск писем по теме/тексту через IMAP."""
     pw = app_password()
@@ -429,6 +533,139 @@ async def google_calendar_events() -> dict:
         shot = f"{SHOTS}/aios_acct_cal_events_{int(time.time())}.png"
         await page.screenshot(path=shot)
         return {"status": "ok", "title": title, "events": events[:30], "screenshot": shot}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def google_calendar_week() -> dict:
+    """События на ближайшие 7 дней (week view) + скриншот."""
+    a = await _launch_google()
+    try:
+        page = await a._ensure_browser()
+        await page.goto("https://calendar.google.com/calendar/u/0/r/week",
+                        wait_until="domcontentloaded", timeout=45000)
+        await page.wait_for_timeout(8000)
+        title = await page.title()
+        labels = []
+        try:
+            labels = await page.eval_on_selector_all(
+                "[role='button'][aria-label]",
+                "els => els.map(e => e.getAttribute('aria-label'))")
+        except Exception:
+            pass
+        events = []
+        seen = set()
+        for lab in labels or []:
+            lab = (lab or "").strip()
+            if not re.search(r"\d{1,2}:\d{2}", lab):
+                continue
+            tail = re.sub(r"^.*?\d{1,2}:\d{2}\s*[–—-]\s*\d{1,2}:\d{2}\s*", "", lab).strip()
+            if not tail or lab in seen:
+                continue
+            seen.add(lab)
+            events.append(lab)
+        shot = f"{SHOTS}/aios_acct_cal_week_{int(time.time())}.png"
+        await page.screenshot(path=shot)
+        return {"status": "ok", "title": title, "events": events[:40], "screenshot": shot}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+_DRIVE_JS = """() => {
+    const vis = [...document.body.querySelectorAll('div, span')]
+        .filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; })
+        .filter(e => !e.closest('[role="button"], nav, header'));
+    const out = [];
+    for (const e of vis) {
+        if (e.querySelector('div, span')) continue;
+        const t = (e.textContent || '').trim().replace(/\\s+/g, ' ');
+        if (t && t.length < 120 && t.length > 1) out.push(t);
+    }
+    return out;
+}"""
+
+_DRIVE_NOISE = ("перейти к основному контенту", "быстрые клавиши", "отзыв о специальных возможностях",
+                "фильтры не применены", "название", "дата изменения", "посмотреть параметры сортировки",
+                "другие действия (alt + a)", "поделиться", "скачать", "переименовать", "предоставить доступ")
+
+
+def _is_drive_date(text: str) -> bool:
+    return bool(re.search(r"^\d{1,2}\s+[а-я]+\\.?|^\d{1,2}\s+\w+\s+\d{4}", text.lower())) or \
+           bool(re.fullmatch(r"[\w.]{2,9}", text) and re.search(r"июл|авг|сен|окт|ноя|дек|янв|фев|мар|апр|мая|июн", text.lower()))
+
+
+async def google_drive_list(limit: int = 20) -> dict:
+    """Список файлов/папок Google Диска (My Drive) — имена из видимых текстов."""
+    a = await _launch_google()
+    try:
+        page = await a._ensure_browser()
+        await page.goto("https://drive.google.com/drive/u/0/my-drive",
+                        wait_until="domcontentloaded", timeout=45000)
+        await page.wait_for_timeout(9000)
+        shot = f"{SHOTS}/aios_acct_drive_list_{int(time.time())}.png"
+        await page.screenshot(path=shot)
+        texts = await page.evaluate(_DRIVE_JS) or []
+        names = []
+        seen = set()
+        for t in texts:
+            low = t.lower()
+            if any(n in low for n in _DRIVE_NOISE) or _is_drive_date(t):
+                continue
+            if t in seen:
+                continue
+            seen.add(t)
+            names.append(t)
+            if len(names) >= limit:
+                break
+        return {"status": "ok", "files": [{"title": n} for n in names], "screenshot": shot}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def google_drive_download(file_ref: str) -> dict:
+    """Скачать файл с Диска по ID или имени (через сессию браузера)."""
+    a = await _launch_google()
+    try:
+        page = await a._ensure_browser()
+        # если не ID — поищем имя в списке
+        file_id = file_ref.strip()
+        if not re.fullmatch(r"[\w-]{10,}", file_id):
+            await page.goto("https://drive.google.com/drive/u/0/my-drive",
+                            wait_until="domcontentloaded", timeout=45000)
+            await page.wait_for_timeout(8000)
+            links = await page.eval_on_selector_all(
+                "a[href*='/file/d/']",
+                """els => els.map(e => ({href: e.getAttribute('href'), text: (e.textContent||'').trim()}))""")
+            found = None
+            for l in links:
+                if file_ref.lower() in (l["text"] or "").lower():
+                    m = re.search(r"/file/d/([\w-]+)", l["href"] or "")
+                    if m:
+                        found = m.group(1)
+                        break
+            if not found:
+                return {"status": "error", "error": f"Файл «{file_ref}» не найден на Диске"}
+            file_id = found
+        # скачивание через export URL (куки сессии браузера)
+        url = f"https://drive.google.com/uc?export=download&id={file_id}"
+        resp = await a._context.request.get(url)
+        if resp.status != 200:
+            return {"status": "error", "error": f"HTTP {resp.status} при скачивании"}
+        content = await resp.body()
+        # имя файла из Content-Disposition
+        cd = resp.headers.get("content-disposition", "")
+        m = re.search(r"filename\*?=(?:UTF-8'')?\"?([^\";]+)", cd)
+        fname = (m.group(1) if m else f"drive_{file_id}").replace('"', "")
+        path = f"{SHOTS}/aios_acct_drive_dl_{int(time.time())}_{fname}"
+        Path(path).write_bytes(content)
+        return {"status": "ok", "file_id": file_id, "path": path, "size": len(content),
+                "name": fname}
     except Exception as e:
         return {"status": "error", "error": str(e)[:300]}
     finally:
@@ -686,6 +923,224 @@ async def instagram_unlike(url: str, confirm: bool) -> dict:
         await a.close()
 
 
+# --------------------------------------------------------------- Direct (DM)
+_DM_NOISE = {
+    "primary", "general", "requests", "що нового", "ваша нотатка", "повідомлення",
+    "сообщения", "search", "пошук", "переглянути профіль", "instagram", "сьогодні",
+    "вчора", "вчера", "yesterday", "today", "·", "1 рік", "7 р.",
+}
+
+
+def _clean_dm_line(line: str) -> str:
+    line = (line or "").strip()
+    if not line or len(line) < 2:
+        return ""
+    low = line.lower()
+    if low in _DM_NOISE:
+        return ""
+    if re.fullmatch(r"[\d\s.,:—–\-]+", line):
+        return ""
+    return line
+
+
+_DM_ROW_JS = """els => els.map(e => {
+    const spans = [...e.querySelectorAll('span')]
+        .map(s => (s.textContent || '').trim())
+        .filter(t => t && t !== '·');
+    const uniq = [];
+    for (const s of spans) if (!uniq.includes(s)) uniq.push(s);
+    return uniq.slice(0, 3);
+})"""
+
+_DM_HEADER_ROWS = {"jo.talbot", "нове повідомлення", "новое сообщение",
+                   "написати повідомлення", "написать сообщение", "запити", "запросы",
+                   "ваша нотатка", "ваша заметка"}
+
+
+async def instagram_dm_list(limit: int = 10) -> dict:
+    """Список чатов Direct (имя, превью, время) через DOM строк диалогов."""
+    a = await _instagram_adapter()
+    try:
+        page = await a._ensure_browser()
+        await a._goto_ig(page, "direct/inbox/")
+        await page.wait_for_timeout(6000)
+        rows = await page.eval_on_selector_all("div[role='button']", _DM_ROW_JS)
+        threads = []
+        for row in rows:
+            if not row or not row[0]:
+                continue
+            name = row[0]
+            if name.lower() in _DM_HEADER_ROWS or name.lower().startswith("що нового"):
+                continue
+            threads.append({
+                "name": name,
+                "preview": row[1] if len(row) > 1 else "",
+                "time": row[2] if len(row) > 2 else "",
+            })
+            if len(threads) >= limit:
+                break
+        return {"status": "ok", "threads": threads}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def _open_thread(page, thread: str):
+    """Открыть чат по имени (клик) или по id (URL)."""
+    thread = (thread or "").strip()
+    if thread.isdigit():
+        await page.goto(f"https://www.instagram.com/direct/t/{thread}/",
+                        wait_until="domcontentloaded", timeout=45000)
+        await page.wait_for_timeout(4000)
+        return
+    # по имени: идём в inbox и кликаем по тексту
+    await page.goto("https://www.instagram.com/direct/inbox/",
+                    wait_until="domcontentloaded", timeout=45000)
+    await page.wait_for_timeout(5000)
+    el = page.locator(f"text={thread}").first
+    await el.wait_for(state="visible", timeout=8000)
+    await el.click()
+    await page.wait_for_timeout(5000)
+
+
+_MSG_JS = """() => {
+    const visible = [...document.body.querySelectorAll('div, span, p, section, main')]
+        .filter(e => {
+            const r = e.getBoundingClientRect();
+            const st = getComputedStyle(e);
+            return r.width > 0 && r.height > 0 && st.visibility !== 'hidden' && st.display !== 'none';
+        })
+        .filter(e => !e.closest('[role="button"], nav, header, [role="navigation"]'));
+    const texts = [];
+    for (const e of visible) {
+        if (e.querySelector('div, span, p, section, main')) continue;
+        const t = (e.textContent || '').trim().replace(/\\s+/g, ' ');
+        if (t && t.length > 0 && t.length < 300 && !t.startsWith('{') && !t.startsWith('[')) texts.push(t);
+    }
+    return texts;
+}"""
+
+_MSG_NOISE = ("переглянути профіль", "повідомлення", "схваліть", "пошук",
+              "надіслати повідомлення", "сьогодні", "вчора", "yesterday", "today",
+              "ваша нотатка", "підтвердіть", "відеодзвінок", "сповіщення", "новий допис",
+              "професійна панель", "налаштування", "також від meta", "повідомлення...",
+              "значок із шевроном", "головна", "reels", "· instagram", "instagram")
+
+
+async def _extract_messages(page, limit: int = 15) -> list[dict]:
+    """Извлечь сообщения чата: видимые листовые тексты вне сайдбара."""
+    msgs = []
+    seen = set()
+    try:
+        texts = await page.evaluate(_MSG_JS)
+        for t in texts or []:
+            t = (t or "").strip()
+            low = t.lower()
+            if any(k in low for k in _MSG_NOISE):
+                continue
+            if len(t) < 2 or t in seen:
+                continue
+            seen.add(t)
+            msgs.append({"text": t})
+    except Exception:
+        pass
+    if not msgs:
+        try:
+            body = await page.inner_text("body")
+            for l in body.splitlines():
+                l = _clean_dm_line(l)
+                low = l.lower()
+                if l and l not in seen and not any(k in low for k in _MSG_NOISE):
+                    seen.add(l)
+                    msgs.append({"text": l})
+        except Exception:
+            pass
+    return msgs[-limit:]
+
+
+async def instagram_dm_read(thread: str, limit: int = 15) -> dict:
+    """Прочитать последние сообщения чата."""
+    a = await _instagram_adapter()
+    try:
+        page = await a._ensure_browser()
+        await _open_thread(page, thread)
+        msgs = await _extract_messages(page, limit)
+        return {"status": "ok", "thread": thread, "messages": msgs,
+                "url": page.url}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def instagram_dm_send(thread: str, text: str, confirm: bool) -> dict:
+    """Отправить сообщение в существующий чат."""
+    a = await _instagram_adapter()
+    try:
+        page = await a._ensure_browser()
+        await _open_thread(page, thread)
+        composer = page.locator("div[role=textbox][contenteditable=true]").first
+        await composer.wait_for(state="visible", timeout=10000)
+        await composer.click()
+        if not confirm:
+            return {"status": "need_confirm", "action": "dm_send", "thread": thread,
+                    "text": text[:200]}
+        await page.keyboard.type(text, delay=20)
+        await page.wait_for_timeout(500)
+        await page.keyboard.press("Enter")
+        await page.wait_for_timeout(1500)
+        return {"status": "sent", "thread": thread, "text": text[:200]}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
+async def instagram_dm_new(username: str, text: str, confirm: bool) -> dict:
+    """Новый чат: поиск пользователя в /direct/new/ и отправка."""
+    a = await _instagram_adapter()
+    try:
+        page = await a._ensure_browser()
+        await page.goto("https://www.instagram.com/direct/new/",
+                        wait_until="domcontentloaded", timeout=45000)
+        await page.wait_for_timeout(5000)
+        # поле поиска
+        search = page.locator("input[placeholder*='Пошук'], input[placeholder*='Search'], input[aria-label*='Пошук']").first
+        await search.wait_for(state="visible", timeout=10000)
+        await search.fill(username)
+        await page.wait_for_timeout(3000)
+        # клик по результату (обычно div с username)
+        res = page.locator(f"text={username}").first
+        await res.wait_for(state="visible", timeout=8000)
+        await res.click()
+        await page.wait_for_timeout(2000)
+        # кнопка «Чат» / «Далі»
+        for name in ("Чат", "Chat", "Далі", "Далее", "Next"):
+            try:
+                btn = page.get_by_role("button", name=name).first
+                await btn.click(timeout=2500)
+                break
+            except Exception:
+                continue
+        await page.wait_for_timeout(3000)
+        composer = page.locator("div[role=textbox][contenteditable=true]").first
+        await composer.wait_for(state="visible", timeout=10000)
+        await composer.click()
+        if not confirm:
+            return {"status": "need_confirm", "action": "dm_new", "username": username,
+                    "text": text[:200]}
+        await page.keyboard.type(text, delay=20)
+        await page.wait_for_timeout(500)
+        await page.keyboard.press("Enter")
+        await page.wait_for_timeout(1500)
+        return {"status": "sent", "username": username, "text": text[:200]}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+    finally:
+        await a.close()
+
+
 async def instagram_follow(username: str, action: str, confirm: bool) -> dict:
     """Подписаться/отписаться. action: follow|unfollow."""
     a = await _instagram_adapter()
@@ -784,6 +1239,7 @@ def main():
     gopen = gg.add_parser("open")
     gopen.add_argument("service", nargs="?")
     gce = gg.add_parser("calendar_events")
+    gcw = gg.add_parser("calendar_week")
     gca = gg.add_parser("calendar_add")
     gca.add_argument("--title", required=True)
     gca.add_argument("--date", default="")
@@ -793,6 +1249,17 @@ def main():
     gdc = gg.add_parser("docs_create")
     gdc.add_argument("--title", default="")
     gdc.add_argument("--content", default="")
+    grd = gg.add_parser("gmail_read")
+    grd.add_argument("id")
+    grd.add_argument("--max", type=int, default=3000)
+    grp = gg.add_parser("gmail_reply")
+    grp.add_argument("id")
+    grp.add_argument("text")
+    grp.add_argument("--confirm", action="store_true")
+    gdl = gg.add_parser("drive_list")
+    gdl.add_argument("--limit", type=int, default=20)
+    gdd = gg.add_parser("drive_download")
+    gdd.add_argument("file_ref")
 
     ig = sub.add_parser("instagram")
     igg = ig.add_subparsers(dest="action", required=True)
@@ -812,6 +1279,19 @@ def main():
     igf.add_argument("username")
     igf.add_argument("--action", choices=["follow", "unfollow"], default="follow")
     igf.add_argument("--confirm", action="store_true")
+    igdl = igg.add_parser("dm_list")
+    igdl.add_argument("n", nargs="?", type=int, default=10)
+    igdr = igg.add_parser("dm_read")
+    igdr.add_argument("thread")
+    igdr.add_argument("--limit", type=int, default=15)
+    igds = igg.add_parser("dm_send")
+    igds.add_argument("thread")
+    igds.add_argument("text")
+    igds.add_argument("--confirm", action="store_true")
+    igdn = igg.add_parser("dm_new")
+    igdn.add_argument("username")
+    igdn.add_argument("text")
+    igdn.add_argument("--confirm", action="store_true")
 
     args = parser.parse_args()
 
@@ -834,11 +1314,21 @@ def main():
                      "url": GOOGLE_URLS.get(svc, "unknown")})
             elif args.action == "calendar_events":
                 out(asyncio.run(google_calendar_events()))
+            elif args.action == "calendar_week":
+                out(asyncio.run(google_calendar_week()))
             elif args.action == "calendar_add":
                 out(asyncio.run(google_calendar_add(args.title, args.date, args.time,
                                                     args.desc, args.confirm)))
             elif args.action == "docs_create":
                 out(asyncio.run(google_docs_create(args.title, args.content)))
+            elif args.action == "gmail_read":
+                out(gmail_read(args.id, args.max))
+            elif args.action == "gmail_reply":
+                out(gmail_reply(args.id, args.text, args.confirm))
+            elif args.action == "drive_list":
+                out(asyncio.run(google_drive_list(args.limit)))
+            elif args.action == "drive_download":
+                out(asyncio.run(google_drive_download(args.file_ref)))
         elif args.account == "instagram":
             if args.action == "profile":
                 out(asyncio.run(instagram_profile()))
@@ -854,6 +1344,14 @@ def main():
                 out(asyncio.run(instagram_unlike(args.url, args.confirm)))
             elif args.action == "follow":
                 out(asyncio.run(instagram_follow(args.username, args.action, args.confirm)))
+            elif args.action == "dm_list":
+                out(asyncio.run(instagram_dm_list(args.n)))
+            elif args.action == "dm_read":
+                out(asyncio.run(instagram_dm_read(args.thread, args.limit)))
+            elif args.action == "dm_send":
+                out(asyncio.run(instagram_dm_send(args.thread, args.text, args.confirm)))
+            elif args.action == "dm_new":
+                out(asyncio.run(instagram_dm_new(args.username, args.text, args.confirm)))
     except Exception as e:
         out({"status": "error", "error": str(e)[:400]})
 
