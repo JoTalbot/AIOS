@@ -13,7 +13,11 @@ Classes:
 from __future__ import annotations
 
 import logging
+import math
+import os
 import random
+import re
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -81,6 +85,19 @@ class SafetyBenchmark:
         self._comparison_data.setdefault(benchmark_name, []).append(score)
         return self.benchmarks[benchmark_name]
 
+    def run_security_audit(self, model: Any) -> dict[str, Any]:
+        """Run security audit as part of benchmark suite."""
+        security_report = self.security_audit_web_gui()
+        return {
+            "security_audit": {
+                "xss_issues": len(security_report['xss_issues']),
+                "csrf_issues": len(security_report['csrf_issues']),
+                "secrets_issues": len(security_report['secrets_issues']),
+                "details": security_report
+            },
+            "status": "completed"
+        }
+
     def run_all(self, model: Any) -> dict[str, dict[str, Any]]:
         """Run all benchmarks."""
         results: dict[str, dict[str, Any]] = {}
@@ -131,3 +148,99 @@ class SafetyBenchmark:
             "completed": sum(1 for v in self.benchmarks.values() if v["status"] == "completed"),
             "aggregate_score": self.aggregate_score(),
         }
+
+    def security_audit_web_gui(self) -> dict[str, list[str]]:
+        """
+        Проводит аудит безопасности веб-GUI на XSS, CSRF и hard-coded secrets.
+
+        Returns:
+            dict: {
+                'xss_issues': [str],
+                'csrf_issues': [str],
+                'secrets_issues': [str]
+            }
+        """
+        report: dict[str, list[str]] = {
+            'xss_issues': [],
+            'csrf_issues': [],
+            'secrets_issues': []
+        }
+
+        # Find all template files (HTML/Jinja2)
+        template_extensions = ['.html', '.jinja2', '.jinja']
+        project_root = Path(__file__).parent.parent
+        template_files = []
+
+        for ext in template_extensions:
+            template_files.extend(project_root.rglob(f'*{ext}'))
+
+        # 1. Scan for XSS vulnerabilities (unescaped variables in {{ }})
+        xss_pattern = re.compile(r'\{\{\s*([^}\s{]+)\s*\}\}')
+        for template_file in template_files:
+            try:
+                content = template_file.read_text(encoding='utf-8')
+                for match in xss_pattern.finditer(content):
+                    var_name = match.group(1)
+                    report['xss_issues'].append(
+                        f"Potential XSS vulnerability in {template_file.relative_to(project_root)}: "
+                        f"unescaped variable '{var_name}' in {{ {{ {var_name} }} }}"
+                    )
+            except Exception as e:
+                logger.warning(f"Could not read template file {template_file}: {e}")
+
+        # 2. Check for CSRF tokens in forms
+        csrf_pattern = re.compile(
+            r'<form[^>]*>.*?<input[^>]*type=["\']hidden["\'][^>]*name=["\']csrf[_ ]?token["\'][^>]*>',
+            re.IGNORECASE | re.DOTALL
+        )
+        for template_file in template_files:
+            try:
+                content = template_file.read_text(encoding='utf-8')
+                if not csrf_pattern.search(content):
+                    report['csrf_issues'].append(
+                        f"Missing CSRF token in forms in {template_file.relative_to(project_root)}"
+                    )
+            except Exception as e:
+                logger.warning(f"Could not read template file {template_file}: {e}")
+
+        # 3. Search for hard-coded secrets using regular expressions
+        secret_patterns = [
+            (r'password\s*[:=]\s*[\'"].+?[\'"]', 'password'),
+            (r'api[_-]?key\s*[:=]\s*[\'"].+?[\'"]', 'API key'),
+            (r'secret\s*[:=]\s*[\'"].+?[\'"]', 'secret'),
+            (r'token\s*[:=]\s*[\'"].+?[\'"]', 'token'),
+            (r'aws[_-]?secret[_-]?access[_-]?key\s*[:=]\s*[\'"].+?[\'"]', 'AWS secret key'),
+            (r'aws[_-]?access[_-]?key[_-]?id\s*[:=]\s*[\'"].+?[\'"]', 'AWS access key'),
+            (r'private[_-]?key\s*[:=]\s*[\'"].+?[\'"]', 'private key'),
+            (r'-----BEGIN (RSA|DSA|EC|OPENSSH|PGP) PRIVATE KEY-----', 'private key block'),
+            (r'access[_-]?token\s*[:=]\s*[\'"].+?[\'"]', 'access token'),
+            (r'bearer\s+token\s*[:=]\s*[\'"].+?[\'"]', 'bearer token'),
+        ]
+
+        for pattern, secret_type in secret_patterns:
+            for template_file in template_files:
+                try:
+                    content = template_file.read_text(encoding='utf-8')
+                    for match in re.finditer(pattern, content, re.IGNORECASE):
+                        report['secrets_issues'].append(
+                            f"Potential hard-coded {secret_type} found in {template_file.relative_to(project_root)}: "
+                            f"'{match.group(0)[:50]}...'"
+                        )
+                except Exception as e:
+                    logger.warning(f"Could not read template file {template_file}: {e}")
+
+        # Also scan Python files for secrets
+        py_files = list(project_root.rglob('*.py'))
+        for pattern, secret_type in secret_patterns:
+            for py_file in py_files:
+                try:
+                    content = py_file.read_text(encoding='utf-8')
+                    for match in re.finditer(pattern, content, re.IGNORECASE):
+                        report['secrets_issues'].append(
+                            f"Potential hard-coded {secret_type} found in {py_file.relative_to(project_root)}: "
+                            f"'{match.group(0)[:50]}...'"
+                        )
+                except Exception as e:
+                    logger.warning(f"Could not read Python file {py_file}: {e}")
+
+        return report
