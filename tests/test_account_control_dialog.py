@@ -345,8 +345,12 @@ def test_contacts_search_intent(monkeypatch):
 def test_novaposhta_track_intent(monkeypatch):
     def fake_run(args):
         if args[0] == "novaposhta" and args[1] == "track":
-            return {"status": "ok", "ttn": args[2], "tracking_status": "Відправлення створено",
-                    "details": "Створено 2026-08-02"}
+            return {"status": "ok", "ttn": args[2], "found": True,
+                    "tracking_status": "Received at branch",
+                    "details": {"sender": "Lviv", "recipient": "Kropyvnytskyi",
+                                "scheduled_delivery": "2026-08-01"},
+                    "events": [{"date": "2026-08-01T15:58", "event": "Received at branch",
+                                "settlement": "Kropyvnytskyi"}]}
         return {"status": "error", "error": "?"}
 
     monkeypatch.setattr(m, "_run_account_control", fake_run)

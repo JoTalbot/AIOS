@@ -108,79 +108,52 @@ class NovaPoshtaChromeTwinAdapter(ChromeTwinAdapter):
                     "прибув", "на складі", "видано", "видана", "відмова",
                     "received", "sent", "delivered", "tracking", "creating", "created")
 
+    def _api_url(self, ttn: str) -> str:
+        return f"https://api.novapost.com/site/v.1.0/shipments/tracking/{ttn}"
+
     async def track(self, ttn: str, phone: str = "") -> Dict[str, Any]:
-        """Отследить посылку по номеру ТТН (публичное отслеживание)."""
+        """Отследить посылку по ТТН через официальный публичный API Новой Пошты."""
+        import json as _json
+        import urllib.request as _urllib
+
         ttn = re.sub(r"\D", "", ttn or "")
         if len(ttn) < 8:
             return {"status": "error", "error": "Некорректный номер ТТН"}
-        page = await self._ensure_browser()
-        url = f"https://novaposhta.ua/tracking?cargo_number={ttn}"
-        if phone:
-            url += f"&phone={re.sub(r'[^\d]', '', phone)}"
-        await self._goto(page, url)
-        await page.wait_for_timeout(8000)
-
-        # если статус не подгрузился — заполнить поле и нажать «Відстежити»
-        body = ""
         try:
-            body = await page.inner_text("body")
-        except Exception:
-            pass
-        if "результатів пошуку" not in body.lower() and "знайшли посилку" not in body.lower() \
-                and not any(k in body.lower() for k in self._STATUS_KEYS):
-            try:
-                box = page.locator(
-                    "input[placeholder*='Номер'], input[placeholder*='номер'], "
-                    "input[placeholder*='ТТН'], input[name*='cargo'], input[id*='cargo']").first
-                if await box.count():
-                    await box.fill(ttn)
-                    await page.wait_for_timeout(600)
-                    for name in ("Відстежити", "Отследить", "Track", "Подивитись"):
-                        try:
-                            btn = page.get_by_role("button", name=name).first
-                            if await btn.count():
-                                await btn.click(timeout=4000)
-                                await page.wait_for_timeout(7000)
-                                break
-                        except Exception:
-                            continue
-            except Exception:
-                pass
-            body = ""
-            try:
-                body = await page.inner_text("body")
-            except Exception:
-                pass
+            req = _urllib.Request(self._api_url(ttn), headers={
+                "User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+            with _urllib.urlopen(req, timeout=30) as r:
+                data = _json.loads(r.read())
+        except Exception as e:
+            return {"status": "error", "error": f"API: {str(e)[:200]}"}
 
-        lines = [l.strip() for l in body.splitlines() if l.strip()]
-        not_found = any(k in body.lower() for k in ("результатів пошуку немає",
-                                                    "результатів пошуку нема",
-                                                    "не знайшли посилку", "не знайшли",
-                                                    "посилку за таким номером",
-                                                    "не знайдено", "пошуку нема"))
-        status = None
-        desc = None
-        for l in lines:
-            low = l.lower()
-            if any(k in low for k in self._STATUS_KEYS):
-                if not status:
-                    status = l[:120]
-                elif l not in (status,):
-                    desc = l[:200]
-                    break
-        shot = f"/tmp/aios_acct_np_{int(__import__('time').time())}.png"
-        try:
-            await page.screenshot(path=shot)
-        except Exception:
-            shot = None
-        if not_found:
+        tracking = data.get("tracking") or []
+        if not tracking:
             return {"status": "ok", "ttn": ttn, "found": False,
-                    "tracking_status": "Посилку не знайдено (перевірте номер ТТН)",
-                    "screenshot": shot, "url": page.url}
+                    "tracking_status": "Посилку не знайдено (перевірте номер ТТН)"}
+
+        events = []
+        for ev in tracking:
+            events.append({
+                "date": (ev.get("date") or "")[:16],
+                "event": ev.get("event_name") or ev.get("event") or "",
+                "settlement": ev.get("settlement_name") or "",
+                "division": ev.get("division_name") or "",
+            })
+        last = events[-1] if events else {}
+        # статус — последнее событие (на русском/украинском уже в event)
+        status = last.get("event") or "не определён"
+        details = {
+            "sender": data.get("sender", {}).get("settlement"),
+            "recipient": data.get("recipient", {}).get("settlement"),
+            "scheduled_delivery": (data.get("scheduled_delivery_date") or "")[:16],
+            "payer": data.get("payer_type"),
+            "weight": data.get("total_weight"),
+        }
         return {"status": "ok", "ttn": ttn, "found": True,
-                "tracking_status": status or "не определён",
-                "details": desc or (lines[8:16] if len(lines) > 8 else lines),
-                "url": page.url, "screenshot": shot}
+                "tracking_status": status,
+                "events": events[-6:],
+                "details": details}
 
     async def warehouses_search(self, query: str, limit: int = 8) -> Dict[str, Any]:
         """Поиск отделений Новой Пошты по адресу/городу."""

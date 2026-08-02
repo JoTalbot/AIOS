@@ -1493,12 +1493,21 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"⏳ Отслеживаю посылку {ttn}…")
             data = _run_account_control(["novaposhta", "track", ttn, "--phone", phone])
             if data.get("status") == "ok":
+                if not data.get("found"):
+                    api.send_message(chat_id, f"📦 <b>{ttn}</b>: посылку не найдено.")
+                    return True
+                det = data.get("details") or {}
                 txt = (f"📦 <b>Новая Пошта · {ttn}</b>\n"
-                       f"📍 Статус: {_esc_tg(data.get('tracking_status'))}\n"
-                       f"ℹ️ {_esc_tg(str(data.get('details'))[:250])}")
-                _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
-                                                 "screenshot": data.get("screenshot"),
-                                                 "caption": "📦 Трекинг"}, "")
+                       f"📍 Статус: <b>{_esc_tg(data.get('tracking_status'))}</b>\n"
+                       f"🚚 Маршрут: {_esc_tg(det.get('sender') or '?')} → {_esc_tg(det.get('recipient') or '?')}\n"
+                       f"📅 План: {_esc_tg(det.get('scheduled_delivery') or '?')}\n")
+                evs = data.get("events") or []
+                if evs:
+                    txt += "\n🗂 История:\n" + "\n".join(
+                        f"• {_esc_tg(e.get('date'))} — {_esc_tg(e.get('event'))}"
+                        f"{_esc_tg(' (' + e.get('settlement') + ')') if e.get('settlement') else ''}"
+                        for e in evs[-5:])
+                api.send_message(chat_id, txt[:3900])
             else:
                 api.send_message(chat_id, f"❌ {data.get('error', '?')}")
             return True
