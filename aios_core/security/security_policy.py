@@ -1,22 +1,16 @@
 import os
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+from pydantic import BaseSettings, Field
 import html
 import secrets
 import re
 from datetime import datetime, timedelta
 
-# Заменить hard-coded значения на переменные окружения
-SECRET_KEY = os.getenv('SECURITY_POLICY_SECRET_KEY', secrets.token_hex(32))
-CSRF_TOKEN_EXPIRY_MINUTES = int(os.getenv('CSRF_TOKEN_EXPIRY_MINUTES', '30'))
-SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'true').lower() == 'true'
-SESSION_COOKIE_HTTPONLY = os.getenv('SESSION_COOKIE_HTTPONLY', 'true').lower() == 'true'
-SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
+class SecurityPolicyConfig(BaseSettings):
+    """Конфигурация политики безопасности через Pydantic.
 
-class SecurityPolicy:
-    """
-    Политика безопасности для защиты от XSS, CSRF и утечек secrets.
-    Обеспечивает безопасную обработку пользовательского ввода, валидацию CSRF токенов
-    и защиту от несанкционированного доступа.
+    Загружает параметры из переменных окружения с валидацией типов.
+    Все поля имеют безопасные значения по умолчанию.
 
     Переменные окружения:
         SECURITY_POLICY_SECRET_KEY: Секретный ключ для подписи токенов (по умолчанию: случайный 64-символьный hex)
@@ -24,6 +18,41 @@ class SecurityPolicy:
         SESSION_COOKIE_SECURE: Включить флаг Secure для сессионных cookies (по умолчанию: true)
         SESSION_COOKIE_HTTPONLY: Включить флаг HttpOnly для сессионных cookies (по умолчанию: true)
         SESSION_COOKIE_SAMESITE: Установить политику SameSite для сессионных cookies (по умолчанию: Lax)
+    """
+    secret_key: str = Field(
+        default_factory=lambda: os.getenv('SECURITY_POLICY_SECRET_KEY', secrets.token_hex(32)),
+        description="Секретный ключ для подписи токенов"
+    )
+    csrf_token_expiry_minutes: int = Field(
+        default=int(os.getenv('CSRF_TOKEN_EXPIRY_MINUTES', '30')),
+        description="Время жизни CSRF токена в минутах"
+    )
+    session_cookie_secure: bool = Field(
+        default=os.getenv('SESSION_COOKIE_SECURE', 'true').lower() == 'true',
+        description="Включить флаг Secure для сессионных cookies"
+    )
+    session_cookie_httponly: bool = Field(
+        default=os.getenv('SESSION_COOKIE_HTTPONLY', 'true').lower() == 'true',
+        description="Включить флаг HttpOnly для сессионных cookies"
+    )
+    session_cookie_samesite: str = Field(
+        default=os.getenv('SESSION_COOKIE_SAMESITE', 'Lax'),
+        description="Политика SameSite для сессионных cookies"
+    )
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+
+security_policy_config = SecurityPolicyConfig()
+
+class SecurityPolicy:
+    """
+    Политика безопасности для защиты от XSS, CSRF и утечек secrets.
+    Обеспечивает безопасную обработку пользовательского ввода, валидацию CSRF токенов
+    и защиту от несанкционированного доступа.
+
+    Использует конфигурацию из SecurityPolicyConfig для всех параметров безопасности.
 
     Примеры использования:
         from aios_core.security.security_policy import SecurityPolicy
@@ -35,8 +64,8 @@ class SecurityPolicy:
 
         # Генерация и валидация CSRF токена
         token = SecurityPolicy.generate_csrf_token()
-        is_valid = SecurityPolicy.validate_csrf_token(token, token)  # True
-        is_invalid = SecurityPolicy.validate_csrf_token(token, "invalid")  # False
+        is_valid = SecurityPolicy.validate_csrf_token(token)  # True
+        is_invalid = SecurityPolicy.validate_csrf_token("invalid")  # False
 
         # Проверка заголовков запроса
         is_valid_request = SecurityPolicy.validate_request_headers(
@@ -88,7 +117,7 @@ class SecurityPolicy:
             Сгенерированный токен
         """
         token = secrets.token_urlsafe(32)
-        expiry = datetime.now() + timedelta(minutes=CSRF_TOKEN_EXPIRY_MINUTES)
+        expiry = datetime.now() + timedelta(minutes=security_policy_config.csrf_token_expiry_minutes)
         SecurityPolicy._csrf_tokens[token] = expiry
         return token
 
@@ -155,9 +184,9 @@ class SecurityPolicy:
             Словарь с атрибутами cookies
         """
         return {
-            'secure': SESSION_COOKIE_SECURE,
-            'httponly': SESSION_COOKIE_HTTPONLY,
-            'samesite': SESSION_COOKIE_SAMESITE
+            'secure': security_policy_config.session_cookie_secure,
+            'httponly': security_policy_config.session_cookie_httponly,
+            'samesite': security_policy_config.session_cookie_samesite
         }
 
     @staticmethod
