@@ -357,11 +357,11 @@ class LLMBalancer:
         self._cache: dict[str, str] = {}
         self._cache_max = int(os.environ.get("LLM_CACHE_MAX", "256"))
         # FIXED PRIORITY: groq и deepseek первыми (самые надежные), openrouter и local последними
-        self.task_priority = {
-            "chat": ["groq", "deepseek", "zai", "mistral", "cohere", "gemini", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "together", "cerebras", "ibm", "local"],
-            "code": ["groq", "deepseek", "zai", "mistral", "cohere", "huggingface", "gemini", "openai", "airforce", "openrouter", "aimlapi", "together", "cerebras", "ibm", "local"],
-            "analysis": ["groq", "deepseek", "zai", "gemini", "mistral", "huggingface", "openai", "airforce", "openrouter", "cohere", "local"],
-            "general": ["groq", "deepseek", "zai", "mistral", "cohere", "gemini", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "local"],
+                self.task_priority = {
+            "chat": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "deepseek", "zai", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "ibm", "local"],
+            "code": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "huggingface", "gemini", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
+            "analysis": ["groq", "cerebras", "github", "gemini", "mistral", "cohere", "together", "nvidia", "huggingface", "openai", "airforce", "openrouter", "local"],
+            "general": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
         }
 
     def _load_from_env(self):
