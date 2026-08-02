@@ -40,16 +40,16 @@ class SecurityMonitor:
         Safely process API requests with security validation and token handling.
 
         Args:
-            url: Target URL for the request
+            url: Target URL for the request (must use HTTPS)
             method: HTTP method (GET/POST/PUT/DELETE)
-            token: Authentication token (Bearer)
-            params: Query parameters for GET requests
+            token: Authentication token (Bearer) - passed in headers, not URL
+            params: Query parameters for GET requests (sanitized automatically)
             headers: Additional headers
             data: Request body for POST/PUT requests
-            timeout: Request timeout in seconds
+            timeout: Request timeout in seconds (default: 30)
 
         Returns:
-            Dictionary containing response data or error information
+            Dictionary containing response data or error information with request metadata
 
         Raises:
             SecurityException: On validation failures or security violations
@@ -59,17 +59,26 @@ class SecurityMonitor:
             'original_url': url,
             'method': method.upper(),
             'has_token': bool(token),
-            'timestamp': self.security.get_current_timestamp()
+            'has_params': bool(params),
+            'timestamp': self.security.get_current_timestamp(),
+            'security_level': 'enhanced'
         }
 
         try:
             # Validate URL
             if not url or not isinstance(url, str):
+                logger.error(f"❌ Invalid URL type: {type(url)}")
                 raise SecurityException("URL must be a non-empty string")
 
             parsed_url = urlparse(url)
             if not parsed_url.scheme or not parsed_url.netloc:
+                logger.error(f"❌ Invalid URL format: {url}")
                 raise SecurityException("Invalid URL format")
+
+            # Enforce HTTPS
+            if parsed_url.scheme.lower() != 'https':
+                logger.warning(f"⚠️ Non-HTTPS URL detected: {url}")
+                raise SecurityException("URL must use HTTPS protocol")
 
             # Sanitize URL
             sanitized_url = self._sanitize_url(url)
@@ -80,9 +89,10 @@ class SecurityMonitor:
             # Prepare headers
             request_headers = self._prepare_headers(headers, processed_token)
 
-            # Handle GET requests - convert to POST if token present
+            # Security validation: prevent token in URL for GET requests
             if method.upper() == "GET" and processed_token:
                 logger.warning("⚠️ GET request with token detected - converting to POST")
+                logger.info("🔒 Token will be passed in Authorization header, not URL")
                 method = "POST"
                 if params:
                     data = params.copy()
@@ -96,7 +106,9 @@ class SecurityMonitor:
 
             # Validate token if present
             if processed_token:
+                logger.info(f"🔐 Validating token: {processed_token[:8]}...")
                 self._validate_token(processed_token)
+                logger.info(f"✅ Token validation successful: {processed_token[:8]}...")
 
             # Execute request
             response = self._execute_request(
@@ -156,27 +168,56 @@ class SecurityMonitor:
         return parsed._replace(query=sanitized_query).geturl()
 
     def _process_token(self, token: Optional[str]) -> Optional[str]:
-        """Process and validate token format."""
+        """Process and validate token format, presence in vault, and basic structure.
+
+        Args:
+            token: Optional token string to process
+
+        Returns:
+            Processed token if valid, None otherwise
+
+        Raises:
+            SecurityException: If token format is invalid
+        """
         if not token:
+            logger.warning("⚠️ Empty token provided in request")
             return None
 
         # Basic token validation
-        if not isinstance(token, str) or len(token.strip()) < 10:
-            raise SecurityException("Invalid token format")
+        if not isinstance(token, str) or len(token.strip()) < 16:
+            logger.error(f"❌ Invalid token format: length {len(token.strip()) if isinstance(token, str) else 'N/A'}")
+            raise SecurityException("Token must be a non-empty string with minimum length 16")
 
-        return token.strip()
+        processed_token = token.strip()
+
+        # Check if token exists in privacy vault
+        if not self.privacy_vault.token_exists(processed_token):
+            logger.error(f"❌ Token not found in vault: {processed_token[:8]}...")
+            raise SecurityException("Token not recognized in system")
+
+        logger.info(f"✅ Token processed successfully: {processed_token[:8]}...")
+        return processed_token
 
     def _prepare_headers(
         self,
         headers: Optional[Dict[str, str]],
         token: Optional[str]
     ) -> Dict[str, str]:
-        """Prepare request headers with security headers and token."""
+        """Prepare request headers with security headers and token.
+
+        Args:
+            headers: Optional additional headers
+            token: Optional authentication token
+
+        Returns:
+            Dictionary of prepared headers
+        """
         security_headers = {
             'User-Agent': 'AIOS-SecurityMonitor/1.0',
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'X-Request-Security': 'enhanced'
+            'X-Request-Security': 'enhanced',
+            'X-Content-Security': 'strict'
         }
 
         if headers:
@@ -184,6 +225,7 @@ class SecurityMonitor:
 
         if token:
             security_headers['Authorization'] = f'Bearer {token[:8]}...{token[-8:]}'
+            logger.debug(f"🔐 Authorization header prepared for token: {token[:8]}...")
 
         return security_headers
 
@@ -202,9 +244,32 @@ class SecurityMonitor:
         return validated_params
 
     def _validate_token(self, token: str) -> None:
-        """Validate token using AdvancedSecurity."""
+        """Validate token format, expiration, and blacklist status.
+
+        Args:
+            token: Token string to validate
+
+        Raises:
+            SecurityException: If token is invalid, expired, or blacklisted
+        """
+        if not token:
+            raise SecurityException("Token cannot be empty")
+
+        # Validate token format
+        if not isinstance(token, str) or len(token.strip()) < 16:
+            raise SecurityException("Token must be a non-empty string with minimum length 16")
+
+        # Check token expiration if applicable
+        if not self.security.validate_token_expiration(token):
+            raise SecurityException("Token has expired")
+
+        # Check token against blacklist
+        if self.security.is_token_blacklisted(token):
+            raise SecurityException("Token is blacklisted")
+
+        # Final validation using AdvancedSecurity
         if not self.security.validate_token(token):
-            raise SecurityException("Invalid or expired token")
+            raise SecurityException("Invalid token signature")
 
     def _execute_request(
         self,
