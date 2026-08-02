@@ -24,6 +24,7 @@ class PlatformRegistry:
         self._adapter_classes: dict[str, type[PlatformAdapter]] = {
             "olx": OLXAdapter,
             "instagram": InstagramAdapter,
+            "instagram_emulator": InstagramEmulatorAdapter,
             "prom": PromAdapter,
             "facebook": FacebookAdapter,
             "viber": ViberAdapter,
