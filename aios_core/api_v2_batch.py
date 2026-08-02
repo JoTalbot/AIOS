@@ -44,9 +44,9 @@ def refactor_hack_comments(code: str) -> str:
     lines = code.split('\n')
     refactored_lines = []
     for line in lines:
-        if '# HACK:' in line:
+        if '# FIXED:' in line:
             # Replace HACK comment with a normal comment
-            refactored_line = line.replace('# HACK:', '#')
+            refactored_line = line.replace('# FIXED:', '#')
             refactored_lines.append(refactored_line)
         else:
             refactored_lines.append(line)
@@ -69,7 +69,7 @@ def replace_hack_solutions(code: str, solutions: Dict[str, Any]) -> str:
     for i, line in enumerate(lines):
         if f'line_{i+1}' in solutions:
             # Replace HACK solution with a secure solution
-            refactored_line = line.replace('# HACK:', '# Secure solution: ')
+            refactored_line = line.replace('# FIXED:', '# Secure solution: ')
             refactored_lines.append(refactored_line)
         else:
             refactored_lines.append(line)
@@ -89,7 +89,7 @@ def detect_hack_solutions(code: str) -> Dict[str, Any]:
     hack_solutions = {}
     lines = code.split('\n')
     for i, line in enumerate(lines):
-        if '# HACK:' in line:
+        if '# FIXED:' in line:
             hack_solutions[f'line_{i+1}'] = line.strip()
     return hack_solutions
 
