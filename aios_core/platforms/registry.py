@@ -8,6 +8,7 @@ from .facebook_adapter import FacebookAdapter
 from .instagram_adapter import InstagramAdapter
 from .instagram_emulator_adapter import InstagramEmulatorAdapter
 from .chrome_twin_adapter import ChromeTwinAdapter
+from .olx_chrome_twin_adapter import OLXChromeTwinAdapter
 from .linkedin_adapter import LinkedinAdapter
 from .olx_adapter import OLXAdapter
 from .prom_adapter import PromAdapter
@@ -27,6 +28,7 @@ class PlatformRegistry:
             "instagram": InstagramAdapter,
             "instagram_emulator": InstagramEmulatorAdapter,
             "chrome_twin": ChromeTwinAdapter,
+            "olx_chrome_twin": OLXChromeTwinAdapter,
             "prom": PromAdapter,
             "facebook": FacebookAdapter,
             "viber": ViberAdapter,

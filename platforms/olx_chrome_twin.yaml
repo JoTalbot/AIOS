@@ -1,0 +1,24 @@
+name: olx_chrome_twin
+android_package: com.android.chrome
+agent_module: aios_core.platforms.olx_chrome_twin_adapter
+storage_class: aios_core.modules.chrome_twin.storage.ChromeTwinStorage
+adb_class: null
+default_locale: uk-UA
+description: "OLX Ukraine via Chrome Twin — использует залогиненный Google аккаунт jo.talbot@gmail.com и сохраненные пароли Chrome для входа в OLX с логином 959052288. Автоматизация через Playwright с профилем data/chrome_twin/default/"
+legacy_default_db: olx_chrome_twin_default.sqlite
+extras:
+  compliance:
+    autopost_allowed: true
+    messenger: true
+    collector: true
+    actions_per_hour: 120
+    note: "OLX Chrome Twin: использует сохраненные пароли Chrome для логина 959052288, Google аккаунт jo.talbot@gmail.com уже залогинен в профиле data/chrome_twin/default/"
+  olx:
+    login: "959052288"
+    google_account: "jo.talbot@gmail.com"
+    use_google_login: true
+    use_saved_password: true
+  browser:
+    user_data_dir: "data/chrome_twin/default"
+    headless: true
+    slow_mo: 200
