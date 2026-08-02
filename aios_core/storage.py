@@ -193,6 +193,101 @@ CREATE INDEX IF NOT EXISTS idx_tasks_agent ON tasks(agent_id);
 """
 
 
+class TodoItem:
+    """Dataclass to represent a TODO/FIXME/HACK item with structured metadata.
+
+    This class is used for tracking technical debt, security issues, and code improvements
+    across the AIOS codebase. It provides serialization/deserialization capabilities
+    and validation to ensure data integrity.
+
+    Example:
+        >>> item = TodoItem(
+        ...     id="fix-123",
+        ...     description="Replace insecure API calls with secure_api_request",
+        ...     file_path="aios_core/api_v2_batch.py",
+        ...     priority=1,
+        ...     status="open"
+        ... )
+        >>> item.to_dict()
+        {'id': 'fix-123', 'description': 'Replace insecure API calls...', ...}
+    """
+
+    def __init__(
+        self,
+        id: str,
+        description: str,
+        file_path: str,
+        priority: int,
+        status: str = "open"
+    ):
+        """Initialize a TodoItem with validation.
+
+        Args:
+            id: Unique identifier for the todo item (e.g., "fix-123")
+            description: Detailed description of the task
+            file_path: Path to the file containing the issue
+            priority: Priority level (1=critical, 2=high, 3=medium, 4=low)
+            status: Current status ('open', 'in_progress', 'done')
+
+        Raises:
+            ValueError: If any validation fails
+        """
+        if not id or not isinstance(id, str):
+            raise ValueError("id must be a non-empty string")
+        if not description or not isinstance(description, str):
+            raise ValueError("description must be a non-empty string")
+        if not file_path or not isinstance(file_path, str):
+            raise ValueError("file_path must be a non-empty string")
+        if not isinstance(priority, int) or priority < 1 or priority > 4:
+            raise ValueError("priority must be an integer between 1 and 4")
+        if status not in ("open", "in_progress", "done"):
+            raise ValueError("status must be one of: 'open', 'in_progress', 'done'")
+
+        self.id = id
+        self.description = description
+        self.file_path = file_path
+        self.priority = priority
+        self.status = status
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the TodoItem to a dictionary.
+
+        Returns:
+            Dictionary representation of the todo item with all fields
+        """
+        return {
+            "id": self.id,
+            "description": self.description,
+            "file_path": self.file_path,
+            "priority": self.priority,
+            "status": self.status
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "TodoItem":
+        """Deserialize a dictionary into a TodoItem.
+
+        Args:
+            data: Dictionary containing todo item fields
+
+        Returns:
+            New TodoItem instance
+
+        Raises:
+            ValueError: If required fields are missing or invalid
+        """
+        required_fields = ["id", "description", "file_path", "priority", "status"]
+        if not all(field in data for field in required_fields):
+            raise ValueError("Missing required fields in todo item data")
+
+        return cls(
+            id=data["id"],
+            description=data["description"],
+            file_path=data["file_path"],
+            priority=data["priority"],
+            status=data["status"]
+        )
+
 class Database:
     """Enterprise-grade Multi-Backend Database Abstraction for AIOS."""
 
