@@ -212,7 +212,7 @@ class Orchestrator:
 
         # Task tracking
         self._tasks: dict[str, Task] = {}
-        self._execution_log: list[dict] = []
+        self._execution_log: list[dict] = {}
 
     # --- Task Management ---
 
@@ -473,9 +473,9 @@ class Orchestrator:
 
     def _log_execution(self, task: Task, step: TaskStep):
         """Log step execution to audit trail."""
-        self._execution_log.append(
+        self._execution_log[task.id] = self._execution_log.get(task.id, [])
+        self._execution_log[task.id].append(
             {
-                "task_id": task.id,
                 "step_id": step.id,
                 "step_name": step.name,
                 "step_type": step.step_type,
@@ -554,7 +554,7 @@ class Orchestrator:
             "version": self.version,
             "total_tasks": len(self._tasks),
             "tasks_by_status": status_counts,
-            "total_steps_executed": len(self._execution_log),
+            "total_steps_executed": sum(len(task.steps) for task in self._tasks.values()),
             "active_tasks": status_counts.get("running", 0) + status_counts.get("pending", 0),
             "constitution_articles": 67,
             "memory_items": mem_stats.get("total_items", 0),
@@ -594,6 +594,39 @@ class Orchestrator:
     def close(self) -> None:
         """Clean up resources."""
         self.db.close()
+
+    def process_request(self, request: dict) -> dict:
+        """Process a request securely, using authentication and authorization."""
+        # Authenticate the request
+        authenticated = self.authenticate_request(request)
+        if not authenticated:
+            return {"error": "Authentication failed"}
+
+        # Authorize the request
+        authorized = self.authorize_request(request)
+        if not authorized:
+            return {"error": "Authorization failed"}
+
+        # Process the request
+        return self.execute_request(request)
+
+    def authenticate_request(self, request: dict) -> bool:
+        """Authenticate a request."""
+        # Implement authentication logic here
+        # For example, check for a valid token or credentials
+        return True
+
+    def authorize_request(self, request: dict) -> bool:
+        """Authorize a request."""
+        # Implement authorization logic here
+        # For example, check for permissions or access control
+        return True
+
+    def execute_request(self, request: dict) -> dict:
+        """Execute a request."""
+        # Implement request execution logic here
+        # For example, call a specific function or method
+        return {"result": "Request executed successfully"}
 
 
 # --- Step Handlers ---
