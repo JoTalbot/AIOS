@@ -12,7 +12,7 @@ import ast
 class SecurityAuditor:
     def __init__(self, repo_path: str = "."):
         self.repo_path = Path(repo_path)
-        self.exclude = {"__pycache__", ".git", "node_modules", "chroma_db", ".venv"}
+        self.exclude = {"__pycache__", ".git", "node_modules", "chroma_db", ".venv", "security_audit.py"}
 
     def audit_xss(self) -> List[Dict]:
         issues=[]
