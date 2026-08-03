@@ -84,8 +84,28 @@ class Executor:
         if amount <= 0 or not item:
             return {"status": "error", "error": "Нужны item и amount>0"}
         res = _finance().add("sale", amount, item)
-        return {"status": res.get("status", "error"), "message": f"Продажа: {item} = {amount} грн",
-                "entry": res.get("entry")}
+        # авто-списание со склада (если такой товар есть)
+        inv_result = None
+        try:
+            inv_result = _inventory().take(item, 1)
+        except Exception:
+            inv_result = {"status": "error", "error": "inventory недоступен"}
+        msg = f"Продажа: {item} = {amount} грн"
+        if inv_result and inv_result.get("status") == "ok":
+            msg += " · склад обновлён"
+        elif inv_result and inv_result.get("error"):
+            msg += f" · склад: {inv_result['error']}"
+        # опциональная деактивация объявления при продаже
+        ad_id = str(p.get("ad_id") or "").strip()
+        ad_res = None
+        if ad_id:
+            ad_res = _run_ac(["olx", "delete", ad_id, "--confirm"], timeout=170)
+            if ad_res.get("status") == "ok":
+                msg += " · объявление снято"
+            else:
+                msg += f" · объявление: {ad_res.get('error', 'не снято')}"
+        return {"status": res.get("status", "error"), "message": msg,
+                "entry": res.get("entry"), "inventory": inv_result, "ad": ad_res}
 
     def _do_log_expense(self, p, platform, chat):
         desc = str(p.get("desc") or "").strip()
@@ -175,7 +195,33 @@ class Executor:
         return {"status": "manual", "error": "Аванс — только вручную"}
 
     def _do_create_ad(self, p, platform, chat):
-        return {"status": "manual", "error": "Создание объявления — только с подтверждением"}
+        # Владелец подтвердил — создаём объявление на OLX через run_olx_ad_gen.
+        title = str(p.get("title") or "").strip()
+        desc = str(p.get("desc") or "").strip()
+        price = p.get("price")
+        # если не хватает данных — попробовать взять из склада по item
+        if not title or not price:
+            item = str(p.get("item") or "").strip()
+            inv = _inventory()._find(_inventory()._load(), item) if item else None
+            if inv:
+                title = title or inv.get("name", "")
+                price = price or inv.get("price", 0)
+                if not desc:
+                    desc = f"Продам {inv.get('name')}. Цена {price} грн."
+        if not title:
+            return {"status": "error", "error": "Нужен title (или item из склада)"}
+        try:
+            import subprocess as _sp
+            py = PY
+            cmd = [py, str(self.root / "run_olx_ad_gen.py"), "create", title, "--confirm"]
+            r = _sp.run(cmd, capture_output=True, text=True, timeout=220, cwd=str(self.root))
+            out = (r.stdout or "").strip()
+            start = out.find("{")
+            if start >= 0:
+                return json.loads(out[start:])
+            return {"status": "ok", "message": out[-300:] or "объявление создано"}
+        except Exception as e:
+            return {"status": "error", "error": str(e)[:200]}
 
     def _do_boost_ad(self, p, platform, chat):
         return {"status": "manual", "error": "Буст объявления — только с подтверждением"}

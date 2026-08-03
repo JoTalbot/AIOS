@@ -48,11 +48,20 @@ class AutonomyCore:
             "rules": extra.get("rules", []),
             "last_offer": sess.last_offer,
         }
+        # анти-скам: репутация клиента
+        if sess.trust == "risky":
+            ctx["rules"] = ctx["rules"] + ["risky_customer"]
+        elif sess.trust == "new":
+            ctx["rules"] = ctx["rules"] + ["unknown_customer"]
 
         # Детерминированная страховка цены (независимо от LLM)
         item = extra.get("item")
         low = self.guardrails.low_offer_check(text, item)
         if low is not None:
+            # анти-скам: повторные попытки ниже пола снижают репутацию клиента
+            sess = self.state.get(platform, chat)
+            sess.adjust_reputation(-2)
+            self.state.save(sess)
             proposal = {"action": "negotiate_price", "params": {"item": item or "", "offer": None},
                         "risk": "medium", "intent": "negotiate", "platform": platform, "chat": chat}
             outcome = self._route(proposal, low)

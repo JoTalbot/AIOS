@@ -32,6 +32,22 @@ class Session:
             self.data["trust"] = "known"
 
     @property
+    def reputation(self) -> int:
+        """Числовая репутация клиента (старт 0)."""
+        return int(self.data.get("reputation", 0))
+
+    def adjust_reputation(self, delta: int) -> None:
+        """Уменьшить/увеличить репутацию клиента (анти-скам)."""
+        cur = int(self.data.get("reputation", 0)) + delta
+        self.data["reputation"] = max(-20, min(20, cur))
+        # trust по репутации
+        if self.data["reputation"] >= 3:
+            self.data["trust"] = "trusted"
+        elif self.data["reputation"] <= -5:
+            self.data["trust"] = "risky"
+        self.data["reputation_history"] = self.data.get("reputation_history", []) + [delta]
+
+    @property
     def last_seen_msg(self) -> str:
         return self.data.get("last_seen_msg", "")
 

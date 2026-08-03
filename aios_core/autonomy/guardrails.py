@@ -152,6 +152,8 @@ class Guardrails:
             rules.append("aggressive_haggle")
         if self.policy.is_esc_rule_on("bulk_request") and ctx.get("bulk"):
             rules.append("bulk_request")
+        if "risky_customer" in ctx_rules or ctx.get("customer_trust") == "risky":
+            rules.append("risky_customer")
         rules.extend(ctx_rules)
 
         if offer is None:
