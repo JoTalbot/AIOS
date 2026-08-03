@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">AIOS Companion</string>
+    <string name="notification_channel">AIOS Companion gateway</string>
+</resources>
