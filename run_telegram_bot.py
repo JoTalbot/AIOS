@@ -2023,6 +2023,8 @@ def _android_gateway_run(args: list[str], timeout: int = 60) -> dict:
 
 # Последние показанные безопасные карточки потенциальных лидов: chat_id -> rows.
 _last_phone_leads: dict[int, list[dict]] = {}
+# Последние показанные metadata-only CRM follow-up задачи телефона.
+_last_phone_crm_tasks: dict[int, list[dict]] = {}
 
 
 def _phone_lead_queue():
@@ -2038,11 +2040,39 @@ def _handle_phone_lead_intent(api, chat_id: int, text: str) -> bool:
         "телефон", "android", "андроид", "whatsapp", "ватсап", "ime", "i.me", "айми", "име",
     ))
     has_lead_scope = any(stem in t for stem in ("лид", "обращен", "потенциальн"))
-    # A follow-up «отметь лид 1…» may omit the word «телефон», but is safe
-    # only after this chat has received a metadata-only lead list.
-    if not (has_lead_scope and (has_phone_scope or chat_id in _last_phone_leads)):
+    has_task_scope = any(phrase in t for phrase in ("crm задач", "crm-задач", "crm follow", "follow-up", "задачи телефона"))
+    # Follow-up commands may omit «телефон» only after this chat received a
+    # metadata-only list. No message content is used for that resolution.
+    if not ((has_lead_scope or has_task_scope) and (has_phone_scope or chat_id in _last_phone_leads or chat_id in _last_phone_crm_tasks)):
         return False
     queue = _phone_lead_queue()
+    complete = re.search(r"(?:закрой|заверши|выполни)\s+(?:crm\s*)?(?:задач\w*|follow[- ]?up)\s*#?(\d+)", raw, re.IGNORECASE)
+    if complete:
+        tasks = _last_phone_crm_tasks.get(chat_id) or []
+        index = int(complete.group(1))
+        if not 1 <= index <= len(tasks):
+            api.send_message(chat_id, "ℹ️ Сначала откройте «CRM задачи телефона», затем укажите номер задачи.")
+            return True
+        _pending_confirm[chat_id] = {"kind": "phone_crm_task_complete", "data": {"task_id": tasks[index - 1].get("id")}}
+        api.send_message(chat_id, "✅ Закрыть локальную CRM follow-up задачу?\n«да» / «нет»")
+        return True
+    if has_task_scope and not has_lead_scope:
+        tasks = queue.list_crm_tasks(limit=30)
+        _last_phone_crm_tasks[chat_id] = tasks
+        if not tasks:
+            api.send_message(chat_id, "📌 <b>CRM задачи телефона</b>\nОткрытых follow-up задач нет.")
+            return True
+        lines = ["📌 <b>CRM FOLLOW-UP ЗАДАЧИ ТЕЛЕФОНА</b>", "━━━━━━━━━━━━━━━━"]
+        for index, task in enumerate(tasks[:12], 1):
+            source = _esc_tg(str(task.get("source") or "Телефон"))
+            created = _esc_tg(str(task.get("created_at") or "")[:19])
+            lines.append(f"╭─ <code>{index:02d}</code> 📌 <b>{source}</b>")
+            lines.append("├ Открыть чат и вручную проверить обращение")
+            lines.append(f"╰ 🕐 {created or 'время недоступно'}")
+        lines.append("━━━━━━━━━━━━━━━━")
+        lines.append("<i>«закрой CRM задачу 1» — закрыть локальную follow-up задачу. Клиенты и сообщения не создаются автоматически.</i>")
+        api.send_message(chat_id, "\n".join(lines)[:3900])
+        return True
     promote = re.search(r"(?:создай|добавь)\s+(?:crm\s*)?(?:задач\w*)\s+(?:для\s+)?(?:лид\w*|обращени\w*)\s*(?:телефона)?\s*#?(\d+)", raw, re.IGNORECASE)
     if promote:
         rows = _last_phone_leads.get(chat_id) or []
@@ -2385,6 +2415,13 @@ def _cancel_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
 def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
     """Perform one already-confirmed app step; return True when handled."""
     try:
+        if kind == "phone_crm_task_complete":
+            result = _phone_lead_queue().complete_crm_task(str(data.get("task_id") or ""))
+            if result.get("status") in ("completed", "already_completed"):
+                api.send_message(chat_id, "✅ Локальная CRM follow-up задача закрыта. Сообщения и клиенты не изменялись.")
+            else:
+                api.send_message(chat_id, "⚠️ Не удалось закрыть CRM follow-up задачу.")
+            return True
         if kind == "phone_lead_promote":
             result = _phone_lead_queue().promote_to_crm_task(str(data.get("lead_id") or ""))
             if result.get("status") in ("crm_task_created", "already_promoted"):
@@ -2992,6 +3029,10 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
 
+    # Metadata-only phone leads/tasks have priority over broad CRM words.
+    if _handle_phone_lead_intent(api, chat_id, text):
+        return True
+
     # Продажи с ТТН должны обрабатываться раньше широких regex-ов аккаунтов,
     # автопланировщика и свободного LLM-чата.
     if _handle_sales_lifecycle_intent(api, chat_id, text):
@@ -3000,10 +3041,6 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     # Инбокс имеет приоритет над широким детектором Direct: слова «сообщения»
     # и «прочитанные» не должны неожиданно открывать Instagram.
     if _handle_unified_inbox_intent(api, chat_id, text):
-        return True
-
-    # Privacy-preserving messenger lead tasks precede generic app routing.
-    if _handle_phone_lead_intent(api, chat_id, text):
         return True
 
     # Dedicated app workflows must run before the generic Android intent.
