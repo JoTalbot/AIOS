@@ -76,7 +76,7 @@ def generate(part: str) -> dict:
     prompt = (
         "Напиши объявление для OLX (Украина) про автозапчасть с авторазборки (б/у, рабочая). "
         "Верни ТОЛЬКО JSON без пояснений: "
-        "{\"title\": \"заголовок до 60 символов, конкретный (марка, модель, название детали)\", "
+        "{\"title\": \"заголовок 16-60 символов, конкретный (марка, модель, название детали), НЕ короче 16 символов\", "
         "\"description\": \"описание 3-5 предложений на русском: состояние (б/у, рабочая, без трещин), "
         "для каких авто подходит, что в комплекте, готовность отправить Новой Почтой по Украине, "
         "оплата при получении\", "
@@ -94,6 +94,9 @@ def generate(part: str) -> dict:
         d.setdefault("title", part[:60])
         d.setdefault("description", "")
         d.setdefault("price", "")
+        # OLX требует заголовок минимум 16 символов
+        if len(str(d.get("title") or "").strip()) < 16:
+            d["title"] = (str(d.get("title") or "").strip() + " — б/у з авторазборки")[:60]
         # приоритет: цена, указанная пользователем в запросе (число 2-6 цифр, похожее на цену)
         import re as _re
         m_user_price = _re.search(r"\b(\d{2,6})\b\s*(?:грн|грн\.|uah)?\s*$", part, _re.IGNORECASE)
@@ -119,6 +122,73 @@ def generate_many(parts: list[str]) -> dict:
         r = generate(p)
         out.append(r)
     return {"status": "ok", "ads": out, "count": len(out)}
+
+
+def _load_inventory() -> list[dict]:
+    """Позиции склада из data/inventory.json (qty > 0)."""
+    p = ROOT / "data" / "inventory.json"
+    if not p.exists():
+        return []
+    try:
+        items = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(items, list):
+            return []
+        return [it for it in items if int(it.get("qty") or 0) > 0]
+    except Exception:
+        return []
+
+
+def export_sklad(limit: int = 0, confirm: bool = False, pause: int = 25) -> dict:
+    """Массовая выгрузка склада на OLX.
+
+    Берёт позиции из data/inventory.json, генерирует объявления (цена из склада)
+    и (если confirm) публикует каждое с паузой между публикациями.
+    """
+    items = _load_inventory()
+    if not items:
+        return {"status": "error", "error": "Склад пуст (нет позиций с qty > 0)"}
+    if limit > 0:
+        items = items[:limit]
+    results = []
+    ok_cnt = err_cnt = 0
+    for i, it in enumerate(items, 1):
+        name = (it.get("name") or "").strip()
+        price = it.get("price") or ""
+        part = f"{name} {price} грн".strip()
+        if not name:
+            err_cnt += 1
+            results.append({"name": "?", "status": "error", "error": "пустое имя"})
+            continue
+        if confirm:
+            r = create_ad(part, True)
+            st = r.get("status")
+            if st == "published":
+                ok_cnt += 1
+            elif st == "draft_created":
+                st = "draft"
+                err_cnt += 1
+            else:
+                err_cnt += 1
+            results.append({"name": name, "price": price, "status": st,
+                            "ad_id": r.get("ad_id", ""), "url": r.get("url", ""),
+                            "error": r.get("error", "")})
+            # пауза между публикациями (защита от модерации)
+            if i < len(items) and pause > 0:
+                import time as _t
+                print(f"[sklad] пауза {pause}s перед следующей…", flush=True)
+                _t.sleep(pause)
+        else:
+            g = generate(part)
+            results.append({"name": name, "price": price,
+                            "status": g.get("status", "error"),
+                            "title": g.get("title", ""),
+                            "price_gen": g.get("price", "")})
+            if g.get("status") == "ok":
+                ok_cnt += 1
+            else:
+                err_cnt += 1
+    return {"status": "ok", "total": len(results), "ok": ok_cnt, "err": err_cnt,
+            "confirm": confirm, "results": results}
 
 
 def create_ad(part: str, confirm: bool, photo: str | None = None) -> dict:
@@ -166,6 +236,24 @@ def main() -> None:
         # список из аргументов, разделённых «;» или строк
         parts = " ".join(sys.argv[2:]).split(";")
         print(json.dumps(generate_many(parts), ensure_ascii=False))
+    elif cmd == "export_sklad":
+        _args = list(sys.argv[2:])
+        confirm = "--confirm" in _args
+        limit = 0
+        pause = 25
+        for _i, _a in enumerate(_args):
+            if _a == "--limit" and _i + 1 < len(_args):
+                try:
+                    limit = int(_args[_i + 1])
+                except ValueError:
+                    pass
+            if _a == "--pause" and _i + 1 < len(_args):
+                try:
+                    pause = int(_args[_i + 1])
+                except ValueError:
+                    pass
+        print(json.dumps(export_sklad(limit, confirm, pause), ensure_ascii=False))
+        return
     elif cmd == "create":
         _args = list(sys.argv[2:])
         photo = ""
@@ -180,7 +268,7 @@ def main() -> None:
             print(json.dumps({"status": "error", "error": "Укажите деталь"})); return
         print(json.dumps(create_ad(part, confirm, photo), ensure_ascii=False))
     else:
-        print(json.dumps({"status": "error", "error": "gen|gen_many|create"}))
+        print(json.dumps({"status": "error", "error": "gen|gen_many|create|export_sklad"}))
 
 
 if __name__ == "__main__":

@@ -638,16 +638,27 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                     await page.wait_for_timeout(4000)
             except Exception:
                 pass
-            # Шаг 1: заголовок + Продовжити
+            # Шаг 1: заголовок + Продовжити (OLX требует минимум 16 символов)
+            title_final = (title or "").strip()[:150]
+            if len(title_final) < 16:
+                title_final = (title_final + " — б/у з авторазборки")[:150]
             ti = page.locator("input[placeholder*='напр.']").first
-            await ti.fill(title[:150])
+            await ti.fill(title_final)
             await page.wait_for_timeout(800)
             try:
                 btn = page.get_by_role("button", name="Продовжити").first
                 await btn.click(timeout=5000)
             except Exception:
                 pass
-            await page.wait_for_timeout(5000)
+            # ждём продвижения формы (появляется «Ціна»)
+            for _w in range(12):
+                try:
+                    b2 = await page.inner_text("body")
+                    if "Ціна" in b2 or "Цена" in b2 or "Опублікувати" in b2:
+                        break
+                except Exception:
+                    pass
+                await page.wait_for_timeout(1500)
 
             # Шаг 2: тип (Продати/Обмін), статус (Приватна особа), состояние (Вживане)
             for name in ("Продати", "Приватна особа", "Вживане"):
@@ -659,53 +670,12 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                 except Exception:
                     pass
 
-            # Шаг 3: категория (поле «Обрати» -> модалка)
+            # Шаг 3: категория — OLX сама предлагает её по заголовку («Наша пропозиція»).
+            # Старой модалки с «Обрати» больше нет: поле «Обрати» — это валюта.
             try:
-                cat_field = page.locator("input[placeholder='Обрати']").first
-                if await cat_field.count():
-                    await cat_field.click(timeout=5000)
-                    await page.wait_for_timeout(2000)
-                    # поиск категории
-                    search = page.locator("input[placeholder*='Пошук'], input[placeholder*='категор']").first
-                    if await search.count():
-                        await search.fill("Запчасти")
-                        await page.wait_for_timeout(3000)
-                    # клик по пункту категории (первый уровень)
-                    for sel in ("text=Запчасти для авто", "text=Автозапчасти",
-                                "text=Запчастини", "div:has-text('Запчасти для авто')"):
-                        try:
-                            el = page.locator(sel).first
-                            if await el.count():
-                                await el.click(force=True, timeout=4000)
-                                await page.wait_for_timeout(2500)
-                                break
-                        except Exception:
-                            continue
-                    # если открылась модалка подкатегорий — клик по тексту (div/span, не кнопка)
-                    for sel in ("text=Передні фари", "div:has-text('Передні фари')",
-                                "text=Фари", "text=Готово", "text=ОК, зрозуміло",
-                                "button:has-text('Застосувати')", "text=Обрати"):
-                        try:
-                            el = page.locator(sel).first
-                            if await el.count():
-                                await el.click(force=True, timeout=2500)
-                                await page.wait_for_timeout(2000)
-                                break
-                        except Exception:
-                            continue
-                    # закрыть модалку если всё ещё открыта (Esc дважды)
-                    try:
-                        await page.keyboard.press("Escape")
-                        await page.wait_for_timeout(800)
-                        await page.keyboard.press("Escape")
-                        await page.wait_for_timeout(800)
-                    except Exception:
-                        pass
-                    # скриншот для диагностики после категории
-                    try:
-                        await page.screenshot(path="/tmp/olx_after_cat.png")
-                    except Exception:
-                        pass
+                sugg = page.locator("text=Наша пропозиція").first
+                if await sugg.count():
+                    await page.wait_for_timeout(2500)
             except Exception:
                 pass
 
@@ -717,12 +687,15 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
             except Exception:
                 pass
 
-            # Цена
+            # Цена (новая форма: input#parameters.price.price)
             if price:
                 try:
-                    p_el = page.locator("input[placeholder*='цін'], input[placeholder*='цен'], input[name='price'], input[data-testid*='price']").first
+                    p_el = page.locator("input#parameters.price.price, input[name='parameters.price.price']").first
+                    if not (await p_el.count()):
+                        p_el = page.locator("input[placeholder*='цін'], input[placeholder*='цен'], input[name='price']").first
                     if await p_el.count():
                         await p_el.fill(str(price))
+                        await page.wait_for_timeout(600)
                 except Exception:
                     pass
 
@@ -742,7 +715,7 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                     btn = page.get_by_role("button", name="Опублікувати").first
                     if await btn.count():
                         await btn.click(timeout=5000)
-                        await page.wait_for_timeout(6000)
+                        await page.wait_for_timeout(10000)
                         shot = f"/tmp/aios_acct_olx_pub_{int(__import__('time').time())}.png"
                         try:
                             await page.screenshot(path=shot)
@@ -757,9 +730,13 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                         numeric_id = ""
                         try:
                             body_txt = await page.inner_text("body")
-                            m_num = re.search(r"(?:editing|statistics|promote)/(\d{6,12})", final_url + body_txt)
+                            m_num = re.search(
+                                r"(?:editing|statistics|promote)/(\d{6,12})"
+                                r"|(?:ad-id|ad_id)[=/](\d{6,12})"
+                                r"|(?:id[=/])(\d{6,12})",
+                                final_url + " " + body_txt)
                             if m_num:
-                                numeric_id = m_num.group(1)
+                                numeric_id = m_num.group(1) or m_num.group(2) or m_num.group(3)
                         except Exception:
                             pass
                         ad_id = numeric_id or short_id or ""
@@ -771,7 +748,7 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                             "title": title,
                             "price": price,
                         })
-                        return {"status": "published", "title": title, "price": price,
+                        return {"status": "published", "title": title_final, "price": price,
                                 "ad_id": ad_id, "url": final_url,
                                 "screenshot": shot}
                 except Exception:
@@ -781,7 +758,7 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                 await page.screenshot(path=shot)
             except Exception:
                 shot = None
-            return {"status": "draft_created", "title": title, "description": description[:100],
+            return {"status": "draft_created", "title": title_final, "description": description[:100],
                     "price": price, "screenshot": shot}
         except Exception as e:
             print(f"Create ad failed: {e}")
