@@ -41,6 +41,8 @@ KNOWN_ACTIONS: dict[str, list[str]] = {
     "publish": ["title", "desc", "price", "text"],
     "send_money": ["amount", "to", "text"],
     "accept_advance": ["amount", "text"],
+    "prepare_sale": ["item", "sku", "amount", "price", "delivery", "phone", "text"],
+    "pending_sales": [],
     "bank_balance": ["bank"],
     "bank_transactions": ["bank"],
     "bank_transfer": ["bank", "recipient", "amount", "note", "text"],
@@ -204,6 +206,11 @@ class Planner:
             "  - params.text = текст ответа покупателю: вежливо предложи встречную цену, обоснуй.\n"
             "  - Если покупатель предлагает меньше пола — не соглашайся, предложи встречную = пол "
             "или чуть выше, объясни что ниже не можете.\n"
+            "ПОКУПКА: если покупатель СОГЛАСИЛСЯ на цену и говорит, что хочет купить / выбирает "
+            "способ доставки / даёт город и отделение — action prepare_sale: заполни params.item "
+            "(товар), params.amount (договорённая цена), params.delivery (выбранный способ/отделение) "
+            "и params.text (подтверждение клиенту, что сделку оформляем). Это фиксирует сделку для "
+            "подготовки ТТН.\n"
             "ПОЛНЫЙ ОТВЕТ: для reply_customer и negotiate_price заполняй params.text полным готовым "
             "ответом покупателю (приветствие + ответ на вопрос + уточнение/цена). Отвечай НА ЯЗЫКЕ "
             "клиента (украинском или русском), коротко и вежливо."

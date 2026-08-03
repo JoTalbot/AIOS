@@ -751,17 +751,29 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
         return {"status": "ok", "contact": contact, "messages": msgs[-limit:][::-1]}
 
     async def chat_reply(self, contact: str, text: str) -> Dict[str, Any]:
-        """Ответить в переписку OLX-чата."""
+        """Ответить в переписку OLX-чата (с ретраями и устойчивым поиском контакта)."""
         page = await self._ensure_browser()
         await self._route_olx_fm(page)
         if not await self._goto_retry(page, "https://www.olx.ua/uk/myaccount/answers"):
             return {"status": "error", "error": "OLX-чат недоступен (CloudFront). Попробуйте позже."}
-        try:
-            await page.locator(
-                f"[data-testid='list-item-user-name']:has-text('{contact}')").first.click(timeout=8000)
-            await page.wait_for_timeout(5000)
-        except Exception:
+
+        # ждём появления списка переписок (до 15с), т.к. JS-вёрстка грузится медленно
+        clicked = False
+        for _ in range(6):
+            await page.wait_for_timeout(2500)
+            try:
+                item = page.locator(
+                    f"[data-testid='list-item-user-name']:has-text('{contact}')").first
+                if await item.count():
+                    await item.click(timeout=5000)
+                    clicked = True
+                    break
+            except Exception:
+                continue
+        if not clicked:
             return {"status": "error", "error": f"Переписка «{contact}» не найдена"}
+        await page.wait_for_timeout(6000)
+
         filled = False
         for sel in ("textarea[placeholder*='Напишіть']", "textarea[placeholder*='Напишите']", "textarea"):
             try:
