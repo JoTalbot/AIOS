@@ -55,7 +55,30 @@ def _backup_age_hours() -> float | None:
         return None
 
 
-def collect(service_probe=_service_active) -> dict:
+def _android_probe() -> dict:
+    """Probe Android transport/Companion without reading screen or app data."""
+    try:
+        from aios_core.android_gateway import AndroidGateway
+
+        gateway = AndroidGateway(ROOT)
+        registered = bool(gateway.serial)
+        reconnect = gateway.connect() if registered else {"status": "unregistered"}
+        state = gateway._run(["get-state"], timeout=12).stdout.strip() if registered else ""
+        companion = gateway._companion_request("health", timeout=8)
+        return {
+            "registered": registered,
+            "adb_connected": state == "device",
+            "companion_connected": companion.get("status") == "ok",
+            "reconnect_status": reconnect.get("status"),
+        }
+    except Exception:
+        # Do not include transport exception text in a Telegram health alert:
+        # it can contain network details and is not actionable for the owner.
+        return {"registered": True, "adb_connected": False, "companion_connected": False,
+                "reconnect_status": "error"}
+
+
+def collect(service_probe=_service_active, android_probe=None) -> dict:
     issues: list[str] = []
     warnings: list[str] = []
     service_states = {name: bool(service_probe(name)) for name in SERVICES}
@@ -73,6 +96,12 @@ def collect(service_probe=_service_active) -> dict:
         issues.append(f"permissions:.env:{env_mode:o}")
     if chrome_mode is not None and chrome_mode > 0o700:
         issues.append(f"permissions:chrome:{chrome_mode:o}")
+    android = (android_probe or _android_probe)()
+    if android.get("registered"):
+        if not android.get("adb_connected"):
+            issues.append("android:adb_offline")
+        if not android.get("companion_connected"):
+            issues.append("android:companion_offline")
     return {
         "status": "ok" if not issues else "degraded",
         "checked_at": _now(),
@@ -80,6 +109,7 @@ def collect(service_probe=_service_active) -> dict:
         "warnings": sorted(warnings),
         "services": service_states,
         "backup_age_hours": backup_age,
+        "android": android,
     }
 
 

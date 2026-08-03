@@ -9,9 +9,27 @@ def test_collect_marks_failed_service_as_issue(monkeypatch, tmp_path):
     monkeypatch.setattr(health, "SERVICES", ("ok.service", "bad.service"))
     monkeypatch.setattr(health, "_backup_age_hours", lambda: 1.0)
     monkeypatch.setattr(health, "_mode", lambda _path: 0o600)
-    report = health.collect(service_probe=lambda name: name == "ok.service")
+    report = health.collect(
+        service_probe=lambda name: name == "ok.service",
+        android_probe=lambda: {"registered": True, "adb_connected": True, "companion_connected": True},
+    )
     assert report["status"] == "degraded"
     assert "service:bad.service" in report["issues"]
+
+
+def test_collect_reports_disconnected_registered_android(monkeypatch, tmp_path):
+    import run_ops_health as health
+
+    monkeypatch.setattr(health, "ROOT", tmp_path)
+    monkeypatch.setattr(health, "SERVICES", ())
+    monkeypatch.setattr(health, "_backup_age_hours", lambda: 1.0)
+    monkeypatch.setattr(health, "_mode", lambda _path: 0o600)
+    report = health.collect(android_probe=lambda: {
+        "registered": True, "adb_connected": False, "companion_connected": True,
+    })
+    assert report["status"] == "degraded"
+    assert "android:adb_offline" in report["issues"]
+    assert "android:companion_offline" not in report["issues"]
 
 
 def test_alert_state_deduplicates_unchanged_issues(monkeypatch, tmp_path):
