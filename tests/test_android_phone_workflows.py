@@ -108,7 +108,9 @@ def test_whatsapp_blocks_send_if_phone_text_changed(tmp_path):
     adapter = WhatsAppPhoneAdapter(gateway)
     draft = adapter.prepare_draft("Проверочный текст", confirm=True)
     assert draft["status"] == "draft_ready"
-    gateway.input_text = "Другой текст"
+    # Even a capitalization-only manual edit must stop sending; whitespace/
+    # case-insensitive comparison would be unsafe here.
+    gateway.input_text = "проверочный текст"
     result = adapter.send_draft(draft["draft_id"], confirm=True)
     assert result["status"] == "draft_changed"
     assert not any(x[:2] == (525, 1160) for x in gateway.taps[-1:])
@@ -127,6 +129,23 @@ def test_visible_messages_mask_codes_and_cards(tmp_path):
     assert "123456" not in joined
     assert "4444" not in joined
     assert "[код скрыт]" in joined
+
+
+def test_route_selectors_are_specific_to_calibrated_controls(tmp_path):
+    from aios_core.android_phone_workflows import EasyWayPhoneAdapter, UklonPhoneAdapter
+
+    gateway = FakeGateway(tmp_path)
+    uklon = UklonPhoneAdapter(gateway)
+    assert uklon._calibration_selectors([
+        {"resource": "buttonPickUpAddress", "clickable": True, "bounds": [10, 100, 500, 160]},
+        {"resource": "buttonDropOffAddress", "clickable": True, "bounds": [10, 170, 500, 230]},
+    ]) == {"pickup_address": True, "destination_address": True}
+
+    easyway = EasyWayPhoneAdapter(gateway)
+    assert easyway._calibration_selectors([
+        {"text": "Куди", "description": "", "resource": "", "class": "Button", "clickable": True,
+         "bounds": [120, 72, 552, 144]},
+    ]) == {"destination_trigger": True}
 
 
 def test_easyway_uses_the_installed_com_eway_profile(tmp_path):

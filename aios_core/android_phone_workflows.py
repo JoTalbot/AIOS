@@ -61,6 +61,16 @@ def _fold(value: object) -> str:
     return " ".join(str(value or "").casefold().replace("…", " ").split())
 
 
+def _same_draft_text(left: object, right: object) -> bool:
+    """Compare the displayed compose text without weakening its meaning.
+
+    Accessibility may normalise line endings, but changes in case, spaces or
+    characters must block sending rather than be treated as equivalent.
+    """
+    normalise = lambda value: str(value or "").replace("\r\n", "\n").replace("\r", "\n")
+    return normalise(left) == normalise(right)
+
+
 def _bounds(node: dict) -> tuple[int, int, int, int] | None:
     raw = node.get("bounds")
     if not isinstance(raw, (list, tuple)) or len(raw) != 4:
@@ -151,6 +161,40 @@ class WorkflowStore:
         return {"id": str(workflow_id), **record}
 
 
+class AppCalibrationStore:
+    """Persist only non-sensitive UI capability flags for an app.
+
+    It intentionally contains no screen text, addresses, chat names, account
+    data or screenshots.  The short record lets the route adapters report
+    whether their known controls are still present after an app update.
+    """
+
+    def __init__(self, root: Path | str):
+        self.root = Path(root)
+        self.path = self.root / "data" / "android_gateway" / "app_ui_calibrations.json"
+
+    def get(self, profile: str) -> dict:
+        value = _read(self.path, {})
+        item = value.get(str(profile)) if isinstance(value, dict) else None
+        return item if isinstance(item, dict) else {}
+
+    def save(self, profile: str, package: str, *, nodes: int, editable: int, clickable: int, selectors: dict[str, bool]) -> dict:
+        all_items = _read(self.path, {})
+        if not isinstance(all_items, dict):
+            all_items = {}
+        item = {
+            "package": str(package),
+            "checked_at": _iso(),
+            "nodes": max(0, int(nodes)),
+            "editable": max(0, int(editable)),
+            "clickable": max(0, int(clickable)),
+            "selectors": {str(key): bool(value) for key, value in selectors.items()},
+        }
+        all_items[str(profile)] = item
+        _write(self.path, all_items)
+        return item
+
+
 class ActiveAppAdapter:
     """Base class that refuses to act when another app is foregrounded."""
 
@@ -161,6 +205,7 @@ class ActiveAppAdapter:
     def __init__(self, gateway: AndroidGateway):
         self.gateway = gateway
         self.store = WorkflowStore(gateway.root)
+        self.calibrations = AppCalibrationStore(gateway.root)
 
     def _available(self) -> bool:
         profiles = self.gateway.app_profiles().get("profiles") or []
@@ -189,6 +234,61 @@ class ActiveAppAdapter:
 
     def _active_ui(self, include_text: bool = True) -> dict:
         return self.gateway.active_app_ui(self.package, confirm=True, include_text=include_text)
+
+    def _wait_active_ui(self, wait_seconds: float = 2.0, include_text: bool = True) -> dict:
+        """Wait briefly for a launched app without interacting with its UI."""
+        deadline = time.monotonic() + max(0.2, min(float(wait_seconds), 8.0))
+        last: dict = {}
+        while True:
+            last = self._active_ui(include_text=include_text)
+            if last.get("status") == "ok" and last.get("nodes"):
+                return last
+            if time.monotonic() >= deadline:
+                return last
+            time.sleep(0.35)
+
+    def _calibration_selectors(self, nodes: list[dict]) -> dict[str, bool]:
+        return {}
+
+    def _wait_for_calibrated_ui(self, wait_seconds: float = 3.0) -> tuple[dict, dict[str, bool]]:
+        """Wait past a splash screen until known non-sensitive controls appear."""
+        deadline = time.monotonic() + max(0.5, min(float(wait_seconds), 8.0))
+        last: dict = {}
+        selectors: dict[str, bool] = {}
+        while True:
+            last = self._active_ui(include_text=True)
+            if last.get("status") == "ok":
+                selectors = self._calibration_selectors(last.get("nodes") or [])
+                # Apps with no custom selectors still return after the first
+                # real tree; route apps wait for a field/control or timeout.
+                if not selectors or any(selectors.values()):
+                    return last, selectors
+            if time.monotonic() >= deadline:
+                return last, selectors
+            time.sleep(0.35)
+
+    def _save_calibration(self, snapshot: dict, selectors: dict[str, bool]) -> dict:
+        nodes = snapshot.get("nodes") or []
+        return self.calibrations.save(
+            self.profile, self.package, nodes=len(nodes),
+            editable=sum(bool(node.get("editable")) for node in nodes),
+            clickable=sum(bool(node.get("clickable")) for node in nodes),
+            selectors=selectors,
+        )
+
+    def calibrate(self, confirm: bool = False, wait_seconds: float = 3.0) -> dict:
+        """Open a chosen app and record a text-free control capability map."""
+        if not confirm:
+            return {"status": "need_confirm", "action": "android_calibrate_app", "package": self.package}
+        opened = self.open(confirm=True)
+        if opened.get("status") != "ok":
+            return opened
+        snapshot, selectors = self._wait_for_calibrated_ui(wait_seconds=wait_seconds)
+        if snapshot.get("status") != "ok":
+            return snapshot
+        record = self._save_calibration(snapshot, selectors)
+        return {"status": "calibrated", "title": self.title, "selectors": selectors,
+                "nodes": record["nodes"], "editable": record["editable"], "clickable": record["clickable"]}
 
     def _tap_node(self, node: dict) -> dict:
         bounds = _bounds(node)
@@ -307,7 +407,7 @@ class MessengerDraftAdapter(ActiveAppAdapter):
         if verified.get("status") != "ok":
             return verified
         current = self._composer(verified.get("nodes") or [])
-        if not current or _fold(current.get("text")) != _fold(body):
+        if not current or not _same_draft_text(current.get("text"), body):
             return {
                 "status": "error",
                 "error": "Черновик не подтверждён интерфейсом; отправка заблокирована",
@@ -362,7 +462,7 @@ class MessengerDraftAdapter(ActiveAppAdapter):
         composer = self._composer(nodes)
         # Do not send if the user touched the phone, changed chats, or altered
         # even one character after reviewing the draft in Telegram.
-        if not composer or _fold(composer.get("text")) != _fold(body):
+        if not composer or not _same_draft_text(composer.get("text"), body):
             return {"status": "draft_changed", "error": "Текст в поле изменился; отправка заблокирована"}
         control = self._send_control(nodes)
         if not control:
@@ -509,6 +609,10 @@ class PhoneAppMonitor(ActiveAppAdapter):
         # Only counts are returned; notification text can carry OTPs, balances,
         # location and banking data.
         base["notification_count"] = count
+        calibration = self.calibrations.get(self.profile)
+        if calibration.get("package") == self.package:
+            base["ui_calibrated"] = True
+            base["route_controls"] = dict(calibration.get("selectors") or {})
         return base
 
 
@@ -518,17 +622,38 @@ class UklonPhoneAdapter(PhoneAppMonitor):
     title = "Uklon Passenger"
     notification_packages = ("ua.com.uklontaxi", "ua.com.uklon.uklondriver")
     driver_package = "ua.com.uklon.uklondriver"
+    pickup_resource = "buttonPickUpAddress"
+    destination_resource = "buttonDropOffAddress"
+
+    def _resource_control(self, nodes: list[dict], resource_name: str) -> dict | None:
+        matches = [node for node in nodes if str(node.get("resource") or "").endswith(resource_name)]
+        targets: dict[tuple[int, int, int, int], dict] = {}
+        for node in matches:
+            target = self._click_target(nodes, node) or (node if node.get("clickable") else None)
+            bounds = _bounds(target or {})
+            if target and bounds:
+                targets[bounds] = target
+        return next(iter(targets.values()), None) if len(targets) == 1 else None
+
+    def _calibration_selectors(self, nodes: list[dict]) -> dict[str, bool]:
+        return {
+            "pickup_address": bool(self._resource_control(nodes, self.pickup_resource)),
+            "destination_address": bool(self._resource_control(nodes, self.destination_resource)),
+        }
 
     def open_driver(self, confirm: bool = False) -> dict:
         if not confirm:
             return {"status": "need_confirm", "action": "android_open_app", "package": self.driver_package}
+        installed = self.gateway.apps(limit=2000).get("apps") or []
+        if self.driver_package not in installed:
+            return {"status": "not_installed", "error": "Uklon Driver не найден на телефоне"}
         result = self.gateway.open_app(self.driver_package, confirm=True)
         if result.get("status") == "ok":
             result["title"] = "Uklon Driver"
         return result
 
     def stage_route(self, pickup: str, destination: str, confirm: bool = False) -> dict:
-        """Store a private route draft and open Passenger. No order is created."""
+        """Store a private route draft and verify Passenger controls. No order is created."""
         start, end = " ".join(str(pickup or "").split()), " ".join(str(destination or "").split())
         if not end:
             return {"status": "error", "error": "Укажите пункт назначения"}
@@ -537,16 +662,43 @@ class UklonPhoneAdapter(PhoneAppMonitor):
         opened = self.open(confirm=True)
         if opened.get("status") != "ok":
             return opened
-        # Route fields vary by release/localisation. Until the first private UI
-        # calibration we never guess coordinates or press a booking button.
+        snapshot, selectors = self._wait_for_calibrated_ui(wait_seconds=4.5)
+        if snapshot.get("status") != "ok":
+            return snapshot
+        self._save_calibration(snapshot, selectors)
+        # Do not guess address suggestions or touch a booking control. Selecting
+        # a place and creating a ride remain deliberate follow-up actions.
         draft = self.store.create("route_draft", self.package, {"pickup": start, "destination": end}, ttl_seconds=600)
-        return {"status": "route_staged", "route_id": draft["id"], "expires_at": draft["expires_at"], "booking": "not_created"}
+        return {
+            "status": "route_staged", "route_id": draft["id"], "expires_at": draft["expires_at"],
+            "booking": "not_created", "controls": selectors,
+        }
 
 
 class EasyWayPhoneAdapter(PhoneAppMonitor):
     package = "com.eway"
     profile = "easyway"
     title = "EasyWay"
+    destination_labels = ("куда", "куди", "destination", "where to", "пункт назначения")
+
+    def _destination_trigger(self, nodes: list[dict]) -> dict | None:
+        candidates: list[dict] = []
+        for node in nodes:
+            bounds = _bounds(node)
+            if not bounds or not node.get("clickable"):
+                continue
+            # EasyWay currently exposes the destination field as a top Button.
+            # Requiring both role and position avoids treating map pins as input.
+            if not str(node.get("class") or "").endswith("Button") or bounds[1] > 300:
+                continue
+            label = _fold(self._label(node))
+            if any(term in label for term in self.destination_labels):
+                candidates.append(node)
+        unique = {bounds: node for node in candidates if (bounds := _bounds(node))}
+        return next(iter(unique.values()), None) if len(unique) == 1 else None
+
+    def _calibration_selectors(self, nodes: list[dict]) -> dict[str, bool]:
+        return {"destination_trigger": bool(self._destination_trigger(nodes))}
 
     def stage_route(self, destination: str, confirm: bool = False) -> dict:
         place = " ".join(str(destination or "").split())
@@ -557,8 +709,12 @@ class EasyWayPhoneAdapter(PhoneAppMonitor):
         opened = self.open(confirm=True)
         if opened.get("status") != "ok":
             return opened
+        snapshot, selectors = self._wait_for_calibrated_ui(wait_seconds=4.5)
+        if snapshot.get("status") != "ok":
+            return snapshot
+        self._save_calibration(snapshot, selectors)
         draft = self.store.create("transit_route_draft", self.package, {"destination": place}, ttl_seconds=600)
-        return {"status": "route_staged", "route_id": draft["id"], "expires_at": draft["expires_at"]}
+        return {"status": "route_staged", "route_id": draft["id"], "expires_at": draft["expires_at"], "controls": selectors}
 
 
 class BankPhoneAdapter(PhoneAppMonitor):
