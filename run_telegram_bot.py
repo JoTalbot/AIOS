@@ -1617,6 +1617,26 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 else:
                     api.send_message(chat_id, f"ℹ️ {data.get('error', st)}")
                 return True
+            if kind == "olx_create":
+                d = pend["data"]
+                import subprocess as _sp
+                data = _run_account_control(["olx", "create", d["part"], "--confirm"])
+                st = data.get("status")
+                if st == "draft_created":
+                    txt = f"📝 <b>Объявление создано (черновик)</b>: {_esc_tg(data.get('title', ''))}\n"
+                    if data.get("screenshot"):
+                        _acct_send_result(api, chat_id, {"status": "ok",
+                                                         "text": txt,
+                                                         "screenshot": data.get("screenshot"),
+                                                         "caption": "📝 OLX черновик"}, "")
+                    else:
+                        api.send_message(chat_id, txt)
+                elif st == "phone_not_confirmed":
+                    api.send_message(chat_id, f"📱 {data.get('error', 'Нужно подтвердить телефон')}\n"
+                                              f"Напишите «подтверди телефон OLX».")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
             if kind == "ig_comment_reply":
                 d = pend["data"]
                 data = _run_account_control(["instagram", "comment_reply", d["code"], d["text"], "--confirm"])
@@ -1778,7 +1798,12 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                    "сделай объявление из фото", "объявление по фото", "фото в объявление",
                    "выложи по фото", "деталь по фото",
                    "создай гугл таблицу", "создай google таблицу", "в гугл таблицу",
-                   "создай таблицу из финансов", "создай таблицу из склада")
+                   "создай таблицу из финансов", "создай таблицу из склада",
+                   "сколько стоит", "почём", "цена на", "что стоит",
+                   "подтверди телефон олх", "подтверди телефон olx", "подтвердить телефон олх",
+                   "подтверждение телефона олх", "опубликуй это объявление",
+                   "опубликуй объявление на олх", "публикуй на олх", "создай на олх",
+                   "выложи на олх")
     is_other = any(w in t for w in other_words)
     if not is_ig and not is_g and not is_other and not tg_words:
         return False
@@ -2596,6 +2621,71 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ {res.get('error', '?')}")
         return True
 
+    # ---- Подтверждение телефона OLX + публикация ----
+    if any(w in t for w in ("подтверди телефон олх", "подтверди телефон olx", "подтвердить телефон олх",
+                            "подтверждение телефона олх")):
+        api.send_message(chat_id,
+                         "📱 <b>Подтверждение телефона OLX</b>\n\n"
+                         "Это одноразовое действие (как вход в соцсети):\n"
+                         "1. Я открою VNC и страницу подтверждения\n"
+                         "2. Подключитесь: <code>167.233.95.7:5901</code> (пароль <code>aios1234</code>)\n"
+                         "3. Введите номер телефона, нажмите «Отримати код», введите код из Viber/SMS\n"
+                         "4. Готово — напишите мне, я закрою VNC, и публикация объявлений заработает.\n\n"
+                         "Открываю VNC сейчас…")
+        import subprocess as _sp
+        try:
+            _sp.run(["ufw", "allow", "5901/tcp"], capture_output=True, timeout=15)
+            _sp.run(["bash", "-c", "pkill -9 -f '[X]vnc :1' 2>/dev/null; sleep 1; "
+                                    "vncserver :1 -geometry 1920x1080 -depth 24 -localhost no >/dev/null 2>&1"],
+                    capture_output=True, timeout=60)
+            _sp.run(["bash", "-c",
+                     "export DISPLAY=:1; rm -f /root/AIOS/data/chrome_twin/default/Singleton*; "
+                     "nohup /usr/bin/google-chrome-stable --no-sandbox "
+                     "--user-data-dir=/root/AIOS/data/chrome_twin/default "
+                     "--no-first-run --no-default-browser-check --disable-infobars "
+                     "\"https://www.olx.ua/d/uk/adding/\" > /tmp/olx_confirm.log 2>&1 &"],
+                    capture_output=True, timeout=30)
+            api.send_message(chat_id, "✅ VNC открыт. Жду вас: <code>167.233.95.7:5901</code>, пароль <code>aios1234</code>")
+        except Exception as e:
+            api.send_message(chat_id, f"⚠️ Не смог открыть VNC: {e}")
+        return True
+
+    if any(w in t for w in ("опубликуй это объявление", "опубликуй объявление на олх",
+                            "публикуй на олх", "создай на олх", "выложи на олх")):
+        # берём последнее сгенерированное (просим деталь)
+        m_d = re.search(r"(?:объявление|на олх)\s*[:—-]\s*(.+)$", text, re.IGNORECASE)
+        part = m_d.group(1).strip() if m_d else ""
+        if not part:
+            api.send_message(chat_id, "📝 Скажите, что публикуем: «опубликуй на олх: фара BMW X5 2000»\n"
+                                      "или сначала «создай объявление: …», потом «опубликуй это объявление»")
+            return True
+        import subprocess as _sp
+        api.send_message(chat_id, f"⏳ Создаю объявление на OLX: «{part}»…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_olx_ad_gen.py"), "create", part],
+                    capture_output=True, text=True, timeout=170, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-200:]}
+        if res.get("status") == "need_confirm":
+            _pending_confirm[chat_id] = {"kind": "olx_create",
+                                         "data": {"part": part,
+                                                  "title": res.get("title", ""),
+                                                  "description": res.get("description", ""),
+                                                  "price": res.get("price", "")}}
+            api.send_message(chat_id,
+                             f"📝 Объявление готово:\n<b>{res.get('title')}</b>\n"
+                             f"Цена: {res.get('price')} грн\n"
+                             f"{res.get('description', '')}\n\n"
+                             f"Опубликовать на OLX? «да» / «нет»")
+        elif res.get("status") == "phone_not_confirmed":
+            api.send_message(chat_id,
+                             f"📱 {res.get('error')}\n\n"
+                             f"Напишите «подтверди телефон OLX» — открою VNC для одноразового подтверждения.")
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', res.get('status', '?'))}")
+        return True
+
     # ---- Автоответ OLX ----
     if any(w in t for w in ("автоответ олх", "автоответ olx", "автоответ в олх",
                             "автоответ покупателям")):
@@ -2620,6 +2710,80 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                          f"При новых сообщениях в OLX-чате бот уведомит и поможет ответить.\n"
                          f"{'Отправка ответов — автоматически.' if auto else 'Сначала — подтверждение в чате.'}")
         return True
+
+    # ---- Сколько стоит деталь (умные цены) ----
+    if re.match(r"^(сколько стоит|почём|цена на|что стоит)\s+", t):
+        q = re.sub(r"^(сколько стоит|почём|цена на|что стоит)\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
+        q = q.replace("?", "").strip()
+        if not q:
+            api.send_message(chat_id, "💰 «сколько стоит <деталь>», например: сколько стоит фара BMW X5")
+            return True
+        api.send_message(chat_id, f"💰 Ищу цену на «{q}»…")
+        import subprocess as _sp
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_price_guide.py"), q],
+                    capture_output=True, text=True, timeout=90, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-150:]}
+        if res.get("status") == "ok":
+            if res.get("found"):
+                txt = (f"💰 <b>Цена на «{q}»</b> (по {res['found']} похожим объявлениям):\n"
+                       f"📊 Медиана: <b>{res.get('median')} грн</b>\n"
+                       f"📉 Диапазон: {res.get('min')} – {res.get('max')} грн")
+                if res.get("ai_advice"):
+                    txt += f"\n\n🤖 <i>{_esc_tg(res['ai_advice'])}</i>"
+                if res.get("examples"):
+                    txt += "\n\nПримеры:\n" + "\n".join(
+                        f"• {_esc_tg(e['title'][:55])} — {e['price']} грн" for e in res["examples"][:3])
+                api.send_message(chat_id, txt[:3900])
+            else:
+                api.send_message(chat_id,
+                                 f"💰 По «{q}» пока нет данных в базе.\n"
+                                 f"Могу: «следи за ценой {q}» — буду собирать и уведомлять о снижении.")
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+        return True
+
+    # ---- AI-классификатор при добавлении детали ----
+    if re.match(r"^добавь деталь\s+.+,\s*\d+\s*шт", t):
+        import subprocess as _sp
+        m_add = re.match(r"^добавь деталь\s+(.+?)\s*[,:]\s*(\d+)\s*шт\s*(?:по\s*([\d\s.,]+))?", text, re.IGNORECASE)
+        if m_add:
+            name = m_add.group(1).strip()
+            qty = int(m_add.group(2))
+            price_s = m_add.group(3) or ""
+            # LLM-классификация: категория + рекомендуемая цена
+            prompt = (f"Деталь автозапчасти: «{name}». Определи категорию из списка "
+                      f"(двигатель, кузов, оптика, подвеска, тормоза, электрика, салон, трансмиссия, расходники, другое) "
+                      f"и среднюю цену в грн. Верни ТОЛЬКО JSON: {{\"category\": \"...\", \"price\": число}}. "
+                      f"{('Ориентир по цене: ' + price_s + ' грн') if price_s else ''}")
+            try:
+                advice = _llm_chat_direct(prompt)
+                import json as _json2
+                start = advice.find("{")
+                end = advice.rfind("}") + 1
+                cls = _json2.loads(advice[start:end]) if start >= 0 and end > start else {}
+                category = (cls.get("category") or "общее")
+                rec_price = cls.get("price") or price_s or "0"
+            except Exception:
+                category, rec_price = "общее", price_s or "0"
+            r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"),
+                         "add", name, str(qty), str(rec_price or 0), category],
+                        capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+            try:
+                res = json.loads((r.stdout or "").strip().split("\n")[-1])
+            except Exception:
+                res = {"status": "error"}
+            if res.get("status") == "ok":
+                it = res.get("item", {})
+                api.send_message(chat_id,
+                                 f"📦 <b>{name}</b>: {it.get('qty')} шт · {it.get('price')} грн\n"
+                                 f"🏷 Категория (AI): {it.get('category')}\n"
+                                 f"{'🤖 Рекомендуемая цена по рынку.' if rec_price and not price_s else ''}")
+            else:
+                api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+            return True
 
     # ---- Склад (инвентаризация) ----
     inv_words = any(w in t for w in ("добавь деталь", "добавь на склад", "спиши деталь",
@@ -2665,9 +2829,9 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         # добавление детали
         m_add = re.match(r"^(добавь деталь|добавь на склад)\s+(.+?)\s*[,:]\s*(\d+)\s*шт\s*(?:по\s*([\d\s.,]+))?", text, re.IGNORECASE)
         if m_add:
-            name = m_add.group(2).strip()
-            qty = int(m_add.group(3))
-            price_s = m_add.group(4) or "0"
+            name = m_add.group(1).strip()
+            qty = int(m_add.group(2))
+            price_s = m_add.group(3) or "0"
             try:
                 price = float(price_s.replace(" ", "").replace(",", "."))
             except ValueError:

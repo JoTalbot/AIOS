@@ -383,32 +383,70 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
             return []
 
     async def create_ad(self, title: str, description: str, price: str, category: str = "other", images: List[str] = None) -> Dict[str, Any]:
-        """Создать объявление через эмулятор (требует логина)"""
-        if not self.is_logged_in:
-            await self.login_to_olx()
-        
+        """Создать объявление через Chrome Twin (актуальная форма /d/uk/adding/)."""
         page = await self._ensure_browser()
         try:
-            # Navigate to new ad page
-            await page.goto(f"{self.olx_url}adding/", wait_until="networkidle", timeout=20000)
-            await page.wait_for_timeout(3000)
-            
-            # Fill title
-            await page.fill("input[name='title'], input[placeholder*='назв'], input[placeholder*='Название']", title)
-            await page.wait_for_timeout(500)
-            
-            # Fill description
-            await page.fill("textarea[name='description'], textarea[placeholder*='опис'], textarea[placeholder*='Описание']", description)
-            await page.wait_for_timeout(500)
-            
-            # Fill price
+            await page.goto("https://www.olx.ua/d/uk/adding/", wait_until="domcontentloaded", timeout=30000)
+            await page.wait_for_timeout(6000)
+            # Проверка: телефон подтверждён?
+            body = await page.inner_text("body")
+            if any(k in body.lower() for k in ("підтвердіть", "подтвердите", "код підтвердження",
+                                               "отримати код", "підтвердити свій")):
+                return {"status": "phone_not_confirmed",
+                        "error": "Нужно подтвердить телефон OLX (через VNC, команда «подтверди телефон OLX»)"}
+
+            # Заполнить заголовок
+            for sel in ("input[name='title']", "input[placeholder*='назв']", "input[placeholder*='Название']",
+                        "input[data-testid*='title']", "textarea[placeholder*='назв']"):
+                try:
+                    el = page.locator(sel).first
+                    await el.wait_for(state="visible", timeout=5000)
+                    await el.fill(title)
+                    break
+                except Exception:
+                    continue
+
+            # Описание
+            for sel in ("textarea[name='description']", "textarea[placeholder*='опис']",
+                        "textarea[placeholder*='Описание']", "[contenteditable='true'][data-qa*='desc']"):
+                try:
+                    el = page.locator(sel).first
+                    await el.wait_for(state="visible", timeout=5000)
+                    await el.fill(description)
+                    break
+                except Exception:
+                    continue
+
+            # Цена
             if price:
-                await page.fill("input[name='price'], input[placeholder*='цін'], input[placeholder*='цен']", price)
-            
-            # For images, would need file chooser handling - simplified
-            # Real implementation would use page.set_input_files
-            
-            return {"status": "draft_created", "title": title, "description": description[:100], "price": price}
+                for sel in ("input[name='price']", "input[placeholder*='цін']", "input[placeholder*='цен']",
+                            "input[data-testid*='price']"):
+                    try:
+                        el = page.locator(sel).first
+                        await el.wait_for(state="visible", timeout=4000)
+                        await el.fill(str(price))
+                        break
+                    except Exception:
+                        continue
+
+            # Фото (если переданы)
+            if images:
+                try:
+                    fi = page.locator("input[type='file']").first
+                    if await fi.count():
+                        await fi.set_input_files([im for im in images if os.path.exists(im)])
+                        await page.wait_for_timeout(4000)
+                except Exception:
+                    pass
+
+            await page.wait_for_timeout(2000)
+            shot = f"/tmp/aios_acct_olx_add_{int(__import__('time').time())}.png"
+            try:
+                await page.screenshot(path=shot)
+            except Exception:
+                shot = None
+            return {"status": "draft_created", "title": title, "description": description[:100],
+                    "price": price, "screenshot": shot}
         except Exception as e:
             print(f"Create ad failed: {e}")
             return {"status": "failed", "error": str(e)}
