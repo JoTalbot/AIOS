@@ -119,10 +119,11 @@ class Guardrails:
         if floor:
             low = min(nums)
             if low < floor:
-                return Decision("ESCALATE",
-                                reason=f"Покупатель предлагает {low:.0f} грн ниже пола {floor:.0f} "
-                                       f"для «{item or 'товара'}»",
-                                matched_rules=["below_floor"], meta={"offer": low, "floor": floor})
+                # Клиент предлагает ниже пола — НЕ блокируем и НЕ эскалируем мгновенно.
+                # Даём LLM сгенерировать встречную цену НЕ НИЖЕ пола (пол+).
+                # Реальная защита от опускания ниже пола — в _eval_price (counter < floor -> ESCALATE).
+                # Возвращаем None, чтобы торг обработал LLM с ограничением "не ниже пола".
+                return None
         return None
 
     # ------------------------------------------------------------------

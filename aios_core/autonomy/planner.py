@@ -19,7 +19,7 @@ from .policy import AutonomyPolicy
 # Известные действия и допустимые параметры
 KNOWN_ACTIONS: dict[str, list[str]] = {
     "reply_customer": ["text", "platform", "chat"],
-    "negotiate_price": ["sku", "item", "offer", "ad_price", "target", "text"],
+    "negotiate_price": ["sku", "item", "offer", "ad_price", "target", "counter", "text"],
     "counter_offer": ["sku", "item", "offer", "ad_price", "counter", "text"],
     "accept_offer": ["sku", "item", "offer", "ad_price", "text"],
     "decline_offer": ["sku", "item", "text"],
@@ -193,11 +193,17 @@ class Planner:
             "action reply_customer: отвечай вежливо на языке клиента. Если характеристика (цвет) "
             "неизвестна — НЕ называй её, а скажи, что уточнишь или пришлёшь фото, либо спроси, "
             "что именно интересует. Не начинай торг, если покупатель не предлагал цену.\n"
-            "Если покупатель спрашивает цену — query_price_history со sku/item; если торгуется — "
-            "action negotiate_price: заполни params.counter разумной встречной ценой (немного ниже "
-            "ad_price, но не слишком — обычно 5-10% скидка), params.offer (цифра покупателя) и text "
-            "(текст ответа покупателю с встречной ценой); если хочет купить/вопрос — reply_customer "
-            "с text (и offer/ad_price при наличии). "
+            "Если покупатель спрашивает цену — query_price_history со sku/item; если хочет купить/вопрос "
+            "— reply_customer с text (и offer/ad_price при наличии).\n"
+            "ТОРГ: если покупатель торгуется (предлагает цену, спрашивает скидку) — action negotiate_price. "
+            "Правила торга:\n"
+            "  - params.offer = цифра, которую предлагает покупатель (если есть).\n"
+            "  - params.counter = встречная цена, которую ты предлагаешь. Она должна быть НЕ НИЖЕ "
+            "МИНИМАЛЬНОЙ цены (пола) товара из контекста. Можно торговаться, уступая вплоть до пола, "
+            "но НИКОГДА не ниже пола.\n"
+            "  - params.text = текст ответа покупателю: вежливо предложи встречную цену, обоснуй.\n"
+            "  - Если покупатель предлагает меньше пола — не соглашайся, предложи встречную = пол "
+            "или чуть выше, объясни что ниже не можете.\n"
             "ПОЛНЫЙ ОТВЕТ: для reply_customer и negotiate_price заполняй params.text полным готовым "
             "ответом покупателю (приветствие + ответ на вопрос + уточнение/цена). Отвечай НА ЯЗЫКЕ "
             "клиента (украинском или русском), коротко и вежливо."
@@ -249,6 +255,13 @@ class Planner:
             lines.append(f"  • цена: {price} грн")
         if qty is not None:
             lines.append(f"  • наличие: {qty} шт ({'в наличии' if qty > 0 else 'под заказ'})")
+        # минимальная цена (пол) для торга
+        try:
+            floor = self.policy.floor_for(name)
+            if floor:
+                lines.append(f"  • МИНИМАЛЬНАЯ цена (ниже нельзя): {floor:.0f} грн")
+        except Exception:
+            pass
         return "\n".join(lines)
 
     @staticmethod
