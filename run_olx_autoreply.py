@@ -121,13 +121,13 @@ def _detect_item(text: str) -> str | None:
 
 def get_olx_threads() -> list[dict]:
     """Список переписок OLX-чата: [{contact, text, unread}]."""
-    res = _run_ac(["olx", "chat", "list", "20"], timeout=170)
+    res = _run_ac(["olx", "chat", "list", "--limit", "20"], timeout=170)
     threads = res.get("threads", []) or []
     return threads
 
 
 def read_olx(contact: str) -> dict:
-    return _run_ac(["olx", "chat", "read", contact, "15"], timeout=170)
+    return _run_ac(["olx", "chat", "read", contact, "--limit", "15"], timeout=170)
 
 
 def reply_olx(contact: str, text: str) -> dict:

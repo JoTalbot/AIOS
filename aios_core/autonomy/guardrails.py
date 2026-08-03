@@ -245,13 +245,16 @@ class Guardrails:
 
     # ------------------------------------------------------------------
     def _eval_reply(self, action: str, params: dict, ctx: dict) -> Decision:
+        # Обычные текстовые ответы (reply_customer) разрешаем автономно, даже новым
+        # клиентам — LLM отвечает на вопрос. Эскалируем только рискованные случаи:
+        # агрессия, оптовый запрос, рисковый клиент (репутация).
         rules: list[str] = []
-        if self.policy.is_esc_rule_on("unknown_customer") and ctx.get("customer_trust") == "new":
-            rules.append("unknown_customer")
         if self.policy.is_esc_rule_on("aggressive_haggle") and ctx.get("aggressive"):
             rules.append("aggressive_haggle")
         if self.policy.is_esc_rule_on("bulk_request") and ctx.get("bulk"):
             rules.append("bulk_request")
+        if "risky_customer" in ctx.get("rules", []) or ctx.get("customer_trust") == "risky":
+            rules.append("risky_customer")
         if rules:
             return Decision("ESCALATE", reason="риск-факторы в коммуникации",
                             matched_rules=rules)
