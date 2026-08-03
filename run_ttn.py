@@ -139,6 +139,25 @@ def warehouses(city: str, query: str = "", limit: int = 10) -> dict:
         for w in (r.get("data") or [])]}
 
 
+def split_delivery(value: str) -> tuple[str, str]:
+    """Разобрать строку «город, отделение» из контекста сделки.
+
+    Автономный контур часто хранит доставку одной строкой. Для ТТН нужны
+    отдельные город и отделение; если разделить нельзя, вызывающий код
+    попросит владельца уточнить данные вместо создания некорректной ТТН.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return "", ""
+    parts = [part.strip() for part in re.split(r"[,;\n]", text) if part.strip()]
+    if len(parts) >= 2:
+        return parts[0], ", ".join(parts[1:])
+    match = re.search(r"(?i)^(.*?)\s+((?:відділення|отделение|поштомат|branch)\b.*)$", text)
+    if match:
+        return match.group(1).strip(" -"), match.group(2).strip()
+    return "", text
+
+
 def _find_recipient(phone: str) -> dict | None:
     """Найти получателя в адресной книге по телефону."""
     r = _api("Counterparty", "getCounterparties",
@@ -260,9 +279,46 @@ def create_ttn(detail: str, cost: str, recipient_name: str, recipient_phone: str
     if not r.get("success"):
         return {"status": "error", "error": str(r.get("errors", r))[:400]}
     d = r["data"][0] if r.get("data") else {}
-    return {"status": "ok", "ttn": d.get("IntDocNumber") or d.get("Number", ""),
-            "ref": d.get("Ref", ""), "cost": cost,
-            "recipient": recipient_name, "detail": detail}
+    result = {
+        "status": "ok",
+        "ttn": d.get("IntDocNumber") or d.get("Number", ""),
+        "ref": d.get("Ref", ""),
+        "cost": cost,
+        "recipient": recipient_name,
+        "detail": detail,
+        "city": recipient_city,
+        "warehouse": recipient_wh,
+    }
+    # Создание ТТН — начало бизнес-процесса, а не синоним «отправлено».
+    # Резервируем товар и создаём задачу на отправку. Ошибка учёта не должна
+    # скрыть успешно созданную в Новой Почте накладную, поэтому возвращается
+    # как предупреждение рядом с результатом API.
+    try:
+        from aios_core.sales_lifecycle import SalesLifecycle
+        lifecycle = SalesLifecycle(ROOT)
+        sale_result = lifecycle.register_ttn(
+            ttn=str(result["ttn"] or ""),
+            item=detail,
+            amount=cost,
+            recipient=recipient_name,
+            phone=recipient_phone,
+            city=recipient_city,
+            warehouse=recipient_wh,
+            delivery=f"{recipient_city}, {recipient_wh}",
+            source="run_ttn",
+        )
+        if sale_result.get("status") == "ok":
+            result.update({
+                "sale": sale_result.get("sale"),
+                "task": sale_result.get("task"),
+                "inventory": sale_result.get("inventory"),
+                "sale_message": sale_result.get("message"),
+            })
+        else:
+            result["sale_lifecycle_warning"] = sale_result.get("error") or "не удалось создать задачу"
+    except Exception as exc:
+        result["sale_lifecycle_warning"] = str(exc)[:200]
+    return result
 
 
 def sender_city_ref() -> str:
@@ -287,10 +343,15 @@ def main() -> None:
     elif cmd == "warehouses" and len(sys.argv) >= 3:
         print(json.dumps(warehouses(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else ""),
                          ensure_ascii=False))
-    elif cmd == "create" and len(sys.argv) >= 7:
+    elif cmd == "create":
         confirm = "--confirm" in sys.argv
-        print(json.dumps(create_ttn(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5],
-                                    sys.argv[6], sys.argv[7] if len(sys.argv) > 7 else "",
+        args = [arg for arg in sys.argv[2:] if arg != "--confirm"]
+        if len(args) < 6:
+            print(json.dumps({"status": "error",
+                              "error": "create: нужны деталь, цена, ФИО, телефон, город, отделение"},
+                             ensure_ascii=False))
+            return
+        print(json.dumps(create_ttn(args[0], args[1], args[2], args[3], args[4], args[5],
                                     confirm), ensure_ascii=False))
     else:
         print(json.dumps({"status": "error",

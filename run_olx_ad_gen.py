@@ -125,7 +125,7 @@ def generate_many(parts: list[str]) -> dict:
 
 
 def _load_inventory() -> list[dict]:
-    """Позиции склада из data/inventory.json (qty > 0)."""
+    """Позиции, доступные для новой продажи (без резервов под созданные ТТН)."""
     p = ROOT / "data" / "inventory.json"
     if not p.exists():
         return []
@@ -133,7 +133,13 @@ def _load_inventory() -> list[dict]:
         items = json.loads(p.read_text(encoding="utf-8"))
         if not isinstance(items, list):
             return []
-        return [it for it in items if int(it.get("qty") or 0) > 0]
+        # qty — физический остаток. После создания ТТН товар ещё лежит на
+        # складе, но уже зарезервирован и не должен попасть в новое объявление.
+        try:
+            import run_inventory
+            return [it for it in items if run_inventory.available_qty(it) > 0]
+        except Exception:
+            return [it for it in items if int(it.get("qty") or 0) > 0]
     except Exception:
         return []
 

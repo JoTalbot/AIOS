@@ -231,69 +231,101 @@ class Executor:
             return {"status": "error", "error": "Нет ad_id"}
         return _run_ac(["olx", "delete", ad_id, "--confirm"], timeout=170)
 
-    # ---- Ручные (не должны доходить, но на всякий случай) ----
-    def _do_create_ttn(self, p, platform, chat):
-        # Достигает сюда ТОЛЬКО после подтверждения владельца (guardrails MANUAL→approve).
-        # Пытаемся заполнить недостающие данные из последней pending-сделки.
-        item = str(p.get("item") or p.get("sku") or "").strip()
-        recipient = str(p.get("recipient") or "").strip()
-        address = str(p.get("address") or "").strip()
-        amount = p.get("amount")
+    # ---- ТТН и жизненный цикл продаж ----
+    def _pending_for_ttn(self, item: str, platform: str, chat: str) -> dict:
+        """Найти подходящую pending-сделку, не путая клиентов с одинаковым товаром."""
+        try:
+            path = Path(self.root) / "data" / "pending_sales.json"
+            rows = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+            item_l = (item or "").casefold()
+            preferred = [
+                row for row in rows
+                if row.get("status") == "pending"
+                and str(row.get("platform") or "") == str(platform or "")
+                and str(row.get("chat") or "") == str(chat or "")
+                and (not item_l or str(row.get("item") or "").casefold() == item_l)
+            ]
+            if preferred:
+                return preferred[-1]
+            fallback = [
+                row for row in rows
+                if row.get("status") == "pending"
+                and (not item_l or str(row.get("item") or "").casefold() == item_l)
+            ]
+            return fallback[-1] if fallback else {}
+        except Exception:
+            return {}
 
-        if not recipient or not address:
-            # подтянуть из последней pending-сделки
+    def _do_create_ttn(self, p, platform, chat):
+        """Создать ТТН после approval и сразу запустить lifecycle продажи."""
+        # Достигает сюда только после подтверждения владельца (MANUAL → approve).
+        item = str(p.get("item") or p.get("sku") or "").strip()
+        pending = self._pending_for_ttn(item, platform, chat)
+        item = item or str(pending.get("item") or "").strip()
+        recipient = str(p.get("recipient") or pending.get("recipient") or "").strip()
+        phone = str(p.get("phone") or pending.get("customer_phone") or "").strip()
+        amount = p.get("amount")
+        if amount is None:
+            amount = pending.get("amount")
+        address = str(p.get("address") or pending.get("delivery") or "").strip()
+        city = str(p.get("city") or "").strip()
+        warehouse = str(p.get("warehouse") or "").strip()
+        if not city or not warehouse:
             try:
-                ps_path = Path(self.root) / "data" / "pending_sales.json"
-                if ps_path.exists():
-                    import json as _j
-                    sales = _j.loads(ps_path.read_text(encoding="utf-8"))
-                    if sales:
-                        last = sales[-1]
-                        item = item or str(last.get("item", "")).strip()
-                        amount = amount if amount is not None else last.get("amount")
-                        delivery = str(last.get("delivery", ""))
-                        # delivery может содержать город и отделение
-                        if "відділення" in delivery.lower() or "отделение" in delivery.lower() or "№" in delivery:
-                            address = address or delivery
+                from run_ttn import split_delivery
+                parsed_city, parsed_warehouse = split_delivery(address)
+                city = city or parsed_city
+                warehouse = warehouse or parsed_warehouse
             except Exception:
                 pass
-
-        if not item or not address:
-            return {"status": "error",
-                    "error": "Недостаточно данных для ТТН: нужны item и address (отделение). "
-                             "Укажите: «создай ттн <товар> <цена> <ФИО> <тел> <город> <отделение>»"}
+        if not item or amount is None or not recipient or not phone or not city or not warehouse:
+            return {
+                "status": "error",
+                "error": (
+                    "Недостаточно данных для ТТН. Нужны товар, цена, ФИО, телефон, город и отделение. "
+                    "Используйте: «создай ттн: товар, цена, ФИО, телефон, город, отделение»."
+                ),
+            }
         try:
-            import subprocess as _sp
-            amount_s = str(amount) if amount is not None else ""
-            cmd = [PY, str(self.root / "run_ttn.py"), "create", item, amount_s,
-                   recipient or "Клієнт", "", address, "--confirm"]
-            r = _sp.run(cmd, capture_output=True, text=True, timeout=120, cwd=str(self.root))
-            out = (r.stdout or "").strip()
-            start = out.find("{")
-            if start >= 0:
-                res = json.loads(out[start:])
-                if res.get("status") == "ok":
-                    # отметить сделку как отправленную
-                    self._mark_sale_sent(item)
-                return res
-            return {"status": "error", "error": out[-300:] or "run_ttn не вернул JSON"}
-        except Exception as e:
-            return {"status": "error", "error": str(e)[:200]}
+            from run_ttn import create_ttn
+            result = create_ttn(item, str(amount), recipient, phone, city, warehouse, confirm=True)
+            if result.get("status") == "ok":
+                lifecycle_message = result.get("sale_message") or "Товар зарезервирован, создана задача отправки."
+                result["message"] = f"ТТН {result.get('ttn')} создана. {lifecycle_message}"
+            return result
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)[:200]}
 
-    def _mark_sale_sent(self, item: str) -> None:
-        """Пометить последнюю pending-сделку по товару как sent."""
-        try:
-            ps_path = Path(self.root) / "data" / "pending_sales.json"
-            if not ps_path.exists():
-                return
-            import json as _j
-            sales = _j.loads(ps_path.read_text(encoding="utf-8"))
-            for s in sales:
-                if s.get("item") == item and s.get("status") == "pending":
-                    s["status"] = "sent"
-            ps_path.write_text(_j.dumps(sales, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception:
-            pass
+    def _sales_lifecycle(self):
+        from aios_core.sales_lifecycle import SalesLifecycle
+        return SalesLifecycle(Path(self.root))
+
+    @staticmethod
+    def _sale_reference(params: dict) -> str:
+        return str(params.get("reference") or params.get("ttn") or params.get("item") or "").strip()
+
+    def _do_sale_tasks(self, p, platform, chat):
+        rows = self._sales_lifecycle().list_open_tasks()
+        if not rows:
+            return {"status": "ok", "message": "Открытых задач по отправкам и возвратам нет.", "tasks": []}
+        lines = ["Задачи по продажам:"]
+        for row in rows[:12]:
+            task, sale = row["task"], row["sale"]
+            prefix = "принять возврат" if task.get("kind") == "return_receive" else "отправить"
+            lines.append(f"• {prefix}: {sale.get('item')} · ТТН {sale.get('ttn') or '—'}")
+        return {"status": "ok", "message": "\n".join(lines), "tasks": rows}
+
+    def _do_mark_sale_shipped(self, p, platform, chat):
+        return self._sales_lifecycle().mark_shipped(self._sale_reference(p), source="autonomy_owner")
+
+    def _do_mark_sale_delivered(self, p, platform, chat):
+        return self._sales_lifecycle().mark_delivered(self._sale_reference(p), source="autonomy_owner")
+
+    def _do_mark_sale_returned(self, p, platform, chat):
+        return self._sales_lifecycle().mark_returned(self._sale_reference(p), source="autonomy_owner")
+
+    def _do_mark_return_received(self, p, platform, chat):
+        return self._sales_lifecycle().mark_return_received(self._sale_reference(p), source="autonomy_owner")
 
     def _do_send_money(self, p, platform, chat):
         return {"status": "manual", "error": "Денежная операция — только вручную"}
