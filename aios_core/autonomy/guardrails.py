@@ -50,11 +50,11 @@ class Guardrails:
                             matched_rules=["esc_all"], meta={"action": action})
 
         # 0.1 Read-only — всегда авто
-        if self.policy.is_read_only(action):
+        if self.policy.is_read_only(action) or action in ("bank_balance", "bank_transactions"):
             return Decision("ALLOWED", reason=f"Read-only {action}", matched_rules=["read_only"])
 
-        # 1. Деньги: любые движения денег — MANUAL
-        if action in ("send_money", "accept_advance", "process_payment"):
+        # 1. Деньги: любые движения денег — MANUAL (включая банковские переводы)
+        if action in ("send_money", "accept_advance", "process_payment", "bank_transfer"):
             return Decision("MANUAL", reason="Любая денежная операция — только с подтверждением владельца",
                             matched_rules=["money"], meta={"action": action})
 

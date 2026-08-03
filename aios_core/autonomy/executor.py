@@ -186,7 +186,37 @@ class Executor:
             return _run_ac(["facebook", "messenger_list", "--limit", "6"], timeout=170)
         if platform == "novaposhta":
             return _run_ac(["novaposhta", "my_ttns"], timeout=90)
+        if platform == "abank":
+            return _run_ac(["abank", "balance"], timeout=170)
+        if platform == "privat":
+            return _run_ac(["privat", "balance"], timeout=170)
         return {"status": "ok", "message": f"read-only {platform}: {q}"}
+
+    # ---- Банки ----
+    def _do_bank_balance(self, p, platform, chat):
+        bank = str(p.get("bank") or platform or "").strip()
+        if bank not in ("abank", "privat"):
+            return {"status": "error", "error": "bank = abank | privat"}
+        return _run_ac([bank, "balance"], timeout=170)
+
+    def _do_bank_transactions(self, p, platform, chat):
+        bank = str(p.get("bank") or platform or "").strip()
+        if bank not in ("abank", "privat"):
+            return {"status": "error", "error": "bank = abank | privat"}
+        return _run_ac([bank, "transactions"], timeout=170)
+
+    def _do_bank_transfer(self, p, platform, chat):
+        # Достигает сюда ТОЛЬКО после подтверждения владельца (guardrails MANUAL→approve)
+        bank = str(p.get("bank") or platform or "").strip()
+        if bank not in ("abank", "privat"):
+            return {"status": "error", "error": "bank = abank | privat"}
+        recipient = str(p.get("recipient") or "").strip()
+        amount = p.get("amount")
+        note = str(p.get("note") or "").strip()
+        if not recipient or amount is None:
+            return {"status": "error", "error": "Нужны recipient и amount"}
+        return _run_ac([bank, "transfer", recipient, str(amount),
+                        "--note", note, "--confirm"], timeout=170)
 
     # ---- Деактивация ----
     def _do_deactivate_ad(self, p, platform, chat):
