@@ -41,6 +41,9 @@ KNOWN_ACTIONS: dict[str, list[str]] = {
     "publish": ["title", "desc", "price", "text"],
     "send_money": ["amount", "to", "text"],
     "accept_advance": ["amount", "text"],
+    "bank_balance": ["bank"],
+    "bank_transactions": ["bank"],
+    "bank_transfer": ["bank", "recipient", "amount", "note", "text"],
 }
 
 

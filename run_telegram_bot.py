@@ -5359,6 +5359,26 @@ def run_bot(token: str) -> None:
                         api.send_message(chat_id, (r.stdout or "нет данных")[:3800])
                     except Exception as e:
                         api.send_message(chat_id, f"❌ Ошибка: {e}")
+                elif cmd in ("/bank", "/banks"):
+                    reply = None
+                    keyboard = None
+                    bank = args.strip().lower()
+                    if bank not in ("abank", "privat"):
+                        api.send_message(chat_id, "Банки: <b>abank</b>, <b>privat</b>.\n"
+                                                   "Пример: /bank privat balance · /bank abank balance")
+                    else:
+                        api.send_message(chat_id, f"⏳ Проверяю {bank}…")
+                        import subprocess as _sp_b
+                        try:
+                            r = _sp_b.run(["xvfb-run", "-a", "-s", "-screen 0 1440x900x24",
+                                           "/opt/aios/.venv/bin/python",
+                                           str(PROJECT_ROOT / "run_account_control.py"),
+                                           bank, "balance"], capture_output=True, text=True,
+                                          timeout=200, cwd=str(PROJECT_ROOT))
+                            out = (r.stdout or "нет данных")[-600:]
+                            api.send_message(chat_id, f"🏦 <b>{bank}</b>\n<code>{out[:3800]}</code>")
+                        except Exception as e:
+                            api.send_message(chat_id, f"❌ Ошибка: {e}")
                 elif cmd == "/digest":
                     reply = None
                     keyboard = None

@@ -1,0 +1,18 @@
+name: abank
+android_package: ""
+agent_module: aios_core.platforms.abank_chrome_twin_adapter
+storage_class: null
+adb_class: null
+default_locale: uk-UA
+description: "A-Bank (ABank24) — интернет-банк. Вход: телефон + пароль + SMS-2FA (код из Google Messages). Чтение баланса/операций; переводы только с подтверждения владельца."
+extras:
+  bank:
+    login_url: "https://a24m.a-bank.com.ua/"
+    home_url: "https://a24m.a-bank.com.ua/"
+    sms_sender_hint: "A-Bank"
+  compliance:
+    autopost_allowed: false
+    messenger: false
+    collector: false
+    actions_per_hour: 60
+    note: "Банк: read-only (баланс/операции) авто; переводы — только подтверждение владельца. SMS-2FA через Google Messages."

@@ -1626,6 +1626,47 @@ async def novaposhta_my_ttns() -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
+
+# --------------------------------------------------------------------------
+# Банки (A-Bank, Приват24) — Chrome Twin, SMS-2FA
+# --------------------------------------------------------------------------
+
+async def _bank_call(bank: str, method: str, *args) -> dict:
+    """Универсальный вызов банк-адаптера."""
+    try:
+        if bank == "abank":
+            from aios_core.platforms.abank_chrome_twin_adapter import ABankChromeTwinAdapter as _A
+        else:
+            from aios_core.platforms.privat_chrome_twin_adapter import PrivatChromeTwinAdapter as _A
+        a = _A()
+        try:
+            return await getattr(a, method)(*args)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def bank_balance(bank: str) -> dict:
+    return await _bank_call(bank, "get_balance")
+
+
+async def bank_transactions(bank: str) -> dict:
+    return await _bank_call(bank, "get_transactions")
+
+
+async def bank_login(bank: str, login_text: str = "") -> dict:
+    return await _bank_call(bank, "login", login_text)
+
+
+async def bank_transfer(bank: str, recipient: str, amount: str, note: str = "", confirm: bool = False) -> dict:
+    try:
+        amt = float(amount)
+    except ValueError:
+        return {"status": "error", "error": "Неверная сумма"}
+    return await _bank_call(bank, "transfer", recipient, amt, note, confirm)
+
+
 # --------------------------------------------------------------------------
 # Telegram userbot (личный аккаунт)
 # --------------------------------------------------------------------------
@@ -2078,6 +2119,21 @@ def main():
     npo.add_argument("query")
     npg.add_parser("my_ttns")
 
+
+    # Банки
+    for _bn in ("abank", "privat"):
+        bp = sub.add_parser(_bn)
+        bpg = bp.add_subparsers(dest="action", required=True)
+        bpg.add_parser("balance")
+        bpg.add_parser("transactions")
+        bpl = bpg.add_parser("login")
+        bpl.add_argument("login_text", nargs="?", default="")
+        bpt = bpg.add_parser("transfer")
+        bpt.add_argument("recipient")
+        bpt.add_argument("amount")
+        bpt.add_argument("--note", default="")
+        bpt.add_argument("--confirm", action="store_true")
+
     args = parser.parse_args()
 
     try:
@@ -2215,6 +2271,15 @@ def main():
                 out(tg_send(args.ref, args.text, args.confirm))
             elif args.action == "bot":
                 out(tg_bot(args.bot, args.command, args.confirm))
+        elif args.account in ("abank", "privat"):
+            if args.action == "balance":
+                out(asyncio.run(bank_balance(args.account)))
+            elif args.action == "transactions":
+                out(asyncio.run(bank_transactions(args.account)))
+            elif args.action == "login":
+                out(asyncio.run(bank_login(args.account, args.login_text)))
+            elif args.action == "transfer":
+                out(asyncio.run(bank_transfer(args.account, args.recipient, args.amount, args.note, args.confirm)))
         elif args.account == "novaposhta":
             if args.action == "track":
                 out(asyncio.run(novaposhta_track(args.ttn, args.phone)))
