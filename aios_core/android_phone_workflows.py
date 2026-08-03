@@ -651,6 +651,73 @@ class IMePhoneAdapter(MessengerDraftAdapter):
     package = "com.iMe.android"
     profile = "ime"
     title = "iMe Messenger"
+    search_labels = ("поиск", "пошук", "search", "знайти")
+
+    def _calibration_selectors(self, nodes: list[dict]) -> dict[str, bool]:
+        return {"chat_search": bool(self._find_control(nodes, self.search_labels))}
+
+    def _exact_chat_target(self, nodes: list[dict], contact: str) -> tuple[dict | None, bool]:
+        target = _fold(contact)
+        candidates: dict[tuple[int, int, int, int], dict] = {}
+        for node in nodes:
+            # The search input itself echoes the query and is never a chat row.
+            if node.get("editable"):
+                continue
+            fields = (_fold(node.get("text")), _fold(node.get("description")))
+            if target not in fields:
+                continue
+            clickable = self._click_target(nodes, node)
+            bounds = _bounds(clickable or node)
+            if clickable and bounds:
+                candidates[bounds] = clickable
+        values = list(candidates.values())
+        if len(values) == 1:
+            return values[0], False
+        return None, len(values) > 1
+
+    def open_chat(self, contact: str, confirm: bool = False) -> dict:
+        """Find one exact iMe chat without reading or returning message content."""
+        name = " ".join(str(contact or "").split())
+        if not name:
+            return {"status": "error", "error": "Укажите имя чата"}
+        if len(name) > 100:
+            return {"status": "error", "error": "Имя чата слишком длинное"}
+        if not confirm:
+            return {
+                "status": "need_confirm", "action": "ime_open_chat", "contact": name,
+                "warning": "Открытие чата может пометить его как прочитанный",
+            }
+        opened = self.open(confirm=True)
+        if opened.get("status") != "ok":
+            return opened
+        snapshot = self._wait_active_ui(wait_seconds=4.0, include_text=True)
+        if snapshot.get("status") != "ok":
+            return snapshot
+        search = self._find_control(snapshot.get("nodes") or [], self.search_labels)
+        if not search:
+            return {"status": "error", "error": "Кнопка поиска iMe не распознана; действие остановлено"}
+        tapped = self._tap_node(search)
+        if tapped.get("status") != "ok":
+            return tapped
+        copied = self.gateway.set_clipboard(name, confirm=True)
+        if copied.get("status") != "ok":
+            return copied
+        pasted = self.gateway.paste(confirm=True)
+        if pasted.get("status") != "ok":
+            return pasted
+        time.sleep(0.55)
+        results = self._active_ui(include_text=True)
+        if results.get("status") != "ok":
+            return results
+        candidate, ambiguous = self._exact_chat_target(results.get("nodes") or [], name)
+        if ambiguous:
+            return {"status": "ambiguous", "error": "Найдено несколько чатов с таким точным именем; выберите вручную"}
+        if not candidate:
+            return {"status": "not_found", "error": "Чат с точным именем не найден; ничего не открыто"}
+        selected = self._tap_node(candidate)
+        if selected.get("status") != "ok":
+            return selected
+        return {"status": "opened", "contact": name}
 
 
 class PhoneAppMonitor(ActiveAppAdapter):

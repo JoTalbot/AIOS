@@ -26,11 +26,12 @@ class FakeGateway:
     def app_profiles(self):
         return {"status": "ok", "profiles": [
             {"id": "whatsapp", "installed": ["com.whatsapp"]},
+            {"id": "ime", "installed": ["com.iMe.android"]},
             {"id": "easyway", "installed": ["com.eway"]},
         ]}
 
     def apps(self, limit=2000):
-        return {"status": "ok", "apps": ["com.whatsapp", "com.eway"]}
+        return {"status": "ok", "apps": ["com.whatsapp", "com.iMe.android", "com.eway"]}
 
     def accessibility(self):
         return {"status": "ok", "enabled": True}
@@ -99,6 +100,17 @@ def test_whatsapp_chat_and_draft_are_two_confirmation_steps(tmp_path):
     assert adapter.send_draft(draft["draft_id"])["status"] == "need_confirm"
     assert adapter.send_draft(draft["draft_id"], confirm=True)["status"] == "send_tapped"
     assert gateway.sessions == {}
+
+
+def test_ime_exact_chat_open_is_confirmation_gated(tmp_path):
+    from aios_core.android_phone_workflows import IMePhoneAdapter
+
+    gateway = FakeGateway(tmp_path)
+    adapter = IMePhoneAdapter(gateway)
+    assert adapter.open_chat("Иван")["status"] == "need_confirm"
+    result = adapter.open_chat("Иван", confirm=True)
+    assert result["status"] == "opened"
+    assert gateway.active == "com.iMe.android"
 
 
 def test_whatsapp_blocks_send_if_phone_text_changed(tmp_path):

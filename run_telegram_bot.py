@@ -2241,11 +2241,35 @@ def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
                              f"✍️ Вставить черновик в текущий открытый чат iMe?\n«{_esc_tg(body[:300])}»\n\n"
                              "Отправка будет подтверждаться отдельно. «да» / «нет»")
             return True
+        chat_match = re.search(
+            r"(?:открой|найди)\s+(?:чат\s+)?(?:в\s+)?"
+            r"(?:ime|i\.me|айми|име\s+мессенджер)\s*(?:чат)?\s*[:—–-]?\s*(.+)$",
+            raw, re.IGNORECASE,
+        )
+        if not chat_match:
+            chat_match = re.search(
+                r"(?:ime|i\.me|айми|име\s+мессенджер)\s+"
+                r"(?:открой|найди)\s+чат\s*[:—–-]?\s*(.+)$",
+                raw, re.IGNORECASE,
+            )
+        if chat_match:
+            contact = chat_match.group(1).strip(" .,:;—–-")
+            if not contact:
+                api.send_message(chat_id, "💬 Формат: «открой чат iMe: Имя»")
+                return True
+            _pending_confirm[chat_id] = {"kind": "ime_open_chat", "data": {"contact": contact}}
+            api.send_message(chat_id,
+                             f"💬 Открыть чат iMe «<b>{_esc_tg(contact[:100])}</b>»?\n"
+                             "Это может пометить чат как прочитанный. «да» / «нет»")
+            return True
         if any(word in t for word in ("открой", "запусти")):
             _pending_confirm[chat_id] = {"kind": "phone_open_adapter", "data": {"app": "ime"}}
             api.send_message(chat_id, "📱 Открыть iMe Messenger на телефоне? «да» / «нет»")
             return True
-        api.send_message(chat_id, "💬 iMe: откройте нужный чат вручную, затем «iMe черновик: текст». Отправка — только после второго подтверждения.")
+        api.send_message(chat_id,
+                         "💬 <b>iMe Messenger</b>\n"
+                         "• «iMe статус»\n• «открой чат iMe: Имя»\n"
+                         "• «iMe черновик: текст» — отправка только после второго подтверждения")
         return True
 
     # ---- Uklon: never books/orders a ride automatically ----
@@ -2382,6 +2406,14 @@ def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
                 api.send_message(chat_id, "✅ Чат WhatsApp открыт. Автоматическая отправка выключена.")
             else:
                 api.send_message(chat_id, f"⚠️ WhatsApp: {_phone_error(result)}")
+            return True
+        if kind == "ime_open_chat":
+            adapter = _phone_adapter("ime")
+            result = adapter.open_chat(str(data.get("contact") or ""), confirm=True)
+            if result.get("status") == "opened":
+                api.send_message(chat_id, "✅ Чат iMe открыт. Автоматическая отправка выключена.")
+            else:
+                api.send_message(chat_id, f"⚠️ iMe: {_phone_error(result)}")
             return True
         if kind in ("whatsapp_draft", "ime_draft"):
             app = "whatsapp" if kind == "whatsapp_draft" else "ime"
