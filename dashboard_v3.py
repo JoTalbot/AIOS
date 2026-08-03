@@ -246,7 +246,8 @@ def build() -> None:
         else:
             ui.label("Нет операций")
 
-    ui.run(host="127.0.0.1", port=8090, reload=False, show=False)
+    # CRM публикуется через защищённый nginx-префикс /crm/.
+    ui.run(host="127.0.0.1", port=8090, reload=False, show=False, root_path="/crm")
 
 
 if __name__ == "__main__":
