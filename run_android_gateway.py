@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""CLI для универсального Android Device Adapter AIOS."""
+"""CLI для универсального Android Device Adapter AIOS.
+
+По умолчанию UI-снимки обезличены: для текста активного экрана нужен
+``--include-text`` и ``--confirm``. Все сценарии, меняющие UI, также требуют
+``--confirm``; отправка мессенджера требует отдельного второго подтверждения.
+"""
 from __future__ import annotations
 
 import json
@@ -8,13 +13,33 @@ import time
 from pathlib import Path
 
 from aios_core.android_gateway import AndroidGateway
+from aios_core.android_phone_workflows import (
+    EasyWayPhoneAdapter,
+    IMePhoneAdapter,
+    UklonPhoneAdapter,
+    WhatsAppPhoneAdapter,
+    adapter_for,
+)
 
 ROOT = Path(__file__).resolve().parent
+
+
+def _confirmed() -> bool:
+    return "--confirm" in sys.argv
+
+
+def _text_after(index: int) -> str:
+    return " ".join(value for value in sys.argv[index:] if value != "--confirm" and value != "--include-text").strip()
+
+
+def _needs_confirm(action: str) -> dict:
+    return {"status": "need_confirm", "action": action}
 
 
 def main() -> int:
     command = sys.argv[1] if len(sys.argv) > 1 else "status"
     gateway = AndroidGateway(ROOT)
+    confirmed = _confirmed()
     if command == "register" and len(sys.argv) >= 3:
         result = gateway.register(sys.argv[2], " ".join(sys.argv[3:]) or "Android phone")
     elif command == "connect":
@@ -32,31 +57,55 @@ def main() -> int:
     elif command == "accessibility":
         result = gateway.accessibility()
     elif command == "ui-snapshot":
-        result = gateway.ui_snapshot(confirm="--confirm" in sys.argv)
+        result = gateway.ui_snapshot(confirm=confirmed, include_text="--include-text" in sys.argv)
     elif command == "clipboard" and len(sys.argv) >= 3:
-        result = gateway.set_clipboard(" ".join(sys.argv[2:]).replace(" --confirm", ""), confirm="--confirm" in sys.argv)
+        result = gateway.set_clipboard(_text_after(2), confirm=confirmed)
     elif command == "paste":
-        result = gateway.paste(confirm="--confirm" in sys.argv)
+        result = gateway.paste(confirm=confirmed)
     elif command == "tap-ui" and len(sys.argv) >= 3:
-        result = gateway.tap_ui(" ".join(sys.argv[2:]).replace(" --confirm", ""), confirm="--confirm" in sys.argv)
+        result = gateway.tap_ui(_text_after(2), confirm=confirmed)
     elif command == "location":
-        result = gateway.location(confirm="--confirm" in sys.argv)
+        result = gateway.location(confirm=confirmed)
     elif command == "files":
         result = gateway.files(sys.argv[2] if len(sys.argv) > 2 else "/sdcard/Download")
     elif command == "pull" and len(sys.argv) >= 3:
-        result = gateway.pull_file(sys.argv[2], confirm="--confirm" in sys.argv)
+        result = gateway.pull_file(sys.argv[2], confirm=confirmed)
     elif command == "screenshot":
         result = gateway.screenshot()
     elif command == "ui-dump":
         result = gateway.ui_dump()
     elif command == "open" and len(sys.argv) >= 3:
-        result = gateway.open_profile(sys.argv[2], confirm="--confirm" in sys.argv)
+        result = gateway.open_profile(sys.argv[2], confirm=confirmed)
     elif command == "tap" and len(sys.argv) >= 4:
-        result = gateway.tap(int(sys.argv[2]), int(sys.argv[3]), confirm="--confirm" in sys.argv)
+        result = gateway.tap(int(sys.argv[2]), int(sys.argv[3]), confirm=confirmed)
     elif command == "home":
-        result = gateway.key("KEYCODE_HOME", confirm="--confirm" in sys.argv)
+        result = gateway.key("KEYCODE_HOME", confirm=confirmed)
     elif command == "back":
-        result = gateway.key("KEYCODE_BACK", confirm="--confirm" in sys.argv)
+        result = gateway.key("KEYCODE_BACK", confirm=confirmed)
+    elif command == "phone-status" and len(sys.argv) >= 3:
+        adapter = adapter_for(sys.argv[2], gateway)
+        result = adapter.status() if adapter else {"status": "error", "error": "Неизвестное приложение"}
+    elif command == "whatsapp-open-chat" and len(sys.argv) >= 3:
+        result = WhatsAppPhoneAdapter(gateway).open_chat(_text_after(2), confirm=confirmed)
+    elif command == "whatsapp-read":
+        result = WhatsAppPhoneAdapter(gateway).read_visible_chat() if confirmed else _needs_confirm("whatsapp_read_visible_chat")
+    elif command == "whatsapp-draft" and len(sys.argv) >= 3:
+        result = WhatsAppPhoneAdapter(gateway).prepare_draft(_text_after(2), confirm=confirmed)
+    elif command == "whatsapp-send" and len(sys.argv) >= 3:
+        result = WhatsAppPhoneAdapter(gateway).send_draft(sys.argv[2], confirm=confirmed)
+    elif command == "ime-draft" and len(sys.argv) >= 3:
+        result = IMePhoneAdapter(gateway).prepare_draft(_text_after(2), confirm=confirmed)
+    elif command == "ime-send" and len(sys.argv) >= 3:
+        result = IMePhoneAdapter(gateway).send_draft(sys.argv[2], confirm=confirmed)
+    elif command == "uklon-open-driver":
+        result = UklonPhoneAdapter(gateway).open_driver(confirm=confirmed)
+    elif command == "uklon-stage-route" and "--to" in sys.argv:
+        divider = sys.argv.index("--to")
+        pickup = " ".join(sys.argv[2:divider]).strip()
+        destination = " ".join(value for value in sys.argv[divider + 1:] if value != "--confirm").strip()
+        result = UklonPhoneAdapter(gateway).stage_route(pickup, destination, confirm=confirmed)
+    elif command == "easyway-stage-route" and len(sys.argv) >= 3:
+        result = EasyWayPhoneAdapter(gateway).stage_route(_text_after(2), confirm=confirmed)
     elif command == "watch":
         interval = 30
         if "--interval" in sys.argv:
@@ -69,9 +118,21 @@ def main() -> int:
             print(json.dumps(result, ensure_ascii=False), flush=True)
             time.sleep(interval)
     else:
-        result = {"status": "error", "error": "register|connect|status|apps|profiles|companion|notifications|accessibility|ui-snapshot|clipboard|paste|tap-ui|location|files|pull|screenshot|ui-dump|open|tap|home|back|watch"}
+        result = {
+            "status": "error",
+            "error": (
+                "register|connect|status|apps|profiles|companion|notifications|accessibility|"
+                "ui-snapshot|clipboard|paste|tap-ui|location|files|pull|screenshot|ui-dump|"
+                "open|tap|home|back|phone-status|whatsapp-open-chat|whatsapp-read|"
+                "whatsapp-draft|whatsapp-send|ime-draft|ime-send|uklon-open-driver|"
+                "uklon-stage-route|easyway-stage-route|watch"
+            ),
+        }
     print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
-    return 0 if result.get("status") in ("ok", "offline", "unregistered", "need_confirm") else 1
+    return 0 if result.get("status") in (
+        "ok", "offline", "unregistered", "need_confirm", "opened", "draft_ready",
+        "send_tapped", "route_staged", "cancelled", "not_installed",
+    ) else 1
 
 
 if __name__ == "__main__":

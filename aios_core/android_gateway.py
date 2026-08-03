@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import subprocess
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -42,8 +43,8 @@ DEFAULT_APP_PROFILES = {
         "mode": "черновики и подтверждение отправки", "sensitive": False,
     },
     "easyway": {
-        "title": "EasyWay", "packages": [],
-        "mode": "маршруты и транспорт после установки приложения", "sensitive": False,
+        "title": "EasyWay", "packages": ["com.eway"],
+        "mode": "маршруты и транспорт, без фоновой геолокации", "sensitive": True,
     },
 }
 
@@ -79,7 +80,13 @@ class AndroidGateway:
         self.data_dir = self.root / "data" / "android_gateway"
         self.config_path = self.data_dir / "device.json"
         self.health_path = self.data_dir / "health.json"
+        # app_profiles.json — вычисляемый кэш, а не источник пользовательских
+        # настроек. Это важно при обновлении встроенных профилей (например,
+        # EasyWay после установки), иначе старый кэш с пустым package-list
+        # навсегда переопределял бы новый безопасный default.
         self.profiles_path = self.data_dir / "app_profiles.json"
+        self.profile_overrides_path = self.data_dir / "app_profile_overrides.json"
+        self.sessions_path = self.data_dir / "control_sessions.json"
         self.shots_dir = self.data_dir / "screenshots"
         self.dumps_dir = self.data_dir / "ui_dumps"
         self.adb_bin = adb_bin or os.environ.get("AIOS_ADB_BIN") or "/usr/local/bin/aios-adb"
@@ -224,7 +231,10 @@ class AndroidGateway:
         """Определить установленные рабочие приложения и их политику безопасности."""
         app_result = self.apps(limit=2000)
         installed = set(app_result.get("apps") or []) if app_result.get("status") == "ok" else set()
-        custom = _read(self.profiles_path, {})
+        # Overrides deliberately live outside the generated cache.  Legacy
+        # app_profiles.json files are not consumed as overrides: they may hold
+        # stale installation state from a previous phone/app version.
+        custom = _read(self.profile_overrides_path, {})
         profiles = []
         for key, base in DEFAULT_APP_PROFILES.items():
             override = custom.get(key) if isinstance(custom.get(key), dict) else {}
@@ -270,11 +280,113 @@ class AndroidGateway:
     def accessibility(self) -> dict:
         return self._companion_request("accessibility")
 
-    def ui_snapshot(self, confirm: bool = False) -> dict:
+    @staticmethod
+    def _sanitize_ui_snapshot(snapshot: dict, include_text: bool = False) -> dict:
+        """Keep accidental screen/chat content out of ordinary diagnostics.
+
+        The Companion only exposes a full node tree after an explicit request.
+        This second server-side filter keeps the default CLI/status path safe
+        even while an older Companion APK is temporarily installed.
+        """
+        if not isinstance(snapshot, dict):
+            return {"status": "error", "error": "Некорректный UI-ответ"}
+        result = {key: value for key, value in snapshot.items() if key != "nodes"}
+        nodes = snapshot.get("nodes") if isinstance(snapshot.get("nodes"), list) else []
+        cleaned = []
+        allowed = ("resource", "class", "clickable", "editable", "bounds")
+        for node in nodes[:500]:
+            if not isinstance(node, dict):
+                continue
+            item = {key: node.get(key) for key in allowed if key in node}
+            if include_text:
+                # Text is intentionally retained only for a directly requested
+                # confirmed workflow. Callers must never log this value.
+                item["text"] = str(node.get("text") or "")[:1000]
+                item["description"] = str(node.get("description") or "")[:1000]
+            cleaned.append(item)
+        result["nodes"] = cleaned
+        return result
+
+    def ui_snapshot(self, confirm: bool = False, include_text: bool = False) -> dict:
         pending = self._needs_confirm(confirm, "android_ui_snapshot")
         if pending:
             return pending
-        return self._companion_request("ui", timeout=20)
+        detail = "full" if include_text else "controls"
+        snapshot = self._companion_request("ui?" + urllib.parse.urlencode({"detail": detail}), timeout=20)
+        return self._sanitize_ui_snapshot(snapshot, include_text=include_text)
+
+    def active_app_ui(self, package: str, confirm: bool = False, include_text: bool = False) -> dict:
+        """Read the active UI only if the Companion proves the foreground app.
+
+        Pasting/clicking based on an unknown foreground window is unsafe: a
+        notification, browser or banking screen could otherwise receive text
+        intended for a messenger.  New Companion versions provide ``package``
+        with each snapshot; older versions are deliberately rejected here.
+        """
+        snapshot = self.ui_snapshot(confirm=confirm, include_text=include_text)
+        if snapshot.get("status") != "ok":
+            return snapshot
+        active = str(snapshot.get("package") or snapshot.get("package_name") or "").strip()
+        if not active:
+            return {"status": "error", "error": "Нужна обновлённая версия AIOS Companion для проверки активного приложения"}
+        if active != package:
+            return {
+                "status": "wrong_active_app",
+                "expected_package": package,
+                "active_package": active,
+            }
+        return snapshot
+
+    @staticmethod
+    def _parse_timestamp(value: object) -> datetime | None:
+        try:
+            return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except Exception:
+            return None
+
+    def _load_sessions(self) -> dict:
+        raw = _read(self.sessions_path, {})
+        now = datetime.now(timezone.utc)
+        alive: dict[str, dict] = {}
+        for session_id, item in raw.items() if isinstance(raw, dict) else []:
+            if not isinstance(item, dict):
+                continue
+            expires = self._parse_timestamp(item.get("expires_at"))
+            if expires and expires > now:
+                alive[str(session_id)] = item
+        if alive != raw:
+            _write(self.sessions_path, alive)
+        return alive
+
+    def begin_control_session(self, package: str, purpose: str, ttl_seconds: int = 300) -> dict:
+        """Create a short-lived, private lease for a confirmed phone workflow."""
+        ttl = max(30, min(int(ttl_seconds), 900))
+        sessions = self._load_sessions()
+        session_id = secrets.token_urlsafe(12)
+        now = datetime.now(timezone.utc)
+        record = {
+            "package": str(package),
+            "purpose": str(purpose)[:80],
+            "created_at": now.isoformat(timespec="seconds"),
+            "expires_at": (now + timedelta(seconds=ttl)).isoformat(timespec="seconds"),
+        }
+        sessions[session_id] = record
+        _write(self.sessions_path, sessions)
+        return {"status": "ok", "session_id": session_id, **record}
+
+    def validate_control_session(self, session_id: str, package: str) -> dict:
+        record = self._load_sessions().get(str(session_id))
+        if not record:
+            return {"status": "expired", "error": "Сеанс управления истёк; начните действие заново"}
+        if str(record.get("package")) != str(package):
+            return {"status": "error", "error": "Сеанс относится к другому приложению"}
+        return {"status": "ok", "session_id": str(session_id), **record}
+
+    def end_control_session(self, session_id: str) -> None:
+        sessions = self._load_sessions()
+        if str(session_id) in sessions:
+            sessions.pop(str(session_id), None)
+            _write(self.sessions_path, sessions)
 
     def set_clipboard(self, text: str, confirm: bool = False) -> dict:
         pending = self._needs_confirm(confirm, "android_set_clipboard")
@@ -296,7 +408,10 @@ class AndroidGateway:
         if pending:
             pending["query"] = query
             return pending
-        snapshot = self.ui_snapshot(confirm=True)
+        # Querying by a visible label is itself an explicit, confirmed action.
+        # Keep the full snapshot transient and never expose the matching text
+        # in the returned payload.
+        snapshot = self.ui_snapshot(confirm=True, include_text=True)
         if snapshot.get("status") != "ok":
             return snapshot
         needle = str(query or "").casefold()

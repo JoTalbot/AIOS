@@ -30,7 +30,11 @@ import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.InetSocketAddress;
+import java.net.InetAddress;
+import java.net.Inet4Address;
+import java.net.NetworkInterface;
 import java.net.URLDecoder;
+import java.util.Enumeration;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.List;
@@ -83,10 +87,20 @@ public class CompanionService extends Service {
         // losing the gateway after a port conflict.
         while (running) {
             try {
+                // Never bind the authenticated HTTP gateway to Wi-Fi/mobile
+                // interfaces.  The Companion is reachable only over the known
+                // WireGuard subnet; if the tunnel is down we wait and retry.
+                InetAddress tunnel = wireGuardAddress();
+                if (tunnel == null) {
+                    Log.w("AIOSCompanion", "WireGuard address unavailable; gateway stays private and will retry");
+                    try { Thread.sleep(3000); } catch (InterruptedException ignored) { }
+                    continue;
+                }
                 ServerSocket candidate = new ServerSocket();
                 candidate.setReuseAddress(true);
-                candidate.bind(new InetSocketAddress(PORT));
+                candidate.bind(new InetSocketAddress(tunnel, PORT));
                 server = candidate;
+                Log.i("AIOSCompanion", "Gateway bound to WireGuard only: " + tunnel.getHostAddress());
                 while (running) {
                     Socket socket = candidate.accept();
                     new Thread(() -> handle(socket), "aios-companion-client").start();
@@ -105,11 +119,22 @@ public class CompanionService extends Service {
         try (Socket ignored = socket;
              BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
              BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
+            socket.setSoTimeout(10000);
             String request = reader.readLine();
-            if (request == null) return;
+            if (request == null || request.length() > 4096) return;
+            String[] requestParts = request.split(" ");
+            if (requestParts.length < 2 || !"GET".equals(requestParts[0])) {
+                respond(writer, 405, new JSONObject().put("error", "method_not_allowed"));
+                return;
+            }
             String token = "";
             String line;
+            int headerCount = 0;
             while ((line = reader.readLine()) != null && !line.isEmpty()) {
+                if (++headerCount > 32 || line.length() > 4096) {
+                    respond(writer, 400, new JSONObject().put("error", "invalid_headers"));
+                    return;
+                }
                 int colon = line.indexOf(':');
                 if (colon > 0 && line.substring(0, colon).trim().equalsIgnoreCase("X-AIOS-Token")) {
                     token = line.substring(colon + 1).trim();
@@ -119,8 +144,7 @@ public class CompanionService extends Service {
                 respond(writer, 403, new JSONObject().put("error", "forbidden"));
                 return;
             }
-            String[] parts = request.split(" ");
-            String target = parts.length > 1 ? parts[1] : "/";
+            String target = requestParts[1];
             int queryIndex = target.indexOf('?');
             String path = queryIndex >= 0 ? target.substring(0, queryIndex) : target;
             String query = queryIndex >= 0 ? target.substring(queryIndex + 1) : "";
@@ -133,7 +157,11 @@ public class CompanionService extends Service {
                 case "/permissions": response = permissions(); break;
                 case "/location": response = location(); break;
                 case "/accessibility": response = accessibility(); break;
-                case "/ui": response = AIOSAccessibilityService.snapshot(); break;
+                case "/ui":
+                    // Full node text is served only after a deliberate request;
+                    // the default is a controls-only tree with no chat content.
+                    response = AIOSAccessibilityService.snapshot("full".equalsIgnoreCase(queryValue(query, "detail")));
+                    break;
                 case "/clipboard": response = clipboard(queryValue(query, "text")); break;
                 case "/notifications":
                     response = new JSONObject().put("status", "ok").put("notifications", NotificationRelayService.snapshot());
@@ -147,6 +175,28 @@ public class CompanionService extends Service {
             respond(writer, knownPath ? 200 : 404, response);
         } catch (Exception ignored) {
         }
+    }
+
+    private InetAddress wireGuardAddress() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                NetworkInterface iface = interfaces.nextElement();
+                String name = (iface.getName() == null ? "" : iface.getName()).toLowerCase();
+                // Android WireGuard can be exposed as wg0 or a tun interface.
+                if (!(name.startsWith("wg") || name.contains("wireguard") || name.startsWith("tun"))) continue;
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress address = addresses.nextElement();
+                    if (address instanceof Inet4Address && address.getHostAddress().startsWith("10.203.")) {
+                        return address;
+                    }
+                }
+            }
+        } catch (Exception error) {
+            Log.w("AIOSCompanion", "Cannot inspect WireGuard interface", error);
+        }
+        return null;
     }
 
     private String configuredToken() {

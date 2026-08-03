@@ -24,7 +24,7 @@ public class AIOSAccessibilityService extends AccessibilityService {
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         // Snapshot is pulled explicitly via the authenticated local gateway.
-        // No screen text is uploaded or stored automatically.
+        // No screen text is uploaded, stored or logged automatically.
     }
 
     @Override
@@ -43,28 +43,46 @@ public class AIOSAccessibilityService extends AccessibilityService {
         return enabled.contains(new ComponentName(context, AIOSAccessibilityService.class).flattenToString());
     }
 
+    /**
+     * A controls-only snapshot is the safe default.  Full text is available
+     * only after an authenticated server request explicitly asks for it; the
+     * server uses that mode solely inside a confirmed app workflow and never
+     * writes the returned text to logs.
+     */
     public static JSONObject snapshot() {
+        return snapshot(false);
+    }
+
+    public static JSONObject snapshot(boolean includeText) {
         try {
             if (instance == null) return new JSONObject().put("error", "accessibility_not_enabled");
             AccessibilityNodeInfo root = instance.getRootInActiveWindow();
             if (root == null) return new JSONObject().put("error", "active_window_unavailable");
             JSONArray nodes = new JSONArray();
-            walk(root, nodes, 0);
+            String packageName = trim(root.getPackageName());
+            walk(root, nodes, 0, includeText);
             root.recycle();
-            return new JSONObject().put("status", "ok").put("nodes", nodes);
+            return new JSONObject().put("status", "ok")
+                    .put("package", packageName)
+                    .put("nodes", nodes);
         } catch (Exception error) {
             try { return new JSONObject().put("error", error.getClass().getSimpleName()); }
             catch (Exception ignored) { return new JSONObject(); }
         }
     }
 
-    private static void walk(AccessibilityNodeInfo node, JSONArray output, int depth) throws Exception {
+    private static void walk(AccessibilityNodeInfo node, JSONArray output, int depth, boolean includeText) throws Exception {
         if (node == null || output.length() >= MAX_NODES || depth > 32) return;
         Rect bounds = new Rect();
         node.getBoundsInScreen(bounds);
         JSONObject item = new JSONObject();
-        item.put("text", trim(node.getText()));
-        item.put("description", trim(node.getContentDescription()));
+        // A controls-only tree contains geometry and roles, not private chat,
+        // banking or location text.  This is sufficient for health/status and
+        // forces a deliberate full snapshot for a user-approved workflow.
+        if (includeText) {
+            item.put("text", trim(node.getText()));
+            item.put("description", trim(node.getContentDescription()));
+        }
         item.put("resource", trim(node.getViewIdResourceName()));
         item.put("class", trim(node.getClassName()));
         item.put("clickable", node.isClickable());
@@ -73,7 +91,7 @@ public class AIOSAccessibilityService extends AccessibilityService {
         output.put(item);
         for (int i = 0; i < node.getChildCount() && output.length() < MAX_NODES; i++) {
             AccessibilityNodeInfo child = node.getChild(i);
-            try { walk(child, output, depth + 1); }
+            try { walk(child, output, depth + 1, includeText); }
             finally { if (child != null) child.recycle(); }
         }
     }

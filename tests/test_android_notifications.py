@@ -28,6 +28,28 @@ def test_collector_masks_codes_and_deduplicates(monkeypatch, tmp_path):
     assert "654321" not in items[0]["text"]
 
 
+def test_collector_includes_easyway_after_install(monkeypatch, tmp_path):
+    import run_android_notification_collector as collector
+
+    monkeypatch.setattr(collector, "ROOT", tmp_path)
+    monkeypatch.setattr(collector, "DATA", tmp_path / "data" / "android_gateway" / "notifications.json")
+    monkeypatch.setattr(collector, "STATE", tmp_path / "data" / "android_gateway" / "notification_alerts_state.json")
+
+    class FakeGateway:
+        def __init__(self, root): pass
+        def notifications(self, limit=50):
+            return {"status": "ok", "notifications": [{
+                "package": "com.eway", "title": "EasyWay", "text": "Маршрут 123456", "posted_at": 2,
+            }]}
+
+    monkeypatch.setattr(collector, "AndroidGateway", FakeGateway)
+    result = collector.collect()
+    items = json.loads(collector.DATA.read_text())
+    assert result["added"] == 1
+    assert items[0]["app"] == "EasyWay"
+    assert "123456" not in items[0]["text"]
+
+
 def test_mark_read_updates_android_events(monkeypatch, tmp_path):
     import run_android_notification_collector as collector
 

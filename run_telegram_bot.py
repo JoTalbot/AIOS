@@ -2019,6 +2019,320 @@ def _android_gateway_run(args: list[str], timeout: int = 60) -> dict:
         return {"status": "error", "error": str(exc)[:200]}
 
 
+def _phone_adapter(key: str):
+    """Load a confirmed-workflow adapter without exposing Companion secrets."""
+    from aios_core.android_gateway import AndroidGateway
+    from aios_core.android_phone_workflows import adapter_for
+    return adapter_for(key, AndroidGateway(PROJECT_ROOT))
+
+
+def _phone_error(data: dict) -> str:
+    """Safe error renderer: adapters must never return raw screen text here."""
+    return _esc_tg(str(data.get("error") or data.get("status") or "неизвестная ошибка"))[:280]
+
+
+def _mask_android_notification(value: object, limit: int = 180) -> str:
+    """Never echo OTP/PIN/card-like data from a phone notification to Telegram."""
+    value = str(value or "")
+    value = re.sub(r"(?<!\d)(?:\d[ -]?){12,19}(?!\d)", "••••", value)
+    value = re.sub(r"(?<!\d)\d{4,8}(?!\d)", "••••", value)
+    return value[:limit]
+
+
+def _send_phone_status(api, chat_id: int, adapter) -> None:
+    data = adapter.status()
+    title = _esc_tg(str(data.get("title") or "Приложение"))
+    if data.get("status") == "not_installed":
+        api.send_message(chat_id, f"➕ <b>{title}</b> не найден на телефоне.")
+        return
+    if data.get("status") != "ok":
+        api.send_message(chat_id, f"⚠️ <b>{title}</b>: {_phone_error(data)}")
+        return
+    lines = [f"📱 <b>{title}</b>",
+             f"Приложение: <b>{'доступно' if data.get('available') else 'не найдено'}</b>",
+             f"Управление интерфейсом: <b>{'готово' if data.get('accessibility') else 'не разрешено'}</b>",
+             f"Сейчас активно: <b>{'да' if data.get('active') else 'нет'}</b>"]
+    if "notification_count" in data:
+        lines.append(f"Новых служебных уведомлений: <b>{data.get('notification_count', 0)}</b>")
+    if not data.get("ui_ready"):
+        lines.append("⚠️ Для безопасной работы с интерфейсом требуется обновить AIOS Companion.")
+    api.send_message(chat_id, "\n".join(lines))
+
+
+def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
+    """Intent router for confirmation-gated phone app workflows.
+
+    It deliberately runs before the generic Android app opener.  A phrase such
+    as «открой чат WhatsApp» must not be reduced to an unscoped package launch.
+    """
+    raw = str(text or "").strip()
+    t = " ".join(raw.casefold().split())
+    if not t:
+        return False
+    whatsapp_words = ("whatsapp", "ватсап", "ватс апп", "вотсап", "watsapp")
+    ime_words = ("ime", "i.me", "айми", "име мессенджер")
+    easyway_words = ("easyway", "easy way", "изи вей", "изивей")
+    abank_words = ("a-bank", "a bank", "абанк", "а-банк")
+    privat_words = ("privat24", "приват24", "приват 24")
+    has_whatsapp = any(word in t for word in whatsapp_words)
+    has_ime = any(word in t for word in ime_words)
+    has_uklon = "uklon" in t or "уклон" in t
+    has_easyway = any(word in t for word in easyway_words)
+    has_abank = any(word in t for word in abank_words)
+    has_privat = any(word in t for word in privat_words)
+
+    # ---- WhatsApp, only the Android phone application ----
+    if has_whatsapp:
+        adapter = _phone_adapter("whatsapp")
+        if any(word in t for word in ("статус", "состояние", "готов", "подключ")):
+            _send_phone_status(api, chat_id, adapter)
+            return True
+        if any(word in t for word in ("прочитай", "покажи сообщения", "покажи чат", "что в чате", "сообщения")):
+            # The wording itself is an explicit request to read the currently
+            # visible chat. The adapter masks OTP/card-like sequences.
+            result = adapter.read_visible_chat()
+            if result.get("status") != "ok":
+                api.send_message(chat_id, f"⚠️ WhatsApp: {_phone_error(result)}")
+            else:
+                messages = result.get("messages") or []
+                if not messages:
+                    api.send_message(chat_id, "💬 WhatsApp: видимых сообщений не найдено.")
+                else:
+                    lines = ["💬 <b>WhatsApp · видимая часть текущего чата</b>"]
+                    lines.extend(f"• {_esc_tg(item)}" for item in messages[-8:])
+                    lines.append("\n<i>Коды и номера карт автоматически скрыты.</i>")
+                    api.send_message(chat_id, "\n".join(lines)[:3900])
+            return True
+        # A draft is always inserted first and then needs a second confirmation
+        # to press the actual send control.
+        draft_match = re.search(
+            r"(?:whatsapp|ватсап|ватс\s*апп|вотсап|watsapp)\s+"
+            r"(?:черновик|подготовь\s+ответ|напиши|ответь)\s*[:—–-]\s*(.+)$",
+            raw, re.IGNORECASE,
+        )
+        if not draft_match:
+            draft_match = re.search(
+                r"^(?:черновик|подготовь\s+ответ)\s+(?:в\s+)?"
+                r"(?:whatsapp|ватсап|ватс\s*апп|вотсап|watsapp)\s*[:—–-]\s*(.+)$",
+                raw, re.IGNORECASE,
+            )
+        if draft_match:
+            body = draft_match.group(1).strip()
+            if not body:
+                api.send_message(chat_id, "✍️ Формат: «WhatsApp черновик: текст ответа»")
+                return True
+            _pending_confirm[chat_id] = {"kind": "whatsapp_draft", "data": {"text": body}}
+            api.send_message(chat_id,
+                             f"✍️ Вставить черновик в <b>текущий открытый чат WhatsApp</b>?\n"
+                             f"Текст: «{_esc_tg(body[:300])}»\n\n"
+                             "После вставки будет отдельное подтверждение отправки. «да» / «нет»")
+            return True
+        chat_match = re.search(
+            r"(?:открой|найди)\s+(?:чат\s+)?(?:в\s+)?"
+            r"(?:whatsapp|ватсап|ватс\s*апп|вотсап|watsapp)\s*(?:чат)?\s*[:—–-]?\s*(.+)$",
+            raw, re.IGNORECASE,
+        )
+        if not chat_match:
+            chat_match = re.search(
+                r"(?:whatsapp|ватсап|ватс\s*апп|вотсап|watsapp)\s+"
+                r"(?:открой|найди)\s+чат\s*[:—–-]?\s*(.+)$",
+                raw, re.IGNORECASE,
+            )
+        if chat_match:
+            contact = chat_match.group(1).strip(" .,:;—–-")
+            if not contact:
+                api.send_message(chat_id, "💬 Формат: «открой чат WhatsApp: Имя»")
+                return True
+            _pending_confirm[chat_id] = {"kind": "whatsapp_open_chat", "data": {"contact": contact}}
+            api.send_message(chat_id,
+                             f"💬 Открыть чат WhatsApp «<b>{_esc_tg(contact[:100])}</b>»?\n"
+                             "Это может пометить чат как прочитанный. «да» / «нет»")
+            return True
+        if any(word in t for word in ("открой", "запусти")):
+            _pending_confirm[chat_id] = {"kind": "phone_open_adapter", "data": {"app": "whatsapp"}}
+            api.send_message(chat_id, "📱 Открыть WhatsApp на телефоне? «да» / «нет»")
+            return True
+        api.send_message(chat_id,
+                         "💬 <b>WhatsApp на телефоне</b>\n"
+                         "• «WhatsApp статус»\n"
+                         "• «открой чат WhatsApp: Имя»\n"
+                         "• «WhatsApp черновик: текст» — затем отдельное подтверждение отправки\n"
+                         "• «прочитай WhatsApp» — только видимый текущий чат")
+        return True
+
+    # ---- iMe: draft only in a chat opened manually on the phone ----
+    if has_ime:
+        adapter = _phone_adapter("ime")
+        if any(word in t for word in ("статус", "состояние", "готов", "подключ")):
+            _send_phone_status(api, chat_id, adapter)
+            return True
+        draft_match = re.search(r"(?:ime|i\.me|айми|име\s+мессенджер)\s+(?:черновик|напиши|ответь)\s*[:—–-]\s*(.+)$", raw, re.IGNORECASE)
+        if draft_match:
+            body = draft_match.group(1).strip()
+            _pending_confirm[chat_id] = {"kind": "ime_draft", "data": {"text": body}}
+            api.send_message(chat_id,
+                             f"✍️ Вставить черновик в текущий открытый чат iMe?\n«{_esc_tg(body[:300])}»\n\n"
+                             "Отправка будет подтверждаться отдельно. «да» / «нет»")
+            return True
+        if any(word in t for word in ("открой", "запусти")):
+            _pending_confirm[chat_id] = {"kind": "phone_open_adapter", "data": {"app": "ime"}}
+            api.send_message(chat_id, "📱 Открыть iMe Messenger на телефоне? «да» / «нет»")
+            return True
+        api.send_message(chat_id, "💬 iMe: откройте нужный чат вручную, затем «iMe черновик: текст». Отправка — только после второго подтверждения.")
+        return True
+
+    # ---- Uklon: never books/orders a ride automatically ----
+    if has_uklon:
+        adapter = _phone_adapter("uklon")
+        if any(word in t for word in ("статус", "состояние", "уведомлен", "готов")):
+            _send_phone_status(api, chat_id, adapter)
+            return True
+        route_match = re.search(r"(?:маршрут|поездк\w*)\s+(?:uklon|уклон)\s*[:—–-]?\s*(.*?)\s*(?:->|→|в|до)\s+(.+)$", raw, re.IGNORECASE)
+        if route_match:
+            pickup, destination = route_match.group(1).strip(), route_match.group(2).strip()
+            _pending_confirm[chat_id] = {"kind": "uklon_stage_route", "data": {"pickup": pickup, "destination": destination}}
+            api.send_message(chat_id,
+                             "🚕 Открыть Uklon Passenger и подготовить <b>черновик маршрута</b>?\n"
+                             "Заказ, принятие поездки и любые списания не создаются. «да» / «нет»")
+            return True
+        if "driver" in t or "водител" in t:
+            _pending_confirm[chat_id] = {"kind": "uklon_open_driver", "data": {}}
+            api.send_message(chat_id, "🚕 Открыть Uklon Driver на телефоне? «да» / «нет»")
+            return True
+        if any(word in t for word in ("открой", "запусти")):
+            _pending_confirm[chat_id] = {"kind": "phone_open_adapter", "data": {"app": "uklon"}}
+            api.send_message(chat_id, "🚕 Открыть Uklon Passenger на телефоне? «да» / «нет»")
+            return True
+        api.send_message(chat_id, "🚕 Uklon: «Uklon статус», «открой Uklon», «маршрут Uklon: откуда -> куда». Заказ поездки всегда остаётся ручным подтверждаемым действием.")
+        return True
+
+    # ---- EasyWay: package com.eway, now registered as installed ----
+    if has_easyway:
+        adapter = _phone_adapter("easyway")
+        if any(word in t for word in ("статус", "состояние", "готов", "подключ")):
+            _send_phone_status(api, chat_id, adapter)
+            return True
+        route_match = re.search(r"(?:маршрут|остановк\w*|транспорт)\s+(?:easyway|easy\s+way|изи\s*вей|изивей)\s*[:—–-]\s*(.+)$", raw, re.IGNORECASE)
+        if route_match:
+            destination = route_match.group(1).strip()
+            _pending_confirm[chat_id] = {"kind": "easyway_stage_route", "data": {"destination": destination}}
+            api.send_message(chat_id,
+                             "🚌 Открыть EasyWay и подготовить приватный черновик маршрута?\n"
+                             "Геолокация не включается и не отслеживается в фоне. «да» / «нет»")
+            return True
+        if any(word in t for word in ("открой", "запусти")):
+            _pending_confirm[chat_id] = {"kind": "phone_open_adapter", "data": {"app": "easyway"}}
+            api.send_message(chat_id, "🚌 Открыть EasyWay на телефоне? «да» / «нет»")
+            return True
+        api.send_message(chat_id, "🚌 EasyWay подключён как <code>com.eway</code>. Команды: «EasyWay статус», «открой EasyWay», «маршрут EasyWay: остановка или адрес».")
+        return True
+
+    # ---- Financial applications: monitoring/status/open only ----
+    if has_abank or has_privat:
+        app = "abank" if has_abank else "privat24"
+        adapter = _phone_adapter(app)
+        if any(word in t for word in ("статус", "состояние", "уведомлен", "готов", "подключ")):
+            _send_phone_status(api, chat_id, adapter)
+            api.send_message(chat_id, "🔒 Банковый режим: только мониторинг уведомлений и подтверждаемое открытие. Платежи, OTP, карты, биометрия и переводы не автоматизируются.")
+            return True
+        if any(word in t for word in ("открой", "запусти")):
+            _pending_confirm[chat_id] = {"kind": "phone_open_adapter", "data": {"app": app}}
+            api.send_message(chat_id, f"🏦 Открыть <b>{_esc_tg(adapter.title)}</b> на телефоне? «да» / «нет»")
+            return True
+        api.send_message(chat_id, f"🏦 {adapter.title}: «{adapter.title} статус» или «открой {adapter.title}». Финансовые операции отключены.")
+        return True
+
+    return False
+
+
+def _cancel_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
+    if kind not in ("whatsapp_send_draft", "ime_send_draft"):
+        return False
+    try:
+        app = "whatsapp" if kind == "whatsapp_send_draft" else "ime"
+        adapter = _phone_adapter(app)
+        adapter.cancel_draft(str(data.get("draft_id") or ""))
+    except Exception:
+        pass
+    api.send_message(chat_id, "🚫 Отправка отменена. Текст на экране телефона не удалялся автоматически.")
+    return True
+
+
+def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
+    """Perform one already-confirmed app step; return True when handled."""
+    try:
+        if kind == "phone_open_adapter":
+            adapter = _phone_adapter(str(data.get("app") or ""))
+            if not adapter:
+                api.send_message(chat_id, "⚠️ Неизвестное приложение телефона.")
+                return True
+            result = adapter.open(confirm=True)
+            if result.get("status") == "ok":
+                api.send_message(chat_id, f"✅ На телефоне открыт <b>{_esc_tg(adapter.title)}</b>.")
+            else:
+                api.send_message(chat_id, f"⚠️ {_esc_tg(adapter.title)}: {_phone_error(result)}")
+            return True
+        if kind == "whatsapp_open_chat":
+            adapter = _phone_adapter("whatsapp")
+            result = adapter.open_chat(str(data.get("contact") or ""), confirm=True)
+            if result.get("status") == "opened":
+                api.send_message(chat_id, "✅ Чат WhatsApp открыт. Автоматическая отправка выключена.")
+            else:
+                api.send_message(chat_id, f"⚠️ WhatsApp: {_phone_error(result)}")
+            return True
+        if kind in ("whatsapp_draft", "ime_draft"):
+            app = "whatsapp" if kind == "whatsapp_draft" else "ime"
+            adapter = _phone_adapter(app)
+            result = adapter.prepare_draft(str(data.get("text") or ""), confirm=True)
+            if result.get("status") != "draft_ready":
+                api.send_message(chat_id, f"⚠️ {_esc_tg(adapter.title)}: {_phone_error(result)}")
+                return True
+            send_kind = "whatsapp_send_draft" if app == "whatsapp" else "ime_send_draft"
+            _pending_confirm[chat_id] = {"kind": send_kind, "data": {"draft_id": result.get("draft_id")}}
+            api.send_message(chat_id,
+                             "✍️ Черновик вставлен и проверен в поле ввода телефона.\n"
+                             "<b>Отправить его сейчас?</b> Это отдельное действие. «да» / «нет»")
+            return True
+        if kind in ("whatsapp_send_draft", "ime_send_draft"):
+            app = "whatsapp" if kind == "whatsapp_send_draft" else "ime"
+            adapter = _phone_adapter(app)
+            result = adapter.send_draft(str(data.get("draft_id") or ""), confirm=True)
+            if result.get("status") == "send_tapped":
+                api.send_message(chat_id,
+                                 "✅ Нажатие «Отправить» выполнено на телефоне. Это не является гарантией доставки — проверьте статус в приложении.")
+            else:
+                api.send_message(chat_id, f"⚠️ Отправка заблокирована: {_phone_error(result)}")
+            return True
+        if kind == "uklon_open_driver":
+            adapter = _phone_adapter("uklon")
+            result = adapter.open_driver(confirm=True)
+            if result.get("status") == "ok":
+                api.send_message(chat_id, "✅ На телефоне открыт Uklon Driver.")
+            else:
+                api.send_message(chat_id, f"⚠️ Uklon Driver: {_phone_error(result)}")
+            return True
+        if kind == "uklon_stage_route":
+            adapter = _phone_adapter("uklon")
+            result = adapter.stage_route(str(data.get("pickup") or ""), str(data.get("destination") or ""), confirm=True)
+            if result.get("status") == "route_staged":
+                api.send_message(chat_id, "🚕 Uklon Passenger открыт, черновик маршрута подготовлен. Заказ поездки <b>не создан</b>.")
+            else:
+                api.send_message(chat_id, f"⚠️ Uklon: {_phone_error(result)}")
+            return True
+        if kind == "easyway_stage_route":
+            adapter = _phone_adapter("easyway")
+            result = adapter.stage_route(str(data.get("destination") or ""), confirm=True)
+            if result.get("status") == "route_staged":
+                api.send_message(chat_id, "🚌 EasyWay открыт, черновик маршрута сохранён приватно. Геолокация не отслеживается в фоне.")
+            else:
+                api.send_message(chat_id, f"⚠️ EasyWay: {_phone_error(result)}")
+            return True
+    except Exception as exc:
+        api.send_message(chat_id, f"⚠️ Ошибка сценария телефона: {_esc_tg(str(exc))[:220]}")
+        return True
+    return False
+
+
 def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
     """Детерминированные безопасные команды реального Android-адаптера."""
     raw = str(text or "").strip()
@@ -2052,9 +2366,11 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
         if data.get("status") == "ok" and notices:
             lines = ["🔔 <b>Последние уведомления телефона</b>"]
             for notice in notices[-15:]:
+                # Even an explicitly requested notification list must not leak
+                # OTP/PIN/card-like values from the live Companion stream.
                 lines.append(f"• <code>{_esc_tg(str(notice.get('package') or ''))}</code>\n"
-                             f"  <b>{_esc_tg(str(notice.get('title') or '')[:100])}</b>\n"
-                             f"  {_esc_tg(str(notice.get('text') or '')[:180])}")
+                             f"  <b>{_esc_tg(_mask_android_notification(notice.get('title'), 100))}</b>\n"
+                             f"  {_esc_tg(_mask_android_notification(notice.get('text'), 180))}")
             api.send_message(chat_id, "\n".join(lines)[:3900])
         elif data.get("status") == "ok":
             api.send_message(chat_id, "🔔 Уведомлений пока нет. Проверьте, что в Companion включён доступ к уведомлениям.")
@@ -2152,7 +2468,11 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             pend = _pending_confirm.pop(chat_id)
             kind = pend.get("kind", "")
             if no:
+                if _cancel_phone_pending(api, chat_id, kind, pend.get("data") or {}):
+                    return True
                 api.send_message(chat_id, "🚫 Действие отменено.")
+                return True
+            if _confirm_phone_pending(api, chat_id, kind, pend.get("data") or {}):
                 return True
             if kind == "gmail":
                 d = pend["data"]
@@ -2479,6 +2799,10 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     # Инбокс имеет приоритет над широким детектором Direct: слова «сообщения»
     # и «прочитанные» не должны неожиданно открывать Instagram.
     if _handle_unified_inbox_intent(api, chat_id, text):
+        return True
+
+    # Dedicated app workflows must run before the generic Android intent.
+    if _handle_android_phone_workflow_intent(api, chat_id, text):
         return True
 
     if _handle_android_gateway_intent(api, chat_id, text):
