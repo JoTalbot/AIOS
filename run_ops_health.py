@@ -26,6 +26,7 @@ SERVICES = (
     "aios-vnc-keepawake.service",
     "wg-quick@wg0.service",
     "aios-android-gateway.service",
+    "aios-android-leads.timer",
     "aios-messenger-profile-backup.timer",
 )
 

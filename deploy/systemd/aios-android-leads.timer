@@ -1,0 +1,11 @@
+[Unit]
+Description=Check new metadata-only Android leads every five minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=aios-android-leads.service
+
+[Install]
+WantedBy=timers.target
