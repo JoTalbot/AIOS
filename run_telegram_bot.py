@@ -2711,6 +2711,32 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         _inbox_mark_read(api, chat_id)
         return True
 
+    # ---- SMS-уведомления (вкл/выкл) ----
+    if any(w in t for w in ("включи смс-уведомления", "включи уведомления о смс", "смс-алерты вкл",
+                            "включи смс уведомления", "смс уведомления вкл")):
+        import subprocess as _sp
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_sms_alerts.py"), "--on"],
+                    capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+        api.send_message(chat_id, "🔔 SMS-уведомления <b>включены</b>: новые важные SMS (коды, OLX, Новая Почта, банки) будут приходить сюда.")
+        return True
+    if any(w in t for w in ("выключи смс-уведомления", "отключи уведомления о смс", "смс-алерты выкл",
+                            "выключи смс уведомления", "смс уведомления выкл")):
+        import subprocess as _sp
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_sms_alerts.py"), "--off"],
+                    capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+        api.send_message(chat_id, "🔕 SMS-уведомления <b>выключены</b>. «мои смс» — по-прежнему можно читать вручную.")
+        return True
+    if any(w in t for w in ("статус смс-уведомлений", "смс-уведомления статус", "работают ли смс-уведомления")):
+        try:
+            st = json.loads((PROJECT_ROOT / "data" / "sms_alerts_state.json").read_text(encoding="utf-8"))
+            api.send_message(chat_id,
+                             f"🔔 SMS-уведомления: {'<b>включены</b>' if st.get('enabled', True) else '<b>выключены</b>'}\n"
+                             f"Отправлено уведомлений: {st.get('notified', 0)}\n"
+                             f"Проверка: {st.get('last_check', '—')[:16]}")
+        except Exception:
+            api.send_message(chat_id, "🔔 SMS-уведомления ещё не инициализированы (запустится автоматически).")
+        return True
+
     # ---- SMS (Google Messages for Web, телефон +380959052288) ----
     if any(w in t for w in ("мои смс", "последние смс", "последняя смс", "проверь смс",
                             "смс на телефон", "что пришло по смс", "мои смски")):
@@ -3173,6 +3199,20 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 txt += f"⚠️ {inv['error']}\n"
             if fin.get("status") == "ok":
                 txt += "✅ Записано в финансы"
+            # убрать объявление с OLX, если деталь была опубликована
+            try:
+                journal = json.loads((PROJECT_ROOT / "data" / "olx_published.json").read_text(encoding="utf-8"))
+                name_l = name.lower()
+                match = next((e for e in journal if name_l in (e.get("title") or "").lower()), None)
+                if match and match.get("ad_id"):
+                    api.send_message(chat_id, "🛒 Убираю объявление с OLX…")
+                    r3 = _run_account_control(["olx", "delete", str(match["ad_id"]), "--confirm"], timeout=150)
+                    if r3.get("status") in ("deleted", "deactivated"):
+                        txt += f"\n🛒 OLX: объявление {match['ad_id']} убрано"
+                    else:
+                        txt += f"\n🛒 OLX: не удалось убрать ({str(r3.get('error', '?'))[:80]})"
+            except Exception:
+                pass
             api.send_message(chat_id, txt)
             return True
         # добавление детали
