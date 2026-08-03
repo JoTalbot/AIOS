@@ -85,6 +85,9 @@ def main() -> int:
     elif command == "phone-status" and len(sys.argv) >= 3:
         adapter = adapter_for(sys.argv[2], gateway)
         result = adapter.status() if adapter else {"status": "error", "error": "Неизвестное приложение"}
+    elif command == "calibrate" and len(sys.argv) >= 3:
+        adapter = adapter_for(sys.argv[2], gateway)
+        result = adapter.calibrate(confirm=confirmed) if adapter else {"status": "error", "error": "Неизвестное приложение"}
     elif command == "whatsapp-open-chat" and len(sys.argv) >= 3:
         result = WhatsAppPhoneAdapter(gateway).open_chat(_text_after(2), confirm=confirmed)
     elif command == "whatsapp-read":
@@ -123,7 +126,7 @@ def main() -> int:
             "error": (
                 "register|connect|status|apps|profiles|companion|notifications|accessibility|"
                 "ui-snapshot|clipboard|paste|tap-ui|location|files|pull|screenshot|ui-dump|"
-                "open|tap|home|back|phone-status|whatsapp-open-chat|whatsapp-read|"
+                "open|tap|home|back|phone-status|calibrate|whatsapp-open-chat|whatsapp-read|"
                 "whatsapp-draft|whatsapp-send|ime-draft|ime-send|uklon-open-driver|"
                 "uklon-stage-route|easyway-stage-route|watch"
             ),
@@ -131,7 +134,7 @@ def main() -> int:
     print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
     return 0 if result.get("status") in (
         "ok", "offline", "unregistered", "need_confirm", "opened", "draft_ready",
-        "send_tapped", "route_staged", "cancelled", "not_installed",
+        "send_tapped", "route_staged", "calibrated", "cancelled", "not_installed",
     ) else 1
 
 

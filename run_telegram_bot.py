@@ -2054,6 +2054,10 @@ def _send_phone_status(api, chat_id: int, adapter) -> None:
              f"Сейчас активно: <b>{'да' if data.get('active') else 'нет'}</b>"]
     if "notification_count" in data:
         lines.append(f"Новых служебных уведомлений: <b>{data.get('notification_count', 0)}</b>")
+    if data.get("ui_calibrated"):
+        controls = data.get("route_controls") or {}
+        ready = bool(controls) and all(bool(value) for value in controls.values())
+        lines.append("Интерфейс маршрута: <b>проверен</b>" if ready else "Интерфейс маршрута: <b>требует проверки</b>")
     if not data.get("ui_ready"):
         lines.append("⚠️ Для безопасной работы с интерфейсом требуется обновить AIOS Companion.")
     api.send_message(chat_id, "\n".join(lines))
@@ -2184,6 +2188,10 @@ def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
     # ---- Uklon: never books/orders a ride automatically ----
     if has_uklon:
         adapter = _phone_adapter("uklon")
+        if any(word in t for word in ("калибр", "проверь интерфейс", "настрой интерфейс")):
+            _pending_confirm[chat_id] = {"kind": "phone_calibrate", "data": {"app": "uklon"}}
+            api.send_message(chat_id, "🚕 Открыть Uklon Passenger и проверить только элементы маршрута без заказа поездки? «да» / «нет»")
+            return True
         if any(word in t for word in ("статус", "состояние", "уведомлен", "готов")):
             _send_phone_status(api, chat_id, adapter)
             return True
@@ -2209,6 +2217,10 @@ def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
     # ---- EasyWay: package com.eway, now registered as installed ----
     if has_easyway:
         adapter = _phone_adapter("easyway")
+        if any(word in t for word in ("калибр", "проверь интерфейс", "настрой интерфейс")):
+            _pending_confirm[chat_id] = {"kind": "phone_calibrate", "data": {"app": "easyway"}}
+            api.send_message(chat_id, "🚌 Открыть EasyWay и проверить только элемент поиска маршрута без запроса геолокации? «да» / «нет»")
+            return True
         if any(word in t for word in ("статус", "состояние", "готов", "подключ")):
             _send_phone_status(api, chat_id, adapter)
             return True
@@ -2261,6 +2273,21 @@ def _cancel_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
 def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
     """Perform one already-confirmed app step; return True when handled."""
     try:
+        if kind == "phone_calibrate":
+            adapter = _phone_adapter(str(data.get("app") or ""))
+            if not adapter:
+                api.send_message(chat_id, "⚠️ Неизвестное приложение телефона.")
+                return True
+            result = adapter.calibrate(confirm=True)
+            if result.get("status") == "calibrated":
+                selectors = result.get("selectors") or {}
+                ready = bool(selectors) and all(bool(value) for value in selectors.values())
+                api.send_message(chat_id,
+                                 f"✅ Интерфейс <b>{_esc_tg(adapter.title)}</b> проверен: "
+                                 f"{'маршрутные элементы найдены' if ready else 'элементы маршрута не найдены; ничего не вводилось'}.")
+            else:
+                api.send_message(chat_id, f"⚠️ {_esc_tg(adapter.title)}: {_phone_error(result)}")
+            return True
         if kind == "phone_open_adapter":
             adapter = _phone_adapter(str(data.get("app") or ""))
             if not adapter:
@@ -2315,7 +2342,12 @@ def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
             adapter = _phone_adapter("uklon")
             result = adapter.stage_route(str(data.get("pickup") or ""), str(data.get("destination") or ""), confirm=True)
             if result.get("status") == "route_staged":
-                api.send_message(chat_id, "🚕 Uklon Passenger открыт, черновик маршрута подготовлен. Заказ поездки <b>не создан</b>.")
+                controls = result.get("controls") or {}
+                ready = bool(controls) and all(bool(value) for value in controls.values())
+                api.send_message(chat_id,
+                                 "🚕 Uklon Passenger открыт, черновик маршрута подготовлен. "
+                                 + ("Элементы адресов проверены. " if ready else "Элементы адресов требуют ручной проверки. ")
+                                 + "Заказ поездки <b>не создан</b>.")
             else:
                 api.send_message(chat_id, f"⚠️ Uklon: {_phone_error(result)}")
             return True
@@ -2323,7 +2355,12 @@ def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
             adapter = _phone_adapter("easyway")
             result = adapter.stage_route(str(data.get("destination") or ""), confirm=True)
             if result.get("status") == "route_staged":
-                api.send_message(chat_id, "🚌 EasyWay открыт, черновик маршрута сохранён приватно. Геолокация не отслеживается в фоне.")
+                controls = result.get("controls") or {}
+                ready = bool(controls) and all(bool(value) for value in controls.values())
+                api.send_message(chat_id,
+                                 "🚌 EasyWay открыт, черновик маршрута сохранён приватно. "
+                                 + ("Поле маршрута проверено. " if ready else "Поле маршрута требует ручной проверки. ")
+                                 + "Геолокация не отслеживается в фоне.")
             else:
                 api.send_message(chat_id, f"⚠️ EasyWay: {_phone_error(result)}")
             return True
