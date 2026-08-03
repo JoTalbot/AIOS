@@ -2002,6 +2002,40 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
         else:
             api.send_message(chat_id, f"⚠️ Android gateway: {_esc_tg(data.get('error') or data.get('status') or '?')}")
         return True
+    if any(phrase in t for phrase in ("уведомления телефона", "уведомления android", "уведомления андроид")):
+        data = _android_gateway_run(["notifications"])
+        notices = data.get("notifications") or []
+        if data.get("status") == "ok" and notices:
+            lines = ["🔔 <b>Последние уведомления телефона</b>"]
+            for notice in notices[-15:]:
+                lines.append(f"• <code>{_esc_tg(str(notice.get('package') or ''))}</code>\n"
+                             f"  <b>{_esc_tg(str(notice.get('title') or '')[:100])}</b>\n"
+                             f"  {_esc_tg(str(notice.get('text') or '')[:180])}")
+            api.send_message(chat_id, "\n".join(lines)[:3900])
+        elif data.get("status") == "ok":
+            api.send_message(chat_id, "🔔 Уведомлений пока нет. Проверьте, что в Companion включён доступ к уведомлениям.")
+        else:
+            api.send_message(chat_id, f"⚠️ Уведомления недоступны: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+        return True
+    if any(phrase in t for phrase in ("геолокация телефона", "местоположение телефона", "где телефон", "локация телефона")):
+        _pending_confirm[chat_id] = {"kind": "android_location", "data": {}}
+        api.send_message(chat_id, "📍 Запросить текущую геолокацию телефона?\n\n«да» / «нет»")
+        return True
+    if any(phrase in t for phrase in ("файлы телефона", "файлы android", "загрузки телефона")):
+        data = _android_gateway_run(["files"])
+        if data.get("status") == "ok":
+            lines = [f"📂 <b>{_esc_tg(data.get('directory') or '')}</b> · {data.get('count', 0)} файлов"]
+            lines += [f"• {_esc_tg(name)}" for name in (data.get('files') or [])[:40]]
+            api.send_message(chat_id, "\n".join(lines)[:3900])
+        else:
+            api.send_message(chat_id, f"⚠️ Файлы недоступны: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+        return True
+    m_pull = re.search(r"(?:скачай|загрузи)\s+с\s+(?:телефона|android|андроида)\s*:?\s*(/sdcard/(?:Download|Documents|Pictures|DCIM)/[^\s]+)", raw, re.IGNORECASE)
+    if m_pull:
+        path = m_pull.group(1)
+        _pending_confirm[chat_id] = {"kind": "android_pull_file", "data": {"path": path}}
+        api.send_message(chat_id, f"📥 Скачать с телефона <code>{_esc_tg(path)}</code>?\n\n«да» / «нет»")
+        return True
     if any(phrase in t for phrase in ("приложения телефона", "список приложений", "приложения android", "андроид приложения")):
         data = _android_gateway_run(["apps"])
         if data.get("status") == "ok":
@@ -2039,7 +2073,8 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
         api.send_message(chat_id,
                          "📱 <b>Android Adapter</b>\n"
                          "• «статус телефона»\n• «приложения телефона»\n"
-                         "• «скрин телефона»\n• «ui телефона»\n"
+                         "• «уведомления телефона»\n• «геолокация телефона»\n"
+                         "• «файлы телефона»\n• «скрин телефона»\n• «ui телефона»\n"
                          "• «открой на телефоне com.android.settings»")
         return True
     return False
@@ -2303,6 +2338,24 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                     api.send_message(chat_id, f"✅ На телефоне открыт <code>{_esc_tg(d['package'])}</code>.")
                 else:
                     api.send_message(chat_id, f"⚠️ Android: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+                return True
+            if kind == "android_location":
+                data = _android_gateway_run(["location", "--confirm"])
+                if data.get("status") == "ok":
+                    api.send_message(chat_id,
+                                     "📍 <b>Геолокация телефона</b>\n"
+                                     f"{data.get('latitude')}, {data.get('longitude')}\n"
+                                     f"Точность: {data.get('accuracy_m', '—')} м")
+                else:
+                    api.send_message(chat_id, f"⚠️ Геолокация недоступна: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+                return True
+            if kind == "android_pull_file":
+                d = pend["data"]
+                data = _android_gateway_run(["pull", d["path"], "--confirm"], timeout=150)
+                if data.get("status") == "ok" and data.get("file"):
+                    api.send_document(chat_id, data["file"], caption="📱 Файл с Android")
+                else:
+                    api.send_message(chat_id, f"⚠️ Не удалось скачать файл: {_esc_tg(data.get('error') or data.get('status') or '?')}")
                 return True
             if kind == "signal_send":
                 d = pend["data"]
