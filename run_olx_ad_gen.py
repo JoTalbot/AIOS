@@ -74,11 +74,15 @@ def _llm(prompt: str) -> str:
 def generate(part: str) -> dict:
     """Сгенерировать объявление из короткого названия детали."""
     prompt = (
-        "Напиши объявление для OLX (Украина) про автозапчасть. Верни ТОЛЬКО JSON без пояснений: "
-        "{\"title\": \"заголовок до 60 символов\", \"description\": \"описание 2-4 предложения, "
-        "на русском, с указанием состояния, совместимости и готовности к отправке Новой Почтой\", "
-        "\"price\": \"число в гривнах\"}. "
+        "Напиши объявление для OLX (Украина) про автозапчасть с авторазборки (б/у, рабочая). "
+        "Верни ТОЛЬКО JSON без пояснений: "
+        "{\"title\": \"заголовок до 60 символов, конкретный (марка, модель, название детали)\", "
+        "\"description\": \"описание 3-5 предложений на русском: состояние (б/у, рабочая, без трещин), "
+        "для каких авто подходит, что в комплекте, готовность отправить Новой Почтой по Украине, "
+        "оплата при получении\", "
+        "\"price\": \"реалистичная цена б/у запчасти в гривнах (типичная рыночная, не завышай)\"}. "
         "Цена — ТОЛЬКО в поле price числом, НИКОГДА не упоминай цену в description и title. "
+        "Не используй слово «распродажа», «акция», «100%» и прочие кликбейт-приёмы. "
         "Если пользователь указал цену в запросе — используй её. "
         f"Деталь: {part}"
     )
@@ -117,7 +121,7 @@ def generate_many(parts: list[str]) -> dict:
     return {"status": "ok", "ads": out, "count": len(out)}
 
 
-def create_ad(part: str, confirm: bool) -> dict:
+def create_ad(part: str, confirm: bool, photo: str | None = None) -> dict:
     """Создать объявление на OLX через Chrome Twin (если телефон подтверждён)."""
     gen = generate(part)
     if gen.get("status") != "ok":
@@ -127,6 +131,7 @@ def create_ad(part: str, confirm: bool) -> dict:
     try:
         from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
         a = OLXChromeTwinAdapter(config={"olx_login": _env("OLX_LOGIN") or "959052288"})
+        _images = [photo] if (photo and Path(photo).exists()) else None
 
         async def _run_publish():
             try:
@@ -134,6 +139,7 @@ def create_ad(part: str, confirm: bool) -> dict:
                     title=gen.get("title", ""),
                     description=gen.get("description", ""),
                     price=str(gen.get("price", "")),
+                    images=_images,
                     publish=True,
                 )
             finally:
@@ -161,11 +167,18 @@ def main() -> None:
         parts = " ".join(sys.argv[2:]).split(";")
         print(json.dumps(generate_many(parts), ensure_ascii=False))
     elif cmd == "create":
-        part = " ".join(sys.argv[2:]).replace("--confirm", "").strip()
-        confirm = "--confirm" in sys.argv
+        _args = list(sys.argv[2:])
+        photo = ""
+        if "--photo" in _args:
+            _i = _args.index("--photo")
+            if _i + 1 < len(_args):
+                photo = _args[_i + 1]
+                _args = _args[:_i] + _args[_i + 2:]
+        part = " ".join(_args).replace("--confirm", "").strip()
+        confirm = "--confirm" in _args
         if not part:
             print(json.dumps({"status": "error", "error": "Укажите деталь"})); return
-        print(json.dumps(create_ad(part, confirm), ensure_ascii=False))
+        print(json.dumps(create_ad(part, confirm, photo), ensure_ascii=False))
     else:
         print(json.dumps({"status": "error", "error": "gen|gen_many|create"}))
 
