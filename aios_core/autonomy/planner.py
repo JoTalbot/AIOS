@@ -35,7 +35,7 @@ KNOWN_ACTIONS: dict[str, list[str]] = {
     "query_ad_status": ["ad_id"],
     "query_np_status": ["ttn"],
     "query_platform": ["platform", "query"],
-    "create_ttn": ["recipient", "item", "address", "text"],
+    "create_ttn": ["recipient", "item", "address", "amount", "phone", "text"],
     "create_ad": ["title", "desc", "price", "text"],
     "boost_ad": ["ad_id", "text"],
     "publish": ["title", "desc", "price", "text"],
