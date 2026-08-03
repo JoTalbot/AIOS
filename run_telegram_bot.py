@@ -610,6 +610,8 @@ _last_video: dict[int, str] = {}
 _last_gmail_ids: dict[int, list[str]] = {}
 # Ожидающие подтверждения действий: chat_id -> {"kind": ..., "data": ...}
 _pending_confirm: dict[int, dict] = {}
+# Короткоживущая навигация по уже подтверждённым черновикам маршрутов.
+_phone_route_drafts: dict[int, dict] = {}
 
 
 def _run_account_control(args: list[str], timeout: int = 160) -> dict:
@@ -2188,6 +2190,19 @@ def _handle_android_phone_workflow_intent(api, chat_id: int, text: str) -> bool:
     # ---- Uklon: never books/orders a ride automatically ----
     if has_uklon:
         adapter = _phone_adapter("uklon")
+        if any(phrase in t for phrase in ("продолжи маршрут", "продолжить маршрут")):
+            route = _phone_route_drafts.get(chat_id) or {}
+            route_id = str(route.get("route_id") or "")
+            field = str(route.get("next_field") or "")
+            if not route_id or field not in ("pickup", "destination"):
+                api.send_message(chat_id, "ℹ️ Сначала создайте черновик: «маршрут Uklon: откуда -> куда».")
+                return True
+            _pending_confirm[chat_id] = {"kind": "uklon_enter_route_query", "data": {"route_id": route_id, "field": field}}
+            label = "точку отправления" if field == "pickup" else "пункт назначения"
+            api.send_message(chat_id,
+                             f"🚕 Ввести подготовленный поисковый запрос для «{label}» в Uklon?\n"
+                             "AIOS не будет выбирать подсказку и не создаст заказ. «да» / «нет»")
+            return True
         if any(word in t for word in ("калибр", "проверь интерфейс", "настрой интерфейс")):
             _pending_confirm[chat_id] = {"kind": "phone_calibrate", "data": {"app": "uklon"}}
             api.send_message(chat_id, "🚕 Открыть Uklon Passenger и проверить только элементы маршрута без заказа поездки? «да» / «нет»")
@@ -2340,14 +2355,38 @@ def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
             return True
         if kind == "uklon_stage_route":
             adapter = _phone_adapter("uklon")
-            result = adapter.stage_route(str(data.get("pickup") or ""), str(data.get("destination") or ""), confirm=True)
+            pickup = str(data.get("pickup") or "")
+            result = adapter.stage_route(pickup, str(data.get("destination") or ""), confirm=True)
             if result.get("status") == "route_staged":
                 controls = result.get("controls") or {}
                 ready = bool(controls) and all(bool(value) for value in controls.values())
-                api.send_message(chat_id,
-                                 "🚕 Uklon Passenger открыт, черновик маршрута подготовлен. "
-                                 + ("Элементы адресов проверены. " if ready else "Элементы адресов требуют ручной проверки. ")
-                                 + "Заказ поездки <b>не создан</b>.")
+                if ready:
+                    field = "pickup" if pickup.strip() else "destination"
+                    _phone_route_drafts[chat_id] = {"route_id": result.get("route_id"), "next_field": field}
+                    _pending_confirm[chat_id] = {"kind": "uklon_enter_route_query", "data": {"route_id": result.get("route_id"), "field": field}}
+                    label = "точку отправления" if field == "pickup" else "пункт назначения"
+                    api.send_message(chat_id,
+                                     f"🚕 Черновик маршрута готов. Ввести поисковый запрос для «{label}»?\n"
+                                     "Это только ввод текста: подсказка и заказ не выбираются. «да» / «нет»")
+                else:
+                    api.send_message(chat_id, "🚕 Черновик Uklon сохранён, но элементы адресов не подтверждены. Заказ поездки <b>не создан</b>.")
+            else:
+                api.send_message(chat_id, f"⚠️ Uklon: {_phone_error(result)}")
+            return True
+        if kind == "uklon_enter_route_query":
+            adapter = _phone_adapter("uklon")
+            field = str(data.get("field") or "")
+            result = adapter.prepare_address_query(str(data.get("route_id") or ""), field, confirm=True)
+            if result.get("status") == "query_entered":
+                if field == "pickup":
+                    route = _phone_route_drafts.setdefault(chat_id, {"route_id": data.get("route_id")})
+                    route["next_field"] = "destination"
+                    api.send_message(chat_id,
+                                     "✅ Запрос точки отправления введён. Выберите точную подсказку <b>вручную на телефоне</b>, затем напишите «продолжи маршрут Uklon». Заказ не создавался.")
+                else:
+                    _phone_route_drafts.pop(chat_id, None)
+                    api.send_message(chat_id,
+                                     "✅ Запрос пункта назначения введён. Выберите точную подсказку <b>вручную на телефоне</b>; заказ поездки не создавался.")
             else:
                 api.send_message(chat_id, f"⚠️ Uklon: {_phone_error(result)}")
             return True
@@ -2357,10 +2396,22 @@ def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
             if result.get("status") == "route_staged":
                 controls = result.get("controls") or {}
                 ready = bool(controls) and all(bool(value) for value in controls.values())
+                if ready:
+                    _pending_confirm[chat_id] = {"kind": "easyway_enter_route_query", "data": {"route_id": result.get("route_id")}}
+                    api.send_message(chat_id,
+                                     "🚌 Черновик маршрута готов. Ввести поисковый запрос в EasyWay?\n"
+                                     "Маршрут и геолокация не будут выбраны автоматически. «да» / «нет»")
+                else:
+                    api.send_message(chat_id, "🚌 Черновик EasyWay сохранён, но поле маршрута не подтверждено. Геолокация не отслеживается в фоне.")
+            else:
+                api.send_message(chat_id, f"⚠️ EasyWay: {_phone_error(result)}")
+            return True
+        if kind == "easyway_enter_route_query":
+            adapter = _phone_adapter("easyway")
+            result = adapter.prepare_destination_query(str(data.get("route_id") or ""), confirm=True)
+            if result.get("status") == "query_entered":
                 api.send_message(chat_id,
-                                 "🚌 EasyWay открыт, черновик маршрута сохранён приватно. "
-                                 + ("Поле маршрута проверено. " if ready else "Поле маршрута требует ручной проверки. ")
-                                 + "Геолокация не отслеживается в фоне.")
+                                 "✅ Поисковый запрос введён в EasyWay. Выберите остановку или маршрут <b>вручную на телефоне</b>; геолокация не запрашивалась.")
             else:
                 api.send_message(chat_id, f"⚠️ EasyWay: {_phone_error(result)}")
             return True

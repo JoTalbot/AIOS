@@ -299,6 +299,63 @@ class ActiveAppAdapter:
         return self.gateway.tap(x, y, confirm=True)
 
     @staticmethod
+    def _unique_editable(nodes: list[dict]) -> dict | None:
+        """Return an unambiguous on-screen text input, never guessing among many."""
+        unique: dict[tuple[int, int, int, int], dict] = {}
+        for node in nodes:
+            bounds = _bounds(node)
+            if node.get("editable") and bounds:
+                unique[bounds] = node
+        return next(iter(unique.values()), None) if len(unique) == 1 else None
+
+    def _wait_for_unique_editable(self, wait_seconds: float = 4.0) -> tuple[dict, dict | None]:
+        deadline = time.monotonic() + max(0.5, min(float(wait_seconds), 8.0))
+        last: dict = {}
+        while True:
+            last = self._active_ui(include_text=True)
+            if last.get("status") != "ok":
+                return last, None
+            field = self._unique_editable(last.get("nodes") or [])
+            if field:
+                return last, field
+            if time.monotonic() >= deadline:
+                return last, None
+            time.sleep(0.35)
+
+    def _enter_visible_query(self, value: str, wait_seconds: float = 4.0) -> dict:
+        """Paste an explicitly approved search query without selecting a result."""
+        query = str(value or "").strip()
+        if not query:
+            return {"status": "error", "error": "Пустой поисковый запрос"}
+        if len(query) > 300:
+            return {"status": "error", "error": "Поисковый запрос длиннее 300 символов"}
+        snapshot, field = self._wait_for_unique_editable(wait_seconds=wait_seconds)
+        if snapshot.get("status") != "ok":
+            return snapshot
+        if not field:
+            return {"status": "error", "error": "Однозначное поле поиска не найдено; ввод остановлен"}
+        tapped = self._tap_node(field)
+        if tapped.get("status") != "ok":
+            return tapped
+        copied = self.gateway.set_clipboard(query, confirm=True)
+        if copied.get("status") != "ok":
+            return copied
+        pasted = self.gateway.paste(confirm=True)
+        if pasted.get("status") != "ok":
+            return pasted
+        time.sleep(0.35)
+        verified = self._active_ui(include_text=True)
+        if verified.get("status") != "ok":
+            return verified
+        matching = any(
+            node.get("editable") and _same_draft_text(node.get("text"), query)
+            for node in (verified.get("nodes") or [])
+        )
+        if not matching:
+            return {"status": "error", "error": "Поисковый запрос не подтверждён интерфейсом; выбор результата заблокирован"}
+        return {"status": "query_entered", "length": len(query)}
+
+    @staticmethod
     def _label(node: dict) -> str:
         return " ".join(str(node.get(key) or "") for key in ("text", "description", "resource"))
 
@@ -679,6 +736,39 @@ class UklonPhoneAdapter(PhoneAppMonitor):
             "booking": "not_created", "controls": selectors,
         }
 
+    def prepare_address_query(self, route_id: str, field: str, confirm: bool = False) -> dict:
+        """Type one approved route query, but never choose a suggestion or order a ride."""
+        draft = self.store.get(route_id, kind="route_draft", package=self.package)
+        if not draft:
+            return {"status": "expired", "error": "Черновик маршрута не найден или истёк"}
+        key = str(field or "").casefold()
+        mapping = {
+            "pickup": ("pickup", self.pickup_resource),
+            "destination": ("destination", self.destination_resource),
+        }
+        if key not in mapping:
+            return {"status": "error", "error": "Поле маршрута должно быть pickup или destination"}
+        data_key, resource = mapping[key]
+        value = str((draft.get("data") or {}).get(data_key) or "").strip()
+        if not value:
+            return {"status": "error", "error": "Для этого поля нет поискового запроса"}
+        if not confirm:
+            return {"status": "need_confirm", "action": "uklon_enter_route_query", "route_id": str(route_id), "field": key}
+        snapshot = self._active_ui(include_text=True)
+        if snapshot.get("status") != "ok":
+            return snapshot
+        trigger = self._resource_control(snapshot.get("nodes") or [], resource)
+        if not trigger:
+            return {"status": "error", "error": "Элемент адреса Uklon не распознан; ввод остановлен"}
+        opened = self._tap_node(trigger)
+        if opened.get("status") != "ok":
+            return opened
+        entered = self._enter_visible_query(value, wait_seconds=5.0)
+        if entered.get("status") != "query_entered":
+            return entered
+        self.store.update(route_id, state=f"{key}_query_entered", last_field=key, entered_at=_iso())
+        return {"status": "query_entered", "route_id": str(route_id), "field": key}
+
 
 class EasyWayPhoneAdapter(PhoneAppMonitor):
     package = "com.eway"
@@ -720,6 +810,31 @@ class EasyWayPhoneAdapter(PhoneAppMonitor):
         self._save_calibration(snapshot, selectors)
         draft = self.store.create("transit_route_draft", self.package, {"destination": place}, ttl_seconds=600)
         return {"status": "route_staged", "route_id": draft["id"], "expires_at": draft["expires_at"], "controls": selectors}
+
+    def prepare_destination_query(self, route_id: str, confirm: bool = False) -> dict:
+        """Type an approved EasyWay query, leaving route/result selection manual."""
+        draft = self.store.get(route_id, kind="transit_route_draft", package=self.package)
+        if not draft:
+            return {"status": "expired", "error": "Черновик маршрута не найден или истёк"}
+        value = str((draft.get("data") or {}).get("destination") or "").strip()
+        if not value:
+            return {"status": "error", "error": "Для маршрута нет поискового запроса"}
+        if not confirm:
+            return {"status": "need_confirm", "action": "easyway_enter_route_query", "route_id": str(route_id)}
+        snapshot = self._active_ui(include_text=True)
+        if snapshot.get("status") != "ok":
+            return snapshot
+        trigger = self._destination_trigger(snapshot.get("nodes") or [])
+        if not trigger:
+            return {"status": "error", "error": "Поле маршрута EasyWay не распознано; ввод остановлен"}
+        opened = self._tap_node(trigger)
+        if opened.get("status") != "ok":
+            return opened
+        entered = self._enter_visible_query(value, wait_seconds=5.0)
+        if entered.get("status") != "query_entered":
+            return entered
+        self.store.update(route_id, state="destination_query_entered", entered_at=_iso())
+        return {"status": "query_entered", "route_id": str(route_id), "field": "destination"}
 
 
 class BankPhoneAdapter(PhoneAppMonitor):

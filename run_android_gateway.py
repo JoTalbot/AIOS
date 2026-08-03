@@ -107,8 +107,12 @@ def main() -> int:
         pickup = " ".join(sys.argv[2:divider]).strip()
         destination = " ".join(value for value in sys.argv[divider + 1:] if value != "--confirm").strip()
         result = UklonPhoneAdapter(gateway).stage_route(pickup, destination, confirm=confirmed)
+    elif command == "uklon-enter" and len(sys.argv) >= 4:
+        result = UklonPhoneAdapter(gateway).prepare_address_query(sys.argv[2], sys.argv[3], confirm=confirmed)
     elif command == "easyway-stage-route" and len(sys.argv) >= 3:
         result = EasyWayPhoneAdapter(gateway).stage_route(_text_after(2), confirm=confirmed)
+    elif command == "easyway-enter" and len(sys.argv) >= 3:
+        result = EasyWayPhoneAdapter(gateway).prepare_destination_query(sys.argv[2], confirm=confirmed)
     elif command == "watch":
         interval = 30
         if "--interval" in sys.argv:
@@ -128,13 +132,13 @@ def main() -> int:
                 "ui-snapshot|clipboard|paste|tap-ui|location|files|pull|screenshot|ui-dump|"
                 "open|tap|home|back|phone-status|calibrate|whatsapp-open-chat|whatsapp-read|"
                 "whatsapp-draft|whatsapp-send|ime-draft|ime-send|uklon-open-driver|"
-                "uklon-stage-route|easyway-stage-route|watch"
+                "uklon-stage-route|uklon-enter|easyway-stage-route|easyway-enter|watch"
             ),
         }
     print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
     return 0 if result.get("status") in (
         "ok", "offline", "unregistered", "need_confirm", "opened", "draft_ready",
-        "send_tapped", "route_staged", "calibrated", "cancelled", "not_installed",
+        "send_tapped", "route_staged", "query_entered", "calibrated", "cancelled", "not_installed",
     ) else 1
 
 
