@@ -1667,6 +1667,26 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 else:
                     api.send_message(chat_id, f"❌ {data.get('error', st)}")
                 return True
+            if kind == "ttn_create":
+                d = pend["data"]
+                import subprocess as _sp
+                r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_ttn.py"),
+                             "create", d["detail"], d["cost"], d["recipient"], d["phone"],
+                             d["city"], d["warehouse"], "--confirm"],
+                            capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT))
+                try:
+                    data = json.loads((r.stdout or "").strip().split("\n")[-1])
+                except Exception:
+                    data = {"status": "error", "error": (r.stderr or "?")[-300:]}
+                if data.get("status") == "ok":
+                    api.send_message(chat_id,
+                                     f"📦 <b>ТТН создана: {data.get('ttn')}</b>\n"
+                                     f"Деталь: {_esc_tg(data.get('detail'))} · Стоимость: {data.get('cost')} грн\n"
+                                     f"Получатель: {_esc_tg(data.get('recipient'))}\n"
+                                     f"Отслеживание: «отследи {data.get('ttn')}»")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', 'Ошибка')}")
+                return True
             if kind == "olx_chat_reply":
                 d = pend["data"]
                 data = _run_account_control(["olx", "chat", "reply", d["to"], d["text"], "--confirm"])
@@ -2986,6 +3006,57 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         api.send_message(chat_id, format_report(res)[:3900])
         return True
 
+    # ---- Новая Почта: создание ТТН ----
+    m_ttn = re.match(r"^(?:создай ттн|создать ттн|накладная|создай накладную)\s*:?\s*(.+)$",
+                     text, re.IGNORECASE)
+    if m_ttn:
+        # формат: деталь, цена, ФИО, телефон, город, отделение
+        parts = [p.strip() for p in re.split(r"[,;]", m_ttn.group(1)) if p.strip()]
+        if len(parts) < 6:
+            api.send_message(chat_id,
+                             "📦 Формат: «создай ттн: деталь, цена, ФИО, телефон, город, отделение»\n"
+                             "Пример: создай ттн: фара BMW X5, 2000, Іван Петренко, 0671234567, Київ, Відділення №1")
+            return True
+        detail, cost, recipient, phone, city, wh = parts[:6]
+        _pending_confirm[chat_id] = {"kind": "ttn_create",
+                                     "data": {"detail": detail, "cost": cost,
+                                              "recipient": recipient, "phone": phone,
+                                              "city": city, "warehouse": wh}}
+        api.send_message(chat_id,
+                         f"📦 Создать ТТН Новой Почты:\n"
+                         f"Деталь: <b>{_esc_tg(detail)}</b> · {cost} грн\n"
+                         f"Получатель: {_esc_tg(recipient)} · {phone}\n"
+                         f"{_esc_tg(city)} · {_esc_tg(wh)}\n\n«да» / «нет»")
+        return True
+
+    if any(w in t for w in ("проверь ттн", "настройки ттн", "готов ли отправитель нп",
+                            "отправитель новой почты")):
+        import subprocess as _sp
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_ttn.py"), "whoami"],
+                    capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": "?"}
+        if res.get("status") == "ok":
+            s = res.get("sender", {})
+            if s.get("ready"):
+                api.send_message(chat_id,
+                                 f"✅ Отправитель НП готов: <b>{_esc_tg(s.get('description'))}</b>\n"
+                                 f"Адрес: {_esc_tg(s.get('address') or '—')}\n"
+                                 f"Можно создавать ТТН: «создай ттн: …»")
+            else:
+                api.send_message(chat_id,
+                                 "⚠️ <b>Отправитель НП не настроен</b> в кабинете API.\n"
+                                 "1. Зайдите: cabinet.novaposhta.ua\n"
+                                 "2. Настройки → «Мои данные/Отправитель»\n"
+                                 "3. Заполните ФИО, телефон +380959052288 и адрес отправки "
+                                 "(напр. Відділення №8, Кропивницький)\n"
+                                 "После этого напишите «проверь ттн» — и создание накладных заработает.")
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+        return True
+
     # ---- OLX-чат (сообщения покупателей) ----
     if any(w in t for w in ("сообщения на олх", "переписки олх", "чат олх", "сообщения в олх",
                             "переписки на олх", "чат на олх", "что пишут на олх")):
@@ -3402,7 +3473,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                         txt += f"\n🛒 OLX: не удалось убрать ({str(r3.get('error', '?'))[:80]})"
             except Exception:
                 pass
-            api.send_message(chat_id, txt)
+            api.send_message(chat_id, txt + "\n📦 Если нужна накладная НП: «создай ттн: деталь, цена, ФИО, телефон, город, отделение»")
             return True
         # добавление детали
         m_add = re.match(r"^(добавь деталь|добавь на склад)\s+(.+?)\s*[,:]\s*(\d+)\s*шт\s*(?:по\s*([\d\s.,]+))?", text, re.IGNORECASE)
