@@ -83,10 +83,10 @@ class Planner:
             "что и сообщение клиента (украинский или русский). Не переводи на другой язык."
         )
         bal = self._get_balancer()
-        # Модель для генерации ответов клиентам: gemini-2.0-flash лучше следует
-        # инструкциям (язык клиента, не выдумывает цвет/цену), чем llama-3.1-8b.
-        # Балансер сам пробежит по MODEL_FALLBACKS, если ключ/провайдер недоступен.
-        model = os.environ.get("AIOS_PLANNER_MODEL", "gemini-2.0-flash").strip()
+        # Модель для генерации ответов клиентам. Раз клиентов пока мало — берём
+        # умную модель для качественных ответов: gemini-2.5-pro (лучшее качество).
+        # Переопределяется через AIOS_PLANNER_MODEL, фолбэк-цепочка в балансере.
+        model = os.environ.get("AIOS_PLANNER_MODEL", "gemini-2.5-pro").strip()
         try:
             raw = bal.chat(
                 [{"role": "user", "content": prompt}],
