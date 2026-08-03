@@ -1,0 +1,20 @@
+[Unit]
+Description=AIOS Signal draft/autoreply loop
+After=network-online.target aios-signal-desktop.service
+Wants=network-online.target
+Requires=aios-signal-desktop.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+Environment=SIGNAL_DISPLAY=:1
+Environment=XAUTHORITY=/root/.Xauthority
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_platform_autoreply.py signal --loop --interval 300
+Restart=always
+RestartSec=20
+StandardOutput=append:/root/AIOS/logs/signal_autoreply.log
+StandardError=append:/root/AIOS/logs/signal_autoreply.log
+
+[Install]
+WantedBy=multi-user.target

@@ -101,6 +101,30 @@ def _queue_viber_draft(contact: str, text: str, source_text: str, token: str, ch
     return True
 
 
+def _queue_signal_draft(contact: str, text: str, source_text: str, token: str, chat_id: str) -> bool:
+    """Сохранить Signal-черновик и прислать владельцу кнопки подтверждения."""
+    try:
+        from signal_drafts import SignalDraftStore
+        draft, created = SignalDraftStore(ROOT).enqueue(contact, text, source_text)
+    except Exception as exc:
+        print(f"  [signal-draft] queue error: {exc}")
+        return False
+    if not created:
+        return False
+    if token and chat_id:
+        keyboard = {"inline_keyboard": [[
+            {"text": "✅ Отправить", "callback_data": f"signal_draft_send_{draft['id']}"},
+            {"text": "❌ Отклонить", "callback_data": f"signal_draft_cancel_{draft['id']}"},
+        ]]}
+        message = (f"🔒 Черновик Signal для {contact}:\n«{text[:500]}»\n\n"
+                   "Проверьте текст и выберите действие.")
+        try:
+            _tg(token, int(chat_id), message, keyboard)
+        except Exception as exc:
+            print(f"  [signal-draft] Telegram error: {exc}")
+    return True
+
+
 def _run_ac(args: list[str], timeout: int = 170) -> dict:
     helper = str(ROOT / "run_account_control.py")
     cmd = [PY, helper] + args
@@ -125,6 +149,7 @@ _PLATFORM_CMDS = {
     "instagram": {"list": ["instagram", "dm_list", "6"], "reply": "instagram"},
     "facebook": {"list": ["facebook", "messenger_list", "--limit", "6"], "reply": "facebook"},
     "viber": {"list": ["viber", "chats"], "reply": "viber"},
+    "signal": {"list": ["signal", "chats"], "reply": "signal"},
 }
 
 
@@ -146,12 +171,14 @@ def _read_dm(platform: str, contact: str) -> list[dict]:
         return _run_ac(["facebook", "messenger_read", contact, "10"], timeout=170).get("messages", [])
     if platform == "viber":
         return _run_ac(["viber", "read", contact, "10"], timeout=120).get("messages", [])
+    if platform == "signal":
+        return _run_ac(["signal", "read", contact, "10"], timeout=120).get("messages", [])
     return []
 
 
 def _contact_allowed(platform: str, contact: str, cfg: dict) -> bool:
-    """Viber drafts are opt-in per chat to avoid touching personal dialogs."""
-    if platform != "viber":
+    """Desktop drafts are opt-in per chat to avoid touching personal dialogs."""
+    if platform not in ("viber", "signal"):
         return True
     allowed = cfg.get("allowed_chats", [])
     if allowed == "*":
@@ -169,6 +196,8 @@ def _reply(platform: str, contact: str, text: str) -> dict:
         return _run_ac(["facebook", "messenger_send", contact, text, "--confirm"], timeout=170)
     if platform == "viber":
         return _run_ac(["viber", "send", contact, text, "--confirm"], timeout=120)
+    if platform == "signal":
+        return _run_ac(["signal", "send", contact, text, "--confirm"], timeout=120)
     return {"status": "error", "error": "нет платформы"}
 
 
@@ -199,11 +228,11 @@ def run_cycle(platform: str) -> dict:
         contact = str(dm.get("name") or dm.get("contact") or dm.get("id") or "").strip()
         if not contact or not _contact_allowed(platform, contact, cfg):
             continue
-        # Viber chats() намеренно не притворяется, что знает preview/unread.
-        # Для Viber получаем последний входящий текст только при явном цикле.
+        # Нативные desktop-мессенджеры не притворяются, что знают preview/unread.
+        # Последний входящий текст получаем только при явном цикле.
         last = str(dm.get("text") or dm.get("last_message") or dm.get("last") or "").strip()
         msgs = []
-        if platform == "viber":
+        if platform in ("viber", "signal"):
             msgs = _read_dm(platform, contact)
             last_theirs = next((m.get("text", "") for m in reversed(msgs)
                                 if not m.get("mine") and m.get("text")), "")
@@ -238,6 +267,12 @@ def run_cycle(platform: str) -> dict:
                         drafted += 1
                         handled += 1
                         summary.append(f"💜 viber/{contact}: черновик ожидает подтверждения")
+                elif platform == "signal":
+                    created = _queue_signal_draft(contact, outcome["text"], last_theirs, token, chat_id)
+                    if created:
+                        drafted += 1
+                        handled += 1
+                        summary.append(f"🔒 signal/{contact}: черновик ожидает подтверждения")
                 else:
                     handled += 1
                     summary.append(f"💬 {platform}/{contact}: черновик «{outcome['text'][:110]}»")

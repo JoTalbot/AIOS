@@ -619,7 +619,7 @@ def _run_account_control(args: list[str], timeout: int = 160) -> dict:
     helper = str(PROJECT_ROOT / "run_account_control.py")
     # IMAP/SMTP-команды не требуют X; браузерные — требуют xvfb
     # viber — нативный десктоп на постоянном дисплее :1 (без xvfb)
-    if args and args[0] == "viber":
+    if args and args[0] in ("viber", "signal"):
         needs_x = False
     else:
         needs_x = not (len(args) >= 2 and args[0] == "google" and args[1] in ("gmail_list", "gmail_send", "gmail_search", "open"))
@@ -1135,6 +1135,7 @@ _CHANNELS = {
     "ig": ("📸", "Instagram DM"),
     "messenger": ("💬", "Messenger"),
     "viber": ("💜", "Viber"),
+    "signal": ("🔒", "Signal"),
     "olx": ("🛒", "OLX"),
 }
 
@@ -1155,6 +1156,8 @@ def _parse_inbox_filters(text: str) -> dict:
         filters["channels"].append("messenger")
     if any(w in t for w in ("только вайбер", "только вибер", "только viber")):
         filters["channels"].append("viber")
+    if any(w in t for w in ("только signal", "только сигнал", "только сигнaл")):
+        filters["channels"].append("signal")
     if any(w in t for w in ("только олх", "только olx")):
         filters["channels"].append("olx")
     return filters
@@ -1275,7 +1278,32 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
         except Exception:
             pass
 
-    # 6) OLX
+    # 6) Signal Desktop. OCR не даёт надёжный unread-флаг, поэтому в
+    # режиме «только непрочитанное» Signal не подменяет неизвестные данные.
+    if _want("signal") and not unread_only:
+        try:
+            sig = _run_account_control(["signal", "chats"])
+            if sig.get("status") == "ok" and sig.get("chats"):
+                seen_signal = set()
+                for c in sig["chats"][:12]:
+                    name = str(c.get("name") or "").strip()
+                    if not name or name.casefold() in seen_signal:
+                        continue
+                    seen_signal.add(name.casefold())
+                    items.append({
+                        "channel": "signal",
+                        "ref": name,
+                        "title": name,
+                        "preview": "Signal: откройте пункт, чтобы прочитать последние сообщения",
+                        "unread": False,
+                        "date": "",
+                    })
+                if seen_signal:
+                    summary_parts.append(f"🔒 {len(seen_signal)} чатов Signal")
+        except Exception:
+            pass
+
+    # 7) OLX
     if _want("olx"):
         try:
             olx = _run_account_control(["olx", "profile"])
@@ -1338,7 +1366,7 @@ def _inbox_summarize(items: list[dict]) -> str:
     prompt = (
         "Ты — ассистент, помогающий с единым инбоксом сообщений. "
         "Ниже нумерованный список новых пунктов из разных каналов (почта, Telegram, Instagram DM, "
-        "Messenger, Viber, OLX). Составь КРАТКОЕ резюме на русском (3-6 строк): что самое важное/срочное, "
+        "Messenger, Viber, Signal, OLX). Составь КРАТКОЕ резюме на русском (3-6 строк): что самое важное/срочное, "
         "кому стоит ответить, что проверить. Упомяни номера пунктов. "
         "Формат: начни с «🧠 Сводка:», потом маркированный список. Без воды.\n\n"
         + "\n".join(data_lines)
@@ -1416,6 +1444,9 @@ def _inbox_reply(api, chat_id: int, item: dict, body: str) -> None:
     elif ch == "viber":
         _pending_confirm[chat_id] = {"kind": "viber_send", "data": {"chat": ref, "text": body}}
         api.send_message(chat_id, f"💜 Ответ в Viber <b>{_esc_tg(ref)}</b>:\n«{body[:150]}»\n\nОтправить? «да» / «нет»")
+    elif ch == "signal":
+        _pending_confirm[chat_id] = {"kind": "signal_send", "data": {"chat": ref, "text": body}}
+        api.send_message(chat_id, f"🔒 Ответ в Signal <b>{_esc_tg(ref)}</b>:\n«{body[:150]}»\n\nОтправить? «да» / «нет»")
     else:
         api.send_message(chat_id, "❌ Для этого пункта ответ не поддерживается.")
 
@@ -1483,6 +1514,16 @@ def _inbox_search(api, chat_id: int, q: str) -> None:
                     found.append(f"💜 <b>{_esc_tg(name)}</b>: Viber чат")
     except Exception:
         pass
+    # Signal: поиск по видимым чатам без открытия переписки.
+    try:
+        sig = _run_account_control(["signal", "chats"])
+        if sig.get("status") == "ok":
+            for c in (sig.get("chats") or [])[:20]:
+                name = str(c.get("name") or "")
+                if q.lower() in name.lower():
+                    found.append(f"🔒 <b>{_esc_tg(name)}</b>: Signal чат")
+    except Exception:
+        pass
     if not found:
         api.send_message(chat_id, f"🔍 По запросу «{q}» ничего не найдено (или каналы недоступны).")
     else:
@@ -1519,6 +1560,7 @@ def _inbox_mark_read(api, chat_id: int) -> None:
     # Viber намеренно не открываем массово: открытие каждого чата может изменить
     # его прочитанный статус. Пользователь открывает нужный пункт в инбоксе сам.
     done.append("💜 Viber: массовая отметка не выполнялась")
+    done.append("🔒 Signal: массовая отметка не выполнялась")
     api.send_message(chat_id, "✅ Отмечено прочитанным:\n" + "\n".join(done) if done else "ℹ️ Ничего не удалось пометить.")
 
 
@@ -1967,6 +2009,15 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 else:
                     api.send_message(chat_id, f"❌ {data.get('error', st)}")
                 return True
+            if kind == "signal_send":
+                d = pend["data"]
+                data = _run_account_control(["signal", "send", d["chat"], d["text"], "--confirm"])
+                st = data.get("status")
+                if st == "sent":
+                    api.send_message(chat_id, f"✅ Отправлено в Signal <b>{d['chat']}</b>: «{d['text'][:150]}»")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
             if kind == "messenger_send":
                 d = pend["data"]
                 data = _run_account_control(["facebook", "messenger_send", d["chat"], d["text"], "--confirm"])
@@ -2037,7 +2088,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     tg_words = any(w in t for w in ("тг ", "телеграм", "telegram", "в телеге",
                                     "личный телеграм", "мой телеграм",
                                     "боту @", "команду боту", "команда боту"))
-    other_words = ("вайбер", "вибер", "viber", "мессенджер", "messenger",
+    other_words = ("вайбер", "вибер", "viber", "signal", "сигнал", "мессенджер", "messenger",
                    "опубликуй видео", "опубликуй ролик", "опубликуй в тикток",
                    "боту @", "команду боту", "команда боту",
                    "в телеге", "телеграм", "telegram", "тг",
@@ -2492,6 +2543,71 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ {data.get('error', '?')}")
         return True
 
+    # ---- Signal (десктоп) ----
+    if any(w in t for w in ("signal", "сигнал")) and not any(
+            w in t for w in ("инбокс", "inbox", "все сообщения", "всё в одном", "сводка сообщений")):
+        if "чернов" in t or "draft" in t:
+            try:
+                from signal_drafts import SignalDraftStore
+                drafts = SignalDraftStore(PROJECT_ROOT).pending(12)
+                if not drafts:
+                    api.send_message(chat_id, "🔒 Ожидающих Signal-черновиков нет.")
+                else:
+                    lines = ["🔒 <b>Черновики Signal:</b>"]
+                    for draft in drafts:
+                        lines.append(f"• <b>{_esc_tg(draft.get('contact'))}</b>: «{_esc_tg(str(draft.get('text') or '')[:150])}»")
+                    lines.append("\nДля отправки используйте кнопку под уведомлением-черновиком.")
+                    api.send_message(chat_id, "\n".join(lines)[:3900])
+            except Exception as exc:
+                api.send_message(chat_id, f"⚠️ Не удалось прочитать черновики Signal: {_esc_tg(str(exc))[:180]}")
+            return True
+        send_word = any(w in t for w in ("напиши", "отправь", "написать", "ответь"))
+        read_word = any(w in t for w in ("прочитай", "покажи", "что в", "последние"))
+        if send_word:
+            m = re.search(r":\s*(.+)$", text, re.IGNORECASE)
+            body = m.group(1).strip() if m else ""
+            target = re.sub(r"^(напиши|отправь|написать|ответь)(\s+(в|в\s+signal|signal|в\s+сигнал|сигнал))?\s+", "",
+                            text, flags=re.IGNORECASE)
+            target = re.sub(r"^(в|signal|сигнал)\s+", "", target, flags=re.IGNORECASE)
+            target = target.split(":", 1)[0].strip(" ,.;:—–")
+            if not target or not body:
+                api.send_message(chat_id,
+                                 "🔒 <b>Signal</b>: напишите «напиши в Signal &lt;имя&gt;: &lt;текст&gt;»")
+                return True
+            _pending_confirm[chat_id] = {"kind": "signal_send",
+                                         "data": {"chat": target, "text": body}}
+            api.send_message(chat_id,
+                             f"🔒 Отправить <b>{target}</b> в Signal:\n«{body[:200]}»\n\n«да» / «нет»")
+            return True
+        if read_word:
+            m = re.search(r"(?:signal|сигнал)[\s,:—–]*([\w\sА-Яа-яЁёІіЇїЄє'’.-]{2,30}?)(?:[.!?]|$)", text, re.IGNORECASE)
+            chat = m.group(1).strip() if m else ""
+            api.send_message(chat_id, "⏳ Открываю Signal…")
+            data = _run_account_control(["signal", "read", chat or "Signal", "--limit", "12"])
+            if data.get("status") == "ok":
+                msgs = data.get("messages") or []
+                if not msgs:
+                    api.send_message(chat_id, "🔒 В чате нет распознанных сообщений (или пусто).")
+                else:
+                    api.send_message(chat_id, "🔒 <b>Signal</b>:\n" + "\n".join(
+                        f"• {_esc_tg(x.get('text', ''))}" for x in msgs[-12:]))
+            else:
+                api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+            return True
+        api.send_message(chat_id, "⏳ Читаю чаты Signal…")
+        data = _run_account_control(["signal", "chats"])
+        if data.get("status") == "ok":
+            chats = data.get("chats") or []
+            if chats:
+                api.send_message(chat_id, "🔒 <b>Чаты Signal</b>:\n" + "\n".join(
+                    f"• {_esc_tg(c.get('name'))}" for c in chats[:20]))
+            else:
+                api.send_message(chat_id,
+                                 "🔒 Не нашёл чаты Signal (возможно, нужен повторный QR-вход).")
+        else:
+            api.send_message(chat_id, f"❌ {data.get('error', '?')}")
+        return True
+
     # ---- Messenger ----
     if any(w in t for w in ("мессенджер", "messenger", "фейсбук чат", "чат фейсбук")):
         send_word = any(w in t for w in ("напиши", "отправь", "написать", "ответь"))
@@ -2869,7 +2985,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     if any(w in t for w in ("инбокс", "inbox", "все сообщения", "всё в одном",
                             "сводка сообщений", "где что новое", "проверь всё")):
         filters = _parse_inbox_filters(text)
-        api.send_message(chat_id, "⏳ Собираю инбокс (почта, TG, IG, Messenger, Viber, OLX)… ~1 мин")
+        api.send_message(chat_id, "⏳ Собираю инбокс (почта, TG, IG, Messenger, Viber, Signal, OLX)… ~1 мин")
         items, summary = _collect_inbox(filters)
         if not items:
             api.send_message(chat_id, "📭 Везде пусто (или не удалось собрать).")
@@ -3276,7 +3392,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     # не перехватываем чужие мессенджеры (телега, вайбер, тикток и т.п.)
     if m_chat_read and not any(x in text.lower() for x in (
             "телеграм", "телеге", "теге", "тегу", "тегу", "тг", "тикток", "tiktok",
-            "вайбер", "viber", "вотсап", "whatsapp", "мессенджер", "messenger")):
+            "вайбер", "viber", "signal", "сигнал", "вотсап", "whatsapp", "мессенджер", "messenger")):
         contact = m_chat_read.group(1).strip().strip("«»\"'")
         import subprocess as _sp
         api.send_message(chat_id, f"💬 Читаю переписку с «{contact}»…")
@@ -4927,6 +5043,23 @@ def _handle_inbox_callback(api: TelegramAPI, chat_id: int, msg_id: int, data: st
             lines_vb.append(f"\nОтветить: «ответь на {idx}: текст»")
             api.send_message(chat_id, "\n".join(lines_vb)[:3900])
             return
+        if it.get("channel") == "signal":
+            api.send_message(chat_id, "⏳ Читаю выбранный Signal-чат…")
+            data_sig = _run_account_control(["signal", "read", str(it.get("ref") or ""), "--limit", "12"])
+            if data_sig.get("status") != "ok":
+                api.send_message(chat_id, f"❌ Signal: {_esc_tg(data_sig.get('error', '?'))}")
+                return
+            messages = data_sig.get("messages") or []
+            if not messages:
+                api.send_message(chat_id, "🔒 В выбранном Signal-чате нет распознанных сообщений.")
+                return
+            lines_sig = [f"🔒 <b>{_esc_tg(it['title'])[:80]}</b> [Signal]"]
+            for message in messages[-12:]:
+                prefix = "↗️" if message.get("mine") else "•"
+                lines_sig.append(f"{prefix} {_esc_tg(str(message.get('text') or '')[:220])}")
+            lines_sig.append(f"\nОтветить: «ответь на {idx}: текст»")
+            api.send_message(chat_id, "\n".join(lines_sig)[:3900])
+            return
         em, ch = _CHANNELS.get(it["channel"], ("", it["channel"]))
         txt = (f"{em} <b>{_esc_tg(it['title'])[:80]}</b> [{ch}]\n"
                f"{_esc_tg(it.get('preview') or '')}\n"
@@ -5052,6 +5185,50 @@ def _handle_viber_draft_callback(api: TelegramAPI, chat_id: int, cb_id: str, dat
             pass
 
 
+def _handle_signal_draft_callback(api: TelegramAPI, chat_id: int, cb_id: str, data: str) -> None:
+    """Подтвердить или отменить Signal-черновик из фонового обработчика."""
+    try:
+        from signal_drafts import SignalDraftStore
+        send = data.startswith("signal_draft_send_")
+        prefix = "signal_draft_send_" if send else "signal_draft_cancel_"
+        draft_id = data[len(prefix):]
+        store = SignalDraftStore(PROJECT_ROOT)
+        if not draft_id:
+            api.answer_callback(cb_id, "❌ Некорректный черновик")
+            return
+        if not send:
+            draft = store.cancel(draft_id)
+            if draft is None:
+                api.answer_callback(cb_id, "ℹ️ Уже обработан")
+                return
+            api.answer_callback(cb_id, "❌ Черновик отклонён")
+            api.send_message(chat_id, f"🔒 Черновик для <b>{_esc_tg(draft.get('contact'))}</b> отклонён.")
+            return
+        draft = store.claim(draft_id)
+        if draft is None:
+            api.answer_callback(cb_id, "ℹ️ Уже обработан")
+            return
+        result = _run_account_control([
+            "signal", "send", str(draft.get("contact") or ""),
+            str(draft.get("text") or ""), "--confirm",
+        ])
+        if result.get("status") == "sent":
+            store.finalize(draft_id, sent=True)
+            api.answer_callback(cb_id, "✅ Отправлено")
+            api.send_message(chat_id, f"✅ Черновик отправлен в Signal: <b>{_esc_tg(draft.get('contact'))}</b>.")
+        else:
+            error = str(result.get("error") or result.get("status") or "неизвестная ошибка")
+            store.finalize(draft_id, sent=False, error=error)
+            api.answer_callback(cb_id, "⚠️ Не отправлено")
+            api.send_message(chat_id, f"⚠️ Signal не отправил черновик: {_esc_tg(error)[:220]}")
+    except Exception as exc:
+        try:
+            api.answer_callback(cb_id, "⚠️ Ошибка")
+            api.send_message(chat_id, f"⚠️ Ошибка Signal-черновика: {_esc_tg(str(exc))[:220]}")
+        except Exception:
+            pass
+
+
 def _handle_callback(api: TelegramAPI, upd: dict) -> None:
     """Handle inline button callbacks (кнопки в сообщениях)."""
     cb = upd.get("callback_query", {})
@@ -5065,6 +5242,11 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
         return
 
     api.answer_callback(cb_id, "⏳ Обрабатываю...")
+
+    # ---- Signal: черновик из фонового безопасного обработчика ----
+    if data.startswith("signal_draft_send_") or data.startswith("signal_draft_cancel_"):
+        _handle_signal_draft_callback(api, chat_id, cb_id, data)
+        return
 
     # ---- Viber: черновик из фонового безопасного обработчика ----
     if data.startswith("viber_draft_send_") or data.startswith("viber_draft_cancel_"):

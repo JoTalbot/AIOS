@@ -1,0 +1,21 @@
+[Unit]
+Description=AIOS Signal Desktop on VNC display :1
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+Environment=SIGNAL_DISPLAY=:1
+Environment=XAUTHORITY=/root/.Xauthority
+Environment=ELECTRON_DISABLE_SANDBOX=1
+ExecStart=/root/AIOS/run_signal_desktop.sh
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=0
+StandardOutput=append:/root/AIOS/logs/signal_desktop.log
+StandardError=append:/root/AIOS/logs/signal_desktop.log
+
+[Install]
+WantedBy=multi-user.target
