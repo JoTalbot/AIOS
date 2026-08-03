@@ -151,11 +151,17 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                             name = nxt
                             break
                     break
-            # количество объявлений: "Оголошення" + число рядом
+            # количество объявлений: «Активні (N)» в кабинете (главный счётчик)
             ads_count = None
-            m = re.search(r"Оголошення\s*(\d+)", body, re.IGNORECASE)
+            m = re.search(r"Активні\s*\((\d+)\)", body, re.IGNORECASE)
+            if not m:
+                m = re.search(r"Активні[^\d]{0,20}(\d+)", body, re.IGNORECASE)
             if m:
                 ads_count = int(m.group(1))
+            if ads_count is None:
+                m3 = re.search(r"з (\d+) оголошень", body, re.IGNORECASE)
+                if m3:
+                    ads_count = int(m3.group(1))
             # баланс
             balance = None
             m2 = re.search(r"рахунок[^\d]*(\d[\d\s.,]*)\s*грн", body, re.IGNORECASE)
@@ -465,20 +471,41 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                             "url": p.get("url", "")})
         except Exception:
             pass
-        # кабинет: страница объявлений
+        # кабинет: карточки объявлений на /uk/myaccount/
         try:
-            await page.goto("https://www.olx.ua/uk/myaccount/announcements/",
-                            wait_until="domcontentloaded", timeout=20000)
+            await page.goto("https://www.olx.ua/uk/myaccount/",
+                            wait_until="domcontentloaded", timeout=25000)
             await page.wait_for_timeout(5000)
+            # таб «Ваші оголошення» (без клика список часто не рендерится)
+            try:
+                tab = page.get_by_text("Ваші оголошення").first
+                if await tab.count():
+                    await tab.click(timeout=4000)
+                    await page.wait_for_timeout(5000)
+            except Exception:
+                pass
             body = await page.inner_text("body")
             if "Сторінку не знайдено" not in body:
-                # парсим карточки
-                cards = await page.eval_on_selector_all(
-                    "a[href*='ID'], [data-testid*='ad']",
-                    "els => els.map(e => ({href: e.getAttribute('href')||'', text: (e.textContent||'').trim().slice(0,80)}))")
-                for c in cards[:limit]:
-                    m = __import__('re').search(r"ID([A-Za-z0-9]+)", c.get("href", ""))
-                    ads.append({"id": m.group(1) if m else "?", "title": c.get("text", ""), "url": c.get("href", "")})
+                lines = body.splitlines()
+                for i, ln in enumerate(lines):
+                    mm = __import__('re').match(r"ID:\s*(\d{6,12})", (ln or "").strip())
+                    if not mm:
+                        continue
+                    ad_id = mm.group(1)
+                    if ad_id in [x.get("id") for x in ads]:
+                        continue
+                    price = ""
+                    title = ""
+                    for j in range(i - 1, max(0, i - 22) - 1, -1):
+                        mp = __import__('re').match(r"^([\d][\d\s]{1,10})\s*грн\.?$", (lines[j] or "").strip())
+                        if mp:
+                            price = mp.group(1).replace(" ", "")
+                            if j > 0:
+                                title = (lines[j - 1] or "").strip()
+                            break
+                    ads.append({"id": ad_id, "title": title, "price": price, "url": ""})
+                    if len(ads) >= limit + 1:
+                        break
         except Exception:
             pass
         await self._log_action("olx_list_my_ads", {}, {"count": len(ads)})
@@ -491,7 +518,7 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
         page = await self._ensure_browser()
         await self._route_olx_fm(page)
         try:
-            await page.goto(f"https://www.olx.ua/uk/editing/{ad_id}/", wait_until="domcontentloaded", timeout=25000)
+            await page.goto(f"https://www.olx.ua/d/uk/adding/edit/{ad_id}/", wait_until="domcontentloaded", timeout=25000)
             await page.wait_for_timeout(8000)
             body = await page.inner_text("body")
             if any(k in body.lower() for k in ("не знайдено", "недоступн", "not found")):
@@ -519,8 +546,46 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                 except Exception:
                     continue
             if not clicked:
+                # в новой версии OLX веб-кнопки «Видалити» может не быть —
+                # пробуем деактивировать объявление в кабинете
+                try:
+                    await page.goto("https://www.olx.ua/uk/myaccount/",
+                                    wait_until="domcontentloaded", timeout=25000)
+                    await page.wait_for_timeout(5000)
+                    try:
+                        tab = page.get_by_text("Ваші оголошення").first
+                        if await tab.count():
+                            await tab.click(timeout=4000)
+                            await page.wait_for_timeout(5000)
+                    except Exception:
+                        pass
+                    # ждём карточку
+                    found_card = False
+                    for _w in range(15):
+                        b3 = await page.inner_text("body")
+                        if f"ID: {ad_id}" in b3:
+                            found_card = True
+                            break
+                        await page.wait_for_timeout(1500)
+                    if found_card:
+                        # карточка = элемент с нашим ID, ищем в ней «Деактивувати»
+                        deact = page.locator(
+                            f"text=ID: {ad_id}").locator("xpath=ancestor::*[contains(@class,'listing') or contains(@class,'card') or contains(@class,'item')][1]")
+                        try:
+                            bt = page.get_by_role("button", name="Деактивувати").first
+                            if await bt.count():
+                                await bt.click(timeout=4000)
+                                await page.wait_for_timeout(2000)
+                                await page.screenshot(path="/tmp/olx_deactivated.png")
+                                return {"status": "deactivated", "ad_id": ad_id,
+                                        "note": "Кнопка «Видалити» в новой версии OLX недоступна — объявление деактивировано (скрыто из поиска)"}
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
                 await page.screenshot(path="/tmp/olx_delete_no_btn.png")
-                return {"status": "error", "error": "Кнопка «Видалити» не найдена"}
+                return {"status": "error",
+                        "error": "Кнопка «Видалити» не найдена (в новой версии OLX удаление возможно только из приложения)"}
             # подтверждение
             for name in ("Так, видалити", "Видалити", "Підтвердити", "OK", "Так"):
                 try:
@@ -539,11 +604,11 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
 
     async def edit_ad(self, ad_id: str, title: str = "", description: str = "", price: str = "",
                       confirm: bool = False) -> Dict[str, Any]:
-        """Редактировать объявление (страница /uk/editing/ID/)."""
+        """Редактировать объявление (страница /d/uk/adding/edit/ID/)."""
         page = await self._ensure_browser()
         await self._route_olx_fm(page)
         try:
-            await page.goto(f"https://www.olx.ua/uk/editing/{ad_id}/", wait_until="domcontentloaded", timeout=25000)
+            await page.goto(f"https://www.olx.ua/d/uk/adding/edit/{ad_id}/", wait_until="domcontentloaded", timeout=25000)
             await page.wait_for_timeout(9000)
             body = await page.inner_text("body")
             if any(k in body.lower() for k in ("не знайдено", "недоступн")):
@@ -578,19 +643,21 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                     pass
             if price:
                 try:
-                    p = page.locator("input[placeholder*='цін'], input[placeholder*='цен']").first
+                    p = page.locator("input#parameters.price.price, input[name='parameters.price.price']").first
+                    if not (await p.count()):
+                        p = page.locator("input[placeholder*='цін'], input[placeholder*='цен']").first
                     if await p.count():
                         await p.fill(str(price))
                 except Exception:
                     pass
             await page.wait_for_timeout(1000)
-            # Сохранить
-            for name in ("Зберегти", "Сохранить", "Опублікувати", "Продовжити"):
+            # Сохранить (новая форма: «Змінити оголошення»)
+            for name in ("Змінити оголошення", "Зберегти", "Сохранить", "Опублікувати"):
                 try:
                     b = page.get_by_role("button", name=name).first
                     if await b.count():
                         await b.click(timeout=4000)
-                        await page.wait_for_timeout(3000)
+                        await page.wait_for_timeout(4000)
                         break
                 except Exception:
                     continue
