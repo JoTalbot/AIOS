@@ -754,6 +754,21 @@ def test_olx_publish_intent(monkeypatch):
     assert "Опубликовать на OLX" in joined
 
 
+def test_olx_publish_confirm(monkeypatch):
+    import subprocess
+    def fake_run(*a, **k):
+        return type("R", (), {"stdout": '{"status": "published", "title": "Фара BMW", "price": "2000", "url": "https://www.olx.ua/d/uk/obyavlenie/test.html"}', "stderr": "", "returncode": 0})
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    m._pending_confirm[1] = {"kind": "olx_create",
+                             "data": {"part": "фара BMW 2000", "title": "Фара BMW",
+                                      "description": "Продаю", "price": "2000"}}
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "да") is True
+    joined = "\n".join(api.messages)
+    assert "опубликовано на olx" in joined.lower()
+    assert 1 not in m._pending_confirm
+
+
 def test_photo_ad_intent(monkeypatch):
     m._last_photo[1] = "/tmp/photo.jpg"
     api = FakeAPI()

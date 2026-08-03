@@ -77,7 +77,9 @@ def generate(part: str) -> dict:
         "Напиши объявление для OLX (Украина) про автозапчасть. Верни ТОЛЬКО JSON без пояснений: "
         "{\"title\": \"заголовок до 60 символов\", \"description\": \"описание 2-4 предложения, "
         "на русском, с указанием состояния, совместимости и готовности к отправке Новой Почтой\", "
-        "\"price\": \"число в гривнах\"}. Цена в грн, НЕ пиши слова «рублей» или «грн» в price. "
+        "\"price\": \"число в гривнах\"}. "
+        "Цена — ТОЛЬКО в поле price числом, НИКОГДА не упоминай цену в description и title. "
+        "Если пользователь указал цену в запросе — используй её. "
         f"Деталь: {part}"
     )
     resp = _llm(prompt)
@@ -88,6 +90,12 @@ def generate(part: str) -> dict:
         d.setdefault("title", part[:60])
         d.setdefault("description", "")
         d.setdefault("price", "")
+        # fallback: если цена пустая — извлечь число из конца запроса (если похоже на цену)
+        if not str(d.get("price") or "").strip():
+            import re as _re
+            m = _re.search(r"(\d{2,6})\s*(грн|грн\.|uah)?\s*$", part, _re.IGNORECASE)
+            if m:
+                d["price"] = m.group(1)
         return {"status": "ok", **d, "part": part}
     except Exception:
         return {"status": "error", "error": "Не удалось сгенерировать (LLM)", "part": part}
@@ -111,7 +119,7 @@ def create_ad(part: str, confirm: bool) -> dict:
     if gen.get("status") != "ok":
         return gen
     if not confirm:
-        return {"status": "need_confirm", "action": "olx_create", **gen}
+        return {**gen, "status": "need_confirm", "action": "olx_create"}
         try:
             from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
             a = OLXChromeTwinAdapter(config={"olx_login": _env("OLX_LOGIN") or "959052288"})

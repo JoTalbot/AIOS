@@ -1620,7 +1620,13 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             if kind == "olx_create":
                 d = pend["data"]
                 import subprocess as _sp
-                data = _run_account_control(["olx", "create", d["part"], "--confirm"])
+                r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_olx_ad_gen.py"),
+                             "create", d["part"], "--confirm"],
+                            capture_output=True, text=True, timeout=240, cwd=str(PROJECT_ROOT))
+                try:
+                    data = json.loads((r.stdout or "").strip().split("\n")[-1])
+                except Exception:
+                    data = {"status": "error", "error": (r.stderr or r.stdout or "?")[-200:]}
                 st = data.get("status")
                 if st == "published":
                     txt = f"✅ <b>Объявление опубликовано на OLX!</b>\n{_esc_tg(data.get('title', ''))} — {data.get('price', '?')} грн\n{data.get('url', '')}"
