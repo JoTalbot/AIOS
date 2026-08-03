@@ -333,36 +333,66 @@ class SalesLifecycle:
         if changed:
             self._save(journal_path, journal)
 
-    def _run_olx_deactivate(self, ad_id: str) -> dict:
-        """Снять одно объявление с публикации через тот же adapter, что и бот."""
+    def _run_olx_action(self, args: list[str], timeout: int = 190) -> dict:
+        """Выполнить OLX-команду через существующий Chrome Twin adapter."""
         py = "/opt/aios/.venv/bin/python"
         if not Path(py).exists():
             py = sys.executable
-        command = [py, str(self.root / "run_account_control.py"), "olx", "delete", str(ad_id), "--confirm"]
+        command = [py, str(self.root / "run_account_control.py"), "olx"] + args
         # OLX adapter может использовать системный Chrome через CDP, но xvfb
         # сохраняет совместимость с запуском без дисплея.
         if Path("/usr/bin/xvfb-run").exists():
             command = ["xvfb-run", "-a", "-s", "-screen 0 1440x900x24"] + command
         try:
-            proc = subprocess.run(command, capture_output=True, text=True, timeout=190,
+            proc = subprocess.run(command, capture_output=True, text=True, timeout=timeout,
                                   cwd=str(self.root))
         except subprocess.TimeoutExpired:
-            return {"status": "error", "error": "timeout при снятии объявления OLX"}
+            return {"status": "error", "error": "timeout при обращении к OLX"}
         except Exception as exc:
             return {"status": "error", "error": str(exc)[:200]}
         out = (proc.stdout or "").strip()
         try:
             start = out.find("{")
-            data = json.loads(out[start:]) if start >= 0 else {}
+            return json.loads(out[start:]) if start >= 0 else {
+                "status": "error", "error": str(proc.stderr or out[-300:] or "OLX не вернул JSON")[:300],
+            }
         except Exception:
-            data = {}
+            return {"status": "error", "error": str(out[-300:] or proc.stderr or "OLX не вернул JSON")[:300]}
+
+    def _find_live_olx_ad(self, sale: dict) -> tuple[dict | None, str, int]:
+        """Fallback: найти текущие объявления, если старый журнал уже устарел."""
+        listed = self._run_olx_action(["my_ads", "--limit", "50"], timeout=170)
+        if listed.get("status") != "ok":
+            return None, "live_query_error", 0
+        rows = [
+            {"ad_id": str(ad.get("id") or ""), "title": str(ad.get("title") or ""),
+             "price": ad.get("price"), "url": ad.get("url")}
+            for ad in (listed.get("ads") or [])
+            if isinstance(ad, dict) and ad.get("id")
+        ]
+        item = self._normalize_ad_title(sale.get("item"))
+        exact = [row for row in rows if self._normalize_ad_title(row.get("title")) == item]
+        if len(exact) == 1:
+            return exact[0], "live_exact_title", 1
+        if len(exact) > 1:
+            return None, "live_ambiguous_exact", len(exact)
+        if len(item) < 8:
+            return None, "live_item_too_generic", 0
+        partial = [row for row in rows if item in self._normalize_ad_title(row.get("title"))]
+        if len(partial) == 1:
+            return partial[0], "live_title_contains_item", 1
+        return None, "live_ambiguous" if partial else "live_not_found", len(partial)
+
+    def _run_olx_deactivate(self, ad_id: str) -> dict:
+        """Снять одно объявление с публикации через тот же adapter, что и бот."""
+        data = self._run_olx_action(["delete", str(ad_id), "--confirm"])
         status = str(data.get("status") or "")
         if status in ("deleted", "deactivated"):
             return {"status": "deactivated", "ad_id": str(ad_id), "adapter_status": status}
         return {
             "status": "error",
             "ad_id": str(ad_id),
-            "error": str(data.get("error") or out[-300:] or proc.stderr or "OLX не вернул статус")[:300],
+            "error": str(data.get("error") or "OLX не вернул статус")[:300],
         }
 
     def _maybe_deactivate_olx(self, sale: dict, now: datetime, reason: str) -> dict:
@@ -392,17 +422,43 @@ class SalesLifecycle:
                     "message": "Не найдено однозначное объявление OLX для автоматического снятия.",
                 }
             else:
-                result = self._run_olx_deactivate(str(ad.get("ad_id")))
+                selected_ad = ad
+                selected_match = match_kind
+                result = self._run_olx_deactivate(str(selected_ad.get("ad_id")))
+                # Журнал публикаций иногда содержит старый ad_id (объявление
+                # редактировали/перевыставляли вручную). В таком случае один
+                # раз сверяемся с живым списком OLX, но удаляем только при
+                # единственном совпадении по товару.
+                not_found = "не найден" in str(result.get("error") or "").casefold() \
+                    or "not found" in str(result.get("error") or "").casefold()
+                if result.get("status") == "error" and not_found:
+                    # Устаревшая запись журнала не должна оставаться «активной»
+                    # в контексте LLM, даже если живые кандидаты неоднозначны.
+                    self._mark_olx_journal_inactive(str(selected_ad.get("ad_id")), now)
+                    live_ad, live_match, candidates = self._find_live_olx_ad(sale)
+                    if live_ad is not None:
+                        selected_ad, selected_match = live_ad, live_match
+                        result = self._run_olx_deactivate(str(selected_ad.get("ad_id")))
+                    elif live_match.startswith("live_ambiguous"):
+                        result = {
+                            "status": "ambiguous", "candidate_count": candidates,
+                            "error": "Несколько активных объявлений совпадают с проданным товаром.",
+                        }
+                    elif live_match == "live_not_found":
+                        result = {"status": "not_found", "error": "Активное объявление OLX не найдено."}
                 result.update({
                     "reason": reason,
-                    "match": match_kind,
-                    "title": str(ad.get("title") or ""),
+                    "match": selected_match,
+                    "title": str(selected_ad.get("title") or ""),
                     "attempted_at": _stamp(now),
                 })
                 if result.get("status") == "deactivated":
-                    self._mark_olx_journal_inactive(str(ad.get("ad_id")), now)
+                    if str(selected_ad.get("ad_id")) != str(ad.get("ad_id")):
+                        # Старый journal-id уже подтверждённо не существовал.
+                        self._mark_olx_journal_inactive(str(ad.get("ad_id")), now)
+                    self._mark_olx_journal_inactive(str(selected_ad.get("ad_id")), now)
                     sale.setdefault("history", []).append({
-                        "at": _stamp(now), "event": "olx_deactivated", "ad_id": str(ad.get("ad_id")),
+                        "at": _stamp(now), "event": "olx_deactivated", "ad_id": str(selected_ad.get("ad_id")),
                         "source": reason,
                     })
         # Не перезаписываем полезный id объявление при неудачном повторе.

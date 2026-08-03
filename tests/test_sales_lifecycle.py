@@ -149,6 +149,33 @@ def test_ttn_deactivates_only_matched_olx_ad_when_stock_is_exhausted(tmp_path, m
     assert calls == ["ad-123"]
 
 
+def test_stale_journal_id_uses_single_live_olx_fallback(tmp_path, monkeypatch):
+    lifecycle = _prepare_root(tmp_path)
+    (tmp_path / "data" / "olx_published.json").write_text(json.dumps([
+        {"title": "Фара BMW X5 оригінал", "ad_id": "stale-ad"},
+    ], ensure_ascii=False), encoding="utf-8")
+    calls = []
+
+    def fake_delete(self, ad_id):
+        calls.append(ad_id)
+        if ad_id == "stale-ad":
+            return {"status": "error", "ad_id": ad_id, "error": "Объявление не найдено"}
+        return {"status": "deactivated", "ad_id": ad_id, "adapter_status": "deleted"}
+
+    def fake_live(self, sale):
+        return ({"ad_id": "live-ad", "title": "Фара BMW X5 оригінал"}, "live_exact_title", 1)
+
+    monkeypatch.setattr(SalesLifecycle, "_run_olx_deactivate", fake_delete)
+    monkeypatch.setattr(SalesLifecycle, "_find_live_olx_ad", fake_live)
+    result = lifecycle.register_ttn(ttn="20451502718412", item="Фара BMW X5", amount=2500,
+                                    recipient="Клієнт", phone="0670000000", city="Київ", warehouse="№1")
+    assert calls == ["stale-ad", "live-ad"]
+    assert result["olx"]["status"] == "deactivated"
+    assert result["olx"]["ad_id"] == "live-ad"
+    journal = json.loads((tmp_path / "data" / "olx_published.json").read_text(encoding="utf-8"))
+    assert journal[0]["active"] is False
+
+
 def test_no_reference_requires_clarification_when_multiple_shipments(tmp_path):
     lifecycle = _prepare_root(tmp_path, [
         {"name": "Фара BMW X5", "qty": 1, "price": 2500},
