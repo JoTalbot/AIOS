@@ -319,6 +319,7 @@ class Executor:
             "amount": amount,
             "delivery": delivery[:200],
             "customer_phone": str(p.get("phone") or "").strip(),
+            "recipient": str(p.get("recipient") or "").strip(),
             "status": "pending",
         }
         path = Path(self.root) / "data" / "pending_sales.json"
