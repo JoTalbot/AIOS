@@ -99,6 +99,10 @@ def _sales_summary(sales: list[dict], tasks: list[dict]) -> dict:
         "pipeline_amount": round(sum(_number(sale.get("amount")) for sale in active), 2),
     }
 
+def _android_device() -> dict:
+    return _read_json(ROOT / "data" / "android_gateway" / "health.json")
+
+
 def _customer_crm() -> dict:
     try:
         from aios_core.crm import CRMStore
@@ -208,6 +212,18 @@ def build() -> None:
                     f"{tags} · {channels}").classes("text-sm")
         else:
             ui.label("Карточки появятся после синхронизации сделок с ТТН").classes("text-sm text-gray-500")
+
+    # Реальный Android-адаптер
+    android = _android_device()
+    with ui.card().classes("w-full border-l-4 border-emerald-500"):
+        ui.label("📱 Android Device Adapter").classes("text-lg font-bold")
+        if android:
+            state = "✅ подключён" if android.get("connected") else "⚠️ офлайн"
+            ui.label(f"{state} · {android.get('name') or android.get('model') or 'Android'} · Android {android.get('android') or '—'}").classes("text-sm")
+            if android.get("connected"):
+                ui.label(f"Заряд: {android.get('battery', '—')}% · экран: {android.get('screen', '—')} · приложений: {android.get('packages', '—')}").classes("text-sm")
+        else:
+            ui.label("Телефон ещё не зарегистрирован").classes("text-sm text-gray-500")
 
     # Посылки Новой Пошты
     parcels = _np_parcels()
