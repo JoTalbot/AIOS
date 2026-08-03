@@ -5229,6 +5229,31 @@ def run_bot(token: str) -> None:
                         except Exception:
                             pass
 
+                    # --- AIOS Autonomy: исполнение бизнес-команд владельца (опт-ин) ---
+                    if os.environ.get("AIOS_AUTONOMY_HOOK") == "1":
+                        try:
+                            if "_auto_core" not in globals():
+                                from aios_core.autonomy import AutonomyCore as _AutoCore
+                                globals()["_auto_core"] = _AutoCore()
+                            _ao = globals()["_auto_core"].process_owner(chat_id, text)
+                            _is_action = _ao.get("mode") == "action" and _ao.get("action") not in ("reply_customer", "query_platform")
+                            if _is_action or _ao.get("mode") == "manual":
+                                _txt = _ao.get("text") or ""
+                                if _ao.get("mode") == "manual" and _ao.get("approval_id"):
+                                    _txt = (_txt or "Действие требует подтверждения") + "\nID: <code>" + str(_ao.get("approval_id")) + "</code>"
+                                if _txt:
+                                    try:
+                                        api.send_message(chat_id, _txt[:3900])
+                                    except Exception:
+                                        try:
+                                            api.send_message(chat_id, _txt[:3900], parse_mode="")
+                                        except Exception:
+                                            pass
+                                print(f"  [AUTONOMY] {_ao.get('action')} -> {_ao.get('decision')}")
+                                continue
+                        except Exception as _au_err:
+                            print(f"  [AUTONOMY] err: {_au_err}")
+
                     # Regular chat message — send to LLM
                     llm_reply = _llm_chat(chat_id, text)
                     print(f"  [LLM] reply ({len(llm_reply or '')} chars): {(llm_reply or '')[:100]}")
