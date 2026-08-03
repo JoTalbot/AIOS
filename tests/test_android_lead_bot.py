@@ -1,0 +1,46 @@
+"""Tests for private lead cards rendered by the Telegram intent router."""
+from __future__ import annotations
+
+
+class API:
+    def __init__(self):
+        self.messages = []
+
+    def send_message(self, *args, **kwargs):
+        self.messages.append((args, kwargs))
+
+
+class Queue:
+    def __init__(self):
+        self.reviewed = []
+
+    def sync(self):
+        return {"status": "ok", "added": 0}
+
+    def summary(self):
+        return {"status": "ok", "pending": 1}
+
+    def list_pending(self, limit=20, source=""):
+        return [{"id": "phone-1", "source": "WhatsApp", "observed_at": "2026-08-04T10:00:00", "status": "pending_review"}]
+
+    def review(self, lead_id):
+        self.reviewed.append(lead_id)
+        return {"status": "reviewed"}
+
+
+def test_phone_lead_cards_do_not_render_notification_content(monkeypatch):
+    import run_telegram_bot as bot
+
+    queue = Queue()
+    monkeypatch.setattr(bot, "_phone_lead_queue", lambda: queue)
+    api = API()
+    chat_id = 808080
+    try:
+        assert bot._handle_phone_lead_intent(api, chat_id, "лиды WhatsApp телефона")
+        text = str(api.messages[-1][0][1])
+        assert "Потенциальное новое обращение" in text
+        assert "секретный текст" not in text
+        assert bot._handle_phone_lead_intent(api, chat_id, "отметь лид 1 обработанным")
+        assert queue.reviewed == ["phone-1"]
+    finally:
+        bot._last_phone_leads.pop(chat_id, None)

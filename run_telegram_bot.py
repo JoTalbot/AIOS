@@ -2021,6 +2021,67 @@ def _android_gateway_run(args: list[str], timeout: int = 60) -> dict:
         return {"status": "error", "error": str(exc)[:200]}
 
 
+# Последние показанные безопасные карточки потенциальных лидов: chat_id -> rows.
+_last_phone_leads: dict[int, list[dict]] = {}
+
+
+def _phone_lead_queue():
+    from aios_core.android_leads import AndroidLeadQueue
+    return AndroidLeadQueue(PROJECT_ROOT)
+
+
+def _handle_phone_lead_intent(api, chat_id: int, text: str) -> bool:
+    """Privacy-preserving queue for WhatsApp/iMe notification contacts."""
+    raw = str(text or "").strip()
+    t = " ".join(raw.casefold().split())
+    has_phone_scope = any(word in t for word in (
+        "телефон", "android", "андроид", "whatsapp", "ватсап", "ime", "i.me", "айми", "име",
+    ))
+    has_lead_scope = any(stem in t for stem in ("лид", "обращен", "потенциальн"))
+    # A follow-up «отметь лид 1…» may omit the word «телефон», but is safe
+    # only after this chat has received a metadata-only lead list.
+    if not (has_lead_scope and (has_phone_scope or chat_id in _last_phone_leads)):
+        return False
+    queue = _phone_lead_queue()
+    review = re.search(r"(?:обработай|отметь|закрой)\s+(?:лид|обращени\w*)\s*(?:телефона)?\s*#?(\d+)", raw, re.IGNORECASE)
+    if review:
+        rows = _last_phone_leads.get(chat_id) or []
+        index = int(review.group(1))
+        if not 1 <= index <= len(rows):
+            api.send_message(chat_id, "ℹ️ Сначала откройте «лиды телефона», затем укажите номер карточки.")
+            return True
+        result = queue.review(str(rows[index - 1].get("id") or ""))
+        if result.get("status") in ("reviewed", "already_reviewed"):
+            api.send_message(chat_id, "✅ Лид отмечен как обработанный. CRM-клиент и сообщения не создавались.")
+        else:
+            api.send_message(chat_id, "⚠️ Не удалось обновить карточку лида.")
+        return True
+    # Refresh only the metadata-only queue; notification text/senders are never
+    # requested or rendered by this handler.
+    queue.sync()
+    source = "WhatsApp" if any(word in t for word in ("whatsapp", "ватсап")) else \
+             "iMe" if any(word in t for word in ("ime", "i.me", "айми", "име")) else ""
+    rows = queue.list_pending(limit=20, source=source)
+    _last_phone_leads[chat_id] = rows
+    if not rows:
+        api.send_message(chat_id, "📲 <b>Лиды телефона</b>\nНовых карточек для проверки нет.")
+        return True
+    summary = queue.summary()
+    lines = ["📲 <b>ПОТЕНЦИАЛЬНЫЕ ЛИДЫ ТЕЛЕФОНА</b>",
+             f"<i>Ожидают проверки: {summary.get('pending', len(rows))}</i>",
+             "━━━━━━━━━━━━━━━━"]
+    for index, row in enumerate(rows[:12], 1):
+        source_label = _esc_tg(str(row.get("source") or "Телефон"))
+        observed = _esc_tg(str(row.get("observed_at") or "")[:19])
+        lines.append(f"╭─ <code>{index:02d}</code> 📲 <b>{source_label}</b>")
+        lines.append("├ Потенциальное новое обращение")
+        lines.append(f"╰ 🕐 {observed or 'время недоступно'}")
+    lines.append("━━━━━━━━━━━━━━━━")
+    lines.append("<i>Содержимое уведомлений, имена и номера не сохраняются здесь. «отметь лид 1 обработанным» — закрыть локальную карточку.</i>")
+    api.send_message(chat_id, "\n".join(lines)[:3900])
+    return True
+
+
 def _phone_adapter(key: str):
     """Load a confirmed-workflow adapter without exposing Companion secrets."""
     from aios_core.android_gateway import AndroidGateway
@@ -2887,6 +2948,10 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     # Инбокс имеет приоритет над широким детектором Direct: слова «сообщения»
     # и «прочитанные» не должны неожиданно открывать Instagram.
     if _handle_unified_inbox_intent(api, chat_id, text):
+        return True
+
+    # Privacy-preserving messenger lead tasks precede generic app routing.
+    if _handle_phone_lead_intent(api, chat_id, text):
         return True
 
     # Dedicated app workflows must run before the generic Android intent.
