@@ -5338,6 +5338,27 @@ def run_bot(token: str) -> None:
                     reply = cmd_olx_latest(args, chat_id)
                 elif cmd == "/olx_analytics" or cmd == "/analytics":
                     reply = cmd_olx_analytics(args)
+                elif cmd in ("/reputation", "/rep", "/clients"):
+                    reply = None
+                    keyboard = None
+                    import subprocess as _sp_rep
+                    try:
+                        r = _sp_rep.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_autonomy_clients.py"),
+                                         "--top", "15"], capture_output=True, text=True,
+                                        timeout=60, cwd=str(PROJECT_ROOT))
+                        api.send_message(chat_id, (r.stdout or "нет данных")[:3800])
+                    except Exception as e:
+                        api.send_message(chat_id, f"❌ Ошибка: {e}")
+                elif cmd in ("/security", "/sec", "/safe"):
+                    reply = None
+                    keyboard = None
+                    import subprocess as _sp_sec
+                    try:
+                        r = _sp_sec.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_autonomy_security.py")],
+                                        capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+                        api.send_message(chat_id, (r.stdout or "нет данных")[:3800])
+                    except Exception as e:
+                        api.send_message(chat_id, f"❌ Ошибка: {e}")
                 elif cmd == "/digest":
                     reply = None
                     keyboard = None

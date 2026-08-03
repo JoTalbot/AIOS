@@ -35,6 +35,14 @@ def main() -> int:
     # json-файлы данных
     for f in (ROOT / "data").glob("*.json"):
         targets.append(f)
+    # журнал автономии
+    for f in (ROOT / "data").glob("*.jsonl"):
+        targets.append(f)
+    # сессии автономии (вложенные json)
+    aut_sess = ROOT / "data" / "autonomy_sessions"
+    if aut_sess.exists():
+        for f in aut_sess.glob("*.json"):
+            targets.append(f)
     # Chrome-профиль (большой — tar отдельно)
     profile = ROOT / "data" / "chrome_twin" / "default"
 

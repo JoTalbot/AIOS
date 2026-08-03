@@ -45,7 +45,7 @@ def _tg(token: str, chat_id: int, text: str) -> None:
 
 
 def main() -> int:
-    from aios_core.autonomy.report import daily_summary, anomalies, floor_advice
+    from aios_core.autonomy.report import daily_summary, anomalies, floor_advice, security_summary, client_summary
 
     token = _env("TELEGRAM_BOT_TOKEN") or _env("AIOS_TELEGRAM_TOKEN")
     chat_id = _env("TELEGRAM_CHAT_ID")
@@ -79,6 +79,19 @@ def main() -> int:
     if no_floor:
         lines.append(f"\n💡 Нет ценового пола у {len(no_floor)} товаров со склада "
                      f"(рекомендации — run_autonomy_advice.py)")
+
+    # Безопасность
+    sec = security_summary(days=1)
+    lines.append(f"\n🔐 <b>Безопасность:</b> инъекций {sec['injections']} · ниже пола {sec['below_floor']} "
+                 f"· эскалаций {sec['escalations']} · блокировок {sec['blocked']}")
+    if sec["injections"]:
+        lines.append("  (команда /security для деталей)")
+
+    # Клиенты
+    cl = client_summary()
+    lines.append(f"\n👥 <b>Клиенты:</b> {cl['total']} · trusted {cl['trusted']} · risky {cl['risky']} · new {cl['new']}")
+    if cl["risky"]:
+        lines.append("  (команда /reputation для списка)")
 
     _tg(token, int(chat_id), "\n".join(lines))
     print("сводка отправлена")

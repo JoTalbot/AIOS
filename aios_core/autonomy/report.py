@@ -138,3 +138,69 @@ def floor_advice() -> dict:
         "items_with_floor": [a for a in advice if a["status"] == "has_floor"],
         "recent_sales": [{"item": k, "amount": v} for k, v in sold.items()],
     }
+
+
+def security_summary(days: int = 1) -> dict:
+    """Сводка по безопасности за N дней: инъекции, ниже пола, эскалации, блокировки."""
+    j = Journal()
+    since = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    rows = []
+    try:
+        if j.path.exists():
+            for line in j.path.read_text(encoding="utf-8").splitlines():
+                try:
+                    r = json.loads(line)
+                    if r.get("ts", "") >= since:
+                        rows.append(r)
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    injections = [r for r in rows if r.get("decision") in ("INJECTION",)]
+    below_floor = [r for r in rows if "ниже пола" in str(r.get("reason", ""))]
+    escalations = [r for r in rows if r.get("decision") in ("ESCALATE", "MANUAL")]
+    blocked = [r for r in rows if r.get("decision") == "BLOCKED"]
+    allowed = [r for r in rows if r.get("decision") == "ALLOWED"]
+    inj_by_chat: dict = {}
+    for r in injections:
+        key = f"{r.get('platform')}:{r.get('chat')}"
+        inj_by_chat[key] = inj_by_chat.get(key, 0) + 1
+    return {
+        "days": days,
+        "injections": len(injections),
+        "injection_by_chat": dict(sorted(inj_by_chat.items(), key=lambda x: -x[1])[:10]),
+        "below_floor": len(below_floor),
+        "escalations": len(escalations),
+        "blocked": len(blocked),
+        "allowed": len(allowed),
+        "total": len(rows),
+    }
+
+
+def client_summary() -> dict:
+    """Сводка по клиентам: репутация, доверие, история (для владельца)."""
+    from .state import StateStore
+    store = StateStore()
+    clients = []
+    if store.dir.exists():
+        for p in sorted(store.dir.glob("*.json")):
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            clients.append({
+                "chat": p.stem,
+                "trust": data.get("trust", "new"),
+                "reputation": int(data.get("reputation", 0)),
+                "rounds": int(data.get("rounds", 0)),
+                "last_sale": data.get("last_sale"),
+                "last_ts": data.get("last_ts", ""),
+            })
+    clients.sort(key=lambda c: c["reputation"])
+    return {
+        "total": len(clients),
+        "trusted": sum(1 for c in clients if c["trust"] == "trusted"),
+        "risky": sum(1 for c in clients if c["trust"] == "risky"),
+        "new": sum(1 for c in clients if c["trust"] == "new"),
+        "clients": clients,
+    }
