@@ -1316,6 +1316,15 @@ async def google_contacts_add(name: str, email: str = "", phone: str = "") -> di
 # --------------------------------------------------------------------------
 # Viber (desktop)
 # --------------------------------------------------------------------------
+def viber_status() -> dict:
+    """Проверка доступности авторизованного Viber Desktop без чтения чатов."""
+    try:
+        import viber_control as vc
+        return vc.status()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
 def viber_chats() -> dict:
     """Список чатов Viber (OCR окна десктоп-приложения)."""
     try:
@@ -2075,6 +2084,7 @@ def main():
 
     vb = sub.add_parser("viber")
     vbg = vb.add_subparsers(dest="action", required=True)
+    vbg.add_parser("status")
     vbg.add_parser("chats")
     vbr = vbg.add_parser("read")
     vbr.add_argument("chat")
@@ -2252,7 +2262,9 @@ def main():
                 elif args.chat_action == "reply":
                     out(asyncio.run(olx_chat_reply(args.contact, args.text, args.confirm)))
         elif args.account == "viber":
-            if args.action == "chats":
+            if args.action == "status":
+                out(viber_status())
+            elif args.action == "chats":
                 out(viber_chats())
             elif args.action == "read":
                 out(viber_read(args.chat, args.limit))

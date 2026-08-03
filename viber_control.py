@@ -19,15 +19,51 @@ import re
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
+from functools import wraps
 from pathlib import Path
 
 DISPLAY = os.environ.get("VIBER_DISPLAY", ":1")
 WINDOW_TITLE = "Rakuten Viber"
 SHOTS = Path("/tmp")
+LOCK_FILE = Path("/tmp/aios_viber_desktop.lock")
+_UI_NOISE = {
+    "viber", "rakuten", "поиск", "search", "чаты", "чат", "звонки", "вызовы",
+    "контакты", "настройки", "избранное", "недавние", "сообщения", "more", "settings",
+}
+
+
+@contextmanager
+def _ui_lock():
+    """Не давать нескольким процессам одновременно кликать по Viber UI."""
+    LOCK_FILE.touch(exist_ok=True)
+    with LOCK_FILE.open("a+", encoding="utf-8") as lock:
+        try:
+            import fcntl
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        except Exception:
+            pass
+        try:
+            yield
+        finally:
+            try:
+                import fcntl
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+            except Exception:
+                pass
+
+
+def _serialized(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with _ui_lock():
+            return func(*args, **kwargs)
+    return wrapper
 
 
 def _run(cmd, timeout=20):
     env = dict(os.environ, DISPLAY=DISPLAY)
+    env.setdefault("XAUTHORITY", "/root/.Xauthority")
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env=env)
         return r.stdout, r.stderr
@@ -126,6 +162,19 @@ def _activate() -> str | None:
 
 # --------------------------------------------------------------- public
 
+
+def status() -> dict:
+    """Read-only проверка, что Viber Desktop доступен на VNC-дисплее."""
+    wid = win_id()
+    return {
+        "status": "ok" if wid else "error",
+        "ready": bool(wid),
+        "display": DISPLAY,
+        "error": "Окно Viber не найдено" if not wid else "",
+    }
+
+
+@_serialized
 def chats() -> dict:
     wid = _activate()
     if not wid:
@@ -139,13 +188,18 @@ def chats() -> dict:
         if w["cx"] > 640:
             continue
         # чаты — строки с большим шрифтом; берём слова как имена (капитализированные)
-        if len(w["text"]) < 2 or w["text"] in added:
+        name = w["text"].strip()
+        if len(name) < 2 or name.casefold() in _UI_NOISE or name in added:
             continue
-        added.add(w["text"])
-        seen.append({"name": w["text"], "x": w["cx"], "y": w["cy"]})
+        # Служебные одиночные цифры обычно являются временем/счётчиком, а не именем.
+        if name.isdigit():
+            continue
+        added.add(name)
+        seen.append({"name": name, "x": w["cx"], "y": w["cy"]})
     return {"status": "ok", "chats": seen[:20], "screenshot": path}
 
 
+@_serialized
 def read_chat(chat: str, limit: int = 15) -> dict:
     wid = _activate()
     if not wid:
@@ -175,13 +229,18 @@ def read_chat(chat: str, limit: int = 15) -> dict:
         lines.setdefault(key, []).append((w["x0"], w["text"]))
     msgs = []
     for key in sorted(lines):
-        row = " ".join(t for _, t in sorted(lines[key]))
+        row_words = sorted(lines[key])
+        row = " ".join(t for _, t in row_words)
         if len(row) > 1:
-            msgs.append({"text": row})
+            # В Viber входящие пузыри находятся слева, исходящие — справа.
+            # Это эвристика для автоответа; при сомнении считаем сообщение входящим.
+            avg_x = sum(x for x, _ in row_words) / len(row_words)
+            msgs.append({"text": row, "mine": avg_x >= 1260})
     return {"status": "ok", "chat": chat, "messages": msgs[-limit:],
             "screenshot": path2}
 
 
+@_serialized
 def send_chat(chat: str, text: str, confirm: bool) -> dict:
     wid = _activate()
     if not wid:

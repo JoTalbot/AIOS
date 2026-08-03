@@ -41,13 +41,26 @@ def _env(key: str) -> str:
     return ""
 
 
-def _load_cfg() -> dict:
+def _load_cfg(platform: str = "") -> dict:
+    """Общий конфиг + безопасное переопределение конкретной платформы.
+
+    Старые IG/FB настройки остаются совместимыми. Для нового Viber можно
+    задать ``platforms.viber.auto_send=false`` и сначала получать только
+    черновики в Telegram, не рискуя отправить сообщение автоматически.
+    """
     default = {"enabled": True, "auto_send": True, "max_replies_per_run": 3}
     try:
-        cfg = json.loads(CFG_PATH.read_text(encoding="utf-8"))
-        return {**default, **cfg}
+        raw = json.loads(CFG_PATH.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            raw = {}
     except Exception:
-        return default
+        raw = {}
+    cfg = {**default, **{k: v for k, v in raw.items() if k != "platforms"}}
+    platforms = raw.get("platforms") if isinstance(raw.get("platforms"), dict) else {}
+    per_platform = platforms.get(platform) if platform else {}
+    if isinstance(per_platform, dict):
+        cfg.update(per_platform)
+    return cfg
 
 
 def _tg(token: str, chat_id: int, text: str) -> None:
@@ -124,7 +137,7 @@ def run_cycle(platform: str) -> dict:
     from aios_core.autonomy import AutonomyCore
     token = _env("TELEGRAM_BOT_TOKEN") or _env("AIOS_TELEGRAM_TOKEN")
     chat_id = _env("TELEGRAM_CHAT_ID")
-    cfg = _load_cfg()
+    cfg = _load_cfg(platform)
     if not cfg.get("enabled"):
         return {"ok": False, "reason": "disabled"}
     if platform not in _PLATFORM_CMDS:
@@ -143,30 +156,41 @@ def run_cycle(platform: str) -> dict:
         if replied >= max_r:
             break
         contact = str(dm.get("name") or dm.get("contact") or dm.get("id") or "").strip()
+        if not contact:
+            continue
+        # Viber chats() намеренно не притворяется, что знает preview/unread.
+        # Для Viber получаем последний входящий текст только при явном цикле.
         last = str(dm.get("text") or dm.get("last_message") or dm.get("last") or "").strip()
-        if not contact or not last:
+        msgs = []
+        if platform == "viber":
+            msgs = _read_dm(platform, contact)
+            last_theirs = next((m.get("text", "") for m in reversed(msgs)
+                                if not m.get("mine") and m.get("text")), "")
+            last = str(last_theirs or "").strip()
+        else:
+            if not last:
+                continue
+            msgs = _read_dm(platform, contact)
+            # Сохраняем прежний порядок для уже работающих IG/FB контуров.
+            last_theirs = next((m.get("text", "") for m in msgs
+                                if not m.get("mine") and m.get("text")), "")
+        if not last_theirs:
             continue
         sess = core.state.get(platform, contact)
         if sess.last_seen_msg == f"{contact}:{last}":
-            continue
-        msgs = _read_dm(platform, contact)
-        last_theirs = None
-        for m in msgs:
-            if not m.get("mine") and m.get("text"):
-                last_theirs = m.get("text", "")
-                break
-        if not last_theirs:
             continue
         outcome = core.process_customer(platform, contact, last_theirs,
                                         msg_id=f"{contact}:{last}", extra={"item": None, "history": msgs})
         if outcome.get("mode") == "action" and outcome.get("text"):
             if cfg.get("auto_send", True):
                 res = _reply(platform, contact, outcome["text"])
-                if res.get("status") == "ok":
+                if res.get("status") == "sent" or res.get("status") == "ok":
                     replied += 1
                     summary.append(f"✅ {platform}/{contact}: {outcome['text'][:50]}")
+                else:
+                    summary.append(f"⚠️ {platform}/{contact}: ответ не отправлен")
             else:
-                summary.append(f"💬 {platform}/{contact}: предлагаемый ответ создан")
+                summary.append(f"💬 {platform}/{contact}: черновик «{outcome['text'][:110]}»")
         elif outcome.get("mode") in ("escalate", "manual", "blocked") and outcome.get("text"):
             summary.append(f"🔎 {platform}/{contact}: {outcome['decision']} — {outcome['text'][:50]}")
 
