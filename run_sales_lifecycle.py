@@ -8,6 +8,7 @@
   python run_sales_lifecycle.py delivered 20451502718405
   python run_sales_lifecycle.py returned 20451502718405
   python run_sales_lifecycle.py return_received 20451502718405
+  python run_sales_lifecycle.py deactivate_ads
 
 Основной интерфейс для владельца — сообщения Telegram-боту. Этот CLI полезен
 для диагностики и безопасных ручных операций на сервере.
@@ -42,8 +43,10 @@ def main() -> int:
         result = lifecycle.mark_return_received(reference, source="cli")
     elif command == "reminders":
         result = {"status": "ok", "notifications": lifecycle.due_notifications()}
+    elif command in ("deactivate_ads", "sync_olx_ads"):
+        result = lifecycle.sync_active_olx_ads()
     else:
-        result = {"status": "error", "error": "migrate|tasks|shipped|delivered|returned|return_received|reminders"}
+        result = {"status": "error", "error": "migrate|tasks|shipped|delivered|returned|return_received|reminders|deactivate_ads"}
 
     print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
     return 0 if result.get("status") in ("ok", "ignored") else 1

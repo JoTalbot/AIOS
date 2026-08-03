@@ -17,6 +17,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
+import sys
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -262,6 +264,176 @@ class SalesLifecycle:
         # pending_sales historically ограничен 50 записями.
         self._save(self.pending_file, pending[-50:])
 
+    # ---- OLX publication ---------------------------------------------------------
+    @staticmethod
+    def _normalize_ad_title(value: Any) -> str:
+        """Нормализация названий для безопасного сопоставления склад ↔ OLX."""
+        text = str(value or "").casefold()
+        text = re.sub(r"[^\wа-яіїєґ]+", " ", text, flags=re.IGNORECASE)
+        return " ".join(text.split())
+
+    def _inventory_available_for_sale(self, sale: dict) -> int | None:
+        """Доступный остаток именно этой позиции или None, если её не нашли."""
+        try:
+            import run_inventory
+            items = run_inventory._load(self.inventory_file)
+            preferred = str((sale.get("inventory") or {}).get("item") or sale.get("item") or "")
+            item = run_inventory._find(items, preferred)
+            return run_inventory.available_qty(item) if item else None
+        except Exception:
+            return None
+
+    def _find_olx_ad(self, sale: dict) -> tuple[dict | None, str]:
+        """Найти единственное связанное объявление без рискованного угадывания."""
+        try:
+            journal = self._load(self.data_dir / "olx_published.json", [])
+        except Exception:
+            journal = []
+        if not isinstance(journal, list):
+            return None, "journal_unavailable"
+        rows = [row for row in journal if isinstance(row, dict) and row.get("ad_id")]
+        olx = sale.get("olx") if isinstance(sale.get("olx"), dict) else {}
+        explicit_id = str(olx.get("ad_id") or sale.get("ad_id") or "")
+        if explicit_id:
+            match = next((row for row in rows if str(row.get("ad_id")) == explicit_id), None)
+            return (match or {"ad_id": explicit_id, "title": ""}), "explicit"
+
+        item = self._normalize_ad_title(sale.get("item"))
+        if not item:
+            return None, "empty_item"
+        exact = [row for row in rows if self._normalize_ad_title(row.get("title")) == item]
+        if len(exact) == 1:
+            return exact[0], "exact_title"
+        if len(exact) > 1:
+            return None, "ambiguous_exact_title"
+
+        # Частичное совпадение разрешаем только для достаточно конкретного
+        # названия. «Фара» не должна снять несколько разных объявлений.
+        if len(item) < 8:
+            return None, "item_too_generic"
+        partial = [
+            row for row in rows
+            if item in self._normalize_ad_title(row.get("title"))
+        ]
+        if len(partial) == 1:
+            return partial[0], "title_contains_item"
+        return None, "ambiguous_title" if partial else "not_found"
+
+    def _mark_olx_journal_inactive(self, ad_id: str, now: datetime) -> None:
+        """Не давать другим контурам считать снятое объявление активным."""
+        journal_path = self.data_dir / "olx_published.json"
+        journal = self._load(journal_path, [])
+        if not isinstance(journal, list):
+            return
+        changed = False
+        for row in journal:
+            if isinstance(row, dict) and str(row.get("ad_id") or "") == str(ad_id):
+                row.update({"active": False, "status": "deactivated", "deactivated_at": _stamp(now)})
+                changed = True
+        if changed:
+            self._save(journal_path, journal)
+
+    def _run_olx_deactivate(self, ad_id: str) -> dict:
+        """Снять одно объявление с публикации через тот же adapter, что и бот."""
+        py = "/opt/aios/.venv/bin/python"
+        if not Path(py).exists():
+            py = sys.executable
+        command = [py, str(self.root / "run_account_control.py"), "olx", "delete", str(ad_id), "--confirm"]
+        # OLX adapter может использовать системный Chrome через CDP, но xvfb
+        # сохраняет совместимость с запуском без дисплея.
+        if Path("/usr/bin/xvfb-run").exists():
+            command = ["xvfb-run", "-a", "-s", "-screen 0 1440x900x24"] + command
+        try:
+            proc = subprocess.run(command, capture_output=True, text=True, timeout=190,
+                                  cwd=str(self.root))
+        except subprocess.TimeoutExpired:
+            return {"status": "error", "error": "timeout при снятии объявления OLX"}
+        except Exception as exc:
+            return {"status": "error", "error": str(exc)[:200]}
+        out = (proc.stdout or "").strip()
+        try:
+            start = out.find("{")
+            data = json.loads(out[start:]) if start >= 0 else {}
+        except Exception:
+            data = {}
+        status = str(data.get("status") or "")
+        if status in ("deleted", "deactivated"):
+            return {"status": "deactivated", "ad_id": str(ad_id), "adapter_status": status}
+        return {
+            "status": "error",
+            "ad_id": str(ad_id),
+            "error": str(data.get("error") or out[-300:] or proc.stderr or "OLX не вернул статус")[:300],
+        }
+
+    def _maybe_deactivate_olx(self, sale: dict, now: datetime, reason: str) -> dict:
+        """Снять объявление, когда по позиции больше нет свободного остатка.
+
+        Если товара осталось больше одной единицы, объявление намеренно остаётся
+        активным: оно всё ещё соответствует доступному складу.
+        """
+        existing = sale.get("olx") if isinstance(sale.get("olx"), dict) else {}
+        if existing.get("status") == "deactivated":
+            return {**existing, "idempotent": True}
+
+        available = self._inventory_available_for_sale(sale)
+        if available is None:
+            result = {"status": "skipped_inventory_unknown", "reason": reason,
+                      "message": "Не удалось проверить остаток для снятия объявления OLX."}
+        elif available > 0:
+            result = {"status": "kept_active", "reason": reason, "available_qty": available,
+                      "message": f"В остатке ещё {available} шт — объявление OLX оставлено активным."}
+        else:
+            ad, match_kind = self._find_olx_ad(sale)
+            if ad is None:
+                result = {
+                    "status": "not_found" if match_kind == "not_found" else "ambiguous",
+                    "reason": reason,
+                    "match": match_kind,
+                    "message": "Не найдено однозначное объявление OLX для автоматического снятия.",
+                }
+            else:
+                result = self._run_olx_deactivate(str(ad.get("ad_id")))
+                result.update({
+                    "reason": reason,
+                    "match": match_kind,
+                    "title": str(ad.get("title") or ""),
+                    "attempted_at": _stamp(now),
+                })
+                if result.get("status") == "deactivated":
+                    self._mark_olx_journal_inactive(str(ad.get("ad_id")), now)
+                    sale.setdefault("history", []).append({
+                        "at": _stamp(now), "event": "olx_deactivated", "ad_id": str(ad.get("ad_id")),
+                        "source": reason,
+                    })
+        # Не перезаписываем полезный id объявление при неудачном повторе.
+        previous_id = existing.get("ad_id")
+        sale["olx"] = {**existing, **result, "ad_id": result.get("ad_id") or previous_id or ""}
+        return sale["olx"]
+
+    def sync_active_olx_ads(self) -> dict:
+        """Применить правило снятия публикаций к уже активным сделкам."""
+        now = _now()
+        with self._lock():
+            sales = self._sales()
+            outcomes = []
+            for sale in sales:
+                if sale.get("status") not in TRACKING_ACTIVE:
+                    continue
+                outcome = self._maybe_deactivate_olx(sale, now, "lifecycle_sync")
+                outcomes.append({"sale_id": sale.get("id"), "status": outcome.get("status"),
+                                 "ad_id": outcome.get("ad_id") or ""})
+            self._save(self.sales_file, sales)
+        return {"status": "ok", "outcomes": outcomes}
+
+    def deactivate_olx_for_item(self, item: str, reason: str = "manual_sale") -> dict:
+        """Снять объявление после продажи без ТТН, если остаток исчерпан."""
+        now = _now()
+        with self._lock():
+            # В ручной продаже нет отдельной lifecycle-записи, поэтому строим
+            # краткий контекст только для сопоставления склада и журнала OLX.
+            synthetic_sale = {"item": str(item or ""), "inventory": {}, "history": []}
+            return self._maybe_deactivate_olx(synthetic_sale, now, reason)
+
     # ---- tasks ------------------------------------------------------------------
     @staticmethod
     def _interval_minutes(kind: str) -> int:
@@ -426,6 +598,9 @@ class SalesLifecycle:
                 inventory = self._reserve_inventory(sale, now)
             else:
                 inventory = {"status": "ok" if sale.get("inventory", {}).get("reserved") else "skipped"}
+            # При создании ТТН товар уже продан и зарезервирован. Если
+            # свободного остатка не осталось, сразу снимаем связанное OLX-объявление.
+            olx = self._maybe_deactivate_olx(sale, now, "ttn_created")
             # Повторный ответ API по уже доставленной/возвращённой ТТН не
             # должен воскресить закрытую задачу отправки.
             if sale.get("status") in WAITING_SHIPMENT:
@@ -441,6 +616,7 @@ class SalesLifecycle:
             "sale": sale,
             "task": task,
             "inventory": inventory,
+            "olx": olx,
             "message": (
                 f"ТТН {number} создана. Товар «{sale.get('item')}» зарезервирован: "
                 "нужна отправка."
@@ -453,6 +629,9 @@ class SalesLifecycle:
         if sale.get("status") not in WAITING_SHIPMENT:
             return {"status": "skipped", "reason": sale.get("status")}
         inventory = self._commit_inventory(sale, now)
+        # Fallback для старых/ручных ТТН: если объявление не было снято при
+        # резервировании, повторяем проверку в момент фактической отправки.
+        inventory["olx"] = self._maybe_deactivate_olx(sale, now, "shipped")
         sale.update({
             "status": "in_transit",
             "shipped_at": _stamp(now),
@@ -504,11 +683,13 @@ class SalesLifecycle:
             self._save(self.tasks_file, tasks)
         warning = "" if inventory.get("status") == "ok" else (
             f" Внимание: склад не удалось списать автоматически ({inventory.get('error', 'нужна проверка')}).")
+        olx = inventory.get("olx") or sale.get("olx") or {}
+        olx_note = " Объявление OLX снято с публикации." if olx.get("status") == "deactivated" else ""
         return {
-            "status": "ok", "sale": sale, "inventory": inventory,
+            "status": "ok", "sale": sale, "inventory": inventory, "olx": olx,
             "message": (
                 f"📦 Отправка подтверждена: «{sale.get('item')}» снят со склада и переведён в доставку."
-                f" ТТН: {sale.get('ttn') or '—'}.{warning}"
+                f" ТТН: {sale.get('ttn') or '—'}.{warning}{olx_note}"
             ),
         }
 
@@ -546,7 +727,8 @@ class SalesLifecycle:
         elif finance.get("status") == "error":
             finance_note = " Внимание: финансы не обновлены автоматически."
         return {
-            "status": "ok", "sale": sale, "inventory": inventory, "finance": finance,
+            "status": "ok", "sale": sale, "inventory": inventory,
+            "olx": inventory.get("olx") or sale.get("olx") or {}, "finance": finance,
             "message": f"✅ Доставка подтверждена: сделка по «{sale.get('item')}» закрыта.{finance_note}",
         }
 
@@ -580,6 +762,7 @@ class SalesLifecycle:
             self._save(self.tasks_file, tasks)
         return {
             "status": "ok", "sale": sale, "task": task, "inventory": inventory,
+            "olx": inventory.get("olx") or sale.get("olx") or {},
             "message": (
                 f"↩️ Возврат по «{sale.get('item')}» зафиксирован. Товар не добавлен в остатки автоматически: "
                 "после фактического получения напишите «получил возврат <ТТН>»."
@@ -693,6 +876,8 @@ class SalesLifecycle:
                 notifications.append(
                     f"📦 ТТН {number}: перевозчик принял «{sale.get('item')}». Товар переведён в доставку.{warning}"
                 )
+                if (inventory.get("olx") or {}).get("status") == "deactivated":
+                    notifications.append(f"🛒 ТТН {number}: связанное объявление OLX снято с публикации.")
             elif phase == "delivered" and sale.get("status") not in FINAL_STATUSES:
                 inventory = {"status": "skipped"}
                 if sale.get("status") in WAITING_SHIPMENT:
@@ -704,6 +889,8 @@ class SalesLifecycle:
                 self._sync_pending(sale)
                 transition_result = {"status": "delivered", "inventory": inventory, "finance": finance}
                 notifications.append(f"✅ ТТН {number}: «{sale.get('item')}» доставлен. Сделка закрыта.")
+                if (inventory.get("olx") or {}).get("status") == "deactivated":
+                    notifications.append(f"🛒 ТТН {number}: связанное объявление OLX снято с публикации.")
             elif phase == "returning" and sale.get("status") not in FINAL_STATUSES | {"returning"}:
                 if sale.get("status") in WAITING_SHIPMENT:
                     self._commit_shipment(sale, tasks, now, "tracking")

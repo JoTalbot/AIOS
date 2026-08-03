@@ -116,6 +116,39 @@ def test_tracking_moves_sale_and_reminders_are_deduplicated(tmp_path):
     assert lifecycle.active_tracking_sales() == []
 
 
+def test_ttn_deactivates_only_matched_olx_ad_when_stock_is_exhausted(tmp_path, monkeypatch):
+    lifecycle = _prepare_root(tmp_path)
+    (tmp_path / "data" / "olx_published.json").write_text(json.dumps([
+        {"title": "Фара BMW X5 оригінал", "ad_id": "ad-123", "url": "https://example.test/ad-123"},
+    ], ensure_ascii=False), encoding="utf-8")
+    calls = []
+
+    def fake_delete(self, ad_id):
+        calls.append(ad_id)
+        return {"status": "deactivated", "ad_id": ad_id, "adapter_status": "deactivated"}
+
+    monkeypatch.setattr(SalesLifecycle, "_run_olx_deactivate", fake_delete)
+    result = lifecycle.register_ttn(ttn="20451502718410", item="Фара BMW X5", amount=2500,
+                                    recipient="Клієнт", phone="0670000000", city="Київ", warehouse="№1")
+    assert calls == ["ad-123"]
+    assert result["olx"]["status"] == "deactivated"
+    journal = json.loads((tmp_path / "data" / "olx_published.json").read_text(encoding="utf-8"))
+    assert journal[0]["active"] is False
+    assert journal[0]["status"] == "deactivated"
+
+    # При остатке из двух одинаковых деталей одна продажа не должна скрывать
+    # объявление: оно всё ещё честно предлагает доступную вторую деталь.
+    another = _prepare_root(tmp_path / "two", [{"name": "Фара BMW X5", "qty": 2, "price": 2500}])
+    (tmp_path / "two" / "data" / "olx_published.json").write_text(json.dumps([
+        {"title": "Фара BMW X5 оригінал", "ad_id": "ad-456"},
+    ], ensure_ascii=False), encoding="utf-8")
+    second = another.register_ttn(ttn="20451502718411", item="Фара BMW X5", amount=2500,
+                                  recipient="Клієнт", phone="0670000001", city="Київ", warehouse="№2")
+    assert second["olx"]["status"] == "kept_active"
+    assert second["olx"]["available_qty"] == 1
+    assert calls == ["ad-123"]
+
+
 def test_no_reference_requires_clarification_when_multiple_shipments(tmp_path):
     lifecycle = _prepare_root(tmp_path, [
         {"name": "Фара BMW X5", "qty": 1, "price": 2500},
