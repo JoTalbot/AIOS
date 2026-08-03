@@ -63,16 +63,42 @@ def _load_cfg(platform: str = "") -> dict:
     return cfg
 
 
-def _tg(token: str, chat_id: int, text: str) -> None:
+def _tg(token: str, chat_id: int, text: str, reply_markup: dict | None = None) -> None:
     import urllib.request
     import html as _html
     payload = {"chat_id": chat_id, "text": _html.escape(text)[:3800],
                "parse_mode": "HTML", "disable_web_page_preview": True}
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
     req = urllib.request.Request(
         f"https://api.telegram.org/bot{token}/sendMessage",
         data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=60):
         pass
+
+
+def _queue_viber_draft(contact: str, text: str, source_text: str, token: str, chat_id: str) -> bool:
+    """Сохранить Viber-черновик и прислать владельцу кнопки подтверждения."""
+    try:
+        from viber_drafts import ViberDraftStore
+        draft, created = ViberDraftStore(ROOT).enqueue(contact, text, source_text)
+    except Exception as exc:
+        print(f"  [viber-draft] queue error: {exc}")
+        return False
+    if not created:
+        return False
+    if token and chat_id:
+        keyboard = {"inline_keyboard": [[
+            {"text": "✅ Отправить", "callback_data": f"viber_draft_send_{draft['id']}"},
+            {"text": "❌ Отклонить", "callback_data": f"viber_draft_cancel_{draft['id']}"},
+        ]]}
+        message = (f"💜 Черновик Viber для {contact}:\n«{text[:500]}»\n\n"
+                   "Проверьте текст и выберите действие.")
+        try:
+            _tg(token, int(chat_id), message, keyboard)
+        except Exception as exc:
+            print(f"  [viber-draft] Telegram error: {exc}")
+    return True
 
 
 def _run_ac(args: list[str], timeout: int = 170) -> dict:
@@ -123,6 +149,19 @@ def _read_dm(platform: str, contact: str) -> list[dict]:
     return []
 
 
+def _contact_allowed(platform: str, contact: str, cfg: dict) -> bool:
+    """Viber drafts are opt-in per chat to avoid touching personal dialogs."""
+    if platform != "viber":
+        return True
+    allowed = cfg.get("allowed_chats", [])
+    if allowed == "*":
+        return True
+    if not isinstance(allowed, list):
+        return False
+    normalized = {str(value).strip().casefold() for value in allowed}
+    return "*" in normalized or str(contact).strip().casefold() in normalized
+
+
 def _reply(platform: str, contact: str, text: str) -> dict:
     if platform == "instagram":
         return _run_ac(["instagram", "dm_send", contact, text, "--confirm"], timeout=170)
@@ -149,14 +188,16 @@ def run_cycle(platform: str) -> dict:
 
     dms = _list_dms(platform)
     replied = 0
+    drafted = 0
+    handled = 0
     max_r = int(cfg.get("max_replies_per_run", 3))
     summary = []
 
     for dm in dms[:10]:
-        if replied >= max_r:
+        if handled >= max_r:
             break
         contact = str(dm.get("name") or dm.get("contact") or dm.get("id") or "").strip()
-        if not contact:
+        if not contact or not _contact_allowed(platform, contact, cfg):
             continue
         # Viber chats() намеренно не притворяется, что знает preview/unread.
         # Для Viber получаем последний входящий текст только при явном цикле.
@@ -186,11 +227,20 @@ def run_cycle(platform: str) -> dict:
                 res = _reply(platform, contact, outcome["text"])
                 if res.get("status") == "sent" or res.get("status") == "ok":
                     replied += 1
+                    handled += 1
                     summary.append(f"✅ {platform}/{contact}: {outcome['text'][:50]}")
                 else:
                     summary.append(f"⚠️ {platform}/{contact}: ответ не отправлен")
             else:
-                summary.append(f"💬 {platform}/{contact}: черновик «{outcome['text'][:110]}»")
+                if platform == "viber":
+                    created = _queue_viber_draft(contact, outcome["text"], last_theirs, token, chat_id)
+                    if created:
+                        drafted += 1
+                        handled += 1
+                        summary.append(f"💜 viber/{contact}: черновик ожидает подтверждения")
+                else:
+                    handled += 1
+                    summary.append(f"💬 {platform}/{contact}: черновик «{outcome['text'][:110]}»")
         elif outcome.get("mode") in ("escalate", "manual", "blocked") and outcome.get("text"):
             summary.append(f"🔎 {platform}/{contact}: {outcome['decision']} — {outcome['text'][:50]}")
 
@@ -199,7 +249,8 @@ def run_cycle(platform: str) -> dict:
             _tg(token, int(chat_id), f"📊 <b>Цикл {platform}</b>\n" + "\n".join(summary[:10]))
         except Exception:
             pass
-    return {"ok": True, "platform": platform, "replied": replied, "summary": summary}
+    return {"ok": True, "platform": platform, "replied": replied, "drafted": drafted,
+            "summary": summary}
 
 
 def main() -> int:
