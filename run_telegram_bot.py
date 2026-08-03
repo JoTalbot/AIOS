@@ -1126,6 +1126,7 @@ def _run_due_reminders() -> int:
 
 # Последний собранный инбокс по чатам: chat_id -> [items]
 _last_inbox: dict[int, list[dict]] = {}
+_last_inbox_filters: dict[int, dict] = {}
 INBOX_SCHEDULE_FILE = PROJECT_ROOT / "data" / "inbox_schedule.json"
 
 # Каналы и их эмодзи
@@ -1138,6 +1139,16 @@ _CHANNELS = {
     "signal": ("🔒", "Signal"),
     "olx": ("🛒", "OLX"),
 }
+
+
+def _is_service_preview(text: str) -> bool:
+    """Служебные события не должны выглядеть как новые клиентские сообщения."""
+    low = " ".join(str(text or "").casefold().split())
+    return any(marker in low for marker in (
+        "голосовий виклик завершився", "голосовой вызов завершился",
+        "відеовиклик завершився", "видеовызов завершился", "started a call",
+        "ended a call", "вызов завершен", "виклик завершено",
+    ))
 
 
 def _parse_inbox_filters(text: str) -> dict:
@@ -1222,16 +1233,24 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
         try:
             ig = _run_account_control(["instagram", "dm_list", "6"])
             if ig.get("status") == "ok" and ig.get("threads"):
+                meaningful = 0
                 for d in ig["threads"][:5]:
+                    preview = (d.get("preview") or "")[:80]
+                    service = _is_service_preview(preview)
+                    if unread_only and service:
+                        continue
                     items.append({
                         "channel": "ig",
                         "ref": d.get("name") or "?",
                         "title": d.get("name") or "?",
-                        "preview": (d.get("preview") or "")[:80],
-                        "unread": True,
+                        "preview": preview,
+                        "unread": not service,
+                        "service": service,
                         "date": "",
                     })
-                summary_parts.append(f"📸 {len(ig['threads'][:5])} чатов IG Direct")
+                    meaningful += int(not service)
+                if meaningful:
+                    summary_parts.append(f"📸 {meaningful} новых чатов IG Direct")
         except Exception:
             pass
 
@@ -1240,16 +1259,24 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
         try:
             ms = _run_account_control(["facebook", "messenger_list", "--limit", "6"])
             if ms.get("status") == "ok" and ms.get("chats"):
+                meaningful = 0
                 for c in ms["chats"][:5]:
+                    preview = (c.get("preview") or "")[:80]
+                    service = _is_service_preview(preview)
+                    if unread_only and service:
+                        continue
                     items.append({
                         "channel": "messenger",
                         "ref": c.get("name") or "?",
                         "title": c.get("name") or "?",
-                        "preview": (c.get("preview") or "")[:80],
-                        "unread": True,
+                        "preview": preview,
+                        "unread": not service,
+                        "service": service,
                         "date": "",
                     })
-                summary_parts.append(f"💬 {len(ms['chats'][:5])} чатов Messenger")
+                    meaningful += int(not service)
+                if meaningful:
+                    summary_parts.append(f"💬 {meaningful} новых чатов Messenger")
         except Exception:
             pass
 
@@ -1325,36 +1352,65 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
 
 
 def _format_inbox(items: list[dict], filters: dict | None = None) -> str:
-    """Отформатировать инбокс с нумерацией."""
+    """Красивые компактные карточки общего инбокса для Telegram."""
+    from collections import Counter
+
     filters = filters or {}
-    head = "📥 <b>Единый инбокс</b>"
-    if filters.get("unread_only"):
-        head += " (только непрочитанное)"
+    unread = sum(1 for item in items if item.get("unread"))
+    by_channel = Counter(item.get("channel") for item in items)
+    channel_summary = " · ".join(
+        f"{_CHANNELS.get(channel, ('📄', channel))[0]} {count}"
+        for channel, count in by_channel.items()
+    )
+    head = "📥 <b>ЕДИНЫЙ ИНБОКС</b>"
     if filters.get("channels"):
-        head += f" ({', '.join(filters['channels'])})"
-    lines = [head, ""]
-    for i, it in enumerate(items, 1):
-        em, ch_label = _CHANNELS.get(it["channel"], ("📄", it["channel"]))
-        mark = "🔴 " if it.get("unread") else ""
-        lines.append(f"<b>{i}.</b> {em} {mark}{_esc_tg(it['title'])[:60]}")
-        if it.get("preview"):
-            lines.append(f"     {_esc_tg(it['preview'])[:90]}")
-    lines.append("")
-    lines.append("ℹ️ <i>«ответь на N: …» · «сводка» · «озвучь инбокс» · «всё прочитано»</i>")
-    return "\n".join(lines)
+        labels = [_CHANNELS.get(c, ("", c))[1] for c in filters["channels"]]
+        head += " · " + ", ".join(labels)
+    subtitle = f"{len(items)} карточек"
+    if unread:
+        subtitle += f" · 🔴 {unread} новых"
+    if channel_summary:
+        subtitle += f"\n{channel_summary}"
+    lines = [head, f"<i>{subtitle}</i>", "━━━━━━━━━━━━━━━━"]
+    for index, item in enumerate(items[:12], 1):
+        emoji, channel = _CHANNELS.get(item.get("channel"), ("📄", item.get("channel", "")))
+        badge = "🔴 Новое" if item.get("unread") else ("⚪ Служебное" if item.get("service") else "◦ Просмотр")
+        title = _esc_tg(str(item.get("title") or "Без названия"))[:64]
+        preview = _esc_tg(str(item.get("preview") or ""))[:115]
+        lines.append(f"╭─ <code>{index:02d}</code> {emoji} <b>{channel}</b> · {badge}")
+        lines.append(f"├ <b>{title}</b>")
+        if preview:
+            lines.append(f"├ <i>{preview}</i>")
+        date = str(item.get("date") or "").strip()
+        lines.append(f"╰ {'🕐 ' + _esc_tg(date) if date else 'Нажмите кнопку, чтобы открыть'}")
+    if len(items) > 12:
+        lines.append(f"\n<i>Показаны первые 12 из {len(items)} карточек.</i>")
+    lines.append("━━━━━━━━━━━━━━━━")
+    lines.append("<i>Откройте карточку кнопкой ниже · «ответь на N: текст» · «сводка»</i>")
+    return "\n".join(lines)[:3900]
 
 
 def _inbox_keyboard(items: list[dict]) -> dict | None:
-    """Inline-кнопки для быстрых действий."""
+    """Удобные кнопки карточек: открыть, обновить, сводка, отметить прочитанным."""
     if not items:
         return None
-    row = []
-    for it in items[:5]:
-        row.append({"text": str(items.index(it) + 1), "callback_data": f"inbox_read_{items.index(it) + 1}"})
-    kb = {"inline_keyboard": [row,
-                              [{"text": "✅ Всё прочитано", "callback_data": "inbox_readall"},
-                               {"text": "🧠 Сводка", "callback_data": "inbox_summary"}]]}
-    return kb
+    rows = []
+    button_row = []
+    for index, item in enumerate(items[:8], 1):
+        emoji, _ = _CHANNELS.get(item.get("channel"), ("📄", ""))
+        label = f"{emoji} {index}"
+        button_row.append({"text": label, "callback_data": f"inbox_read_{index}"})
+        if len(button_row) == 4:
+            rows.append(button_row)
+            button_row = []
+    if button_row:
+        rows.append(button_row)
+    rows.append([
+        {"text": "🔄 Обновить", "callback_data": "inbox_refresh"},
+        {"text": "🧠 Сводка", "callback_data": "inbox_summary"},
+    ])
+    rows.append([{"text": "✅ Отметить прочитанным", "callback_data": "inbox_readall"}])
+    return {"inline_keyboard": rows}
 
 
 def _inbox_summarize(items: list[dict]) -> str:
@@ -1557,11 +1613,17 @@ def _inbox_mark_read(api, chat_id: int) -> None:
             done.append("✈️ Telegram: диалоги открыты (пометка частичная)")
     except Exception:
         pass
-    # Viber намеренно не открываем массово: открытие каждого чата может изменить
-    # его прочитанный статус. Пользователь открывает нужный пункт в инбоксе сам.
+    # Остальные desktop/Direct каналы намеренно не открываем пачкой: это либо
+    # меняет состояние чатов, либо API не даёт безопасной bulk-операции.
+    done.append("📸 Direct и 💬 Messenger: массовая пометка недоступна безопасно")
     done.append("💜 Viber: массовая отметка не выполнялась")
     done.append("🔒 Signal: массовая отметка не выполнялась")
-    api.send_message(chat_id, "✅ Отмечено прочитанным:\n" + "\n".join(done) if done else "ℹ️ Ничего не удалось пометить.")
+    _last_inbox.pop(chat_id, None)
+    _last_inbox_filters.pop(chat_id, None)
+    api.send_message(chat_id,
+                     "✅ <b>Инбокс обработан</b>\n━━━━━━━━━━━━━━━━\n" +
+                     "\n".join(f"• {line}" for line in done) +
+                     "\n━━━━━━━━━━━━━━━━\n<i>Откройте «инбокс» для обновлённых карточек.</i>")
 
 
 def _inbox_schedule_cmd(api, chat_id: int, text: str) -> None:
@@ -1756,6 +1818,87 @@ def _handle_sales_lifecycle_intent(api, chat_id: int, text: str) -> bool:
     # если пользователь когда-то добавил в него HTML-символы.
     api.send_message(chat_id, _esc_tg(message)[:3900])
     return True
+
+
+def _send_unified_inbox(api, chat_id: int, text: str = "", filters: dict | None = None) -> None:
+    """Собрать и красиво показать инбокс из одного места."""
+    filters = dict(filters or _parse_inbox_filters(text))
+    api.send_message(chat_id, "⏳ <b>Собираю единый инбокс…</b>\nПочта · TG · Direct · Messenger · Viber · Signal · OLX")
+    items, _summary = _collect_inbox(filters)
+    if not items:
+        api.send_message(chat_id, "📭 <b>Инбокс пуст</b>\nНовых карточек по выбранным каналам нет.")
+        return
+    _last_inbox[chat_id] = items
+    _last_inbox_filters[chat_id] = filters
+    lower = (text or "").casefold()
+    if any(word in lower for word in ("сводк", "резюме", "кратко", "умн")):
+        api.send_message(chat_id, "🧠 Составляю сводку по карточкам…")
+        api.send_message(chat_id, _inbox_summarize(items)[:3900])
+    else:
+        api.send_message(chat_id, _format_inbox(items, filters), reply_markup=_inbox_keyboard(items))
+
+
+def _handle_unified_inbox_intent(api, chat_id: int, text: str) -> bool:
+    """Приоритетный роутер инбокса до Instagram Direct и прочих платформ."""
+    t = " ".join((text or "").casefold().split())
+    if not t:
+        return False
+
+    # Расписание должно перехватываться раньше общего слова «инбокс».
+    if re.match(r"^(присылай|пришли|включи|отключи|выключи|убери)\s+инбокс", t) or \
+       re.match(r"^(включи|отключи)\s+расписание\s+инбокса", t):
+        _inbox_schedule_cmd(api, chat_id, text)
+        return True
+
+    # Пользовательский вариант «отметить все непрочитанные сообщения в инбоксе
+    # прочитанными» раньше ошибочно попадал в обработчик Instagram Direct.
+    mark_read = ((any(stem in t for stem in ("отмет", "пометь", "отмеч")) and "прочитан" in t
+                  and any(word in t for word in ("инбокс", "сообщен", "все", "всё")))
+                 or "всё прочитано" in t or "все прочитаны" in t)
+    if mark_read:
+        _inbox_mark_read(api, chat_id)
+        return True
+
+    m_reply = re.match(r"^(ответь|reply|отв[её]ть)\s+(?:на\s+)?#?(\d+)\s*:?\s*(.+)$", text, re.IGNORECASE)
+    if m_reply:
+        if chat_id not in _last_inbox:
+            api.send_message(chat_id, "ℹ️ Сначала откройте «инбокс», затем выберите номер карточки.")
+            return True
+        idx = int(m_reply.group(2))
+        body = m_reply.group(3).strip()
+        items = _last_inbox.get(chat_id, [])
+        if 1 <= idx <= len(items):
+            _inbox_reply(api, chat_id, items[idx - 1], body)
+        else:
+            api.send_message(chat_id, f"❌ Нет карточки №{idx} в последнем инбоксе.")
+        return True
+
+    if any(phrase in t for phrase in ("озвучь инбокс", "озвучь всё", "голосом инбокс", "прочитай инбокс вслух")):
+        api.send_message(chat_id, "⏳ Собираю карточки для озвучки…")
+        items, _summary = _collect_inbox({})
+        if not items:
+            api.send_message(chat_id, "📭 Инбокс пуст.")
+        else:
+            _last_inbox[chat_id] = items
+            _last_inbox_filters[chat_id] = {}
+            _inbox_voice(api, chat_id, items)
+        return True
+
+    m_search = re.match(r"^(найди во всех|ищи везде|найди везде|поиск по всем)\s*(?:чатах|сообщениях|каналах)?\s*:?\s*(.+)$", text, re.IGNORECASE)
+    if m_search:
+        query = m_search.group(2).strip()
+        if query:
+            api.send_message(chat_id, f"🔍 Ищу «{_esc_tg(query)}» по подключённым каналам…")
+            _inbox_search(api, chat_id, query)
+        else:
+            api.send_message(chat_id, "🔍 Формат: «найди во всех чатах &lt;запрос&gt;»")
+        return True
+
+    inbox_terms = ("инбокс", "inbox", "все сообщения", "всё в одном", "сводка сообщений", "где что новое", "проверь всё")
+    if any(term in t for term in inbox_terms):
+        _send_unified_inbox(api, chat_id, text)
+        return True
+    return False
 
 
 def _handle_account_intent(api, chat_id: int, text: str) -> bool:
@@ -2066,6 +2209,11 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     # Продажи с ТТН должны обрабатываться раньше широких regex-ов аккаунтов,
     # автопланировщика и свободного LLM-чата.
     if _handle_sales_lifecycle_intent(api, chat_id, text):
+        return True
+
+    # Инбокс имеет приоритет над широким детектором Direct: слова «сообщения»
+    # и «прочитанные» не должны неожиданно открывать Instagram.
+    if _handle_unified_inbox_intent(api, chat_id, text):
         return True
 
     ig_words = ("инста", "instagram", "подписчик", "мой профиль в инст", "мой инст",
@@ -5009,6 +5157,9 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
 def _handle_inbox_callback(api: TelegramAPI, chat_id: int, msg_id: int, data: str) -> None:
     """Обработка кнопок инбокса: прочитать пункт / всё прочитано / сводка."""
     items = _last_inbox.get(chat_id, [])
+    if data == "inbox_refresh":
+        _send_unified_inbox(api, chat_id, filters=_last_inbox_filters.get(chat_id, {}))
+        return
     if data == "inbox_readall":
         _inbox_mark_read(api, chat_id)
         return
