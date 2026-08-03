@@ -369,6 +369,9 @@ class LLMBalancer:
             "code": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "huggingface", "gemini", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
             "analysis": ["groq", "cerebras", "github", "gemini", "mistral", "cohere", "together", "nvidia", "huggingface", "openai", "airforce", "openrouter", "local"],
             "general": ["groq", "cerebras", "github", "mistral", "cohere", "together", "nvidia", "sambanova", "gemini", "huggingface", "openai", "airforce", "openrouter", "aimlapi", "deepseek", "zai", "ibm", "local"],
+            # Планировщик автономии (JSON-структурированный вывод) — приоритет на
+            # надёжные модели: groq llama-3.1-8b-instant, затем mistral/gemini/zai.
+            "reasoning": ["groq", "mistral", "zai", "gemini", "cohere", "deepseek", "openrouter", "local"],
         }
 
     def _load_from_env(self):
@@ -481,7 +484,12 @@ class LLMBalancer:
         self._total_requests += 1
 
         if not model:
-            model = os.environ.get("LLM_MODEL", "llama-3.1-8b-instant")
+            # Игнорируем LLM_MODEL, если это плейсхолдер/устаревшая gpt-3.5-turbo,
+            # ради которой балансер гоняет мёртвые openrouter-запросы.
+            _def = os.environ.get("LLM_MODEL", "").strip()
+            if _def in ("", "sk-your-key-here", "gpt-3.5-turbo"):
+                _def = "llama-3.1-8b-instant"
+            model = _def
 
         if os.environ.get("LLM_CACHE", "1") == "1":
             _key = str((system or "", [tuple(sorted(m.items())) for m in messages if isinstance(m, dict) and "role" in m and "content" in m]))
@@ -559,7 +567,21 @@ class LLMBalancer:
                     req_model = try_model
                     if prov_name == "openrouter":
                         if "/" not in try_model:
-                            req_model = "meta-llama/llama-3.3-70b-instruct:free"
+                            # Голое имя (gpt-3.5-turbo и т.п.) → корректный openrouter slug.
+                            # Не льёмся в устаревший :free-модель, от которой OpenRouter
+                            # отдаёт 404 — это генерировало бесполезные мёртвые запросы.
+                            _or_map = {
+                                "gpt-3.5-turbo": "openai/gpt-3.5-turbo",
+                                "gpt-4o-mini": "openai/gpt-4o-mini",
+                                "gpt-4o": "openai/gpt-4o",
+                                "llama-3.1-8b-instant": "meta-llama/llama-3.1-8b-instruct",
+                                "llama-3.3-70b-versatile": "meta-llama/llama-3.3-70b-instruct",
+                            }
+                            req_model = _or_map.get(try_model)
+                            if not req_model:
+                                # Неизвестная модель без префикса — пропускаем openrouter
+                                # (шанс 404 высок), лучше уйти на следующий провайдер.
+                                continue
                     elif prov_name != "local" and try_model not in provider.models:
                         req_model = provider.models[0] if provider.models else try_model
                     payload = {
