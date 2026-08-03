@@ -33,9 +33,17 @@ class BankChromeTwinAdapter(ChromeTwinAdapter):
     home_url = ""
     sms_sender_hint = ""
     login_field_selector = "input[name*='login'], input[name*='phone'], input[type='tel'], input[type='text']"
+    password_field_selector = "input[type='password'], input[name*='pass']"
     code_field_selector = "input[name*='code'], input[name*='otp'], input[placeholder*='код']"
+    submit_button_selector = ("button:has-text('Вхід')", "button:has-text('Далі')",
+                              "button:has-text('Продовжити')", "button[type='submit']",
+                              "button:has-text('Увійти')", "button:has-text('Увійти в систему')")
     balance_selectors: list[str] = []
     txn_row_selector = ""
+    # Бизнес-вход часто требует пароль после телефона.
+    needs_password = False
+    # Текст логина для подсказки, если не передан.
+    login_prompt_text = "логин"
 
     def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config or {})
@@ -73,8 +81,21 @@ class BankChromeTwinAdapter(ChromeTwinAdapter):
             pass
         return True
 
-    async def login(self, login_text: str = "", wait_code_sec: int = 25) -> dict:
-        """Войти в интернет-банк: ввести логин, дождаться SMS, ввести код."""
+    async def _click_submit(self, page) -> bool:
+        """Нажать кнопку продолжения/входа."""
+        for sel_btn in self.submit_button_selector:
+            try:
+                b = page.locator(sel_btn).first
+                if await b.count():
+                    await b.click(timeout=2500)
+                    return True
+            except Exception:
+                continue
+        return False
+
+    async def login(self, login_text: str = "", password: str = "",
+                    wait_code_sec: int = 25) -> dict:
+        """Войти в интернет-банк: логин (+пароль для бизнеса), SMS-код."""
         page = await self._ensure_browser()
         try:
             if self.login_url:
@@ -100,18 +121,21 @@ class BankChromeTwinAdapter(ChromeTwinAdapter):
             if not filled:
                 return {"status": "need_manual",
                         "message": f"{self.bank_name}: войдите вручную в открытом браузере и подтвердите"}
-            # нажать кнопку продолжения (Вхід / Далі / Продовжити), если есть
-            for sel_btn in ("button:has-text('Вхід')", "button:has-text('Далі')",
-                            "button:has-text('Продовжити')", "button[type='submit']",
-                            "button:has-text('Увійти')"):
-                try:
-                    b = page.locator(sel_btn).first
-                    if await b.count():
-                        await b.click(timeout=2500)
-                        break
-                except Exception:
-                    continue
-            await page.wait_for_timeout(3000)
+            await self._click_submit(page)
+            await page.wait_for_timeout(2500)
+            # пароль (для бизнес-входа, если требуется)
+            if self.needs_password and password:
+                for sel in [self.password_field_selector]:
+                    try:
+                        box = page.locator(sel).first
+                        if await box.count():
+                            await box.click(timeout=3000)
+                            await box.fill(password)
+                            break
+                    except Exception:
+                        continue
+                await self._click_submit(page)
+                await page.wait_for_timeout(2500)
             # ждём SMS и вводим код
             code = await self._read_sms_code()
             if not code:

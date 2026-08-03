@@ -23,6 +23,8 @@ from .viber_adapter import ViberAdapter
 from .whatsapp_adapter import WhatsAppAdapter
 from .abank_chrome_twin_adapter import ABankChromeTwinAdapter
 from .privat_chrome_twin_adapter import PrivatChromeTwinAdapter
+from .abank_business_chrome_twin_adapter import ABankBusinessChromeTwinAdapter
+from .privat_business_chrome_twin_adapter import PrivatBusinessChromeTwinAdapter
 
 
 class PlatformRegistry:
@@ -51,6 +53,8 @@ class PlatformRegistry:
             "tiktok_shop": TiktokShopAdapter,
             "abank": ABankChromeTwinAdapter,
             "privat": PrivatChromeTwinAdapter,
+            "abank_biz": ABankBusinessChromeTwinAdapter,
+            "privat_biz": PrivatBusinessChromeTwinAdapter,
         }
 
     def register_adapter(self, platform: str, config: dict | None = None):

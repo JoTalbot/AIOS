@@ -1,0 +1,18 @@
+name: privat_biz
+android_package: ""
+agent_module: aios_core.platforms.privat_business_chrome_twin_adapter
+storage_class: null
+adb_class: null
+default_locale: uk-UA
+description: "Приват24 для бізнесу — интернет-банк для ФОП/юрлиц (next.privat24.ua, роль Бізнес). Вход: номер карты + SMS-2FA/push. Чтение баланса/операций; переводы только с подтверждения владельца."
+extras:
+  bank:
+    login_url: "https://www.privat24.ua/"
+    home_url: "https://next.privat24.ua/"
+    sms_sender_hint: "PrivatBank"
+  compliance:
+    autopost_allowed: false
+    messenger: false
+    collector: false
+    actions_per_hour: 60
+    note: "Банк-бизнес: read-only авто; переводы/платежи — только подтверждение владельца. Усиленная аутентификация (КЕП/push)."

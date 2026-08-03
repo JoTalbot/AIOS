@@ -1631,13 +1631,26 @@ async def novaposhta_my_ttns() -> dict:
 # Банки (A-Bank, Приват24) — Chrome Twin, SMS-2FA
 # --------------------------------------------------------------------------
 
+def _bank_adapter_for(bank: str):
+    """Вернуть класс банк-адаптера по имени."""
+    from aios_core.platforms.abank_chrome_twin_adapter import ABankChromeTwinAdapter
+    from aios_core.platforms.privat_chrome_twin_adapter import PrivatChromeTwinAdapter
+    from aios_core.platforms.abank_business_chrome_twin_adapter import ABankBusinessChromeTwinAdapter
+    from aios_core.platforms.privat_business_chrome_twin_adapter import PrivatBusinessChromeTwinAdapter
+    return {
+        "abank": ABankChromeTwinAdapter,
+        "privat": PrivatChromeTwinAdapter,
+        "abank_biz": ABankBusinessChromeTwinAdapter,
+        "privat_biz": PrivatBusinessChromeTwinAdapter,
+    }.get(bank)
+
+
 async def _bank_call(bank: str, method: str, *args) -> dict:
-    """Универсальный вызов банк-адаптера."""
+    """Универсальный вызов банк-адаптера (физ и бизнес)."""
     try:
-        if bank == "abank":
-            from aios_core.platforms.abank_chrome_twin_adapter import ABankChromeTwinAdapter as _A
-        else:
-            from aios_core.platforms.privat_chrome_twin_adapter import PrivatChromeTwinAdapter as _A
+        _A = _bank_adapter_for(bank)
+        if _A is None:
+            return {"status": "error", "error": f"Неизвестный банк: {bank}"}
         a = _A()
         try:
             return await getattr(a, method)(*args)
@@ -1655,8 +1668,8 @@ async def bank_transactions(bank: str) -> dict:
     return await _bank_call(bank, "get_transactions")
 
 
-async def bank_login(bank: str, login_text: str = "") -> dict:
-    return await _bank_call(bank, "login", login_text)
+async def bank_login(bank: str, login_text: str = "", password: str = "") -> dict:
+    return await _bank_call(bank, "login", login_text, password)
 
 
 async def bank_transfer(bank: str, recipient: str, amount: str, note: str = "", confirm: bool = False) -> dict:
@@ -2121,13 +2134,14 @@ def main():
 
 
     # Банки
-    for _bn in ("abank", "privat"):
+    for _bn in ("abank", "privat", "abank_biz", "privat_biz"):
         bp = sub.add_parser(_bn)
         bpg = bp.add_subparsers(dest="action", required=True)
         bpg.add_parser("balance")
         bpg.add_parser("transactions")
         bpl = bpg.add_parser("login")
         bpl.add_argument("login_text", nargs="?", default="")
+        bpl.add_argument("--password", default="")
         bpt = bpg.add_parser("transfer")
         bpt.add_argument("recipient")
         bpt.add_argument("amount")
@@ -2271,13 +2285,13 @@ def main():
                 out(tg_send(args.ref, args.text, args.confirm))
             elif args.action == "bot":
                 out(tg_bot(args.bot, args.command, args.confirm))
-        elif args.account in ("abank", "privat"):
+        elif args.account in ("abank", "privat", "abank_biz", "privat_biz"):
             if args.action == "balance":
                 out(asyncio.run(bank_balance(args.account)))
             elif args.action == "transactions":
                 out(asyncio.run(bank_transactions(args.account)))
             elif args.action == "login":
-                out(asyncio.run(bank_login(args.account, args.login_text)))
+                out(asyncio.run(bank_login(args.account, args.login_text, args.password)))
             elif args.action == "transfer":
                 out(asyncio.run(bank_transfer(args.account, args.recipient, args.amount, args.note, args.confirm)))
         elif args.account == "novaposhta":
