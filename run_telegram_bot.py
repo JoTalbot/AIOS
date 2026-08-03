@@ -36,6 +36,26 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
+
+
+def _smart_model() -> str:
+    """Умная модель для чата владельца с авто-переключением по нагрузке.
+
+    Пока клиентов/сессий мало — gemini-2.5-pro (максимальное качество);
+    при большом потоке — gemini-2.5-flash (дешевле). Явный выбор через
+    AIOS_PLANNER_MODEL переопределяет всё.
+    """
+    override = os.environ.get("AIOS_PLANNER_MODEL", "").strip()
+    if override:
+        return override
+    threshold = int(os.environ.get("AIOS_SMART_MODEL_THRESHOLD", "10") or 10)
+    try:
+        _sdir = PROJECT_ROOT / "data" / "autonomy_sessions"
+        active = len(list(_sdir.glob("*.json"))) if _sdir.exists() else 0
+    except Exception:
+        active = 0
+    return "gemini-2.5-flash" if active >= threshold else "gemini-2.5-pro"
+
 sys.path.insert(0, str(PROJECT_ROOT))
 
 _env_path = PROJECT_ROOT / ".env"
@@ -846,7 +866,7 @@ def _llm_extract_json(prompt: str) -> dict:
     if _b is not None:
         try:
             response = _b.chat([{"role": "user", "content": prompt}],
-                               model=os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick"),
+                               model=_smart_model(),
                                system="You extract JSON only.", max_tokens=400, temperature=0.0,
                                task_type="chat")
         except Exception:
@@ -1314,7 +1334,7 @@ def _llm_chat_direct(prompt: str) -> str:
     if _b is not None:
         try:
             r = _b.chat([{"role": "user", "content": prompt}],
-                        model=os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick"),
+                        model=_smart_model(),
                         system="Ты краткий ассистент инбокса. Отвечай на русском.",
                         max_tokens=400, temperature=0.3, task_type="chat")
             if r:
@@ -4907,7 +4927,7 @@ def _llm_chat(chat_id: int, user_text: str) -> str:
             try:
                 response = _balancer.chat(
                     messages[1:],
-                    model=_os.environ.get("LLM_MODEL", "meta-llama/llama-4-maverick"),
+                    model=_smart_model(),
                     system=system,
                     max_tokens=2000,
                     temperature=0.3,
