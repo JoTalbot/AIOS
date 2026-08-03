@@ -104,8 +104,19 @@ class Executor:
                 msg += " · объявление снято"
             else:
                 msg += f" · объявление: {ad_res.get('error', 'не снято')}"
+        # опциональное напоминание в календаре (AIOS_SALE_CALENDAR=1)
+        cal_res = None
+        import os as _os
+        if _os.environ.get("AIOS_SALE_CALENDAR", "0") == "1":
+            cal_res = _run_ac(["google", "calendar_add", "--title", f"Продажа: {item}",
+                               "--desc", f"Продано {item} за {amount} грн",
+                               "--confirm"], timeout=170)
+            if cal_res.get("status") == "ok":
+                msg += " · напоминание в календарь"
+            else:
+                msg += f" · календарь: {cal_res.get('error', '?')}"
         return {"status": res.get("status", "error"), "message": msg,
-                "entry": res.get("entry"), "inventory": inv_result, "ad": ad_res}
+                "entry": res.get("entry"), "inventory": inv_result, "ad": ad_res, "calendar": cal_res}
 
     def _do_log_expense(self, p, platform, chat):
         desc = str(p.get("desc") or "").strip()

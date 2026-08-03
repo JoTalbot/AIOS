@@ -224,3 +224,32 @@ groups:
       component: security
     annotations:
       summary: "⚠️ Найден XSS"
+
+  # ============ AIOS AUTONOMY ALERTS ============
+  - alert: AutonomyInjectionAttack
+    expr: sum(aios_autonomy_decisions_total{decision="INJECTION"}) > 3
+    for: 10m
+    labels:
+      severity: warning
+      component: autonomy
+    annotations:
+      summary: "🚨 Много попыток промпт-инъекции"
+      description: "Обнаружено {{ $value }} попыток промпт-инъекции за 10м. Кто-то пытается взломать автономию."
+  - alert: AutonomyManyBelowFloor
+    expr: sum(aios_autonomy_decisions_total{decision="ESCALATE"}) > 10
+    for: 30m
+    labels:
+      severity: warning
+      component: autonomy
+    annotations:
+      summary: "⚠️ Много эскалаций по автономии"
+      description: "{{ $value }} эскалаций за 30м (торг ниже пола, риск-клиенты). Проверьте поведение покупателей."
+  - alert: AutonomyLLMDown
+    expr: aios_autonomy_approvals_pending > 20
+    for: 30m
+    labels:
+      severity: warning
+      component: autonomy
+    annotations:
+      summary: "⚠️ Много ожидающих решений автономии"
+      description: "{{ $value }} approval-запросов ждут владельца. Примите решения или проверьте бота."
