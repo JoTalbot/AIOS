@@ -224,11 +224,6 @@ def main() -> int:
         if not contact or not last:
             continue
 
-        # дедупликация через сессию автономии
-        sess = core.state.get("olx", contact)
-        if sess.last_seen_msg == f"{contact}:{last}":
-            continue  # уже отвечали
-
         # прочитать переписку, чтобы понять контекст
         conv = read_olx(contact)
         msgs = conv.get("messages", []) or []
@@ -241,6 +236,12 @@ def main() -> int:
                 break
         if not last_theirs:
             continue
+
+        # дедупликация: если последнее сообщение клиента уже обработано — пропуск.
+        # Используем текст сообщения КЛИЕНТА, а не превью (превью может быть нашим ответом).
+        sess = core.state.get("olx", contact)
+        if sess.last_seen_msg == f"{contact}:{last_theirs}":
+            continue  # уже отвечали на это сообщение клиента
 
         detected = _detect_item(last_theirs)
         outcome = core.process_customer(
@@ -256,6 +257,14 @@ def main() -> int:
                 if res.get("status") in ("ok", "sent"):
                     replied += 1
                     actions_summary.append(f"✅ {contact}: {reply_text[:60]}")
+                    # пометить, что на это сообщение клиента уже ответили
+                    # (на случай, если ручная отправка/другой процесс обошёл note_message)
+                    try:
+                        s2 = core.state.get("olx", contact)
+                        s2.data["last_seen_msg"] = f"{contact}:{last_theirs}"
+                        core.state.save(s2)
+                    except Exception:
+                        pass
                 else:
                     # не отправилось после ретраев — сохранить и уведомить с кнопкой
                     rid = _save_pending_reply(contact, reply_text)
