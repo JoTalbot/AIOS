@@ -1,12 +1,12 @@
 [Unit]
-Description=AIOS Chrome VNC (Messages, OLX, WhatsApp Web), CDP 9222
+Description=AIOS Chrome VNC (Messages Web + OLX), CDP 9222
 After=network.target
 
 [Service]
 Type=simple
 Environment=DISPLAY=:1
 Environment=XAUTHORITY=/root/.Xauthority
-ExecStart=/usr/bin/google-chrome-stable --no-sandbox --disable-gpu --remote-debugging-port=9222 --user-data-dir=/root/AIOS/data/chrome_twin/default --no-first-run --no-default-browser-check --disable-infobars --disable-dev-shm-usage https://messages.google.com/web/conversations https://web.whatsapp.com
+ExecStart=/usr/bin/google-chrome-stable --no-sandbox --disable-gpu --remote-debugging-port=9222 --user-data-dir=/root/AIOS/data/chrome_twin/default --no-first-run --no-default-browser-check --disable-infobars --disable-dev-shm-usage https://messages.google.com/web/conversations
 Restart=on-failure
 RestartSec=5
 
