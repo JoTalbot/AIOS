@@ -1650,6 +1650,28 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 else:
                     api.send_message(chat_id, f"❌ {data.get('error', st)}")
                 return True
+            if kind == "olx_delete":
+                d = pend["data"]
+                data = _run_account_control(["olx", "delete", d["ad_id"], "--confirm"])
+                st = data.get("status")
+                if st == "deleted":
+                    api.send_message(chat_id, f"🗑 Объявление <b>{d['ad_id']}</b> удалено с OLX.")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
+            if kind == "olx_edit":
+                d = pend["data"]
+                data = _run_account_control(["olx", "edit", d["ad_id"],
+                                             "--title", d.get("title", ""),
+                                             "--desc", d.get("description", ""),
+                                             "--price", d.get("price", ""),
+                                             "--confirm"])
+                st = data.get("status")
+                if st == "edited":
+                    api.send_message(chat_id, f"✅ Объявление <b>{d['ad_id']}</b> отредактировано.")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
             if kind == "ig_comment_reply":
                 d = pend["data"]
                 data = _run_account_control(["instagram", "comment_reply", d["code"], d["text"], "--confirm"])
@@ -1822,7 +1844,10 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                    "подтверди телефон олх", "подтверди телефон olx", "подтвердить телефон олх",
                    "подтверждение телефона олх", "опубликуй это объявление",
                    "опубликуй объявление на олх", "публикуй на олх", "создай на олх",
-                   "выложи на олх")
+                   "выложи на олх",
+                   "удали объявление", "удалить объявление", "сними объявление",
+                   "отредактируй объявление", "редактируй объявление", "измени объявление",
+                   "обнови объявление", "мои объявления", "список объявлений")
     is_other = any(w in t for w in other_words)
     if not is_ig and not is_g and not is_other and not tg_words:
         return False
@@ -2668,6 +2693,64 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                                              "caption": "🛒 Объявления OLX"}, "")
         else:
             api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+        return True
+
+    # ---- Удаление/редактирование объявлений OLX ----
+    m_del = re.match(r"^(удали объявление|удалить объявление|удали|сними объявление|снять объявление)\s*(?:№\s*)?(\d{5,12})\b", text, re.IGNORECASE)
+    if m_del:
+        ad_id = m_del.group(2)
+        _pending_confirm[chat_id] = {"kind": "olx_delete", "data": {"ad_id": ad_id}}
+        api.send_message(chat_id, f"🗑 Удалить объявление <b>{ad_id}</b> с OLX?\n«да» / «нет»")
+        return True
+
+    m_edit = re.match(r"^(отредактируй объявление|редактируй объявление|измени объявление|обнови объявление)\s*(?:№\s*)?(\d{5,12})\b\s*:?\s*(.*)$", text, re.IGNORECASE)
+    if m_edit:
+        ad_id = m_edit.group(2)
+        edit_spec = m_edit.group(3).strip()
+        # парсим: «цена 1500», «заголовок …», «описание …»
+        title = description = price = ""
+        m_p = re.search(r"(?:цена|ціна)\s+(\d{2,7})", edit_spec, re.IGNORECASE)
+        if m_p:
+            price = m_p.group(1)
+        m_t = re.search(r"(?:заголовок|название|назва)\s*[:—-]\s*(.+)", edit_spec, re.IGNORECASE)
+        if m_t:
+            title = m_t.group(1).strip().split(",")[0][:150]
+        m_d = re.search(r"(?:описание|опис)\s*[:—-]\s*(.+)", edit_spec, re.IGNORECASE)
+        if m_d:
+            description = m_d.group(1).strip()
+        if not (title or description or price):
+            api.send_message(chat_id, "📝 Формат: «отредактируй объявление <id>: цена 1500, заголовок: …»\n"
+                                      "или «отредактируй объявление <id>: описание: …»")
+            return True
+        _pending_confirm[chat_id] = {"kind": "olx_edit",
+                                     "data": {"ad_id": ad_id, "title": title,
+                                              "description": description, "price": price}}
+        api.send_message(chat_id, f"📝 Отредактировать объявление <b>{ad_id}</b>:\n"
+                                  f"{'Цена: ' + price + chr(10) if price else ''}"
+                                  f"{'Заголовок: ' + title + chr(10) if title else ''}"
+                                  f"{'Описание: ' + description[:80] if description else ''}"
+                                  f"\n\n«да» / «нет»")
+        return True
+
+    if any(w in t for w in ("мои объявления", "мои объявлени", "список объявлений",
+                            "какие у меня объявления")):
+        import subprocess as _sp
+        api.send_message(chat_id, "⏳ Загружаю мои объявления…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_account_control.py"),
+                     "olx", "my_ads"], capture_output=True, text=True, timeout=90, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": "?"}
+        if res.get("status") == "ok" and res.get("ads"):
+            lines = ["🛒 <b>Мои объявления OLX:</b>"]
+            for a in res["ads"][:15]:
+                lines.append(f"• <b>{_esc_tg(a.get('title', '?'))}</b> — {a.get('price', '?')} грн · id {a.get('id')}")
+            lines.append("\nУдалить: «удали объявление <id>» · Редактировать: «отредактируй объявление <id>: цена 1500»")
+            api.send_message(chat_id, "\n".join(lines)[:3900])
+        else:
+            api.send_message(chat_id, "🛒 Не удалось получить список (или объявлений нет).\n"
+                                      "Удалить можно: «удали объявление <id>» (id виден после публикации)")
         return True
 
     # ---- Подтверждение телефона OLX + публикация ----

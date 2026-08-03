@@ -382,6 +382,181 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
             print(f"Collect my ads failed: {e}")
             return []
 
+    async def find_my_ads_by_search(self, titles: list[str], limit: int = 20) -> List[Dict[str, Any]]:
+        """Найти свои объявления через поиск на сайте (по названию) и проверить владение."""
+        import urllib.parse as _up
+        page = await self._ensure_browser()
+        ads = []
+        for title in titles[:limit]:
+            try:
+                q = _up.quote(title)
+                await page.goto(f"https://www.olx.ua/uk/search/?q={q}",
+                                wait_until="domcontentloaded", timeout=30000)
+                await page.wait_for_timeout(5000)
+                links = await page.eval_on_selector_all(
+                    "a[href*='obyavlenie']", "els => els.map(e=>e.getAttribute('href'))")
+                for l in links or []:
+                    m = __import__('re').search(r"ID([A-Za-z0-9]+)", l or "")
+                    slug = (l or "").split("/")[-1]
+                    if m and title.lower().split() and any(w.lower() in slug.lower() for w in title.lower().split()[:3]):
+                        ads.append({"id": m.group(1), "url": l, "title": title})
+                        break
+            except Exception:
+                continue
+        await self._log_action("olx_find_ads", {"titles": titles}, {"count": len(ads)})
+        return ads
+
+    async def list_my_ads(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """Список моих объявлений: перебираем известные id (из публикаций) + пробуем кабинет."""
+        page = await self._ensure_browser()
+        await self._route_olx_fm(page)
+        # известные id объявлений из истории публикаций
+        ads = []
+        try:
+            from pathlib import Path as _P
+            hist = _P("data/olx_published.json")
+            if hist.exists():
+                import json as _j
+                published = _j.loads(hist.read_text(encoding="utf-8"))
+                for p in published[-limit:]:
+                    ads.append({"id": p.get("ad_id"), "title": p.get("title", ""),
+                                "price": p.get("price", ""), "published_at": p.get("ts", "")})
+        except Exception:
+            pass
+        # кабинет: страница объявлений
+        try:
+            await page.goto("https://www.olx.ua/uk/myaccount/announcements/",
+                            wait_until="domcontentloaded", timeout=20000)
+            await page.wait_for_timeout(5000)
+            body = await page.inner_text("body")
+            if "Сторінку не знайдено" not in body:
+                # парсим карточки
+                cards = await page.eval_on_selector_all(
+                    "a[href*='ID'], [data-testid*='ad']",
+                    "els => els.map(e => ({href: e.getAttribute('href')||'', text: (e.textContent||'').trim().slice(0,80)}))")
+                for c in cards[:limit]:
+                    m = __import__('re').search(r"ID([A-Za-z0-9]+)", c.get("href", ""))
+                    ads.append({"id": m.group(1) if m else "?", "title": c.get("text", ""), "url": c.get("href", "")})
+        except Exception:
+            pass
+        await self._log_action("olx_list_my_ads", {}, {"count": len(ads)})
+        return ads
+
+    async def delete_ad(self, ad_id: str, confirm: bool) -> Dict[str, Any]:
+        """Удалить объявление по id (страница редактирования -> кнопка Видалити)."""
+        if not confirm:
+            return {"status": "need_confirm", "action": "olx_delete", "ad_id": ad_id}
+        page = await self._ensure_browser()
+        await self._route_olx_fm(page)
+        try:
+            await page.goto(f"https://www.olx.ua/uk/editing/{ad_id}/", wait_until="domcontentloaded", timeout=25000)
+            await page.wait_for_timeout(8000)
+            body = await page.inner_text("body")
+            if any(k in body.lower() for k in ("не знайдено", "недоступн", "not found")):
+                return {"status": "error", "error": f"Объявление {ad_id} не найдено"}
+            # закрыть модалки
+            for name in ("Ні, почати заново", "Закрити"):
+                try:
+                    b = page.get_by_role("button", name=name).first
+                    if await b.count():
+                        await b.click(timeout=3000)
+                        await page.wait_for_timeout(1500)
+                except Exception:
+                    pass
+            # кнопка «Видалити»
+            clicked = False
+            for sel in ("text=Видалити", "button:has-text('Видалити')", "text=Delete",
+                        "[data-testid*='delete']", "text=Видалити оголошення"):
+                try:
+                    el = page.locator(sel).first
+                    if await el.count():
+                        await el.click(force=True, timeout=4000)
+                        await page.wait_for_timeout(2500)
+                        clicked = True
+                        break
+                except Exception:
+                    continue
+            if not clicked:
+                await page.screenshot(path="/tmp/olx_delete_no_btn.png")
+                return {"status": "error", "error": "Кнопка «Видалити» не найдена"}
+            # подтверждение
+            for name in ("Так, видалити", "Видалити", "Підтвердити", "OK", "Так"):
+                try:
+                    b = page.get_by_role("button", name=name).first
+                    if await b.count():
+                        await b.click(timeout=3000)
+                        await page.wait_for_timeout(2500)
+                        break
+                except Exception:
+                    continue
+            await page.wait_for_timeout(2000)
+            await page.screenshot(path="/tmp/olx_deleted.png")
+            return {"status": "deleted", "ad_id": ad_id}
+        except Exception as e:
+            return {"status": "error", "error": str(e)[:300]}
+
+    async def edit_ad(self, ad_id: str, title: str = "", description: str = "", price: str = "",
+                      confirm: bool = False) -> Dict[str, Any]:
+        """Редактировать объявление (страница /uk/editing/ID/)."""
+        page = await self._ensure_browser()
+        await self._route_olx_fm(page)
+        try:
+            await page.goto(f"https://www.olx.ua/uk/editing/{ad_id}/", wait_until="domcontentloaded", timeout=25000)
+            await page.wait_for_timeout(9000)
+            body = await page.inner_text("body")
+            if any(k in body.lower() for k in ("не знайдено", "недоступн")):
+                return {"status": "error", "error": f"Объявление {ad_id} не найдено"}
+            for name in ("Ні, почати заново", "Закрити"):
+                try:
+                    b = page.get_by_role("button", name=name).first
+                    if await b.count():
+                        await b.click(timeout=3000)
+                        await page.wait_for_timeout(1500)
+                except Exception:
+                    pass
+            if not confirm:
+                await page.screenshot(path="/tmp/olx_edit_preview.png")
+                return {"status": "need_confirm", "action": "olx_edit", "ad_id": ad_id,
+                        "title": title, "description": description, "price": price,
+                        "screenshot": "/tmp/olx_edit_preview.png"}
+            # Заполнить поля (если заданы)
+            if title:
+                try:
+                    ti = page.locator("input[placeholder*='напр.']").first
+                    if await ti.count():
+                        await ti.fill(title[:150])
+                except Exception:
+                    pass
+            if description:
+                try:
+                    d = page.locator("textarea[placeholder*='Подумайте']").first
+                    if await d.count():
+                        await d.fill(description)
+                except Exception:
+                    pass
+            if price:
+                try:
+                    p = page.locator("input[placeholder*='цін'], input[placeholder*='цен']").first
+                    if await p.count():
+                        await p.fill(str(price))
+                except Exception:
+                    pass
+            await page.wait_for_timeout(1000)
+            # Сохранить
+            for name in ("Зберегти", "Сохранить", "Опублікувати", "Продовжити"):
+                try:
+                    b = page.get_by_role("button", name=name).first
+                    if await b.count():
+                        await b.click(timeout=4000)
+                        await page.wait_for_timeout(3000)
+                        break
+                except Exception:
+                    continue
+            await page.screenshot(path="/tmp/olx_edited.png")
+            return {"status": "edited", "ad_id": ad_id, "title": title, "price": price}
+        except Exception as e:
+            return {"status": "error", "error": str(e)[:300]}
+
     async def _route_olx_fm(self, page):
         """Перенаправляет olx.pl/fm/* -> olx.ua/fm/* (обход 403/ORB для датацентровых IP)."""
         async def _handler(route):

@@ -1341,6 +1341,46 @@ def viber_send(chat: str, text: str, confirm: bool) -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
+async def olx_delete_ad(ad_id: str, confirm: bool) -> dict:
+    """Удалить объявление OLX по id."""
+    try:
+        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+        a = OLXChromeTwinAdapter(config={"olx_login": "959052288"})
+        try:
+            return await a.delete_ad(ad_id, confirm)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def olx_edit_ad(ad_id: str, title: str, description: str, price: str, confirm: bool) -> dict:
+    """Редактировать объявление OLX."""
+    try:
+        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+        a = OLXChromeTwinAdapter(config={"olx_login": "959052288"})
+        try:
+            return await a.edit_ad(ad_id, title, description, price, confirm)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def olx_my_ads(limit: int = 20) -> dict:
+    """Список моих объявлений."""
+    try:
+        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+        a = OLXChromeTwinAdapter(config={"olx_login": "959052288"})
+        try:
+            ads = await a.list_my_ads(limit)
+            return {"status": "ok", "ads": ads, "count": len(ads)}
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
 async def prom_profile() -> dict:
     """Prom.ua: информация аккаунта (Chrome Twin)."""
     try:
@@ -1776,6 +1816,17 @@ def main():
     olx = sub.add_parser("olx")
     olxg = olx.add_subparsers(dest="action", required=True)
     olxg.add_parser("profile")
+    olxad = olxg.add_parser("delete")
+    olxad.add_argument("ad_id")
+    olxad.add_argument("--confirm", action="store_true")
+    olxed = olxg.add_parser("edit")
+    olxed.add_argument("ad_id")
+    olxed.add_argument("--title", default="")
+    olxed.add_argument("--desc", default="")
+    olxed.add_argument("--price", default="")
+    olxed.add_argument("--confirm", action="store_true")
+    olxmy = olxg.add_parser("my_ads")
+    olxmy.add_argument("--limit", type=int, default=20)
 
     vb = sub.add_parser("viber")
     vbg = vb.add_subparsers(dest="action", required=True)
@@ -1908,6 +1959,12 @@ def main():
         elif args.account == "olx":
             if args.action == "profile":
                 out(asyncio.run(olx_profile()))
+            elif args.action == "delete":
+                out(asyncio.run(olx_delete_ad(args.ad_id, args.confirm)))
+            elif args.action == "edit":
+                out(asyncio.run(olx_edit_ad(args.ad_id, args.title, args.desc, args.price, args.confirm)))
+            elif args.action == "my_ads":
+                out(asyncio.run(olx_my_ads(args.limit)))
         elif args.account == "viber":
             if args.action == "chats":
                 out(viber_chats())
