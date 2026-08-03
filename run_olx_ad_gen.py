@@ -112,20 +112,21 @@ def create_ad(part: str, confirm: bool) -> dict:
         return gen
     if not confirm:
         return {"status": "need_confirm", "action": "olx_create", **gen}
-    try:
-        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
-        a = OLXChromeTwinAdapter(config={"olx_login": _env("OLX_LOGIN") or "959052288"})
         try:
-            r = asyncio.run(a.create_ad(
-                title=gen.get("title", ""),
-                description=gen.get("description", ""),
-                price=str(gen.get("price", "")),
-            ))
-            return r
-        finally:
-            asyncio.run(a.close())
-    except Exception as e:
-        return {"status": "error", "error": str(e)[:300]}
+            from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+            a = OLXChromeTwinAdapter(config={"olx_login": _env("OLX_LOGIN") or "959052288"})
+            try:
+                r = asyncio.run(a.create_ad(
+                    title=gen.get("title", ""),
+                    description=gen.get("description", ""),
+                    price=str(gen.get("price", "")),
+                    publish=confirm,
+                ))
+                return r
+            finally:
+                asyncio.run(a.close())
+        except Exception as e:
+            return {"status": "error", "error": str(e)[:300]}
 
 
 def main() -> None:
