@@ -233,7 +233,67 @@ class Executor:
 
     # ---- Ручные (не должны доходить, но на всякий случай) ----
     def _do_create_ttn(self, p, platform, chat):
-        return {"status": "manual", "error": "Создание ТТН — только вручную (подтверждение владельца)"}
+        # Достигает сюда ТОЛЬКО после подтверждения владельца (guardrails MANUAL→approve).
+        # Пытаемся заполнить недостающие данные из последней pending-сделки.
+        item = str(p.get("item") or p.get("sku") or "").strip()
+        recipient = str(p.get("recipient") or "").strip()
+        address = str(p.get("address") or "").strip()
+        amount = p.get("amount")
+
+        if not recipient or not address:
+            # подтянуть из последней pending-сделки
+            try:
+                ps_path = Path(self.root) / "data" / "pending_sales.json"
+                if ps_path.exists():
+                    import json as _j
+                    sales = _j.loads(ps_path.read_text(encoding="utf-8"))
+                    if sales:
+                        last = sales[-1]
+                        item = item or str(last.get("item", "")).strip()
+                        amount = amount if amount is not None else last.get("amount")
+                        delivery = str(last.get("delivery", ""))
+                        # delivery может содержать город и отделение
+                        if "відділення" in delivery.lower() or "отделение" in delivery.lower() or "№" in delivery:
+                            address = address or delivery
+            except Exception:
+                pass
+
+        if not item or not address:
+            return {"status": "error",
+                    "error": "Недостаточно данных для ТТН: нужны item и address (отделение). "
+                             "Укажите: «создай ттн <товар> <цена> <ФИО> <тел> <город> <отделение>»"}
+        try:
+            import subprocess as _sp
+            amount_s = str(amount) if amount is not None else ""
+            cmd = [PY, str(self.root / "run_ttn.py"), "create", item, amount_s,
+                   recipient or "Клієнт", "", address, "--confirm"]
+            r = _sp.run(cmd, capture_output=True, text=True, timeout=120, cwd=str(self.root))
+            out = (r.stdout or "").strip()
+            start = out.find("{")
+            if start >= 0:
+                res = json.loads(out[start:])
+                if res.get("status") == "ok":
+                    # отметить сделку как отправленную
+                    self._mark_sale_sent(item)
+                return res
+            return {"status": "error", "error": out[-300:] or "run_ttn не вернул JSON"}
+        except Exception as e:
+            return {"status": "error", "error": str(e)[:200]}
+
+    def _mark_sale_sent(self, item: str) -> None:
+        """Пометить последнюю pending-сделку по товару как sent."""
+        try:
+            ps_path = Path(self.root) / "data" / "pending_sales.json"
+            if not ps_path.exists():
+                return
+            import json as _j
+            sales = _j.loads(ps_path.read_text(encoding="utf-8"))
+            for s in sales:
+                if s.get("item") == item and s.get("status") == "pending":
+                    s["status"] = "sent"
+            ps_path.write_text(_j.dumps(sales, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
 
     def _do_send_money(self, p, platform, chat):
         return {"status": "manual", "error": "Денежная операция — только вручную"}
