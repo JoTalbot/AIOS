@@ -103,6 +103,15 @@ def _android_device() -> dict:
     return _read_json(ROOT / "data" / "android_gateway" / "health.json")
 
 
+def _android_lead_summary() -> dict:
+    """Metadata-only count of potential messenger contacts for the dashboard."""
+    try:
+        from aios_core.android_leads import AndroidLeadQueue
+        return AndroidLeadQueue(ROOT).summary()
+    except Exception:
+        return {"status": "error", "pending": 0, "by_source": {}}
+
+
 def _customer_crm() -> dict:
     try:
         from aios_core.crm import CRMStore
@@ -229,6 +238,11 @@ def build() -> None:
                          f"геолокация: {'да' if (companion.get('permissions') or {}).get('location') else 'нет'}").classes("text-sm")
         else:
             ui.label("Телефон ещё не зарегистрирован").classes("text-sm text-gray-500")
+        leads = _android_lead_summary()
+        pending_leads = int(leads.get("pending") or 0)
+        lead_sources = " · ".join(f"{source}: {count}" for source, count in (leads.get("by_source") or {}).items())
+        ui.label(f"Потенциальные лиды телефона: {pending_leads}" + (f" · {lead_sources}" if lead_sources else "")).classes(
+            "text-sm text-amber-700" if pending_leads else "text-sm text-gray-500")
 
     # Посылки Новой Пошты
     parcels = _np_parcels()

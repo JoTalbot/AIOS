@@ -89,7 +89,18 @@ def collect() -> dict:
     existing = existing[-MAX_ITEMS:]
     _write(DATA, existing)
     _write(STATE, {"known": list(known)[-500:], "checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
-    return {"status": "ok", "added": added, "total": len(existing)}
+    # The lead queue stores only notification identity/source/timestamp — never
+    # title, preview or sender — and does not create CRM customers automatically.
+    lead_result = {"status": "skipped", "added": 0}
+    try:
+        from aios_core.android_leads import AndroidLeadQueue
+        lead_result = AndroidLeadQueue(ROOT).sync()
+    except Exception:
+        # Notification collection must remain available if an optional queue
+        # maintenance task cannot run.
+        pass
+    return {"status": "ok", "added": added, "total": len(existing),
+            "lead_candidates_added": int(lead_result.get("added") or 0)}
 
 
 def mark_read() -> dict:
