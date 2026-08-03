@@ -183,10 +183,10 @@ class Executor:
             return _run_ac(["instagram", "dm_send", str(chat), text], timeout=170)
         if platform == "facebook":
             return _run_ac(["facebook", "messenger_send", str(chat), text], timeout=170)
-        if platform == "viber":
-            # Нативный Viber требует отдельного owner-подтверждения. Возвращаем
-            # текст как черновик: worker либо ставит его в очередь с кнопками,
-            # либо (только в явном auto_send-режиме) отправляет сам через --confirm.
+        if platform in ("viber", "signal"):
+            # Нативные desktop-мессенджеры требуют отдельного owner-подтверждения.
+            # Worker ставит текст в очередь с кнопками либо (только в явном
+            # auto_send-режиме) отправляет сам через --confirm.
             return {"status": "draft", "message": text, "draft_text": text,
                     "contact": str(chat)}
         if platform == "telegram":

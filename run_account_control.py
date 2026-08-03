@@ -1350,6 +1350,41 @@ def viber_send(chat: str, text: str, confirm: bool) -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
+# --------------------------------------------------------------------------
+# Signal (desktop)
+# --------------------------------------------------------------------------
+def signal_status() -> dict:
+    try:
+        import signal_control as sc
+        return sc.status()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+def signal_chats() -> dict:
+    try:
+        import signal_control as sc
+        return sc.chats()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+def signal_read(chat: str, limit: int = 15) -> dict:
+    try:
+        import signal_control as sc
+        return sc.read_chat(chat, limit)
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+def signal_send(chat: str, text: str, confirm: bool) -> dict:
+    try:
+        import signal_control as sc
+        return sc.send_chat(chat, text, confirm)
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
 async def olx_delete_ad(ad_id: str, confirm: bool) -> dict:
     """Удалить объявление OLX по id."""
     try:
@@ -2094,6 +2129,18 @@ def main():
     vbs.add_argument("text")
     vbs.add_argument("--confirm", action="store_true")
 
+    sg = sub.add_parser("signal")
+    sgg = sg.add_subparsers(dest="action", required=True)
+    sgg.add_parser("status")
+    sgg.add_parser("chats")
+    sgr = sgg.add_parser("read")
+    sgr.add_argument("chat")
+    sgr.add_argument("--limit", type=int, default=15)
+    sgs = sgg.add_parser("send")
+    sgs.add_argument("chat")
+    sgs.add_argument("text")
+    sgs.add_argument("--confirm", action="store_true")
+
     msgs = sub.add_parser("messages")
     msgsg = msgs.add_subparsers(dest="action", required=True)
     msgsg.add_parser("profile")
@@ -2270,6 +2317,15 @@ def main():
                 out(viber_read(args.chat, args.limit))
             elif args.action == "send":
                 out(viber_send(args.chat, args.text, args.confirm))
+        elif args.account == "signal":
+            if args.action == "status":
+                out(signal_status())
+            elif args.action == "chats":
+                out(signal_chats())
+            elif args.action == "read":
+                out(signal_read(args.chat, args.limit))
+            elif args.action == "send":
+                out(signal_send(args.chat, args.text, args.confirm))
         elif args.account == "messages":
             if args.action == "profile":
                 out(asyncio.run(messages_profile()))
