@@ -7,6 +7,8 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -16,6 +18,7 @@ import android.net.NetworkCapabilities;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.IBinder;
+import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -26,6 +29,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.List;
@@ -74,15 +79,25 @@ public class CompanionService extends Service {
     }
 
     private void serve() {
-        try {
-            server = new ServerSocket(PORT);
-            while (running) {
-                Socket socket = server.accept();
-                new Thread(() -> handle(socket), "aios-companion-client").start();
+        // Rebind on transient Android app-update/process races instead of silently
+        // losing the gateway after a port conflict.
+        while (running) {
+            try {
+                ServerSocket candidate = new ServerSocket();
+                candidate.setReuseAddress(true);
+                candidate.bind(new InetSocketAddress(PORT));
+                server = candidate;
+                while (running) {
+                    Socket socket = candidate.accept();
+                    new Thread(() -> handle(socket), "aios-companion-client").start();
+                }
+            } catch (Exception error) {
+                Log.e("AIOSCompanion", "Gateway bind/serve error; retrying", error);
+                try { Thread.sleep(2000); } catch (InterruptedException ignored) { }
+            } finally {
+                try { if (server != null) server.close(); } catch (Exception ignored) { }
+                server = null;
             }
-        } catch (Exception ignored) {
-        } finally {
-            running = false;
         }
     }
 
@@ -105,7 +120,10 @@ public class CompanionService extends Service {
                 return;
             }
             String[] parts = request.split(" ");
-            String path = parts.length > 1 ? parts[1].split("\\?", 2)[0] : "/";
+            String target = parts.length > 1 ? parts[1] : "/";
+            int queryIndex = target.indexOf('?');
+            String path = queryIndex >= 0 ? target.substring(0, queryIndex) : target;
+            String query = queryIndex >= 0 ? target.substring(queryIndex + 1) : "";
             JSONObject response;
             boolean knownPath = true;
             switch (path) {
@@ -114,6 +132,9 @@ public class CompanionService extends Service {
                 case "/apps": response = apps(); break;
                 case "/permissions": response = permissions(); break;
                 case "/location": response = location(); break;
+                case "/accessibility": response = accessibility(); break;
+                case "/ui": response = AIOSAccessibilityService.snapshot(); break;
+                case "/clipboard": response = clipboard(queryValue(query, "text")); break;
                 case "/notifications":
                     response = new JSONObject().put("status", "ok").put("notifications", NotificationRelayService.snapshot());
                     break;
@@ -139,6 +160,26 @@ public class CompanionService extends Service {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private String queryValue(String query, String key) {
+        try {
+            for (String pair : query.split("&")) {
+                int index = pair.indexOf('=');
+                if (index > 0 && pair.substring(0, index).equals(key)) {
+                    return URLDecoder.decode(pair.substring(index + 1), "UTF-8");
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "";
+    }
+
+    private JSONObject clipboard(String text) throws Exception {
+        if (text == null || text.isEmpty()) return new JSONObject().put("error", "clipboard_text_required");
+        ClipboardManager manager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        manager.setPrimaryClip(ClipData.newPlainText("AIOS", text));
+        return new JSONObject().put("status", "ok").put("length", text.length());
     }
 
     private void respond(BufferedWriter writer, int status, JSONObject data) throws Exception {
@@ -176,9 +217,15 @@ public class CompanionService extends Service {
         return new JSONObject()
                 .put("status", "ok")
                 .put("notification_listener", NotificationRelayService.isEnabled(this))
+                .put("accessibility", AIOSAccessibilityService.isEnabled(this))
                 .put("location", checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
                 .put("camera", checkSelfPermission(android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
                 .put("media", Build.VERSION.SDK_INT < 33 || checkSelfPermission(android.Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED);
+    }
+
+    private JSONObject accessibility() throws Exception {
+        return new JSONObject().put("status", "ok")
+                .put("enabled", AIOSAccessibilityService.isEnabled(this));
     }
 
     private JSONObject location() throws Exception {

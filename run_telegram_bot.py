@@ -2039,6 +2039,13 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
         else:
             api.send_message(chat_id, f"⚠️ Android gateway: {_esc_tg(data.get('error') or data.get('status') or '?')}")
         return True
+    if any(phrase in t for phrase in ("управление приложениями телефона", "доступность телефона", "accessibility телефона")):
+        data = _android_gateway_run(["accessibility"])
+        if data.get("status") == "ok":
+            api.send_message(chat_id, "🧩 Управление интерфейсом приложений: " + ("<b>разрешено</b>" if data.get("enabled") else "<b>не разрешено</b>"))
+        else:
+            api.send_message(chat_id, f"⚠️ Accessibility недоступен: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+        return True
     if any(phrase in t for phrase in ("уведомления телефона", "уведомления android", "уведомления андроид")):
         data = _android_gateway_run(["notifications"])
         notices = data.get("notifications") or []

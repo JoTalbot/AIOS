@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">AIOS Companion</string>
     <string name="notification_channel">AIOS Companion gateway</string>
+    <string name="accessibility_description">Разрешает AIOS Companion читать интерфейс активного приложения только по явной команде владельца.</string>
 </resources>

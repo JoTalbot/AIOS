@@ -12,6 +12,7 @@ import os
 import subprocess
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -206,7 +207,7 @@ class AndroidGateway:
         report["companion"] = {
             "status": companion.get("status"),
             "connected": companion.get("status") == "ok",
-            "permissions": {k: permissions.get(k) for k in ("notification_listener", "location", "camera", "media")}
+            "permissions": {k: permissions.get(k) for k in ("notification_listener", "accessibility", "location", "camera", "media")}
             if permissions.get("status") == "ok" else {},
         }
         _write(self.health_path, report)
@@ -265,6 +266,50 @@ class AndroidGateway:
         data = self._companion_request("notifications")
         notifications = data.get("notifications") if isinstance(data.get("notifications"), list) else []
         return {"status": data.get("status", "error"), "notifications": notifications[-limit:]}
+
+    def accessibility(self) -> dict:
+        return self._companion_request("accessibility")
+
+    def ui_snapshot(self, confirm: bool = False) -> dict:
+        pending = self._needs_confirm(confirm, "android_ui_snapshot")
+        if pending:
+            return pending
+        return self._companion_request("ui", timeout=20)
+
+    def set_clipboard(self, text: str, confirm: bool = False) -> dict:
+        pending = self._needs_confirm(confirm, "android_set_clipboard")
+        if pending:
+            pending["length"] = len(text or "")
+            return pending
+        if not text:
+            return {"status": "error", "error": "Пустой текст"}
+        return self._companion_request("clipboard?" + urllib.parse.urlencode({"text": text}), timeout=20)
+
+    def paste(self, confirm: bool = False) -> dict:
+        pending = self._needs_confirm(confirm, "android_paste")
+        if pending:
+            return pending
+        return self.key("KEYCODE_PASTE", confirm=True)
+
+    def tap_ui(self, query: str, confirm: bool = False) -> dict:
+        pending = self._needs_confirm(confirm, "android_tap_ui")
+        if pending:
+            pending["query"] = query
+            return pending
+        snapshot = self.ui_snapshot(confirm=True)
+        if snapshot.get("status") != "ok":
+            return snapshot
+        needle = str(query or "").casefold()
+        for node in snapshot.get("nodes") or []:
+            haystack = " ".join(str(node.get(k) or "") for k in ("text", "description", "resource")).casefold()
+            bounds = node.get("bounds") or []
+            if needle and needle in haystack and len(bounds) == 4:
+                x = (int(bounds[0]) + int(bounds[2])) // 2
+                y = (int(bounds[1]) + int(bounds[3])) // 2
+                result = self.tap(x, y, confirm=True)
+                result.update({"matched": True, "x": x, "y": y})
+                return result
+        return {"status": "error", "error": "UI-элемент не найден"}
 
     def location(self, confirm: bool = False) -> dict:
         pending = self._needs_confirm(confirm, "android_location")

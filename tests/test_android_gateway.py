@@ -45,3 +45,19 @@ def test_mutating_actions_require_confirmation(tmp_path):
     assert gateway.open_app("com.example.app")["status"] == "need_confirm"
     assert gateway.tap(10, 20)["status"] == "need_confirm"
     assert gateway.key("KEYCODE_HOME")["status"] == "need_confirm"
+    assert gateway.set_clipboard("text")["status"] == "need_confirm"
+    assert gateway.tap_ui("Search")["status"] == "need_confirm"
+
+
+def test_work_profiles_detect_installed_apps(tmp_path, monkeypatch):
+    from aios_core.android_gateway import AndroidGateway
+
+    gateway = AndroidGateway(tmp_path)
+    monkeypatch.setattr(gateway, "apps", lambda limit=2000: {
+        "status": "ok", "apps": ["com.whatsapp", "ua.com.abank", "ua.com.uklontaxi", "com.iMe.android"],
+    })
+    profiles = {p["id"]: p for p in gateway.app_profiles()["profiles"]}
+    assert profiles["whatsapp"]["available"] is True
+    assert profiles["abank"]["available"] is True
+    assert profiles["privat24"]["available"] is False
+    assert profiles["easyway"]["available"] is False
