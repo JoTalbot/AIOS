@@ -2043,6 +2043,18 @@ def _handle_phone_lead_intent(api, chat_id: int, text: str) -> bool:
     if not (has_lead_scope and (has_phone_scope or chat_id in _last_phone_leads)):
         return False
     queue = _phone_lead_queue()
+    promote = re.search(r"(?:создай|добавь)\s+(?:crm\s*)?(?:задач\w*)\s+(?:для\s+)?(?:лид\w*|обращени\w*)\s*(?:телефона)?\s*#?(\d+)", raw, re.IGNORECASE)
+    if promote:
+        rows = _last_phone_leads.get(chat_id) or []
+        index = int(promote.group(1))
+        if not 1 <= index <= len(rows):
+            api.send_message(chat_id, "ℹ️ Сначала откройте «лиды телефона», затем укажите номер карточки.")
+            return True
+        _pending_confirm[chat_id] = {"kind": "phone_lead_promote", "data": {"lead_id": rows[index - 1].get("id")}}
+        api.send_message(chat_id,
+                         "📌 Создать локальную CRM-задачу для этой карточки?\n"
+                         "Клиент, имя, телефон и сообщение не будут созданы или переданы. «да» / «нет»")
+        return True
     review = re.search(r"(?:обработай|отметь|закрой)\s+(?:лид|обращени\w*)\s*(?:телефона)?\s*#?(\d+)", raw, re.IGNORECASE)
     if review:
         rows = _last_phone_leads.get(chat_id) or []
@@ -2068,7 +2080,7 @@ def _handle_phone_lead_intent(api, chat_id: int, text: str) -> bool:
         return True
     summary = queue.summary()
     lines = ["📲 <b>ПОТЕНЦИАЛЬНЫЕ ЛИДЫ ТЕЛЕФОНА</b>",
-             f"<i>Ожидают проверки: {summary.get('pending', len(rows))}</i>",
+             f"<i>Ожидают проверки: {summary.get('pending', len(rows))} · CRM-задач: {summary.get('crm_open', 0)}</i>",
              "━━━━━━━━━━━━━━━━"]
     for index, row in enumerate(rows[:12], 1):
         source_label = _esc_tg(str(row.get("source") or "Телефон"))
@@ -2077,7 +2089,7 @@ def _handle_phone_lead_intent(api, chat_id: int, text: str) -> bool:
         lines.append("├ Потенциальное новое обращение")
         lines.append(f"╰ 🕐 {observed or 'время недоступно'}")
     lines.append("━━━━━━━━━━━━━━━━")
-    lines.append("<i>Содержимое уведомлений, имена и номера не сохраняются здесь. «отметь лид 1 обработанным» — закрыть локальную карточку.</i>")
+    lines.append("<i>Содержимое уведомлений, имена и номера не сохраняются здесь. «отметь лид 1 обработанным» — закрыть карточку; «создай CRM задачу для лида 1» — создать локальную follow-up задачу.</i>")
     api.send_message(chat_id, "\n".join(lines)[:3900])
     return True
 
@@ -2373,6 +2385,14 @@ def _cancel_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
 def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
     """Perform one already-confirmed app step; return True when handled."""
     try:
+        if kind == "phone_lead_promote":
+            result = _phone_lead_queue().promote_to_crm_task(str(data.get("lead_id") or ""))
+            if result.get("status") in ("crm_task_created", "already_promoted"):
+                api.send_message(chat_id,
+                                 "✅ Локальная CRM-задача создана. Откройте нужный чат вручную и используйте подтверждаемый черновик ответа. Клиент и сообщение не создавались автоматически.")
+            else:
+                api.send_message(chat_id, "⚠️ Не удалось создать CRM-задачу для лида.")
+            return True
         if kind == "phone_calibrate":
             adapter = _phone_adapter(str(data.get("app") or ""))
             if not adapter:

@@ -52,6 +52,7 @@ class AndroidLeadQueue:
         self.root = Path(root)
         self.notifications_path = self.root / "data" / "android_gateway" / "notifications.json"
         self.path = self.root / "data" / "android_gateway" / "lead_candidates.json"
+        self.tasks_path = self.root / "data" / "android_gateway" / "crm_followup_tasks.json"
 
     def _items(self) -> list[dict]:
         value = _read(self.path, [])
@@ -59,6 +60,13 @@ class AndroidLeadQueue:
 
     def _save(self, items: list[dict]) -> None:
         _write(self.path, items[-MAX_LEADS:])
+
+    def _tasks(self) -> list[dict]:
+        value = _read(self.tasks_path, [])
+        return [item for item in value if isinstance(item, dict)]
+
+    def _save_tasks(self, tasks: list[dict]) -> None:
+        _write(self.tasks_path, tasks[-MAX_LEADS:])
 
     @staticmethod
     def _lead_id(package: str, notification_id: str) -> str:
@@ -100,7 +108,11 @@ class AndroidLeadQueue:
         for item in pending:
             source = str(item.get("source") or "Телефон")
             by_source[source] = by_source.get(source, 0) + 1
-        return {"status": "ok", "total": len(items), "pending": len(pending), "by_source": by_source}
+        tasks = self._tasks()
+        return {
+            "status": "ok", "total": len(items), "pending": len(pending), "by_source": by_source,
+            "crm_open": sum(1 for task in tasks if task.get("status") == "open"),
+        }
 
     def list_pending(self, limit: int = 20, source: str = "") -> list[dict]:
         source_key = str(source or "").casefold()
@@ -130,3 +142,59 @@ class AndroidLeadQueue:
             self._save(items)
             return {"status": "reviewed", "id": target}
         return {"status": "not_found", "id": target}
+
+    def promote_to_crm_task(self, lead_id: str) -> dict:
+        """Create a metadata-only CRM follow-up task, never a customer record."""
+        items = self._items()
+        tasks = self._tasks()
+        target = str(lead_id or "")
+        for task in tasks:
+            if str(task.get("lead_id") or "") == target:
+                return {"status": "already_promoted", "task_id": task.get("id"), "lead_id": target}
+        for item in items:
+            if str(item.get("id") or "") != target:
+                continue
+            if item.get("status") not in ("pending_review", "reviewed"):
+                return {"status": "not_available", "lead_id": target}
+            task_id = "crm-phone-" + hashlib.sha256((target + "|crm").encode("utf-8")).hexdigest()[:18]
+            task = {
+                "id": task_id,
+                "lead_id": target,
+                "source": str(item.get("source") or "Телефон"),
+                "status": "open",
+                "action": "review_messenger_contact",
+                "created_at": _now(),
+                "requires_manual_chat_open": True,
+            }
+            item["status"] = "crm_task_open"
+            item["promoted_at"] = _now()
+            tasks.append(task)
+            self._save(items)
+            self._save_tasks(tasks)
+            return {"status": "crm_task_created", "task_id": task_id, "lead_id": target}
+        return {"status": "not_found", "lead_id": target}
+
+    def list_crm_tasks(self, limit: int = 50) -> list[dict]:
+        rows = [task for task in self._tasks() if task.get("status") == "open"]
+        return [
+            {
+                "id": task.get("id"), "lead_id": task.get("lead_id"),
+                "source": task.get("source"), "created_at": task.get("created_at"),
+                "action": task.get("action"), "status": task.get("status"),
+            }
+            for task in rows[-max(1, min(int(limit), MAX_LEADS)):]
+        ]
+
+    def complete_crm_task(self, task_id: str) -> dict:
+        tasks = self._tasks()
+        target = str(task_id or "")
+        for task in tasks:
+            if str(task.get("id") or "") != target:
+                continue
+            if task.get("status") != "open":
+                return {"status": "already_completed", "task_id": target}
+            task["status"] = "done"
+            task["completed_at"] = _now()
+            self._save_tasks(tasks)
+            return {"status": "completed", "task_id": target}
+        return {"status": "not_found", "task_id": target}

@@ -241,8 +241,11 @@ def build() -> None:
         leads = _android_lead_summary()
         pending_leads = int(leads.get("pending") or 0)
         lead_sources = " · ".join(f"{source}: {count}" for source, count in (leads.get("by_source") or {}).items())
-        ui.label(f"Потенциальные лиды телефона: {pending_leads}" + (f" · {lead_sources}" if lead_sources else "")).classes(
-            "text-sm text-amber-700" if pending_leads else "text-sm text-gray-500")
+        crm_followups = int(leads.get("crm_open") or 0)
+        ui.label(
+            f"Потенциальные лиды телефона: {pending_leads} · CRM follow-up: {crm_followups}"
+            + (f" · {lead_sources}" if lead_sources else "")
+        ).classes("text-sm text-amber-700" if (pending_leads or crm_followups) else "text-sm text-gray-500")
 
     # Посылки Новой Пошты
     parcels = _np_parcels()
