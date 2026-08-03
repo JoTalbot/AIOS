@@ -1,28 +1,30 @@
 #!/usr/bin/env python3
 """
-AIOS OLX Autoreply — умные ответы покупателям в OLX-чате.
-Раз в N минут проверяет чат OLX (myaccount/answers) на новые сообщения;
-если автоответ включён — формирует ответ (шаблон из data/templates.json
-или LLM) и шлёт в Telegram на подтверждение (или отправляет авто).
+AIOS OLX Autoreply — автономные ответы покупателям в OLX-чате.
 
-Команды в боте:
-  «включи автоответ OLX» / «выключи автоответ OLX» / «автоответ на автомате»
-Настройка: data/olx_autoreply.json
+Использует единый контур автономии (aios_core.autonomy.AutonomyCore):
+  вход покупателя -> intent -> LLM-предложение -> guardrails -> исполнение.
+
+Режимы (data/olx_autoreply.json):
+  enabled    : bool  — общий вкл/выкл
+  auto_send  : bool  — если true, разрешённые ответы шлются в OLX-чат авто;
+                       если false — предлагаемый ответ отправляется владельцу на подтверждение.
+  max_replies_per_run : int — лимит автоответов за один цикл.
+
+Команды в боте: «включи автоответ OLX» / «выключи автоответ OLX».
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import subprocess
 import sys
-import urllib.request
-from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 CFG = ROOT / "data" / "olx_autoreply.json"
+PY = "/opt/aios/.venv/bin/python"
 
 
 def _env(key: str) -> str:
@@ -32,18 +34,24 @@ def _env(key: str) -> str:
         return v
     p = ROOT / ".env"
     if p.exists():
-        for line in p.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line.startswith(key + "="):
-                return line.split("=", 1)[1].strip().strip('"').strip("'")
+        try:
+            for line in p.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line.startswith(key + "="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+        except Exception:
+            pass
     return ""
 
 
 def _load_cfg() -> dict:
+    default = {"enabled": False, "auto_send": True, "max_replies_per_run": 3}
     try:
-        return json.loads(CFG.read_text(encoding="utf-8"))
+        cfg = json.loads(CFG.read_text(encoding="utf-8"))
+        cfg = {**default, **cfg}
+        return cfg
     except Exception:
-        return {}
+        return default
 
 
 def _save_cfg(cfg: dict) -> None:
@@ -51,7 +59,28 @@ def _save_cfg(cfg: dict) -> None:
     CFG.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def _run_ac(args: list[str], timeout: int = 170) -> dict:
+    """Запустить run_account_control.py для OLX-чата (браузер → xvfb)."""
+    helper = str(ROOT / "run_account_control.py")
+    cmd = ["xvfb-run", "-a", "-s", "-screen 0 1440x900x24", PY, helper] + args
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, cwd=str(ROOT))
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "error": "timeout (браузер занят)"}
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:200]}
+    out = (r.stdout or "").strip()
+    if not out:
+        return {"status": "error", "error": (r.stderr or "пустой ответ")[-400:]}
+    try:
+        start = out.find("{")
+        return json.loads(out[start:]) if start >= 0 else {"status": "error", "error": out[-400:]}
+    except Exception:
+        return {"status": "error", "error": out[-400:]}
+
+
 def _tg(token: str, chat_id: int, text: str) -> None:
+    import urllib.request
     import html as _html
     payload = {"chat_id": chat_id, "text": _html.escape(text)[:3800],
                "parse_mode": "HTML", "disable_web_page_preview": True}
@@ -63,117 +92,126 @@ def _tg(token: str, chat_id: int, text: str) -> None:
         pass
 
 
-def _templates() -> dict:
+def _detect_item(text: str) -> str | None:
+    """Сопоставить текст сообщения с товарами из склада (для ценового пола)."""
     try:
-        return json.loads((ROOT / "data" / "templates.json").read_text(encoding="utf-8"))
+        import run_inventory
+        items = run_inventory._load()
     except Exception:
-        return {}
-
-
-def _llm(prompt: str) -> str:
-    import urllib.request as _urllib
-    _b = None
+        items = []
+    t = (text or "").lower()
+    for it in items:
+        name = (it.get("name") or "").strip()
+        if not name:
+            continue
+        if name.lower() in t or t in name.lower():
+            return name
+    # также ищем по известным полам
     try:
-        from aios_core.llm_balancer import LLMBalancer as _LB
-        _b = _LB()
-    except Exception:
-        _b = None
-    if _b is not None:
-        try:
-            r = _b.chat([{"role": "user", "content": prompt}],
-                        model=_env("LLM_MODEL") or "meta-llama/llama-4-maverick",
-                        system="Ты — помощник продавца автозапчастей. Отвечай кратко, по-русски, вежливо.",
-                        max_tokens=250, temperature=0.4, task_type="chat")
-            if r:
-                return r
-        except Exception:
-            pass
-    try:
-        key = _env("OPENROUTER_API_KEY")
-        if key:
-            payload = json.dumps({
-                "model": "mistralai/mistral-small-3.2-24b-instruct",
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 250, "temperature": 0.4,
-            }).encode()
-            req = _urllib.Request("https://openrouter.ai/api/v1/chat/completions",
-                                  data=payload, headers={
-                                      "Content-Type": "application/json",
-                                      "Authorization": "Bearer " + key})
-            with _urllib.urlopen(req, timeout=60) as resp:
-                d = json.loads(resp.read())
-            return d["choices"][0]["message"]["content"]
+        import json
+        floors = json.loads((ROOT / "data" / "price_floors.json").read_text(encoding="utf-8"))
+        for key in floors.get("items", {}):
+            if key in t:
+                return key
     except Exception:
         pass
-    return ""
+    return None
 
 
-def _run_ac(args: list, timeout: int = 170) -> dict:
-    py = "/opt/aios/.venv/bin/python"
-    cmd = ["xvfb-run", "-a", "-s", "-screen 0 1440x900x24", py, str(ROOT / "run_account_control.py")] + args
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, cwd=str(ROOT))
-        out = (r.stdout or "").strip()
-        start = out.find("{")
-        return json.loads(out[start:]) if start >= 0 else {"status": "error", "error": out[-300:]}
-    except subprocess.TimeoutExpired:
-        return {"status": "error", "error": "timeout"}
-    except Exception as e:
-        return {"status": "error", "error": str(e)[:200]}
+def get_olx_threads() -> list[dict]:
+    """Список переписок OLX-чата: [{contact, text, unread}]."""
+    res = _run_ac(["olx", "chat", "list", "20"], timeout=170)
+    threads = res.get("threads", []) or []
+    return threads
 
 
-def check_olx_chat() -> list[dict]:
-    """Прочитать новые сообщения OLX-чата (упрощённо: страница чата)."""
-    try:
-        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
-        a = OLXChromeTwinAdapter(config={"olx_login": "959052288"})
-        try:
-            async def _do():
-                page = await a._ensure_browser()
-                await page.goto("https://www.olx.ua/uk/myaccount/answers/",
-                                wait_until="domcontentloaded", timeout=45000)
-                await page.wait_for_timeout(6000)
-                body = await page.inner_text("body")
-                lines = [l.strip() for l in body.splitlines() if l.strip()]
-                # ищем строки похожие на сообщения
-                msgs = []
-                for l in lines:
-                    if len(l) > 5 and not any(k in l.lower() for k in (
-                            "профіль", "профиль", "оголошення", "чат", "повідомлення",
-                            "мої", "обра", "вийти", "додати оголошення", "платежі",
-                            "рейтинг", "налаштування", "доставка", "пошуки", "бізнес",
-                            "допомога", "умови", "політика", "реклама", "для преси",
-                            "мобільні", "платні", "рахунок", "баланс", "бонус")):
-                        msgs.append(l)
-                return msgs
-            return asyncio.run(_do())
-        finally:
-            asyncio.run(a.close())
-    except Exception as e:
-        return [f"ОШИБКА: {e}"]
+def read_olx(contact: str) -> dict:
+    return _run_ac(["olx", "chat", "read", contact, "15"], timeout=170)
+
+
+def reply_olx(contact: str, text: str) -> dict:
+    return _run_ac(["olx", "chat", "reply", contact, text, "--confirm"], timeout=170)
 
 
 def main() -> int:
+    from aios_core.autonomy import AutonomyCore
+
     token = _env("TELEGRAM_BOT_TOKEN") or _env("AIOS_TELEGRAM_TOKEN")
-    cfg = _load_cfg()
     chat_id = _env("TELEGRAM_CHAT_ID")
+    cfg = _load_cfg()
     if not cfg.get("enabled"):
         print("Автоответ OLX выключен")
         return 0
-    msgs = check_olx_chat()
-    # здесь полноценная логика: сравнить с last_seen, сгенерировать ответ
-    # и отправить на подтверждение. Сейчас чат пуст, поэтому просто отчитываемся.
-    real = [m for m in msgs if not m.startswith("ОШИБКА") and "немає повідомлень" not in m.lower()]
-    if token and chat_id:
-        try:
-            if real:
-                _tg(token, int(chat_id),
-                    f"💬 <b>Новые сообщения OLX:</b>\n" + "\n".join(f"• {m[:80]}" for m in real[:5]) +
-                    "\n\nОтветить: «ответь в олх: текст»")
+
+    core = AutonomyCore()
+    if not core.policy.enabled:
+        print("Автономия выключена в data/autonomy_policy.json")
+        return 0
+
+    threads = get_olx_threads()
+    if not threads:
+        print("OLX-чат: переписок нет")
+        return 0
+
+    max_r = int(cfg.get("max_replies_per_run", 3))
+    replied = 0
+    actions_summary = []
+
+    for th in threads[:20]:
+        if replied >= max_r:
+            break
+        contact = (th.get("name") or "").strip()
+        last = (th.get("text") or "").strip()
+        if not contact or not last:
+            continue
+
+        # дедупликация через сессию автономии
+        sess = core.state.get("olx", contact)
+        if sess.last_seen_msg == f"{contact}:{last}":
+            continue  # уже отвечали
+
+        # прочитать переписку, чтобы понять контекст
+        conv = read_olx(contact)
+        msgs = conv.get("messages", []) or []
+
+        # последнее сообщение НЕ от нас — надо ответить
+        last_theirs = None
+        for m in msgs:
+            if not m.get("mine"):
+                last_theirs = m.get("text", "")
+                break
+        if not last_theirs:
+            continue
+
+        detected = _detect_item(last_theirs)
+        outcome = core.process_customer(
+            "olx", contact, last_theirs, msg_id=f"{contact}:{last}",
+            extra={"item": detected, "ad_price": None})
+
+        # действие — автоответ
+        if outcome.get("mode") == "action" and outcome.get("text"):
+            reply_text = outcome["text"]
+            auto = cfg.get("auto_send", True)
+            if auto:
+                res = reply_olx(contact, reply_text)
+                if res.get("status") == "ok":
+                    replied += 1
+                    actions_summary.append(f"✅ {contact}: {reply_text[:60]}")
+                else:
+                    # не отправилось — уведомить владельца
+                    _tg(token, int(chat_id),
+                        f"⚠️ Автоответ OLX не отправился {contact}: {res.get('error','?')}")
             else:
-                print(f"OLX чат: сообщений нет ({len(msgs)} строк)")
-        except Exception as e:
-            print(f"tg err: {e}")
+                _tg(token, int(chat_id),
+                    f"💬 <b>Предлагаемый ответ для {contact}:</b>\n{reply_text[:600]}\n\n"
+                    f"Отправить: «ответь в олх: {contact} | текст» или включи auto_send.")
+        elif outcome.get("mode") in ("escalate", "manual", "blocked"):
+            # эскалация уже уведомила владельца
+            if outcome.get("text"):
+                actions_summary.append(f"🔎 {contact}: {outcome['decision']} — {outcome['text'][:60]}")
+
+    if actions_summary:
+        _tg(token, int(chat_id), "📊 <b>Цикл автоответа OLX</b>\n" + "\n".join(actions_summary[:10]))
     return 0
 
 
