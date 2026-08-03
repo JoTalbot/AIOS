@@ -280,6 +280,13 @@ class LLMBalancer:
             "meta-llama/llama-4-maverick",
             "gpt-4o-mini",
         ],
+        # Топ-модель для ответов клиентам: при недоступности -> flash -> groq llama-70b
+        "gemini-2.5-pro": [
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+        ],
         # gpt-4o-mini: cloud-first, local 7b last
         "gpt-4o-mini": [
             "llama-3.3-70b-versatile",
