@@ -51,3 +51,32 @@ def test_registry_has_banks():
     r = PlatformRegistry()
     assert "abank" in r.list_available_platforms()
     assert "privat" in r.list_available_platforms()
+    assert "abank_biz" in r.list_available_platforms()
+    assert "privat_biz" in r.list_available_platforms()
+
+
+def test_business_bank_transfer_manual():
+    c = _core()
+    for b in ("abank_biz", "privat_biz"):
+        d = c.guardrails.evaluate({"action": "bank_transfer",
+                                   "params": {"bank": b, "recipient": "IBAN", "amount": 1000}}, {})
+        assert d.verdict == "MANUAL", (b, d.reason)
+
+
+def test_business_bank_balance_auto():
+    c = _core()
+    for b in ("abank_biz", "privat_biz"):
+        d = c.guardrails.evaluate({"action": "bank_balance", "params": {"bank": b}}, {})
+        assert d.allowed, (b, d.reason)
+
+
+def test_abank_biz_url():
+    from aios_core.platforms.abank_business_chrome_twin_adapter import ABankBusinessChromeTwinAdapter
+    a = ABankBusinessChromeTwinAdapter()
+    assert "ab.a-bank.com.ua" in a.login_url
+
+
+def test_privat_biz_inherits_privat():
+    from aios_core.platforms.privat_business_chrome_twin_adapter import PrivatBusinessChromeTwinAdapter
+    from aios_core.platforms.privat_chrome_twin_adapter import PrivatChromeTwinAdapter
+    assert issubclass(PrivatBusinessChromeTwinAdapter, PrivatChromeTwinAdapter)

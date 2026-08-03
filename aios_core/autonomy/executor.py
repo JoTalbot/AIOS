@@ -190,26 +190,32 @@ class Executor:
             return _run_ac(["abank", "balance"], timeout=170)
         if platform == "privat":
             return _run_ac(["privat", "balance"], timeout=170)
+        if platform == "abank_biz":
+            return _run_ac(["abank_biz", "balance"], timeout=170)
+        if platform == "privat_biz":
+            return _run_ac(["privat_biz", "balance"], timeout=170)
         return {"status": "ok", "message": f"read-only {platform}: {q}"}
 
     # ---- Банки ----
+    _BANKS = ("abank", "privat", "abank_biz", "privat_biz")
+
     def _do_bank_balance(self, p, platform, chat):
         bank = str(p.get("bank") or platform or "").strip()
-        if bank not in ("abank", "privat"):
-            return {"status": "error", "error": "bank = abank | privat"}
+        if bank not in self._BANKS:
+            return {"status": "error", "error": "bank = " + " | ".join(self._BANKS)}
         return _run_ac([bank, "balance"], timeout=170)
 
     def _do_bank_transactions(self, p, platform, chat):
         bank = str(p.get("bank") or platform or "").strip()
-        if bank not in ("abank", "privat"):
-            return {"status": "error", "error": "bank = abank | privat"}
+        if bank not in self._BANKS:
+            return {"status": "error", "error": "bank = " + " | ".join(self._BANKS)}
         return _run_ac([bank, "transactions"], timeout=170)
 
     def _do_bank_transfer(self, p, platform, chat):
         # Достигает сюда ТОЛЬКО после подтверждения владельца (guardrails MANUAL→approve)
         bank = str(p.get("bank") or platform or "").strip()
-        if bank not in ("abank", "privat"):
-            return {"status": "error", "error": "bank = abank | privat"}
+        if bank not in self._BANKS:
+            return {"status": "error", "error": "bank = " + " | ".join(self._BANKS)}
         recipient = str(p.get("recipient") or "").strip()
         amount = p.get("amount")
         note = str(p.get("note") or "").strip()

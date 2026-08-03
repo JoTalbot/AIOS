@@ -1,0 +1,19 @@
+name: abank_biz
+android_package: ""
+agent_module: aios_core.platforms.abank_business_chrome_twin_adapter
+storage_class: null
+adb_class: null
+default_locale: uk-UA
+description: "A-Bank àБізнес — интернет-банк для ФОП/юрлиц (ab.a-bank.com.ua). Вход: телефон + пароль + SMS-2FA. Чтение баланса/операций; переводы только с подтверждения владельца."
+extras:
+  bank:
+    login_url: "https://ab.a-bank.com.ua/auth"
+    home_url: "https://ab.a-bank.com.ua/"
+    sms_sender_hint: "A-Bank"
+    needs_password: true
+  compliance:
+    autopost_allowed: false
+    messenger: false
+    collector: false
+    actions_per_hour: 60
+    note: "Банк-бизнес: read-only авто; переводы/платежи — только подтверждение владельца. SMS-2FA через Google Messages."
