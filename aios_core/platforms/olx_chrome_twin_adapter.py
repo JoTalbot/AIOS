@@ -382,52 +382,98 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
             print(f"Collect my ads failed: {e}")
             return []
 
-    async def create_ad(self, title: str, description: str, price: str, category: str = "other", images: List[str] = None) -> Dict[str, Any]:
-        """Создать объявление через Chrome Twin (актуальная форма /d/uk/adding/)."""
+    async def _route_olx_fm(self, page):
+        """Перенаправляет olx.pl/fm/* -> olx.ua/fm/* (обход 403/ORB для датацентровых IP)."""
+        async def _handler(route):
+            url = route.request.url
+            if "olx.pl/fm/" in url:
+                new_url = url.replace("https://www.olx.pl/fm/", "https://www.olx.ua/fm/")
+                try:
+                    resp = await self._context.request.get(
+                        new_url, headers={"User-Agent": "Mozilla/5.0"})
+                    body = await resp.body()
+                    ct = resp.headers.get("content-type", "application/javascript")
+                    await route.fulfill(status=resp.status, headers={
+                        "content-type": ct, "access-control-allow-origin": "*"}, body=body)
+                    return
+                except Exception:
+                    pass
+            await route.continue_()
+        await page.route("**/fm/**", _handler)
+
+    async def create_ad(self, title: str, description: str, price: str, category: str = "other", images: List[str] = None, publish: bool = False) -> Dict[str, Any]:
+        """Создать объявление через Chrome Twin (пошаговая форма /uk/adding/)."""
         page = await self._ensure_browser()
         try:
-            await page.goto("https://www.olx.ua/d/uk/adding/", wait_until="domcontentloaded", timeout=30000)
-            await page.wait_for_timeout(6000)
-            # Проверка: телефон подтверждён?
+            await self._route_olx_fm(page)
+            await page.goto("https://www.olx.ua/uk/adding/", wait_until="domcontentloaded", timeout=30000)
+            await page.wait_for_timeout(10000)
             body = await page.inner_text("body")
             if any(k in body.lower() for k in ("підтвердіть", "подтвердите", "код підтвердження",
                                                "отримати код", "підтвердити свій")):
                 return {"status": "phone_not_confirmed",
                         "error": "Нужно подтвердить телефон OLX (через VNC, команда «подтверди телефон OLX»)"}
+            # закрыть модалку черновика
+            try:
+                btn = page.get_by_role("button", name="Ні, почати заново").first
+                if await btn.count():
+                    await btn.click(timeout=4000)
+                    await page.wait_for_timeout(4000)
+            except Exception:
+                pass
+            # Шаг 1: заголовок + Продовжити
+            ti = page.locator("input[placeholder*='напр.']").first
+            await ti.fill(title[:150])
+            await page.wait_for_timeout(800)
+            try:
+                btn = page.get_by_role("button", name="Продовжити").first
+                await btn.click(timeout=5000)
+            except Exception:
+                pass
+            await page.wait_for_timeout(5000)
 
-            # Заполнить заголовок
-            for sel in ("input[name='title']", "input[placeholder*='назв']", "input[placeholder*='Название']",
-                        "input[data-testid*='title']", "textarea[placeholder*='назв']"):
-                try:
-                    el = page.locator(sel).first
-                    await el.wait_for(state="visible", timeout=5000)
-                    await el.fill(title)
-                    break
-                except Exception:
-                    continue
+            # Шаг 2: категория (поле «Обрати»)
+            try:
+                cat_field = page.locator("input[placeholder='Обрати']").first
+                if await cat_field.count():
+                    await cat_field.click(timeout=5000)
+                    await page.wait_for_timeout(2000)
+                    # поиск категории
+                    search = page.locator("input[placeholder*='Пошук'], input[placeholder*='категор']").first
+                    if await search.count():
+                        await search.fill("Автозапчасти")
+                        await page.wait_for_timeout(3000)
+                    # клик по «Запчасти для авто» или «Автозапчасти»
+                    for sel in ("text=Запчасти для авто", "text=Автозапчасти",
+                                "text=Автозапчасти та аксесуари", "div:has-text('Запчасти для авто')"):
+                        try:
+                            el = page.locator(sel).first
+                            if await el.count():
+                                await el.click(force=True, timeout=4000)
+                                await page.wait_for_timeout(3000)
+                                print("категория выбрана")
+                                break
+                        except Exception:
+                            continue
+            except Exception:
+                pass
 
             # Описание
-            for sel in ("textarea[name='description']", "textarea[placeholder*='опис']",
-                        "textarea[placeholder*='Описание']", "[contenteditable='true'][data-qa*='desc']"):
-                try:
-                    el = page.locator(sel).first
-                    await el.wait_for(state="visible", timeout=5000)
-                    await el.fill(description)
-                    break
-                except Exception:
-                    continue
+            try:
+                desc = page.locator("textarea[placeholder*='Подумайте']").first
+                if await desc.count():
+                    await desc.fill(description)
+            except Exception:
+                pass
 
             # Цена
             if price:
-                for sel in ("input[name='price']", "input[placeholder*='цін']", "input[placeholder*='цен']",
-                            "input[data-testid*='price']"):
-                    try:
-                        el = page.locator(sel).first
-                        await el.wait_for(state="visible", timeout=4000)
-                        await el.fill(str(price))
-                        break
-                    except Exception:
-                        continue
+                try:
+                    p_el = page.locator("input[placeholder*='цін'], input[placeholder*='цен'], input[name='price'], input[data-testid*='price']").first
+                    if await p_el.count():
+                        await p_el.fill(str(price))
+                except Exception:
+                    pass
 
             # Фото (если переданы)
             if images:
@@ -439,7 +485,22 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                 except Exception:
                     pass
 
-            await page.wait_for_timeout(2000)
+            # публикация (если подтверждено)
+            if publish:
+                try:
+                    btn = page.get_by_role("button", name="Опублікувати").first
+                    if await btn.count():
+                        await btn.click(timeout=5000)
+                        await page.wait_for_timeout(6000)
+                        shot = f"/tmp/aios_acct_olx_pub_{int(__import__('time').time())}.png"
+                        try:
+                            await page.screenshot(path=shot)
+                        except Exception:
+                            shot = None
+                        return {"status": "published", "title": title, "price": price,
+                                "screenshot": shot, "url": page.url}
+                except Exception:
+                    pass
             shot = f"/tmp/aios_acct_olx_add_{int(__import__('time').time())}.png"
             try:
                 await page.screenshot(path=shot)

@@ -1622,8 +1622,13 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 import subprocess as _sp
                 data = _run_account_control(["olx", "create", d["part"], "--confirm"])
                 st = data.get("status")
-                if st == "draft_created":
-                    txt = f"📝 <b>Объявление создано (черновик)</b>: {_esc_tg(data.get('title', ''))}\n"
+                if st == "published":
+                    txt = f"✅ <b>Объявление опубликовано на OLX!</b>\n{_esc_tg(data.get('title', ''))} — {data.get('price', '?')} грн\n{data.get('url', '')}"
+                    _acct_send_result(api, chat_id, {"status": "ok", "text": txt,
+                                                     "screenshot": data.get("screenshot"),
+                                                     "caption": "✅ Опубликовано"}, "")
+                elif st == "draft_created":
+                    txt = f"📝 <b>Черновик создан</b>: {_esc_tg(data.get('title', ''))}\n"
                     if data.get("screenshot"):
                         _acct_send_result(api, chat_id, {"status": "ok",
                                                          "text": txt,
