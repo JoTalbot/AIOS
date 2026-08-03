@@ -1,0 +1,20 @@
+[Unit]
+Description=AIOS keep VNC display awake for desktop adapters
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+Environment=AIOS_VNC_DISPLAY=:1
+Environment=XAUTHORITY=/root/.Xauthority
+ExecStart=/root/AIOS/run_vnc_keepawake.sh
+Restart=always
+RestartSec=10
+TimeoutStartSec=0
+StandardOutput=append:/root/AIOS/logs/vnc_keepawake.log
+StandardError=append:/root/AIOS/logs/vnc_keepawake.log
+
+[Install]
+WantedBy=multi-user.target

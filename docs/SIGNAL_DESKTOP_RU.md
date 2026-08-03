@@ -14,7 +14,9 @@ python run_account_control.py signal send "Название чата" "Текс�
 
 Сервис `aios-signal-desktop.service` ждёт VNC-дисплей и запускает Signal после
 перезагрузки сервера. Для Electron включён запуск с `--no-sandbox`, необходимый
-для desktop-приложения под root/VNC.
+для desktop-приложения под root/VNC. Сервис `aios-vnc-keepawake.service`
+предотвращает блокировку/затемнение VNC, иначе OCR-адаптеры не могут читать
+окна Signal и Viber.
 
 ## Единый инбокс и Telegram
 

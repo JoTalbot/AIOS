@@ -71,9 +71,37 @@ def _run(cmd, timeout=20):
 
 
 def win_id() -> str | None:
-    out, _ = _run(["xdotool", "search", "--name", WINDOW_TITLE])
+    # Signal/Electron may create hidden helper windows. Prefer the visible
+    # conversation window so OCR and xdotool clicks never target a helper.
+    out, _ = _run(["xdotool", "search", "--onlyvisible", "--name", WINDOW_TITLE])
     ids = [x.strip() for x in out.split() if x.strip()]
+    if not ids:
+        out, _ = _run(["xdotool", "search", "--name", WINDOW_TITLE])
+        ids = [x.strip() for x in out.split() if x.strip()]
     return ids[-1] if ids else None
+
+
+def _geometry(wid: str | None) -> dict[str, int]:
+    """Геометрия Signal-окна на общем VNC-дисплее."""
+    fallback = {"x": 0, "y": 0, "width": 1920, "height": 1080}
+    if not wid:
+        return fallback
+    out, _ = _run(["xdotool", "getwindowgeometry", "--shell", str(wid)])
+    values = {}
+    for line in out.splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        try:
+            values[key.lower()] = int(value)
+        except ValueError:
+            continue
+    return {
+        "x": values.get("x", fallback["x"]),
+        "y": values.get("y", fallback["y"]),
+        "width": max(1, values.get("width", fallback["width"])),
+        "height": max(1, values.get("height", fallback["height"])),
+    }
 
 
 def _shot(name: str) -> str:
@@ -178,6 +206,10 @@ def chats() -> dict:
     wid = _activate()
     if not wid:
         return {"status": "error", "error": "Окно Signal не найдено (запущен ли Signal?)"}
+    geometry = _geometry(wid)
+    left_x0 = geometry["x"]
+    left_x1 = geometry["x"] + int(geometry["width"] * 0.43)
+    list_top = geometry["y"] + 75
     path = _shot("chats")
     words = _ocr(path)
     # Левая панель Signal: собираем OCR-слова в строки. В отличие от Viber,
@@ -185,7 +217,7 @@ def chats() -> dict:
     # OCR-токена как отдельного чата делает инбокс бесполезным.
     rows: list[dict] = []
     for w in sorted(words, key=lambda x: (x["y0"], x["x0"])):
-        if w["cx"] > 640 or w["y0"] < 115:
+        if not (left_x0 <= w["cx"] <= left_x1) or w["y0"] < list_top:
             continue  # верхнее меню/поиск, не список диалогов
         row = next((r for r in rows if abs(r["y"] - w["y0"]) <= 10), None)
         if row is None:
@@ -213,13 +245,17 @@ def read_chat(chat: str, limit: int = 15) -> dict:
     wid = _activate()
     if not wid:
         return {"status": "error", "error": "Окно Signal не найдено"}
+    geometry = _geometry(wid)
+    left_x0 = geometry["x"]
+    left_x1 = geometry["x"] + int(geometry["width"] * 0.43)
+    left_region = (left_x0, geometry["y"], left_x1, geometry["y"] + geometry["height"])
     path = _shot("read_before")
     words = _ocr(path)
-    pos = _find_phrase(words, chat, region=(0, 0, 640, 1080))
+    pos = _find_phrase(words, chat, region=left_region)
     if not pos:
         # ищем одиночное слово (имя может быть одним словом)
         for w in words:
-            if w["text"].lower() == chat.lower() and w["cx"] < 640:
+            if w["text"].lower() == chat.lower() and left_x0 <= w["cx"] <= left_x1:
                 pos = (w["cx"], w["cy"])
                 break
     if not pos:
@@ -232,7 +268,7 @@ def read_chat(chat: str, limit: int = 15) -> dict:
     # сообщения — правая область (x > 640), выводим строки
     lines = {}
     for w in words2:
-        if w["cx"] < 640:
+        if w["cx"] < left_x1:
             continue
         key = w["y0"] // 25  # группировка по строкам
         lines.setdefault(key, []).append((w["x0"], w["text"]))
@@ -244,7 +280,8 @@ def read_chat(chat: str, limit: int = 15) -> dict:
             # В Signal входящие пузыри находятся слева, исходящие — справа.
             # Это эвристика для автоответа; при сомнении считаем сообщение входящим.
             avg_x = sum(x for x, _ in row_words) / len(row_words)
-            msgs.append({"text": row, "mine": avg_x >= 1260})
+            mine_boundary = geometry["x"] + geometry["width"] * 0.70
+            msgs.append({"text": row, "mine": avg_x >= mine_boundary})
     return {"status": "ok", "chat": chat, "messages": msgs[-limit:],
             "screenshot": path2}
 
@@ -257,20 +294,24 @@ def send_chat(chat: str, text: str, confirm: bool) -> dict:
     if not confirm:
         return {"status": "need_confirm", "action": "signal_send", "chat": chat,
                 "text": text[:200]}
+    geometry = _geometry(wid)
+    left_x0 = geometry["x"]
+    left_x1 = geometry["x"] + int(geometry["width"] * 0.43)
+    left_region = (left_x0, geometry["y"], left_x1, geometry["y"] + geometry["height"])
     path = _shot("send_before")
     words = _ocr(path)
-    pos = _find_phrase(words, chat, region=(0, 0, 640, 1080))
+    pos = _find_phrase(words, chat, region=left_region)
     if not pos:
         for w in words:
-            if w["text"].lower() == chat.lower() and w["cx"] < 640:
+            if w["text"].lower() == chat.lower() and left_x0 <= w["cx"] <= left_x1:
                 pos = (w["cx"], w["cy"])
                 break
     if not pos:
         return {"status": "error", "error": f"Чат «{chat}» не найден"}
     _click(pos[0], pos[1])
     time.sleep(1.2)
-    # кликнуть в поле ввода (низ окна, центр)
-    _click(1100, 1045)
+    # Кликнуть в поле ввода относительно Signal-окна, а не всего VNC-экрана.
+    _click(geometry["x"] + int(geometry["width"] * 0.70), geometry["y"] + geometry["height"] - 35)
     time.sleep(0.3)
     _type_text(text)
     time.sleep(0.3)
