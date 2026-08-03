@@ -1,0 +1,11 @@
+[Unit]
+Description=AIOS operations health check every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=aios-ops-health.service
+
+[Install]
+WantedBy=timers.target

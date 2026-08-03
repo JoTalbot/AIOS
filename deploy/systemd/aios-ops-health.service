@@ -1,0 +1,11 @@
+[Unit]
+Description=AIOS operations health check and deduplicated alerts
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_ops_health.py --alert
+StandardOutput=append:/root/AIOS/logs/ops_health.log
+StandardError=append:/root/AIOS/logs/ops_health.log
