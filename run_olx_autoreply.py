@@ -216,7 +216,36 @@ def main() -> int:
 
     # алерты аномалий (не чаще 1 раза в час)
     _maybe_anomaly_alert(token, chat_id)
+    # алерт при недоступности LLM
+    _maybe_llm_down_alert(token, chat_id)
     return 0
+
+
+def _maybe_llm_down_alert(token: str, chat_id: int) -> None:
+    """Уведомить владельца, если LLM-провайдеры недоступны (не чаще 1/час)."""
+    try:
+        from aios_core.autonomy import Journal
+        j = Journal()
+        # последние решения — есть ли признак недоступности LLM
+        state_p = ROOT / "data" / "autonomy_llm_alert.json"
+        try:
+            last = float(state_p.read_text().strip())
+        except Exception:
+            last = 0.0
+        if time.time() - last < 3600:
+            return
+        # проверим балансер напрямую
+        from aios_core.llm_balancer import LLMBalancer
+        b = LLMBalancer()
+        s = b.status()
+        any_avail = any(pd.get("keys_available", 0) > 0 for pd in s.get("providers", {}).values())
+        if not any_avail:
+            _tg(token, int(chat_id),
+                "⚠️ <b>LLM недоступен:</b> все провайдеры исчерпаны/недоступны. "
+                "Автономия будет отвечать с задержкой или эскалировать. Проверьте ключи.")
+            state_p.write_text(str(time.time()))
+    except Exception:
+        pass
 
 
 def _maybe_anomaly_alert(token: str, chat_id: int) -> None:
