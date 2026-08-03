@@ -99,6 +99,14 @@ def _sales_summary(sales: list[dict], tasks: list[dict]) -> dict:
         "pipeline_amount": round(sum(_number(sale.get("amount")) for sale in active), 2),
     }
 
+def _customer_crm() -> dict:
+    try:
+        from aios_core.crm import CRMStore
+        return CRMStore(ROOT).snapshot(limit=20)
+    except Exception:
+        return {"status": "error", "count": 0, "customers": [], "tags": {}}
+
+
 def _olx_stats() -> dict:
     try:
         conn = sqlite3.connect(str(ROOT / "data" / "olx_http.sqlite"))
@@ -182,6 +190,24 @@ def build() -> None:
                     f"text-sm {status_color.get(status, 'text-gray-700')}")
         else:
             ui.label("Сделок с ТТН пока нет").classes("text-sm text-gray-500")
+
+    # Карточки клиентов CRM — только отображаемые псевдонимы и маски телефонов
+    crm_customers = _customer_crm()
+    with ui.card().classes("w-full border-l-4 border-violet-500"):
+        ui.label("👥 Клиенты CRM").classes("text-lg font-bold")
+        if crm_customers.get("customers"):
+            tag_summary = " · ".join(f"{tag}: {count}" for tag, count in (crm_customers.get("tags") or {}).items())
+            if tag_summary:
+                ui.label(tag_summary).classes("text-xs text-gray-500")
+            for customer in crm_customers["customers"][:10]:
+                tags = " · ".join(customer.get("tags") or []) or "без тега"
+                channels = ", ".join(customer.get("channels") or []) or "—"
+                ui.label(
+                    f"• {customer.get('display_name')} {customer.get('phone_masked') or ''} · "
+                    f"{customer.get('sales_count', 0)} сделок · {customer.get('lifetime_amount', 0):.0f} грн · "
+                    f"{tags} · {channels}").classes("text-sm")
+        else:
+            ui.label("Карточки появятся после синхронизации сделок с ТТН").classes("text-sm text-gray-500")
 
     # Посылки Новой Пошты
     parcels = _np_parcels()

@@ -1761,6 +1761,42 @@ def _handle_sales_lifecycle_intent(api, chat_id: int, text: str) -> bool:
 
     crm_phrases = ("crm", "сделки", "статус продаж", "воронка продаж", "продажи crm")
     if any(phrase in normalized for phrase in crm_phrases):
+        # CRM-команды: экспорт и поиск клиента не требуют LLM и не раскрывают
+        # полный номер телефона в Telegram.
+        if "экспорт" in normalized or "export" in normalized:
+            try:
+                from run_crm import export_csv
+                from aios_core.crm import CRMStore
+                exported = export_csv(CRMStore(PROJECT_ROOT))
+                api.send_document(chat_id, exported["file"], caption=f"💼 CRM экспорт · {exported['rows']} клиентов")
+            except Exception as exc:
+                api.send_message(chat_id, f"⚠️ Не удалось экспортировать CRM: {_esc_tg(str(exc))[:180]}")
+            return True
+        if "клиент" in normalized or "customers" in normalized:
+            query = re.sub(r"^(?:crm\s*)?(?:клиенты|клиент|customers?)\s*:?\s*", "", raw, flags=re.IGNORECASE).strip()
+            try:
+                from aios_core.crm import CRMStore
+                store = CRMStore(PROJECT_ROOT)
+                if query:
+                    customer = store.find(query)
+                    customers = [customer] if customer else []
+                else:
+                    customers = store.snapshot(limit=12).get("customers", [])
+                if not customers:
+                    api.send_message(chat_id, "👥 CRM: клиентов по запросу не найдено.")
+                    return True
+                lines = ["👥 <b>Клиенты CRM</b>"]
+                for customer in customers[:12]:
+                    tags = " · ".join(customer.get("tags") or []) or "без тега"
+                    lines.append(
+                        f"• <b>{_esc_tg(customer.get('display_name'))}</b> {customer.get('phone_masked') or ''}\n"
+                        f"  {customer.get('sales_count', 0)} сделок · {customer.get('lifetime_amount', 0):.0f} грн · {tags}\n"
+                        f"  Последнее: {_esc_tg(customer.get('last_item') or '—')} · {_esc_tg(customer.get('last_status') or '—')}")
+                api.send_message(chat_id, "\n".join(lines)[:3900])
+            except Exception as exc:
+                api.send_message(chat_id, f"⚠️ CRM временно недоступна: {_esc_tg(str(exc))[:180]}")
+            return True
+
         crm = lifecycle.crm_snapshot()
         status_label = {
             "awaiting_shipment": "⏳ ждёт отправки", "ttn_created": "⏳ ТТН создана",
