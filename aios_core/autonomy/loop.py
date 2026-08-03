@@ -18,6 +18,7 @@ from .guardrails import Guardrails
 from .planner import Planner
 from .executor import Executor
 from .escalate import notify_owner, resolve as resolve_approval
+from .security import detect_injection, validate_proposal
 
 _MANUAL_LIKE = {"create_ttn", "send_money", "accept_advance", "create_ad", "boost_ad", "publish"}
 
@@ -38,6 +39,22 @@ class AutonomyCore:
         extra = extra or {}
         if not self.policy.enabled:
             return {"mode": "reply", "text": "", "decision": "DISABLED"}
+
+        # --- Промпт-инъекция: детектируем ДО обращения к LLM ---
+        inj = detect_injection(text)
+        if inj["injected"]:
+            # принудительная эскалация + понижение репутации клиента (попытка взлома)
+            sess0 = self.state.get(platform, chat)
+            sess0.adjust_reputation(-3)
+            self.state.save(sess0)
+            proposal = {"action": "reply_customer", "params": {"text": ""},
+                        "risk": "high", "intent": "injection", "platform": platform, "chat": chat}
+            from .guardrails import Decision as _Dec
+            dec = _Dec("ESCALATE", reason="Обнаружена попытка промпт-инъекции",
+                       matched_rules=["injection"])
+            self.journal.log(platform=platform, chat=chat, intent="injection",
+                             action="reply_customer", decision="INJECTION", reason=inj["reasons"])
+            return self._route(proposal, dec)
 
         # дедупликация + сессия
         sess = self.state.note_message(platform, chat, msg_id or text, text)
@@ -83,6 +100,9 @@ class AutonomyCore:
             outcome = self._route(proposal, low)
             return outcome
 
+        # передаём контекст доверия в планировщик для персонализации
+        extra = dict(extra)
+        extra.setdefault("customer_trust", sess.trust)
         proposal = self.planner.propose(platform, chat, text, owner=False, extra=extra)
         # подхватываем факты из контекста
         if extra.get("item"):
@@ -90,6 +110,16 @@ class AutonomyCore:
             proposal["params"].setdefault("item", extra["item"])
         if extra.get("ad_price") and proposal["params"].get("ad_price") is None:
             proposal["params"]["ad_price"] = extra["ad_price"]
+
+        # defence-in-depth: даже «сломанный» LLM не должен сформировать опасное действие
+        sec = validate_proposal(proposal)
+        if not sec["safe"]:
+            from .guardrails import Decision as _Dec2
+            dec = _Dec2("BLOCKED", reason=sec["reason"], matched_rules=["validate_proposal"])
+            self.journal.log(platform=platform, chat=chat, intent=proposal.get("intent"),
+                             action=proposal.get("action"), decision="BLOCKED",
+                             reason=sec["reason"])
+            return self._route(proposal, dec)
 
         decision = self.guardrails.evaluate(proposal, ctx)
         outcome = self._route(proposal, decision)

@@ -63,7 +63,8 @@ class Planner:
         if owner:
             proposal = self._propose_owner(platform, chat, text, intent)
         else:
-            proposal = self._propose_customer(platform, chat, text, intent, history=extra.get("history"))
+            proposal = self._propose_customer(platform, chat, text, intent,
+                                              history=extra.get("history"), extra=extra)
         return proposal
 
     # ------------------------------------------------------------------
@@ -112,8 +113,19 @@ class Planner:
 
     # ------------------------------------------------------------------
     def _propose_customer(self, platform: str, chat: str, text: str, intent: dict,
-                          history: list | None = None) -> dict:
+                          history: list | None = None, extra: dict | None = None) -> dict:
         """Предложение действия для входящего сообщения покупателя."""
+        extra = extra or {}
+        # Персонализация: контекст о товаре (цена/наличие) и клиенте
+        context_block = ""
+        item = extra.get("item")
+        if item:
+            ctx = self._product_context(item)
+            if ctx:
+                context_block = "Информация о товаре (используй в ответе):\n" + ctx + "\n"
+        trust = extra.get("customer_trust") or ""
+        if trust:
+            context_block += f"Отношения с клиентом: {trust}.\n"
         history_block = ""
         if history:
             # сжимаем историю: последние 8 сообщений, "наши" помечаем
@@ -126,6 +138,7 @@ class Planner:
         prompt = (
             f"Платформа: {platform}. Сообщение покупателя: «{text[:600]}»\n"
             f"Определённое намерение: {intent['intent']}.\n"
+            f"{context_block}"
             f"{history_block}"
             "Верни JSON с наиболее подходящим действием и параметрами.\n"
             "ВАЖНО: всегда заполняй поле params.sku/item (название товара/детали, о которой идёт "
@@ -158,6 +171,33 @@ class Planner:
             "aggressive": intent.get("aggressive", False),
             "bulk": intent.get("bulk", False),
         }
+
+    # ------------------------------------------------------------------
+    def _product_context(self, item: str) -> str:
+        """Контекст о товаре из склада (цена, наличие) для персонализации ответа."""
+        try:
+            import run_inventory
+            items = run_inventory._load()
+        except Exception:
+            return ""
+        item_l = (item or "").lower()
+        found = None
+        for it in items:
+            name = str(it.get("name") or "").lower()
+            if name == item_l or item_l in name or name in item_l:
+                found = it
+                break
+        if not found:
+            return ""
+        name = found.get("name", item)
+        qty = int(found.get("qty", 0))
+        price = found.get("price")
+        lines = [f"  • товар: {name}"]
+        if price:
+            lines.append(f"  • цена: {price} грн")
+        if qty is not None:
+            lines.append(f"  • наличие: {qty} шт ({'в наличии' if qty > 0 else 'под заказ'})")
+        return "\n".join(lines)
 
     # ------------------------------------------------------------------
     def _propose_owner(self, platform: str, chat: str, text: str, intent: dict) -> dict:
