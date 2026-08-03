@@ -1800,6 +1800,12 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                    "создай гугл таблицу", "создай google таблицу", "в гугл таблицу",
                    "создай таблицу из финансов", "создай таблицу из склада",
                    "сколько стоит", "почём", "цена на", "что стоит",
+                   "распознай деталь", "что за деталь", "определи деталь",
+                   "оцени деталь", "узнай деталь",
+                   "кто продаёт дешевле", "кто продает дешевле", "где дешевле",
+                   "топ выгодных", "лучшая цена",
+                   "месячный отчёт", "месячный отчет", "отчёт за месяц",
+                   "отчет за месяц", "отчёт за 30 дней", "сводка за месяц",
                    "подтверди телефон олх", "подтверди телефон olx", "подтвердить телефон олх",
                    "подтверждение телефона олх", "опубликуй это объявление",
                    "опубликуй объявление на олх", "публикуй на олх", "создай на олх",
@@ -2386,6 +2392,35 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ Экспорт не удался: {res.get('error', '?')}")
         return True
 
+    # ---- Распознавание фото запчасти ----
+    if any(w in t for w in ("распознай деталь", "что за деталь", "определи деталь",
+                            "оцени деталь", "узнай деталь", "деталь по фото")):
+        photo = _last_photo.get(chat_id)
+        if not photo:
+            api.send_message(chat_id, "📷 Сначала пришлите фото детали, потом «распознай деталь»")
+            return True
+        api.send_message(chat_id, "🤖 Распознаю деталь по фото (Gemini vision)… ~30 сек")
+        import subprocess as _sp
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_photo_recognition.py"), photo],
+                    capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-200:]}
+        if res.get("status") == "ok":
+            txt = (f"🔍 <b>Распознано:</b>\n"
+                   f"🔩 Деталь: <b>{_esc_tg(res.get('part', '?'))}</b>\n"
+                   f"📋 Состояние: {_esc_tg(res.get('condition') or '—')}\n"
+                   f"💰 Цена: {res.get('price') or '?'} грн\n"
+                   f"🚗 Совместимость: {_esc_tg(res.get('compatible') or '—')}\n"
+                   f"📝 {_esc_tg(res.get('notes') or '')}\n\n"
+                   f"Добавить на склад? «добавь деталь {res.get('part', '')}, 1 шт»\n"
+                   f"Или «создай объявление: {res.get('part', '')}»")
+            api.send_message(chat_id, txt[:3900])
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', 'Не удалось распознать')}")
+        return True
+
     # ---- Фото детали → черновик объявления ----
     if any(w in t for w in ("сделай объявление из фото", "объявление по фото", "фото в объявление",
                             "выложи по фото", "деталь по фото")):
@@ -2745,6 +2780,34 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, f"❌ {res.get('error', '?')}")
         return True
 
+    # ---- Кто продаёт дешевле (топ выгодных) ----
+    if re.match(r"^(кто продаёт дешевле|кто продает дешевле|где дешевле|топ выгодных|лучшая цена)", t):
+        q = re.sub(r"^(кто продаёт дешевле|кто продает дешевле|где дешевле|топ выгодных|лучшая цена)\s*:?\s*",
+                   "", text, flags=re.IGNORECASE).strip()
+        q = q.replace("?", "").strip()
+        if not q:
+            api.send_message(chat_id, "💰 «кто продаёт дешевле <деталь>», например: кто продаёт дешевле стартер ВАЗ")
+            return True
+        api.send_message(chat_id, f"💰 Ищу лучшие цены на «{q}»…")
+        import subprocess as _sp
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_price_guide.py"), "cheap", q],
+                    capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-150:]}
+        if res.get("status") == "ok" and res.get("cheapest"):
+            lines = [f"💰 <b>Лучшие цены на «{q}»</b> (медиана {res.get('median')} грн):"]
+            for i, s in enumerate(res["cheapest"], 1):
+                lines.append(f"{i}. <b>{s['price']} грн</b> — {_esc_tg(s['title'][:55])}\n"
+                             f"   {_esc_tg(s.get('city') or '')} · <a href=\"{s.get('url', '#')}\">открыть</a>")
+            api.send_message(chat_id, "\n".join(lines)[:3900])
+        elif res.get("note"):
+            api.send_message(chat_id, f"💰 «{q}» пока нет в базе. «следи за ценой {q}» — начну собирать.")
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+        return True
+
     # ---- AI-классификатор при добавлении детали ----
     if re.match(r"^добавь деталь\s+.+,\s*\d+\s*шт", t):
         import subprocess as _sp
@@ -3029,6 +3092,29 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 mod = _iu2.module_from_spec(spec)
                 spec.loader.exec_module(mod)
                 report = mod.build_report()
+                api.send_message(chat_id, report[:3900])
+            except Exception as e:
+                api.send_message(chat_id, f"❌ {e}")
+        return True
+
+    # ---- Месячный отчёт ----
+    if any(w in t for w in ("месячный отчёт", "месячный отчет", "отчёт за месяц",
+                            "отчет за месяц", "отчёт за 30 дней", "сводка за месяц")):
+        import subprocess as _sp
+        api.send_message(chat_id, "⏳ Собираю месячный отчёт…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_evening_report.py"), "--monthly"],
+                    capture_output=True, text=True, timeout=60, cwd=str(PROJECT_ROOT))
+        try:
+            report = json.loads((r.stdout or "").strip().split("\n")[-1])
+            api.send_message(chat_id, "❌ Не удалось собрать отчёт")
+        except Exception:
+            # stdout не JSON — это сам отчёт? нет, --monthly шлёт в TG. Покажем через импорт
+            import importlib.util as _iu3
+            try:
+                spec = _iu3.spec_from_file_location("evrm", str(PROJECT_ROOT / "run_evening_report.py"))
+                mod = _iu3.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                report = mod.build_monthly()
                 api.send_message(chat_id, report[:3900])
             except Exception as e:
                 api.send_message(chat_id, f"❌ {e}")
