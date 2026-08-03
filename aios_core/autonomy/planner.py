@@ -312,6 +312,10 @@ class Planner:
             ads = _json.loads(p.read_text(encoding="utf-8"))
             lines = []
             for a in ads[-10:]:
+                # Журнал сохраняется и после снятия публикации; такие записи
+                # нельзя показывать LLM как актуальное предложение.
+                if a.get("active") is False or str(a.get("status") or "").lower() in ("deactivated", "deleted"):
+                    continue
                 title = a.get("title", "")
                 price = a.get("price", "")
                 if title:

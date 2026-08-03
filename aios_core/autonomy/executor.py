@@ -95,8 +95,20 @@ class Executor:
             msg += " · склад обновлён"
         elif inv_result and inv_result.get("error"):
             msg += f" · склад: {inv_result['error']}"
-        # опциональная деактивация объявления при продаже
+        # После ручной продажи также снимаем связанное объявление OLX, если
+        # свободный остаток этой позиции закончился. Явный ad_id имеет приоритет.
         ad_id = str(p.get("ad_id") or "").strip()
+        olx_auto_res = None
+        if not ad_id and inv_result and inv_result.get("status") == "ok":
+            try:
+                from aios_core.sales_lifecycle import SalesLifecycle
+                olx_auto_res = SalesLifecycle(Path(self.root)).deactivate_olx_for_item(item, "manual_sale")
+                if olx_auto_res.get("status") == "deactivated":
+                    msg += " · объявление OLX снято"
+                elif olx_auto_res.get("status") in ("not_found", "ambiguous", "error"):
+                    msg += " · OLX: нужна ручная проверка"
+            except Exception:
+                olx_auto_res = {"status": "error", "error": "автоснятие OLX недоступно"}
         ad_res = None
         if ad_id:
             ad_res = _run_ac(["olx", "delete", ad_id, "--confirm"], timeout=170)
@@ -116,7 +128,8 @@ class Executor:
             else:
                 msg += f" · календарь: {cal_res.get('error', '?')}"
         return {"status": res.get("status", "error"), "message": msg,
-                "entry": res.get("entry"), "inventory": inv_result, "ad": ad_res, "calendar": cal_res}
+                "entry": res.get("entry"), "inventory": inv_result,
+                "ad": ad_res, "olx": olx_auto_res, "calendar": cal_res}
 
     def _do_log_expense(self, p, platform, chat):
         desc = str(p.get("desc") or "").strip()

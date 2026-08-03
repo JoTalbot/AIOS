@@ -312,6 +312,7 @@ def create_ttn(detail: str, cost: str, recipient_name: str, recipient_phone: str
                 "sale": sale_result.get("sale"),
                 "task": sale_result.get("task"),
                 "inventory": sale_result.get("inventory"),
+                "olx": sale_result.get("olx"),
                 "sale_message": sale_result.get("message"),
             })
         else:

@@ -1791,6 +1791,15 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                     if data.get("sale_lifecycle_warning"):
                         lifecycle_line += (f"\n⚠️ Учёт продажи: "
                                            f"{_esc_tg(data.get('sale_lifecycle_warning'))}")
+                    olx = data.get("olx") or {}
+                    if olx.get("status") == "deactivated":
+                        lifecycle_line += "\n🛒 Связанное объявление OLX снято с публикации."
+                    elif olx.get("status") == "kept_active":
+                        lifecycle_line += (f"\n🛒 Объявление OLX оставлено: в остатке ещё "
+                                           f"{olx.get('available_qty')} шт.")
+                    elif olx.get("status") in ("not_found", "ambiguous", "error"):
+                        lifecycle_line += ("\n⚠️ Не удалось однозначно снять связанное объявление OLX: "
+                                           "проверьте его вручную.")
                     api.send_message(chat_id,
                                      f"📦 <b>ТТН создана: {data.get('ttn')}</b>\n"
                                      f"Деталь: {_esc_tg(data.get('detail'))} · Стоимость: {data.get('cost')} грн\n"
@@ -3576,20 +3585,19 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 txt += f"⚠️ {inv['error']}\n"
             if fin.get("status") == "ok":
                 txt += "✅ Записано в финансы"
-            # убрать объявление с OLX, если деталь была опубликована
+            # Снять связанное объявление безопасно: только если остаток этой
+            # позиции исчерпан и журнал публикаций дал единственное совпадение.
             try:
-                journal = json.loads((PROJECT_ROOT / "data" / "olx_published.json").read_text(encoding="utf-8"))
-                name_l = name.lower()
-                match = next((e for e in journal if name_l in (e.get("title") or "").lower()), None)
-                if match and match.get("ad_id"):
-                    api.send_message(chat_id, "🛒 Убираю объявление с OLX…")
-                    r3 = _run_account_control(["olx", "delete", str(match["ad_id"]), "--confirm"], timeout=150)
-                    if r3.get("status") in ("deleted", "deactivated"):
-                        txt += f"\n🛒 OLX: объявление {match['ad_id']} убрано"
-                    else:
-                        txt += f"\n🛒 OLX: не удалось убрать ({str(r3.get('error', '?'))[:80]})"
+                from aios_core.sales_lifecycle import SalesLifecycle
+                olx_res = SalesLifecycle(PROJECT_ROOT).deactivate_olx_for_item(name, "manual_sale")
+                if olx_res.get("status") == "deactivated":
+                    txt += "\n🛒 OLX: объявление снято с публикации"
+                elif olx_res.get("status") == "kept_active":
+                    txt += f"\n🛒 OLX: объявление оставлено (ещё {olx_res.get('available_qty')} шт в остатке)"
+                elif olx_res.get("status") in ("not_found", "ambiguous", "error"):
+                    txt += "\n⚠️ OLX: не найдено однозначное объявление для снятия"
             except Exception:
-                pass
+                txt += "\n⚠️ OLX: не удалось проверить связанное объявление"
             api.send_message(chat_id, txt + "\n📦 Если нужна накладная НП: «создай ттн: деталь, цена, ФИО, телефон, город, отделение»")
             return True
         # добавление детали
