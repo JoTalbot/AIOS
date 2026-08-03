@@ -38,4 +38,13 @@ def test_sync_keeps_notification_content_out_of_lead_queue(tmp_path):
     assert {row["source"] for row in rows} == {"WhatsApp", "iMe Messenger"}
     assert queue.review(rows[0]["id"])["status"] == "reviewed"
     assert queue.summary()["pending"] == 1
+    promoted = queue.promote_to_crm_task(rows[1]["id"])
+    assert promoted["status"] == "crm_task_created"
+    summary = queue.summary()
+    assert summary["pending"] == 0
+    assert summary["crm_open"] == 1
+    tasks = queue.list_crm_tasks()
+    assert tasks[0]["source"] in {"WhatsApp", "iMe Messenger"}
+    assert queue.complete_crm_task(tasks[0]["id"])["status"] == "completed"
     assert (data / "lead_candidates.json").stat().st_mode & 0o777 == 0o600
+    assert (data / "crm_followup_tasks.json").stat().st_mode & 0o777 == 0o600

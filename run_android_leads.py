@@ -23,8 +23,14 @@ def main() -> int:
         result = {"status": "ok", "leads": queue.list_pending(source=source)}
     elif command == "review" and len(sys.argv) >= 3:
         result = queue.review(sys.argv[2])
+    elif command == "promote" and len(sys.argv) >= 3:
+        result = queue.promote_to_crm_task(sys.argv[2])
+    elif command == "tasks":
+        result = {"status": "ok", "tasks": queue.list_crm_tasks()}
+    elif command == "complete" and len(sys.argv) >= 3:
+        result = queue.complete_crm_task(sys.argv[2])
     else:
-        result = {"status": "error", "error": "sync|summary|list [source]|review <id>"}
+        result = {"status": "error", "error": "sync|summary|list [source]|review <id>|promote <id>|tasks|complete <task_id>"}
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("status") in ("ok", "reviewed", "already_reviewed") else 1
 

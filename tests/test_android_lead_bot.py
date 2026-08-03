@@ -18,7 +18,7 @@ class Queue:
         return {"status": "ok", "added": 0}
 
     def summary(self):
-        return {"status": "ok", "pending": 1}
+        return {"status": "ok", "pending": 1, "crm_open": 0}
 
     def list_pending(self, limit=20, source=""):
         return [{"id": "phone-1", "source": "WhatsApp", "observed_at": "2026-08-04T10:00:00", "status": "pending_review"}]
@@ -26,6 +26,10 @@ class Queue:
     def review(self, lead_id):
         self.reviewed.append(lead_id)
         return {"status": "reviewed"}
+
+    def promote_to_crm_task(self, lead_id):
+        self.promoted = lead_id
+        return {"status": "crm_task_created", "task_id": "task-1"}
 
 
 def test_phone_lead_cards_do_not_render_notification_content(monkeypatch):
@@ -44,3 +48,22 @@ def test_phone_lead_cards_do_not_render_notification_content(monkeypatch):
         assert queue.reviewed == ["phone-1"]
     finally:
         bot._last_phone_leads.pop(chat_id, None)
+
+
+def test_promote_phone_lead_to_local_crm_task_needs_confirmation(monkeypatch):
+    import run_telegram_bot as bot
+
+    queue = Queue()
+    monkeypatch.setattr(bot, "_phone_lead_queue", lambda: queue)
+    api = API()
+    chat_id = 808182
+    try:
+        bot._handle_phone_lead_intent(api, chat_id, "лиды телефона")
+        assert bot._handle_phone_lead_intent(api, chat_id, "создай CRM задачу для лида 1")
+        assert bot._pending_confirm[chat_id]["kind"] == "phone_lead_promote"
+        pending = bot._pending_confirm.pop(chat_id)
+        assert bot._confirm_phone_pending(api, chat_id, pending["kind"], pending["data"])
+        assert queue.promoted == "phone-1"
+    finally:
+        bot._last_phone_leads.pop(chat_id, None)
+        bot._pending_confirm.pop(chat_id, None)
