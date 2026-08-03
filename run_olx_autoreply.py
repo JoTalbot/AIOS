@@ -80,11 +80,13 @@ def _run_ac(args: list[str], timeout: int = 170) -> dict:
         return {"status": "error", "error": out[-400:]}
 
 
-def _tg(token: str, chat_id: int, text: str) -> None:
+def _tg(token: str, chat_id: int, text: str, reply_markup: dict | None = None) -> None:
     import urllib.request
     import html as _html
     payload = {"chat_id": chat_id, "text": _html.escape(text)[:3800],
                "parse_mode": "HTML", "disable_web_page_preview": True}
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
     req = urllib.request.Request(
         f"https://api.telegram.org/bot{token}/sendMessage",
         data=json.dumps(payload).encode(),
@@ -130,8 +132,64 @@ def read_olx(contact: str) -> dict:
     return _run_ac(["olx", "chat", "read", contact, "--limit", "15"], timeout=170)
 
 
-def reply_olx(contact: str, text: str) -> dict:
-    return _run_ac(["olx", "chat", "reply", contact, text, "--confirm"], timeout=170)
+def reply_olx(contact: str, text: str, retries: int = 3, wait: int = 20) -> dict:
+    """Отправить ответ в OLX-чат с ретраями при блокировке CloudFront.
+
+    OLX временно блокирует (CloudFront) при частых обращениях — повторяем
+    до `retries` раз с паузой `wait` сек. Возвращает последний результат.
+    """
+    last = {"status": "error", "error": "не выполнено"}
+    for attempt in range(1, retries + 1):
+        res = _run_ac(["olx", "chat", "reply", contact, text, "--confirm"], timeout=170)
+        status = res.get("status", "")
+        err = str(res.get("error", "") or "")
+        # успех или не найден контакт — дальше не повторяем
+        if status == "ok" or status == "sent":
+            return res
+        if "не найдена" in err or "not found" in err.lower():
+            return res
+        # блокировка/временная ошибка — повтор
+        print(f"  [OLX-reply] попытка {attempt}/{retries} для {contact} не удалась: {err[:80]}", flush=True)
+        last = res
+        if attempt < retries:
+            time.sleep(wait)
+    return last
+
+
+_PENDING = ROOT / "data" / "olx_pending_replies.json"
+
+
+def _save_pending_reply(contact: str, text: str) -> str:
+    """Сохранить неотправленный ответ; возвращает короткий id для кнопки."""
+    try:
+        data = {}
+        if _PENDING.exists():
+            data = json.loads(_PENDING.read_text(encoding="utf-8"))
+        rid = f"r{int(time.time()*1000)}"
+        data[rid] = {"contact": contact, "text": text, "ts": time.time()}
+        # держим максимум 50
+        if len(data) > 50:
+            oldest = sorted(data, key=lambda k: data[k].get("ts", 0))[:len(data)-50]
+            for k in oldest:
+                data.pop(k, None)
+        _PENDING.parent.mkdir(parents=True, exist_ok=True)
+        _PENDING.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        return rid
+    except Exception:
+        return ""
+
+
+def _get_pending_reply(rid: str) -> dict | None:
+    """Получить неотправленный ответ по id и удалить его."""
+    try:
+        if not _PENDING.exists():
+            return None
+        data = json.loads(_PENDING.read_text(encoding="utf-8"))
+        item = data.pop(rid, None)
+        _PENDING.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        return item
+    except Exception:
+        return None
 
 
 def main() -> int:
@@ -195,13 +253,18 @@ def main() -> int:
             auto = cfg.get("auto_send", True)
             if auto:
                 res = reply_olx(contact, reply_text)
-                if res.get("status") == "ok":
+                if res.get("status") in ("ok", "sent"):
                     replied += 1
                     actions_summary.append(f"✅ {contact}: {reply_text[:60]}")
                 else:
-                    # не отправилось — уведомить владельца
+                    # не отправилось после ретраев — сохранить и уведомить с кнопкой
+                    rid = _save_pending_reply(contact, reply_text)
                     _tg(token, int(chat_id),
-                        f"⚠️ Автоответ OLX не отправился {contact}: {res.get('error','?')}")
+                        f"⚠️ <b>Автоответ OLX не отправился {contact}:</b> {res.get('error','?')}\n\n"
+                        f"<b>Сгенерированный ответ:</b>\n{reply_text[:500]}\n\n"
+                        f"Нажмите кнопку, чтобы отправить.",
+                        reply_markup={"inline_keyboard": [[
+                            {"text": "📤 Отправить ответ", "callback_data": f"olx_send_{rid}"}]]})
             else:
                 _tg(token, int(chat_id),
                     f"💬 <b>Предлагаемый ответ для {contact}:</b>\n{reply_text[:600]}\n\n"

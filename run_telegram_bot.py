@@ -4748,6 +4748,51 @@ def _handle_inbox_callback(api: TelegramAPI, chat_id: int, msg_id: int, data: st
         return
 
 
+def _handle_olx_send_callback(api: TelegramAPI, chat_id: int, cb_id: str, data: str) -> None:
+    """Кнопка «Отправить ответ» — отправляет сгенерированный ответ в OLX-чат.
+
+    Формат data: olx_send_<contact>|<text>. Контакт и текст URL-безопасно кодируются.
+    """
+    try:
+        rid = data[len("olx_send_"):]
+        # получить неотправленный ответ из pending-файла
+        import json as _json
+        pending = PROJECT_ROOT / "data" / "olx_pending_replies.json"
+        item = None
+        try:
+            if pending.exists():
+                _d = _json.loads(pending.read_text(encoding="utf-8"))
+                item = _d.pop(rid, None)
+                pending.write_text(_json.dumps(_d, ensure_ascii=False), encoding="utf-8")
+        except Exception:
+            pass
+        if not item or not item.get("contact") or not item.get("text"):
+            api.answer_callback(cb_id, "❌ Ответ не найден (истёк)")
+            return
+        contact = item["contact"]
+        text = item["text"]
+        import subprocess as _sp_olx
+        r = _sp_olx.run(
+            ["xvfb-run", "-a", "-s", "-screen 0 1440x900x24",
+             "/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_account_control.py"),
+             "olx", "chat", "reply", contact, text, "--confirm"],
+            capture_output=True, text=True, timeout=200, cwd=str(PROJECT_ROOT))
+        out = (r.stdout or "").strip()
+        ok = '"status": "sent"' in out or '"status": "ok"' in out
+        if ok:
+            api.answer_callback(cb_id, "✅ Отправлено")
+            api.send_message(chat_id, f"✅ Ответ отправлен <b>{contact}</b> в OLX.")
+        else:
+            api.answer_callback(cb_id, "⚠️ Не отправлено")
+            api.send_message(chat_id, f"⚠️ Не удалось отправить <b>{contact}</b>: {out[-200:]}")
+    except Exception as e:
+        try:
+            api.answer_callback(cb_id, "⚠️ Ошибка")
+            api.send_message(chat_id, f"⚠️ Ошибка отправки: {e}")
+        except Exception:
+            pass
+
+
 def _handle_autonomy_callback(api: TelegramAPI, chat_id: int, msg_id: int, cb_id: str, data: str) -> None:
     """Обработка кнопок подтверждения/отклонения автономии."""
     try:
@@ -4788,6 +4833,11 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
         return
 
     api.answer_callback(cb_id, "⏳ Обрабатываю...")
+
+    # ---- OLX: отправить сгенерированный ответ вручную (кнопка) ----
+    if data.startswith("olx_send_"):
+        _handle_olx_send_callback(api, chat_id, cb_id, data)
+        return
 
     # ---- Автономия: кнопки подтверждения/отклонения ----
     if data.startswith("aut_ap_") or data.startswith("aut_rm_"):
