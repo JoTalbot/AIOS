@@ -114,7 +114,7 @@ class AndroidLeadQueue:
                 "observed_at": item.get("observed_at"), "status": item.get("status"),
                 "requires_manual_chat_open": bool(item.get("requires_manual_chat_open")),
             }
-            for item in rows[-max(1, min(int(limit), 50)):]
+            for item in rows[-max(1, min(int(limit), MAX_LEADS)):]
         ]
 
     def review(self, lead_id: str) -> dict:

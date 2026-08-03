@@ -1,0 +1,12 @@
+[Unit]
+Description=AIOS metadata-only Android lead digest
+After=network-online.target aios-android-notifications.timer
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_android_lead_digest.py --alert
+StandardOutput=append:/root/AIOS/logs/android_leads.log
+StandardError=append:/root/AIOS/logs/android_leads.log
