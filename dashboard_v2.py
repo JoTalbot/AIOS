@@ -63,6 +63,21 @@ def load_balancer_metrics():
     except:
         return {"groq": 40}, {"openrouter": 61}
 
+def load_autonomy():
+    """Данные автономии: сводка решений + активные approval."""
+    try:
+        from aios_core.autonomy.report import daily_summary
+        s = daily_summary(days=1)
+    except Exception:
+        s = {}
+    approvals = []
+    try:
+        import json as _json
+        ap = _json.loads((Path("/root/AIOS/data/autonomy_approvals.json")).read_text())
+        approvals = [a for a in ap if a.get("status") == "pending"]
+    except Exception:
+        approvals = []
+    return s, approvals
 def load_logs():
     try:
         log_path = Path("/root/AIOS/logs/coder_v3.log")
@@ -146,6 +161,20 @@ def v2_dashboard():
             ui.label("Services: v3.1 active (1 min), v2 disabled, Docker 8 Up, API healthy")
             ui.label("No reboot required, disk 42% / 31G, RAM 1.4Gi used")
 
+    # Автономия
+    aut_s, aut_ap = load_autonomy()
+    with ui.card().classes("w-full q-mt-md"):
+        ui.label("🤖 Автономия (сводка за сутки)").classes("text-h6")
+        ui.label(f"Решений: {aut_s.get('total_decisions', 0)}")
+        bd = aut_s.get("by_decision", {})
+        for k in ("ALLOWED", "ESCALATE", "MANUAL", "BLOCKED", "OWNER_EXEC"):
+            if k in bd:
+                ui.label(f"  {k}: {bd[k]}")
+        if aut_s.get("sales"):
+            ui.label(f"💰 Продаж: {aut_s['sales']} на {aut_s['sales_amount']} грн")
+        ui.label(f"⏳ Ожидают решения владельца: {len(aut_ap)}")
+        if aut_ap:
+            ui.label("Ид: " + ", ".join(f"<code>{a.get('id')}</code>" for a in aut_ap[:8])).classes("text-xs")
     with ui.card().classes("w-full q-mt-md"):
         ui.label("📜 Live Logs v3 (last 30 lines)").classes("text-h6")
         ui.code(logs).classes("w-full text-xs")

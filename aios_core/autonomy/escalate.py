@@ -74,7 +74,12 @@ def notify_owner(proposal: dict, decision, journal=None) -> dict:
     if token and chat_id:
         try:
             payload = {"chat_id": int(chat_id), "text": text[:3800],
-                       "parse_mode": "HTML", "disable_web_page_preview": True}
+                       "parse_mode": "HTML", "disable_web_page_preview": True,
+                       "reply_markup": {
+                           "inline_keyboard": [[
+                               {"text": "✅ Согласовать", "callback_data": f"aut_ap_{rec['id']}"},
+                               {"text": "❌ Отклонить", "callback_data": f"aut_rm_{rec['id']}"},
+                           ]]}}
             req = urllib.request.Request(
                 f"https://api.telegram.org/bot{token}/sendMessage",
                 data=json.dumps(payload).encode(),

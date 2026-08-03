@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -212,7 +213,32 @@ def main() -> int:
 
     if actions_summary:
         _tg(token, int(chat_id), "📊 <b>Цикл автоответа OLX</b>\n" + "\n".join(actions_summary[:10]))
+
+    # алерты аномалий (не чаще 1 раза в час)
+    _maybe_anomaly_alert(token, chat_id)
     return 0
+
+
+def _maybe_anomaly_alert(token: str, chat_id: int) -> None:
+    """Отправить владельцу уведомление об аномалиях (не чаще 1/час)."""
+    try:
+        from aios_core.autonomy.report import anomalies
+        state_p = ROOT / "data" / "autonomy_alert_state.json"
+        try:
+            last = float(state_p.read_text().strip())
+        except Exception:
+            last = 0.0
+        if time.time() - last < 3600:
+            return
+        anom = anomalies()
+        if anom:
+            lines = ["🚨 <b>Аномалии автономии</b>"]
+            for a in anom[:5]:
+                lines.append(f"• {a.get('note', a.get('type'))}")
+            _tg(token, int(chat_id), "\n".join(lines))
+            state_p.write_text(str(time.time()))
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

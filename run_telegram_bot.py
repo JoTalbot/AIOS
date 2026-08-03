@@ -4728,6 +4728,33 @@ def _handle_inbox_callback(api: TelegramAPI, chat_id: int, msg_id: int, data: st
         return
 
 
+def _handle_autonomy_callback(api: TelegramAPI, chat_id: int, msg_id: int, cb_id: str, data: str) -> None:
+    """Обработка кнопок подтверждения/отклонения автономии."""
+    try:
+        approve = data.startswith("aut_ap_")
+        aid = data.split("_", 2)[2]
+        from aios_core.autonomy import AutonomyCore as _AutoCore
+        core = _AutoCore()
+        res = core.confirm(aid, approve=approve)
+        if res.get("ok"):
+            if approve:
+                r = res.get("result", {})
+                api.answer_callback(cb_id, "✅ Выполнено")
+                api.send_message(chat_id,
+                                 f"✅ <b>Подтверждено и выполнено</b> ({aid})\n"
+                                 f"{r.get('message') or r.get('status') or 'ok'}")
+            else:
+                api.answer_callback(cb_id, "❌ Отклонено")
+                api.send_message(chat_id, f"❌ Отклонено ({aid})")
+        else:
+            api.answer_callback(cb_id, "⚠️ не найдено")
+            api.send_message(chat_id, f"⚠️ Approval {aid} не найден или уже обработан.")
+    except Exception as e:
+        try:
+            api.answer_callback(cb_id, "⚠️ ошибка")
+            api.send_message(chat_id, f"⚠️ Ошибка обработки кнопки: {e}")
+        except Exception:
+            pass
 def _handle_callback(api: TelegramAPI, upd: dict) -> None:
     """Handle inline button callbacks (кнопки в сообщениях)."""
     cb = upd.get("callback_query", {})
@@ -4741,6 +4768,16 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
         return
 
     api.answer_callback(cb_id, "⏳ Обрабатываю...")
+
+    # ---- Автономия: кнопки подтверждения/отклонения ----
+    if data.startswith("aut_ap_") or data.startswith("aut_rm_"):
+        _handle_autonomy_callback(api, chat_id, msg_id, cb_id, data)
+        return
+
+    # ---- Инбокс: inline-действия ----
+    if data.startswith("inbox_"):
+        _handle_inbox_callback(api, chat_id, msg_id, data)
+        return
 
     # ---- Инбокс: inline-действия ----
     if data.startswith("inbox_"):
