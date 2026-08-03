@@ -60,6 +60,45 @@ def _finance() -> list:
         return []
 
 
+
+def _sales_lifecycle() -> list[dict]:
+    try:
+        data = json.loads((ROOT / "data" / "sales_lifecycle.json").read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _sales_tasks() -> list[dict]:
+    try:
+        data = json.loads((ROOT / "data" / "sales_tasks.json").read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _number(value) -> float:
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _sales_summary(sales: list[dict], tasks: list[dict]) -> dict:
+    """CRM-метрики без персональных данных клиентов."""
+    active_statuses = {"awaiting_shipment", "ttn_created", "in_transit", "returning"}
+    active = [sale for sale in sales if sale.get("status") in active_statuses]
+    return {
+        "total": len(sales),
+        "active": len(active),
+        "awaiting": sum(1 for sale in sales if sale.get("status") in ("awaiting_shipment", "ttn_created")),
+        "in_transit": sum(1 for sale in sales if sale.get("status") == "in_transit"),
+        "delivered": sum(1 for sale in sales if sale.get("status") == "delivered"),
+        "returned": sum(1 for sale in sales if sale.get("status") in ("returned", "return_received", "returning")),
+        "open_tasks": sum(1 for task in tasks if task.get("status") == "open"),
+        "pipeline_amount": round(sum(_number(sale.get("amount")) for sale in active), 2),
+    }
+
 def _olx_stats() -> dict:
     try:
         conn = sqlite3.connect(str(ROOT / "data" / "olx_http.sqlite"))
@@ -103,6 +142,47 @@ def build() -> None:
                 for e in entries:
                     ui.label(f"• {e.get('query')} — мин {e.get('last_min') or '?'} грн").classes("text-sm")
 
+    # Продажи / CRM (не выводим ФИО и телефоны на общий экран)
+    sales = _sales_lifecycle()
+    sale_tasks = _sales_tasks()
+    crm = _sales_summary(sales, sale_tasks)
+    status_label = {
+        "awaiting_shipment": "Ожидает отправки", "ttn_created": "ТТН создана",
+        "in_transit": "В пути", "delivered": "Доставлено", "returning": "Возврат в пути",
+        "returned": "Возврат получен", "return_received": "Возвращено на склад",
+    }
+    status_color = {
+        "awaiting_shipment": "text-amber-700", "ttn_created": "text-amber-700",
+        "in_transit": "text-blue-700", "delivered": "text-green-700",
+        "returning": "text-orange-700", "returned": "text-red-700", "return_received": "text-gray-700",
+    }
+    with ui.card().classes("w-full border-l-4 border-indigo-500"):
+        ui.label("💼 Продажи и CRM").classes("text-lg font-bold")
+        with ui.row().classes("w-full gap-4"):
+            for label, value, color in (
+                ("Активные сделки", crm["active"], "text-indigo-700"),
+                ("Ждут отправки", crm["awaiting"], "text-amber-700"),
+                ("В пути", crm["in_transit"], "text-blue-700"),
+                ("Доставлено", crm["delivered"], "text-green-700"),
+                ("Открытые задачи", crm["open_tasks"], "text-red-700"),
+            ):
+                with ui.card().classes("min-w-32 bg-slate-50"):
+                    ui.label(label).classes("text-xs text-gray-500")
+                    ui.label(str(value)).classes(f"text-2xl font-bold {color}")
+        ui.label(f"Сумма активных сделок: {crm['pipeline_amount']:.0f} грн · возвратов: {crm['returned']}").classes("text-sm")
+        if sales:
+            ui.label("Последние сделки").classes("text-sm font-bold mt-2")
+            for sale in sorted(sales, key=lambda x: str(x.get("updated_at") or x.get("created_at") or ""), reverse=True)[:8]:
+                status = str(sale.get("status") or "unknown")
+                item = str(sale.get("item") or "Товар")[:80]
+                ttn = str(sale.get("ttn") or "—")
+                amount = _number(sale.get("amount"))
+                task_note = " · задача открыта" if any(t.get("sale_id") == sale.get("id") and t.get("status") == "open" for t in sale_tasks) else ""
+                ui.label(f"• {status_label.get(status, status)} · {item} · ТТН {ttn} · {amount:.0f} грн{task_note}").classes(
+                    f"text-sm {status_color.get(status, 'text-gray-700')}")
+        else:
+            ui.label("Сделок с ТТН пока нет").classes("text-sm text-gray-500")
+
     # Посылки Новой Пошты
     parcels = _np_parcels()
     with ui.card().classes("w-full"):
@@ -138,12 +218,17 @@ def build() -> None:
     with ui.card().classes("w-full"):
         ui.label("📦 Склад").classes("text-lg font-bold")
         if inv:
-            total_qty = sum(x.get("qty", 0) for x in inv)
-            total_val = sum(x.get("qty", 0) * x.get("price", 0) for x in inv)
-            ui.label(f"Деталей: {len(inv)} · всего шт: {total_qty} · запасы: {total_val} грн").classes("text-sm")
+            total_qty = sum(_number(x.get("qty")) for x in inv)
+            total_reserved = sum(_number(x.get("reserved_qty")) for x in inv)
+            total_available = max(0, total_qty - total_reserved)
+            total_val = sum(max(0, _number(x.get("qty")) - _number(x.get("reserved_qty"))) * _number(x.get("price")) for x in inv)
+            ui.label(f"Позиций: {len(inv)} · физически: {total_qty:.0f} шт · свободно: {total_available:.0f} шт · резерв: {total_reserved:.0f} шт").classes("text-sm")
+            ui.label(f"Свободные запасы: {total_val:.0f} грн").classes("text-sm")
             for x in inv[:12]:
-                mark = "✅" if x.get("qty", 0) > 0 else "❌"
-                ui.label(f"{mark} {x.get('name', '')} — {x.get('qty', 0)} шт · {x.get('price', 0)} грн").classes("text-sm")
+                qty = _number(x.get("qty")); reserved = _number(x.get("reserved_qty")); available = max(0, qty - reserved)
+                mark = "✅" if available > 0 else ("⏳" if reserved else "❌")
+                reserve_note = f" · резерв {reserved:.0f}" if reserved else ""
+                ui.label(f"{mark} {x.get('name', '')} — свободно {available:.0f} из {qty:.0f} шт{reserve_note} · {x.get('price', 0)} грн").classes("text-sm")
         else:
             ui.label("Склад пуст")
 
