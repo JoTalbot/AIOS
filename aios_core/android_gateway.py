@@ -119,7 +119,9 @@ class AndroidGateway:
         return str(self.config().get("serial") or "")
 
     def _run(self, args: list[str], timeout: int = 30, serial: str | None = None) -> subprocess.CompletedProcess:
-        target = serial or self.serial
+        # ``None`` means use the registered device; an explicit empty string
+        # means a host-wide ADB command such as ``devices`` or ``connect``.
+        target = self.serial if serial is None else serial
         command = [self.adb_bin]
         if target:
             command += ["-s", target]
@@ -190,12 +192,27 @@ class AndroidGateway:
         return {"status": "ok", "device": cfg}
 
     def connect(self) -> dict:
+        """Reconnect the paired endpoint, clearing a stale offline ADB entry."""
         endpoint = self.serial
         if not endpoint:
             return {"status": "error", "error": "Телефон ещё не зарегистрирован"}
+        listing = self._run(["devices", "-l"], timeout=15, serial="")
+        state = ""
+        for line in (listing.stdout or "").splitlines()[1:]:
+            parts = line.split()
+            if len(parts) >= 2 and parts[0] == endpoint:
+                state = parts[1]
+                break
+        if state == "device":
+            return {"status": "ok", "message": "ADB уже подключён", "endpoint": endpoint}
+        if state in ("offline", "unauthorized", "no"):
+            # ``disconnect`` affects only this stale TCP endpoint, never a USB
+            # device or the WireGuard tunnel itself.
+            self._run(["disconnect", endpoint], timeout=12, serial="")
         result = self._run(["connect", endpoint], timeout=20, serial="")
         return {"status": "ok" if result.returncode == 0 else "error",
-                "message": (result.stdout or result.stderr or "").strip()[:300]}
+                "message": (result.stdout or result.stderr or "").strip()[:300],
+                "endpoint": endpoint, "previous_state": state or "absent"}
 
     def status(self) -> dict:
         cfg = self.config()

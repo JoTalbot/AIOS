@@ -38,6 +38,31 @@ def test_register_and_status_with_mocked_adb(tmp_path, monkeypatch):
     assert status["packages"] == 2
 
 
+def test_connect_replaces_stale_offline_endpoint(tmp_path, monkeypatch):
+    from aios_core.android_gateway import AndroidGateway
+
+    endpoint = "10.203.0.2:37081"
+    gateway = AndroidGateway(tmp_path)
+    gateway.data_dir.mkdir(parents=True)
+    gateway.config_path.write_text('{"serial": "' + endpoint + '"}', encoding="utf-8")
+    calls = []
+
+    def fake_run(args, timeout=30, serial=None):
+        calls.append((args, serial))
+        if args[:2] == ["devices", "-l"]:
+            return _result(args, f"List of devices attached\n{endpoint}\toffline\n")
+        if args[0] == "connect":
+            return _result(args, f"connected to {endpoint}\n")
+        return _result(args)
+
+    monkeypatch.setattr(gateway, "_run", fake_run)
+    result = gateway.connect()
+    assert result["status"] == "ok"
+    assert result["previous_state"] == "offline"
+    assert any(args == ["disconnect", endpoint] and serial == "" for args, serial in calls)
+    assert any(args == ["connect", endpoint] and serial == "" for args, serial in calls)
+
+
 def test_mutating_actions_require_confirmation(tmp_path):
     from aios_core.android_gateway import AndroidGateway
 
