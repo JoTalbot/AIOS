@@ -35,7 +35,7 @@ KNOWN_ACTIONS: dict[str, list[str]] = {
     "query_ad_status": ["ad_id"],
     "query_np_status": ["ttn"],
     "query_platform": ["platform", "query"],
-    "create_ttn": ["recipient", "item", "address", "amount", "phone", "text"],
+    "create_ttn": ["recipient", "item", "address", "city", "warehouse", "amount", "phone", "text"],
     "create_ad": ["title", "desc", "price", "text"],
     "boost_ad": ["ad_id", "text"],
     "publish": ["title", "desc", "price", "text"],
@@ -43,6 +43,13 @@ KNOWN_ACTIONS: dict[str, list[str]] = {
     "accept_advance": ["amount", "text"],
     "prepare_sale": ["item", "sku", "amount", "price", "delivery", "phone", "recipient", "text"],
     "pending_sales": [],
+    # Жизненный цикл продажи. Эти действия исполняются только как явно
+    # подтверждённые команды владельца, а не по словам покупателя.
+    "sale_tasks": [],
+    "mark_sale_shipped": ["reference", "ttn", "item", "text"],
+    "mark_sale_delivered": ["reference", "ttn", "item", "text"],
+    "mark_sale_returned": ["reference", "ttn", "item", "text"],
+    "mark_return_received": ["reference", "ttn", "item", "text"],
     "bank_balance": ["bank"],
     "bank_transactions": ["bank"],
     "bank_transfer": ["bank", "recipient", "amount", "note", "text"],
@@ -270,13 +277,20 @@ class Planner:
         if not found:
             return ""
         name = found.get("name", item)
-        qty = int(found.get("qty", 0))
+        try:
+            qty = run_inventory.available_qty(found)
+            reserved = run_inventory.reserved_qty(found)
+        except Exception:
+            qty = int(found.get("qty", 0))
+            reserved = 0
         price = found.get("price")
         lines = [f"  • товар: {name}"]
         if price:
             lines.append(f"  • цена: {price} грн")
         if qty is not None:
             lines.append(f"  • наличие: {qty} шт ({'в наличии' if qty > 0 else 'под заказ'})")
+        if reserved:
+            lines.append(f"  • уже зарезервировано под ТТН: {reserved} шт")
         # минимальная цена (пол) для торга
         try:
             floor = self.policy.floor_for(name)
@@ -317,6 +331,10 @@ class Planner:
             "«добавь на склад капот 1 шт 3500» → update_inventory "
             "{item:\"капот\", qty_delta:1, price:3500}; "
             "«создай ттн ...» → create_ttn; «создай объявление ...» → create_ad; "
+            "«отправил 2045...» → mark_sale_shipped {reference:\"2045...\"}; "
+            "«доставлено 2045...» → mark_sale_delivered; "
+            "«вернулась 2045...» → mark_sale_returned; "
+            "«задачи отправки» → sale_tasks; "
             "«что на складе» → query_inventory; иначе reply_customer с текстом ответа."
         )
         d = self._llm_json(prompt)

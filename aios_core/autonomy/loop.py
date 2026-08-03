@@ -136,7 +136,9 @@ class AutonomyCore:
         # Действия, которые владелец отдаёт напрямую — выполняем (кроме денег/ТТН/публикации)
         if action in ("log_sale", "log_expense", "update_inventory",
                       "query_inventory", "query_finance", "query_price_history",
-                      "reply_customer", "deactivate_ad"):
+                      "reply_customer", "deactivate_ad", "sale_tasks",
+                      "mark_sale_shipped", "mark_sale_delivered",
+                      "mark_sale_returned", "mark_return_received"):
             result = self.executor.execute(proposal)
             self.journal.log(platform="telegram", chat=str(chat), intent="owner",
                              action=action, params=proposal["params"],

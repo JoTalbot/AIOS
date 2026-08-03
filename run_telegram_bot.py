@@ -1593,6 +1593,85 @@ def _transcribe_audio(path: str) -> str:
     return ""
 
 
+def _handle_sales_lifecycle_intent(api, chat_id: int, text: str) -> bool:
+    """Детерминированно обработать статусы продаж без риска LLM-путаницы.
+
+    Эти команды принадлежат владельцу бота. Изменение остатков разрешено
+    только после явной фразы владельца («отправил…», «доставлено…») либо
+    подтверждённого статуса Новой Почты в таймере.
+    """
+    raw = str(text or "").strip()
+    normalized = " ".join(raw.casefold().split())
+    if not normalized:
+        return False
+    try:
+        from aios_core.sales_lifecycle import SalesLifecycle
+        lifecycle = SalesLifecycle(PROJECT_ROOT)
+    except Exception as exc:
+        print(f"  [SALES] init error: {exc}")
+        return False
+
+    task_phrases = (
+        "задачи отправки", "задачи по отправке", "что нужно отправить",
+        "что отправить", "ожидает отправки", "задачи продаж", "статус продаж",
+    )
+    if any(phrase in normalized for phrase in task_phrases):
+        rows = lifecycle.list_open_tasks()
+        if not rows:
+            api.send_message(chat_id, "📋 Открытых задач по отправкам и возвратам нет.")
+            return True
+        lines = ["📋 <b>Задачи по продажам:</b>"]
+        for row in rows[:15]:
+            task, sale = row["task"], row["sale"]
+            item = _esc_tg(sale.get("item") or "товар")
+            ttn = _esc_tg(sale.get("ttn") or "—")
+            if task.get("kind") == "return_receive":
+                lines.append(f"• ↩️ Принять возврат: <b>{item}</b> · ТТН <code>{ttn}</code>")
+            else:
+                lines.append(f"• 📦 Отправить: <b>{item}</b> · ТТН <code>{ttn}</code>")
+        lines.append("\nПосле передачи: «отправил <ТТН>». После доставки: «доставлено <ТТН>».")
+        api.send_message(chat_id, "\n".join(lines)[:3900])
+        return True
+
+    def _reference(match) -> str:
+        value = (match.group(1) or "").strip(" ,.:;—–-") if match.lastindex else ""
+        generic = {"этот товар", "эту посылку", "этот", "эту", "товар", "посылку", "посылка",
+                   "его", "ее", "цей товар", "цю посилку", "посилку"}
+        return "" if value.casefold() in generic else value
+
+    # Важно проверять приём возврата раньше «получил…», иначе фраза
+    # «получил возврат» могла бы ошибочно закрыть продажу как доставленную.
+    m = re.match(r"^(?:я\s+)?(?:получил(?:а)?\s+возврат|возврат\s+получил(?:а)?|"
+                 r"принял(?:а)?\s+возврат|повернув(?:ла)?\s+на\s+склад)\b\s*(.*)$", raw, re.I)
+    if m:
+        result = lifecycle.mark_return_received(_reference(m), source="telegram")
+    else:
+        m = re.match(r"^(?:посылка\s+|товар\s+)?(?:вернулась|вернулся|возвращена|возвращен|"
+                     r"повернулась|повернувся|повернено|возврат)\b\s*(.*)$", raw, re.I)
+        if m:
+            result = lifecycle.mark_returned(_reference(m), source="telegram")
+        else:
+            m = re.match(r"^(?:я\s+)?(?:(?:товар|посылку|посилку)\s+)?(?:уже\s+)?"
+                         r"(?:отправил(?:а)?|відправив(?:ла)?|передал(?:а)?\s+(?:в|на)\s+"
+                         r"(?:новую\s+почту|нову\s+пошту|нп)|сдал(?:а)?\s+(?:в|на)\s+"
+                         r"(?:новую\s+почту|нову\s+пошту|нп))\b\s*(.*)$", raw, re.I)
+            if m:
+                result = lifecycle.mark_shipped(_reference(m), source="telegram")
+            else:
+                m = re.match(r"^(?:товар\s+|посылка\s+|посилка\s+)?(?:доставлен(?:а|о|ы)?|"
+                             r"доставили|доставлено|клиент\s+получил|клієнт\s+отримав|"
+                             r"отримано\s+(?:клієнтом|покупцем))\b\s*(.*)$", raw, re.I)
+                if not m:
+                    return False
+                result = lifecycle.mark_delivered(_reference(m), source="telegram")
+
+    message = str(result.get("message") or result.get("error") or "Не удалось обновить сделку.")
+    # SalesLifecycle возвращает обычный текст. Экранируем название товара,
+    # если пользователь когда-то добавил в него HTML-символы.
+    api.send_message(chat_id, _esc_tg(message)[:3900])
+    return True
+
+
 def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     """Обработать «человеческое» сообщение про Google/Instagram. True = обработано."""
     t = text.lower()
@@ -1699,11 +1778,24 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 except Exception:
                     data = {"status": "error", "error": (r.stderr or "?")[-300:]}
                 if data.get("status") == "ok":
+                    lifecycle_line = ""
+                    inventory = data.get("inventory") or {}
+                    if data.get("task"):
+                        lifecycle_line = (
+                            f"\n\n📋 <b>Задача создана:</b> отправить товар по ТТН.\n"
+                            f"После передачи в НП: «отправил {data.get('ttn')}»."
+                        )
+                    if inventory.get("status") == "error":
+                        lifecycle_line += (f"\n⚠️ Резерв склада требует проверки: "
+                                           f"{_esc_tg(inventory.get('error', '?'))}")
+                    if data.get("sale_lifecycle_warning"):
+                        lifecycle_line += (f"\n⚠️ Учёт продажи: "
+                                           f"{_esc_tg(data.get('sale_lifecycle_warning'))}")
                     api.send_message(chat_id,
                                      f"📦 <b>ТТН создана: {data.get('ttn')}</b>\n"
                                      f"Деталь: {_esc_tg(data.get('detail'))} · Стоимость: {data.get('cost')} грн\n"
                                      f"Получатель: {_esc_tg(data.get('recipient'))}\n"
-                                     f"Отслеживание: «отследи {data.get('ttn')}»")
+                                     f"Отслеживание: «отследи {data.get('ttn')}»{lifecycle_line}")
                 else:
                     api.send_message(chat_id, f"❌ {data.get('error', 'Ошибка')}")
                 return True
@@ -1866,6 +1958,11 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 return True
             api.send_message(chat_id, "❌ Неизвестный тип действия.")
             return True
+
+    # Продажи с ТТН должны обрабатываться раньше широких regex-ов аккаунтов,
+    # автопланировщика и свободного LLM-чата.
+    if _handle_sales_lifecycle_intent(api, chat_id, text):
+        return True
 
     ig_words = ("инста", "instagram", "подписчик", "мой профиль в инст", "мой инст",
                 "мои посты", "профиль инстаграм", "мой instagram", "сторис", "story",
@@ -3538,8 +3635,11 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             if res.get("status") == "ok" and res.get("items"):
                 lines = ["🔍 <b>Найдено на складе:</b>"]
                 for it in res["items"][:8]:
-                    mark = "✅" if it.get("qty", 0) > 0 else "❌"
-                    lines.append(f"{mark} <b>{_esc_tg(it['name'])}</b> — {it.get('qty')} шт · {it.get('price')} грн")
+                    available = it.get("available_qty", it.get("qty", 0))
+                    reserved = it.get("reserved_qty", 0)
+                    mark = "✅" if available > 0 else "❌"
+                    reserve_note = f" · продано, ждёт отправки: {reserved}" if reserved else ""
+                    lines.append(f"{mark} <b>{_esc_tg(it['name'])}</b> — свободно {available} из {it.get('qty')} шт · {it.get('price')} грн{reserve_note}")
                 api.send_message(chat_id, "\n".join(lines))
             else:
                 api.send_message(chat_id, f"🔍 «{q}» на складе нет.")
@@ -3553,8 +3653,11 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             res = {"status": "error"}
         if res.get("status") == "ok":
             txt = (f"📦 <b>Склад</b>\n"
-                   f"Деталей: {res.get('items_count')} · всего шт: {res.get('total_qty')}\n"
-                   f"💰 Стоимость запасов: {res.get('total_value')} грн")
+                   f"Деталей: {res.get('items_count')} · физически: {res.get('total_qty')} шт · "
+                   f"свободно: {res.get('available_qty', res.get('total_qty'))} шт\n"
+                   f"💰 Стоимость свободных запасов: {res.get('total_value')} грн")
+            if res.get("reserved_qty"):
+                txt += f"\n📌 Продано и ждёт отправки по созданным ТТН: {res.get('reserved_qty')} шт"
             if res.get("out_of_stock"):
                 txt += "\n\n🚫 Закончились: " + ", ".join(_esc_tg(x) for x in res["out_of_stock"][:5])
             api.send_message(chat_id, txt)

@@ -51,11 +51,17 @@ class Guardrails:
 
         # 0.1 Read-only — всегда авто (плюс фиксация сделки без денег)
         if (self.policy.is_read_only(action)
-                or action in ("bank_balance", "bank_transactions", "pending_sales")):
+                or action in ("bank_balance", "bank_transactions", "pending_sales", "sale_tasks")):
             return Decision("ALLOWED", reason=f"Read-only {action}", matched_rules=["read_only"])
         if action == "prepare_sale":
             # фиксация намерения клиента купить — не деньги, безопасно
             return Decision("ALLOWED", reason="Фиксация сделки (без денег)", matched_rules=[])
+        if action in ("mark_sale_shipped", "mark_sale_delivered", "mark_sale_returned", "mark_return_received"):
+            # Входящий покупатель не должен сам изменить склад/финансы фразой
+            # «я получил». Владелец исполняет эти явные команды отдельной веткой
+            # process_owner, а из автономного customer-контура нужна эскалация.
+            return Decision("MANUAL", reason="Статус продажи меняет только владелец",
+                            matched_rules=["sale_lifecycle_owner"])
 
         # 1. Деньги: любые движения денег — MANUAL (включая банковские переводы)
         if action in ("send_money", "accept_advance", "process_payment", "bank_transfer"):

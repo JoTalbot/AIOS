@@ -94,17 +94,69 @@ def _classify(status: str) -> str:
     return "other"
 
 
+def _run_sales_lifecycle_alerts(token: str, chat_id: int) -> int:
+    """Отслеживать исходящие продажи по известным ТТН.
+
+    В отличие от старого контура входящих посылок, здесь не нужен залогиненный
+    кабинет: номера уже создаются через run_ttn.py, а public tracking API
+    работает быстро. Состояние/дедупликацию хранит SalesLifecycle.
+    """
+    try:
+        from aios_core.sales_lifecycle import SalesLifecycle
+        lifecycle = SalesLifecycle(ROOT)
+    except Exception as exc:
+        print(f"[sales] не удалось открыть lifecycle: {exc}")
+        return 0
+
+    sent = 0
+    for sale in lifecycle.active_tracking_sales():
+        ttn = str(sale.get("ttn") or "")
+        if not ttn:
+            continue
+        tracked = _run_ac(["novaposhta", "track", ttn], timeout=40)
+        if tracked.get("status") == "ok" and tracked.get("found"):
+            result = lifecycle.apply_tracking(ttn, str(tracked.get("tracking_status") or ""))
+            for text in result.get("notifications") or []:
+                try:
+                    _tg(token, chat_id, text)
+                    sent += 1
+                    print(f"  [sales] {ttn}: {text[:100]}")
+                except Exception as exc:
+                    print(f"  [sales] send err {ttn}: {exc}")
+        elif tracked.get("status") == "error":
+            print(f"  [sales] track error {ttn}: {tracked.get('error', '?')}")
+        # Не спамим публичный API, если открытых сделок несколько.
+        import time
+        time.sleep(0.35)
+
+    for notification in lifecycle.due_notifications():
+        try:
+            _tg(token, chat_id, notification["text"])
+            sent += 1
+            print(f"  [sales] reminder {notification['task'].get('id')}")
+        except Exception as exc:
+            print(f"  [sales] reminder send err: {exc}")
+    return sent
+
+
 def main() -> int:
     token = _env("TELEGRAM_BOT_TOKEN") or _env("AIOS_TELEGRAM_TOKEN")
     chat = _env("TELEGRAM_CHAT_ID")
     if not token or not chat:
         print("Нет токена/чата в .env"); return 1
 
+    # 0) исходящие продажи: работают даже если браузерный кабинет НП разлогинен.
+    lifecycle_sent = _run_sales_lifecycle_alerts(token, int(chat))
+
     # 1) собрать мои ТТН из кабинета (входящие)
     res = _run_ac(["novaposhta", "my_ttns"])
     if res.get("status") != "ok":
+        # Не прерываем контроль исходящих: он использует публичный трекинг и
+        # уже выполнился выше. Входящие уведомления просто будут повторены
+        # после восстановления сессии кабинета.
         print("Не смог получить ТТН из кабинета:", res.get("error"))
-        return 1
+        print(f"Отправлено уведомлений lifecycle: {lifecycle_sent}")
+        return 0
     ttns = res.get("ttns") or []
     print(f"Найдено входящих посылок: {len(ttns)}: {ttns}")
 
@@ -184,6 +236,7 @@ def main() -> int:
             pass  # оставляем в истории, чтобы не уведомлять повторно
     _save_state({**state, **new_state})
 
+    sent += lifecycle_sent
     print(f"Отправлено уведомлений: {sent}")
     return 0
 
