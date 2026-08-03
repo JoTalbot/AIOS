@@ -47,6 +47,9 @@ def test_viber_platform_config_can_be_draft_only(tmp_path, monkeypatch):
     assert viber["enabled"] is True
     assert viber["auto_send"] is False
     assert viber["max_replies_per_run"] == 2
+    assert autoreply._contact_allowed("viber", "Рабочий", {"allowed_chats": ["Рабочий"]}) is True
+    assert autoreply._contact_allowed("viber", "Личный", {"allowed_chats": ["Рабочий"]}) is False
+    assert autoreply._contact_allowed("viber", "Любой", {"allowed_chats": ["*"]}) is True
 
 
 def test_viber_status_is_read_only(monkeypatch):

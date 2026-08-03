@@ -2429,6 +2429,21 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     # ---- Viber (десктоп) ----
     if any(w in t for w in ("вайбер", "вибер", "viber")) and not any(
             w in t for w in ("инбокс", "inbox", "все сообщения", "всё в одном", "сводка сообщений")):
+        if "чернов" in t or "draft" in t:
+            try:
+                from viber_drafts import ViberDraftStore
+                drafts = ViberDraftStore(PROJECT_ROOT).pending(12)
+                if not drafts:
+                    api.send_message(chat_id, "💜 Ожидающих Viber-черновиков нет.")
+                else:
+                    lines = ["💜 <b>Черновики Viber:</b>"]
+                    for draft in drafts:
+                        lines.append(f"• <b>{_esc_tg(draft.get('contact'))}</b>: «{_esc_tg(str(draft.get('text') or '')[:150])}»")
+                    lines.append("\nДля отправки используйте кнопку под уведомлением-черновиком.")
+                    api.send_message(chat_id, "\n".join(lines)[:3900])
+            except Exception as exc:
+                api.send_message(chat_id, f"⚠️ Не удалось прочитать черновики Viber: {_esc_tg(str(exc))[:180]}")
+            return True
         send_word = any(w in t for w in ("напиши", "отправь", "написать", "ответь"))
         read_word = any(w in t for w in ("прочитай", "покажи", "что в", "последние"))
         if send_word:
@@ -4993,6 +5008,50 @@ def _handle_autonomy_callback(api: TelegramAPI, chat_id: int, msg_id: int, cb_id
             api.send_message(chat_id, f"⚠️ Ошибка обработки кнопки: {e}")
         except Exception:
             pass
+def _handle_viber_draft_callback(api: TelegramAPI, chat_id: int, cb_id: str, data: str) -> None:
+    """Подтвердить или отменить Viber-черновик из фонового обработчика."""
+    try:
+        from viber_drafts import ViberDraftStore
+        send = data.startswith("viber_draft_send_")
+        prefix = "viber_draft_send_" if send else "viber_draft_cancel_"
+        draft_id = data[len(prefix):]
+        store = ViberDraftStore(PROJECT_ROOT)
+        if not draft_id:
+            api.answer_callback(cb_id, "❌ Некорректный черновик")
+            return
+        if not send:
+            draft = store.cancel(draft_id)
+            if draft is None:
+                api.answer_callback(cb_id, "ℹ️ Уже обработан")
+                return
+            api.answer_callback(cb_id, "❌ Черновик отклонён")
+            api.send_message(chat_id, f"💜 Черновик для <b>{_esc_tg(draft.get('contact'))}</b> отклонён.")
+            return
+        draft = store.claim(draft_id)
+        if draft is None:
+            api.answer_callback(cb_id, "ℹ️ Уже обработан")
+            return
+        result = _run_account_control([
+            "viber", "send", str(draft.get("contact") or ""),
+            str(draft.get("text") or ""), "--confirm",
+        ])
+        if result.get("status") == "sent":
+            store.finalize(draft_id, sent=True)
+            api.answer_callback(cb_id, "✅ Отправлено")
+            api.send_message(chat_id, f"✅ Черновик отправлен в Viber: <b>{_esc_tg(draft.get('contact'))}</b>.")
+        else:
+            error = str(result.get("error") or result.get("status") or "неизвестная ошибка")
+            store.finalize(draft_id, sent=False, error=error)
+            api.answer_callback(cb_id, "⚠️ Не отправлено")
+            api.send_message(chat_id, f"⚠️ Viber не отправил черновик: {_esc_tg(error)[:220]}")
+    except Exception as exc:
+        try:
+            api.answer_callback(cb_id, "⚠️ Ошибка")
+            api.send_message(chat_id, f"⚠️ Ошибка Viber-черновика: {_esc_tg(str(exc))[:220]}")
+        except Exception:
+            pass
+
+
 def _handle_callback(api: TelegramAPI, upd: dict) -> None:
     """Handle inline button callbacks (кнопки в сообщениях)."""
     cb = upd.get("callback_query", {})
@@ -5006,6 +5065,11 @@ def _handle_callback(api: TelegramAPI, upd: dict) -> None:
         return
 
     api.answer_callback(cb_id, "⏳ Обрабатываю...")
+
+    # ---- Viber: черновик из фонового безопасного обработчика ----
+    if data.startswith("viber_draft_send_") or data.startswith("viber_draft_cancel_"):
+        _handle_viber_draft_callback(api, chat_id, cb_id, data)
+        return
 
     # ---- OLX: отправить сгенерированный ответ вручную (кнопка) ----
     if data.startswith("olx_send_"):
