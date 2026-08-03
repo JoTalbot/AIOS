@@ -754,6 +754,32 @@ def test_olx_publish_intent(monkeypatch):
     assert "Опубликовать на OLX" in joined
 
 
+def test_olx_publish_remembered(monkeypatch):
+    """«опубликуй это объявление» использует последнее сгенерированное."""
+    import subprocess
+    def fake_run(*a, **k):
+        return type("R", (), {"stdout": '{"status": "need_confirm", "title": "Фара BMX", "description": "Продаю", "price": "2050", "part": "фара велосипедная BMX"}', "stderr": "", "returncode": 0})
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    m._last_gen_ad[1] = "фара велосипедная BMX 2050"
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "опубликуй это объявление") is True
+    joined = "\n".join(api.messages)
+    assert "Объявление готово" in joined or "Опубликовать на OLX" in joined
+    m._last_gen_ad.pop(1, None)
+
+
+def test_olx_publish_with_text(monkeypatch):
+    """«опубликуй объявление: деталь» — прямой триггер публикации."""
+    import subprocess
+    def fake_run(*a, **k):
+        return type("R", (), {"stdout": '{"status": "need_confirm", "title": "Фара BMX", "description": "Продаю", "price": "2050", "part": "фара велосипедная BMX"}', "stderr": "", "returncode": 0})
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "Опубликуй объявление: фара велосипедная BMX 2050") is True
+    joined = "\n".join(api.messages)
+    assert "Объявление готово" in joined or "Опубликовать на OLX" in joined
+
+
 def test_olx_publish_confirm(monkeypatch):
     import subprocess
     def fake_run(*a, **k):

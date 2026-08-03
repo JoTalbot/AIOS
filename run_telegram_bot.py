@@ -569,6 +569,8 @@ def cmd_help() -> str:
 _last_photo: dict[int, str] = {}
 # Ждём описание детали после фото: chat_id -> True
 _photo_pending: dict[int, bool] = {}
+# Последнее сгенерированное объявление OLX: chat_id -> part
+_last_gen_ad: dict[int, str] = {}
 # Последнее видео, присланное пользователем (для TikTok upload): chat_id -> путь
 _last_video: dict[int, str] = {}
 # Последние id писем, показанных в чате: chat_id -> [ids...]
@@ -2501,6 +2503,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             api.send_message(chat_id, "📝 «создай объявление: фара BMW X5 2000 грн»")
             return True
         api.send_message(chat_id, "⏳ Генерирую объявление через AI…")
+        _last_gen_ad[chat_id] = part
         r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_olx_ad_gen.py"), "gen", part],
                     capture_output=True, text=True, timeout=90, cwd=str(PROJECT_ROOT))
         try:
@@ -2697,10 +2700,20 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         return True
 
     if any(w in t for w in ("опубликуй это объявление", "опубликуй объявление на олх",
-                            "публикуй на олх", "создай на олх", "выложи на олх")):
-        # берём последнее сгенерированное (просим деталь)
-        m_d = re.search(r"(?:объявление|на олх)\s*[:—-]\s*(.+)$", text, re.IGNORECASE)
+                            "публикуй на олх", "создай на олх", "выложи на олх",
+                            "опубликуй объявление", "опубликовать объявление",
+                            "выложи объявление", "публикуй объявление", "опубликуй на олх",
+                            "публикуй это объявление", "выложи это объявление")):
+        # берём деталь из текста или из последнего сгенерированного
+        m_d = re.search(r"(?:объявление|на олх|на олх:)\s*[:—-]\s*(.+)$", text, re.IGNORECASE)
         part = m_d.group(1).strip() if m_d else ""
+        # «опубликуй это объявление» без детали — берём из памяти
+        if not part and "это объявление" in t:
+            part = _last_gen_ad.get(chat_id, "")
+        # убираем лишние слова из part
+        part = re.sub(r"^(опубликуй|опубликовать|выложи|публикуй)\s*(это\s+)?объявление\s*(на олх)?\s*:?\s*",
+                      "", part, flags=re.IGNORECASE).strip()
+        part = part.replace("олх", "").replace("olx", "").strip(" ,.;:—–")
         if not part:
             api.send_message(chat_id, "📝 Скажите, что публикуем: «опубликуй на олх: фара BMW X5 2000»\n"
                                       "или сначала «создай объявление: …», потом «опубликуй это объявление»")

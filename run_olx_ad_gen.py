@@ -90,9 +90,13 @@ def generate(part: str) -> dict:
         d.setdefault("title", part[:60])
         d.setdefault("description", "")
         d.setdefault("price", "")
-        # fallback: если цена пустая — извлечь число из конца запроса (если похоже на цену)
-        if not str(d.get("price") or "").strip():
-            import re as _re
+        # приоритет: цена, указанная пользователем в запросе (число 2-6 цифр, похожее на цену)
+        import re as _re
+        m_user_price = _re.search(r"\b(\d{2,6})\b\s*(?:грн|грн\.|uah)?\s*$", part, _re.IGNORECASE)
+        if m_user_price and int(m_user_price.group(1)) >= 100:
+            d["price"] = m_user_price.group(1)
+        # fallback: если цена всё ещё пустая — извлечь число из конца
+        elif not str(d.get("price") or "").strip():
             m = _re.search(r"(\d{2,6})\s*(грн|грн\.|uah)?\s*$", part, _re.IGNORECASE)
             if m:
                 d["price"] = m.group(1)
