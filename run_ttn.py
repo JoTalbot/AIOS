@@ -79,25 +79,35 @@ def whoami() -> dict:
     if not data:
         return {"status": "error", "error": "Отправитель не найден в аккаунте API"}
     sender = data[0]
-    ref_contact = sender.get("Ref", "")
+    ref = sender.get("Ref", "")
     ref_counterparty = sender.get("Counterparty", "")
-    # телефоны/контакт
-    phones = sender.get("Phones", "")
-    # ищем адрес отправки
+    # ищем адрес отправки по контрагенту
     addr_ref = ""
     addr_desc = ""
-    r2 = _api("Counterparty", "getCounterpartyAddresses", {"Ref": ref_counterparty or ref_contact})
+    r2 = _api("Counterparty", "getCounterpartyAddresses", {"Ref": ref_counterparty or ref})
     addrs = r2.get("data") or [] if r2.get("success") else []
     if addrs:
         addr_ref = addrs[0].get("Ref", "")
         addr_desc = addrs[0].get("Description", "")
-    # для документа отправитель = "Ref" (контакт); "Counterparty" - для адресной книги
-    ready = bool(ref_contact and addr_ref)
+    # контактные лица отправителя — ищем по Ref (ref контрагента-отправителя),
+    # НЕ по Counterparty (там «Counterparty not found»).
+    contact_ref = ""
+    contact_desc = ""
+    r3 = _api("Counterparty", "getCounterpartyContactPersons", {"Ref": ref})
+    cps = r3.get("data") or [] if r3.get("success") else []
+    if cps:
+        # берём первого (Гончаренко Костянтин)
+        contact_ref = cps[0].get("Ref", "")
+        contact_desc = cps[0].get("Description", "")
+    ready = bool(ref and addr_ref and contact_ref)
     return {"status": "ok", "sender": {
         "description": sender.get("Description"),
-        "ref_contact": ref_contact,
+        "ref": ref,
+        "ref_contact": ref,
         "ref_counterparty": ref_counterparty,
-        "phones": phones,
+        "contact_ref": contact_ref,
+        "contact_desc": contact_desc,
+        "phones": sender.get("Phones", ""),
         "address": addr_desc,
         "address_ref": addr_ref,
         "ready": ready,
@@ -178,16 +188,19 @@ def create_ttn(detail: str, cost: str, recipient_name: str, recipient_phone: str
     if sw.get("status") != "ok":
         return sw
     sender = sw["sender"]
-    sender_ref = sender["ref_contact"] or sender["ref_counterparty"]
-    sender_contact = sender["ref_contact"] or ""
-    if not sender.get("ready"):
+    # Sender (контрагент-отправитель) = Ref отправителя из getCounterparties(Sender);
+    # ContactSender = контактное лицо.
+    sender_ref = sender["ref"] or sender["ref_counterparty"]
+    sender_contact = sender.get("contact_ref") or sender["ref_contact"] or ""
+    # Адрес отправки: из конфига (если есть), затем из API, иначе первое отделение города.
+    cfg_addr_ref = cfg.get("sender_addr_ref") or ""
+    if not sender_contact:
         return {"status": "error",
-                "error": ("Отправитель Новой Почты не настроен в кабинете API.\n"
-                          "Зайдите: cabinet.novaposhta.ua → Настройки → «Мои данные/Отправитель» → "
-                          "заполните ФИО, телефон (+380959052288) и добавьте адрес отправки "
-                          "(напр. Відділення №8, Кропивницький). После этого «создай ттн» заработает.")}
-    # 2) адрес отправки: из конфига или первое отделение города
-    if not sender.get("address_ref"):
+                "error": "Не найдено контактное лицо отправителя в кабинете Новой Почты "
+                         "(Настройки → Мои данные → контактное лицо)."}
+    if cfg_addr_ref:
+        sender_addr_ref = cfg_addr_ref
+    elif not sender.get("address_ref"):
         whs = warehouses(sender_city, sender_wh or "")
         if whs.get("status") != "ok" or not whs.get("warehouses"):
             return {"status": "error", "error": f"Не найдено отделение отправки в {sender_city}"}
