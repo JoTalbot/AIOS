@@ -61,14 +61,89 @@ _SCOPE_RE = re.compile(r"\*\*Scope:\*\*\s*(.+)", re.IGNORECASE)
 # Patterns for extracting keywords from rule text
 _KEYWORD_PATTERN = re.compile(r"\b[A-Z][A-Za-z]{3,}\b", re.IGNORECASE)
 
+# Patterns for obligation keywords
+_MUST_NOT_RE = re.compile(r"\bMUST\s+NOT\b", re.IGNORECASE)
+_MUST_RE = re.compile(r"\bMUST\b(?!\s+NOT\b)", re.IGNORECASE)
+_SHOULD_NOT_RE = re.compile(r"\bSHOULD\s+NOT\b", re.IGNORECASE)
+_SHOULD_RE = re.compile(r"\bSHOULD\b(?!\s+NOT\b)", re.IGNORECASE)
+_MAY_RE = re.compile(r"\bMAY\b(?!\s+NOT\b)", re.IGNORECASE)
+
+
+def _roman_to_int(roman: str) -> int:
+    """Convert a Roman numeral string to an integer."""
+    roman = roman.upper()
+    values = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+    total = 0
+    prev = 0
+    for ch in reversed(roman):
+        val = values.get(ch, 0)
+        if val < prev:
+            total -= val
+        else:
+            total += val
+        prev = val
+    return total
+
+
+def _detect_obligation(text: str) -> ObligationLevel:
+    """Detect the strongest obligation keyword in a line of text.
+
+    Priority: MUST NOT > MUST > SHOULD NOT > SHOULD > MAY
+    """
+    if _MUST_NOT_RE.search(text):
+        return ObligationLevel.MUST_NOT
+    if _MUST_RE.search(text):
+        return ObligationLevel.MUST
+    if _SHOULD_NOT_RE.search(text):
+        return ObligationLevel.SHOULD_NOT
+    if _SHOULD_RE.search(text):
+        return ObligationLevel.SHOULD
+    if _MAY_RE.search(text):
+        return ObligationLevel.MAY
+    return ObligationLevel.UNKNOWN
+
+
+# Article filename pattern: ARTICLE-I-IDENTITY.md, ARTICLE-V-SECURITY.md
+_ARTICLE_FILENAME_RE = re.compile(
+    r"ARTICLE-(?P<roman>[IVXLCDM]+)-(?P<name>[\w-]+)\.md", re.IGNORECASE
+)
+
+# Section headers: "# 1. Title" / "## 1. Title" / "### 1. Title"
+_SECTION_HEADER_RE = re.compile(r"^#{1,3}\s+(\d+)\.\s+(.+)$")
+
+
+def _parse_article_id(filename: str) -> tuple[str, str, int] | None:
+    """Extract (roman, name, number) from an ARTICLE-<roman>-<name>.md filename."""
+    match = _ARTICLE_FILENAME_RE.match(os.path.basename(filename))
+    if not match:
+        return None
+    roman = match.group("roman")
+    name = match.group("name").replace("-", " ").title()
+    num = _roman_to_int(roman)
+    return (roman, name, num)
+
 
 class ConstitutionLoader:
-    def __init__(self, constitution_dir: str):
+    def __init__(self, constitution_dir: str | None = None):
+        if constitution_dir is None:
+            this_dir = Path(__file__).resolve().parent.parent
+            constitution_dir = str(this_dir / "docs" / "constitution")
         self.constitution_dir = constitution_dir
-        self.articles = {}
-        self.rules = []
+        self.articles: dict[str, Article] = {}
+        self.rules: list[ConstitutionalRule] = []
+        self._rules_by_obligation: dict[ObligationLevel, list[ConstitutionalRule]] = {
+            level: [] for level in ObligationLevel
+        }
+        self._rules_by_keyword: dict[str, list[ConstitutionalRule]] = {}
+        if os.path.isdir(constitution_dir):
+            self.load_constitution()
 
     def load_constitution(self):
+        if os.path.isdir(self.constitution_dir):
+            self.articles = {}
+            self.rules = []
+            self._rules_by_obligation = {level: [] for level in ObligationLevel}
+            self._rules_by_keyword = {}
         for root, dirs, files in os.walk(self.constitution_dir):
             for file in files:
                 if file.endswith(".md"):
@@ -78,56 +153,88 @@ class ConstitutionLoader:
                         self.parse_article(content, article_path)
 
     def parse_article(self, content: str, article_path: str):
-        title_match = re.search(r"## (.+)", content)
-        if title_match:
-            title = title_match.group(1).strip("# ")
+        """Parse one article markdown file.
+
+        Article id берётся из имени файла (ARTICLE-<рим>-<имя>.md),
+        секции — из заголовков «# N. Title», правила — из строк с MUST/MAY/SHOULD.
+        """
+        id_info = _parse_article_id(article_path)
+        if id_info is not None:
+            _roman, name, _num = id_info
+            article_id = f"ARTICLE-{_roman}"
+            default_title = name
         else:
-            title = "Untitled"
+            title_match = re.search(r"## (.+)", content)
+            if title_match:
+                default_title = title_match.group(1).strip("# ")
+                article_id = f"ARTICLE-{default_title.lower().replace(' ', '-')}"
+            else:
+                default_title = "Untitled"
+                article_id = "ARTICLE-UNKNOWN"
 
-        level_match = re.search(r"\*\*Level:\*\*\s*(.+)", content)
-        scope_match = re.search(r"\*\*Scope:\*\*\s*(.+)", content)
+        # метаданные из первых строк файла
+        status = "Unknown"
+        level = "Unknown"
+        scope = "General"
+        for line in content.split("\n")[:15]:
+            m = _STATUS_RE.search(line)
+            if m:
+                status = m.group(1).strip()
+            m = _LEVEL_RE.search(line)
+            if m:
+                level = m.group(1).strip()
+            m = _SCOPE_RE.search(line)
+            if m:
+                scope = m.group(1).strip()
 
-        article_id = f"ARTICLE-{title.lower().replace(' ', '-')}"
         article = Article(
             article_id=article_id,
-            title=title,
-            status="Draft",
-            level=level_match.group(1) if level_match else "Unknown",
-            scope=scope_match.group(1) if scope_match else "Unknown",
+            title=default_title,
+            status=status,
+            level=level,
+            scope=scope,
+            raw_content=content,
         )
 
         self.articles[article_id] = article
 
+        section_title = ""
+        section_number = 0
         for line in content.split("\n"):
-            if line.startswith("##"):
-                continue
-            match = re.search(r"### (.+)", line)
-            if match:
-                section_title = match.group(1).strip("# ")
-                section_number = len(article.sections) + 1
-                article.sections.append({"title": section_title, "number": section_number})
+            section_match = _SECTION_HEADER_RE.match(line)
+            if section_match:
+                section_number = int(section_match.group(1))
+                section_title = section_match.group(2).strip()
+                article.sections.append({"number": section_number, "title": section_title})
                 continue
 
-            match = self._extract_keywords(line)
-            if match:
-                for keyword in match:
-                    rule_text = line.strip(keyword)
-                    rule = ConstitutionalRule(
-                        article_id=article_id,
-                        article_title=title,
-                        section_number=len(article.sections),
-                        section_title=section_title,
-                        obligation="UNKNOWN",
-                        text=rule_text,
-                        status="Draft",
-                        scope="Unknown",
-                        raw_line=line,
-                    )
-                    self.rules.append(rule)
-                    article.rules.append(rule)
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or stripped.startswith("---"):
+                continue
+
+            obligation = _detect_obligation(stripped)
+            if obligation == ObligationLevel.UNKNOWN:
+                continue
+
+            rule = ConstitutionalRule(
+                article_id=article_id,
+                article_title=default_title,
+                section_number=section_number,
+                section_title=section_title,
+                obligation=obligation,
+                text=stripped,
+                status=status,
+                scope=scope,
+                raw_line=line,
+            )
+            self.rules.append(rule)
+            article.rules.append(rule)
+            self._rules_by_obligation.setdefault(obligation, []).append(rule)
+            for kw in self._extract_keywords(stripped):
+                self._rules_by_keyword.setdefault(kw.lower(), []).append(rule)
 
     def _extract_keywords(self, line: str) -> list[str]:
-        return [kw for kw in self._keyword_pattern.findall(line) if len(kw) > 3]
+        return [kw for kw in _KEYWORD_PATTERN.findall(line) if len(kw) > 3]
 
     # --- Query API ---
 
@@ -273,10 +380,10 @@ class ConstitutionLoader:
         return {
             "total_articles": len(self.articles),
             "total_rules": len(self.rules),
-            "must_count": len(self._rules_by_obligation[ObligationLevel.MUST]),
-            "must_not_count": len(self._rules_by_obligation[ObligationLevel.MUST_NOT]),
-            "may_count": len(self._rules_by_obligation[ObligationLevel.MAY]),
-            "should_count": len(self._rules_by_obligation[ObligationLevel.SHOULD]),
+            "must_count": len(self._rules_by_obligation.get(ObligationLevel.MUST, [])),
+            "must_not_count": len(self._rules_by_obligation.get(ObligationLevel.MUST_NOT, [])),
+            "may_count": len(self._rules_by_obligation.get(ObligationLevel.MAY, [])),
+            "should_count": len(self._rules_by_obligation.get(ObligationLevel.SHOULD, [])),
             "articles_with_rules": sum(1 for a in self.articles.values() if a.rules),
             "constitution_dir": self.constitution_dir,
         }

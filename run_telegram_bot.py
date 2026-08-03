@@ -85,7 +85,14 @@ class TelegramAPI:
         }
         if reply_markup:
             payload["reply_markup"] = reply_markup
-        return self._request("sendMessage", payload)
+        try:
+            return self._request("sendMessage", payload)
+        except urllib.error.HTTPError as e:
+            # Telegram 400 Bad Request: невалидный HTML (raw <...>) — повторяем как plain text
+            if e.code == 400 and parse_mode == "HTML":
+                payload["parse_mode"] = ""
+                return self._request("sendMessage", payload)
+            raise
 
     def answer_callback(self, callback_query_id: str, text: str = "") -> dict:
         return self._request("answerCallbackQuery", {
@@ -103,7 +110,13 @@ class TelegramAPI:
         }
         if reply_markup:
             payload["reply_markup"] = reply_markup
-        return self._request("editMessageText", payload)
+        try:
+            return self._request("editMessageText", payload)
+        except urllib.error.HTTPError as e:
+            if e.code == 400 and parse_mode == "HTML":
+                payload["parse_mode"] = ""
+                return self._request("editMessageText", payload)
+            raise
 
     def get_file(self, file_id: str) -> dict:
         """Получить информацию о файле (file_path) по file_id."""
@@ -751,7 +764,7 @@ def _acct_google(api, chat_id: int, kind: str, extra: str = "") -> None:
     elif kind == "search_prompt":
         api.send_message(chat_id,
                          "🔍 <b>Поиск в почте</b>\n\n"
-                         "Напишите «найди письмо <запрос>», например «найди письмо от github»")
+                         "Напишите «найди письмо &lt;запрос&gt;», например «найди письмо от github»")
     elif kind == "docs_prompt":
         api.send_message(chat_id,
                          "📄 <b>Создание документа</b>\n\n"
@@ -2132,7 +2145,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             return True
         tpl = _load_templates()
         if "шаблоны" in t and not tpl:
-            api.send_message(chat_id, "📝 Шаблонов пока нет. «добавь шаблон <имя>: <текст>»")
+            api.send_message(chat_id, "📝 Шаблонов пока нет. «добавь шаблон &lt;имя&gt;: &lt;текст&gt;»")
             return True
         # «ответь клиенту <шаблон>» — вставить шаблон в ответ
         m_use = re.search(r"(?:ответь клиенту|по шаблону|используй шаблон)\s*[\"«']?([\w\s-]+)[\"»']?", text, re.IGNORECASE)
@@ -2195,7 +2208,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             target = target.split(":", 1)[0].strip(" ,.;:—–")
             if not target or not body:
                 api.send_message(chat_id,
-                                 "💬 <b>Viber</b>: напишите «напиши в вайбер <имя>: <текст>»")
+                                 "💬 <b>Viber</b>: напишите «напиши в вайбер &lt;имя&gt;: &lt;текст&gt;»")
                 return True
             _pending_confirm[chat_id] = {"kind": "viber_send",
                                          "data": {"chat": target, "text": body}}
@@ -2245,7 +2258,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             target = target.split(":", 1)[0].strip(" ,.;:—–")
             if not target or not body:
                 api.send_message(chat_id,
-                                 "💬 <b>Messenger</b>: напишите «напиши в мессенджер <имя>: <текст>»")
+                                 "💬 <b>Messenger</b>: напишите «напиши в мессенджер &lt;имя&gt;: &lt;текст&gt;»")
                 return True
             _pending_confirm[chat_id] = {"kind": "messenger_send",
                                          "data": {"chat": target, "text": body}}
@@ -2567,7 +2580,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         if "мои цены" in t or ("цены" in t and not any(w in t for w in ("следи", "монитор"))):
             cur = subs.get(str(chat_id), [])
             if not cur:
-                api.send_message(chat_id, "📉 Нет подписок на цены. «следи за ценой <запрос>»")
+                api.send_message(chat_id, "📉 Нет подписок на цены. «следи за ценой &lt;запрос&gt;»")
             else:
                 api.send_message(chat_id, "📉 <b>Подписки на цены:</b>\n" + "\n".join(
                     f"• {_esc_tg(e.get('query'))} — мин {e.get('last_min') or '?'} грн" for e in cur))
@@ -2575,7 +2588,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         # добавить подписку
         q = re.sub(r"(следи за ценой|мониторинг цены|цена на олх)\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
         if not q:
-            api.send_message(chat_id, "📉 «следи за ценой <запрос>», например: следи за ценой фары BMW X5")
+            api.send_message(chat_id, "📉 «следи за ценой &lt;запрос&gt;», например: следи за ценой фары BMW X5")
             return True
         cur = subs.get(str(chat_id), [])
         if any(e.get("query", "").lower() == q.lower() for e in cur):
@@ -2602,7 +2615,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         api.send_message(chat_id,
                          f"📉 Слежу за ценой «{q}»" +
                          (f". Сейчас минимум: {cur_min} грн" if cur_min else "") +
-                         ".\nУведомлю при снижении >5%. «мои цены» — список, «отпишись от цены <запрос>» — убрать.")
+                         ".\nУведомлю при снижении >5%. «мои цены» — список, «отпишись от цены &lt;запрос&gt;» — убрать.")
         return True
 
     # ---- Единый инбокс ----
@@ -2654,7 +2667,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     if m_glob:
         q = m_glob.group(2).strip()
         if not q:
-            api.send_message(chat_id, "🔍 «найди во всех чатах <запрос>»")
+            api.send_message(chat_id, "🔍 «найди во всех чатах &lt;запрос&gt;»")
             return True
         api.send_message(chat_id, f"🔍 Ищу «{q}» по почте, TG, IG, Messenger… (может занять 1-2 мин)")
         _inbox_search(api, chat_id, q)
@@ -2719,8 +2732,8 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         if m_d:
             description = m_d.group(1).strip()
         if not (title or description or price):
-            api.send_message(chat_id, "📝 Формат: «отредактируй объявление <id>: цена 1500, заголовок: …»\n"
-                                      "или «отредактируй объявление <id>: описание: …»")
+            api.send_message(chat_id, "📝 Формат: «отредактируй объявление &lt;id&gt;: цена 1500, заголовок: …»\n"
+                                      "или «отредактируй объявление &lt;id&gt;: описание: …»")
             return True
         _pending_confirm[chat_id] = {"kind": "olx_edit",
                                      "data": {"ad_id": ad_id, "title": title,
@@ -2742,15 +2755,19 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             res = json.loads((r.stdout or "").strip().split("\n")[-1])
         except Exception:
             res = {"status": "error", "error": "?"}
-        if res.get("status") == "ok" and res.get("ads"):
-            lines = ["🛒 <b>Мои объявления OLX:</b>"]
-            for a in res["ads"][:15]:
-                lines.append(f"• <b>{_esc_tg(a.get('title', '?'))}</b> — {a.get('price', '?')} грн · id {a.get('id')}")
-            lines.append("\nУдалить: «удали объявление <id>» · Редактировать: «отредактируй объявление <id>: цена 1500»")
-            api.send_message(chat_id, "\n".join(lines)[:3900])
+        if res.get("status") == "ok":
+            if res.get("ads"):
+                lines = ["🛒 <b>Мои объявления OLX:</b>"]
+                for a in res["ads"][:15]:
+                    lines.append(f"• <b>{_esc_tg(a.get('title', '?'))}</b> — {a.get('price', '?')} грн · id {a.get('id')}")
+                lines.append("\nУдалить: «удали объявление &lt;id&gt;» · Редактировать: «отредактируй объявление &lt;id&gt;: цена 1500»")
+                api.send_message(chat_id, "\n".join(lines)[:3900])
+            else:
+                api.send_message(chat_id, "🛒 Сейчас опубликованных объявлений нет.\n"
+                                          "Создать: «создай объявление: <деталь>» → «опубликуй это объявление»\n"
+                                          "id появится в журнале после публикации.")
         else:
-            api.send_message(chat_id, "🛒 Не удалось получить список (или объявлений нет).\n"
-                                      "Удалить можно: «удали объявление <id>» (id виден после публикации)")
+            api.send_message(chat_id, f"❌ {res.get('error', 'Не удалось получить список объявлений')}")
         return True
 
     # ---- Подтверждение телефона OLX + публикация ----
@@ -3345,7 +3362,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             target = target.split(":", 1)[0].strip(" ,.;:—–")
             if not target or not body:
                 api.send_message(chat_id,
-                                 "✈️ <b>Telegram</b>: «напиши в телеграм <имя>: <текст>»\n"
+                                 "✈️ <b>Telegram</b>: «напиши в телеграм &lt;имя&gt;: &lt;текст&gt;»\n"
                                  "или «напиши боту @username: <команда>»")
                 return True
             _pending_confirm[chat_id] = {"kind": "tg_send",
@@ -3440,7 +3457,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
             q = re.sub(r"(найди|поиск|контакт)\s*:?\s*", "", text, flags=re.IGNORECASE).strip()
             q = re.sub(r"^(в|по)\s+", "", q).strip()
             if not q:
-                api.send_message(chat_id, "👤 Напишите «найди контакт <имя>»")
+                api.send_message(chat_id, "👤 Напишите «найди контакт &lt;имя&gt;»")
                 return True
             api.send_message(chat_id, "⏳ Ищу контакт…")
             data = _run_account_control(["google", "contacts_search", q])
@@ -3520,7 +3537,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         q = re.sub(r"^(от|по|про|на|в|о|из)\s+", "", q).strip()
         if not q:
             api.send_message(chat_id,
-                             "🔍 <b>Поиск в почте</b>: напишите «найди письмо <запрос>»,\n"
+                             "🔍 <b>Поиск в почте</b>: напишите «найди письмо &lt;запрос&gt;»,\n"
                              "например «найди письмо от github»")
             return True
         data = _run_account_control(["google", "gmail_search", q, "5"])
@@ -3694,7 +3711,7 @@ def cmd_accounts() -> str:
             "• «проверь мою почту» / «сколько непрочитанных» / «найди письмо …»\n"
             "• «кто я в гугле» · «события на сегодня» · «добавь событие …»\n"
             "• «создай документ …» · «покажи календарь» · «отправь письмо …»\n"
-            "• «мой инстаграм» · «директ» · «лайкни <ссылка>»\n"
+            "• «мой инстаграм» · «директ» · «лайкни &lt;ссылка&gt;»\n"
             "• «покажи фейсбук» · «тикток» · «олх» / «мои объявления»\n"
             "• «подпишись на @…» / «отпишись от @…»\n\n"
             "Или выберите раздел:")
@@ -3705,7 +3722,7 @@ def cmd_google(args: str) -> str:
     if not a:
         return ("🌐 <b>Google</b>\n\nКоманды:\n"
                 "/google whoami · /google unread · /google list\n"
-                "/google search <запрос> · /google calendar · /google drive\n"
+                "/google search &lt;запрос&gt; · /google calendar · /google drive\n"
                 "/google events · /google mailshot · /google send\n"
                 "Или просто напишите «проверь почту», «события на сегодня», «создай документ …»")
     return "🌐 Google: укажите подкоманду."
@@ -3716,7 +3733,7 @@ def cmd_instagram(args: str) -> str:
     if not a:
         return ("📸 <b>Instagram</b>\n\nКоманды:\n"
                 "/instagram profile · /instagram posts · /instagram screenshot\n"
-                "Или просто напишите «мой инстаграм», «лайкни <ссылка>», «подпишись на @…»")
+                "Или просто напишите «мой инстаграм», «лайкни &lt;ссылка&gt;», «подпишись на @…»")
     return "📸 Instagram: укажите подкоманду."
 
 
@@ -4214,27 +4231,6 @@ def _handle_button_inner(api: TelegramAPI, chat_id: int, data: str) -> None:
         print(f"  [BTN] no reply generated for: {data}")
 
 
-def _handle_callback(api: TelegramAPI, upd: dict) -> None:
-    """Handle inline button callbacks."""
-    cb = upd.get("callback_query", {})
-    cb_id = cb.get("id", "")
-    data = cb.get("data", "")
-    msg = cb.get("message", {})
-    chat_id = msg.get("chat", {}).get("id")
-    msg_id = msg.get("message_id")
-
-    if not chat_id or not data:
-        return
-
-    api.answer_callback(cb_id, "⏳ Обрабатываю...")
-
-    reply = None
-    keyboard = None
-
-    # ---- Инбокс: inline-действия ----
-    if data.startswith("inbox_"):
-        _handle_inbox_callback(api, chat_id, msg_id, data)
-        return
 
 def _handle_inbox_callback(api: TelegramAPI, chat_id: int, msg_id: int, data: str) -> None:
     """Обработка кнопок инбокса: прочитать пункт / всё прочитано / сводка."""
@@ -4266,96 +4262,26 @@ def _handle_inbox_callback(api: TelegramAPI, chat_id: int, msg_id: int, data: st
 
 
 def _handle_callback(api: TelegramAPI, upd: dict) -> None:
-    reply = None
-    keyboard = None
+    """Handle inline button callbacks (кнопки в сообщениях)."""
+    cb = upd.get("callback_query", {})
+    cb_id = cb.get("id", "")
+    data = cb.get("data", "")
+    msg = cb.get("message", {})
+    chat_id = msg.get("chat", {}).get("id")
+    msg_id = msg.get("message_id")
 
-    if data == "menu_back":
-        reply = "🤖 <b>AIOS Control Panel</b>\n\nВыберите раздел:"
-        keyboard = MAIN_MENU_KEYBOARD
+    if not chat_id or not data:
+        return
 
-    elif data == "menu_stats":
-        reply = cmd_stats()
+    api.answer_callback(cb_id, "⏳ Обрабатываю...")
 
-    elif data == "menu_platforms":
-        reply = cmd_platforms()
+    # ---- Инбокс: inline-действия ----
+    if data.startswith("inbox_"):
+        _handle_inbox_callback(api, chat_id, msg_id, data)
+        return
 
-    elif data == "menu_olx":
-        reply = "\U0001f6d2 <b>OLX</b>\n\n\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435:"
-        keyboard = OLX_MENU_KEYBOARD
-
-    elif data == "olx_stats":
-        reply = cmd_olx("")
-        keyboard = OLX_MENU_KEYBOARD
-
-    elif data == "menu_help":
-        reply = cmd_help()
-
-    elif data == "menu_coder":
-        reply = "🧠 <b>Агент-кодер MetaCognitiveCoder</b>\n\nУправление автономным кодером:"
-        keyboard = CODER_MENU_KEYBOARD
-
-    elif data == "coder_status":
-        reply = cmd_coder_status()
-        keyboard = CODER_MENU_KEYBOARD
-
-    elif data == "coder_review_bot":
-        api.edit_message(chat_id, msg_id, "⏳ <i>Анализирую run_telegram_bot.py...</i>")
-        reply = cmd_code_review("run_telegram_bot.py")
-        keyboard = CODER_MENU_KEYBOARD
-
-    elif data == "coder_review_collector":
-        api.edit_message(chat_id, msg_id, "⏳ <i>Анализирую run_olx_http_collector.py...</i>")
-        reply = cmd_code_review("run_olx_http_collector.py")
-        keyboard = CODER_MENU_KEYBOARD
-
-    elif data == "coder_review_self":
-        api.edit_message(chat_id, msg_id, "⏳ <i>Анализирую meta_cognitive_self_coder.py...</i>")
-        reply = cmd_code_review("aios_core/meta_cognitive_self_coder.py")
-        keyboard = CODER_MENU_KEYBOARD
-
-    elif data == "coder_gen_prompt":
-        _pending_actions[chat_id] = "gen_code"
-        reply = "✏️ <b>Генерация кода</b>\n\nОтправьте описание что нужно создать:\n\n<i>Например: Create a function that parses CSV files and returns summary stats</i>"
-
-    elif data == "coder_fix_prompt":
-        _pending_actions[chat_id] = "fix_bug"
-        reply = "🔧 <b>Исправление бага</b>\n\nОтправьте в формате:\n<code>file.py описание бага</code>\n\n<i>Например: run_telegram_bot.py бот падает при команде /stats</i>"
-
-    elif data == "coder_git_status":
-        try:
-            mod = _get_coder_module()
-            coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
-            git_status = coder.git.status()
-            if git_status:
-                lines = git_status.split("\n")[:20]
-                reply = "📜 <b>Git Status</b>\n\n" + "\n".join("  " + l for l in lines)
-            else:
-                reply = "📜 <b>Git Status</b>\n\n  ✅ Working tree clean"
-        except Exception as e:
-            reply = "❌ Ошибка: " + str(e)
-        keyboard = CODER_MENU_KEYBOARD
-
-    elif data == "coder_git_push":
-        try:
-            mod = _get_coder_module()
-            coder = mod.MetaCognitiveCoder(mod.CoderConfig.from_env())
-            ok, out = coder.git.push()
-            reply = "🚀 <b>Git Push</b>\n\n  " + ("✅ Pushed" if ok else "❌ " + out[:200])
-        except Exception as e:
-            reply = "❌ Ошибка: " + str(e)
-        keyboard = CODER_MENU_KEYBOARD
-
-    if reply:
-        try:
-            if keyboard:
-                api.send_message(chat_id, reply, reply_markup=keyboard)
-            else:
-                api.send_message(chat_id, reply)
-        except Exception as e:
-            # If edit fails, send new message
-            api.send_message(chat_id, reply)
-
-    print(f"  → callback {data} (chat {chat_id})")
+    # ---- Остальные кнопки меню (опасные — с подтверждением) ----
+    _handle_button(api, chat_id, data)
 
 
 def _llm_status() -> str:
