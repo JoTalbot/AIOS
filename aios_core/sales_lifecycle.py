@@ -986,6 +986,42 @@ class SalesLifecycle:
             if sale.get("status") in TRACKING_ACTIVE and _ttn(sale.get("ttn"))
         ]
 
+    def crm_snapshot(self, limit: int = 8) -> dict:
+        """Безопасная CRM-сводка: товары/статусы без телефонов и ФИО."""
+        sales = self._sales()
+        tasks = self._tasks()
+        active_statuses = {"awaiting_shipment", "ttn_created", "in_transit", "returning"}
+        status_counts: dict[str, int] = {}
+        for sale in sales:
+            status = str(sale.get("status") or "unknown")
+            status_counts[status] = status_counts.get(status, 0) + 1
+        active = [sale for sale in sales if sale.get("status") in active_statuses]
+        open_task_ids = {str(task.get("sale_id")) for task in tasks if task.get("status") == "open"}
+        safe_sales = []
+        for sale in sorted(sales, key=lambda x: str(x.get("updated_at") or x.get("created_at") or ""), reverse=True)[:limit]:
+            safe_sales.append({
+                "id": str(sale.get("id") or ""),
+                "item": str(sale.get("item") or "Товар"),
+                "ttn": str(sale.get("ttn") or ""),
+                "status": str(sale.get("status") or "unknown"),
+                "amount": _amount(sale.get("amount")) or 0,
+                "updated_at": str(sale.get("updated_at") or sale.get("created_at") or ""),
+                "task_open": str(sale.get("id")) in open_task_ids,
+            })
+        return {
+            "status": "ok",
+            "total": len(sales),
+            "active": len(active),
+            "awaiting": sum(1 for sale in sales if sale.get("status") in ("awaiting_shipment", "ttn_created")),
+            "in_transit": sum(1 for sale in sales if sale.get("status") == "in_transit"),
+            "delivered": sum(1 for sale in sales if sale.get("status") == "delivered"),
+            "returned": sum(1 for sale in sales if sale.get("status") in ("returning", "returned", "return_received")),
+            "open_tasks": len(open_task_ids),
+            "pipeline_amount": round(sum(_amount(sale.get("amount")) or 0 for sale in active), 2),
+            "status_counts": status_counts,
+            "sales": safe_sales,
+        }
+
     def list_open_tasks(self) -> list[dict]:
         sales = {str(s.get("id")): s for s in self._sales()}
         rows = []

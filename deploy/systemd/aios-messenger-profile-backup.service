@@ -1,0 +1,12 @@
+[Unit]
+Description=AIOS local messenger profile backup
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/AIOS
+Environment=AIOS_MESSENGER_BACKUP_RETENTION=14
+ExecStart=/opt/aios/.venv/bin/python /root/AIOS/run_messenger_profile_backup.py
+StandardOutput=append:/root/AIOS/logs/messenger_profile_backup.log
+StandardError=append:/root/AIOS/logs/messenger_profile_backup.log

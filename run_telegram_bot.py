@@ -1759,9 +1759,40 @@ def _handle_sales_lifecycle_intent(api, chat_id: int, text: str) -> bool:
         print(f"  [SALES] init error: {exc}")
         return False
 
+    crm_phrases = ("crm", "сделки", "статус продаж", "воронка продаж", "продажи crm")
+    if any(phrase in normalized for phrase in crm_phrases):
+        crm = lifecycle.crm_snapshot()
+        status_label = {
+            "awaiting_shipment": "⏳ ждёт отправки", "ttn_created": "⏳ ТТН создана",
+            "in_transit": "🚚 в пути", "delivered": "✅ доставлено",
+            "returning": "↩️ возврат в пути", "returned": "↩️ возврат",
+            "return_received": "📦 возвращено на склад",
+        }
+        lines = [
+            "💼 <b>Продажи и CRM</b>",
+            "━━━━━━━━━━━━━━━━",
+            f"Активные: <b>{crm['active']}</b> · ждут отправки: <b>{crm['awaiting']}</b> · в пути: <b>{crm['in_transit']}</b>",
+            f"Доставлено: <b>{crm['delivered']}</b> · возвраты: <b>{crm['returned']}</b> · открытые задачи: <b>{crm['open_tasks']}</b>",
+            f"Сумма активных сделок: <b>{crm['pipeline_amount']:.0f} грн</b>",
+        ]
+        recent = crm.get("sales") or []
+        if recent:
+            lines.append("━━━━━━━━━━━━━━━━")
+            lines.append("<b>Последние сделки</b>")
+            for sale in recent[:8]:
+                task = " · 📌 задача" if sale.get("task_open") else ""
+                lines.append(
+                    f"• {status_label.get(sale.get('status'), sale.get('status'))} · "
+                    f"<b>{_esc_tg(sale.get('item'))[:70]}</b> · ТТН <code>{_esc_tg(sale.get('ttn') or '—')}</code> · "
+                    f"{float(sale.get('amount') or 0):.0f} грн{task}")
+        lines.append("━━━━━━━━━━━━━━━━")
+        lines.append("<i>«задачи отправки» · «отправил &lt;ТТН&gt;» · «доставлено &lt;ТТН&gt;»</i>")
+        api.send_message(chat_id, "\n".join(lines)[:3900])
+        return True
+
     task_phrases = (
         "задачи отправки", "задачи по отправке", "что нужно отправить",
-        "что отправить", "ожидает отправки", "задачи продаж", "статус продаж",
+        "что отправить", "ожидает отправки", "задачи продаж",
     )
     if any(phrase in normalized for phrase in task_phrases):
         rows = lifecycle.list_open_tasks()
