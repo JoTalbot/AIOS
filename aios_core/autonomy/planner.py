@@ -71,6 +71,38 @@ class Planner:
         return proposal
 
     # ------------------------------------------------------------------
+    def _select_model(self) -> str:
+        """Выбор модели для ответов клиенту с авто-переключением при нагрузке.
+
+        Пока клиентов мало — gemini-2.5-pro (максимальное качество).
+        При большом потоке (активных сессий/клиентов >= порога) — gemini-2.5-flash
+        (быстрее и дешевле). Порог настраивается через AIOS_SMART_MODEL_THRESHOLD.
+        Явный выбор всегда переопределяет через AIOS_PLANNER_MODEL.
+        """
+        override = os.environ.get("AIOS_PLANNER_MODEL", "").strip()
+        if override:
+            return override
+        threshold = int(os.environ.get("AIOS_SMART_MODEL_THRESHOLD", "10") or 10)
+        try:
+            active = self._active_customer_count()
+        except Exception:
+            active = 0
+        if active >= threshold:
+            return "gemini-2.5-flash"  # поток большой — дешевле/быстрее
+        return "gemini-2.5-pro"  # клиентов мало — качество
+
+    @staticmethod
+    def _active_customer_count() -> int:
+        """Число активных клиентских сессий (для оценки нагрузки)."""
+        try:
+            from pathlib import Path
+            d = Path("/root/AIOS/data/autonomy_sessions")
+            if not d.exists():
+                return 0
+            return len(list(d.glob("*.json")))
+        except Exception:
+            return 0
+
     def _llm_json(self, prompt: str) -> dict:
         system = (
             "Ты — планировщик бизнес-действий для продавца автозапчастей. "
@@ -83,10 +115,9 @@ class Planner:
             "что и сообщение клиента (украинский или русский). Не переводи на другой язык."
         )
         bal = self._get_balancer()
-        # Модель для генерации ответов клиентам. Раз клиентов пока мало — берём
-        # умную модель для качественных ответов: gemini-2.5-pro (лучшее качество).
-        # Переопределяется через AIOS_PLANNER_MODEL, фолбэк-цепочка в балансере.
-        model = os.environ.get("AIOS_PLANNER_MODEL", "gemini-2.5-pro").strip()
+        # Модель с авто-переключением: пока клиентов мало — gemini-2.5-pro
+        # (максимальное качество); при большом потоке — gemini-2.5-flash (дешевле).
+        model = self._select_model()
         try:
             raw = bal.chat(
                 [{"role": "user", "content": prompt}],
