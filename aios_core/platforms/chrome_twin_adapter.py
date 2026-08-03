@@ -26,6 +26,7 @@ from __future__ import annotations
 import os
 import json
 import time
+import asyncio
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from pathlib import Path
@@ -46,6 +47,34 @@ except ImportError:
     HAS_VISION = False
 
 
+async def _try_cdp_attach(playwright, cdp_url: str, site_keyword: str = ""):
+    """Подключиться к уже запущенному Chrome через CDP (aios-chrome-vnc).
+
+    Возвращает (browser, context, page) или None. Не убивает существующий Chrome.
+    """
+    if not cdp_url:
+        return None
+    try:
+        browser = await playwright.chromium.connect_over_cdp(cdp_url)
+        ctx = browser.contexts[0] if browser.contexts else await browser.new_context()
+        page = None
+        if site_keyword:
+            for p in ctx.pages:
+                if site_keyword in (p.url or ""):
+                    page = p
+                    break
+        if not page:
+            page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+        if page:
+            try:
+                await page.bring_to_front()
+            except Exception:
+                pass
+        return (browser, ctx, page)
+    except Exception:
+        return None
+
+
 class ChromeTwinAdapter(PlatformAdapter):
     """
     Двойник пользователя в Chrome с личным Google аккаунтом
@@ -63,6 +92,9 @@ class ChromeTwinAdapter(PlatformAdapter):
         self._context = None
         self._page = None
         self._vision = None
+        # CDP attach: подключение к уже запущенному Chrome (VNC с --remote-debugging-port)
+        self.cdp_url = self.config.get("cdp_url") or os.getenv("AIOS_CHROME_CDP") or ""
+        self._site_keyword = self.config.get("site_keyword") or ""
         
         # Создать директорию профиля
         Path(self.user_data_dir).mkdir(parents=True, exist_ok=True)
@@ -77,9 +109,41 @@ class ChromeTwinAdapter(PlatformAdapter):
         
         if not HAS_PLAYWRIGHT:
             raise RuntimeError("Playwright не установлен: pip install playwright && playwright install chromium")
-        
+
         self._playwright = await async_playwright().start()
-        
+
+        # Если уже запущен Chrome с --remote-debugging-port (например, VNC-сессия) — подключаемся к нему
+        if self.cdp_url:
+            last_err = None
+            for _attempt in range(4):
+                try:
+                    self._browser = await self._playwright.chromium.connect_over_cdp(self.cdp_url)
+                    ctx = self._browser.contexts[0] if self._browser.contexts else await self._browser.new_context()
+                    self._context = ctx
+                    pages = ctx.pages
+                    self._page = None
+                    if self._site_keyword:
+                        for p in pages:
+                            if self._site_keyword in (p.url or ""):
+                                self._page = p
+                                break
+                    if not self._page:
+                        self._page = pages[0] if pages else await ctx.new_page()
+                    if self._page:
+                        try:
+                            await self._page.bring_to_front()
+                        except Exception:
+                            pass
+                    return self._page
+                except Exception as e:
+                    last_err = e
+                    await asyncio.sleep(2)
+            # CDP задан, но Chrome недоступен — НЕ запускаем свой с тем же профилем,
+            # иначе убьём service-Chrome (single-instance-per-profile)
+            raise RuntimeError(
+                f"Chrome по CDP ({self.cdp_url}) недоступен: {str(last_err)[:200]}. "
+                "Запустите: systemctl start aios-chrome-vnc")
+
         # Запустить Chrome с пользовательским профилем
         # Используем persistent context чтобы сохранить Google сессию
         self._context = await self._playwright.chromium.launch_persistent_context(
@@ -341,6 +405,15 @@ class ChromeTwinAdapter(PlatformAdapter):
     async def close(self):
         """Закрыть браузер"""
         try:
+            if self.cdp_url:
+                # CDP-сессия: не закрываем чужой Chrome, только отключаемся
+                if self._playwright:
+                    await self._playwright.stop()
+                self._page = None
+                self._context = None
+                self._browser = None
+                self._playwright = None
+                return
             if self._context:
                 await self._context.close()
             if self._browser:
