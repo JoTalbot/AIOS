@@ -187,7 +187,7 @@ def main() -> int:
         detected = _detect_item(last_theirs)
         outcome = core.process_customer(
             "olx", contact, last_theirs, msg_id=f"{contact}:{last}",
-            extra={"item": detected, "ad_price": None})
+            extra={"item": detected, "ad_price": None, "history": msgs})
 
         # действие — автоответ
         if outcome.get("mode") == "action" and outcome.get("text"):

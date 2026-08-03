@@ -41,6 +41,22 @@ class AutonomyCore:
 
         # дедупликация + сессия
         sess = self.state.note_message(platform, chat, msg_id or text, text)
+
+        # фото → распознавание детали (если приложено фото)
+        photo = extra.get("photo")
+        photo_item = None
+        if photo:
+            try:
+                import run_photo_recognition as _phr
+                rec = _phr.recognize(str(photo))
+                if rec.get("status") == "ok" and rec.get("part"):
+                    photo_item = str(rec["part"]).strip()
+            except Exception:
+                pass
+        if photo_item and not extra.get("item"):
+            extra = dict(extra)
+            extra["item"] = photo_item
+
         ctx = {
             "customer_trust": sess.trust,
             "aggressive": extra.get("aggressive"),

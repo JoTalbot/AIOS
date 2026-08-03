@@ -130,6 +130,7 @@ class Guardrails:
         sku = str(params.get("sku") or params.get("item") or "").strip()
         offer = params.get("offer")
         ad_price = params.get("ad_price")
+        counter = params.get("counter")
         try:
             offer = float(offer) if offer is not None else None
         except (TypeError, ValueError):
@@ -138,11 +139,44 @@ class Guardrails:
             ad_price = float(ad_price) if ad_price is not None else None
         except (TypeError, ValueError):
             ad_price = None
+        try:
+            counter = float(counter) if counter is not None else None
+        except (TypeError, ValueError):
+            counter = None
 
         floor = self.policy.floor_for(sku)
         base = ad_price if ad_price else floor
-        max_auto = base * (1 - self.policy.max_auto_discount_pct / 100.0) if base else 0.0
+        # авто-лимит скидки зависит от репутации клиента:
+        #   trusted → x1.5 от базового лимита, risky → x0.5
+        trust = ctx.get("customer_trust", "")
+        discount = self.policy.max_auto_discount_pct
+        if trust == "trusted":
+            discount = discount * 1.5
+        elif trust in ("risky", "new"):
+            discount = discount * 0.6 if trust == "risky" else discount
+        max_auto = base * (1 - discount / 100.0) if base else 0.0
         rules: list[str] = []
+
+        # counter_offer/negotiate с встречной ценой: встречная цена, которую хочет предложить бот
+        if action in ("counter_offer", "negotiate_price") and counter is not None:
+            # встречная не должна быть ниже пола
+            if floor and counter < floor:
+                return Decision("ESCALATE",
+                                reason=f"Встречная {counter:.0f} ниже пола {floor:.0f} для «{sku or 'товара'}»",
+                                matched_rules=["below_floor"],
+                                meta={"counter": counter, "floor": floor})
+            # встречная не должна быть ниже авто-лимита скидки от прайса
+            if base and max_auto and counter < max_auto:
+                return Decision("ESCALATE",
+                                reason=f"Встречная {counter:.0f} ниже авто-лимита скидки ({max_auto:.0f})",
+                                matched_rules=["big_discount"],
+                                meta={"counter": counter, "max_auto": round(max_auto, 2)})
+            # проверим контекст-риски
+            if rules:
+                return Decision("ESCALATE", reason="встречная в норме, но есть риск-факторы",
+                                matched_rules=rules)
+            return Decision("ALLOWED", reason="Встречная цена в рамках правил",
+                            matched_rules=[], meta={"counter": counter, "floor": floor})
         ctx_rules = ctx.get("rules", [])
 
         # Эскалационные триггеры контекста
@@ -181,7 +215,7 @@ class Guardrails:
             if self.policy.is_esc_rule_on("big_discount"):
                 return Decision("ESCALATE",
                                 reason=f"Скидка до {offer} (база {base}) превышает авто-лимит "
-                                       f"{self.policy.max_auto_discount_pct}%",
+                                       f"{discount:.0f}%",
                                 matched_rules=rules,
                                 meta={"base": base, "offer": offer, "max_auto": round(max_auto, 2)})
             return Decision("MANUAL", reason="Большая скидка — нужно подтверждение",
