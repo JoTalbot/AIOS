@@ -1381,6 +1381,101 @@ async def olx_my_ads(limit: int = 20) -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
+async def messages_profile() -> dict:
+    """Google Messages for Web: проверка привязки телефона."""
+    try:
+        from aios_core.platforms.messages_web_chrome_twin_adapter import MessagesWebChromeTwinAdapter
+        a = MessagesWebChromeTwinAdapter()
+        try:
+            return await a.account_info()
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def messages_list(limit: int = 20) -> dict:
+    """Список последних SMS-переписок."""
+    try:
+        from aios_core.platforms.messages_web_chrome_twin_adapter import MessagesWebChromeTwinAdapter
+        a = MessagesWebChromeTwinAdapter()
+        try:
+            convs = await a.list_conversations(limit)
+            return {"status": "ok", "conversations": convs, "count": len(convs)}
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def messages_latest(limit: int = 10) -> dict:
+    """Последние SMS (отправитель + текст + код, если есть)."""
+    try:
+        from aios_core.platforms.messages_web_chrome_twin_adapter import MessagesWebChromeTwinAdapter
+        a = MessagesWebChromeTwinAdapter()
+        try:
+            return await a.latest_sms(limit)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def messages_code(sender: str = "") -> dict:
+    """Найти последний код подтверждения в SMS (по отправителю опционально)."""
+    try:
+        from aios_core.platforms.messages_web_chrome_twin_adapter import MessagesWebChromeTwinAdapter
+        a = MessagesWebChromeTwinAdapter()
+        try:
+            return await a.find_code(sender)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def messages_read(contact: str, limit: int = 15) -> dict:
+    """Прочитать переписку с контактом."""
+    try:
+        from aios_core.platforms.messages_web_chrome_twin_adapter import MessagesWebChromeTwinAdapter
+        a = MessagesWebChromeTwinAdapter()
+        try:
+            return await a.read_conversation(contact, limit)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def messages_send(contact: str, text: str, confirm: bool) -> dict:
+    """Отправить SMS."""
+    if not confirm:
+        return {"status": "need_confirm", "action": "messages_send",
+                "to": contact, "text": text}
+    try:
+        from aios_core.platforms.messages_web_chrome_twin_adapter import MessagesWebChromeTwinAdapter
+        a = MessagesWebChromeTwinAdapter()
+        try:
+            return await a.send_sms(contact, text)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def messages_screenshot() -> dict:
+    """Скриншот Messages for Web."""
+    try:
+        from aios_core.platforms.messages_web_chrome_twin_adapter import MessagesWebChromeTwinAdapter
+        a = MessagesWebChromeTwinAdapter()
+        try:
+            return await a.screenshot()
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
 async def prom_profile() -> dict:
     """Prom.ua: информация аккаунта (Chrome Twin)."""
     try:
@@ -1696,6 +1791,7 @@ async def instagram_follow(username: str, action: str, confirm: bool) -> dict:
 # --------------------------------------------------------------------------
 
 def main():
+    _cleanup_browser_locks()
     parser = argparse.ArgumentParser(description="AIOS Account Control")
     sub = parser.add_subparsers(dest="account", required=True)
 
@@ -1839,6 +1935,24 @@ def main():
     vbs.add_argument("text")
     vbs.add_argument("--confirm", action="store_true")
 
+    msgs = sub.add_parser("messages")
+    msgsg = msgs.add_subparsers(dest="action", required=True)
+    msgsg.add_parser("profile")
+    msgl = msgsg.add_parser("list")
+    msgl.add_argument("--limit", type=int, default=20)
+    mslat = msgsg.add_parser("latest")
+    mslat.add_argument("--limit", type=int, default=10)
+    msc = msgsg.add_parser("code")
+    msc.add_argument("sender", nargs="?", default="")
+    msr = msgsg.add_parser("read")
+    msr.add_argument("contact")
+    msr.add_argument("--limit", type=int, default=15)
+    mss = msgsg.add_parser("send")
+    mss.add_argument("contact")
+    mss.add_argument("text")
+    mss.add_argument("--confirm", action="store_true")
+    msgsg.add_parser("screenshot")
+
     prom = sub.add_parser("prom")
     promg = prom.add_subparsers(dest="action", required=True)
     promg.add_parser("profile")
@@ -1972,6 +2086,21 @@ def main():
                 out(viber_read(args.chat, args.limit))
             elif args.action == "send":
                 out(viber_send(args.chat, args.text, args.confirm))
+        elif args.account == "messages":
+            if args.action == "profile":
+                out(asyncio.run(messages_profile()))
+            elif args.action == "list":
+                out(asyncio.run(messages_list(args.limit)))
+            elif args.action == "latest":
+                out(asyncio.run(messages_latest(args.limit)))
+            elif args.action == "code":
+                out(asyncio.run(messages_code(args.sender)))
+            elif args.action == "read":
+                out(asyncio.run(messages_read(args.contact, args.limit)))
+            elif args.action == "send":
+                out(asyncio.run(messages_send(args.contact, args.text, args.confirm)))
+            elif args.action == "screenshot":
+                out(asyncio.run(messages_screenshot()))
         elif args.account == "prom":
             if args.action == "profile":
                 out(asyncio.run(prom_profile()))

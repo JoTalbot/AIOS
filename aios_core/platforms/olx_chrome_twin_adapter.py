@@ -29,7 +29,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 from pathlib import Path
 
-from .chrome_twin_adapter import ChromeTwinAdapter
+from .chrome_twin_adapter import ChromeTwinAdapter, _try_cdp_attach
 from .base import IncomingMessage, SentMessage
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -95,6 +95,21 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
         except ImportError:
             raise RuntimeError("Playwright не установлен")
         self._playwright = await async_playwright().start()
+        # CDP: если уже запущен системный Chrome (aios-chrome-vnc) — работаем через него
+        if self.cdp_url:
+            _cdp_res = None
+            for _att in range(4):
+                _cdp_res = await _try_cdp_attach(self._playwright, self.cdp_url, "olx.ua")
+                if _cdp_res is not None:
+                    break
+                await asyncio.sleep(2)
+            if _cdp_res is not None:
+                self._browser, self._context, self._page = _cdp_res
+                return self._page
+            raise RuntimeError(
+                f"Chrome по CDP ({self.cdp_url}) недоступен: запустите systemctl start aios-chrome-vnc")
+
+
         kwargs = dict(
             user_data_dir=str(Path(self.user_data_dir).resolve()),
             headless=self.headless,

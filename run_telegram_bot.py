@@ -1689,6 +1689,15 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 else:
                     api.send_message(chat_id, f"❌ {data.get('error', st)}")
                 return True
+            if kind == "messages_send":
+                d = pend["data"]
+                data = _run_account_control(["messages", "send", d["to"], d["text"], "--confirm"])
+                st = data.get("status")
+                if st == "sent":
+                    api.send_message(chat_id, f"✅ SMS отправлено на «{_esc_tg(d['to'])}».")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
             if kind == "ig_comment_reply":
                 d = pend["data"]
                 data = _run_account_control(["instagram", "comment_reply", d["code"], d["text"], "--confirm"])
@@ -2681,6 +2690,107 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     if any(w in t for w in ("отметь всё прочитанным", "отметить все прочитанными", "всё прочитано",
                             "отметь прочитанным")):
         _inbox_mark_read(api, chat_id)
+        return True
+
+    # ---- SMS (Google Messages for Web, телефон +380959052288) ----
+    if any(w in t for w in ("мои смс", "последние смс", "последняя смс", "проверь смс",
+                            "смс на телефон", "что пришло по смс", "мои смски")):
+        import subprocess as _sp
+        api.send_message(chat_id, "⏳ Читаю SMS с телефона…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_account_control.py"),
+                     "messages", "latest", "--limit", "10"],
+                    capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-200:]}
+        if res.get("status") == "ok":
+            sms = res.get("sms") or []
+            if not sms:
+                api.send_message(chat_id, "📭 В SMS пусто.")
+            else:
+                lines = ["💬 <b>Последние SMS:</b>"]
+                for s in sms[:10]:
+                    code = f" · 🔑 <b>{s.get('code')}</b>" if s.get("code") else ""
+                    lines.append(f"• <b>{_esc_tg(s.get('sender'))}</b>{code}: {_esc_tg(s.get('text', ''))[:90]}")
+                api.send_message(chat_id, "\n".join(lines)[:3900])
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', 'Не удалось прочитать SMS')}")
+        return True
+
+    m_code = re.match(r"^(?:найди код из смс|код из смс|код подтверждения|какой код|код от)\s*(?:от|с)?\s*:?\s*(.*)$",
+                      text, re.IGNORECASE)
+    if m_code and ("код" in text.lower() or "смс" in text.lower()):
+        sender = m_code.group(1).strip()
+        import subprocess as _sp
+        api.send_message(chat_id, f"🔑 Ищу код в SMS{f' от «{sender}»' if sender else ''}…")
+        args = ["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_account_control.py"),
+                "messages", "code"]
+        if sender:
+            args.append(sender)
+        r = _sp.run(args, capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-200:]}
+        if res.get("status") == "ok":
+            api.send_message(chat_id,
+                             f"🔑 <b>Код: {res.get('code')}</b>\n"
+                             f"От: {_esc_tg(res.get('sender'))}\n{_esc_tg(res.get('message'))[:150]}")
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', 'Код не найден')}")
+        return True
+
+    m_msgs_read = re.match(r"^(?:прочитай смс от|переписка|смс от|покажи переписку)\s+([^\n]{1,60})$",
+                           text, re.IGNORECASE)
+    if m_msgs_read:
+        contact = m_msgs_read.group(1).strip().strip("«»\"'")
+        import subprocess as _sp
+        api.send_message(chat_id, f"💬 Открываю переписку с «{contact}»…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_account_control.py"),
+                     "messages", "read", contact, "--limit", "12"],
+                    capture_output=True, text=True, timeout=120, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-200:]}
+        if res.get("status") == "ok":
+            msgs = res.get("messages") or []
+            lines = [f"💬 <b>{_esc_tg(contact)}</b>:"]
+            for m in msgs[:12]:
+                lines.append(f"• {_esc_tg(m.get('text', ''))[:160]}")
+            api.send_message(chat_id, "\n".join(lines)[:3900])
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', 'Не удалось прочитать переписку')}")
+        return True
+
+    m_msgs_send = re.match(r"^(?:отправь смс|напиши смс|отправь sms)\s+([^\n:]+)\s*:\s*(.+)$",
+                           text, re.IGNORECASE)
+    if m_msgs_send:
+        contact = m_msgs_send.group(1).strip().strip("«»\"'")
+        body = m_msgs_send.group(2).strip()
+        _pending_confirm[chat_id] = {"kind": "messages_send",
+                                     "data": {"to": contact, "text": body}}
+        api.send_message(chat_id,
+                         f"📨 Отправить SMS на «{_esc_tg(contact)}»:\n{_esc_tg(body)[:200]}\n\n«да» / «нет»")
+        return True
+
+    if any(w in t for w in ("покажи смс", "скрин смс", "скриншот смс")):
+        import subprocess as _sp
+        api.send_message(chat_id, "⏳ Делаю скриншот Messages…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_account_control.py"),
+                     "messages", "screenshot"], capture_output=True, text=True,
+                    timeout=120, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": "?"}
+        if res.get("status") == "ok" and res.get("screenshot"):
+            _acct_send_result(api, chat_id, {"status": "ok", "text": "💬 Экран Messages",
+                                             "screenshot": res["screenshot"],
+                                             "caption": "💬 Messages"}, "")
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', 'Не удалось сделать скриншот')}")
         return True
 
     # ---- Поднятие/контроль объявлений OLX ----

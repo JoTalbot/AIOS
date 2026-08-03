@@ -22,13 +22,14 @@ Google-аккаунт jo.talbot@gmail.com и вручную через VNC вы�
 from __future__ import annotations
 
 import os
+import asyncio
 import re
 import shutil
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 
-from .chrome_twin_adapter import ChromeTwinAdapter
+from .chrome_twin_adapter import ChromeTwinAdapter, _try_cdp_attach
 
 try:
     from playwright.async_api import async_playwright
@@ -99,6 +100,21 @@ class InstagramChromeTwinAdapter(ChromeTwinAdapter):
             raise RuntimeError("Playwright не установлен: pip install playwright && playwright install chromium")
 
         self._playwright = await async_playwright().start()
+        # CDP: если уже запущен системный Chrome (aios-chrome-vnc) — работаем через него
+        if self.cdp_url:
+            _cdp_res = None
+            for _att in range(4):
+                _cdp_res = await _try_cdp_attach(self._playwright, self.cdp_url, "instagram.com")
+                if _cdp_res is not None:
+                    break
+                await asyncio.sleep(2)
+            if _cdp_res is not None:
+                self._browser, self._context, self._page = _cdp_res
+                return self._page
+            raise RuntimeError(
+                f"Chrome по CDP ({self.cdp_url}) недоступен: запустите systemctl start aios-chrome-vnc")
+
+
 
         launch_kwargs: dict[str, Any] = dict(
             user_data_dir=str(Path(self.user_data_dir).resolve()),
