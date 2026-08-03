@@ -160,7 +160,8 @@ def export_sklad(limit: int = 0, confirm: bool = False, pause: int = 25) -> dict
             results.append({"name": "?", "status": "error", "error": "пустое имя"})
             continue
         if confirm:
-            r = create_ad(part, True)
+            photo = (it.get("photo") or "") if isinstance(it.get("photo"), str) else ""
+            r = create_ad(part, True, photo or None)
             st = r.get("status")
             if st == "published":
                 ok_cnt += 1

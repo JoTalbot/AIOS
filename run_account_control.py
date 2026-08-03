@@ -1381,6 +1381,90 @@ async def olx_my_ads(limit: int = 20) -> dict:
         return {"status": "error", "error": str(e)[:300]}
 
 
+async def olx_chat_list(limit: int = 20) -> dict:
+    """OLX-чат: список переписок."""
+    try:
+        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+        a = OLXChromeTwinAdapter(config={"olx_login": "959052288"})
+        try:
+            return await a.chat_list(limit)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def olx_chat_read(contact: str, limit: int = 15) -> dict:
+    """OLX-чат: прочитать переписку."""
+    try:
+        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+        a = OLXChromeTwinAdapter(config={"olx_login": "959052288"})
+        try:
+            return await a.chat_read(contact, limit)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def olx_chat_reply(contact: str, text: str, confirm: bool) -> dict:
+    """OLX-чат: ответить покупателю."""
+    if not confirm:
+        return {"status": "need_confirm", "action": "olx_chat_reply",
+                "to": contact, "text": text}
+    try:
+        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+        a = OLXChromeTwinAdapter(config={"olx_login": "959052288"})
+        try:
+            return await a.chat_reply(contact, text)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def olx_chat_list(limit: int = 20) -> dict:
+    """OLX-чат: список переписок."""
+    try:
+        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+        a = OLXChromeTwinAdapter(config={"olx_login": "959052288"})
+        try:
+            return await a.chat_list(limit)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def olx_chat_read(contact: str, limit: int = 15) -> dict:
+    """OLX-чат: прочитать переписку."""
+    try:
+        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+        a = OLXChromeTwinAdapter(config={"olx_login": "959052288"})
+        try:
+            return await a.chat_read(contact, limit)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
+async def olx_chat_reply(contact: str, text: str, confirm: bool) -> dict:
+    """OLX-чат: ответить покупателю."""
+    if not confirm:
+        return {"status": "need_confirm", "action": "olx_chat_reply",
+                "to": contact, "text": text}
+    try:
+        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+        a = OLXChromeTwinAdapter(config={"olx_login": "959052288"})
+        try:
+            return await a.chat_reply(contact, text)
+        finally:
+            await a.close()
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
+
+
 async def messages_profile() -> dict:
     """Google Messages for Web: проверка привязки телефона."""
     try:
@@ -1923,6 +2007,17 @@ def main():
     olxed.add_argument("--confirm", action="store_true")
     olxmy = olxg.add_parser("my_ads")
     olxmy.add_argument("--limit", type=int, default=20)
+    olxchat = olxg.add_parser("chat")
+    olxchatg = olxchat.add_subparsers(dest="chat_action", required=True)
+    olxchatlist = olxchatg.add_parser("list")
+    olxchatlist.add_argument("--limit", type=int, default=20)
+    olxcr = olxchatg.add_parser("read")
+    olxcr.add_argument("contact")
+    olxcr.add_argument("--limit", type=int, default=15)
+    olxcrp = olxchatg.add_parser("reply")
+    olxcrp.add_argument("contact")
+    olxcrp.add_argument("text")
+    olxcrp.add_argument("--confirm", action="store_true")
 
     vb = sub.add_parser("viber")
     vbg = vb.add_subparsers(dest="action", required=True)
@@ -2079,6 +2174,13 @@ def main():
                 out(asyncio.run(olx_edit_ad(args.ad_id, args.title, args.desc, args.price, args.confirm)))
             elif args.action == "my_ads":
                 out(asyncio.run(olx_my_ads(args.limit)))
+            elif args.action == "chat":
+                if args.chat_action == "list":
+                    out(asyncio.run(olx_chat_list(args.limit)))
+                elif args.chat_action == "read":
+                    out(asyncio.run(olx_chat_read(args.contact, args.limit)))
+                elif args.chat_action == "reply":
+                    out(asyncio.run(olx_chat_reply(args.contact, args.text, args.confirm)))
         elif args.account == "viber":
             if args.action == "chats":
                 out(viber_chats())

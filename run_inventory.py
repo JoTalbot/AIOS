@@ -11,6 +11,7 @@ AIOS Inventory — учёт запчастей на складе автораз�
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -43,21 +44,44 @@ def _find(items, name: str):
     return None
 
 
-def add(name: str, qty: int, price: float, category: str = "") -> dict:
+def add(name: str, qty: int, price: float, category: str = "", photo: str = "") -> dict:
     items = _load()
     it = _find(items, name)
+    photo_saved = ""
+    if photo and os.path.exists(photo):
+        photo_saved = _save_photo(photo, name)
     if it:
         it["qty"] = int(it.get("qty", 0)) + qty
         if price:
             it["price"] = float(price)
+        if photo_saved:
+            it["photo"] = photo_saved
         msg = f"добавлено (итого {it['qty']})"
     else:
         it = {"name": name, "qty": qty, "price": float(price or 0),
               "category": category or "общее", "added": datetime.now().strftime("%Y-%m-%d %H:%M")}
+        if photo_saved:
+            it["photo"] = photo_saved
         items.append(it)
         msg = "новая деталь"
     _save(items)
     return {"status": "ok", "item": it, "msg": msg, "total": len(items)}
+
+
+def _save_photo(src: str, name: str) -> str:
+    """Сохранить фото детали в data/photos/ и вернуть путь."""
+    import re as _re
+    import shutil
+    photos_dir = DATA.parent / "photos"
+    photos_dir.mkdir(parents=True, exist_ok=True)
+    slug = _re.sub(r"[^\w\-а-яА-ЯіїєґІЇЄҐ ]", "", name).strip().replace(" ", "_")[:50] or "detail"
+    ext = Path(src).suffix or ".jpg"
+    dest = photos_dir / f"{slug}{ext}"
+    try:
+        shutil.copyfile(src, dest)
+        return str(dest)
+    except Exception:
+        return ""
 
 
 def take(name: str, qty: int = 1) -> dict:
@@ -99,14 +123,21 @@ def stats() -> dict:
 def main() -> None:
     cmd = sys.argv[1] if len(sys.argv) > 1 else "list"
     if cmd == "add" and len(sys.argv) >= 4:
-        name = sys.argv[2]
+        _args = list(sys.argv[2:])
+        photo = ""
+        if "--photo" in _args:
+            _i = _args.index("--photo")
+            if _i + 1 < len(_args):
+                photo = _args[_i + 1]
+                _args = _args[:_i] + _args[_i + 2:]
+        name = _args[0]
         try:
-            qty = int(sys.argv[3])
-            price = float(sys.argv[4]) if len(sys.argv) > 4 else 0
+            qty = int(_args[1])
+            price = float(_args[2]) if len(_args) > 2 else 0
         except ValueError:
             print(json.dumps({"status": "error", "error": "кол-во и цена"})); return
-        cat = sys.argv[5] if len(sys.argv) > 5 else ""
-        print(json.dumps(add(name, qty, price, cat), ensure_ascii=False))
+        cat = _args[3] if len(_args) > 3 else ""
+        print(json.dumps(add(name, qty, price, cat, photo), ensure_ascii=False))
     elif cmd == "take" and len(sys.argv) >= 3:
         qty = int(sys.argv[3]) if len(sys.argv) > 3 else 1
         print(json.dumps(take(sys.argv[2], qty), ensure_ascii=False))

@@ -685,6 +685,113 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
             await route.continue_()
         await page.route("**/fm/**", _handler)
 
+    async def _goto_retry(self, page, url: str, times: int = 3, delay: int = 15) -> bool:
+        """Перейти на страницу с ретраями (OLX-чат блокируется CloudFront флапами)."""
+        for _i in range(times):
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=25000)
+                await page.wait_for_timeout(5000)
+                body = await page.inner_text("body")
+                if "Request blocked" not in body and "403 ERROR" not in body:
+                    return True
+            except Exception:
+                pass
+            if _i < times - 1:
+                await asyncio.sleep(delay)
+        return False
+
+    async def chat_list(self, limit: int = 20) -> Dict[str, Any]:
+        """Список переписок OLX-чата (/uk/myaccount/answers)."""
+        page = await self._ensure_browser()
+        await self._route_olx_fm(page)
+        if not await self._goto_retry(page, "https://www.olx.ua/uk/myaccount/answers"):
+            return {"status": "error",
+                    "error": "OLX-чат недоступен (CloudFront блокирует датацентровый IP). Попробуйте позже."}
+        body = await page.inner_text("body")
+        unread = "Непрочитані" in body or "НЕПРОЧИТАНІ" in body.upper()
+        items = await page.eval_on_selector_all(
+            "[data-testid='list-item-user-name']",
+            """(els, limit) => els.slice(0, limit).map(p => {
+                let c = p.parentElement;
+                for (let i = 0; i < 5 && c; i++) { if ((c.children || []).length > 2) break; c = c.parentElement; }
+                const name = p.textContent.trim();
+                let text = '';
+                const t = c ? c.querySelector('[data-testid="list-item-message-text"]') : null;
+                if (t) text = t.textContent.trim();
+                return {name, text};
+            })""",
+            limit)
+        return {"status": "ok", "threads": items, "unread_present": unread, "count": len(items)}
+
+    async def chat_read(self, contact: str, limit: int = 15) -> Dict[str, Any]:
+        """Открыть переписку с контактом и вернуть сообщения."""
+        page = await self._ensure_browser()
+        await self._route_olx_fm(page)
+        if not await self._goto_retry(page, "https://www.olx.ua/uk/myaccount/answers"):
+            return {"status": "error", "error": "OLX-чат недоступен (CloudFront). Попробуйте позже."}
+        try:
+            await page.locator(
+                f"[data-testid='list-item-user-name']:has-text('{contact}')").first.click(timeout=8000)
+            await page.wait_for_timeout(5000)
+        except Exception:
+            return {"status": "error", "error": f"Переписка «{contact}» не найдена"}
+        msgs = await page.eval_on_selector_all(
+            "[data-testid='message']",
+            """(els, limit) => els.slice(-limit).map(e => {
+                const sent = !!e.querySelector('[data-testid="sent-message"]');
+                const recv = !!e.querySelector('[data-testid="received-message"]');
+                return {text: (e.textContent || '').trim(), mine: sent, theirs: recv || !sent};
+            })""",
+            limit)
+        return {"status": "ok", "contact": contact, "messages": msgs[-limit:][::-1]}
+
+    async def chat_reply(self, contact: str, text: str) -> Dict[str, Any]:
+        """Ответить в переписку OLX-чата."""
+        page = await self._ensure_browser()
+        await self._route_olx_fm(page)
+        if not await self._goto_retry(page, "https://www.olx.ua/uk/myaccount/answers"):
+            return {"status": "error", "error": "OLX-чат недоступен (CloudFront). Попробуйте позже."}
+        try:
+            await page.locator(
+                f"[data-testid='list-item-user-name']:has-text('{contact}')").first.click(timeout=8000)
+            await page.wait_for_timeout(5000)
+        except Exception:
+            return {"status": "error", "error": f"Переписка «{contact}» не найдена"}
+        filled = False
+        for sel in ("textarea[placeholder*='Напишіть']", "textarea[placeholder*='Напишите']", "textarea"):
+            try:
+                box = page.locator(sel).first
+                if await box.count() and await box.is_visible():
+                    await box.click(timeout=3000)
+                    await box.fill(text)
+                    filled = True
+                    break
+            except Exception:
+                continue
+        if not filled:
+            return {"status": "error", "error": "Поле ввода не найдено"}
+        await page.wait_for_timeout(800)
+        sent = False
+        for sel in ("button[aria-label='Submit message']", "button[aria-label*='Надіслати']",
+                    "[data-testid*='send']"):
+            try:
+                b = page.locator(sel).first
+                if await b.count():
+                    await b.click(timeout=3000)
+                    sent = True
+                    break
+            except Exception:
+                continue
+        if not sent:
+            try:
+                await page.keyboard.press("Enter")
+                sent = True
+            except Exception:
+                pass
+        await page.wait_for_timeout(1500)
+        return ({"status": "sent", "to": contact, "text": text[:200]} if sent else
+                {"status": "error", "error": "Кнопка отправки не найдена"})
+
     async def create_ad(self, title: str, description: str, price: str, category: str = "other", images: List[str] = None, publish: bool = False) -> Dict[str, Any]:
         """Создать объявление через Chrome Twin (пошаговая форма /uk/adding/)."""
         page = await self._ensure_browser()
