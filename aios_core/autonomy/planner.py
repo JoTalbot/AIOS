@@ -57,12 +57,12 @@ class Planner:
     def propose(self, platform: str, chat: str, text: str,
                 owner: bool = False, extra: dict | None = None) -> dict:
         """Вернуть proposal {action, params, risk, intent}. owner=True — команда владельца."""
+        extra = extra or {}
         intent = classify(text)
         if owner:
-            # команды владельца обрабатываются отдельно (шире)
             proposal = self._propose_owner(platform, chat, text, intent)
         else:
-            proposal = self._propose_customer(platform, chat, text, intent)
+            proposal = self._propose_customer(platform, chat, text, intent, history=extra.get("history"))
         return proposal
 
     # ------------------------------------------------------------------
@@ -106,17 +106,31 @@ class Planner:
         return {k: v for k, v in (params or {}).items() if k in allowed}
 
     # ------------------------------------------------------------------
-    def _propose_customer(self, platform: str, chat: str, text: str, intent: dict) -> dict:
+    def _propose_customer(self, platform: str, chat: str, text: str, intent: dict,
+                          history: list | None = None) -> dict:
         """Предложение действия для входящего сообщения покупателя."""
+        history_block = ""
+        if history:
+            # сжимаем историю: последние 8 сообщений, "наши" помечаем
+            hlines = []
+            for m in history[-8:]:
+                who = "мы" if m.get("mine") else "покупатель"
+                hlines.append(f"{who}: {str(m.get('text', ''))[:200]}")
+            if hlines:
+                history_block = "История переписки (для контекста):\n" + "\n".join(hlines) + "\n"
         prompt = (
             f"Платформа: {platform}. Сообщение покупателя: «{text[:600]}»\n"
             f"Определённое намерение: {intent['intent']}.\n"
+            f"{history_block}"
             "Верни JSON с наиболее подходящим действием и параметрами.\n"
             "ВАЖНО: всегда заполняй поле params.sku/item (название товара/детали, о которой идёт "
             "речь, если упоминается) и params.ad_price (цена объявления, если известна) и "
             "params.offer (цифра, которую предлагает покупатель, если указана).\n"
             "Если покупатель спрашивает цену — query_price_history со sku/item; если торгуется — "
-            "negotiate_price с offer и ad_price; если хочет купить/вопрос — reply_customer с text."
+            "action negotiate_price: заполни params.counter разумной встречной ценой (немного ниже "
+            "ad_price, но не слишком — обычно 5-10% скидка), params.offer (цифра покупателя) и text "
+            "(текст ответа покупателю с встречной ценой); если хочет купить/вопрос — reply_customer "
+            "с text (и offer/ad_price при наличии)."
         )
         d = self._llm_json(prompt)
         action = d.get("action")

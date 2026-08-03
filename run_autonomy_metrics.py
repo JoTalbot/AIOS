@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 DEFAULT_OUT = ROOT / "data" / "metrics_exporter" / "autonomy.prom"
+# docker volume, который монтирует aios-exporter (source в контейнере)
+VOLUME_OUT = Path("/var/lib/docker/volumes/aios_aios-data/_data/metrics_exporter/autonomy.prom")
 
 
 def _collect() -> dict:
@@ -67,8 +69,16 @@ def main() -> int:
     if len(sys.argv) > 2 and sys.argv[1] == "--out":
         out = Path(sys.argv[2])
     d = _collect()
+    text = _render(d)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(_render(d), encoding="utf-8")
+    out.write_text(text, encoding="utf-8")
+    # также пишем в docker volume для aios-exporter
+    try:
+        VOLUME_OUT.parent.mkdir(parents=True, exist_ok=True)
+        VOLUME_OUT.write_text(text, encoding="utf-8")
+        print(f"метрики записаны в volume: {VOLUME_OUT}")
+    except Exception as e:
+        print(f"(volume недоступен: {e})")
     print(f"метрики записаны: {out}")
     return 0
 

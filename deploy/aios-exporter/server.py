@@ -1,16 +1,20 @@
-"""Serve AIOS auto-coder metrics from the shared data volume."""
+"""Serve AIOS auto-coder + autonomy metrics from the shared data volume."""
 import http.server
 import os
 
-METRICS = "/data/metrics_exporter/aios_service.prom"
+METRICS_DIR = "/data/metrics_exporter"
+FILES = ["aios_service.prom", "autonomy.prom"]
 
 class H(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/metrics"):
             try:
-                if os.path.exists(METRICS):
-                    body = open(METRICS, "rb").read()
-                else:
+                body = b""
+                for name in FILES:
+                    p = os.path.join(METRICS_DIR, name)
+                    if os.path.exists(p):
+                        body += open(p, "rb").read() + b"\n"
+                if not body:
                     body = b"# no metrics yet\n"
                 self.send_response(200)
                 self.send_header("Content-Type", "text/plain; version=0.0.4")

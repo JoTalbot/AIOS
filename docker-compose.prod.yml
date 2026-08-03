@@ -196,6 +196,7 @@ services:
       GF_LOG_MODE: console
     volumes:
       - ./deploy/monitoring/grafana-production.json:/var/lib/grafana/dashboards/aios-production.json:ro
+      - ./deploy/monitoring/grafana-autonomy.json:/var/lib/grafana/dashboards/aios-autonomy.json:ro
       - ./deploy/monitoring/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/aios.yml:ro
       - grafana-data:/var/lib/grafana
     depends_on: [prometheus]

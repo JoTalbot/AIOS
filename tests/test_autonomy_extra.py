@@ -81,3 +81,31 @@ def test_floor_from_inventory(tmp_path):
         json.dumps([{"name": "Капот Шкода", "qty": 1, "price": 3500.0}]), encoding="utf-8")
     # пола нет в price_floors, но есть в складе -> 90% от 3500 = 3150
     assert p.floor_for("капот шкода") == 3150.0
+
+
+def test_reputation_discount_bounds(pol):
+    """Репутация влияет на авто-лимит скидки."""
+    g = Guardrails(pol)
+    # фара: пол 1800, ad_price 2500. default лимит 15% → max_auto 2125
+    # trusted: лимит x1.5=22.5% → 1937.5, так что 2000 ALLOWED
+    d = g.evaluate({"action": "negotiate_price", "params": {"sku": "фара", "counter": 2000, "ad_price": 2500}},
+                   {"customer_trust": "trusted"})
+    assert d.allowed, d.reason
+    # risky: лимит x0.6=9% → 2275, так что 2200 ESCALATE
+    d2 = g.evaluate({"action": "negotiate_price", "params": {"sku": "фара", "counter": 2200, "ad_price": 2500}},
+                    {"customer_trust": "risky"})
+    assert d2.verdict in ("ESCALATE", "MANUAL", "BLOCKED"), d2.reason
+
+
+def test_counter_offer_in_bounds(pol):
+    g = Guardrails(pol)
+    d = g.evaluate({"action": "counter_offer", "params": {"sku": "фара", "counter": 2300, "ad_price": 2500}},
+                   {"customer_trust": "known"})
+    assert d.allowed, d.reason
+
+
+def test_counter_offer_below_floor(pol):
+    g = Guardrails(pol)
+    d = g.evaluate({"action": "counter_offer", "params": {"sku": "фара", "counter": 1500, "ad_price": 2500}},
+                   {"customer_trust": "known"})
+    assert d.verdict in ("ESCALATE", "BLOCKED"), d.reason

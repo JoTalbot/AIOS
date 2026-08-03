@@ -158,7 +158,7 @@ def run_cycle(platform: str) -> dict:
         if not last_theirs:
             continue
         outcome = core.process_customer(platform, contact, last_theirs,
-                                        msg_id=f"{contact}:{last}", extra={"item": None})
+                                        msg_id=f"{contact}:{last}", extra={"item": None, "history": msgs})
         if outcome.get("mode") == "action" and outcome.get("text"):
             if cfg.get("auto_send", True):
                 res = _reply(platform, contact, outcome["text"])
