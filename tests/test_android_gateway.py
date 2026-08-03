@@ -61,3 +61,34 @@ def test_work_profiles_detect_installed_apps(tmp_path, monkeypatch):
     assert profiles["abank"]["available"] is True
     assert profiles["privat24"]["available"] is False
     assert profiles["easyway"]["available"] is False
+
+
+def test_easyway_profile_is_detected_after_install(tmp_path, monkeypatch):
+    from aios_core.android_gateway import AndroidGateway
+
+    gateway = AndroidGateway(tmp_path)
+    monkeypatch.setattr(gateway, "apps", lambda limit=2000: {
+        "status": "ok", "apps": ["com.eway"],
+    })
+    profiles = {p["id"]: p for p in gateway.app_profiles()["profiles"]}
+    assert profiles["easyway"]["available"] is True
+    assert profiles["easyway"]["installed"] == ["com.eway"]
+
+
+def test_default_ui_snapshot_removes_screen_text(tmp_path, monkeypatch):
+    from aios_core.android_gateway import AndroidGateway
+
+    gateway = AndroidGateway(tmp_path)
+    monkeypatch.setattr(gateway, "_companion_request", lambda *args, **kwargs: {
+        "status": "ok", "package": "com.whatsapp", "nodes": [{
+            "text": "private message", "description": "private description",
+            "resource": "id/send", "clickable": True, "editable": False,
+            "bounds": [1, 2, 30, 40],
+        }],
+    })
+    safe = gateway.ui_snapshot(confirm=True)
+    full = gateway.ui_snapshot(confirm=True, include_text=True)
+    assert safe["package"] == "com.whatsapp"
+    assert "text" not in safe["nodes"][0]
+    assert "description" not in safe["nodes"][0]
+    assert full["nodes"][0]["text"] == "private message"
