@@ -406,8 +406,8 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
         page = await self._ensure_browser()
         try:
             await self._route_olx_fm(page)
-            await page.goto("https://www.olx.ua/uk/adding/", wait_until="domcontentloaded", timeout=30000)
-            await page.wait_for_timeout(10000)
+            await page.goto("https://www.olx.ua/uk/adding/", wait_until="domcontentloaded", timeout=20000)
+            await page.wait_for_timeout(8000)
             body = await page.inner_text("body")
             if any(k in body.lower() for k in ("підтвердіть", "подтвердите", "код підтвердження",
                                                "отримати код", "підтвердити свій")):
@@ -432,7 +432,17 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                 pass
             await page.wait_for_timeout(5000)
 
-            # Шаг 2: категория (поле «Обрати»)
+            # Шаг 2: тип (Продати/Обмін), статус (Приватна особа), состояние (Вживане)
+            for name in ("Продати", "Приватна особа", "Вживане"):
+                try:
+                    btn = page.get_by_role("button", name=name).first
+                    if await btn.count():
+                        await btn.click(timeout=3000)
+                        await page.wait_for_timeout(600)
+                except Exception:
+                    pass
+
+            # Шаг 3: категория (поле «Обрати» -> модалка)
             try:
                 cat_field = page.locator("input[placeholder='Обрати']").first
                 if await cat_field.count():
@@ -441,20 +451,44 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                     # поиск категории
                     search = page.locator("input[placeholder*='Пошук'], input[placeholder*='категор']").first
                     if await search.count():
-                        await search.fill("Автозапчасти")
+                        await search.fill("Запчасти")
                         await page.wait_for_timeout(3000)
-                    # клик по «Запчасти для авто» или «Автозапчасти»
+                    # клик по пункту категории (первый уровень)
                     for sel in ("text=Запчасти для авто", "text=Автозапчасти",
-                                "text=Автозапчасти та аксесуари", "div:has-text('Запчасти для авто')"):
+                                "text=Запчастини", "div:has-text('Запчасти для авто')"):
                         try:
                             el = page.locator(sel).first
                             if await el.count():
                                 await el.click(force=True, timeout=4000)
-                                await page.wait_for_timeout(3000)
-                                print("категория выбрана")
+                                await page.wait_for_timeout(2500)
                                 break
                         except Exception:
                             continue
+                    # если открылась модалка подкатегорий — клик по тексту (div/span, не кнопка)
+                    for sel in ("text=Передні фари", "div:has-text('Передні фари')",
+                                "text=Фари", "text=Готово", "text=ОК, зрозуміло",
+                                "button:has-text('Застосувати')", "text=Обрати"):
+                        try:
+                            el = page.locator(sel).first
+                            if await el.count():
+                                await el.click(force=True, timeout=2500)
+                                await page.wait_for_timeout(2000)
+                                break
+                        except Exception:
+                            continue
+                    # закрыть модалку если всё ещё открыта (Esc дважды)
+                    try:
+                        await page.keyboard.press("Escape")
+                        await page.wait_for_timeout(800)
+                        await page.keyboard.press("Escape")
+                        await page.wait_for_timeout(800)
+                    except Exception:
+                        pass
+                    # скриншот для диагностики после категории
+                    try:
+                        await page.screenshot(path="/tmp/olx_after_cat.png")
+                    except Exception:
+                        pass
             except Exception:
                 pass
 

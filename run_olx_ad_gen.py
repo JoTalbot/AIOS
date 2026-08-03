@@ -120,21 +120,29 @@ def create_ad(part: str, confirm: bool) -> dict:
         return gen
     if not confirm:
         return {**gen, "status": "need_confirm", "action": "olx_create"}
-        try:
-            from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
-            a = OLXChromeTwinAdapter(config={"olx_login": _env("OLX_LOGIN") or "959052288"})
+    try:
+        from aios_core.platforms.olx_chrome_twin_adapter import OLXChromeTwinAdapter
+        a = OLXChromeTwinAdapter(config={"olx_login": _env("OLX_LOGIN") or "959052288"})
+
+        async def _run_publish():
             try:
-                r = asyncio.run(a.create_ad(
+                return await a.create_ad(
                     title=gen.get("title", ""),
                     description=gen.get("description", ""),
                     price=str(gen.get("price", "")),
-                    publish=confirm,
-                ))
-                return r
+                    publish=True,
+                )
             finally:
-                asyncio.run(a.close())
-        except Exception as e:
-            return {"status": "error", "error": str(e)[:300]}
+                # закрывать в том же event loop (иначе close() зависает)
+                try:
+                    await asyncio.wait_for(a.close(), timeout=20)
+                except Exception:
+                    pass
+
+        r = asyncio.run(_run_publish())
+        return r
+    except Exception as e:
+        return {"status": "error", "error": str(e)[:300]}
 
 
 def main() -> None:
