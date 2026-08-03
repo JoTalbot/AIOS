@@ -29,6 +29,16 @@ def main() -> int:
         result = gateway.companion_status()
     elif command == "notifications":
         result = gateway.notifications()
+    elif command == "accessibility":
+        result = gateway.accessibility()
+    elif command == "ui-snapshot":
+        result = gateway.ui_snapshot(confirm="--confirm" in sys.argv)
+    elif command == "clipboard" and len(sys.argv) >= 3:
+        result = gateway.set_clipboard(" ".join(sys.argv[2:]).replace(" --confirm", ""), confirm="--confirm" in sys.argv)
+    elif command == "paste":
+        result = gateway.paste(confirm="--confirm" in sys.argv)
+    elif command == "tap-ui" and len(sys.argv) >= 3:
+        result = gateway.tap_ui(" ".join(sys.argv[2:]).replace(" --confirm", ""), confirm="--confirm" in sys.argv)
     elif command == "location":
         result = gateway.location(confirm="--confirm" in sys.argv)
     elif command == "files":
@@ -59,7 +69,7 @@ def main() -> int:
             print(json.dumps(result, ensure_ascii=False), flush=True)
             time.sleep(interval)
     else:
-        result = {"status": "error", "error": "register|connect|status|apps|profiles|companion|notifications|location|files|pull|screenshot|ui-dump|open|tap|home|back|watch"}
+        result = {"status": "error", "error": "register|connect|status|apps|profiles|companion|notifications|accessibility|ui-snapshot|clipboard|paste|tap-ui|location|files|pull|screenshot|ui-dump|open|tap|home|back|watch"}
     print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
     return 0 if result.get("status") in ("ok", "offline", "unregistered", "need_confirm") else 1
 

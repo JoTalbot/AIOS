@@ -53,6 +53,7 @@ public class MainActivity extends Activity {
         root.addView(button("Запустить защищённый gateway", v -> startGateway()));
         root.addView(button("Разрешения: камера и геолокация", v -> requestRuntimePermissions()));
         root.addView(button("Разрешить доступ к уведомлениям", v -> openNotificationSettings()));
+        root.addView(button("Разрешить управление приложениями", v -> openAccessibilitySettings()));
         root.addView(button("Обновить статус", v -> refreshStatus()));
 
         TextView safety = new TextView(this);
@@ -109,12 +110,21 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void openAccessibilitySettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        } catch (Exception ignored) {
+        }
+    }
+
     private void refreshStatus() {
         boolean token = prefs.getString("token", "").length() >= 16;
         boolean notifications = NotificationRelayService.isEnabled(this);
+        boolean accessibility = AIOSAccessibilityService.isEnabled(this);
         String location = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ? "разрешена" : "не выдана";
         status.setText("Токен AIOS: " + (token ? "настроен" : "ожидает настройки") + "\n"
                 + "Уведомления: " + (notifications ? "разрешены" : "не разрешены") + "\n"
+                + "Управление приложениями: " + (accessibility ? "разрешено" : "не разрешено") + "\n"
                 + "Геолокация: " + location + "\n"
                 + "Gateway: локальный порт 8765 (после запуска)");
     }
