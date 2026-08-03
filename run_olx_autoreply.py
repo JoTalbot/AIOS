@@ -95,6 +95,37 @@ def _tg(token: str, chat_id: int, text: str, reply_markup: dict | None = None) -
         pass
 
 
+def _sale_context(contact: str) -> str:
+    """Контекст сделки из pending_sales для данного клиента (чтобы LLM не забывал).
+
+    Возвращает строку с деталями сделки (товар/цена/доставка/ФИО/телефон) или "".
+    """
+    try:
+        p = ROOT / "data" / "pending_sales.json"
+        if not p.exists():
+            return ""
+        import json as _json
+        sales = _json.loads(p.read_text(encoding="utf-8"))
+        # последняя сделка этого клиента со статусом pending
+        for s in reversed(sales):
+            if s.get("chat") == contact and s.get("status") == "pending":
+                parts = []
+                if s.get("item"):
+                    parts.append(f"товар: {s['item']}")
+                if s.get("amount"):
+                    parts.append(f"ціна: {s['amount']} грн")
+                if s.get("delivery"):
+                    parts.append(f"доставка: {s['delivery']}")
+                if s.get("recipient"):
+                    parts.append(f"отримувач: {s['recipient']}")
+                if s.get("customer_phone"):
+                    parts.append(f"телефон: {s['customer_phone']}")
+                return "; ".join(parts)
+    except Exception:
+        pass
+    return ""
+
+
 def _detect_item(text: str) -> str | None:
     """Сопоставить текст сообщения с товарами из склада (для ценового пола)."""
     try:
@@ -244,9 +275,13 @@ def main() -> int:
             continue  # уже отвечали на это сообщение клиента
 
         detected = _detect_item(last_theirs)
+        # Контекст сделки из pending_sales (товар/цена/доставка/данные клиента),
+        # чтобы LLM НЕ забывал уже согласованные детали.
+        sale_ctx = _sale_context(contact)
         outcome = core.process_customer(
             "olx", contact, last_theirs, msg_id=f"{contact}:{last}",
-            extra={"item": detected, "ad_price": None, "history": msgs})
+            extra={"item": detected, "ad_price": None, "history": msgs,
+                   "sale_context": sale_ctx})
 
         # действие — автоответ
         if outcome.get("mode") == "action" and outcome.get("text"):
