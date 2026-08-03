@@ -738,9 +738,14 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
         msgs = await page.eval_on_selector_all(
             "[data-testid='message']",
             """(els, limit) => els.slice(-limit).map(e => {
-                const sent = !!e.querySelector('[data-testid="sent-message"]');
-                const recv = !!e.querySelector('[data-testid="received-message"]');
-                return {text: (e.textContent || '').trim(), mine: sent, theirs: recv || !sent};
+                const p = e.parentElement;
+                const pcls = p ? (p.className || '') : '';
+                // В OLX вёрстке: наши (sent) сообщения имеют один parent-класс,
+                // сообщения клиента — другой (проверено вживую: sent css-1s1hr5l,
+                // recv css-1wisyfd). Определяем mine по parent-классу.
+                const sent = /1s1hr5l|sent|my-message|outgoing/i.test(pcls);
+                const recv = /1wisyfd|recv|received|incoming/i.test(pcls) || !sent;
+                return {text: (e.textContent || '').trim(), mine: sent, theirs: recv};
             })""",
             limit)
         return {"status": "ok", "contact": contact, "messages": msgs[-limit:][::-1]}
