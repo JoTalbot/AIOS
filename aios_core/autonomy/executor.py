@@ -241,6 +241,52 @@ class Executor:
     def _do_accept_advance(self, p, platform, chat):
         return {"status": "manual", "error": "Аванс — только вручную"}
 
+    # ---- Автоподготовка сделки ----
+    def _do_prepare_sale(self, p, platform, chat):
+        """Зафиксировать намерение клиента купить (pending-сделка) — НЕ деньги, только запись."""
+        item = str(p.get("item") or p.get("sku") or "").strip()
+        amount = p.get("amount") or p.get("price")
+        try:
+            amount = float(amount) if amount else None
+        except (TypeError, ValueError):
+            amount = None
+        delivery = str(p.get("delivery") or p.get("text") or "").strip()
+        rec = {
+            "ts": __import__("time").strftime("%Y-%m-%d %H:%M:%S"),
+            "platform": platform,
+            "chat": chat,
+            "item": item or "",
+            "amount": amount,
+            "delivery": delivery[:200],
+            "customer_phone": str(p.get("phone") or "").strip(),
+            "status": "pending",
+        }
+        path = Path(self.root) / "data" / "pending_sales.json"
+        try:
+            data = []
+            if path.exists():
+                import json as _j
+                data = _j.loads(path.read_text(encoding="utf-8"))
+            data.append(rec)
+            if len(data) > 50:
+                data = data[-50:]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+            return {"status": "ok", "message": f"Сделка зафиксирована: {item or 'товар'}",
+                    "sale": rec}
+        except Exception as e:
+            return {"status": "error", "error": str(e)[:150]}
+
+    def _do_pending_sales(self, p, platform, chat):
+        """Список pending-сделок (для владельца)."""
+        path = Path(self.root) / "data" / "pending_sales.json"
+        try:
+            import json as _j
+            data = _j.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+            return {"status": "ok", "sales": data, "count": len(data)}
+        except Exception as e:
+            return {"status": "error", "error": str(e)[:150]}
+
     def _do_create_ad(self, p, platform, chat):
         # Владелец подтвердил — создаём объявление на OLX через run_olx_ad_gen.
         title = str(p.get("title") or "").strip()

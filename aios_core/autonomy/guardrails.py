@@ -49,9 +49,13 @@ class Guardrails:
             return Decision("MANUAL", reason=f"Действие {action} требует подтверждения владельца",
                             matched_rules=["esc_all"], meta={"action": action})
 
-        # 0.1 Read-only — всегда авто
-        if self.policy.is_read_only(action) or action in ("bank_balance", "bank_transactions"):
+        # 0.1 Read-only — всегда авто (плюс фиксация сделки без денег)
+        if (self.policy.is_read_only(action)
+                or action in ("bank_balance", "bank_transactions", "pending_sales")):
             return Decision("ALLOWED", reason=f"Read-only {action}", matched_rules=["read_only"])
+        if action == "prepare_sale":
+            # фиксация намерения клиента купить — не деньги, безопасно
+            return Decision("ALLOWED", reason="Фиксация сделки (без денег)", matched_rules=[])
 
         # 1. Деньги: любые движения денег — MANUAL (включая банковские переводы)
         if action in ("send_money", "accept_advance", "process_payment", "bank_transfer"):
