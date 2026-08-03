@@ -55,6 +55,11 @@ def check() -> dict:
         try:
             r = subprocess.run(["systemctl", "is-active", svc], capture_output=True, text=True, timeout=15)
             st = (r.stdout or "").strip()
+            if st != "active":
+                # замаскированные сервисы выключены намеренно — не считаем проблемой
+                r2 = subprocess.run(["systemctl", "is-enabled", svc], capture_output=True, text=True, timeout=15)
+                if (r2.stdout or "").strip() == "masked":
+                    continue
             if st == "active":
                 ok_count += 1
             else:
