@@ -222,6 +222,11 @@ def build() -> None:
             ui.label(f"{state} · {android.get('name') or android.get('model') or 'Android'} · Android {android.get('android') or '—'}").classes("text-sm")
             if android.get("connected"):
                 ui.label(f"Заряд: {android.get('battery', '—')}% · экран: {android.get('screen', '—')} · приложений: {android.get('packages', '—')}").classes("text-sm")
+            companion = android.get("companion") or {}
+            if companion:
+                ui.label(f"Companion: {'✅ активен' if companion.get('connected') else '⚠️ недоступен'} · "
+                         f"уведомления: {'да' if (companion.get('permissions') or {}).get('notification_listener') else 'нет'} · "
+                         f"геолокация: {'да' if (companion.get('permissions') or {}).get('location') else 'нет'}").classes("text-sm")
         else:
             ui.label("Телефон ещё не зарегистрирован").classes("text-sm text-gray-500")
 

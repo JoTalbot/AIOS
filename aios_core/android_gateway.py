@@ -11,6 +11,8 @@ import json
 import os
 import subprocess
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -55,6 +57,26 @@ class AndroidGateway:
 
     def config(self) -> dict:
         return _read(self.config_path, {})
+
+    def companion_config(self) -> dict:
+        return _read(self.data_dir / "companion.json", {})
+
+    def _companion_request(self, path: str, timeout: int = 12) -> dict:
+        cfg = self.companion_config()
+        endpoint = str(cfg.get("endpoint") or "").rstrip("/")
+        token = str(cfg.get("token") or "")
+        if not endpoint or len(token) < 16:
+            return {"status": "unconfigured", "error": "Companion ещё не настроен"}
+        try:
+            request = urllib.request.Request(endpoint + "/" + path.lstrip("/"),
+                                             headers={"X-AIOS-Token": token})
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                data = json.loads(response.read().decode("utf-8"))
+            return data if isinstance(data, dict) else {"status": "error", "error": "Некорректный ответ Companion"}
+        except urllib.error.HTTPError as exc:
+            return {"status": "error", "error": f"Companion HTTP {exc.code}"}
+        except Exception as exc:
+            return {"status": "offline", "error": str(exc)[:180]}
 
     @property
     def serial(self) -> str:
@@ -151,6 +173,14 @@ class AndroidGateway:
                 report["packages"] = len(self._shell("pm", "list", "packages").splitlines())
             except Exception as exc:
                 report["warning"] = str(exc)[:180]
+        companion = self._companion_request("health")
+        permissions = self._companion_request("permissions")
+        report["companion"] = {
+            "status": companion.get("status"),
+            "connected": companion.get("status") == "ok",
+            "permissions": {k: permissions.get(k) for k in ("notification_listener", "location", "camera", "media")}
+            if permissions.get("status") == "ok" else {},
+        }
         _write(self.health_path, report)
         return report
 
@@ -160,6 +190,34 @@ class AndroidGateway:
         raw = self._shell("pm", "list", "packages", "-3", timeout=45)
         packages = [line.split(":", 1)[-1].strip() for line in raw.splitlines() if ":" in line]
         return {"status": "ok", "count": len(packages), "apps": packages[:limit]}
+
+    def companion_status(self) -> dict:
+        health = self._companion_request("health")
+        permissions = self._companion_request("permissions")
+        return {"status": health.get("status", "error"), "health": health, "permissions": permissions}
+
+    def notifications(self, limit: int = 20) -> dict:
+        data = self._companion_request("notifications")
+        notifications = data.get("notifications") if isinstance(data.get("notifications"), list) else []
+        return {"status": data.get("status", "error"), "notifications": notifications[-limit:]}
+
+    def location(self, confirm: bool = False) -> dict:
+        pending = self._needs_confirm(confirm, "android_location")
+        if pending:
+            return pending
+        return self._companion_request("location")
+
+    def files(self, directory: str = "/sdcard/Download", limit: int = 100) -> dict:
+        allowed = ("/sdcard/Download", "/sdcard/Documents", "/sdcard/Pictures", "/sdcard/DCIM")
+        if not any(directory == root or directory.startswith(root + "/") for root in allowed):
+            return {"status": "error", "error": "Разрешены только Download, Documents, Pictures или DCIM"}
+        if not self.status().get("connected"):
+            return {"status": "offline", "files": []}
+        result = self._run(["shell", "ls", "-1", directory], timeout=45)
+        if result.returncode != 0:
+            return {"status": "error", "error": (result.stderr or result.stdout or "")[:200]}
+        entries = [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
+        return {"status": "ok", "directory": directory, "files": entries[:limit], "count": len(entries)}
 
     def screenshot(self) -> dict:
         if not self.status().get("connected"):
@@ -189,6 +247,25 @@ class AndroidGateway:
             return {"status": "error", "error": (pull.stderr or pull.stdout or "")[:200]}
         path.chmod(0o600)
         return {"status": "ok", "file": str(path)}
+
+    def pull_file(self, remote_path: str, confirm: bool = False) -> dict:
+        pending = self._needs_confirm(confirm, "android_pull_file")
+        if pending:
+            pending["path"] = remote_path
+            return pending
+        allowed = ("/sdcard/Download/", "/sdcard/Documents/", "/sdcard/Pictures/", "/sdcard/DCIM/")
+        if not any(remote_path.startswith(root) for root in allowed):
+            return {"status": "error", "error": "Файл должен быть в разрешённой папке общего хранилища"}
+        if not self.status().get("connected"):
+            return {"status": "offline"}
+        target_dir = self.data_dir / "files"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target = target_dir / Path(remote_path).name
+        pull = self._run(["pull", remote_path, str(target)], timeout=120)
+        if pull.returncode != 0 or not target.exists():
+            return {"status": "error", "error": (pull.stderr or pull.stdout or "")[:200]}
+        target.chmod(0o600)
+        return {"status": "ok", "file": str(target), "bytes": target.stat().st_size}
 
     @staticmethod
     def _needs_confirm(confirm: bool, action: str) -> dict | None:
