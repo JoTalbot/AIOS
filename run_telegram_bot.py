@@ -1667,6 +1667,25 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 else:
                     api.send_message(chat_id, f"❌ {data.get('error', st)}")
                 return True
+            if kind == "olx_bulk":
+                import subprocess as _sp
+                api.send_message(chat_id, "⏳ Публикую объявления на OLX (по ~2-3 мин на каждое)…")
+                r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_olx_ad_gen.py"),
+                             "export_sklad", "--confirm"],
+                            capture_output=True, text=True, timeout=1500, cwd=str(PROJECT_ROOT))
+                try:
+                    data = json.loads((r.stdout or "").strip().split("\n")[-1])
+                except Exception:
+                    data = {"status": "error", "error": (r.stderr or r.stdout or "?")[-300:]}
+                if data.get("status") == "ok":
+                    lines = ["📦 <b>Выгрузка склада завершена</b>"]
+                    for x in (data.get("results") or [])[:20]:
+                        em = {"published": "✅", "draft": "📝", "error": "❌"}.get(x.get("status"), "❌")
+                        lines.append(f"{em} {_esc_tg(x.get('name'))}: {x.get('status')} {x.get('error', '')[:60]}")
+                    api.send_message(chat_id, "\n".join(lines)[:3900])
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', 'Ошибка выгрузки')}")
+                return True
             if kind == "olx_delete":
                 d = pend["data"]
                 data = _run_account_control(["olx", "delete", d["ad_id"], "--confirm"])
@@ -2791,6 +2810,35 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                                              "caption": "💬 Messages"}, "")
         else:
             api.send_message(chat_id, f"❌ {res.get('error', 'Не удалось сделать скриншот')}")
+        return True
+
+    # ---- Массовая выгрузка склада на OLX ----
+    if any(w in t for w in ("выложи весь склад", "выгрузи склад на олх", "опубликуй весь склад",
+                            "склад на олх", "выложи склад", "выгрузи склад",
+                            "все объявления со склада", "весь склад на олх", "склад на olx")):
+        import subprocess as _sp
+        api.send_message(chat_id, "⏳ Читаю склад и генерирую объявления…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_olx_ad_gen.py"), "export_sklad"],
+                    capture_output=True, text=True, timeout=180, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-200:]}
+        if res.get("status") != "ok":
+            api.send_message(chat_id, f"❌ {res.get('error', 'Не удалось прочитать склад')}")
+            return True
+        results = res.get("results") or []
+        if not results:
+            api.send_message(chat_id, "📦 Склад пуст — добавьте детали: «добавь деталь: …»")
+            return True
+        lines = ["📦 <b>Склад → OLX:</b>"]
+        for x in results[:20]:
+            st = "✅" if x.get("status") == "ok" else "❌"
+            lines.append(f"{st} {_esc_tg(x.get('name'))} — {x.get('price_gen') or x.get('price')} грн")
+        lines.append("\n" + (f"Всего: {res.get('total')} позиций. Опубликовать на OLX?" if res.get('err') == 0
+                             else f"Готово {res.get('ok')} из {res.get('total')}. Опубликовать готовые?"))
+        _pending_confirm[chat_id] = {"kind": "olx_bulk", "data": {"total": res.get("total")}}
+        api.send_message(chat_id, "\n".join(lines)[:3900])
         return True
 
     # ---- Поднятие/контроль объявлений OLX ----
