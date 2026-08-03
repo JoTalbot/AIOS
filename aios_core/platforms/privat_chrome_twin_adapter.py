@@ -13,9 +13,13 @@ from .bank_chrome_twin_adapter import BankChromeTwinAdapter
 
 class PrivatChromeTwinAdapter(BankChromeTwinAdapter):
     bank_name = "privat"
+    # Приват24 редиректит на next.privat24.ua — живой веб-банкинг.
     login_url = "https://www.privat24.ua/"
-    home_url = "https://www.privat24.ua/"
+    home_url = "https://next.privat24.ua/"
     sms_sender_hint = "PrivatBank"
+    # Проверено вживую: поле логина — input[type=tel] (номер карты), кнопка «Вхід».
+    login_field_selector = "input[type='tel']"
+    code_field_selector = "input[name*='code'], input[name*='otp'], input[placeholder*='код']"
     balance_selectors = [
         "[class*='balance']",
         "[class*='Balance']",
