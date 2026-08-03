@@ -124,7 +124,21 @@ class AndroidGateway:
         if target:
             command += ["-s", target]
         command += args
-        return subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        try:
+            return subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            # Wireless ADB can leave a launched Android activity alive while
+            # the shell process itself does not return.  Convert that into a
+            # regular result so callers can verify the foreground package via
+            # the authenticated Companion instead of crashing the worker.
+            def text(value: object) -> str:
+                if isinstance(value, bytes):
+                    return value.decode(errors="replace")
+                return str(value or "")
+            return subprocess.CompletedProcess(
+                args=command, returncode=124,
+                stdout=text(exc.stdout), stderr=(text(exc.stderr) or "ADB command timed out"),
+            )
 
     def _shell(self, *args: str, timeout: int = 30) -> str:
         result = self._run(["shell", *args], timeout=timeout)
@@ -505,8 +519,32 @@ class AndroidGateway:
             return pending
         if not self.status().get("connected"):
             return {"status": "offline"}
-        result = self._run(["shell", "monkey", "-p", package, "1"], timeout=30)
-        return {"status": "ok" if result.returncode == 0 else "error", "package": package,
+        # ``monkey -p`` can spend minutes scanning native tombstones even after
+        # it has launched the app. Resolve the launcher component and use
+        # ActivityManager instead; this has a bounded, deterministic response.
+        resolved = self._run(["shell", "cmd", "package", "resolve-activity", "--brief", package], timeout=10)
+        candidates = [line.strip() for line in (resolved.stdout or "").splitlines() if "/" in line]
+        component = candidates[-1] if resolved.returncode == 0 and candidates else ""
+        if component:
+            result = self._run(["shell", "am", "start", "-n", component], timeout=15)
+        else:
+            # Compatibility fallback for unusual launchers. The postcondition
+            # below still checks the actual foreground package before success.
+            result = self._run(["shell", "monkey", "-p", package, "1"], timeout=12)
+        if result.returncode == 0:
+            return {"status": "ok", "package": package,
+                    "message": (result.stdout or result.stderr or "")[-200:]}
+        # Do not retry an opaque input event.  The authenticated Companion is
+        # authoritative for this narrow postcondition and prevents duplicate UI
+        # interaction after a partial ADB response.
+        time.sleep(0.35)
+        snapshot = self._companion_request("ui?detail=controls", timeout=6)
+        active = str(snapshot.get("package") or snapshot.get("package_name") or "")
+        if snapshot.get("status") == "ok" and active == package:
+            reason = "таймаута" if result.returncode == 124 else "неполного ответа"
+            return {"status": "ok", "package": package,
+                    "message": f"Запуск подтверждён через AIOS Companion после {reason} ADB"}
+        return {"status": "error", "package": package,
                 "message": (result.stdout or result.stderr or "")[-200:]}
 
     def tap(self, x: int, y: int, confirm: bool = False) -> dict:

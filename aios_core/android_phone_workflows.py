@@ -252,7 +252,7 @@ class ActiveAppAdapter:
 
     def _wait_for_calibrated_ui(self, wait_seconds: float = 3.0) -> tuple[dict, dict[str, bool]]:
         """Wait past a splash screen until known non-sensitive controls appear."""
-        deadline = time.monotonic() + max(0.5, min(float(wait_seconds), 8.0))
+        deadline = time.monotonic() + max(0.5, min(float(wait_seconds), 15.0))
         last: dict = {}
         selectors: dict[str, bool] = {}
         while True:
@@ -641,6 +641,11 @@ class UklonPhoneAdapter(PhoneAppMonitor):
             "destination_address": bool(self._resource_control(nodes, self.destination_resource)),
         }
 
+    def calibrate(self, confirm: bool = False, wait_seconds: float = 12.0) -> dict:
+        # Passenger cold-starts can take several seconds before Compose exposes
+        # address controls; a shorter generic UI wait would cache splash data.
+        return super().calibrate(confirm=confirm, wait_seconds=wait_seconds)
+
     def open_driver(self, confirm: bool = False) -> dict:
         if not confirm:
             return {"status": "need_confirm", "action": "android_open_app", "package": self.driver_package}
@@ -662,7 +667,7 @@ class UklonPhoneAdapter(PhoneAppMonitor):
         opened = self.open(confirm=True)
         if opened.get("status") != "ok":
             return opened
-        snapshot, selectors = self._wait_for_calibrated_ui(wait_seconds=4.5)
+        snapshot, selectors = self._wait_for_calibrated_ui(wait_seconds=12.0)
         if snapshot.get("status") != "ok":
             return snapshot
         self._save_calibration(snapshot, selectors)

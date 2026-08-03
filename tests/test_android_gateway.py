@@ -75,6 +75,26 @@ def test_easyway_profile_is_detected_after_install(tmp_path, monkeypatch):
     assert profiles["easyway"]["installed"] == ["com.eway"]
 
 
+def test_open_app_confirms_foreground_after_adb_timeout(tmp_path, monkeypatch):
+    from aios_core.android_gateway import AndroidGateway
+
+    gateway = AndroidGateway(tmp_path)
+    monkeypatch.setattr(gateway, "status", lambda: {"connected": True})
+    monkeypatch.setattr(gateway, "_run", lambda *args, **kwargs: _result(args, returncode=124, stderr="timeout"))
+    monkeypatch.setattr(gateway, "_companion_request", lambda *args, **kwargs: {
+        "status": "ok", "package": "com.eway", "nodes": [],
+    })
+    monkeypatch.setattr("aios_core.android_gateway.time.sleep", lambda _: None)
+
+    result = gateway.open_app("com.eway", confirm=True)
+    assert result["status"] == "ok"
+    assert "Companion" in result["message"]
+
+    monkeypatch.setattr(gateway, "_run", lambda *args, **kwargs: _result(args, returncode=1, stderr="monkey ended"))
+    result = gateway.open_app("com.eway", confirm=True)
+    assert result["status"] == "ok"
+
+
 def test_default_ui_snapshot_removes_screen_text(tmp_path, monkeypatch):
     from aios_core.android_gateway import AndroidGateway
 
@@ -92,3 +112,25 @@ def test_default_ui_snapshot_removes_screen_text(tmp_path, monkeypatch):
     assert "text" not in safe["nodes"][0]
     assert "description" not in safe["nodes"][0]
     assert full["nodes"][0]["text"] == "private message"
+
+
+def test_open_app_uses_resolved_activity_before_monkey(tmp_path, monkeypatch):
+    from aios_core.android_gateway import AndroidGateway
+
+    gateway = AndroidGateway(tmp_path)
+    calls = []
+    monkeypatch.setattr(gateway, "status", lambda: {"connected": True})
+
+    def fake_run(args, timeout=30, serial=None):
+        calls.append(args)
+        if args[:4] == ["shell", "cmd", "package", "resolve-activity"]:
+            return _result(args, "com.eway/.android.app.MainActivity\n")
+        if args[:3] == ["shell", "am", "start"]:
+            return _result(args, "Starting: Intent\n")
+        return _result(args, returncode=1)
+
+    monkeypatch.setattr(gateway, "_run", fake_run)
+    result = gateway.open_app("com.eway", confirm=True)
+    assert result["status"] == "ok"
+    assert any(args[:3] == ["shell", "am", "start"] for args in calls)
+    assert not any(args[:2] == ["shell", "monkey"] for args in calls)
