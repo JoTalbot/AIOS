@@ -19,6 +19,33 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
+DEFAULT_APP_PROFILES = {
+    "whatsapp": {
+        "title": "WhatsApp", "packages": ["com.whatsapp"],
+        "mode": "черновики и подтверждение отправки", "sensitive": False,
+    },
+    "abank": {
+        "title": "A-Bank", "packages": ["ua.com.abank"],
+        "mode": "только просмотр и подтверждаемые действия", "sensitive": True,
+    },
+    "privat24": {
+        "title": "Privat24", "packages": ["ua.privatbank.ap24"],
+        "mode": "только просмотр и подтверждаемые действия", "sensitive": True,
+    },
+    "uklon": {
+        "title": "Uklon", "packages": ["ua.com.uklontaxi", "ua.com.uklon.uklondriver"],
+        "mode": "маршруты и заказы только с подтверждением", "sensitive": True,
+    },
+    "ime": {
+        "title": "iMe Messenger", "packages": ["com.iMe.android"],
+        "mode": "черновики и подтверждение отправки", "sensitive": False,
+    },
+    "easyway": {
+        "title": "EasyWay", "packages": [],
+        "mode": "маршруты и транспорт после установки приложения", "sensitive": False,
+    },
+}
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -51,6 +78,7 @@ class AndroidGateway:
         self.data_dir = self.root / "data" / "android_gateway"
         self.config_path = self.data_dir / "device.json"
         self.health_path = self.data_dir / "health.json"
+        self.profiles_path = self.data_dir / "app_profiles.json"
         self.shots_dir = self.data_dir / "screenshots"
         self.dumps_dir = self.data_dir / "ui_dumps"
         self.adb_bin = adb_bin or os.environ.get("AIOS_ADB_BIN") or "/usr/local/bin/aios-adb"
@@ -190,6 +218,43 @@ class AndroidGateway:
         raw = self._shell("pm", "list", "packages", "-3", timeout=45)
         packages = [line.split(":", 1)[-1].strip() for line in raw.splitlines() if ":" in line]
         return {"status": "ok", "count": len(packages), "apps": packages[:limit]}
+
+    def app_profiles(self) -> dict:
+        """Определить установленные рабочие приложения и их политику безопасности."""
+        app_result = self.apps(limit=2000)
+        installed = set(app_result.get("apps") or []) if app_result.get("status") == "ok" else set()
+        custom = _read(self.profiles_path, {})
+        profiles = []
+        for key, base in DEFAULT_APP_PROFILES.items():
+            override = custom.get(key) if isinstance(custom.get(key), dict) else {}
+            packages = override.get("packages") if isinstance(override.get("packages"), list) else base["packages"]
+            found = [package for package in packages if package in installed]
+            profiles.append({
+                "id": key,
+                "title": override.get("title") or base["title"],
+                "packages": packages,
+                "installed": found,
+                "available": bool(found),
+                "mode": override.get("mode") or base["mode"],
+                "sensitive": bool(override.get("sensitive", base["sensitive"])),
+            })
+        _write(self.profiles_path, {profile["id"]: profile for profile in profiles})
+        return {"status": "ok" if installed else app_result.get("status", "offline"), "profiles": profiles}
+
+    def resolve_package(self, reference: str) -> str | None:
+        value = str(reference or "").strip()
+        profiles = self.app_profiles().get("profiles") or []
+        for profile in profiles:
+            if value.casefold() in (str(profile.get("id")).casefold(), str(profile.get("title")).casefold()):
+                installed = profile.get("installed") or []
+                return installed[0] if installed else None
+        return value if "." in value else None
+
+    def open_profile(self, reference: str, confirm: bool = False) -> dict:
+        package = self.resolve_package(reference)
+        if not package:
+            return {"status": "error", "error": "Приложение не найдено или не установлено"}
+        return self.open_app(package, confirm=confirm)
 
     def companion_status(self) -> dict:
         health = self._companion_request("health")

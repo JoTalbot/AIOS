@@ -1,0 +1,11 @@
+[Unit]
+Description=Poll selected Android notifications every two minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=2min
+Persistent=true
+Unit=aios-android-notifications.service
+
+[Install]
+WantedBy=timers.target
