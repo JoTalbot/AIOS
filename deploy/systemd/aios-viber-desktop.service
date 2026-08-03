@@ -1,0 +1,23 @@
+[Unit]
+Description=AIOS Viber Desktop on VNC display :1
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+Environment=VIBER_DISPLAY=:1
+Environment=XAUTHORITY=/root/.Xauthority
+Environment=QT_X11_NO_MITSHM=1
+Environment=QTWEBENGINE_DISABLE_SANDBOX=1
+Environment="QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu"
+ExecStart=/root/AIOS/run_viber_desktop.sh
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=0
+StandardOutput=append:/root/AIOS/logs/viber_desktop.log
+StandardError=append:/root/AIOS/logs/viber_desktop.log
+
+[Install]
+WantedBy=multi-user.target

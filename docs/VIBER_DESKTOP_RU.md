@@ -1,0 +1,52 @@
+# Viber Desktop в AIOS
+
+## Контур подключения
+
+Viber Desktop работает в постоянном VNC-дисплее `:1` и управляется через:
+
+```bash
+python run_account_control.py viber status
+python run_account_control.py viber chats
+python run_account_control.py viber read "Название чата" --limit 12
+python run_account_control.py viber send "Название чата" "Текст" --confirm
+```
+
+`aios-viber-desktop.service` ждёт доступности VNC-дисплея и автоматически
+запускает Viber после перезагрузки. Для Qt WebEngine настроен безопасный для
+root/VNC запуск без Chromium sandbox.
+
+## Единый инбокс
+
+Viber добавлен в общий инбокс Telegram-бота:
+
+- `инбокс` — показывает доступные Viber-чаты среди остальных каналов;
+- кнопка с номером Viber-пункта открывает выбранный чат и читает последние
+  распознанные сообщения;
+- `ответь на N: текст` формирует обычное подтверждение перед отправкой;
+- `инбокс только Viber` фильтрует только Viber.
+
+Viber Desktop не предоставляет надёжный unread-флаг через OCR, поэтому Viber
+не включается в фильтр «только непрочитанное» и массовая команда «всё
+прочитано» намеренно не открывает все Viber-чаты.
+
+## Автоответы
+
+`run_platform_autoreply.py` поддерживает Viber, но для него используется
+отдельная настройка в `data/platform_autoreply.json`:
+
+```json
+{
+  "platforms": {
+    "viber": {
+      "enabled": true,
+      "auto_send": false,
+      "max_replies_per_run": 2
+    }
+  }
+}
+```
+
+`auto_send: false` — безопасный режим черновиков: сообщения не уходят без
+явного решения владельца. Включение автоматической отправки должно быть
+осознанно настроено отдельно, так как Viber-автоматизация управляет реальным
+десктопным окном.

@@ -1134,6 +1134,7 @@ _CHANNELS = {
     "tg": ("✈️", "Telegram"),
     "ig": ("📸", "Instagram DM"),
     "messenger": ("💬", "Messenger"),
+    "viber": ("💜", "Viber"),
     "olx": ("🛒", "OLX"),
 }
 
@@ -1152,6 +1153,8 @@ def _parse_inbox_filters(text: str) -> dict:
         filters["channels"].append("ig")
     if any(w in t for w in ("только мессенджер", "только messenger", "только фб чат")):
         filters["channels"].append("messenger")
+    if any(w in t for w in ("только вайбер", "только вибер", "только viber")):
+        filters["channels"].append("viber")
     if any(w in t for w in ("только олх", "только olx")):
         filters["channels"].append("olx")
     return filters
@@ -1247,7 +1250,32 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
         except Exception:
             pass
 
-    # 5) OLX
+    # 5) Viber Desktop. В списке чатов Viber не отдаёт надёжный unread-флаг,
+    # поэтому в режиме «только непрочитанное» не подменяем неизвестное значение.
+    if _want("viber") and not unread_only:
+        try:
+            vb = _run_account_control(["viber", "chats"])
+            if vb.get("status") == "ok" and vb.get("chats"):
+                seen_viber = set()
+                for c in vb["chats"][:12]:
+                    name = str(c.get("name") or "").strip()
+                    if not name or name.casefold() in seen_viber:
+                        continue
+                    seen_viber.add(name.casefold())
+                    items.append({
+                        "channel": "viber",
+                        "ref": name,
+                        "title": name,
+                        "preview": "Viber: откройте пункт, чтобы прочитать последние сообщения",
+                        "unread": False,
+                        "date": "",
+                    })
+                if seen_viber:
+                    summary_parts.append(f"💜 {len(seen_viber)} чатов Viber")
+        except Exception:
+            pass
+
+    # 6) OLX
     if _want("olx"):
         try:
             olx = _run_account_control(["olx", "profile"])
@@ -1310,7 +1338,7 @@ def _inbox_summarize(items: list[dict]) -> str:
     prompt = (
         "Ты — ассистент, помогающий с единым инбоксом сообщений. "
         "Ниже нумерованный список новых пунктов из разных каналов (почта, Telegram, Instagram DM, "
-        "Messenger, OLX). Составь КРАТКОЕ резюме на русском (3-6 строк): что самое важное/срочное, "
+        "Messenger, Viber, OLX). Составь КРАТКОЕ резюме на русском (3-6 строк): что самое важное/срочное, "
         "кому стоит ответить, что проверить. Упомяни номера пунктов. "
         "Формат: начни с «🧠 Сводка:», потом маркированный список. Без воды.\n\n"
         + "\n".join(data_lines)
@@ -1385,6 +1413,9 @@ def _inbox_reply(api, chat_id: int, item: dict, body: str) -> None:
     elif ch == "messenger":
         _pending_confirm[chat_id] = {"kind": "messenger_send", "data": {"chat": ref, "text": body}}
         api.send_message(chat_id, f"💬 Ответ в Messenger <b>{_esc_tg(ref)}</b>:\n«{body[:150]}»\n\nОтправить? «да» / «нет»")
+    elif ch == "viber":
+        _pending_confirm[chat_id] = {"kind": "viber_send", "data": {"chat": ref, "text": body}}
+        api.send_message(chat_id, f"💜 Ответ в Viber <b>{_esc_tg(ref)}</b>:\n«{body[:150]}»\n\nОтправить? «да» / «нет»")
     else:
         api.send_message(chat_id, "❌ Для этого пункта ответ не поддерживается.")
 
@@ -1442,6 +1473,16 @@ def _inbox_search(api, chat_id: int, q: str) -> None:
                     found.append(f"📸 <b>{_esc_tg(d.get('name'))}</b>: {_esc_tg((d.get('preview') or '')[:80])}")
     except Exception:
         pass
+    # Viber: поиск по видимым чатам без открытия переписки и без пометки прочитанным.
+    try:
+        vb = _run_account_control(["viber", "chats"])
+        if vb.get("status") == "ok":
+            for c in (vb.get("chats") or [])[:20]:
+                name = str(c.get("name") or "")
+                if q.lower() in name.lower():
+                    found.append(f"💜 <b>{_esc_tg(name)}</b>: Viber чат")
+    except Exception:
+        pass
     if not found:
         api.send_message(chat_id, f"🔍 По запросу «{q}» ничего не найдено (или каналы недоступны).")
     else:
@@ -1475,6 +1516,9 @@ def _inbox_mark_read(api, chat_id: int) -> None:
             done.append("✈️ Telegram: диалоги открыты (пометка частичная)")
     except Exception:
         pass
+    # Viber намеренно не открываем массово: открытие каждого чата может изменить
+    # его прочитанный статус. Пользователь открывает нужный пункт в инбоксе сам.
+    done.append("💜 Viber: массовая отметка не выполнялась")
     api.send_message(chat_id, "✅ Отмечено прочитанным:\n" + "\n".join(done) if done else "ℹ️ Ничего не удалось пометить.")
 
 
@@ -2383,7 +2427,8 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         return True
 
     # ---- Viber (десктоп) ----
-    if any(w in t for w in ("вайбер", "вибер", "viber")):
+    if any(w in t for w in ("вайбер", "вибер", "viber")) and not any(
+            w in t for w in ("инбокс", "inbox", "все сообщения", "всё в одном", "сводка сообщений")):
         send_word = any(w in t for w in ("напиши", "отправь", "написать", "ответь"))
         read_word = any(w in t for w in ("прочитай", "покажи", "что в", "последние"))
         if send_word:
@@ -2809,7 +2854,7 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     if any(w in t for w in ("инбокс", "inbox", "все сообщения", "всё в одном",
                             "сводка сообщений", "где что новое", "проверь всё")):
         filters = _parse_inbox_filters(text)
-        api.send_message(chat_id, "⏳ Собираю инбокс (почта, TG, IG, Messenger, OLX)… ~1 мин")
+        api.send_message(chat_id, "⏳ Собираю инбокс (почта, TG, IG, Messenger, Viber, OLX)… ~1 мин")
         items, summary = _collect_inbox(filters)
         if not items:
             api.send_message(chat_id, "📭 Везде пусто (или не удалось собрать).")
@@ -4849,6 +4894,23 @@ def _handle_inbox_callback(api: TelegramAPI, chat_id: int, msg_id: int, data: st
             it = items[idx - 1]
         except Exception:
             api.send_message(chat_id, "❌ Не удалось открыть пункт.")
+            return
+        if it.get("channel") == "viber":
+            api.send_message(chat_id, "⏳ Читаю выбранный Viber-чат…")
+            data_vb = _run_account_control(["viber", "read", str(it.get("ref") or ""), "--limit", "12"])
+            if data_vb.get("status") != "ok":
+                api.send_message(chat_id, f"❌ Viber: {_esc_tg(data_vb.get('error', '?'))}")
+                return
+            messages = data_vb.get("messages") or []
+            if not messages:
+                api.send_message(chat_id, "💜 В выбранном Viber-чате нет распознанных сообщений.")
+                return
+            lines_vb = [f"💜 <b>{_esc_tg(it['title'])[:80]}</b> [Viber]"]
+            for message in messages[-12:]:
+                prefix = "↗️" if message.get("mine") else "•"
+                lines_vb.append(f"{prefix} {_esc_tg(str(message.get('text') or '')[:220])}")
+            lines_vb.append(f"\nОтветить: «ответь на {idx}: текст»")
+            api.send_message(chat_id, "\n".join(lines_vb)[:3900])
             return
         em, ch = _CHANNELS.get(it["channel"], ("", it["channel"]))
         txt = (f"{em} <b>{_esc_tg(it['title'])[:80]}</b> [{ch}]\n"
