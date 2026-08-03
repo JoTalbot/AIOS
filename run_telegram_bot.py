@@ -1667,6 +1667,15 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 else:
                     api.send_message(chat_id, f"❌ {data.get('error', st)}")
                 return True
+            if kind == "olx_chat_reply":
+                d = pend["data"]
+                data = _run_account_control(["olx", "chat", "reply", d["to"], d["text"], "--confirm"])
+                st = data.get("status")
+                if st == "sent":
+                    api.send_message(chat_id, f"✅ Ответ отправлен покупателю «{_esc_tg(d['to'])}».")
+                else:
+                    api.send_message(chat_id, f"❌ {data.get('error', st)}")
+                return True
             if kind == "olx_bulk":
                 import subprocess as _sp
                 api.send_message(chat_id, "⏳ Публикую объявления на OLX (по ~2-3 мин на каждое)…")
@@ -2867,6 +2876,186 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
         api.send_message(chat_id, "\n".join(lines)[:3900])
         return True
 
+    # ---- Клиенты и отправки Новой Почты ----
+    m_client = re.match(r"^(?:добавь клиента|запиши клиента)\s*:\s*(.+)$", text, re.IGNORECASE)
+    if m_client:
+        parts = [p.strip() for p in re.split(r"[,;]|, ", m_client.group(1)) if p.strip()]
+        if len(parts) < 2:
+            api.send_message(chat_id, "📇 Формат: «добавь клиента: ФИО, телефон, город, отделение»")
+            return True
+        name = parts[0]
+        phone = parts[1]
+        city = parts[2] if len(parts) > 2 else ""
+        wh = parts[3] if len(parts) > 3 else ""
+        import subprocess as _sp
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_shipments.py"),
+                     "add_client", name, phone, city, wh], capture_output=True, text=True,
+                    timeout=20, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": "?"}
+        if res.get("status") == "ok":
+            c = res.get("client", {})
+            api.send_message(chat_id, f"📇 <b>{c.get('name')}</b> — {c.get('phone')} · {c.get('city')} {c.get('warehouse')} · {res.get('msg')}")
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', '?')}")
+        return True
+
+    if any(w in t for w in ("мои клиенты", "список клиентов", "клиенты")):
+        import subprocess as _sp
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_shipments.py"), "clients"],
+                    capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": "?"}
+        if res.get("status") == "ok" and res.get("clients"):
+            lines = ["📇 <b>Клиенты:</b>"]
+            for c in res["clients"][:15]:
+                lines.append(f"• <b>{_esc_tg(c.get('name'))}</b> — {c.get('phone')} · {c.get('city')} {c.get('warehouse')}")
+            api.send_message(chat_id, "\n".join(lines)[:3900])
+        else:
+            api.send_message(chat_id, "📇 Клиентов пока нет. «добавь клиента: ФИО, телефон, город, отделение»")
+        return True
+
+    m_ship = re.match(r"^(?:запиши отправку|отправить|отправка)\s*:\s*(.+)$", text, re.IGNORECASE)
+    if m_ship:
+        # «деталь» -> «получатель» (клиент по имени) или «деталь»: ФИО, телефон, город, отделение
+        spec = m_ship.group(1).strip()
+        parts = [p.strip() for p in spec.split(",") if p.strip()]
+        detail = parts[0]
+        if len(parts) >= 3 and "@" in "".join(parts[1:2]):
+            pass
+        import subprocess as _sp
+        if len(parts) >= 3:
+            # деталь, ФИО, телефон[, город, отделение]
+            cmd = ["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_shipments.py"),
+                   "ship", detail, parts[1], parts[2],
+                   parts[3] if len(parts) > 3 else "",
+                   parts[4] if len(parts) > 4 else ""]
+        else:
+            # деталь -> клиент (имя из базы)
+            client_ref = parts[1] if len(parts) > 1 else ""
+            cmd = ["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_shipments.py"),
+                   "ship", detail, client_ref]
+        r = _sp.run(cmd, capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": "?"}
+        if res.get("status") == "ok":
+            s = res.get("shipment", {})
+            api.send_message(chat_id,
+                             f"📦 <b>Отправка:</b> {_esc_tg(s.get('detail'))} → {_esc_tg(s.get('recipient'))}\n"
+                             f"📞 {s.get('phone')} · {s.get('city')} {s.get('warehouse')}\n"
+                             f"Статус: {s.get('status')}")
+        else:
+            api.send_message(chat_id, f"❌ {res.get('error', '?')}\nСначала «добавь клиента: ФИО, телефон, город, отделение»")
+        return True
+
+    if any(w in t for w in ("мои отправки", "отправки", "заказы на отправку")):
+        import subprocess as _sp
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_shipments.py"), "ships"],
+                    capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": "?"}
+        if res.get("status") == "ok" and res.get("shipments"):
+            lines = ["📦 <b>Отправки:</b>"]
+            for s in res["shipments"][:12]:
+                lines.append(f"• {_esc_tg(s.get('detail'))} → {_esc_tg(s.get('recipient'))} ({s.get('status')})")
+            api.send_message(chat_id, "\n".join(lines)[:3900])
+        else:
+            api.send_message(chat_id, "📦 Отправок пока нет.")
+        return True
+
+    # ---- Отчёт по OLX ----
+    if any(w in t for w in ("отчёт по олх", "отчет по олх", "отчёт олх", "сводка олх",
+                            "статистика олх", "сколько объявлений на олх", "сводка по олх")):
+        import subprocess as _sp
+        api.send_message(chat_id, "⏳ Собираю отчёт по OLX…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_olx_report.py")],
+                    capture_output=True, text=True, timeout=150, cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-200:]}
+        from run_olx_report import format_report
+        api.send_message(chat_id, format_report(res)[:3900])
+        return True
+
+    # ---- OLX-чат (сообщения покупателей) ----
+    if any(w in t for w in ("сообщения на олх", "переписки олх", "чат олх", "сообщения в олх",
+                            "переписки на олх", "чат на олх", "что пишут на олх")):
+        import subprocess as _sp
+        api.send_message(chat_id, "⏳ Открываю чат OLX…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_account_control.py"),
+                     "olx", "chat", "list"], capture_output=True, text=True, timeout=120,
+                    cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-200:]}
+        if res.get("status") != "ok":
+            api.send_message(chat_id, f"❌ {res.get('error', 'Не удалось открыть чат')}")
+            return True
+        threads = res.get("threads") or []
+        if not threads:
+            api.send_message(chat_id, "💬 В чате OLX пока нет переписок.")
+            return True
+        lines = ["💬 <b>OLX-чат:</b>"]
+        for x in threads[:12]:
+            lines.append(f"• <b>{_esc_tg(x.get('name'))}</b>: {_esc_tg(x.get('text', ''))[:80]}")
+        if res.get("unread_present"):
+            lines.append("\n🔴 Есть непрочитанные!")
+        lines.append("\nЧитать: «прочитай чат <имя>» · Ответить: «ответь покупателю на олх: <имя>: <текст>»")
+        api.send_message(chat_id, "\n".join(lines)[:3900])
+        return True
+
+    m_chat_read = re.match(r"^(?:прочитай чат|сообщения от|переписка с|чат с)\s+([^\n]{1,50})$",
+                           text, re.IGNORECASE)
+    # не перехватываем чужие мессенджеры (телега, вайбер, тикток и т.п.)
+    if m_chat_read and not any(x in text.lower() for x in (
+            "телеграм", "телеге", "теге", "тегу", "тегу", "тг", "тикток", "tiktok",
+            "вайбер", "viber", "вотсап", "whatsapp", "мессенджер", "messenger")):
+        contact = m_chat_read.group(1).strip().strip("«»\"'")
+        import subprocess as _sp
+        api.send_message(chat_id, f"💬 Читаю переписку с «{contact}»…")
+        r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_account_control.py"),
+                     "olx", "chat", "read", contact], capture_output=True, text=True, timeout=120,
+                    cwd=str(PROJECT_ROOT))
+        try:
+            res = json.loads((r.stdout or "").strip().split("\n")[-1])
+        except Exception:
+            res = {"status": "error", "error": (r.stderr or "?")[-200:]}
+        if res.get("status") != "ok":
+            api.send_message(chat_id, f"❌ {res.get('error', 'Не удалось прочитать')}")
+            return True
+        msgs = res.get("messages") or []
+        if not msgs:
+            api.send_message(chat_id, f"💬 С «{contact}» сообщений нет.")
+            return True
+        lines = [f"💬 <b>{_esc_tg(contact)}</b>:"]
+        for m in msgs[:15]:
+            who = "👤" if not m.get("mine") else "🙋"
+            lines.append(f"{who} {_esc_tg(m.get('text', ''))[:200]}")
+        lines.append("\nОтветить: «ответь покупателю на олх: <имя>: <текст>»")
+        api.send_message(chat_id, "\n".join(lines)[:3900])
+        return True
+
+    m_chat_reply = re.match(r"^(?:ответь покупателю на олх|ответь на олх|ответь в олх)\s*[:\-]?\s*([^:\n]{1,50})\s*:\s*(.+)$",
+                            text, re.IGNORECASE)
+    if m_chat_reply:
+        contact = m_chat_reply.group(1).strip().strip("«»\"'")
+        body = m_chat_reply.group(2).strip()
+        _pending_confirm[chat_id] = {"kind": "olx_chat_reply",
+                                     "data": {"to": contact, "text": body}}
+        api.send_message(chat_id,
+                         f"📨 Ответ покупателю «{_esc_tg(contact)}»:\n{_esc_tg(body)[:300]}\n\n«да» / «нет»")
+        return True
+
     # ---- Поднятие/контроль объявлений OLX ----
     if any(w in t for w in ("подними объявления", "подними мои объявления", "обнови объявления",
                             "мои объявления олх", "мои объявления olx", "контроль объявлений",
@@ -3225,15 +3414,20 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 price = float(price_s.replace(" ", "").replace(",", "."))
             except ValueError:
                 price = 0
-            r = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"),
-                         "add", name, str(qty), str(price)], capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
+            _cmd_list = ["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_inventory.py"),
+                         "add", name, str(qty), str(price)]
+            _ph = _last_photo.get(chat_id, "")
+            if _ph and os.path.exists(_ph):
+                _cmd_list += ["--photo", _ph]
+            r = _sp.run(_cmd_list, capture_output=True, text=True, timeout=20, cwd=str(PROJECT_ROOT))
             try:
                 res = json.loads((r.stdout or "").strip().split("\n")[-1])
             except Exception:
                 res = {"status": "error", "error": (r.stderr or "?")[-100:]}
             if res.get("status") == "ok":
                 it = res.get("item", {})
-                api.send_message(chat_id, f"📦 <b>{name}</b>: {it.get('qty')} шт ({it.get('price')} грн) — {res.get('msg', '')}")
+                photo_txt = " 📸+фото" if it.get("photo") else ""
+                api.send_message(chat_id, f"📦 <b>{name}</b>: {it.get('qty')} шт ({it.get('price')} грн){photo_txt} — {res.get('msg', '')}")
             else:
                 api.send_message(chat_id, f"❌ {res.get('error', '?')}")
             return True
