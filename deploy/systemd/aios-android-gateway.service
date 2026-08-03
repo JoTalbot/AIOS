@@ -1,0 +1,19 @@
+[Unit]
+Description=AIOS real Android gateway reconnect watchdog
+After=network-online.target wg-quick@wg0.service
+Wants=network-online.target
+Requires=wg-quick@wg0.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIOS
+Environment=AIOS_ADB_BIN=/usr/local/bin/aios-adb
+ExecStart=/opt/aios/.venv/bin/python -u /root/AIOS/run_android_gateway.py watch --interval 30
+Restart=always
+RestartSec=10
+StandardOutput=append:/root/AIOS/logs/android_gateway.log
+StandardError=append:/root/AIOS/logs/android_gateway.log
+
+[Install]
+WantedBy=multi-user.target

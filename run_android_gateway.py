@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""CLI для универсального Android Device Adapter AIOS."""
+from __future__ import annotations
+
+import json
+import sys
+import time
+from pathlib import Path
+
+from aios_core.android_gateway import AndroidGateway
+
+ROOT = Path(__file__).resolve().parent
+
+
+def main() -> int:
+    command = sys.argv[1] if len(sys.argv) > 1 else "status"
+    gateway = AndroidGateway(ROOT)
+    if command == "register" and len(sys.argv) >= 3:
+        result = gateway.register(sys.argv[2], " ".join(sys.argv[3:]) or "Android phone")
+    elif command == "connect":
+        result = gateway.connect()
+    elif command == "status":
+        result = gateway.status()
+    elif command == "apps":
+        result = gateway.apps()
+    elif command == "screenshot":
+        result = gateway.screenshot()
+    elif command == "ui-dump":
+        result = gateway.ui_dump()
+    elif command == "open" and len(sys.argv) >= 3:
+        result = gateway.open_app(sys.argv[2], confirm="--confirm" in sys.argv)
+    elif command == "tap" and len(sys.argv) >= 4:
+        result = gateway.tap(int(sys.argv[2]), int(sys.argv[3]), confirm="--confirm" in sys.argv)
+    elif command == "home":
+        result = gateway.key("KEYCODE_HOME", confirm="--confirm" in sys.argv)
+    elif command == "back":
+        result = gateway.key("KEYCODE_BACK", confirm="--confirm" in sys.argv)
+    elif command == "watch":
+        interval = 30
+        if "--interval" in sys.argv:
+            index = sys.argv.index("--interval")
+            if index + 1 < len(sys.argv):
+                interval = max(10, int(sys.argv[index + 1]))
+        while True:
+            result = gateway.connect()
+            result["health"] = gateway.status()
+            print(json.dumps(result, ensure_ascii=False), flush=True)
+            time.sleep(interval)
+    else:
+        result = {"status": "error", "error": "register|connect|status|apps|screenshot|ui-dump|open|tap|home|back|watch"}
+    print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+    return 0 if result.get("status") in ("ok", "offline", "unregistered", "need_confirm") else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

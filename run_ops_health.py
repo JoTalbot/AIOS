@@ -24,6 +24,8 @@ SERVICES = (
     "aios-signal-desktop.service",
     "aios-signal-autoreply.service",
     "aios-vnc-keepawake.service",
+    "wg-quick@wg0.service",
+    "aios-android-gateway.service",
     "aios-messenger-profile-backup.timer",
 )
 

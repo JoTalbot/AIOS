@@ -1968,6 +1968,83 @@ def _handle_unified_inbox_intent(api, chat_id: int, text: str) -> bool:
     return False
 
 
+def _android_gateway_run(args: list[str], timeout: int = 60) -> dict:
+    """Вызвать локальный Android gateway и разобрать JSON без shell-инъекций."""
+    import subprocess as _sp
+    try:
+        result = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_android_gateway.py"), *args],
+                         capture_output=True, text=True, timeout=timeout, cwd=str(PROJECT_ROOT),
+                         env={**os.environ, "AIOS_ADB_BIN": "/usr/local/bin/aios-adb"})
+        out = (result.stdout or "").strip()
+        start = out.find("{")
+        return json.loads(out[start:]) if start >= 0 else {"status": "error", "error": (result.stderr or out)[-250:]}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)[:200]}
+
+
+def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
+    """Детерминированные безопасные команды реального Android-адаптера."""
+    raw = str(text or "").strip()
+    t = " ".join(raw.casefold().split())
+    phone_words = ("телефон", "android", "андроид", "смартфон")
+    if not any(word in t for word in phone_words):
+        return False
+    if any(phrase in t for phrase in ("статус телефона", "телефон статус", "android статус", "статус android", "состояние телефона")):
+        data = _android_gateway_run(["status"])
+        if data.get("status") == "ok":
+            api.send_message(chat_id,
+                             "📱 <b>Android Device Adapter</b>\n"
+                             f"Статус: <b>{'подключён' if data.get('connected') else 'офлайн'}</b>\n"
+                             f"Устройство: {_esc_tg(data.get('name') or data.get('model') or '—')}\n"
+                             f"Android: {data.get('android') or '—'} · заряд: {data.get('battery', '—')}%\n"
+                             f"Экран: {_esc_tg(data.get('screen') or '—')}\n"
+                             f"Приложений: {data.get('packages', '—')}")
+        else:
+            api.send_message(chat_id, f"⚠️ Android gateway: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+        return True
+    if any(phrase in t for phrase in ("приложения телефона", "список приложений", "приложения android", "андроид приложения")):
+        data = _android_gateway_run(["apps"])
+        if data.get("status") == "ok":
+            apps = data.get("apps") or []
+            lines = [f"📱 <b>Приложения Android</b> · всего: {data.get('count', 0)}"]
+            lines += [f"• <code>{_esc_tg(app)}</code>" for app in apps[:35]]
+            if len(apps) > 35:
+                lines.append(f"… показаны первые 35 из {data.get('count', 0)}")
+            api.send_message(chat_id, "\n".join(lines)[:3900])
+        else:
+            api.send_message(chat_id, f"⚠️ Не удалось получить приложения: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+        return True
+    if any(phrase in t for phrase in ("скрин телефона", "скриншот телефона", "снимок телефона", "экран телефона")):
+        api.send_message(chat_id, "⏳ Получаю защищённый снимок экрана телефона…")
+        data = _android_gateway_run(["screenshot"], timeout=90)
+        if data.get("status") == "ok" and data.get("file"):
+            api.send_photo(chat_id, data["file"], caption="📱 Снимок Android-экрана")
+        else:
+            api.send_message(chat_id, f"⚠️ Скриншот недоступен: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+        return True
+    if any(phrase in t for phrase in ("ui телефона", "структура интерфейса телефона", "дамп интерфейса телефона")):
+        data = _android_gateway_run(["ui-dump"], timeout=90)
+        if data.get("status") == "ok" and data.get("file"):
+            api.send_document(chat_id, data["file"], caption="📱 UIAutomator dump Android")
+        else:
+            api.send_message(chat_id, f"⚠️ UI dump недоступен: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+        return True
+    m_open = re.search(r"(?:открой|запусти)\s+(?:на\s+)?(?:телефоне|android|андроиде)\s*:?\s*([\w.]+)", raw, re.IGNORECASE)
+    if m_open:
+        package = m_open.group(1).strip()
+        _pending_confirm[chat_id] = {"kind": "android_open_app", "data": {"package": package}}
+        api.send_message(chat_id, f"📱 Открыть на телефоне <code>{_esc_tg(package)}</code>?\n\n«да» / «нет»")
+        return True
+    if any(phrase in t for phrase in ("телефон помощь", "android помощь", "помощь с телефоном")):
+        api.send_message(chat_id,
+                         "📱 <b>Android Adapter</b>\n"
+                         "• «статус телефона»\n• «приложения телефона»\n"
+                         "• «скрин телефона»\n• «ui телефона»\n"
+                         "• «открой на телефоне com.android.settings»")
+        return True
+    return False
+
+
 def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     """Обработать «человеческое» сообщение про Google/Instagram. True = обработано."""
     t = text.lower()
@@ -2219,6 +2296,14 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
                 else:
                     api.send_message(chat_id, f"❌ {data.get('error', st)}")
                 return True
+            if kind == "android_open_app":
+                d = pend["data"]
+                data = _android_gateway_run(["open", d["package"], "--confirm"])
+                if data.get("status") == "ok":
+                    api.send_message(chat_id, f"✅ На телефоне открыт <code>{_esc_tg(d['package'])}</code>.")
+                else:
+                    api.send_message(chat_id, f"⚠️ Android: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+                return True
             if kind == "signal_send":
                 d = pend["data"]
                 data = _run_account_control(["signal", "send", d["chat"], d["text"], "--confirm"])
@@ -2281,6 +2366,9 @@ def _handle_account_intent(api, chat_id: int, text: str) -> bool:
     # Инбокс имеет приоритет над широким детектором Direct: слова «сообщения»
     # и «прочитанные» не должны неожиданно открывать Instagram.
     if _handle_unified_inbox_intent(api, chat_id, text):
+        return True
+
+    if _handle_android_gateway_intent(api, chat_id, text):
         return True
 
     ig_words = ("инста", "instagram", "подписчик", "мой профиль в инст", "мой инст",
