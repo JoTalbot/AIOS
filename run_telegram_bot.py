@@ -1137,6 +1137,7 @@ _CHANNELS = {
     "messenger": ("💬", "Messenger"),
     "viber": ("💜", "Viber"),
     "signal": ("🔒", "Signal"),
+    "android": ("📲", "Телефон"),
     "olx": ("🛒", "OLX"),
 }
 
@@ -1169,6 +1170,8 @@ def _parse_inbox_filters(text: str) -> dict:
         filters["channels"].append("viber")
     if any(w in t for w in ("только signal", "только сигнал", "только сигнaл")):
         filters["channels"].append("signal")
+    if any(w in t for w in ("только телефон", "только android", "только андроид")):
+        filters["channels"].append("android")
     if any(w in t for w in ("только олх", "только olx")):
         filters["channels"].append("olx")
     return filters
@@ -1280,7 +1283,31 @@ def _collect_inbox(filters: dict | None = None) -> tuple[list[dict], str]:
         except Exception:
             pass
 
-    # 5) Viber Desktop. В списке чатов Viber не отдаёт надёжный unread-флаг,
+    # 5) Выбранные уведомления реального Android-телефона.
+    if _want("android"):
+        try:
+            path = PROJECT_ROOT / "data" / "android_gateway" / "notifications.json"
+            phone_events = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+            for event in reversed(phone_events[-30:]):
+                if unread_only and event.get("read"):
+                    continue
+                title = str(event.get("title") or event.get("app") or "Телефон")
+                app = str(event.get("app") or "Android")
+                items.append({
+                    "channel": "android",
+                    "ref": str(event.get("id") or ""),
+                    "title": f"{app}: {title}",
+                    "preview": str(event.get("text") or "")[:120],
+                    "unread": not bool(event.get("read")),
+                    "date": str(event.get("collected_at") or "")[:19],
+                })
+            unread_phone = sum(1 for event in phone_events if not event.get("read"))
+            if unread_phone:
+                summary_parts.append(f"📲 {unread_phone} новых уведомлений телефона")
+        except Exception:
+            pass
+
+    # 6) Viber Desktop. В списке чатов Viber не отдаёт надёжный unread-флаг,
     # поэтому в режиме «только непрочитанное» не подменяем неизвестное значение.
     if _want("viber") and not unread_only:
         try:
@@ -1613,6 +1640,16 @@ def _inbox_mark_read(api, chat_id: int) -> None:
             done.append("✈️ Telegram: диалоги открыты (пометка частичная)")
     except Exception:
         pass
+    # Пометить локально собранные Android-уведомления прочитанными.
+    try:
+        import subprocess as _sp
+        result = _sp.run(["/opt/aios/.venv/bin/python", str(PROJECT_ROOT / "run_android_notification_collector.py"), "mark-read"],
+                         capture_output=True, text=True, timeout=30, cwd=str(PROJECT_ROOT))
+        payload = json.loads((result.stdout or "{}").strip())
+        if payload.get("status") == "ok":
+            done.append(f"📲 Телефон: {payload.get('marked', 0)} уведомлений отмечено")
+    except Exception:
+        pass
     # Остальные desktop/Direct каналы намеренно не открываем пачкой: это либо
     # меняет состояние чатов, либо API не даёт безопасной bulk-операции.
     done.append("📸 Direct и 💬 Messenger: массовая пометка недоступна безопасно")
@@ -1890,7 +1927,7 @@ def _handle_sales_lifecycle_intent(api, chat_id: int, text: str) -> bool:
 def _send_unified_inbox(api, chat_id: int, text: str = "", filters: dict | None = None) -> None:
     """Собрать и красиво показать инбокс из одного места."""
     filters = dict(filters or _parse_inbox_filters(text))
-    api.send_message(chat_id, "⏳ <b>Собираю единый инбокс…</b>\nПочта · TG · Direct · Messenger · Viber · Signal · OLX")
+    api.send_message(chat_id, "⏳ <b>Собираю единый инбокс…</b>\nПочта · TG · Direct · Телефон · Messenger · Viber · Signal · OLX")
     items, _summary = _collect_inbox(filters)
     if not items:
         api.send_message(chat_id, "📭 <b>Инбокс пуст</b>\nНовых карточек по выбранным каналам нет.")
@@ -2036,6 +2073,22 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
         _pending_confirm[chat_id] = {"kind": "android_pull_file", "data": {"path": path}}
         api.send_message(chat_id, f"📥 Скачать с телефона <code>{_esc_tg(path)}</code>?\n\n«да» / «нет»")
         return True
+    if any(phrase in t for phrase in ("рабочие приложения", "приложения для работы", "профили приложений", "телефон приложения работа")):
+        data = _android_gateway_run(["profiles"])
+        profiles = data.get("profiles") or []
+        if data.get("status") == "ok":
+            lines = ["📱 <b>Рабочие приложения телефона</b>"]
+            for profile in profiles:
+                state = "✅" if profile.get("available") else "➕"
+                package = (profile.get("installed") or ["не установлено"])[0]
+                sensitive = " · подтверждение обязательно" if profile.get("sensitive") else ""
+                lines.append(f"{state} <b>{_esc_tg(profile.get('title'))}</b>\n"
+                             f"  <code>{_esc_tg(package)}</code>\n"
+                             f"  {_esc_tg(profile.get('mode'))}{sensitive}")
+            api.send_message(chat_id, "\n".join(lines)[:3900])
+        else:
+            api.send_message(chat_id, f"⚠️ Профили недоступны: {_esc_tg(data.get('error') or data.get('status') or '?')}")
+        return True
     if any(phrase in t for phrase in ("приложения телефона", "список приложений", "приложения android", "андроид приложения")):
         data = _android_gateway_run(["apps"])
         if data.get("status") == "ok":
@@ -2072,7 +2125,7 @@ def _handle_android_gateway_intent(api, chat_id: int, text: str) -> bool:
     if any(phrase in t for phrase in ("телефон помощь", "android помощь", "помощь с телефоном")):
         api.send_message(chat_id,
                          "📱 <b>Android Adapter</b>\n"
-                         "• «статус телефона»\n• «приложения телефона»\n"
+                         "• «статус телефона»\n• «рабочие приложения»\n• «приложения телефона»\n"
                          "• «уведомления телефона»\n• «геолокация телефона»\n"
                          "• «файлы телефона»\n• «скрин телефона»\n• «ui телефона»\n"
                          "• «открой на телефоне com.android.settings»")

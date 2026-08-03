@@ -23,6 +23,8 @@ def main() -> int:
         result = gateway.status()
     elif command == "apps":
         result = gateway.apps()
+    elif command == "profiles":
+        result = gateway.app_profiles()
     elif command == "companion":
         result = gateway.companion_status()
     elif command == "notifications":
@@ -38,7 +40,7 @@ def main() -> int:
     elif command == "ui-dump":
         result = gateway.ui_dump()
     elif command == "open" and len(sys.argv) >= 3:
-        result = gateway.open_app(sys.argv[2], confirm="--confirm" in sys.argv)
+        result = gateway.open_profile(sys.argv[2], confirm="--confirm" in sys.argv)
     elif command == "tap" and len(sys.argv) >= 4:
         result = gateway.tap(int(sys.argv[2]), int(sys.argv[3]), confirm="--confirm" in sys.argv)
     elif command == "home":
@@ -57,7 +59,7 @@ def main() -> int:
             print(json.dumps(result, ensure_ascii=False), flush=True)
             time.sleep(interval)
     else:
-        result = {"status": "error", "error": "register|connect|status|apps|companion|notifications|location|files|pull|screenshot|ui-dump|open|tap|home|back|watch"}
+        result = {"status": "error", "error": "register|connect|status|apps|profiles|companion|notifications|location|files|pull|screenshot|ui-dump|open|tap|home|back|watch"}
     print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
     return 0 if result.get("status") in ("ok", "offline", "unregistered", "need_confirm") else 1
 
