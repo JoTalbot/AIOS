@@ -685,6 +685,84 @@ def test_olx_boost_intent(monkeypatch):
     assert any("Объявления OLX" in x for x in api.messages)
 
 
+def test_inventory_add_intent(monkeypatch):
+    import subprocess
+    def fake_run(*a, **k):
+        return type("R", (), {"stdout": '{"status": "ok", "item": {"name": "Фара BMW", "qty": 2, "price": 2000}, "msg": "новая деталь"}', "stderr": "", "returncode": 0})
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(m, "_llm_chat_direct", lambda p: '{"category": "оптика", "price": 2000}')
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "добавь деталь фара BMW, 2 шт по 2000") is True
+    assert any("фара BMW" in x for x in api.messages)
+
+
+def test_inventory_sale_intent(monkeypatch):
+    import subprocess
+    def fake_run(*a, **k):
+        cmd = a[0][-1] if len(a) > 0 else ""
+        script = a[0][1] if len(a) > 0 else ""
+        if "inventory" in str(script):
+            return type("R", (), {"stdout": '{"status": "ok", "item": {"name": "Фара BMW", "qty": 1}, "msg": "списано 1 шт"}', "stderr": "", "returncode": 0})
+        if "finance" in str(script):
+            return type("R", (), {"stdout": '{"status": "ok", "entry": {"amount": 2000}}', "stderr": "", "returncode": 0})
+        return type("R", (), {"stdout": '{"status": "error"}', "stderr": "", "returncode": 0})
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "продал фару BMW за 2000") is True
+    joined = "\n".join(api.messages)
+    assert "Продажа" in joined and "Записано в финансы" in joined
+
+
+def test_repeat_reminder(monkeypatch):
+    api = FakeAPI()
+    m._save_reminders([])
+    assert m._handle_account_intent(api, 1, "напомни каждый день в 09:00 пить воду") is True
+    items = m._load_reminders()
+    assert len(items) == 1 and items[0].get("repeat") == "день"
+    m._save_reminders([])
+
+
+def test_evening_report_intent(monkeypatch):
+    import subprocess
+    def fake_run(*a, **k):
+        return type("R", (), {"stdout": "отправлен", "stderr": "", "returncode": 0})
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "вечерний отчёт") is True
+    assert any("отправлен" in x for x in api.messages)
+
+
+def test_price_guide_intent(monkeypatch):
+    import subprocess
+    def fake_run(*a, **k):
+        return type("R", (), {"stdout": '{"status": "ok", "query": "фара BMW", "found": 3, "median": 2000, "min": 1500, "max": 2500, "ai_advice": "Цена: ~2000 грн"}', "stderr": "", "returncode": 0})
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "сколько стоит фара BMW") is True
+    joined = "\n".join(api.messages)
+    assert "Медиана" in joined and "2000" in joined
+
+
+def test_olx_publish_intent(monkeypatch):
+    import subprocess
+    def fake_run(*a, **k):
+        return type("R", (), {"stdout": '{"status": "need_confirm", "title": "Фара BMW", "description": "Продаю", "price": "2000", "part": "фара BMW"}', "stderr": "", "returncode": 0})
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "опубликуй на олх: фара BMW 2000") is True
+    joined = "\n".join(api.messages)
+    assert "Опубликовать на OLX" in joined
+
+
+def test_photo_ad_intent(monkeypatch):
+    m._last_photo[1] = "/tmp/photo.jpg"
+    api = FakeAPI()
+    assert m._handle_account_intent(api, 1, "сделай объявление из фото") is True
+    assert m._photo_pending.get(1) is True
+    m._photo_pending.pop(1, None)
+    m._last_photo.pop(1, None)
+
+
 def test_ig_like_flow(monkeypatch):
     def fake_run(args):
         if args[:3] == ["instagram", "like", url] and "--confirm" not in args:
