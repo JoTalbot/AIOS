@@ -91,15 +91,40 @@ class AutonomyPolicy:
 
     # ---- Ценовые полы ----
     def floor_for(self, sku: str) -> float:
-        """Пол для конкретной детали (по названию/артикулу)."""
+        """Пол для конкретной детали (по названию/артикулу).
+
+        Если конкретного пола нет — пробуем вывести из цены в складе
+        (90% от прайса) как безопасный fallback. Если и склада нет —
+        глобальный пол.
+        """
         sku_l = (sku or "").strip().lower()
         items = self.floors.get("items", {})
-        if not sku_l:
-            return self.floor_global
-        for key, val in items.items():
-            if sku_l == key or key in sku_l or sku_l in key:
-                return float(val)
+        if sku_l:
+            for key, val in items.items():
+                if sku_l == key or key in sku_l or sku_l in key:
+                    return float(val)
+        # fallback из склада
+        inv_floor = self._floor_from_inventory(sku_l)
+        if inv_floor:
+            return inv_floor
         return self.floor_global
+
+    def _floor_from_inventory(self, sku_l: str) -> float:
+        try:
+            import json
+            inv = json.loads((self.root / "data" / "inventory.json").read_text(encoding="utf-8"))
+        except Exception:
+            return 0.0
+        if not sku_l:
+            return 0.0
+        for it in inv:
+            name = str(it.get("name") or "").lower()
+            price = float(it.get("price") or 0)
+            if price <= 0:
+                continue
+            if sku_l in name or name in sku_l:
+                return round(price * 0.9)
+        return 0.0
 
     def refresh(self) -> None:
         self.data = _read_json(self.policy_path, self.data)

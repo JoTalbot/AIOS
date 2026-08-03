@@ -15,10 +15,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 
 SERVICES = ["aios-telegram-bot", "aios-dashboard-v3", "aios-dashboard-v2", "aios-olx-collector",
-            "aios-selfguard", "aios-auto-coder"]
+            "aios-selfguard", "aios-auto-coder", "aios-olx-autoreply"]
 TIMERS = ["aios-np-alert.timer", "aios-olx-price.timer", "aios-post-scheduler.timer",
           "aios-analytics.timer", "aios-digest.timer", "aios-evening-report.timer",
-          "aios-backup-sessions.timer", "aios-olx-autoreply.timer", "aios-local-backup.timer"]
+          "aios-backup-sessions.timer", "aios-local-backup.timer"]
 
 
 def _env(key: str) -> str:
