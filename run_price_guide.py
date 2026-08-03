@@ -121,12 +121,30 @@ def price_guide(query: str) -> dict:
     return result
 
 
+def cheapest(query: str, limit: int = 3) -> dict:
+    """Топ-N самых дешёвых похожих предложений."""
+    similar = _similar(query, limit=50)
+    prices = [s for s in similar if s["price"] > 0]
+    prices.sort(key=lambda s: s["price"])
+    result = {"status": "ok", "query": query, "found": len(prices),
+              "cheapest": prices[:limit]}
+    if prices:
+        result["median"] = sorted([s["price"] for s in prices])[len(prices) // 2]
+    else:
+        result["note"] = "Похожих объявлений в базе нет."
+    return result
+
+
 def main() -> None:
     query = " ".join(sys.argv[1:])
     if not query:
         print(json.dumps({"status": "error", "error": "Укажите запрос"}))
         return
-    print(json.dumps(price_guide(query), ensure_ascii=False))
+    if len(sys.argv) >= 2 and sys.argv[1] == "cheap":
+        q = " ".join(sys.argv[2:])
+        print(json.dumps(cheapest(q), ensure_ascii=False))
+    else:
+        print(json.dumps(price_guide(query), ensure_ascii=False))
 
 
 if __name__ == "__main__":

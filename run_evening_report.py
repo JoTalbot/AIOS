@@ -93,12 +93,55 @@ def build_report() -> str:
     return "\n".join(lines)
 
 
+def build_monthly() -> str:
+    """Месячный отчёт: финансы за 30 дней + топ деталей."""
+    today = datetime.now().strftime("%d.%m.%Y")
+    lines = [f"📊 <b>Месячный отчёт</b> — {today}"]
+
+    fin = _run_script("run_finance.py", ["report", "30"])
+    if fin.get("status") == "ok":
+        lines.append(f"\n💰 <b>Финансы за 30 дней:</b>\n"
+                     f"🟢 Продажи: {fin.get('sales')} грн\n"
+                     f"🔴 Расходы: {fin.get('expenses')} грн\n"
+                     f"📊 Прибыль: <b>{fin.get('profit')}</b> грн")
+
+    # топ проданных деталей
+    try:
+        items = json.loads((ROOT / "data" / "finance.json").read_text(encoding="utf-8"))
+        sales = [x for x in items if x.get("kind") == "sale"]
+        if sales:
+            by_name = {}
+            for s in sales:
+                d = s.get("desc", "")
+                by_name.setdefault(d, 0)
+                by_name[d] += s.get("amount", 0)
+            top = sorted(by_name.items(), key=lambda kv: kv[1], reverse=True)[:5]
+            if top:
+                lines.append("\n🏆 <b>Топ продаж:</b>\n" + "\n".join(
+                    f"• {_esc(d)} — {v} грн" for d, v in top))
+    except Exception:
+        pass
+
+    inv = _run_script("run_inventory.py", ["stats"])
+    if inv.get("status") == "ok":
+        lines.append(f"\n📦 <b>Склад:</b> {inv.get('items_count')} деталей, запасы {inv.get('total_value')} грн")
+    return "\n".join(lines)
+
+
+def _esc(s) -> str:
+    import html
+    return html.escape(str(s or ""))
+
+
 def main() -> int:
     token = _env("TELEGRAM_BOT_TOKEN") or _env("AIOS_TELEGRAM_TOKEN")
     chat = _env("TELEGRAM_CHAT_ID")
     if not token or not chat:
         print("Нет токена/чата"); return 1
-    report = build_report()
+    if "--monthly" in sys.argv:
+        report = build_monthly()
+    else:
+        report = build_report()
     try:
         _tg(token, int(chat), report)
         print("Вечерний отчёт отправлен")
