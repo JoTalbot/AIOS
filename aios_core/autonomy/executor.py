@@ -272,8 +272,47 @@ class Executor:
                 data = data[-50:]
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-            return {"status": "ok", "message": f"Сделка зафиксирована: {item or 'товар'}",
+            # Уведомить владельца о новой сделке (для создания ТТН)
+            try:
+                self._notify_owner_sale(rec)
+            except Exception:
+                pass
+            # Клиенту в чат должен идти вежливый ответ LLM (params.text), а не статус.
+            reply_text = str(p.get("text") or "").strip()
+            return {"status": "ok",
+                    "message": reply_text or f"Сделка зафиксирована: {item or 'товар'}",
                     "sale": rec}
+        except Exception as e:
+            return {"status": "error", "error": str(e)[:150]}
+
+    def _notify_owner_sale(self, rec: dict) -> None:
+        """Отправить владельцу в Telegram уведомление о новой pending-сделке."""
+        try:
+            from . import _env
+            token = _env("TELEGRAM_BOT_TOKEN") or _env("AIOS_TELEGRAM_TOKEN")
+            chat_id = _env("TELEGRAM_CHAT_ID")
+            if not (token and chat_id):
+                return
+            import urllib.request as _ur
+            item = rec.get("item", "товар")
+            amount = rec.get("amount")
+            delivery = rec.get("delivery", "")
+            txt = (f"🤝 <b>Новая сделка (готово к отправке)</b>\n"
+                   f"Площадка: {rec.get('platform')} · клиент: {rec.get('chat')}\n"
+                   f"Товар: <b>{item}</b>\n"
+                   f"Цена: {amount} грн\n"
+                   f"Доставка: {delivery or '—'}\n"
+                   f"Создать ТТН: «создай ттн {item} ...» или вручную")
+            payload = {"chat_id": int(chat_id), "text": txt[:3800],
+                       "parse_mode": "HTML", "disable_web_page_preview": True}
+            req = _ur.Request(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                data=json.dumps(payload).encode(),
+                headers={"Content-Type": "application/json"})
+            with _ur.urlopen(req, timeout=60):
+                pass
+        except Exception:
+            pass
         except Exception as e:
             return {"status": "error", "error": str(e)[:150]}
 
