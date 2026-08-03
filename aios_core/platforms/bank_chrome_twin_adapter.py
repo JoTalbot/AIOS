@@ -63,6 +63,14 @@ class BankChromeTwinAdapter(ChromeTwinAdapter):
         url = (page.url or "").lower()
         if "login" in url or "auth" in url or "signin" in url:
             return False
+        # Приват24: вход не меняет URL, а идёт через JS-модалку с полем карты.
+        # Наличие поля входа (тел/карта) = ещё не залогинен.
+        try:
+            login_input = page.locator(self.login_field_selector).first
+            if await login_input.count() and await login_input.is_visible():
+                return False
+        except Exception:
+            pass
         return True
 
     async def login(self, login_text: str = "", wait_code_sec: int = 25) -> dict:
@@ -92,6 +100,18 @@ class BankChromeTwinAdapter(ChromeTwinAdapter):
             if not filled:
                 return {"status": "need_manual",
                         "message": f"{self.bank_name}: войдите вручную в открытом браузере и подтвердите"}
+            # нажать кнопку продолжения (Вхід / Далі / Продовжити), если есть
+            for sel_btn in ("button:has-text('Вхід')", "button:has-text('Далі')",
+                            "button:has-text('Продовжити')", "button[type='submit']",
+                            "button:has-text('Увійти')"):
+                try:
+                    b = page.locator(sel_btn).first
+                    if await b.count():
+                        await b.click(timeout=2500)
+                        break
+                except Exception:
+                    continue
+            await page.wait_for_timeout(3000)
             # ждём SMS и вводим код
             code = await self._read_sms_code()
             if not code:
