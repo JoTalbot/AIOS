@@ -24,12 +24,40 @@ import os
 import asyncio
 import shutil
 import re
+import json
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 from pathlib import Path
 
 from .chrome_twin_adapter import ChromeTwinAdapter
 from .base import IncomingMessage, SentMessage
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+JOURNAL_PATH = _PROJECT_ROOT / "data" / "olx_published.json"
+
+
+def _load_journal() -> list[dict]:
+    """Журнал опубликованных объявлений (для «мои объявления»)."""
+    try:
+        if JOURNAL_PATH.exists():
+            return json.loads(JOURNAL_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return []
+
+
+def _journal_add(entry: dict) -> None:
+    """Добавить запись в журнал публикаций (максимум 100)."""
+    import json as _j
+    try:
+        JOURNAL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        items = _load_journal()
+        items.insert(0, entry)
+        items = items[:100]
+        JOURNAL_PATH.write_text(_j.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as e:
+        print(f"[olx-journal] add failed: {e}")
+
 
 class OLXChromeTwinAdapter(ChromeTwinAdapter):
     """
@@ -413,14 +441,13 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
         # известные id объявлений из истории публикаций
         ads = []
         try:
-            from pathlib import Path as _P
-            hist = _P("data/olx_published.json")
-            if hist.exists():
-                import json as _j
-                published = _j.loads(hist.read_text(encoding="utf-8"))
-                for p in published[-limit:]:
-                    ads.append({"id": p.get("ad_id"), "title": p.get("title", ""),
-                                "price": p.get("price", ""), "published_at": p.get("ts", "")})
+            published = _load_journal()
+            for p in published[:limit]:
+                ads.append({"id": p.get("ad_id") or p.get("short_id") or "?",
+                            "title": p.get("title", ""),
+                            "price": p.get("price", ""),
+                            "published_at": p.get("ts", ""),
+                            "url": p.get("url", "")})
         except Exception:
             pass
         # кабинет: страница объявлений
@@ -706,8 +733,32 @@ class OLXChromeTwinAdapter(ChromeTwinAdapter):
                             await page.screenshot(path=shot)
                         except Exception:
                             shot = None
+                        # извлечь id объявления из URL/страницы
+                        final_url = page.url or ""
+                        short_id = ""
+                        m_short = re.search(r"-ID([A-Za-z0-9]+)\.html", final_url)
+                        if m_short:
+                            short_id = m_short.group(1)
+                        numeric_id = ""
+                        try:
+                            body_txt = await page.inner_text("body")
+                            m_num = re.search(r"(?:editing|statistics|promote)/(\d{6,12})", final_url + body_txt)
+                            if m_num:
+                                numeric_id = m_num.group(1)
+                        except Exception:
+                            pass
+                        ad_id = numeric_id or short_id or ""
+                        _journal_add({
+                            "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                            "ad_id": ad_id,
+                            "short_id": short_id,
+                            "url": final_url,
+                            "title": title,
+                            "price": price,
+                        })
                         return {"status": "published", "title": title, "price": price,
-                                "screenshot": shot, "url": page.url}
+                                "ad_id": ad_id, "url": final_url,
+                                "screenshot": shot}
                 except Exception:
                     pass
             shot = f"/tmp/aios_acct_olx_add_{int(__import__('time').time())}.png"
