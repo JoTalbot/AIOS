@@ -30,7 +30,11 @@ class Gateway:
 def test_control_center_has_no_screen_or_message_payload(tmp_path):
     from aios_core.phone_control_center import PhoneControlCenter, format_telegram
 
-    report = PhoneControlCenter(tmp_path, gateway_factory=Gateway, service_probe=lambda _name: True).snapshot()
+    class Banks:
+        def __init__(self, root): pass
+        def snapshot(self): return {"banks": [{"title": "A-Bank", "available": True, "unread_notifications": 0}]}
+
+    report = PhoneControlCenter(tmp_path, gateway_factory=Gateway, service_probe=lambda _name: True, bank_monitor_factory=Banks).snapshot()
     assert report["status"] == "ok"
     assert report["device"]["connected"] is True
     assert report["leads"]["pending"] == 0
