@@ -2031,7 +2031,7 @@ _last_bank_tasks: dict[int, list[dict]] = {}
 
 def _handle_phone_metrics_intent(api, chat_id: int, text: str) -> bool:
     t = " ".join(str(text or "").casefold().split())
-    if not any(phrase in t for phrase in ("тренды телефона", "тренд телефона", "экспорт метрик телефона", "метрики телефона")):
+    if not any(phrase in t for phrase in ("тренды телефона", "тренд телефона", "экспорт метрик телефона", "метрики телефона", "калибровки телефона", "статус калибровок")):
         return False
     try:
         from aios_core.phone_metrics import PhoneMetricsStore
@@ -2040,13 +2040,23 @@ def _handle_phone_metrics_intent(api, chat_id: int, text: str) -> bool:
             target = store.export_csv()
             api.send_document(chat_id, str(target), caption="📈 Метрики телефона · агрегированные данные")
             return True
+        if "калибров" in t:
+            report = store.calibration_report()
+            rows = report.get("apps") or []
+            text = "🧩 <b>Калибровки приложений</b>\n" + ("\n".join(
+                f"• {row.get('profile')}: {'✅ готово' if row.get('ready') else '⚠️ частично'} · элементов: {row.get('selectors', 0)}"
+                for row in rows
+            ) if rows else "Калибровок пока нет.")
+            api.send_message(chat_id, text)
+            return True
         trend = store.trend(limit=7)
+        availability = store.availability(limit=30)
         changes = trend.get("changes") or {}
         api.send_message(chat_id,
                          "📈 <b>Тренды телефона</b>\n"
-                         f"Снимков: {trend.get('snapshots', 0)}\n"
+                         f"Снимков: {trend.get('snapshots', 0)} · ADB: {availability.get('adb_pct', 0)}% · Companion: {availability.get('companion_pct', 0)}%\n"
                          f"Лиды: {changes.get('leads_pending', 0):+d} · CRM follow-up: {changes.get('crm_open', 0):+d}\n"
-                         f"Банковские задачи: {changes.get('bank_tasks', 0):+d}\n"
+                         f"Банковские задачи: {changes.get('bank_tasks', 0):+d} · калиброванные приложения: {changes.get('apps_calibrated', 0):+d}\n"
                          "<i>Экспорт содержит только агрегаты, без чатов, имён, номеров, координат и текстов.</i>")
     except Exception:
         api.send_message(chat_id, "⚠️ Метрики телефона временно недоступны.")

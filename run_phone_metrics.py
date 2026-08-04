@@ -17,13 +17,18 @@ def main() -> int:
     if command == "trend":
         limit = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 7
         result = store.trend(limit)
+    elif command == "availability":
+        limit = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 30
+        result = store.availability(limit)
+    elif command == "calibrations":
+        result = store.calibration_report()
     elif command == "export":
         target = store.export_csv()
         result = {"status": "ok", "file": str(target), "rows": len(store.recent(180))}
     elif command == "recent":
         result = {"status": "ok", "rows": store.recent(30)}
     else:
-        result = {"status": "error", "error": "trend [N]|recent|export"}
+        result = {"status": "error", "error": "trend [N]|availability [N]|calibrations|recent|export"}
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("status") == "ok" else 1
 

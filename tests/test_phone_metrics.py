@@ -24,6 +24,8 @@ def test_metrics_store_history_trend_and_private_csv(tmp_path):
     trend = store.trend(7)
     assert trend["snapshots"] == 2
     assert trend["changes"]["leads_pending"] == 2
+    availability = store.availability(7)
+    assert availability["adb_pct"] == 100
     target = store.export_csv()
     assert target.exists()
     assert target.stat().st_mode & 0o777 == 0o600

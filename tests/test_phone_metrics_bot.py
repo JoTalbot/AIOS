@@ -14,7 +14,8 @@ def test_metrics_intent(monkeypatch):
 
     class Store:
         def __init__(self, root): pass
-        def trend(self, limit=7): return {"snapshots": 2, "changes": {"leads_pending": 1, "crm_open": 0, "bank_tasks": 0}}
+        def trend(self, limit=7): return {"snapshots": 2, "changes": {"leads_pending": 1, "crm_open": 0, "bank_tasks": 0, "apps_calibrated": 0}}
+        def availability(self, limit=30): return {"adb_pct": 100, "companion_pct": 100}
 
     monkeypatch.setattr(metrics, "PhoneMetricsStore", Store)
     api = API()
