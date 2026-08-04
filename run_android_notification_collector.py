@@ -92,6 +92,7 @@ def collect() -> dict:
     # The lead queue stores only notification identity/source/timestamp — never
     # title, preview or sender — and does not create CRM customers automatically.
     lead_result = {"status": "skipped", "added": 0}
+    bank_result = {"status": "skipped", "added": 0}
     try:
         from aios_core.android_leads import AndroidLeadQueue
         lead_result = AndroidLeadQueue(ROOT).sync()
@@ -99,8 +100,14 @@ def collect() -> dict:
         # Notification collection must remain available if an optional queue
         # maintenance task cannot run.
         pass
+    try:
+        from aios_core.android_bank_monitor import AndroidBankMonitor
+        bank_result = AndroidBankMonitor(ROOT).sync_tasks()
+    except Exception:
+        pass
     return {"status": "ok", "added": added, "total": len(existing),
-            "lead_candidates_added": int(lead_result.get("added") or 0)}
+            "lead_candidates_added": int(lead_result.get("added") or 0),
+            "bank_tasks_added": int(bank_result.get("added") or 0)}
 
 
 def mark_read() -> dict:

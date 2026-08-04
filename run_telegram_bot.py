@@ -2025,15 +2025,46 @@ def _android_gateway_run(args: list[str], timeout: int = 60) -> dict:
 _last_phone_leads: dict[int, list[dict]] = {}
 # Последние показанные metadata-only CRM follow-up задачи телефона.
 _last_phone_crm_tasks: dict[int, list[dict]] = {}
+# Последние показанные metadata-only задачи банковских уведомлений.
+_last_bank_tasks: dict[int, list[dict]] = {}
 
 
 def _handle_phone_bank_monitor_intent(api, chat_id: int, text: str) -> bool:
-    t = " ".join(str(text or "").casefold().split())
-    if not any(phrase in t for phrase in ("банки телефона", "статус банков телефона", "банковские уведомления телефона", "банки android")):
+    raw = str(text or "").strip()
+    t = " ".join(raw.casefold().split())
+    task_scope = any(phrase in t for phrase in ("банковские задачи", "задачи банков", "задачи банка"))
+    review = re.search(r"(?:отметь|закрой|обработай)\s+банковск\w*\s+задач\w*\s*#?(\d+)", raw, re.IGNORECASE)
+    bank_scope = any(phrase in t for phrase in ("банки телефона", "статус банков телефона", "банковские уведомления телефона", "банки android"))
+    if not (task_scope or review or bank_scope or (chat_id in _last_bank_tasks and "банковск" in t)):
         return False
     try:
         from aios_core.android_bank_monitor import AndroidBankMonitor, format_telegram
-        api.send_message(chat_id, format_telegram(AndroidBankMonitor(PROJECT_ROOT).snapshot()))
+        monitor = AndroidBankMonitor(PROJECT_ROOT)
+        if review:
+            tasks = _last_bank_tasks.get(chat_id) or []
+            index = int(review.group(1))
+            if not 1 <= index <= len(tasks):
+                api.send_message(chat_id, "ℹ️ Сначала откройте «банковские задачи телефона», затем укажите номер.")
+                return True
+            _pending_confirm[chat_id] = {"kind": "bank_task_review", "data": {"task_id": tasks[index - 1].get("id")}}
+            api.send_message(chat_id, "🏦 Отметить локальную задачу банковского уведомления обработанной?\n«да» / «нет»")
+            return True
+        if task_scope:
+            tasks = monitor.list_tasks(limit=30)
+            _last_bank_tasks[chat_id] = tasks
+            if not tasks:
+                api.send_message(chat_id, "🏦 <b>Банковские задачи телефона</b>\nОткрытых задач на проверку нет.")
+                return True
+            lines = ["🏦 <b>БАНКОВСКИЕ ЗАДАЧИ ТЕЛЕФОНА</b>", "━━━━━━━━━━━━━━━━"]
+            for index, task in enumerate(tasks[:12], 1):
+                source = _esc_tg(str(task.get("source") or "Банк"))
+                observed = _esc_tg(str(task.get("observed_at") or "")[:19])
+                lines.append(f"{index:02d}. <b>{source}</b> · локальная проверка · 🕐 {observed}")
+            lines.append("━━━━━━━━━━━━━━━━")
+            lines.append("<i>«отметь банковскую задачу 1 обработанной» — закрыть локальную задачу. Суммы, карты и OTP не выводятся.</i>")
+            api.send_message(chat_id, "\n".join(lines)[:3900])
+            return True
+        api.send_message(chat_id, format_telegram(monitor.snapshot()))
     except Exception:
         api.send_message(chat_id, "⚠️ Безопасный статус банков телефона временно недоступен.")
     return True
@@ -2534,6 +2565,14 @@ def _cancel_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
 def _confirm_phone_pending(api, chat_id: int, kind: str, data: dict) -> bool:
     """Perform one already-confirmed app step; return True when handled."""
     try:
+        if kind == "bank_task_review":
+            from aios_core.android_bank_monitor import AndroidBankMonitor
+            result = AndroidBankMonitor(PROJECT_ROOT).review_task(str(data.get("task_id") or ""))
+            if result.get("status") in ("reviewed", "already_reviewed"):
+                api.send_message(chat_id, "✅ Локальная банковская задача отмечена обработанной. Финансовых действий не выполнялось.")
+            else:
+                api.send_message(chat_id, "⚠️ Не удалось обновить банковскую задачу.")
+            return True
         if kind == "phone_crm_task_draft":
             app = str(data.get("app") or "")
             adapter = _phone_adapter(app)
