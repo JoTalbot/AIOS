@@ -112,6 +112,14 @@ def _android_lead_summary() -> dict:
         return {"status": "error", "pending": 0, "by_source": {}}
 
 
+def _android_audit_summary() -> dict:
+    try:
+        from aios_core.android_audit import PhoneActionAudit
+        return PhoneActionAudit(ROOT).summary()
+    except Exception:
+        return {"status": "error", "count": 0, "last": None}
+
+
 def _customer_crm() -> dict:
     try:
         from aios_core.crm import CRMStore
@@ -249,6 +257,13 @@ def build() -> None:
             f" · внимание: {crm_attention} · просрочены: {crm_overdue}"
             + (f" · {lead_sources}" if lead_sources else "")
         ).classes("text-sm text-amber-700" if (pending_leads or crm_followups) else "text-sm text-gray-500")
+        audit = _android_audit_summary()
+        last_audit = audit.get("last") or {}
+        if audit.get("count"):
+            ui.label(
+                f"Безопасный журнал телефона: {audit.get('count')} событий · "
+                f"последнее: {last_audit.get('action', '—')} · {str(last_audit.get('at') or '')[:19]}"
+            ).classes("text-xs text-gray-500")
 
     # Посылки Новой Пошты
     parcels = _np_parcels()

@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from .android_audit import PhoneActionAudit
 from .android_gateway import AndroidGateway
 
 
@@ -206,6 +207,14 @@ class ActiveAppAdapter:
         self.gateway = gateway
         self.store = WorkflowStore(gateway.root)
         self.calibrations = AppCalibrationStore(gateway.root)
+        self.audit = PhoneActionAudit(gateway.root)
+
+    def _audit(self, action: str, status: str) -> None:
+        # Audit is best-effort and must never block a real phone workflow.
+        try:
+            self.audit.record(action, status, package=self.package)
+        except Exception:
+            pass
 
     def _available(self) -> bool:
         profiles = self.gateway.app_profiles().get("profiles") or []
@@ -287,6 +296,7 @@ class ActiveAppAdapter:
         if snapshot.get("status") != "ok":
             return snapshot
         record = self._save_calibration(snapshot, selectors)
+        self._audit("app_ui_calibration", "calibrated")
         return {"status": "calibrated", "title": self.title, "selectors": selectors,
                 "nodes": record["nodes"], "editable": record["editable"], "clickable": record["clickable"]}
 
@@ -410,6 +420,7 @@ class ActiveAppAdapter:
         result = self.gateway.open_app(self.package, confirm=True)
         if result.get("status") == "ok":
             result["title"] = self.title
+        self._audit("app_open", str(result.get("status") or "error"))
         return result
 
 
@@ -476,6 +487,7 @@ class MessengerDraftAdapter(ActiveAppAdapter):
             "messenger_draft", self.package,
             {"text": body, "session_id": lease.get("session_id")}, ttl_seconds=300,
         )
+        self._audit("messenger_draft", "ready")
         return {
             "status": "draft_ready",
             "draft_id": draft["id"],
@@ -529,6 +541,7 @@ class MessengerDraftAdapter(ActiveAppAdapter):
             return tapped
         self.store.update(draft_id, state="send_tapped", sent_at=_iso())
         self.gateway.end_control_session(session_id)
+        self._audit("messenger_send", "tapped")
         # UI tap is not a network delivery receipt.  Never overstate it.
         return {"status": "send_tapped", "draft_id": str(draft_id)}
 
@@ -538,6 +551,7 @@ class MessengerDraftAdapter(ActiveAppAdapter):
             return {"status": "expired", "error": "Черновик не найден или истёк"}
         self.store.update(draft_id, state="cancelled", cancelled_at=_iso())
         self.gateway.end_control_session(str((draft.get("data") or {}).get("session_id") or ""))
+        self._audit("messenger_send", "cancelled")
         # We deliberately do not clear the on-phone composer: deleting or
         # modifying text is a separate destructive UI action for the owner.
         return {"status": "cancelled", "draft_id": str(draft_id)}
@@ -644,6 +658,7 @@ class WhatsAppPhoneAdapter(MessengerDraftAdapter):
         selected = self._tap_node(candidate)
         if selected.get("status") != "ok":
             return selected
+        self._audit("messenger_chat_open", "opened")
         return {"status": "opened", "contact": name}
 
 
@@ -717,6 +732,7 @@ class IMePhoneAdapter(MessengerDraftAdapter):
         selected = self._tap_node(candidate)
         if selected.get("status") != "ok":
             return selected
+        self._audit("messenger_chat_open", "opened")
         return {"status": "opened", "contact": name}
 
 
@@ -798,6 +814,7 @@ class UklonPhoneAdapter(PhoneAppMonitor):
         # Do not guess address suggestions or touch a booking control. Selecting
         # a place and creating a ride remain deliberate follow-up actions.
         draft = self.store.create("route_draft", self.package, {"pickup": start, "destination": end}, ttl_seconds=600)
+        self._audit("uklon_route", "staged")
         return {
             "status": "route_staged", "route_id": draft["id"], "expires_at": draft["expires_at"],
             "booking": "not_created", "controls": selectors,
@@ -834,6 +851,7 @@ class UklonPhoneAdapter(PhoneAppMonitor):
         if entered.get("status") != "query_entered":
             return entered
         self.store.update(route_id, state=f"{key}_query_entered", last_field=key, entered_at=_iso())
+        self._audit("uklon_route_query", "entered")
         return {"status": "query_entered", "route_id": str(route_id), "field": key}
 
 
@@ -876,6 +894,7 @@ class EasyWayPhoneAdapter(PhoneAppMonitor):
             return snapshot
         self._save_calibration(snapshot, selectors)
         draft = self.store.create("transit_route_draft", self.package, {"destination": place}, ttl_seconds=600)
+        self._audit("easyway_route", "staged")
         return {"status": "route_staged", "route_id": draft["id"], "expires_at": draft["expires_at"], "controls": selectors}
 
     def prepare_destination_query(self, route_id: str, confirm: bool = False) -> dict:
@@ -901,6 +920,7 @@ class EasyWayPhoneAdapter(PhoneAppMonitor):
         if entered.get("status") != "query_entered":
             return entered
         self.store.update(route_id, state="destination_query_entered", entered_at=_iso())
+        self._audit("easyway_route_query", "entered")
         return {"status": "query_entered", "route_id": str(route_id), "field": "destination"}
 
 
