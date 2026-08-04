@@ -54,6 +54,7 @@ def build_text(root: Path = ROOT, days: int = 7) -> str:
         f"Телефон: {'✅ ADB' if control.get('device', {}).get('connected') else '⚠️ ADB'} · {'✅ Companion' if control.get('device', {}).get('companion') else '⚠️ Companion'}",
         "Банки: " + (" · ".join(f"{bank.get('title')}: {bank.get('unread_notifications', 0)} уведомл." for bank in (control.get('banks') or [])) if control.get('banks') else "нет данных"),
         f"Банковские задачи: {(control.get('bank_tasks') or {}).get('pending', 0)} · внимание: {(control.get('bank_tasks') or {}).get('attention', 0)} · просрочены: {(control.get('bank_tasks') or {}).get('overdue', 0)}",
+        f"Шаблоны follow-up: {(control.get('templates') or {}).get('count', 0)} · не обновлялись 30+ дн.: {(control.get('templates') or {}).get('stale', 0)}",
         f"Безопасный аудит: {len(audit_events)} технических событий в журнале",
         "<i>Тексты чатов, имена, номера, маршруты, координаты, фото и аудио не включаются.</i>",
     ])

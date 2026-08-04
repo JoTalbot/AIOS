@@ -10,4 +10,8 @@ def test_template_store_private_and_upserts(tmp_path):
     assert store.upsert("Первый ответ", "Обновлённый текст")["status"] == "updated"
     template = store.get("первый ответ")
     assert template["text"] == "Обновлённый текст"
+    assert store.mark_used("первый ответ")["status"] == "used"
+    summary = store.summary()
+    assert summary["count"] == 1
+    assert summary["used_total"] == 1
     assert store.path.stat().st_mode & 0o777 == 0o600

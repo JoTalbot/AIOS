@@ -15,6 +15,9 @@ class Templates:
     def list(self): return [{"name": name} for name in self.items]
     def get(self, name):
         return {"name": name, "text": self.items[name]} if name in self.items else None
+    def mark_used(self, name):
+        self.used = name
+        return {"status": "used"}
 
 
 def test_template_add_and_crm_draft_pending(monkeypatch):
@@ -33,6 +36,7 @@ def test_template_add_and_crm_draft_pending(monkeypatch):
         pending = bot._pending_confirm[chat_id]
         assert pending["kind"] == "phone_crm_task_draft"
         assert pending["data"]["text"] == "Добрый день"
+        assert templates.used == "приветствие"
     finally:
         bot._last_phone_crm_tasks.pop(chat_id, None)
         bot._pending_confirm.pop(chat_id, None)

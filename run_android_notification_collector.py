@@ -66,12 +66,14 @@ def collect() -> dict:
     known = set(state.get("known") or [])
     existing_ids = {str(x.get("id")) for x in existing if isinstance(x, dict)}
     added = 0
+    duplicates = 0
     for item in result.get("notifications") or []:
         package = str(item.get("package") or "")
         if package not in APP_LABELS:
             continue
         event_id = _event_id(item)
         if event_id in known or event_id in existing_ids:
+            duplicates += 1
             continue
         existing.append({
             "id": event_id,
@@ -105,7 +107,7 @@ def collect() -> dict:
         bank_result = AndroidBankMonitor(ROOT).sync_tasks()
     except Exception:
         pass
-    return {"status": "ok", "added": added, "total": len(existing),
+    return {"status": "ok", "added": added, "duplicates": duplicates, "total": len(existing),
             "lead_candidates_added": int(lead_result.get("added") or 0),
             "bank_tasks_added": int(bank_result.get("added") or 0)}
 
