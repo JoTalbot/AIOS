@@ -90,6 +90,37 @@ def test_uklon_query_is_typed_but_never_selects_or_orders(tmp_path):
     assert len(gateway.taps) == 2
 
 
+def test_query_dismisses_recognised_keyboard_before_verification(tmp_path):
+    from aios_core.android_phone_workflows import UklonPhoneAdapter
+
+    class KeyboardGateway:
+        def __init__(self, root):
+            self.root = root
+            self.ime = False
+            self.clipboard = ""
+            self.value = ""
+            self.key_events = []
+        def active_app_ui(self, package, confirm=False, include_text=True):
+            if self.ime:
+                return {"status": "wrong_active_app", "expected_package": package, "active_package": "com.google.android.inputmethod.latin"}
+            return {"status": "ok", "package": package, "nodes": [{"text": self.value, "editable": True, "clickable": True, "bounds": [1, 1, 100, 50]}]}
+        def tap(self, x, y, confirm=False): return {"status": "ok"}
+        def set_clipboard(self, text, confirm=False): self.clipboard = text; return {"status": "ok"}
+        def paste(self, confirm=False): self.value = self.clipboard; self.ime = True; return {"status": "ok"}
+        def key(self, keycode, confirm=False): self.key_events.append(keycode); self.ime = False; return {"status": "ok"}
+
+    gateway = KeyboardGateway(tmp_path)
+    result = UklonPhoneAdapter(gateway)._enter_visible_query("Точка", wait_seconds=1)
+    assert result["status"] == "query_entered"
+    assert gateway.key_events == ["KEYCODE_BACK"]
+
+    gateway.ime = True
+    gateway.key_events = []
+    result = UklonPhoneAdapter(gateway)._enter_visible_query("Ещё точка", wait_seconds=1)
+    assert result["status"] == "query_entered"
+    assert gateway.key_events == ["KEYCODE_BACK", "KEYCODE_BACK"]
+
+
 def test_easyway_query_is_typed_but_route_remains_manual(tmp_path):
     from aios_core.android_phone_workflows import EasyWayPhoneAdapter
 

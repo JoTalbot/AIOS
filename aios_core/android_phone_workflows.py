@@ -323,6 +323,11 @@ class ActiveAppAdapter:
         last: dict = {}
         while True:
             last = self._active_ui(include_text=True)
+            if last.get("status") == "wrong_active_app" and self._is_input_method(last.get("active_package")):
+                dismissed = self.gateway.key("KEYCODE_BACK", confirm=True)
+                if dismissed.get("status") == "ok" and time.monotonic() < deadline:
+                    time.sleep(0.35)
+                    continue
             if last.get("status") != "ok":
                 return last, None
             field = self._unique_editable(last.get("nodes") or [])
@@ -331,6 +336,11 @@ class ActiveAppAdapter:
             if time.monotonic() >= deadline:
                 return last, None
             time.sleep(0.35)
+
+    @staticmethod
+    def _is_input_method(package: object) -> bool:
+        value = str(package or "").casefold()
+        return value.startswith(("com.google.android.inputmethod", "com.android.inputmethod", "com.swiftkey", "com.samsung.android.honeyboard"))
 
     def _enter_visible_query(self, value: str, wait_seconds: float = 4.0) -> dict:
         """Paste an explicitly approved search query without selecting a result."""
@@ -355,6 +365,14 @@ class ActiveAppAdapter:
             return pasted
         time.sleep(0.35)
         verified = self._active_ui(include_text=True)
+        # Android can temporarily expose the keyboard as the active window.
+        # We only dismiss a recognised input method immediately after a verified
+        # app field/paste sequence, then re-check the target app and its text.
+        if verified.get("status") == "wrong_active_app" and self._is_input_method(verified.get("active_package")):
+            dismissed = self.gateway.key("KEYCODE_BACK", confirm=True)
+            if dismissed.get("status") == "ok":
+                time.sleep(0.35)
+                verified = self._active_ui(include_text=True)
         if verified.get("status") != "ok":
             return verified
         matching = any(
