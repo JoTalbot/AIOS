@@ -457,6 +457,10 @@ class AndroidGateway:
                 return result
         return {"status": "error", "error": "UI-элемент не найден"}
 
+    def location_status(self) -> dict:
+        """Return readiness flags only; this never requests coordinates."""
+        return self._companion_request("location-status")
+
     def location(self, confirm: bool = False) -> dict:
         pending = self._needs_confirm(confirm, "android_location")
         if pending:

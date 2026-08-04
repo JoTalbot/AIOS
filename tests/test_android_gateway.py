@@ -120,6 +120,20 @@ def test_open_app_confirms_foreground_after_adb_timeout(tmp_path, monkeypatch):
     assert result["status"] == "ok"
 
 
+def test_location_status_never_requires_confirmation_or_coordinates(tmp_path, monkeypatch):
+    from aios_core.android_gateway import AndroidGateway
+
+    gateway = AndroidGateway(tmp_path)
+    monkeypatch.setattr(gateway, "_companion_request", lambda path, timeout=12: {
+        "status": "ok", "permission": True, "gps_enabled": False,
+        "network_enabled": True, "ready": True,
+    })
+    result = gateway.location_status()
+    assert result["ready"] is True
+    assert "latitude" not in result
+    assert "longitude" not in result
+
+
 def test_default_ui_snapshot_removes_screen_text(tmp_path, monkeypatch):
     from aios_core.android_gateway import AndroidGateway
 

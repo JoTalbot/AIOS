@@ -46,6 +46,7 @@ class PhoneControlCenter:
     def snapshot(self) -> dict:
         gateway = self.gateway_factory(self.root)
         device = gateway.status()
+        location = gateway.location_status() if device.get("connected") else {}
         profile_result = gateway.app_profiles() if device.get("connected") else {"profiles": []}
         profiles = profile_result.get("profiles") or []
         calibration = _read_json(self.root / "data" / "android_gateway" / "app_ui_calibrations.json", {})
@@ -82,6 +83,8 @@ class PhoneControlCenter:
                 "companion": companion_connected,
                 "model": str(device.get("model") or ""),
                 "android": str(device.get("android") or ""),
+                "location_permission": bool(location.get("permission")),
+                "location_ready": bool(location.get("ready")),
             },
             "apps": app_rows,
             "leads": {
@@ -113,6 +116,7 @@ def format_telegram(snapshot: dict) -> str:
         "📱 <b>ЦЕНТР УПРАВЛЕНИЯ ТЕЛЕФОНОМ</b>",
         f"Состояние: <b>{state}</b>",
         f"ADB: {'✅ подключён' if device.get('connected') else '⚠️ офлайн'} · Companion: {'✅ активен' if device.get('companion') else '⚠️ недоступен'}",
+        f"Геолокация: {'✅ готова' if device.get('location_ready') else ('🟡 разрешена, но системно недоступна' if device.get('location_permission') else '⚠️ не разрешена')}",
         f"Приложения: {available}/{len(apps)} доступны · интерфейсы откалиброваны: {calibrated}",
         f"Лиды: {leads.get('pending', 0)} · CRM follow-up: {leads.get('crm_open', 0)} · внимание: {leads.get('crm_attention', 0)} · просрочены: {leads.get('crm_overdue', 0)}",
         f"Таймеры: {timers_ok}/{len(timers)} активны · аудит: {snapshot.get('audit', {}).get('count', 0)} событий",
