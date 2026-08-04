@@ -74,6 +74,7 @@ def build_text(snapshot: dict) -> str:
     apps = snapshot.get("apps") or []
     timers = snapshot.get("timers") or {}
     banks = snapshot.get("banks") or []
+    bank_tasks = snapshot.get("bank_tasks") or {}
     available = sum(1 for app in apps if app.get("available"))
     calibrated = sum(1 for app in apps if app.get("calibrated"))
     timers_ok = sum(1 for value in timers.values() if value)
@@ -83,6 +84,7 @@ def build_text(snapshot: dict) -> str:
         f"Приложения: {available}/{len(apps)} · калиброваны: {calibrated}",
         f"Лиды: {leads.get('pending', 0)} · CRM follow-up: {leads.get('crm_open', 0)} · внимание: {leads.get('crm_attention', 0)} · просрочены: {leads.get('crm_overdue', 0)}",
         "Банки: " + (" · ".join(f"{bank.get('title')}: {bank.get('unread_notifications', 0)} уведомл." for bank in banks) if banks else "нет данных"),
+        f"Банковские задачи: {bank_tasks.get('pending', 0)} · внимание: {bank_tasks.get('attention', 0)} · просрочены: {bank_tasks.get('overdue', 0)}",
         f"Таймеры: {timers_ok}/{len(timers)} · аудит: {snapshot.get('audit', {}).get('count', 0)}",
         "<i>Переписки, имена, номера, маршруты, координаты, фото и аудио не включаются.</i>",
     ])

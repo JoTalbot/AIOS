@@ -68,7 +68,9 @@ class PhoneControlCenter:
             })
         leads = AndroidLeadQueue(self.root).summary()
         audit = PhoneActionAudit(self.root).summary()
-        banks = self.bank_monitor_factory(self.root).snapshot().get("banks") or []
+        bank_snapshot = self.bank_monitor_factory(self.root).snapshot()
+        banks = bank_snapshot.get("banks") or []
+        bank_tasks = bank_snapshot.get("tasks") or {}
         timers = {name: bool(self.service_probe(name)) for name in TIMERS}
         companion = device.get("companion") or {}
         connected = bool(device.get("connected"))
@@ -111,6 +113,11 @@ class PhoneControlCenter:
                 {"title": str(bank.get("title") or "Банк"), "available": bool(bank.get("available")), "unread_notifications": int(bank.get("unread_notifications") or 0)}
                 for bank in banks
             ],
+            "bank_tasks": {
+                "pending": int(bank_tasks.get("pending") or 0),
+                "attention": int(bank_tasks.get("attention") or 0),
+                "overdue": int(bank_tasks.get("overdue") or 0),
+            },
             "timers": timers,
             "recovery": {
                 "status": str(recovery.get("status") or "unknown"),
@@ -126,6 +133,7 @@ def format_telegram(snapshot: dict) -> str:
     apps = snapshot.get("apps") or []
     timers = snapshot.get("timers") or {}
     banks = snapshot.get("banks") or []
+    bank_tasks = snapshot.get("bank_tasks") or {}
     available = sum(1 for app in apps if app.get("available"))
     calibrated = sum(1 for app in apps if app.get("calibrated"))
     timers_ok = sum(1 for active in timers.values() if active)
@@ -139,6 +147,7 @@ def format_telegram(snapshot: dict) -> str:
         f"Приложения: {available}/{len(apps)} доступны · интерфейсы откалиброваны: {calibrated}",
         f"Лиды: {leads.get('pending', 0)} · CRM follow-up: {leads.get('crm_open', 0)} · внимание: {leads.get('crm_attention', 0)} · просрочены: {leads.get('crm_overdue', 0)}",
         "Банки: " + (" · ".join(f"{bank.get('title')}: {bank.get('unread_notifications', 0)} уведомл." for bank in banks) if banks else "нет данных"),
+        f"Банковские задачи: {bank_tasks.get('pending', 0)} · внимание: {bank_tasks.get('attention', 0)} · просрочены: {bank_tasks.get('overdue', 0)}",
         f"Таймеры: {timers_ok}/{len(timers)} активны · аудит: {snapshot.get('audit', {}).get('count', 0)} событий",
         f"Восстановление: {snapshot.get('recovery', {}).get('action', 'unknown')}",
     ]

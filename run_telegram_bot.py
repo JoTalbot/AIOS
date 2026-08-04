@@ -2055,11 +2055,18 @@ def _handle_phone_bank_monitor_intent(api, chat_id: int, text: str) -> bool:
             if not tasks:
                 api.send_message(chat_id, "🏦 <b>Банковские задачи телефона</b>\nОткрытых задач на проверку нет.")
                 return True
-            lines = ["🏦 <b>БАНКОВСКИЕ ЗАДАЧИ ТЕЛЕФОНА</b>", "━━━━━━━━━━━━━━━━"]
+            summary = monitor.task_summary()
+            lines = [
+                "🏦 <b>БАНКОВСКИЕ ЗАДАЧИ ТЕЛЕФОНА</b>",
+                f"<i>Открыты: {summary.get('pending', len(tasks))} · внимание: {summary.get('attention', 0)} · просрочены: {summary.get('overdue', 0)}</i>",
+                "━━━━━━━━━━━━━━━━",
+            ]
+            age_label = {"fresh": "🟢 Новая", "attention": "🟠 Внимание", "overdue": "🔴 Просрочена", "unknown": "⚪ Без времени"}
             for index, task in enumerate(tasks[:12], 1):
                 source = _esc_tg(str(task.get("source") or "Банк"))
                 observed = _esc_tg(str(task.get("observed_at") or "")[:19])
-                lines.append(f"{index:02d}. <b>{source}</b> · локальная проверка · 🕐 {observed}")
+                age = age_label.get(str(task.get("age_state") or ""), "⚪ Без времени")
+                lines.append(f"{index:02d}. <b>{source}</b> · {age} · 🕐 {observed}")
             lines.append("━━━━━━━━━━━━━━━━")
             lines.append("<i>«отметь банковскую задачу 1 обработанной» — закрыть локальную задачу. Суммы, карты и OTP не выводятся.</i>")
             api.send_message(chat_id, "\n".join(lines)[:3900])

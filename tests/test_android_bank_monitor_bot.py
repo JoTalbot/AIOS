@@ -30,7 +30,8 @@ def test_bank_task_review_needs_confirmation(monkeypatch):
 
     class BankMonitor:
         def __init__(self, root): pass
-        def list_tasks(self, limit=30): return [{"id": "bank-1", "source": "A-Bank", "observed_at": "2026-08-04T10:00:00"}]
+        def list_tasks(self, limit=30): return [{"id": "bank-1", "source": "A-Bank", "observed_at": "2026-08-04T10:00:00", "age_state": "fresh"}]
+        def task_summary(self): return {"pending": 1, "attention": 0, "overdue": 0}
         def review_task(self, task_id):
             self.reviewed = task_id
             return {"status": "reviewed"}
