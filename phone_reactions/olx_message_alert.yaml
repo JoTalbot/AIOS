@@ -1,0 +1,13 @@
+# Новые сообщения OLX на телефоне → мгновенный Telegram-алерт.
+# Ответы идут через штатный OLX API-конвейер; это правило — страховка на
+# случай, когда уведомление пришло раньше опроса API.
+id: olx_message_alert
+title: "🛒 OLX: новое сообщение"
+match:
+  package: [ua.slando]
+  text_regex: "(повідомленн|сообщени|написав|написала)"
+action:
+  type: telegram
+  template: "🛒 <b>OLX</b>: {text}"
+autonomy: alert_only
+cooldown_seconds: 180

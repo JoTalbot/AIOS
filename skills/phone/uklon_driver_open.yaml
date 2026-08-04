@@ -1,0 +1,16 @@
+# Uklon Driver: открыть приложение водителя и убедиться, что оно на экране.
+# Чувствительный профиль: только запуск и verify, без навигации по заказам.
+id: uklon_driver_open
+title: "Uklon Driver: открыть"
+app: uklon
+params: []
+confirm: true
+sensitive: true
+steps:
+  - id: open_app
+    do: app.open
+    package: ua.com.uklon.uklondriver
+
+  - id: verify_foreground
+    do: verify
+    foreground: ua.com.uklon.uklondriver

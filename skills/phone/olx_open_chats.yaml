@@ -1,0 +1,24 @@
+# OLX (ua.slando): открыть приложение и перейти во вкладку сообщений/чатов.
+# Только навигация — чтение чатов идёт через штатный OLX API-конвейер AIOS.
+id: olx_open_chats
+title: "OLX: открыть чаты"
+app: olx
+params: []
+confirm: true
+sensitive: false
+steps:
+  - id: open_app
+    do: app.open
+    package: ua.slando
+
+  - id: open_messages_tab
+    do: ui.tap
+    timeout: 8
+    heal: true
+    heal_hint: "the Messages / chats tab in the bottom navigation bar of the OLX app"
+    selectors:
+      - {desc_contains: "Повідомлення"}
+      - {desc_contains: "Сообщения"}
+      - {desc_contains: "Messages"}
+      - {text: "Повідомлення"}
+      - {text: "Сообщения"}
